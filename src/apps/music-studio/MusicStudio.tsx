@@ -1,7 +1,7 @@
 import { Music, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 
-export default function AudioStudio() {
+export default function MusicStudio() {
   const [prompt, setPrompt] = useState('')
   const [duration, setDuration] = useState(30)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -9,7 +9,7 @@ export default function AudioStudio() {
   return (
     <div className="p-6">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Audio Studio</h1>
+        <h1 className="text-3xl font-bold mb-6">Music Studio</h1>
         
         <div className="glass p-6 rounded-xl">
           <div className="space-y-4">

@@ -23,7 +23,7 @@ export default function SideNavigation() {
     { to: '/storyboard', icon: <LayoutTemplate size={20} />, label: 'Storyboard' },
     { to: '/scene-planner', icon: <Workflow size={20} />, label: 'Scene Planner' },
     { to: '/cinema', icon: <Film size={20} />, label: 'Cinema' },
-    { to: '/audio-studio', icon: <Music size={20} />, label: 'Audio Studio' },
+    { to: '/music-studio', icon: <Music size={20} />, label: 'Music Studio' },
     { to: '/thumbnail-studio', icon: <Image size={20} />, label: 'Thumbnail' },
     { to: '/script-writer', icon: <FileText size={20} />, label: 'Script Writer' },
     { to: '/presentation', icon: <Presentation size={20} />, label: 'Presentation' },

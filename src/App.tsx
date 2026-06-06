@@ -5,7 +5,7 @@ import VideoStudio from './apps/video-studio/VideoStudio'
 import Storyboard from './apps/storyboard/Storyboard'
 import ScenePlanner from './apps/scene-planner/ScenePlanner'
 import Cinema from './apps/cinema/Cinema'
-import AudioStudio from './apps/audio-studio/AudioStudio'
+import MusicStudio from './apps/music-studio/MusicStudio'
 import ThumbnailStudio from './apps/thumbnail-studio/ThumbnailStudio'
 import ScriptWriter from './apps/script-writer/ScriptWriter'
 import Presentation from './apps/presentation/Presentation'
@@ -24,7 +24,7 @@ function App() {
             <Route path="/storyboard/*" element={<Storyboard />} />
             <Route path="/scene-planner/*" element={<ScenePlanner />} />
             <Route path="/cinema/*" element={<Cinema />} />
-            <Route path="/audio-studio/*" element={<AudioStudio />} />
+            <Route path="/music-studio/*" element={<MusicStudio />} />
             <Route path="/thumbnail-studio/*" element={<ThumbnailStudio />} />
             <Route path="/script-writer/*" element={<ScriptWriter />} />
             <Route path="/presentation/*" element={<Presentation />} />
