@@ -1,4 +1,4 @@
-import { FileText, Loader2 } from 'lucide-react'
+import { FileText, Loader2, Save, Download } from 'lucide-react'
 import { useState } from 'react'
 
 export default function ScriptWriter() {
@@ -7,8 +7,20 @@ export default function ScriptWriter() {
 
   return (
     <div className="p-6">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Script Writer</h1>
+      <div className="max-w-6xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold">Script Writer</h1>
+          <div className="flex gap-2">
+            <button className="px-4 py-2 bg-[var(--bg-card)] rounded-xl hover:bg-[var(--border-color)] transition-all flex items-center gap-2">
+              <Save size={16} />
+              Save Script
+            </button>
+            <button className="px-4 py-2 bg-primary text-black rounded-xl font-medium hover:bg-primary-hover transition-all flex items-center gap-2">
+              <Download size={16} />
+              Export
+            </button>
+          </div>
+        </div>
         
         <div className="glass p-6 rounded-xl">
           <div className="space-y-4">
@@ -22,7 +34,7 @@ export default function ScriptWriter() {
               />
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Genre</label>
                 <select className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-2">
@@ -39,6 +51,15 @@ export default function ScriptWriter() {
                   <option>Short (2-3 min)</option>
                   <option>Medium (5-10 min)</option>
                   <option>Feature (15+ min)</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Format</label>
+                <select className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-2">
+                  <option>Screenplay</option>
+                  <option>Novel</option>
+                  <option>Video Script</option>
                 </select>
               </div>
             </div>
