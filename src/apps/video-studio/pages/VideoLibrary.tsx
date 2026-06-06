@@ -8,10 +8,10 @@ export default function VideoLibrary() {
         
         <div className="grid grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="glass p-4 rounded-xl">
+            <div key={i} className="glass-panel p-4 rounded-xl">
               <div className="aspect-video bg-[var(--bg-card)] rounded-lg mb-3" />
               <h3 className="font-medium mb-1">Video {i}</h3>
-              <p className="text-sm text-[var(--text-muted)]">Generated 5 seconds ago</p>
+              <p className="text-sm text-muted">Generated 5 seconds ago</p>
             </div>
           ))}
         </div>

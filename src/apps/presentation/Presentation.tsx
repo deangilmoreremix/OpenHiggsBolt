@@ -18,7 +18,7 @@ export default function PresentationApp() {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="Quarterly business report..."
-                className="w-full h-32 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-3 resize-none"
+                className="w-full h-32 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-3 resize-none"
               />
             </div>
             
@@ -30,13 +30,13 @@ export default function PresentationApp() {
                   defaultValue={10}
                   min="1"
                   max="50"
-                  className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2"
+                  className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-2"
                 />
               </div>
               
               <div>
                 <label className="block text-sm font-medium mb-2">Theme</label>
-                <select className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2">
+                <select className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-2">
                   <option>Professional Dark</option>
                   <option>Clean Light</option>
                   <option>Creative Colorful</option>
@@ -46,7 +46,7 @@ export default function PresentationApp() {
             
             <button
               disabled={isGenerating}
-              className="w-full py-3 px-4 bg-[var(--color-primary)] text-black font-semibold rounded-lg hover:bg-[var(--color-primary-hover)] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 bg-primary text-black font-semibold rounded-xl hover:bg-primary-hover transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isGenerating ? (
                 <>

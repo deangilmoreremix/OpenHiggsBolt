@@ -19,7 +19,7 @@ export default function AudioStudio() {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="Epic orchestral music with deep bass..."
-                className="w-full h-32 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-3 resize-none"
+                className="w-full h-32 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-3 resize-none"
               />
             </div>
             
@@ -29,7 +29,7 @@ export default function AudioStudio() {
                 <select
                   value={duration}
                   onChange={(e) => setDuration(Number(e.target.value))}
-                  className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2"
+                  className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-2"
                 >
                   <option value={15}>15 seconds</option>
                   <option value={30}>30 seconds</option>
@@ -39,7 +39,7 @@ export default function AudioStudio() {
               
               <div>
                 <label className="block text-sm font-medium mb-2">Style</label>
-                <select className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2">
+                <select className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-2">
                   <option>Cinematic</option>
                   <option>Epic</option>
                   <option>Ambient</option>
@@ -50,7 +50,7 @@ export default function AudioStudio() {
             
             <button
               disabled={isGenerating}
-              className="w-full py-3 px-4 bg-[var(--color-primary)] text-black font-semibold rounded-lg hover:bg-[var(--color-primary-hover)] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 bg-primary text-black font-semibold rounded-xl hover:bg-primary-hover transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isGenerating ? (
                 <>

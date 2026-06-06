@@ -35,7 +35,7 @@ export default function VideoGenerate() {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="Describe your video..."
-                className="w-full h-32 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-3 text-[var(--text-primary)] placeholder-[var(--text-muted)] resize-none"
+                className="w-full h-32 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-3 text-white placeholder-muted resize-none"
               />
             </div>
             
@@ -45,7 +45,7 @@ export default function VideoGenerate() {
                 <select
                   value={duration}
                   onChange={(e) => setDuration(Number(e.target.value))}
-                  className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2"
+                  className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-2"
                 >
                   <option value={3}>3 seconds</option>
                   <option value={5}>5 seconds</option>
@@ -58,7 +58,7 @@ export default function VideoGenerate() {
                 <select
                   value={aspectRatio}
                   onChange={(e) => setAspectRatio(e.target.value as any)}
-                  className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2"
+                  className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-2"
                 >
                   <option value="16:9">16:9 (Landscape)</option>
                   <option value="9:16">9:16 (Portrait)</option>
@@ -70,7 +70,7 @@ export default function VideoGenerate() {
             <button
               onClick={handleGenerate}
               disabled={isGenerating || !prompt.trim()}
-              className="w-full py-3 px-4 bg-[var(--color-primary)] text-black font-semibold rounded-lg hover:bg-[var(--color-primary-hover)] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 bg-primary text-black font-semibold rounded-xl hover:bg-primary-hover transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isGenerating ? (
                 <>
@@ -90,15 +90,15 @@ export default function VideoGenerate() {
         {result && (
           <div className="glass p-6 rounded-xl">
             <h2 className="text-xl font-semibold mb-4">Generated Video</h2>
-            <div className="aspect-video bg-[var(--bg-card)] rounded-lg mb-4 flex items-center justify-center">
-              <video src={result.url} controls className="w-full h-full rounded-lg" />
+            <div className="aspect-video bg-[var(--bg-card)] rounded-xl mb-4 flex items-center justify-center">
+              <video src={result.url} controls className="w-full h-full rounded-xl" />
             </div>
             <div className="flex gap-3">
-              <button className="px-4 py-2 bg-[var(--bg-card)] rounded-lg hover:bg-[var(--border-color)] transition-colors flex items-center gap-2">
+              <button className="px-4 py-2 bg-[var(--bg-card)] rounded-xl text-sm hover:bg-[var(--border-color)] transition-colors flex items-center gap-2">
                 <Download size={16} />
                 Download
               </button>
-              <button className="px-4 py-2 bg-[var(--bg-card)] rounded-lg hover:bg-[var(--border-color)] transition-colors flex items-center gap-2">
+              <button className="px-4 py-2 bg-[var(--bg-card)] rounded-xl text-sm hover:bg-[var(--border-color)] transition-colors flex items-center gap-2">
                 <Share2 size={16} />
                 Share
               </button>

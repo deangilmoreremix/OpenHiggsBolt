@@ -18,25 +18,25 @@ export default function ThumbnailStudio() {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="A dramatic thumbnail with bold text..."
-                className="w-full h-32 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-3 resize-none"
+                className="w-full h-32 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-3 resize-none"
               />
             </div>
             
             <div className="grid grid-cols-3 gap-4">
-              <div className="glass-panel p-3 rounded-lg text-center">
+              <div className="glass-panel p-3 rounded-xl text-center">
                 <p className="font-medium">Vibrant Colors</p>
               </div>
-              <div className="glass-panel p-3 rounded-lg text-center">
+              <div className="glass-panel p-3 rounded-xl text-center">
                 <p className="font-medium">Bold Text</p>
               </div>
-              <div className="glass-panel p-3 rounded-lg text-center">
+              <div className="glass-panel p-3 rounded-xl text-center">
                 <p className="font-medium">Face Focus</p>
               </div>
             </div>
             
             <button
               disabled={isGenerating}
-              className="w-full py-3 px-4 bg-[var(--color-primary)] text-black font-semibold rounded-lg hover:bg-[var(--color-primary-hover)] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 bg-primary text-black font-semibold rounded-xl hover:bg-primary-hover transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isGenerating ? (
                 <>

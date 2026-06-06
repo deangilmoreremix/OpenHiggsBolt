@@ -24,7 +24,7 @@ export default function StoryboardPlanner() {
                 value={script}
                 onChange={(e) => setScript(e.target.value)}
                 placeholder="Enter your script or describe your idea..."
-                className="w-full h-40 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-3 resize-none"
+                className="w-full h-40 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-3 resize-none"
               />
             </div>
             
@@ -36,13 +36,13 @@ export default function StoryboardPlanner() {
                 onChange={(e) => setSceneCount(Number(e.target.value))}
                 min="1"
                 max="20"
-                className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2"
+                className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-2"
               />
             </div>
             
             <button
               onClick={handleGenerate}
-              className="w-full py-3 px-4 bg-[var(--color-primary)] text-black font-semibold rounded-lg hover:bg-[var(--color-primary-hover)] transition-all"
+              className="w-full py-3 px-4 bg-primary text-black font-semibold rounded-xl hover:bg-primary-hover transition-all"
             >
               Generate Storyboard
             </button>
@@ -55,12 +55,12 @@ export default function StoryboardPlanner() {
             {Array.from({ length: sceneCount }).map((_, i) => (
               <div
                 key={i}
-                className="glass-panel p-4 rounded-lg cursor-pointer hover:scale-105 transition-transform"
+                className="glass-panel p-4 rounded-xl cursor-pointer hover:scale-105 transition-transform"
                 onClick={() => navigate(`/storyboard/shots/${i + 1}`)}
               >
-                <div className="aspect-video bg-[var(--bg-card)] rounded mb-2" />
+                <div className="aspect-video bg-[var(--bg-card)] rounded-lg mb-2" />
                 <h3 className="font-medium">Scene {i + 1}</h3>
-                <p className="text-sm text-[var(--text-muted)]">Wide shot</p>
+                <p className="text-sm text-muted">Wide shot</p>
               </div>
             ))}
           </div>

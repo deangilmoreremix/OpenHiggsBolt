@@ -5,35 +5,32 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#d9ff00',
-        'primary-hover': '#c4e600',
+        primary: {
+          DEFAULT: '#22d3ee',
+          hover: '#06b6d4'
+        },
         accent: '#a855f7',
-        'accent-hover': '#9333ea',
         danger: '#ef4444',
         'bg-app': '#050505',
         'bg-panel': '#0a0a0a',
-        'bg-card': '#141414',
-        'text-primary': '#fff',
-        'text-secondary': '#a1a1aa',
-        'text-muted': '#52525b',
-        'border-color': '#27272a',
-        'border-light': '#ffffff1a'
+        'bg-card': '#111111',
+        secondary: '#a1a1aa',
+        muted: '#52525b',
+        'border-color': 'rgba(255,255,255,0.05)'
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif']
       },
       borderRadius: {
-        sm: '6px',
-        md: '10px',
-        lg: '16px',
-        xl: '24px'
+        xl: '1rem',
+        '2xl': '1.5rem',
+        '3xl': '2rem',
+        DEFAULT: '0.75rem'
       },
       boxShadow: {
-        glow: '0 0 20px #d9ff0066',
-        'glow-accent': '0 0 20px #a855f766'
-      },
-      backdropBlur: {
-        glass: '20px'
+        glow: '0 0 20px rgba(34, 211, 238, 0.4)',
+        'glow-accent': '0 0 20px rgba(168, 85, 247, 0.4)',
+        '3xl': '0 35px 60px -15px rgba(0, 0, 0, 0.8)'
       }
     }
   },

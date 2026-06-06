@@ -33,7 +33,7 @@ export default function SideNavigation() {
   return (
     <nav className="w-64 h-full glass-panel border-r border-[var(--border-color)] flex flex-col p-4">
       <div className="flex items-center gap-3 mb-8 px-2">
-        <div className="w-10 h-10 bg-[var(--color-primary)] rounded-xl flex items-center justify-center">
+        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
           <Video size={24} className="text-black" />
         </div>
         <h1 className="text-xl font-bold">OpenHiggsBolt</h1>
@@ -47,8 +47,8 @@ export default function SideNavigation() {
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
                 isActive
-                  ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card)]'
+                  ? 'bg-primary/20 text-primary'
+                  : 'text-secondary hover:text-white hover:bg-[var(--bg-card)]'
               }`
             }
           >
