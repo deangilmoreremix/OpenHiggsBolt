@@ -45,3 +45,18 @@ export interface AudioResult {
   duration: number
   createdAt: string
 }
+
+export interface TextGenerationParams {
+  prompt: string
+  systemPrompt?: string
+  model?: string
+  maxTokens?: number
+  temperature?: number
+}
+
+export interface TextResult {
+  id: string
+  text: string
+  model: string
+  createdAt: string
+}

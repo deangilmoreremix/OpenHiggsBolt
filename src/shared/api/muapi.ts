@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { VideoGenerationParams, VideoResult, ImageGenerationParams, ImageResult, AudioGenerationParams, AudioResult } from '@/types/api'
+import { VideoGenerationParams, VideoResult, ImageGenerationParams, ImageResult, AudioGenerationParams, AudioResult, TextGenerationParams, TextResult } from '@/types/api'
 
 const MUAPI_BASE_URL = '/.netlify/functions/muapi'
 
@@ -15,6 +15,11 @@ export async function generateImage(params: ImageGenerationParams): Promise<Imag
 
 export async function generateAudio(params: AudioGenerationParams): Promise<AudioResult> {
   const response = await axios.post(`${MUAPI_BASE_URL}/audio`, params)
+  return response.data
+}
+
+export async function generateText(params: TextGenerationParams): Promise<TextResult> {
+  const response = await axios.post(`${MUAPI_BASE_URL}/text`, params)
   return response.data
 }
 
