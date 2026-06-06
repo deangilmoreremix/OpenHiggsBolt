@@ -9,13 +9,13 @@ export default function WorkflowHistory() {
         <div className="glass p-6 rounded-xl">
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="glass-panel p-4 rounded-lg flex items-center gap-4">
-                <Clock size={20} className="text-[var(--color-primary)]" />
+              <div key={i} className="glass-panel p-4 rounded-xl flex items-center gap-4">
+                <Clock size={20} className="text-primary" />
                 <div className="flex-1">
                   <h3 className="font-medium">Workflow {i}</h3>
-                  <p className="text-sm text-[var(--text-muted)]">Completed 5 hours ago</p>
+                  <p className="text-sm text-muted">Completed 5 hours ago</p>
                 </div>
-                <button className="px-3 py-1 bg-[var(--bg-card)] rounded-lg text-sm">
+                <button className="px-3 py-1 bg-[var(--bg-card)] rounded-xl text-sm hover:bg-[var(--border-color)] transition-all">
                   Reuse
                 </button>
               </div>

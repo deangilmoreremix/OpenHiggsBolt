@@ -10,11 +10,11 @@ export default function CinemaHistory() {
         <div className="grid grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="glass-panel p-4 rounded-xl">
-              <div className="aspect-video bg-[var(--bg-card)] rounded-lg mb-3 flex items-center justify-center">
-                <Film size={48} className="text-[var(--color-primary)]" />
+              <div className="aspect-video bg-[var(--bg-card)] rounded-xl mb-3 flex items-center justify-center">
+                <Film size={48} className="text-primary" />
               </div>
               <h3 className="font-medium mb-1">Cinematic Video {i}</h3>
-              <p className="text-sm text-[var(--text-muted)]">Generated 2 days ago</p>
+              <p className="text-sm text-muted">Generated 2 days ago</p>
             </div>
           ))}
         </div>

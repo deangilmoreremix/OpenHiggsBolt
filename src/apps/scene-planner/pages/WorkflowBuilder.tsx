@@ -13,11 +13,11 @@ export default function WorkflowBuilder() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-3xl font-bold">Scene Planner - Workflow Builder</h1>
         <div className="flex gap-2">
-          <button className="px-4 py-2 bg-[var(--bg-card)] rounded-lg flex items-center gap-2">
+          <button className="px-4 py-2 bg-[var(--bg-card)] rounded-xl flex items-center gap-2 hover:bg-[var(--border-color)] transition-all">
             <Settings size={16} />
             Settings
           </button>
-          <button className="px-4 py-2 bg-[var(--color-primary)] text-black rounded-lg font-medium flex items-center gap-2">
+          <button className="px-4 py-2 bg-primary text-black rounded-xl font-medium flex items-center gap-2 hover:bg-primary-hover transition-all">
             <Play size={16} />
             Run Workflow
           </button>
@@ -37,7 +37,7 @@ export default function WorkflowBuilder() {
               }}
             >
               <h3 className="font-semibold mb-2">{node.label}</h3>
-              <div className="text-sm text-[var(--text-muted)]">
+              <div className="text-sm text-muted">
                 {node.type === 'prompt' && 'Enter your prompt here...'}
                 {node.type === 'video' && 'FLUX, SDXL, etc.'}
                 {node.type === 'output' && 'Generated results'}
@@ -46,7 +46,7 @@ export default function WorkflowBuilder() {
           ))}
         </svg>
         
-        <button className="absolute bottom-6 right-6 p-3 bg-[var(--color-primary)] text-black rounded-full shadow-lg">
+        <button className="absolute bottom-6 right-6 p-3 bg-primary text-black rounded-full hover:bg-primary-hover transition-all">
           <Plus size={24} />
         </button>
       </div>

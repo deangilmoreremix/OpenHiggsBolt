@@ -11,7 +11,7 @@ export default function ShotEditor() {
         <div className="flex items-center gap-4 mb-6">
           <button
             onClick={() => navigate('/storyboard')}
-            className="p-2 rounded-lg hover:bg-[var(--bg-card)] transition-colors"
+            className="p-2 rounded-xl hover:bg-[var(--bg-card)] transition-colors"
           >
             <ArrowLeft size={20} />
           </button>
@@ -23,13 +23,13 @@ export default function ShotEditor() {
             <div>
               <h3 className="font-semibold mb-3">Camera Settings</h3>
               <div className="space-y-3">
-                <select className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2">
+                <select className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-2">
                   <option>Wide Shot</option>
                   <option>Close-up</option>
                   <option>Medium</option>
                   <option>Over Shoulder</option>
                 </select>
-                <select className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-2">
+                <select className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-2">
                   <option>Eye Level</option>
                   <option>High Angle</option>
                   <option>Low Angle</option>
@@ -46,7 +46,7 @@ export default function ShotEditor() {
                   <span>75%</span>
                 </div>
                 <div className="h-2 bg-[var(--bg-card)] rounded-full">
-                  <div className="h-full w-3/4 bg-[var(--color-primary)] rounded-full" />
+                  <div className="h-full w-3/4 bg-primary rounded-full" />
                 </div>
               </div>
             </div>
@@ -54,10 +54,10 @@ export default function ShotEditor() {
             <div>
               <h3 className="font-semibold mb-3">Actions</h3>
               <div className="space-y-2">
-                <button className="w-full py-2 bg-[var(--color-primary)] text-black rounded-lg font-medium">
+                <button className="w-full py-2 bg-primary text-black rounded-xl font-medium hover:bg-primary-hover transition-all">
                   Generate Shot
                 </button>
-                <button className="w-full py-2 bg-[var(--bg-card)] rounded-lg">
+                <button className="w-full py-2 bg-[var(--bg-card)] rounded-xl hover:bg-[var(--border-color)] transition-all">
                   Regenerate
                 </button>
               </div>

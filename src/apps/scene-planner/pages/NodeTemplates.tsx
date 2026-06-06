@@ -19,12 +19,12 @@ export default function NodeTemplates() {
           {templates.map((template, i) => (
             <div key={i} className="glass-panel p-4 rounded-xl cursor-pointer hover:scale-105 transition-transform">
               <h3 className="font-semibold mb-1">{template.name}</h3>
-              <p className="text-sm text-[var(--color-primary)]">{template.category}</p>
+              <p className="text-sm text-primary">{template.category}</p>
             </div>
           ))}
         </div>
         
-        <button className="fixed bottom-6 right-6 p-3 bg-[var(--color-primary)] text-black rounded-full shadow-lg">
+        <button className="fixed bottom-6 right-6 p-3 bg-primary text-black rounded-full hover:bg-primary-hover transition-all">
           <Plus size={24} />
         </button>
       </div>

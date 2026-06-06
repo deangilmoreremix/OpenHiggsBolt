@@ -8,8 +8,8 @@ export default function VideoEditor() {
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold mb-6">Video Editor</h1>
         
-        <div className="glass p-6 rounded-xl">
-          <div className="aspect-video bg-[var(--bg-card)] rounded-lg mb-4" />
+        <div className="glass p-6 rounded-xl mb-6">
+          <div className="aspect-video bg-[var(--bg-card)] rounded-xl mb-4" />
           
           <div className="space-y-4">
             <div>
@@ -23,10 +23,10 @@ export default function VideoEditor() {
             </div>
             
             <div className="flex gap-4">
-              <button className="px-4 py-2 bg-[var(--color-primary)] text-black rounded-lg font-medium">
+              <button className="px-4 py-2 bg-primary text-black rounded-xl font-medium hover:bg-primary-hover transition-all">
                 Extend Video
               </button>
-              <button className="px-4 py-2 bg-[var(--bg-card)] rounded-lg">
+              <button className="px-4 py-2 bg-[var(--bg-card)] rounded-xl hover:bg-[var(--border-color)] transition-all">
                 Add Effects
               </button>
             </div>
