@@ -1,20 +1,22 @@
 import { useState } from 'react'
-import { Film, Loader2, Upload, Settings } from 'lucide-react'
+import { Film, Loader2, Download, Share2, Upload, Settings } from 'lucide-react'
 import { generateVideo } from '@/api/muapi'
 
 export default function CinemaGenerate() {
   const [prompt, setPrompt] = useState('')
   const [sceneCount, setSceneCount] = useState(5)
-  const [camera, setCamera] = useState('Modular 8K Digital')
-  const [lens, setLens] = useState('Premium Modern Prime')
-  const [aperture, setAperture] = useState('f/1.4')
+  const [model, setModel] = useState('kling-3.0')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [result, setResult] = useState<any>(null)
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return
     setIsGenerating(true)
     try {
-      await generateVideo({ prompt, duration: 5 * sceneCount })
+      const video = await generateVideo({ prompt, duration: 5 * sceneCount, model })
+      setResult(video)
+    } catch (error) {
+      console.error(error)
     } finally {
       setIsGenerating(false)
     }
@@ -57,37 +59,31 @@ export default function CinemaGenerate() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium mb-2">Camera</label>
+                <label className="block text-sm font-medium mb-2">Model</label>
                 <select
-                  value={camera}
-                  onChange={(e) => setCamera(e.target.value)}
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
                   className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-2"
                 >
-                  <option>Modular 8K Digital</option>
-                  <option>Full-Frame Cine Digital</option>
-                  <option>Grand Format 70mm Film</option>
-                  <option>Studio Digital S35</option>
+                  <option value="kling-3.0">Kling 3.0</option>
+                  <option value="veo-3">Veo 3</option>
+                  <option value="sora">Sora</option>
                 </select>
               </div>
               
               <div>
-                <label className="block text-sm font-medium mb-2">Lens</label>
-                <select
-                  value={lens}
-                  onChange={(e) => setLens(e.target.value)}
-                  className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-2"
-                >
-                  <option>Premium Modern Prime</option>
-                  <option>Classic Anamorphic</option>
-                  <option>Vintage Prime</option>
-                  <option>Swirl Bokeh Portrait</option>
+                <label className="block text-sm font-medium mb-2">Camera Style</label>
+                <select className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-2">
+                  <option>Modular 8K Digital</option>
+                  <option>Full-Frame Cine Digital</option>
+                  <option>Grand Format 70mm Film</option>
                 </select>
               </div>
             </div>
             
             <button
               onClick={handleGenerate}
-              disabled={isGenerating}
+              disabled={isGenerating || !prompt.trim()}
               className="w-full py-3 px-4 bg-primary text-black font-semibold rounded-xl hover:bg-primary-hover transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isGenerating ? (
@@ -104,6 +100,25 @@ export default function CinemaGenerate() {
             </button>
           </div>
         </div>
+
+        {result && (
+          <div className="glass p-6 rounded-xl">
+            <h2 className="text-xl font-semibold mb-4">Generated Video</h2>
+            <div className="aspect-video bg-[var(--bg-card)] rounded-xl mb-4 flex items-center justify-center">
+              <video src={result.url} controls className="w-full h-full rounded-xl" />
+            </div>
+            <div className="flex gap-3">
+              <button className="px-4 py-2 bg-[var(--bg-card)] rounded-xl text-sm hover:bg-[var(--border-color)] transition-all flex items-center gap-2">
+                <Download size={16} />
+                Download
+              </button>
+              <button className="px-4 py-2 bg-[var(--bg-card)] rounded-xl text-sm hover:bg-[var(--border-color)] transition-all flex items-center gap-2">
+                <Share2 size={16} />
+                Share
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
