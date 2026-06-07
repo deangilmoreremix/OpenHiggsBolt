@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Palette, Settings, LayoutTemplate } from 'lucide-react'
+import { Routes, Route } from 'react-router-dom'
 import Chat from './pages/Chat'
 import Assets from './pages/Assets'
 import PlanProposal from './pages/PlanProposal'

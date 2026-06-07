@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Send, Paperclip, Image as ImageIcon, Loader2, Check, X, Palette, Download, ExternalLink } from 'lucide-react'
+import { Send, Paperclip, ImageIcon, Loader2, Check, X, Palette, Download, ExternalLink } from 'lucide-react'
 import {
   createSession,
   sendChatMessage,
@@ -10,9 +10,10 @@ import {
   getFileUploadUrl,
   approveJob,
   rejectJob,
-  getAgentSkills
+  getAgentSkills,
+  getSession
 } from '../../../shared/api/designAgent'
-import { Session, ChatMessage, Skill, EventItem, Asset } from '../../../shared/types/designAgent'
+import { Session, ChatMessage, Skill, EventItem, Asset, BrandKit } from '../../../shared/types/designAgent'
 
 export default function Chat() {
   const [session, setSession] = useState<Session | null>(null)
@@ -28,6 +29,11 @@ export default function Chat() {
   const [events, setEvents] = useState<EventItem[]>([])
   const [plan, setPlan] = useState<any | null>(null)
   const [showApiKeyModal, setShowApiKeyModal] = useState(false)
+  const [selectedModel, setSelectedModel] = useState<string>('gpt-5-mini')
+  const [aspectRatio, setAspectRatio] = useState<string>('16:9')
+  const [brandKit, setBrandKit] = useState<BrandKit>({})
+  const [showBrandKit, setShowBrandKit] = useState(false)
+  const [showPlanApproval, setShowPlanApproval] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -52,8 +58,8 @@ export default function Chat() {
       const existingSession = localStorage.getItem('design_agent_session_id')
       if (existingSession) {
         try {
-          await createSession({ name: 'Design Session' })
-          setSession({ id: existingSession, name: 'Design Session', createdAt: '', updatedAt: '' })
+          const sessionCheck = await getSession(existingSession)
+          setSession(sessionCheck)
         } catch {
           localStorage.removeItem('design_agent_session_id')
         }
@@ -134,8 +140,12 @@ export default function Chat() {
       setPlan({
         title: event.payload.title,
         nodes: event.payload.nodes || [],
-        totalCredits: event.payload.total_credits || 0
+        totalCredits: event.payload.total_credits || 0,
+        needsApproval: event.payload.needs_approval || false
       })
+      if (event.payload.needs_approval) {
+        setShowPlanApproval(true)
+      }
     }
     
     if (event.type === 'info' && event.payload.message) {
@@ -164,15 +174,25 @@ export default function Chat() {
     setMessages(prev => [...prev, userMessage])
 
     try {
-      const job = await sendChatMessage(session.id, {
-        message: input,
-        model: 'gpt-5-mini'
-      })
+      let job
+      if (selectedSkill) {
+        job = await runSkill(session.id, {
+          skill_name: selectedSkill,
+          model: selectedModel,
+          messages_snapshot: messages
+        })
+      } else {
+        job = await sendChatMessage(session.id, {
+          message: input,
+          model: selectedModel
+        })
+      }
       setPollingJobId(job.id)
       pollEvents(job.id, (event) => {
         handleEvent(event)
       }, undefined, () => {
         setPollingJobId(null)
+        setPlan(null)
       })
       setInput('')
     } catch (error) {
@@ -363,42 +383,110 @@ export default function Chat() {
                 </div>
               </div>
             )}
-            {plan && (
-              <div className="flex justify-start">
-                <div className="bg-[var(--bg-card)] p-4 rounded-xl max-w-[70%]">
-                  <h4 className="font-bold mb-2">{plan.title}</h4>
-                  <p className="text-sm mb-3">Estimated credits: {plan.totalCredits}</p>
-                  {plan.nodes && (
-                    <div className="space-y-2 mb-3">
-                      {plan.nodes.map((node: any, index: number) => (
-                        <div key={index} className="p-2 bg-[var(--bg-app)] rounded">
-                          <span className="text-xs font-bold text-primary">{index + 1}</span>
-                          <span className="text-sm ml-2">{node.tool}</span>
-                          {node.model && <span className="text-xs text-[var(--text-secondary)] ml-2">({node.model})</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+{plan && (
+               <div className="flex justify-start">
+                 <div className="bg-[var(--bg-card)] p-4 rounded-xl max-w-[70%]">
+                   <h4 className="font-bold mb-2">{plan.title}</h4>
+                   <p className="text-sm mb-3">Estimated credits: {plan.totalCredits}</p>
+                   {plan.nodes && (
+                     <div className="space-y-2 mb-3">
+                       {plan.nodes.map((node: any, index: number) => (
+                         <div key={index} className="p-2 bg-[var(--bg-app)] rounded">
+                           <span className="text-xs font-bold text-primary">{index + 1}</span>
+                           <span className="text-sm ml-2">{node.tool}</span>
+                           {node.model && <span className="text-xs text-[var(--text-secondary)] ml-2">({node.model})</span>}
+                         </div>
+                       ))}
+                     </div>
+                   )}
+                   {plan.needsApproval && (
+                     <div className="flex gap-2 mt-3">
+                       {pollingJobId && (
+                         <>
+                           <button
+                             onClick={handleApproveJob}
+                             className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-xs font-bold hover:bg-green-500/30 flex items-center gap-1"
+                           >
+                             <Check size={14} />
+                             Approve Plan
+                           </button>
+                           <button
+                             onClick={handleRejectJob}
+                             className="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg text-xs font-bold hover:bg-red-500/30 flex items-center gap-1"
+                           >
+                             <X size={14} />
+                             Reject Plan
+                           </button>
+                         </>
+                       )}
+                     </div>
+                   )}
+                 </div>
+               </div>
+             )}
             <div ref={messagesEndRef} />
           </div>
 
           <div className="p-4 border-t border-[var(--border-color)]">
-            <div className="flex gap-2 mb-2">
+            <div className="flex flex-wrap gap-2 mb-2">
+              <select
+                value={selectedModel}
+                onChange={e => setSelectedModel(e.target.value)}
+                className="px-3 py-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl text-sm"
+              >
+                <option value="gpt-5-mini">GPT-5 Mini</option>
+                <option value="gpt-5">GPT-5</option>
+                <option value="gpt-image">GPT-Image</option>
+                <option value="flux-pro">Flux Pro</option>
+                <option value="flux-dev">Flux Dev</option>
+                <option value="flux-pro-ultra">Flux Pro Ultra</option>
+                <option value="seedream-5">Seedream 5</option>
+                <option value="nano-banana-2">Nano Banana 2</option>
+                <option value="nano-banana-2-edit">Nano Banana 2 Edit</option>
+                <option value="ideogram-v3">Ideogram v3</option>
+                <option value="recraft-v3">Recraft v3</option>
+                <option value="kling-v3">Kling v3</option>
+                <option value="sora-2">Sora 2</option>
+                <option value="veo-3">Veo 3</option>
+                <option value="runway">Runway</option>
+                <option value="luma-ray2">Luma Ray2</option>
+              </select>
+              
+              <select
+                value={aspectRatio}
+                onChange={e => setAspectRatio(e.target.value)}
+                className="px-3 py-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl text-sm"
+              >
+                <option value="1:1">1:1 Square</option>
+                <option value="16:9">16:9 Landscape</option>
+                <option value="9:16">9:16 Portrait</option>
+                <option value="4:5">4:5 Social</option>
+                <option value="3:2">3:2 Photo</option>
+                <option value="2:3">2:3 Photo</option>
+                <option value="A4">A4 Print</option>
+              </select>
+              
+              <button
+                onClick={() => setShowBrandKit(true)}
+                className="px-3 py-2 bg-[var(--bg-card)] rounded-xl hover:bg-[var(--border-color)] transition-all text-sm"
+                title="Brand Kit Settings"
+              >
+                Brand Kit
+              </button>
+              
               <select
                 value={selectedSkill}
                 onChange={e => setSelectedSkill(e.target.value)}
                 className="px-3 py-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl text-sm"
               >
-                <option value="">Direct Chat</option>
+                <option value="">Direct Chat / Agent Mode</option>
                 {skills.map(skill => (
                   <option key={skill.name} value={skill.name}>
                     {skill.name} ({skill.estimated_credits} credits)
                   </option>
                 ))}
               </select>
+              
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
@@ -423,7 +511,7 @@ export default function Chat() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyPress={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
-                placeholder="Type your message..."
+                placeholder="Describe your design..."
                 className="flex-1 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-3 text-sm resize-none"
                 rows={1}
               />
@@ -435,6 +523,54 @@ export default function Chat() {
                 {isSending ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
               </button>
             </div>
+            
+            {showBrandKit && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="glass p-6 rounded-xl max-w-md w-full">
+                  <h3 className="text-lg font-bold mb-4">Brand Kit</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs text-[var(--text-secondary)] block mb-1">Colors (comma-separated)</label>
+                      <input
+                        type="text"
+                        placeholder="#FF6B35, #2D3142, #FFFFFF"
+                        defaultValue={brandKit.colors?.join(', ')}
+                        className="w-full px-3 py-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg text-sm"
+                        onBlur={e => setBrandKit({...brandKit, colors: e.target.value.split(',').map(c => c.trim()).filter(c => c)})}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-[var(--text-secondary)] block mb-1">Fonts (comma-separated)</label>
+                      <input
+                        type="text"
+                        placeholder="Inter, Roboto, Playfair Display"
+                        defaultValue={brandKit.fonts?.join(', ')}
+                        className="w-full px-3 py-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg text-sm"
+                        onBlur={e => setBrandKit({...brandKit, fonts: e.target.value.split(',').map(f => f.trim()).filter(f => f)})}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-[var(--text-secondary)] block mb-1">Tone</label>
+                      <input
+                        type="text"
+                        placeholder="modern, minimalist, playful"
+                        defaultValue={brandKit.tone || ''}
+                        className="w-full px-3 py-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg text-sm"
+                        onBlur={e => setBrandKit({...brandKit, tone: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={() => setShowBrandKit(false)}
+                      className="flex-1 px-4 py-2 bg-[var(--bg-card)] rounded-lg"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

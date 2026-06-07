@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react'
-import { Download, Image as ImageIcon, ExternalLink } from 'lucide-react'
-import { getSessionAssets } from '../../../shared/api/designAgent'
-import { Asset } from '../../../shared/types/designAgent'
+import { Download, Image as ImageIcon, ExternalLink, Check, X } from 'lucide-react'
+import { getSessionAssets, approveJob, rejectJob, getSessionJobs } from '../../../shared/api/designAgent'
+import { Asset, Job } from '../../../shared/types/designAgent'
 
 export default function Assets() {
   const [assets, setAssets] = useState<Asset[]>([])
+  const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadAssets()
+    loadJobs()
   }, [])
 
   const loadAssets = async () => {
@@ -26,8 +28,38 @@ export default function Assets() {
     }
   }
 
+  const loadJobs = async () => {
+    try {
+      const sessionId = localStorage.getItem('design_agent_session_id')
+      if (sessionId) {
+        const sessionJobs = await getSessionJobs(sessionId)
+        setJobs(sessionJobs.filter(job => job.status === 'pending'))
+      }
+    } catch (error) {
+      console.error('Failed to load jobs:', error)
+    }
+  }
+
   const downloadAsset = (url: string, label: string) => {
     window.open(url, '_blank')
+  }
+
+  const handleApprove = async (jobId: string) => {
+    try {
+      await approveJob(jobId)
+      setJobs(jobs.filter(j => j.id !== jobId))
+    } catch (error) {
+      console.error('Failed to approve job:', error)
+    }
+  }
+
+  const handleReject = async (jobId: string) => {
+    try {
+      await rejectJob(jobId)
+      setJobs(jobs.filter(j => j.id !== jobId))
+    } catch (error) {
+      console.error('Failed to reject job:', error)
+    }
   }
 
   if (loading) {
@@ -65,6 +97,33 @@ export default function Assets() {
           <h1 className="text-2xl font-bold">Assets</h1>
           <span className="text-sm text-[var(--text-secondary)]">{assets.length} items</span>
         </div>
+
+        {jobs.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-lg font-bold mb-3">Pending Approvals ({jobs.length})</h2>
+            <div className="space-y-2">
+              {jobs.map(job => (
+                <div key={job.id} className="glass p-3 rounded-lg flex items-center justify-between">
+                  <span className="text-sm">{job.user_message?.slice(0, 50)}...</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleApprove(job.id)}
+                      className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs"
+                    >
+                      <Check size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleReject(job.id)}
+                      className="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {assets.map(asset => (

@@ -1,4 +1,4 @@
-import { LayoutTemplate, ArrowLeft, Image as ImageIcon } from 'lucide-react'
+import { LayoutTemplate, ArrowLeft, Send } from 'lucide-react'
 
 interface Template {
   id: string
@@ -46,6 +46,10 @@ const templates: Template[] = [
 ]
 
 export default function Templates() {
+  const handleUseTemplate = (templateName: string) => {
+    window.location.href = `/design-agent/chat?template=${encodeURIComponent(templateName)}`
+  }
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -58,7 +62,11 @@ export default function Templates() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {templates.map(template => (
-          <div key={template.id} className="glass p-5 rounded-xl hover:bg-[var(--border-color)] transition-all cursor-pointer">
+          <div 
+            key={template.id} 
+            className="glass p-5 rounded-xl hover:bg-[var(--border-color)] transition-all cursor-pointer"
+            onClick={() => handleUseTemplate(template.name)}
+          >
             <div className="flex items-start gap-3 mb-3">
               <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center">
                 <LayoutTemplate size={20} className="text-primary" />
@@ -68,7 +76,11 @@ export default function Templates() {
                 <span className="text-xs text-[var(--text-secondary)]">{template.category}</span>
               </div>
             </div>
-            <p className="text-xs text-[var(--text-secondary)]">{template.description}</p>
+            <p className="text-xs text-[var(--text-secondary)] mb-3">{template.description}</p>
+            <div className="flex items-center gap-1 text-primary text-xs">
+              <Send size={14} />
+              <span>Use Template</span>
+            </div>
           </div>
         ))}
       </div>
