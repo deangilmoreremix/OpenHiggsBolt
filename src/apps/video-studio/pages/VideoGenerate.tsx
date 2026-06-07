@@ -29,7 +29,7 @@ export default function VideoGenerate() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold">Video Studio</h1>
           <div className="flex gap-2">
-            <button className="px-4 py-2 bg-[var(--bg-card)] rounded-xl hover:bg-[var(--border-color)] transition-all flex items-center gap-2">
+            <button className="px-4 py-2 bg-bg-card rounded-xl hover:bg-border-color transition-all flex items-center gap-2">
               <Image size={16} />
               Add Reference
             </button>
@@ -44,7 +44,7 @@ export default function VideoGenerate() {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="Describe your video..."
-                className="w-full h-32 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-3 text-white placeholder-muted resize-none"
+                className="w-full h-32 bg-bg-card border border-border-color rounded-xl p-3 text-white placeholder-muted resize-none"
               />
             </div>
             
@@ -54,7 +54,7 @@ export default function VideoGenerate() {
                 <select
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
-                  className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-2"
+                  className="w-full bg-bg-card border border-border-color rounded-xl p-2"
                 >
                   <option value="kling-3.0">Kling 3.0</option>
                   <option value="veo-3">Veo 3</option>
@@ -68,7 +68,7 @@ export default function VideoGenerate() {
                 <select
                   value={duration}
                   onChange={(e) => setDuration(Number(e.target.value))}
-                  className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-2"
+                  className="w-full bg-bg-card border border-border-color rounded-xl p-2"
                 >
                   <option value={3}>3 seconds</option>
                   <option value={5}>5 seconds</option>
@@ -81,7 +81,7 @@ export default function VideoGenerate() {
                 <select
                   value={aspectRatio}
                   onChange={(e) => setAspectRatio(e.target.value as any)}
-                  className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-2"
+                  className="w-full bg-bg-card border border-border-color rounded-xl p-2"
                 >
                   <option value="16:9">16:9 (Landscape)</option>
                   <option value="9:16">9:16 (Portrait)</option>
@@ -109,19 +109,19 @@ export default function VideoGenerate() {
             </button>
           </div>
         </div>
-        
-{result && (
+
+        {result && (
           <div className="glass p-6 rounded-xl">
             <h2 className="text-xl font-semibold mb-4">Generated Video</h2>
-            <div className="aspect-video bg-[var(--bg-card)] rounded-xl mb-4 flex items-center justify-center">
+            <div className="aspect-video bg-bg-card rounded-xl mb-4 flex items-center justify-center">
               <video src={result.url} controls className="w-full h-full rounded-xl" />
             </div>
             <div className="flex gap-3">
-              <button className="px-4 py-2 bg-[var(--bg-card)] rounded-xl text-sm hover:bg-[var(--border-color)] transition-all flex items-center gap-2">
+              <button className="px-4 py-2 bg-bg-card rounded-xl text-sm hover:bg-border-color transition-all flex items-center gap-2">
                 <Download size={16} />
                 Download
               </button>
-              <button className="px-4 py-2 bg-[var(--bg-card)] rounded-xl text-sm hover:bg-[var(--border-color)] transition-all flex items-center gap-2">
+              <button className="px-4 py-2 bg-bg-card rounded-xl text-sm hover:bg-border-color transition-all flex items-center gap-2">
                 <Share2 size={16} />
                 Share
               </button>

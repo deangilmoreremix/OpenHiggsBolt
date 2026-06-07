@@ -21,9 +21,9 @@ export default function TopNavigation() {
   ]
 
   return (
-    <header className="h-16 glass-panel border-b border-[var(--border-color)] flex items-center justify-between px-6">
+    <header className="h-16 glass-panel border-b border-border-color flex items-center justify-between px-6">
       <div className="flex items-center gap-4">
-        <h2 className="text-lg font-semibold text-[var(--text-secondary)]">
+        <h2 className="text-lg font-semibold text-secondary">
           AI Generation Studios
         </h2>
         <nav className="flex items-center gap-1">
@@ -34,8 +34,8 @@ export default function TopNavigation() {
               className={({ isActive }) =>
                 `flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all text-sm ${
                   isActive
-                    ? 'bg-primary/20 text-white'
-                    : 'text-[var(--text-secondary)] hover:text-white hover:bg-[var(--bg-card)]'
+                    ? 'bg-cyan-400/20 text-white'
+                    : 'text-secondary hover:text-white hover:bg-bg-card'
                 }`
               }
             >
@@ -47,11 +47,11 @@ export default function TopNavigation() {
       </div>
       
       <div className="flex items-center gap-3">
-        <button className="p-2 rounded-lg hover:bg-[var(--bg-card)] transition-colors">
-          <Bell size={20} className="text-[var(--text-secondary)]" />
+        <button className="p-2 rounded-lg hover:bg-bg-card transition-colors">
+          <Bell size={20} className="text-secondary" />
         </button>
-        <button className="p-2 rounded-lg hover:bg-[var(--bg-card)] transition-colors">
-          <Settings size={20} className="text-[var(--text-secondary)]" />
+        <button className="p-2 rounded-lg hover:bg-bg-card transition-colors">
+          <Settings size={20} className="text-secondary" />
         </button>
       </div>
     </header>
