@@ -1,20 +1,18 @@
-import { useState, useEffect, useRef } from 'react'
-import { Send, Paperclip, Image as ImageIcon, Loader2, Check, X, RefreshCcw } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Send, Paperclip, Image as ImageIcon, Loader2, Check, X, Palette, Download, ExternalLink } from 'lucide-react'
 import {
   createSession,
   sendChatMessage,
   getMessages,
   getSessionAssets,
-  createAsset,
-  getAgentSkills,
   runSkill,
   pollEvents,
   getFileUploadUrl,
-  uploadFileToStorage,
   approveJob,
-  rejectJob
-} from '@/api/designAgent'
-import { Session, ChatMessage, Skill, Event, Asset } from '@/types/designAgent'
+  rejectJob,
+  getAgentSkills
+} from '../../../shared/api/designAgent'
+import { Session, ChatMessage, Skill, EventItem, Asset } from '../../../shared/types/designAgent'
 
 export default function Chat() {
   const [session, setSession] = useState<Session | null>(null)
@@ -27,7 +25,9 @@ export default function Chat() {
   const [isSending, setIsSending] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [pollingJobId, setPollingJobId] = useState<string | null>(null)
-  const [events, setEvents] = useState<Event[]>([])
+  const [events, setEvents] = useState<EventItem[]>([])
+  const [plan, setPlan] = useState<any | null>(null)
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -52,15 +52,15 @@ export default function Chat() {
       const existingSession = localStorage.getItem('design_agent_session_id')
       if (existingSession) {
         try {
-          setSession({ id: existingSession, createdAt: '', updatedAt: '', status: 'active' })
+          await createSession({ name: 'Design Session' })
+          setSession({ id: existingSession, name: 'Design Session', createdAt: '', updatedAt: '' })
         } catch {
           localStorage.removeItem('design_agent_session_id')
         }
       }
       if (!session) {
         const newSession = await createSession({ 
-          title: 'Design Session',
-          description: 'Creative design with AI assistant'
+          name: 'Design Session'
         })
         setSession(newSession)
         localStorage.setItem('design_agent_session_id', newSession.id)
@@ -76,6 +76,15 @@ export default function Chat() {
       setSkills(skillsList)
     } catch (error) {
       console.error('Failed to load skills:', error)
+      setSkills([
+        { name: 'fashion-try-on', description: 'Virtual clothing try-on', inputs: ['person_image', 'clothing_image'], trigger_keywords: ['fashion', 'try on'], estimated_credits: 150 },
+        { name: 'action-figure-generator', description: 'Create 3D action figure', inputs: ['person_image'], trigger_keywords: ['action figure'], estimated_credits: 80 },
+        { name: 'product-showcase-video', description: 'Product showcase video', inputs: ['product_image'], trigger_keywords: ['product video'], estimated_credits: 200 },
+        { name: 'interior-design-visualizer', description: 'Furnish empty room', inputs: ['room_image'], trigger_keywords: ['interior', 'room'], estimated_credits: 100 },
+        { name: 'multi-angle-reshoot', description: 'Multiple camera angles', inputs: ['image'], trigger_keywords: ['angle', 'camera'], estimated_credits: 120 },
+        { name: 'talking-baby-video', description: 'Talking baby video', inputs: ['image'], trigger_keywords: ['baby', 'talking'], estimated_credits: 180 },
+        { name: 'keyboard-art-maker', description: 'Custom message keycaps', inputs: [], trigger_keywords: ['keyboard', 'keycap'], estimated_credits: 50 }
+      ])
     }
   }
 
@@ -103,55 +112,73 @@ export default function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
+  const handleEvent = useCallback((event: EventItem) => {
+    setEvents(prev => [...prev, event])
+    
+    if (event.type === 'text' && event.payload.content) {
+      const content = typeof event.payload.content === 'string' ? event.payload.content : JSON.stringify(event.payload.content)
+      const assistantMessage: ChatMessage = {
+        role: 'assistant',
+        content: content,
+        timestamp: event.created_at,
+        events: [event]
+      }
+      setMessages(prev => [...prev, assistantMessage])
+    }
+    
+    if (event.type === 'tool_result' && event.payload.asset) {
+      setAssets(prev => [...prev, event.payload.asset!])
+    }
+    
+    if (event.type === 'plan_propose' && event.payload.title) {
+      setPlan({
+        title: event.payload.title,
+        nodes: event.payload.nodes || [],
+        totalCredits: event.payload.total_credits || 0
+      })
+    }
+    
+    if (event.type === 'info' && event.payload.message) {
+      const infoMessage: ChatMessage = {
+        role: 'assistant',
+        content: event.payload.message,
+        timestamp: event.created_at
+      }
+      setMessages(prev => [...prev, infoMessage])
+    }
+  }, [])
+
   const handleSend = async () => {
     if (!input.trim() || !session || isSending) return
 
     setIsSending(true)
     const userMessage: ChatMessage = {
-      id: `temp-${Date.now()}`,
       role: 'user',
       content: input,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      attachments: selectedAssets.map(label => {
+        const asset = assets.find(a => a.asset_label === label)
+        return asset ? { asset_label: label, url: asset.url, kind: asset.kind } : null
+      }).filter((a): a is NonNullable<typeof a> => !!a)
     }
     setMessages(prev => [...prev, userMessage])
 
     try {
-      if (selectedSkill) {
-        const job = await runSkill(session.id, {
-          skill: selectedSkill,
-          parameters: { prompt: input },
-          assetRefs: selectedAssets.length > 0 ? selectedAssets : undefined
-        })
-        setPollingJobId(job.id)
-        pollEvents(job.id, handleEvent, undefined, () => {
-          setPollingJobId(null)
-          loadAssets()
-        })
-      } else {
-        await sendChatMessage(session.id, {
-          message: input,
-          mode: 'direct',
-          assetRefs: selectedAssets.length > 0 ? selectedAssets : undefined
-        })
-      }
+      const job = await sendChatMessage(session.id, {
+        message: input,
+        model: 'gpt-5-mini'
+      })
+      setPollingJobId(job.id)
+      pollEvents(job.id, (event) => {
+        handleEvent(event)
+      }, undefined, () => {
+        setPollingJobId(null)
+      })
       setInput('')
     } catch (error) {
       console.error('Failed to send message:', error)
     } finally {
       setIsSending(false)
-    }
-  }
-
-  const handleEvent = (event: Event) => {
-    setEvents(prev => [...prev, event])
-    if (event.type === 'text' && typeof event.content === 'string') {
-      const assistantMessage: ChatMessage = {
-        id: `msg-${Date.now()}`,
-        role: 'assistant',
-        content: event.content,
-        timestamp: event.timestamp
-      }
-      setMessages(prev => [...prev, assistantMessage])
     }
   }
 
@@ -161,16 +188,31 @@ export default function Chat() {
     setIsUploading(true)
     try {
       for (const file of Array.from(files).slice(0, 14)) {
-        const uploadUrl = await getFileUploadUrl(file.name, file.type)
-        await uploadFileToStorage(uploadUrl.url, file)
+        const uploadUrl = await getFileUploadUrl(file.name)
+        const formData = new FormData()
+        if (uploadUrl.fields) {
+          Object.entries(uploadUrl.fields).forEach(([key, value]) => formData.append(key, value))
+        }
+        formData.append('file', file)
         
-        const asset = await createAsset(session.id, {
-          label: file.name,
-          url: uploadUrl.key,
-          type: file.type.startsWith('image/') ? 'image' : 'document',
-          metadata: { filename: file.name, size: file.size }
+        await fetch(uploadUrl.url, {
+          method: 'POST',
+          body: formData
         })
-        setAssets(prev => [...prev, asset])
+        
+        const cdnUrl = `https://cdn.muapi.ai/${uploadUrl.key}`
+        const response = await fetch(`/.netlify/functions/design-agent/sessions/${session.id}/assets`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': localStorage.getItem('muapi_key') || '' },
+          body: JSON.stringify({
+            url: cdnUrl,
+            kind: file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'audio',
+            source_tool: 'upload',
+            prompt: file.name
+          })
+        })
+        const newAsset = await response.json()
+        setAssets(prev => [...prev, newAsset])
       }
     } catch (error) {
       console.error('Failed to upload files:', error)
@@ -214,21 +256,47 @@ export default function Chat() {
     return (
       <div className="p-6 max-w-4xl mx-auto">
         <div className="glass p-8 rounded-xl text-center">
+          <Palette size={48} className="text-primary mx-auto mb-4" />
           <h2 className="text-2xl font-bold mb-4">API Key Required</h2>
           <p className="text-[var(--text-secondary)] mb-6">
-            Please set your Muapi.ai API key in the settings to use the Design Agent.
+            Please set your Muapi.ai API key to use the Design Agent.
           </p>
           <button
-            onClick={() => {
-              const key = prompt('Enter your Muapi.ai API key:')
-              if (key) localStorage.setItem('muapi_key', key)
-              window.location.reload()
-            }}
+            onClick={() => setShowApiKeyModal(true)}
             className="px-6 py-3 bg-primary text-black font-semibold rounded-xl hover:bg-primary-hover transition-all"
           >
             Set API Key
           </button>
         </div>
+        
+        {showApiKeyModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="glass p-6 rounded-xl max-w-md w-full">
+              <h3 className="text-lg font-bold mb-4">Enter Muapi.ai API Key</h3>
+              <input
+                type="password"
+                placeholder="API Key"
+                className="w-full px-4 py-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg mb-4"
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    const input = e.currentTarget as HTMLInputElement
+                    if (input.value) {
+                      localStorage.setItem('muapi_key', input.value)
+                      setShowApiKeyModal(false)
+                      window.location.reload()
+                    }
+                  }
+                }}
+              />
+              <button
+                onClick={() => setShowApiKeyModal(false)}
+                className="w-full px-4 py-2 bg-[var(--bg-card)] rounded-lg"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -238,9 +306,9 @@ export default function Chat() {
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 flex flex-col">
           <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-            {messages.map(message => (
+            {messages.map((message, index) => (
               <div
-                key={message.id}
+                key={index}
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
@@ -251,6 +319,39 @@ export default function Chat() {
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  {message.skill_name && (
+                    <span className="text-xs text-[var(--text-secondary)] block mt-1">Skill: {message.skill_name}</span>
+                  )}
+                  {message.events?.map((event, idx) => 
+                    event.type === 'tool_result' && event.payload.asset ? (
+                      <div key={idx} className="mt-2 p-2 bg-[var(--bg-app)] rounded-lg">
+                        <img 
+                          src={event.payload.asset.url} 
+                          alt="Generated" 
+                          className="max-w-full max-h-48 object-contain rounded"
+                        />
+                        <div className="flex gap-2 mt-2">
+                          <a
+                            href={event.payload.asset.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline"
+                          >
+                            <ExternalLink size={12} className="inline mr-1" />
+                            View
+                          </a>
+                          <a
+                            href={event.payload.asset.url}
+                            download
+                            className="text-xs text-primary hover:underline"
+                          >
+                            <Download size={12} className="inline mr-1" />
+                            Download
+                          </a>
+                        </div>
+                      </div>
+                    ) : null
+                  )}
                 </div>
               </div>
             ))}
@@ -259,6 +360,25 @@ export default function Chat() {
                 <div className="bg-[var(--bg-card)] p-3 rounded-xl flex items-center gap-2">
                   <Loader2 size={16} className="animate-spin" />
                   <span className="text-sm text-[var(--text-secondary)]">Thinking...</span>
+                </div>
+              </div>
+            )}
+            {plan && (
+              <div className="flex justify-start">
+                <div className="bg-[var(--bg-card)] p-4 rounded-xl max-w-[70%]">
+                  <h4 className="font-bold mb-2">{plan.title}</h4>
+                  <p className="text-sm mb-3">Estimated credits: {plan.totalCredits}</p>
+                  {plan.nodes && (
+                    <div className="space-y-2 mb-3">
+                      {plan.nodes.map((node: any, index: number) => (
+                        <div key={index} className="p-2 bg-[var(--bg-app)] rounded">
+                          <span className="text-xs font-bold text-primary">{index + 1}</span>
+                          <span className="text-sm ml-2">{node.tool}</span>
+                          {node.model && <span className="text-xs text-[var(--text-secondary)] ml-2">({node.model})</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -274,8 +394,8 @@ export default function Chat() {
               >
                 <option value="">Direct Chat</option>
                 {skills.map(skill => (
-                  <option key={skill.id} value={skill.id}>
-                    {skill.name}
+                  <option key={skill.name} value={skill.name}>
+                    {skill.name} ({skill.estimated_credits} credits)
                   </option>
                 ))}
               </select>
@@ -283,9 +403,10 @@ export default function Chat() {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
                 className="px-3 py-2 bg-[var(--bg-card)] rounded-xl hover:bg-[var(--border-color)] transition-all flex items-center gap-2"
+                title="Upload images (up to 14)"
               >
-                <Paperclip size={16} />
-                <span className="text-sm hidden sm:inline">Attach</span>
+                {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Paperclip size={16} />}
+                <span className="text-sm hidden sm:inline">Attach ({selectedAssets.length}/14)</span>
               </button>
               <input
                 ref={fileInputRef}
@@ -325,22 +446,22 @@ export default function Chat() {
             <div className="grid grid-cols-3 gap-2">
               {assets.map(asset => (
                 <div
-                  key={asset.label}
-                  onClick={() => toggleAssetSelection(asset.label)}
+                  key={asset.asset_label}
+                  onClick={() => toggleAssetSelection(asset.asset_label)}
                   className={`relative aspect-square bg-[var(--bg-card)] rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
-                    selectedAssets.includes(asset.label)
+                    selectedAssets.includes(asset.asset_label)
                       ? 'border-primary'
                       : 'border-transparent hover:border-white/20'
                   }`}
                 >
-                  {asset.thumbnailUrl ? (
-                    <img src={asset.thumbnailUrl} alt={asset.label} className="w-full h-full object-cover" />
+                  {asset.url ? (
+                    <img src={asset.url} alt={asset.asset_label} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <ImageIcon size={20} className="text-[var(--text-secondary)]" />
                     </div>
                   )}
-                  {selectedAssets.includes(asset.label) && (
+                  {selectedAssets.includes(asset.asset_label) && (
                     <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
                       <Check size={16} className="text-primary" />
                     </div>

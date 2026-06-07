@@ -5,22 +5,21 @@ import {
   UpdateSessionParams,
   Asset,
   ChatMessage,
-  ChatRequest,
-  Event,
+  EventItem,
+  EventsResponse,
   Job,
   Skill,
   RunSkillParams,
   FileUploadUrl,
-  Plan
-} from '@/types/designAgent'
+  ChatRequest
+} from '../types/designAgent'
 
-const MUAPI_API_KEY = localStorage.getItem('muapi_key')
 const DESIGN_AGENT_BASE_URL = '/.netlify/functions/design-agent'
 
 const getHeaders = () => {
   const key = localStorage.getItem('muapi_key')
   return {
-    'Authorization': key ? `Bearer ${key}` : '',
+    'x-api-key': key || '',
     'Content-Type': 'application/json'
   }
 }
@@ -73,9 +72,10 @@ export async function createAsset(sessionId: string, asset: Partial<Asset>): Pro
   return response.data
 }
 
-export async function sendChatMessage(sessionId: string, request: ChatRequest): Promise<void> {
+export async function sendChatMessage(sessionId: string, request: ChatRequest): Promise<Job> {
   const client = createAuthClient()
-  await client.post(`/sessions/${sessionId}/chat`, request)
+  const response = await client.post(`/sessions/${sessionId}/chat`, request)
+  return response.data
 }
 
 export async function getMessages(sessionId: string): Promise<ChatMessage[]> {
@@ -84,12 +84,12 @@ export async function getMessages(sessionId: string): Promise<ChatMessage[]> {
   return response.data
 }
 
-export async function updateMessages(sessionId: string, messageIds: string[]): Promise<void> {
+export async function updateMessages(sessionId: string, messages: ChatMessage[]): Promise<void> {
   const client = createAuthClient()
-  await client.patch(`/sessions/${sessionId}/messages`, { messageIds })
+  await client.patch(`/sessions/${sessionId}/messages`, { messages })
 }
 
-export async function getEvents(jobId: string, since?: string): Promise<Event[]> {
+export async function getEvents(jobId: string, since?: string): Promise<EventsResponse> {
   const client = createAuthClient()
   const params = since ? { params: { since } } : {}
   const response = await client.get(`/jobs/${jobId}/events`, params)
@@ -102,22 +102,19 @@ export async function getSessionJobs(sessionId: string): Promise<Job[]> {
   return response.data
 }
 
-export async function approveJob(jobId: string): Promise<Job> {
+export async function approveJob(jobId: string): Promise<void> {
   const client = createAuthClient()
-  const response = await client.post(`/jobs/${jobId}/approve`)
-  return response.data
+  await client.post(`/jobs/${jobId}/approve`)
 }
 
-export async function rejectJob(jobId: string, reason?: string): Promise<Job> {
+export async function rejectJob(jobId: string, reason?: string): Promise<void> {
   const client = createAuthClient()
-  const response = await client.post(`/jobs/${jobId}/reject`, { reason })
-  return response.data
+  await client.post(`/jobs/${jobId}/reject`, { reason })
 }
 
-export async function cancelJob(jobId: string): Promise<Job> {
+export async function cancelJob(jobId: string): Promise<void> {
   const client = createAuthClient()
-  const response = await client.post(`/jobs/${jobId}/cancel`)
-  return response.data
+  await client.post(`/jobs/${jobId}/cancel`)
 }
 
 export async function runSkill(sessionId: string, params: RunSkillParams): Promise<Job> {
@@ -132,15 +129,15 @@ export async function getAgentSkills(): Promise<Skill[]> {
   return response.data
 }
 
-export async function getFileUploadUrl(filename: string, contentType: string): Promise<FileUploadUrl> {
+export async function getFileUploadUrl(filename: string): Promise<FileUploadUrl> {
   const client = createAuthClient()
-  const response = await client.get('/api/app/get_file_upload_url', {
-    params: { filename, content_type: contentType }
+  const response = await client.get('/get-file-upload-url', {
+    params: { filename }
   })
   return response.data
 }
 
-export async function uploadFileToStorage(url: string, file: File, fields?: Record<string, string>): Promise<void> {
+const uploadFileToStorage = async (url: string, file: File, fields?: Record<string, string>): Promise<void> => {
   const formData = new FormData()
   if (fields) {
     Object.entries(fields).forEach(([key, value]) => formData.append(key, value))
@@ -153,32 +150,46 @@ export async function uploadFileToStorage(url: string, file: File, fields?: Reco
   })
 }
 
+export async function uploadAsset(sessionId: string, file: File): Promise<Asset> {
+  const client = createAuthClient()
+  const uploadRes = await getFileUploadUrl(file.name)
+  await uploadFileToStorage(uploadRes.url, file, uploadRes.fields)
+  
+  const cdnUrl = `https://cdn.muapi.ai/${uploadRes.key}`
+  const response = await client.post(`/sessions/${sessionId}/assets`, {
+    url: cdnUrl,
+    kind: file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'audio',
+    source_tool: 'upload',
+    prompt: file.name
+  })
+  return response.data
+}
+
 export function pollEvents(
   jobId: string,
-  onEvent: (event: Event) => void,
+  onEvent: (event: EventItem) => void,
   onError?: (error: Error) => void,
-  onComplete?: () => void,
-  interval: number = 1000,
-  maxInterval: number = 30000,
-  maxRetries: number = 300
+  onComplete?: () => void
 ): { stop: () => void } {
-  let currentInterval = interval
+  let currentInterval = 1000
+  let maxInterval = 30000
   let retries = 0
-  let lastTimestamp: string | undefined
+  let maxRetries = 300
+  let cursor = 0
   let stopped = false
 
   const poll = async () => {
     if (stopped) return
 
     try {
-      const events = await getEvents(jobId, lastTimestamp)
+      const response = await getEvents(jobId, cursor.toString())
       
-      if (events.length > 0) {
-        events.forEach(onEvent)
-        lastTimestamp = events[events.length - 1].timestamp
+      if (response.events.length > 0) {
+        response.events.forEach(onEvent)
+        cursor = response.cursor
       }
 
-      if (events.some(e => e.type === 'plan_propose' || e.type === 'error')) {
+      if (response.done) {
         stopped = true
         onComplete?.()
         return

@@ -124,9 +124,9 @@ export const handler: Handler = async (event, context) => {
       return { statusCode: 200, body: JSON.stringify(response.data) }
     }
 
-    if (httpMethod === 'GET' && path?.match(/^\/api\/app\/get_file_upload_url$/)) {
+    if (httpMethod === 'GET' && path?.match(/^\/get-file-upload-url$/)) {
       const response = await muapi.get('/api/app/get_file_upload_url', {
-        params: queryStringParameters
+        params: { filename: queryStringParameters?.filename }
       })
       return { statusCode: 200, body: JSON.stringify(response.data) }
     }

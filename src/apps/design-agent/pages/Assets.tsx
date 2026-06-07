@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Download, Trash2, Image as ImageIcon } from 'lucide-react'
-import { getSessionAssets, deleteSession } from '@/api/designAgent'
-import { Asset, Session } from '@/types/designAgent'
+import { Download, Image as ImageIcon, ExternalLink } from 'lucide-react'
+import { getSessionAssets } from '../../../shared/api/designAgent'
+import { Asset } from '../../../shared/types/designAgent'
 
 export default function Assets() {
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
-  const [session, setSession] = useState<Session | null>(null)
 
   useEffect(() => {
     loadAssets()
@@ -17,7 +16,6 @@ export default function Assets() {
     try {
       const sessionId = localStorage.getItem('design_agent_session_id')
       if (sessionId) {
-        setSession({ id: sessionId, createdAt: '', updatedAt: '', status: 'active' })
         const sessionAssets = await getSessionAssets(sessionId)
         setAssets(sessionAssets)
       }
@@ -28,21 +26,8 @@ export default function Assets() {
     }
   }
 
-  const downloadAsset = async (url: string, label: string) => {
-    try {
-      const response = await fetch(url)
-      const blob = await response.blob()
-      const downloadUrl = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = downloadUrl
-      a.download = label
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(downloadUrl)
-    } catch {
-      window.open(url, '_blank')
-    }
+  const downloadAsset = (url: string, label: string) => {
+    window.open(url, '_blank')
   }
 
   if (loading) {
@@ -83,13 +68,22 @@ export default function Assets() {
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {assets.map(asset => (
-            <div key={asset.label} className="group relative aspect-square bg-[var(--bg-card)] rounded-xl overflow-hidden">
-              {asset.thumbnailUrl ? (
-                <img
-                  src={asset.thumbnailUrl}
-                  alt={asset.label}
-                  className="w-full h-full object-cover"
-                />
+            <div key={asset.asset_label} className="group relative aspect-square bg-[var(--bg-card)] rounded-xl overflow-hidden">
+              {asset.url ? (
+                asset.kind === 'video' ? (
+                  <video
+                    src={asset.url}
+                    className="w-full h-full object-cover"
+                    muted
+                    playsInline
+                  />
+                ) : (
+                  <img
+                    src={asset.url}
+                    alt={asset.asset_label}
+                    className="w-full h-full object-cover"
+                  />
+                )
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <ImageIcon size={32} className="text-[var(--text-secondary)]" />
@@ -98,16 +92,26 @@ export default function Assets() {
               
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                 <button
-                  onClick={() => downloadAsset(asset.url, asset.label)}
+                  onClick={() => downloadAsset(asset.url, asset.asset_label)}
                   className="p-2 bg-primary/20 rounded-lg hover:bg-primary/30 transition-all"
                   title="Download"
                 >
                   <Download size={16} className="text-primary" />
                 </button>
+                <a
+                  href={asset.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 bg-primary/20 rounded-lg hover:bg-primary/30 transition-all"
+                  title="View"
+                >
+                  <ExternalLink size={16} className="text-primary" />
+                </a>
               </div>
               
               <div className="absolute bottom-0 left-0 right-0 p-2 bg-black/60 backdrop-blur-sm">
-                <p className="text-xs text-white truncate">{asset.label}</p>
+                <p className="text-xs text-white truncate">{asset.asset_label}</p>
+                <p className="text-xs text-[var(--text-secondary)]">{asset.kind} • {asset.source_tool}</p>
               </div>
             </div>
           ))}

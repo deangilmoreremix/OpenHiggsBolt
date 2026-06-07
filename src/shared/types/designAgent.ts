@@ -1,114 +1,155 @@
 export interface Session {
   id: string
-  title?: string
-  description?: string
+  name: string
+  creditsSpent?: number
+  assetCount?: number
   createdAt: string
   updatedAt: string
-  status: 'active' | 'completed' | 'failed'
-  metadata?: Record<string, unknown>
 }
 
 export interface CreateSessionParams {
-  title?: string
-  description?: string
-  metadata?: Record<string, unknown>
+  name?: string
 }
 
 export interface UpdateSessionParams {
-  title?: string
-  description?: string
-  metadata?: Record<string, unknown>
+  name?: string
 }
 
 export interface Asset {
-  id: string
-  label: string
+  asset_label: string
+  kind: 'image' | 'video' | 'audio'
   url: string
   thumbnailUrl?: string
-  type: 'image' | 'video' | 'audio' | 'document'
-  metadata?: Record<string, unknown>
-  createdAt: string
+  source_tool: string
+  model: string | null
+  prompt: string | null
+  created_at: string
 }
 
 export interface ChatMessage {
-  id: string
   role: 'user' | 'assistant'
   content: string
   timestamp: string
-  metadata?: Record<string, unknown>
+  attachments?: Array<{ asset_label: string; url: string; kind: string }>
+  skill_name?: string
+  events?: EventItem[]
 }
 
-export interface ChatRequest {
-  message: string
-  mode?: 'direct' | 'skill'
-  skill?: string
-  assetRefs?: string[]
+export interface EventItem {
+  id: number
+  type: EventType
+  payload: EventPayload
+  job_id: string
+  created_at: string
 }
 
 export type EventType = 'text' | 'info' | 'error' | 'tool_call' | 'tool_result' | 'plan_propose' | 'canvas_op'
 
-export interface Event {
-  id: string
-  type: EventType
-  content: string | Record<string, unknown>
-  timestamp: string
-  metadata?: Record<string, unknown>
+export interface EventPayload {
+  content?: string
+  message?: string
+  needs_approval?: boolean
+  title?: string
+  nodes?: PlanNode[]
+  total_credits?: number
+  name?: string
+  args?: Record<string, unknown>
+  result?: ToolResult
+  asset?: Asset
+  op?: string
+}
+
+export interface PlanNode {
+  tool: string
+  model?: string
+  credits?: number
+}
+
+export interface ToolResult {
+  url?: string
+  source_asset_id?: string
+}
+
+export interface EventsResponse {
+  job_id: string
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  error: string | null
+  approved: boolean | null
+  approval_requested: boolean
+  cursor: number
+  events: EventItem[]
+  done: boolean
 }
 
 export interface Job {
   id: string
-  sessionId: string
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'approved' | 'rejected'
-  type: string
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'approved' | 'rejected'
+  user_message?: string
+  error?: string
   createdAt: string
-  updatedAt: string
-  result?: Record<string, unknown>
+  completedAt?: string
+  result?: { plan?: Plan }
 }
 
 export interface Skill {
-  id: string
   name: string
   description: string
-  category: string
+  inputs: string[]
+  trigger_keywords: string[]
+  estimated_credits: number
+  category?: string
   icon?: string
-  parameters?: SkillParameter[]
-}
-
-export interface SkillParameter {
-  name: string
-  type: 'string' | 'number' | 'boolean' | 'select'
-  label: string
-  description?: string
-  required?: boolean
-  default?: unknown
-  options?: { value: string; label: string }[]
 }
 
 export interface RunSkillParams {
-  skill: string
-  parameters?: Record<string, unknown>
-  assetRefs?: string[]
+  skill_name: string
+  inputs?: Record<string, unknown>
+  model?: string
+  messages_snapshot?: ChatMessage[]
+}
+
+export interface ChatRequest {
+  message: string
+  model?: string
+  canvas_state?: {
+    viewport: { x: number; y: number; scale: number }
+    selected?: string
+    nodes: Array<{ asset_id: string; kind: string; x: number; y: number; w: number; h: number }>
+  }
 }
 
 export interface FileUploadUrl {
   url: string
   key: string
-  fields?: Record<string, string>
+  fields: Record<string, string>
   expiresAt?: string
 }
 
 export interface Plan {
-  id: string
   title: string
   description: string
-  steps: PlanStep[]
-  sessionId: string
+  nodes: PlanNode[]
+  total_credits?: number
 }
 
-export interface PlanStep {
-  id: string
-  title: string
-  description: string
-  skill?: string
-  parameters?: Record<string, unknown>
+export interface BrandKit {
+  colors?: string[]
+  fonts?: string[]
+  logoUrl?: string
+  tone?: string
+}
+
+export interface CanvasState {
+  viewport: { x: number; y: number; scale: number }
+  selected?: string
+  nodes: CanvasNode[]
+}
+
+export interface CanvasNode {
+  asset_id: string
+  kind: 'image' | 'video' | 'audio'
+  x: number
+  y: number
+  w: number
+  h: number
 }

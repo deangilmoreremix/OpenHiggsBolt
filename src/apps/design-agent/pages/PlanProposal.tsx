@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Check, X, Calendar, ArrowLeft } from 'lucide-react'
-import { getSessionJobs, approveJob, rejectJob, getSession } from '@/api/designAgent'
-import { Job, Session } from '@/types/designAgent'
+import { getSessionJobs, approveJob, rejectJob } from '../../../shared/api/designAgent'
+import { Job } from '../../../shared/types/designAgent'
 
 export default function PlanProposal() {
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
-  const [session, setSession] = useState<Session | null>(null)
 
   useEffect(() => {
     loadJobs()
@@ -17,10 +16,8 @@ export default function PlanProposal() {
     try {
       const sessionId = localStorage.getItem('design_agent_session_id')
       if (sessionId) {
-        const sessionData = await getSession(sessionId)
-        setSession(sessionData)
         const sessionJobs = await getSessionJobs(sessionId)
-        setJobs(sessionJobs.filter(job => job.status === 'pending'))
+        setJobs(sessionJobs.filter(job => job.status === 'pending' || job.status === 'processing'))
       }
     } catch (error) {
       console.error('Failed to load jobs:', error)
@@ -91,10 +88,13 @@ export default function PlanProposal() {
             <div key={job.id} className="glass p-6 rounded-xl">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-bold mb-1">Job {job.id.slice(0, 8)}</h3>
+                  <h3 className="text-lg font-bold mb-1">Job {job.id.slice(0, 8)}...</h3>
                   <p className="text-sm text-[var(--text-secondary)]">
-                    Type: {job.type}
+                    Status: {job.status}
                   </p>
+                  {job.user_message && (
+                    <p className="text-sm mt-1 truncate max-w-md">{job.user_message}</p>
+                  )}
                 </div>
               </div>
 
@@ -103,23 +103,24 @@ export default function PlanProposal() {
                   <h4 className="text-sm font-bold text-[var(--text-secondary)] mb-2">
                     {(job.result.plan as any).title}
                   </h4>
-                  <p className="text-sm mb-3">
-                    {(job.result.plan as any).description}
-                  </p>
-                  {(job.result.plan as any).steps && (
+                  {(job.result.plan as any).nodes && (
                     <div className="space-y-2">
-                      {((job.result.plan as any).steps as any[]).map((step: any, index: number) => (
-                        <div key={step.id || index} className="p-3 bg-[var(--bg-card)] rounded-lg">
+                      {((job.result.plan as any).nodes as any[]).map((step: any, index: number) => (
+                        <div key={index} className="p-3 bg-[var(--bg-card)] rounded-lg">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-xs font-bold text-primary">{index + 1}</span>
-                            <span className="text-sm font-semibold">{step.title}</span>
+                            <span className="text-sm font-semibold">{step.tool}</span>
+                            {step.model && <span className="text-xs text-[var(--text-secondary)]">({step.model})</span>}
                           </div>
-                          {step.description && (
-                            <p className="text-xs text-[var(--text-secondary)]">{step.description}</p>
+                          {step.credits && (
+                            <p className="text-xs text-[var(--text-secondary)]">Est. credits: {step.credits}</p>
                           )}
                         </div>
                       ))}
                     </div>
+                  )}
+                  {(job.result.plan as any).total_credits && (
+                    <p className="text-xs text-[var(--text-secondary)] mt-2">Total: {(job.result.plan as any).total_credits} credits</p>
                   )}
                 </div>
               )}
