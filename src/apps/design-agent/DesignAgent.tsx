@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Routes, Route } from 'react-router-dom'
-import { Palette, Settings } from 'lucide-react'
+import { Palette, Settings, LayoutTemplate } from 'lucide-react'
 import Chat from './pages/Chat'
 import Assets from './pages/Assets'
 import PlanProposal from './pages/PlanProposal'
 import Sessions from './pages/Sessions'
+import Templates from './pages/Templates'
 
 function DesignAgentLayout({ children }: { children: React.ReactNode }) {
   const [showSettings, setShowSettings] = useState(false)
@@ -90,6 +90,10 @@ function DesignAgentHome() {
           <a href="/design-agent/chat" className="px-6 py-3 bg-primary text-black font-semibold rounded-xl hover:bg-primary-hover transition-all">
             Start Chat
           </a>
+          <a href="/design-agent/templates" className="px-6 py-3 bg-[var(--bg-card)] rounded-xl hover:bg-[var(--border-color)] transition-all flex items-center gap-2">
+            <LayoutTemplate size={20} />
+            Templates
+          </a>
           <a href="/design-agent/assets" className="px-6 py-3 bg-[var(--bg-card)] rounded-xl hover:bg-[var(--border-color)] transition-all">
             View Assets
           </a>
@@ -110,6 +114,7 @@ export default function DesignAgent() {
       <Route path="/assets" element={<DesignAgentLayout><Assets /></DesignAgentLayout>} />
       <Route path="/plans" element={<DesignAgentLayout><PlanProposal /></DesignAgentLayout>} />
       <Route path="/sessions" element={<DesignAgentLayout><Sessions /></DesignAgentLayout>} />
+      <Route path="/templates" element={<DesignAgentLayout><Templates /></DesignAgentLayout>} />
     </Routes>
   )
 }
