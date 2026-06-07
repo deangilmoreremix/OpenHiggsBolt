@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Send, Paperclip, ImageIcon, Loader2, Check, X, Palette, Download, ExternalLink } from 'lucide-react'
+import { Send, Paperclip, ImageIcon, Loader2, Check, X, Palette, Download, ExternalLink, Square } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import {
   createSession,
   sendChatMessage,
@@ -10,6 +11,7 @@ import {
   getFileUploadUrl,
   approveJob,
   rejectJob,
+  cancelJob,
   getAgentSkills,
   getSession
 } from '../../../shared/api/designAgent'
@@ -34,8 +36,32 @@ export default function Chat() {
   const [brandKit, setBrandKit] = useState<BrandKit>({})
   const [showBrandKit, setShowBrandKit] = useState(false)
   const [showPlanApproval, setShowPlanApproval] = useState(false)
+  const [searchParams] = useSearchParams()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Load brand kit from localStorage on mount
+  useEffect(() => {
+    const savedBrandKit = localStorage.getItem('design_agent_brand_kit')
+    if (savedBrandKit) {
+      try {
+        setBrandKit(JSON.parse(savedBrandKit))
+      } catch (e) {
+        console.error('Failed to parse brand kit', e)
+      }
+    }
+  }, [])
+  
+  // Handle template parameter from URL
+  useEffect(() => {
+    const template = searchParams.get('template')
+    if (template && skills.length > 0) {
+      const skill = skills.find(s => s.name === template || s.name.includes(template.toLowerCase()))
+      if (skill) {
+        setSelectedSkill(skill.name)
+      }
+    }
+  }, [searchParams, skills])
 
   useEffect(() => {
     initializeSession()
@@ -132,6 +158,34 @@ export default function Chat() {
       setMessages(prev => [...prev, assistantMessage])
     }
     
+    if (event.type === 'info' && event.payload.message) {
+      const infoMessage: ChatMessage = {
+        role: 'assistant',
+        content: event.payload.message,
+        timestamp: event.created_at
+      }
+      setMessages(prev => [...prev, infoMessage])
+    }
+    
+    if (event.type === 'error' && event.payload.message) {
+      const errorMessage: ChatMessage = {
+        role: 'assistant',
+        content: `Error: ${event.payload.message}`,
+        timestamp: event.created_at
+      }
+      setMessages(prev => [...prev, errorMessage])
+    }
+    
+    if (event.type === 'tool_call') {
+      const toolMessage: ChatMessage = {
+        role: 'assistant',
+        content: `Calling ${event.payload.name}...`,
+        timestamp: event.created_at,
+        events: [event]
+      }
+      setMessages(prev => [...prev, toolMessage])
+    }
+    
     if (event.type === 'tool_result' && event.payload.asset) {
       setAssets(prev => [...prev, event.payload.asset!])
     }
@@ -148,13 +202,9 @@ export default function Chat() {
       }
     }
     
-    if (event.type === 'info' && event.payload.message) {
-      const infoMessage: ChatMessage = {
-        role: 'assistant',
-        content: event.payload.message,
-        timestamp: event.created_at
-      }
-      setMessages(prev => [...prev, infoMessage])
+    if (event.type === 'canvas_op') {
+      // Handle canvas operations - for now just log
+      console.log('Canvas operation:', event.payload)
     }
   }, [])
 
@@ -188,12 +238,14 @@ export default function Chat() {
         })
       }
       setPollingJobId(job.id)
-      pollEvents(job.id, (event) => {
+      const poller = pollEvents(job.id, (event) => {
         handleEvent(event)
       }, undefined, () => {
         setPollingJobId(null)
         setPlan(null)
       })
+      // Store poller reference for cancellation
+      (window as any).__poller = poller
       setInput('')
     } catch (error) {
       console.error('Failed to send message:', error)
@@ -250,7 +302,7 @@ export default function Chat() {
     )
   }
 
-  const handleApproveJob = async () => {
+const handleApproveJob = async () => {
     if (!pollingJobId) return
     try {
       await approveJob(pollingJobId)
@@ -259,7 +311,7 @@ export default function Chat() {
       console.error('Failed to approve job:', error)
     }
   }
-
+  
   const handleRejectJob = async () => {
     if (!pollingJobId) return
     try {
@@ -267,6 +319,16 @@ export default function Chat() {
       setPollingJobId(null)
     } catch (error) {
       console.error('Failed to reject job:', error)
+    }
+  }
+  
+  const handleCancelJob = async () => {
+    if (!pollingJobId) return
+    try {
+      await cancelJob(pollingJobId)
+      setPollingJobId(null)
+    } catch (error) {
+      console.error('Failed to cancel job:', error)
     }
   }
 
@@ -343,35 +405,43 @@ export default function Chat() {
                     <span className="text-xs text-[var(--text-secondary)] block mt-1">Skill: {message.skill_name}</span>
                   )}
                   {message.events?.map((event, idx) => 
-                    event.type === 'tool_result' && event.payload.asset ? (
-                      <div key={idx} className="mt-2 p-2 bg-[var(--bg-app)] rounded-lg">
-                        <img 
-                          src={event.payload.asset.url} 
-                          alt="Generated" 
-                          className="max-w-full max-h-48 object-contain rounded"
-                        />
-                        <div className="flex gap-2 mt-2">
-                          <a
-                            href={event.payload.asset.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-primary hover:underline"
-                          >
-                            <ExternalLink size={12} className="inline mr-1" />
-                            View
-                          </a>
-                          <a
-                            href={event.payload.asset.url}
-                            download
-                            className="text-xs text-primary hover:underline"
-                          >
-                            <Download size={12} className="inline mr-1" />
-                            Download
-                          </a>
+                      event.type === 'tool_result' && event.payload.asset ? (
+                        <div key={idx} className="mt-2 p-2 bg-[var(--bg-app)] rounded-lg">
+                          {event.payload.asset.kind === 'video' ? (
+                            <video 
+                              src={event.payload.asset.url} 
+                              controls
+                              className="max-w-full max-h-48 object-contain rounded"
+                            />
+                          ) : (
+                            <img 
+                              src={event.payload.asset.url} 
+                              alt="Generated" 
+                              className="max-w-full max-h-48 object-contain rounded"
+                            />
+                          )}
+                          <div className="flex gap-2 mt-2">
+                            <a
+                              href={event.payload.asset.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary hover:underline"
+                            >
+                              <ExternalLink size={12} className="inline mr-1" />
+                              View
+                            </a>
+                            <a
+                              href={event.payload.asset.url}
+                              download
+                              className="text-xs text-primary hover:underline"
+                            >
+                              <Download size={12} className="inline mr-1" />
+                              Download
+                            </a>
+                          </div>
                         </div>
-                      </div>
-                    ) : null
-                  )}
+                      ) : null
+                    )}
                 </div>
               </div>
             ))}
@@ -536,7 +606,11 @@ export default function Chat() {
                         placeholder="#FF6B35, #2D3142, #FFFFFF"
                         defaultValue={brandKit.colors?.join(', ')}
                         className="w-full px-3 py-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg text-sm"
-                        onBlur={e => setBrandKit({...brandKit, colors: e.target.value.split(',').map(c => c.trim()).filter(c => c)})}
+                        onBlur={e => {
+                          const newKit = {...brandKit, colors: e.target.value.split(',').map(c => c.trim()).filter(c => c)}
+                          setBrandKit(newKit)
+                          localStorage.setItem('design_agent_brand_kit', JSON.stringify(newKit))
+                        }}
                       />
                     </div>
                     <div>
@@ -546,7 +620,11 @@ export default function Chat() {
                         placeholder="Inter, Roboto, Playfair Display"
                         defaultValue={brandKit.fonts?.join(', ')}
                         className="w-full px-3 py-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg text-sm"
-                        onBlur={e => setBrandKit({...brandKit, fonts: e.target.value.split(',').map(f => f.trim()).filter(f => f)})}
+                        onBlur={e => {
+                          const newKit = {...brandKit, fonts: e.target.value.split(',').map(f => f.trim()).filter(f => f)}
+                          setBrandKit(newKit)
+                          localStorage.setItem('design_agent_brand_kit', JSON.stringify(newKit))
+                        }}
                       />
                     </div>
                     <div>
@@ -556,7 +634,11 @@ export default function Chat() {
                         placeholder="modern, minimalist, playful"
                         defaultValue={brandKit.tone || ''}
                         className="w-full px-3 py-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg text-sm"
-                        onBlur={e => setBrandKit({...brandKit, tone: e.target.value})}
+                        onBlur={e => {
+                          const newKit = {...brandKit, tone: e.target.value}
+                          setBrandKit(newKit)
+                          localStorage.setItem('design_agent_brand_kit', JSON.stringify(newKit))
+                        }}
                       />
                     </div>
                   </div>
@@ -614,20 +696,33 @@ export default function Chat() {
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">Job {pollingJobId.slice(0, 8)}...</span>
             <div className="flex gap-2">
-              <button
-                onClick={handleApproveJob}
-                className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-xs font-bold hover:bg-green-500/30 flex items-center gap-1"
-              >
-                <Check size={14} />
-                Approve
-              </button>
-              <button
-                onClick={handleRejectJob}
-                className="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg text-xs font-bold hover:bg-red-500/30 flex items-center gap-1"
-              >
-                <X size={14} />
-                Reject
-              </button>
+              {plan?.needsApproval && (
+                <>
+                  <button
+                    onClick={handleApproveJob}
+                    className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-xs font-bold hover:bg-green-500/30 flex items-center gap-1"
+                  >
+                    <Check size={14} />
+                    Approve
+                  </button>
+                  <button
+                    onClick={handleRejectJob}
+                    className="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg text-xs font-bold hover:bg-red-500/30 flex items-center gap-1"
+                  >
+                    <X size={14} />
+                    Reject
+                  </button>
+                </>
+              )}
+              {!plan?.needsApproval && (
+                <button
+                  onClick={handleCancelJob}
+                  className="px-3 py-1 bg-[var(--bg-card)] rounded-lg text-xs font-bold hover:bg-white/10 flex items-center gap-1"
+                >
+                  <Square size={14} />
+                  Stop
+                </button>
+              )}
             </div>
           </div>
         </div>

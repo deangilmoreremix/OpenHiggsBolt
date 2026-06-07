@@ -153,9 +153,15 @@ const uploadFileToStorage = async (url: string, file: File, fields?: Record<stri
 export async function uploadAsset(sessionId: string, file: File): Promise<Asset> {
   const client = createAuthClient()
   const uploadRes = await getFileUploadUrl(file.name)
-  await uploadFileToStorage(uploadRes.url, file, uploadRes.fields)
   
-  const cdnUrl = `https://cdn.muapi.ai/${uploadRes.key}`
+  // The API returns the full S3 upload URL with all required fields
+  const s3Url = uploadRes.url
+  const formFields = uploadRes.fields
+  
+  await uploadFileToStorage(s3Url, file, formFields)
+  
+  // Construct CDN URL - fields.key is the S3 key
+  const cdnUrl = `https://cdn.muapi.ai/${uploadRes.key || formFields?.key || ''}`
   const response = await client.post(`/sessions/${sessionId}/assets`, {
     url: cdnUrl,
     kind: file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'audio',

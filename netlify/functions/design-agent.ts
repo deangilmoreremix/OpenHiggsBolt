@@ -4,8 +4,8 @@ import axios from 'axios'
 const MUAPI_API_KEY = process.env.MUAPI_API_KEY
 
 const muapi = axios.create({
-  baseURL: 'https://api.muapi.ai/v1/creative-agent',
-  headers: { Authorization: `Bearer ${MUAPI_API_KEY}` }
+  baseURL: 'https://api.muapi.ai/api/v1/creative-agent',
+  headers: { 'x-api-key': MUAPI_API_KEY || '' }
 })
 
 export const handler: Handler = async (event, context) => {
