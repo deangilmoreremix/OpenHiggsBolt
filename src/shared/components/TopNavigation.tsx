@@ -34,8 +34,8 @@ export default function TopNavigation() {
               className={({ isActive }) =>
                 `flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all text-sm ${
                   isActive
-                    ? 'bg-primary/20 text-primary'
-                    : 'text-secondary hover:text-white hover:bg-[var(--bg-card)]'
+                    ? 'bg-primary/20 text-white'
+                    : 'text-[var(--text-secondary)] hover:text-white hover:bg-[var(--bg-card)]'
                 }`
               }
             >

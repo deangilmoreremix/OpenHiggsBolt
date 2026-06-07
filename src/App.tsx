@@ -13,7 +13,7 @@ import ContentPlanner from './apps/content-planner/ContentPlanner'
 
 function App() {
   return (
-    <div className="flex h-screen bg-[var(--bg-app)] text-[var(--text-primary)]">
+    <div className="flex h-screen bg-[var(--bg-app)] text-white">
       <SideNavigation />
       <div className="flex flex-col flex-1 overflow-hidden">
         <TopNavigation />

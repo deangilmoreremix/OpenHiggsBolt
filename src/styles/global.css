@@ -15,9 +15,15 @@ body {
 
 :root {
   --color-primary: #22d3ee;
-  --bg-app: #030303;
+  --color-primary-hover: #06b6d4;
+  --color-accent: #a855f7;
+  --color-danger: #ef4444;
+  --bg-app: #050505;
   --bg-panel: #0a0a0a;
   --bg-card: #111111;
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --text-muted: #52525b;
   --border-color: rgba(255,255,255,0.05);
   --border-radius-xl: 0.75rem;
   --glass-bg: rgba(255, 255, 255, 0.03);
