@@ -20,7 +20,9 @@
       "@/*": ["src/*"],
       "@/components/*": ["src/shared/components/*"],
       "@/api/*": ["src/shared/api/*"],
-      "@/types/*": ["src/shared/types/*"]
+      "@/types/*": ["src/shared/types/*"],
+      "@/api": ["src/shared/api"],
+      "@/types": ["src/shared/types"]
     }
   },
   "include": ["src/**/*"],
