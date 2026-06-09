@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/api/supabase'
-import { Video, Upload, Sparkles, Film, TrendingUp, Clock, CheckCircle, Loader, BarChart3, Users, MessageSquare, Settings, Plug, Sparkles as SparklesIcon } from 'lucide-react'
+import { Video, Upload, Sparkles, Film, TrendingUp, Clock, CheckCircle, Loader, BarChart3, Users, MessageSquare, Settings, Plug } from 'lucide-react'
 import { useVidecoStore } from '@/stores/videcoStore'
 import type { Video } from '@/stores/videcoStore'
 
@@ -73,7 +73,7 @@ export default function Dashboard() {
     { to: '/videco/upload', icon: <Upload size={24} />, label: 'Upload Video', desc: 'Upload and manage your videos', color: 'from-purple-500/20 to-purple-600/10 border-purple-500/30' },
     { to: '/videco/clone', icon: <Film size={24} />, label: 'AI Clone', desc: 'Create personalized AI clone videos', color: 'from-green-500/20 to-green-600/10 border-green-500/30' },
     { to: '/videco/campaign', icon: <TrendingUp size={24} />, label: 'Campaign', desc: 'Batch generate from CSV data', color: 'from-orange-500/20 to-orange-600/10 border-orange-500/30' },
-    { to: '/videco/ai-videos', icon: <SparklesIcon size={24} />, label: 'AI Videos', desc: 'View personalized AI videos', color: 'from-pink-500/20 to-pink-600/10 border-pink-500/30' },
+    { to: '/videco/ai-videos', icon: <Sparkles size={24} />, label: 'AI Videos', desc: 'View personalized AI videos', color: 'from-pink-500/20 to-pink-600/10 border-pink-500/30' },
     { to: '/videco/analytics', icon: <BarChart3 size={24} />, label: 'Analytics', desc: 'Track video performance', color: 'from-blue-500/20 to-blue-600/10 border-blue-500/30' },
     { to: '/videco/leads', icon: <Users size={24} />, label: 'Leads', desc: 'View form submissions', color: 'from-teal-500/20 to-teal-600/10 border-teal-500/30' },
     { to: '/videco/settings', icon: <Settings size={24} />, label: 'Settings', desc: 'Brand kit and preferences', color: 'from-gray-500/20 to-gray-600/10 border-gray-500/30' },

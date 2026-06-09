@@ -28,17 +28,17 @@ serve(async (req) => {
         .eq("tenant_id", tenant_id)
         .single();
 
-      if (error && error.code !== "PGRST116") throw error;
+if (error && error.code !== "PGRST116") throw error;
 
-      return new Response(JSON.stringify({ brand_kit: data ?? null }), {
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
-      });
-    } catch (err) {
-      return new Response(JSON.stringify({ error: err.message }), {
-        status: 500,
-        headers: { "Content-Type", "application/json", "Access-Control-Allow-Origin": "*" },
-      });
-    }
+       return new Response(JSON.stringify({ brand_kit: data ?? null }), {
+         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+       });
+     } catch (err) {
+       return new Response(JSON.stringify({ error: err.message }), {
+         status: 500,
+         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+       });
+     }
   }
 
   if (req.method === "POST") {
@@ -61,18 +61,18 @@ serve(async (req) => {
         .select()
         .single();
 
-      if (error) throw error;
+if (error) throw error;
 
-      return new Response(JSON.stringify({ brand_kit: data }), {
-        headers: { "Content-Type", "application/json", "Access-Control-Allow-Origin": "*" },
-      });
-    } catch (err) {
-      return new Response(JSON.stringify({ error: err.message }), {
-        status: 500,
-        headers: { "Content-Type", "application/json", "Access-Control-Allow-Origin": "*" },
-      });
-    }
-  }
+       return new Response(JSON.stringify({ brand_kit: data }), {
+         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+       });
+} catch (err) {
+       return new Response(JSON.stringify({ error: err.message }), {
+         status: 500,
+         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+       });
+     }
+   }
 
   return new Response(JSON.stringify({ error: "Method not allowed" }), {
     status: 405,

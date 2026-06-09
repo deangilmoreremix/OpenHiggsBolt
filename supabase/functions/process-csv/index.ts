@@ -30,10 +30,10 @@ serve(async (req) => {
     // Parse simple CSV (header row + data rows)
     const lines = csv_text.trim().split("\n");
     if (lines.length < 2) {
-      return new Response(JSON.stringify({ error: "CSV must have a header and at least one data row" }), {
-        status: 400,
-        headers: { "Content-Type", "application/json", "Access-Control-Allow-Origin": "*" },
-      });
+return new Response(JSON.stringify({ error: "CSV must have a header and at least one data row" }), {
+         status: 400,
+         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+       });
     }
 
     const headers = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
@@ -83,9 +83,9 @@ serve(async (req) => {
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { "Content-Type", "application/json", "Access-Control-Allow-Origin": "*" },
-    });
+return new Response(JSON.stringify({ error: err.message }), {
+       status: 500,
+       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+     });
   }
 });

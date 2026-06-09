@@ -40,15 +40,14 @@ export default function EmbedPlayer() {
       if (!slug) return
       try {
         // Get embed page
-        const { data } = await supabase
-          .from('embed_pages')
-          .select(`
-            *,
-            videos:video_id (name, generated_url)
-          `)
-          .eq('slug', slug)
-          .eq('is_active', true)
-          .single()
+const { data } = await supabase
+           .from('embed_pages')
+           .select(`
+             *,
+             videos:video_id (name, generated_url)
+           `)
+           .eq('slug', slug)
+           .single()
 
         if (data) {
           // Get brand kit

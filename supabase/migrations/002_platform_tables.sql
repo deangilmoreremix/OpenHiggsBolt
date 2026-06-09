@@ -127,5 +127,13 @@ CREATE POLICY "Allow all for anon" ON brand_kit FOR ALL USING (true) WITH CHECK 
 CREATE POLICY "Allow all for anon" ON ai_videos FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON embed_pages FOR ALL USING (true) WITH CHECK (true);
 
+-- RPC function to increment embed views count
+CREATE OR REPLACE FUNCTION increment_embed_views(vid uuid)
+RETURNS void AS $$
+BEGIN
+  UPDATE embed_pages SET views_count = views_count + 1 WHERE video_id = vid;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Insert default brand kit
 INSERT INTO brand_kit (tenant_id) VALUES ('default') ON CONFLICT DO NOTHING;

@@ -20,10 +20,10 @@ serve(async (req) => {
     const { video_id, title, description, cta_text, cta_url, cta_secondary_text, cta_secondary_url, password, tenant_id } = await req.json();
 
     if (!video_id) {
-      return new Response(JSON.stringify({ error: "video_id is required" }), {
-        status: 400,
-        headers: { "Content-Type", "application/json", "Access-Control-Allow-Origin": "*" },
-      });
+return new Response(JSON.stringify({ error: "video_id is required" }), {
+         status: 400,
+         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+       });
     }
 
     const supabase = createClient(
@@ -52,13 +52,13 @@ serve(async (req) => {
 
     if (error) throw error;
 
-    return new Response(JSON.stringify({ embed: data }), {
-      headers: { "Content-Type", "application/json", "Access-Control-Allow-Origin": "*" },
-    });
+return new Response(JSON.stringify({ embed: data }), {
+       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { "Content-Type", "application/json", "Access-Control-Allow-Origin": "*" },
-    });
+return new Response(JSON.stringify({ error: err.message }), {
+       status: 500,
+       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+     });
   }
 });
