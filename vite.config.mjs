@@ -13,6 +13,7 @@ export default defineConfig({
             { find: '@/api', replacement: resolve(__dirname, 'src/shared/api') },
             { find: '@/types', replacement: resolve(__dirname, 'src/shared/types') },
             { find: '@/components', replacement: resolve(__dirname, 'src/shared/components') },
+            { find: '@/stores', replacement: resolve(__dirname, 'src/stores') },
             { find: '@', replacement: resolve(__dirname, 'src') }
         ]
     },

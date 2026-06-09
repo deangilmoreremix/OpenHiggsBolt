@@ -21,8 +21,10 @@
       "@/components/*": ["src/shared/components/*"],
       "@/api/*": ["src/shared/api/*"],
       "@/types/*": ["src/shared/types/*"],
+      "@/stores/*": ["src/stores/*"],
       "@/api": ["src/shared/api"],
-      "@/types": ["src/shared/types"]
+      "@/types": ["src/shared/types"],
+      "@/stores": ["src/stores"]
     }
   },
   "include": ["src/**/*"],
