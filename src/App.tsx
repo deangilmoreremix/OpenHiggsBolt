@@ -23,6 +23,8 @@ function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/video-studio" replace />} />
             <Route path="/video-studio/*" element={<VideoStudio />} />
+            <Route path="/videco/*" element={<Videco />} />
+            <Route path="/vfx-studio/*" element={<VFXStudio />} />
             <Route path="/storyboard/*" element={<Storyboard />} />
             <Route path="/scene-planner/*" element={<ScenePlanner />} />
             <Route path="/cinema/*" element={<Cinema />} />
@@ -31,8 +33,6 @@ function App() {
             <Route path="/script-writer/*" element={<ScriptWriter />} />
             <Route path="/presentation/*" element={<Presentation />} />
             <Route path="/content-planner/*" element={<ContentPlanner />} />
-            <Route path="/vfx-studio/*" element={<VFXStudio />} />
-            <Route path="/videco/*" element={<Videco />} />
           </Routes>
         </main>
       </div>

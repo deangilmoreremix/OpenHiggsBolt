@@ -37,7 +37,7 @@ export default function TopNavigation() {
                 `flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all text-sm ${
                   isActive
                     ? 'bg-cyan-400/20 text-white'
-                    : 'text-secondary hover:text-white hover:bg-bg-card'
+                    : 'text-secondary hover:text-white hover:bg-card'
                 }`
               }
             >
@@ -49,10 +49,10 @@ export default function TopNavigation() {
       </div>
       
       <div className="flex items-center gap-3">
-        <button className="p-2 rounded-lg hover:bg-bg-card transition-colors">
+        <button className="p-2 rounded-lg hover:bg-card transition-colors">
           <Bell size={20} className="text-secondary" />
         </button>
-        <button className="p-2 rounded-lg hover:bg-bg-card transition-colors">
+        <button className="p-2 rounded-lg hover:bg-card transition-colors">
           <Settings size={20} className="text-secondary" />
         </button>
       </div>
