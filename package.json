@@ -4,43 +4,45 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
     "setup": "npm install && npm run build -w packages/studio",
-    "install:all": "npm install",
-    "postinstall": "prisma generate --schema apps/headshot-generator/prisma/schema.prisma 2>/dev/null || true"
+    "dev": "next dev",
+    "dev:all": "concurrently \"npm run dev\" \"npm run dev --prefix packages/Open-Poe-AI\" \"npm run dev --prefix packages/Open-AI-Design-Agent\" \"npm run dev --prefix packages/Vibe-Workflow\"",
+    "build": "npm run build -w packages/studio && next build",
+    "lint": "next lint",
+    "start": "next start",
+    "install:all": "npm install"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.50.0",
     "axios": "^1.13.6",
+    "framer-motion": "^12.0.0",
     "lucide-react": "^0.525.0",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "react-router-dom": "^7.13.1",
-    "zustand": "^4.5.7",
     "next": "^16.2.3",
     "next-themes": "^0.4.6",
-    "framer-motion": "^12.0.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "react-hot-toast": "^2.5.2",
     "react-markdown": "^10.1.0",
+    "react-router-dom": "^7.13.1",
     "react-syntax-highlighter": "^16.1.1",
     "react-toastify": "^11.1.0",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "zustand": "^4.5.7"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.3.0",
+    "@tailwindcss/postcss": "^4.3.1",
+    "@tailwindcss/vite": "^4.3.1",
     "@types/node": "^22.15.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "autoprefixer": "^10.4.20",
+    "autoprefixer": "^10.5.0",
+    "concurrently": "^8.2.2",
     "eslint": "^9.39.1",
-    "postcss": "^8.5.3",
-    "tailwindcss": "^4.1.18",
-    "typescript": "^5.8.2",
+    "eslint-config-next": "16.2.3",
+    "postcss": "^8.5.15",
     "prisma": "^7.7.0",
-    "eslint-config-next": "16.2.3"
+    "tailwindcss": "^4.3.1",
+    "typescript": "^5.8.2"
   },
   "workspaces": [
     "packages/studio"

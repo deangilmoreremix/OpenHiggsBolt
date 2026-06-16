@@ -17,16 +17,10 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@/components/*": ["src/shared/components/*"],
-      "@/api/*": ["src/shared/api/*"],
-      "@/types/*": ["src/shared/types/*"],
-      "@/stores/*": ["src/stores/*"],
-      "@/api": ["src/shared/api"],
-      "@/types": ["src/shared/types"],
-      "@/stores": ["src/stores"]
+      "@/*": ["./*"],
+      "@/components/*": ["./components/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["app/**/*", "components/**/*"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
