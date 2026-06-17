@@ -25,6 +25,9 @@ const TABS = [
   { id: 'agents', label: 'Agents' },
   { id: 'design-agent', label: 'Design Agent' },
   { id: 'apps', label: 'Explore Apps' },
+  { id: 'poe-ai', label: 'Poe AI', type: 'iframe', src: 'http://localhost:3001' },
+  { id: 'design-agent-iframe', label: 'Design Agent', type: 'iframe', src: 'http://localhost:3002' },
+  { id: 'vibe-workflow', label: 'Vibe Workflow', type: 'iframe', src: 'http://localhost:3003' },
 ];
 
 const STORAGE_KEY = 'muapi_key';
@@ -334,6 +337,9 @@ export default function StandaloneShell() {
         {activeTab === 'agents' && <AgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
         {activeTab === 'design-agent' && <DesignAgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
         {activeTab === 'apps' && <AppsStudio apiKey={apiKey} />}
+        {TABS.filter(t => t.type === 'iframe').find(t => t.id === activeTab) && (
+          <iframe src={TABS.find(t => t.id === activeTab)?.src} style={{ width:'100%', height:'100vh', border:'none' }} />
+        )}
       </div>
 
       {/* Settings Modal */}

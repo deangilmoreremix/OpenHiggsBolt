@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext .ts,.tsx",
-    "netlify:dev": "netlify dev"
+    "netlify:dev": "netlify dev",
+    "dev:all": "concurrently \"npm run dev\" \"cd packages/Open-Poe-AI && npm run dev\" \"cd packages/Open-AI-Design-Agent && npm run dev\" \"cd packages/Vibe-Workflow && npm run dev\""
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.50.0",
