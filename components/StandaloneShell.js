@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { ImageStudio, VideoStudio, ClippingStudio, VibeMotionStudio, LipSyncStudio, CinemaStudio, AudioStudio, MarketingStudio, WorkflowStudio, AgentStudio, AppsStudio, McpCliStudio, getUserBalance } from 'studio';
+import { ImageStudio, VideoStudio, ClippingStudio, VibeMotionStudio, LipSyncStudio, CinemaStudio, AudioStudio, MarketingStudio, WorkflowStudio, AgentStudio, AppsStudio, getUserBalance } from 'studio';
 
 const DesignAgentStudio = dynamic(() => import('studio').then(mod => mod.DesignAgentStudio), {
   ssr: false,
@@ -25,10 +25,6 @@ const TABS = [
   { id: 'agents', label: 'Agents' },
   { id: 'design-agent', label: 'Design Agent' },
   { id: 'apps', label: 'Explore Apps' },
-  { id: 'mcp-cli', label: 'MCP CLI' },
-  { id: 'open-poe', label: 'Open Poe AI' },
-  { id: 'open-design-agent', label: 'AI Design Agent' },
-  { id: 'vibe-workflow', label: 'Vibe Workflow' },
 ];
 
 const STORAGE_KEY = 'muapi_key';
@@ -61,10 +57,6 @@ export default function StandaloneShell() {
     if (slug.includes('agents')) return 'agents';
     if (slug.includes('design-agent')) return 'design-agent';
     if (slug.includes('apps')) return 'apps';
-    if (slug.includes('mcp-cli')) return 'mcp-cli';
-    if (slug.includes('open-poe')) return 'open-poe';
-    if (slug.includes('open-design-agent')) return 'open-design-agent';
-    if (slug.includes('vibe-workflow')) return 'vibe-workflow';
     const firstSegment = slug[0];
     if (firstSegment && TABS.find(t => t.id === firstSegment)) return firstSegment;
     return 'image';
