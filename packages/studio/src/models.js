@@ -1444,6 +1444,36 @@ export const t2iModels = [
     }
   },
   {
+    "id": "grok-imagine-t2v",
+    "name": "Grok Imagine T2V",
+    "endpoint": "grok-imagine-text-to-image",
+    "inputs": {
+      "prompt": {
+        "examples": [
+          "A futuristic samurai standing under glowing neon lights in a rainy cyberpunk alley, reflections on wet pavement, dramatic rim lighting, highly detailed armor, cinematic atmosphere, ultra-realistic style."
+        ],
+        "description": "Text prompt describing the image.",
+        "type": "string",
+        "title": "Prompt",
+        "name": "prompt"
+      },
+      "aspect_ratio": {
+        "enum": [
+          "9:16",
+          "16:9",
+          "2:3",
+          "3:2",
+          "1:1"
+        ],
+        "title": "Aspect Ratio",
+        "name": "aspect_ratio",
+        "type": "string",
+        "description": "Aspect ratio of the output image. Get 6 images each time.",
+        "default": "1:1"
+      }
+    }
+  },
+  {
     "id": "nano-banana-pro",
     "name": "Nano Banana Pro",
     "endpoint": "nano-banana-pro",
