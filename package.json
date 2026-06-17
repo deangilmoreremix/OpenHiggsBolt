@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "lint": "eslint src --ext .ts,.tsx",
     "netlify:dev": "netlify dev",
-    "dev:all": "concurrently \"npm run dev\" \"cd packages/Open-Poe-AI && npm run dev\" \"cd packages/Open-AI-Design-Agent && npm run dev\" \"cd packages/Vibe-Workflow && npm run dev\""
+    "dev:all": "concurrently \"npm run dev\" \"cd packages/Open-Poe-AI/client && npm run dev\" \"cd packages/Open-AI-Design-Agent/client && npm run dev\" \"cd packages/Vibe-Workflow/client && npm run dev\""
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.50.0",
@@ -27,6 +27,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.4",
     "autoprefixer": "^10.4.20",
+    "concurrently": "^10.0.3",
     "eslint": "^9.39.1",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.1.18",
