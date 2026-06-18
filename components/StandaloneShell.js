@@ -11,6 +11,16 @@ const DesignAgentStudio = dynamic(() => import('studio').then(mod => mod.DesignA
 });
 import axios from 'axios';
 import ApiKeyModal from './ApiKeyModal';
+import { MemoryRouter } from 'react-router-dom';
+import Videco from '../src/apps/videco/Videco';
+import VFXStudio from '../src/apps/vfx-studio/VFXStudio';
+import Storyboard from '../src/apps/storyboard/Storyboard';
+import ScenePlanner from '../src/apps/scene-planner/ScenePlanner';
+import MusicStudio from '../src/apps/music-studio/MusicStudio';
+import ThumbnailStudio from '../src/apps/thumbnail-studio/ThumbnailStudio';
+import ScriptWriter from '../src/apps/script-writer/ScriptWriter';
+import Presentation from '../src/apps/presentation/Presentation';
+import ContentPlanner from '../src/apps/content-planner/ContentPlanner';
 
 const TABS = [
   { id: 'image',   label: 'Image Studio' },
@@ -24,6 +34,15 @@ const TABS = [
   { id: 'workflows', label: 'Workflows' },
   { id: 'agents', label: 'Agents' },
   { id: 'design-agent', label: 'Design Agent' },
+  { id: 'videco', label: 'Videco' },
+  { id: 'vfx-studio', label: 'VFX Studio' },
+  { id: 'storyboard', label: 'Storyboard' },
+  { id: 'scene-planner', label: 'Scene Planner' },
+  { id: 'music-studio', label: 'Music Studio' },
+  { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
+  { id: 'script-writer', label: 'Script Writer' },
+  { id: 'presentation', label: 'Presentation' },
+  { id: 'content-planner', label: 'Content Planner' },
   { id: 'apps', label: 'Explore Apps' },
 ];
 
@@ -368,6 +387,15 @@ export default function StandaloneShell() {
         {activeTab === 'workflows' && <WorkflowStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
         {activeTab === 'agents' && <AgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
         {activeTab === 'design-agent' && <DesignAgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
+        {activeTab === 'videco' && <MemoryRouter initialEntries={['/dashboard']}><Videco apiKey={apiKey} /></MemoryRouter>}
+        {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} /></MemoryRouter>}
+        {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} /></MemoryRouter>}
+        {activeTab === 'scene-planner' && <MemoryRouter initialEntries={['/']}><ScenePlanner apiKey={apiKey} /></MemoryRouter>}
+        {activeTab === 'music-studio' && <MusicStudio apiKey={apiKey} />}
+        {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} />}
+        {activeTab === 'script-writer' && <ScriptWriter apiKey={apiKey} />}
+        {activeTab === 'presentation' && <Presentation apiKey={apiKey} />}
+        {activeTab === 'content-planner' && <ContentPlanner apiKey={apiKey} />}
         {activeTab === 'apps' && <AppsStudio apiKey={apiKey} />}
       </div>
 
