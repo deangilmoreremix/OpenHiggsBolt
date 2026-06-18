@@ -1,5 +1,17 @@
-const OPENAI_FUNCTION_URL = import.meta.env.VITE_SUPABASE_URL
-  ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enhance-prompt`
+function getSupabaseUrl(): string | undefined {
+  // Next.js / Node
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+  }
+  // Vite
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    return import.meta.env.VITE_SUPABASE_URL
+  }
+  return undefined
+}
+
+const OPENAI_FUNCTION_URL = getSupabaseUrl()
+  ? `${getSupabaseUrl()}/functions/v1/enhance-prompt`
   : '/.netlify/functions/enhance-prompt'
 
 /**
