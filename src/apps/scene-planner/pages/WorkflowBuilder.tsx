@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Play, Plus, Settings, Loader2 } from 'lucide-react'
-import { generateText, generateVideo, generateImage } from '@/api/muapi'
+import { generateVideo } from '@/api/muapi'
 
 export default function WorkflowBuilder() {
   const [nodes, setNodes] = useState<Array<{ id: string; type: string; label: string; value?: string; model?: string; result?: any }>>([
@@ -54,13 +54,13 @@ export default function WorkflowBuilder() {
       </div>
       
       <div className="glass flex-1 rounded-xl p-6 relative">
-        <svg className="w-full h-full">
+        <div className="relative w-full h-full">
           {nodes.map((node, i) => (
             <div
               key={node.id}
               className="absolute glass-panel p-4 rounded-xl w-48 cursor-move"
-              style={{ 
-                top: `${50 + i * 120}px`, 
+              style={{
+                top: `${50 + i * 120}px`,
                 left: '50%',
                 transform: 'translateX(-50%)'
               }}
@@ -83,8 +83,8 @@ export default function WorkflowBuilder() {
               </div>
             </div>
           ))}
-        </svg>
-        
+        </div>
+
         <button className="absolute bottom-6 right-6 p-3 bg-primary text-black rounded-full hover:bg-primary-hover transition-all">
           <Plus size={24} />
         </button>

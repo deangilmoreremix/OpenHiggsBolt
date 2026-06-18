@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
-import { generateText, generateImage } from '@/api/muapi'
+import { generateText } from '@/api/muapi'
 
 export default function StoryboardPlanner() {
   const [script, setScript] = useState('')

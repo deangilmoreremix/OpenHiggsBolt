@@ -10,7 +10,8 @@ import {
   Presentation,
   CalendarDays,
   Sparkles,
-  Clapperboard
+  Clapperboard,
+  Megaphone
 } from 'lucide-react'
 
 interface NavItem {
@@ -31,7 +32,8 @@ export default function SideNavigation() {
     { to: '/thumbnail-studio', icon: <Image size={20} />, label: 'Thumbnail' },
     { to: '/script-writer', icon: <FileText size={20} />, label: 'Script Writer' },
     { to: '/presentation', icon: <Presentation size={20} />, label: 'Presentation' },
-    { to: '/content-planner', icon: <CalendarDays size={20} />, label: 'Content Planner' }
+    { to: '/content-planner', icon: <CalendarDays size={20} />, label: 'Content Planner' },
+    { to: '/ugc-generator', icon: <Megaphone size={20} />, label: 'UGC Generator' }
   ]
 
   return (

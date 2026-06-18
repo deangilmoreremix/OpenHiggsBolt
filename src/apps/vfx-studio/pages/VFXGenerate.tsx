@@ -1,7 +1,6 @@
-'use client';
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Play, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { generateVideo, getVideoStatus } from '@/api/muapi';
 
 // VFX Studio - Main generation page
 type Effect = { name: string; effect?: string; url?: string };
@@ -19,8 +18,6 @@ export default function VFXGenerate() {
   const [selectedAspect, setSelectedAspect] = useState<string>("9:16");
   const [selectedDuration, setSelectedDuration] = useState<string>("5s");
   const [showVideoModal, setShowVideoModal] = useState<boolean>(false);
-  const [showApiKeyModal, setShowApiKeyModal] = useState<boolean>(false);
-  const [apiKeyInput, setApiKeyInput] = useState<string>('');
   const [showImageUrlModal, setShowImageUrlModal] = useState<boolean>(false);
   const [imageUrlInput, setImageUrlInput] = useState<string>('');
 
@@ -62,8 +59,7 @@ export default function VFXGenerate() {
   }, []);
 
   // Poll for result
-  const pollForResult = useCallback(async (reqId: string, userApiKey: string) => {
-    const pollUrl = `/api/proxy-muapi?id=${reqId}`;
+  const pollForResult = useCallback(async (reqId: string) => {
     const start = Date.now();
     let tries = 0;
     const MAX_POLL_ATTEMPTS = 180;
@@ -73,16 +69,13 @@ export default function VFXGenerate() {
       tries++;
       addLog(`Polling attempt #${tries}...`);
       try {
-        const res = await fetch(pollUrl, { headers: { 'x-api-key': userApiKey } });
-        if (!res.ok) throw new Error(`Poll error: ${res.status}`);
-        const data = await res.json();
-        if (!data.status) throw new Error('Invalid response: missing status');
-        const taskStatus = data.status;
+        const data = await getVideoStatus(reqId);
+        const taskStatus = (data as any).status;
 
-        if (taskStatus === 'completed') {
-          let videoUrl = data.video?.url;
-          if (!videoUrl && data.output && typeof data.output === 'string') {
-            videoUrl = data.output;
+        if (taskStatus === 'completed' || taskStatus === 'succeeded') {
+          let videoUrl: string | undefined = (data as any).result?.url ?? (data as any).video?.url;
+          if (!videoUrl && (data as any).output && typeof (data as any).output === 'string') {
+            videoUrl = (data as any).output;
           }
           if (videoUrl) {
             if (isMountedRef.current) {
@@ -99,8 +92,8 @@ export default function VFXGenerate() {
         } else if (taskStatus === 'failed') {
           if (isMountedRef.current) {
             setStatus('failed');
-            setError(data.error || 'Task failed');
-            addLog(`Task failed: ${data.error}`);
+            setError((data as any).error || 'Task failed');
+            addLog(`Task failed: ${(data as any).error}`);
           }
           return;
         } else {
@@ -126,34 +119,9 @@ export default function VFXGenerate() {
   }, [addLog]);
 
   // Start generation
-  const startGenerationWithKey = useCallback(async (userApiKey: string) => {
-    const getMuApiSize = (aspect: string): string => {
-      if (typeof aspect === 'string') aspect = aspect.trim();
-      if (aspect === '16:9') return '832*480';
-      if (aspect === '9:16') return '480*832';
-      return '832*480';
-    };
-
-    let size = getMuApiSize(selectedAspect);
-    if (size !== '832*480' && size !== '480*832') size = '832*480';
-
-    const videoPayload: { prompt: string; name: string | undefined; aspect_ratio: string; size: string; quality: string; duration: number; image_url?: string } = {
-      prompt: inputText,
-      name: selectedEffect?.name,
-      aspect_ratio: selectedAspect,
-      size,
-      quality: selectedQuality,
-      duration: parseInt(selectedDuration),
-    };
-
+  const startGeneration = useCallback(async () => {
     if (!imageUrl || !/^https?:\/\//.test(imageUrl)) {
       setError('Please provide a valid image URL');
-      return;
-    }
-    videoPayload.image_url = imageUrl;
-
-    if (!userApiKey.trim()) {
-      setError('API key is required');
       return;
     }
 
@@ -164,34 +132,26 @@ export default function VFXGenerate() {
     setRequestId(null);
 
     try {
-      addLog('Payload: ' + JSON.stringify(videoPayload, null, 2));
-      const res = await fetch('/api/proxy-muapi', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': userApiKey,
-        },
-        body: JSON.stringify(videoPayload),
+      const result = await generateVideo({
+        prompt: inputText,
+        duration: parseInt(selectedDuration) || 5,
+        aspectRatio: selectedAspect as '16:9' | '9:16' | '1:1',
+        model: selectedEffect?.name,
       });
-      addLog('API response status: ' + res.status);
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`API error: ${res.status} - ${errorText}`);
-      }
-      const data = await res.json();
-      addLog('API response: ' + JSON.stringify(data));
-      if (!data.request_id) throw new Error('Invalid response: missing request_id');
-      setRequestId(data.request_id);
-      addLog(`Task submitted. Request ID: ${data.request_id}`);
+      addLog('API response: ' + JSON.stringify(result));
+      const requestId = (result as any).id ?? (result as any).request_id;
+      if (!requestId) throw new Error('Invalid response: missing request id');
+      setRequestId(requestId);
+      addLog(`Task submitted. Request ID: ${requestId}`);
       setStatus('polling');
-      pollForResult(data.request_id, userApiKey);
+      pollForResult(requestId);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
       setStatus('error');
       addLog(`Error: ${message}`);
     }
-  }, [addLog, inputText, selectedEffect, selectedAspect, selectedQuality, selectedDuration, imageUrl, pollForResult]);
+  }, [addLog, inputText, selectedEffect, selectedAspect, selectedDuration, imageUrl, pollForResult]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -221,8 +181,10 @@ export default function VFXGenerate() {
       alert('Please provide a valid image URL');
       return;
     }
-    setShowApiKeyModal(true);
-  }, [selectedEffect, imageUrl]);
+    setShowVideoModal(true);
+    setStatus('submitting');
+    startGeneration();
+  }, [selectedEffect, imageUrl, startGeneration]);
 
   // Pixverse Effects
   const pixverseEffects = [
@@ -394,10 +356,10 @@ export default function VFXGenerate() {
               </div>
             )}
 
-            {status === 'failed' && error.includes('retry') && (
+            {status === 'failed' && (
               <div className="mt-4 text-center">
                 <button
-                  onClick={() => { setError(''); setStatus('idle'); setLog([]); setShowApiKeyModal(true); }}
+                  onClick={() => { setError(''); setStatus('idle'); setLog([]); }}
                   className="px-6 py-2.5 rounded-lg bg-red-500 text-white font-semibold text-sm hover:bg-red-500/90 transition-all"
                 >
                   Retry Generation
@@ -410,49 +372,6 @@ export default function VFXGenerate() {
                 <b>Request ID:</b> {requestId}
               </div>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* API Key Modal */}
-      {showApiKeyModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-8 min-w-[320px] shadow-2xl">
-            <h3 className="text-white font-bold text-lg mb-2">Enter your MuApi API Key</h3>
-            <p className="text-white/40 text-sm mb-6">
-              Don&apos;t have an API key?&nbsp;
-              <a href="https://muapi.ai/" target="_blank" rel="noopener noreferrer" className="text-[#22d3ee] underline">
-                Get it from muapi.ai
-              </a>
-            </p>
-            <input
-              type="password"
-              value={apiKeyInput}
-              onChange={e => setApiKeyInput(e.target.value)}
-              placeholder="API Key"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-[#22d3ee] transition-colors"
-              autoFocus
-              disabled={status === 'submitting' || status === 'polling'}
-            />
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => { setShowApiKeyModal(false); setApiKeyInput(''); }}
-                className="flex-1 h-11 rounded-xl bg-white/5 text-white/80 hover:bg-white/10 text-sm font-medium transition-all border border-white/5"
-                disabled={status === 'submitting' || status === 'polling'}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowApiKeyModal(false);
-                  startGenerationWithKey(apiKeyInput);
-                }}
-                className="flex-1 h-11 rounded-xl bg-[#22d3ee] text-black hover:bg-[#22d3ee]/90 text-sm font-semibold transition-all disabled:opacity-50"
-                disabled={!apiKeyInput.trim() || status === 'submitting' || status === 'polling'}
-              >
-                Continue
-              </button>
-            </div>
           </div>
         </div>
       )}

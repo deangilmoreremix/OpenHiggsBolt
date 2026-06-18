@@ -12,6 +12,7 @@ import Presentation from './apps/presentation/Presentation'
 import ContentPlanner from './apps/content-planner/ContentPlanner'
 import VFXStudio from './apps/vfx-studio/VFXStudio'
 import Videco from './apps/videco/Videco'
+import UGCGenerator from './apps/ugc-generator/UGCGenerator'
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
             <Route path="/content-planner/*" element={<ContentPlanner />} />
             <Route path="/vfx-studio/*" element={<VFXStudio />} />
             <Route path="/videco/*" element={<Videco />} />
+            <Route path="/ugc-generator/*" element={<UGCGenerator />} />
           </Routes>
         </main>
       </div>
