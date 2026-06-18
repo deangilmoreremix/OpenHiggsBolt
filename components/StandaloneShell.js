@@ -11,7 +11,6 @@ const DesignAgentStudio = dynamic(() => import('studio').then(mod => mod.DesignA
 });
 import axios from 'axios';
 import { MemoryRouter } from 'react-router-dom';
-import dynamic from 'next/dynamic';
 const Videco = dynamic(() => import('../src/apps/videco/Videco'), { ssr: false });
 const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ssr: false });
 const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
