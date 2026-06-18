@@ -230,7 +230,7 @@ export default function StandaloneShell() {
 
   return (
     <div 
-      className="h-screen bg-[#030303] flex flex-col overflow-hidden text-white relative"
+      className="h-screen flex flex-col bg-black text-white overflow-hidden"
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
@@ -321,7 +321,7 @@ export default function StandaloneShell() {
       )}
 
       {/* Studio Content */}
-      <div className="flex-1 min-h-0 relative overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden">
         {activeTab === 'image'   && <ImageStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
         {activeTab === 'video'   && <VideoStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
         {activeTab === 'clipping' && <ClippingStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}

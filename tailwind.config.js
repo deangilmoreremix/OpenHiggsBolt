@@ -1,7 +1,14 @@
 import type { Config } from 'tailwindcss'
 
 export default {
-  content: ['./index.html', './src/**/*.{ts,tsx}'],
+  content: [
+    './app/**/*.{js,jsx,ts,tsx}',
+    './components/**/*.{js,jsx,ts,tsx}',
+    './packages/studio/src/**/*.{js,jsx}',
+    './packages/Vibe-Workflow/packages/workflow-builder/src/**/*.{js,jsx}',
+    './packages/Open-Poe-AI/packages/agents/src/**/*.{js,jsx}',
+    './packages/Open-AI-Design-Agent/packages/design-agent/src/**/*.{js,jsx}',
+  ],
   theme: {
     extend: {
       colors: {
