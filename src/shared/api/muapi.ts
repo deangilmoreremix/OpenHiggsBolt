@@ -32,3 +32,12 @@ export async function getModels(category: 'video' | 'image' | 'audio'): Promise<
   const response = await axios.get(`${MUAPI_BASE_URL}/models/${category}`)
   return response.data
 }
+
+/**
+ * Generic muapi.ai call. `endpoint` is the path after /api/v1/ (e.g. "photo-pack" or "predictions/123/result").
+ */
+export async function callMuapi<T = any>(endpoint: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET', data?: any): Promise<T> {
+  const url = `${MUAPI_BASE_URL}/${endpoint.replace(/^\//, '')}`
+  const response = await axios({ url, method, data })
+  return response.data
+}
