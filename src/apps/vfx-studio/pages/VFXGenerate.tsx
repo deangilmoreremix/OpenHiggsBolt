@@ -13,22 +13,24 @@ export default function VFXGenerate() {
   const [selectedQuality, setSelectedQuality] = useState("medium");
   const [imageUrl, setImageUrl] = useState("");
   const [inputText, setInputText] = useState("");
-  const [selectedAspect, setSelectedAspect] = useState("9:16");
-  const [selectedDuration, setSelectedDuration] = useState("5s");
-  const [showVideoModal, setShowVideoModal] = useState(false);
-  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState('');
-  const [showImageUrlModal, setShowImageUrlModal] = useState(false);
-  const [imageUrlInput, setImageUrlInput] = useState('');
-
-  // Video generation state
+  const [selectedAspect, setSelectedAspect] = useState("16:9");
+  const [selectedDuration, setSelectedDuration] = useState("10s");
   const [status, setStatus] = useState('idle');
   const [requestId, setRequestId] = useState(null);
   const [videoUrl, setVideoUrl] = useState('');
   const [error, setError] = useState('');
   const [log, setLog] = useState([]);
+  const [showImageUrlModal, setShowImageUrlModal] = useState(false);
+  const [imageUrlInput, setImageUrlInput] = useState('');
   const isMountedRef = useRef(true);
   const pollTimeoutRef = useRef(null);
+
+  const getMuApiSize = useCallback((aspect) => {
+    if (typeof aspect === 'string') aspect = aspect.trim();
+    if (aspect === '16:9') return '832*480';
+    if (aspect === '9:16') return '480*832';
+    return '832*480';
+  }, []);
 
   const aiEffectsRef = useRef(null);
   const motionControlsRef = useRef(null);
@@ -58,8 +60,15 @@ export default function VFXGenerate() {
     }
   }, []);
 
+  const getApiKey = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('muapi_key');
+    }
+    return null;
+  }, []);
+
   // Poll for result
-  const pollForResult = useCallback(async (reqId, userApiKey) => {
+  const pollForResult = useCallback((reqId, userApiKey) => {
     const pollUrl = `/api/proxy-muapi?id=${reqId}`;
     const start = Date.now();
     let tries = 0;
@@ -121,18 +130,24 @@ export default function VFXGenerate() {
     poll();
   }, [addLog]);
 
-  // Start generation
-  const startGenerationWithKey = useCallback(async (userApiKey) => {
-    const getMuApiSize = (aspect) => {
-      if (typeof aspect === 'string') aspect = aspect.trim();
-      if (aspect === '16:9') return '832*480';
-      if (aspect === '9:16') return '480*832';
-      return '832*480';
-    };
+  // Start generation directly from the stored API key
+  const startGeneration = useCallback(async () => {
+    const userApiKey = getApiKey();
+    if (!userApiKey) {
+      setError('API key is required. Open Settings and set your key, then try again.');
+      setStatus('error');
+      return;
+    }
+    if (!selectedEffect) {
+      alert('Please select an effect before generating');
+      return;
+    }
+    if (!imageUrl || !/^https?:\/\//.test(imageUrl)) {
+      alert('Please provide a valid image URL before generating');
+      return;
+    }
 
-    let size = getMuApiSize(selectedAspect);
-    if (size !== '832*480' && size !== '480*832') size = '832*480';
-
+    const size = getMuApiSize(selectedAspect);
     const videoPayload = {
       prompt: inputText,
       name: selectedEffect?.name,
@@ -141,17 +156,7 @@ export default function VFXGenerate() {
       quality: selectedQuality,
       duration: parseInt(selectedDuration),
     };
-
-    if (!imageUrl || !/^https?:\/\//.test(imageUrl)) {
-      setError('Please provide a valid image URL');
-      return;
-    }
     videoPayload.image_url = imageUrl;
-
-    if (!userApiKey.trim()) {
-      setError('API key is required');
-      return;
-    }
 
     setStatus('submitting');
     setLog([`Submitting task to MuApi...`]);
@@ -186,7 +191,7 @@ export default function VFXGenerate() {
       setStatus('error');
       addLog(`Error: ${err.message}`);
     }
-  }, [addLog, inputText, selectedEffect, selectedAspect, selectedQuality, selectedDuration, imageUrl, pollForResult]);
+  }, [addLog, inputText, selectedEffect, selectedAspect, selectedQuality, selectedDuration, imageUrl, getApiKey, getMuApiSize, pollForResult]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -212,12 +217,8 @@ export default function VFXGenerate() {
       alert('Please select an effect before generating');
       return;
     }
-    if (!imageUrl || !/^https?:\/\//.test(imageUrl)) {
-      alert('Please provide a valid image URL');
-      return;
-    }
-    setShowApiKeyModal(true);
-  }, [selectedEffect, imageUrl]);
+    startGeneration();
+  }, [selectedEffect, startGeneration]);
 
   // Pixverse Effects
   const pixverseEffects = [
@@ -384,7 +385,7 @@ export default function VFXGenerate() {
             {status === 'failed' && error.includes('retry') && (
               <div className="mt-4 text-center">
                 <button
-                  onClick={() => { setError(''); setStatus('idle'); setLog([]); setShowApiKeyModal(true); }}
+                  onClick={() => { setError(''); setStatus('idle'); setLog([]); startGeneration(); }}
                   className="px-6 py-2.5 rounded-lg bg-red-500 text-white font-semibold text-sm hover:bg-red-500/90 transition-all"
                 >
                   Retry Generation
@@ -397,49 +398,6 @@ export default function VFXGenerate() {
                 <b>Request ID:</b> {requestId}
               </div>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* API Key Modal */}
-      {showApiKeyModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-8 min-w-[320px] shadow-2xl">
-            <h3 className="text-white font-bold text-lg mb-2">Enter your MuApi API Key</h3>
-            <p className="text-white/40 text-sm mb-6">
-              Don&apos;t have an API key?&nbsp;
-              <a href="https://muapi.ai/" target="_blank" rel="noopener noreferrer" className="text-[#22d3ee] underline">
-                Get it from muapi.ai
-              </a>
-            </p>
-            <input
-              type="password"
-              value={apiKeyInput}
-              onChange={e => setApiKeyInput(e.target.value)}
-              placeholder="API Key"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-[#22d3ee] transition-colors"
-              autoFocus
-              disabled={status === 'submitting' || status === 'polling'}
-            />
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => { setShowApiKeyModal(false); setApiKeyInput(''); }}
-                className="flex-1 h-11 rounded-xl bg-white/5 text-white/80 hover:bg-white/10 text-sm font-medium transition-all border border-white/5"
-                disabled={status === 'submitting' || status === 'polling'}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowApiKeyModal(false);
-                  startGenerationWithKey(apiKeyInput);
-                }}
-                className="flex-1 h-11 rounded-xl bg-[#22d3ee] text-black hover:bg-[#22d3ee]/90 text-sm font-semibold transition-all disabled:opacity-50"
-                disabled={!apiKeyInput.trim() || status === 'submitting' || status === 'polling'}
-              >
-                Continue
-              </button>
-            </div>
           </div>
         </div>
       )}
@@ -587,6 +545,18 @@ export default function VFXGenerate() {
                 <ImageIcon size={18} />
                 <span>Image URL</span>
               </button>
+              {imageUrl && (
+                <div className="flex items-center gap-2 text-xs text-white/50">
+                  <span className="max-w-[260px] truncate">{imageUrl}</span>
+                  <button
+                    onClick={() => setImageUrl("")}
+                    className="text-white/40 hover:text-white transition-colors"
+                    aria-label="Clear image URL"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
               <div className="flex-1" />
             </div>
 

@@ -10,17 +10,17 @@ const DesignAgentStudio = dynamic(() => import('studio').then(mod => mod.DesignA
   loading: () => <div className="h-full w-full bg-black flex items-center justify-center text-white/20">Loading Design Studio...</div>
 });
 import axios from 'axios';
-import ApiKeyModal from './ApiKeyModal';
 import { MemoryRouter } from 'react-router-dom';
-import Videco from '../src/apps/videco/Videco';
-import VFXStudio from '../src/apps/vfx-studio/VFXStudio';
-import Storyboard from '../src/apps/storyboard/Storyboard';
-import ScenePlanner from '../src/apps/scene-planner/ScenePlanner';
-import MusicStudio from '../src/apps/music-studio/MusicStudio';
-import ThumbnailStudio from '../src/apps/thumbnail-studio/ThumbnailStudio';
-import ScriptWriter from '../src/apps/script-writer/ScriptWriter';
-import Presentation from '../src/apps/presentation/Presentation';
-import ContentPlanner from '../src/apps/content-planner/ContentPlanner';
+import dynamic from 'next/dynamic';
+const Videco = dynamic(() => import('../src/apps/videco/Videco'), { ssr: false });
+const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ssr: false });
+const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
+const ScenePlanner = dynamic(() => import('../src/apps/scene-planner/ScenePlanner'), { ssr: false });
+const MusicStudio = dynamic(() => import('../src/apps/music-studio/MusicStudio'), { ssr: false });
+const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
+const ScriptWriter = dynamic(() => import('../src/apps/script-writer/ScriptWriter'), { ssr: false });
+const Presentation = dynamic(() => import('../src/apps/presentation/Presentation'), { ssr: false });
+const ContentPlanner = dynamic(() => import('../src/apps/content-planner/ContentPlanner'), { ssr: false });
 
 const TABS = [
   { id: 'image',   label: 'Image Studio' },
@@ -254,9 +254,6 @@ export default function StandaloneShell() {
     </div>
   );
 
-  if (!apiKey) {
-    return <ApiKeyModal onSave={handleKeySave} />;
-  }
 
   return (
     <div 
@@ -321,7 +318,7 @@ export default function StandaloneShell() {
           </div>
 
           {/* Center: Navigation Container with fade edges */}
-          <div className="flex-1 min-w-0 mx-4 sm:mx-6 relative overflow-hidden h-full flex items-center justify-start lg:justify-center">
+          <div className="flex-1 min-w-0 mx-4 sm:mx-6 relative overflow-hidden h-full flex items-center justify-start">
             {/* Fade Left Overlay */}
             <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#030303] to-transparent pointer-events-none z-10 block lg:hidden" />
             
