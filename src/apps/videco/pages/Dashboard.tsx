@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '@/api/supabase'
 import { Video, Upload, Sparkles, Film, TrendingUp, Clock, CheckCircle, Loader, BarChart3, Users, MessageSquare, Settings, Plug, Sparkles as SparklesIcon } from 'lucide-react'
 import { useVidecoStore } from '@/stores/videcoStore'
-import type { Video } from '@/stores/videcoStore'
+import type { Video as VideoType } from '@/stores/videcoStore'
 
 const typeIcons: Record<string, React.ReactNode> = {
   generation: <Sparkles size={16} />,
@@ -27,7 +27,7 @@ export default function Dashboard() {
     failed: 0,
     byType: {} as Record<string, number>,
   })
-  const [recentVideos, setRecentVideos] = useState<Video[]>([])
+  const [recentVideos, setRecentVideos] = useState<VideoType[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export default function Dashboard() {
           const byType: Record<string, number> = {}
           let completed = 0, processing = 0, failed = 0
 
-          videos.forEach((v: Video) => {
+          videos.forEach((v: VideoType) => {
             byType[v.type] = (byType[v.type] || 0) + 1
             if (v.status === 'completed') completed++
             else if (v.status === 'processing') processing++
@@ -184,7 +184,7 @@ export default function Dashboard() {
   )
 }
 
-function VideoCard({ video }: { video: Video }) {
+function VideoCard({ video }: { video: VideoType }) {
   return (
     <Link to={`/videco/editor/${video.id}`} className="glass-panel rounded-xl overflow-hidden hover:border-cyan-500/30 transition-all group">
       <div className="aspect-video bg-bg-card relative overflow-hidden">

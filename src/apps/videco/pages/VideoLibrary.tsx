@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '@/api/supabase'
 import { Video, Trash2, Play, Filter, Loader, ChevronLeft, ChevronRight, Search, Grid, List } from 'lucide-react'
 import { useVidecoStore } from '@/stores/videcoStore'
-import type { Video } from '@/stores/videcoStore'
+import type { Video as VideoType } from '@/stores/videcoStore'
 
 const typeFilters = [
   { value: null, label: 'All' },
@@ -29,7 +29,7 @@ export default function VideoLibrary() {
 
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  const [playingVideo, setPlayingVideo] = useState<Video | null>(null)
+  const [playingVideo, setPlayingVideo] = useState<VideoType | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
   const fetchVideos = useCallback(async () => {
@@ -253,7 +253,7 @@ export default function VideoLibrary() {
   )
 }
 
-function VideoGridCard({ video, onPlay, onDelete }: { video: Video; onPlay: () => void; onDelete: () => void }) {
+function VideoGridCard({ video, onPlay, onDelete }: { video: VideoType; onPlay: () => void; onDelete: () => void }) {
   return (
     <div className="glass-panel rounded-xl overflow-hidden hover:border-cyan-500/30 transition-all group">
       <div className="aspect-video bg-bg-card relative overflow-hidden cursor-pointer" onClick={onPlay}>
@@ -295,7 +295,7 @@ function VideoGridCard({ video, onPlay, onDelete }: { video: Video; onPlay: () =
   )
 }
 
-function VideoListRow({ video, onPlay, onDelete }: { video: Video; onPlay: () => void; onDelete: () => void }) {
+function VideoListRow({ video, onPlay, onDelete }: { video: VideoType; onPlay: () => void; onDelete: () => void }) {
   return (
     <div className="glass-panel rounded-xl p-3 flex items-center gap-4 hover:border-cyan-500/30 transition-all">
       <div className="w-24 h-16 bg-bg-card rounded-lg overflow-hidden flex-shrink-0 cursor-pointer" onClick={onPlay}>
