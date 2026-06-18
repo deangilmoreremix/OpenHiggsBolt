@@ -3,7 +3,7 @@ import { Play, Plus, Settings, Loader2 } from 'lucide-react'
 import { generateText, generateVideo, generateImage } from '@/api/muapi'
 
 export default function WorkflowBuilder() {
-  const [nodes, setNodes] = useState([
+  const [nodes, setNodes] = useState<Array<{ id: string; type: string; label: string; value?: string; model?: string; result?: any }>>([
     { id: '1', type: 'prompt', label: 'Prompt', value: '' },
     { id: '2', type: 'video', label: 'Video Generator', model: 'kling-3.0' },
     { id: '3', type: 'output', label: 'Output', result: null }

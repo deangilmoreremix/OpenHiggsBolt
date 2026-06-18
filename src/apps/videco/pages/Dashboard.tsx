@@ -43,7 +43,8 @@ export default function Dashboard() {
           const byType: Record<string, number> = {}
           let completed = 0, processing = 0, failed = 0
 
-          videos.forEach((v: VideoType) => {
+          const typedVideos = videos as VideoType[]
+          typedVideos.forEach((v: VideoType) => {
             byType[v.type] = (byType[v.type] || 0) + 1
             if (v.status === 'completed') completed++
             else if (v.status === 'processing') processing++
@@ -51,13 +52,13 @@ export default function Dashboard() {
           })
 
           setStats({
-            total: videos.length,
+            total: typedVideos.length,
             completed,
             processing,
             failed,
             byType,
           })
-          setRecentVideos(videos.slice(0, 6))
+          setRecentVideos(typedVideos.slice(0, 6))
         }
       } catch (err) {
         console.error('Failed to load dashboard stats:', err)

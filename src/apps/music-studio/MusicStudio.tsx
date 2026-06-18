@@ -13,7 +13,7 @@ export default function MusicStudio() {
     if (!prompt.trim()) return
     setIsGenerating(true)
     try {
-      const audio = await generateAudio({ prompt, duration, model })
+      const audio = await generateAudio({ prompt, duration })
       setResult(audio)
     } catch (error) {
       console.error(error)

@@ -4,35 +4,38 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Play, Image as ImageIcon, Sparkles } from 'lucide-react';
 
 // VFX Studio - Main generation page
+type Effect = { name: string; effect?: string; url?: string };
+type LogEntry = string;
+
 export default function VFXGenerate() {
-  const [activeFilter, setActiveFilter] = useState('AI Effects');
-  const [showInputBar, setShowInputBar] = useState(true);
-  const [showChatButton, setShowChatButton] = useState(false);
-  const [selectedEffect, setSelectedEffect] = useState(null);
-  const [selectedResolution, setSelectedResolution] = useState("480p");
-  const [selectedQuality, setSelectedQuality] = useState("medium");
-  const [imageUrl, setImageUrl] = useState("");
-  const [inputText, setInputText] = useState("");
-  const [selectedAspect, setSelectedAspect] = useState("9:16");
-  const [selectedDuration, setSelectedDuration] = useState("5s");
-  const [showVideoModal, setShowVideoModal] = useState(false);
-  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState('');
-  const [showImageUrlModal, setShowImageUrlModal] = useState(false);
-  const [imageUrlInput, setImageUrlInput] = useState('');
+  const [activeFilter, setActiveFilter] = useState<string>('AI Effects');
+  const [showInputBar, setShowInputBar] = useState<boolean>(true);
+  const [showChatButton, setShowChatButton] = useState<boolean>(false);
+  const [selectedEffect, setSelectedEffect] = useState<Effect | null>(null);
+  const [selectedResolution, setSelectedResolution] = useState<string>("480p");
+  const [selectedQuality, setSelectedQuality] = useState<string>("medium");
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [inputText, setInputText] = useState<string>("");
+  const [selectedAspect, setSelectedAspect] = useState<string>("9:16");
+  const [selectedDuration, setSelectedDuration] = useState<string>("5s");
+  const [showVideoModal, setShowVideoModal] = useState<boolean>(false);
+  const [showApiKeyModal, setShowApiKeyModal] = useState<boolean>(false);
+  const [apiKeyInput, setApiKeyInput] = useState<string>('');
+  const [showImageUrlModal, setShowImageUrlModal] = useState<boolean>(false);
+  const [imageUrlInput, setImageUrlInput] = useState<string>('');
 
   // Video generation state
-  const [status, setStatus] = useState('idle');
-  const [requestId, setRequestId] = useState(null);
-  const [videoUrl, setVideoUrl] = useState('');
-  const [error, setError] = useState('');
-  const [log, setLog] = useState([]);
-  const isMountedRef = useRef(true);
-  const pollTimeoutRef = useRef(null);
+  const [status, setStatus] = useState<string>('idle');
+  const [requestId, setRequestId] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [log, setLog] = useState<LogEntry[]>([]);
+  const isMountedRef = useRef<boolean>(true);
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const aiEffectsRef = useRef(null);
-  const motionControlsRef = useRef(null);
-  const vfxControlsRef = useRef(null);
+  const aiEffectsRef = useRef<HTMLDivElement | null>(null);
+  const motionControlsRef = useRef<HTMLDivElement | null>(null);
+  const vfxControlsRef = useRef<HTMLDivElement | null>(null);
 
   const filters = [
     { name: "AI Effects", icon: "⭐" },
@@ -52,14 +55,14 @@ export default function VFXGenerate() {
   }, [activeFilter]);
 
   // Log helper
-  const addLog = useCallback((message) => {
+  const addLog = useCallback((message: LogEntry) => {
     if (isMountedRef.current) {
       setLog(prevLog => [...prevLog, message]);
     }
   }, []);
 
   // Poll for result
-  const pollForResult = useCallback(async (reqId, userApiKey) => {
+  const pollForResult = useCallback(async (reqId: string, userApiKey: string) => {
     const pollUrl = `/api/proxy-muapi?id=${reqId}`;
     const start = Date.now();
     let tries = 0;
@@ -112,9 +115,10 @@ export default function VFXGenerate() {
         }
       } catch (err) {
         if (isMountedRef.current) {
-          setError(err.message);
+          const message = err instanceof Error ? err.message : String(err);
+          setError(message);
           setStatus('error');
-          addLog(`Polling error: ${err.message}`);
+          addLog(`Polling error: ${message}`);
         }
       }
     };
@@ -122,8 +126,8 @@ export default function VFXGenerate() {
   }, [addLog]);
 
   // Start generation
-  const startGenerationWithKey = useCallback(async (userApiKey) => {
-    const getMuApiSize = (aspect) => {
+  const startGenerationWithKey = useCallback(async (userApiKey: string) => {
+    const getMuApiSize = (aspect: string): string => {
       if (typeof aspect === 'string') aspect = aspect.trim();
       if (aspect === '16:9') return '832*480';
       if (aspect === '9:16') return '480*832';
@@ -133,7 +137,7 @@ export default function VFXGenerate() {
     let size = getMuApiSize(selectedAspect);
     if (size !== '832*480' && size !== '480*832') size = '832*480';
 
-    const videoPayload = {
+    const videoPayload: { prompt: string; name: string | undefined; aspect_ratio: string; size: string; quality: string; duration: number; image_url?: string } = {
       prompt: inputText,
       name: selectedEffect?.name,
       aspect_ratio: selectedAspect,
@@ -182,9 +186,10 @@ export default function VFXGenerate() {
       setStatus('polling');
       pollForResult(data.request_id, userApiKey);
     } catch (err) {
-      setError(err.message);
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
       setStatus('error');
-      addLog(`Error: ${err.message}`);
+      addLog(`Error: ${message}`);
     }
   }, [addLog, inputText, selectedEffect, selectedAspect, selectedQuality, selectedDuration, imageUrl, pollForResult]);
 
@@ -264,16 +269,24 @@ export default function VFXGenerate() {
   ];
 
   // Inline Dropdown component matching platform design
-  const InlineDropdown = ({ value, onChange, options = [], placeholder = 'Select', style = {} }) => {
-    const [open, setOpen] = useState(false);
-    const buttonRef = useRef(null);
-    const dropdownRef = useRef(null);
+  type DropdownOption = { value: string; label: string };
+  type InlineDropdownProps = {
+    value: string;
+    onChange: (e: { target: { value: string } }) => void;
+    options?: DropdownOption[];
+    placeholder?: string;
+    style?: React.CSSProperties;
+  };
+  const InlineDropdown = ({ value, onChange, options = [], placeholder = 'Select', style = {} }: InlineDropdownProps) => {
+    const [open, setOpen] = useState<boolean>(false);
+    const buttonRef = useRef<HTMLButtonElement | null>(null);
+    const dropdownRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
       if (!open) return;
-      const handleClick = (e) => {
-        if (buttonRef.current && !buttonRef.current.contains(e.target) &&
-            dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+      const handleClick = (e: MouseEvent) => {
+        if (buttonRef.current && !buttonRef.current.contains(e.target as Node) &&
+            dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
           setOpen(false);
         }
       };
@@ -692,7 +705,7 @@ export default function VFXGenerate() {
                   src={imageUrl}
                   alt="Image URL Preview"
                   className="max-w-[160px] max-h-[90px] rounded-lg border border-white/10 bg-[#0a0a0a]"
-                  onError={e => { e.target.onerror = null; e.target.src = ''; }}
+                  onError={e => { const t = e.target as HTMLImageElement; t.onerror = null; t.src = ''; }}
                 />
               </div>
             )}
