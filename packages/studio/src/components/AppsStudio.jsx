@@ -143,7 +143,7 @@ export default function AppsStudio({ apiKey }) {
   }, [apiKey]);
 
   const handleRequestAccess = async () => {
-    if (!selectedApp) return;
+    if (!selectedApp || !apiKey) return;
     
     setIsRequesting(true);
     try {

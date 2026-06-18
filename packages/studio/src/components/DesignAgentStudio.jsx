@@ -10,9 +10,8 @@ export default function DesignAgentStudio({ apiKey, isHeaderVisible, onToggleHea
 
   useEffect(() => {
     sessionStorage.setItem("fromDesignAgent", "true");
-    if (apiKey) {
-      localStorage.setItem("token", apiKey);
-    }
+    if (!apiKey) return;
+    localStorage.setItem("token", apiKey);
     
     const fetchUser = async () => {
       try {

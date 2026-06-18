@@ -186,7 +186,7 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
 
   // Dedicated data fetching effect for the active workflow
   useEffect(() => {
-    if (!selectedWorkflow?.id) return;
+    if (!selectedWorkflow?.id || !apiKey) return;
 
     async function loadWorkflowDetails() {
       try {
@@ -386,33 +386,13 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
         setWorkflows(data);
       } catch (err) {
         console.error("Failed to load workflows:", err);
-        setError(err.message || "Failed to load workflows list.");
+        setError("Failed to load workflows list.");
       } finally {
         setLoading(false);
       }
     }
     loadWorkflows();
   }, [apiKey, activeMainTab]);
-
-  const loadWorkflows = useCallback(async () => {
-    setLoading(true);
-    try {
-      let data = [];
-      if (activeMainTab === "templates") {
-        data = await getTemplateWorkflows(apiKey);
-      } else if (activeMainTab === "my-workflows") {
-        data = await getUserWorkflows(apiKey);
-      } else if (activeMainTab === "published") {
-        data = await getPublishedWorkflows(apiKey);
-      }
-      setWorkflows(data);
-    } catch (err) {
-      console.error("Failed to load workflows:", err);
-      setError(err.message || "Failed to load workflows list.");
-    } finally {
-      setLoading(false);
-    }
-  }, [activeMainTab, apiKey]);
 
   const handleRun = async (e) => {
     e.preventDefault();
@@ -922,25 +902,9 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
           </div>
         </div>
 
-{loading ? (
+        {loading ? (
           <div className="py-20 flex items-center justify-center">
             <div className="w-10 h-10 border-4 border-white/5 border-t-[#22d3ee] rounded-full animate-spin" />
-          </div>
-        ) : error ? (
-          <div className="py-20 flex flex-col items-center justify-center text-red-500 gap-4">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <p className="text-sm font-bold">{error}</p>
-            <button
-              onClick={loadWorkflows}
-              disabled={loading}
-              className="px-4 py-2 bg-white/5 text-white/80 text-xs rounded-md hover:bg-white/10 transition-colors disabled:opacity-50"
-            >
-              {loading ? "Loading..." : "Retry"}
-            </button>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">

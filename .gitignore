@@ -31,10 +31,6 @@ release/
 .next/
 out/
 
-# Playwright temp files
-.playwright-mcp/
-page-snapshot.md
-
 # Misc
 *.pem
 .env

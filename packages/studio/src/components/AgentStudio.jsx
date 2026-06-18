@@ -154,32 +154,37 @@ export default function AgentStudio({ apiKey }) {
     [router]
   );
 
-  // Load agents on demand (for retry button)
-  const loadAgents = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      if (activeMainTab === "templates") {
-        const data = await getTemplateAgents(apiKey);
-        setAgents(data);
-      } else if (activeMainTab === "my-agents") {
-        const data = await getUserAgents(apiKey);
-        setAgents(data);
-      } else if (activeMainTab === "my-chats") {
-        const data = await getUserConversations(apiKey);
-        setConversations(data);
-      }
-    } catch (err) {
-      console.error("AgentStudio load error:", err);
-      setError(err.message || "Failed to load.");
-    } finally {
-      setLoading(false);
-    }
-  }, [activeMainTab, apiKey]);
-
   useEffect(() => {
-    loadAgents();
-  }, [loadAgents]);
+    if (!apiKey) return;
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      setAgents([]);
+      setConversations([]);
+      try {
+        if (activeMainTab === "templates") {
+          const data = await getTemplateAgents(apiKey);
+          if (!cancelled) setAgents(data);
+        } else if (activeMainTab === "my-agents") {
+          const data = await getUserAgents(apiKey);
+          if (!cancelled) setAgents(data);
+        } else if (activeMainTab === "my-chats") {
+          const data = await getUserConversations(apiKey);
+          if (!cancelled) setConversations(data);
+        }
+      } catch (err) {
+        console.error("AgentStudio load error:", err);
+        if (!cancelled) setError(err.message || "Failed to load.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => { cancelled = true; };
+  }, [apiKey, activeMainTab]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -229,13 +234,12 @@ export default function AgentStudio({ apiKey }) {
               <line x1="12" y1="8" x2="12" y2="12" />
               <line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
-<p className="text-xs font-bold uppercase tracking-widest">{error}</p>
+            <p className="text-xs font-bold uppercase tracking-widest">{error}</p>
             <button
-              onClick={loadAgents}
-              disabled={loading}
-              className="text-[10px] text-white/40 hover:text-white border border-white/10 px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+              onClick={() => setActiveMainTab(activeMainTab)} // retrigger effect
+              className="text-[10px] text-white/40 hover:text-white border border-white/10 px-4 py-2 rounded-lg transition-colors"
             >
-              {loading ? "Loading..." : "Retry"}
+              Retry
             </button>
           </div>
         ) : activeMainTab === "my-chats" ? (

@@ -69,6 +69,10 @@ export default function StandaloneShell() {
   const [showSettings, setShowSettings] = useState(false);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [hasMounted, setHasMounted] = useState(false);
+  const [showVadooBanner, setShowVadooBanner] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('vadoo_banner_dismissed') !== '1';
+    return true;
+  });
 
   // Drag and Drop State
   const [isDragging, setIsDragging] = useState(false);
@@ -225,8 +229,15 @@ export default function StandaloneShell() {
     setDroppedFiles(null);
   }, []);
 
-  // API key is optional - studio is accessible without it, but API features won't work
-  // The Settings button allows users to add/change their API key later if desired
+  if (!hasMounted) return (
+    <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+      <div className="animate-spin text-[#22d3ee] text-3xl">◌</div>
+    </div>
+  );
+
+  if (!apiKey) {
+    return <ApiKeyModal onSave={handleKeySave} />;
+  }
 
   return (
     <div 
@@ -250,6 +261,30 @@ export default function StandaloneShell() {
               <span className="text-sm text-white/40">Images, videos, or audio files</span>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Vadoo promo banner */}
+      {showVadooBanner && (
+        <div className="flex-shrink-0 w-full bg-indigo-600 flex items-center justify-center px-4 py-2 gap-3 relative z-50">
+          <a
+            href="https://vadoo.tv"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[13px] font-bold text-white hover:opacity-80 transition-opacity text-center"
+          >
+            Unrestricted AI Images &amp; Videos → Auto-Publish as YouTube Shorts &amp; TikToks, Earn ↗
+          </a>
+          <button
+            onClick={() => {
+              setShowVadooBanner(false);
+              localStorage.setItem('vadoo_banner_dismissed', '1');
+            }}
+            className="absolute right-3 text-white/60 hover:text-white transition-colors text-lg leading-none"
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
         </div>
       )}
 
@@ -305,17 +340,17 @@ export default function StandaloneShell() {
               </div>
             </div>
 
-<button
-               onClick={() => setShowSettings(true)}
-               title={apiKey ? "Settings — API key, local models, preferences" : "Settings — Set API key to enable cloud features"}
-               className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-white/10 bg-white/5 text-[13px] font-bold text-white/80 hover:text-white hover:bg-white/10 hover:border-white/20 transition-colors"
-             >
-               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                 <circle cx="12" cy="12" r="3" />
-                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-               </svg>
-               <span>{apiKey ? 'Settings' : 'Set API Key'}</span>
-             </button>
+            <button
+              onClick={() => setShowSettings(true)}
+              title="Settings — API key, local models, preferences"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-white/10 bg-white/5 text-[13px] font-bold text-white/80 hover:text-white hover:bg-white/10 hover:border-white/20 transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+              <span>Settings</span>
+            </button>
           </div>
         </header>
       )}
@@ -344,37 +379,25 @@ export default function StandaloneShell() {
             <p className="text-white/40 text-[13px] mb-8">
               Manage your AI studio preferences and authentication.
             </p>
-
+            
             <div className="space-y-4 mb-8">
               <div className="bg-white/5 border border-white/[0.03] rounded-md p-4">
                 <label className="block text-xs font-bold text-white/30 mb-2">
-                  {apiKey ? 'Active API Key' : 'API Key'}
+                   Active API Key
                 </label>
                 <div className="text-[13px] font-mono text-white/80">
-                  {apiKey ? `${apiKey.slice(0, 8)}••••••••••••••••` : 'Not set — some features may be limited'}
+                  {apiKey.slice(0, 8)}••••••••••••••••
                 </div>
               </div>
             </div>
 
             <div className="flex gap-3">
-              {apiKey ? (
-                <button
-                  onClick={handleKeyChange}
-                  className="flex-1 h-10 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-semibold transition-all"
-                >
-                  Remove Key
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    const newKey = prompt('Enter your Muapi.ai API key:');
-                    if (newKey) handleKeySave(newKey.trim());
-                  }}
-                  className="flex-1 h-10 rounded-md bg-[#22d3ee] text-black hover:bg-[#e5ff33] text-xs font-semibold transition-all"
-                >
-                  Set API Key
-                </button>
-              )}
+              <button
+                onClick={handleKeyChange}
+                className="flex-1 h-10 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-semibold transition-all"
+              >
+                Change Key
+              </button>
               <button
                 onClick={() => setShowSettings(false)}
                 className="flex-1 h-10 rounded-md bg-white/5 text-white/80 hover:bg-white/10 text-xs font-semibold transition-all border border-white/5"

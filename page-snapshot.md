@@ -1,0 +1,122 @@
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e5]:
+      - img [ref=e7]
+      - heading "OpenHiggsBolt" [level=1] [ref=e10]
+    - generic [ref=e11]:
+      - link "Video Studio" [ref=e12] [cursor=pointer]:
+        - /url: /video-studio
+        - img [ref=e13]
+        - generic [ref=e16]: Video Studio
+      - link "Storyboard" [ref=e17] [cursor=pointer]:
+        - /url: /storyboard
+        - img [ref=e18]
+        - generic [ref=e22]: Storyboard
+      - link "Scene Planner" [ref=e23] [cursor=pointer]:
+        - /url: /scene-planner
+        - img [ref=e24]
+        - generic [ref=e28]: Scene Planner
+      - link "Cinema" [ref=e29] [cursor=pointer]:
+        - /url: /cinema
+        - img [ref=e30]
+        - generic [ref=e32]: Cinema
+      - link "Music Studio" [ref=e33] [cursor=pointer]:
+        - /url: /music-studio
+        - img [ref=e34]
+        - generic [ref=e38]: Music Studio
+      - link "Thumbnail" [ref=e39] [cursor=pointer]:
+        - /url: /thumbnail-studio
+        - img [ref=e40]
+        - generic [ref=e44]: Thumbnail
+      - link "Script Writer" [ref=e45] [cursor=pointer]:
+        - /url: /script-writer
+        - img [ref=e46]
+        - generic [ref=e49]: Script Writer
+      - link "Presentation" [ref=e50] [cursor=pointer]:
+        - /url: /presentation
+        - img [ref=e51]
+        - generic [ref=e54]: Presentation
+      - link "Content Planner" [ref=e55] [cursor=pointer]:
+        - /url: /content-planner
+        - img [ref=e56]
+        - generic [ref=e58]: Content Planner
+  - generic [ref=e59]:
+    - banner [ref=e60]:
+      - generic [ref=e61]:
+        - heading "AI Generation Studios" [level=2] [ref=e62]
+        - navigation [ref=e63]:
+          - link "Video Studio" [ref=e64] [cursor=pointer]:
+            - /url: /video-studio
+            - img [ref=e65]
+            - generic [ref=e68]: Video Studio
+          - link "Storyboard" [ref=e69] [cursor=pointer]:
+            - /url: /storyboard
+            - img [ref=e70]
+            - generic [ref=e74]: Storyboard
+          - link "Scene Planner" [ref=e75] [cursor=pointer]:
+            - /url: /scene-planner
+            - img [ref=e76]
+            - generic [ref=e80]: Scene Planner
+          - link "Cinema" [ref=e81] [cursor=pointer]:
+            - /url: /cinema
+            - img [ref=e82]
+            - generic [ref=e84]: Cinema
+          - link "Music Studio" [ref=e85] [cursor=pointer]:
+            - /url: /music-studio
+            - img [ref=e86]
+            - generic [ref=e90]: Music Studio
+          - link "Thumbnail" [ref=e91] [cursor=pointer]:
+            - /url: /thumbnail-studio
+            - img [ref=e92]
+            - generic [ref=e96]: Thumbnail
+          - link "Script Writer" [ref=e97] [cursor=pointer]:
+            - /url: /script-writer
+            - img [ref=e98]
+            - generic [ref=e101]: Script Writer
+          - link "Presentation" [ref=e102] [cursor=pointer]:
+            - /url: /presentation
+            - img [ref=e103]
+            - generic [ref=e106]: Presentation
+          - link "Content Planner" [ref=e107] [cursor=pointer]:
+            - /url: /content-planner
+            - img [ref=e108]
+            - generic [ref=e110]: Content Planner
+      - generic [ref=e111]:
+        - button [ref=e112]:
+          - img [ref=e113]
+        - button [ref=e116]:
+          - img [ref=e117]
+    - main [ref=e120]:
+      - generic [ref=e122]:
+        - generic [ref=e123]:
+          - heading "Video Studio" [level=1] [ref=e124]
+          - button "Add Reference" [ref=e126]:
+            - img [ref=e127]
+            - text: Add Reference
+        - generic [ref=e132]:
+          - generic [ref=e133]:
+            - generic [ref=e134]: Prompt
+            - textbox "Describe your video..." [ref=e135]
+          - generic [ref=e136]:
+            - generic [ref=e137]:
+              - generic [ref=e138]: Model
+              - combobox [ref=e139]:
+                - option "Kling 3.0" [selected]
+                - option "Veo 3"
+                - option "Sora"
+                - option "LTX 2.3"
+            - generic [ref=e140]:
+              - generic [ref=e141]: Duration (seconds)
+              - combobox [ref=e142]:
+                - option "3 seconds"
+                - option "5 seconds" [selected]
+                - option "10 seconds"
+            - generic [ref=e143]:
+              - generic [ref=e144]: Aspect Ratio
+              - combobox [ref=e145]:
+                - option "16:9 (Landscape)" [selected]
+                - option "9:16 (Portrait)"
+                - option "1:1 (Square)"
+          - button "Generate Video" [disabled] [ref=e146]:
+            - img [ref=e147]
+            - text: Generate Video
