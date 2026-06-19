@@ -2,18 +2,57 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*", "./*"],
-      "@/api/*": ["./src/shared/api/*"],
-      "@/api": ["./src/shared/api"],
-      "@/types/*": ["./src/shared/types/*"],
-      "@/types": ["./src/shared/types"],
-      "@/stores/*": ["./src/stores/*"],
-      "@/stores": ["./src/stores"],
-      "@/components/*": ["./components/*", "./src/shared/components/*"],
-      "@/components": ["./components", "./src/shared/components"],
-      "ai-agent": ["./packages/Open-Poe-AI/packages/agents/src/index.js"],
-      "workflow-builder": ["./packages/Vibe-Workflow/packages/workflow-builder/src/index.js"],
-      "design-agent": ["./packages/Open-AI-Design-Agent/packages/design-agent/src/index.js"]
+      "@/*": [
+        "./src/*",
+        "./*"
+      ],
+      "@/shared/*": [
+        "./src/shared/*"
+      ],
+      "@/shared/api/*": [
+        "./src/shared/api/*"
+      ],
+      "@/shared/api": [
+        "./src/shared/api"
+      ],
+      "@/shared/components/*": [
+        "./src/shared/components/*"
+      ],
+      "@/shared/styles/*": [
+        "./src/shared/styles/*"
+      ],
+      "@/stores/*": [
+        "./src/stores/*"
+      ],
+      "@/stores": [
+        "./src/stores"
+      ],
+      "@/types/*": [
+        "./src/shared/types/*"
+      ],
+      "@/api/*": [
+        "./src/shared/api/*"
+      ],
+      "@/api": [
+        "./src/shared/api"
+      ],
+      "@/components/*": [
+        "./components/*",
+        "./src/shared/components/*"
+      ],
+      "@/components": [
+        "./components",
+        "./src/shared/components"
+      ],
+      "ai-agent": [
+        "./packages/Open-Poe-AI/packages/agents/src/index.js"
+      ],
+      "workflow-builder": [
+        "./packages/Vibe-Workflow/packages/workflow-builder/src/index.js"
+      ],
+      "design-agent": [
+        "./packages/Open-AI-Design-Agent/packages/design-agent/src/index.js"
+      ]
     }
   }
 }
