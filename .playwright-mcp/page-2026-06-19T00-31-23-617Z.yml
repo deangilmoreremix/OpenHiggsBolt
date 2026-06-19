@@ -1,0 +1,143 @@
+- main [ref=e2]:
+  - generic [ref=e5]:
+    - link "OG Open Generative AI" [ref=e6] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e7]: OG
+      - generic [ref=e8]: Open Generative AI
+    - navigation "Primary navigation" [ref=e9]:
+      - link "Demos" [ref=e10] [cursor=pointer]:
+        - /url: "#demos"
+      - link "Workflow" [ref=e11] [cursor=pointer]:
+        - /url: "#workflow"
+      - link "Pricing" [ref=e12] [cursor=pointer]:
+        - /url: "#pricing"
+      - link "FAQ" [ref=e13] [cursor=pointer]:
+        - /url: "#faq"
+    - link "Open studio" [ref=e14] [cursor=pointer]:
+      - /url: /studio/image
+  - generic [ref=e16]:
+    - paragraph [ref=e17]: Every studio feature is demoable before signup
+    - heading "Build AI video campaigns at the speed of imagination." [level=1] [ref=e18]
+    - paragraph [ref=e19]: Generate images, cinematic video, UGC ads, VFX, agents, workflows, music, thumbnails, scripts, and marketing assets from one polished creative operating system.
+    - generic [ref=e20]:
+      - link "Try the demos" [ref=e21] [cursor=pointer]:
+        - /url: "#demos"
+      - link "Launch full studio" [ref=e22] [cursor=pointer]:
+        - /url: /studio/image
+    - generic [ref=e23]:
+      - generic [ref=e24]:
+        - generic [ref=e25]: 20+
+        - generic [ref=e26]: studio apps
+      - generic [ref=e27]:
+        - generic [ref=e28]: 200+
+        - generic [ref=e29]: models
+      - generic [ref=e30]:
+        - generic [ref=e31]: "0"
+        - generic [ref=e32]: demo API key required
+  - generic [ref=e34]:
+    - paragraph [ref=e35]: Built for teams creating
+    - generic [ref=e36]:
+      - generic [ref=e37]: Creators
+      - generic [ref=e38]: Agencies
+      - generic [ref=e39]: Video Teams
+      - generic [ref=e40]: UGC Brands
+      - generic [ref=e41]: AI Studios
+      - generic [ref=e42]: Enterprise
+  - generic [ref=e44]: Loading interactive demos...
+  - generic [ref=e46]:
+    - generic [ref=e47]:
+      - paragraph [ref=e48]: Workflow
+      - heading "From idea to shipped campaign in one loop." [level=2] [ref=e49]
+      - paragraph [ref=e50]: Plan the concept, generate the assets, refine the edit, publish the campaign, and learn from analytics without switching tools.
+    - generic [ref=e51]:
+      - generic [ref=e52]:
+        - generic [ref=e53]: "1"
+        - generic [ref=e54]:
+          - heading "Brief" [level=3] [ref=e55]
+          - paragraph [ref=e56]: Enter a product, script, or campaign goal.
+      - generic [ref=e57]:
+        - generic [ref=e58]: "2"
+        - generic [ref=e59]:
+          - heading "Generate" [level=3] [ref=e60]
+          - paragraph [ref=e61]: Use image, video, UGC, VFX, audio, or agent tools.
+      - generic [ref=e62]:
+        - generic [ref=e63]: "3"
+        - generic [ref=e64]:
+          - heading "Refine" [level=3] [ref=e65]
+          - paragraph [ref=e66]: Review outputs, adjust prompts, and rerun in seconds.
+      - generic [ref=e67]:
+        - generic [ref=e68]: "4"
+        - generic [ref=e69]:
+          - heading "Launch" [level=3] [ref=e70]
+          - paragraph [ref=e71]: Export assets, embed videos, and track campaign performance.
+  - generic [ref=e72]:
+    - generic [ref=e73]:
+      - paragraph [ref=e74]: Pricing
+      - heading "Start free. Scale when your team ships more." [level=2] [ref=e75]
+    - generic [ref=e76]:
+      - generic [ref=e77]:
+        - heading "Starter" [level=3] [ref=e78]
+        - generic [ref=e79]: Free
+        - paragraph [ref=e80]: Try the studio and export lightweight previews.
+        - list [ref=e81]:
+          - listitem [ref=e82]: Interactive landing demos
+          - listitem [ref=e84]: Studio preview access
+          - listitem [ref=e86]: Community generation limits
+      - generic [ref=e88]:
+        - heading "Pro" [level=3] [ref=e89]
+        - generic [ref=e90]: $29
+        - paragraph [ref=e91]: For creators and teams shipping weekly AI video campaigns.
+        - list [ref=e92]:
+          - listitem [ref=e93]: Full studio access
+          - listitem [ref=e95]: Priority generation queue
+          - listitem [ref=e97]: Campaign and workflow tools
+      - generic [ref=e99]:
+        - heading "Studio" [level=3] [ref=e100]
+        - generic [ref=e101]: Custom
+        - paragraph [ref=e102]: For agencies and enterprise teams with volume and workflow needs.
+        - list [ref=e103]:
+          - listitem [ref=e104]: Team seats
+          - listitem [ref=e106]: Custom workflows
+          - listitem [ref=e108]: Priority support
+  - generic [ref=e111]:
+    - figure "Creative operations lead Agency producer" [ref=e112]:
+      - blockquote [ref=e113]: "\"The landing page needs to feel like the product itself: fast, visual, and impossible to ignore.\""
+      - generic [ref=e114]:
+        - generic [ref=e115]: Creative operations lead
+        - generic [ref=e116]: Agency producer
+    - figure "Growth marketer SaaS launch team" [ref=e117]:
+      - blockquote [ref=e118]: "\"Every feature should be demoable without a login, but every demo should point toward the full studio.\""
+      - generic [ref=e119]:
+        - generic [ref=e120]: Growth marketer
+        - generic [ref=e121]: SaaS launch team
+    - figure "Founder AI video platform" [ref=e122]:
+      - blockquote [ref=e123]: "\"The best AI tools sell through interaction, not static screenshots.\""
+      - generic [ref=e124]:
+        - generic [ref=e125]: Founder
+        - generic [ref=e126]: AI video platform
+  - generic [ref=e127]:
+    - heading "Questions before you launch?" [level=2] [ref=e128]
+    - generic [ref=e129]:
+      - group [ref=e130]:
+        - generic "Do the landing page demos require an API key?" [ref=e131] [cursor=pointer]
+      - group [ref=e132]:
+        - generic "Will the full studio still work?" [ref=e133] [cursor=pointer]
+      - group [ref=e134]:
+        - generic "Are the demos connected to generation APIs?" [ref=e135] [cursor=pointer]
+  - generic [ref=e137]:
+    - heading "Make the first demo feel like the full product." [level=2] [ref=e138]
+    - paragraph [ref=e139]: Visitors should understand the platform, try a feature, and know exactly where to go next.
+    - generic [ref=e140]:
+      - link "Try a demo" [ref=e141] [cursor=pointer]:
+        - /url: "#demos"
+      - link "Open full studio" [ref=e142] [cursor=pointer]:
+        - /url: /studio/image
+  - generic [ref=e143]:
+    - generic [ref=e144]: Open Generative AI — premium AI image, video, and campaign studio.
+    - generic [ref=e145]:
+      - link "Studio" [ref=e146] [cursor=pointer]:
+        - /url: /studio/image
+      - link "Demos" [ref=e147] [cursor=pointer]:
+        - /url: "#demos"
+      - link "FAQ" [ref=e148] [cursor=pointer]:
+        - /url: "#faq"

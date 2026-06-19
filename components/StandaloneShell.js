@@ -14,9 +14,7 @@ const DesignAgentStudio = dynamic(() => import('studio').then(mod => mod.DesignA
 const Videco = dynamic(() => import('../src/apps/videco/Videco'), { ssr: false });
 const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ssr: false });
 const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
-const ScenePlanner = dynamic(() => import('../src/apps/scene-planner/ScenePlanner'), { ssr: false });
-const MusicStudio = dynamic(() => import('../src/apps/music-studio/MusicStudio'), { ssr: false });
-const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
+const ScenePlanner = dynamic(() => import('../src/apps/scene-planner/ScenePlanner'), { ssr: false });const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
 const ScriptWriter = dynamic(() => import('../src/apps/script-writer/ScriptWriter'), { ssr: false });
 const Presentation = dynamic(() => import('../src/apps/presentation/Presentation'), { ssr: false });
 const ContentPlanner = dynamic(() => import('../src/apps/content-planner/ContentPlanner'), { ssr: false });
@@ -36,9 +34,7 @@ const TABS = [
   { id: 'videco', label: 'Videco' },
   { id: 'vfx-studio', label: 'VFX Studio' },
   { id: 'storyboard', label: 'Storyboard' },
-  { id: 'scene-planner', label: 'Scene Planner' },
-  { id: 'music-studio', label: 'Music Studio' },
-  { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
+  { id: 'scene-planner', label: 'Scene Planner' },  { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
   { id: 'script-writer', label: 'Script Writer' },
   { id: 'presentation', label: 'Presentation' },
   { id: 'content-planner', label: 'Content Planner' },
@@ -85,6 +81,8 @@ export default function StandaloneShell() {
 
   const [balance, setBalance] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsKeyInput, setSettingsKeyInput] = useState('');
+  const [authError, setAuthError] = useState(null);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [hasMounted, setHasMounted] = useState(false);
   const [showVadooBanner, setShowVadooBanner] = useState(() => {
@@ -149,7 +147,10 @@ export default function StandaloneShell() {
       const data = await getUserBalance(key);
       setBalance(data.balance);
     } catch (err) {
-      console.error('Balance fetch failed:', err);
+      const isAuthError = err?.message?.includes('401') || err?.message?.includes('403') || err?.message?.includes('Not authorized');
+      if (!isAuthError) {
+        console.error('Balance fetch failed:', err);
+      }
     }
   }, []);
 
@@ -165,16 +166,23 @@ export default function StandaloneShell() {
   }, [fetchBalance]);
 
   const handleKeySave = useCallback((key) => {
-    localStorage.setItem(STORAGE_KEY, key);
-    setApiKey(key);
-    fetchBalance(key);
-    document.cookie = `muapi_key=${key}; path=/; max-age=31536000; SameSite=Lax`;
+    const trimmed = key.trim();
+    if (!trimmed) return;
+    localStorage.setItem(STORAGE_KEY, trimmed);
+    setApiKey(trimmed);
+    setSettingsKeyInput('');
+    setAuthError(null);
+    setShowSettings(false);
+    fetchBalance(trimmed);
+    document.cookie = `muapi_key=${trimmed}; path=/; max-age=31536000; SameSite=Lax`;
   }, [fetchBalance]);
 
   const handleKeyChange = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
     setApiKey(null);
     setBalance(null);
+    setSettingsKeyInput('');
+    setAuthError(null);
     document.cookie = "muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
   }, []);
 
@@ -209,6 +217,28 @@ export default function StandaloneShell() {
     const interval = setInterval(() => fetchBalance(apiKey), 30000);
     return () => clearInterval(interval);
   }, [apiKey, fetchBalance]);
+
+  // When MuAPI reports the key is invalid/missing, clear it and prompt for re-auth
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onAuthRequired = (e) => {
+      handleKeyChange();
+      let message = 'Your API key is missing or invalid. Please enter a valid key.';
+      const raw = e?.detail?.message;
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed.detail) message = parsed.detail;
+        } catch {
+          message = raw;
+        }
+      }
+      setAuthError(message);
+      setShowSettings(true);
+    };
+    window.addEventListener('muapi:auth-required', onAuthRequired);
+    return () => window.removeEventListener('muapi:auth-required', onAuthRequired);
+  }, [handleKeyChange]);
 
   // Drag and Drop Handlers
   const handleDragOver = useCallback((e) => {
@@ -356,7 +386,7 @@ export default function StandaloneShell() {
             </div>
 
             <button
-              onClick={() => setShowSettings(true)}
+              onClick={() => { setAuthError(null); setShowSettings(true); }}
               title="Settings — API key, local models, preferences"
               className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-white/10 bg-white/5 text-[13px] font-bold text-white/80 hover:text-white hover:bg-white/10 hover:border-white/20 transition-colors"
             >
@@ -387,7 +417,6 @@ export default function StandaloneShell() {
         {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} /></MemoryRouter>}
         {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} /></MemoryRouter>}
         {activeTab === 'scene-planner' && <MemoryRouter initialEntries={['/']}><ScenePlanner apiKey={apiKey} /></MemoryRouter>}
-        {activeTab === 'music-studio' && <MusicStudio apiKey={apiKey} />}
         {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} />}
         {activeTab === 'script-writer' && <ScriptWriter apiKey={apiKey} />}
         {activeTab === 'presentation' && <Presentation apiKey={apiKey} />}
@@ -400,30 +429,59 @@ export default function StandaloneShell() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in-up">
           <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-8 w-full max-w-sm shadow-2xl">
             <h2 className="text-white font-bold text-lg mb-2">Settings</h2>
-            <p className="text-white/40 text-[13px] mb-8">
+            <p className="text-white/40 text-[13px] mb-4">
               Manage your AI studio preferences and authentication.
             </p>
             
+            {authError && (
+              <div className="mb-4 p-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 text-[12px]">
+                {authError}
+              </div>
+            )}
+            
             <div className="space-y-4 mb-8">
-              <div className="bg-white/5 border border-white/[0.03] rounded-md p-4">
-                <label className="block text-xs font-bold text-white/30 mb-2">
-                   Active API Key
-                </label>
-                <div className="text-[13px] font-mono text-white/80">
-                  {apiKey.slice(0, 8)}••••••••••••••••
+              {apiKey && (
+                <div className="bg-white/5 border border-white/[0.03] rounded-md p-4">
+                  <label className="block text-xs font-bold text-white/30 mb-2">
+                    Active API Key
+                  </label>
+                  <div className="text-[13px] font-mono text-white/80">
+                    {apiKey.slice(0, 8)}••••••••••••••••
+                  </div>
                 </div>
+              )}
+              <div>
+                <label className="block text-xs font-bold text-white/30 mb-2">
+                  {apiKey ? 'New API Key' : 'API Key'}
+                </label>
+                <input
+                  type="password"
+                  value={settingsKeyInput}
+                  onChange={(e) => setSettingsKeyInput(e.target.value)}
+                  placeholder="Enter your MuAPI key..."
+                  className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[13px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
+                />
               </div>
             </div>
 
             <div className="flex gap-3">
               <button
-                onClick={handleKeyChange}
-                className="flex-1 h-10 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-semibold transition-all"
+                onClick={() => handleKeySave(settingsKeyInput)}
+                disabled={!settingsKeyInput.trim()}
+                className="flex-1 h-10 rounded-md bg-[#22d3ee]/10 text-[#22d3ee] hover:bg-[#22d3ee]/20 text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Change Key
+                Save Key
               </button>
+              {apiKey && (
+                <button
+                  onClick={handleKeyChange}
+                  className="flex-1 h-10 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-semibold transition-all"
+                >
+                  Change Key
+                </button>
+              )}
               <button
-                onClick={() => setShowSettings(false)}
+                onClick={() => { setAuthError(null); setShowSettings(false); }}
                 className="flex-1 h-10 rounded-md bg-white/5 text-white/80 hover:bg-white/10 text-xs font-semibold transition-all border border-white/5"
               >
                 Close
