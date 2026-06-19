@@ -15,9 +15,7 @@ const Videco = dynamic(() => import('../src/apps/videco/Videco'), { ssr: false }
 const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ssr: false });
 const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
 const ScenePlanner = dynamic(() => import('../src/apps/scene-planner/ScenePlanner'), { ssr: false });const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
-const ScriptWriter = dynamic(() => import('../src/apps/script-writer/ScriptWriter'), { ssr: false });
-const Presentation = dynamic(() => import('../src/apps/presentation/Presentation'), { ssr: false });
-const ContentPlanner = dynamic(() => import('../src/apps/content-planner/ContentPlanner'), { ssr: false });
+const ScriptWriter = dynamic(() => import('../src/apps/script-writer/ScriptWriter'), { ssr: false });const ContentPlanner = dynamic(() => import('../src/apps/content-planner/ContentPlanner'), { ssr: false });
 
 const TABS = [
   { id: 'image',   label: 'Image Studio' },
@@ -35,9 +33,7 @@ const TABS = [
   { id: 'vfx-studio', label: 'VFX Studio' },
   { id: 'storyboard', label: 'Storyboard' },
   { id: 'scene-planner', label: 'Scene Planner' },  { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
-  { id: 'script-writer', label: 'Script Writer' },
-  { id: 'presentation', label: 'Presentation' },
-  { id: 'content-planner', label: 'Content Planner' },
+  { id: 'script-writer', label: 'Script Writer' },  { id: 'content-planner', label: 'Content Planner' },
   { id: 'apps', label: 'Explore Apps' },
 ];
 
