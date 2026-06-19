@@ -415,7 +415,6 @@ export default function StandaloneShell() {
         {activeTab === 'scene-planner' && <MemoryRouter initialEntries={['/']}><ScenePlanner apiKey={apiKey} /></MemoryRouter>}
         {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} />}
         {activeTab === 'script-writer' && <ScriptWriter apiKey={apiKey} />}
-        {activeTab === 'presentation' && <Presentation apiKey={apiKey} />}
         {activeTab === 'content-planner' && <ContentPlanner apiKey={apiKey} />}
         {activeTab === 'apps' && <AppsStudio apiKey={apiKey} />}
       </div>
