@@ -22,7 +22,7 @@ export default function Feedback() {
   const fetchFeedback = useCallback(async () => {
     setLoading(true)
     try {
-      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-feedback?tenant_id=default&page=${page}&limit=${limit}`
+      const fnUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-feedback?tenant_id=default&page=${page}&limit=${limit}`
       const response = await fetch(fnUrl)
       if (response.ok) {
         const result = await response.json()

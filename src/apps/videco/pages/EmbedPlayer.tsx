@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { supabase } from '@/api/supabase'
+import { supabase } from '@/shared/api/supabase'
 import { Loader, Lock, ExternalLink } from 'lucide-react'
 
 interface EmbedPage {
@@ -104,7 +104,7 @@ export default function EmbedPlayer() {
 
   const trackView = async (embedId: string) => {
     try {
-      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/track-event`
+      const fnUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/track-event`
       await fetch(fnUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

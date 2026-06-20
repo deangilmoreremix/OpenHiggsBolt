@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { Upload, FileSpreadsheet, Play, Loader, Send, CheckCircle, X, AlertCircle } from 'lucide-react'
-import { useVidecoStore } from '@/stores/videcoStore'
+import { useVidecoStore } from '@/shared/api/videcoStore'
 
 interface CampaignRow {
   name: string
@@ -95,7 +95,7 @@ export default function CampaignBuilder() {
 
     try {
       // Call edge function
-      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-csv`
+      const fnUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/process-csv`
       const response = await fetch(fnUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

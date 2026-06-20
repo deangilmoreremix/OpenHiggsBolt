@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { supabase } from '@/api/supabase'
+import { supabase } from '@/shared/api/supabase'
 import { Save, ArrowLeft, Play, Loader, Copy, ExternalLink, Globe, Lock } from 'lucide-react'
-import { useVidecoStore } from '@/stores/videcoStore'
-import type { Video } from '@/stores/videcoStore'
+import { useVidecoStore } from '@/shared/api/videcoStore'
+import type { Video } from '@/shared/api/videcoStore'
 
 export default function VideoEditor() {
   const { id } = useParams<{ id: string }>()
@@ -26,7 +26,7 @@ export default function VideoEditor() {
       if (!id) return
       try {
         const { data, error } = await supabase
-          .from('videos')
+          .from('videco_videos')
           .select('*')
           .eq('id', id)
           .single()
@@ -51,7 +51,7 @@ export default function VideoEditor() {
     setSaving(true)
     try {
       const { error } = await supabase
-        .from('videos')
+        .from('videco_videos')
         .update({
           name,
           description,
@@ -91,7 +91,7 @@ export default function VideoEditor() {
     if (!id) return
     setCreatingEmbed(true)
     try {
-      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-embed`
+      const fnUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/create-embed`
       const response = await fetch(fnUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

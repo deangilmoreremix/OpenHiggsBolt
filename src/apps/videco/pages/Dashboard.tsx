@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '@/api/supabase'
+import { supabase } from '@/shared/api/supabase'
 import { Video as VideoIcon, Upload, Sparkles, Film, TrendingUp, Clock, CheckCircle, Loader, BarChart3, Users, MessageSquare, Settings, Plug, Sparkles as SparklesIcon } from 'lucide-react'
-import { useVidecoStore } from '@/stores/videcoStore'
-import type { Video } from '@/stores/videcoStore'
+import { useVidecoStore } from '@/shared/api/videcoStore'
+import type { Video } from '@/shared/api/videcoStore'
 
 const typeIcons: Record<string, React.ReactNode> = {
   generation: <Sparkles size={16} />,
@@ -34,7 +34,7 @@ export default function Dashboard() {
     async function loadStats() {
       try {
         const { data: videos } = await supabase
-          .from('videos')
+          .from('videco_videos')
           .select('id, type, status, name, generated_url, thumbnail_url, created_at')
           .order('created_at', { ascending: false })
           .limit(50)

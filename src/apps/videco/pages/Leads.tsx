@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { supabase } from '@/api/supabase'
+import { supabase } from '@/shared/api/supabase'
 import { Users, Search, Loader, ChevronLeft, ChevronRight, Download, Trash2 } from 'lucide-react'
 
 interface Lead {
@@ -25,7 +25,7 @@ export default function Leads() {
   const fetchLeads = useCallback(async () => {
     setLoading(true)
     try {
-      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-leads?tenant_id=default&page=${page}&limit=${limit}`
+      const fnUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-leads?tenant_id=default&page=${page}&limit=${limit}`
       const response = await fetch(fnUrl)
       if (response.ok) {
         const result = await response.json()

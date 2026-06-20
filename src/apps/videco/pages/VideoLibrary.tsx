@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '@/api/supabase'
+import { supabase } from '@/shared/api/supabase'
 import { Video as VideoIcon, Trash2, Play, Filter, Loader, ChevronLeft, ChevronRight, Search, Grid, List } from 'lucide-react'
-import { useVidecoStore } from '@/stores/videcoStore'
-import type { Video } from '@/stores/videcoStore'
+import { useVidecoStore } from '@/shared/api/videcoStore'
+import type { Video } from '@/shared/api/videcoStore'
 
 const typeFilters = [
   { value: null, label: 'All' },
@@ -36,7 +36,7 @@ export default function VideoLibrary() {
     setLoading(true)
     try {
       let query = supabase
-        .from('videos')
+        .from('videco_videos')
         .select('*')
         .order('created_at', { ascending: false })
         .range((page - 1) * 20, page * 20 - 1)
@@ -69,7 +69,7 @@ export default function VideoLibrary() {
   const handleDelete = async (id: string) => {
     try {
       // Call edge function to delete
-      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-video?id=${id}`
+      const fnUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/delete-video?id=${id}`
       await fetch(fnUrl, { method: 'DELETE' })
       removeVideo(id)
       setDeleteConfirm(null)

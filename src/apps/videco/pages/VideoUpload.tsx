@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
-import { supabase } from '@/api/supabase'
+import { supabase } from '@/shared/api/supabase'
 import { Upload, Loader, CheckCircle, FileVideo, X } from 'lucide-react'
-import { useVidecoStore } from '@/stores/videcoStore'
+import { useVidecoStore } from '@/shared/api/videcoStore'
 
 export default function VideoUpload() {
   const [files, setFiles] = useState<File[]>([])
@@ -41,7 +41,7 @@ export default function VideoUpload() {
         // Upload to Supabase Storage
         const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('sources')
+          .from('videco-videos')
           .upload(fileName, file, { upsert: false })
 
         if (uploadError) throw uploadError
@@ -49,7 +49,7 @@ export default function VideoUpload() {
         setProgress((prev) => ({ ...prev, [file.name]: 60 }))
 
         const { data: urlData } = supabase.storage
-          .from('sources')
+          .from('videco-videos')
           .getPublicUrl(fileName)
 
         const publicUrl = urlData.publicUrl
@@ -58,7 +58,7 @@ export default function VideoUpload() {
 
         // Create video record
         const { data: video, error: dbError } = await supabase
-          .from('videos')
+          .from('videco_videos')
           .insert({
             name: file.name,
             type: 'upload',

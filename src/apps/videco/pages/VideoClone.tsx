@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
-import { supabase } from '@/api/supabase'
+import { supabase } from '@/shared/api/supabase'
 import { Upload, Loader, Film, Send, FileVideo, X } from 'lucide-react'
-import { useVidecoStore } from '@/stores/videcoStore'
+import { useVidecoStore } from '@/shared/api/videcoStore'
 
 const CLONE_MODELS = [
   { id: 'heygen', name: 'HeyGen Clone' },
@@ -41,10 +41,10 @@ export default function VideoClone() {
     setUploading(true)
     try {
       const fileName = `clone-source-${Date.now()}-${sourceFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`
-      const { error } = await supabase.storage.from('sources').upload(fileName, sourceFile, { upsert: false })
+      const { error } = await supabase.storage.from('videco-videos').upload(fileName, sourceFile, { upsert: false })
       if (error) throw error
 
-      const { data } = supabase.storage.from('sources').getPublicUrl(fileName)
+      const { data } = supabase.storage.from('videco-videos').getPublicUrl(fileName)
       setSourceUrl(data.publicUrl)
       return data.publicUrl
     } finally {
@@ -63,7 +63,7 @@ export default function VideoClone() {
 
       // Create video record
       const { data: video, error } = await supabase
-        .from('videos')
+        .from('videco_videos')
         .insert({
           name: `AI Clone - ${script.slice(0, 40)}...`,
           prompt: script,
@@ -84,7 +84,7 @@ export default function VideoClone() {
       await new Promise((r) => setTimeout(r, 3000))
 
       // For demo, mark as completed
-      await supabase.from('videos').update({ status: 'completed' }).eq('id', video.id)
+      await supabase.from('videco_videos').update({ status: 'completed' }).eq('id', video.id)
 
       setResult({ status: 'completed' })
       setProgress('')

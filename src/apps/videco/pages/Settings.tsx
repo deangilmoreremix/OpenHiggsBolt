@@ -31,7 +31,7 @@ export default function SettingsPage() {
   useEffect(() => {
     async function loadBrandKit() {
       try {
-        const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-brand-kit?tenant_id=default`
+        const fnUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/save-brand-kit?tenant_id=default`
         const response = await fetch(fnUrl)
         if (response.ok) {
           const result = await response.json()
@@ -58,7 +58,7 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setSaving(true)
     try {
-      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-brand-kit`
+      const fnUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/save-brand-kit`
       await fetch(fnUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

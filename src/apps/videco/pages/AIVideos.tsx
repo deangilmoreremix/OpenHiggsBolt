@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '@/api/supabase'
+import { supabase } from '@/shared/api/supabase'
 import { Sparkles, Play, Share, Loader, Video } from 'lucide-react'
 
 interface AIVideo {
@@ -21,7 +21,7 @@ export default function AIVideos() {
     async function loadAIVideos() {
       try {
         const { data } = await supabase
-          .from('ai_videos')
+          .from('videco_ai_videos')
           .select('*')
           .order('created_at', { ascending: false })
           .limit(50)

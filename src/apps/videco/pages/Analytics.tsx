@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '@/api/supabase'
+import { supabase } from '@/shared/api/supabase'
 import { BarChart3, Play, Eye, FileText, MessageSquare, Calendar, TrendingUp, Loader } from 'lucide-react'
 
 const DATE_RANGES = [
@@ -27,7 +27,7 @@ export default function Analytics() {
     async function loadAnalytics() {
       setLoading(true)
       try {
-        const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-analytics?tenant_id=default&days=${days}${selectedVideo ? `&video_id=${selectedVideo}` : ''}`
+        const fnUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-analytics?tenant_id=default&days=${days}${selectedVideo ? `&video_id=${selectedVideo}` : ''}`
         const response = await fetch(fnUrl)
         if (response.ok) {
           const result = await response.json()

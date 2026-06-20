@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { supabase } from '@/api/supabase'
-import { enhancePrompt } from '@/api/openai'
+import { supabase } from '@/shared/api/supabase'
+import { enhancePrompt } from '@/shared/api/openai'
 import { Sparkles, Send, Wand2, Loader, Settings2, Video } from 'lucide-react'
-import { useVidecoStore } from '@/stores/videcoStore'
+import { useVidecoStore } from '@/shared/api/videcoStore'
 
 const MODELS = [
   { id: 'kling-v2', name: 'Kling v2' },
@@ -52,7 +52,7 @@ export default function VideoGenerate() {
     try {
       // Create video record first
       const { data: video, error } = await supabase
-        .from('videos')
+        .from('videco_videos')
         .insert({
           name: prompt.slice(0, 60) + (prompt.length > 60 ? '...' : ''),
           prompt,
@@ -67,7 +67,7 @@ export default function VideoGenerate() {
       addVideo(video)
 
       // Call edge function for generation
-      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-video`
+      const fnUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/generate-video`
       setProgress('Generating video...')
 
       const response = await fetch(fnUrl, {
@@ -91,7 +91,7 @@ export default function VideoGenerate() {
       // Update video status
       if (updatedVideo) {
         await supabase
-          .from('videos')
+          .from('videco_videos')
           .update({
             status: updatedVideo.status ?? 'completed',
             generated_url: updatedVideo.generated_url,
@@ -113,7 +113,7 @@ export default function VideoGenerate() {
 
       // Update video to failed
       await supabase
-        .from('videos')
+        .from('videco_videos')
         .update({ status: 'failed' })
         .eq('name', prompt.slice(0, 60))
     } finally {
