@@ -1,11 +1,12 @@
 'use client'
 /**
- * ImageStream — shows progressive image generation via OpenAI streaming
+ * ImageStream — shows progressive image generation / editing via OpenAI streaming
  * Displays partial images as they come in, with a progress overlay
  */
 import { useState, useEffect, useCallback } from 'react'
 import { Loader2, Zap } from 'lucide-react'
 import { panels, semantic } from '@/shared/styles/designTokens'
+import { editImageStream } from '@/shared/api/openaiImage'
 import type { GenerationRequest, GeneratedImage } from './types'
 import { QUALITY_PRESETS } from './types'
 
@@ -49,93 +50,130 @@ export default function ImageStream({ request, onComplete, onError }: Props) {
       setProgress(p => Math.min(p + 20, 85))
     }, 3000)
 
+    const b64ToObjectUrl = async (b64: string) => {
+      const blob = await fetch(`data:image/${request.format};base64,${b64}`).then(r => r.blob())
+      return URL.createObjectURL(blob)
+    }
+
+    const makeGeneratedImage = async (b64: string, index: number): Promise<GeneratedImage> => ({
+      id: `${Date.now()}-${index}`,
+      url: await b64ToObjectUrl(b64),
+      b64,
+      prompt: request.prompt,
+      model: request.model,
+      quality: request.quality,
+      format: request.format,
+      style: request.style,
+      aspectRatio: request.size.ratio,
+      width: request.size.width,
+      height: request.size.height,
+      isPublic: request.isPublic ?? true,
+      sessionId: request.sessionId,
+      createdAt: new Date().toISOString(),
+    })
+
     try {
-      const OPENAI_KEY = process.env.NEXT_PUBLIC_OPENAI_API_KEY || ''
-      const body: Record<string, any> = {
-        model: request.model,
-        prompt: request.prompt,
-        n: request.n,
-        quality: request.quality,
-        size: request.size.openaiSize,
-        stream: true,
-        partial_images: 2,
-        output_format: request.format,
-      }
-      if (request.compression !== undefined && request.format !== 'png') {
-        body.output_compression = request.compression
-      }
-
-      const res = await fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${OPENAI_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      })
-
-      if (!res.ok || !res.body) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err?.error?.message || 'Generation failed')
-      }
-
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
       const finalImages: GeneratedImage[] = []
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
+      if (request.mode === 'edit') {
+        if (!request.referenceImage) {
+          throw new Error('Edit mode requires a reference image')
+        }
 
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          const raw = line.slice(6).trim()
-          if (raw === '[DONE]') continue
-          try {
-            const event = JSON.parse(raw)
+        for await (const event of editImageStream({
+          image: request.referenceImage,
+          mask: request.mask,
+          prompt: request.prompt,
+          model: request.model as 'gpt-image-2',
+          n: request.n,
+          quality: request.quality,
+          size: request.size.openaiSize as any,
+          output_format: request.format,
+          output_compression: request.compression,
+          partial_images: 2,
+        })) {
+          if (event.partial && event.b64) {
+            const url = await b64ToObjectUrl(event.b64)
+            setPartials(prev => {
+              const next = [...prev]
+              next[event.index] = { index: event.index, url }
+              return next
+            })
+            setProgress(p => Math.min(p + 10, 90))
+          } else if (event.b64) {
+            finalImages.push(await makeGeneratedImage(event.b64, finalImages.length))
+          }
+        }
+      } else {
+        // Generate / refine flow
+        const OPENAI_KEY = process.env.NEXT_PUBLIC_OPENAI_API_KEY || ''
+        const body: Record<string, any> = {
+          model: request.model,
+          prompt: request.prompt,
+          n: request.n,
+          quality: request.quality,
+          size: request.size.openaiSize,
+          stream: true,
+          partial_images: 2,
+          output_format: request.format,
+        }
+        if (request.compression !== undefined && request.format !== 'png') {
+          body.output_compression = request.compression
+        }
 
-            // Partial image preview
-            if (event.type === 'image_generation.partial_image' && event.b64_json) {
-              const blob = await fetch(`data:image/${request.format};base64,${event.b64_json}`).then(r => r.blob())
-              const url = URL.createObjectURL(blob)
-              setPartials(prev => {
-                const next = [...prev]
-                next[event.partial_image_index] = { index: event.partial_image_index, url }
-                return next
-              })
-              setProgress(p => Math.min(p + 10, 90))
-            }
+        const res = await fetch('https://api.openai.com/v1/images/generations', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${OPENAI_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+        })
 
-            // Final image
-            if (event.data) {
-              for (const img of event.data) {
-                if (img.b64_json) {
-                  const blob = await fetch(`data:image/${request.format};base64,${img.b64_json}`).then(r => r.blob())
-                  const url = URL.createObjectURL(blob)
-                  finalImages.push({
-                    id: `${Date.now()}-${finalImages.length}`,
-                    url,
-                    b64: img.b64_json,
-                    prompt: request.prompt,
-                    model: request.model,
-                    quality: request.quality,
-                    format: request.format,
-                    style: request.style,
-                    aspectRatio: request.size.ratio,
-                    width: request.size.width,
-                    height: request.size.height,
-                    isPublic: request.isPublic ?? true,
-                    sessionId: request.sessionId,
-                    createdAt: new Date().toISOString(),
-                  })
+        if (!res.ok || !res.body) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(err?.error?.message || 'Generation failed')
+        }
+
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            const raw = line.slice(6).trim()
+            if (raw === '[DONE]') continue
+            try {
+              const event = JSON.parse(raw)
+
+              // Partial image preview
+              if (event.type === 'image_generation.partial_image' && event.b64_json) {
+                const url = await b64ToObjectUrl(event.b64_json)
+                setPartials(prev => {
+                  const next = [...prev]
+                  next[event.partial_image_index] = { index: event.partial_image_index, url }
+                  return next
+                })
+                setProgress(p => Math.min(p + 10, 90))
+              }
+
+              // Final images
+              if (event.data) {
+                for (const img of event.data) {
+                  if (img.b64_json) {
+                    finalImages.push(await makeGeneratedImage(img.b64_json, finalImages.length))
+                  }
                 }
               }
-            }
-          } catch {}
+            } catch {}
+          }
         }
       }
 
@@ -147,7 +185,7 @@ export default function ImageStream({ request, onComplete, onError }: Props) {
         onError('No images returned. Please try again.')
       }
     } catch (err: any) {
-      onError(err.message || 'Generation failed')
+      onError(err.message || 'Request failed')
     } finally {
       clearInterval(stepTimer)
       setTimeout(() => {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/api/supabase'
-import { Video, Upload, Sparkles, Film, TrendingUp, Clock, CheckCircle, Loader, BarChart3, Users, MessageSquare, Settings, Plug, Sparkles as SparklesIcon } from 'lucide-react'
+import { Video as VideoIcon, Upload, Sparkles, Film, TrendingUp, Clock, CheckCircle, Loader, BarChart3, Users, MessageSquare, Settings, Plug, Sparkles as SparklesIcon } from 'lucide-react'
 import { useVidecoStore } from '@/stores/videcoStore'
 import type { Video } from '@/stores/videcoStore'
 
@@ -40,10 +40,11 @@ export default function Dashboard() {
           .limit(50)
 
         if (videos) {
+          const typedVideos = videos as Video[]
           const byType: Record<string, number> = {}
           let completed = 0, processing = 0, failed = 0
 
-          videos.forEach((v: Video) => {
+          typedVideos.forEach((v: Video) => {
             byType[v.type] = (byType[v.type] || 0) + 1
             if (v.status === 'completed') completed++
             else if (v.status === 'processing') processing++
@@ -51,13 +52,13 @@ export default function Dashboard() {
           })
 
           setStats({
-            total: videos.length,
+            total: typedVideos.length,
             completed,
             processing,
             failed,
             byType,
           })
-          setRecentVideos(videos.slice(0, 6))
+          setRecentVideos(typedVideos.slice(0, 6))
         }
       } catch (err) {
         console.error('Failed to load dashboard stats:', err)
@@ -95,7 +96,7 @@ export default function Dashboard() {
               <p className="text-3xl font-bold text-white mt-1">{stats.total}</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-cyan-500/20 flex items-center justify-center">
-              <Video size={24} className="text-cyan-400" />
+              <VideoIcon size={24} className="text-cyan-400" />
             </div>
           </div>
         </div>
@@ -166,7 +167,7 @@ export default function Dashboard() {
           </div>
         ) : recentVideos.length === 0 ? (
           <div className="glass-panel rounded-xl p-12 text-center">
-            <Video size={48} className="text-muted mx-auto mb-4" />
+            <VideoIcon size={48} className="text-muted mx-auto mb-4" />
             <p className="text-secondary">No videos yet. Start by generating or uploading a video!</p>
             <Link to="/videco/generate" className="inline-block mt-4 px-6 py-2 bg-cyan-500 text-black font-semibold rounded-lg hover:bg-cyan-400 transition-colors">
               Generate Your First Video
@@ -197,7 +198,7 @@ function VideoCard({ video }: { video: Video }) {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <Video size={40} className="text-muted" />
+            <VideoIcon size={40} className="text-muted" />
           </div>
         )}
         <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -210,7 +211,7 @@ function VideoCard({ video }: { video: Video }) {
       </div>
       <div className="p-3">
         <div className="flex items-center gap-2">
-          <span className={typeColors[video.type] || 'text-secondary'}>{typeIcons[video.type] || <Video size={16} />}</span>
+          <span className={typeColors[video.type] || 'text-secondary'}>{typeIcons[video.type] || <VideoIcon size={16} />}</span>
           <h3 className="font-medium text-white truncate text-sm">{video.name}</h3>
         </div>
         <p className="text-xs text-muted mt-1">

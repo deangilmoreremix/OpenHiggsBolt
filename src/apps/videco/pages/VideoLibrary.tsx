@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/api/supabase'
-import { Video, Trash2, Play, Filter, Loader, ChevronLeft, ChevronRight, Search, Grid, List } from 'lucide-react'
+import { Video as VideoIcon, Trash2, Play, Filter, Loader, ChevronLeft, ChevronRight, Search, Grid, List } from 'lucide-react'
 import { useVidecoStore } from '@/stores/videcoStore'
 import type { Video } from '@/stores/videcoStore'
 
@@ -157,7 +157,7 @@ export default function VideoLibrary() {
         </div>
       ) : videos.length === 0 ? (
         <div className="glass-panel rounded-xl p-16 text-center">
-          <Video size={48} className="text-muted mx-auto mb-4" />
+          <VideoIcon size={48} className="text-muted mx-auto mb-4" />
           <p className="text-secondary text-lg">No videos found</p>
           <p className="text-muted text-sm mt-1">Try adjusting your filters or generate a new video</p>
           <Link to="/videco/generate" className="inline-block mt-4 px-6 py-2 bg-cyan-500 text-black font-semibold rounded-lg hover:bg-cyan-400 transition-colors">
@@ -266,7 +266,7 @@ function VideoGridCard({ video, onPlay, onDelete }: { video: Video; onPlay: () =
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <Video size={40} className="text-muted" />
+            <VideoIcon size={40} className="text-muted" />
           </div>
         )}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
@@ -303,7 +303,7 @@ function VideoListRow({ video, onPlay, onDelete }: { video: Video; onPlay: () =>
           <img src={video.thumbnail_url || video.generated_url} alt={video.name} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <Video size={20} className="text-muted" />
+            <VideoIcon size={20} className="text-muted" />
           </div>
         )}
       </div>

@@ -36,6 +36,7 @@ export interface EditImageParams {
   quality?: ImageQuality
   size?: ImageSize
   output_format?: ImageFormat
+  output_compression?: number   // 0-100 for jpeg/webp
 }
 
 export interface ImageResult {
@@ -177,6 +178,76 @@ export async function* generateImageStream(
         if (event.type === 'image_generation.partial_image') {
           yield { partial: true, index: event.partial_image_index, b64: event.b64_json }
         } else if (event.data?.[0]?.b64_json) {
+          yield { partial: false, index: 0, b64: event.data[0].b64_json }
+        }
+      } catch {}
+    }
+  }
+}
+
+// ── Streaming image edit / inpaint (returns async generator) ──────────────────
+export async function* editImageStream(
+  params: EditImageParams & { partial_images?: number }
+): AsyncGenerator<{ partial: boolean; index: number; b64: string }> {
+  const formData = new FormData()
+  formData.append('model', params.model || 'gpt-image-2')
+  formData.append('prompt', params.prompt)
+  formData.append('n', String(params.n || 1))
+  formData.append('stream', 'true')
+  formData.append('partial_images', String(params.partial_images ?? 2))
+  if (params.quality) formData.append('quality', params.quality)
+  if (params.size) formData.append('size', params.size)
+  if (params.output_format) formData.append('output_format', params.output_format)
+  if (params.output_compression !== undefined) formData.append('output_compression', String(params.output_compression))
+
+  // Handle reference image input(s)
+  if (typeof params.image === 'string') {
+    const res = await fetch(params.image)
+    const blob = await res.blob()
+    formData.append('image[]', blob, 'image.png')
+  } else {
+    formData.append('image[]', params.image, 'image.png')
+  }
+
+  // Optional mask
+  if (params.mask) {
+    formData.append('mask', params.mask, 'mask.png')
+  }
+
+  const res = await fetch(`${BASE}/images/edits`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: formData,
+  })
+
+  if (!res.ok || !res.body) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err?.error?.message || 'Edit stream failed')
+  }
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() || ''
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue
+      const raw = line.slice(6).trim()
+      if (raw === '[DONE]') return
+      try {
+        const event = JSON.parse(raw)
+        if (event.type === 'image_edit.partial_image') {
+          yield { partial: true, index: event.partial_image_index, b64: event.b64_json }
+        } else if (event.type === 'image_edit.completed') {
+          yield { partial: false, index: 0, b64: event.b64_json }
+        } else if (event.data?.[0]?.b64_json) {
+          // Fallback for non-event final payloads
           yield { partial: false, index: 0, b64: event.data[0].b64_json }
         }
       } catch {}

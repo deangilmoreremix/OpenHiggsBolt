@@ -22,6 +22,7 @@ export default function VFXGenerate() {
   const [log, setLog] = useState([]);
   const [showImageUrlModal, setShowImageUrlModal] = useState(false);
   const [imageUrlInput, setImageUrlInput] = useState('');
+  const [showVideoModal, setShowVideoModal] = useState(false);
   const isMountedRef = useRef(true);
   const pollTimeoutRef = useRef(null);
 
@@ -155,8 +156,8 @@ export default function VFXGenerate() {
       size,
       quality: selectedQuality,
       duration: parseInt(selectedDuration),
+      image_url: imageUrl,
     };
-    videoPayload.image_url = imageUrl;
 
     setStatus('submitting');
     setLog([`Submitting task to MuApi...`]);
@@ -662,7 +663,7 @@ export default function VFXGenerate() {
                   src={imageUrl}
                   alt="Image URL Preview"
                   className="max-w-[160px] max-h-[90px] rounded-lg border border-white/10 bg-[#0a0a0a]"
-                  onError={e => { e.target.onerror = null; e.target.src = ''; }}
+                  onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.onerror = null; e.currentTarget.src = ''; }}
                 />
               </div>
             )}

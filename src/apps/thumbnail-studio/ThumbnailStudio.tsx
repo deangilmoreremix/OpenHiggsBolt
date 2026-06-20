@@ -1,166 +1,378 @@
 'use client'
-import { useState, useCallback } from 'react'
-import { Image, Loader2, Download, Copy, Trash2, ZoomIn, X, Wand2, ChevronDown, ChevronUp } from 'lucide-react'
-import { generateImage } from '@/api/muapi'
-import { panels, buttons, inputs, semantic, tabStyle, optionStyle, iconBadge, appWrapper, colors } from '@/shared/styles/designTokens'
-import { enhancePrompt } from '@/api/openai'
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-interface ThumbnailResult {
-  id: string
-  url: string
-  prompt: string
-  model: string
-  style: string
-  aspectRatio: string
-  createdAt: string
-}
+/**
+ * Thumbnail Studio — full thumbnaily-ai feature set
+ * Uses shared ImageGen components + gpt-image-2 API
+ * No auth required — session-based gallery + public community feed
+ */
+import { useState, useCallback, useEffect, useRef } from 'react'
+import { Image, Wand2, Loader2, Globe, User, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react'
+import { ImageGallery, ImageStream, ImageEditor } from '@/shared/components/ImageGen'
+import type { GeneratedImage, GenerationRequest, SizePreset } from '@/shared/components/ImageGen'
+import { SIZE_PRESETS, QUALITY_PRESETS } from '@/shared/components/ImageGen'
+import { generateCTRPrompt } from '@/shared/components/ImageGen/ctrEngine'
+import { SEED_THUMBNAILS } from '@/shared/components/ImageGen/seedThumbnails'
+import { panels, buttons, semantic, tabStyle, optionStyle, appWrapper } from '@/shared/styles/designTokens'
+import { supabase } from '@/shared/api/supabase'
+import { enhancePrompt } from '@/shared/api/openai'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const MODELS = [
-  { value: 'flux-1.0', label: 'Flux 1.0' },
-  { value: 'flux-pro', label: 'Flux Pro' },
-  { value: 'sdxl-1.0', label: 'SDXL 1.0' },
-  { value: 'sdxl-turbo', label: 'SDXL Turbo' },
-]
+const SESSION_ID_KEY = 'thumbnail_studio_session_id'
+const LOCAL_KEY = 'thumbnail_studio_local'
 
 const STYLES = [
-  { value: 'vibrant', label: 'Vibrant' },
-  { value: 'bold-text', label: 'Bold Text' },
-  { value: 'face-focus', label: 'Face Focus' },
-  { value: 'minimal', label: 'Minimal' },
-  { value: 'dramatic', label: 'Dramatic' },
-  { value: 'neon', label: 'Neon Glow' },
-  { value: 'gradient', label: 'Gradient' },
-  { value: 'retro', label: 'Retro' },
+  { value: 'cinematic',    label: 'Cinematic',    prompt: 'dramatic cinematic lighting, movie poster style, ultra detailed' },
+  { value: 'vibrant',      label: 'Vibrant',      prompt: 'vibrant saturated colors, eye-catching, bold composition, high contrast' },
+  { value: 'bold-text',    label: 'Bold Text',    prompt: 'designed for text overlay, clear focal point, bold graphic design' },
+  { value: 'face-focus',   label: 'Face Focus',   prompt: 'close-up portrait, expressive face, shallow depth of field, emotional' },
+  { value: 'minimal',      label: 'Minimal',      prompt: 'minimalist design, clean background, elegant, lots of negative space' },
+  { value: 'neon',         label: 'Neon Glow',    prompt: 'neon glow effects, cyberpunk aesthetic, dark background, futuristic' },
+  { value: 'retro',        label: 'Retro',        prompt: 'retro vintage style, film grain, muted tones, classic design' },
+  { value: 'photorealism', label: 'Photorealistic', prompt: 'photorealistic, ultra high resolution, professional photography, 8K' },
 ]
 
-const ASPECT_RATIOS = [
-  { value: '16:9', label: '16:9', description: 'YouTube', width: 1280, height: 720 },
-  { value: '1:1', label: '1:1', description: 'Instagram', width: 1080, height: 1080 },
-  { value: '9:16', label: '9:16', description: 'Shorts', width: 1080, height: 1920 },
-  { value: '4:3', label: '4:3', description: 'Classic', width: 1280, height: 960 },
+const TEMPLATES = [
+  { label: 'Gaming',    prompt: 'Epic gaming thumbnail, shocked face reaction, bold title text, dramatic lighting, vibrant colors, high energy' },
+  { label: 'Tutorial',  prompt: 'Clean tutorial thumbnail, step-by-step arrows, professional look, clear text overlay, modern design' },
+  { label: 'Finance',   prompt: 'Finance YouTube thumbnail, money symbols, professional suit, clean background, trust-inspiring design' },
+  { label: 'Fitness',   prompt: 'Fitness thumbnail, energetic athlete, motivational, bold typography, dynamic pose, gym background' },
+  { label: 'Food',      prompt: 'Food thumbnail, mouth-watering close-up, vibrant colors, steam effect, appetizing presentation' },
+  { label: 'Tech',      prompt: 'Tech review thumbnail, product showcase, clean white background, modern typography, comparison layout' },
+  { label: 'Reaction',  prompt: 'Reaction video thumbnail, exaggerated facial expression, bright background, emotion-focused' },
+  { label: 'Vlog',      prompt: 'Personal vlog thumbnail, lifestyle photography, warm tones, candid expression, adventure feel' },
+  { label: 'Music',     prompt: 'Music video thumbnail, album art style, atmospheric lighting, artistic composition' },
+  { label: 'Education', prompt: 'Educational thumbnail, clear visual metaphor, bright colors, friendly and approachable style' },
 ]
 
-const PROMPT_TEMPLATES = [
-  { label: 'Gaming', prompt: 'Epic gaming thumbnail, shocked face reaction, bold title text, dramatic lighting, vibrant colors' },
-  { label: 'Tutorial', prompt: 'Clean tutorial thumbnail, step-by-step layout, professional look, clear text overlay, modern design' },
-  { label: 'Vlog', prompt: 'Personal vlog thumbnail, lifestyle photography, warm tones, candid expression, adventure feel' },
-  { label: 'Finance', prompt: 'Finance YouTube thumbnail, money symbols, professional suit, clean background, trust-inspiring design' },
-  { label: 'Fitness', prompt: 'Fitness thumbnail, energetic athlete, motivational, bold typography, dynamic pose, gym background' },
-  { label: 'Food', prompt: 'Food thumbnail, mouth-watering close-up, vibrant colors, steam effect, appetizing presentation' },
-  { label: 'Tech', prompt: 'Tech review thumbnail, product showcase, clean white background, modern typography, comparison layout' },
-  { label: 'Reaction', prompt: 'Reaction video thumbnail, exaggerated facial expression, bright background, emotion-focused, engaging' },
-]
+const FORMATS = [
+  { value: 'png',  label: 'PNG',  description: 'Lossless, best quality' },
+  { value: 'jpeg', label: 'JPEG', description: 'Smaller file, faster' },
+  { value: 'webp', label: 'WebP', description: 'Best compression' },
+] as const
 
-const STYLE_MODIFIERS: Record<string, string> = {
-  'vibrant': 'vibrant saturated colors, eye-catching, bold composition, high contrast, thumbnail style',
-  'bold-text': 'designed for text overlay, clear focal point, bold graphic design, YouTube thumbnail composition',
-  'face-focus': 'close-up portrait, expressive face, shallow depth of field, emotional, engaging eye contact',
-  'minimal': 'minimalist design, clean background, simple composition, elegant, lots of negative space',
-  'dramatic': 'dramatic lighting, cinematic mood, high contrast shadows, epic atmosphere, movie poster style',
-  'neon': 'neon glow effects, cyberpunk aesthetic, dark background, bright neon colors, futuristic',
-  'gradient': 'smooth gradient background, modern design, colorful blend, professional, visually appealing',
-  'retro': 'retro vintage style, nostalgic, film grain, muted tones, classic design elements',
+function getSessionId(): string {
+  if (typeof window === 'undefined') return `thumb_session_${Date.now()}`
+  let id = localStorage.getItem(SESSION_ID_KEY)
+  if (!id) {
+    id = `thumb_session_${Math.random().toString(36).slice(2, 10)}_${Date.now()}`
+    localStorage.setItem(SESSION_ID_KEY, id)
+  }
+  return id
 }
 
-// ── Storage ───────────────────────────────────────────────────────────────────
-const STORAGE_KEY = 'thumbnail_studio_gallery'
-function loadGallery(): ThumbnailResult[] {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') } catch { return [] }
+// ── Supabase helpers ──────────────────────────────────────────────────────────
+async function saveToSupabase(img: GeneratedImage): Promise<void> {
+  try {
+    await supabase.from('thumbnails').insert({
+      prompt: img.prompt,
+      enhanced_prompt: img.enhancedPrompt,
+      model: img.model,
+      style: img.style,
+      aspect_ratio: img.aspectRatio,
+      url: img.url,
+      quality: img.quality,
+      format: img.format,
+      width: img.width,
+      height: img.height,
+      is_public: img.isPublic,
+      session_id: img.sessionId,
+    })
+  } catch (e) {
+    console.warn('Supabase save failed (using local only):', e)
+  }
 }
-function saveGallery(items: ThumbnailResult[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
+
+async function loadCommunityGallery(): Promise<GeneratedImage[]> {
+  try {
+    const { data } = await supabase
+      .from('thumbnails')
+      .select('*')
+      .eq('is_public', true)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    const mapped = (data || []).map((row: any) => ({
+      id: row.id,
+      url: row.url,
+      prompt: row.prompt || row.prompt_used || '',
+      enhancedPrompt: row.enhanced_prompt,
+      model: row.model || 'gpt-image-2',
+      quality: row.quality || 'medium',
+      format: row.format || 'png',
+      style: row.style,
+      aspectRatio: row.aspect_ratio,
+      width: row.width,
+      height: row.height,
+      isPublic: row.is_public,
+      sessionId: row.session_id,
+      createdAt: row.created_at,
+    }))
+    if (mapped.length > 0) return mapped
+    return SEED_THUMBNAILS.map(seed => ({
+      id: seed.id,
+      url: seed.url,
+      prompt: seed.prompt,
+      enhancedPrompt: seed.enhancedPrompt,
+      model: seed.model,
+      quality: seed.quality,
+      format: seed.format,
+      style: seed.style,
+      aspectRatio: seed.aspectRatio,
+      width: seed.width,
+      height: seed.height,
+      isPublic: seed.isPublic,
+      sessionId: seed.sessionId,
+      createdAt: seed.createdAt,
+      responseId: seed.responseId,
+    }))
+  } catch {
+    return SEED_THUMBNAILS.map(seed => ({
+      id: seed.id,
+      url: seed.url,
+      prompt: seed.prompt,
+      enhancedPrompt: seed.enhancedPrompt,
+      model: seed.model,
+      quality: seed.quality,
+      format: seed.format,
+      style: seed.style,
+      aspectRatio: seed.aspectRatio,
+      width: seed.width,
+      height: seed.height,
+      isPublic: seed.isPublic,
+      sessionId: seed.sessionId,
+      createdAt: seed.createdAt,
+      responseId: seed.responseId,
+    }))
+  }
+}
+
+function loadLocal(): GeneratedImage[] {
+  try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]') } catch { return [] }
+}
+function saveLocal(images: GeneratedImage[]) {
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(images.slice(0, 100)))
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function ThumbnailStudio({ apiKey }: { apiKey?: string }) {
-  const [activeTab, setActiveTab] = useState<'generate' | 'gallery'>('generate')
-  const [prompt, setPrompt] = useState('')
-  const [model, setModel] = useState('flux-1.0')
-  const [selectedStyle, setSelectedStyle] = useState('vibrant')
-  const [aspectRatio, setAspectRatio] = useState('16:9')
-  const [batchCount, setBatchCount] = useState(1)
-  const [showAdvanced, setShowAdvanced] = useState(false)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [isEnhancing, setIsEnhancing] = useState(false)
-  const [progress, setProgress] = useState(0)
-  const [error, setError] = useState('')
-  const [gallery, setGallery] = useState<ThumbnailResult[]>(loadGallery)
-  const [lightbox, setLightbox] = useState<ThumbnailResult | null>(null)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
+  // Tabs
+  const [activeTab, setActiveTab] = useState<'generate' | 'mine' | 'community'>('generate')
 
-  const handleGenerate = async () => {
-    if (!prompt.trim()) return
-    setIsGenerating(true)
-    setError('')
-    setProgress(0)
-    const timer = setInterval(() => setProgress(p => Math.min(p + 100 / (batchCount * 15), 88)), 1000)
-    try {
-      const ratio = ASPECT_RATIOS.find(r => r.value === aspectRatio)
-      const styledPrompt = `${prompt}, ${STYLE_MODIFIERS[selectedStyle] || ''}, ultra high quality, 8K resolution`
-      const results = await Promise.all(
-        Array.from({ length: batchCount }).map(() =>
-          generateImage({ prompt: styledPrompt, model, style: selectedStyle, width: ratio?.width, height: ratio?.height })
-        )
-      )
-      const newItems: ThumbnailResult[] = results.map((r: any, i) => ({
-        id: `${Date.now()}-${i}`,
-        url: r.url || r.image_url || r,
-        prompt, model, style: selectedStyle, aspectRatio,
-        createdAt: new Date().toISOString(),
-      }))
-      const updated = [...newItems, ...gallery]
-      setGallery(updated)
-      saveGallery(updated)
-      setProgress(100)
-      setActiveTab('gallery')
-    } catch (err: any) {
-      setError(err.message || 'Generation failed. Please try again.')
-    } finally {
-      clearInterval(timer)
-      setTimeout(() => { setIsGenerating(false); setProgress(0) }, 800)
+  // Generate form
+  const [prompt, setPrompt] = useState('')
+  const [selectedStyle, setSelectedStyle] = useState('cinematic')
+  const [selectedSize, setSelectedSize] = useState<SizePreset>(SIZE_PRESETS[0])
+  const [quality, setQuality] = useState<'low' | 'medium' | 'high'>('medium')
+  const [format, setFormat] = useState<'png' | 'jpeg' | 'webp'>('jpeg')
+  const [compression, setCompression] = useState(85)
+  const [variations, setVariations] = useState(1)
+  const [isPublic, setIsPublic] = useState(true)
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showRefine, setShowRefine] = useState(false)
+  const [refinePrompt, setRefinePrompt] = useState('')
+
+  // Reference image / edit mode
+  const [referenceImage, setReferenceImage] = useState<File | null>(null)
+  const [mask, setMask] = useState<Blob | null>(null)
+  const [mode, setMode] = useState<'generate' | 'edit'>('generate')
+
+  // Enhancement
+  const [isEnhancing, setIsEnhancing] = useState(false)
+  const [enhancedPrompt, setEnhancedPrompt] = useState('')
+
+  // Generation state
+  const [activeRequest, setActiveRequest] = useState<GenerationRequest | null>(null)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [error, setError] = useState('')
+
+  // Gallery
+  const [myImages, setMyImages] = useState<GeneratedImage[]>(loadLocal)
+  const [communityImages, setCommunityImages] = useState<GeneratedImage[]>([])
+  const [communityLoading, setCommunityLoading] = useState(false)
+
+  // Multi-turn refinement
+  const [lastResponseId, setLastResponseId] = useState<string | null>(null)
+
+  // Track object URLs so we can revoke them on delete
+  const objectUrlsRef = useRef<Set<string>>(new Set())
+  const trackObjectUrl = (url: string) => {
+    if (url.startsWith('blob:')) objectUrlsRef.current.add(url)
+  }
+  const revokeObjectUrl = (url: string) => {
+    if (url.startsWith('blob:')) {
+      URL.revokeObjectURL(url)
+      objectUrlsRef.current.delete(url)
     }
   }
+
+  const sessionId = useRef<string>(getSessionId())
+
+  // Load community gallery when tab opens
+  useEffect(() => {
+    if (activeTab === 'community' && communityImages.length === 0) {
+      setCommunityLoading(true)
+      loadCommunityGallery()
+        .then(setCommunityImages)
+        .finally(() => setCommunityLoading(false))
+    }
+  }, [activeTab, communityImages.length])
+
+  // Persist local gallery
+  useEffect(() => { saveLocal(myImages) }, [myImages])
+
+  // Build the full styled prompt
+  const buildPrompt = useCallback(() => {
+    const base = enhancedPrompt || prompt
+    return generateCTRPrompt(base, selectedStyle)
+  }, [prompt, enhancedPrompt, selectedStyle])
 
   const handleEnhance = async () => {
     if (!prompt.trim()) return
     setIsEnhancing(true)
-    try { const e = await enhancePrompt(prompt); if (e) setPrompt(e) } catch {}
+    try {
+      const result = await enhancePrompt(prompt)
+      if (result) {
+        setEnhancedPrompt(result)
+      }
+    } catch {}
     finally { setIsEnhancing(false) }
   }
 
-  const deleteImage = (id: string) => {
-    const updated = gallery.filter(g => g.id !== id)
-    setGallery(updated); saveGallery(updated)
-    if (lightbox?.id === id) setLightbox(null)
+  const handleGenerate = () => {
+    if (!prompt.trim()) return
+    setError('')
+    setIsGenerating(true)
+
+    const request: GenerationRequest = {
+      prompt: buildPrompt(),
+      model: 'gpt-image-2',
+      quality,
+      format,
+      compression: format !== 'png' ? compression : undefined,
+      size: selectedSize,
+      n: variations,
+      style: selectedStyle,
+      referenceImage: referenceImage || undefined,
+      mask: mask || undefined,
+      mode,
+      isPublic,
+      sessionId: sessionId.current,
+    }
+    setActiveRequest(request)
   }
 
-  const reuseSettings = (item: ThumbnailResult) => {
-    setPrompt(item.prompt); setModel(item.model)
-    setSelectedStyle(item.style); setAspectRatio(item.aspectRatio)
-    setCopiedId(item.id); setActiveTab('generate')
-    setTimeout(() => setCopiedId(null), 2000)
-  }
+  const handleStreamComplete = useCallback(async (images: GeneratedImage[]) => {
+    setIsGenerating(false)
+    setActiveRequest(null)
+    images.forEach(img => trackObjectUrl(img.url))
+    const tagged = images.map(img => ({
+      ...img,
+      prompt,
+      enhancedPrompt: enhancedPrompt || undefined,
+      style: selectedStyle,
+      sessionId: sessionId.current,
+      isPublic,
+    }))
+    setMyImages(prev => [...tagged, ...prev])
+    // Save to Supabase in background
+    for (const img of tagged) {
+      saveToSupabase(img)
+    }
+    if (tagged[0]?.responseId) setLastResponseId(tagged[0].responseId)
+    setActiveTab('mine')
+  }, [prompt, enhancedPrompt, selectedStyle, isPublic])
 
-  const downloadImage = useCallback(async (url: string, id: string) => {
+  const handleStreamError = useCallback((err: string) => {
+    setIsGenerating(false)
+    setActiveRequest(null)
+    setError(err)
+  }, [])
+
+  const handleRefine = async () => {
+    if (!refinePrompt.trim() || !lastResponseId) return
+    setError('')
+    setIsGenerating(true)
     try {
-      const res = await fetch(url)
+      const OPENAI_KEY = process.env.NEXT_PUBLIC_OPENAI_API_KEY || ''
+      const res = await fetch('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          input: refinePrompt,
+          previous_response_id: lastResponseId,
+          tools: [{ type: 'image_generation', quality, action: 'edit' }],
+        }),
+      })
+      const data = await res.json()
+      const call = data.output?.find((o: any) => o.type === 'image_generation_call')
+      if (call?.result) {
+        const blob = await fetch(`data:image/png;base64,${call.result}`).then(r => r.blob())
+        const url = URL.createObjectURL(blob)
+        trackObjectUrl(url)
+        const img: GeneratedImage = {
+          id: `${Date.now()}-refined`,
+          url, b64: call.result,
+          prompt: refinePrompt,
+          model: 'gpt-image-2', quality, format,
+          style: selectedStyle,
+          aspectRatio: selectedSize.ratio,
+          width: selectedSize.width, height: selectedSize.height,
+          isPublic, sessionId: sessionId.current,
+          createdAt: new Date().toISOString(),
+          responseId: data.id,
+        }
+        setMyImages(prev => [img, ...prev])
+        setLastResponseId(data.id)
+        saveToSupabase(img)
+        setActiveTab('mine')
+      }
+    } catch (err: any) {
+      setError(err.message || 'Refinement failed')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleDownload = useCallback(async (img: GeneratedImage) => {
+    try {
+      const res = await fetch(img.url)
       const blob = await res.blob()
       const a = document.createElement('a')
       a.href = URL.createObjectURL(blob)
-      a.download = `thumbnail-${id}.png`
+      a.download = `thumbnail-${img.id}.${img.format || 'png'}`
       a.click()
       URL.revokeObjectURL(a.href)
-    } catch { window.open(url, '_blank') }
+    } catch { window.open(img.url, '_blank') }
+  }, [])
+
+  const handleReuse = useCallback((img: GeneratedImage) => {
+    setPrompt(img.prompt)
+    setSelectedStyle(img.style || 'cinematic')
+    const size = SIZE_PRESETS.find(s => s.ratio === img.aspectRatio) || SIZE_PRESETS[0]
+    setSelectedSize(size)
+    setEnhancedPrompt('')
+    setActiveTab('generate')
+  }, [])
+
+  const handleDelete = useCallback((id: string) => {
+    setMyImages(prev => {
+      const img = prev.find(i => i.id === id)
+      if (img) revokeObjectUrl(img.url)
+      return prev.filter(img => img.id !== id)
+    })
+  }, [])
+
+  const handleTogglePublic = useCallback(async (id: string, pub: boolean) => {
+    setMyImages(prev => prev.map(img => img.id === id ? { ...img, isPublic: pub } : img))
+    try {
+      await supabase.from('thumbnails').update({ is_public: pub }).eq('id', id)
+    } catch {}
   }, [])
 
   return (
-    <div className="flex flex-col h-full" style={{ background: 'var(--bg-app)', color: 'white' }}>
+    <div className="flex flex-col h-full" style={appWrapper}>
 
-      {/* ── Sub-header (matches shell tab bar style) ── */}
-      <div
-        className="flex-shrink-0 h-12 flex items-center justify-between px-6 z-10"
+      {/* Sub-header */}
+      <div className="flex-shrink-0 h-12 flex items-center justify-between px-6 z-10"
         style={{ borderBottom: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(12px)' }}
       >
         <div className="flex items-center gap-2">
@@ -168,114 +380,108 @@ export default function ThumbnailStudio({ apiKey }: { apiKey?: string }) {
             <Image size={13} className="text-black" />
           </div>
           <span className="text-sm font-semibold tracking-tight">Thumbnail Studio</span>
+          <span className="text-xs px-2 py-0.5 rounded-full ml-1" style={{ background: 'rgba(34,211,238,0.1)', color: 'var(--color-primary)' }}>
+            gpt-image-2
+          </span>
         </div>
         <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
-          {(['generate', 'gallery'] as const).map(tab => (
+          {(['generate', 'mine', 'community'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className="relative px-4 py-1 rounded-md text-xs font-medium transition-all capitalize"
-              style={{ color: activeTab === tab ? 'white' : 'rgba(255,255,255,0.4)' }}
+              className="relative px-3 py-1 rounded-md text-xs font-medium transition-all capitalize flex items-center gap-1.5"
+              style={tabStyle(activeTab === tab)}
             >
-              {activeTab === tab && (
-                <span
-                  className="absolute inset-0 rounded-md"
-                  style={{ background: 'rgba(255,255,255,0.08)' }}
-                />
-              )}
-              <span className="relative">
-                {tab}{tab === 'gallery' && gallery.length > 0 ? ` (${gallery.length})` : ''}
-              </span>
+              {tab === 'mine' && <User size={10} />}
+              {tab === 'community' && <Globe size={10} />}
+              {tab}{tab === 'mine' && myImages.length > 0 ? ` (${myImages.length})` : ''}
             </button>
           ))}
         </div>
       </div>
 
-      {/* ── Content ── */}
+      {/* Content */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
 
-        {/* GENERATE */}
+        {/* ── GENERATE TAB ── */}
         {activeTab === 'generate' && (
-          <div className="max-w-xl mx-auto p-6 space-y-5">
+          <div className="max-w-xl mx-auto p-6 space-y-4">
+
+            {/* Mode toggle */}
+            <div className="flex gap-2">
+              {(['generate', 'edit'] as const).map(m => (
+                <button key={m} onClick={() => setMode(m)}
+                  className="flex-1 py-2 rounded-xl text-xs font-medium transition-all capitalize"
+                  style={optionStyle(mode === m)}
+                >
+                  {m === 'generate' ? '✦ Generate' : '✎ Edit image'}
+                </button>
+              ))}
+            </div>
+
+            {/* Reference image (edit mode) */}
+            {mode === 'edit' && (
+              <div className="rounded-xl p-4" style={panels.glass}>
+                <p className="text-xs font-medium mb-3" style={{ color: semantic.textLabel }}>REFERENCE IMAGE</p>
+                <ImageEditor
+                  onImageSelected={setReferenceImage}
+                  onMaskCreated={setMask}
+                  onClear={() => { setReferenceImage(null); setMask(null) }}
+                  selectedImage={referenceImage}
+                />
+                <p className="text-xs mt-2" style={{ color: semantic.textMuted }}>
+                  Edit mode requires ImageStream support for reference images/masks.
+                </p>
+              </div>
+            )}
 
             {/* Prompt */}
-            <div
-              className="rounded-xl p-5 space-y-4"
-              style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}
-            >
-              <div>
-                <label className="block text-xs font-medium mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                  DESCRIBE YOUR THUMBNAIL
-                </label>
-                <div className="relative">
-                  <textarea
-                    value={prompt}
-                    onChange={e => setPrompt(e.target.value)}
-                    placeholder="A dramatic gaming thumbnail with a shocked face and bold text..."
-                    rows={4}
-                    className="w-full resize-none text-sm outline-none rounded-lg p-3 pr-10 transition-colors"
-                    style={{
-                      background: 'var(--bg-card)',
-                      border: '1px solid var(--border-color)',
-                      color: 'white',
-                    }}
-                  />
-                  <button
-                    onClick={handleEnhance}
-                    disabled={isEnhancing || !prompt.trim()}
-                    title="AI enhance prompt"
-                    className="absolute top-2 right-2 p-1.5 rounded-lg transition-all disabled:opacity-40"
-                    style={{ background: 'rgba(34,211,238,0.1)' }}
-                  >
-                    {isEnhancing
-                      ? <Loader2 size={13} className="animate-spin" style={{ color: 'var(--color-primary)' }} />
-                      : <Wand2 size={13} style={{ color: 'var(--color-primary)' }} />
-                    }
-                  </button>
-                </div>
+            <div className="rounded-xl p-4 space-y-3" style={panels.glass}>
+              <p className="text-xs font-medium" style={{ color: semantic.textLabel }}>DESCRIBE YOUR THUMBNAIL</p>
+              <div className="relative">
+                <textarea
+                  value={prompt}
+                  onChange={e => { setPrompt(e.target.value); setEnhancedPrompt('') }}
+                  placeholder="A dramatic gaming thumbnail with a shocked face and bold text..."
+                  rows={3}
+                  className="w-full resize-none text-sm outline-none rounded-lg p-3 pr-10 transition-colors"
+                  style={{ ...panels.card, color: 'white' }}
+                />
+                <button onClick={handleEnhance} disabled={isEnhancing || !prompt.trim()}
+                  title="AI enhance prompt" className="absolute top-2 right-2 p-1.5 rounded-lg transition-all disabled:opacity-40"
+                  style={{ background: 'rgba(34,211,238,0.1)' }}
+                >
+                  {isEnhancing
+                    ? <Loader2 size={13} className="animate-spin" style={{ color: 'var(--color-primary)' }} />
+                    : <Wand2 size={13} style={{ color: 'var(--color-primary)' }} />
+                  }
+                </button>
               </div>
-
-              {/* Templates */}
-              <div>
-                <p className="text-xs mb-2" style={{ color: 'rgba(255,255,255,0.3)' }}>Quick templates</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {PROMPT_TEMPLATES.map(t => (
-                    <button
-                      key={t.label}
-                      onClick={() => setPrompt(t.prompt)}
-                      className="px-2.5 py-1 rounded-full text-xs transition-all"
-                      style={{
-                        background: 'var(--bg-card)',
-                        border: '1px solid var(--border-color)',
-                        color: 'rgba(255,255,255,0.5)',
-                      }}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
+              {enhancedPrompt && (
+                <div className="p-2 rounded-lg text-xs" style={{ background: 'rgba(34,211,238,0.05)', border: '1px solid rgba(34,211,238,0.15)', color: semantic.textSecondary }}>
+                  <span style={{ color: 'var(--color-primary)' }}>Enhanced: </span>{enhancedPrompt}
                 </div>
+              )}
+              <div className="flex flex-wrap gap-1.5">
+                {TEMPLATES.map(t => (
+                  <button key={t.label} onClick={() => { setPrompt(t.prompt); setEnhancedPrompt('') }}
+                    className="px-2.5 py-1 rounded-full text-xs transition-all"
+                    style={{ ...panels.card, color: semantic.textMuted }}
+                  >
+                    {t.label}
+                  </button>
+                ))}
               </div>
             </div>
 
             {/* Style */}
-            <div
-              className="rounded-xl p-5"
-              style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}
-            >
-              <label className="block text-xs font-medium mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                STYLE
-              </label>
+            <div className="rounded-xl p-4" style={panels.glass}>
+              <p className="text-xs font-medium mb-3" style={{ color: semantic.textLabel }}>STYLE</p>
               <div className="grid grid-cols-4 gap-2">
                 {STYLES.map(s => (
-                  <button
-                    key={s.value}
-                    onClick={() => setSelectedStyle(s.value)}
-                    className="py-2 px-2 rounded-lg text-xs font-medium transition-all text-center"
-                    style={{
-                      background: selectedStyle === s.value ? 'rgba(34,211,238,0.15)' : 'var(--bg-card)',
-                      border: `1px solid ${selectedStyle === s.value ? 'var(--color-primary)' : 'var(--border-color)'}`,
-                      color: selectedStyle === s.value ? 'var(--color-primary)' : 'rgba(255,255,255,0.5)',
-                    }}
+                  <button key={s.value} onClick={() => setSelectedStyle(s.value)}
+                    className="py-2 px-1 rounded-lg text-xs font-medium transition-all text-center"
+                    style={optionStyle(selectedStyle === s.value)}
                   >
                     {s.label}
                   </button>
@@ -283,256 +489,210 @@ export default function ThumbnailStudio({ apiKey }: { apiKey?: string }) {
               </div>
             </div>
 
-            {/* Aspect ratio */}
-            <div
-              className="rounded-xl p-5"
-              style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}
-            >
-              <label className="block text-xs font-medium mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                ASPECT RATIO
-              </label>
-              <div className="grid grid-cols-4 gap-2">
-                {ASPECT_RATIOS.map(r => (
-                  <button
-                    key={r.value}
-                    onClick={() => setAspectRatio(r.value)}
-                    className="py-2.5 rounded-lg text-center transition-all"
-                    style={{
-                      background: aspectRatio === r.value ? 'rgba(34,211,238,0.15)' : 'var(--bg-card)',
-                      border: `1px solid ${aspectRatio === r.value ? 'var(--color-primary)' : 'var(--border-color)'}`,
-                    }}
+            {/* Size */}
+            <div className="rounded-xl p-4" style={panels.glass}>
+              <p className="text-xs font-medium mb-3" style={{ color: semantic.textLabel }}>CANVAS SIZE</p>
+              <div className="grid grid-cols-3 gap-2">
+                {SIZE_PRESETS.map(size => (
+                  <button key={size.id} onClick={() => setSelectedSize(size)}
+                    className="py-2 rounded-lg text-center transition-all"
+                    style={optionStyle(selectedSize.id === size.id)}
                   >
-                    <p className="text-sm font-bold" style={{ color: aspectRatio === r.value ? 'var(--color-primary)' : 'white' }}>
-                      {r.label}
-                    </p>
-                    <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>{r.description}</p>
+                    <p className="text-xs font-bold">{size.label}</p>
+                    <p className="text-xs mt-0.5" style={{ color: semantic.textMuted }}>{size.description}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Quality */}
+            <div className="rounded-xl p-4" style={panels.glass}>
+              <p className="text-xs font-medium mb-3" style={{ color: semantic.textLabel }}>QUALITY</p>
+              <div className="grid grid-cols-3 gap-2">
+                {QUALITY_PRESETS.map(q => (
+                  <button key={q.value} onClick={() => setQuality(q.value as any)}
+                    className="py-2.5 rounded-lg text-center transition-all"
+                    style={optionStyle(quality === q.value)}
+                  >
+                    <p className="text-xs font-bold">{q.label}</p>
+                    <p className="text-xs mt-0.5" style={{ color: semantic.textMuted }}>{q.speed}</p>
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Advanced */}
-            <button
-              onClick={() => setShowAdvanced(!showAdvanced)}
+            <button onClick={() => setShowAdvanced(!showAdvanced)}
               className="flex items-center gap-2 text-xs transition-all"
-              style={{ color: 'rgba(255,255,255,0.4)' }}
+              style={{ color: semantic.textLabel }}
             >
               {showAdvanced ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
               Advanced options
             </button>
 
             {showAdvanced && (
-              <div
-                className="rounded-xl p-5 grid grid-cols-2 gap-4"
-                style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}
-              >
+              <div className="rounded-xl p-4 space-y-4" style={panels.glass}>
+                {/* Format */}
                 <div>
-                  <label className="block text-xs font-medium mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>MODEL</label>
-                  <select
-                    value={model}
-                    onChange={e => setModel(e.target.value)}
-                    className="w-full text-sm rounded-lg p-2 outline-none"
-                    style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white' }}
-                  >
-                    {MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                  </select>
+                  <p className="text-xs font-medium mb-2" style={{ color: semantic.textLabel }}>OUTPUT FORMAT</p>
+                  <div className="flex gap-2">
+                    {FORMATS.map(f => (
+                      <button key={f.value} onClick={() => setFormat(f.value)}
+                        className="flex-1 py-2 rounded-lg text-xs transition-all text-center"
+                        style={optionStyle(format === f.value)}
+                      >
+                        <p className="font-bold">{f.label}</p>
+                        <p style={{ color: semantic.textMuted }}>{f.description}</p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
+
+                {/* Compression */}
+                {format !== 'png' && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-medium" style={{ color: semantic.textLabel }}>COMPRESSION</p>
+                      <span className="text-xs font-mono" style={{ color: 'var(--color-primary)' }}>{compression}%</span>
+                    </div>
+                    <input type="range" min={10} max={100} value={compression}
+                      onChange={e => setCompression(Number(e.target.value))}
+                      className="w-full accent-cyan-400"
+                    />
+                    <div className="flex justify-between text-xs mt-1" style={{ color: semantic.textMuted }}>
+                      <span>Smaller file</span><span>Best quality</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Variations */}
                 <div>
-                  <label className="block text-xs font-medium mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>VARIATIONS</label>
+                  <p className="text-xs font-medium mb-2" style={{ color: semantic.textLabel }}>VARIATIONS</p>
                   <div className="flex gap-2">
                     {[1, 2, 3, 4].map(n => (
-                      <button
-                        key={n}
-                        onClick={() => setBatchCount(n)}
-                        className="flex-1 py-2 rounded-lg text-sm font-medium transition-all"
-                        style={{
-                          background: batchCount === n ? 'var(--color-primary)' : 'var(--bg-card)',
-                          border: '1px solid var(--border-color)',
-                          color: batchCount === n ? 'black' : 'rgba(255,255,255,0.5)',
-                        }}
+                      <button key={n} onClick={() => setVariations(n)}
+                        className="flex-1 py-2 rounded-lg text-sm font-bold transition-all"
+                        style={optionStyle(variations === n)}
                       >
                         {n}
                       </button>
                     ))}
                   </div>
                 </div>
+
+                {/* Public toggle */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium">Share to community</p>
+                    <p className="text-xs" style={{ color: semantic.textMuted }}>Show in public gallery</p>
+                  </div>
+                  <button onClick={() => setIsPublic(!isPublic)}
+                    className="w-10 h-6 rounded-full transition-all relative"
+                    style={{ background: isPublic ? 'var(--color-primary)' : 'var(--border-color)' }}
+                  >
+                    <div className="w-4 h-4 rounded-full bg-white absolute top-1 transition-all"
+                      style={{ left: isPublic ? '22px' : '2px' }}
+                    />
+                  </button>
+                </div>
               </div>
             )}
 
+            {/* Streaming progress */}
+            <ImageStream
+              request={activeRequest}
+              onComplete={handleStreamComplete}
+              onError={handleStreamError}
+            />
+
             {/* Error */}
             {error && (
-              <div
-                className="p-3 rounded-xl text-sm"
-                style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}
-              >
+              <div className="p-3 rounded-xl text-xs" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
                 {error}
               </div>
             )}
 
             {/* Generate button */}
-            <button
-              onClick={handleGenerate}
-              disabled={isGenerating || !prompt.trim()}
-              className="w-full py-3 rounded-xl text-sm font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-              style={{ background: 'var(--color-primary)', color: 'black' }}
+            <button onClick={handleGenerate} disabled={isGenerating || !prompt.trim()}
+              className="w-full py-3.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              style={buttons.primary}
             >
               {isGenerating
                 ? <><Loader2 size={16} className="animate-spin" />Generating...</>
-                : <><Image size={16} />Generate {batchCount > 1 ? `${batchCount} Variations` : 'Thumbnail'}</>
+                : <><Image size={16} />Generate {variations > 1 ? `${variations} Thumbnails` : 'Thumbnail'}</>
               }
             </button>
 
-            {isGenerating && (
-              <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--border-color)' }}>
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${progress}%`, background: 'var(--color-primary)' }}
-                />
+            {/* Multi-turn refinement */}
+            {lastResponseId && myImages.length > 0 && (
+              <div className="rounded-xl p-4 space-y-3" style={panels.glass}>
+                <button onClick={() => setShowRefine(!showRefine)}
+                  className="flex items-center gap-2 text-xs w-full"
+                  style={{ color: semantic.textLabel }}
+                >
+                  <RefreshCw size={12} />
+                  Refine last result
+                  {showRefine ? <ChevronUp size={12} className="ml-auto" /> : <ChevronDown size={12} className="ml-auto" />}
+                </button>
+                {showRefine && (
+                  <div className="space-y-2">
+                    <textarea
+                      value={refinePrompt}
+                      onChange={e => setRefinePrompt(e.target.value)}
+                      placeholder="Change the background to a dark cityscape..."
+                      rows={2}
+                      className="w-full resize-none text-xs outline-none rounded-lg p-2.5"
+                      style={{ ...panels.card, color: 'white' }}
+                    />
+                    <button onClick={handleRefine} disabled={isGenerating || !refinePrompt.trim()}
+                      className="w-full py-2 rounded-lg text-xs font-medium transition-all disabled:opacity-50"
+                      style={buttons.primary}
+                    >
+                      Apply refinement
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
         )}
 
-        {/* GALLERY */}
-        {activeTab === 'gallery' && (
+        {/* ── MY GALLERY TAB ── */}
+        {activeTab === 'mine' && (
           <div className="p-4">
-            {gallery.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20" style={{ color: 'rgba(255,255,255,0.2)' }}>
-                <Image size={40} className="mb-4 opacity-30" />
-                <p className="text-sm mb-1">No thumbnails yet</p>
-                <p className="text-xs mb-4" style={{ color: 'rgba(255,255,255,0.15)' }}>Generate your first thumbnail to see it here</p>
-                <button
-                  onClick={() => setActiveTab('generate')}
-                  className="px-4 py-2 rounded-xl text-xs font-medium transition-all"
-                  style={{ background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.2)', color: 'var(--color-primary)' }}
-                >
-                  Start Generating
-                </button>
+            <ImageGallery
+              images={myImages}
+              onDelete={handleDelete}
+              onReuse={handleReuse}
+              onDownload={handleDownload}
+              onTogglePublic={handleTogglePublic}
+              emptyMessage="No thumbnails yet"
+              emptyAction={{ label: 'Generate your first thumbnail', onClick: () => setActiveTab('generate') }}
+            />
+          </div>
+        )}
+
+        {/* ── COMMUNITY TAB ── */}
+        {activeTab === 'community' && (
+          <div className="p-4">
+            {communityLoading ? (
+              <div className="flex items-center justify-center py-16 gap-2" style={{ color: semantic.textMuted }}>
+                <Loader2 size={16} className="animate-spin" />
+                <span className="text-sm">Loading community thumbnails...</span>
               </div>
             ) : (
-              <>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                    {gallery.length} thumbnail{gallery.length !== 1 ? 's' : ''}
-                  </p>
-                  <button
-                    onClick={() => { if (confirm('Clear all thumbnails?')) { setGallery([]); saveGallery([]) } }}
-                    className="text-xs flex items-center gap-1 transition-all"
-                    style={{ color: 'rgba(255,255,255,0.2)' }}
-                  >
-                    <Trash2 size={11} /> Clear all
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {gallery.map(item => (
-                    <div
-                      key={item.id}
-                      className="group relative rounded-xl overflow-hidden transition-all"
-                      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}
-                    >
-                      <div
-                        className={`relative overflow-hidden cursor-pointer ${
-                          item.aspectRatio === '9:16' ? 'aspect-[9/16]' :
-                          item.aspectRatio === '1:1' ? 'aspect-square' :
-                          item.aspectRatio === '4:3' ? 'aspect-[4/3]' : 'aspect-video'
-                        }`}
-                        onClick={() => setLightbox(item)}
-                      >
-                        <img
-                          src={item.url}
-                          alt={item.prompt}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          loading="lazy"
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all" style={{ background: 'rgba(0,0,0,0.4)' }}>
-                          <ZoomIn size={20} className="text-white" />
-                        </div>
-                      </div>
-                      <div className="p-2">
-                        <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.5)' }}>{item.prompt}</p>
-                        <div className="flex gap-1 mt-1">
-                          <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.3)' }}>{item.model}</span>
-                          <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.3)' }}>{item.aspectRatio}</span>
-                        </div>
-                      </div>
-                      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                        {[
-                          { icon: <Download size={11} />, title: 'Download', onClick: () => downloadImage(item.url, item.id) },
-                          { icon: <Copy size={11} />, title: 'Reuse', onClick: () => reuseSettings(item), active: copiedId === item.id },
-                          { icon: <Trash2 size={11} />, title: 'Delete', onClick: () => deleteImage(item.id), danger: true },
-                        ].map((btn, i) => (
-                          <button
-                            key={i}
-                            onClick={e => { e.stopPropagation(); btn.onClick() }}
-                            title={btn.title}
-                            className="p-1.5 rounded-lg transition-all"
-                            style={{
-                              background: btn.active ? 'rgba(34,211,238,0.3)' : 'rgba(0,0,0,0.7)',
-                              color: btn.active ? 'var(--color-primary)' : btn.danger ? '#f87171' : 'white',
-                            }}
-                          >
-                            {btn.icon}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
+              <ImageGallery
+                images={communityImages}
+                onDelete={() => {}}
+                onReuse={handleReuse}
+                onDownload={handleDownload}
+                emptyMessage="No community thumbnails yet — be the first!"
+                emptyAction={{ label: 'Generate & share', onClick: () => setActiveTab('generate') }}
+              />
             )}
           </div>
         )}
       </div>
-
-      {/* ── LIGHTBOX ── */}
-      {lightbox && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.92)' }}
-          onClick={() => setLightbox(null)}
-        >
-          <div
-            className="relative max-w-4xl max-h-[90vh] rounded-2xl overflow-hidden animate-fade-in-up"
-            style={{ border: '1px solid var(--border-color)' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <img
-              src={lightbox.url}
-              alt={lightbox.prompt}
-              className="max-w-full max-h-[78vh] object-contain"
-            />
-            <div
-              className="absolute bottom-0 left-0 right-0 p-4"
-              style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)' }}
-            >
-              <p className="text-sm" style={{ color: 'rgba(255,255,255,0.8)' }}>{lightbox.prompt}</p>
-              <div className="flex gap-2 mt-2">
-                {[lightbox.model, lightbox.style, lightbox.aspectRatio].map((tag, i) => (
-                  <span key={i} className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)' }}>
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div className="absolute top-3 right-3 flex gap-2">
-              {[
-                { icon: <Download size={14} />, onClick: () => downloadImage(lightbox.url, lightbox.id) },
-                { icon: <Copy size={14} />, onClick: () => reuseSettings(lightbox) },
-                { icon: <X size={14} />, onClick: () => setLightbox(null) },
-              ].map((btn, i) => (
-                <button
-                  key={i}
-                  onClick={btn.onClick}
-                  className="p-2 rounded-xl transition-all"
-                  style={{ background: 'rgba(0,0,0,0.7)', color: 'white', border: '1px solid var(--border-color)' }}
-                >
-                  {btn.icon}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

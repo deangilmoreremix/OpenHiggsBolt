@@ -14,6 +14,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "typecheck": "tsc --noEmit",
     "start": "next start",
     "lint": "next lint",
     "build:studio": "npm run build -w studio",
@@ -129,6 +130,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/vite": "^4.1.18",
+    "@types/node": "^26.0.0",
     "autoprefixer": "^10.4.24",
     "electron": "^33.4.11",
     "electron-builder": "^25.1.8",

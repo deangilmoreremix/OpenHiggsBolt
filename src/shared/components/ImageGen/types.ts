@@ -73,8 +73,8 @@ export interface GenerationRequest {
   size: SizePreset
   n: number             // 1-4 variations
   style?: string
-  referenceImage?: File | string   // for /edits endpoint
-  mask?: File                      // for inpainting
+  referenceImage?: File            // for /edits endpoint
+  mask?: File | Blob               // for inpainting
   mode: GenerationMode
   previousResponseId?: string      // for multi-turn refinement
   isPublic?: boolean

@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-const __dirname = new URL('.', import.meta.url).pathname;
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig = {
   webpack: (config) => {
