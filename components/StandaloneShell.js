@@ -17,6 +17,7 @@ const MusicStudio = dynamic(() => import('../src/apps/music-studio/MusicStudio')
 const ScriptWriter = dynamic(() => import('../src/apps/script-writer/ScriptWriter'), { ssr: false });
 const Presentation = dynamic(() => import('../src/apps/presentation/Presentation'), { ssr: false });
 const ContentPlanner = dynamic(() => import('../src/apps/content-planner/ContentPlanner'), { ssr: false });
+const BrandStudio = dynamic(() => import('../src/apps/brand-studio/BrandStudio'), { ssr: false });
 const UGCGenerator = dynamic(() => import('../src/apps/ugc-generator'), { ssr: false });
 
 const TABS = [
@@ -41,6 +42,7 @@ const TABS = [
   { id: 'presentation', label: 'Presentation' },
   { id: 'content-planner', label: 'Content Planner' },
   { id: 'ugc-generator', label: 'UGC Generator' },
+  { id: 'brand-studio', label: 'Brand Studio' },
   { id: 'apps', label: 'Explore Apps' },
 ];
 
@@ -426,6 +428,7 @@ export default function StandaloneShell() {
         {activeTab === 'presentation' && <MemoryRouter initialEntries={['/']}><Presentation /></MemoryRouter>}
         {activeTab === 'content-planner' && <ContentPlanner apiKey={apiKey} />}
         {activeTab === 'ugc-generator' && <MemoryRouter initialEntries={['/apps/ugc']}><UGCGenerator /></MemoryRouter>}
+        {activeTab === 'brand-studio' && <BrandStudio apiKey={apiKey} />}
         {activeTab === 'apps' && <AppsStudio apiKey={apiKey} />}
       </div>
 

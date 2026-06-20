@@ -115,7 +115,6 @@ export default function DesignAgent() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const templateRef = useRef<HTMLDivElement>(null)
 
   // Typewriter animation
   useEffect(() => {
@@ -139,15 +138,6 @@ export default function DesignAgent() {
       }
     }
   }, [charIdx, isTyping, placeholderIdx, input])
-
-  // Close templates on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (templateRef.current && !templateRef.current.contains(e.target as Node)) setShowTemplates(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
 
   // Scroll to bottom
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
@@ -285,6 +275,64 @@ export default function DesignAgent() {
   if (!activeProject) {
     return (
       <div className="flex flex-col h-full" style={appWrapper}>
+        {showTemplates && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+            onClick={() => setShowTemplates(false)}>
+            <div className="w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl animate-fade-in-up"
+              style={{ background: '#111', border: '1px solid var(--border-color)', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
+              onClick={e => e.stopPropagation()}>
+              {/* Modal header */}
+              <div className="p-5 border-b flex items-start justify-between" style={{ borderColor: 'var(--border-color)' }}>
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(59,130,246,0.2)' }}>
+                    <Sparkles size={18} style={{ color: '#60a5fa' }} />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold">Templates</h2>
+                    <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>Pick a starting point — specialized workflows for common tasks.</p>
+                  </div>
+                </div>
+                <button className="px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-all" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'rgba(255,255,255,0.5)' }}>
+                  View Protocol
+                </button>
+              </div>
+              {/* Search */}
+              <div className="px-4 pt-3 pb-2">
+                <input value={templateSearch} onChange={e => setTemplateSearch(e.target.value)}
+                  placeholder="Search templates..."
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white' }} />
+              </div>
+              {/* Grid */}
+              <div className="overflow-y-auto custom-scrollbar flex-1 p-4 pt-2">
+                <div className="grid grid-cols-2 gap-2">
+                  {filteredTemplates.map(t => (
+                    <button key={t.id}
+                      onClick={() => { setSelectedTemplate(t); setShowTemplates(false); setTemplateSearch('') }}
+                      className="p-4 rounded-xl text-left transition-all hover:bg-white/5"
+                      style={{ border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.02)' }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles size={13} style={{ color: '#60a5fa', flexShrink: 0 }} />
+                        <span className="text-sm font-medium">{t.label}</span>
+                      </div>
+                      <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.4)' }}>{t.description}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Footer */}
+              <div className="px-5 py-3 border-t flex items-center justify-between" style={{ borderColor: 'var(--border-color)' }}>
+                <div className="flex items-center gap-2" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  <Sparkles size={12} />
+                  <span className="text-xs">DESIGN PROTOCOL V1.2</span>
+                </div>
+                <button onClick={() => setShowTemplates(false)} className="text-xs font-medium transition-all hover:text-white" style={{ color: 'rgba(255,255,255,0.4)' }}>Dismiss</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* API Key modal */}
         {showKeyModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.8)' }}>
@@ -343,15 +391,23 @@ export default function DesignAgent() {
           {/* Prompt box */}
           <div className="w-full max-w-2xl">
             <div className="rounded-2xl p-4 space-y-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)' }}>
-              <textarea
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
-                placeholder={placeholder}
-                rows={3}
-                className="w-full bg-transparent resize-none outline-none text-sm"
-                style={{ color: 'white', caretColor: 'var(--color-primary)' }}
-              />
+              <div className="relative">
+                {!input && (
+                  <div className="absolute top-0 left-0 right-0 text-sm pointer-events-none select-none"
+                    style={{ color: 'rgba(255,255,255,0.25)', fontFamily: 'inherit', lineHeight: '1.5', padding: '0' }}>
+                    {placeholder}<span className="animate-pulse">|</span>
+                  </div>
+                )}
+                <textarea
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
+                  placeholder=""
+                  rows={3}
+                  className="w-full bg-transparent resize-none outline-none text-sm relative"
+                  style={{ color: 'white', caretColor: 'var(--color-primary)', zIndex: 1 }}
+                />
+              </div>
               <div className="flex items-center gap-2">
                 <button onClick={() => fileInputRef.current?.click()}
                   className="p-1.5 rounded-full transition-all hover:bg-white/10"
@@ -361,71 +417,21 @@ export default function DesignAgent() {
                 <input ref={fileInputRef} type="file" className="hidden" accept="image/*,video/*" />
 
                 {/* Templates button */}
-                <div className="relative" ref={templateRef}>
-                  <button
-                    onClick={() => setShowTemplates(!showTemplates)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
-                    style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa' }}
-                  >
+                <button onClick={() => setShowTemplates(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+                  style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa' }}>
+                  <Sparkles size={11} />
+                  Templates
+                  <ChevronDown size={11} />
+                </button>
+                {selectedTemplate && (
+                  <div className="inline-flex items-center gap-1.5 ml-2 px-3 py-1.5 rounded-full text-xs"
+                    style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa' }}>
                     <Sparkles size={11} />
-                    Templates
-                    <ChevronDown size={11} />
-                  </button>
-
-                  {/* Selected template chip */}
-                  {selectedTemplate && (
-                    <div className="inline-flex items-center gap-1.5 ml-2 px-3 py-1.5 rounded-full text-xs font-medium"
-                      style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa' }}>
-                      <Sparkles size={11} />
-                      {selectedTemplate.id}
-                      <button onClick={() => setSelectedTemplate(null)}><X size={10} /></button>
-                    </div>
-                  )}
-
-                  {/* Templates dropdown */}
-                  {showTemplates && (
-                    <div className="absolute bottom-10 left-0 w-96 rounded-2xl z-50 overflow-hidden shadow-2xl"
-                      style={{ background: '#111', border: '1px solid var(--border-color)' }}>
-                      <div className="p-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(59,130,246,0.2)' }}>
-                              <Sparkles size={12} style={{ color: '#60a5fa' }} />
-                            </div>
-                            <span className="text-sm font-semibold">Templates</span>
-                          </div>
-                          <button className="text-xs px-3 py-1 rounded-lg transition-all" style={{ ...panels.card, color: semantic.textMuted }}>View Protocol</button>
-                        </div>
-                        <p className="text-xs" style={{ color: semantic.textMuted }}>Pick a starting point — specialized workflows for common tasks.</p>
-                      </div>
-                      <div className="p-2">
-                        <input value={templateSearch} onChange={e => setTemplateSearch(e.target.value)}
-                          placeholder="Search templates..."
-                          className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2"
-                          style={{ ...panels.card, color: 'white' }} />
-                      </div>
-                      <div className="overflow-y-auto custom-scrollbar" style={{ maxHeight: '340px' }}>
-                        <div className="grid grid-cols-2 gap-1 p-2 pt-0">
-                          {filteredTemplates.map(t => (
-                            <button key={t.id} onClick={() => { setSelectedTemplate(t); setShowTemplates(false); setTemplateSearch('') }}
-                              className="p-3 rounded-xl text-left transition-all hover:bg-white/5"
-                              style={{ border: '1px solid var(--border-color)' }}>
-                              <div className="flex items-center gap-2 mb-1">
-                                <Sparkles size={11} style={{ color: '#60a5fa', flexShrink: 0 }} />
-                                <span className="text-xs font-medium truncate">{t.label}</span>
-                              </div>
-                              <p className="text-xs leading-relaxed line-clamp-2" style={{ color: semantic.textMuted }}>{t.description}</p>
-                            </button>
-                          ))}
-                        </div>
-                        <div className="px-4 py-3 border-t flex items-center justify-between" style={{ borderColor: 'var(--border-color)' }}>
-                          <span className="text-xs" style={{ color: semantic.textMuted }}>DESIGN PROTOCOL V1.2</span>
-                          <button onClick={() => setShowTemplates(false)} className="text-xs" style={{ color: semantic.textMuted }}>Dismiss</button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                    {selectedTemplate.id}
+                    <button onClick={() => setSelectedTemplate(null)} className="ml-0.5"><X size={10} /></button>
+                  </div>
+                )}
 
                 <div className="flex-1" />
 
@@ -480,6 +486,64 @@ export default function DesignAgent() {
   // ── CHAT VIEW (active project) ────────────────────────────────────────────
   return (
     <div className="flex flex-col h-full" style={appWrapper}>
+      {showTemplates && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setShowTemplates(false)}>
+          <div className="w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl animate-fade-in-up"
+            style={{ background: '#111', border: '1px solid var(--border-color)', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
+            onClick={e => e.stopPropagation()}>
+            {/* Modal header */}
+            <div className="p-5 border-b flex items-start justify-between" style={{ borderColor: 'var(--border-color)' }}>
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(59,130,246,0.2)' }}>
+                  <Sparkles size={18} style={{ color: '#60a5fa' }} />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold">Templates</h2>
+                  <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>Pick a starting point — specialized workflows for common tasks.</p>
+                </div>
+              </div>
+              <button className="px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-all" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'rgba(255,255,255,0.5)' }}>
+                View Protocol
+              </button>
+            </div>
+            {/* Search */}
+            <div className="px-4 pt-3 pb-2">
+              <input value={templateSearch} onChange={e => setTemplateSearch(e.target.value)}
+                placeholder="Search templates..."
+                className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white' }} />
+            </div>
+            {/* Grid */}
+            <div className="overflow-y-auto custom-scrollbar flex-1 p-4 pt-2">
+              <div className="grid grid-cols-2 gap-2">
+                {filteredTemplates.map(t => (
+                  <button key={t.id}
+                    onClick={() => { setSelectedTemplate(t); setShowTemplates(false); setTemplateSearch('') }}
+                    className="p-4 rounded-xl text-left transition-all hover:bg-white/5"
+                    style={{ border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.02)' }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles size={13} style={{ color: '#60a5fa', flexShrink: 0 }} />
+                      <span className="text-sm font-medium">{t.label}</span>
+                    </div>
+                    <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.4)' }}>{t.description}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Footer */}
+            <div className="px-5 py-3 border-t flex items-center justify-between" style={{ borderColor: 'var(--border-color)' }}>
+              <div className="flex items-center gap-2" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                <Sparkles size={12} />
+                <span className="text-xs">DESIGN PROTOCOL V1.2</span>
+              </div>
+              <button onClick={() => setShowTemplates(false)} className="text-xs font-medium transition-all hover:text-white" style={{ color: 'rgba(255,255,255,0.4)' }}>Dismiss</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Chat header */}
       <div className="flex items-center gap-3 px-6 py-3 border-b flex-shrink-0" style={{ borderColor: 'var(--border-color)' }}>
         <button onClick={() => { setActiveProject(null); setMessages([]) }}
@@ -544,68 +608,43 @@ export default function DesignAgent() {
       {/* Input bar */}
       <div className="flex-shrink-0 p-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
         <div className="rounded-2xl p-3 space-y-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)' }}>
-          <textarea
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
-            placeholder={placeholder}
-            rows={2}
-            className="w-full bg-transparent resize-none outline-none text-sm"
-            style={{ color: 'white', caretColor: 'var(--color-primary)' }}
-          />
+          <div className="relative">
+            {!input && (
+              <div className="absolute top-0 left-0 right-0 text-sm pointer-events-none select-none"
+                style={{ color: 'rgba(255,255,255,0.25)', fontFamily: 'inherit', lineHeight: '1.5', padding: '0' }}>
+                {placeholder}<span className="animate-pulse">|</span>
+              </div>
+            )}
+            <textarea
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
+              placeholder=""
+              rows={2}
+              className="w-full bg-transparent resize-none outline-none text-sm relative"
+              style={{ color: 'white', caretColor: 'var(--color-primary)', zIndex: 1 }}
+            />
+          </div>
           <div className="flex items-center gap-2">
             <button onClick={() => fileInputRef.current?.click()} className="p-1.5 rounded-full transition-all hover:bg-white/10" style={{ color: semantic.textMuted }}>
               <Plus size={16} />
             </button>
-            <div className="relative" ref={templateRef}>
-              <button onClick={() => setShowTemplates(!showTemplates)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+            {/* Templates button */}
+            <button onClick={() => setShowTemplates(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+              style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa' }}>
+              <Sparkles size={11} />
+              Templates
+              <ChevronDown size={11} />
+            </button>
+            {selectedTemplate && (
+              <div className="inline-flex items-center gap-1.5 ml-2 px-3 py-1.5 rounded-full text-xs"
                 style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa' }}>
-                <Sparkles size={11} />Templates<ChevronDown size={11} />
-              </button>
-              {selectedTemplate && (
-                <span className="inline-flex items-center gap-1.5 ml-2 px-3 py-1.5 rounded-full text-xs"
-                  style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa' }}>
-                  <Sparkles size={11} />{selectedTemplate.id}<button onClick={() => setSelectedTemplate(null)}><X size={10} /></button>
-                </span>
-              )}
-              {showTemplates && (
-                <div className="absolute bottom-10 left-0 w-96 rounded-2xl z-50 overflow-hidden shadow-2xl"
-                  style={{ background: '#111', border: '1px solid var(--border-color)' }}>
-                  <div className="p-3 border-b" style={{ borderColor: 'var(--border-color)' }}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Sparkles size={12} style={{ color: '#60a5fa' }} />
-                      <span className="text-sm font-semibold">Templates</span>
-                    </div>
-                    <p className="text-xs" style={{ color: semantic.textMuted }}>Pick a starting point — specialized workflows for common tasks.</p>
-                  </div>
-                  <div className="p-2">
-                    <input value={templateSearch} onChange={e => setTemplateSearch(e.target.value)}
-                      placeholder="Search templates..." className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-1"
-                      style={{ ...panels.card, color: 'white' }} />
-                  </div>
-                  <div className="overflow-y-auto custom-scrollbar" style={{ maxHeight: '300px' }}>
-                    <div className="grid grid-cols-2 gap-1 p-2 pt-0">
-                      {filteredTemplates.map(t => (
-                        <button key={t.id} onClick={() => { setSelectedTemplate(t); setShowTemplates(false) }}
-                          className="p-3 rounded-xl text-left transition-all hover:bg-white/5"
-                          style={{ border: '1px solid var(--border-color)' }}>
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <Sparkles size={10} style={{ color: '#60a5fa' }} />
-                            <span className="text-xs font-medium truncate">{t.label}</span>
-                          </div>
-                          <p className="text-xs line-clamp-2" style={{ color: semantic.textMuted }}>{t.description}</p>
-                        </button>
-                      ))}
-                    </div>
-                    <div className="px-3 py-2 border-t flex items-center justify-between" style={{ borderColor: 'var(--border-color)' }}>
-                      <span className="text-xs" style={{ color: semantic.textMuted }}>DESIGN PROTOCOL V1.2</span>
-                      <button onClick={() => setShowTemplates(false)} className="text-xs" style={{ color: semantic.textMuted }}>Dismiss</button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+                <Sparkles size={11} />
+                {selectedTemplate.id}
+                <button onClick={() => setSelectedTemplate(null)} className="ml-0.5"><X size={10} /></button>
+              </div>
+            )}
             <div className="flex-1" />
             <button onClick={sendMessage} disabled={!input.trim() && !selectedTemplate}
               className="p-2 rounded-full transition-all disabled:opacity-30"
