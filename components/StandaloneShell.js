@@ -18,8 +18,6 @@ const ScriptWriter = dynamic(() => import('../src/apps/script-writer/ScriptWrite
 const Presentation = dynamic(() => import('../src/apps/presentation/Presentation'), { ssr: false });
 const ContentPlanner = dynamic(() => import('../src/apps/content-planner/ContentPlanner'), { ssr: false });
 const BrandStudio = dynamic(() => import('../src/apps/brand-studio/BrandStudio'), { ssr: false });
-const UGCGenerator = dynamic(() => import('../src/apps/ugc-generator'), { ssr: false });
-
 const TABS = [
   { id: 'image',   label: 'Image Studio' },
   { id: 'video',   label: 'Video Studio' },
@@ -40,9 +38,7 @@ const TABS = [
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
   { id: 'script-writer', label: 'Script Writer' },
   { id: 'presentation', label: 'Presentation' },
-  { id: 'content-planner', label: 'Content Planner' },
-  { id: 'ugc-generator', label: 'UGC Generator' },
-  { id: 'brand-studio', label: 'Brand Studio' },
+  { id: 'content-planner', label: 'Content Planner' },  { id: 'brand-studio', label: 'Brand Studio' },
   { id: 'apps', label: 'Explore Apps' },
 ];
 
