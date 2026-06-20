@@ -423,7 +423,6 @@ export default function StandaloneShell() {
         {activeTab === 'script-writer' && <ScriptWriter apiKey={apiKey} />}
         {activeTab === 'presentation' && <MemoryRouter initialEntries={['/']}><Presentation /></MemoryRouter>}
         {activeTab === 'content-planner' && <ContentPlanner apiKey={apiKey} />}
-        {activeTab === 'ugc-generator' && <MemoryRouter initialEntries={['/apps/ugc']}><UGCGenerator /></MemoryRouter>}
         {activeTab === 'brand-studio' && <BrandStudio apiKey={apiKey} />}
         {activeTab === 'apps' && <AppsStudio apiKey={apiKey} />}
       </div>
