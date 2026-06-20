@@ -7,15 +7,17 @@ import { ImageStudio, VideoStudio, ClippingStudio, VibeMotionStudio, LipSyncStud
 import axios from 'axios';
 import { MemoryRouter } from 'react-router-dom';
 
-const DesignAgentStudio = dynamic(() => import('studio').then(mod => mod.DesignAgentStudio), {
-  ssr: false,
-  loading: () => <div className="h-full w-full bg-black flex items-center justify-center text-white/20">Loading Design Studio...</div>
-});
+const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
 const Videco = dynamic(() => import('../src/apps/videco/Videco'), { ssr: false });
 const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ssr: false });
 const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
-const ScenePlanner = dynamic(() => import('../src/apps/scene-planner/ScenePlanner'), { ssr: false });const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
-const ScriptWriter = dynamic(() => import('../src/apps/script-writer/ScriptWriter'), { ssr: false });const ContentPlanner = dynamic(() => import('../src/apps/content-planner/ContentPlanner'), { ssr: false });
+const ScenePlanner = dynamic(() => import('../src/apps/scene-planner/ScenePlanner'), { ssr: false });
+const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
+const MusicStudio = dynamic(() => import('../src/apps/music-studio/MusicStudio'), { ssr: false });
+const ScriptWriter = dynamic(() => import('../src/apps/script-writer/ScriptWriter'), { ssr: false });
+const Presentation = dynamic(() => import('../src/apps/presentation/Presentation'), { ssr: false });
+const ContentPlanner = dynamic(() => import('../src/apps/content-planner/ContentPlanner'), { ssr: false });
+const UGCGenerator = dynamic(() => import('../src/apps/ugc-generator'), { ssr: false });
 
 const TABS = [
   { id: 'image',   label: 'Image Studio' },
@@ -32,8 +34,13 @@ const TABS = [
   { id: 'videco', label: 'Videco' },
   { id: 'vfx-studio', label: 'VFX Studio' },
   { id: 'storyboard', label: 'Storyboard' },
-  { id: 'scene-planner', label: 'Scene Planner' },  { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
-  { id: 'script-writer', label: 'Script Writer' },  { id: 'content-planner', label: 'Content Planner' },
+  { id: 'scene-planner', label: 'Scene Planner' },
+  { id: 'music-studio', label: 'Music Studio' },
+  { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
+  { id: 'script-writer', label: 'Script Writer' },
+  { id: 'presentation', label: 'Presentation' },
+  { id: 'content-planner', label: 'Content Planner' },
+  { id: 'ugc-generator', label: 'UGC Generator' },
   { id: 'apps', label: 'Explore Apps' },
 ];
 
@@ -413,9 +420,12 @@ export default function StandaloneShell() {
         {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} /></MemoryRouter>}
         {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} /></MemoryRouter>}
         {activeTab === 'scene-planner' && <MemoryRouter initialEntries={['/']}><ScenePlanner apiKey={apiKey} /></MemoryRouter>}
-        {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} />}
+        {activeTab === 'music-studio' && <MemoryRouter initialEntries={['/']}><MusicStudio /></MemoryRouter>}
+        {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
         {activeTab === 'script-writer' && <ScriptWriter apiKey={apiKey} />}
+        {activeTab === 'presentation' && <MemoryRouter initialEntries={['/']}><Presentation /></MemoryRouter>}
         {activeTab === 'content-planner' && <ContentPlanner apiKey={apiKey} />}
+        {activeTab === 'ugc-generator' && <MemoryRouter initialEntries={['/apps/ugc']}><UGCGenerator /></MemoryRouter>}
         {activeTab === 'apps' && <AppsStudio apiKey={apiKey} />}
       </div>
 
