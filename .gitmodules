@@ -1,0 +1,15 @@
+[submodule "packages/Open-AI-Design-Agent"]
+	path = packages/Open-AI-Design-Agent
+	url = https://github.com/Anil-matcha/Open-AI-Design-Agent.git
+[submodule "packages/Open-Poe-AI"]
+	path = packages/Open-Poe-AI
+	url = https://github.com/Anil-matcha/Open-Poe-AI.git
+[submodule "packages/Vibe-Workflow"]
+	path = packages/Vibe-Workflow
+	url = https://github.com/deangilmoreremix/Vibe-Workflow.git
+[submodule "packages/timeline-studio"]
+	path = packages/timeline-studio
+	url = https://github.com/deangilmoreremix/timeline-studio.git
+[submodule "apps/headshot-generator"]
+	path = apps/headshot-generator
+	url = https://github.com/deangilmoreremix/ai-headshot-generator.git
