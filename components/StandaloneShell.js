@@ -122,9 +122,8 @@ export default function StandaloneShell() {
   // Auto-hide header when inside a specific workflow view or design agent
   useEffect(() => {
     const isEditingWorkflow = (activeTab === 'workflows' || !!idFromParams) && urlWorkflowId;
-    const isDesignAgent = activeTab === 'design-agent';
     
-    if (isEditingWorkflow || isDesignAgent) {
+    if (isEditingWorkflow) {
       setIsHeaderVisible(false);
     } else {
       setIsHeaderVisible(true);

@@ -34,9 +34,11 @@
         "./src/shared/api"
       ],
       "@/types/*": [
+        "./src/types/*",
         "./src/shared/types/*"
       ],
       "@/types": [
+        "./src/types",
         "./src/shared/types"
       ],
       "@/stores/*": [

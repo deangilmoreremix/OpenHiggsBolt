@@ -279,8 +279,8 @@ export default function DesignAgent() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
             style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
             onClick={() => setShowTemplates(false)}>
-            <div className="w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl animate-fade-in-up"
-              style={{ background: '#111', border: '1px solid var(--border-color)', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
+            <div className="w-full max-w-6xl rounded-2xl overflow-hidden shadow-2xl animate-fade-in-up"
+              style={{ background: '#111', border: '1px solid var(--border-color)', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
               onClick={e => e.stopPropagation()}>
               {/* Modal header */}
               <div className="p-5 border-b flex items-start justify-between" style={{ borderColor: 'var(--border-color)' }}>
@@ -356,26 +356,13 @@ export default function DesignAgent() {
         )}
 
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-4 flex-shrink-0">
-          <div />
-          <div className="flex items-center gap-3">
-            <a href="https://muapi.ai/docs/design-agent-api" target="_blank" rel="noopener noreferrer"
-              className="px-3 py-1.5 rounded-full text-xs border transition-all hover:border-white/20"
-              style={{ border: '1px solid var(--border-color)', color: semantic.textSecondary }}>
-              Developer API Docs
-            </a>
-            <a href="https://muapi.ai/docs/models" target="_blank" rel="noopener noreferrer"
-              className="px-3 py-1.5 rounded-full text-xs transition-all"
-              style={{ color: semantic.textMuted }}>
-              Explore Models
-            </a>
-            <button onClick={() => setShowKeyModal(true)}
-              className="p-2 rounded-full transition-all"
-              style={{ color: apiKey ? 'var(--color-primary)' : semantic.textMuted }}
-              title={apiKey ? 'API key set' : 'Set API key'}>
-              <Key size={14} />
-            </button>
-          </div>
+        <div className="flex items-center justify-end px-8 py-4 flex-shrink-0">
+          <button onClick={() => setShowKeyModal(true)}
+            className="p-2 rounded-full transition-all"
+            style={{ color: apiKey ? 'var(--color-primary)' : semantic.textMuted }}
+            title={apiKey ? 'API key set' : 'Set API key'}>
+            <Key size={14} />
+          </button>
         </div>
 
         {/* Hero */}
@@ -389,7 +376,7 @@ export default function DesignAgent() {
           </div>
 
           {/* Prompt box */}
-          <div className="w-full max-w-2xl">
+          <div className="w-full max-w-5xl">
             <div className="rounded-2xl p-4 space-y-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)' }}>
               <div className="relative">
                 {!input && (
@@ -445,7 +432,7 @@ export default function DesignAgent() {
           </div>
 
           {/* Recent Projects */}
-          <div className="w-full max-w-2xl">
+          <div className="w-full max-w-5xl">
             <h2 className="text-base font-semibold mb-4">Recent Projects</h2>
             <div className="grid grid-cols-3 gap-3">
               {/* New Project card */}
@@ -490,8 +477,8 @@ export default function DesignAgent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
           onClick={() => setShowTemplates(false)}>
-          <div className="w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl animate-fade-in-up"
-            style={{ background: '#111', border: '1px solid var(--border-color)', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
+          <div className="w-full max-w-6xl rounded-2xl overflow-hidden shadow-2xl animate-fade-in-up"
+            style={{ background: '#111', border: '1px solid var(--border-color)', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
             onClick={e => e.stopPropagation()}>
             {/* Modal header */}
             <div className="p-5 border-b flex items-start justify-between" style={{ borderColor: 'var(--border-color)' }}>

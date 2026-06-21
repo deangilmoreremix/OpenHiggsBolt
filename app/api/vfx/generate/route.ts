@@ -1,45 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const MUAPI_KEY = process.env.MUAPI_KEY || process.env.NEXT_PUBLIC_MUAPI_KEY || ''
+import { getServerVFXClient } from '@/api/vfx'
+import { validateMuAPIKey } from '../_helpers'
+import { validateGenerationInput } from '../_validation'
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { prompt, image_url, name, aspect_ratio, resolution, quality, duration } = body
+    const validationErrors = validateGenerationInput(body)
 
-    if (!image_url) {
-      return NextResponse.json({ error: 'image_url is required' }, { status: 400 })
+    if (validationErrors.length > 0) {
+      return NextResponse.json({ error: validationErrors.join('; ') }, { status: 400 })
     }
 
-    const payload = {
-      prompt: prompt || `Apply ${name} effect cinematically`,
+    const {
+      prompt,
       image_url,
-      name: name || 'Car Explosion',
-      aspect_ratio: aspect_ratio || '16:9',
-      resolution: resolution || '480p',
-      quality: quality || 'medium',
-      duration: Number(duration) || 5,
-    }
+      effect,
+      aspect_ratio = '16:9',
+      resolution = '480p',
+      quality = 'medium',
+      duration = 5,
+    } = body
 
-    const res = await fetch('https://api.muapi.ai/api/v1/generate_wan_ai_effects', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': MUAPI_KEY,
-      },
-      body: JSON.stringify(payload),
+    const apiKey = await validateMuAPIKey()
+    const client = getServerVFXClient(apiKey)
+
+    const result = await client.generateVFX({
+      prompt,
+      image_url,
+      effect,
+      aspect_ratio,
+      resolution,
+      quality,
+      duration: Number(duration),
     })
 
-    if (!res.ok) {
-      const err = await res.text()
-      console.error('[VFX generate]', res.status, err)
-      return NextResponse.json({ error: err }, { status: res.status })
-    }
-
-    const data = await res.json()
-    return NextResponse.json(data)
-  } catch (err: any) {
-    console.error('[VFX generate exception]', err)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    return NextResponse.json({
+      request_id: result.request_id,
+      status: result.status,
+      message: result.message,
+    })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    console.error('[VFX generate]', message)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

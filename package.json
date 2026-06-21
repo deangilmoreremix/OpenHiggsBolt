@@ -15,6 +15,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "typecheck": "tsc --noEmit",
+    "test:vfx": "node --test tests/vfx-service.test.js tests/vfx-validation.test.js",
     "start": "next start",
     "lint": "next lint",
     "build:studio": "npm run build -w studio",

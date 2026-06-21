@@ -3,13 +3,13 @@ import { NextResponse } from 'next/server';
 const MUAPI_BASE = 'https://api.muapi.ai';
 
 function getApiKey(request) {
-    // Priority 1: Direct x-api-key header
-    const headerKey = request.headers.get('x-api-key');
-    if (headerKey) return headerKey;
-
-    // Priority 2: muapi_key cookie (used by the fixed builder library)
-    const cookieKey = request.cookies.get('muapi_key')?.value;
-    return cookieKey;
+    return (
+        request.headers.get('x-api-key') ||
+        request.cookies.get('muapi_key')?.value ||
+        process.env.MUAPI_API_KEY ||
+        process.env.MUAPI_KEY ||
+        null
+    );
 }
 
 function cleanHeaders(request) {
