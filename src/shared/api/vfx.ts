@@ -71,6 +71,11 @@ export class MuAPIVFXClient {
     this.baseUrl = options.baseUrl || MUAPI_BASE
     this.pollIntervalMs = options.pollIntervalMs || DEFAULT_POLL_INTERVAL_MS
     this.maxPollAttempts = options.maxPollAttempts || DEFAULT_MAX_POLL_ATTEMPTS
+    this.abortController = null
+
+    if (!this.apiKey) {
+      throw new Error('MuAPI key is required. Set MUAPI_API_KEY or pass apiKey.')
+    }
   }
 
   /**

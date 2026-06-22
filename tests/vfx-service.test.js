@@ -1,6 +1,6 @@
 import { describe, it, before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { MuAPIVFXClient } from '../lib/muapi.js'
+import { MuAPIVFXClient } from '../src/shared/api/vfx.ts'
 
 // Minimal File polyfill for Node tests
 class MockFile {
@@ -162,5 +162,57 @@ describe('MuAPIVFXClient', () => {
     const client = new MuAPIVFXClient({ apiKey: 'test-key' })
     const file = new File(['hello'], 'test.jpg', { type: 'image/jpeg' })
     await assert.rejects(() => client.uploadImage(file), /Invalid key/)
+  })
+
+  it('end-to-end generate then poll returns video', async () => {
+    let generateCalled = false
+    let pollCalls = 0
+
+    global.fetch = async (url, options) => {
+      if (url.includes('generate_wan_ai_effects')) {
+        generateCalled = true
+        const body = JSON.parse(options.body)
+        assert.equal(body.name, 'Car Explosion')
+        assert.equal(body.resolution, '720p')
+        assert.equal(body.duration, 10)
+        return {
+          ok: true,
+          async json() {
+            return { request_id: 'e2e-123' }
+          },
+        }
+      }
+
+      if (url.includes('/predictions/')) {
+        pollCalls++
+        return {
+          ok: true,
+          async json() {
+            if (pollCalls === 1) return { status: 'processing' }
+            return { status: 'completed', video_url: 'https://example.com/result.mp4' }
+          },
+        }
+      }
+
+      throw new Error(`Unexpected URL: ${url}`)
+    }
+
+    const client = new MuAPIVFXClient({ apiKey: 'test-key', pollIntervalMs: 10, maxPollAttempts: 5 })
+
+    const genResult = await client.generateVFX({
+      image_url: 'https://example.com/image.jpg',
+      effect: 'Car Explosion',
+      resolution: '720p',
+      duration: 10,
+    })
+
+    assert.equal(genResult.request_id, 'e2e-123')
+
+    const pollResult = await client.pollGeneration(genResult.request_id)
+
+    assert.equal(pollResult.video_url, 'https://example.com/result.mp4')
+    assert.equal(pollResult.status, 'completed')
+    assert.ok(generateCalled)
+    assert.ok(pollCalls >= 2)
   })
 })
