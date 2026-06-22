@@ -23,6 +23,7 @@ import type {
 
 const STORAGE_KEY = 'vfx_generation_state'
 const POLL_INTERVAL_MS = 5000
+const MAX_POLL_ATTEMPTS = 72 // ~6 minutes at 5s intervals
 
 interface PersistedState {
   requestId: string | null
@@ -181,9 +182,19 @@ export function useVideoGeneration(): UseVideoGenerationReturn {
   const poll = useCallback(
     async (id: string) => {
       abortRef.current = false
+      let attempts = 0
 
       const tick = async () => {
         if (abortRef.current) return
+        attempts += 1
+
+        if (attempts > MAX_POLL_ATTEMPTS) {
+          setError('Generation timed out. Please try again.')
+          setStatus('failed')
+          setLoading(false)
+          persist({ requestId: id, status: 'failed' })
+          return
+        }
 
         try {
           const res = await fetch(`/api/vfx/status?id=${id}`)

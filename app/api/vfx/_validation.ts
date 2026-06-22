@@ -17,7 +17,7 @@ export const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024
 export const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp'])
 
 export function validateGenerationInput(body) {
-  const errors = []
+  const errors: string[] = []
 
   if (!body.image_url || typeof body.image_url !== 'string') {
     errors.push('image_url is required')
