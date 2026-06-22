@@ -49,8 +49,8 @@ export default function NewCampaignPage() {
             <button
               key={g.id}
               onClick={() => setGoal(g.id)}
-              className={`rounded-xl p-5 text-left transition ${goal === g.id ? 'ring-2' : ''}`}
-              style={goal === g.id ? { ...buttons.activePill, ringColor: 'var(--color-primary)' } : panels.card}
+              className={`rounded-xl p-5 text-left transition ${goal === g.id ? 'border-2' : ''}`}
+              style={goal === g.id ? { ...buttons.activePill, borderColor: 'var(--color-primary)' } : panels.card}
             >
               <span className="text-2xl mb-2 block">{g.icon}</span>
               <p className="font-semibold">{g.label}</p>

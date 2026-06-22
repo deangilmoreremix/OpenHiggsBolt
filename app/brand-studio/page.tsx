@@ -25,7 +25,7 @@ export default function BrandStudioLanding() {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(-1);
   const [error, setError] = useState<string | null>(null);
-  const [brands, setBrands] = useState([]);
+  const [brands, setBrands] = useState<any[]>([]);
 
   useEffect(() => {
     fetch('/api/brands')

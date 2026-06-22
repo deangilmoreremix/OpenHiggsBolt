@@ -126,8 +126,8 @@ export default function CampaignPage() {
               <div
                 key={i}
                 onClick={() => setSelectedConcept(i)}
-                className={`rounded-xl p-5 cursor-pointer transition ${selectedConcept === i ? 'ring-2' : ''}`}
-                style={selectedConcept === i ? { ...buttons.activePill, ringColor: 'var(--color-primary)' } : panels.card}
+                className={`rounded-xl p-5 cursor-pointer transition ${selectedConcept === i ? 'border-2' : ''}`}
+                style={selectedConcept === i ? { ...buttons.activePill, borderColor: 'var(--color-primary)' } : panels.card}
               >
                 <div className="flex items-start gap-3">
                   <div className={`mt-1 w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0 ${selectedConcept === i ? 'border-transparent' : ''}`} style={selectedConcept === i ? buttons.activePill : { borderColor: 'var(--border-color)' }}>

@@ -17,7 +17,6 @@ const MusicStudio = dynamic(() => import('../src/apps/music-studio/MusicStudio')
 const ScriptWriter = dynamic(() => import('../src/apps/script-writer/ScriptWriter'), { ssr: false });
 const Presentation = dynamic(() => import('../src/apps/presentation/Presentation'), { ssr: false });
 const ContentPlanner = dynamic(() => import('../src/apps/content-planner/ContentPlanner'), { ssr: false });
-const BrandStudio = dynamic(() => import('../src/apps/brand-studio/BrandStudio'), { ssr: false });
 const TABS = [
   { id: 'image',   label: 'Image Studio' },
   { id: 'video',   label: 'Video Studio' },
@@ -38,7 +37,8 @@ const TABS = [
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
   { id: 'script-writer', label: 'Script Writer' },
   { id: 'presentation', label: 'Presentation' },
-  { id: 'content-planner', label: 'Content Planner' },  { id: 'brand-studio', label: 'Brand Studio' },
+  { id: 'content-planner', label: 'Content Planner' },
+  { id: 'brand-studio', label: 'Brand Studio' },
   { id: 'apps', label: 'Explore Apps' },
 ];
 
@@ -80,6 +80,12 @@ export default function StandaloneShell() {
   const [apiKey, setApiKey] = useState(null);
   const [activeTab, setActiveTab] = useState(getInitialTab());
 
+  useEffect(() => {
+    if (activeTab === 'brand-studio') {
+      router.push('/brand-studio');
+    }
+  }, [activeTab, router]);
+
   const [balance, setBalance] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsKeyInput, setSettingsKeyInput] = useState('');
@@ -115,8 +121,11 @@ export default function StandaloneShell() {
   }, [slug, getWorkflowInfo]);
 
   const handleTabChange = (tabId) => {
-    router.push(`/studio/${tabId}`);
-    // setActiveTab(tabId);
+    if (tabId === 'brand-studio') {
+      router.push('/brand-studio');
+    } else {
+      router.push(`/studio/${tabId}`);
+    }
   };
 
   // Auto-hide header when inside a specific workflow view or design agent
@@ -422,7 +431,11 @@ export default function StandaloneShell() {
         {activeTab === 'script-writer' && <ScriptWriter apiKey={apiKey} />}
         {activeTab === 'presentation' && <MemoryRouter initialEntries={['/']}><Presentation /></MemoryRouter>}
         {activeTab === 'content-planner' && <ContentPlanner apiKey={apiKey} />}
-        {activeTab === 'brand-studio' && <BrandStudio apiKey={apiKey} />}
+        {activeTab === 'brand-studio' && (
+          <div className="flex items-center justify-center h-full">
+            <p style={{ color: semantic.textSecondary }}>Loading Brand Studio…</p>
+          </div>
+        )}
         {activeTab === 'apps' && <AppsStudio apiKey={apiKey} />}
       </div>
 
