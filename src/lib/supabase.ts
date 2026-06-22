@@ -4,29 +4,21 @@ function env(name: string, fallback = '') {
   return (process.env as Record<string, string | undefined>)[name] ?? fallback
 }
 
-const supabaseUrl =
-  env('NEXT_PUBLIC_SUPABASE_URL') ||
-  env('VITE_SUPABASE_URL') ||
-  env('SUPABASE_URL') ||
-  ''
-
-const supabaseAnonKey =
-  env('NEXT_PUBLIC_SUPABASE_ANON_KEY') ||
-  env('VITE_SUPABASE_ANON_KEY') ||
-  env('SUPABASE_ANON_KEY') ||
-  ''
-
 let browserSingleton: SupabaseClient | undefined
 
 function getBrowserClient(): SupabaseClient {
   if (browserSingleton) return browserSingleton
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    browserSingleton = createClient('https://placeholder.invalid', 'placeholder')
-  } else {
-    browserSingleton = createClient(supabaseUrl, supabaseAnonKey)
+  const url = env('NEXT_PUBLIC_SUPABASE_URL')
+  const key = env('NEXT_PUBLIC_SUPABASE_ANON_KEY')
+
+  if (!url || !key) {
+    throw new Error(
+      'Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable'
+    )
   }
 
+  browserSingleton = createClient(url, key)
   return browserSingleton
 }
 

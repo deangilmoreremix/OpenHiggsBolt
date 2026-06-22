@@ -44,6 +44,7 @@ export interface BrandAsset {
   body: string
   cta: string
   image_url: string
+  canvas_data?: any
   created_at?: string
 }
 
