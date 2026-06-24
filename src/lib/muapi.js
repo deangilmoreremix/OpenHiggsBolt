@@ -393,6 +393,24 @@ export class MuapiClient {
      */
     async uploadFile(file) {
         const key = this.getKey();
+
+        // --- Client-side pre-flight validation (MuAPI file upload spec) ---
+        const ALLOWED_UPLOAD_MIME_TYPES = new Set([
+            'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
+            'video/mp4', 'video/webm',
+            'audio/mpeg', 'audio/wav', 'audio/webm',
+            'application/zip', 'application/pdf', 'application/json',
+        ]);
+        const MAX_UPLOAD_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB per docs
+
+        if (!file) throw new Error('No file provided');
+        if (!ALLOWED_UPLOAD_MIME_TYPES.has(file.type)) {
+            throw new Error(`Invalid file type: ${file.type}. Allowed: ${[...ALLOWED_UPLOAD_MIME_TYPES].join(', ')}`);
+        }
+        if (file.size > MAX_UPLOAD_FILE_SIZE_BYTES) {
+            throw new Error(`File too large: ${(file.size/1024/1024).toFixed(1)} MB. Maximum: 10 MB`);
+        }
+
         const url = `${this.baseUrl}/api/v1/upload_file`;
 
         const formData = new FormData();
@@ -406,12 +424,17 @@ export class MuapiClient {
             body: formData
         });
 
+        const errText = await response.text().catch(() => 'Upload failed');
+
         if (!response.ok) {
-            const errText = await response.text();
-            throw new Error(`File upload failed: ${response.status} - ${errText.slice(0, 100)}`);
+            const detail = (() => {
+                try { return JSON.parse(errText).detail || JSON.parse(errText).error || errText.slice(0,200); }
+                catch { try { return JSON.parse(errText).error || errText.slice(0,200); } catch { return errText.slice(0,200); } }
+            })();
+            throw new Error(`File upload failed: ${response.status} - ${detail}`);
         }
 
-        const data = await response.json();
+        const data = JSON.parse(errText);
         console.log('[Muapi] Upload response:', data);
 
         const fileUrl = data.url || data.file_url || data.data?.url;

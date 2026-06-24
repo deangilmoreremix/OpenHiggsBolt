@@ -52,6 +52,24 @@ function createAuthHeaders(apiKey: string): HeadersInit {
   }
 }
 
+// MuAPI file upload spec constants
+const ALLOWED_UPLOAD_MIME_TYPES = new Set([
+  'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
+  'video/mp4', 'video/webm',
+  'audio/mpeg', 'audio/wav', 'audio/webm',
+  'application/zip', 'application/pdf', 'application/json',
+])
+const MAX_UPLOAD_FILE_SIZE_BYTES = 10 * 1024 * 1024 // 10 MB per docs
+
+function parseUploadErrorResponse(text: string): string {
+  try {
+    const parsed = JSON.parse(text)
+    return parsed.detail || parsed.error || parsed.message || text.slice(0, 200)
+  } catch {
+    return text.slice(0, 200)
+  }
+}
+
 export interface MuAPIVFXClientOptions {
   apiKey: string
   baseUrl?: string
@@ -82,6 +100,21 @@ export class MuAPIVFXClient {
    * Upload an image file to MuAPI and return the public URL.
    */
   async uploadImage(file: File, onProgress?: (percent: number) => void): Promise<UploadResponse> {
+    // --- Client-side pre-flight validation (MuAPI file upload spec) ---
+    if (!file) {
+      throw new Error('No file provided')
+    }
+    if (!ALLOWED_UPLOAD_MIME_TYPES.has(file.type)) {
+      throw new Error(
+        `Invalid file type: ${file.type}. Allowed: ${[...ALLOWED_UPLOAD_MIME_TYPES].join(', ')}`
+      )
+    }
+    if (file.size > MAX_UPLOAD_FILE_SIZE_BYTES) {
+      throw new Error(
+        `File too large: ${(file.size / 1024 / 1024).toFixed(1)} MB. Maximum: 10 MB`
+      )
+    }
+
     const url = `${this.baseUrl}/api/v1/upload_file`
     const formData = new FormData()
     formData.append('file', file)
@@ -103,12 +136,11 @@ export class MuAPIVFXClient {
         if (xhr.status < 200 || xhr.status >= 300) {
           let detail = xhr.statusText
           try {
-            const err = JSON.parse(xhr.responseText)
-            detail = err.detail || err.error || detail
+            detail = parseUploadErrorResponse(xhr.responseText)
           } catch {
-            // ignore
+            // fallback to statusText
           }
-          return reject(new Error(`Upload failed: ${xhr.status} - ${detail}`))
+          return reject(new Error(`Image upload failed: ${xhr.status} - ${detail}`))
         }
 
         try {

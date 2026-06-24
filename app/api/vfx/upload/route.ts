@@ -48,13 +48,28 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // MuAPI rejected the upload — surface the reason before falling back
+    const muapiErrText = await res.text().catch(() => 'Upload failed')
+    const muapiDetail = (() => {
+      try {
+        const parsed = JSON.parse(muapiErrText)
+        return parsed.detail || parsed.error || parsed.message || muapiErrText
+      } catch {
+        return muapiErrText
+      }
+    })()
+    console.warn(`[VFX upload] MuAPI responded ${res.status}: ${muapiDetail}`)
+
     // Fallback: upload to Supabase Storage
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
     if (!supabaseUrl || !supabaseKey) {
-      const errText = await res.text().catch(() => 'Upload failed')
-      return NextResponse.json({ error: errText || 'Upload failed and no fallback storage configured' }, { status: res.status || 502 })
+      const muapiErrorSummary = muapiDetail || 'MuAPI upload rejected'
+      return NextResponse.json({
+        error: muapiErrorSummary,
+        hint: 'Upload failed: MuAPI rejected the file and no fallback storage is configured.',
+      }, { status: res.status || 502 })
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey)
@@ -71,7 +86,10 @@ export async function POST(req: NextRequest) {
 
     if (uploadError) {
       console.error('[VFX upload supabase fallback]', uploadError)
-      return NextResponse.json({ error: `Supabase upload failed: ${uploadError.message}` }, { status: 502 })
+      return NextResponse.json({
+        error: `Storage upload failed: ${uploadError.message}`,
+        hint: 'Ensure the "vfx-uploads" bucket exists and has write policies applied.',
+      }, { status: 502 })
     }
 
     const { data: urlData } = supabase.storage

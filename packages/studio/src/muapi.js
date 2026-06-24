@@ -19,8 +19,10 @@ async function pollForResult(requestId, key, maxAttempts = 900, interval = 2000)
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         await new Promise(resolve => setTimeout(resolve, interval));
         try {
+            const headers = { 'Content-Type': 'application/json' };
+            if (key) headers['x-api-key'] = key;
             const response = await fetch(pollUrl, {
-                headers: { 'Content-Type': 'application/json', 'x-api-key': key }
+                headers
             });
             if (!response.ok) {
                 const errText = await response.text();
@@ -41,9 +43,11 @@ async function pollForResult(requestId, key, maxAttempts = 900, interval = 2000)
 
 async function submitAndPoll(endpoint, payload, key, onRequestId, maxAttempts = 60) {
     const url = `${BASE_URL}/api/v1/${endpoint}`;
+    const headers = { 'Content-Type': 'application/json' };
+    if (key) headers['x-api-key'] = key;
     const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': key },
+        headers,
         body: JSON.stringify(payload)
     });
     if (!response.ok) {
@@ -201,15 +205,44 @@ export async function generateAudio(apiKey, params) {
     return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900);
 }
 
-export function uploadFile(apiKey, file, onProgress) {
-    return new Promise((resolve, reject) => {
-        const url = `${BASE_URL}/api/v1/upload_file`;
-        const formData = new FormData();
-        formData.append('file', file);
+const ALLOWED_UPLOAD_MIME_TYPES = new Set([
+  'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
+  'video/mp4', 'video/webm',
+  'audio/mpeg', 'audio/wav', 'audio/webm',
+  'application/zip', 'application/pdf', 'application/json',
+]);
+const MAX_UPLOAD_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB per MuAPI docs
 
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', url);
-        xhr.setRequestHeader('x-api-key', apiKey);
+function parseApiErrorBody(text) {
+  try {
+    const parsed = JSON.parse(text);
+    return parsed.detail || parsed.error || parsed.message || text.slice(0, 200);
+  } catch {
+    return text.slice(0, 200);
+  }
+}
+
+export function uploadFile(apiKey, file, onProgress) {
+  return new Promise((resolve, reject) => {
+    // --- Client-side pre-flight validation (MuAPI file upload spec) ---
+    if (!file) {
+      return reject(new Error('No file provided'));
+    }
+    if (!ALLOWED_UPLOAD_MIME_TYPES.has(file.type)) {
+      return reject(new Error(`Invalid file type: ${file.type}. Allowed: ${[...ALLOWED_UPLOAD_MIME_TYPES].join(', ')}`));
+    }
+    if (file.size > MAX_UPLOAD_FILE_SIZE_BYTES) {
+      const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+      return reject(new Error(`File too large: ${sizeMB} MB. Maximum size: 10 MB`));
+    }
+
+    const url = `${BASE_URL}/api/v1/upload_file`;
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    if (apiKey) xhr.setRequestHeader('x-api-key', apiKey);
 
         if (onProgress) {
             xhr.upload.onprogress = (event) => {
@@ -221,28 +254,26 @@ export function uploadFile(apiKey, file, onProgress) {
         }
 
         xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                try {
-                    const data = JSON.parse(xhr.responseText);
-                    const fileUrl = data.url || data.file_url || data.data?.url;
-                    if (!fileUrl) {
-                        reject(new Error('No URL returned from file upload'));
-                    } else {
-                        resolve(fileUrl);
-                    }
-                } catch (e) {
-                    reject(new Error('Failed to parse upload response'));
-                }
-            } else {
-                let detail = xhr.statusText;
-                try {
-                    const errObj = JSON.parse(xhr.responseText);
-                    detail = errObj.detail || detail;
-                } catch (e) {
-                    // fallback to statusText
-                }
-                notifyAuthRequired(xhr.status, detail);
-                reject(new Error(`File upload failed: ${xhr.status} - ${detail}`));
+            if (xhr.status < 200 || xhr.status >= 300) {
+              let detail = xhr.statusText;
+              try {
+                detail = parseApiErrorBody(xhr.responseText);
+              } catch {
+                // fallback to statusText
+              }
+              notifyAuthRequired(xhr.status, detail);
+              return reject(new Error(`Image upload failed: ${xhr.status} - ${detail}`));
+            }
+
+            try {
+              const data = JSON.parse(xhr.responseText);
+              const fileUrl = data.url || data.file_url || data.data?.url;
+              if (!fileUrl) {
+                return reject(new Error('No URL returned from file upload'));
+              }
+              resolve(fileUrl);
+            } catch {
+              reject(new Error('Invalid upload response'));
             }
         };
 
@@ -455,11 +486,13 @@ export async function executeWorkflow(apiKey, workflowId, inputs) {
 
 async function pollWorkflowResult(runId, apiKey, maxAttempts = 900, interval = 2000) {
     const pollUrl = `${BASE_URL}/workflow/run/${runId}/api-outputs`;
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['x-api-key'] = apiKey;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         await new Promise(resolve => setTimeout(resolve, interval));
         try {
             const response = await fetch(pollUrl, {
-                headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey }
+                headers
             });
             if (!response.ok) {
                 if (response.status >= 500) continue;
@@ -634,12 +667,11 @@ export async function handleServerSideProxy(prefix, request, params, apiKey) {
 }
 
 export async function calculateDynamicCost(apiKey, taskName, payload) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['x-api-key'] = apiKey;
     const response = await fetch(`${BASE_URL}/api/v1/app/calculate_dynamic_cost`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey
-        },
+        headers,
         body: JSON.stringify({ task_name: taskName, payload })
     });
     if (!response.ok) {
@@ -650,12 +682,11 @@ export async function calculateDynamicCost(apiKey, taskName, payload) {
 }
 
 export async function registerAppInterest(apiKey, appName) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['x-api-key'] = apiKey;
     const response = await fetch(`${BASE_URL}/app/interest`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey
-        },
+        headers,
         body: JSON.stringify({ app_name: appName })
     });
     if (!response.ok) {
@@ -666,12 +697,9 @@ export async function registerAppInterest(apiKey, appName) {
 }
 
 export async function getAppInterests(apiKey) {
-    const response = await fetch(`${BASE_URL}/app/interests`, {
-        headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey
-        }
-    });
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['x-api-key'] = apiKey;
+    const response = await fetch(`${BASE_URL}/app/interests`, { headers });
     if (!response.ok) {
         const errText = await response.text();
         throw new Error(`Failed to fetch interests: ${response.status} - ${errText.slice(0, 100)}`);
