@@ -9,7 +9,8 @@
     "packages/studio",
     "packages/Vibe-Workflow/packages/workflow-builder",
     "packages/Open-Poe-AI/packages/agents",
-    "packages/Open-AI-Design-Agent/packages/design-agent"
+    "packages/Open-AI-Design-Agent/packages/design-agent",
+    "apps/cutai/frontend"
   ],
   "scripts": {
     "dev": "next dev --turbopack",
@@ -18,6 +19,9 @@
     "test:vfx": "node --test tests/vfx-service.test.js tests/vfx-validation.test.js",
     "start": "next start",
     "lint": "next lint",
+    "cutai:frontend": "npm run dev -w @openhiggsbolt/cutai",
+    "cutai:backend": "cd apps/cutai/backend && source venv/bin/activate && uvicorn main:app --reload --port 8000",
+    "cutai:dev": "concurrently \"npm run cutai:backend\" \"npm run cutai:frontend\"",
     "build:studio": "npm run build -w studio",
     "build:workflow": "npm run build -w workflow-builder",
     "build:agent": "npm run build -w ai-agent",
@@ -135,6 +139,7 @@
     "@tailwindcss/vite": "^4.1.18",
     "@types/node": "^26.0.0",
     "autoprefixer": "^10.4.24",
+    "concurrently": "^10.0.3",
     "electron": "^33.4.11",
     "electron-builder": "^25.1.8",
     "eslint": "^9",
