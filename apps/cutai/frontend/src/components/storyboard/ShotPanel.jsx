@@ -3,7 +3,7 @@ import useStoryboardStore from '../../stores/useStoryboardStore';
 import { regenerateFrame, updateScene } from '../../services/api';
 import Badge from '../shared/Badge';
 import CameraAngleTag from '../analysis/CameraAngleTag';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import FramePreview from './FramePreview';
 
@@ -42,8 +42,9 @@ export default function ShotPanel() {
             <button
               onClick={closeShotPanel}
               className="rounded-lg p-2 text-cutai-muted hover:bg-cutai-border"
+              aria-label="Close panel"
             >
-              ✕
+              <X size={18} />
             </button>
           </div>
 

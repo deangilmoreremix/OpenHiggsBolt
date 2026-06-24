@@ -23,4 +23,8 @@
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background: #2e2e3e;
   }
+  .animate-shimmer {
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite linear;
+  }
 }

@@ -53,12 +53,26 @@ export default function ScriptEditor() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-4 rounded-2xl border border-cutai-border bg-cutai-surface p-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 border-b border-cutai-border pb-3">
         <button
           onClick={() => setMode('generator')}
-          className="text-sm text-cutai-muted underline underline-offset-2"
+          className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors ${
+            mode === 'generator'
+              ? 'border-b-2 border-cutai-accent text-cutai-accent'
+              : 'text-cutai-muted hover:text-cutai-text'
+          }`}
         >
-          Use generator instead
+          Generator
+        </button>
+        <button
+          onClick={() => setMode('editor')}
+          className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors ${
+            mode === 'editor'
+              ? 'border-b-2 border-cutai-accent text-cutai-accent'
+              : 'text-cutai-muted hover:text-cutai-text'
+          }`}
+        >
+          Script Editor
         </button>
       </div>
       <h2 className="text-xl font-semibold text-cutai-text">Parse Screenplay</h2>

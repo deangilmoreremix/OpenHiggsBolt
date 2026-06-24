@@ -10,6 +10,7 @@ import MainCanvas from '../components/layout/MainCanvas';
 import ScriptGenerator from '../components/script/ScriptGenerator';
 import ScriptEditor from '../components/script/ScriptEditor';
 import StoryboardCanvas from '../components/storyboard/StoryboardCanvas';
+import ErrorBoundary from '../components/shared/ErrorBoundary';
 import VisualTimeline from '../components/timeline/VisualTimeline';
 import MoodGraph from '../components/analysis/MoodGraph';
 import SoundtrackPanel from '../components/analysis/SoundtrackPanel';
@@ -87,13 +88,15 @@ export default function ProjectPage() {
           <div className="py-6">
             {activeTab === 'storyboard' && (
               <>
-                {!script ? (
-                  <div className="space-y-6">
-                    <ScriptGenerator />
-                  </div>
-                ) : (
+              {!script ? (
+                <div className="space-y-6">
+                  <ScriptGenerator />
+                </div>
+              ) : (
+                <ErrorBoundary>
                   <StoryboardCanvas />
-                )}
+                </ErrorBoundary>
+              )}
               </>
             )}
             {activeTab === 'timeline' && <VisualTimeline />}

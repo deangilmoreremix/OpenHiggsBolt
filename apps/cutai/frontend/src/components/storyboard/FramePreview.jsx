@@ -7,7 +7,7 @@ export default function FramePreview({ src, alt }) {
   if (!src || failed) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-cutai-bg text-cutai-muted">
-        <div className="h-full w-full animate-pulse bg-cutai-border/60" />
+        <div className="h-full w-full animate-shimmer bg-gradient-to-r from-cutai-border via-cutai-surface to-cutai-border" />
       </div>
     );
   }
