@@ -1,25 +1,71 @@
-import useUIStore from '../../stores/useUIStore';
+import { useCallback, useMemo } from 'react';
+import {
+  ReactFlow,
+  MiniMap,
+  Background,
+  useNodesState,
+  useEdgesState,
+  addEdge,
+  BackgroundVariant,
+} from 'reactflow';
+import 'reactflow/dist/style.css';
 import useStoryboardStore from '../../stores/useStoryboardStore';
-import { motion } from 'framer-motion';
-import { ZoomIn } from 'lucide-react';
+import useUIStore from '../../stores/useUIStore';
+import TimelineNode from './TimelineNode';
 
-const moodColors = {
-  thrilling: '#ef4444',
-  romantic: '#ec4899',
-  mysterious: '#8b5cf6',
-  tense: '#f59e0b',
-  neutral: '#64748b',
-  happy: '#22c55e',
-  sad: '#3b82f6',
-  dark: '#1e293b',
-};
+const customNodeTypes = { timelineNode: TimelineNode };
 
 export default function VisualTimeline() {
   const scenes = useStoryboardStore((s) => s.scenes);
   const selectScene = useStoryboardStore((s) => s.selectScene);
   const { openShotPanel } = useUIStore();
 
-  const sorted = [...scenes].sort((a, b) => a.scene_number - b.scene_number);
+  const sorted = useMemo(() => [...scenes].sort((a, b) => a.scene_number - b.scene_number), [scenes]);
+
+  const moodColors = {
+    thrilling: '#ef4444',
+    romantic: '#ec4899',
+    mysterious: '#8b5cf6',
+    tense: '#f59e0b',
+    neutral: '#64748b',
+    happy: '#22c55e',
+    sad: '#3b82f6',
+    dark: '#1e293b',
+  };
+
+  const initialNodes = sorted.map((scene, idx) => ({
+    id: String(scene.id),
+    type: 'timelineNode',
+    position: { x: idx * 220, y: 0 },
+    data: {
+      scene_number: scene.scene_number,
+      title: scene.title,
+      duration: scene.shots?.reduce((sum, s) => sum + (s.duration_seconds || 0), 0),
+      mood: scene.mood_overall,
+      color: moodColors[scene.mood_overall] || '#64748b',
+    },
+  }));
+
+  const initialEdges = sorted.slice(0, -1).map((_, idx) => ({
+    id: `e-${idx}-${idx + 1}`,
+    source: String(sorted[idx].id),
+    target: String(sorted[idx + 1].id),
+    type: 'smoothstep',
+    animated: true,
+  }));
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  const onConnect = useCallback((connection) => setEdges((eds) => addEdge(connection, eds)), [setEdges]);
+
+  const onNodeClick = useCallback(
+    (_event, node) => {
+      selectScene(Number(node.id));
+      openShotPanel();
+    },
+    [selectScene, openShotPanel],
+  );
 
   if (sorted.length === 0) {
     return (
@@ -31,38 +77,21 @@ export default function VisualTimeline() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 overflow-x-auto rounded-xl border border-cutai-border bg-cutai-surface p-4">
-        {sorted.map((scene, idx) => (
-          <div key={scene.id} className="flex items-center gap-2">
-            {idx > 0 && (
-              <div className="h-px w-8 bg-cutai-border" />
-            )}
-            <button
-              onClick={() => {
-                selectScene(scene.id);
-                openShotPanel();
-              }}
-              className="group flex h-20 w-32 flex-col items-center justify-center rounded-lg border border-cutai-border bg-cutai-bg px-2 text-center transition hover:border-cutai-accent/60"
-              style={{
-                borderLeftColor: moodColors[scene.mood_overall] || '#64748b',
-                borderLeftWidth: 3,
-              }}
-            >
-              <span className="text-[10px] uppercase tracking-wide text-cutai-muted">
-                Scene {scene.scene_number}
-              </span>
-              <span className="mt-1 truncate text-xs font-medium text-cutai-text">
-                {scene.title}
-              </span>
-              <ZoomIn size={10} className="mt-1 text-cutai-accent opacity-0 transition group-hover:opacity-100" />
-            </button>
-          </div>
-        ))}
-      </div>
-      <p className="text-xs text-cutai-muted">
-        Click a scene to open its shot breakdown. Nodes are derived from Zustand store (one-way data flow).
-      </p>
+    <div className="h-[600px] w-full rounded-2xl border border-cutai-border bg-cutai-surface">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onNodeClick={onNodeClick}
+        nodeTypes={customNodeTypes}
+        fitView
+        attributionPosition="bottom-left"
+      >
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#1e1e2e" />
+        <MiniMap nodeColor={(node) => node.data?.color || '#64748b'} maskColor="rgba(10,10,15,0.7)" />
+      </ReactFlow>
     </div>
   );
 }
