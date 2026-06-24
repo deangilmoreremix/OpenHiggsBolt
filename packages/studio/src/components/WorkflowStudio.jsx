@@ -32,17 +32,19 @@ const WorkflowUI = dynamic(() => import("./WorkflowUI"), {
 
 function WorkflowCard({ workflow, onClick, activeTab, onRename, onDelete }) {
   const [showOptions, setShowOptions] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   return (
     <div
       onClick={() => onClick(workflow)}
       className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer border border-white/5 bg-[#0a0a0a] transition-all hover:border-[#22d3ee]/30 hover:scale-[1.02] shadow-2xl"
     >
-      {workflow.thumbnail ? (
+      {workflow.thumbnail && !imgError ? (
         <img
           src={workflow.thumbnail}
           alt={workflow.name}
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+          onError={() => setImgError(true)}
         />
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center">
@@ -172,8 +174,10 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
       setSelectedWorkflow(wf);
       setResult(null);
       setError(null);
-      
-      const targetTab = urlTab || "playground";
+
+      const targetTab =
+        urlTab ||
+        (activeMainTab === "templates" ? "builder" : "playground");
       setActiveSubTab(targetTab);
 
       if (!fromUrl) {
@@ -181,7 +185,7 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
         router.push(`/workflow/${wf.id}/${targetTab}`);
       }
     },
-    [router, urlTab],
+    [router, urlTab, activeMainTab],
   );
 
   // Dedicated data fetching effect for the active workflow
@@ -192,16 +196,16 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
       try {
         setLoading(true);
         const wfId = selectedWorkflow.id;
-        
+
         // Fetch everything in parallel with allSettled so one failure doesn't block the others
         const results = await Promise.allSettled([
           getWorkflowInputs(apiKey, wfId),
           getAllNodeSchemas(apiKey, wfId),
-          getWorkflowData(apiKey, wfId)
+          getWorkflowData(apiKey, wfId),
         ]);
 
         // Process Input Schema
-        if (results[0].status === 'fulfilled') {
+        if (results[0].status === "fulfilled") {
           const response = results[0].value;
           const schema = response.input_data || response;
           setInputSchema(schema);
@@ -221,21 +225,30 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
         }
 
         // Process Builder State
-        const nodes = results[1].status === 'fulfilled' ? results[1].value : [];
-        const def = results[2].status === 'fulfilled' ? results[2].value : { nodes: [], edges: [] };
+        const nodes = results[1].status === "fulfilled" ? results[1].value : [];
+        const def = results[2].status === "fulfilled" ? results[2].value : { nodes: [], edges: [] };
 
         setNodeSchemas(nodes);
         setWorkflowDef(def);
 
-        if (results[1].status === 'rejected' || results[2].status === 'rejected') {
-          console.error("Builder components failed to load:", results[1].reason, results[2].reason);
+        if (results[1].status === "rejected" || results[2].status === "rejected") {
+          const reasons = [results[1].reason, results[2].reason].filter(Boolean).join(", ");
+          console.error("Builder components failed to load:", reasons);
           if (!nodes.length && !def.nodes?.length) {
-             setError("Failed to load full builder data. Some features may be disabled.");
+            setError(
+              "Failed to load workflow data. If you're opening a template, enter a valid MuAPI key in Settings first."
+            );
           }
         }
       } catch (err) {
-        console.error("Critical error loading pulse details:", err);
-        setError("Critical error loading builder: " + err.message);
+        console.error("Critical error loading workflow details:", err);
+        const message = err?.message || String(err);
+        const isAuth = /401|403|auth|credentials/i.test(message);
+        setError(
+          isAuth
+            ? "Enter a valid MuAPI key to load this workflow."
+            : "Critical error loading workflow: " + message
+        );
         setNodeSchemas([]);
         setWorkflowDef({ nodes: [], edges: [] });
       } finally {
@@ -373,6 +386,10 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
 
   useEffect(() => {
     async function loadWorkflows() {
+      if (!apiKey) {
+        setLoading(false);
+        return;
+      }
       try {
         setLoading(true);
         let data = [];
@@ -806,14 +823,20 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
             </>
           ) : (
             <div className="flex-1 relative bg-[#050505]">
-              {nodeSchemas && workflowDef ? (
+              {error && !loading ? (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-full max-w-md p-6 bg-red-500/10 border border-red-500/20 rounded-2xl text-center">
+                    <div className="text-red-400 text-xs font-bold uppercase tracking-widest mb-2">Unable to load workflow</div>
+                    <div className="text-white/60 text-sm">{error}</div>
+                  </div>
+                </div>
+              ) : nodeSchemas && workflowDef ? (
                 <WorkflowUI
                   workflowId={selectedWorkflow?.id}
                   initialNodeSchemas={nodeSchemas}
                   initialWorkflowData={{
                     ...workflowDef,
-                    // Inject ID to prevent builder from assuming this is a new unsaved flow
-                    workflow_id: selectedWorkflow?.id
+                    workflow_id: selectedWorkflow?.id,
                   }}
                 />
               ) : (

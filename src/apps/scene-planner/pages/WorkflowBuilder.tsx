@@ -1,9 +1,16 @@
 import { useState } from 'react'
 import { Play, Plus, Settings, Loader2 } from 'lucide-react'
 import { generateText, generateVideo, generateImage } from '@/api/muapi'
+import type { VideoResult } from '@/types/api'
+
+type PromptNode = { id: string; type: 'prompt'; label: string; value: string }
+type VideoNode = { id: string; type: 'video'; label: string; model: string }
+type OutputNode = { id: string; type: 'output'; label: string; result: VideoResult | null }
+
+type WorkflowNode = PromptNode | VideoNode | OutputNode
 
 export default function WorkflowBuilder() {
-  const [nodes, setNodes] = useState([
+  const [nodes, setNodes] = useState<WorkflowNode[]>([
     { id: '1', type: 'prompt', label: 'Prompt', value: '' },
     { id: '2', type: 'video', label: 'Video Generator', model: 'kling-3.0' },
     { id: '3', type: 'output', label: 'Output', result: null }
