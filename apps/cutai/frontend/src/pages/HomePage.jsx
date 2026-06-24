@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2 } from 'lucide-react';
 import useProjectStore from '../stores/useProjectStore';
 import useUIStore from '../stores/useUIStore';
-import api from '../services/api';
+import { createProject, deleteProject as apiDeleteProject } from '../services/api';
 import Modal from '../components/shared/Modal';
 import Badge from '../components/shared/Badge';
 
@@ -14,9 +14,9 @@ export default function HomePage() {
   const [genre, setGenre] = useState('');
   const navigate = useNavigate();
 
-  useState(() => {
+  useEffect(() => {
     fetchProjects();
-  });
+  }, [fetchProjects]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -27,10 +27,9 @@ export default function HomePage() {
     navigate(`/project/${project.id}`);
   };
 
-  const handleDelete = async (e, id) => {
-    e.stopPropagation();
+  const handleDelete = async (id) => {
     if (!confirm('Delete this project? This cannot be undone.')) return;
-    await deleteProject(id);
+    await apiDeleteProject(id);
   };
 
   return (
@@ -59,10 +58,10 @@ export default function HomePage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {projects.map((project) => (
-            <button
+            <div
               key={project.id}
+              className="group relative flex cursor-pointer flex-col gap-3 rounded-xl border border-cutai-border bg-cutai-surface p-4 text-left transition hover:border-cutai-accent/60 hover:shadow-lg"
               onClick={() => navigate(`/project/${project.id}`)}
-              className="group relative flex flex-col gap-3 rounded-xl border border-cutai-border bg-cutai-surface p-4 text-left transition hover:border-cutai-accent/60 hover:shadow-lg"
             >
               <div className="flex items-start justify-between">
                 <div>
@@ -70,7 +69,10 @@ export default function HomePage() {
                   <p className="text-xs text-cutai-muted">{project.genre}</p>
                 </div>
                 <button
-                  onClick={(e) => handleDelete(e, project.id)}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await handleDelete(project.id);
+                  }}
                   className="rounded-lg p-1.5 text-cutai-muted hover:bg-cutai-border hover:text-cutai-text"
                   aria-label="Delete project"
                 >
@@ -80,7 +82,7 @@ export default function HomePage() {
               <div className="flex items-center gap-2">
                 <Badge>{project.genre || 'Untitled'}</Badge>
               </div>
-            </button>
+            </div>
           ))}
         </div>
       )}
