@@ -1,6 +1,7 @@
+import json
 from typing import List
 from services.llm_client import call_llm
-from models.schemas import LLMScript
+from models.schemas import LLMScript, LLMScene, LLMShot
 
 
 SCRIPT_SYSTEM_PROMPT = """You are an expert screenwriter and film director.

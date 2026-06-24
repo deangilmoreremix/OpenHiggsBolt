@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from config import get_settings
 from models.database import init_db
+from routers import projects, scripts, scenes, storyboard
 
 settings = get_settings()
 
@@ -25,6 +26,11 @@ app.add_middleware(
 )
 
 app.mount("/generated", StaticFiles(directory="generated"), name="generated")
+
+app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
+app.include_router(scripts.router, prefix="/api/scripts", tags=["scripts"])
+app.include_router(scenes.router, prefix="/api/scenes", tags=["scenes"])
+app.include_router(storyboard.router, prefix="/api/storyboard", tags=["storyboard"])
 
 
 @app.get("/health")
