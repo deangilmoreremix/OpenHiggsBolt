@@ -1,5 +1,5 @@
 import OpenAI from "npm:openai";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createServerClient } from "../_shared/supabase.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 
 const OPENAI_MODEL = "gpt-4o";
@@ -10,25 +10,6 @@ function jsonResponse(data: unknown, status = 200): Response {
     headers: {
       ...corsHeaders,
       "Content-Type": "application/json",
-    },
-  });
-}
-
-function createServerClient() {
-  const url = Deno.env.get("NEXT_PUBLIC_SUPABASE_URL") ||
-    Deno.env.get("SUPABASE_URL") || "";
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-
-  if (!url || !key) {
-    throw new Error(
-      "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variable",
-    );
-  }
-
-  return createClient(url, key, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
     },
   });
 }

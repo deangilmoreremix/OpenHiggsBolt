@@ -1,11 +1,32 @@
 import OpenAI from "npm:openai";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { PLATFORMS } from "../../../src/types/brand.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { mirrorUrlToStorage } from "../_shared/supabase.ts";
 
 const OPENAI_MODEL = "gpt-4o";
 const IMAGE_MODEL = "dall-e-3";
+
+type DalleSize = "1024x1024" | "1792x1024" | "1024x1792";
+
+interface Platform {
+  id: string;
+  label: string;
+  width: number;
+  height: number;
+  dalleSize: DalleSize;
+  wordCap: number;
+}
+
+const PLATFORMS: Platform[] = [
+  { id: "instagram_feed", label: "Instagram Feed", width: 1080, height: 1080, dalleSize: "1024x1024", wordCap: 125 },
+  { id: "instagram_story", label: "Instagram Story", width: 1080, height: 1920, dalleSize: "1024x1792", wordCap: 80 },
+  { id: "linkedin", label: "LinkedIn Post", width: 1200, height: 627, dalleSize: "1792x1024", wordCap: 150 },
+  { id: "facebook_ad", label: "Facebook Ad", width: 1200, height: 628, dalleSize: "1792x1024", wordCap: 125 },
+  { id: "twitter", label: "X / Twitter", width: 1600, height: 900, dalleSize: "1792x1024", wordCap: 100 },
+  { id: "web_banner", label: "Web Banner", width: 1920, height: 600, dalleSize: "1792x1024", wordCap: 60 },
+  { id: "email_header", label: "Email Header", width: 600, height: 200, dalleSize: "1792x1024", wordCap: 50 },
+  { id: "youtube_thumb", label: "YouTube Thumbnail", width: 1280, height: 720, dalleSize: "1792x1024", wordCap: 60 },
+];
 
 function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {

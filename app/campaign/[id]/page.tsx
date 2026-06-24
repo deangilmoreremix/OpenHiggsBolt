@@ -40,16 +40,23 @@ export default function CampaignPage() {
   const [progress, setProgress] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/campaigns?brand_id=' + params.brandId).then((r) => r.json()),
-      fetch(`/api/brand?id=${params.brandId}`).then((r) => r.json()),
-    ]).then(([campaigns, brandData]) => {
-      const found = (campaigns as any[]).find((c) => c.id === params.id);
-      setCampaign(found || null);
-      setBrand(brandData);
-      if (found) setSelectedConcept(0);
-    });
-  }, [params.id, params.brandId]);
+    if (!params.id) return;
+    fetch('/api/campaigns')
+      .then((r) => r.json())
+      .then((campaigns) => {
+        const found = (campaigns as any[]).find((c) => c.id === params.id);
+        if (!found) return;
+        setCampaign(found);
+        if (found.brand_id) {
+          return fetch(`/api/brand?id=${found.brand_id}`).then((r) => r.json()).then((brandData) => {
+            setBrand(brandData);
+            if (found) setSelectedConcept(0);
+          });
+        }
+        if (found) setSelectedConcept(0);
+      })
+      .catch((err) => console.error('Failed to load campaign:', err));
+  }, [params.id]);
 
   useEffect(() => {
     if (!params.id) return;

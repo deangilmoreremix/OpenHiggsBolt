@@ -362,21 +362,6 @@ export const FEATURES = [
     stats: ['Calendar', 'Angles', 'Cadence']
   },
   {
-    id: 'ugc-generator',
-    label: 'UGC Generator',
-    eyebrow: 'Creator ads',
-    title: 'Build UGC ads end to end',
-    description: 'Generate actor image, voiceover, lip-sync video, and history from one product script.',
-    promptLabel: 'Describe the UGC ad',
-    defaultPrompt: 'A creator explains why this AI video tool saves marketing teams hours',
-    options: ['Creator', 'Voiceover', 'Lip sync', '9:16'],
-    outputLabel: 'Generated UGC pipeline',
-    outputMode: 'ugc',
-    eta: '50s',
-    ctaPath: '/studio/ugc-generator',
-    stats: ['Actor', 'Voice', 'Video']
-  },
-  {
     id: 'apps',
     label: 'Explore Apps',
     eyebrow: 'App library',

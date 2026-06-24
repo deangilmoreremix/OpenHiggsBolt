@@ -37,3 +37,9 @@ out/
 .env.*
 !.env.example
 .playwright-mcp/
+
+# TypeScript incremental build
+*.tsbuildinfo
+
+# Temporary screenshots
+videco-dashboard-*.png

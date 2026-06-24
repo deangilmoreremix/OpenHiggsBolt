@@ -29,10 +29,16 @@ export default function AssetEditPage() {
   const [bgOpacity, setBgOpacity] = useState(0);
 
   useEffect(() => {
-    fetch(`/api/assets?campaign_id=${params.campaignId}`)
+    if (!params.id) return;
+    setLoading(true);
+    fetch(`/api/assets?id=${params.id}`)
       .then((r) => r.json())
-      .then((assets: any[]) => {
-        const found = assets.find((a) => a.id === params.id);
+      .then((data) => {
+        if (data.error) {
+          setLoading(false);
+          return;
+        }
+        const found = Array.isArray(data) ? data.find((a) => a.id === params.id) : data;
         if (found) {
           setAsset(found);
           setHeadline(found.headline || '');
@@ -50,7 +56,7 @@ export default function AssetEditPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [params.id, params.campaignId]);
+  }, [params.id]);
 
   const save = async () => {
     if (!params.id) return;

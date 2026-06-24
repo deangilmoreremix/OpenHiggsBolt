@@ -9,20 +9,24 @@ export interface CampaignConcept {
 export interface BrandDNA {
   id: string
   url: string
-  name: string
+  brand_name: string
+  industry: string
   tagline: string
-  description: string
-  tone: string[]
-  personality: string[]
-  messages: string[]
-  primary_color: string
-  secondary_color: string
-  accent_color: string
-  fonts: string[]
+  value_proposition: string
+  target_audience: string
+  tone_of_voice: string
+  brand_personality: string
+  key_messages: string
+  primary_colors: string
+  secondary_colors: string
+  imagery_style: string
+  layout_style: string
+  fonts: string
   logo_url: string
   screenshot_url: string
-  raw_colors: string[]
+  raw_json?: any
   created_at?: string
+  updated_at?: string
 }
 
 export interface BrandCampaign {

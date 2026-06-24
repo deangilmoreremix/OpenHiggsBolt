@@ -108,6 +108,10 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [] }
   );
 
   const handleFileChange = async (e) => {
+    if (!apiKey) {
+      alert('Please enter your MuAPI key in Settings to upload images.');
+      return;
+    }
     const files = Array.from(e.target.files);
     if (!files.length) return;
     e.target.value = "";
@@ -865,6 +869,10 @@ export default function ImageStudio({
   ]);
 
   const processDroppedImages = async (files) => {
+    if (!apiKey) {
+      alert('Please enter your MuAPI key in Settings to upload images.');
+      return;
+    }
     const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
     const tooLarge = files.filter((f) => f.size > MAX_IMAGE_SIZE);
     if (tooLarge.length > 0) {
@@ -1027,6 +1035,11 @@ export default function ImageStudio({
   // ── Generation ───────────────────────────────────────────────────────────
   const handleGenerate = async () => {
     if (generating) return;
+
+    if (!apiKey) {
+      alert("Please enter your MuAPI key in Settings first.");
+      return;
+    }
 
     if (imageMode) {
       if (uploadedImageUrls.length === 0) {

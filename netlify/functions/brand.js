@@ -38,17 +38,30 @@ module.exports = { handler: async (event) => {
 
     if (event.httpMethod === 'PATCH' && id) {
       const patch = JSON.parse(event.body || '{}');
-      if (patch.tone_of_voice) patch.tone_of_voice = toStringArray(patch.tone_of_voice).join(', ');
-      if (patch.brand_personality) patch.brand_personality = toStringArray(patch.brand_personality).join(', ');
-      if (patch.key_messages) patch.key_messages = toStringArray(patch.key_messages).join(', ');
-      if (patch.primary_colors) patch.primary_colors = toStringArray(patch.primary_colors).join(', ');
-      if (patch.secondary_colors) patch.secondary_colors = toStringArray(patch.secondary_colors).join(', ');
-      if (patch.fonts) patch.fonts = toStringArray(patch.fonts).join(', ');
-      patch.updated_at = new Date().toISOString();
+      const allowedFields = [
+        'brand_name', 'industry', 'tagline', 'value_proposition',
+        'tone_of_voice', 'brand_personality', 'target_audience',
+        'key_messages', 'primary_colors', 'secondary_colors',
+        'fonts', 'logo_url', 'screenshot_url', 'imagery_style',
+        'layout_style', 'raw_json',
+      ];
+      const whitelisted = {};
+      for (const key of allowedFields) {
+        if (patch[key] !== undefined) {
+          whitelisted[key] = patch[key];
+        }
+      }
+      if (whitelisted.tone_of_voice !== undefined) whitelisted.tone_of_voice = toStringArray(whitelisted.tone_of_voice).join(', ');
+      if (whitelisted.brand_personality !== undefined) whitelisted.brand_personality = toStringArray(whitelisted.brand_personality).join(', ');
+      if (whitelisted.key_messages !== undefined) whitelisted.key_messages = toStringArray(whitelisted.key_messages).join(', ');
+      if (whitelisted.primary_colors !== undefined) whitelisted.primary_colors = toStringArray(whitelisted.primary_colors).join(', ');
+      if (whitelisted.secondary_colors !== undefined) whitelisted.secondary_colors = toStringArray(whitelisted.secondary_colors).join(', ');
+      if (whitelisted.fonts !== undefined) whitelisted.fonts = toStringArray(whitelisted.fonts).join(', ');
+      whitelisted.updated_at = new Date().toISOString();
 
       const { data, error } = await supabase
         .from('brand_dna')
-        .update(patch)
+        .update(whitelisted)
         .eq('id', id)
         .select()
         .single();

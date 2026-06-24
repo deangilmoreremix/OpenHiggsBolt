@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { ImageStudio, VideoStudio, ClippingStudio, VibeMotionStudio, LipSyncStudio, CinemaStudio, AudioStudio, MarketingStudio, WorkflowStudio, AgentStudio, AppsStudio, getUserBalance } from 'studio';
 import axios from 'axios';
+import ApiKeyModal from './ApiKeyModal';
 import { MemoryRouter } from 'react-router-dom';
 
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
@@ -287,6 +288,9 @@ export default function StandaloneShell() {
     </div>
   );
 
+  if (!apiKey) {
+    return <ApiKeyModal onSave={handleKeySave} />;
+  }
 
   return (
     <div 

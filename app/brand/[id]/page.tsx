@@ -222,8 +222,7 @@ export default function BrandPage() {
               )}
               <div className="mt-4 flex flex-wrap gap-2">
                 <a href={`/brand/${params.id}/campaigns/new`} className="px-3 py-2 rounded-lg text-sm font-medium" style={buttons.ghost}>Create Campaign</a>
-                <a href={`/photo-studio?brand_id=${params.id}`} className="px-3 py-2 rounded-lg text-sm font-medium" style={buttons.ghost}>Photo Studio</a>
-                <a href={`/animate?brand_id=${params.id}`} className="px-3 py-2 rounded-lg text-sm font-medium" style={buttons.ghost}>Animate</a>
+                 <a href={`/photo-studio?brand_id=${params.id}`} className="px-3 py-2 rounded-lg text-sm font-medium" style={buttons.ghost}>Photo Studio</a>
               </div>
             </section>
           </div>
