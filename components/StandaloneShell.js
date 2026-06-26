@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { ImageStudio, VideoStudio, ClippingStudio, VibeMotionStudio, LipSyncStudio, CinemaStudio, AudioStudio, MarketingStudio, WorkflowStudio, AgentStudio, AppsStudio, getUserBalance } from 'studio';
 import axios from 'axios';
-import ApiKeyModal from './ApiKeyModal';
 import { MemoryRouter } from 'react-router-dom';
 
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
@@ -14,7 +13,6 @@ const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ss
 const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
 const ScenePlanner = dynamic(() => import('../src/apps/scene-planner/ScenePlanner'), { ssr: false });
 const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
-const MusicStudio = dynamic(() => import('../src/apps/music-studio/MusicStudio'), { ssr: false });
 const ScriptWriter = dynamic(() => import('../src/apps/script-writer/ScriptWriter'), { ssr: false });
 const Presentation = dynamic(() => import('../src/apps/presentation/Presentation'), { ssr: false });
 const ContentPlanner = dynamic(() => import('../src/apps/content-planner/ContentPlanner'), { ssr: false });
@@ -29,18 +27,9 @@ const TABS = [
   { id: 'marketing', label: 'Marketing Studio' },
   { id: 'workflows', label: 'Workflows' },
   { id: 'agents', label: 'Agents' },
-  { id: 'design-agent', label: 'Design Agent' },
-  { id: 'videco', label: 'Videco' },
-  { id: 'vfx-studio', label: 'VFX Studio' },
-  { id: 'storyboard', label: 'Storyboard' },
-  { id: 'scene-planner', label: 'Scene Planner' },
-  { id: 'music-studio', label: 'Music Studio' },
+  { id: 'design-agent', label: 'Design Agent AI' },
+  { id: 'vfx-studio', label: 'VFX' },
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
-  { id: 'script-writer', label: 'Script Writer' },
-  { id: 'presentation', label: 'Presentation' },
-  { id: 'content-planner', label: 'Content Planner' },
-  { id: 'brand-studio', label: 'Brand Studio' },
-  { id: 'apps', label: 'Explore Apps' },
 ];
 
 const STORAGE_KEY = 'muapi_key';
@@ -163,10 +152,12 @@ export default function StandaloneShell() {
     setHasMounted(true);
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      setApiKey(stored);
-      fetchBalance(stored);
-      // Sync cookie immediately on mount to establish identity for background requests
-      document.cookie = `muapi_key=${stored}; path=/; max-age=31536000; SameSite=Lax`;
+      const cleanKey = stored.replace(/[^\u0000-\u00FF]/g, '').trim();
+      setApiKey(cleanKey);
+      fetchBalance(cleanKey);
+      // Sync cookie immediately on mount to establish identity for background requests.
+      // Encode so special characters in the key don't corrupt the cookie string.
+      document.cookie = `muapi_key=${encodeURIComponent(cleanKey)}; path=/; max-age=31536000; SameSite=Lax`;
     }
   }, [fetchBalance]);
 
@@ -178,8 +169,11 @@ export default function StandaloneShell() {
     setSettingsKeyInput('');
     setAuthError(null);
     setShowSettings(false);
+    // Persist the key as a cookie before any background requests so server-side
+    // proxy routes can resolve it even when the x-api-key header is not present.
+    // Encode so special characters in the key don't corrupt the cookie string.
+    document.cookie = `muapi_key=${encodeURIComponent(trimmed)}; path=/; max-age=31536000; SameSite=Lax`;
     fetchBalance(trimmed);
-    document.cookie = `muapi_key=${trimmed}; path=/; max-age=31536000; SameSite=Lax`;
   }, [fetchBalance]);
 
   const handleKeyChange = useCallback(() => {
@@ -205,7 +199,7 @@ export default function StandaloneShell() {
       const isInternalProxy = config.url.includes('/api/app') || config.url.includes('/api/workflow') || config.url.includes('/api/agents') || config.url.includes('/api/api') || config.url.includes('/api/v1');
 
       if (isRelative || isInternalProxy) {
-        config.headers['x-api-key'] = apiKey;
+        config.headers['x-api-key'] = apiKey.replace(/[^\u0000-\u00FF]/g, '').trim();
       }
       
       return config;
@@ -223,11 +217,12 @@ export default function StandaloneShell() {
     return () => clearInterval(interval);
   }, [apiKey, fetchBalance]);
 
-  // When MuAPI reports the key is invalid/missing, clear it and prompt for re-auth
+  // When MuAPI reports the key is invalid/missing, surface the message but do not
+  // immediately wipe the saved key. The user may have a transient failure or want
+  // to inspect/update the key manually via the "Change Key" button.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const onAuthRequired = (e) => {
-      handleKeyChange();
       let message = 'Your API key is missing or invalid. Please enter a valid key.';
       const raw = e?.detail?.message;
       if (raw) {
@@ -243,7 +238,7 @@ export default function StandaloneShell() {
     };
     window.addEventListener('muapi:auth-required', onAuthRequired);
     return () => window.removeEventListener('muapi:auth-required', onAuthRequired);
-  }, [handleKeyChange]);
+  }, []);
 
   // Drag and Drop Handlers
   const handleDragOver = useCallback((e) => {
@@ -287,10 +282,6 @@ export default function StandaloneShell() {
       <div className="animate-spin text-[#22d3ee] text-3xl">◌</div>
     </div>
   );
-
-  if (!apiKey) {
-    return <ApiKeyModal onSave={handleKeySave} />;
-  }
 
   return (
     <div 
@@ -401,7 +392,6 @@ export default function StandaloneShell() {
         {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} /></MemoryRouter>}
         {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} /></MemoryRouter>}
         {activeTab === 'scene-planner' && <MemoryRouter initialEntries={['/']}><ScenePlanner apiKey={apiKey} /></MemoryRouter>}
-        {activeTab === 'music-studio' && <MemoryRouter initialEntries={['/']}><MusicStudio /></MemoryRouter>}
         {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
         {activeTab === 'script-writer' && <ScriptWriter apiKey={apiKey} />}
         {activeTab === 'presentation' && <MemoryRouter initialEntries={['/']}><Presentation /></MemoryRouter>}
