@@ -1,4 +1,3 @@
-++ b/packages/studio/src/components/RecastStudio.jsx
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
