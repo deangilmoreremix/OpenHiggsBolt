@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Bell, Settings, Video, LayoutTemplate, Workflow, Film, Music, Image, FileText, Presentation, CalendarDays, Sparkles, Clapperboard } from 'lucide-react'
+import { Bell, Settings, Video, LayoutTemplate, Workflow, Film, Image, FileText, Presentation, CalendarDays, Sparkles, Clapperboard } from 'lucide-react'
 
 interface NavItem {
   to: string
@@ -15,7 +15,6 @@ export default function TopNavigation() {
     { to: '/storyboard', icon: <LayoutTemplate size={18} />, label: 'Storyboard' },
     { to: '/scene-planner', icon: <Workflow size={18} />, label: 'Scene Planner' },
     { to: '/cinema', icon: <Film size={18} />, label: 'Cinema' },
-    { to: '/music-studio', icon: <Music size={18} />, label: 'Music Studio' },
     { to: '/thumbnail-studio', icon: <Image size={18} />, label: 'Thumbnail' },
     { to: '/script-writer', icon: <FileText size={18} />, label: 'Script Writer' },
     { to: '/presentation', icon: <Presentation size={18} />, label: 'Presentation' },

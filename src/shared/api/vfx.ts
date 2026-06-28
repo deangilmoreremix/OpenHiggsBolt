@@ -46,9 +46,10 @@ function extractVideoUrl(data: MuAPIStatusResponse): string | undefined {
 }
 
 function createAuthHeaders(apiKey: string): HeadersInit {
+  const cleanKey = typeof apiKey === 'string' ? apiKey.replace(/[^\u0000-\u00FF]/g, '').trim() : apiKey
   return {
     'Content-Type': 'application/json',
-    'x-api-key': apiKey,
+    'x-api-key': cleanKey,
   }
 }
 

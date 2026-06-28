@@ -84,7 +84,7 @@ function savePersistedState(state: PersistedState) {
   }
 }
 
-export function useVideoGeneration(): UseVideoGenerationReturn {
+export function useVideoGeneration(userApiKey?: string): UseVideoGenerationReturn {
   const [status, setStatus] = useState<GenerationState>('idle')
   const [progress, setProgress] = useState(0)
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
@@ -197,7 +197,11 @@ export function useVideoGeneration(): UseVideoGenerationReturn {
         }
 
         try {
-          const res = await fetch(`/api/vfx/status?id=${id}`)
+          const headers: Record<string, string> = {}
+          if (userApiKey) {
+            headers['x-api-key'] = userApiKey
+          }
+          const res = await fetch(`/api/vfx/status?id=${id}`, { headers })
           const data: GenerationStatus = await res.json().catch(() => ({ status: 'failed', error: 'Invalid status response' } as GenerationStatus))
 
           if (!res.ok) {
@@ -247,7 +251,7 @@ export function useVideoGeneration(): UseVideoGenerationReturn {
 
       tick()
     },
-    [persist]
+    [persist, userApiKey]
   )
 
   const generateVideo = useCallback(
@@ -262,9 +266,13 @@ export function useVideoGeneration(): UseVideoGenerationReturn {
       lastRequestRef.current = params
 
       try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (userApiKey) {
+          headers['x-api-key'] = userApiKey
+        }
         const res = await fetch('/api/vfx/generate', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify(params),
         })
 
@@ -291,7 +299,7 @@ export function useVideoGeneration(): UseVideoGenerationReturn {
         return null
       }
     },
-    [clearPoll, persist, poll]
+    [clearPoll, persist, poll, userApiKey]
   )
 
   const cancelVideo = useCallback(async () => {

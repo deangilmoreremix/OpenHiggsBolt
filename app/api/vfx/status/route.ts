@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerVFXClient } from '@/api/vfx'
-import { validateMuAPIKey } from '../_helpers'
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,7 +10,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'id is required' }, { status: 400 })
     }
 
-    const apiKey = await validateMuAPIKey()
+    const clientKey = req.headers.get('x-api-key')?.trim()
+    const apiKey = clientKey || process.env.MUAPI_API_KEY || process.env.MUAPI_KEY || ''
+    if (!apiKey) {
+      return NextResponse.json({ error: 'MuAPI key is required' }, { status: 400 })
+    }
     const client = getServerVFXClient(apiKey)
     const status = await client.getGenerationResult(id)
 
