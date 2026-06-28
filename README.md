@@ -24,8 +24,6 @@
 ## Related Projects
 
 - [Vadoo](https://vadoo.tv) — Unrestricted AI image & video generation → auto-publish as YouTube Shorts and TikToks & earn
-- [awesome-claude-fable-5](https://github.com/Anil-matcha/awesome-claude-fable-5) — 60 curated Claude Fable 5 use cases, prompts, and benchmarks — get 20% off Fable 5 via MuAPI
-- [Generative-Media-Skills](https://github.com/SamurAIGPT/Generative-Media-Skills) — Use these models as AI agent skills in Claude Code, Cursor, and Gemini CLI
 - [AI-Youtube-Shorts-Generator](https://github.com/SamurAIGPT/AI-Youtube-Shorts-Generator) — Auto-generate viral YouTube Shorts from long-form videos using AI
 - [muapi-cli](https://github.com/SamurAIGPT/muapi-cli) — Official CLI for MuAPI — run these models from your terminal
 - [Vibe-Workflow](https://github.com/SamurAIGPT/Vibe-Workflow) — Node-based AI workflow builder for generative image & video pipelines
