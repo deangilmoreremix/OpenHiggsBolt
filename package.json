@@ -7,10 +7,9 @@
   "license": "MIT",
   "workspaces": [
     "packages/studio",
-    "packages/Vibe-Workflow/packages/workflow-builder",
-    "packages/Open-Poe-AI/packages/agents",
-    "packages/Open-AI-Design-Agent/packages/design-agent",
-    "apps/cutai/frontend"
+    "packages/ai-agent",
+    "packages/workflow-builder",
+    "packages/design-agent"
   ],
   "scripts": {
     "dev": "next dev --turbopack",
@@ -122,7 +121,6 @@
   "dependencies": {
     "@netlify/plugin-nextjs": "^5.15.12",
     "@supabase/supabase-js": "^2.108.2",
-    "ai-agent": "file:./packages/Open-Poe-AI/packages/agents",
     "axios": "^1.7.0",
     "lucide-react": "^1.21.0",
     "next": "^15.0.0",
@@ -131,8 +129,7 @@
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.4.1",
     "react-router-dom": "^7.18.0",
-    "studio": "*",
-    "workflow-builder": "file:./packages/Vibe-Workflow/packages/workflow-builder"
+    "studio": "*"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

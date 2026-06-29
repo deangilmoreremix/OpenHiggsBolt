@@ -7,7 +7,7 @@ const nextConfig = {
       },
     },
   },
-  transpilePackages: ['studio', 'ai-agent', 'workflow-builder', 'design-agent'],
+  transpilePackages: ['studio'],
 };
 
 export default nextConfig;

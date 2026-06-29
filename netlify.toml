@@ -2,9 +2,33 @@
   command = "npm run build"
   publish = ".next"
 
+[build.environment]
+  NODE_VERSION = "20"
+  NETLIFY_USE_PNPM = "false"
+  NETLIFY_NEXT_PLUGIN_USE_TURBOPACK = "false"
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+# --- Security & caching --------------------------------------------------
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# --- Supabase / brand-campaign legacy endpoints --------------------------
+# These run as Netlify Functions (Lambda) for the optional Brand/Photo Studio
+# flows. They are independent of the main Next.js app and only require
+# NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY if used.
 [[redirects]]
   from = "/api/brands"
   to = "/.netlify/functions/brands"
@@ -29,3 +53,7 @@
   from = "/api/photo-studio"
   to = "/.netlify/functions/photo-studio"
   status = 200
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
