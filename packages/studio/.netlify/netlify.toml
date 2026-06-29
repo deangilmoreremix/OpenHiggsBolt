@@ -1,0 +1,145 @@
+headersOrigin = "inline"
+redirectsOrigin = "inline"
+functionsDirectory = "/workspace/0c85e0dc-1244-40ab-8f84-e11668f857da/sessions/agent_69c9634b-d435-4fe4-ac45-4c3ea4a7b9bd/netlify/functions"
+functionsDirectoryOrigin = "config"
+
+[functions]
+
+[functions."*"]
+node_bundler = "esbuild"
+
+[[plugins]]
+origin = "config"
+package = "@netlify/plugin-nextjs"
+
+[plugins.inputs]
+
+[build]
+publish = "/workspace/0c85e0dc-1244-40ab-8f84-e11668f857da/sessions/agent_69c9634b-d435-4fe4-ac45-4c3ea4a7b9bd/.next"
+publishOrigin = "config"
+commandOrigin = "config"
+command = "npm run build"
+functions = "/workspace/0c85e0dc-1244-40ab-8f84-e11668f857da/sessions/agent_69c9634b-d435-4fe4-ac45-4c3ea4a7b9bd/netlify/functions"
+
+[build.environment]
+NODE_VERSION = "20"
+NETLIFY_USE_PNPM = "false"
+NETLIFY_NEXT_PLUGIN_USE_TURBOPACK = "false"
+
+[build.processing]
+
+[build.processing.css]
+
+[build.processing.html]
+
+[build.processing.images]
+
+[build.processing.js]
+
+[build.services]
+
+[[headers]]
+for = "/*"
+
+[headers.values]
+X-Frame-Options = "SAMEORIGIN"
+X-Content-Type-Options = "nosniff"
+Referrer-Policy = "strict-origin-when-cross-origin"
+Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+
+[[headers]]
+for = "/_next/static/*"
+
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[redirects]]
+from = "/api/brands"
+to = "/.netlify/functions/brands"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
+
+[[redirects]]
+from = "/api/brand"
+to = "/.netlify/functions/brand"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
+
+[[redirects]]
+from = "/api/campaigns"
+to = "/.netlify/functions/campaigns"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
+
+[[redirects]]
+from = "/api/assets"
+to = "/.netlify/functions/assets"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
+
+[[redirects]]
+from = "/api/photo-studio"
+to = "/.netlify/functions/photo-studio"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
+
+[[redirects]]
+from = "/_next/image"
+to = "/.netlify/images?url=:url&w=:width&q=:quality"
+status = 200.0
+force = false
+
+[redirects.query]
+url = ":url"
+w = ":width"
+q = ":quality"
+
+[redirects.conditions]
+
+[redirects.headers]
+
+[[redirects]]
+from = "/_ipx/*"
+to = "/.netlify/images?url=:url&w=:width&q=:quality"
+status = 200.0
+force = false
+
+[redirects.query]
+url = ":url"
+w = ":width"
+q = ":quality"
+
+[redirects.conditions]
+
+[redirects.headers]
