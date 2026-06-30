@@ -20,17 +20,17 @@ async function fetchAgentDetails(agentId, apiKey) {
   if (!apiKey) return null;
   try {
     const res = await fetch(
-      `${BASE_URL}/agents/by-slug/${agentId}`,
+      `${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/agents/by-slug/${agentId}`,
       {
         cache: "no-store",
         headers: { "x-api-key": apiKey },
       }
     );
     if (res.ok) return await res.json();
-    
+
     if (agentId.length > 20) {
       const resId = await fetch(
-        `${BASE_URL}/agents/${agentId}`,
+        `${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/agents/${agentId}`,
         {
           cache: "no-store",
           headers: { "x-api-key": apiKey },
@@ -47,27 +47,15 @@ async function fetchAgentDetails(agentId, apiKey) {
 async function fetchHistory(agentId, conversationId, apiKey) {
   if (!apiKey) return null;
   try {
-    // Try by slug first
+    // Per audit: history endpoint is /agents/user/conversations/{id}
     const res = await fetch(
-      `${BASE_URL}/agents/by-slug/${agentId}/${conversationId}`,
+      `${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/agents/user/conversations/${conversationId}`,
       {
         cache: "no-store",
         headers: { "x-api-key": apiKey },
       }
     );
     if (res.ok) return await res.json();
-    
-    // Fallback to direct agent ID if needed
-    if (agentId.length > 20) {
-      const resId = await fetch(
-        `${BASE_URL}/agents/${agentId}/${conversationId}`,
-        {
-          cache: "no-store",
-          headers: { "x-api-key": apiKey },
-        }
-      );
-      if (resId.ok) return await resId.json();
-    }
     return null;
   } catch {
     return null;

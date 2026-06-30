@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import logging
+import os
 from pathlib import Path
 from openai import AsyncOpenAI, BadRequestError
 from config import get_settings
@@ -11,6 +12,7 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 client = AsyncOpenAI(api_key=settings.openai_api_key)
 _semaphore = asyncio.Semaphore(2)
+os.makedirs(settings.frames_dir, exist_ok=True)
 
 
 async def generate_frame(
@@ -19,7 +21,7 @@ async def generate_frame(
     shot_number: int,
 ) -> str | None:
     filename = f"scene_{scene_id}_shot_{shot_number}.png"
-    filepath = Path("generated") / "frames" / filename
+    filepath = Path(settings.frames_dir) / filename
     filepath.parent.mkdir(parents=True, exist_ok=True)
 
     try:

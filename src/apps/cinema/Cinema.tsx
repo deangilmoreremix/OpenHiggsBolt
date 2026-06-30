@@ -1,12 +1,10 @@
-import { Routes, Route } from 'react-router-dom'
-import CinemaGenerate from './pages/CinemaGenerate'
-import CinemaHistory from './pages/CinemaHistory'
+import ComingSoon from '@/shared/components/ComingSoon'
 
 export default function Cinema() {
   return (
-    <Routes>
-      <Route path="/" element={<CinemaGenerate />} />
-      <Route path="/history" element={<CinemaHistory />} />
-    </Routes>
+    <ComingSoon
+      title="Cinema"
+      description="Cinema controls are fully implemented in /studio. This standalone view is a placeholder."
+    />
   )
 }

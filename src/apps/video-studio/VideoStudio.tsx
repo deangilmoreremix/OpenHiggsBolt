@@ -1,14 +1,11 @@
-import { Routes, Route } from 'react-router-dom'
-import VideoGenerate from './pages/VideoGenerate'
-import VideoLibrary from './pages/VideoLibrary'
-import VideoEditor from './pages/VideoEditor'
+import ComingSoon from '@/shared/components/ComingSoon'
 
 export default function VideoStudio() {
   return (
-    <Routes>
-      <Route path="/" element={<VideoGenerate />} />
-      <Route path="/library" element={<VideoLibrary />} />
-      <Route path="/editor/:id" element={<VideoEditor />} />
-    </Routes>
+    <ComingSoon
+      title="Video Studio"
+      description="A unified video editor is in development. For now, please use the main Video Studio in /studio."
+      eta="Q4 2026"
+    />
   )
 }

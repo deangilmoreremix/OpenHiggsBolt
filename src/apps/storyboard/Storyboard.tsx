@@ -1,14 +1,6 @@
-import { Routes, Route } from 'react-router-dom'
-import StoryboardPlanner from './pages/StoryboardPlanner'
-import ShotEditor from './pages/ShotEditor'
-import SceneAnalysis from './pages/SceneAnalysis'
+import ComingSoon from '@/shared/components/ComingSoon'
+import { Film } from 'lucide-react'
 
 export default function StoryboardApp() {
-  return (
-    <Routes>
-      <Route path="/" element={<StoryboardPlanner />} />
-      <Route path="/shots/:sceneId" element={<ShotEditor />} />
-      <Route path="/analysis/:sceneId" element={<SceneAnalysis />} />
-    </Routes>
-  )
+  return <ComingSoon title="Storyboard" description="Shot-by-shot storyboard planner (Beta)." icon={<Film />} />
 }

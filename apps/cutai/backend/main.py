@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -11,6 +12,7 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    os.makedirs(settings.frames_dir, exist_ok=True)
     await init_db()
     yield
 
@@ -25,7 +27,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/generated", StaticFiles(directory="generated"), name="generated")
+static_root = os.path.dirname(settings.frames_dir) or "generated"
+os.makedirs(static_root, exist_ok=True)
+app.mount("/generated", StaticFiles(directory=static_root), name="generated")
 
 app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
 app.include_router(scripts.router, prefix="/api/scripts", tags=["scripts"])

@@ -19,24 +19,25 @@ const BASE_URL = 'https://api.muapi.ai';
 
 async function fetchAgentDetails(agentId, apiKey) {
   if (!apiKey) return null;
-  
-  // Try fetching by slug first
+
+  // Try fetching by slug first via the same-origin /api/agents proxy, so
+  // auth, retries and CORS are handled uniformly by the proxy.
   try {
     console.log(`[AgentPage] Fetching agent by slug: ${agentId}`);
     const res = await fetch(
-      `${BASE_URL}/agents/by-slug/${agentId}`,
+      `${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/agents/by-slug/${agentId}`,
       {
         cache: "no-store",
         headers: { "x-api-key": apiKey },
       }
     );
     if (res.ok) return await res.json();
-    
+
     // If by-slug fails, try fetching by direct ID (if it looks like a UUID)
     if (agentId.length > 20) {
       console.log(`[AgentPage] Fetch by slug failed, trying by ID: ${agentId}`);
       const resId = await fetch(
-        `${BASE_URL}/agents/${agentId}`,
+        `${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/agents/${agentId}`,
         {
           cache: "no-store",
           headers: { "x-api-key": apiKey },
@@ -44,7 +45,7 @@ async function fetchAgentDetails(agentId, apiKey) {
       );
       if (resId.ok) return await resId.json();
     }
-    
+
     console.warn(`[AgentPage] Failed to fetch agent details for: ${agentId}`);
     return null;
   } catch (error) {

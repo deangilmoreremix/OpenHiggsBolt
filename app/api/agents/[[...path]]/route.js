@@ -1,5 +1,20 @@
 import { NextResponse } from 'next/server';
 
+/**
+ * Proxy route for /api/agents/* → https://api.muapi.ai/agents/*
+ *
+ * Design note: authentication/authorization is delegated to Muapi.ai upstream.
+ * This route is intentionally a thin passthrough — we do not implement our own
+ * per-user RLS or quotas here. The minimum defensive check is to require an
+ * API key on every request (via `x-api-key` header or `muapi_key` cookie);
+ * otherwise we'd be an unauthenticated relay into a paid third-party API.
+ *
+ * Future improvements (see docs/auth-roadmap.md, when written):
+ *   - Add server-side per-IP rate limiting.
+ *   - Enforce an allowlist of upstream paths.
+ *   - Optionally map the user's app identity to a Muapi sub-account.
+ */
+
 const MUAPI_BASE = 'https://api.muapi.ai';
 
 function getApiKey(request) {
@@ -20,6 +35,10 @@ function cleanHeaders(request) {
     return headers;
 }
 
+function unauthorized() {
+    return NextResponse.json({ error: 'Missing API key' }, { status: 401 });
+}
+
 // Build the target URL without a trailing slash when path is empty.
 // e.g. GET /api/agents?is_template=true  → https://api.muapi.ai/agents?is_template=true
 // e.g. GET /api/agents/by-slug/foo       → https://api.muapi.ai/agents/by-slug/foo
@@ -37,6 +56,9 @@ export async function GET(request, { params }) {
 
     const headers = cleanHeaders(request);
     const apiKey = getApiKey(request);
+    if (!apiKey) {
+        return unauthorized();
+    }
     console.log(`[agents proxy GET] ${targetUrl} | apiKey: ${apiKey ? apiKey.slice(0,8)+'...' : 'MISSING'}`);
     if (apiKey) headers.set('x-api-key', apiKey);
 
@@ -57,6 +79,9 @@ export async function POST(request, { params }) {
 
     const headers = cleanHeaders(request);
     const apiKey = getApiKey(request);
+    if (!apiKey) {
+        return unauthorized();
+    }
     console.log(`[agents proxy POST] ${targetUrl} | apiKey: ${apiKey ? apiKey.slice(0,8)+'...' : 'MISSING'}`);
     if (apiKey) headers.set('x-api-key', apiKey);
 
@@ -78,6 +103,9 @@ export async function DELETE(request, { params }) {
 
     const headers = cleanHeaders(request);
     const apiKey = getApiKey(request);
+    if (!apiKey) {
+        return unauthorized();
+    }
     if (apiKey) headers.set('x-api-key', apiKey);
 
     try {
@@ -97,6 +125,9 @@ export async function PUT(request, { params }) {
 
     const headers = cleanHeaders(request);
     const apiKey = getApiKey(request);
+    if (!apiKey) {
+        return unauthorized();
+    }
     if (apiKey) headers.set('x-api-key', apiKey);
 
     try {

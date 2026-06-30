@@ -569,3 +569,23 @@ Built with [Muapi.ai](https://muapi.ai?utm_source=github&utm_medium=readme&utm_c
 
 ---
 *Looking for a free, open-source AI Video Platform? Open Generative AI is an open-source AI image and video generation studio — with no content filters that you can self-host, customize, and extend.*
+
+## CutAI (`apps/cutai/`)
+
+AI storyboarding sub-app: turn a premise or script into a scene-by-scene storyboard with generated frames.
+
+**Backend** (FastAPI, port 8000):
+```bash
+cd apps/cutai/backend
+source venv/bin/activate
+uvicorn main:app --reload --port 8000
+```
+Copy `apps/cutai/backend/.env.example` to `.env` and set `OPENAI_API_KEY`. Override `DATABASE_URL` (default `sqlite+aiosqlite:///./cutai.db`) and `FRAMES_DIR` (default `generated/frames`) via env vars.
+
+**Frontend** (Vite + React, port 5173):
+```bash
+npm run cutai:frontend          # from project root
+# or
+cd apps/cutai/frontend && npm run dev
+```
+Override the API base via `VITE_API_BASE_URL` in `apps/cutai/frontend/.env` (default `http://localhost:8000`).

@@ -1,19 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
-const BASE = 'https://api.muapi.ai/api/v1/creative-agent'
-export async function GET(req: NextRequest) {
-  const key = req.headers.get('x-api-key') || ''
-  const res = await fetch(`${BASE}/sessions`, { headers: { 'x-api-key': key } })
-  const data = await res.json()
-  return NextResponse.json(data, { status: res.status })
+import { proxyToCreativeAgent, corsPreflight } from '../_proxy'
+
+export async function OPTIONS() {
+  return corsPreflight()
 }
+
+export async function GET(req: NextRequest) {
+  return proxyToCreativeAgent(req, { pathSegments: ['sessions'] })
+}
+
 export async function POST(req: NextRequest) {
-  const key = req.headers.get('x-api-key') || ''
-  const body = await req.json()
-  const res = await fetch(`${BASE}/sessions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': key },
+  let body: any
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
+  if (!body || typeof body.name !== 'string' || !body.name.trim()) {
+    return NextResponse.json({ error: 'Missing required field: name' }, { status: 400 })
+  }
+  const forwardReq = new NextRequest(req.url, {
+    method: req.method,
+    headers: req.headers,
     body: JSON.stringify(body),
   })
-  const data = await res.json()
-  return NextResponse.json(data, { status: res.status })
+  return proxyToCreativeAgent(forwardReq, { pathSegments: ['sessions'] })
 }

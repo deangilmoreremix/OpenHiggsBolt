@@ -273,7 +273,12 @@ async function downloadBinary(mainWindow) {
                     throw new Error('Local inference on macOS only supports Apple Silicon (M1/M2/M3/M4). Mac Intel is not supported by stable-diffusion.cpp upstream.');
                 }
                 if (process.platform === 'linux' && process.arch === 'arm64') {
-                    throw new Error('No upstream stable-diffusion.cpp binary found for linux-arm64. Install a build that bundles local-ai/linux-arm64/bin or provide the binary manually.');
+                    throw new Error(
+                        'No sd.cpp binary available for linux-arm64. The pre-built leejet/stable-diffusion.cpp releases do not yet ship a linux-arm64 zip. ' +
+                        'To support this platform, manually build sd-cli on your linux-arm64 machine and place the binary at ' + BIN_DIR + '/sd-cli, ' +
+                        'then set OPEN_GENERATIVE_AI_LOCAL_AI_DIR or restart the app. ' +
+                        'See https://github.com/Anil-matcha/Open-Generative-AI/releases for an upcoming bundle.'
+                    );
                 }
                 const available = lastSeen.join(', ') || '(none)';
                 throw new Error(`No binary found for ${process.platform}-${process.arch} in the last 15 releases. Latest release assets: ${available}`);

@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
-const BASE = 'https://api.muapi.ai/api/v1/creative-agent'
+import { NextRequest } from 'next/server'
+import { proxyToCreativeAgent, corsPreflight } from '../_proxy'
+
+export async function OPTIONS() {
+  return corsPreflight()
+}
+
 export async function GET(req: NextRequest) {
-  const key = req.headers.get('x-api-key') || ''
-  const res = await fetch(`${BASE}/agent-skills`, { headers: { 'x-api-key': key } })
-  const data = await res.json()
-  return NextResponse.json(data, { status: res.status })
+  return proxyToCreativeAgent(req, { pathSegments: ['agent-skills'] })
 }

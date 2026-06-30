@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
     llm_temperature: float = 0.7
     max_scenes: int = 8
+    frames_dir: str = "generated/frames"
 
     @property
     def cors_origins_list(self) -> list[str]:

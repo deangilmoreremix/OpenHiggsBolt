@@ -59,6 +59,9 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+    if (process.platform === 'linux' && process.arch === 'arm64') {
+        console.warn('[Open Generative AI] Local SD engine is not yet bundled for linux-arm64. The cloud and Wan2GP backends will still work, but local inference will fail until a binary is provided.');
+    }
     createWindow();
     registerLocalInference();
     registerWan2gp();

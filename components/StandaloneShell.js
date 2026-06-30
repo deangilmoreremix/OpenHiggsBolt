@@ -3,9 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { ImageStudio, VideoStudio, ClippingStudio, VibeMotionStudio, LipSyncStudio, CinemaStudio, AudioStudio, MarketingStudio, WorkflowStudio, AgentStudio, AppsStudio, getUserBalance } from 'studio';
+import { useQueryClient } from '@tanstack/react-query';
+import { ImageStudio, VideoStudio, ClippingStudio, VibeMotionStudio, LipSyncStudio, CinemaStudio, AudioStudio, MarketingStudio, WorkflowStudio, AgentStudio, AppsStudio } from 'studio';
 import axios from 'axios';
 import { MemoryRouter } from 'react-router-dom';
+import { LogOut } from 'lucide-react';
+import { setApiKey as muapiSetApiKey } from '@/lib/muapi';
+import { useUserBalance } from '@/hooks/useUserBalance';
 
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
 const Videco = dynamic(() => import('../src/apps/videco/Videco'), { ssr: false });
@@ -69,6 +73,9 @@ export default function StandaloneShell() {
   
   const [apiKey, setApiKey] = useState(null);
   const [activeTab, setActiveTab] = useState(getInitialTab());
+  const queryClient = useQueryClient();
+  const { data: balanceData } = useUserBalance(apiKey);
+  const balance = balanceData?.balance ?? null;
 
   useEffect(() => {
     if (activeTab === 'brand-studio') {
@@ -76,7 +83,6 @@ export default function StandaloneShell() {
     }
   }, [activeTab, router]);
 
-  const [balance, setBalance] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsKeyInput, setSettingsKeyInput] = useState('');
   const [authError, setAuthError] = useState(null);
@@ -136,30 +142,17 @@ export default function StandaloneShell() {
     }
   }, [activeTab]);
 
-  const fetchBalance = useCallback(async (key) => {
-    try {
-      const data = await getUserBalance(key);
-      setBalance(data.balance);
-    } catch (err) {
-      const isAuthError = err?.message?.includes('401') || err?.message?.includes('403') || err?.message?.includes('Not authorized');
-      if (!isAuthError) {
-        console.error('Balance fetch failed:', err);
-      }
-    }
-  }, []);
-
   useEffect(() => {
     setHasMounted(true);
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const cleanKey = stored.replace(/[^\u0000-\u00FF]/g, '').trim();
       setApiKey(cleanKey);
-      fetchBalance(cleanKey);
       // Sync cookie immediately on mount to establish identity for background requests.
       // Encode so special characters in the key don't corrupt the cookie string.
       document.cookie = `muapi_key=${encodeURIComponent(cleanKey)}; path=/; max-age=31536000; SameSite=Lax`;
     }
-  }, [fetchBalance]);
+  }, []);
 
   const handleKeySave = useCallback((key) => {
     const trimmed = key.trim();
@@ -173,17 +166,34 @@ export default function StandaloneShell() {
     // proxy routes can resolve it even when the x-api-key header is not present.
     // Encode so special characters in the key don't corrupt the cookie string.
     document.cookie = `muapi_key=${encodeURIComponent(trimmed)}; path=/; max-age=31536000; SameSite=Lax`;
-    fetchBalance(trimmed);
-  }, [fetchBalance]);
+    queryClient.invalidateQueries({ queryKey: ['balance'] });
+  }, [queryClient]);
 
   const handleKeyChange = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
     setApiKey(null);
-    setBalance(null);
+    queryClient.removeQueries({ queryKey: ['balance'] });
     setSettingsKeyInput('');
     setAuthError(null);
     document.cookie = "muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-  }, []);
+  }, [queryClient]);
+
+  const handleSignOut = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    document.cookie = 'muapi_key=; Path=/; Max-Age=0';
+    setApiKey(null);
+    queryClient.removeQueries({ queryKey: ['balance'] });
+    if (typeof window !== 'undefined') {
+      window.__MUAPI_KEY__ = null;
+    }
+    // Clear the api key on the muapi singleton so any in-flight or future
+    // calls fail fast rather than reusing the previous user's key.
+    try {
+      muapiSetApiKey(null);
+    } catch {}
+    setShowSettings(false);
+  }, [queryClient]);
+
 
   // Inject API key into all outgoing Axios requests (prop-based approach)
   // We use an interceptor to be selective and NOT send the key to external domains like S3
@@ -201,7 +211,7 @@ export default function StandaloneShell() {
       if (isRelative || isInternalProxy) {
         config.headers['x-api-key'] = apiKey.replace(/[^\u0000-\u00FF]/g, '').trim();
       }
-      
+
       return config;
     });
 
@@ -209,13 +219,6 @@ export default function StandaloneShell() {
       axios.interceptors.request.eject(interceptorId);
     };
   }, [apiKey]);
-
-  // Poll for balance every 30 seconds if key is present
-  useEffect(() => {
-    if (!apiKey) return;
-    const interval = setInterval(() => fetchBalance(apiKey), 30000);
-    return () => clearInterval(interval);
-  }, [apiKey, fetchBalance]);
 
   // When MuAPI reports the key is invalid/missing, surface the message but do not
   // immediately wipe the saved key. The user may have a transient failure or want
@@ -371,6 +374,17 @@ export default function StandaloneShell() {
               </svg>
               <span>Settings</span>
             </button>
+
+            {apiKey && (
+              <button
+                onClick={handleSignOut}
+                title="Sign out and clear saved API key"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-white/10 bg-white/5 text-[13px] font-bold text-white/80 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-colors"
+              >
+                <LogOut size={14} />
+                <span>Sign out</span>
+              </button>
+            )}
           </div>
         </header>
       )}

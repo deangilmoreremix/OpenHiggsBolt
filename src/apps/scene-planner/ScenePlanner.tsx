@@ -1,14 +1,6 @@
-import { Routes, Route } from 'react-router-dom'
-import WorkflowBuilder from './pages/WorkflowBuilder'
-import NodeTemplates from './pages/NodeTemplates'
-import WorkflowHistory from './pages/WorkflowHistory'
+import ComingSoon from '@/shared/components/ComingSoon'
+import { Network } from 'lucide-react'
 
 export default function ScenePlanner() {
-  return (
-    <Routes>
-      <Route path="/" element={<WorkflowBuilder />} />
-      <Route path="/templates" element={<NodeTemplates />} />
-      <Route path="/history" element={<WorkflowHistory />} />
-    </Routes>
-  )
+  return <ComingSoon title="Scene Planner" description="Node-based scene planning coming soon." icon={<Network />} />
 }

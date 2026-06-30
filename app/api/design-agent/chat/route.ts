@@ -1,13 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
-const BASE = 'https://api.muapi.ai/api/v1/creative-agent'
+import { proxyToCreativeAgent, corsPreflight } from '../_proxy'
+
+export async function OPTIONS() {
+  return corsPreflight()
+}
+
 export async function POST(req: NextRequest) {
-  const key = req.headers.get('x-api-key') || ''
-  const { sessionId, ...body } = await req.json()
-  const res = await fetch(`${BASE}/sessions/${sessionId}/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': key },
+  const url = new URL(req.url)
+  const sessionId = url.pathname.split('/').filter(Boolean).pop()
+  if (!sessionId || sessionId === 'chat') {
+    return NextResponse.json({ error: 'Missing sessionId in path' }, { status: 400 })
+  }
+  let body: any
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
+  if (!body || typeof body !== 'object') {
+    return NextResponse.json({ error: 'Empty request body' }, { status: 400 })
+  }
+  const hasMessages = Array.isArray(body.messages) && body.messages.length > 0
+  const hasContent = typeof body.content === 'string' && body.content.length > 0
+  if (!hasMessages && !hasContent) {
+    return NextResponse.json(
+      { error: 'Request body must include a non-empty "messages" array or a "content" field' },
+      { status: 400 },
+    )
+  }
+  const forwardReq = new NextRequest(req.url, {
+    method: req.method,
+    headers: req.headers,
     body: JSON.stringify(body),
   })
-  const data = await res.json()
-  return NextResponse.json(data, { status: res.status })
+  return proxyToCreativeAgent(forwardReq, { pathSegments: ['sessions', sessionId, 'chat'] })
 }

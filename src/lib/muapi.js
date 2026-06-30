@@ -578,3 +578,28 @@ export class MuapiClient {
 }
 
 export const muapi = new MuapiClient();
+
+/**
+ * Free-function wrappers around the MuapiClient methods so they can be
+ * consumed by shared hooks without needing a class instance.
+ */
+export async function pollForResult(requestId, key, maxAttempts = 60, interval = 2000) {
+    return muapi.pollForResult(requestId, key, maxAttempts, interval);
+}
+
+export async function submitAndPoll(endpoint, payload, key, onRequestId, maxAttempts = 60) {
+    const url = `${muapi.baseUrl}/api/v1/${endpoint}`;
+    const headers = { 'Content-Type': 'application/json', 'x-api-key': key };
+    const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
+    if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`API Request Failed: ${response.status} ${response.statusText} - ${errText.slice(0, 100)}`);
+    }
+    const submitData = await response.json();
+    const requestId = submitData.request_id || submitData.id;
+    if (!requestId) return submitData;
+    if (onRequestId) onRequestId(requestId);
+    const result = await pollForResult(requestId, key, maxAttempts, 2000);
+    const outputUrl = result.outputs?.[0] || result.url || result.output?.url;
+    return { ...result, url: outputUrl };
+}

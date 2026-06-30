@@ -62,7 +62,13 @@ const COVER_COLORS = [
 ]
 
 // ── API helpers ───────────────────────────────────────────────────────────────
-const MUAPI_KEY = process.env.NEXT_PUBLIC_MUAPI_KEY || ''
+// The Vite/Electron build doesn't inline NEXT_PUBLIC_* env vars at runtime,
+// so we also fall back to the muapi_key stored in localStorage by the
+// StandaloneShell so this app works in both web and desktop builds.
+const MUAPI_KEY =
+  process.env.NEXT_PUBLIC_MUAPI_KEY ||
+  (typeof localStorage !== 'undefined' ? localStorage.getItem('muapi_key') : null) ||
+  ''
 const OPENAI_KEY = process.env.NEXT_PUBLIC_OPENAI_API_KEY || ''
 const MUAPI_BASE = 'https://api.muapi.ai/api/v1'
 
