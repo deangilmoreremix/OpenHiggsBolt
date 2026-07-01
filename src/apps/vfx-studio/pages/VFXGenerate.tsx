@@ -202,6 +202,12 @@ export default function VFXGenerate() {
   const [userApiKey, setUserApiKey] = useState('');
   const [showGenerationModal, setShowGenerationModal] = useState(false);
 
+  // Ensure the prompt input bar is visible when the VFX studio tab mounts
+  useEffect(() => {
+    setShowInputBar(true);
+    setShowChatButton(false);
+  }, []);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -687,40 +693,6 @@ export default function VFXGenerate() {
         userApiKey={userApiKey}
         setUserApiKey={setUserApiKey}
       />
-
-      {/* Chat bubble button (upstream feature parity) */}
-      {!showInputBar && (
-        <button
-          onClick={() => {
-            setShowInputBar(true);
-            setShowChatButton(false);
-          }}
-          style={{
-            position: 'fixed',
-            bottom: '80px',
-            right: '40px',
-            zIndex: 30,
-            background: 'linear-gradient(120deg, #232b39 0%, #3b82f6 100%)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '50%',
-            width: '54px',
-            height: '54px',
-            boxShadow: '0 4px 24px 0 rgba(59,130,246,0.25)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            transition: 'background 0.2s',
-          }}
-          title="Open Chat"
-          aria-label="Open Chat"
-        >
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-      )}
 
       {/* Video result inline (local repo feature) */}
       {videoUrl && status === 'completed' && (

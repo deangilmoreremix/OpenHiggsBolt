@@ -34,14 +34,19 @@ function WorkflowCard({ workflow, onClick, activeTab, onRename, onDelete }) {
   const [showOptions, setShowOptions] = useState(false);
   const [imgError, setImgError] = useState(false);
 
+  const rawThumb = (workflow && (workflow.thumbnail || workflow.thumbnail_url)) || '';
+  const thumbnail = rawThumb && !rawThumb.startsWith('http')
+    ? (rawThumb.startsWith('/') ? rawThumb : `/${rawThumb}`)
+    : rawThumb;
+
   return (
     <div
       onClick={() => onClick(workflow)}
       className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer border border-white/5 bg-[#0a0a0a] transition-all hover:border-[#22d3ee]/30 hover:scale-[1.02] shadow-2xl"
     >
-      {workflow.thumbnail && !imgError ? (
+      {thumbnail && !imgError ? (
         <img
-          src={workflow.thumbnail}
+          src={thumbnail}
           alt={workflow.name}
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
           onError={() => setImgError(true)}

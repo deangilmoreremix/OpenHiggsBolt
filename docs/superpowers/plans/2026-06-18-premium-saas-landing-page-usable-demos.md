@@ -47,7 +47,7 @@
 Write `components/landing/landingData.js` with this content:
 
 ```js
-export const PRODUCT_NAME = 'Open Generative AI';
+export const PRODUCT_NAME = 'GO-AI';
 
 export const NAV_ITEMS = [
   { label: 'Demos', href: '#demos' },
@@ -545,7 +545,7 @@ const FeatureDemos = dynamic(() => import('../components/landing/FeatureDemos'),
 });
 
 export const metadata = {
-  title: 'Open Generative AI — Premium AI Video Studio',
+  title: 'GO-AI — Premium AI Video Studio',
   description: 'Generate AI images and videos using 200+ models — Flux, Midjourney, Kling, Veo, Seedance and more.'
 };
 

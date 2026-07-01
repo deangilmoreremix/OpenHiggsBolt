@@ -378,6 +378,8 @@ export default function BottomInputBar({
                 onChange={(e) => setInputText(e.target.value)}
                 style={{
                   flex: 1,
+                  minWidth: '80px',
+                  minHeight: '20px',
                   backgroundColor: 'transparent',
                   color: '#d1d5db',
                   border: 'none',

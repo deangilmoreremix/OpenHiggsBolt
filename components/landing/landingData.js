@@ -1,4 +1,4 @@
-export const PRODUCT_NAME = 'Open Generative AI';
+export const PRODUCT_NAME = 'GO-AI';
 
 export const NAV_ITEMS = [
   { label: 'Demos', href: '#demos' },

@@ -1,7 +1,7 @@
 {
-  "name": "open-generative-ai",
-  "description": "Open-source alternative to HF AI — AI image, video, cinema and lip sync studio",
-  "homepage": "https://github.com/Anil-matcha/Open-Generative-AI",
+  "name": "go-ai",
+  "description": "GO-AI — AI image, video, cinema and lip sync studio",
+  "homepage": "https://github.com/deangilmoreremix/videoremixai-vfx",
   "private": true,
   "version": "2.0.0",
   "license": "MIT",
@@ -42,9 +42,9 @@
     "electron:build:all": "vite build && electron-builder --mac --win --linux"
   },
   "build": {
-    "appId": "ai.generative.open",
-    "productName": "Open Generative AI",
-    "copyright": "Copyright © 2025",
+    "appId": "ai.go.vfx",
+    "productName": "GO-AI",
+    "copyright": "Copyright © 2026",
     "directories": {
       "output": "release"
     },
@@ -96,7 +96,7 @@
     "linux": {
       "icon": "public/banner.png",
       "category": "Utility",
-      "maintainer": "Open Generative AI Team",
+      "maintainer": "GO-AI Team",
       "extraFiles": [
         {
           "from": "build/linux/apparmor.profile",

@@ -164,11 +164,10 @@ const translations = {
 
         // Agent Studio
         'agents.title': 'Agent Studio',
-        'agents.webOnly': 'Available in the web app at open-generative-ai.com',
-
-        // Workflow Studio
+        'agents.webOnly': 'Available in the web app at go-ai.app',
+        'nav.workflows': 'Workflows',
         'workflows.title': 'Workflow Studio',
-        'workflows.webOnly': 'Available in the web app at open-generative-ai.com',
+        'workflows.webOnly': 'Available in the web app at go-ai.app',
 
         // Local Model Manager
         'localModels.title': 'Local Models',
@@ -354,11 +353,10 @@ const translations = {
 
         // Agent Studio
         'agents.title': '智能体工作室',
-        'agents.webOnly': '在网页应用 open-generative-ai.com 上可用',
-
-        // Workflow Studio
+        'agents.webOnly': '在网页应用 go-ai.app 上可用',
+        'nav.workflows': '工作流',
         'workflows.title': '工作流工作室',
-        'workflows.webOnly': '在网页应用 open-generative-ai.com 上可用',
+        'workflows.webOnly': '在网页应用 go-ai.app 上可用',
 
         // Local Model Manager
         'localModels.title': '本地模型',
