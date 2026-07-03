@@ -1394,7 +1394,7 @@ export default function ImageStudio({
                     e.stopPropagation();
                     setDropdownOpen((o) => (o === "model" ? null : "model"));
                   }}
-                  className="flex items-center gap-2 px-3.5 py-2.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-xl transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+                  className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                 >
                   <div className="w-4 h-4 rounded overflow-hidden shrink-0 flex items-center justify-center bg-white/5">
                     {(() => {
@@ -1451,7 +1451,7 @@ export default function ImageStudio({
                     e.stopPropagation();
                     setDropdownOpen((o) => (o === "ar" ? null : "ar"));
                   }}
-                  className="flex items-center gap-2 px-3.5 py-2.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-xl transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+                  className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-40 text-white">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
@@ -1486,7 +1486,7 @@ export default function ImageStudio({
                       e.stopPropagation();
                       setDropdownOpen((o) => (o === "quality" ? null : "quality"));
                     }}
-                    className="flex items-center gap-2 px-3.5 py-2.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-xl transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+                    className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="opacity-40 text-white">
                       <polygon points="12 2 22 12 12 22 2 12" />
@@ -1522,7 +1522,7 @@ export default function ImageStudio({
                       e.stopPropagation();
                       setDropdownOpen((o) => (o === "effect" ? null : "effect"));
                     }}
-                    className="flex items-center gap-2 px-3.5 py-2.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-xl transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+                    className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-40 text-white">
                       <path d="M5 3l14 9-14 9V3z" />
@@ -1550,7 +1550,7 @@ export default function ImageStudio({
               )}
 
               {/* Batch size stepper */}
-              <div className="flex items-center gap-2 bg-[#16161a]/60 rounded-xl px-2.5 py-2 border border-white/[0.06] shadow-inner select-none">
+              <div className="h-[34px] flex items-center gap-2 bg-[#16161a]/60 rounded-md px-2.5 border border-white/[0.06] shadow-inner select-none">
                 <button
                   type="button"
                   onClick={() => setBatchSize(prev => Math.max(1, prev - 1))}
@@ -1573,7 +1573,7 @@ export default function ImageStudio({
               {/* Draw button */}
               <button
                 type="button"
-                className="flex items-center gap-2 px-3.5 py-2.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-xl transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+                className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                 onClick={() => alert("Drawing canvas feature is coming soon!")}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="opacity-40 text-white group-hover:text-[#22d3ee] transition-colors">

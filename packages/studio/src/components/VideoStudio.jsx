@@ -1813,7 +1813,7 @@ export default function VideoStudio({
                 <button
                   type="button"
                   onClick={toggleDropdown("model")}
-                  className="flex items-center gap-2 px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap"
+                  className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                 >
                   <div className="w-4 h-4 rounded overflow-hidden shrink-0 flex items-center justify-center bg-white/5">
                     {(() => {
@@ -1868,7 +1868,7 @@ export default function VideoStudio({
                   <button
                     type="button"
                     onClick={toggleDropdown("ar")}
-                    className="flex items-center gap-2 px-3.5 py-2.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-xl transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+                    className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                   >
                     <svg
                       width="14"
@@ -1930,7 +1930,7 @@ export default function VideoStudio({
                   <button
                     type="button"
                     onClick={toggleDropdown("effect")}
-                    className="flex items-center gap-2 px-3.5 py-2.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-xl transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+                    className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                   >
                     <svg
                       width="14"
@@ -1985,7 +1985,7 @@ export default function VideoStudio({
                   <button
                     type="button"
                     onClick={toggleDropdown("duration")}
-                    className="flex items-center gap-2 px-3.5 py-2.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-xl transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+                    className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                   >
                     <svg
                       width="14"
@@ -2041,7 +2041,7 @@ export default function VideoStudio({
                   <button
                     type="button"
                     onClick={toggleDropdown("resolution")}
-                    className="flex items-center gap-2 px-3.5 py-2.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-xl transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+                    className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                   >
                     <svg
                       width="12"
@@ -2096,7 +2096,7 @@ export default function VideoStudio({
               type="button"
               onClick={handleGenerate}
               disabled={generating}
-              className="bg-[#22d3ee] text-black px-6 py-2.5 rounded-2xl font-extrabold text-sm hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-[#22d3ee] text-black px-7 py-3 rounded-full font-black text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {generating ? (
                 <>
