@@ -66,6 +66,11 @@ export default function DrawModal({
     "#000000", // Black
   ];
 
+  const handleSelectTool = (tool) => {
+    setActiveTool(tool);
+    setSelectedObjectId(null);
+  };
+
   // Adjust container clicks to close open menus
   useEffect(() => {
     const handleOutsideClick = (e) => {
@@ -79,6 +84,68 @@ export default function DrawModal({
     window.addEventListener("click", handleOutsideClick);
     return () => window.removeEventListener("click", handleOutsideClick);
   }, []);
+
+  // Keyboard shortcuts event listener
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e) => {
+      // Ignore shortcuts if writing in an input, textarea or contenteditable element
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.isContentEditable)
+      ) {
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+
+      // Undo/Redo
+      if ((e.ctrlKey || e.metaKey) && key === "z") {
+        e.preventDefault();
+        handleUndo();
+      } else if ((e.ctrlKey || e.metaKey) && key === "y") {
+        e.preventDefault();
+        handleRedo();
+      }
+      // Delete Selected Object
+      else if (key === "delete" || key === "backspace") {
+        if (selectedObjectId) {
+          e.preventDefault();
+          handleRemoveSelected();
+        }
+      }
+      // Toolbar selections
+      else if (key === "v" || key === "1") {
+        e.preventDefault();
+        handleSelectTool("pointer");
+      } else if (key === "b" || key === "2") {
+        e.preventDefault();
+        handleSelectTool("pencil");
+      } else if (key === "e" || key === "3") {
+        e.preventDefault();
+        handleSelectTool("eraser");
+      } else if (key === "r" || key === "4") {
+        e.preventDefault();
+        handleSelectTool("rect");
+      } else if (key === "a" || key === "5") {
+        e.preventDefault();
+        handleSelectTool("arrow");
+      } else if (key === "t" || key === "6") {
+        e.preventDefault();
+        handleSelectTool("text");
+      } else if (key === "i" || key === "7") {
+        e.preventDefault();
+        handleInsertImageClick();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, canvasObjects, selectedObjectId, historyIdx, activeTool]);
 
   // Save history state
   const saveStateToHistory = (newObjects) => {
@@ -994,8 +1061,10 @@ export default function DrawModal({
                         top: `${topPct}%`,
                         width: `${widthPct}%`,
                         height: `${heightPct}%`,
+                        pointerEvents: activeTool === "pointer" ? "auto" : "none",
                       }}
                       onMouseDown={(e) => {
+                        if (activeTool !== "pointer") return;
                         setSelectedObjectId(imgObj.id);
                         handleStartMoveSelected(e);
                       }}
@@ -1024,7 +1093,9 @@ export default function DrawModal({
                         );
                       }}
                       onFocus={() => {
-                        setSelectedObjectId(textObj.id);
+                        if (activeTool === "pointer") {
+                          setSelectedObjectId(textObj.id);
+                        }
                       }}
                       className={`absolute bg-transparent border-none outline-none resize-none font-bold text-left overflow-hidden select-text z-10 ${
                         isSelected ? "ring-1 ring-[#b5f500] ring-dashed bg-black/25" : ""
@@ -1037,13 +1108,14 @@ export default function DrawModal({
                         fontSize: `${(textObj.fontSize / canvasDimensions.height) * 100}cqh`,
                         color: textObj.color,
                         lineHeight: 1.25,
+                        pointerEvents: activeTool === "pointer" ? "auto" : "none",
                       }}
                     />
                   );
                 })}
 
                 {/* Unified Outline Handles Overlay for Selected Object */}
-                {selectedObjectId && bbox && (
+                {activeTool === "pointer" && selectedObjectId && bbox && (
                   <div
                     className="absolute border border-dashed border-[#b5f500] pointer-events-auto z-20 cursor-move"
                     style={{
