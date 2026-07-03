@@ -15,18 +15,25 @@ export default function DrawModal({
   const [selectedModel, setSelectedModel] = useState("nano-banana-pro-edit"); // 'nano-banana-2-edit' | 'nano-banana-pro-edit'
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [isArDropdownOpen, setIsArDropdownOpen] = useState(false);
-  const [canvasDimensions, setCanvasDimensions] = useState({ width: 800, height: 450 });
 
   // Drawing Tools
-  const [activeTool, setActiveTool] = useState("pencil"); // 'pointer' | 'pencil' | 'eraser' | 'rect' | 'arrow' | 'text'
+  const [activeTool, setActiveTool] = useState("pencil"); // 'pointer' | 'pencil' | 'eraser' | 'rect' | 'arrow' | 'text' | 'image'
   const [brushColor, setBrushColor] = useState("#eab308"); // default yellow
-  const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
   const [brushSize, setBrushSize] = useState(5);
   const [showSettingsPopover, setShowSettingsPopover] = useState(false);
+
+  // Text Objects State
+  const [textObjects, setTextObjects] = useState([]); // [{ id, text, x, y, fontSize, color }]
+  const [selectedTextId, setSelectedTextId] = useState(null);
+
+  // Image Objects State
+  const [imageObjects, setImageObjects] = useState([]); // [{ id, img, url, x, y, width, height }]
+  const [selectedImageId, setSelectedImageId] = useState(null);
 
   // Canvas Refs
   const canvasRef = useRef(null);
   const bgCanvasRef = useRef(null);
+  const canvasWrapperRef = useRef(null);
   const drawingState = useRef({
     isDrawing: false,
     startX: 0,
@@ -35,15 +42,17 @@ export default function DrawModal({
     historyIdx: -1,
   });
 
+  const [canvasDimensions, setCanvasDimensions] = useState({ width: 800, height: 450 });
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [generating, setGenerating] = useState(false);
 
   const fileInputRef = useRef(null);
+  const insertImageInputRef = useRef(null);
   const modelDropdownRef = useRef(null);
   const arDropdownRef = useRef(null);
 
-  // Predefined colors for drawing toolbar
+  // Predefined colors for drawing toolbar (rendered inline now)
   const PRESET_COLORS = [
     "#ef4444", // Red
     "#f97316", // Orange
@@ -138,8 +147,8 @@ export default function DrawModal({
       let imgH = bgImage.naturalHeight || bgImage.height || 500;
 
       const scale = Math.min(maxW / imgW, maxH / imgH);
-      width = imgW * scale;
-      height = imgH * scale;
+      width = Math.round(imgW * scale);
+      height = Math.round(imgH * scale);
     }
 
     canvas.width = width;
@@ -179,7 +188,7 @@ export default function DrawModal({
   };
 
   const handleStartDraw = (e) => {
-    if (activeTool === "pointer") return;
+    if (activeTool !== "pencil" && activeTool !== "eraser" && activeTool !== "rect" && activeTool !== "arrow") return;
     const pos = getCanvasMousePos(e);
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -247,13 +256,11 @@ export default function DrawModal({
       const toX = pos.x;
       const toY = pos.y;
 
-      // Draw arrow main line
       ctx.beginPath();
       ctx.moveTo(fromX, fromY);
       ctx.lineTo(toX, toY);
       ctx.stroke();
 
-      // Draw arrow heads
       const angle = Math.atan2(toY - fromY, toX - fromX);
       ctx.beginPath();
       ctx.moveTo(toX, toY);
@@ -263,20 +270,160 @@ export default function DrawModal({
       ctx.stroke();
 
       saveCanvasState();
-    } else if (activeTool === "text") {
-      const text = prompt("Enter text to add to canvas:");
-      if (text) {
-        ctx.globalCompositeOperation = "source-over";
-        ctx.fillStyle = brushColor;
-        ctx.font = `${brushSize * 4}px Inter, sans-serif`;
-        ctx.fillText(text, drawingState.current.startX, drawingState.current.startY);
-        saveCanvasState();
-      }
     } else {
-      // Pencil or Eraser finished stroke
       saveCanvasState();
     }
   };
+
+  // Canvas container clicked (used for creating text elements)
+  const handleCanvasClick = (e) => {
+    if (activeTool !== "text") return;
+    const pos = getCanvasMousePos(e);
+    const newText = {
+      id: Math.random().toString(36).substring(7),
+      text: "Type text here...",
+      x: Math.round(pos.x),
+      y: Math.round(pos.y),
+      fontSize: brushSize * 4 > 12 ? brushSize * 4 : 20,
+      color: brushColor,
+    };
+    setTextObjects((prev) => [...prev, newText]);
+    setSelectedTextId(newText.id);
+    setActiveTool("pointer"); // switch back to pointer to allow dragging
+  };
+
+  // Draggable Text support
+  const handleTextStartDrag = (e, id) => {
+    e.preventDefault();
+    setSelectedTextId(id);
+    setSelectedImageId(null);
+    const startX = e.clientX;
+    const startY = e.clientY;
+
+    const targetObj = textObjects.find((t) => t.id === id);
+    if (!targetObj) return;
+
+    const origX = targetObj.x;
+    const origY = targetObj.y;
+
+    const handleTextDragMove = (moveEvent) => {
+      // Calculate delta scaled to canvas coordinates
+      if (!canvasWrapperRef.current) return;
+      const wrapperRect = canvasWrapperRef.current.getBoundingClientRect();
+      const scaleX = canvasDimensions.width / wrapperRect.width;
+      const scaleY = canvasDimensions.height / wrapperRect.height;
+
+      const dx = (moveEvent.clientX - startX) * scaleX;
+      const dy = (moveEvent.clientY - startY) * scaleY;
+
+      setTextObjects((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, x: Math.round(origX + dx), y: Math.round(origY + dy) } : t))
+      );
+    };
+
+    const handleTextDragEnd = () => {
+      window.removeEventListener("mousemove", handleTextDragMove);
+      window.removeEventListener("mouseup", handleTextDragEnd);
+    };
+
+    window.addEventListener("mousemove", handleTextDragMove);
+    window.addEventListener("mouseup", handleTextDragEnd);
+  };
+
+  // Draggable Image support
+  const handleImageStartDrag = (e, id) => {
+    e.preventDefault();
+    setSelectedImageId(id);
+    setSelectedTextId(null);
+    const startX = e.clientX;
+    const startY = e.clientY;
+
+    const targetObj = imageObjects.find((img) => img.id === id);
+    if (!targetObj) return;
+
+    const origX = targetObj.x;
+    const origY = targetObj.y;
+
+    const handleImageDragMove = (moveEvent) => {
+      if (!canvasWrapperRef.current) return;
+      const wrapperRect = canvasWrapperRef.current.getBoundingClientRect();
+      const scaleX = canvasDimensions.width / wrapperRect.width;
+      const scaleY = canvasDimensions.height / wrapperRect.height;
+
+      const dx = (moveEvent.clientX - startX) * scaleX;
+      const dy = (moveEvent.clientY - startY) * scaleY;
+
+      setImageObjects((prev) =>
+        prev.map((img) => (img.id === id ? { ...img, x: Math.round(origX + dx), y: Math.round(origY + dy) } : img))
+      );
+    };
+
+    const handleImageDragEnd = () => {
+      window.removeEventListener("mousemove", handleImageDragMove);
+      window.removeEventListener("mouseup", handleImageDragEnd);
+    };
+
+    window.addEventListener("mousemove", handleImageDragMove);
+    window.addEventListener("mouseup", handleImageDragEnd);
+  };
+
+  // Resize Image Object support
+  const handleImageStartResize = (e, id) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startY = e.clientY;
+
+    const targetObj = imageObjects.find((img) => img.id === id);
+    if (!targetObj) return;
+
+    const startW = targetObj.width;
+    const startH = targetObj.height;
+
+    const handleImageResizeMove = (moveEvent) => {
+      if (!canvasWrapperRef.current) return;
+      const wrapperRect = canvasWrapperRef.current.getBoundingClientRect();
+      const scaleX = canvasDimensions.width / wrapperRect.width;
+      const scaleY = canvasDimensions.height / wrapperRect.height;
+
+      const dx = (moveEvent.clientX - startX) * scaleX;
+      const dy = (moveEvent.clientY - startY) * scaleY;
+
+      setImageObjects((prev) =>
+        prev.map((img) =>
+          img.id === id
+            ? { ...img, width: Math.max(30, Math.round(startW + dx)), height: Math.max(30, Math.round(startH + dy)) }
+            : img
+        )
+      );
+    };
+
+    const handleImageResizeEnd = () => {
+      window.removeEventListener("mousemove", handleImageResizeMove);
+      window.removeEventListener("mouseup", handleImageResizeEnd);
+    };
+
+    window.addEventListener("mousemove", handleImageResizeMove);
+    window.addEventListener("mouseup", handleImageResizeEnd);
+  };
+
+  // Watch for active adjustments (BrushColor/BrushSize changes update selected text)
+  useEffect(() => {
+    if (selectedTextId) {
+      setTextObjects((prev) =>
+        prev.map((t) => (t.id === selectedTextId ? { ...t, color: brushColor } : t))
+      );
+    }
+  }, [brushColor]);
+
+  useEffect(() => {
+    if (selectedTextId) {
+      const calculatedFontSize = brushSize * 4 > 12 ? brushSize * 4 : 20;
+      setTextObjects((prev) =>
+        prev.map((t) => (t.id === selectedTextId ? { ...t, fontSize: calculatedFontSize } : t))
+      );
+    }
+  }, [brushSize]);
 
   // Upload background file
   const handleUploadBg = (e) => {
@@ -295,18 +442,63 @@ export default function DrawModal({
     reader.readAsDataURL(file);
   };
 
+  // Insert another image on the canvas
+  const handleInsertImageClick = () => {
+    insertImageInputRef.current?.click();
+  };
+
+  const handleInsertImage = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const id = Math.random().toString(36).substring(7);
+        const w = img.naturalWidth || img.width || 150;
+        const h = img.naturalHeight || img.height || 150;
+
+        // Scale to a reasonable size on the canvas
+        const maxDim = 150;
+        const scale = Math.min(maxDim / w, maxDim / h);
+        const startW = Math.round(w * scale);
+        const startH = Math.round(h * scale);
+
+        const newImageObj = {
+          id,
+          img,
+          url: event.target.result,
+          x: Math.round((canvasDimensions.width - startW) / 2),
+          y: Math.round((canvasDimensions.height - startH) / 2),
+          width: startW,
+          height: startH,
+        };
+
+        setImageObjects((prev) => [...prev, newImageObj]);
+        setSelectedImageId(id);
+        setActiveTool("pointer");
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Clear Canvas
   const handleClearCanvas = () => {
-    if (confirm("Clear your drawings? Background will be kept.")) {
+    if (confirm("Clear drawings, text, and overlay images? Background image will remain.")) {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      setTextObjects([]);
+      setImageObjects([]);
+      setSelectedTextId(null);
+      setSelectedImageId(null);
       saveCanvasState();
     }
   };
 
-  // Merge Background + Drawing layers and Generate
+  // Merge Background + Drawing + Image objects + Text objects, and Generate
   const handleGenerateClick = async () => {
     if (generating) return;
 
@@ -317,16 +509,31 @@ export default function DrawModal({
     setGenerating(true);
 
     try {
-      // Create output canvas to merge background + drawing layer
+      // Create output canvas to merge all layers
       const mergeCanvas = document.createElement("canvas");
       mergeCanvas.width = canvas.width;
       mergeCanvas.height = canvas.height;
       const mCtx = mergeCanvas.getContext("2d");
 
-      // Draw background
+      // 1. Draw background canvas layer
       mCtx.drawImage(bgCanvas, 0, 0);
-      // Draw transparent drawing overlay on top
+
+      // 2. Draw overlay image objects
+      imageObjects.forEach((imgObj) => {
+        mCtx.drawImage(imgObj.img, imgObj.x, imgObj.y, imgObj.width, imgObj.height);
+      });
+
+      // 3. Draw ink drawing overlay layer
       mCtx.drawImage(canvas, 0, 0);
+
+      // 4. Draw text objects
+      textObjects.forEach((textObj) => {
+        mCtx.fillStyle = textObj.color;
+        // Text positioning matches baseline in canvas coords
+        mCtx.font = `bold ${textObj.fontSize}px Inter, sans-serif`;
+        mCtx.textBaseline = "top";
+        mCtx.fillText(textObj.text, textObj.x, textObj.y);
+      });
 
       // Convert to blob
       const blob = await new Promise((resolve) => mergeCanvas.toBlob(resolve, "image/jpeg", 0.92));
@@ -335,7 +542,7 @@ export default function DrawModal({
       // Upload file to get URL
       const uploadedUrl = await uploadFile(apiKey, blob);
 
-      // Generate Image using nano-banana-2-edit or nano-banana-pro-edit
+      // Generate Image using selected edit model
       const results = await Promise.all(
         Array.from({ length: batchSize }).map(async () => {
           const genParams = {
@@ -419,11 +626,11 @@ export default function DrawModal({
         </div>
 
         {/* Workspace Body */}
-        <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto custom-scrollbar relative">
+        <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto custom-scrollbar relative bg-[#070708]/30">
           
           {viewState === "setup" ? (
             /* Setup Card */
-            <div className="border-2 border-dashed border-white/10 rounded-2xl p-8 max-w-md w-full text-center flex flex-col items-center gap-6 bg-[#070708]/30">
+            <div className="border-2 border-dashed border-white/10 rounded-2xl p-8 max-w-md w-full text-center flex flex-col items-center gap-6 bg-[#070708]/50">
               <div className="w-56 h-36 rounded-xl border border-white/5 overflow-hidden shadow-lg select-none relative bg-black/40">
                 <img
                   src="https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/neta-lumina.avif"
@@ -431,7 +638,7 @@ export default function DrawModal({
                   className="w-full h-full object-cover opacity-60"
                 />
                 <div className="absolute bottom-2 left-2 right-2 bg-black/80 backdrop-blur-md rounded-md p-1 px-2 border border-white/5 flex items-center gap-1">
-                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse"></div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#b5f500] animate-pulse"></div>
                   <span className="text-[9px] text-white/50 tracking-wider uppercase font-bold">Sketchpad active</span>
                 </div>
               </div>
@@ -480,12 +687,15 @@ export default function DrawModal({
           ) : (
             /* Canvas Screen */
             <div className="flex-1 flex flex-col items-center justify-center w-full relative h-full">
-              {/* Stacked Canvases */}
+              {/* Stacked Canvases Wrapper with Fixed Aspect Ratio scale */}
               <div
-                className="relative border border-white/10 shadow-2xl rounded-lg overflow-hidden bg-white max-w-full max-h-[60vh] flex items-center justify-center"
+                ref={canvasWrapperRef}
+                className="relative border border-white/10 shadow-2xl rounded-lg overflow-hidden bg-white max-w-full max-h-[60vh] select-none"
                 style={{
-                  width: `${canvasDimensions.width}px`,
-                  height: `${canvasDimensions.height}px`,
+                  aspectRatio: `${canvasDimensions.width} / ${canvasDimensions.height}`,
+                  width: "100%",
+                  maxWidth: `${canvasDimensions.width}px`,
+                  maxHeight: "60vh",
                 }}
               >
                 {/* Background Image/White Color Layer */}
@@ -494,6 +704,7 @@ export default function DrawModal({
                 {/* Drawing Ink Layer */}
                 <canvas
                   ref={canvasRef}
+                  onClick={handleCanvasClick}
                   onMouseDown={handleStartDraw}
                   onMouseMove={handleDrawing}
                   onMouseUp={handleEndDraw}
@@ -505,9 +716,105 @@ export default function DrawModal({
                     activeTool === "pointer" ? "cursor-default" : "cursor-crosshair"
                   }`}
                 />
+
+                {/* Overlay Image Objects */}
+                {imageObjects.map((imgObj) => {
+                  const leftPct = (imgObj.x / canvasDimensions.width) * 100;
+                  const topPct = (imgObj.y / canvasDimensions.height) * 100;
+                  const widthPct = (imgObj.width / canvasDimensions.width) * 100;
+                  const heightPct = (imgObj.height / canvasDimensions.height) * 100;
+                  const isSelected = selectedImageId === imgObj.id;
+
+                  return (
+                    <div
+                      key={imgObj.id}
+                      className={`absolute group cursor-move ${isSelected ? "ring-2 ring-[#b5f500] ring-offset-1 ring-offset-black" : ""}`}
+                      style={{
+                        left: `${leftPct}%`,
+                        top: `${topPct}%`,
+                        width: `${widthPct}%`,
+                        height: `${heightPct}%`,
+                      }}
+                      onMouseDown={(e) => handleImageStartDrag(e, imgObj.id)}
+                    >
+                      <img src={imgObj.url} alt="" className="w-full h-full object-cover pointer-events-none" />
+                      
+                      {/* Resize handler */}
+                      <div
+                        className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-[#b5f500] border border-black rounded-full cursor-se-resize flex items-center justify-center shadow-lg"
+                        onMouseDown={(e) => handleImageStartResize(e, imgObj.id)}
+                        title="Resize overlay image"
+                      />
+
+                      {/* Delete button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setImageObjects((prev) => prev.filter((i) => i.id !== imgObj.id));
+                          setSelectedImageId(null);
+                        }}
+                        className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-600 border border-white text-white font-bold text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700 shadow-md"
+                        title="Delete image object"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {/* Overlay Interactive Text Objects */}
+                {textObjects.map((textObj) => {
+                  const leftPct = (textObj.x / canvasDimensions.width) * 100;
+                  const topPct = (textObj.y / canvasDimensions.height) * 100;
+                  const fontSizePct = (textObj.fontSize / canvasDimensions.height) * 100;
+                  const isSelected = selectedTextId === textObj.id;
+
+                  return (
+                    <div
+                      key={textObj.id}
+                      className={`absolute px-1 group cursor-move flex items-center gap-1.5 ${
+                        isSelected ? "ring-2 ring-[#b5f500] bg-black/40 rounded" : ""
+                      }`}
+                      style={{
+                        left: `${leftPct}%`,
+                        top: `${topPct}%`,
+                        fontSize: `${fontSizePct}cqh`, // scale font size dynamically with container height
+                        color: textObj.color,
+                        lineHeight: 1,
+                      }}
+                      onMouseDown={(e) => handleTextStartDrag(e, textObj.id)}
+                    >
+                      <input
+                        type="text"
+                        value={textObj.text}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setTextObjects((prev) =>
+                            prev.map((t) => (t.id === textObj.id ? { ...t, text: val } : t))
+                          );
+                        }}
+                        className="bg-transparent border-none outline-none font-bold text-inherit p-0 max-w-[200px]"
+                        style={{ fontSize: "inherit" }}
+                      />
+
+                      {/* Delete button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTextObjects((prev) => prev.filter((t) => t.id !== textObj.id));
+                          setSelectedTextId(null);
+                        }}
+                        className="w-4 h-4 rounded-full bg-red-600 border border-white text-white font-bold text-[9px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700 shadow-md"
+                        title="Delete text object"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
 
-              {/* Bottom Draw Toolbar */}
+              {/* Centered Drawing Toolbar */}
               <div className="mt-6 bg-[#0f0f11]/90 backdrop-blur-md border border-white/10 px-4 py-2.5 rounded-2xl flex items-center gap-3 shadow-2xl z-20 select-none">
                 {/* Pointer tool */}
                 <button
@@ -586,11 +893,13 @@ export default function DrawModal({
                   <span className="text-sm font-black tracking-tight select-none px-0.5">T</span>
                 </button>
 
-                {/* File picker helper */}
+                {/* Insert Overlay Image Tool */}
                 <button
-                  onClick={() => fileInputRef.current?.click()}
-                  title="Upload background image"
-                  className="p-1.5 rounded-lg text-white/60 hover:text-white transition-all"
+                  onClick={handleInsertImageClick}
+                  title="Insert overlay image"
+                  className={`p-1.5 rounded-lg transition-all ${
+                    activeTool === "image" ? "bg-white text-black" : "text-white/60 hover:text-white"
+                  }`}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
@@ -598,31 +907,30 @@ export default function DrawModal({
                     <polyline points="21 15 16 10 5 21"/>
                   </svg>
                 </button>
+                <input
+                  type="file"
+                  ref={insertImageInputRef}
+                  onChange={handleInsertImage}
+                  accept="image/*"
+                  className="hidden"
+                />
 
-                {/* Color Selector */}
-                <div className="relative">
-                  <button
-                    onClick={() => setIsColorPickerOpen(!isColorPickerOpen)}
-                    title="Brush Color"
-                    className="w-5 h-5 rounded-full border border-white/20 transition-transform active:scale-90 hover:scale-105"
-                    style={{ backgroundColor: brushColor }}
-                  />
+                <div className="h-6 w-px bg-white/10 mx-0.5" />
 
-                  {isColorPickerOpen && (
-                    <div className="absolute bottom-[calc(100%+14px)] left-1/2 -translate-x-1/2 bg-[#131316] border border-white/10 rounded-xl p-2 flex gap-1.5 shadow-2xl">
-                      {PRESET_COLORS.map((col) => (
-                        <button
-                          key={col}
-                          onClick={() => {
-                            setBrushColor(col);
-                            setIsColorPickerOpen(false);
-                          }}
-                          className="w-4.5 h-4.5 rounded-full border border-white/10 hover:scale-110 transition-transform"
-                          style={{ backgroundColor: col }}
-                        />
-                      ))}
-                    </div>
-                  )}
+                {/* Inline Preset Color Selection - Highly Visible */}
+                <div className="flex items-center gap-1.5 bg-[#16161a]/60 px-2 py-1 rounded-xl border border-white/5">
+                  {PRESET_COLORS.map((col) => (
+                    <button
+                      key={col}
+                      onClick={() => setBrushColor(col)}
+                      className="w-4 h-4 rounded-full border border-white/10 hover:scale-110 transition-transform relative flex items-center justify-center"
+                      style={{ backgroundColor: col }}
+                    >
+                      {brushColor === col && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-white mix-blend-difference" />
+                      )}
+                    </button>
+                  ))}
                 </div>
 
                 <div className="h-6 w-px bg-white/10 mx-0.5" />
@@ -671,164 +979,166 @@ export default function DrawModal({
                 </button>
               </div>
 
-              {/* Toolbar Secondary Floating Row (Model selector, Slider, aspect ratio, clear, info) */}
-              <div className="absolute bottom-0 left-0 right-0 w-full flex items-center justify-between pointer-events-none z-10 px-2 select-none">
-                
-                {/* Left Side options */}
-                <div className="flex items-center gap-2 pointer-events-auto">
-                  {/* Model dropdown indicator */}
-                  <div className="relative" ref={modelDropdownRef}>
-                    <button
-                      onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
-                      className="h-[38px] flex items-center gap-2 px-3 bg-[#131316]/80 hover:bg-[#1c1c22] rounded-xl border border-white/5 text-xs text-white/70 whitespace-nowrap shadow-xl"
-                    >
-                      <span className="text-[10px] text-[#b5f500] font-black bg-[#b5f500]/10 px-1.5 rounded border border-[#b5f500]/25">G</span>
-                      {selectedModel === "nano-banana-pro-edit" ? "Nano Banana Pro Edit" : "Nano Banana 2 Edit"}
-                      <span className="opacity-45 text-[8px] ml-0.5">▼</span>
-                    </button>
-
-                    {isModelDropdownOpen && (
-                      <div className="absolute bottom-[calc(100%+8px)] left-0 bg-[#0f0f12] border border-white/10 rounded-2xl p-2 w-64 shadow-2xl flex flex-col gap-1">
-                        <div className="text-[10px] font-black text-white/30 uppercase tracking-widest p-1.5 pb-1 select-none">Select model</div>
-                        
-                        {/* Nano Banana 2 Edit */}
-                        <button
-                          onClick={() => {
-                            setSelectedModel("nano-banana-2-edit");
-                            setIsModelDropdownOpen(false);
-                          }}
-                          className={`flex flex-col text-left p-2.5 rounded-xl transition-all ${
-                            selectedModel === "nano-banana-2-edit" ? "bg-[#b5f500]/10 text-white" : "hover:bg-white/5 text-white/70"
-                          }`}
-                        >
-                          <div className="text-xs font-bold flex items-center gap-1.5">
-                            Nano Banana 2 Edit
-                            {selectedModel === "nano-banana-2-edit" && <span className="text-[#b5f500]">✓</span>}
-                          </div>
-                          <div className="text-[9px] text-white/30 leading-snug mt-0.5">Google's Advanced Image Editing Model</div>
-                        </button>
-
-                        {/* Nano Banana Pro Edit */}
-                        <button
-                          onClick={() => {
-                            setSelectedModel("nano-banana-pro-edit");
-                            setIsModelDropdownOpen(false);
-                          }}
-                          className={`flex flex-col text-left p-2.5 rounded-xl transition-all ${
-                            selectedModel === "nano-banana-pro-edit" ? "bg-[#b5f500]/10 text-white" : "hover:bg-white/5 text-white/70"
-                          }`}
-                        >
-                          <div className="text-xs font-bold flex items-center gap-1.5">
-                            Nano Banana Pro Edit
-                            {selectedModel === "nano-banana-pro-edit" && <span className="text-[#b5f500]">✓</span>}
-                          </div>
-                          <div className="text-[9px] text-white/30 leading-snug mt-0.5">Best 4K Image Model Ever</div>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Brush Size Slider */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowSettingsPopover(!showSettingsPopover)}
-                      className="h-[38px] w-[38px] flex items-center justify-center bg-[#131316]/80 hover:bg-[#1c1c22] rounded-xl border border-white/5 text-white/60 shadow-xl transition-all"
-                    >
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <line x1="4" y1="21" x2="4" y2="14" />
-                        <line x1="4" y1="10" x2="4" y2="3" />
-                        <line x1="12" y1="21" x2="12" y2="12" />
-                        <line x1="12" y1="8" x2="12" y2="3" />
-                        <line x1="20" y1="21" x2="20" y2="16" />
-                        <line x1="20" y1="12" x2="20" y2="3" />
-                        <line x1="1" y1="14" x2="7" y2="14" />
-                        <line x1="9" y1="8" x2="15" y2="8" />
-                        <line x1="17" y1="16" x2="23" y2="16" />
-                      </svg>
-                    </button>
-
-                    {showSettingsPopover && (
-                      <div className="absolute bottom-[calc(100%+8px)] left-0 bg-[#0f0f12] border border-white/10 rounded-2xl p-3.5 w-44 shadow-2xl flex flex-col gap-2 pointer-events-auto">
-                        <div className="text-[10px] font-black text-white/30 uppercase tracking-widest">Brush Size</div>
-                        <input
-                          type="range"
-                          min="1"
-                          max="50"
-                          value={brushSize}
-                          onChange={(e) => setBrushSize(parseInt(e.target.value))}
-                          className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#b5f500]"
-                        />
-                        <span className="text-[11px] font-bold text-white/60 text-right">{brushSize}px</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Right Side Options */}
-                <div className="flex items-center gap-2 pointer-events-auto">
-                  
-                  {/* Aspect ratio selector */}
-                  <div className="relative" ref={arDropdownRef}>
-                    <button
-                      onClick={() => setIsArDropdownOpen(!isArDropdownOpen)}
-                      className="h-[38px] flex items-center gap-2 px-3 bg-[#131316]/80 hover:bg-[#1c1c22] rounded-xl border border-white/5 text-xs text-white/70 whitespace-nowrap shadow-xl"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="opacity-50">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                      </svg>
-                      {aspectRatio}
-                      <span className="opacity-45 text-[8px] ml-0.5">▼</span>
-                    </button>
-
-                    {isArDropdownOpen && (
-                      <div className="absolute bottom-[calc(100%+8px)] right-0 bg-[#0f0f12] border border-white/10 rounded-2xl p-2 w-32 shadow-2xl flex flex-col gap-1">
-                        <div className="text-[10px] font-black text-white/30 uppercase tracking-widest p-1.5 pb-1 select-none">Aspect Ratio</div>
-                        {["16:9", "1:1", "Auto"].map((r) => (
-                          <button
-                            key={r}
-                            onClick={() => {
-                              setAspectRatio(r);
-                              setIsArDropdownOpen(false);
-                            }}
-                            className={`text-left p-1.5 px-2.5 rounded-xl text-xs font-bold transition-all ${
-                              aspectRatio === r ? "bg-[#b5f500]/10 text-white" : "hover:bg-white/5 text-white/70"
-                            }`}
-                          >
-                            {r}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Clear Canvas */}
-                  <button
-                    onClick={handleClearCanvas}
-                    title="Clear drawings"
-                    className="h-[38px] w-[38px] flex items-center justify-center bg-[#131316]/80 hover:bg-[#1c1c22] rounded-xl border border-white/5 text-white/60 shadow-xl transition-all"
-                  >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                    </svg>
-                  </button>
-
-                  {/* Info Tooltip Button */}
-                  <button
-                    onClick={() => alert("Draw to Edit: paint directly over an image or blank canvas to generate variations using Nano Banana models.")}
-                    title="Info"
-                    className="h-[38px] w-[38px] flex items-center justify-center bg-[#131316]/80 hover:bg-[#1c1c22] rounded-xl border border-white/5 text-white/60 shadow-xl transition-all"
-                  >
-                    <span className="text-xs font-bold leading-none">i</span>
-                  </button>
-                </div>
-
-              </div>
-
             </div>
           )}
 
         </div>
+
+        {/* Static Footer Control Row (Resolves hidden/overlapping toolbar tools) */}
+        {viewState === "canvas" && (
+          <div className="border-t border-white/5 p-4 shrink-0 bg-[#0f0f12] flex items-center justify-between z-20">
+            {/* Left Options */}
+            <div className="flex items-center gap-2">
+              {/* Model selection dropdown */}
+              <div className="relative" ref={modelDropdownRef}>
+                <button
+                  onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+                  className="h-[38px] flex items-center gap-2 px-3 bg-[#131316]/80 hover:bg-[#1c1c22] rounded-xl border border-white/5 text-xs text-white/70 whitespace-nowrap shadow-xl"
+                >
+                  <span className="text-[10px] text-[#b5f500] font-black bg-[#b5f500]/10 px-1.5 rounded border border-[#b5f500]/25">G</span>
+                  {selectedModel === "nano-banana-pro-edit" ? "Nano Banana Pro Edit" : "Nano Banana 2 Edit"}
+                  <span className="opacity-45 text-[8px] ml-0.5">▼</span>
+                </button>
+
+                {isModelDropdownOpen && (
+                  <div className="absolute bottom-[calc(100%+8px)] left-0 bg-[#0f0f12] border border-white/10 rounded-2xl p-2 w-64 shadow-2xl flex flex-col gap-1 z-30">
+                    <div className="text-[10px] font-black text-white/30 uppercase tracking-widest p-1.5 pb-1 select-none">Select model</div>
+                    
+                    {/* Nano Banana 2 Edit */}
+                    <button
+                      onClick={() => {
+                        setSelectedModel("nano-banana-2-edit");
+                        setIsModelDropdownOpen(false);
+                      }}
+                      className={`flex flex-col text-left p-2.5 rounded-xl transition-all ${
+                        selectedModel === "nano-banana-2-edit" ? "bg-[#b5f500]/10 text-white" : "hover:bg-white/5 text-white/70"
+                      }`}
+                    >
+                      <div className="text-xs font-bold flex items-center gap-1.5">
+                        Nano Banana 2 Edit
+                        {selectedModel === "nano-banana-2-edit" && <span className="text-[#b5f500]">✓</span>}
+                      </div>
+                      <div className="text-[9px] text-white/30 leading-snug mt-0.5">Google's Advanced Image Editing Model</div>
+                    </button>
+
+                    {/* Nano Banana Pro Edit */}
+                    <button
+                      onClick={() => {
+                        setSelectedModel("nano-banana-pro-edit");
+                        setIsModelDropdownOpen(false);
+                      }}
+                      className={`flex flex-col text-left p-2.5 rounded-xl transition-all ${
+                        selectedModel === "nano-banana-pro-edit" ? "bg-[#b5f500]/10 text-white" : "hover:bg-white/5 text-white/70"
+                      }`}
+                    >
+                      <div className="text-xs font-bold flex items-center gap-1.5">
+                        Nano Banana Pro Edit
+                        {selectedModel === "nano-banana-pro-edit" && <span className="text-[#b5f500]">✓</span>}
+                      </div>
+                      <div className="text-[9px] text-white/30 leading-snug mt-0.5">Best 4K Image Model Ever</div>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Size Slider (Brush or active text font size adjustment) */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowSettingsPopover(!showSettingsPopover)}
+                  className="h-[38px] w-[38px] flex items-center justify-center bg-[#131316]/80 hover:bg-[#1c1c22] rounded-xl border border-white/5 text-white/60 shadow-xl transition-all"
+                  title="Adjust Brush / Font Size"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="4" y1="21" x2="4" y2="14" />
+                    <line x1="4" y1="10" x2="4" y2="3" />
+                    <line x1="12" y1="21" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12" y2="3" />
+                    <line x1="20" y1="21" x2="20" y2="16" />
+                    <line x1="20" y1="12" x2="20" y2="3" />
+                    <line x1="1" y1="14" x2="7" y2="14" />
+                    <line x1="9" y1="8" x2="15" y2="8" />
+                    <line x1="17" y1="16" x2="23" y2="16" />
+                  </svg>
+                </button>
+
+                {showSettingsPopover && (
+                  <div className="absolute bottom-[calc(100%+8px)] left-0 bg-[#0f0f12] border border-white/10 rounded-2xl p-3.5 w-44 shadow-2xl flex flex-col gap-2 z-30">
+                    <div className="text-[10px] font-black text-white/30 uppercase tracking-widest">
+                      {selectedTextId ? "Text Size" : "Brush Size"}
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="100"
+                      value={brushSize}
+                      onChange={(e) => setBrushSize(parseInt(e.target.value))}
+                      className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#b5f500]"
+                    />
+                    <span className="text-[11px] font-bold text-white/60 text-right">{brushSize}px</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right Options */}
+            <div className="flex items-center gap-2">
+              {/* Aspect ratio selector */}
+              <div className="relative" ref={arDropdownRef}>
+                <button
+                  onClick={() => setIsArDropdownOpen(!isArDropdownOpen)}
+                  className="h-[38px] flex items-center gap-2 px-3 bg-[#131316]/80 hover:bg-[#1c1c22] rounded-xl border border-white/5 text-xs text-white/70 whitespace-nowrap shadow-xl"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="opacity-50">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  </svg>
+                  {aspectRatio}
+                  <span className="opacity-45 text-[8px] ml-0.5">▼</span>
+                </button>
+
+                {isArDropdownOpen && (
+                  <div className="absolute bottom-[calc(100%+8px)] right-0 bg-[#0f0f12] border border-white/10 rounded-2xl p-2 w-32 shadow-2xl flex flex-col gap-1 z-30">
+                    <div className="text-[10px] font-black text-white/30 uppercase tracking-widest p-1.5 pb-1 select-none">Aspect Ratio</div>
+                    {["16:9", "1:1", "Auto"].map((r) => (
+                      <button
+                        key={r}
+                        onClick={() => {
+                          setAspectRatio(r);
+                          setIsArDropdownOpen(false);
+                        }}
+                        className={`text-left p-1.5 px-2.5 rounded-xl text-xs font-bold transition-all ${
+                          aspectRatio === r ? "bg-[#b5f500]/10 text-white" : "hover:bg-white/5 text-white/70"
+                        }`}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Clear Canvas */}
+              <button
+                onClick={handleClearCanvas}
+                title="Clear drawings"
+                className="h-[38px] w-[38px] flex items-center justify-center bg-[#131316]/80 hover:bg-[#1c1c22] rounded-xl border border-white/5 text-white/60 shadow-xl transition-all"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                </svg>
+              </button>
+
+              {/* Info Tooltip */}
+              <button
+                onClick={() => alert("Draw to Edit: paint directly over an image, insert overlays, or write dynamic text, then generate output variations using Nano Banana.")}
+                title="Info"
+                className="h-[38px] w-[38px] flex items-center justify-center bg-[#131316]/80 hover:bg-[#1c1c22] rounded-xl border border-white/5 text-white/60 shadow-xl transition-all"
+              >
+                <span className="text-xs font-bold leading-none">i</span>
+              </button>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
