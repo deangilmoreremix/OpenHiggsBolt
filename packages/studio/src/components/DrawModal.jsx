@@ -1739,7 +1739,7 @@ export default function DrawModal({
                     <div className="text-[10px] font-black text-white/30 uppercase tracking-widest p-1.5 pb-1 select-none">
                       Aspect Ratio
                     </div>
-                    {["16:9", "9:16", "4:3", "3:4", "3:2", "2:3", "1:1", "21:9", "5:4", "4:5", "Auto"].map((r) => (
+                    {["16:9", "9:16", "4:3", "3:4", "1:1", "Auto"].map((r) => (
                       <button
                         key={r}
                         onClick={() => {
