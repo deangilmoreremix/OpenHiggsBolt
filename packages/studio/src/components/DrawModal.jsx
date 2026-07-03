@@ -10,7 +10,7 @@ export default function DrawModal({
 }) {
   const [activeTab, setActiveTab] = useState("draw-to-edit"); // 'sketch-to-video' | 'draw-to-video' | 'draw-to-edit'
   const [viewState, setViewState] = useState("setup"); // 'setup' | 'canvas'
-  const [bgImage, setBgImage] = useState(null); // Image object or dataURL
+  const [bgImageUrl, setBgImageUrl] = useState(null); // Image dataURL or src
   const [aspectRatio, setAspectRatio] = useState("16:9"); // '16:9' | '1:1' | 'Auto'
   const [selectedModel, setSelectedModel] = useState("nano-banana-pro-edit"); // 'nano-banana-2-edit' | 'nano-banana-pro-edit'
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
@@ -190,48 +190,59 @@ export default function DrawModal({
     const ctx = canvas.getContext("2d");
     const bgCtx = bgCanvas.getContext("2d");
 
-    // Resolve Dimensions based on Aspect Ratio and screen width
-    let width = 800;
-    let height = 450; // default 16:9
+    const initCanvas = (img) => {
+      let width = 800;
+      let height = 450; // default 16:9
 
-    if (aspectRatio === "1:1") {
-      width = 600;
-      height = 600;
-    } else if (aspectRatio === "Auto" && bgImage) {
-      const maxW = 800;
-      const maxH = 500;
-      let imgW = bgImage.naturalWidth || bgImage.width || 800;
-      let imgH = bgImage.naturalHeight || bgImage.height || 500;
+      if (aspectRatio === "1:1") {
+        width = 600;
+        height = 600;
+      } else if (aspectRatio === "Auto" && img) {
+        const maxW = 800;
+        const maxH = 500;
+        let imgW = img.naturalWidth || img.width || 800;
+        let imgH = img.naturalHeight || img.height || 500;
 
-      const scale = Math.min(maxW / imgW, maxH / imgH);
-      width = Math.round(imgW * scale);
-      height = Math.round(imgH * scale);
-    }
+        const scale = Math.min(maxW / imgW, maxH / imgH);
+        width = Math.round(imgW * scale);
+        height = Math.round(imgH * scale);
+      }
 
-    canvas.width = width;
-    canvas.height = height;
-    bgCanvas.width = width;
-    bgCanvas.height = height;
+      canvas.width = width;
+      canvas.height = height;
+      bgCanvas.width = width;
+      bgCanvas.height = height;
 
-    // Draw background image if exists, else white background
-    if (bgImage) {
-      bgCtx.drawImage(bgImage, 0, 0, width, height);
+      // Draw background image if exists, else white background
+      if (img) {
+        bgCtx.drawImage(img, 0, 0, width, height);
+      } else {
+        bgCtx.fillStyle = "#ffffff";
+        bgCtx.fillRect(0, 0, width, height);
+      }
+
+      // Reset drawing canvases
+      ctx.clearRect(0, 0, width, height);
+
+      setCanvasDimensions({ width, height });
+      setHistory([[]]);
+      setHistoryIdx(0);
+      setCanvasObjects([]);
+      setSelectedObjectId(null);
+      setCanUndo(false);
+      setCanRedo(false);
+    };
+
+    if (bgImageUrl) {
+      const img = new Image();
+      img.onload = () => {
+        initCanvas(img);
+      };
+      img.src = bgImageUrl;
     } else {
-      bgCtx.fillStyle = "#ffffff";
-      bgCtx.fillRect(0, 0, width, height);
+      initCanvas(null);
     }
-
-    // Reset drawing canvases
-    ctx.clearRect(0, 0, width, height);
-
-    setCanvasDimensions({ width, height });
-    setHistory([[]]);
-    setHistoryIdx(0);
-    setCanvasObjects([]);
-    setSelectedObjectId(null);
-    setCanUndo(false);
-    setCanRedo(false);
-  }, [viewState, aspectRatio, bgImage]);
+  }, [viewState, aspectRatio, bgImageUrl]);
 
   // Redraw main drawing ink canvas when objects or active sketch changes
   const redrawCanvas = () => {
@@ -387,11 +398,13 @@ export default function DrawModal({
         const obj = canvasObjects[i];
         const bbox = getObjectBoundingBox(obj);
         if (bbox) {
+          // Add 16px selection tolerance to make small sketches/lines easy to click
+          const tolerance = Math.max(16, (obj.brushSize || 5) * 2);
           if (
-            pos.x >= bbox.x &&
-            pos.x <= bbox.x + bbox.width &&
-            pos.y >= bbox.y &&
-            pos.y <= bbox.y + bbox.height
+            pos.x >= bbox.x - tolerance &&
+            pos.x <= bbox.x + bbox.width + tolerance &&
+            pos.y >= bbox.y - tolerance &&
+            pos.y <= bbox.y + bbox.height + tolerance
           ) {
             foundId = obj.id;
             break;
@@ -744,13 +757,9 @@ export default function DrawModal({
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        setBgImage(img);
-        setAspectRatio("Auto");
-        setViewState("canvas");
-      };
-      img.src = event.target.result;
+      setBgImageUrl(event.target.result);
+      setAspectRatio("Auto");
+      setViewState("canvas");
     };
     reader.readAsDataURL(file);
   };
@@ -827,8 +836,18 @@ export default function DrawModal({
       mergeCanvas.height = canvas.height;
       const mCtx = mergeCanvas.getContext("2d");
 
-      // 1. Draw static background layer
-      mCtx.drawImage(bgCanvas, 0, 0);
+      // 1. Draw static background layer (preserving asynchronous image loading coordinates)
+      if (bgImageUrl) {
+        const bgImg = await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = bgImageUrl;
+        });
+        mCtx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+      } else {
+        mCtx.drawImage(bgCanvas, 0, 0);
+      }
 
       // 2. Draw overlay image objects (in lower order than drawings)
       canvasObjects.filter((o) => o.type === "image").forEach((imgObj) => {
@@ -999,7 +1018,7 @@ export default function DrawModal({
 
                 <button
                   onClick={() => {
-                    setBgImage(null);
+                    setBgImageUrl(null);
                     setViewState("canvas");
                   }}
                   className="bg-[#131316]/80 hover:bg-[#1c1c22] text-white border border-white/10 font-bold text-sm px-6 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-inner"
@@ -1141,7 +1160,7 @@ export default function DrawModal({
                 )}
 
                 {/* Remove Selected Button Centered at Bottom of Canvas Image */}
-                {selectedObjectId && (
+                {activeTool === "pointer" && selectedObjectId && (
                   <button
                     onClick={handleRemoveSelected}
                     className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/90 hover:bg-black text-white border border-white/10 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xl z-30 transition-all pointer-events-auto select-none"
