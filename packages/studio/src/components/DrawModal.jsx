@@ -33,7 +33,10 @@ export default function DrawModal({
   const [canRedo, setCanRedo] = useState(false);
 
   // Canvas Dimensions State
-  const [canvasDimensions, setCanvasDimensions] = useState({ width: 800, height: 450 });
+  const [canvasDimensions, setCanvasDimensions] = useState({
+    width: 800,
+    height: 450,
+  });
   const [generating, setGenerating] = useState(false);
 
   // Refs
@@ -74,7 +77,10 @@ export default function DrawModal({
   // Adjust container clicks to close open menus
   useEffect(() => {
     const handleOutsideClick = (e) => {
-      if (modelDropdownRef.current && !modelDropdownRef.current.contains(e.target)) {
+      if (
+        modelDropdownRef.current &&
+        !modelDropdownRef.current.contains(e.target)
+      ) {
         setIsModelDropdownOpen(false);
       }
       if (arDropdownRef.current && !arDropdownRef.current.contains(e.target)) {
@@ -294,9 +300,15 @@ export default function DrawModal({
         const angle = Math.atan2(obj.y2 - obj.y1, obj.x2 - obj.x1);
         ctx.beginPath();
         ctx.moveTo(obj.x2, obj.y2);
-        ctx.lineTo(obj.x2 - 15 * Math.cos(angle - Math.PI / 6), obj.y2 - 15 * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(
+          obj.x2 - 15 * Math.cos(angle - Math.PI / 6),
+          obj.y2 - 15 * Math.sin(angle - Math.PI / 6),
+        );
         ctx.moveTo(obj.x2, obj.y2);
-        ctx.lineTo(obj.x2 - 15 * Math.cos(angle + Math.PI / 6), obj.y2 - 15 * Math.sin(angle + Math.PI / 6));
+        ctx.lineTo(
+          obj.x2 - 15 * Math.cos(angle + Math.PI / 6),
+          obj.y2 - 15 * Math.sin(angle + Math.PI / 6),
+        );
         ctx.stroke();
       }
     });
@@ -351,9 +363,15 @@ export default function DrawModal({
         const angle = Math.atan2(currY - startY, currX - startX);
         ctx.beginPath();
         ctx.moveTo(currX, currY);
-        ctx.lineTo(currX - 15 * Math.cos(angle - Math.PI / 6), currY - 15 * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(
+          currX - 15 * Math.cos(angle - Math.PI / 6),
+          currY - 15 * Math.sin(angle - Math.PI / 6),
+        );
         ctx.moveTo(currX, currY);
-        ctx.lineTo(currX - 15 * Math.cos(angle + Math.PI / 6), currY - 15 * Math.sin(angle + Math.PI / 6));
+        ctx.lineTo(
+          currX - 15 * Math.cos(angle + Math.PI / 6),
+          currY - 15 * Math.sin(angle + Math.PI / 6),
+        );
         ctx.stroke();
       }
     }
@@ -369,7 +387,7 @@ export default function DrawModal({
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    
+
     // Resolve touch or mouse events
     let clientX = e.clientX;
     let clientY = e.clientY;
@@ -443,7 +461,7 @@ export default function DrawModal({
     drawingState.current.currX = pos.x;
     drawingState.current.currY = pos.y;
     drawingState.current.activePoints = [pos];
-    
+
     redrawCanvas();
   };
 
@@ -576,7 +594,11 @@ export default function DrawModal({
             };
           }
           if (o.type === "rect" || o.type === "text" || o.type === "image") {
-            return { ...o, x: Math.round(origObj.x + dx), y: Math.round(origObj.y + dy) };
+            return {
+              ...o,
+              x: Math.round(origObj.x + dx),
+              y: Math.round(origObj.y + dy),
+            };
           }
           if (o.type === "arrow") {
             return {
@@ -588,7 +610,7 @@ export default function DrawModal({
             };
           }
           return o;
-        })
+        }),
       );
     };
 
@@ -627,7 +649,7 @@ export default function DrawModal({
       setCanvasObjects((prev) =>
         prev.map((o) => {
           if (o.id !== selectedObjectId) return o;
-          
+
           if (o.type === "rect" || o.type === "text" || o.type === "image") {
             let newX = origObj.x;
             let newY = origObj.y;
@@ -693,7 +715,7 @@ export default function DrawModal({
             };
           }
           return o;
-        })
+        }),
       );
     };
 
@@ -728,7 +750,7 @@ export default function DrawModal({
             updates.color = brushColor;
           }
           return { ...o, ...updates };
-        })
+        }),
       );
     }
   }, [brushColor]);
@@ -742,11 +764,16 @@ export default function DrawModal({
           if (o.type === "text") {
             updates.fontSize = brushSize * 4 > 12 ? brushSize * 4 : 20;
             updates.height = Math.round(updates.fontSize * 1.5);
-          } else if (o.type === "rect" || o.type === "arrow" || o.type === "pencil" || o.type === "eraser") {
+          } else if (
+            o.type === "rect" ||
+            o.type === "arrow" ||
+            o.type === "pencil" ||
+            o.type === "eraser"
+          ) {
             updates.brushSize = brushSize;
           }
           return { ...o, ...updates };
-        })
+        }),
       );
     }
   }, [brushSize]);
@@ -807,16 +834,23 @@ export default function DrawModal({
     reader.readAsDataURL(file);
   };
 
-  // Clear Canvas
+  // Clear Canvas (Remove image, drawings, text overlays and reset to setup screen)
   const handleClearCanvas = () => {
-    if (confirm("Clear drawings, text, and overlay images? Background image will remain.")) {
+    if (
+      confirm(
+        "Clear all drawings, text overlays, and remove the background image?",
+      )
+    ) {
       const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (canvas) {
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
       setCanvasObjects([]);
       setSelectedObjectId(null);
       saveStateToHistory([]);
+      setBgImageUrl(null);
+      setViewState("setup");
     }
   };
 
@@ -850,40 +884,52 @@ export default function DrawModal({
       }
 
       // 2. Draw overlay image objects (in lower order than drawings)
-      canvasObjects.filter((o) => o.type === "image").forEach((imgObj) => {
-        mCtx.drawImage(imgObj.img, imgObj.x, imgObj.y, imgObj.width, imgObj.height);
-      });
+      canvasObjects
+        .filter((o) => o.type === "image")
+        .forEach((imgObj) => {
+          mCtx.drawImage(
+            imgObj.img,
+            imgObj.x,
+            imgObj.y,
+            imgObj.width,
+            imgObj.height,
+          );
+        });
 
       // 3. Draw drawing overlay layer
       mCtx.drawImage(canvas, 0, 0);
 
       // 4. Draw texts with wrap formatting
-      canvasObjects.filter((o) => o.type === "text").forEach((textObj) => {
-        mCtx.fillStyle = textObj.color;
-        mCtx.font = `bold ${textObj.fontSize}px Inter, sans-serif`;
-        mCtx.textBaseline = "top";
+      canvasObjects
+        .filter((o) => o.type === "text")
+        .forEach((textObj) => {
+          mCtx.fillStyle = textObj.color;
+          mCtx.font = `bold ${textObj.fontSize}px Inter, sans-serif`;
+          mCtx.textBaseline = "top";
 
-        const words = textObj.text.split(" ");
-        let line = "";
-        let testY = textObj.y;
-        const lineHeight = textObj.fontSize * 1.25;
+          const words = textObj.text.split(" ");
+          let line = "";
+          let testY = textObj.y;
+          const lineHeight = textObj.fontSize * 1.25;
 
-        for (let n = 0; n < words.length; n++) {
-          let testLine = line + words[n] + " ";
-          let metrics = mCtx.measureText(testLine);
-          let testWidth = metrics.width;
-          if (testWidth > textObj.width && n > 0) {
-            mCtx.fillText(line, textObj.x, testY);
-            line = words[n] + " ";
-            testY += lineHeight;
-          } else {
-            line = testLine;
+          for (let n = 0; n < words.length; n++) {
+            let testLine = line + words[n] + " ";
+            let metrics = mCtx.measureText(testLine);
+            let testWidth = metrics.width;
+            if (testWidth > textObj.width && n > 0) {
+              mCtx.fillText(line, textObj.x, testY);
+              line = words[n] + " ";
+              testY += lineHeight;
+            } else {
+              line = testLine;
+            }
           }
-        }
-        mCtx.fillText(line, textObj.x, testY);
-      });
+          mCtx.fillText(line, textObj.x, testY);
+        });
 
-      const blob = await new Promise((resolve) => mergeCanvas.toBlob(resolve, "image/jpeg", 0.92));
+      const blob = await new Promise((resolve) =>
+        mergeCanvas.toBlob(resolve, "image/jpeg", 0.92),
+      );
       if (!blob) throw new Error("Canvas serialization failed");
 
       const uploadedUrl = await uploadFile(apiKey, blob);
@@ -896,7 +942,7 @@ export default function DrawModal({
             aspect_ratio: aspectRatio === "Auto" ? "1:1" : aspectRatio,
           };
           return await generateI2I(apiKey, genParams);
-        })
+        }),
       );
 
       results.forEach((res) => {
@@ -923,6 +969,8 @@ export default function DrawModal({
     }
   };
 
+  if (!isOpen) return null;
+
   // Helper variables for outline layout
   const selectedObj = canvasObjects.find((o) => o.id === selectedObjectId);
   const bbox = getObjectBoundingBox(selectedObj);
@@ -931,23 +979,28 @@ export default function DrawModal({
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md p-4">
       {/* Modal Box */}
       <div className="relative w-full max-w-5xl bg-[#0b0b0d] border border-white/10 rounded-2xl flex flex-col shadow-[0_20px_50px_rgba(0,0,0,0.9)] overflow-hidden h-[90vh]">
-        
         {/* Header Tab Selector */}
         <div className="flex items-center justify-between border-b border-white/5 p-4 shrink-0 bg-[#0f0f12]">
           <div className="flex items-center gap-1.5 bg-[#131316]/60 border border-white/5 p-1 rounded-full select-none">
             <button
               onClick={() => setActiveTab("sketch-to-video")}
               className={`px-4 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                activeTab === "sketch-to-video" ? "bg-white/10 text-white" : "text-white/40 hover:text-white/70"
+                activeTab === "sketch-to-video"
+                  ? "bg-white/10 text-white"
+                  : "text-white/40 hover:text-white/70"
               }`}
             >
               Sketch to Video
-              <span className="bg-[#b5f500] text-black text-[8px] font-black px-1 rounded">NEW</span>
+              <span className="bg-[#b5f500] text-black text-[8px] font-black px-1 rounded">
+                NEW
+              </span>
             </button>
             <button
               onClick={() => setActiveTab("draw-to-video")}
               className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                activeTab === "draw-to-video" ? "bg-white/10 text-white" : "text-white/40 hover:text-white/70"
+                activeTab === "draw-to-video"
+                  ? "bg-white/10 text-white"
+                  : "text-white/40 hover:text-white/70"
               }`}
             >
               Draw to Video
@@ -955,7 +1008,9 @@ export default function DrawModal({
             <button
               onClick={() => setActiveTab("draw-to-edit")}
               className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                activeTab === "draw-to-edit" ? "bg-white/10 text-white" : "text-white/40 hover:text-white/70"
+                activeTab === "draw-to-edit"
+                  ? "bg-white/10 text-white"
+                  : "text-white/40 hover:text-white/70"
               }`}
             >
               Draw to Edit
@@ -973,7 +1028,6 @@ export default function DrawModal({
 
         {/* Workspace Body */}
         <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto custom-scrollbar relative bg-[#070708]/30">
-          
           {viewState === "setup" ? (
             /* Setup Card */
             <div className="border-2 border-dashed border-white/10 rounded-2xl p-8 max-w-md w-full text-center flex flex-col items-center gap-6 bg-[#070708]/50">
@@ -985,7 +1039,9 @@ export default function DrawModal({
                 />
                 <div className="absolute bottom-2 left-2 right-2 bg-black/80 backdrop-blur-md rounded-md p-1 px-2 border border-white/5 flex items-center gap-1">
                   <div className="w-2.5 h-2.5 rounded-full bg-[#b5f500] animate-pulse"></div>
-                  <span className="text-[9px] text-white/50 tracking-wider uppercase font-bold">Sketchpad active</span>
+                  <span className="text-[9px] text-white/50 tracking-wider uppercase font-bold">
+                    Sketchpad active
+                  </span>
                 </div>
               </div>
 
@@ -994,7 +1050,8 @@ export default function DrawModal({
                   DRAW TO EDIT
                 </h2>
                 <p className="text-white/40 text-xs font-medium max-w-xs leading-relaxed mx-auto">
-                  From sketch to a complete picture in a second. No prompt needed.
+                  From sketch to a complete picture in a second. No prompt
+                  needed.
                 </p>
               </div>
 
@@ -1003,8 +1060,15 @@ export default function DrawModal({
                   onClick={() => fileInputRef.current?.click()}
                   className="bg-white hover:bg-white/90 text-black font-bold text-sm px-6 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
                   </svg>
                   Upload Media
                 </button>
@@ -1023,8 +1087,15 @@ export default function DrawModal({
                   }}
                   className="bg-[#131316]/80 hover:bg-[#1c1c22] text-white border border-white/10 font-bold text-sm px-6 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-inner"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                   </svg>
                   Create blank
                 </button>
@@ -1033,145 +1104,208 @@ export default function DrawModal({
           ) : (
             /* Canvas Screen */
             <div className="flex-1 flex flex-col items-center justify-center w-full relative h-full">
-              {/* Stacked Canvases Wrapper with Fixed Aspect Ratio scale */}
+              {/* Height-first container: fixes height, derives width from aspect ratio */}
               <div
-                ref={canvasWrapperRef}
-                className="relative border border-white/10 shadow-2xl rounded-lg overflow-hidden bg-white max-w-full max-h-[60vh] select-none"
-                style={{
-                  aspectRatio: `${canvasDimensions.width} / ${canvasDimensions.height}`,
-                  width: "100%",
-                  maxWidth: `${canvasDimensions.width}px`,
-                  maxHeight: "60vh",
-                }}
+                className="flex items-center justify-center w-full"
+                style={{ height: "60vh", maxHeight: "60vh" }}
               >
-                {/* Background Image Layer */}
-                <canvas ref={bgCanvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
+                {/* Stacked Canvases Wrapper - width auto-derived from height via aspect-ratio */}
+                <div
+                  ref={canvasWrapperRef}
+                  className="relative border border-white/10 shadow-2xl rounded-lg overflow-hidden bg-black select-none"
+                  style={{
+                    height: "100%",
+                    width: "auto",
+                    aspectRatio: `${canvasDimensions.width} / ${canvasDimensions.height}`,
+                    maxWidth: "100%",
+                  }}
+                >
+                  {/* Background Image Layer */}
+                  <canvas
+                    ref={bgCanvasRef}
+                    className="absolute inset-0 w-full h-full pointer-events-none"
+                  />
 
-                {/* Drawing Ink Layer */}
-                <canvas
-                  ref={canvasRef}
-                  onClick={handleCanvasClick}
-                  onMouseDown={handleStartDraw}
-                  onMouseMove={handleDrawing}
-                  onMouseUp={handleEndDraw}
-                  onMouseLeave={handleEndDraw}
-                  onTouchStart={handleStartDraw}
-                  onTouchMove={handleDrawing}
-                  onTouchEnd={handleEndDraw}
-                  className={`absolute inset-0 w-full h-full ${
-                    activeTool === "pointer" ? "cursor-default" : "cursor-crosshair"
-                  }`}
-                />
+                  {/* Drawing Ink Layer */}
+                  <canvas
+                    ref={canvasRef}
+                    onClick={handleCanvasClick}
+                    onMouseDown={handleStartDraw}
+                    onMouseMove={handleDrawing}
+                    onMouseUp={handleEndDraw}
+                    onMouseLeave={handleEndDraw}
+                    onTouchStart={handleStartDraw}
+                    onTouchMove={handleDrawing}
+                    onTouchEnd={handleEndDraw}
+                    className={`absolute inset-0 w-full h-full ${
+                      activeTool === "pointer"
+                        ? "cursor-default"
+                        : "cursor-crosshair"
+                    }`}
+                  />
 
-                {/* Floating Overlay HTML Images */}
-                {canvasObjects.filter((o) => o.type === "image").map((imgObj) => {
-                  const leftPct = (imgObj.x / canvasDimensions.width) * 100;
-                  const topPct = (imgObj.y / canvasDimensions.height) * 100;
-                  const widthPct = (imgObj.width / canvasDimensions.width) * 100;
-                  const heightPct = (imgObj.height / canvasDimensions.height) * 100;
-                  const isSelected = selectedObjectId === imgObj.id;
+                  {/* Floating Overlay HTML Images */}
+                  {canvasObjects
+                    .filter((o) => o.type === "image")
+                    .map((imgObj) => {
+                      const leftPct = (imgObj.x / canvasDimensions.width) * 100;
+                      const topPct = (imgObj.y / canvasDimensions.height) * 100;
+                      const widthPct =
+                        (imgObj.width / canvasDimensions.width) * 100;
+                      const heightPct =
+                        (imgObj.height / canvasDimensions.height) * 100;
+                      const isSelected = selectedObjectId === imgObj.id;
 
-                  return (
+                      return (
+                        <div
+                          key={imgObj.id}
+                          className={`absolute group cursor-move ${isSelected ? "ring-2 ring-[#b5f500] ring-offset-1 ring-offset-black z-10" : ""}`}
+                          style={{
+                            left: `${leftPct}%`,
+                            top: `${topPct}%`,
+                            width: `${widthPct}%`,
+                            height: `${heightPct}%`,
+                            pointerEvents:
+                              activeTool === "pointer" ? "auto" : "none",
+                          }}
+                          onMouseDown={(e) => {
+                            if (activeTool !== "pointer") return;
+                            setSelectedObjectId(imgObj.id);
+                            handleStartMoveSelected(e);
+                          }}
+                        >
+                          <img
+                            src={imgObj.url}
+                            alt=""
+                            className="w-full h-full object-cover pointer-events-none"
+                          />
+                        </div>
+                      );
+                    })}
+
+                  {/* Text overlays with Native Focusing and Typing */}
+                  {canvasObjects
+                    .filter((o) => o.type === "text")
+                    .map((textObj) => {
+                      const leftPct =
+                        (textObj.x / canvasDimensions.width) * 100;
+                      const topPct =
+                        (textObj.y / canvasDimensions.height) * 100;
+                      const widthPct =
+                        (textObj.width / canvasDimensions.width) * 100;
+                      const heightPct =
+                        (textObj.height / canvasDimensions.height) * 100;
+                      const isSelected = selectedObjectId === textObj.id;
+
+                      return (
+                        <textarea
+                          key={textObj.id}
+                          value={textObj.text}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setCanvasObjects((prev) =>
+                              prev.map((o) =>
+                                o.id === textObj.id ? { ...o, text: val } : o,
+                              ),
+                            );
+                          }}
+                          onFocus={() => {
+                            if (activeTool === "pointer") {
+                              setSelectedObjectId(textObj.id);
+                            }
+                          }}
+                          className={`absolute bg-transparent border-none outline-none resize-none font-bold text-left overflow-hidden select-text z-10 ${
+                            isSelected
+                              ? "ring-1 ring-[#b5f500] ring-dashed bg-black/25"
+                              : ""
+                          }`}
+                          style={{
+                            left: `${leftPct}%`,
+                            top: `${topPct}%`,
+                            width: `${widthPct}%`,
+                            height: `${heightPct}%`,
+                            fontSize: `${(textObj.fontSize / canvasDimensions.height) * 100}cqh`,
+                            color: textObj.color,
+                            lineHeight: 1.25,
+                            pointerEvents:
+                              activeTool === "pointer" ? "auto" : "none",
+                          }}
+                        />
+                      );
+                    })}
+
+                  {/* Unified Outline Handles Overlay for Selected Object */}
+                  {activeTool === "pointer" && selectedObjectId && bbox && (
                     <div
-                      key={imgObj.id}
-                      className={`absolute group cursor-move ${isSelected ? "ring-2 ring-[#b5f500] ring-offset-1 ring-offset-black z-10" : ""}`}
+                      className="absolute border border-dashed border-[#b5f500] pointer-events-auto z-20 cursor-move"
                       style={{
-                        left: `${leftPct}%`,
-                        top: `${topPct}%`,
-                        width: `${widthPct}%`,
-                        height: `${heightPct}%`,
-                        pointerEvents: activeTool === "pointer" ? "auto" : "none",
+                        left: `${(bbox.x / canvasDimensions.width) * 100}%`,
+                        top: `${(bbox.y / canvasDimensions.height) * 100}%`,
+                        width: `${(bbox.width / canvasDimensions.width) * 100}%`,
+                        height: `${(bbox.height / canvasDimensions.height) * 100}%`,
                       }}
-                      onMouseDown={(e) => {
-                        if (activeTool !== "pointer") return;
-                        setSelectedObjectId(imgObj.id);
-                        handleStartMoveSelected(e);
-                      }}
+                      onMouseDown={handleStartMoveSelected}
                     >
-                      <img src={imgObj.url} alt="" className="w-full h-full object-cover pointer-events-none" />
+                      {/* Corner handles */}
+                      <div
+                        className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border border-[#b5f500] cursor-nwse-resize rounded-full"
+                        onMouseDown={(e) => handleStartResizeSelected(e, "tl")}
+                      />
+                      <div
+                        className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border border-[#b5f500] cursor-nesw-resize rounded-full"
+                        onMouseDown={(e) => handleStartResizeSelected(e, "tr")}
+                      />
+                      <div
+                        className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border border-[#b5f500] cursor-nesw-resize rounded-full"
+                        onMouseDown={(e) => handleStartResizeSelected(e, "bl")}
+                      />
+                      <div
+                        className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border border-[#b5f500] cursor-nwse-resize rounded-full"
+                        onMouseDown={(e) => handleStartResizeSelected(e, "br")}
+                      />
+
+                      {/* Edge handles */}
+                      <div
+                        className="absolute -top-1.5 left-[calc(50%-6px)] w-3 h-3 bg-white border border-[#b5f500] cursor-ns-resize rounded-full"
+                        onMouseDown={(e) => handleStartResizeSelected(e, "t")}
+                      />
+                      <div
+                        className="absolute -bottom-1.5 left-[calc(50%-6px)] w-3 h-3 bg-white border border-[#b5f500] cursor-ns-resize rounded-full"
+                        onMouseDown={(e) => handleStartResizeSelected(e, "b")}
+                      />
+                      <div
+                        className="absolute top-[calc(50%-6px)] -left-1.5 w-3 h-3 bg-white border border-[#b5f500] cursor-ew-resize rounded-full"
+                        onMouseDown={(e) => handleStartResizeSelected(e, "l")}
+                      />
+                      <div
+                        className="absolute top-[calc(50%-6px)] -right-1.5 w-3 h-3 bg-white border border-[#b5f500] cursor-ew-resize rounded-full"
+                        onMouseDown={(e) => handleStartResizeSelected(e, "r")}
+                      />
                     </div>
-                  );
-                })}
+                  )}
 
-                {/* Text overlays with Native Focusing and Typing */}
-                {canvasObjects.filter((o) => o.type === "text").map((textObj) => {
-                  const leftPct = (textObj.x / canvasDimensions.width) * 100;
-                  const topPct = (textObj.y / canvasDimensions.height) * 100;
-                  const widthPct = (textObj.width / canvasDimensions.width) * 100;
-                  const heightPct = (textObj.height / canvasDimensions.height) * 100;
-                  const isSelected = selectedObjectId === textObj.id;
-
-                  return (
-                    <textarea
-                      key={textObj.id}
-                      value={textObj.text}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setCanvasObjects((prev) =>
-                          prev.map((o) => (o.id === textObj.id ? { ...o, text: val } : o))
-                        );
-                      }}
-                      onFocus={() => {
-                        if (activeTool === "pointer") {
-                          setSelectedObjectId(textObj.id);
-                        }
-                      }}
-                      className={`absolute bg-transparent border-none outline-none resize-none font-bold text-left overflow-hidden select-text z-10 ${
-                        isSelected ? "ring-1 ring-[#b5f500] ring-dashed bg-black/25" : ""
-                      }`}
-                      style={{
-                        left: `${leftPct}%`,
-                        top: `${topPct}%`,
-                        width: `${widthPct}%`,
-                        height: `${heightPct}%`,
-                        fontSize: `${(textObj.fontSize / canvasDimensions.height) * 100}cqh`,
-                        color: textObj.color,
-                        lineHeight: 1.25,
-                        pointerEvents: activeTool === "pointer" ? "auto" : "none",
-                      }}
-                    />
-                  );
-                })}
-
-                {/* Unified Outline Handles Overlay for Selected Object */}
-                {activeTool === "pointer" && selectedObjectId && bbox && (
-                  <div
-                    className="absolute border border-dashed border-[#b5f500] pointer-events-auto z-20 cursor-move"
-                    style={{
-                      left: `${(bbox.x / canvasDimensions.width) * 100}%`,
-                      top: `${(bbox.y / canvasDimensions.height) * 100}%`,
-                      width: `${(bbox.width / canvasDimensions.width) * 100}%`,
-                      height: `${(bbox.height / canvasDimensions.height) * 100}%`,
-                    }}
-                    onMouseDown={handleStartMoveSelected}
-                  >
-                    {/* Corner handles */}
-                    <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border border-[#b5f500] cursor-nwse-resize rounded-full" onMouseDown={(e) => handleStartResizeSelected(e, "tl")} />
-                    <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border border-[#b5f500] cursor-nesw-resize rounded-full" onMouseDown={(e) => handleStartResizeSelected(e, "tr")} />
-                    <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border border-[#b5f500] cursor-nesw-resize rounded-full" onMouseDown={(e) => handleStartResizeSelected(e, "bl")} />
-                    <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border border-[#b5f500] cursor-nwse-resize rounded-full" onMouseDown={(e) => handleStartResizeSelected(e, "br")} />
-                    
-                    {/* Edge handles */}
-                    <div className="absolute -top-1.5 left-[calc(50%-6px)] w-3 h-3 bg-white border border-[#b5f500] cursor-ns-resize rounded-full" onMouseDown={(e) => handleStartResizeSelected(e, "t")} />
-                    <div className="absolute -bottom-1.5 left-[calc(50%-6px)] w-3 h-3 bg-white border border-[#b5f500] cursor-ns-resize rounded-full" onMouseDown={(e) => handleStartResizeSelected(e, "b")} />
-                    <div className="absolute top-[calc(50%-6px)] -left-1.5 w-3 h-3 bg-white border border-[#b5f500] cursor-ew-resize rounded-full" onMouseDown={(e) => handleStartResizeSelected(e, "l")} />
-                    <div className="absolute top-[calc(50%-6px)] -right-1.5 w-3 h-3 bg-white border border-[#b5f500] cursor-ew-resize rounded-full" onMouseDown={(e) => handleStartResizeSelected(e, "r")} />
-                  </div>
-                )}
-
-                {/* Remove Selected Button Centered at Bottom of Canvas Image */}
-                {activeTool === "pointer" && selectedObjectId && (
-                  <button
-                    onClick={handleRemoveSelected}
-                    className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/90 hover:bg-black text-white border border-white/10 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xl z-30 transition-all pointer-events-auto select-none"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                    </svg>
-                    Remove selected
-                  </button>
-                )}
+                  {/* Remove Selected Button Centered at Bottom of Canvas Image */}
+                  {activeTool === "pointer" && selectedObjectId && (
+                    <button
+                      onClick={handleRemoveSelected}
+                      className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/90 hover:bg-black text-white border border-white/10 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xl z-30 transition-all pointer-events-auto select-none"
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                      >
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                      </svg>
+                      Remove selected
+                    </button>
+                  )}
+                </div>
+                {/* Close height-first container */}
               </div>
 
               {/* Centered Drawing Toolbar */}
@@ -1184,11 +1318,20 @@ export default function DrawModal({
                   }}
                   title="Selection pointer"
                   className={`p-1.5 rounded-lg transition-all ${
-                    activeTool === "pointer" ? "bg-white text-black" : "text-white/60 hover:text-white"
+                    activeTool === "pointer"
+                      ? "bg-white text-black"
+                      : "text-white/60 hover:text-white"
                   }`}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <polygon points="3 11 22 2 13 21 11 13 3 11" />
                   </svg>
                 </button>
 
@@ -1200,11 +1343,20 @@ export default function DrawModal({
                   }}
                   title="Draw pencil"
                   className={`p-1.5 rounded-lg transition-all ${
-                    activeTool === "pencil" ? "bg-white text-black" : "text-white/60 hover:text-white"
+                    activeTool === "pencil"
+                      ? "bg-white text-black"
+                      : "text-white/60 hover:text-white"
                   }`}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
                   </svg>
                 </button>
 
@@ -1216,11 +1368,20 @@ export default function DrawModal({
                   }}
                   title="Eraser"
                   className={`p-1.5 rounded-lg transition-all ${
-                    activeTool === "eraser" ? "bg-white text-black" : "text-white/60 hover:text-white"
+                    activeTool === "eraser"
+                      ? "bg-white text-black"
+                      : "text-white/60 hover:text-white"
                   }`}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M20 20H7L3 16c-1-1-1-2.5 0-3.5L13 2c1-1 2.5-1 3.5 0l4 4c1 1 1 2.5 0 3.5L11 19l9 1z"/>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <path d="M20 20H7L3 16c-1-1-1-2.5 0-3.5L13 2c1-1 2.5-1 3.5 0l4 4c1 1 1 2.5 0 3.5L11 19l9 1z" />
                   </svg>
                 </button>
 
@@ -1232,11 +1393,20 @@ export default function DrawModal({
                   }}
                   title="Rectangle shape"
                   className={`p-1.5 rounded-lg transition-all ${
-                    activeTool === "rect" ? "bg-white text-black" : "text-white/60 hover:text-white"
+                    activeTool === "rect"
+                      ? "bg-white text-black"
+                      : "text-white/60 hover:text-white"
                   }`}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                   </svg>
                 </button>
 
@@ -1248,12 +1418,21 @@ export default function DrawModal({
                   }}
                   title="Arrow shape"
                   className={`p-1.5 rounded-lg transition-all ${
-                    activeTool === "arrow" ? "bg-white text-black" : "text-white/60 hover:text-white"
+                    activeTool === "arrow"
+                      ? "bg-white text-black"
+                      : "text-white/60 hover:text-white"
                   }`}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="5" y1="19" x2="19" y2="5"/>
-                    <polyline points="12 5 19 5 19 12"/>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <line x1="5" y1="19" x2="19" y2="5" />
+                    <polyline points="12 5 19 5 19 12" />
                   </svg>
                 </button>
 
@@ -1265,10 +1444,14 @@ export default function DrawModal({
                   }}
                   title="Text tool"
                   className={`p-1.5 rounded-lg transition-all ${
-                    activeTool === "text" ? "bg-white text-black" : "text-white/60 hover:text-white"
+                    activeTool === "text"
+                      ? "bg-white text-black"
+                      : "text-white/60 hover:text-white"
                   }`}
                 >
-                  <span className="text-sm font-black tracking-tight select-none px-0.5">T</span>
+                  <span className="text-sm font-black tracking-tight select-none px-0.5">
+                    T
+                  </span>
                 </button>
 
                 {/* Insert Overlay Image Tool */}
@@ -1276,13 +1459,22 @@ export default function DrawModal({
                   onClick={handleInsertImageClick}
                   title="Insert overlay image"
                   className={`p-1.5 rounded-lg transition-all ${
-                    activeTool === "image" ? "bg-white text-black" : "text-white/60 hover:text-white"
+                    activeTool === "image"
+                      ? "bg-white text-black"
+                      : "text-white/60 hover:text-white"
                   }`}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                    <circle cx="8.5" cy="8.5" r="1.5"/>
-                    <polyline points="21 15 16 10 5 21"/>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
                   </svg>
                 </button>
                 <input
@@ -1320,8 +1512,15 @@ export default function DrawModal({
                   title="Undo"
                   className="p-1.5 rounded-lg text-white/60 hover:text-white disabled:opacity-25 transition-all"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M3 7v6h6M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <path d="M3 7v6h6M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13" />
                   </svg>
                 </button>
 
@@ -1332,8 +1531,15 @@ export default function DrawModal({
                   title="Redo"
                   className="p-1.5 rounded-lg text-white/60 hover:text-white disabled:opacity-25 transition-all"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M21 7v6h-6M3 17a9 9 0 019-9 9 9 0 016 2.3l3 2.7"/>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <path d="M21 7v6h-6M3 17a9 9 0 019-9 9 9 0 016 2.3l3 2.7" />
                   </svg>
                 </button>
 
@@ -1356,10 +1562,8 @@ export default function DrawModal({
                   )}
                 </button>
               </div>
-
             </div>
           )}
-
         </div>
 
         {/* Static Footer Control Row (Overlap Prevention) */}
@@ -1372,29 +1576,41 @@ export default function DrawModal({
                   onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
                   className="h-[38px] flex items-center gap-2 px-3 bg-[#131316]/80 hover:bg-[#1c1c22] rounded-xl border border-white/5 text-xs text-white/70 whitespace-nowrap shadow-xl"
                 >
-                  <span className="text-[10px] text-[#b5f500] font-black bg-[#b5f500]/10 px-1.5 rounded border border-[#b5f500]/25">G</span>
-                  {selectedModel === "nano-banana-pro-edit" ? "Nano Banana Pro Edit" : "Nano Banana 2 Edit"}
+                  <span className="text-[10px] text-[#b5f500] font-black bg-[#b5f500]/10 px-1.5 rounded border border-[#b5f500]/25">
+                    G
+                  </span>
+                  {selectedModel === "nano-banana-pro-edit"
+                    ? "Nano Banana Pro Edit"
+                    : "Nano Banana 2 Edit"}
                   <span className="opacity-45 text-[8px] ml-0.5">▼</span>
                 </button>
 
                 {isModelDropdownOpen && (
                   <div className="absolute bottom-[calc(100%+8px)] left-0 bg-[#0f0f12] border border-white/10 rounded-2xl p-2 w-64 shadow-2xl flex flex-col gap-1 z-30">
-                    <div className="text-[10px] font-black text-white/30 uppercase tracking-widest p-1.5 pb-1 select-none">Select model</div>
-                    
+                    <div className="text-[10px] font-black text-white/30 uppercase tracking-widest p-1.5 pb-1 select-none">
+                      Select model
+                    </div>
+
                     <button
                       onClick={() => {
                         setSelectedModel("nano-banana-2-edit");
                         setIsModelDropdownOpen(false);
                       }}
                       className={`flex flex-col text-left p-2.5 rounded-xl transition-all ${
-                        selectedModel === "nano-banana-2-edit" ? "bg-[#b5f500]/10 text-white" : "hover:bg-white/5 text-white/70"
+                        selectedModel === "nano-banana-2-edit"
+                          ? "bg-[#b5f500]/10 text-white"
+                          : "hover:bg-white/5 text-white/70"
                       }`}
                     >
                       <div className="text-xs font-bold flex items-center gap-1.5">
                         Nano Banana 2 Edit
-                        {selectedModel === "nano-banana-2-edit" && <span className="text-[#b5f500]">✓</span>}
+                        {selectedModel === "nano-banana-2-edit" && (
+                          <span className="text-[#b5f500]">✓</span>
+                        )}
                       </div>
-                      <div className="text-[9px] text-white/30 leading-snug mt-0.5">Google's Advanced Image Editing Model</div>
+                      <div className="text-[9px] text-white/30 leading-snug mt-0.5">
+                        Google's Advanced Image Editing Model
+                      </div>
                     </button>
 
                     <button
@@ -1403,14 +1619,20 @@ export default function DrawModal({
                         setIsModelDropdownOpen(false);
                       }}
                       className={`flex flex-col text-left p-2.5 rounded-xl transition-all ${
-                        selectedModel === "nano-banana-pro-edit" ? "bg-[#b5f500]/10 text-white" : "hover:bg-white/5 text-white/70"
+                        selectedModel === "nano-banana-pro-edit"
+                          ? "bg-[#b5f500]/10 text-white"
+                          : "hover:bg-white/5 text-white/70"
                       }`}
                     >
                       <div className="text-xs font-bold flex items-center gap-1.5">
                         Nano Banana Pro Edit
-                        {selectedModel === "nano-banana-pro-edit" && <span className="text-[#b5f500]">✓</span>}
+                        {selectedModel === "nano-banana-pro-edit" && (
+                          <span className="text-[#b5f500]">✓</span>
+                        )}
                       </div>
-                      <div className="text-[9px] text-white/30 leading-snug mt-0.5">Best 4K Image Model Ever</div>
+                      <div className="text-[9px] text-white/30 leading-snug mt-0.5">
+                        Best 4K Image Model Ever
+                      </div>
                     </button>
                   </div>
                 )}
@@ -1423,7 +1645,14 @@ export default function DrawModal({
                   className="h-[38px] w-[38px] flex items-center justify-center bg-[#131316]/80 hover:bg-[#1c1c22] rounded-xl border border-white/5 text-white/60 shadow-xl transition-all"
                   title="Adjust Brush / Font Size"
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
                     <line x1="4" y1="21" x2="4" y2="14" />
                     <line x1="4" y1="10" x2="4" y2="3" />
                     <line x1="12" y1="21" x2="12" y2="12" />
@@ -1439,7 +1668,9 @@ export default function DrawModal({
                 {showSettingsPopover && (
                   <div className="absolute bottom-[calc(100%+8px)] left-0 bg-[#0f0f12] border border-white/10 rounded-2xl p-3.5 w-44 shadow-2xl flex flex-col gap-2 z-30">
                     <div className="text-[10px] font-black text-white/30 uppercase tracking-widest">
-                      {selectedObj && selectedObj.type === "text" ? "Text Size" : "Brush Size"}
+                      {selectedObj && selectedObj.type === "text"
+                        ? "Text Size"
+                        : "Brush Size"}
                     </div>
                     <input
                       type="range"
@@ -1449,7 +1680,9 @@ export default function DrawModal({
                       onChange={(e) => setBrushSize(parseInt(e.target.value))}
                       className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#b5f500]"
                     />
-                    <span className="text-[11px] font-bold text-white/60 text-right">{brushSize}px</span>
+                    <span className="text-[11px] font-bold text-white/60 text-right">
+                      {brushSize}px
+                    </span>
                   </div>
                 )}
               </div>
@@ -1462,8 +1695,16 @@ export default function DrawModal({
                   onClick={() => setIsArDropdownOpen(!isArDropdownOpen)}
                   className="h-[38px] flex items-center gap-2 px-3 bg-[#131316]/80 hover:bg-[#1c1c22] rounded-xl border border-white/5 text-xs text-white/70 whitespace-nowrap shadow-xl"
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="opacity-50">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    className="opacity-50"
+                  >
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                   </svg>
                   {aspectRatio}
                   <span className="opacity-45 text-[8px] ml-0.5">▼</span>
@@ -1471,7 +1712,9 @@ export default function DrawModal({
 
                 {isArDropdownOpen && (
                   <div className="absolute bottom-[calc(100%+8px)] right-0 bg-[#0f0f12] border border-white/10 rounded-2xl p-2 w-32 shadow-2xl flex flex-col gap-1 z-30">
-                    <div className="text-[10px] font-black text-white/30 uppercase tracking-widest p-1.5 pb-1 select-none">Aspect Ratio</div>
+                    <div className="text-[10px] font-black text-white/30 uppercase tracking-widest p-1.5 pb-1 select-none">
+                      Aspect Ratio
+                    </div>
                     {["16:9", "1:1", "Auto"].map((r) => (
                       <button
                         key={r}
@@ -1480,7 +1723,9 @@ export default function DrawModal({
                           setIsArDropdownOpen(false);
                         }}
                         className={`text-left p-1.5 px-2.5 rounded-xl text-xs font-bold transition-all ${
-                          aspectRatio === r ? "bg-[#b5f500]/10 text-white" : "hover:bg-white/5 text-white/70"
+                          aspectRatio === r
+                            ? "bg-[#b5f500]/10 text-white"
+                            : "hover:bg-white/5 text-white/70"
                         }`}
                       >
                         {r}
@@ -1495,14 +1740,25 @@ export default function DrawModal({
                 title="Clear drawings"
                 className="h-[38px] w-[38px] flex items-center justify-center bg-[#131316]/80 hover:bg-[#1c1c22] rounded-xl border border-white/5 text-white/60 shadow-xl transition-all"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                >
                   <polyline points="3 6 5 6 21 6" />
                   <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
                 </svg>
               </button>
 
               <button
-                onClick={() => alert("Draw to Edit: paint directly over an image, insert overlay image/text objects, drag/resize elements, or select and delete specific components.")}
+                onClick={() =>
+                  alert(
+                    "Draw to Edit: paint directly over an image, insert overlay image/text objects, drag/resize elements, or select and delete specific components.",
+                  )
+                }
                 title="Info"
                 className="h-[38px] w-[38px] flex items-center justify-center bg-[#131316]/80 hover:bg-[#1c1c22] rounded-xl border border-white/5 text-white/60 shadow-xl transition-all"
               >
@@ -1511,7 +1767,6 @@ export default function DrawModal({
             </div>
           </div>
         )}
-
       </div>
     </div>
   );
