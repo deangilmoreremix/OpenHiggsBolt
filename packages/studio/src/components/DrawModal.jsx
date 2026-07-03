@@ -91,6 +91,9 @@ export default function DrawModal({
     return () => window.removeEventListener("click", handleOutsideClick);
   }, []);
 
+  // Keep refs to latest handlers to avoid stale closures in keyboard shortcut listener
+  const keyboardCallbacksRef = useRef({});
+
   // Keyboard shortcuts event listener
   useEffect(() => {
     if (!isOpen) return;
@@ -112,46 +115,46 @@ export default function DrawModal({
       // Undo/Redo
       if ((e.ctrlKey || e.metaKey) && key === "z") {
         e.preventDefault();
-        handleUndo();
+        keyboardCallbacksRef.current.handleUndo?.();
       } else if ((e.ctrlKey || e.metaKey) && key === "y") {
         e.preventDefault();
-        handleRedo();
+        keyboardCallbacksRef.current.handleRedo?.();
       }
       // Delete Selected Object
       else if (key === "delete" || key === "backspace") {
-        if (selectedObjectId) {
+        if (keyboardCallbacksRef.current.selectedObjectId) {
           e.preventDefault();
-          handleRemoveSelected();
+          keyboardCallbacksRef.current.handleRemoveSelected?.();
         }
       }
       // Toolbar selections
       else if (key === "v" || key === "1") {
         e.preventDefault();
-        handleSelectTool("pointer");
+        keyboardCallbacksRef.current.handleSelectTool?.("pointer");
       } else if (key === "b" || key === "2") {
         e.preventDefault();
-        handleSelectTool("pencil");
+        keyboardCallbacksRef.current.handleSelectTool?.("pencil");
       } else if (key === "e" || key === "3") {
         e.preventDefault();
-        handleSelectTool("eraser");
+        keyboardCallbacksRef.current.handleSelectTool?.("eraser");
       } else if (key === "r" || key === "4") {
         e.preventDefault();
-        handleSelectTool("rect");
+        keyboardCallbacksRef.current.handleSelectTool?.("rect");
       } else if (key === "a" || key === "5") {
         e.preventDefault();
-        handleSelectTool("arrow");
+        keyboardCallbacksRef.current.handleSelectTool?.("arrow");
       } else if (key === "t" || key === "6") {
         e.preventDefault();
-        handleSelectTool("text");
+        keyboardCallbacksRef.current.handleSelectTool?.("text");
       } else if (key === "i" || key === "7") {
         e.preventDefault();
-        handleInsertImageClick();
+        keyboardCallbacksRef.current.handleInsertImageClick?.();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, canvasObjects, selectedObjectId, historyIdx, activeTool]);
+  }, [isOpen]);
 
   // Save history state
   const saveStateToHistory = (newObjects) => {
@@ -764,12 +767,9 @@ export default function DrawModal({
           if (o.type === "text") {
             updates.fontSize = brushSize * 4 > 12 ? brushSize * 4 : 20;
             updates.height = Math.round(updates.fontSize * 1.5);
-          } else if (
-            o.type === "rect" ||
-            o.type === "arrow" ||
-            o.type === "pencil" ||
-            o.type === "eraser"
-          ) {
+          } else if (o.type === "rect" || o.type === "arrow") {
+            // Only update shapes (not pencil/eraser — those are pixel-based strokes.
+            // Retroactively resizing an eraser stroke would cause erased content to reappear.)
             updates.brushSize = brushSize;
           }
           return { ...o, ...updates };
@@ -969,6 +969,16 @@ export default function DrawModal({
     }
   };
 
+  // Keep keyboardCallbacksRef up-to-date every render (placed after all handlers are defined)
+  keyboardCallbacksRef.current = {
+    selectedObjectId,
+    handleRemoveSelected,
+    handleUndo,
+    handleRedo,
+    handleSelectTool,
+    handleInsertImageClick,
+  };
+
   if (!isOpen) return null;
 
   // Helper variables for outline layout
@@ -982,7 +992,7 @@ export default function DrawModal({
         {/* Header Tab Selector */}
         <div className="flex items-center justify-between border-b border-white/5 p-4 shrink-0 bg-[#0f0f12]">
           <div className="flex items-center gap-1.5 bg-[#131316]/60 border border-white/5 p-1 rounded-full select-none">
-            <button
+            {/* <button
               onClick={() => setActiveTab("sketch-to-video")}
               className={`px-4 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 activeTab === "sketch-to-video"
@@ -1004,7 +1014,7 @@ export default function DrawModal({
               }`}
             >
               Draw to Video
-            </button>
+            </button> */}
             <button
               onClick={() => setActiveTab("draw-to-edit")}
               className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
@@ -1366,7 +1376,7 @@ export default function DrawModal({
                     setActiveTool("eraser");
                     setSelectedObjectId(null);
                   }}
-                  title="Eraser"
+                  title="Eraser (E)"
                   className={`p-1.5 rounded-lg transition-all ${
                     activeTool === "eraser"
                       ? "bg-white text-black"
