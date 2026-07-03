@@ -296,6 +296,39 @@ const DownloadIcon = () => (
   </svg>
 );
 
+// ─── Hover Pill — shows label, reveals image on hover ───────────────────────
+function HoverPill({ label, img, onClick }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <div
+      className="relative shrink-0"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* Image tooltip */}
+      {hovered && img && (
+        <div
+          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 pointer-events-none"
+          style={{ filter: "drop-shadow(0 4px 16px rgba(0,0,0,0.6))" }}
+        >
+          <div className="w-[72px] h-[72px] rounded-xl overflow-hidden border border-white/20 bg-[#1a1a1a]"
+            style={{ transform: "rotate(-3deg)" }}>
+            <img src={img} alt={label} className="w-full h-full object-cover" />
+          </div>
+        </div>
+      )}
+      {/* Pill */}
+      <button
+        type="button"
+        onClick={onClick}
+        className="h-[22px] px-2 rounded-md bg-white/[0.07] hover:bg-white/[0.13] border border-white/[0.10] text-[11px] font-medium text-gray-200 whitespace-nowrap transition-all cursor-pointer"
+      >
+        {label}
+      </button>
+    </div>
+  );
+}
+
 // ─── Main Component ─────────────────────────────────────────────────────────
 export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: externalIsGenerating }) {
   const [activeTab, setActiveTab] = useState("face");
@@ -403,6 +436,19 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
       : currentResult;
 
   const arMap = { "3:4": "3/4", "1:1": "1/1", "9:16": "9/16", "16:9": "16/9" };
+
+  // ── Collect all selected options as flat list for the pill tags bar ─────────
+  const selectedTags = [];
+  Object.keys(TABS_CONFIG).forEach((tabKey) => {
+    TABS_CONFIG[tabKey].subcategories.forEach((sub) => {
+      const selId = selectedOptions[sub.id];
+      const opt = sub.options.find((o) => o.id === selId);
+      if (opt) selectedTags.push({ subcatId: sub.id, label: opt.label, img: opt.img });
+    });
+  });
+
+  const [showAllTags, setShowAllTags] = useState(false);
+  const TAGS_VISIBLE = 7; // how many pills to show before "show more"
 
   return (
     <div className="flex h-full bg-[#0a0a0a] text-white overflow-hidden select-none font-sans">
@@ -587,6 +633,37 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
             )}
           </div>
         </div>
+
+        {/* ── Selected option pills ──────────────────────────────────── */}
+        {selectedTags.length > 0 && (
+          <div className="px-6 pb-3 shrink-0">
+            <div className="flex flex-wrap gap-1.5 items-center">
+              {(showAllTags ? selectedTags : selectedTags.slice(0, TAGS_VISIBLE)).map((tag) => (
+                <HoverPill
+                  key={tag.subcatId}
+                  label={tag.label}
+                  img={tag.img}
+                  onClick={() => {
+                    // Jump builder panel to the tab that owns this subcategory
+                    const ownerTab = Object.keys(TABS_CONFIG).find((tk) =>
+                      TABS_CONFIG[tk].subcategories.some((s) => s.id === tag.subcatId)
+                    );
+                    if (ownerTab) setActiveTab(ownerTab);
+                  }}
+                />
+              ))}
+              {selectedTags.length > TAGS_VISIBLE && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllTags((v) => !v)}
+                  className="h-[22px] px-2 rounded-md bg-white/[0.04] hover:bg-white/[0.09] border border-white/[0.08] text-[11px] text-gray-500 hover:text-gray-300 whitespace-nowrap transition-all"
+                >
+                  {showAllTags ? "hide" : `show more`}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Error */}
         {errorMsg && (
