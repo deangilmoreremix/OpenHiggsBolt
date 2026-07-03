@@ -1645,7 +1645,7 @@ export default function ImageStudio({
         isOpen={isDrawModalOpen}
         onClose={() => setIsDrawModalOpen(false)}
         apiKey={apiKey}
-        batchSize={batchSize}
+        batchSize={1}
         onAddHistoryItem={addToHistory}
       />
     </div>

@@ -15,6 +15,7 @@ export default function DrawModal({
   const [selectedModel, setSelectedModel] = useState("nano-banana-pro-edit"); // 'nano-banana-2-edit' | 'nano-banana-pro-edit'
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [isArDropdownOpen, setIsArDropdownOpen] = useState(false);
+  const [promptText, setPromptText] = useState("Edit the image based on the drawing overlay"); // text prompt for generation
 
   // Drawing Tools
   const [activeTool, setActiveTool] = useState("pencil"); // 'pointer' | 'pencil' | 'eraser' | 'rect' | 'arrow' | 'text' | 'image'
@@ -200,21 +201,21 @@ export default function DrawModal({
     const bgCtx = bgCanvas.getContext("2d");
 
     const initCanvas = (img) => {
-      let width = 800;
-      let height = 450; // default 16:9
+      // Canvas always matches the image's natural dimensions (aspect ratio dropdown is for AI output only)
+      let width, height;
 
-      if (aspectRatio === "1:1") {
-        width = 600;
-        height = 600;
-      } else if (aspectRatio === "Auto" && img) {
+      if (img) {
         const maxW = 800;
-        const maxH = 500;
-        let imgW = img.naturalWidth || img.width || 800;
-        let imgH = img.naturalHeight || img.height || 500;
-
-        const scale = Math.min(maxW / imgW, maxH / imgH);
-        width = Math.round(imgW * scale);
+        const maxH = 800;
+        const imgW = img.naturalWidth || img.width || 800;
+        const imgH = img.naturalHeight || img.height || 600;
+        const scale = Math.min(maxW / imgW, maxH / imgH, 1);
+        width  = Math.round(imgW * scale);
         height = Math.round(imgH * scale);
+      } else {
+        // Blank canvas: default 800×600
+        width  = 800;
+        height = 600;
       }
 
       canvas.width = width;
@@ -251,7 +252,7 @@ export default function DrawModal({
     } else {
       initCanvas(null);
     }
-  }, [viewState, aspectRatio, bgImageUrl]);
+  }, [viewState, bgImageUrl]);
 
   // Redraw main drawing ink canvas when objects or active sketch changes
   const redrawCanvas = () => {
@@ -938,7 +939,8 @@ export default function DrawModal({
         Array.from({ length: batchSize }).map(async () => {
           const genParams = {
             model: selectedModel,
-            image_url: uploadedUrl,
+            prompt: promptText.trim() || "Edit the image based on the drawing overlay",
+            images_list: [uploadedUrl],
             aspect_ratio: aspectRatio === "Auto" ? "1:1" : aspectRatio,
           };
           return await generateI2I(apiKey, genParams);
@@ -1698,6 +1700,18 @@ export default function DrawModal({
               </div>
             </div>
 
+            {/* Center: Prompt input (required by the API) */}
+            <input
+              type="text"
+              value={promptText}
+              onChange={(e) => setPromptText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !generating) handleGenerateClick();
+              }}
+              placeholder="Describe what you want to generate…"
+              className="flex-1 mx-3 h-[38px] bg-[#131316]/80 border border-white/5 rounded-xl px-3 text-xs text-white/80 placeholder-white/25 outline-none focus:border-[#b5f500]/40 focus:ring-1 focus:ring-[#b5f500]/20 transition-all"
+            />
+
             {/* Right Options */}
             <div className="flex items-center gap-2">
               <div className="relative" ref={arDropdownRef}>
@@ -1721,11 +1735,11 @@ export default function DrawModal({
                 </button>
 
                 {isArDropdownOpen && (
-                  <div className="absolute bottom-[calc(100%+8px)] right-0 bg-[#0f0f12] border border-white/10 rounded-2xl p-2 w-32 shadow-2xl flex flex-col gap-1 z-30">
+                  <div className="absolute bottom-[calc(100%+8px)] right-0 bg-[#0f0f12] border border-white/10 rounded-xl p-2 w-36 max-h-72 overflow-y-auto shadow-2xl flex flex-col gap-1 z-30">
                     <div className="text-[10px] font-black text-white/30 uppercase tracking-widest p-1.5 pb-1 select-none">
                       Aspect Ratio
                     </div>
-                    {["16:9", "1:1", "Auto"].map((r) => (
+                    {["16:9", "9:16", "4:3", "3:4", "3:2", "2:3", "1:1", "21:9", "5:4", "4:5", "Auto"].map((r) => (
                       <button
                         key={r}
                         onClick={() => {
