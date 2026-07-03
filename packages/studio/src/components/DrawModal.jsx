@@ -22,15 +22,21 @@ export default function DrawModal({
   const [brushSize, setBrushSize] = useState(5);
   const [showSettingsPopover, setShowSettingsPopover] = useState(false);
 
-  // Text Objects State
-  const [textObjects, setTextObjects] = useState([]); // [{ id, text, x, y, fontSize, color }]
-  const [selectedTextId, setSelectedTextId] = useState(null);
+  // Unified Object-based Canvas state
+  const [canvasObjects, setCanvasObjects] = useState([]); // [{id, type, points, x, y, width, height, color, brushSize}]
+  const [selectedObjectId, setSelectedObjectId] = useState(null);
 
-  // Image Objects State
-  const [imageObjects, setImageObjects] = useState([]); // [{ id, img, url, x, y, width, height }]
-  const [selectedImageId, setSelectedImageId] = useState(null);
+  // History Undo/Redo stack for objects
+  const [history, setHistory] = useState([[]]);
+  const [historyIdx, setHistoryIdx] = useState(0);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
 
-  // Canvas Refs
+  // Canvas Dimensions State
+  const [canvasDimensions, setCanvasDimensions] = useState({ width: 800, height: 450 });
+  const [generating, setGenerating] = useState(false);
+
+  // Refs
   const canvasRef = useRef(null);
   const bgCanvasRef = useRef(null);
   const canvasWrapperRef = useRef(null);
@@ -38,14 +44,10 @@ export default function DrawModal({
     isDrawing: false,
     startX: 0,
     startY: 0,
-    history: [],
-    historyIdx: -1,
+    currX: 0,
+    currY: 0,
+    activePoints: [],
   });
-
-  const [canvasDimensions, setCanvasDimensions] = useState({ width: 800, height: 450 });
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
-  const [generating, setGenerating] = useState(false);
 
   const fileInputRef = useRef(null);
   const insertImageInputRef = useRef(null);
@@ -78,47 +80,35 @@ export default function DrawModal({
     return () => window.removeEventListener("click", handleOutsideClick);
   }, []);
 
-  // Save historical states for undo/redo
-  const saveCanvasState = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-    // Slice any future history if we drew after undoing
-    const newHistory = drawingState.current.history.slice(0, drawingState.current.historyIdx + 1);
-    newHistory.push(imgData);
-
-    drawingState.current.history = newHistory;
-    drawingState.current.historyIdx = newHistory.length - 1;
-
-    setCanUndo(drawingState.current.historyIdx > 0);
+  // Save history state
+  const saveStateToHistory = (newObjects) => {
+    const nextHistory = history.slice(0, historyIdx + 1);
+    nextHistory.push(newObjects);
+    setHistory(nextHistory);
+    setHistoryIdx(nextHistory.length - 1);
+    setCanUndo(nextHistory.length > 1);
     setCanRedo(false);
   };
 
-  // Restore states
-  const restoreCanvasState = (index) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const imgData = drawingState.current.history[index];
-    if (imgData) {
-      ctx.putImageData(imgData, 0, 0);
-      drawingState.current.historyIdx = index;
-      setCanUndo(index > 0);
-      setCanRedo(index < drawingState.current.history.length - 1);
-    }
-  };
-
   const handleUndo = () => {
-    if (drawingState.current.historyIdx > 0) {
-      restoreCanvasState(drawingState.current.historyIdx - 1);
+    if (historyIdx > 0) {
+      const nextIdx = historyIdx - 1;
+      setHistoryIdx(nextIdx);
+      setCanvasObjects(history[nextIdx]);
+      setSelectedObjectId(null);
+      setCanUndo(nextIdx > 0);
+      setCanRedo(true);
     }
   };
 
   const handleRedo = () => {
-    if (drawingState.current.historyIdx < drawingState.current.history.length - 1) {
-      restoreCanvasState(drawingState.current.historyIdx + 1);
+    if (historyIdx < history.length - 1) {
+      const nextIdx = historyIdx + 1;
+      setHistoryIdx(nextIdx);
+      setCanvasObjects(history[nextIdx]);
+      setSelectedObjectId(null);
+      setCanUndo(true);
+      setCanRedo(nextIdx < history.length - 1);
     }
   };
 
@@ -164,263 +154,519 @@ export default function DrawModal({
       bgCtx.fillRect(0, 0, width, height);
     }
 
-    // Reset transparent paint layer
+    // Reset drawing canvases
     ctx.clearRect(0, 0, width, height);
 
-    // Save initial state for history
-    drawingState.current.history = [];
-    drawingState.current.historyIdx = -1;
-    saveCanvasState();
     setCanvasDimensions({ width, height });
+    setHistory([[]]);
+    setHistoryIdx(0);
+    setCanvasObjects([]);
+    setSelectedObjectId(null);
+    setCanUndo(false);
+    setCanRedo(false);
   }, [viewState, aspectRatio, bgImage]);
 
-  // Drawing Event Handlers
+  // Redraw main drawing ink canvas when objects or active sketch changes
+  const redrawCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    canvasObjects.forEach((obj) => {
+      ctx.lineWidth = obj.brushSize || 5;
+      ctx.strokeStyle = obj.color || "#eab308";
+      ctx.fillStyle = obj.color || "#eab308";
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      if (obj.type === "pencil") {
+        ctx.globalCompositeOperation = "source-over";
+        const p = obj.points;
+        if (p.length > 0) {
+          ctx.beginPath();
+          ctx.moveTo(p[0].x, p[0].y);
+          for (let i = 1; i < p.length; i++) {
+            ctx.lineTo(p[i].x, p[i].y);
+          }
+          ctx.stroke();
+        }
+      } else if (obj.type === "eraser") {
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.strokeStyle = "rgba(0,0,0,1)";
+        const p = obj.points;
+        if (p.length > 0) {
+          ctx.beginPath();
+          ctx.moveTo(p[0].x, p[0].y);
+          for (let i = 1; i < p.length; i++) {
+            ctx.lineTo(p[i].x, p[i].y);
+          }
+          ctx.stroke();
+        }
+      } else if (obj.type === "rect") {
+        ctx.globalCompositeOperation = "source-over";
+        ctx.strokeRect(obj.x, obj.y, obj.width, obj.height);
+      } else if (obj.type === "arrow") {
+        ctx.globalCompositeOperation = "source-over";
+        ctx.beginPath();
+        ctx.moveTo(obj.x1, obj.y1);
+        ctx.lineTo(obj.x2, obj.y2);
+        ctx.stroke();
+
+        const angle = Math.atan2(obj.y2 - obj.y1, obj.x2 - obj.x1);
+        ctx.beginPath();
+        ctx.moveTo(obj.x2, obj.y2);
+        ctx.lineTo(obj.x2 - 15 * Math.cos(angle - Math.PI / 6), obj.y2 - 15 * Math.sin(angle - Math.PI / 6));
+        ctx.moveTo(obj.x2, obj.y2);
+        ctx.lineTo(obj.x2 - 15 * Math.cos(angle + Math.PI / 6), obj.y2 - 15 * Math.sin(angle + Math.PI / 6));
+        ctx.stroke();
+      }
+    });
+
+    // Draw temporary preview stroke if actively drawing
+    if (drawingState.current.isDrawing) {
+      ctx.lineWidth = brushSize;
+      ctx.strokeStyle = brushColor;
+      ctx.fillStyle = brushColor;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      const startX = drawingState.current.startX;
+      const startY = drawingState.current.startY;
+      const currX = drawingState.current.currX;
+      const currY = drawingState.current.currY;
+
+      if (activeTool === "pencil") {
+        ctx.globalCompositeOperation = "source-over";
+        const p = drawingState.current.activePoints;
+        if (p.length > 0) {
+          ctx.beginPath();
+          ctx.moveTo(p[0].x, p[0].y);
+          for (let i = 1; i < p.length; i++) {
+            ctx.lineTo(p[i].x, p[i].y);
+          }
+          ctx.stroke();
+        }
+      } else if (activeTool === "eraser") {
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.strokeStyle = "rgba(0,0,0,1)";
+        ctx.lineWidth = brushSize * 2;
+        const p = drawingState.current.activePoints;
+        if (p.length > 0) {
+          ctx.beginPath();
+          ctx.moveTo(p[0].x, p[0].y);
+          for (let i = 1; i < p.length; i++) {
+            ctx.lineTo(p[i].x, p[i].y);
+          }
+          ctx.stroke();
+        }
+      } else if (activeTool === "rect") {
+        ctx.globalCompositeOperation = "source-over";
+        ctx.strokeRect(startX, startY, currX - startX, currY - startY);
+      } else if (activeTool === "arrow") {
+        ctx.globalCompositeOperation = "source-over";
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(currX, currY);
+        ctx.stroke();
+
+        const angle = Math.atan2(currY - startY, currX - startX);
+        ctx.beginPath();
+        ctx.moveTo(currX, currY);
+        ctx.lineTo(currX - 15 * Math.cos(angle - Math.PI / 6), currY - 15 * Math.sin(angle - Math.PI / 6));
+        ctx.moveTo(currX, currY);
+        ctx.lineTo(currX - 15 * Math.cos(angle + Math.PI / 6), currY - 15 * Math.sin(angle + Math.PI / 6));
+        ctx.stroke();
+      }
+    }
+  };
+
+  // Trigger redraw on object updates
+  useEffect(() => {
+    redrawCanvas();
+  }, [canvasObjects, canvasDimensions, activeTool]);
+
+  // Drawing coordinates resolver
   const getCanvasMousePos = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    
+    // Resolve touch or mouse events
+    let clientX = e.clientX;
+    let clientY = e.clientY;
+    if (e.touches && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else if (e.changedTouches && e.changedTouches.length > 0) {
+      clientX = e.changedTouches[0].clientX;
+      clientY = e.changedTouches[0].clientY;
+    }
+
     return {
       x: ((clientX - rect.left) / rect.width) * canvas.width,
       y: ((clientY - rect.top) / rect.height) * canvas.height,
     };
   };
 
-  const handleStartDraw = (e) => {
-    if (activeTool !== "pencil" && activeTool !== "eraser" && activeTool !== "rect" && activeTool !== "arrow") return;
+  // Click on canvas (used to detect selection or place text)
+  const handleCanvasClick = (e) => {
     const pos = getCanvasMousePos(e);
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+
+    if (activeTool === "pointer") {
+      // Select the clicked object (traverse backwards to select top element first)
+      let foundId = null;
+      for (let i = canvasObjects.length - 1; i >= 0; i--) {
+        const obj = canvasObjects[i];
+        const bbox = getObjectBoundingBox(obj);
+        if (bbox) {
+          if (
+            pos.x >= bbox.x &&
+            pos.x <= bbox.x + bbox.width &&
+            pos.y >= bbox.y &&
+            pos.y <= bbox.y + bbox.height
+          ) {
+            foundId = obj.id;
+            break;
+          }
+        }
+      }
+      setSelectedObjectId(foundId);
+    } else if (activeTool === "text") {
+      const fontSize = brushSize * 4 > 12 ? brushSize * 4 : 20;
+      const newText = {
+        id: Math.random().toString(36).substring(7),
+        type: "text",
+        text: "Type text here...",
+        x: Math.round(pos.x),
+        y: Math.round(pos.y),
+        width: 160,
+        height: Math.round(fontSize * 1.5),
+        fontSize,
+        color: brushColor,
+      };
+      const nextObjs = [...canvasObjects, newText];
+      setCanvasObjects(nextObjs);
+      saveStateToHistory(nextObjs);
+      setSelectedObjectId(newText.id);
+      setActiveTool("pointer"); // switch back to pointer to allow typing and dragging
+    }
+  };
+
+  const handleStartDraw = (e) => {
+    if (activeTool === "pointer" || activeTool === "text") return;
+    const pos = getCanvasMousePos(e);
 
     drawingState.current.isDrawing = true;
     drawingState.current.startX = pos.x;
     drawingState.current.startY = pos.y;
-
-    if (activeTool === "pencil" || activeTool === "eraser") {
-      ctx.beginPath();
-      ctx.moveTo(pos.x, pos.y);
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.lineWidth = brushSize;
-
-      if (activeTool === "eraser") {
-        ctx.globalCompositeOperation = "destination-out";
-        ctx.strokeStyle = "rgba(0,0,0,1)";
-      } else {
-        ctx.globalCompositeOperation = "source-over";
-        ctx.strokeStyle = brushColor;
-      }
-    }
+    drawingState.current.currX = pos.x;
+    drawingState.current.currY = pos.y;
+    drawingState.current.activePoints = [pos];
+    
+    redrawCanvas();
   };
 
   const handleDrawing = (e) => {
     if (!drawingState.current.isDrawing) return;
     const pos = getCanvasMousePos(e);
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+
+    drawingState.current.currX = pos.x;
+    drawingState.current.currY = pos.y;
 
     if (activeTool === "pencil" || activeTool === "eraser") {
-      ctx.lineTo(pos.x, pos.y);
-      ctx.stroke();
+      drawingState.current.activePoints.push(pos);
     }
+
+    redrawCanvas();
   };
 
   const handleEndDraw = (e) => {
     if (!drawingState.current.isDrawing) return;
     drawingState.current.isDrawing = false;
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
     const pos = getCanvasMousePos(e);
 
-    if (activeTool === "rect") {
-      ctx.globalCompositeOperation = "source-over";
-      ctx.strokeStyle = brushColor;
-      ctx.lineWidth = brushSize;
-      const w = pos.x - drawingState.current.startX;
-      const h = pos.y - drawingState.current.startY;
-      ctx.strokeRect(drawingState.current.startX, drawingState.current.startY, w, h);
-      saveCanvasState();
+    let newObj = null;
+    const startX = drawingState.current.startX;
+    const startY = drawingState.current.startY;
+
+    if (activeTool === "pencil") {
+      newObj = {
+        id: Math.random().toString(36).substring(7),
+        type: "pencil",
+        points: drawingState.current.activePoints,
+        color: brushColor,
+        brushSize: brushSize,
+      };
+    } else if (activeTool === "eraser") {
+      newObj = {
+        id: Math.random().toString(36).substring(7),
+        type: "eraser",
+        points: drawingState.current.activePoints,
+        brushSize: brushSize * 2,
+      };
+    } else if (activeTool === "rect") {
+      const w = pos.x - startX;
+      const h = pos.y - startY;
+      newObj = {
+        id: Math.random().toString(36).substring(7),
+        type: "rect",
+        x: w < 0 ? startX + w : startX,
+        y: h < 0 ? startY + h : startY,
+        width: Math.abs(w),
+        height: Math.abs(h),
+        color: brushColor,
+        brushSize: brushSize,
+      };
     } else if (activeTool === "arrow") {
-      ctx.globalCompositeOperation = "source-over";
-      ctx.strokeStyle = brushColor;
-      ctx.lineWidth = brushSize;
-      ctx.lineCap = "round";
+      newObj = {
+        id: Math.random().toString(36).substring(7),
+        type: "arrow",
+        x1: startX,
+        y1: startY,
+        x2: pos.x,
+        y2: pos.y,
+        color: brushColor,
+        brushSize: brushSize,
+      };
+    }
 
-      const fromX = drawingState.current.startX;
-      const fromY = drawingState.current.startY;
-      const toX = pos.x;
-      const toY = pos.y;
-
-      ctx.beginPath();
-      ctx.moveTo(fromX, fromY);
-      ctx.lineTo(toX, toY);
-      ctx.stroke();
-
-      const angle = Math.atan2(toY - fromY, toX - fromX);
-      ctx.beginPath();
-      ctx.moveTo(toX, toY);
-      ctx.lineTo(toX - 15 * Math.cos(angle - Math.PI / 6), toY - 15 * Math.sin(angle - Math.PI / 6));
-      ctx.moveTo(toX, toY);
-      ctx.lineTo(toX - 15 * Math.cos(angle + Math.PI / 6), toY - 15 * Math.sin(angle + Math.PI / 6));
-      ctx.stroke();
-
-      saveCanvasState();
-    } else {
-      saveCanvasState();
+    if (newObj) {
+      const nextObjs = [...canvasObjects, newObj];
+      setCanvasObjects(nextObjs);
+      saveStateToHistory(nextObjs);
+      setSelectedObjectId(newObj.id);
     }
   };
 
-  // Canvas container clicked (used for creating text elements)
-  const handleCanvasClick = (e) => {
-    if (activeTool !== "text") return;
-    const pos = getCanvasMousePos(e);
-    const newText = {
-      id: Math.random().toString(36).substring(7),
-      text: "Type text here...",
-      x: Math.round(pos.x),
-      y: Math.round(pos.y),
-      fontSize: brushSize * 4 > 12 ? brushSize * 4 : 20,
-      color: brushColor,
-    };
-    setTextObjects((prev) => [...prev, newText]);
-    setSelectedTextId(newText.id);
-    setActiveTool("pointer"); // switch back to pointer to allow dragging
+  // Helper: compute bounding box of any object type
+  const getObjectBoundingBox = (obj) => {
+    if (!obj) return null;
+    if (obj.type === "pencil" || obj.type === "eraser") {
+      const xs = obj.points.map((p) => p.x);
+      const ys = obj.points.map((p) => p.y);
+      if (xs.length === 0) return null;
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+      return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+    }
+    if (obj.type === "rect" || obj.type === "text" || obj.type === "image") {
+      return { x: obj.x, y: obj.y, width: obj.width, height: obj.height };
+    }
+    if (obj.type === "arrow") {
+      const minX = Math.min(obj.x1, obj.x2);
+      const maxX = Math.max(obj.x1, obj.x2);
+      const minY = Math.min(obj.y1, obj.y2);
+      const maxY = Math.max(obj.y1, obj.y2);
+      return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+    }
+    return null;
   };
 
-  // Draggable Text support
-  const handleTextStartDrag = (e, id) => {
+  // Drag selected object
+  const handleStartMoveSelected = (e) => {
     e.preventDefault();
-    setSelectedTextId(id);
-    setSelectedImageId(null);
+    if (activeTool !== "pointer") return;
     const startX = e.clientX;
     const startY = e.clientY;
 
-    const targetObj = textObjects.find((t) => t.id === id);
+    const targetObj = canvasObjects.find((o) => o.id === selectedObjectId);
     if (!targetObj) return;
 
-    const origX = targetObj.x;
-    const origY = targetObj.y;
+    const origObj = JSON.parse(JSON.stringify(targetObj));
 
-    const handleTextDragMove = (moveEvent) => {
-      // Calculate delta scaled to canvas coordinates
+    const handleMove = (moveEvent) => {
       if (!canvasWrapperRef.current) return;
-      const wrapperRect = canvasWrapperRef.current.getBoundingClientRect();
-      const scaleX = canvasDimensions.width / wrapperRect.width;
-      const scaleY = canvasDimensions.height / wrapperRect.height;
+      const rect = canvasWrapperRef.current.getBoundingClientRect();
+      const scaleX = canvasDimensions.width / rect.width;
+      const scaleY = canvasDimensions.height / rect.height;
 
       const dx = (moveEvent.clientX - startX) * scaleX;
       const dy = (moveEvent.clientY - startY) * scaleY;
 
-      setTextObjects((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, x: Math.round(origX + dx), y: Math.round(origY + dy) } : t))
+      setCanvasObjects((prev) =>
+        prev.map((o) => {
+          if (o.id !== selectedObjectId) return o;
+          if (o.type === "pencil" || o.type === "eraser") {
+            return {
+              ...o,
+              points: origObj.points.map((p) => ({ x: p.x + dx, y: p.y + dy })),
+            };
+          }
+          if (o.type === "rect" || o.type === "text" || o.type === "image") {
+            return { ...o, x: Math.round(origObj.x + dx), y: Math.round(origObj.y + dy) };
+          }
+          if (o.type === "arrow") {
+            return {
+              ...o,
+              x1: Math.round(origObj.x1 + dx),
+              y1: Math.round(origObj.y1 + dy),
+              x2: Math.round(origObj.x2 + dx),
+              y2: Math.round(origObj.y2 + dy),
+            };
+          }
+          return o;
+        })
       );
     };
 
-    const handleTextDragEnd = () => {
-      window.removeEventListener("mousemove", handleTextDragMove);
-      window.removeEventListener("mouseup", handleTextDragEnd);
+    const handleMoveEnd = () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleMoveEnd);
+      saveStateToHistory(canvasObjects);
     };
 
-    window.addEventListener("mousemove", handleTextDragMove);
-    window.addEventListener("mouseup", handleTextDragEnd);
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleMoveEnd);
   };
 
-  // Draggable Image support
-  const handleImageStartDrag = (e, id) => {
-    e.preventDefault();
-    setSelectedImageId(id);
-    setSelectedTextId(null);
-    const startX = e.clientX;
-    const startY = e.clientY;
-
-    const targetObj = imageObjects.find((img) => img.id === id);
-    if (!targetObj) return;
-
-    const origX = targetObj.x;
-    const origY = targetObj.y;
-
-    const handleImageDragMove = (moveEvent) => {
-      if (!canvasWrapperRef.current) return;
-      const wrapperRect = canvasWrapperRef.current.getBoundingClientRect();
-      const scaleX = canvasDimensions.width / wrapperRect.width;
-      const scaleY = canvasDimensions.height / wrapperRect.height;
-
-      const dx = (moveEvent.clientX - startX) * scaleX;
-      const dy = (moveEvent.clientY - startY) * scaleY;
-
-      setImageObjects((prev) =>
-        prev.map((img) => (img.id === id ? { ...img, x: Math.round(origX + dx), y: Math.round(origY + dy) } : img))
-      );
-    };
-
-    const handleImageDragEnd = () => {
-      window.removeEventListener("mousemove", handleImageDragMove);
-      window.removeEventListener("mouseup", handleImageDragEnd);
-    };
-
-    window.addEventListener("mousemove", handleImageDragMove);
-    window.addEventListener("mouseup", handleImageDragEnd);
-  };
-
-  // Resize Image Object support
-  const handleImageStartResize = (e, id) => {
+  // Resize selected object using corner handles
+  const handleStartResizeSelected = (e, direction) => {
     e.preventDefault();
     e.stopPropagation();
     const startX = e.clientX;
     const startY = e.clientY;
 
-    const targetObj = imageObjects.find((img) => img.id === id);
+    const targetObj = canvasObjects.find((o) => o.id === selectedObjectId);
     if (!targetObj) return;
 
-    const startW = targetObj.width;
-    const startH = targetObj.height;
+    const origObj = JSON.parse(JSON.stringify(targetObj));
+    const origBbox = getObjectBoundingBox(origObj);
 
-    const handleImageResizeMove = (moveEvent) => {
+    const handleResize = (moveEvent) => {
       if (!canvasWrapperRef.current) return;
-      const wrapperRect = canvasWrapperRef.current.getBoundingClientRect();
-      const scaleX = canvasDimensions.width / wrapperRect.width;
-      const scaleY = canvasDimensions.height / wrapperRect.height;
+      const rect = canvasWrapperRef.current.getBoundingClientRect();
+      const scaleX = canvasDimensions.width / rect.width;
+      const scaleY = canvasDimensions.height / rect.height;
 
       const dx = (moveEvent.clientX - startX) * scaleX;
       const dy = (moveEvent.clientY - startY) * scaleY;
 
-      setImageObjects((prev) =>
-        prev.map((img) =>
-          img.id === id
-            ? { ...img, width: Math.max(30, Math.round(startW + dx)), height: Math.max(30, Math.round(startH + dy)) }
-            : img
-        )
+      setCanvasObjects((prev) =>
+        prev.map((o) => {
+          if (o.id !== selectedObjectId) return o;
+          
+          if (o.type === "rect" || o.type === "text" || o.type === "image") {
+            let newX = origObj.x;
+            let newY = origObj.y;
+            let newW = origObj.width;
+            let newH = origObj.height;
+
+            if (direction.includes("l")) {
+              newX = origObj.x + dx;
+              newW = origObj.width - dx;
+            }
+            if (direction.includes("r")) {
+              newW = origObj.width + dx;
+            }
+            if (direction.includes("t")) {
+              newY = origObj.y + dy;
+              newH = origObj.height - dy;
+            }
+            if (direction.includes("b")) {
+              newH = origObj.height + dy;
+            }
+
+            return {
+              ...o,
+              x: Math.round(newX),
+              y: Math.round(newY),
+              width: Math.max(15, Math.round(newW)),
+              height: Math.max(15, Math.round(newH)),
+            };
+          }
+          if (o.type === "arrow") {
+            let newX1 = origObj.x1;
+            let newY1 = origObj.y1;
+            let newX2 = origObj.x2;
+            let newY2 = origObj.y2;
+
+            if (direction.includes("t") || direction.includes("l")) {
+              newX1 = origObj.x1 + dx;
+              newY1 = origObj.y1 + dy;
+            }
+            if (direction.includes("b") || direction.includes("r")) {
+              newX2 = origObj.x2 + dx;
+              newY2 = origObj.y2 + dy;
+            }
+
+            return {
+              ...o,
+              x1: Math.round(newX1),
+              y1: Math.round(newY1),
+              x2: Math.round(newX2),
+              y2: Math.round(newY2),
+            };
+          }
+          if (o.type === "pencil" || o.type === "eraser") {
+            // Scale vector points relative to bounding box scale changes
+            const wScale = (origBbox.width + dx) / origBbox.width;
+            const hScale = (origBbox.height + dy) / origBbox.height;
+            return {
+              ...o,
+              points: origObj.points.map((p) => ({
+                x: origBbox.x + (p.x - origBbox.x) * wScale,
+                y: origBbox.y + (p.y - origBbox.y) * hScale,
+              })),
+            };
+          }
+          return o;
+        })
       );
     };
 
-    const handleImageResizeEnd = () => {
-      window.removeEventListener("mousemove", handleImageResizeMove);
-      window.removeEventListener("mouseup", handleImageResizeEnd);
+    const handleResizeEnd = () => {
+      window.removeEventListener("mousemove", handleResize);
+      window.removeEventListener("mouseup", handleResizeEnd);
+      saveStateToHistory(canvasObjects);
     };
 
-    window.addEventListener("mousemove", handleImageResizeMove);
-    window.addEventListener("mouseup", handleImageResizeEnd);
+    window.addEventListener("mousemove", handleResize);
+    window.addEventListener("mouseup", handleResizeEnd);
   };
 
-  // Watch for active adjustments (BrushColor/BrushSize changes update selected text)
+  // Remove the currently selected drawing object
+  const handleRemoveSelected = () => {
+    if (selectedObjectId) {
+      const nextObjs = canvasObjects.filter((o) => o.id !== selectedObjectId);
+      setCanvasObjects(nextObjs);
+      saveStateToHistory(nextObjs);
+      setSelectedObjectId(null);
+    }
+  };
+
+  // Listen for brush property changes and update selected text/shape colors or sizes
   useEffect(() => {
-    if (selectedTextId) {
-      setTextObjects((prev) =>
-        prev.map((t) => (t.id === selectedTextId ? { ...t, color: brushColor } : t))
+    if (selectedObjectId) {
+      setCanvasObjects((prev) =>
+        prev.map((o) => {
+          if (o.id !== selectedObjectId) return o;
+          const updates = {};
+          if (o.type === "text" || o.type === "rect" || o.type === "arrow") {
+            updates.color = brushColor;
+          }
+          return { ...o, ...updates };
+        })
       );
     }
   }, [brushColor]);
 
   useEffect(() => {
-    if (selectedTextId) {
-      const calculatedFontSize = brushSize * 4 > 12 ? brushSize * 4 : 20;
-      setTextObjects((prev) =>
-        prev.map((t) => (t.id === selectedTextId ? { ...t, fontSize: calculatedFontSize } : t))
+    if (selectedObjectId) {
+      setCanvasObjects((prev) =>
+        prev.map((o) => {
+          if (o.id !== selectedObjectId) return o;
+          const updates = {};
+          if (o.type === "text") {
+            updates.fontSize = brushSize * 4 > 12 ? brushSize * 4 : 20;
+            updates.height = Math.round(updates.fontSize * 1.5);
+          } else if (o.type === "rect" || o.type === "arrow" || o.type === "pencil" || o.type === "eraser") {
+            updates.brushSize = brushSize;
+          }
+          return { ...o, ...updates };
+        })
       );
     }
   }, [brushSize]);
@@ -442,7 +688,7 @@ export default function DrawModal({
     reader.readAsDataURL(file);
   };
 
-  // Insert another image on the canvas
+  // Insert Overlay image
   const handleInsertImageClick = () => {
     insertImageInputRef.current?.click();
   };
@@ -458,7 +704,6 @@ export default function DrawModal({
         const w = img.naturalWidth || img.width || 150;
         const h = img.naturalHeight || img.height || 150;
 
-        // Scale to a reasonable size on the canvas
         const maxDim = 150;
         const scale = Math.min(maxDim / w, maxDim / h);
         const startW = Math.round(w * scale);
@@ -466,6 +711,7 @@ export default function DrawModal({
 
         const newImageObj = {
           id,
+          type: "image",
           img,
           url: event.target.result,
           x: Math.round((canvasDimensions.width - startW) / 2),
@@ -474,8 +720,10 @@ export default function DrawModal({
           height: startH,
         };
 
-        setImageObjects((prev) => [...prev, newImageObj]);
-        setSelectedImageId(id);
+        const nextObjs = [...canvasObjects, newImageObj];
+        setCanvasObjects(nextObjs);
+        saveStateToHistory(nextObjs);
+        setSelectedObjectId(id);
         setActiveTool("pointer");
       };
       img.src = event.target.result;
@@ -490,15 +738,13 @@ export default function DrawModal({
       if (!canvas) return;
       const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      setTextObjects([]);
-      setImageObjects([]);
-      setSelectedTextId(null);
-      setSelectedImageId(null);
-      saveCanvasState();
+      setCanvasObjects([]);
+      setSelectedObjectId(null);
+      saveStateToHistory([]);
     }
   };
 
-  // Merge Background + Drawing + Image objects + Text objects, and Generate
+  // Merge Layers and Trigger Generation
   const handleGenerateClick = async () => {
     if (generating) return;
 
@@ -509,40 +755,53 @@ export default function DrawModal({
     setGenerating(true);
 
     try {
-      // Create output canvas to merge all layers
       const mergeCanvas = document.createElement("canvas");
       mergeCanvas.width = canvas.width;
       mergeCanvas.height = canvas.height;
       const mCtx = mergeCanvas.getContext("2d");
 
-      // 1. Draw background canvas layer
+      // 1. Draw static background layer
       mCtx.drawImage(bgCanvas, 0, 0);
 
-      // 2. Draw overlay image objects
-      imageObjects.forEach((imgObj) => {
+      // 2. Draw overlay image objects (in lower order than drawings)
+      canvasObjects.filter((o) => o.type === "image").forEach((imgObj) => {
         mCtx.drawImage(imgObj.img, imgObj.x, imgObj.y, imgObj.width, imgObj.height);
       });
 
-      // 3. Draw ink drawing overlay layer
+      // 3. Draw drawing overlay layer
       mCtx.drawImage(canvas, 0, 0);
 
-      // 4. Draw text objects
-      textObjects.forEach((textObj) => {
+      // 4. Draw texts with wrap formatting
+      canvasObjects.filter((o) => o.type === "text").forEach((textObj) => {
         mCtx.fillStyle = textObj.color;
-        // Text positioning matches baseline in canvas coords
         mCtx.font = `bold ${textObj.fontSize}px Inter, sans-serif`;
         mCtx.textBaseline = "top";
-        mCtx.fillText(textObj.text, textObj.x, textObj.y);
+
+        const words = textObj.text.split(" ");
+        let line = "";
+        let testY = textObj.y;
+        const lineHeight = textObj.fontSize * 1.25;
+
+        for (let n = 0; n < words.length; n++) {
+          let testLine = line + words[n] + " ";
+          let metrics = mCtx.measureText(testLine);
+          let testWidth = metrics.width;
+          if (testWidth > textObj.width && n > 0) {
+            mCtx.fillText(line, textObj.x, testY);
+            line = words[n] + " ";
+            testY += lineHeight;
+          } else {
+            line = testLine;
+          }
+        }
+        mCtx.fillText(line, textObj.x, testY);
       });
 
-      // Convert to blob
       const blob = await new Promise((resolve) => mergeCanvas.toBlob(resolve, "image/jpeg", 0.92));
       if (!blob) throw new Error("Canvas serialization failed");
 
-      // Upload file to get URL
       const uploadedUrl = await uploadFile(apiKey, blob);
 
-      // Generate Image using selected edit model
       const results = await Promise.all(
         Array.from({ length: batchSize }).map(async () => {
           const genParams = {
@@ -554,7 +813,6 @@ export default function DrawModal({
         })
       );
 
-      // Add each output to history
       results.forEach((res) => {
         if (res && res.url) {
           const entry = {
@@ -579,7 +837,9 @@ export default function DrawModal({
     }
   };
 
-  if (!isOpen) return null;
+  // Helper variables for outline layout
+  const selectedObj = canvasObjects.find((o) => o.id === selectedObjectId);
+  const bbox = getObjectBoundingBox(selectedObj);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md p-4">
@@ -698,7 +958,7 @@ export default function DrawModal({
                   maxHeight: "60vh",
                 }}
               >
-                {/* Background Image/White Color Layer */}
+                {/* Background Image Layer */}
                 <canvas ref={bgCanvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
 
                 {/* Drawing Ink Layer */}
@@ -717,108 +977,120 @@ export default function DrawModal({
                   }`}
                 />
 
-                {/* Overlay Image Objects */}
-                {imageObjects.map((imgObj) => {
+                {/* Floating Overlay HTML Images */}
+                {canvasObjects.filter((o) => o.type === "image").map((imgObj) => {
                   const leftPct = (imgObj.x / canvasDimensions.width) * 100;
                   const topPct = (imgObj.y / canvasDimensions.height) * 100;
                   const widthPct = (imgObj.width / canvasDimensions.width) * 100;
                   const heightPct = (imgObj.height / canvasDimensions.height) * 100;
-                  const isSelected = selectedImageId === imgObj.id;
+                  const isSelected = selectedObjectId === imgObj.id;
 
                   return (
                     <div
                       key={imgObj.id}
-                      className={`absolute group cursor-move ${isSelected ? "ring-2 ring-[#b5f500] ring-offset-1 ring-offset-black" : ""}`}
+                      className={`absolute group cursor-move ${isSelected ? "ring-2 ring-[#b5f500] ring-offset-1 ring-offset-black z-10" : ""}`}
                       style={{
                         left: `${leftPct}%`,
                         top: `${topPct}%`,
                         width: `${widthPct}%`,
                         height: `${heightPct}%`,
                       }}
-                      onMouseDown={(e) => handleImageStartDrag(e, imgObj.id)}
+                      onMouseDown={(e) => {
+                        setSelectedObjectId(imgObj.id);
+                        handleStartMoveSelected(e);
+                      }}
                     >
                       <img src={imgObj.url} alt="" className="w-full h-full object-cover pointer-events-none" />
-                      
-                      {/* Resize handler */}
-                      <div
-                        className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-[#b5f500] border border-black rounded-full cursor-se-resize flex items-center justify-center shadow-lg"
-                        onMouseDown={(e) => handleImageStartResize(e, imgObj.id)}
-                        title="Resize overlay image"
-                      />
-
-                      {/* Delete button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setImageObjects((prev) => prev.filter((i) => i.id !== imgObj.id));
-                          setSelectedImageId(null);
-                        }}
-                        className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-600 border border-white text-white font-bold text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700 shadow-md"
-                        title="Delete image object"
-                      >
-                        ×
-                      </button>
                     </div>
                   );
                 })}
 
-                {/* Overlay Interactive Text Objects */}
-                {textObjects.map((textObj) => {
+                {/* Text overlays with Native Focusing and Typing */}
+                {canvasObjects.filter((o) => o.type === "text").map((textObj) => {
                   const leftPct = (textObj.x / canvasDimensions.width) * 100;
                   const topPct = (textObj.y / canvasDimensions.height) * 100;
-                  const fontSizePct = (textObj.fontSize / canvasDimensions.height) * 100;
-                  const isSelected = selectedTextId === textObj.id;
+                  const widthPct = (textObj.width / canvasDimensions.width) * 100;
+                  const heightPct = (textObj.height / canvasDimensions.height) * 100;
+                  const isSelected = selectedObjectId === textObj.id;
 
                   return (
-                    <div
+                    <textarea
                       key={textObj.id}
-                      className={`absolute px-1 group cursor-move flex items-center gap-1.5 ${
-                        isSelected ? "ring-2 ring-[#b5f500] bg-black/40 rounded" : ""
+                      value={textObj.text}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setCanvasObjects((prev) =>
+                          prev.map((o) => (o.id === textObj.id ? { ...o, text: val } : o))
+                        );
+                      }}
+                      onFocus={() => {
+                        setSelectedObjectId(textObj.id);
+                      }}
+                      className={`absolute bg-transparent border-none outline-none resize-none font-bold text-left overflow-hidden select-text z-10 ${
+                        isSelected ? "ring-1 ring-[#b5f500] ring-dashed bg-black/25" : ""
                       }`}
                       style={{
                         left: `${leftPct}%`,
                         top: `${topPct}%`,
-                        fontSize: `${fontSizePct}cqh`, // scale font size dynamically with container height
+                        width: `${widthPct}%`,
+                        height: `${heightPct}%`,
+                        fontSize: `${(textObj.fontSize / canvasDimensions.height) * 100}cqh`,
                         color: textObj.color,
-                        lineHeight: 1,
+                        lineHeight: 1.25,
                       }}
-                      onMouseDown={(e) => handleTextStartDrag(e, textObj.id)}
-                    >
-                      <input
-                        type="text"
-                        value={textObj.text}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setTextObjects((prev) =>
-                            prev.map((t) => (t.id === textObj.id ? { ...t, text: val } : t))
-                          );
-                        }}
-                        className="bg-transparent border-none outline-none font-bold text-inherit p-0 max-w-[200px]"
-                        style={{ fontSize: "inherit" }}
-                      />
-
-                      {/* Delete button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setTextObjects((prev) => prev.filter((t) => t.id !== textObj.id));
-                          setSelectedTextId(null);
-                        }}
-                        className="w-4 h-4 rounded-full bg-red-600 border border-white text-white font-bold text-[9px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700 shadow-md"
-                        title="Delete text object"
-                      >
-                        ×
-                      </button>
-                    </div>
+                    />
                   );
                 })}
+
+                {/* Unified Outline Handles Overlay for Selected Object */}
+                {selectedObjectId && bbox && (
+                  <div
+                    className="absolute border border-dashed border-[#b5f500] pointer-events-auto z-20 cursor-move"
+                    style={{
+                      left: `${(bbox.x / canvasDimensions.width) * 100}%`,
+                      top: `${(bbox.y / canvasDimensions.height) * 100}%`,
+                      width: `${(bbox.width / canvasDimensions.width) * 100}%`,
+                      height: `${(bbox.height / canvasDimensions.height) * 100}%`,
+                    }}
+                    onMouseDown={handleStartMoveSelected}
+                  >
+                    {/* Corner handles */}
+                    <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border border-[#b5f500] cursor-nwse-resize rounded-full" onMouseDown={(e) => handleStartResizeSelected(e, "tl")} />
+                    <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border border-[#b5f500] cursor-nesw-resize rounded-full" onMouseDown={(e) => handleStartResizeSelected(e, "tr")} />
+                    <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border border-[#b5f500] cursor-nesw-resize rounded-full" onMouseDown={(e) => handleStartResizeSelected(e, "bl")} />
+                    <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border border-[#b5f500] cursor-nwse-resize rounded-full" onMouseDown={(e) => handleStartResizeSelected(e, "br")} />
+                    
+                    {/* Edge handles */}
+                    <div className="absolute -top-1.5 left-[calc(50%-6px)] w-3 h-3 bg-white border border-[#b5f500] cursor-ns-resize rounded-full" onMouseDown={(e) => handleStartResizeSelected(e, "t")} />
+                    <div className="absolute -bottom-1.5 left-[calc(50%-6px)] w-3 h-3 bg-white border border-[#b5f500] cursor-ns-resize rounded-full" onMouseDown={(e) => handleStartResizeSelected(e, "b")} />
+                    <div className="absolute top-[calc(50%-6px)] -left-1.5 w-3 h-3 bg-white border border-[#b5f500] cursor-ew-resize rounded-full" onMouseDown={(e) => handleStartResizeSelected(e, "l")} />
+                    <div className="absolute top-[calc(50%-6px)] -right-1.5 w-3 h-3 bg-white border border-[#b5f500] cursor-ew-resize rounded-full" onMouseDown={(e) => handleStartResizeSelected(e, "r")} />
+                  </div>
+                )}
+
+                {/* Remove Selected Button Centered at Bottom of Canvas Image */}
+                {selectedObjectId && (
+                  <button
+                    onClick={handleRemoveSelected}
+                    className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/90 hover:bg-black text-white border border-white/10 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xl z-30 transition-all pointer-events-auto select-none"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                    </svg>
+                    Remove selected
+                  </button>
+                )}
               </div>
 
               {/* Centered Drawing Toolbar */}
               <div className="mt-6 bg-[#0f0f11]/90 backdrop-blur-md border border-white/10 px-4 py-2.5 rounded-2xl flex items-center gap-3 shadow-2xl z-20 select-none">
                 {/* Pointer tool */}
                 <button
-                  onClick={() => setActiveTool("pointer")}
+                  onClick={() => {
+                    setActiveTool("pointer");
+                    setSelectedObjectId(null);
+                  }}
                   title="Selection pointer"
                   className={`p-1.5 rounded-lg transition-all ${
                     activeTool === "pointer" ? "bg-white text-black" : "text-white/60 hover:text-white"
@@ -831,7 +1103,10 @@ export default function DrawModal({
 
                 {/* Pencil tool */}
                 <button
-                  onClick={() => setActiveTool("pencil")}
+                  onClick={() => {
+                    setActiveTool("pencil");
+                    setSelectedObjectId(null);
+                  }}
                   title="Draw pencil"
                   className={`p-1.5 rounded-lg transition-all ${
                     activeTool === "pencil" ? "bg-white text-black" : "text-white/60 hover:text-white"
@@ -844,7 +1119,10 @@ export default function DrawModal({
 
                 {/* Eraser tool */}
                 <button
-                  onClick={() => setActiveTool("eraser")}
+                  onClick={() => {
+                    setActiveTool("eraser");
+                    setSelectedObjectId(null);
+                  }}
                   title="Eraser"
                   className={`p-1.5 rounded-lg transition-all ${
                     activeTool === "eraser" ? "bg-white text-black" : "text-white/60 hover:text-white"
@@ -857,7 +1135,10 @@ export default function DrawModal({
 
                 {/* Shape rect tool */}
                 <button
-                  onClick={() => setActiveTool("rect")}
+                  onClick={() => {
+                    setActiveTool("rect");
+                    setSelectedObjectId(null);
+                  }}
                   title="Rectangle shape"
                   className={`p-1.5 rounded-lg transition-all ${
                     activeTool === "rect" ? "bg-white text-black" : "text-white/60 hover:text-white"
@@ -870,7 +1151,10 @@ export default function DrawModal({
 
                 {/* Arrow tool */}
                 <button
-                  onClick={() => setActiveTool("arrow")}
+                  onClick={() => {
+                    setActiveTool("arrow");
+                    setSelectedObjectId(null);
+                  }}
                   title="Arrow shape"
                   className={`p-1.5 rounded-lg transition-all ${
                     activeTool === "arrow" ? "bg-white text-black" : "text-white/60 hover:text-white"
@@ -884,7 +1168,10 @@ export default function DrawModal({
 
                 {/* Text tool */}
                 <button
-                  onClick={() => setActiveTool("text")}
+                  onClick={() => {
+                    setActiveTool("text");
+                    setSelectedObjectId(null);
+                  }}
                   title="Text tool"
                   className={`p-1.5 rounded-lg transition-all ${
                     activeTool === "text" ? "bg-white text-black" : "text-white/60 hover:text-white"
@@ -917,7 +1204,7 @@ export default function DrawModal({
 
                 <div className="h-6 w-px bg-white/10 mx-0.5" />
 
-                {/* Inline Preset Color Selection - Highly Visible */}
+                {/* Inline Preset Color Selection */}
                 <div className="flex items-center gap-1.5 bg-[#16161a]/60 px-2 py-1 rounded-xl border border-white/5">
                   {PRESET_COLORS.map((col) => (
                     <button
@@ -984,12 +1271,11 @@ export default function DrawModal({
 
         </div>
 
-        {/* Static Footer Control Row (Resolves hidden/overlapping toolbar tools) */}
+        {/* Static Footer Control Row (Overlap Prevention) */}
         {viewState === "canvas" && (
           <div className="border-t border-white/5 p-4 shrink-0 bg-[#0f0f12] flex items-center justify-between z-20">
             {/* Left Options */}
             <div className="flex items-center gap-2">
-              {/* Model selection dropdown */}
               <div className="relative" ref={modelDropdownRef}>
                 <button
                   onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
@@ -1004,7 +1290,6 @@ export default function DrawModal({
                   <div className="absolute bottom-[calc(100%+8px)] left-0 bg-[#0f0f12] border border-white/10 rounded-2xl p-2 w-64 shadow-2xl flex flex-col gap-1 z-30">
                     <div className="text-[10px] font-black text-white/30 uppercase tracking-widest p-1.5 pb-1 select-none">Select model</div>
                     
-                    {/* Nano Banana 2 Edit */}
                     <button
                       onClick={() => {
                         setSelectedModel("nano-banana-2-edit");
@@ -1021,7 +1306,6 @@ export default function DrawModal({
                       <div className="text-[9px] text-white/30 leading-snug mt-0.5">Google's Advanced Image Editing Model</div>
                     </button>
 
-                    {/* Nano Banana Pro Edit */}
                     <button
                       onClick={() => {
                         setSelectedModel("nano-banana-pro-edit");
@@ -1064,7 +1348,7 @@ export default function DrawModal({
                 {showSettingsPopover && (
                   <div className="absolute bottom-[calc(100%+8px)] left-0 bg-[#0f0f12] border border-white/10 rounded-2xl p-3.5 w-44 shadow-2xl flex flex-col gap-2 z-30">
                     <div className="text-[10px] font-black text-white/30 uppercase tracking-widest">
-                      {selectedTextId ? "Text Size" : "Brush Size"}
+                      {selectedObj && selectedObj.type === "text" ? "Text Size" : "Brush Size"}
                     </div>
                     <input
                       type="range"
@@ -1082,7 +1366,6 @@ export default function DrawModal({
 
             {/* Right Options */}
             <div className="flex items-center gap-2">
-              {/* Aspect ratio selector */}
               <div className="relative" ref={arDropdownRef}>
                 <button
                   onClick={() => setIsArDropdownOpen(!isArDropdownOpen)}
@@ -1116,7 +1399,6 @@ export default function DrawModal({
                 )}
               </div>
 
-              {/* Clear Canvas */}
               <button
                 onClick={handleClearCanvas}
                 title="Clear drawings"
@@ -1128,9 +1410,8 @@ export default function DrawModal({
                 </svg>
               </button>
 
-              {/* Info Tooltip */}
               <button
-                onClick={() => alert("Draw to Edit: paint directly over an image, insert overlays, or write dynamic text, then generate output variations using Nano Banana.")}
+                onClick={() => alert("Draw to Edit: paint directly over an image, insert overlay image/text objects, drag/resize elements, or select and delete specific components.")}
                 title="Info"
                 className="h-[38px] w-[38px] flex items-center justify-center bg-[#131316]/80 hover:bg-[#1c1c22] rounded-xl border border-white/5 text-white/60 shadow-xl transition-all"
               >
