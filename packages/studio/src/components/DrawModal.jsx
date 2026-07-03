@@ -15,6 +15,7 @@ export default function DrawModal({
   const [selectedModel, setSelectedModel] = useState("nano-banana-pro-edit"); // 'nano-banana-2-edit' | 'nano-banana-pro-edit'
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [isArDropdownOpen, setIsArDropdownOpen] = useState(false);
+  const [canvasDimensions, setCanvasDimensions] = useState({ width: 800, height: 450 });
 
   // Drawing Tools
   const [activeTool, setActiveTool] = useState("pencil"); // 'pointer' | 'pencil' | 'eraser' | 'rect' | 'arrow' | 'text'
@@ -161,6 +162,7 @@ export default function DrawModal({
     drawingState.current.history = [];
     drawingState.current.historyIdx = -1;
     saveCanvasState();
+    setCanvasDimensions({ width, height });
   }, [viewState, aspectRatio, bgImage]);
 
   // Drawing Event Handlers
@@ -482,8 +484,8 @@ export default function DrawModal({
               <div
                 className="relative border border-white/10 shadow-2xl rounded-lg overflow-hidden bg-white max-w-full max-h-[60vh] flex items-center justify-center"
                 style={{
-                  width: canvasRef.current ? canvasRef.current.width : "800px",
-                  height: canvasRef.current ? canvasRef.current.height : "450px",
+                  width: `${canvasDimensions.width}px`,
+                  height: `${canvasDimensions.height}px`,
                 }}
               >
                 {/* Background Image/White Color Layer */}
