@@ -629,10 +629,13 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
             </div>
           ) : (
             history.map((item, idx) => (
-              <button
+              <div
                 key={item.ts}
+                role="button"
+                tabIndex={0}
                 onClick={() => setSelectedHistoryIdx(idx)}
-                className={`group relative w-full aspect-[3/4] rounded-xl overflow-hidden border transition-all ${
+                onKeyDown={(e) => e.key === "Enter" && setSelectedHistoryIdx(idx)}
+                className={`group relative w-full aspect-[3/4] rounded-xl overflow-hidden border transition-all cursor-pointer ${
                   selectedHistoryIdx === idx
                     ? "border-violet-500 ring-1 ring-violet-500/40"
                     : "border-white/[0.08] hover:border-white/20"
@@ -641,18 +644,21 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
                 <img src={item.url} alt={`Character ${idx + 1}`} className="w-full h-full object-cover" />
                 {/* Download on hover */}
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-2">
-                  <button
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={(e) => { e.stopPropagation(); downloadImg(item.url); }}
-                    className="p-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 transition-all"
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); downloadImg(item.url); } }}
+                    className="p-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 transition-all cursor-pointer"
                   >
                     <DownloadIcon />
-                  </button>
+                  </div>
                 </div>
                 {/* Index badge */}
                 <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[8px] text-gray-300 font-bold">
                   #{history.length - idx}
                 </div>
-              </button>
+              </div>
             ))
           )}
         </div>
