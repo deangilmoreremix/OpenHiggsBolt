@@ -5,6 +5,9 @@ import { generateImage } from "../muapi.js";
 
 const CDN = "https://cdn.muapi.ai/influencer";
 
+// ── Default image generation model ──────────────────────────────────────────
+const INFLUENCER_MODEL = "nano-banana-pro";
+
 const TABS_CONFIG = {
   face: {
     label: "Face",
@@ -43,12 +46,12 @@ const TABS_CONFIG = {
         id: "ethnicity_origin_base",
         label: "Ethnicity / Origin",
         options: [
-          { id: "african",       label: "African",       img: `${CDN}/ethnicity_origin_base_african.webp`,                                          promptVal: "african heritage" },
-          { id: "asian",         label: "Asian",         img: `${CDN}/ethnicity_origin_base_recreate_in_east_asian_supermodel__korea.webp`,          promptVal: "East Asian supermodel, Korean K-Pop Idol phenotype" },
-          { id: "european",      label: "European",      img: `${CDN}/ethnicity_origin_base_scandinavian_supermodel.webp`,                           promptVal: "Scandinavian Supermodel" },
-          { id: "indian",        label: "Indian",        img: `${CDN}/ethnicity_origin_base_indian.webp`,                                            promptVal: "south asian indian heritage" },
-          { id: "middle_eastern",label: "Middle Eastern",img: `${CDN}/ethnicity_origin_base_middle_eastern.webp`,                                    promptVal: "middle eastern heritage" },
-          { id: "mixed",         label: "Mixed",         img: `${CDN}/ethnicity_origin_base_mixed.webp`,                                             promptVal: "multiracial mixed heritage" },
+          { id: "african",        label: "African",       img: `${CDN}/ethnicity_origin_base_african.webp`,                                  promptVal: "african heritage" },
+          { id: "asian",          label: "Asian",         img: `${CDN}/ethnicity_origin_base_recreate_in_east_asian_supermodel__korea.webp`, promptVal: "East Asian supermodel, Korean K-Pop Idol phenotype" },
+          { id: "european",       label: "European",      img: `${CDN}/ethnicity_origin_base_scandinavian_supermodel.webp`,                  promptVal: "Scandinavian Supermodel" },
+          { id: "indian",         label: "Indian",        img: `${CDN}/ethnicity_origin_base_indian.webp`,                                   promptVal: "south asian indian heritage" },
+          { id: "middle_eastern", label: "Middle Eastern",img: `${CDN}/ethnicity_origin_base_middle_eastern.webp`,                           promptVal: "middle eastern heritage" },
+          { id: "mixed",          label: "Mixed",         img: `${CDN}/ethnicity_origin_base_mixed.webp`,                                    promptVal: "multiracial mixed heritage" },
         ],
       },
       {
@@ -117,27 +120,26 @@ const TABS_CONFIG = {
         options: [
           { id: "small_horns", label: "Small Horns", img: `${CDN}/horns_small_horns.webp`, promptVal: "small horns on forehead" },
           { id: "big_horns",   label: "Big Horns",   img: `${CDN}/horns_big_horns.webp`,   promptVal: "large curved horns" },
-          { id: "antlers",     label: "Antlers",     img: `${CDN}/horns_antlers.webp`,      promptVal: "deer antlers on head" },
+          { id: "antlers",     label: "Antlers",      img: `${CDN}/horns_antlers.webp`,      promptVal: "deer antlers on head" },
         ],
       },
       {
         id: "skin_conditions",
         label: "Skin Conditions",
         options: [
-          { id: "condition_vitiligo",    label: "Vitiligo",     img: `${CDN}/skin_conditions_condition_vitiligo.webp`,    promptVal: "vitiligo skin condition" },
-          { id: "condition_pigmentation",label: "Pigmentation", img: `${CDN}/skin_conditions_condition_pigmentation.webp`,promptVal: "hyperpigmentation" },
-          { id: "condition_freckles",    label: "Freckles",     img: `${CDN}/skin_conditions_condition_freckles.webp`,    promptVal: "freckled skin" },
-          { id: "condition_birthmarks",  label: "Birthmarks",   img: `${CDN}/skin_conditions_condition_birthmarks.webp`,  promptVal: "visible birthmarks" },
-          { id: "condition_scars",       label: "Scars",        img: `${CDN}/skin_conditions_condition_scars.webp`,       promptVal: "scarred skin" },
-          { id: "condition_burns",       label: "Burns",        img: `${CDN}/skin_conditions_condition_burns.webp`,       promptVal: "burn marks on skin" },
-          { id: "condition_albinism",    label: "Albinism",     img: `${CDN}/skin_conditions_condition_albinism.webp`,    promptVal: "albinism pale white skin" },
-          { id: "condition_cracked",     label: "Cracked Skin", img: `${CDN}/skin_conditions_condition_cracked.webp`,     promptVal: "cracked dry skin texture" },
-          { id: "condition_wrinkled",    label: "Wrinkled",     img: `${CDN}/skin_conditions_condition_wrinkled.webp`,    promptVal: "wrinkled aged skin" },
+          { id: "condition_vitiligo",     label: "Vitiligo",     img: `${CDN}/skin_conditions_condition_vitiligo.webp`,     promptVal: "vitiligo skin condition" },
+          { id: "condition_pigmentation", label: "Pigmentation", img: `${CDN}/skin_conditions_condition_pigmentation.webp`, promptVal: "hyperpigmentation" },
+          { id: "condition_freckles",     label: "Freckles",     img: `${CDN}/skin_conditions_condition_freckles.webp`,     promptVal: "freckled skin" },
+          { id: "condition_birthmarks",   label: "Birthmarks",   img: `${CDN}/skin_conditions_condition_birthmarks.webp`,   promptVal: "visible birthmarks" },
+          { id: "condition_scars",        label: "Scars",        img: `${CDN}/skin_conditions_condition_scars.webp`,        promptVal: "scarred skin" },
+          { id: "condition_burns",        label: "Burns",        img: `${CDN}/skin_conditions_condition_burns.webp`,        promptVal: "burn marks on skin" },
+          { id: "condition_albinism",     label: "Albinism",     img: `${CDN}/skin_conditions_condition_albinism.webp`,     promptVal: "albinism pale white skin" },
+          { id: "condition_cracked",      label: "Cracked Skin", img: `${CDN}/skin_conditions_condition_cracked.webp`,      promptVal: "cracked dry skin texture" },
+          { id: "condition_wrinkled",     label: "Wrinkled",     img: `${CDN}/skin_conditions_condition_wrinkled.webp`,     promptVal: "wrinkled aged skin" },
         ],
       },
     ],
   },
-
   body: {
     label: "Body",
     subcategories: [
@@ -145,25 +147,25 @@ const TABS_CONFIG = {
         id: "face_skin_material",
         label: "Face Skin Material",
         options: [
-          { id: "face_skin_human",     label: "Human Skin",   img: `${CDN}/face_skin_material_face_skin_human.webp`,     promptVal: "smooth human skin" },
-          { id: "face_skin_scales",    label: "Scales",       img: `${CDN}/face_skin_material_face_skin_scales.webp`,    promptVal: "shimmering scales" },
-          { id: "face_skin_fur",       label: "Fur",          img: `${CDN}/face_skin_material_face_skin_fur.webp`,       promptVal: "soft fur covered face" },
-          { id: "face_skin_amphibian", label: "Amphibian",    img: `${CDN}/face_skin_material_face_skin_amphibian.webp`, promptVal: "smooth moist amphibian skin" },
-          { id: "face_skin_fish",      label: "Fish Skin",    img: `${CDN}/face_skin_material_face_skin_fish.webp`,      promptVal: "iridescent fish scale skin" },
-          { id: "face_skin_metallic",  label: "Metallic",     img: `${CDN}/face_skin_material_face_skin_metallic.webp`,  promptVal: "polished metallic skin" },
+          { id: "face_skin_human",     label: "Human Skin",  img: `${CDN}/face_skin_material_face_skin_human.webp`,     promptVal: "smooth human skin" },
+          { id: "face_skin_scales",    label: "Scales",      img: `${CDN}/face_skin_material_face_skin_scales.webp`,    promptVal: "shimmering scales" },
+          { id: "face_skin_fur",       label: "Fur",         img: `${CDN}/face_skin_material_face_skin_fur.webp`,       promptVal: "soft fur covered face" },
+          { id: "face_skin_amphibian", label: "Amphibian",   img: `${CDN}/face_skin_material_face_skin_amphibian.webp`, promptVal: "smooth moist amphibian skin" },
+          { id: "face_skin_fish",      label: "Fish Skin",   img: `${CDN}/face_skin_material_face_skin_fish.webp`,      promptVal: "iridescent fish scale skin" },
+          { id: "face_skin_metallic",  label: "Metallic",    img: `${CDN}/face_skin_material_face_skin_metallic.webp`,  promptVal: "polished metallic skin" },
         ],
       },
       {
         id: "face_surface_pattern",
         label: "Skin Pattern",
         options: [
-          { id: "face_pattern_solid",    label: "Solid Color",    img: `${CDN}/face_surface_pattern_face_pattern_solid.webp`,    promptVal: "solid color skin" },
+          { id: "face_pattern_solid",    label: "Solid",          img: `${CDN}/face_surface_pattern_face_pattern_solid.webp`,    promptVal: "solid color skin" },
           { id: "face_pattern_stripes",  label: "Stripes",        img: `${CDN}/face_surface_pattern_face_pattern_stripes.webp`,  promptVal: "exotic striped skin pattern" },
           { id: "face_pattern_spots",    label: "Spots",          img: `${CDN}/face_surface_pattern_face_pattern_spots.webp`,    promptVal: "dappled spotted skin" },
-          { id: "face_pattern_chess",    label: "Chess Pattern",  img: `${CDN}/face_surface_pattern_face_pattern_chess.webp`,    promptVal: "checkerboard skin pattern" },
-          { id: "face_pattern_veins",    label: "Veins Visible",  img: `${CDN}/face_surface_pattern_face_pattern_veins.webp`,    promptVal: "translucent skin with neon veins" },
+          { id: "face_pattern_chess",    label: "Chess",          img: `${CDN}/face_surface_pattern_face_pattern_chess.webp`,    promptVal: "checkerboard skin pattern" },
+          { id: "face_pattern_veins",    label: "Veins",          img: `${CDN}/face_surface_pattern_face_pattern_veins.webp`,    promptVal: "translucent skin with neon veins" },
           { id: "face_pattern_gradient", label: "Gradient",       img: `${CDN}/face_surface_pattern_face_pattern_gradient.webp`, promptVal: "gradient skin coloring" },
-          { id: "face_pattern_giraffe",  label: "Giraffe Pattern",img: `${CDN}/face_surface_pattern_face_pattern_giraffe.webp`,  promptVal: "giraffe print skin markings" },
+          { id: "face_pattern_giraffe",  label: "Giraffe",        img: `${CDN}/face_surface_pattern_face_pattern_giraffe.webp`,  promptVal: "giraffe print skin markings" },
         ],
       },
       {
@@ -183,53 +185,52 @@ const TABS_CONFIG = {
         id: "left_arm",
         label: "Left Arm",
         options: [
-          { id: "left_arm_normal",      label: "Normal",          img: `${CDN}/left_arm_left_arm_normal.webp`,                             promptVal: "normal left arm" },
-          { id: "left_arm_cute",        label: "Cute Prosthetic", img: `${CDN}/left_arm_make_left_arm_stylish_pink_prosthetic_wi.webp`,    promptVal: "stylish pink prosthetic left arm with cute stickers" },
-          { id: "left_arm_robotic",     label: "Robotic",         img: `${CDN}/left_arm_left_arm_robotic.webp`,                           promptVal: "robotic left arm" },
-          { id: "left_arm_prosthetic",  label: "Prosthetic",      img: `${CDN}/left_arm_left_arm_prosthetic.webp`,                        promptVal: "prosthetic left arm" },
-          { id: "left_arm_mechanical",  label: "Mechanical",      img: `${CDN}/left_arm_left_arm_mechanical.webp`,                        promptVal: "mechanical left arm" },
-          { id: "left_arm_none",        label: "None",            img: `${CDN}/left_arm_left_arm_none.webp`,                              promptVal: "no left arm" },
+          { id: "left_arm_normal",     label: "Normal",         img: `${CDN}/left_arm_left_arm_normal.webp`,                          promptVal: "normal left arm" },
+          { id: "left_arm_cute",       label: "Cute Prosthetic",img: `${CDN}/left_arm_make_left_arm_stylish_pink_prosthetic_wi.webp`, promptVal: "stylish pink prosthetic left arm with cute stickers" },
+          { id: "left_arm_robotic",    label: "Robotic",        img: `${CDN}/left_arm_left_arm_robotic.webp`,                         promptVal: "robotic left arm" },
+          { id: "left_arm_prosthetic", label: "Prosthetic",     img: `${CDN}/left_arm_left_arm_prosthetic.webp`,                      promptVal: "prosthetic left arm" },
+          { id: "left_arm_mechanical", label: "Mechanical",     img: `${CDN}/left_arm_left_arm_mechanical.webp`,                      promptVal: "mechanical left arm" },
+          { id: "left_arm_none",       label: "None",           img: `${CDN}/left_arm_left_arm_none.webp`,                            promptVal: "no left arm" },
         ],
       },
       {
         id: "right_arm",
         label: "Right Arm",
         options: [
-          { id: "right_arm_normal",     label: "Normal",          img: `${CDN}/right_arm_right_arm_normal.webp`,                          promptVal: "normal right arm" },
-          { id: "right_arm_cute",       label: "Cute Prosthetic", img: `${CDN}/right_arm_make_right_arm_stylish_pink_prosthetic_w.webp`,  promptVal: "stylish pink prosthetic right arm with cute stickers" },
-          { id: "right_arm_robotic",    label: "Robotic",         img: `${CDN}/right_arm_right_arm_robotic.webp`,                         promptVal: "robotic right arm" },
-          { id: "right_arm_prosthetic", label: "Prosthetic",      img: `${CDN}/right_arm_right_arm_prosthetic.webp`,                      promptVal: "prosthetic right arm" },
-          { id: "right_arm_mechanical", label: "Mechanical",      img: `${CDN}/right_arm_right_arm_mechanical.webp`,                      promptVal: "mechanical right arm" },
-          { id: "right_arm_none",       label: "None",            img: `${CDN}/right_arm_right_arm_none.webp`,                            promptVal: "no right arm" },
+          { id: "right_arm_normal",     label: "Normal",         img: `${CDN}/right_arm_right_arm_normal.webp`,                          promptVal: "normal right arm" },
+          { id: "right_arm_cute",       label: "Cute Prosthetic",img: `${CDN}/right_arm_make_right_arm_stylish_pink_prosthetic_w.webp`, promptVal: "stylish pink prosthetic right arm with cute stickers" },
+          { id: "right_arm_robotic",    label: "Robotic",        img: `${CDN}/right_arm_right_arm_robotic.webp`,                         promptVal: "robotic right arm" },
+          { id: "right_arm_prosthetic", label: "Prosthetic",     img: `${CDN}/right_arm_right_arm_prosthetic.webp`,                      promptVal: "prosthetic right arm" },
+          { id: "right_arm_mechanical", label: "Mechanical",     img: `${CDN}/right_arm_right_arm_mechanical.webp`,                      promptVal: "mechanical right arm" },
+          { id: "right_arm_none",       label: "None",           img: `${CDN}/right_arm_right_arm_none.webp`,                            promptVal: "no right arm" },
         ],
       },
       {
         id: "left_leg",
         label: "Left Leg",
         options: [
-          { id: "left_leg_normal",     label: "Normal",          img: `${CDN}/left_leg_left_leg_normal.webp`,                           promptVal: "normal left leg" },
-          { id: "left_leg_cute",       label: "Cute Prosthetic", img: `${CDN}/left_leg_make_left_leg_stylish_pink_prosthetic_wi.webp`,  promptVal: "stylish pink prosthetic left leg with cute stickers" },
-          { id: "left_leg_robotic",    label: "Robotic",         img: `${CDN}/left_leg_left_leg_robotic.webp`,                          promptVal: "robotic left leg" },
-          { id: "left_leg_prosthetic", label: "Prosthetic",      img: `${CDN}/left_leg_left_leg_prosthetic.webp`,                       promptVal: "prosthetic left leg" },
-          { id: "left_leg_mechanical", label: "Mechanical",      img: `${CDN}/left_leg_left_leg_mechanical.webp`,                       promptVal: "mechanical left leg" },
-          { id: "left_leg_none",       label: "None",            img: `${CDN}/left_leg_left_leg_none.webp`,                             promptVal: "no left leg" },
+          { id: "left_leg_normal",     label: "Normal",         img: `${CDN}/left_leg_left_leg_normal.webp`,                          promptVal: "normal left leg" },
+          { id: "left_leg_cute",       label: "Cute Prosthetic",img: `${CDN}/left_leg_make_left_leg_stylish_pink_prosthetic_wi.webp`, promptVal: "stylish pink prosthetic left leg with cute stickers" },
+          { id: "left_leg_robotic",    label: "Robotic",        img: `${CDN}/left_leg_left_leg_robotic.webp`,                         promptVal: "robotic left leg" },
+          { id: "left_leg_prosthetic", label: "Prosthetic",     img: `${CDN}/left_leg_left_leg_prosthetic.webp`,                      promptVal: "prosthetic left leg" },
+          { id: "left_leg_mechanical", label: "Mechanical",     img: `${CDN}/left_leg_left_leg_mechanical.webp`,                      promptVal: "mechanical left leg" },
+          { id: "left_leg_none",       label: "None",           img: `${CDN}/left_leg_left_leg_none.webp`,                            promptVal: "no left leg" },
         ],
       },
       {
         id: "right_leg",
         label: "Right Leg",
         options: [
-          { id: "right_leg_normal",     label: "Normal",          img: `${CDN}/right_leg_right_leg_normal.webp`,                         promptVal: "normal right leg" },
-          { id: "right_leg_cute",       label: "Cute Prosthetic", img: `${CDN}/right_leg_make_right_leg_stylish_pink_prosthetic_w.webp`, promptVal: "stylish pink prosthetic right leg with cute stickers" },
-          { id: "right_leg_robotic",    label: "Robotic",         img: `${CDN}/right_leg_right_leg_robotic.webp`,                        promptVal: "robotic right leg" },
-          { id: "right_leg_prosthetic", label: "Prosthetic",      img: `${CDN}/right_leg_right_leg_prosthetic.webp`,                     promptVal: "prosthetic right leg" },
-          { id: "right_leg_mechanical", label: "Mechanical",      img: `${CDN}/right_leg_right_leg_mechanical.webp`,                     promptVal: "mechanical right leg" },
-          { id: "right_leg_none",       label: "None",            img: `${CDN}/right_leg_right_leg_none.webp`,                           promptVal: "no right leg" },
+          { id: "right_leg_normal",     label: "Normal",         img: `${CDN}/right_leg_right_leg_normal.webp`,                         promptVal: "normal right leg" },
+          { id: "right_leg_cute",       label: "Cute Prosthetic",img: `${CDN}/right_leg_make_right_leg_stylish_pink_prosthetic_w.webp`, promptVal: "stylish pink prosthetic right leg with cute stickers" },
+          { id: "right_leg_robotic",    label: "Robotic",        img: `${CDN}/right_leg_right_leg_robotic.webp`,                        promptVal: "robotic right leg" },
+          { id: "right_leg_prosthetic", label: "Prosthetic",     img: `${CDN}/right_leg_right_leg_prosthetic.webp`,                     promptVal: "prosthetic right leg" },
+          { id: "right_leg_mechanical", label: "Mechanical",     img: `${CDN}/right_leg_right_leg_mechanical.webp`,                     promptVal: "mechanical right leg" },
+          { id: "right_leg_none",       label: "None",           img: `${CDN}/right_leg_right_leg_none.webp`,                           promptVal: "no right leg" },
         ],
       },
     ],
   },
-
   style: {
     label: "Style",
     subcategories: [
@@ -237,193 +238,279 @@ const TABS_CONFIG = {
         id: "hair",
         label: "Hair / Head Growth",
         options: [
-          { id: "hair_bald",      label: "Bald",          img: `${CDN}/hair_hair_bald.webp`,      promptVal: "bald head" },
-          { id: "hair_short",     label: "Short Hair",    img: `${CDN}/hair_hair_short.webp`,     promptVal: "short hair" },
-          { id: "hair_long",      label: "Long Hair",     img: `${CDN}/hair_hair_long.webp`,      promptVal: "long flowing hair" },
-          { id: "hair_afro",      label: "Afro",          img: `${CDN}/hair_hair_afro.webp`,      promptVal: "afro hairstyle" },
-          { id: "hair_punk",      label: "Punk",          img: `${CDN}/hair_hair_punk.webp`,      promptVal: "punk mohawk hairstyle" },
-          { id: "hair_fur",       label: "Fur / Mane",    img: `${CDN}/hair_hair_fur.webp`,       promptVal: "fur mane on head" },
-          { id: "hair_tentacles", label: "Tentacles",     img: `${CDN}/hair_hair_tentacles.webp`, promptVal: "tentacles as hair" },
-          { id: "hair_spines",    label: "Spines",        img: `${CDN}/hair_hair_spines.webp`,    promptVal: "spines as hair" },
+          { id: "hair_bald",      label: "Bald",       img: `${CDN}/hair_hair_bald.webp`,      promptVal: "bald head" },
+          { id: "hair_short",     label: "Short Hair", img: `${CDN}/hair_hair_short.webp`,     promptVal: "short hair" },
+          { id: "hair_long",      label: "Long Hair",  img: `${CDN}/hair_hair_long.webp`,      promptVal: "long flowing hair" },
+          { id: "hair_afro",      label: "Afro",       img: `${CDN}/hair_hair_afro.webp`,      promptVal: "afro hairstyle" },
+          { id: "hair_punk",      label: "Punk",       img: `${CDN}/hair_hair_punk.webp`,      promptVal: "punk mohawk hairstyle" },
+          { id: "hair_fur",       label: "Fur / Mane", img: `${CDN}/hair_hair_fur.webp`,       promptVal: "fur mane on head" },
+          { id: "hair_tentacles", label: "Tentacles",  img: `${CDN}/hair_hair_tentacles.webp`, promptVal: "tentacles as hair" },
+          { id: "hair_spines",    label: "Spines",     img: `${CDN}/hair_hair_spines.webp`,    promptVal: "spines as hair" },
         ],
       },
       {
         id: "accessories",
         label: "Accessories & Markings",
         options: [
-          { id: "accessory_tattoos",        label: "Tattoos",             img: `${CDN}/accessories_accessory_tattoos.webp`,        promptVal: "covered in tattoos" },
-          { id: "accessory_piercing",       label: "Piercings",           img: `${CDN}/accessories_accessory_piercing.webp`,       promptVal: "multiple piercings" },
-          { id: "accessory_scarification",  label: "Scarification",       img: `${CDN}/accessories_accessory_scarification.webp`,  promptVal: "ritual scarification marks" },
-          { id: "accessory_symbols",        label: "Symbols / Markings",  img: `${CDN}/accessories_accessory_symbols.webp`,        promptVal: "symbolic tribal markings" },
-          { id: "accessory_cyber",          label: "Cyber Markings",      img: `${CDN}/accessories_accessory_cyber.webp`,          promptVal: "cyberpunk circuit markings" },
+          { id: "accessory_tattoos",       label: "Tattoos",            img: `${CDN}/accessories_accessory_tattoos.webp`,       promptVal: "covered in tattoos" },
+          { id: "accessory_piercing",      label: "Piercings",          img: `${CDN}/accessories_accessory_piercing.webp`,      promptVal: "multiple piercings" },
+          { id: "accessory_scarification", label: "Scarification",      img: `${CDN}/accessories_accessory_scarification.webp`, promptVal: "ritual scarification marks" },
+          { id: "accessory_symbols",       label: "Symbols / Markings", img: `${CDN}/accessories_accessory_symbols.webp`,       promptVal: "symbolic tribal markings" },
+          { id: "accessory_cyber",         label: "Cyber Markings",     img: `${CDN}/accessories_accessory_cyber.webp`,         promptVal: "cyberpunk circuit markings" },
         ],
       },
       {
         id: "rendering_style",
         label: "Rendering Style",
         options: [
-          { id: "style_hyper_realistic", label: "Hyper-Realistic",  img: `${CDN}/character_type_human.webp`, promptVal: "hyper-realistic 8k photograph" },
-          { id: "style_anime",           label: "Anime",            img: `${CDN}/character_type_elf.webp`,   promptVal: "anime art style" },
-          { id: "style_cartoon",         label: "Cartoon",          img: `${CDN}/character_type_mantis.webp`,promptVal: "cartoon illustration style" },
-          { id: "style_2d_illustration", label: "2D Illustration",  img: `${CDN}/character_type_alien.webp`, promptVal: "2D flat illustration style" },
+          { id: "style_hyper_realistic", label: "Hyper-Realistic", img: `${CDN}/character_type_human.webp`,  promptVal: "hyper-realistic 8k photograph" },
+          { id: "style_anime",           label: "Anime",           img: `${CDN}/character_type_elf.webp`,    promptVal: "anime art style" },
+          { id: "style_cartoon",         label: "Cartoon",         img: `${CDN}/character_type_mantis.webp`, promptVal: "cartoon illustration style" },
+          { id: "style_2d",              label: "2D Illustration", img: `${CDN}/character_type_alien.webp`,  promptVal: "2D flat illustration style" },
         ],
       },
     ],
   },
 };
 
-// ─── Reusable icon components ──────────────────────────────────────────────────
-const IconShuffle = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="16 3 21 3 21 8" />
-    <line x1="4" y1="20" x2="21" y2="3" />
-    <polyline points="21 16 21 21 16 21" />
-    <line x1="15" y1="15" x2="21" y2="21" />
+// ─── SVG Icon Components ────────────────────────────────────────────────────
+const ShuffleIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="16 3 21 3 21 8" /><line x1="4" y1="20" x2="21" y2="3" />
+    <polyline points="21 16 21 21 16 21" /><line x1="15" y1="15" x2="21" y2="21" />
   </svg>
 );
-
-const IconBolt = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+const BoltIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M13 10V3L4 14h7v7l9-11h-7z" />
   </svg>
 );
-
-const IconSpinner = () => (
-  <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-    <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity="0.25" />
-    <path d="M21 12a9 9 0 00-9-9" />
-  </svg>
-);
-
-const IconCheck = () => (
-  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+const CheckIcon = () => (
+  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="20 6 9 17 4 12" />
   </svg>
 );
-
-const IconStar = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7z" />
+const DownloadIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
   </svg>
 );
 
-const IconImage = () => (
-  <svg className="w-11 h-11 opacity-30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-    <circle cx="8.5" cy="8.5" r="1.5" />
-    <polyline points="21 15 16 10 5 21" />
-  </svg>
-);
-
-// ─── Main Component ────────────────────────────────────────────────────────────
-export default function AiInfluencerStudio({ onGenerate, isGenerating: externalIsGenerating }) {
+// ─── Main Component ─────────────────────────────────────────────────────────
+export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: externalIsGenerating }) {
   const [activeTab, setActiveTab] = useState("face");
 
   const [selectedOptions, setSelectedOptions] = useState(() => {
-    const initial = {};
-    Object.keys(TABS_CONFIG).forEach((tabKey) => {
-      TABS_CONFIG[tabKey].subcategories.forEach((sub) => {
-        if (sub.options?.length > 0) initial[sub.id] = sub.options[0].id;
-      });
-    });
-    return initial;
+    const init = {};
+    Object.values(TABS_CONFIG).forEach((tab) =>
+      tab.subcategories.forEach((sub) => {
+        if (sub.options?.length > 0) init[sub.id] = sub.options[0].id;
+      })
+    );
+    return init;
   });
 
   const [aspectRatio, setAspectRatio] = useState("3:4");
-  const [customPromptText, setCustomPromptText] = useState("");
+  const [customPrompt, setCustomPrompt] = useState("");
   const [isGeneratingInternal, setIsGeneratingInternal] = useState(false);
-  const [generationResult, setGenerationResult] = useState(null);
+  const [currentResult, setCurrentResult] = useState(null);   // latest generated image
+  const [history, setHistory] = useState([]);                  // all generated images
+  const [selectedHistoryIdx, setSelectedHistoryIdx] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
 
   const isGenerating = externalIsGenerating || isGeneratingInternal;
 
+  // ── Build prompt from selections ──────────────────────────────────────────
   const buildPrompt = useCallback(() => {
     const parts = [];
-    Object.keys(TABS_CONFIG).forEach((tabKey) => {
-      TABS_CONFIG[tabKey].subcategories.forEach((sub) => {
+    Object.values(TABS_CONFIG).forEach((tab) =>
+      tab.subcategories.forEach((sub) => {
         const opt = sub.options.find((o) => o.id === selectedOptions[sub.id]);
         if (opt?.promptVal) parts.push(opt.promptVal);
-      });
-    });
+      })
+    );
     let prompt = "Ultra-realistic professional portrait photograph of an AI influencer character, 8k resolution, cinematic lighting, sharp detail";
     if (parts.length) prompt += ", " + parts.join(", ");
-    if (customPromptText.trim()) prompt += ", " + customPromptText.trim();
+    if (customPrompt.trim()) prompt += ", " + customPrompt.trim();
     return prompt;
-  }, [selectedOptions, customPromptText]);
+  }, [selectedOptions, customPrompt]);
 
-  const handleOptionSelect = (subcatId, optionId) =>
-    setSelectedOptions((prev) => ({ ...prev, [subcatId]: optionId }));
+  // ── Option selection ───────────────────────────────────────────────────────
+  const handleOptionSelect = (subcatId, optId) =>
+    setSelectedOptions((p) => ({ ...p, [subcatId]: optId }));
 
+  // ── Shuffle all options randomly ───────────────────────────────────────────
   const handleShuffle = () => {
     const next = {};
-    Object.keys(TABS_CONFIG).forEach((tabKey) => {
-      TABS_CONFIG[tabKey].subcategories.forEach((sub) => {
+    Object.values(TABS_CONFIG).forEach((tab) =>
+      tab.subcategories.forEach((sub) => {
         if (sub.options?.length > 0)
           next[sub.id] = sub.options[Math.floor(Math.random() * sub.options.length)].id;
-      });
-    });
+      })
+    );
     setSelectedOptions(next);
   };
 
+  // ── Generate ──────────────────────────────────────────────────────────────
   const handleGenerate = async () => {
     if (isGenerating) return;
     setIsGeneratingInternal(true);
     setErrorMsg("");
-    setGenerationResult(null);
+
     const prompt = buildPrompt();
     try {
+      let res;
       if (onGenerate) {
-        await onGenerate({ prompt, aspectRatio, selections: selectedOptions });
+        res = await onGenerate({ prompt, aspectRatio, selections: selectedOptions });
       } else {
-        const res = await generateImage({ prompt, aspect_ratio: aspectRatio });
-        setGenerationResult(res);
+        res = await generateImage(apiKey, {
+          model: INFLUENCER_MODEL,
+          prompt,
+          aspect_ratio: aspectRatio,
+        });
+      }
+      if (res?.url) {
+        setCurrentResult(res.url);
+        setHistory((prev) => [{ url: res.url, ts: Date.now() }, ...prev]);
+        setSelectedHistoryIdx(0);
       }
     } catch (err) {
-      setErrorMsg(err?.message || "Failed to generate character image");
+      setErrorMsg(err?.message || "Generation failed. Please try again.");
     } finally {
       setIsGeneratingInternal(false);
     }
   };
 
-  const arStyle = { "3:4": "3/4", "1:1": "1/1", "9:16": "9/16", "16:9": "16/9" }[aspectRatio] ?? "3/4";
+  // ── Download helper ───────────────────────────────────────────────────────
+  const downloadImg = async (url) => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `ai-influencer-${Date.now()}.webp`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      window.open(url, "_blank");
+    }
+  };
+
+  // Preview image = selected history or current result
+  const previewUrl =
+    selectedHistoryIdx !== null && history[selectedHistoryIdx]
+      ? history[selectedHistoryIdx].url
+      : currentResult;
+
+  const arMap = { "3:4": "3/4", "1:1": "1/1", "9:16": "9/16", "16:9": "16/9" };
 
   return (
-    <div className="flex flex-col h-full bg-[#0F1117] text-white overflow-hidden select-none font-sans">
+    <div className="flex h-full bg-[#0a0a0a] text-white overflow-hidden select-none font-sans">
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header className="flex items-center justify-between px-6 py-3 border-b border-white/[0.07] bg-[#141722]/90 backdrop-blur-md shrink-0">
-        {/* Brand */}
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-violet-600/30">
-            <IconStar />
-          </div>
-          <div>
-            <p className="text-[15px] font-bold tracking-tight text-white leading-none">AI Influencer Studio</p>
-            <p className="text-[11px] text-gray-500 mt-0.5">Design a unique AI character with fine-grained controls</p>
-          </div>
+      {/* ════════════════════════════════════════════════════════════
+          LEFT — Builder / Options Panel
+      ════════════════════════════════════════════════════════════ */}
+      <div className="flex flex-col w-[320px] shrink-0 border-r border-white/[0.07] bg-[#111111] overflow-hidden">
+
+        {/* Builder header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.07] shrink-0">
+          <span className="text-[13px] font-bold text-white tracking-tight">Builder</span>
+          <button
+            onClick={() => setSelectedOptions((() => {
+              const init = {};
+              Object.values(TABS_CONFIG).forEach((tab) =>
+                tab.subcategories.forEach((sub) => {
+                  if (sub.options?.length > 0) init[sub.id] = sub.options[0].id;
+                })
+              );
+              return init;
+            })())}
+            className="text-[11px] text-gray-500 hover:text-white transition-colors font-medium"
+          >
+            Reset
+          </button>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2.5">
-          {/* Shuffle */}
-          <button
-            onClick={handleShuffle}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/[0.05] border border-white/10 text-violet-400 text-[13px] font-semibold hover:bg-white/10 transition-colors"
-          >
-            <IconShuffle />
-            Shuffle
-          </button>
+        {/* Tab pills */}
+        <div className="flex gap-1 px-3 py-2 border-b border-white/[0.07] shrink-0">
+          {Object.keys(TABS_CONFIG).map((key) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={`flex-1 py-1.5 rounded-lg text-[12px] font-semibold transition-all ${
+                activeTab === key
+                  ? "bg-white text-black shadow"
+                  : "text-gray-500 hover:text-white hover:bg-white/[0.06]"
+              }`}
+            >
+              {TABS_CONFIG[key].label}
+            </button>
+          ))}
+        </div>
 
-          {/* Aspect Ratio */}
-          <div className="flex gap-0.5 bg-white/[0.05] border border-white/10 rounded-xl p-1">
+        {/* Subcategory options scroll area */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-5">
+          {TABS_CONFIG[activeTab]?.subcategories?.map((subcat) => (
+            <div key={subcat.id}>
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 px-0.5">
+                {subcat.label}
+              </p>
+              <div className="grid grid-cols-3 gap-1.5">
+                {subcat.options?.map((opt) => {
+                  const sel = selectedOptions[subcat.id] === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => handleOptionSelect(subcat.id, opt.id)}
+                      className={`group relative aspect-square rounded-xl overflow-hidden border transition-all ${
+                        sel
+                          ? "border-white/80 ring-1 ring-white/30 shadow-lg"
+                          : "border-white/[0.08] hover:border-white/25"
+                      }`}
+                    >
+                      <img
+                        src={opt.img}
+                        alt={opt.label}
+                        loading="lazy"
+                        className="w-full h-full object-cover"
+                        onError={(e) => { e.target.onerror = null; e.target.src = `${CDN}/character_type_human.webp`; }}
+                      />
+                      {/* Label overlay */}
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-4 pb-1 px-1">
+                        <span className="text-[9px] font-semibold text-white leading-none">{opt.label}</span>
+                      </div>
+                      {/* Selected check badge */}
+                      {sel && (
+                        <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-white text-black flex items-center justify-center">
+                          <CheckIcon />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ════════════════════════════════════════════════════════════
+          CENTER — Current Character Preview
+      ════════════════════════════════════════════════════════════ */}
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden bg-[#0a0a0a]">
+
+        {/* Center top bar: aspect ratio + generate */}
+        <div className="flex items-center justify-between px-6 py-3 border-b border-white/[0.07] shrink-0">
+          {/* Aspect ratio */}
+          <div className="flex gap-0.5 bg-white/[0.05] border border-white/[0.08] rounded-xl p-1">
             {["3:4", "1:1", "9:16", "16:9"].map((r) => (
               <button
                 key={r}
                 onClick={() => setAspectRatio(r)}
-                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
                   aspectRatio === r
                     ? "bg-violet-600 text-white shadow-md shadow-violet-600/40"
-                    : "text-gray-400 hover:text-white"
+                    : "text-gray-500 hover:text-white"
                 }`}
               >
                 {r}
@@ -431,157 +518,146 @@ export default function AiInfluencerStudio({ onGenerate, isGenerating: externalI
             ))}
           </div>
 
-          {/* Generate */}
-          <button
-            onClick={handleGenerate}
-            disabled={isGenerating}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-[13px] font-bold shadow-lg shadow-violet-600/30 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {isGenerating ? <><IconSpinner />Generating…</> : <><IconBolt />Generate Character</>}
-          </button>
-        </div>
-      </header>
+          <div className="flex items-center gap-2">
+            {/* Shuffle */}
+            <button
+              onClick={handleShuffle}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-gray-400 hover:text-white hover:bg-white/10 text-[12px] font-semibold transition-all"
+            >
+              <ShuffleIcon />
+              Shuffle
+            </button>
 
-      {/* ── Main ────────────────────────────────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden">
-
-        {/* Left – Customizer */}
-        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-
-          {/* Tab Nav */}
-          <nav className="flex gap-1 px-6 pt-3 border-b border-white/[0.07] bg-[#141722]/40 shrink-0">
-            {Object.keys(TABS_CONFIG).map((tabKey) => {
-              const tab = TABS_CONFIG[tabKey];
-              const active = activeTab === tabKey;
-              return (
-                <button
-                  key={tabKey}
-                  onClick={() => setActiveTab(tabKey)}
-                  className={`flex items-center gap-1.5 px-5 py-2.5 pb-3 rounded-t-xl text-[13px] font-semibold border-b-2 transition-all ${
-                    active
-                      ? "border-violet-500 bg-white/[0.05] text-violet-300"
-                      : "border-transparent text-gray-500 hover:text-gray-300 hover:bg-white/[0.02]"
-                  }`}
-                >
-                  {tab.label}
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${active ? "bg-violet-500/20 text-violet-300" : "bg-white/[0.07] text-gray-500"}`}>
-                    {tab.subcategories?.length}
-                  </span>
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* Option Grids */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-8">
-            {TABS_CONFIG[activeTab]?.subcategories?.map((subcat) => (
-              <section key={subcat.id}>
-                {/* Subcat header */}
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{subcat.label}</h3>
-                  <span className="text-[10px] text-gray-600">{subcat.options?.length} options</span>
-                </div>
-
-                {/* Grid */}
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2.5">
-                  {subcat.options?.map((opt) => {
-                    const selected = selectedOptions[subcat.id] === opt.id;
-                    return (
-                      <button
-                        key={opt.id}
-                        onClick={() => handleOptionSelect(subcat.id, opt.id)}
-                        className={`group flex flex-col items-center p-2 rounded-xl border transition-all ${
-                          selected
-                            ? "border-violet-500 bg-violet-600/10 ring-1 ring-violet-500/40 shadow-lg shadow-violet-500/20"
-                            : "border-white/[0.06] bg-[#161922] hover:border-white/20 hover:bg-[#1b1e2b]"
-                        }`}
-                      >
-                        {/* Thumbnail */}
-                        <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-black/40 mb-1.5">
-                          <img
-                            src={opt.img}
-                            alt={opt.label}
-                            loading="lazy"
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                            onError={(e) => { e.target.onerror = null; e.target.src = `${CDN}/character_type_human.webp`; }}
-                          />
-                          {selected && (
-                            <span className="absolute top-1.5 right-1.5 w-[18px] h-[18px] rounded-full bg-violet-600 flex items-center justify-center shadow-md">
-                              <IconCheck />
-                            </span>
-                          )}
-                        </div>
-                        {/* Label */}
-                        <span className={`text-[10px] font-semibold w-full text-center truncate leading-tight ${selected ? "text-violet-300" : "text-gray-400"}`}>
-                          {opt.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-            ))}
+            {/* Generate */}
+            <button
+              onClick={handleGenerate}
+              disabled={isGenerating}
+              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[13px] font-bold transition-all shadow-lg ${
+                isGenerating
+                  ? "bg-violet-600/40 text-white/60 cursor-not-allowed"
+                  : "bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-violet-600/30 hover:shadow-violet-500/40"
+              }`}
+            >
+              {isGenerating ? (
+                <>
+                  <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity="0.3" />
+                    <path d="M21 12a9 9 0 00-9-9" />
+                  </svg>
+                  Generating…
+                </>
+              ) : (
+                <><BoltIcon />Generate Character</>
+              )}
+            </button>
           </div>
         </div>
 
-        {/* Right – Preview Panel */}
-        <aside className="w-[340px] shrink-0 border-l border-white/[0.07] bg-[#12141D] flex flex-col p-5 overflow-y-auto">
-          <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-4">Character Preview</p>
-
-          {/* Preview box */}
+        {/* Preview area */}
+        <div className="flex-1 flex items-center justify-center p-6 overflow-hidden">
           <div
-            className="w-full rounded-2xl border border-white/[0.07] bg-[#181B26] flex items-center justify-center overflow-hidden mb-4 shadow-2xl"
-            style={{ aspectRatio: arStyle, maxHeight: 420 }}
+            className="relative rounded-2xl overflow-hidden bg-[#141414] border border-white/[0.07] shadow-2xl flex items-center justify-center"
+            style={{ aspectRatio: arMap[aspectRatio] ?? "3/4", maxHeight: "100%", maxWidth: "100%" }}
           >
-            {generationResult?.url ? (
-              <img src={generationResult.url} alt="Generated AI Character" className="w-full h-full object-cover" />
-            ) : isGenerating ? (
-              <div className="flex flex-col items-center gap-3 p-6 text-center">
-                <div className="w-9 h-9 border-[3px] border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
-                <p className="text-[11px] text-violet-300">Generating your character…</p>
+            {isGenerating ? (
+              <div className="flex flex-col items-center gap-4 text-center px-8 py-12">
+                <div className="w-12 h-12 border-[3px] border-violet-500/20 border-t-violet-500 rounded-full animate-spin" />
+                <p className="text-sm text-gray-400 font-medium">Generating your AI influencer…</p>
               </div>
+            ) : previewUrl ? (
+              <>
+                <img src={previewUrl} alt="Generated AI Character" className="w-full h-full object-cover" />
+                {/* Download overlay button */}
+                <button
+                  onClick={() => downloadImg(previewUrl)}
+                  className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-white text-[11px] font-semibold hover:bg-black/80 transition-all"
+                >
+                  <DownloadIcon />
+                  Save
+                </button>
+              </>
             ) : (
-              <div className="flex flex-col items-center gap-2.5 p-6 text-center text-gray-600">
-                <IconImage />
-                <p className="text-[11px]">Select options &amp; click<br />Generate to create your character</p>
+              <div className="flex flex-col items-center gap-3 text-center px-8 py-12">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.8" className="text-gray-700">
+                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" />
+                </svg>
+                <p className="text-sm text-gray-600 font-medium">Your AI influencer lives here.</p>
+                <p className="text-xs text-gray-700">Design and build your AI influencer<br />from scratch</p>
               </div>
             )}
           </div>
+        </div>
 
-          {/* Extra prompt */}
-          <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-2">Additional Details</label>
-          <textarea
-            value={customPromptText}
-            onChange={(e) => setCustomPromptText(e.target.value)}
-            placeholder="e.g. neon cyberpunk lighting, luxury penthouse background…"
-            className="w-full h-20 bg-[#181B26] border border-white/[0.07] rounded-xl p-3 text-[11px] text-gray-200 placeholder-gray-600 resize-none outline-none focus:border-violet-500/50 transition-colors mb-4"
-          />
-
-          {/* Error */}
-          {errorMsg && (
-            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-[11px] mb-4">
-              {errorMsg}
-            </div>
-          )}
-
-          {/* Selections summary */}
-          <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-3">Selections</p>
-          <div className="flex flex-col gap-0.5">
-            {Object.keys(TABS_CONFIG).map((tabKey) =>
-              TABS_CONFIG[tabKey].subcategories.map((sub) => {
-                const opt = sub.options.find((o) => o.id === selectedOptions[sub.id]);
-                if (!opt) return null;
-                return (
-                  <div key={sub.id} className="flex justify-between items-center py-1.5 border-b border-white/[0.03]">
-                    <span className="text-[10px] text-gray-600">{sub.label}</span>
-                    <span className="text-[10px] text-violet-300 font-semibold">{opt.label}</span>
-                  </div>
-                );
-              })
-            )}
+        {/* Error */}
+        {errorMsg && (
+          <div className="mx-6 mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] shrink-0">
+            {errorMsg}
           </div>
-        </aside>
+        )}
+
+        {/* Custom prompt bar at bottom */}
+        <div className="px-6 pb-4 shrink-0">
+          <input
+            type="text"
+            value={customPrompt}
+            onChange={(e) => setCustomPrompt(e.target.value)}
+            placeholder="Add extra details… e.g. neon cyberpunk lighting, dramatic shadows"
+            className="w-full h-9 bg-[#161616] border border-white/[0.07] rounded-xl px-3 text-[12px] text-gray-200 placeholder-gray-600 outline-none focus:border-violet-500/40 transition-colors"
+          />
+        </div>
       </div>
+
+      {/* ════════════════════════════════════════════════════════════
+          RIGHT — Generated Characters History Gallery
+      ════════════════════════════════════════════════════════════ */}
+      <div className="flex flex-col w-[160px] shrink-0 border-l border-white/[0.07] bg-[#111111] overflow-hidden">
+
+        {/* Gallery header */}
+        <div className="px-3 py-3 border-b border-white/[0.07] shrink-0">
+          <p className="text-[11px] font-bold text-white tracking-tight">Generated</p>
+          <p className="text-[9px] text-gray-600 mt-0.5">{history.length} characters</p>
+        </div>
+
+        {/* Gallery scroll */}
+        <div className="flex-1 overflow-y-auto p-2 space-y-2">
+          {history.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-32 text-center px-2">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="text-gray-700 mb-2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+              </svg>
+              <p className="text-[9px] text-gray-700 leading-relaxed">Generated characters<br />appear here</p>
+            </div>
+          ) : (
+            history.map((item, idx) => (
+              <button
+                key={item.ts}
+                onClick={() => setSelectedHistoryIdx(idx)}
+                className={`group relative w-full aspect-[3/4] rounded-xl overflow-hidden border transition-all ${
+                  selectedHistoryIdx === idx
+                    ? "border-violet-500 ring-1 ring-violet-500/40"
+                    : "border-white/[0.08] hover:border-white/20"
+                }`}
+              >
+                <img src={item.url} alt={`Character ${idx + 1}`} className="w-full h-full object-cover" />
+                {/* Download on hover */}
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-2">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); downloadImg(item.url); }}
+                    className="p-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 transition-all"
+                  >
+                    <DownloadIcon />
+                  </button>
+                </div>
+                {/* Index badge */}
+                <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[8px] text-gray-300 font-bold">
+                  #{history.length - idx}
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+
     </div>
   );
 }
