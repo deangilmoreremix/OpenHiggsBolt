@@ -132,6 +132,8 @@ const PROVIDER_LOGOS = {
   stability: "https://cdn.muapi.ai/models/stability.png"
 };
 
+const invertLogos = ['openai', 'blackforest', 'runway', 'ideogram', 'lightricks', 'grok'];
+
 function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
   const [search, setSearch] = useState("");
   const [selectedProvider, setSelectedProvider] = useState("all");
@@ -1448,23 +1450,45 @@ export default function VideoStudio({
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full animate-fade-in-up transition-all duration-700 min-h-[50vh]">
-            <div className="mb-12 relative group">
-              <div className="absolute inset-0 bg-primary/10 blur-[120px] rounded-full opacity-30 group-hover:opacity-60 transition-opacity duration-1000" />
-              <div className="relative w-24 h-24 md:w-32 md:h-32 bg-white/[0.02] rounded-[2rem] flex items-center justify-center border border-white/[0.05] overflow-hidden backdrop-blur-sm">
-                <div className="w-16 h-16 bg-primary/5 rounded-2xl flex items-center justify-center border border-primary/10 relative z-10 transition-transform duration-500 group-hover:scale-110">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-primary opacity-80">
-                    <polygon points="23 7 16 12 23 17 23 7" />
-                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-                  </svg>
-                </div>
-                <div className="absolute top-4 right-4 text-[10px] text-primary/40 animate-pulse">✨</div>
+            {/* Overlapping floating cards */}
+            <div className="flex items-center justify-center gap-1.5 md:gap-3 mb-10 select-none scale-90 sm:scale-100">
+              <div className="w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl -rotate-[12deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] flex-shrink-0">
+                <img
+                  src="https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/sdxl-image.avif"
+                  alt="Creative asset 1"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl -rotate-[4deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0">
+                <img
+                  src="https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/chroma-image.avif"
+                  alt="Creative asset 2"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="w-18 h-18 sm:w-24 sm:h-24 rounded-full border border-white/10 shadow-2xl rotate-[6deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0">
+                <img
+                  src="https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/neta-lumina.avif"
+                  alt="Creative asset 3"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl rotate-[12deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0">
+                <img
+                  src="https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/perfect-pony-xl.avif"
+                  alt="Creative asset 4"
+                  className="w-full h-full object-cover"
+                />
               </div>
             </div>
-            <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-4 text-center px-4">
-              <span className="text-white/40 font-medium">START CREATING WITH</span><br />
-              <span className="text-white">VIDEO STUDIO</span>
+
+            <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-center px-4 flex flex-col items-center">
+              <span className="text-white font-black uppercase text-xl sm:text-3xl tracking-wide mb-1 opacity-90">START CREATING WITH</span>
+              <span className="text-[#22d3ee] font-black uppercase text-2xl sm:text-4xl sm:mt-1 tracking-tight">
+                {selectedModelName}
+              </span>
             </h1>
-            <p className="text-white/40 text-sm md:text-base font-medium tracking-wide text-center max-w-lg leading-relaxed">
+            <p className="text-white/40 text-xs sm:text-sm font-medium tracking-wide text-center max-w-lg leading-relaxed px-4">
               Animate images into stunning AI videos with motion effects
             </p>
           </div>
@@ -1473,279 +1497,263 @@ export default function VideoStudio({
 
       {/* ── BOTTOM PROMPT BAR ── */}
       <div className="absolute bottom-4 w-full max-w-[95%] lg:max-w-4xl z-40 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
-        <div className="w-full bg-[#0a0a0a]/80 backdrop-blur-3xl rounded-md border border-white/10 p-4 flex flex-col gap-2 shadow-2xl">
-          <div className="flex items-center gap-2 px-1">
-            {/* Image upload button / thumbnails */}
-            {imageMode && getMaxImagesForI2VModel(selectedModel) > 2 ? (
-              <div className="flex items-center gap-2 flex-wrap">
-                {uploadedImageUrls.map((url, idx) => (
-                  <div key={idx} className="relative w-10 h-10 shrink-0 rounded-full border border-primary/60 bg-primary/5 overflow-hidden group">
-                    <img src={url} alt="" className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => removeImageAtIndex(idx)}
-                      className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-black transition-opacity"
-                      title="Remove image"
-                    >
-                      ✕
-                    </button>
-                    <span className="absolute bottom-0.5 right-0.5 px-1 h-3.5 bg-black/60 rounded-full text-[8px] font-black text-primary leading-none flex items-center justify-center pointer-events-none">
-                      {idx + 1}
-                    </span>
-                  </div>
-                ))}
-                {uploadedImageUrls.length < getMaxImagesForI2VModel(selectedModel) && (
-                  <div className="relative">
-                    <input
-                      ref={imageFileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageFileChange}
-                    />
-                    <button
-                      type="button"
-                      title="Upload reference image"
-                      onClick={() => imageFileInputRef.current?.click()}
-                      className="w-10 h-10 shrink-0 rounded-full border transition-all flex items-center justify-center bg-white/5 border-white/[0.03] hover:bg-white/10 hover:border-primary/40 relative overflow-hidden group"
-                    >
-                      {imageUploading ? (
-                        <div className="flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]">
-                          <svg className="w-8 h-8 -rotate-90">
-                            <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2" fill="transparent" className="text-white/10" />
-                            <circle
-                              cx="16"
-                              cy="16"
-                              r="14"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              fill="transparent"
-                              strokeDasharray={88}
-                              strokeDashoffset={88 - (88 * imageProgress) / 100}
-                              className="text-primary transition-all duration-300"
-                            />
-                          </svg>
-                          <span className="absolute text-[9px] font-black text-primary leading-none">{imageProgress}%</span>
-                        </div>
-                      ) : (
-                        <span className="text-lg font-bold text-white/40 group-hover:text-primary transition-colors">+</span>
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="relative">
-                <input
-                  ref={imageFileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleImageFileChange}
-                />
-                <button
-                  type="button"
-                  title={
-                    uploadedImageUrl
-                      ? "Clear image"
-                      : "Upload image for Image-to-Video"
-                  }
-                  onClick={() =>
-                    uploadedImageUrl
-                      ? clearImageUpload()
-                      : imageFileInputRef.current?.click()
-                  }
-                  className={`w-10 h-10 shrink-0 rounded-full border transition-all flex items-center justify-center relative overflow-hidden ${uploadedImageUrl ? "border-primary/60 bg-primary/5" : "bg-white/5 border-white/[0.03] hover:bg-white/10 hover:border-primary/40"} group`}
-                >
-                  {imageUploading ? (
-                    <div className="flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]">
-                      <svg className="w-8 h-8 -rotate-90">
-                        <circle
-                          cx="16"
-                          cy="16"
-                          r="14"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          fill="transparent"
-                          className="text-white/10"
-                        />
-                        <circle
-                          cx="16"
-                          cy="16"
-                          r="14"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          fill="transparent"
-                          strokeDasharray={88}
-                          strokeDashoffset={88 - (88 * imageProgress) / 100}
-                          className="text-primary transition-all duration-300"
-                        />
-                      </svg>
-                      <span className="absolute text-[9px] font-black text-primary leading-none">
-                        {imageProgress}%
+        <div className="w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]">
+          <div className="flex flex-col gap-3">
+            {/* Inline list of uploaded media files */}
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {/* Main image preview */}
+              {uploadedImageUrl && (
+                <div className="relative w-12 h-12 rounded-xl border border-white/10 overflow-hidden shadow-md group">
+                  <img src={uploadedImageUrl} alt="" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={clearImageUpload}
+                    className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 hover:bg-black rounded-full flex items-center justify-center text-white/85 hover:text-white text-[8px] border border-white/5"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+
+              {/* End frame image preview */}
+              {uploadedEndImageUrl && (
+                <div className="relative w-12 h-12 rounded-xl border border-white/10 overflow-hidden shadow-md group">
+                  <img src={uploadedEndImageUrl} alt="" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={clearEndImage}
+                    className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 hover:bg-black rounded-full flex items-center justify-center text-white/85 hover:text-white text-[8px] border border-white/5"
+                  >
+                    ×
+                  </button>
+                  <span className="absolute bottom-0.5 left-0.5 px-1 h-3.5 bg-black/60 rounded-md text-[7px] font-black text-[#22d3ee] leading-none flex items-center justify-center pointer-events-none">
+                    END
+                  </span>
+                </div>
+              )}
+
+              {/* Video preview */}
+              {uploadedVideoUrl && (
+                <div className="relative w-12 h-12 rounded-xl border border-white/10 overflow-hidden shadow-md group">
+                  <video src={uploadedVideoUrl} className="w-full h-full object-cover" muted />
+                  <button
+                    type="button"
+                    onClick={clearVideoUpload}
+                    className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 hover:bg-black rounded-full flex items-center justify-center text-white/85 hover:text-white text-[8px] border border-white/5"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+
+              {/* Multiple images layout if supported */}
+              {imageMode && getMaxImagesForI2VModel(selectedModel) > 2 && (
+                <>
+                  {uploadedImageUrls.map((url, idx) => (
+                    <div key={idx} className="relative w-12 h-12 rounded-xl border border-white/10 overflow-hidden shadow-md group">
+                      <img src={url} alt="" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeImageAtIndex(idx)}
+                        className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 hover:bg-black rounded-full flex items-center justify-center text-white/85 hover:text-white text-[8px] border border-white/5"
+                      >
+                        ×
+                      </button>
+                      <span className="absolute bottom-0.5 right-0.5 px-1 h-3.5 bg-black/60 rounded-full text-[8px] font-black text-[#22d3ee] leading-none flex items-center justify-center pointer-events-none">
+                        {idx + 1}
                       </span>
                     </div>
-                  ) : null}
+                  ))}
+                </>
+              )}
 
-                  {uploadedImageUrl ? (
-                    <img
-                      src={uploadedImageUrl}
-                      alt=""
-                      className={`w-full h-full object-cover rounded-full ${imageUploading ? "opacity-40 blur-[2px]" : "opacity-100"}`}
-                    />
-                  ) : (
-                    !imageUploading && (
+              {/* Upload trigger buttons */}
+              {/* Image upload button */}
+              {imageMode && (
+                getMaxImagesForI2VModel(selectedModel) > 2 ? (
+                  uploadedImageUrls.length < getMaxImagesForI2VModel(selectedModel) && (
+                    <div className="relative">
+                      <input
+                        ref={imageFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageFileChange}
+                      />
+                      <button
+                        type="button"
+                        title="Upload reference image"
+                        onClick={() => imageFileInputRef.current?.click()}
+                        className="w-12 h-12 shrink-0 rounded-xl border border-dashed border-white/10 hover:border-[#22d3ee]/40 bg-white/[0.02] hover:bg-white/5 transition-all flex items-center justify-center relative overflow-hidden group"
+                      >
+                        {imageUploading ? (
+                          <div className="flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]">
+                            <svg className="w-8 h-8 -rotate-90">
+                              <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2" fill="transparent" className="text-white/10" />
+                              <circle
+                                cx="16"
+                                cy="16"
+                                r="14"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                fill="transparent"
+                                strokeDasharray={88}
+                                strokeDashoffset={88 - (88 * imageProgress) / 100}
+                                className="text-[#22d3ee] transition-all duration-300"
+                              />
+                            </svg>
+                            <span className="absolute text-[9px] font-black text-[#22d3ee] leading-none">{imageProgress}%</span>
+                          </div>
+                        ) : (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-white/40 group-hover:text-[#22d3ee] transition-colors">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                  )
+                ) : (
+                  !uploadedImageUrl && (
+                    <div className="relative">
+                      <input
+                        ref={imageFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageFileChange}
+                      />
+                      <button
+                        type="button"
+                        title="Upload reference image"
+                        onClick={() => imageFileInputRef.current?.click()}
+                        className="w-12 h-12 shrink-0 rounded-xl border border-dashed border-white/10 hover:border-[#22d3ee]/40 bg-white/[0.02] hover:bg-white/5 transition-all flex items-center justify-center relative overflow-hidden group"
+                      >
+                        {imageUploading ? (
+                          <div className="flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]">
+                            <svg className="w-8 h-8 -rotate-90">
+                              <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2" fill="transparent" className="text-white/10" />
+                              <circle
+                                cx="16"
+                                cy="16"
+                                r="14"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                fill="transparent"
+                                strokeDasharray={88}
+                                strokeDashoffset={88 - (88 * imageProgress) / 100}
+                                className="text-[#22d3ee] transition-all duration-300"
+                              />
+                            </svg>
+                            <span className="absolute text-[9px] font-black text-[#22d3ee] leading-none">{imageProgress}%</span>
+                          </div>
+                        ) : (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-white/40 group-hover:text-[#22d3ee] transition-colors">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                  )
+                )
+              )}
+
+              {/* End frame image button */}
+              {imageMode && i2vModels.find((m) => m.id === selectedModel)?.lastImageField && !uploadedEndImageUrl && (
+                <div className="relative">
+                  <input
+                    ref={endImageFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleEndImageFileChange}
+                  />
+                  <button
+                    type="button"
+                    title="Upload end frame (optional)"
+                    onClick={() => endImageFileInputRef.current?.click()}
+                    className="w-12 h-12 shrink-0 rounded-xl border border-dashed border-white/10 hover:border-[#22d3ee]/40 bg-white/[0.02] hover:bg-white/5 transition-all flex items-center justify-center relative overflow-hidden group"
+                  >
+                    {endImageUploading ? (
+                      <div className="flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]">
+                        <svg className="w-8 h-8 -rotate-90">
+                          <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2" fill="transparent" className="text-white/10" />
+                          <circle
+                            cx="16"
+                            cy="16"
+                            r="14"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            fill="transparent"
+                            strokeDasharray={88}
+                            strokeDashoffset={88 - (88 * endImageProgress) / 100}
+                            className="text-[#22d3ee] transition-all duration-300"
+                          />
+                        </svg>
+                        <span className="absolute text-[9px] font-black text-[#22d3ee] leading-none">{endImageProgress}%</span>
+                      </div>
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-white/40 group-hover:text-[#22d3ee] transition-colors">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Video upload button */}
+              {!uploadedVideoUrl && (
+                <div className="relative">
+                  <input
+                    ref={videoFileInputRef}
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={handleVideoFileChange}
+                  />
+                  <button
+                    type="button"
+                    title="Upload video to remove watermark"
+                    onClick={() => videoFileInputRef.current?.click()}
+                    className="w-12 h-12 shrink-0 rounded-xl border border-dashed border-white/10 hover:border-[#22d3ee]/40 bg-white/[0.02] hover:bg-white/5 transition-all flex items-center justify-center relative overflow-hidden group"
+                  >
+                    {videoUploading ? (
+                      <div className="flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]">
+                        <svg className="w-8 h-8 -rotate-90">
+                          <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2" fill="transparent" className="text-white/10" />
+                          <circle
+                            cx="16"
+                            cy="16"
+                            r="14"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            fill="transparent"
+                            strokeDasharray={88}
+                            strokeDashoffset={88 - (88 * videoProgress) / 100}
+                            className="text-[#22d3ee] transition-all duration-300"
+                          />
+                        </svg>
+                        <span className="absolute text-[9px] font-black text-[#22d3ee] leading-none">{videoProgress}%</span>
+                      </div>
+                    ) : (
                       <svg
-                        width="18"
-                        height="18"
+                        width="16"
+                        height="16"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
-                        strokeWidth="2"
-                        className="text-white/40 group-hover:text-primary transition-colors"
+                        strokeWidth="2.5"
+                        className="text-white/40 group-hover:text-[#22d3ee] transition-colors"
                       >
-                        <rect
-                          x="3"
-                          y="3"
-                          width="18"
-                          height="18"
-                          rx="2"
-                          ry="2"
-                        />
-                        <circle cx="8.5" cy="8.5" r="1.5" />
-                        <polyline points="21 15 16 10 5 21" />
+                        <polygon points="23 7 16 12 23 17 23 7" fill="currentColor" />
+                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2" fill="currentColor" />
                       </svg>
-                    )
-                  )}
-                </button>
-              </div>
-            )}
-
-            {/* End-frame upload button (FLF i2v models only) */}
-            {imageMode && i2vModels.find((m) => m.id === selectedModel)?.lastImageField && (
-              <div className="relative">
-                <input
-                  ref={endImageFileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleEndImageFileChange}
-                />
-                <button
-                  type="button"
-                  title={uploadedEndImageUrl ? "Clear end frame" : "Upload end frame (optional)"}
-                  onClick={() =>
-                    uploadedEndImageUrl
-                      ? clearEndImage()
-                      : endImageFileInputRef.current?.click()
-                  }
-                  className={`w-10 h-10 shrink-0 rounded-full border transition-all flex items-center justify-center relative overflow-hidden ${uploadedEndImageUrl ? "border-primary/60 bg-primary/5" : "bg-white/5 border-white/[0.03] hover:bg-white/10 hover:border-primary/40"} group`}
-                >
-                  {endImageUploading ? (
-                    <div className="flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]">
-                      <svg className="w-8 h-8 -rotate-90">
-                        <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2" fill="transparent" className="text-white/10" />
-                        <circle
-                          cx="16"
-                          cy="16"
-                          r="14"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          fill="transparent"
-                          strokeDasharray={88}
-                          strokeDashoffset={88 - (88 * endImageProgress) / 100}
-                          className="text-primary transition-all duration-300"
-                        />
-                      </svg>
-                      <span className="absolute text-[9px] font-black text-primary leading-none">
-                        {endImageProgress}%
-                      </span>
-                    </div>
-                  ) : null}
-
-                  {uploadedEndImageUrl ? (
-                    <img
-                      src={uploadedEndImageUrl}
-                      alt=""
-                      className={`w-full h-full object-cover rounded-full ${endImageUploading ? "opacity-40 blur-[2px]" : "opacity-100"}`}
-                    />
-                  ) : (
-                    !endImageUploading && (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/40 group-hover:text-primary transition-colors">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                        <circle cx="8.5" cy="8.5" r="1.5" />
-                        <polyline points="21 15 16 10 5 21" />
-                      </svg>
-                    )
-                  )}
-                  <span className="absolute top-0.5 left-0.5 px-1 h-3.5 bg-black/60 rounded-md text-[7px] font-black text-primary leading-none flex items-center justify-center pointer-events-none">
-                    END
-                  </span>
-                </button>
-              </div>
-            )}
-
-            {/* Video upload button */}
-            <div className="relative">
-              <input
-                ref={videoFileInputRef}
-                type="file"
-                accept="video/*"
-                className="hidden"
-                onChange={handleVideoFileChange}
-              />
-              <button
-                type="button"
-                title={
-                  uploadedVideoUrl
-                    ? `${uploadedVideoName} — click to clear`
-                    : "Upload video to remove watermark"
-                }
-                onClick={() =>
-                  uploadedVideoUrl
-                    ? clearVideoUpload()
-                    : videoFileInputRef.current?.click()
-                }
-                className={`w-10 h-10 shrink-0 rounded-full border transition-all flex items-center justify-center relative overflow-hidden ${uploadedVideoUrl ? "border-primary/60 bg-white/5" : "bg-white/[0.03] border-white/[0.03] hover:bg-white/10 hover:border-primary/40"} group`}
-              >
-                {videoUploading ? (
-                  <div className="flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]">
-                    <svg className="w-8 h-8 -rotate-90">
-                      <circle
-                        cx="16"
-                        cy="16"
-                        r="14"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        fill="transparent"
-                        className="text-white/10"
-                      />
-                      <circle
-                        cx="16"
-                        cy="16"
-                        r="14"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        fill="transparent"
-                        strokeDasharray={88}
-                        strokeDashoffset={88 - (88 * videoProgress) / 100}
-                        className="text-primary transition-all duration-300"
-                      />
-                    </svg>
-                    <span className="absolute text-[9px] font-black text-primary leading-none">
-                      {videoProgress}%
-                    </span>
-                  </div>
-                ) : uploadedVideoUrl ? (
-                  <video
-                    src={uploadedVideoUrl}
-                    className={`w-full h-full object-cover rounded-full ${videoUploading ? "opacity-40 blur-[2px]" : "opacity-100"}`}
-                    muted
-                  />
-                ) : (
-                  <VideoIconSvg className="text-white/40 group-hover:text-primary transition-colors" />
-                )}
-              </button>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Prompt textarea */}
@@ -1780,7 +1788,7 @@ export default function VideoStudio({
           )}
 
           {/* Bottom row: controls + generate */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-2 border-t border-white/[0.03] relative">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-3 border-t border-white/[0.03] relative">
             <div className="flex items-center gap-2 relative flex-wrap pb-1 md:pb-0">
               {/* Model btn */}
               <div className="relative">
@@ -1789,10 +1797,21 @@ export default function VideoStudio({
                   onClick={toggleDropdown("model")}
                   className="flex items-center gap-2 px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap"
                 >
-                  <div className="w-4 h-4 bg-[#22d3ee] rounded flex items-center justify-center shadow-lg shadow-[#22d3ee]/10">
-                    <span className="text-[9px] font-bold text-black uppercase">
-                      V
-                    </span>
+                  <div className="w-4 h-4 rounded overflow-hidden shrink-0 flex items-center justify-center bg-white/5">
+                    {(() => {
+                      const allCurrentModels = [...t2vModels, ...i2vModels, ...v2vModels];
+                      const selectedModelObj = allCurrentModels.find(m => m.id === selectedModel);
+                      const selectedModelProvider = selectedModelObj?.provider || 'muapi';
+                      return PROVIDER_LOGOS[selectedModelProvider] ? (
+                        <img 
+                          src={PROVIDER_LOGOS[selectedModelProvider]} 
+                          alt="" 
+                          className={`w-full h-full object-contain ${invertLogos.includes(selectedModelProvider) ? "invert" : ""}`} 
+                        />
+                      ) : (
+                        <span className="text-[9px] font-bold text-black uppercase">V</span>
+                      );
+                    })()}
                   </div>
                   <span className="text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors">
                     {selectedModelName}
@@ -1831,7 +1850,7 @@ export default function VideoStudio({
                   <button
                     type="button"
                     onClick={toggleDropdown("ar")}
-                    className="flex items-center gap-2 px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap"
+                    className="flex items-center gap-2 px-3.5 py-2.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-xl transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                   >
                     <svg
                       width="14"
@@ -1859,23 +1878,23 @@ export default function VideoStudio({
                     <div
                       ref={dropdownRef}
                       onClick={(e) => e.stopPropagation()}
-                      className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-lg p-3 shadow-2xl border border-white/[0.05] max-h-80 overflow-y-auto custom-scrollbar min-w-[160px]"
+                      className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-2xl p-3.5 max-h-80 overflow-y-auto custom-scrollbar shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[160px]"
                     >
-                      <div className="text-xs font-bold text-white/20 border-b border-white/[0.03] mb-2">
+                      <div className="text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-2 px-1">
                         Aspect Ratio
                       </div>
                       <div className="flex flex-col gap-1">
                         {getCurrentAspectRatios(selectedModel).map((r) => (
                           <div
                             key={r}
-                            className="flex items-center justify-between p-3 hover:bg-white/5 rounded cursor-pointer transition-all group/opt"
+                            className="flex items-center justify-between p-2.5 px-3 hover:bg-[#22d3ee]/10 hover:text-white rounded-xl cursor-pointer transition-all group/opt"
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedAr(r);
                               setOpenDropdown(null);
                             }}
                           >
-                            <span className="text-[11px] font-semibold text-white/70 group-hover/opt:text-white transition-opacity">
+                            <span className="text-xs font-semibold text-white/70 group-hover/opt:text-[#22d3ee] transition-colors">
                               {r}
                             </span>
                             {selectedAr === r && <CheckSvg />}
@@ -1893,7 +1912,7 @@ export default function VideoStudio({
                   <button
                     type="button"
                     onClick={toggleDropdown("effect")}
-                    className="flex items-center gap-2 px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap"
+                    className="flex items-center gap-2 px-3.5 py-2.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-xl transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                   >
                     <svg
                       width="14"
@@ -1914,23 +1933,23 @@ export default function VideoStudio({
                     <div
                       ref={dropdownRef}
                       onClick={(e) => e.stopPropagation()}
-                      className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-lg p-3 shadow-2xl border border-white/[0.05] max-h-80 overflow-y-auto custom-scrollbar min-w-[200px]"
+                      className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-2xl p-3.5 max-h-80 overflow-y-auto custom-scrollbar shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[200px]"
                     >
-                      <div className="text-xs font-bold text-white/20 border-b border-white/[0.03] mb-2">
+                      <div className="text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-2 px-1">
                         Effect Type
                       </div>
                       <div className="flex flex-col gap-1">
                         {getEffectsForI2VModel(selectedModel).map((eff) => (
                           <div
                             key={eff}
-                            className="flex items-center justify-between p-2 hover:bg-white/5 rounded cursor-pointer transition-all group/opt"
+                            className="flex items-center justify-between p-2.5 px-3 hover:bg-[#22d3ee]/10 hover:text-white rounded-xl cursor-pointer transition-all group/opt"
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedEffect(eff);
                               setOpenDropdown(null);
                             }}
                           >
-                            <span className="text-[11px] font-semibold text-white/70 group-hover/opt:text-white">
+                            <span className="text-xs font-semibold text-white/70 group-hover/opt:text-[#22d3ee] transition-colors">
                               {eff}
                             </span>
                             {selectedEffect === eff && <CheckSvg />}
@@ -1948,7 +1967,7 @@ export default function VideoStudio({
                   <button
                     type="button"
                     onClick={toggleDropdown("duration")}
-                    className="flex items-center gap-2 px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap"
+                    className="flex items-center gap-2 px-3.5 py-2.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-xl transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                   >
                     <svg
                       width="14"
@@ -1970,23 +1989,23 @@ export default function VideoStudio({
                     <div
                       ref={dropdownRef}
                       onClick={(e) => e.stopPropagation()}
-                      className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-md p-3 shadow-2xl border border-white/10 min-w-[140px]"
+                      className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-2xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[140px]"
                     >
-                      <div className="text-xs font-bold text-white/20 border-b border-white/[0.03] mb-2">
+                      <div className="text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-2 px-1">
                         Duration
                       </div>
                       <div className="flex flex-col gap-1">
                         {getCurrentDurations(selectedModel).map((d) => (
                           <div
                             key={d}
-                            className="flex items-center justify-between p-2 hover:bg-white/5 rounded-md cursor-pointer transition-all group/opt"
+                            className="flex items-center justify-between p-2.5 px-3 hover:bg-[#22d3ee]/10 hover:text-white rounded-xl cursor-pointer transition-all group/opt"
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedDuration(d);
                               setOpenDropdown(null);
                             }}
                           >
-                            <span className="text-xs font-semibold text-white/70 group-hover/opt:text-white">
+                            <span className="text-xs font-semibold text-white/70 group-hover/opt:text-[#22d3ee] transition-colors">
                               {d}s
                             </span>
                             {selectedDuration === d && <CheckSvg />}
@@ -2004,18 +2023,18 @@ export default function VideoStudio({
                   <button
                     type="button"
                     onClick={toggleDropdown("resolution")}
-                    className="flex items-center gap-2 px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap"
+                    className="flex items-center gap-2 px-3.5 py-2.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-xl transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                   >
                     <svg
-                      width="14"
-                      height="14"
+                      width="12"
+                      height="12"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
-                      strokeWidth="2"
+                      strokeWidth="2.5"
                       className="opacity-40 text-white"
                     >
-                      <path d="M6 2L3 6v15a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z" />
+                      <polygon points="12 2 22 12 12 22 2 12" />
                     </svg>
                     <span className="text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors">
                       {selectedResolution || "720p"}
@@ -2025,23 +2044,23 @@ export default function VideoStudio({
                     <div
                       ref={dropdownRef}
                       onClick={(e) => e.stopPropagation()}
-                      className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-md p-3 shadow-2xl border border-white/[0.05] min-w-[140px]"
+                      className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-2xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[140px]"
                     >
-                      <div className="text-xs font-bold text-white/20 border-b border-white/[0.03] mb-2">
+                      <div className="text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-2 px-1">
                         Resolution
                       </div>
                       <div className="flex flex-col gap-1">
                         {getCurrentResolutions(selectedModel).map((r) => (
                           <div
                             key={r}
-                            className="flex items-center justify-between p-3 hover:bg-white/5 rounded cursor-pointer transition-all group/opt"
+                            className="flex items-center justify-between p-2.5 px-3 hover:bg-[#22d3ee]/10 hover:text-white rounded-xl cursor-pointer transition-all group/opt"
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedResolution(r);
                               setOpenDropdown(null);
                             }}
                           >
-                            <span className="text-[11px] font-semibold text-white/70 group-hover/opt:text-white">
+                            <span className="text-xs font-semibold text-white/70 group-hover/opt:text-[#22d3ee] transition-colors">
                               {r}
                             </span>
                             {selectedResolution === r && <CheckSvg />}
@@ -2059,7 +2078,7 @@ export default function VideoStudio({
               type="button"
               onClick={handleGenerate}
               disabled={generating}
-              className="bg-[#22d3ee] text-black px-4 py-2 rounded-md font-medium text-sm hover:bg-[#e5ff33] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-[#22d3ee] text-black px-6 py-2.5 rounded-2xl font-extrabold text-sm hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/10 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {generating ? (
                 <>
