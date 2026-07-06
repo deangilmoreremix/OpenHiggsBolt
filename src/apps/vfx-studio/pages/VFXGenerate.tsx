@@ -23,6 +23,45 @@ import type { VFXEffect, AspectRatio, Resolution, Quality } from '@/types/vfx';
 const STORAGE_KEY_UI = 'vfx_ui_state';
 
 const CDN = 'https://d3adwkbyhxyrtq.cloudfront.net';
+const LOCAL_PREFIX = '/vfx-effects';
+
+function getLocalPath(cdnPath: string): string {
+  return LOCAL_PREFIX + cdnPath.replace(CDN, '');
+}
+
+function ImageWithFallback({ src, alt, className, loading, onError, fallbackEmoji }: { src: string; alt: string; className?: string; loading?: boolean | 'lazy' | 'eager'; onError?: (e: React.SyntheticEvent<HTMLImageElement>) => void; fallbackEmoji?: string }) {
+  const [imgSrc, setImgSrc] = useState(src);
+  const [showFallback, setShowFallback] = useState(false);
+
+  useEffect(() => {
+    setImgSrc(src);
+    setShowFallback(false);
+  }, [src]);
+
+  const handleError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const local = getLocalPath(src);
+    if (imgSrc === src && local !== src) {
+      setImgSrc(local);
+    } else {
+      setShowFallback(true);
+    }
+    if (onError) onError(e);
+  };
+
+  if (showFallback && fallbackEmoji) {
+    return <div className="w-full h-full flex items-center justify-center text-4xl">{fallbackEmoji}</div>;
+  }
+
+  return (
+    <img
+      src={imgSrc}
+      alt={alt}
+      className={className}
+      {...(typeof loading === 'string' ? { loading } : {})}
+      onError={handleError}
+    />
+  );
+}
 
 const AI_EFFECTS: VFXEffect[] = [
   { id: 'kiss-me-ai', name: 'Kiss Me AI', preview: `${CDN}/webassets/ai_effects/Kiss_Me_AI.webp`, prompt: 'romantic kiss me ai cinematic effect', emoji: '💋', category: 'ai-effects' },
@@ -35,24 +74,6 @@ const AI_EFFECTS: VFXEffect[] = [
   { id: 'warmth-of-jesus', name: 'Warmth of Jesus', preview: `${CDN}/webassets/ai_effects/Warmth_of_Jesus.webp`, prompt: 'divine holy light warmth spiritual glow effect', emoji: '✨', category: 'ai-effects' },
   { id: 'holy-wings', name: 'Holy Wings', preview: `${CDN}/webassets/ai_effects/Holy_Wings.webp`, prompt: 'angelic white wings appear spreading divine light', emoji: '🪽', category: 'ai-effects' },
   { id: 'microwave', name: 'Microwave', preview: `${CDN}/webassets/ai_effects/Microwave.webp`, prompt: 'microwave radiation heat distortion surreal effect', emoji: '📡', category: 'ai-effects' },
-  { id: 'iron-man', name: 'Iron Man', preview: `${CDN}/webassets/ai_effects/Iron_Man.webp`, prompt: 'iron man suit assembles around subject piece by piece', emoji: '🦾', category: 'ai-effects' },
-  { id: 'spiderman', name: 'Spiderman', preview: `${CDN}/webassets/ai_effects/Spiderman.webp`, prompt: 'spiderman web shoots out transformation cinematic', emoji: '🕷️', category: 'ai-effects' },
-  { id: 'dragon-ball', name: 'Dragon Ball', preview: `${CDN}/webassets/ai_effects/Dragon_Ball.webp`, prompt: 'dragon ball super saiyan golden power up aura explosion', emoji: '⚡', category: 'ai-effects' },
-  { id: 'freeze', name: 'Freeze', preview: `${CDN}/webassets/ai_effects/Freeze.webp`, prompt: 'ice freeze spreads across everything crystalline frozen', emoji: '❄️', category: 'ai-effects' },
-  { id: 'invisibility', name: 'Invisibility', preview: `${CDN}/webassets/ai_effects/Invisibility.webp`, prompt: 'subject turns invisible predator cloaking effect', emoji: '👻', category: 'ai-effects' },
-  { id: 'zombie', name: 'Zombie', preview: `${CDN}/webassets/ai_effects/Zombie.webp`, prompt: 'zombie transformation decaying undead horror effect', emoji: '🧟', category: 'ai-effects' },
-  { id: 'mermaid', name: 'Mermaid', preview: `${CDN}/webassets/ai_effects/Mermaid.webp`, prompt: 'mermaid transformation scales tail ocean fantasy', emoji: '🧜', category: 'ai-effects' },
-  { id: 'werewolf', name: 'Werewolf', preview: `${CDN}/webassets/ai_effects/Werewolf.webp`, prompt: 'werewolf transformation fur claws howl full moon', emoji: '🐺', category: 'ai-effects' },
-  { id: 'vampire', name: 'Vampire', preview: `${CDN}/webassets/ai_effects/Vampire.webp`, prompt: 'vampire transformation pale fangs dark gothic', emoji: '🧛', category: 'ai-effects' },
-  { id: 'witch', name: 'Witch', preview: `${CDN}/webassets/ai_effects/Witch.webp`, prompt: 'witch transformation magic spell casting dark fantasy', emoji: '🧙', category: 'ai-effects' },
-  { id: 'angel', name: 'Angel', preview: `${CDN}/webassets/ai_effects/Angel.webp`, prompt: 'angel transformation golden wings divine light halo', emoji: '😇', category: 'ai-effects' },
-  { id: 'demon', name: 'Demon', preview: `${CDN}/webassets/ai_effects/Demon.webp`, prompt: 'demon transformation dark wings fire eyes horror', emoji: '😈', category: 'ai-effects' },
-  { id: 'phoenix', name: 'Phoenix', preview: `${CDN}/webassets/ai_effects/Phoenix.webp`, prompt: 'phoenix fire transformation rises from ashes flames', emoji: '🔥', category: 'ai-effects' },
-  { id: 'crystal', name: 'Crystal', preview: `${CDN}/webassets/ai_effects/Crystal.webp`, prompt: 'subject crystallizes into sparkling gemstone crystal', emoji: '💎', category: 'ai-effects' },
-  { id: 'gold-transform', name: 'Gold Transform', preview: `${CDN}/webassets/ai_effects/Gold_Transform.webp`, prompt: 'everything turns to solid gold midas touch effect', emoji: '🥇', category: 'ai-effects' },
-  { id: 'age-regression', name: 'Age Regression', preview: `${CDN}/webassets/ai_effects/Age_Regression.webp`, prompt: 'subject grows younger reverse aging effect', emoji: '👶', category: 'ai-effects' },
-  { id: 'age-progression', name: 'Age Progression', preview: `${CDN}/webassets/ai_effects/Age_Progression.webp`, prompt: 'rapid aging transformation grows old time lapse', emoji: '👴', category: 'ai-effects' },
-  { id: 'gender-swap', name: 'Gender Swap', preview: `${CDN}/webassets/ai_effects/Gender_Swap.webp`, prompt: 'gender transformation face morphing AI effect', emoji: '🔄', category: 'ai-effects' },
 ];
 
 const MOTION_CONTROLS: VFXEffect[] = [
@@ -62,37 +83,10 @@ const MOTION_CONTROLS: VFXEffect[] = [
   { id: 'matrix-shot', name: 'Matrix Shot', preview: `${CDN}/motioncontrols/Bullet+Time.webp`, prompt: 'bullet time matrix freeze 360 rotation', emoji: '💊', category: 'motion-controls' },
   { id: 'car-chase', name: 'Car Chase', preview: `${CDN}/motioncontrols/Car+Chasing.webp`, prompt: 'high speed car chase pursuit dynamic camera', emoji: '🚗', category: 'motion-controls' },
   { id: 'crane-down', name: 'Crane Down', preview: `${CDN}/motioncontrols/Crane+Down.webp`, prompt: 'crane down camera descends from above', emoji: '⬇️', category: 'motion-controls' },
+  { id: 'crane-overhead', name: 'Crane Overhead', preview: `${CDN}/motioncontrols/Crane+Over+The+Head.webp`, prompt: 'crane over the head bird eye view movement', emoji: '⬇️', category: 'motion-controls' },
   { id: 'crane-up', name: 'Crane Up', preview: `${CDN}/motioncontrols/Crane+Up.webp`, prompt: 'crane up camera rises revealing scene below', emoji: '⬆️', category: 'motion-controls' },
   { id: 'crash-zoom-in', name: 'Crash Zoom In', preview: `${CDN}/motioncontrols/Crash+Zoom+In.webp`, prompt: 'rapid crash zoom punch into subject', emoji: '🔍', category: 'motion-controls' },
   { id: 'crash-zoom-out', name: 'Crash Zoom Out', preview: `${CDN}/motioncontrols/Crash+Zoom+Out.webp`, prompt: 'rapid crash zoom out pull back reveal wide scene', emoji: '🔎', category: 'motion-controls' },
-  { id: 'dolly-in', name: 'Dolly In', preview: `${CDN}/motioncontrols/Dolly+In.webp`, prompt: 'smooth dolly push toward subject cinematic rack focus', emoji: '📹', category: 'motion-controls' },
-  { id: 'dolly-out', name: 'Dolly Out', preview: `${CDN}/motioncontrols/Dolly+Out.webp`, prompt: 'smooth dolly pull back from subject reveal environment', emoji: '🎥', category: 'motion-controls' },
-  { id: 'drone-flight', name: 'Drone Flight', preview: `${CDN}/motioncontrols/Drone+Flight.webp`, prompt: 'drone aerial flight swooping forward overhead view', emoji: '🚁', category: 'motion-controls' },
-  { id: 'dutch-angle', name: 'Dutch Angle', preview: `${CDN}/motioncontrols/Dutch+Angle.webp`, prompt: 'dutch angle tilted camera roll disorienting cinematic', emoji: '📐', category: 'motion-controls' },
-  { id: 'fpv-dive', name: 'FPV Dive', preview: `${CDN}/motioncontrols/FPV+Dive.webp`, prompt: 'FPV drone dive first person racing spin', emoji: '🎯', category: 'motion-controls' },
-  { id: 'handheld', name: 'Handheld', preview: `${CDN}/motioncontrols/Handheld.webp`, prompt: 'handheld documentary style camera natural shake', emoji: '✋', category: 'motion-controls' },
-  { id: 'jib-arm', name: 'Jib Arm', preview: `${CDN}/motioncontrols/Jib+Arm.webp`, prompt: 'jib arm swing camera sweeps up and over subject', emoji: '🏗️', category: 'motion-controls' },
-  { id: 'ken-burns', name: 'Ken Burns', preview: `${CDN}/motioncontrols/Ken+Burns.webp`, prompt: 'ken burns effect slow pan and zoom documentary', emoji: '📸', category: 'motion-controls' },
-  { id: 'low-angle', name: 'Low Angle', preview: `${CDN}/motioncontrols/Low+Angle.webp`, prompt: 'low angle worm eye view looking up powerful dramatic', emoji: '🐛', category: 'motion-controls' },
-  { id: 'overhead-crane', name: 'Overhead Crane', preview: `${CDN}/motioncontrols/Overhead+Crane.webp`, prompt: 'overhead crane bird eye view directly above looking down', emoji: '🦅', category: 'motion-controls' },
-  { id: 'pan-left', name: 'Pan Left', preview: `${CDN}/motioncontrols/Pan+Left.webp`, prompt: 'camera pans smoothly to the left following action', emoji: '⬅️', category: 'motion-controls' },
-  { id: 'pan-right', name: 'Pan Right', preview: `${CDN}/motioncontrols/Pan+Right.webp`, prompt: 'camera pans smoothly to the right revealing scene', emoji: '➡️', category: 'motion-controls' },
-  { id: 'parallax', name: 'Parallax', preview: `${CDN}/motioncontrols/Parallax.webp`, prompt: 'parallax depth effect foreground and background separate', emoji: '🌊', category: 'motion-controls' },
-  { id: 'pedestal-down', name: 'Pedestal Down', preview: `${CDN}/motioncontrols/Pedestal+Down.webp`, prompt: 'pedestal camera drops straight down vertically', emoji: '⬇️', category: 'motion-controls' },
-  { id: 'pedestal-up', name: 'Pedestal Up', preview: `${CDN}/motioncontrols/Pedestal+Up.webp`, prompt: 'pedestal camera rises straight up vertically revealing', emoji: '⬆️', category: 'motion-controls' },
-  { id: 'pull-focus', name: 'Pull Focus', preview: `${CDN}/motioncontrols/Pull+Focus.webp`, prompt: 'pull focus rack focus shift between foreground background', emoji: '🎯', category: 'motion-controls' },
-  { id: 'push-in', name: 'Push In', preview: `${CDN}/motioncontrols/Push+In.webp`, prompt: 'camera pushes in forward motion toward subject intense', emoji: '➡️', category: 'motion-controls' },
-  { id: 'roll', name: 'Roll', preview: `${CDN}/motioncontrols/Roll.webp`, prompt: 'camera barrel roll rotation spinning around axis', emoji: '🌀', category: 'motion-controls' },
-  { id: 'shake', name: 'Shake', preview: `${CDN}/motioncontrols/Shake.webp`, prompt: 'camera shake earthquake impact tremor effect intense', emoji: '📳', category: 'motion-controls' },
-  { id: 'tilt-down', name: 'Tilt Down', preview: `${CDN}/motioncontrols/Tilt+Down.webp`, prompt: 'camera tilts down from high to low reveal feet ground', emoji: '⬇️', category: 'motion-controls' },
-  { id: 'tilt-up', name: 'Tilt Up', preview: `${CDN}/motioncontrols/Tilt+Up.webp`, prompt: 'camera tilts up revealing tall subject sky epic', emoji: '⬆️', category: 'motion-controls' },
-  { id: 'tracking-shot', name: 'Tracking Shot', preview: `${CDN}/motioncontrols/Tracking+Shot.webp`, prompt: 'tracking shot camera follows alongside moving subject', emoji: '📍', category: 'motion-controls' },
-  { id: 'truck-left', name: 'Truck Left', preview: `${CDN}/motioncontrols/Truck+Left.webp`, prompt: 'truck left camera moves laterally to the left', emoji: '⬅️', category: 'motion-controls' },
-  { id: 'truck-right', name: 'Truck Right', preview: `${CDN}/motioncontrols/Truck+Right.webp`, prompt: 'truck right camera moves laterally to the right', emoji: '➡️', category: 'motion-controls' },
-  { id: 'vertigo-effect', name: 'Vertigo Effect', preview: `${CDN}/motioncontrols/Vertigo.webp`, prompt: 'hitchcock vertigo dolly zoom background stretches dizzy', emoji: '😵', category: 'motion-controls' },
-  { id: 'whip-pan', name: 'Whip Pan', preview: `${CDN}/motioncontrols/Whip+Pan.webp`, prompt: 'fast whip pan blur transition between scenes rapid', emoji: '💨', category: 'motion-controls' },
-  { id: 'zoom-in', name: 'Zoom In', preview: `${CDN}/motioncontrols/Zoom+In.webp`, prompt: 'slow dramatic zoom in toward subject cinematic', emoji: '🔍', category: 'motion-controls' },
-  { id: 'zoom-out', name: 'Zoom Out', preview: `${CDN}/motioncontrols/Zoom+Out.webp`, prompt: 'slow dramatic zoom out reveal wide landscape epic', emoji: '🔎', category: 'motion-controls' },
 ];
 
 const VFX_EFFECTS: VFXEffect[] = [
@@ -106,21 +100,8 @@ const VFX_EFFECTS: VFXEffect[] = [
   { id: 'decay-time-lapse', name: 'Decay Time-Lapse', preview: `${CDN}/motioncontrols/Decay+Time-Lapse.webp`, prompt: 'rapid decay time lapse organic decomposition nature', emoji: '🍂', category: 'vfx' },
   { id: 'building-explosion', name: 'Building Explosion', preview: `${CDN}/motioncontrols/Building+Explosion.webp`, prompt: 'massive building explosion debris shockwave fireball destruction', emoji: '🏢', category: 'vfx' },
   { id: 'tsunami', name: 'Tsunami', preview: `${CDN}/motioncontrols/Tsunami.webp`, prompt: 'giant tsunami wave crashes through scene flooding destruction', emoji: '🌊', category: 'vfx' },
-  { id: 'fire', name: 'Fire Effect', preview: `${CDN}/motioncontrols/Fire.webp`, prompt: 'dramatic fire engulfs everything cinematic flame inferno', emoji: '🔥', category: 'vfx' },
-  { id: 'meteor-strike', name: 'Meteor Strike', preview: `${CDN}/motioncontrols/Meteor+Strike.webp`, prompt: 'meteor strikes ground massive impact explosion crater', emoji: '☄️', category: 'vfx' },
-  { id: 'black-hole', name: 'Black Hole', preview: `${CDN}/motioncontrols/Black+Hole.webp`, prompt: 'black hole forms pulls everything in gravitational lensing', emoji: '🌑', category: 'vfx' },
-  { id: 'portal-open', name: 'Portal Open', preview: `${CDN}/motioncontrols/Portal+Open.webp`, prompt: 'interdimensional portal opens swirling vortex glowing energy', emoji: '🌀', category: 'vfx' },
-  { id: 'time-freeze', name: 'Time Freeze', preview: `${CDN}/motioncontrols/Time+Freeze.webp`, prompt: 'time freezes everything stops mid action suspended', emoji: '⏱️', category: 'vfx' },
-  { id: 'gravity-flip', name: 'Gravity Flip', preview: `${CDN}/motioncontrols/Gravity+Flip.webp`, prompt: 'gravity reverses everything floats rises upward surreal', emoji: '🔄', category: 'vfx' },
-  { id: 'glass-shatter', name: 'Glass Shatter', preview: `${CDN}/motioncontrols/Glass+Shatter.webp`, prompt: 'world shatters like breaking glass into pieces', emoji: '💎', category: 'vfx' },
-  { id: 'laser-beam', name: 'Laser Beam', preview: `${CDN}/motioncontrols/Laser+Beam.webp`, prompt: 'powerful laser beam shoots through destroying everything', emoji: '🔴', category: 'vfx' },
-  { id: 'smoke-bomb', name: 'Smoke Bomb', preview: `${CDN}/motioncontrols/Smoke+Bomb.webp`, prompt: 'colorful smoke bomb explosion billows fills entire frame', emoji: '💜', category: 'vfx' },
-  { id: 'snow-storm', name: 'Snow Storm', preview: `${CDN}/motioncontrols/Snow+Storm.webp`, prompt: 'blizzard snow storm sweeps through freezing everything', emoji: '❄️', category: 'vfx' },
-  { id: 'rain-storm', name: 'Rain Storm', preview: `${CDN}/motioncontrols/Rain+Storm.webp`, prompt: 'heavy rain storm pours down dramatic lightning thunder', emoji: '⛈️', category: 'vfx' },
-  { id: 'earthquake', name: 'Earthquake', preview: `${CDN}/motioncontrols/Earthquake.webp`, prompt: 'massive earthquake ground splits cracks destroy everything', emoji: '🌍', category: 'vfx' },
-  { id: 'volcanic-eruption', name: 'Volcanic Eruption', preview: `${CDN}/motioncontrols/Volcanic+Eruption.webp`, prompt: 'volcano erupts lava flows ash cloud massive destruction', emoji: '🌋', category: 'vfx' },
-  { id: 'nuclear-blast', name: 'Nuclear Blast', preview: `${CDN}/motioncontrols/Nuclear+Blast.webp`, prompt: 'nuclear explosion shockwave obliterates everything white flash', emoji: '☢️', category: 'vfx' },
-  { id: 'acid-rain', name: 'Acid Rain', preview: `${CDN}/motioncontrols/Acid+Rain.webp`, prompt: 'toxic acid rain melts dissolves everything it touches', emoji: '🧪', category: 'vfx' },
+  { id: 'fire', name: 'Fire', preview: `${CDN}/motioncontrols/Fire.webp`, prompt: 'dramatic fire engulfs everything cinematic flame inferno', emoji: '🔥', category: 'vfx' },
+  { id: 'robotic-face-reveal', name: 'Robotic Face Reveal', preview: `${CDN}/motioncontrols/Robotic+Face+Reveal.webp`, prompt: 'robotic face reveal mechanical transformation', emoji: '🤖', category: 'vfx' },
 ];
 
 const ALL_EFFECTS = [...AI_EFFECTS, ...MOTION_CONTROLS, ...VFX_EFFECTS];
@@ -621,19 +602,19 @@ export default function VFXGenerate() {
                     }`}
                     style={{ background: 'var(--bg-card)' }}
                   >
-                    <div className="aspect-video w-full overflow-hidden rounded-t-xl" style={{ background: 'var(--bg-panel)' }}>
-                       {effect.preview ? (
-                         <img
-                           src={effect.preview}
-                           alt={effect.name}
-                           className="w-full h-full object-cover"
-                           loading="lazy"
-                           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                         />
-                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-4xl">{effect.emoji}</div>
-                      )}
-                    </div>
+                     <div className="aspect-video w-full overflow-hidden rounded-t-xl" style={{ background: 'var(--bg-panel)' }}>
+                        {effect.preview ? (
+                          <ImageWithFallback
+                            src={effect.preview}
+                            alt={effect.name}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            fallbackEmoji={effect.emoji}
+                          />
+                        ) : (
+                         <div className="w-full h-full flex items-center justify-center text-4xl">{effect.emoji}</div>
+                       )}
+                     </div>
                     <div className="p-2 sm:p-3">
                       <p className="text-xs sm:text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
                         {effect.name}

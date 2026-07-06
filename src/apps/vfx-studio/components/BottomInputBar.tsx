@@ -6,6 +6,48 @@ import ApiKeyModal from './ApiKeyModal';
 import ImageUrlModal from './ImageUrlModal';
 import VideoPopup from './VideoPopup';
 
+const LOCAL_PREFIX = '/vfx-effects';
+
+function getLocalPath(cdnPath: string): string {
+  return LOCAL_PREFIX + cdnPath.replace('https://d3adwkbyhxyrtq.cloudfront.net', '');
+}
+
+function EffectPreviewImage({ src, fallbackEmoji, style }: { src: string; fallbackEmoji?: string; style?: React.CSSProperties }) {
+  const [imgSrc, setImgSrc] = React.useState(src);
+  const [showFallback, setShowFallback] = React.useState(false);
+
+  React.useEffect(() => {
+    setImgSrc(src);
+    setShowFallback(false);
+  }, [src]);
+
+  const handleError = () => {
+    const local = getLocalPath(src);
+    if (imgSrc === src && local !== src) {
+      setImgSrc(local);
+    } else {
+      setShowFallback(true);
+    }
+  };
+
+  if (showFallback) {
+    return (
+      <div style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', border: '1px solid #23232b', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#18181b', fontSize: 18, ...style }}>
+        {fallbackEmoji || '🎬'}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={imgSrc}
+      alt={fallbackEmoji || 'Effect preview'}
+      style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', border: '1px solid #23232b', ...style }}
+      onError={handleError}
+    />
+  );
+}
+
 type AspectRatio = '16:9' | '9:16' | '1:1';
 type Resolution = '480p' | '720p';
 type Quality = 'medium' | 'high';
@@ -481,58 +523,54 @@ export default function BottomInputBar({
               </div>
               <div style={{ flex: 1 }} />
             </div>
-            {/* Show selected effect if any */}
-            {selectedEffect && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  background: '#232b39',
-                  borderRadius: '10px',
-                  padding: '6px 14px',
-                  marginBottom: '8px',
-                  marginTop: '2px',
-                  color: '#fff',
-                  fontWeight: 500,
-                  fontSize: '15px',
-                  boxShadow: '0 1px 4px 0 rgba(0,0,0,0.10)',
-                }}
-              >
-                {selectedEffect.preview && (
-                  <img
-                    src={selectedEffect.preview}
-                    alt={selectedEffect.name}
-                    style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', border: '1px solid #23232b' }}
-                  />
-                )}
-                <span>{selectedEffect.name}</span>
-                <button
-                  onClick={() => setSelectedEffect(null)}
-                  style={{
-                    marginLeft: 8,
-                    background: 'none',
-                    border: 'none',
-                    color: '#9ca3af',
-                    fontSize: 18,
-                    cursor: 'pointer',
-                    borderRadius: '50%',
-                    width: 28,
-                    height: 28,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'background 0.2s',
-                  }}
-                  title="Remove selected effect"
-                  aria-label="Remove selected effect"
-                  onMouseOver={(e) => e.currentTarget.style.background = '#2d2d2d'}
-                  onMouseOut={(e) => e.currentTarget.style.background = 'none'}
-                >
-                  ×
-                </button>
-              </div>
-            )}
+             {/* Show selected effect if any */}
+             {selectedEffect && (
+               <div
+                 style={{
+                   display: 'flex',
+                   alignItems: 'center',
+                   gap: '10px',
+                   background: '#232b39',
+                   borderRadius: '10px',
+                   padding: '6px 14px',
+                   marginBottom: '8px',
+                   marginTop: '2px',
+                   color: '#fff',
+                   fontWeight: 500,
+                   fontSize: '15px',
+                   boxShadow: '0 1px 4px 0 rgba(0,0,0,0.10)',
+                 }}
+               >
+                 {selectedEffect.preview && (
+                   <EffectPreviewImage src={selectedEffect.preview} fallbackEmoji={selectedEffect.name} />
+                 )}
+                 <span>{selectedEffect.name}</span>
+                 <button
+                   onClick={() => setSelectedEffect(null)}
+                   style={{
+                     marginLeft: 8,
+                     background: 'none',
+                     border: 'none',
+                     color: '#9ca3af',
+                     fontSize: 18,
+                     cursor: 'pointer',
+                     borderRadius: '50%',
+                     width: 28,
+                     height: 28,
+                     display: 'flex',
+                     alignItems: 'center',
+                     justifyContent: 'center',
+                     transition: 'background 0.2s',
+                   }}
+                   title="Remove selected effect"
+                   aria-label="Remove selected effect"
+                   onMouseOver={(e) => e.currentTarget.style.background = '#2d2d2d'}
+                   onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                 >
+                   ×
+                 </button>
+               </div>
+             )}
             {/* Preview uploaded file or image URL */}
             {imageUrl && (
               <div
