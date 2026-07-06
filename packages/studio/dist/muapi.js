@@ -49,6 +49,12 @@ function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" 
 function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
 function _regenerator() { /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ var e, t, r = "function" == typeof Symbol ? Symbol : {}, n = r.iterator || "@@iterator", o = r.toStringTag || "@@toStringTag"; function i(r, n, o, i) { var c = n && n.prototype instanceof Generator ? n : Generator, u = Object.create(c.prototype); return _regeneratorDefine2(u, "_invoke", function (r, n, o) { var i, c, u, f = 0, p = o || [], y = !1, G = { p: 0, n: 0, v: e, a: d, f: d.bind(e, 4), d: function d(t, r) { return i = t, c = 0, u = e, G.n = r, a; } }; function d(r, n) { for (c = r, u = n, t = 0; !y && f && !o && t < p.length; t++) { var o, i = p[t], d = G.p, l = i[2]; r > 3 ? (o = l === n) && (u = i[(c = i[4]) ? 5 : (c = 3, 3)], i[4] = i[5] = e) : i[0] <= d && ((o = r < 2 && d < i[1]) ? (c = 0, G.v = n, G.n = i[1]) : d < l && (o = r < 3 || i[0] > n || n > l) && (i[4] = r, i[5] = n, G.n = l, c = 0)); } if (o || r > 1) return a; throw y = !0, n; } return function (o, p, l) { if (f > 1) throw TypeError("Generator is already running"); for (y && 1 === p && d(p, l), c = p, u = l; (t = c < 2 ? e : u) || !y;) { i || (c ? c < 3 ? (c > 1 && (G.n = -1), d(c, u)) : G.n = u : G.v = u); try { if (f = 2, i) { if (c || (o = "next"), t = i[o]) { if (!(t = t.call(i, u))) throw TypeError("iterator result is not an object"); if (!t.done) return t; u = t.value, c < 2 && (c = 0); } else 1 === c && (t = i["return"]) && t.call(i), c < 2 && (u = TypeError("The iterator does not provide a '" + o + "' method"), c = 1); i = e; } else if ((t = (y = G.n < 0) ? u : r.call(n, G)) !== a) break; } catch (t) { i = e, c = 1, u = t; } finally { f = 1; } } return { value: t, done: y }; }; }(r, o, i), !0), u; } var a = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} t = Object.getPrototypeOf; var c = [][n] ? t(t([][n]())) : (_regeneratorDefine2(t = {}, n, function () { return this; }), t), u = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(c); function f(e) { return Object.setPrototypeOf ? Object.setPrototypeOf(e, GeneratorFunctionPrototype) : (e.__proto__ = GeneratorFunctionPrototype, _regeneratorDefine2(e, o, "GeneratorFunction")), e.prototype = Object.create(u), e; } return GeneratorFunction.prototype = GeneratorFunctionPrototype, _regeneratorDefine2(u, "constructor", GeneratorFunctionPrototype), _regeneratorDefine2(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = "GeneratorFunction", _regeneratorDefine2(GeneratorFunctionPrototype, o, "GeneratorFunction"), _regeneratorDefine2(u), _regeneratorDefine2(u, o, "Generator"), _regeneratorDefine2(u, n, function () { return this; }), _regeneratorDefine2(u, "toString", function () { return "[object Generator]"; }), (_regenerator = function _regenerator() { return { w: i, m: f }; })(); }
 function _regeneratorDefine2(e, r, n, t) { var i = Object.defineProperty; try { i({}, "", {}); } catch (e) { i = 0; } _regeneratorDefine2 = function _regeneratorDefine(e, r, n, t) { function o(r, n) { _regeneratorDefine2(e, r, function (e) { return this._invoke(r, n, e); }); } r ? i ? i(e, r, { value: n, enumerable: !t, configurable: !t, writable: !t }) : e[r] = n : (o("next", 0), o("throw", 1), o("return", 2)); }, _regeneratorDefine2(e, r, n, t); }
+function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
+function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
+function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
+function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
 function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
 function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
 // In an http(s) browser we route through the host app's proxy (Next.js routes
@@ -76,6 +82,7 @@ function _pollForResult() {
       pollUrl,
       attempt,
       _data$status,
+      headers,
       response,
       errText,
       data,
@@ -100,12 +107,13 @@ function _pollForResult() {
           });
         case 2:
           _context.p = 2;
+          headers = {
+            'Content-Type': 'application/json'
+          };
+          if (key) headers['x-api-key'] = key;
           _context.n = 3;
           return fetch(pollUrl, {
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': key
-            }
+            headers: headers
           });
         case 3:
           response = _context.v;
@@ -174,6 +182,7 @@ function _submitAndPoll() {
     var _result$outputs, _result$output;
     var maxAttempts,
       url,
+      headers,
       response,
       errText,
       submitData,
@@ -186,13 +195,14 @@ function _submitAndPoll() {
         case 0:
           maxAttempts = _args2.length > 4 && _args2[4] !== undefined ? _args2[4] : 60;
           url = "".concat(BASE_URL, "/api/v1/").concat(endpoint);
+          headers = {
+            'Content-Type': 'application/json'
+          };
+          if (key) headers['x-api-key'] = key;
           _context2.n = 1;
           return fetch(url, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': key
-            },
+            headers: headers,
             body: JSON.stringify(payload)
           });
         case 1:
@@ -463,14 +473,36 @@ function _generateAudio() {
   }));
   return _generateAudio.apply(this, arguments);
 }
+var ALLOWED_UPLOAD_MIME_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/wav', 'audio/webm', 'application/zip', 'application/pdf', 'application/json']);
+var MAX_UPLOAD_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB per MuAPI docs
+
+function parseApiErrorBody(text) {
+  try {
+    var parsed = JSON.parse(text);
+    return parsed.detail || parsed.error || parsed.message || text.slice(0, 200);
+  } catch (_unused) {
+    return text.slice(0, 200);
+  }
+}
 function uploadFile(apiKey, file, onProgress) {
   return new Promise(function (resolve, reject) {
+    // --- Client-side pre-flight validation (MuAPI file upload spec) ---
+    if (!file) {
+      return reject(new Error('No file provided'));
+    }
+    if (!ALLOWED_UPLOAD_MIME_TYPES.has(file.type)) {
+      return reject(new Error("Invalid file type: ".concat(file.type, ". Allowed: ").concat(_toConsumableArray(ALLOWED_UPLOAD_MIME_TYPES).join(', '))));
+    }
+    if (file.size > MAX_UPLOAD_FILE_SIZE_BYTES) {
+      var sizeMB = (file.size / 1024 / 1024).toFixed(1);
+      return reject(new Error("File too large: ".concat(sizeMB, " MB. Maximum size: 10 MB")));
+    }
     var url = "".concat(BASE_URL, "/api/v1/upload_file");
     var formData = new FormData();
     formData.append('file', file);
     var xhr = new XMLHttpRequest();
     xhr.open('POST', url);
-    xhr.setRequestHeader('x-api-key', apiKey);
+    if (apiKey) xhr.setRequestHeader('x-api-key', apiKey);
     if (onProgress) {
       xhr.upload.onprogress = function (event) {
         if (event.lengthComputable) {
@@ -480,29 +512,26 @@ function uploadFile(apiKey, file, onProgress) {
       };
     }
     xhr.onload = function () {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          var _data$data;
-          var data = JSON.parse(xhr.responseText);
-          var fileUrl = data.url || data.file_url || ((_data$data = data.data) === null || _data$data === void 0 ? void 0 : _data$data.url);
-          if (!fileUrl) {
-            reject(new Error('No URL returned from file upload'));
-          } else {
-            resolve(fileUrl);
-          }
-        } catch (e) {
-          reject(new Error('Failed to parse upload response'));
-        }
-      } else {
+      if (xhr.status < 200 || xhr.status >= 300) {
         var detail = xhr.statusText;
         try {
-          var errObj = JSON.parse(xhr.responseText);
-          detail = errObj.detail || detail;
-        } catch (e) {
+          detail = parseApiErrorBody(xhr.responseText);
+        } catch (_unused2) {
           // fallback to statusText
         }
         notifyAuthRequired(xhr.status, detail);
-        reject(new Error("File upload failed: ".concat(xhr.status, " - ").concat(detail)));
+        return reject(new Error("Image upload failed: ".concat(xhr.status, " - ").concat(detail)));
+      }
+      try {
+        var _data$data;
+        var data = JSON.parse(xhr.responseText);
+        var fileUrl = data.url || data.file_url || ((_data$data = data.data) === null || _data$data === void 0 ? void 0 : _data$data.url);
+        if (!fileUrl) {
+          return reject(new Error('No URL returned from file upload'));
+        }
+        resolve(fileUrl);
+      } catch (_unused3) {
+        reject(new Error('Invalid upload response'));
       }
     };
     xhr.onerror = function () {
@@ -554,7 +583,7 @@ function getTemplateWorkflows(_x22) {
 }
 function _getTemplateWorkflows() {
   _getTemplateWorkflows = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee10(apiKey) {
-    var response, errText;
+    var response, errText, data;
     return _regenerator().w(function (_context10) {
       while (1) switch (_context10.n) {
         case 0:
@@ -580,7 +609,8 @@ function _getTemplateWorkflows() {
           _context10.n = 4;
           return response.json();
         case 4:
-          return _context10.a(2, _context10.v);
+          data = _context10.v;
+          return _context10.a(2, Array.isArray(data) ? data : data.workflows || data.items || []);
       }
     }, _callee10);
   }));
@@ -592,7 +622,7 @@ function getUserWorkflows(_x23) {
 }
 function _getUserWorkflows() {
   _getUserWorkflows = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee11(apiKey) {
-    var response, errText;
+    var response, errText, data;
     return _regenerator().w(function (_context11) {
       while (1) switch (_context11.n) {
         case 0:
@@ -618,7 +648,8 @@ function _getUserWorkflows() {
           _context11.n = 4;
           return response.json();
         case 4:
-          return _context11.a(2, _context11.v);
+          data = _context11.v;
+          return _context11.a(2, Array.isArray(data) ? data : data.workflows || data.items || []);
       }
     }, _callee11);
   }));
@@ -630,7 +661,7 @@ function getPublishedWorkflows(_x24) {
 }
 function _getPublishedWorkflows() {
   _getPublishedWorkflows = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee12(apiKey) {
-    var response, errText;
+    var response, errText, data;
     return _regenerator().w(function (_context12) {
       while (1) switch (_context12.n) {
         case 0:
@@ -656,7 +687,8 @@ function _getPublishedWorkflows() {
           _context12.n = 4;
           return response.json();
         case 4:
-          return _context12.a(2, _context12.v);
+          data = _context12.v;
+          return _context12.a(2, Array.isArray(data) ? data : data.workflows || data.items || []);
       }
     }, _callee12);
   }));
@@ -1043,6 +1075,7 @@ function _pollWorkflowResult() {
     var maxAttempts,
       interval,
       pollUrl,
+      headers,
       attempt,
       _data$status2,
       response,
@@ -1056,6 +1089,10 @@ function _pollWorkflowResult() {
           maxAttempts = _args22.length > 2 && _args22[2] !== undefined ? _args22[2] : 900;
           interval = _args22.length > 3 && _args22[3] !== undefined ? _args22[3] : 2000;
           pollUrl = "".concat(BASE_URL, "/workflow/run/").concat(runId, "/api-outputs");
+          headers = {
+            'Content-Type': 'application/json'
+          };
+          if (apiKey) headers['x-api-key'] = apiKey;
           attempt = 1;
         case 1:
           if (!(attempt <= maxAttempts)) {
@@ -1070,10 +1107,7 @@ function _pollWorkflowResult() {
           _context22.p = 2;
           _context22.n = 3;
           return fetch(pollUrl, {
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': apiKey
-            }
+            headers: headers
           });
         case 3:
           response = _context22.v;
@@ -1464,17 +1498,18 @@ function calculateDynamicCost(_x67, _x68, _x69) {
 }
 function _calculateDynamicCost() {
   _calculateDynamicCost = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee31(apiKey, taskName, payload) {
-    var response, errText;
+    var headers, response, errText;
     return _regenerator().w(function (_context31) {
       while (1) switch (_context31.n) {
         case 0:
+          headers = {
+            'Content-Type': 'application/json'
+          };
+          if (apiKey) headers['x-api-key'] = apiKey;
           _context31.n = 1;
           return fetch("".concat(BASE_URL, "/api/v1/app/calculate_dynamic_cost"), {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': apiKey
-            },
+            headers: headers,
             body: JSON.stringify({
               task_name: taskName,
               payload: payload
@@ -1506,17 +1541,18 @@ function registerAppInterest(_x70, _x71) {
 }
 function _registerAppInterest() {
   _registerAppInterest = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee32(apiKey, appName) {
-    var response, errText;
+    var headers, response, errText;
     return _regenerator().w(function (_context32) {
       while (1) switch (_context32.n) {
         case 0:
+          headers = {
+            'Content-Type': 'application/json'
+          };
+          if (apiKey) headers['x-api-key'] = apiKey;
           _context32.n = 1;
           return fetch("".concat(BASE_URL, "/app/interest"), {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': apiKey
-            },
+            headers: headers,
             body: JSON.stringify({
               app_name: appName
             })
@@ -1547,16 +1583,17 @@ function getAppInterests(_x72) {
 }
 function _getAppInterests() {
   _getAppInterests = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee33(apiKey) {
-    var response, errText;
+    var headers, response, errText;
     return _regenerator().w(function (_context33) {
       while (1) switch (_context33.n) {
         case 0:
+          headers = {
+            'Content-Type': 'application/json'
+          };
+          if (apiKey) headers['x-api-key'] = apiKey;
           _context33.n = 1;
           return fetch("".concat(BASE_URL, "/app/interests"), {
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': apiKey
-            }
+            headers: headers
           });
         case 1:
           response = _context33.v;

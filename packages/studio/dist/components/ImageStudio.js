@@ -180,31 +180,38 @@ function UploadButton(_ref) {
       return _regenerator().w(function (_context2) {
         while (1) switch (_context2.p = _context2.n) {
           case 0:
-            files = Array.from(e.target.files);
-            if (files.length) {
+            if (apiKey) {
               _context2.n = 1;
               break;
             }
+            alert('Please enter your MuAPI key in Settings to upload images.');
             return _context2.a(2);
           case 1:
+            files = Array.from(e.target.files);
+            if (files.length) {
+              _context2.n = 2;
+              break;
+            }
+            return _context2.a(2);
+          case 2:
             e.target.value = "";
             MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
             tooLarge = files.filter(function (f) {
               return f.size > MAX_IMAGE_SIZE;
             });
             if (!(tooLarge.length > 0)) {
-              _context2.n = 2;
+              _context2.n = 3;
               break;
             }
             alert("The following images are too large (max 10MB): ".concat(tooLarge.map(function (f) {
               return f.name;
             }).join(", ")));
             return _context2.a(2);
-          case 2:
+          case 3:
             setUploading(true);
-            _context2.p = 3;
+            _context2.p = 4;
             toUpload = maxImages === 1 ? files.slice(0, 1) : files.slice(0, maxImages - selectedEntries.length || 1);
-            _context2.n = 4;
+            _context2.n = 5;
             return Promise.all(toUpload.map(/*#__PURE__*/function () {
               var _ref3 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee(file) {
                 var id, placeholder, uploadedUrl, newEntry, _t;
@@ -282,22 +289,22 @@ function UploadButton(_ref) {
                 return _ref3.apply(this, arguments);
               };
             }()));
-          case 4:
-            _context2.n = 6;
-            break;
           case 5:
-            _context2.p = 5;
-            _t2 = _context2.v;
-            alert("Image upload failed: ".concat(_t2.message));
+            _context2.n = 7;
+            break;
           case 6:
             _context2.p = 6;
+            _t2 = _context2.v;
+            alert("Image upload failed: ".concat(_t2.message));
+          case 7:
+            _context2.p = 7;
             setUploading(false);
             setLastUploadProgress(0);
-            return _context2.f(6);
-          case 7:
+            return _context2.f(7);
+          case 8:
             return _context2.a(2);
         }
-      }, _callee2, null, [[3, 5, 6, 7]]);
+      }, _callee2, null, [[4, 6, 7, 8]]);
     }));
     return function handleFileChange(_x3) {
       return _ref2.apply(this, arguments);
@@ -998,23 +1005,30 @@ function ImageStudio(_ref6) {
       return _regenerator().w(function (_context4) {
         while (1) switch (_context4.p = _context4.n) {
           case 0:
+            if (apiKey) {
+              _context4.n = 1;
+              break;
+            }
+            alert('Please enter your MuAPI key in Settings to upload images.');
+            return _context4.a(2);
+          case 1:
             MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
             tooLarge = files.filter(function (f) {
               return f.size > MAX_IMAGE_SIZE;
             });
             if (!(tooLarge.length > 0)) {
-              _context4.n = 1;
+              _context4.n = 2;
               break;
             }
             alert("The following images are too large (max 10MB): ".concat(tooLarge.map(function (f) {
               return f.name;
             }).join(", ")));
             return _context4.a(2);
-          case 1:
+          case 2:
             setGenerating(true); // Show as generating/busy
-            _context4.p = 2;
+            _context4.p = 3;
             toUpload = maxImages === 1 ? files.slice(0, 1) : files.slice(0, maxImages);
-            _context4.n = 3;
+            _context4.n = 4;
             return Promise.all(toUpload.map(/*#__PURE__*/function () {
               var _ref8 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3(file) {
                 var _t3;
@@ -1040,25 +1054,25 @@ function ImageStudio(_ref6) {
                 return _ref8.apply(this, arguments);
               };
             }()));
-          case 3:
+          case 4:
             urls = _context4.v;
             handleUploadSelect({
               urls: urls
             });
-            _context4.n = 5;
+            _context4.n = 6;
             break;
-          case 4:
-            _context4.p = 4;
-            _t4 = _context4.v;
-            alert("Image upload failed: ".concat(_t4.message));
           case 5:
             _context4.p = 5;
-            setGenerating(false);
-            return _context4.f(5);
+            _t4 = _context4.v;
+            alert("Image upload failed: ".concat(_t4.message));
           case 6:
+            _context4.p = 6;
+            setGenerating(false);
+            return _context4.f(6);
+          case 7:
             return _context4.a(2);
         }
-      }, _callee4, null, [[2, 4, 5, 6]]);
+      }, _callee4, null, [[3, 5, 6, 7]]);
     }));
     return function processDroppedImages(_x5) {
       return _ref7.apply(this, arguments);
@@ -1189,31 +1203,38 @@ function ImageStudio(_ref6) {
             }
             return _context6.a(2);
           case 1:
+            if (apiKey) {
+              _context6.n = 2;
+              break;
+            }
+            alert("Please enter your MuAPI key in Settings first.");
+            return _context6.a(2);
+          case 2:
             if (!imageMode) {
-              _context6.n = 3;
+              _context6.n = 4;
               break;
             }
             if (!(uploadedImageUrls.length === 0)) {
-              _context6.n = 2;
+              _context6.n = 3;
               break;
             }
             alert("Please upload a reference image first.");
             return _context6.a(2);
-          case 2:
-            _context6.n = 4;
-            break;
           case 3:
+            _context6.n = 5;
+            break;
+          case 4:
             if (prompt.trim()) {
-              _context6.n = 4;
+              _context6.n = 5;
               break;
             }
             alert("Please enter a prompt to generate an image.");
             return _context6.a(2);
-          case 4:
+          case 5:
             setGenerating(true);
             setGenerateError(null);
-            _context6.p = 5;
-            _context6.n = 6;
+            _context6.p = 6;
+            _context6.n = 7;
             return Promise.all(Array.from({
               length: batchSize
             }).map(/*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee5() {
@@ -1258,7 +1279,7 @@ function ImageStudio(_ref6) {
                 }
               }, _callee5);
             }))));
-          case 6:
+          case 7:
             results = _context6.v;
             results.forEach(function (res) {
               if (res && res.url) {
@@ -1279,24 +1300,24 @@ function ImageStudio(_ref6) {
                 });
               }
             });
-            _context6.n = 8;
+            _context6.n = 9;
             break;
-          case 7:
-            _context6.p = 7;
+          case 8:
+            _context6.p = 8;
             _t5 = _context6.v;
             console.error("[ImageStudio] Generation failed:", _t5);
             setGenerateError(_t5.message.slice(0, 80));
             setTimeout(function () {
               return setGenerateError(null);
             }, 4000);
-          case 8:
-            _context6.p = 8;
-            setGenerating(false);
-            return _context6.f(8);
           case 9:
+            _context6.p = 9;
+            setGenerating(false);
+            return _context6.f(9);
+          case 10:
             return _context6.a(2);
         }
-      }, _callee6, null, [[5, 7, 8, 9]]);
+      }, _callee6, null, [[6, 8, 9, 10]]);
     }));
     return function handleGenerate() {
       return _ref0.apply(this, arguments);

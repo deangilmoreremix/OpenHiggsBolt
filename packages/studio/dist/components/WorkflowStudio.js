@@ -317,7 +317,7 @@ function WorkflowStudio(_ref2) {
 
   // Dedicated data fetching effect for the active workflow
   (0, _react.useEffect)(function () {
-    if (!(selectedWorkflow !== null && selectedWorkflow !== void 0 && selectedWorkflow.id)) return;
+    if (!(selectedWorkflow !== null && selectedWorkflow !== void 0 && selectedWorkflow.id) || !apiKey) return;
     function loadWorkflowDetails() {
       return _loadWorkflowDetails.apply(this, arguments);
     }
@@ -603,56 +603,63 @@ function WorkflowStudio(_ref2) {
         return _regenerator().w(function (_context6) {
           while (1) switch (_context6.p = _context6.n) {
             case 0:
-              _context6.p = 0;
+              if (apiKey) {
+                _context6.n = 1;
+                break;
+              }
+              setLoading(false);
+              return _context6.a(2);
+            case 1:
+              _context6.p = 1;
               setLoading(true);
               data = [];
               if (!(activeMainTab === "templates")) {
-                _context6.n = 2;
+                _context6.n = 3;
                 break;
               }
-              _context6.n = 1;
+              _context6.n = 2;
               return (0, _muapi.getTemplateWorkflows)(apiKey);
-            case 1:
-              data = _context6.v;
-              _context6.n = 6;
-              break;
             case 2:
-              if (!(activeMainTab === "my-workflows")) {
-                _context6.n = 4;
-                break;
-              }
-              _context6.n = 3;
-              return (0, _muapi.getUserWorkflows)(apiKey);
+              data = _context6.v;
+              _context6.n = 7;
+              break;
             case 3:
-              data = _context6.v;
-              _context6.n = 6;
-              break;
-            case 4:
-              if (!(activeMainTab === "published")) {
-                _context6.n = 6;
+              if (!(activeMainTab === "my-workflows")) {
+                _context6.n = 5;
                 break;
               }
-              _context6.n = 5;
-              return (0, _muapi.getPublishedWorkflows)(apiKey);
-            case 5:
+              _context6.n = 4;
+              return (0, _muapi.getUserWorkflows)(apiKey);
+            case 4:
               data = _context6.v;
-            case 6:
-              setWorkflows(data);
-              _context6.n = 8;
+              _context6.n = 7;
               break;
+            case 5:
+              if (!(activeMainTab === "published")) {
+                _context6.n = 7;
+                break;
+              }
+              _context6.n = 6;
+              return (0, _muapi.getPublishedWorkflows)(apiKey);
+            case 6:
+              data = _context6.v;
             case 7:
-              _context6.p = 7;
+              setWorkflows(data);
+              _context6.n = 9;
+              break;
+            case 8:
+              _context6.p = 8;
               _t5 = _context6.v;
               console.error("Failed to load workflows:", _t5);
               setError("Failed to load workflows list.");
-            case 8:
-              _context6.p = 8;
-              setLoading(false);
-              return _context6.f(8);
             case 9:
+              _context6.p = 9;
+              setLoading(false);
+              return _context6.f(9);
+            case 10:
               return _context6.a(2);
           }
-        }, _callee6, null, [[0, 7, 8, 9]]);
+        }, _callee6, null, [[1, 8, 9, 10]]);
       }));
       return _loadWorkflows.apply(this, arguments);
     }

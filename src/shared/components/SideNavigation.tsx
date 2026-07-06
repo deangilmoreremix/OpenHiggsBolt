@@ -38,7 +38,7 @@ export default function SideNavigation() {
         <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
           <Video size={24} className="text-black" />
         </div>
-        <h1 className="text-xl font-bold">OpenHiggsBolt</h1>
+         <h1 className="text-xl font-bold">SmartVideo GO</h1>
       </div>
       
       <div className="flex flex-col gap-1">

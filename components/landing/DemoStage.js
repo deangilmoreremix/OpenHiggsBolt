@@ -293,7 +293,7 @@ function ScriptOutput({ feature, result }) {
     <Frame>
       <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-sm leading-6 text-white/70 mb-4">
         <p><span className="font-bold text-cyan-200">Hook:</span> What if your next campaign video could be built in minutes?</p>
-        <p className="mt-3"><span className="font-bold text-cyan-200">Body:</span> Open Generative AI turns prompts into images, video, UGC ads, VFX, and launch assets.</p>
+         <p className="mt-3"><span className="font-bold text-cyan-200">Body:</span> SmartVideo GO turns prompts into images, video, UGC ads, VFX, and launch assets.</p>
         <p className="mt-3"><span className="font-bold text-cyan-200">CTA:</span> Try the studio and create your first asset today.</p>
       </div>
       <Generic feature={feature} result={result} />

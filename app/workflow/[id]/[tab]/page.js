@@ -1,7 +1,7 @@
 import StandaloneShell from '@/components/StandaloneShell';
 
 export const metadata = {
-  title: 'Workflow — Open Generative AI',
+  title: 'Workflow — SmartVideo GO',
 };
 
 export default function WorkflowTabPage() {

@@ -43,7 +43,7 @@
   },
   "build": {
     "appId": "ai.generative.open",
-    "productName": "Open Generative AI",
+    "productName": "SmartVideo GO",
     "copyright": "Copyright © 2025",
     "directories": {
       "output": "release"
@@ -96,7 +96,7 @@
     "linux": {
       "icon": "public/banner.png",
       "category": "Utility",
-      "maintainer": "Open Generative AI Team",
+      "maintainer": "SmartVideo GO Team",
       "extraFiles": [
         {
           "from": "build/linux/apparmor.profile",

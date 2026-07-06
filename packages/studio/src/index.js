@@ -8,6 +8,7 @@ export { default as LipSyncStudio } from './components/LipSyncStudio';
 export { default as CinemaStudio } from './components/CinemaStudio';
 export { default as AudioStudio } from './components/AudioStudio';
 export { default as MarketingStudio } from './components/MarketingStudio';
+export { default as RecastStudio } from './components/RecastStudio';
 export { default as WorkflowStudio } from './components/WorkflowStudio';
 export { default as AgentStudio } from './components/AgentStudio';
 export { default as DesignAgentStudio } from './components/DesignAgentStudio';

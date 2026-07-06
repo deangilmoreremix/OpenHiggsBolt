@@ -1,4 +1,4 @@
-import { getModelById, getVideoModelById, getI2IModelById, getI2VModelById, getV2VModelById, getLipSyncModelById, getAudioModelById } from './models.js';
+import { getModelById, getVideoModelById, getI2IModelById, getI2VModelById, getV2VModelById, getRecastModelById, getLipSyncModelById, getAudioModelById } from './models.js';
 
 // In an http(s) browser we route through the host app's proxy (Next.js routes
 // under /api/* re-issue the call server-side) so api.muapi.ai CORS is bypassed.
@@ -178,6 +178,23 @@ export async function processV2V(apiKey, params) {
     return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900);
 }
 
+export async function processRecast(apiKey, params) {
+    const modelInfo = getRecastModelById(params.model);
+    const endpoint = modelInfo?.endpoint || params.model;
+    const videoField = modelInfo?.videoField || 'video_url';
+    const payload = { [videoField]: params.video_url };
+    if (modelInfo?.imageField && params.image_url) {
+        payload[modelInfo.imageField] = params.image_url;
+    }
+    if (modelInfo?.hasPrompt && params.prompt) {
+        payload.prompt = params.prompt;
+    }
+    if (params.aspect_ratio) {
+        payload.aspect_ratio = params.aspect_ratio;
+    }
+    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900);
+}
+
 export async function processLipSync(apiKey, params) {
     const modelInfo = getLipSyncModelById(params.model);
     const endpoint = modelInfo?.endpoint || params.model;
@@ -308,7 +325,8 @@ export async function getTemplateWorkflows(apiKey) {
         const errText = await response.text();
         throw new Error(`Failed to fetch template workflows: ${response.status} - ${errText.slice(0, 100)}`);
     }
-    return await response.json();
+    const data = await response.json();
+    return Array.isArray(data) ? data : (data.workflows || data.items || []);
 };
 
 export async function getUserWorkflows(apiKey) {
@@ -322,7 +340,8 @@ export async function getUserWorkflows(apiKey) {
         const errText = await response.text();
         throw new Error(`Failed to fetch user workflows: ${response.status} - ${errText.slice(0, 100)}`);
     }
-    return await response.json();
+    const data = await response.json();
+    return Array.isArray(data) ? data : (data.workflows || data.items || []);
 };
 
 export async function getPublishedWorkflows(apiKey) {
@@ -336,7 +355,8 @@ export async function getPublishedWorkflows(apiKey) {
         const errText = await response.text();
         throw new Error(`Failed to fetch published workflows: ${response.status} - ${errText.slice(0, 100)}`);
     }
-    return await response.json();
+    const data = await response.json();
+    return Array.isArray(data) ? data : (data.workflows || data.items || []);
 };
 
 // Agents — uses direct URL → https://api.muapi.ai/agents/...

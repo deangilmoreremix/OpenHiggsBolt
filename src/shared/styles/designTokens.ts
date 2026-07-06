@@ -1,5 +1,5 @@
 /**
- * OpenHiggsBolt Design Tokens
+ * SmartVideo GO Design Tokens
  * Single source of truth for all app styling.
  * All apps must import from here — no hardcoded colors anywhere.
  */
