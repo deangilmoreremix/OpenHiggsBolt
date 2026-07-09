@@ -1,12 +1,13 @@
 "use client";
-import { useState } from 'react';
-import { useSignIn } from '@clerk/nextjs';
+import { useState, useEffect } from 'react';
+import { useSignIn, useAuth } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PRODUCT_NAME } from '../../components/landing/landingData';
 
 export default function SignInPage() {
   const { signIn, errors, fetchStatus } = useSignIn();
+  const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,6 +23,14 @@ export default function SignInPage() {
     }
     return '/studio';
   };
+
+  // If already signed in, send the user into the app
+  // (e.g. after email verification redirects back here).
+  useEffect(() => {
+    if (authLoaded && isSignedIn) {
+      router.replace(destination());
+    }
+  }, [authLoaded, isSignedIn, router]);
 
   const finishSignIn = async () => {
     await signIn.finalize({
