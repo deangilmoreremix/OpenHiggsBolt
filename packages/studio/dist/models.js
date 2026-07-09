@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.videoLipSyncModels = exports.v2vModels = exports.t2vModels = exports.t2iModels = exports.lipsyncModels = exports.imageLipSyncModels = exports.i2vModels = exports.i2iModels = exports.getVideoModelById = exports.getV2VModelById = exports.getResolutionsForVideoModel = exports.getResolutionsForModel = exports.getResolutionsForLipSyncModel = exports.getResolutionsForI2VModel = exports.getResolutionsForI2IModel = exports.getQualityFieldForModel = exports.getQualityFieldForI2IModel = exports.getModesForModel = exports.getModelById = exports.getMaxImagesForI2VModel = exports.getMaxImagesForI2IModel = exports.getLipSyncModelById = exports.getI2VModelById = exports.getI2IModelById = exports.getEffectsForI2VModel = exports.getEffectsForI2IModel = exports.getDurationsForModel = exports.getDurationsForI2VModel = exports.getDefaultEffectForI2VModel = exports.getDefaultEffectForI2IModel = exports.getAudioModelById = exports.getAspectRatiosForVideoModel = exports.getAspectRatiosForModel = exports.getAspectRatiosForI2VModel = exports.getAspectRatiosForI2IModel = exports.audioModels = void 0;
+exports.videoLipSyncModels = exports.v2vModels = exports.t2vModels = exports.t2iModels = exports.recastModels = exports.lipsyncModels = exports.imageLipSyncModels = exports.i2vModels = exports.i2iModels = exports.getVideoModelById = exports.getV2VModelById = exports.getResolutionsForVideoModel = exports.getResolutionsForModel = exports.getResolutionsForLipSyncModel = exports.getResolutionsForI2VModel = exports.getResolutionsForI2IModel = exports.getRecastModelById = exports.getQualityFieldForModel = exports.getQualityFieldForI2IModel = exports.getModesForModel = exports.getModelById = exports.getMaxImagesForI2VModel = exports.getMaxImagesForI2IModel = exports.getLipSyncModelById = exports.getI2VModelById = exports.getI2IModelById = exports.getEffectsForI2VModel = exports.getEffectsForI2IModel = exports.getDurationsForModel = exports.getDurationsForI2VModel = exports.getDefaultEffectForI2VModel = exports.getDefaultEffectForI2IModel = exports.getAudioModelById = exports.getAspectRatiosForVideoModel = exports.getAspectRatiosForRecastModel = exports.getAspectRatiosForModel = exports.getAspectRatiosForI2VModel = exports.getAspectRatiosForI2IModel = exports.audioModels = void 0;
 // Auto-generated from models_dump.json
 var t2iModels = exports.t2iModels = [{
   "id": "nano-banana",
@@ -1675,7 +1675,7 @@ var t2iModels = exports.t2iModels = [{
 }, {
   "id": "minimax-image-01",
   "name": "MiniMax Image 01",
-  "endpoint": "minimax-image-01",
+  "endpoint": "minimax-01-subject-reference",
   "family": "minimax",
   "inputs": {
     "prompt": {
@@ -3091,6 +3091,7 @@ var i2iModels = exports.i2iModels = [{
   "endpoint": "ai-image-face-swap",
   "family": "tools",
   "imageField": "image_url",
+  "swapField": "swap_url",
   "hasPrompt": false,
   "inputs": {
     "target_index": {
@@ -7431,6 +7432,50 @@ var getV2VModelById = exports.getV2VModelById = function getV2VModelById(id) {
   return v2vModels.find(function (m) {
     return m.id === id;
   });
+};
+
+// ─── Recast / Body Swap models ───────────────────────────────────────────────
+// Source video (the performance / motion) + character image (the new identity)
+// → a video of the new character performing the source video's motion.
+var recastModels = exports.recastModels = [{
+  "id": "kling-v3.0-pro-recast",
+  "name": "Kling 3.0 Pro Motion Control",
+  "endpoint": "kling-v3.0-pro-motion-control",
+  "family": "kling",
+  "videoField": "video_url",
+  "imageField": "image_url",
+  "hasPrompt": true,
+  "description": "Transfer the motion from your video onto a character image with maximum fidelity."
+}, {
+  "id": "runway-act-two-recast",
+  "name": "Runway Act Two",
+  "endpoint": "runway-act-two-i2v",
+  "family": "runway",
+  "videoField": "video_url",
+  "imageField": "image_url",
+  "hasPrompt": false,
+  "inputs": {
+    "aspect_ratio": {
+      "type": "string",
+      "title": "Aspect Ratio",
+      "name": "aspect_ratio",
+      "enum": ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"],
+      "default": "16:9"
+    }
+  },
+  "description": "Recast any character — drive a character image with the motion and performance from your video."
+}];
+var getRecastModelById = exports.getRecastModelById = function getRecastModelById(id) {
+  return recastModels.find(function (m) {
+    return m.id === id;
+  });
+};
+var getAspectRatiosForRecastModel = exports.getAspectRatiosForRecastModel = function getAspectRatiosForRecastModel(id) {
+  var _model$inputs17;
+  var model = recastModels.find(function (m) {
+    return m.id === id;
+  });
+  return (model === null || model === void 0 || (_model$inputs17 = model.inputs) === null || _model$inputs17 === void 0 || (_model$inputs17 = _model$inputs17.aspect_ratio) === null || _model$inputs17 === void 0 ? void 0 : _model$inputs17["enum"]) || [];
 };
 
 // ── Audio Models ──────────────────────────────────────────────────────────

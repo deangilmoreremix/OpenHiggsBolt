@@ -13,16 +13,24 @@ var _exportNames = {
   CinemaStudio: true,
   AudioStudio: true,
   MarketingStudio: true,
+  RecastStudio: true,
   WorkflowStudio: true,
   AgentStudio: true,
   DesignAgentStudio: true,
   AppsStudio: true,
-  McpCliStudio: true
+  McpCliStudio: true,
+  AiInfluencerStudio: true
 };
 Object.defineProperty(exports, "AgentStudio", {
   enumerable: true,
   get: function get() {
     return _AgentStudio["default"];
+  }
+});
+Object.defineProperty(exports, "AiInfluencerStudio", {
+  enumerable: true,
+  get: function get() {
+    return _AiInfluencerStudio["default"];
   }
 });
 Object.defineProperty(exports, "AppsStudio", {
@@ -79,6 +87,12 @@ Object.defineProperty(exports, "McpCliStudio", {
     return _McpCliStudio["default"];
   }
 });
+Object.defineProperty(exports, "RecastStudio", {
+  enumerable: true,
+  get: function get() {
+    return _RecastStudio["default"];
+  }
+});
 Object.defineProperty(exports, "VibeMotionStudio", {
   enumerable: true,
   get: function get() {
@@ -105,11 +119,13 @@ var _LipSyncStudio = _interopRequireDefault(require("./components/LipSyncStudio"
 var _CinemaStudio = _interopRequireDefault(require("./components/CinemaStudio"));
 var _AudioStudio = _interopRequireDefault(require("./components/AudioStudio"));
 var _MarketingStudio = _interopRequireDefault(require("./components/MarketingStudio"));
+var _RecastStudio = _interopRequireDefault(require("./components/RecastStudio"));
 var _WorkflowStudio = _interopRequireDefault(require("./components/WorkflowStudio"));
 var _AgentStudio = _interopRequireDefault(require("./components/AgentStudio"));
 var _DesignAgentStudio = _interopRequireDefault(require("./components/DesignAgentStudio"));
 var _AppsStudio = _interopRequireDefault(require("./components/AppsStudio"));
 var _McpCliStudio = _interopRequireDefault(require("./components/McpCliStudio"));
+var _AiInfluencerStudio = _interopRequireDefault(require("./components/AiInfluencerStudio"));
 var _muapi = require("./muapi");
 Object.keys(_muapi).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;

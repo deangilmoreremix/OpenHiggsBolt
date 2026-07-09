@@ -1,5 +1,57 @@
 import { getModelById, getVideoModelById, getI2IModelById, getI2VModelById, getV2VModelById, getLipSyncModelById } from './models.js';
 import { nsKey } from './identity.js';
+import axios from 'axios';
+
+/**
+ * Normalize a MuAPI prediction response into a consistent shape.
+ * MuAPI wraps payloads in `data` and sometimes nests `video`/`output`,
+ * so we tolerate both the flat and the wrapped response shapes.
+ */
+function normalizeMuapiResult(raw) {
+  const body = (raw && raw.data) ? raw.data : raw;
+  const video = (raw && raw.video) ? raw.video : (body && body.video);
+  const requestId = (raw && (raw.request_id || raw.id)) || (body && (body.request_id || body.id));
+  const status = String((raw && raw.status) || (body && body.status) || '').toLowerCase();
+  const outputs = (raw && raw.outputs) || (body && body.outputs) || (video ? [video.url] : null);
+  const url =
+    (Array.isArray(outputs) && outputs[0]) ||
+    (raw && (raw.url || raw.video_url)) ||
+    (body && (body.url || body.video_url)) ||
+    (video && video.url) ||
+    (raw && raw.output && raw.output.url) ||
+    (body && body.output && body.output.url) || null;
+  const error = (raw && raw.error) || (body && body.error) || null;
+  return { requestId, status, outputs, url, error, body };
+}
+
+
+// Central, source-of-truth MuAPI endpoint aliases. These guarantee the correct
+// `/api/v1/{endpoint}` is called even if the model catalog (models.js) is
+// regenerated from an older snapshot. Values are verified against the live
+// `GET /api/v1/models` catalog.
+const ENDPOINT_ALIASES = {
+  'flux-dev': 'flux-dev',
+  'flux-schnell': 'flux-schnell',
+  'midjourney-v7-text-to-image': 'midjourney-v7',
+  'seedream-5.0': 'bytedance-seedream-v5.0',
+  'minimax-image-01': 'minimax-image-01-subject-reference',
+  'seedance-v2.0-t2v': 'seedance-2-t2v',
+  'seedance-v2.0-extend': 'seedance-2-vip-extend',
+  'ai-image-upscaler': 'ai-image-upscaler',
+  'midjourney-v7-image-to-image': 'midjourney-v7',
+  'bytedance-seededit-v3': 'bytedance-seededit-v3',
+  'midjourney-v7-style-reference': 'midjourney-v7',
+  'midjourney-v7-omni-reference': 'midjourney-v7',
+  'minimax-image-01-subject-reference': 'minimax-image-01-subject-reference',
+  'bytedance-seedream-edit-v4': 'bytedance-seedream-v4-edit',
+  'seedream-5.0-edit': 'bytedance-seedream-v5.0-edit',
+  'midjourney-v7-image-to-video': 'midjourney-v7',
+  'seedance-lite-reference-video': 'seedance-lite-reference-video',
+  'seedance-v2.0-i2v': 'seedance-2-image-to-video',
+  'latent-sync': 'latent-sync',
+  'mmaudio-v2-text-to-audio': 'mmaudio-v2-text-to-audio',
+};
+
 
 export class MuapiClient {
     constructor() {
@@ -30,7 +82,7 @@ export class MuapiClient {
 
         // Resolve endpoint from model definition
         const modelInfo = getModelById(params.model);
-        const endpoint = modelInfo?.endpoint || params.model;
+        const endpoint = ENDPOINT_ALIASES[params.model] || modelInfo?.endpoint || params.model;
         const url = `${this.baseUrl}/api/v1/${endpoint}`;
 
         // Build payload matching the API's expected format
@@ -104,7 +156,7 @@ export class MuapiClient {
             const result = await this.pollForResult(requestId, key);
 
             // Normalize: extract image URL from outputs array
-            const imageUrl = result.outputs?.[0] || result.url || result.output?.url;
+            const imageUrl = normalizeMuapiResult(result).url;
             console.log('[Muapi] Image URL:', imageUrl);
             return { ...result, url: imageUrl };
 
@@ -149,14 +201,15 @@ export class MuapiClient {
                 const data = await response.json();
                 console.log('[Muapi] Poll Response:', data);
 
-                const status = data.status?.toLowerCase();
+                const norm = normalizeMuapiResult(data);
+                const status = norm.status;
 
                 if (status === 'completed' || status === 'succeeded' || status === 'success') {
-                    return data;
+                    return norm.body;
                 }
 
                 if (status === 'failed' || status === 'error') {
-                    throw new Error(`Generation failed: ${data.error || 'Unknown error'}`);
+                    throw new Error(`Generation failed: ${norm.error || 'Unknown error'}`);
                 }
 
                 // Otherwise (processing, pending, etc.) keep polling
@@ -173,7 +226,7 @@ export class MuapiClient {
         const key = this.getKey();
 
         const modelInfo = getVideoModelById(params.model);
-        const endpoint = modelInfo?.endpoint || params.model;
+        const endpoint = ENDPOINT_ALIASES[params.model] || modelInfo?.endpoint || params.model;
         const url = `${this.baseUrl}/api/v1/${endpoint}`;
 
         const finalPayload = {};
@@ -217,7 +270,7 @@ export class MuapiClient {
             console.log('[Muapi] Polling for video results, request_id:', requestId);
             const result = await this.pollForResult(requestId, key, 900, 2000);
 
-            const videoUrl = result.outputs?.[0] || result.url || result.output?.url;
+            const videoUrl = normalizeMuapiResult(result).url;
             console.log('[Muapi] Video URL:', videoUrl);
             return { ...result, url: videoUrl };
 
@@ -240,7 +293,7 @@ export class MuapiClient {
     async generateI2I(params) {
         const key = this.getKey();
         const modelInfo = getI2IModelById(params.model);
-        const endpoint = modelInfo?.endpoint || params.model;
+        const endpoint = ENDPOINT_ALIASES[params.model] || modelInfo?.endpoint || params.model;
         const url = `${this.baseUrl}/api/v1/${endpoint}`;
 
         const finalPayload = {};
@@ -287,7 +340,7 @@ export class MuapiClient {
             if (params.onRequestId) params.onRequestId(requestId);
 
             const result = await this.pollForResult(requestId, key);
-            const imageUrl = result.outputs?.[0] || result.url || result.output?.url;
+            const imageUrl = normalizeMuapiResult(result).url;
             console.log('[Muapi] I2I Result URL:', imageUrl);
             return { ...result, url: imageUrl };
         } catch (error) {
@@ -310,7 +363,7 @@ export class MuapiClient {
     async generateI2V(params) {
         const key = this.getKey();
         const modelInfo = getI2VModelById(params.model);
-        const endpoint = modelInfo?.endpoint || params.model;
+        const endpoint = ENDPOINT_ALIASES[params.model] || modelInfo?.endpoint || params.model;
         const url = `${this.baseUrl}/api/v1/${endpoint}`;
 
         const finalPayload = {};
@@ -378,7 +431,7 @@ export class MuapiClient {
             if (params.onRequestId) params.onRequestId(requestId);
 
             const result = await this.pollForResult(requestId, key, 900, 2000);
-            const videoUrl = result.outputs?.[0] || result.url || result.output?.url;
+            const videoUrl = normalizeMuapiResult(result).url;
             console.log('[Muapi] I2V Result URL:', videoUrl);
             return { ...result, url: videoUrl };
         } catch (error) {
@@ -456,7 +509,7 @@ export class MuapiClient {
     async processV2V(params) {
         const key = this.getKey();
         const modelInfo = getV2VModelById(params.model);
-        const endpoint = modelInfo?.endpoint || params.model;
+        const endpoint = ENDPOINT_ALIASES[params.model] || modelInfo?.endpoint || params.model;
         const url = `${this.baseUrl}/api/v1/${endpoint}`;
 
         const videoField = modelInfo?.videoField || 'video_url';
@@ -493,7 +546,7 @@ export class MuapiClient {
             if (params.onRequestId) params.onRequestId(requestId);
 
             const result = await this.pollForResult(requestId, key, 900, 2000);
-            const videoUrl = result.outputs?.[0] || result.url || result.output?.url;
+            const videoUrl = normalizeMuapiResult(result).url;
             console.log('[Muapi] V2V Result URL:', videoUrl);
             return { ...result, url: videoUrl };
         } catch (error) {
@@ -518,7 +571,7 @@ export class MuapiClient {
     async processLipSync(params) {
         const key = this.getKey();
         const modelInfo = getLipSyncModelById(params.model);
-        const endpoint = modelInfo?.endpoint || params.model;
+        const endpoint = ENDPOINT_ALIASES[params.model] || modelInfo?.endpoint || params.model;
         const url = `${this.baseUrl}/api/v1/${endpoint}`;
 
         const finalPayload = {};
@@ -555,7 +608,7 @@ export class MuapiClient {
             if (params.onRequestId) params.onRequestId(requestId);
 
             const result = await this.pollForResult(requestId, key, 900, 2000);
-            const videoUrl = result.outputs?.[0] || result.url || result.output?.url;
+            const videoUrl = normalizeMuapiResult(result).url;
             console.log('[Muapi] LipSync Result URL:', videoUrl);
             return { ...result, url: videoUrl };
         } catch (error) {
@@ -579,3 +632,86 @@ export class MuapiClient {
 }
 
 export const muapi = new MuapiClient();
+
+function cleanKey(apiKey) {
+  return String(apiKey || '').replace(/[^\u0000-\u00FF]/g, '').trim();
+}
+
+function withKey(config, apiKey) {
+  return {
+    ...config,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': cleanKey(apiKey),
+      ...(config.headers || {}),
+    },
+  };
+}
+
+export async function listSocialAccounts(apiKey) {
+  const res = await axios.get('/api/social/accounts', withKey({ method: 'GET' }, apiKey));
+  return res.data;
+}
+
+export async function connectSocialAccount(apiKey, externalUserId, redirectTo) {
+  const res = await axios.post(
+    '/api/v1/social/youtube/connect-url',
+    { external_user_id: externalUserId, redirect_to: redirectTo },
+    withKey({ method: 'POST' }, apiKey)
+  );
+  return res.data;
+}
+
+export async function listExternalSocialAccounts(apiKey, externalUserId) {
+  const res = await axios.get(
+    `/api/v1/social/ext/accounts?external_user_id=${encodeURIComponent(externalUserId)}`,
+    withKey({ method: 'GET' }, apiKey)
+  );
+  return res.data;
+}
+
+export async function disconnectExternalSocialAccount(apiKey, id) {
+  const res = await axios.delete(
+    `/api/v1/social/ext/accounts/${id}`,
+    withKey({ method: 'DELETE' }, apiKey)
+  );
+  return res.data;
+}
+
+export async function publishToYouTube(apiKey, payload) {
+  const res = await axios.post('/api/v1/youtube-publish', payload, withKey({ method: 'POST' }, apiKey));
+  return res.data;
+}
+
+export async function publishToInstagram(apiKey, payload) {
+  const res = await axios.post('/api/v1/instagram-publish', payload, withKey({ method: 'POST' }, apiKey));
+  return res.data;
+}
+
+export async function publishToTikTok(apiKey, payload) {
+  const res = await axios.post('/api/v1/tiktok-publish', payload, withKey({ method: 'POST' }, apiKey));
+  return res.data;
+}
+
+export async function pollSocialResult(apiKey, requestId, maxAttempts = 120, interval = 2000) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, interval));
+    try {
+      const res = await axios.get(
+        `/api/v1/predictions/${requestId}/result`,
+        withKey({ method: 'GET' }, apiKey)
+      );
+      const data = res.data || {};
+      const status = String(data.status || '').toLowerCase();
+      if (status === 'completed' || status === 'succeeded' || status === 'success') {
+        return data;
+      }
+      if (status === 'failed' || status === 'error') {
+        throw new Error(data.error || 'Publish failed');
+      }
+    } catch (err) {
+      if (attempt === maxAttempts) throw err;
+    }
+  }
+  throw new Error('Publish timed out after polling.');
+}

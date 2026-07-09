@@ -19,38 +19,41 @@ const BASE_URL = 'https://api.muapi.ai';
 
 async function fetchAgentDetails(agentId, apiKey) {
   if (!apiKey) return null;
-  
-  // Try fetching by slug first
-  try {
-    console.log(`[AgentPage] Fetching agent by slug: ${agentId}`);
-    const res = await fetch(
-      `${BASE_URL}/agents/by-slug/${agentId}`,
-      {
+
+  // Per the MuAPI docs the canonical endpoint is GET /agents/{agent_id}.
+  // Try it first, then fall back to by-slug (older internal route) for agents
+  // that are addressable by slug. The previous code only tried by-slug and only
+  // fell back to the documented id route when the id looked like a UUID
+  // (length > 20) — so short ids like "agent_12345" never resolved and the
+  // agent chat rendered empty.
+  // Live API: GET /agents/{id} only accepts a UUID, while slugs must go
+  // through /agents/by-slug/{slug}. The studio navigates via agent_id (a slug
+  // for templates, an id for user agents), so try by-slug first and fall back
+  // to the documented id route to cover both shapes.
+  const candidates = [
+    `${BASE_URL}/agents/by-slug/${agentId}`,
+    `${BASE_URL}/agents/${agentId}`,
+  ];
+
+  for (const url of candidates) {
+    try {
+      console.log(`[AgentPage] Fetching agent details: ${url}`);
+      const res = await fetch(url, {
         cache: "no-store",
         headers: { "x-api-key": apiKey },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        // Guard against error payloads that still return HTTP 200.
+        if (json && (json.id || json.name !== undefined)) return json;
       }
-    );
-    if (res.ok) return await res.json();
-    
-    // If by-slug fails, try fetching by direct ID (if it looks like a UUID)
-    if (agentId.length > 20) {
-      console.log(`[AgentPage] Fetch by slug failed, trying by ID: ${agentId}`);
-      const resId = await fetch(
-        `${BASE_URL}/agents/${agentId}`,
-        {
-          cache: "no-store",
-          headers: { "x-api-key": apiKey },
-        }
-      );
-      if (resId.ok) return await resId.json();
+    } catch (error) {
+      console.error(`[AgentPage] Fetch error for ${url}:`, error);
     }
-    
-    console.warn(`[AgentPage] Failed to fetch agent details for: ${agentId}`);
-    return null;
-  } catch (error) {
-    console.error("[AgentPage] Fetch error:", error);
-    return null;
   }
+
+  console.warn(`[AgentPage] Failed to fetch agent details for: ${agentId}`);
+  return null;
 }
 
 async function fetchUserData(apiKey) {

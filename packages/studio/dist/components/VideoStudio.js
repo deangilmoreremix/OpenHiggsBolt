@@ -154,14 +154,116 @@ function ModelDropdown(_ref3) {
     _useState2 = _slicedToArray(_useState, 2),
     search = _useState2[0],
     setSearch = _useState2[1];
+  var _useState3 = (0, _react.useState)("all"),
+    _useState4 = _slicedToArray(_useState3, 2),
+    selectedProvider = _useState4[0],
+    setSelectedProvider = _useState4[1];
   var generationModels = imageMode ? _models.i2vModels : _models.t2vModels;
+  var getProviderStyle = function getProviderStyle(provider) {
+    switch (provider) {
+      case "grok":
+        return {
+          text: "xI",
+          bg: "bg-orange-500/10 text-orange-400 border-orange-500/25"
+        };
+      case "openai":
+        return {
+          text: "O",
+          bg: "bg-emerald-500/10 text-emerald-400 border-emerald-500/25"
+        };
+      case "google":
+        return {
+          text: "G",
+          bg: "bg-blue-500/10 text-blue-400 border-blue-500/25"
+        };
+      case "blackforest":
+        return {
+          text: "BF",
+          bg: "bg-amber-500/10 text-amber-400 border-amber-500/25"
+        };
+      case "bytedance":
+        return {
+          text: "BD",
+          bg: "bg-purple-500/10 text-purple-400 border-purple-500/25"
+        };
+      case "midjourney":
+        return {
+          text: "MJ",
+          bg: "bg-indigo-500/10 text-indigo-400 border-indigo-500/25"
+        };
+      case "kling":
+        return {
+          text: "KL",
+          bg: "bg-rose-500/10 text-rose-400 border-rose-500/25"
+        };
+      case "vidu":
+        return {
+          text: "VD",
+          bg: "bg-cyan-500/10 text-cyan-400 border-cyan-500/25"
+        };
+      case "minimax":
+        return {
+          text: "MX",
+          bg: "bg-pink-500/10 text-pink-400 border-pink-500/25"
+        };
+      case "ideogram":
+        return {
+          text: "ID",
+          bg: "bg-yellow-500/10 text-yellow-400 border-yellow-500/25"
+        };
+      case "luma":
+        return {
+          text: "LM",
+          bg: "bg-teal-500/10 text-teal-400 border-teal-500/25"
+        };
+      case "alibaba":
+        return {
+          text: "AL",
+          bg: "bg-sky-500/10 text-sky-400 border-sky-500/25"
+        };
+      case "leonardoai":
+        return {
+          text: "LE",
+          bg: "bg-violet-500/10 text-violet-400 border-violet-500/25"
+        };
+      case "stability":
+        return {
+          text: "SD",
+          bg: "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/25"
+        };
+      default:
+        var name = provider ? provider.toUpperCase() : "AI";
+        return {
+          text: name.substring(0, 2),
+          bg: "bg-primary/10 text-primary border-primary/25"
+        };
+    }
+  };
+
+  // Dynamically compute list of providers from the currently-shown model list
+  var availableProviders = [];
+  var seenProviders = new Set();
+  [].concat(_toConsumableArray(generationModels), _toConsumableArray(_models.v2vModels)).forEach(function (m) {
+    var pId = m.provider || "muapi";
+    var pName = m.provider_name || "Muapi";
+    if (!seenProviders.has(pId)) {
+      seenProviders.add(pId);
+      availableProviders.push({
+        id: pId,
+        name: pName
+      });
+    }
+  });
   var lf = search.toLowerCase();
-  var filteredMain = generationModels.filter(function (m) {
+  var filterFn = function filterFn(m) {
+    if (selectedProvider !== "all") {
+      var pId = m.provider || "muapi";
+      if (pId !== selectedProvider) return false;
+    }
     return m.name.toLowerCase().includes(lf) || m.id.toLowerCase().includes(lf);
-  });
-  var filteredV2V = _models.v2vModels.filter(function (m) {
-    return m.name.toLowerCase().includes(lf) || m.id.toLowerCase().includes(lf);
-  });
+  };
+  var filteredMain = generationModels.filter(filterFn);
+  var filteredV2V = _models.v2vModels.filter(filterFn);
   var getIconColor = function getIconColor(m, isV2V) {
     if (isV2V) return "bg-orange-500/10 text-orange-400";
     if (m.id.includes("kling")) return "bg-blue-500/10 text-blue-400";
@@ -230,6 +332,27 @@ function ModelDropdown(_ref3) {
           className: "bg-transparent border-none text-xs text-white focus:ring-0 w-full p-0 outline-none"
         })]
       })
+    }), availableProviders.length > 1 && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+      className: "px-2 pb-2 shrink-0",
+      children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("select", {
+        value: selectedProvider,
+        onClick: function onClick(e) {
+          return e.stopPropagation();
+        },
+        onChange: function onChange(e) {
+          return setSelectedProvider(e.target.value);
+        },
+        className: "w-full bg-white/5 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-primary/50 transition-colors",
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("option", {
+          value: "all",
+          children: "All Providers"
+        }), availableProviders.map(function (p) {
+          return /*#__PURE__*/(0, _jsxRuntime.jsx)("option", {
+            value: p.id,
+            children: p.name
+          }, p.id);
+        })]
+      })
     }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
       className: "text-xs font-bold text-secondary px-3 py-2 shrink-0",
       children: "Video models"
@@ -294,183 +417,183 @@ function VideoStudio(_ref5) {
   var PERSIST_KEY = "hg_video_studio_persistent";
 
   // ── mode state ──
-  var _useState3 = (0, _react.useState)(false),
-    _useState4 = _slicedToArray(_useState3, 2),
-    imageMode = _useState4[0],
-    setImageMode = _useState4[1]; // i2v
   var _useState5 = (0, _react.useState)(false),
     _useState6 = _slicedToArray(_useState5, 2),
-    v2vMode = _useState6[0],
-    setV2vMode = _useState6[1];
+    imageMode = _useState6[0],
+    setImageMode = _useState6[1]; // i2v
+  var _useState7 = (0, _react.useState)(false),
+    _useState8 = _slicedToArray(_useState7, 2),
+    v2vMode = _useState8[0],
+    setV2vMode = _useState8[1];
 
   // ── model / params ──
   var defaultModel = _models.t2vModels[0];
-  var _useState7 = (0, _react.useState)(defaultModel.id),
-    _useState8 = _slicedToArray(_useState7, 2),
-    selectedModel = _useState8[0],
-    setSelectedModel = _useState8[1];
-  var _useState9 = (0, _react.useState)(defaultModel.name),
+  var _useState9 = (0, _react.useState)(defaultModel.id),
     _useState0 = _slicedToArray(_useState9, 2),
-    selectedModelName = _useState0[0],
-    setSelectedModelName = _useState0[1];
-  var _useState1 = (0, _react.useState)(((_defaultModel$inputs = defaultModel.inputs) === null || _defaultModel$inputs === void 0 || (_defaultModel$inputs = _defaultModel$inputs.aspect_ratio) === null || _defaultModel$inputs === void 0 ? void 0 : _defaultModel$inputs["default"]) || "16:9"),
+    selectedModel = _useState0[0],
+    setSelectedModel = _useState0[1];
+  var _useState1 = (0, _react.useState)(defaultModel.name),
     _useState10 = _slicedToArray(_useState1, 2),
-    selectedAr = _useState10[0],
-    setSelectedAr = _useState10[1];
-  var _useState11 = (0, _react.useState)(((_defaultModel$inputs2 = defaultModel.inputs) === null || _defaultModel$inputs2 === void 0 || (_defaultModel$inputs2 = _defaultModel$inputs2.duration) === null || _defaultModel$inputs2 === void 0 ? void 0 : _defaultModel$inputs2["default"]) || 5),
+    selectedModelName = _useState10[0],
+    setSelectedModelName = _useState10[1];
+  var _useState11 = (0, _react.useState)(((_defaultModel$inputs = defaultModel.inputs) === null || _defaultModel$inputs === void 0 || (_defaultModel$inputs = _defaultModel$inputs.aspect_ratio) === null || _defaultModel$inputs === void 0 ? void 0 : _defaultModel$inputs["default"]) || "16:9"),
     _useState12 = _slicedToArray(_useState11, 2),
-    selectedDuration = _useState12[0],
-    setSelectedDuration = _useState12[1];
-  var _useState13 = (0, _react.useState)(((_defaultModel$inputs3 = defaultModel.inputs) === null || _defaultModel$inputs3 === void 0 || (_defaultModel$inputs3 = _defaultModel$inputs3.resolution) === null || _defaultModel$inputs3 === void 0 ? void 0 : _defaultModel$inputs3["default"]) || ""),
+    selectedAr = _useState12[0],
+    setSelectedAr = _useState12[1];
+  var _useState13 = (0, _react.useState)(((_defaultModel$inputs2 = defaultModel.inputs) === null || _defaultModel$inputs2 === void 0 || (_defaultModel$inputs2 = _defaultModel$inputs2.duration) === null || _defaultModel$inputs2 === void 0 ? void 0 : _defaultModel$inputs2["default"]) || 5),
     _useState14 = _slicedToArray(_useState13, 2),
-    selectedResolution = _useState14[0],
-    setSelectedResolution = _useState14[1];
-  var _useState15 = (0, _react.useState)(((_defaultModel$inputs4 = defaultModel.inputs) === null || _defaultModel$inputs4 === void 0 || (_defaultModel$inputs4 = _defaultModel$inputs4.quality) === null || _defaultModel$inputs4 === void 0 ? void 0 : _defaultModel$inputs4["default"]) || ""),
+    selectedDuration = _useState14[0],
+    setSelectedDuration = _useState14[1];
+  var _useState15 = (0, _react.useState)(((_defaultModel$inputs3 = defaultModel.inputs) === null || _defaultModel$inputs3 === void 0 || (_defaultModel$inputs3 = _defaultModel$inputs3.resolution) === null || _defaultModel$inputs3 === void 0 ? void 0 : _defaultModel$inputs3["default"]) || ""),
     _useState16 = _slicedToArray(_useState15, 2),
-    selectedQuality = _useState16[0],
-    setSelectedQuality = _useState16[1];
-  var _useState17 = (0, _react.useState)(""),
+    selectedResolution = _useState16[0],
+    setSelectedResolution = _useState16[1];
+  var _useState17 = (0, _react.useState)(((_defaultModel$inputs4 = defaultModel.inputs) === null || _defaultModel$inputs4 === void 0 || (_defaultModel$inputs4 = _defaultModel$inputs4.quality) === null || _defaultModel$inputs4 === void 0 ? void 0 : _defaultModel$inputs4["default"]) || ""),
     _useState18 = _slicedToArray(_useState17, 2),
-    selectedMode = _useState18[0],
-    setSelectedMode = _useState18[1];
+    selectedQuality = _useState18[0],
+    setSelectedQuality = _useState18[1];
   var _useState19 = (0, _react.useState)(""),
     _useState20 = _slicedToArray(_useState19, 2),
-    selectedEffect = _useState20[0],
-    setSelectedEffect = _useState20[1];
+    selectedMode = _useState20[0],
+    setSelectedMode = _useState20[1];
+  var _useState21 = (0, _react.useState)(""),
+    _useState22 = _slicedToArray(_useState21, 2),
+    selectedEffect = _useState22[0],
+    setSelectedEffect = _useState22[1];
 
   // ── upload progress ──
-  var _useState21 = (0, _react.useState)(0),
-    _useState22 = _slicedToArray(_useState21, 2),
-    imageProgress = _useState22[0],
-    setImageProgress = _useState22[1];
   var _useState23 = (0, _react.useState)(0),
     _useState24 = _slicedToArray(_useState23, 2),
-    videoProgress = _useState24[0],
-    setVideoProgress = _useState24[1];
+    imageProgress = _useState24[0],
+    setImageProgress = _useState24[1];
+  var _useState25 = (0, _react.useState)(0),
+    _useState26 = _slicedToArray(_useState25, 2),
+    videoProgress = _useState26[0],
+    setVideoProgress = _useState26[1];
 
   // ── control visibility ──
-  var _useState25 = (0, _react.useState)(true),
-    _useState26 = _slicedToArray(_useState25, 2),
-    showAr = _useState26[0],
-    setShowAr = _useState26[1];
   var _useState27 = (0, _react.useState)(true),
     _useState28 = _slicedToArray(_useState27, 2),
-    showDuration = _useState28[0],
-    setShowDuration = _useState28[1];
-  var _useState29 = (0, _react.useState)(false),
+    showAr = _useState28[0],
+    setShowAr = _useState28[1];
+  var _useState29 = (0, _react.useState)(true),
     _useState30 = _slicedToArray(_useState29, 2),
-    showResolution = _useState30[0],
-    setShowResolution = _useState30[1];
+    showDuration = _useState30[0],
+    setShowDuration = _useState30[1];
   var _useState31 = (0, _react.useState)(false),
     _useState32 = _slicedToArray(_useState31, 2),
-    showQuality = _useState32[0],
-    setShowQuality = _useState32[1];
+    showResolution = _useState32[0],
+    setShowResolution = _useState32[1];
   var _useState33 = (0, _react.useState)(false),
     _useState34 = _slicedToArray(_useState33, 2),
-    showMode = _useState34[0],
-    setShowMode = _useState34[1];
+    showQuality = _useState34[0],
+    setShowQuality = _useState34[1];
   var _useState35 = (0, _react.useState)(false),
     _useState36 = _slicedToArray(_useState35, 2),
-    showEffect = _useState36[0],
-    setShowEffect = _useState36[1];
+    showMode = _useState36[0],
+    setShowMode = _useState36[1];
+  var _useState37 = (0, _react.useState)(false),
+    _useState38 = _slicedToArray(_useState37, 2),
+    showEffect = _useState38[0],
+    setShowEffect = _useState38[1];
 
   // ── uploads ──
-  var _useState37 = (0, _react.useState)(null),
-    _useState38 = _slicedToArray(_useState37, 2),
-    uploadedImageUrl = _useState38[0],
-    setUploadedImageUrl = _useState38[1];
-  var _useState39 = (0, _react.useState)([]),
+  var _useState39 = (0, _react.useState)(null),
     _useState40 = _slicedToArray(_useState39, 2),
-    uploadedImageUrls = _useState40[0],
-    setUploadedImageUrls = _useState40[1];
-  var _useState41 = (0, _react.useState)(false),
+    uploadedImageUrl = _useState40[0],
+    setUploadedImageUrl = _useState40[1];
+  var _useState41 = (0, _react.useState)([]),
     _useState42 = _slicedToArray(_useState41, 2),
-    imageUploading = _useState42[0],
-    setImageUploading = _useState42[1];
-  var _useState43 = (0, _react.useState)(null),
+    uploadedImageUrls = _useState42[0],
+    setUploadedImageUrls = _useState42[1];
+  var _useState43 = (0, _react.useState)(false),
     _useState44 = _slicedToArray(_useState43, 2),
-    uploadedEndImageUrl = _useState44[0],
-    setUploadedEndImageUrl = _useState44[1];
-  var _useState45 = (0, _react.useState)(false),
+    imageUploading = _useState44[0],
+    setImageUploading = _useState44[1];
+  var _useState45 = (0, _react.useState)(null),
     _useState46 = _slicedToArray(_useState45, 2),
-    endImageUploading = _useState46[0],
-    setEndImageUploading = _useState46[1];
-  var _useState47 = (0, _react.useState)(0),
+    uploadedEndImageUrl = _useState46[0],
+    setUploadedEndImageUrl = _useState46[1];
+  var _useState47 = (0, _react.useState)(false),
     _useState48 = _slicedToArray(_useState47, 2),
-    endImageProgress = _useState48[0],
-    setEndImageProgress = _useState48[1];
-  var _useState49 = (0, _react.useState)(null),
+    endImageUploading = _useState48[0],
+    setEndImageUploading = _useState48[1];
+  var _useState49 = (0, _react.useState)(0),
     _useState50 = _slicedToArray(_useState49, 2),
-    uploadedVideoUrl = _useState50[0],
-    setUploadedVideoUrl = _useState50[1];
-  var _useState51 = (0, _react.useState)(false),
+    endImageProgress = _useState50[0],
+    setEndImageProgress = _useState50[1];
+  var _useState51 = (0, _react.useState)(null),
     _useState52 = _slicedToArray(_useState51, 2),
-    videoUploading = _useState52[0],
-    setVideoUploading = _useState52[1];
-  var _useState53 = (0, _react.useState)(null),
+    uploadedVideoUrl = _useState52[0],
+    setUploadedVideoUrl = _useState52[1];
+  var _useState53 = (0, _react.useState)(false),
     _useState54 = _slicedToArray(_useState53, 2),
-    uploadedVideoName = _useState54[0],
-    setUploadedVideoName = _useState54[1];
+    videoUploading = _useState54[0],
+    setVideoUploading = _useState54[1];
+  var _useState55 = (0, _react.useState)(null),
+    _useState56 = _slicedToArray(_useState55, 2),
+    uploadedVideoName = _useState56[0],
+    setUploadedVideoName = _useState56[1];
 
   // ── generation / canvas ──
-  var _useState55 = (0, _react.useState)(false),
-    _useState56 = _slicedToArray(_useState55, 2),
-    generating = _useState56[0],
-    setGenerating = _useState56[1];
-  var _useState57 = (0, _react.useState)(null),
+  var _useState57 = (0, _react.useState)(false),
     _useState58 = _slicedToArray(_useState57, 2),
-    generateError = _useState58[0],
-    setGenerateError = _useState58[1];
+    generating = _useState58[0],
+    setGenerating = _useState58[1];
   var _useState59 = (0, _react.useState)(null),
     _useState60 = _slicedToArray(_useState59, 2),
-    fullscreenUrl = _useState60[0],
-    setFullscreenUrl = _useState60[1];
+    generateError = _useState60[0],
+    setGenerateError = _useState60[1];
   var _useState61 = (0, _react.useState)(null),
     _useState62 = _slicedToArray(_useState61, 2),
-    canvasUrl = _useState62[0],
-    setCanvasUrl = _useState62[1];
+    fullscreenUrl = _useState62[0],
+    setFullscreenUrl = _useState62[1];
   var _useState63 = (0, _react.useState)(null),
     _useState64 = _slicedToArray(_useState63, 2),
-    canvasModel = _useState64[0],
-    setCanvasModel = _useState64[1];
-  var _useState65 = (0, _react.useState)(false),
+    canvasUrl = _useState64[0],
+    setCanvasUrl = _useState64[1];
+  var _useState65 = (0, _react.useState)(null),
     _useState66 = _slicedToArray(_useState65, 2),
-    showCanvas = _useState66[0],
-    setShowCanvas = _useState66[1];
-  var _useState67 = (0, _react.useState)(null),
+    canvasModel = _useState66[0],
+    setCanvasModel = _useState66[1];
+  var _useState67 = (0, _react.useState)(false),
     _useState68 = _slicedToArray(_useState67, 2),
-    lastGenerationId = _useState68[0],
-    setLastGenerationId = _useState68[1];
+    showCanvas = _useState68[0],
+    setShowCanvas = _useState68[1];
   var _useState69 = (0, _react.useState)(null),
     _useState70 = _slicedToArray(_useState69, 2),
-    lastGenerationModel = _useState70[0],
-    setLastGenerationModel = _useState70[1];
+    lastGenerationId = _useState70[0],
+    setLastGenerationId = _useState70[1];
+  var _useState71 = (0, _react.useState)(null),
+    _useState72 = _slicedToArray(_useState71, 2),
+    lastGenerationModel = _useState72[0],
+    setLastGenerationModel = _useState72[1];
 
   // ── history ──
-  var _useState71 = (0, _react.useState)([]),
-    _useState72 = _slicedToArray(_useState71, 2),
-    localHistory = _useState72[0],
-    setLocalHistory = _useState72[1];
-  var _useState73 = (0, _react.useState)(0),
+  var _useState73 = (0, _react.useState)([]),
     _useState74 = _slicedToArray(_useState73, 2),
-    activeHistoryIdx = _useState74[0],
-    setActiveHistoryIdx = _useState74[1];
+    localHistory = _useState74[0],
+    setLocalHistory = _useState74[1];
+  var _useState75 = (0, _react.useState)(0),
+    _useState76 = _slicedToArray(_useState75, 2),
+    activeHistoryIdx = _useState76[0],
+    setActiveHistoryIdx = _useState76[1];
 
   // ── dropdown ──
-  var _useState75 = (0, _react.useState)(null),
-    _useState76 = _slicedToArray(_useState75, 2),
-    openDropdown = _useState76[0],
-    setOpenDropdown = _useState76[1]; // 'model'|'ar'|'duration'|'resolution'|'quality'|'mode'|null
+  var _useState77 = (0, _react.useState)(null),
+    _useState78 = _slicedToArray(_useState77, 2),
+    openDropdown = _useState78[0],
+    setOpenDropdown = _useState78[1]; // 'model'|'ar'|'duration'|'resolution'|'quality'|'mode'|null
 
   // ── prompt ──
-  var _useState77 = (0, _react.useState)(""),
-    _useState78 = _slicedToArray(_useState77, 2),
-    prompt = _useState78[0],
-    setPrompt = _useState78[1];
-  var _useState79 = (0, _react.useState)(false),
+  var _useState79 = (0, _react.useState)(""),
     _useState80 = _slicedToArray(_useState79, 2),
-    promptDisabled = _useState80[0],
-    setPromptDisabled = _useState80[1];
+    prompt = _useState80[0],
+    setPrompt = _useState80[1];
+  var _useState81 = (0, _react.useState)(false),
+    _useState82 = _slicedToArray(_useState81, 2),
+    promptDisabled = _useState82[0],
+    setPromptDisabled = _useState82[1];
 
   // ── refs ──
   var containerRef = (0, _react.useRef)(null);

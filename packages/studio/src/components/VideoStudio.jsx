@@ -106,16 +106,68 @@ function DropdownItem({ label, selected, onClick }) {
 
 function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
   const [search, setSearch] = useState("");
+  const [selectedProvider, setSelectedProvider] = useState("all");
 
   const generationModels = imageMode ? i2vModels : t2vModels;
 
+  const getProviderStyle = (provider) => {
+    switch (provider) {
+      case "grok":
+        return { text: "xI", bg: "bg-orange-500/10 text-orange-400 border-orange-500/25" };
+      case "openai":
+        return { text: "O", bg: "bg-emerald-500/10 text-emerald-400 border-emerald-500/25" };
+      case "google":
+        return { text: "G", bg: "bg-blue-500/10 text-blue-400 border-blue-500/25" };
+      case "blackforest":
+        return { text: "BF", bg: "bg-amber-500/10 text-amber-400 border-amber-500/25" };
+      case "bytedance":
+        return { text: "BD", bg: "bg-purple-500/10 text-purple-400 border-purple-500/25" };
+      case "midjourney":
+        return { text: "MJ", bg: "bg-indigo-500/10 text-indigo-400 border-indigo-500/25" };
+      case "kling":
+        return { text: "KL", bg: "bg-rose-500/10 text-rose-400 border-rose-500/25" };
+      case "vidu":
+        return { text: "VD", bg: "bg-cyan-500/10 text-cyan-400 border-cyan-500/25" };
+      case "minimax":
+        return { text: "MX", bg: "bg-pink-500/10 text-pink-400 border-pink-500/25" };
+      case "ideogram":
+        return { text: "ID", bg: "bg-yellow-500/10 text-yellow-400 border-yellow-500/25" };
+      case "luma":
+        return { text: "LM", bg: "bg-teal-500/10 text-teal-400 border-teal-500/25" };
+      case "alibaba":
+        return { text: "AL", bg: "bg-sky-500/10 text-sky-400 border-sky-500/25" };
+      case "leonardoai":
+        return { text: "LE", bg: "bg-violet-500/10 text-violet-400 border-violet-500/25" };
+      case "stability":
+        return { text: "SD", bg: "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/25" };
+      default:
+        const name = provider ? provider.toUpperCase() : "AI";
+        return { text: name.substring(0, 2), bg: "bg-primary/10 text-primary border-primary/25" };
+    }
+  };
+
+  // Dynamically compute list of providers from the currently-shown model list
+  const availableProviders = [];
+  const seenProviders = new Set();
+  [...generationModels, ...v2vModels].forEach((m) => {
+    const pId = m.provider || "muapi";
+    const pName = m.provider_name || "Muapi";
+    if (!seenProviders.has(pId)) {
+      seenProviders.add(pId);
+      availableProviders.push({ id: pId, name: pName });
+    }
+  });
+
   const lf = search.toLowerCase();
-  const filteredMain = generationModels.filter(
-    (m) => m.name.toLowerCase().includes(lf) || m.id.toLowerCase().includes(lf),
-  );
-  const filteredV2V = v2vModels.filter(
-    (m) => m.name.toLowerCase().includes(lf) || m.id.toLowerCase().includes(lf),
-  );
+  const filterFn = (m) => {
+    if (selectedProvider !== "all") {
+      const pId = m.provider || "muapi";
+      if (pId !== selectedProvider) return false;
+    }
+    return m.name.toLowerCase().includes(lf) || m.id.toLowerCase().includes(lf);
+  };
+  const filteredMain = generationModels.filter(filterFn);
+  const filteredV2V = v2vModels.filter(filterFn);
 
   const getIconColor = (m, isV2V) => {
     if (isV2V) return "bg-orange-500/10 text-orange-400";
@@ -182,6 +234,23 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
           />
         </div>
       </div>
+      {availableProviders.length > 1 && (
+        <div className="px-2 pb-2 shrink-0">
+          <select
+            value={selectedProvider}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => setSelectedProvider(e.target.value)}
+            className="w-full bg-white/5 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-primary/50 transition-colors"
+          >
+            <option value="all">All Providers</option>
+            {availableProviders.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="text-xs font-bold text-secondary px-3 py-2 shrink-0">
         Video models
       </div>

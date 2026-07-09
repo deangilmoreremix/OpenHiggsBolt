@@ -18,60 +18,56 @@ const BASE_URL = 'https://api.muapi.ai';
 
 async function fetchAgentDetails(agentId, apiKey) {
   if (!apiKey) return null;
-  try {
-    const res = await fetch(
-      `${BASE_URL}/agents/by-slug/${agentId}`,
-      {
+  // Documented endpoint first (GET /agents/{agent_id}), then by-slug fallback.
+  // Live API: GET /agents/{id} only accepts a UUID, while slugs must go
+  // through /agents/by-slug/{slug}. The studio navigates via agent_id (a slug
+  // for templates, an id for user agents), so try by-slug first and fall back
+  // to the documented id route to cover both shapes.
+  const candidates = [
+    `${BASE_URL}/agents/by-slug/${agentId}`,
+    `${BASE_URL}/agents/${agentId}`,
+  ];
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url, {
         cache: "no-store",
         headers: { "x-api-key": apiKey },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json && (json.id || json.name !== undefined)) return json;
       }
-    );
-    if (res.ok) return await res.json();
-    
-    if (agentId.length > 20) {
-      const resId = await fetch(
-        `${BASE_URL}/agents/${agentId}`,
-        {
-          cache: "no-store",
-          headers: { "x-api-key": apiKey },
-        }
-      );
-      if (resId.ok) return await resId.json();
+    } catch {
+      // try next candidate
     }
-    return null;
-  } catch {
-    return null;
   }
+  return null;
 }
 
 async function fetchHistory(agentId, conversationId, apiKey) {
   if (!apiKey) return null;
-  try {
-    // Try by slug first
-    const res = await fetch(
-      `${BASE_URL}/agents/by-slug/${agentId}/${conversationId}`,
-      {
+  // Try the documented id-based route first, then the by-slug route. The old
+  // code gated the id fallback on length > 20, which broke short ids.
+  const candidates = [
+    `${BASE_URL}/agents/${agentId}/${conversationId}`,
+    `${BASE_URL}/agents/by-slug/${agentId}/${conversationId}`,
+  ];
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url, {
         cache: "no-store",
         headers: { "x-api-key": apiKey },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json && (json.messages || json.history || json.id)) return json;
+        if (json) return json;
       }
-    );
-    if (res.ok) return await res.json();
-    
-    // Fallback to direct agent ID if needed
-    if (agentId.length > 20) {
-      const resId = await fetch(
-        `${BASE_URL}/agents/${agentId}/${conversationId}`,
-        {
-          cache: "no-store",
-          headers: { "x-api-key": apiKey },
-        }
-      );
-      if (resId.ok) return await resId.json();
+    } catch {
+      // try next candidate
     }
-    return null;
-  } catch {
-    return null;
   }
+  return null;
 }
 
 async function fetchUserData(apiKey) {

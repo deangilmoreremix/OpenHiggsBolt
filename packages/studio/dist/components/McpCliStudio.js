@@ -81,7 +81,7 @@ function McpCliStudio() {
           children: "MCP & CLI"
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
           className: "text-white/60 text-base md:text-lg max-w-2xl",
-          children: "Use Open Generative AI from your terminal, your IDE, or any MCP-compatible assistant. Generate cinematic images, videos, and audio across 100+ models \u2014 without leaving your workflow."
+          children: "Use SmartVideo GO from your terminal, your IDE, or any MCP-compatible assistant. Generate cinematic images, videos, and audio across 100+ models \u2014 without leaving your workflow."
         })]
       }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("section", {
         className: "rounded-2xl border border-white/5 bg-white/[0.02] p-6 md:p-8 flex flex-col gap-4",

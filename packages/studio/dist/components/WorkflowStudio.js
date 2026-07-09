@@ -63,6 +63,18 @@ function WorkflowCard(_ref) {
     _useState4 = _slicedToArray(_useState3, 2),
     imgError = _useState4[0],
     setImgError = _useState4[1];
+
+  // If the local/proxied thumbnail fails, fall back to the original raw URL.
+  var handleImgError = function handleImgError(e) {
+    var src = e.currentTarget.src;
+    var proxied = src.match(/[?&]url=([^&]+)/);
+    var fallback = proxied ? decodeURIComponent(proxied[1]) : workflow.thumbnail;
+    if (fallback && src !== fallback) {
+      e.currentTarget.src = fallback;
+    } else {
+      setImgError(true);
+    }
+  };
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     onClick: function onClick() {
       return _onClick(workflow);
@@ -72,9 +84,7 @@ function WorkflowCard(_ref) {
       src: workflow.thumbnail,
       alt: workflow.name,
       className: "absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110",
-      onError: function onError() {
-        return setImgError(true);
-      }
+      onError: handleImgError
     }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
       className: "absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center",
       children: /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
@@ -285,6 +295,26 @@ function WorkflowStudio(_ref2) {
     _useState32 = _slicedToArray(_useState31, 2),
     error = _useState32[0],
     setError = _useState32[1];
+  var _useState33 = (0, _react.useState)(""),
+    _useState34 = _slicedToArray(_useState33, 2),
+    webhookUrl = _useState34[0],
+    setWebhookUrl = _useState34[1];
+  var _useState35 = (0, _react.useState)("form"),
+    _useState36 = _slicedToArray(_useState35, 2),
+    playgroundView = _useState36[0],
+    setPlaygroundView = _useState36[1]; // 'form' | 'api'
+  var _useState37 = (0, _react.useState)(null),
+    _useState38 = _slicedToArray(_useState37, 2),
+    rawResult = _useState38[0],
+    setRawResult = _useState38[1];
+  var _useState39 = (0, _react.useState)(null),
+    _useState40 = _slicedToArray(_useState39, 2),
+    copiedKey = _useState40[0],
+    setCopiedKey = _useState40[1];
+  var _useState41 = (0, _react.useState)(false),
+    _useState42 = _slicedToArray(_useState41, 2),
+    showRaw = _useState42[0],
+    setShowRaw = _useState42[1];
 
   // Handlers defined early so they can be used in effects
   var handleSelectWorkflow = (0, _react.useCallback)(/*#__PURE__*/function () {
@@ -665,8 +695,69 @@ function WorkflowStudio(_ref2) {
     }
     loadWorkflows();
   }, [apiKey, activeMainTab]);
+  var copyTimerRef = (0, _react.useRef)(null);
+  var copySnippet = function copySnippet(key, text) {
+    try {
+      var _navigator$clipboard;
+      (_navigator$clipboard = navigator.clipboard) === null || _navigator$clipboard === void 0 || _navigator$clipboard.writeText(text);
+      setCopiedKey(key);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(function () {
+        return setCopiedKey(null);
+      }, 1500);
+    } catch (_) {}
+  };
+  (0, _react.useEffect)(function () {
+    return function () {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    };
+  }, []);
+  var buildInputs = (0, _react.useCallback)(function () {
+    var inputs = {};
+    Object.entries(formData).forEach(function (_ref9) {
+      var _ref0 = _slicedToArray(_ref9, 2),
+        key = _ref0[0],
+        value = _ref0[1];
+      if (!value) return;
+      if (key.startsWith("text")) inputs[key] = {
+        prompt: value
+      };else if (key.startsWith("image")) inputs[key] = {
+        image_url: value
+      };else if (key.startsWith("video")) inputs[key] = {
+        video_url: value
+      };else inputs[key] = value;
+    });
+    return inputs;
+  }, [formData]);
+  var apiSnippets = (0, _react.useMemo)(function () {
+    return (0, _muapi.buildWorkflowApiSnippets)(selectedWorkflow === null || selectedWorkflow === void 0 ? void 0 : selectedWorkflow.id, buildInputs(), {
+      webhookUrl: webhookUrl || undefined
+    });
+  }, [selectedWorkflow === null || selectedWorkflow === void 0 ? void 0 : selectedWorkflow.id, buildInputs, webhookUrl]);
+  var makeSnippet = function makeSnippet(label, key, text) {
+    return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+      className: "space-y-2",
+      children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+        className: "flex items-center justify-between",
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+          className: "text-[10px] font-black text-white/40 uppercase tracking-widest",
+          children: label
+        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+          type: "button",
+          onClick: function onClick() {
+            return copySnippet(key, text);
+          },
+          className: "text-[10px] font-black text-[#22d3ee] uppercase tracking-widest hover:text-white transition-colors",
+          children: copiedKey === key ? "Copied" : "Copy"
+        })]
+      }), /*#__PURE__*/(0, _jsxRuntime.jsx)("pre", {
+        className: "text-[11px] text-white/70 bg-black/40 border border-white/10 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all",
+        children: text
+      })]
+    });
+  };
   var handleRun = /*#__PURE__*/function () {
-    var _ref9 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee7(e) {
+    var _ref1 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee7(e) {
       var inputs, data, _t6;
       return _regenerator().w(function (_context7) {
         while (1) switch (_context7.p = _context7.n) {
@@ -682,25 +773,13 @@ function WorkflowStudio(_ref2) {
             setError(null);
             setResult(null);
             _context7.p = 2;
-            inputs = {};
-            Object.entries(formData).forEach(function (_ref0) {
-              var _ref1 = _slicedToArray(_ref0, 2),
-                key = _ref1[0],
-                value = _ref1[1];
-              if (!value) return;
-              if (key.startsWith("text")) inputs[key] = {
-                prompt: value
-              };else if (key.startsWith("image")) inputs[key] = {
-                image_url: value
-              };else if (key.startsWith("video")) inputs[key] = {
-                video_url: value
-              };else inputs[key] = value;
-            });
+            inputs = buildInputs();
             _context7.n = 3;
-            return (0, _muapi.executeWorkflow)(apiKey, selectedWorkflow.id, inputs);
+            return (0, _muapi.executeWorkflow)(apiKey, selectedWorkflow.id, inputs, webhookUrl || undefined);
           case 3:
             data = _context7.v;
             setResult(data);
+            setRawResult(data);
             _context7.n = 5;
             break;
           case 4:
@@ -708,6 +787,9 @@ function WorkflowStudio(_ref2) {
             _t6 = _context7.v;
             console.error("Execution failed:", _t6);
             setError(_t6.message || "Execution failed");
+            setRawResult({
+              error: (_t6 === null || _t6 === void 0 ? void 0 : _t6.message) || String(_t6)
+            });
           case 5:
             _context7.p = 5;
             setIsExecuting(false);
@@ -718,7 +800,7 @@ function WorkflowStudio(_ref2) {
       }, _callee7, null, [[2, 4, 5, 6]]);
     }));
     return function handleRun(_x4) {
-      return _ref9.apply(this, arguments);
+      return _ref1.apply(this, arguments);
     };
   }();
   if (loading && !selectedWorkflow) {
@@ -874,9 +956,26 @@ function WorkflowStudio(_ref2) {
         children: activeSubTab === "playground" ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
             className: "w-full lg:w-[400px] border-r border-white/5 flex flex-col bg-black/20",
-            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
               className: "p-6 overflow-y-auto flex-1 custom-scrollbar",
-              children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("form", {
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                className: "flex gap-1 p-1 bg-white/5 rounded-lg mb-4",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+                  type: "button",
+                  onClick: function onClick() {
+                    return setPlaygroundView("form");
+                  },
+                  className: "flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ".concat(playgroundView === "form" ? "bg-[#22d3ee] text-black" : "text-white/40 hover:text-white"),
+                  children: "Run"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+                  type: "button",
+                  onClick: function onClick() {
+                    return setPlaygroundView("api");
+                  },
+                  className: "flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ".concat(playgroundView === "api" ? "bg-[#22d3ee] text-black" : "text-white/40 hover:text-white"),
+                  children: "API & CLI"
+                })]
+              }), playgroundView === "form" ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("form", {
                 onSubmit: handleRun,
                 className: "space-y-6",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
@@ -926,6 +1025,26 @@ function WorkflowStudio(_ref2) {
                       }, key);
                     })
                   })]
+                }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                  className: "space-y-2",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("label", {
+                    className: "block text-[11px] font-bold text-white/80 uppercase tracking-wider",
+                    children: ["Webhook URL ", /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                      className: "text-white/30 normal-case font-medium",
+                      children: "(optional)"
+                    })]
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
+                    type: "url",
+                    value: webhookUrl,
+                    onChange: function onChange(e) {
+                      return setWebhookUrl(e.target.value);
+                    },
+                    placeholder: "https://your-app.com/webhook",
+                    className: "w-full bg-white/5 border border-white/10 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-[#22d3ee]/50 transition-colors"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
+                    className: "text-[10px] text-white/30",
+                    children: "Receive a notification when the workflow completes."
+                  })]
                 }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
                   type: "submit",
                   disabled: isExecuting || !selectedWorkflow.id,
@@ -955,7 +1074,34 @@ function WorkflowStudio(_ref2) {
                   className: "text-[10px] text-white/30 text-center mt-4",
                   children: "Save your workflow first to enable execution."
                 })]
-              })
+              }) : function () {
+                var snippets = apiSnippets;
+                return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                  className: "space-y-6",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                    className: "space-y-2",
+                    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                      className: "text-[10px] font-black text-white/40 uppercase tracking-widest",
+                      children: "Endpoint"
+                    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("pre", {
+                      className: "text-[11px] text-white/70 bg-black/40 border border-white/10 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all",
+                      children: "".concat(snippets.method, " ").concat(snippets.endpoint)
+                    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("pre", {
+                      className: "text-[11px] text-white/70 bg-black/40 border border-white/10 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all",
+                      children: "Poll ".concat(snippets.pollUrl)
+                    })]
+                  }), makeSnippet("cURL", "curl", snippets.curl), makeSnippet("JSON body", "json", snippets.json), makeSnippet("Node.js", "node", snippets.node), makeSnippet("Python", "python", snippets.python), makeSnippet("CLI", "cli", [snippets.cliDiscover, snippets.cliGet, snippets.cliRun].filter(Boolean).join("\n\n")), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                    className: "mt-6 p-4 rounded-lg bg-white/[0.03] border border-white/5 text-[11px] text-white/50 leading-relaxed",
+                    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                      className: "text-[10px] font-black text-white/40 uppercase tracking-widest mb-2",
+                      children: "Dynamic references"
+                    }), "Pipe outputs between nodes with Jinja2 syntax, e.g. ", /*#__PURE__*/(0, _jsxRuntime.jsx)("code", {
+                      className: "text-[#22d3ee]",
+                      children: "{{ node_id.outputs[0].value }}"
+                    }), ". Node categories: Text, Image, Video, Audio, Utility, API."]
+                  })]
+                });
+              }()]
             })
           }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "flex-1 overflow-y-auto p-8 lg:p-12 bg-[#050505] flex items-center justify-center min-h-[500px]",
@@ -1103,6 +1249,21 @@ function WorkflowStudio(_ref2) {
                     })]
                   }, idx);
                 })
+              })]
+            }), rawResult && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+              className: "w-full max-w-4xl mt-8",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+                type: "button",
+                onClick: function onClick() {
+                  return setShowRaw(function (v) {
+                    return !v;
+                  });
+                },
+                className: "text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-[#22d3ee] transition-colors flex items-center gap-2",
+                children: [showRaw ? "Hide" : "Show", " raw response"]
+              }), showRaw && /*#__PURE__*/(0, _jsxRuntime.jsx)("pre", {
+                className: "mt-3 text-[11px] text-white/60 bg-black/40 border border-white/10 rounded-lg p-4 overflow-x-auto whitespace-pre-wrap break-all max-h-[400px] overflow-y-auto",
+                children: JSON.stringify(rawResult, null, 2)
               })]
             })]
           })]

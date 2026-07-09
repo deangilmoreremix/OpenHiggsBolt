@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { ImageStudio, VideoStudio, ClippingStudio, VibeMotionStudio, LipSyncStudio, CinemaStudio, AudioStudio, MarketingStudio, RecastStudio, WorkflowStudio, AgentStudio, AppsStudio, getUserBalance } from 'studio';
+import { ImageStudio, VideoStudio, ClippingStudio, VibeMotionStudio, LipSyncStudio, CinemaStudio, AudioStudio, MarketingStudio, RecastStudio, WorkflowStudio, AgentStudio, AppsStudio, AiInfluencerStudio, getUserBalance } from 'studio';
 import axios from 'axios';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -14,6 +14,7 @@ const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { 
 const ScenePlanner = dynamic(() => import('../src/apps/scene-planner/ScenePlanner'), { ssr: false });
 const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
 const ScriptWriter = dynamic(() => import('../src/apps/script-writer/ScriptWriter'), { ssr: false });
+const SocialPublishing = dynamic(() => import('../src/apps/social-publishing/SocialPublishing'), { ssr: false });
 const Presentation = dynamic(() => import('../src/apps/presentation/Presentation'), { ssr: false });
 const ContentPlanner = dynamic(() => import('../src/apps/content-planner/ContentPlanner'), { ssr: false });
 const TABS = [
@@ -24,6 +25,7 @@ const TABS = [
   { id: 'vibe-motion', label: 'Vibe Motion' },
   { id: 'lipsync', label: 'Lip Sync' },
   { id: 'cinema',  label: 'Cinema Studio' },
+  { id: 'storyboard', label: 'Storyboard' },
   { id: 'marketing', label: 'Marketing Studio' },
   { id: 'recast', label: 'Body Swap' },
   { id: 'workflows', label: 'Workflows' },
@@ -31,6 +33,8 @@ const TABS = [
   { id: 'design-agent', label: 'Design Agent AI' },
   { id: 'vfx-studio', label: 'VFX' },
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
+  { id: 'ai-influencer', label: 'AI Influencer Studio' },
+  { id: 'social-publishing', label: 'Social Publishing' },
 ];
 
 const STORAGE_KEY = 'muapi_key';
@@ -404,6 +408,8 @@ export default function StandaloneShell() {
           </div>
         )}
         {activeTab === 'apps' && <AppsStudio apiKey={apiKey} />}
+        {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} />}
+        {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
       </div>
 
       {/* Settings Modal */}

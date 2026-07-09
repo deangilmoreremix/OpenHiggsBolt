@@ -23,13 +23,26 @@ function timeAgo(dateStr) {
 
 // ─── Agent Card (grid) ───────────────────────────────────────────────────────
 function AgentCard({ agent, onClick, onEdit }) {
+  const [imgError, setImgError] = useState(false);
+  // Route the upstream icon through the same-origin proxy (and fall back to the
+  // raw URL if the proxy fails) so CDN hotlink protection can't block the image.
+  const hasIcon = !!agent.icon_url;
+  const proxiedIcon = hasIcon ? `/api/thumbnail?url=${encodeURIComponent(agent.icon_url)}` : null;
+  const showIcon = hasIcon && proxiedIcon && !imgError;
   return (
     <div className="group relative aspect-[4/5] rounded-xl cursor-pointer">
       <div
         onClick={() => onClick(agent)}
         className="absolute inset-0 rounded-xl overflow-hidden border border-white/5 bg-[#0a0a0a] transition-all group-hover:border-[#22d3ee]/30 group-hover:scale-[1.02] shadow-2xl"
       >
-        {agent.icon_url ? (
+        {showIcon ? (
+          <img
+            src={proxiedIcon}
+            alt={agent.name}
+            onError={() => setImgError(true)}
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+          />
+        ) : hasIcon ? (
           <img
             src={agent.icon_url}
             alt={agent.name}
@@ -78,8 +91,12 @@ function AgentCard({ agent, onClick, onEdit }) {
 
 // ─── Conversation Card (My Chats) ────────────────────────────────────────────
 function ConversationCard({ conv, onClick }) {
+  const [imgError, setImgError] = useState(false);
   const displayTitle = conv.title || "New Chat";
   const agentSlug = conv.agent_slug || conv.agent_id;
+  const hasIcon = !!conv.agent_icon_url;
+  const proxiedIcon = hasIcon ? `/api/thumbnail?url=${encodeURIComponent(conv.agent_icon_url)}` : null;
+  const showIcon = hasIcon && proxiedIcon && !imgError;
   return (
     <div
       onClick={() => onClick(agentSlug, conv.id)}
@@ -87,7 +104,9 @@ function ConversationCard({ conv, onClick }) {
     >
       <div className="flex items-center gap-3">
         <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-white/5 border border-white/5 shrink-0">
-          {conv.agent_icon_url ? (
+          {showIcon ? (
+            <img src={proxiedIcon} alt={conv.agent_name || "Agent"} onError={() => setImgError(true)} className="w-full h-full object-cover" />
+          ) : hasIcon ? (
             <img src={conv.agent_icon_url} alt={conv.agent_name || "Agent"} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-white/20">

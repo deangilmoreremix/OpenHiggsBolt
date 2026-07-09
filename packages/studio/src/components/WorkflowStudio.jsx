@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   getTemplateWorkflows,
@@ -13,6 +13,7 @@ import {
   executeWorkflow,
   getAllNodeSchemas,
   getWorkflowData,
+  buildWorkflowApiSnippets,
 } from "../muapi.js";
 import dynamic from "next/dynamic";
 
@@ -34,18 +35,30 @@ function WorkflowCard({ workflow, onClick, activeTab, onRename, onDelete }) {
   const [showOptions, setShowOptions] = useState(false);
   const [imgError, setImgError] = useState(false);
 
+  // If the local/proxied thumbnail fails, fall back to the original raw URL.
+  const handleImgError = (e) => {
+    const src = e.currentTarget.src;
+    const proxied = src.match(/[?&]url=([^&]+)/);
+    const fallback = proxied ? decodeURIComponent(proxied[1]) : workflow.thumbnail;
+    if (fallback && src !== fallback) {
+      e.currentTarget.src = fallback;
+    } else {
+      setImgError(true);
+    }
+  };
+
   return (
     <div
       onClick={() => onClick(workflow)}
       className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer border border-white/5 bg-[#0a0a0a] transition-all hover:border-[#22d3ee]/30 hover:scale-[1.02] shadow-2xl"
     >
       {workflow.thumbnail && !imgError ? (
-        <img
-          src={workflow.thumbnail}
-          alt={workflow.name}
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-          onError={() => setImgError(true)}
-        />
+          <img
+            src={workflow.thumbnail}
+            alt={workflow.name}
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            onError={handleImgError}
+          />
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center">
           <svg
@@ -166,6 +179,12 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
   const [isExecuting, setIsExecuting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [playgroundView, setPlaygroundView] = useState("form"); // 'form' | 'api'
+  const [rawResult, setRawResult] = useState(null);
+  const [copiedKey, setCopiedKey] = useState(null);
+  const [showRaw, setShowRaw] = useState(false);
   
 
   // Handlers defined early so they can be used in effects
@@ -411,6 +430,60 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
     loadWorkflows();
   }, [apiKey, activeMainTab]);
 
+  const copyTimerRef = useRef(null);
+  const copySnippet = (key, text) => {
+    try {
+      navigator.clipboard?.writeText(text);
+      setCopiedKey(key);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopiedKey(null), 1500);
+    } catch (_) {}
+  };
+
+  useEffect(() => () => {
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+  }, []);
+
+  const buildInputs = useCallback(() => {
+    const inputs = {};
+    Object.entries(formData).forEach(([key, value]) => {
+      if (!value) return;
+      if (key.startsWith("text")) inputs[key] = { prompt: value };
+      else if (key.startsWith("image")) inputs[key] = { image_url: value };
+      else if (key.startsWith("video")) inputs[key] = { video_url: value };
+      else inputs[key] = value;
+    });
+    return inputs;
+  }, [formData]);
+
+  const apiSnippets = useMemo(
+    () =>
+      buildWorkflowApiSnippets(selectedWorkflow?.id, buildInputs(), {
+        webhookUrl: webhookUrl || undefined,
+      }),
+    [selectedWorkflow?.id, buildInputs, webhookUrl],
+  );
+
+  const makeSnippet = (label, key, text) => (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">
+          {label}
+        </span>
+        <button
+          type="button"
+          onClick={() => copySnippet(key, text)}
+          className="text-[10px] font-black text-[#22d3ee] uppercase tracking-widest hover:text-white transition-colors"
+        >
+          {copiedKey === key ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <pre className="text-[11px] text-white/70 bg-black/40 border border-white/10 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all">
+        {text}
+      </pre>
+    </div>
+  );
+
   const handleRun = async (e) => {
     e.preventDefault();
     if (isExecuting) return;
@@ -420,20 +493,14 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
     setResult(null);
 
     try {
-      const inputs = {};
-      Object.entries(formData).forEach(([key, value]) => {
-        if (!value) return;
-        if (key.startsWith("text")) inputs[key] = { prompt: value };
-        else if (key.startsWith("image")) inputs[key] = { image_url: value };
-        else if (key.startsWith("video")) inputs[key] = { video_url: value };
-        else inputs[key] = value;
-      });
-
-      const data = await executeWorkflow(apiKey, selectedWorkflow.id, inputs);
+      const inputs = buildInputs();
+      const data = await executeWorkflow(apiKey, selectedWorkflow.id, inputs, webhookUrl || undefined);
       setResult(data);
+      setRawResult(data);
     } catch (err) {
       console.error("Execution failed:", err);
       setError(err.message || "Execution failed");
+      setRawResult({ error: err?.message || String(err) });
     } finally {
       setIsExecuting(false);
     }
@@ -571,7 +638,24 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
               {/* Controls Panel */}
               <div className="w-full lg:w-[400px] border-r border-white/5 flex flex-col bg-black/20">
                 <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
-                  <form onSubmit={handleRun} className="space-y-6">
+                  <div className="flex gap-1 p-1 bg-white/5 rounded-lg mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setPlaygroundView("form")}
+                      className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${playgroundView === "form" ? "bg-[#22d3ee] text-black" : "text-white/40 hover:text-white"}`}
+                    >
+                      Run
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPlaygroundView("api")}
+                      className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${playgroundView === "api" ? "bg-[#22d3ee] text-black" : "text-white/40 hover:text-white"}`}
+                    >
+                      API &amp; CLI
+                    </button>
+                  </div>
+                  {playgroundView === "form" ? (
+                    <form onSubmit={handleRun} className="space-y-6">
                     <div>
                       <h3 className="text-xs font-black text-white/30 uppercase tracking-widest mb-4">
                         Configuration
@@ -641,6 +725,20 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
                       </div>
                     </div>
 
+                    <div className="space-y-2">
+                      <label className="block text-[11px] font-bold text-white/80 uppercase tracking-wider">
+                        Webhook URL <span className="text-white/30 normal-case font-medium">(optional)</span>
+                      </label>
+                      <input
+                        type="url"
+                        value={webhookUrl}
+                        onChange={(e) => setWebhookUrl(e.target.value)}
+                        placeholder="https://your-app.com/webhook"
+                        className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-[#22d3ee]/50 transition-colors"
+                      />
+                      <p className="text-[10px] text-white/30">Receive a notification when the workflow completes.</p>
+                    </div>
+
                     <button
                       type="submit"
                       disabled={isExecuting || !selectedWorkflow.id}
@@ -673,6 +771,29 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
                       </p>
                     )}
                   </form>
+                  ) : (
+                    (() => {
+                      const snippets = apiSnippets;
+                      return (
+                        <div className="space-y-6">
+                          <div className="space-y-2">
+                            <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Endpoint</span>
+                            <pre className="text-[11px] text-white/70 bg-black/40 border border-white/10 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all">{`${snippets.method} ${snippets.endpoint}`}</pre>
+                            <pre className="text-[11px] text-white/70 bg-black/40 border border-white/10 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all">{`Poll ${snippets.pollUrl}`}</pre>
+                          </div>
+                          {makeSnippet("cURL", "curl", snippets.curl)}
+                          {makeSnippet("JSON body", "json", snippets.json)}
+                          {makeSnippet("Node.js", "node", snippets.node)}
+                          {makeSnippet("Python", "python", snippets.python)}
+                          {makeSnippet("CLI", "cli", [snippets.cliDiscover, snippets.cliGet, snippets.cliRun].filter(Boolean).join("\n\n"))}
+                          <div className="mt-6 p-4 rounded-lg bg-white/[0.03] border border-white/5 text-[11px] text-white/50 leading-relaxed">
+                            <div className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2">Dynamic references</div>
+                            Pipe outputs between nodes with Jinja2 syntax, e.g. <code className="text-[#22d3ee]">{"{{ node_id.outputs[0].value }}"}</code>. Node categories: Text, Image, Video, Audio, Utility, API.
+                          </div>
+                        </div>
+                      );
+                    })()
+                  )}
                 </div>
               </div>
 
@@ -817,6 +938,19 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+                {rawResult && (
+                  <div className="w-full max-w-4xl mt-8">
+                    <button type="button" onClick={() => setShowRaw((v) => !v)}
+                      className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-[#22d3ee] transition-colors flex items-center gap-2">
+                      {showRaw ? "Hide" : "Show"} raw response
+                    </button>
+                    {showRaw && (
+                      <pre className="mt-3 text-[11px] text-white/60 bg-black/40 border border-white/10 rounded-lg p-4 overflow-x-auto whitespace-pre-wrap break-all max-h-[400px] overflow-y-auto">
+                        {JSON.stringify(rawResult, null, 2)}
+                      </pre>
+                    )}
                   </div>
                 )}
               </div>
