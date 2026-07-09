@@ -1,0 +1,51 @@
+# Render Blueprint — CutAI (the personalization tool)
+# Deploys the FastAPI backend + Vite frontend to Render via Infrastructure-as-Code.
+# Validate with:  render blueprints validate
+# Apply with:     render blueprints apply --confirm
+# Docs:           https://render.com/docs/blueprint-spec
+
+services:
+  # ── Backend: FastAPI (Python) ──────────────────────────────────────────────
+  - type: web
+    name: cutai-backend
+    runtime: python
+    baseDirectory: apps/cutai/backend
+    plan: starter
+    region: oregon
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_LLM_MODEL
+        value: gpt-4o
+      - key: OPENAI_IMAGE_MODEL
+        value: gpt-image-2
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./cutai.db
+      # Allow the deployed frontend to call this backend.
+      - key: CORS_ORIGINS
+        fromService:
+          type: web
+          name: cutai-frontend
+          property: url
+
+  # ── Frontend: Vite SPA, wired to the backend above ─────────────────────────
+  - type: web
+    name: cutai-frontend
+    runtime: static
+    baseDirectory: apps/cutai/frontend
+    plan: starter
+    region: oregon
+    branch: main
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      # The single source of truth for the product's backend URL on Render.
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: cutai-backend
+          property: url

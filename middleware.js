@@ -1,33 +1,61 @@
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
-export function middleware(request) {
-    const url = request.nextUrl;
-    
-    // Catch requests to /api/workflow, /api/app, and /api/v1
-    const isMuApi = url.pathname.startsWith('/api/workflow') || 
-                    url.pathname.startsWith('/api/app') || 
-                    url.pathname.startsWith('/api/v1');
+const isProtectedRoute = createRouteMatcher([
+  '/studio(.*)',
+  '/vfx(.*)',
+  '/api/v1/protected(.*)',
+]);
 
-    if (isMuApi) {
-        // Exclude paths that have their own dedicated route handlers with custom logic
-        const isHandledByRoute = url.pathname.startsWith('/api/v1/creative-agent') || 
-                                url.pathname.startsWith('/api/v1/get_upload_url') ||
-                                url.pathname.startsWith('/api/v1/upload-binary');
+const isAuthRoute = createRouteMatcher([
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/forgot-password(.*)',
+]);
 
-        if (url.pathname.startsWith('/api/v1') && !isHandledByRoute) {
-            const targetUrl = new URL(url.pathname + url.search, 'https://api.muapi.ai');
-            return NextResponse.rewrite(targetUrl);
-        }
+export default clerkMiddleware(async (auth, request) => {
+  const url = request.nextUrl;
+
+  const { userId } = await auth();
+
+  if (isAuthRoute(request) && userId) {
+    const dest = url.searchParams.get('redirect_url') || '/studio';
+    return NextResponse.redirect(new URL(dest, request.url));
+  }
+
+  if (isProtectedRoute(request)) {
+    if (!userId) {
+      const signInUrl = new URL('/sign-in', request.url);
+      signInUrl.searchParams.set('redirect_url', url.pathname + url.search);
+      return NextResponse.redirect(signInUrl);
     }
+    await auth.protect();
+  }
 
-    return NextResponse.next();
-}
+  const isMuApi = url.pathname.startsWith('/api/workflow') ||
+                  url.pathname.startsWith('/api/app') ||
+                  url.pathname.startsWith('/api/v1');
 
-// Match the paths we want to proxy
+  if (isMuApi) {
+    const isHandledByRoute = url.pathname.startsWith('/api/v1/creative-agent') ||
+                            url.pathname.startsWith('/api/v1/get_upload_url') ||
+                            url.pathname.startsWith('/api/v1/upload-binary');
+
+    if (url.pathname.startsWith('/api/v1') && !isHandledByRoute) {
+      const targetUrl = new URL(url.pathname + url.search, 'https://api.muapi.ai');
+      return NextResponse.rewrite(targetUrl);
+    }
+  }
+
+  return NextResponse.next();
+});
+
 export const config = {
-    matcher: [
-        '/api/workflow/:path*', 
-        '/api/app/:path*',
-        '/api/v1/:path*'
-    ],
+  matcher: [
+    '/api/workflow/:path*',
+    '/api/app/:path*',
+    '/api/v1/:path*',
+    '/((?!_next|.*\\..*).*)',
+    '/__clerk/:path*',
+  ],
 };

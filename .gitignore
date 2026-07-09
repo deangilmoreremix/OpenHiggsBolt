@@ -51,3 +51,6 @@ cutai.db
 apps/cutai/backend/cutai.db
 apps/cutai/backend/generated/
 apps/cutai/frontend/dist/
+
+# Local Netlify folder
+.netlify

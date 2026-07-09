@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { PRODUCT_NAME, NAV_ITEMS, LOGOS, FEATURES, TESTIMONIALS, PRICING, FAQS } from './landingData';
 
-export default function LandingPage({ FeatureDemos }) {
+export default function LandingPage({ FeatureDemos, AuthControls }) {
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
       <div className="landing-noise" aria-hidden="true" />
@@ -19,9 +19,13 @@ export default function LandingPage({ FeatureDemos }) {
               <a key={item.href} href={item.href} className="transition hover:text-white">{item.label}</a>
             ))}
           </nav>
-          <Link href="/studio" className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90">
-            Open studio
-          </Link>
+          <div className="flex items-center gap-3">
+            {AuthControls ? <AuthControls /> : (
+              <Link href="/studio" className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90">
+                Open studio
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 

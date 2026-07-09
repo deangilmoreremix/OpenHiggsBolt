@@ -474,6 +474,28 @@ npm run electron:build:all
 
 Installers are output to the `release/` folder. Pre-built binaries are also available on the [Releases page](https://github.com/Anil-matcha/Open-Generative-AI/releases).
 
+### Deploy to Render (CLI)
+
+OpenHiggsBolt ships a [Render Blueprint](./render.yaml) describing the web service and its environment variables. Deploy it from your terminal with the [Render CLI](https://render.com/docs/cli):
+
+```bash
+# 1. Install the Render CLI
+#    macOS / Linux:
+curl -fsSL https://raw.githubusercontent.com/render-oss/cli/refs/heads/main/bin/install.sh | sh
+#    macOS (Homebrew):  brew install render
+
+# 2. Authenticate (opens a browser to authorize the CLI)
+render login
+
+# 3. Validate the blueprint locally
+npm run render:validate        # → render blueprints validate
+
+# 4. Create / update the service on Render
+npm run render:deploy          # → render blueprints apply --confirm
+```
+
+For non-interactive CI/CD, set the `RENDER_API_KEY` environment variable and pass `--confirm` (see the [Render CLI docs](https://render.com/docs/cli#non-interactive-mode)). After the first deploy, set the `sync: false` environment variables (Clerk keys, Supabase keys, `CLERK_WEBHOOK_SECRET`) in the Render Dashboard before the service will start cleanly.
+
 ## 🏗️ Architecture
 
 The app is a **Next.js monorepo** with a shared `packages/studio` component library.

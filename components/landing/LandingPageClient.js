@@ -1,6 +1,7 @@
 'use client';
 import dynamic from 'next/dynamic';
 import LandingPage from './LandingPage';
+import LandingAuthControls from './LandingAuthControls';
 
 const FeatureDemos = dynamic(() => import('./FeatureDemos'), {
   ssr: false,
@@ -14,5 +15,5 @@ const FeatureDemos = dynamic(() => import('./FeatureDemos'), {
 });
 
 export default function LandingPageClient() {
-  return <LandingPage FeatureDemos={FeatureDemos} />;
+  return <LandingPage FeatureDemos={FeatureDemos} AuthControls={LandingAuthControls} />;
 }
