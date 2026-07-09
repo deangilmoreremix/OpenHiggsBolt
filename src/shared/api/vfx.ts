@@ -227,7 +227,7 @@ export class MuAPIVFXClient {
     }
 
     const data: MuAPIStatusResponse = await res.json()
-    const status = normalizeStatus(data.status)
+    const status = normalizeStatus((data as any)?.data?.status || data.status)
     const videoUrl = extractVideoUrl(data)
 
     return {

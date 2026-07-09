@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { ImageStudio, VideoStudio, ClippingStudio, VibeMotionStudio, LipSyncStudio, CinemaStudio, AudioStudio, MarketingStudio, RecastStudio, WorkflowStudio, AgentStudio, AppsStudio, getUserBalance } from 'studio';
+import { ImageStudio, VideoStudio, ClippingStudio, VibeMotionStudio, LipSyncStudio, CinemaStudio, AudioStudio, MarketingStudio, RecastStudio, WorkflowStudio, AgentStudio, AppsStudio, AiInfluencerStudio, getUserBalance } from 'studio';
 import axios from 'axios';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -31,6 +31,7 @@ const TABS = [
   { id: 'design-agent', label: 'Design Agent AI' },
   { id: 'vfx-studio', label: 'VFX' },
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
+  { id: 'ai-influencer', label: 'AI Influencer Studio' },
 ];
 
 const STORAGE_KEY = 'muapi_key';
@@ -404,6 +405,7 @@ export default function StandaloneShell() {
           </div>
         )}
         {activeTab === 'apps' && <AppsStudio apiKey={apiKey} />}
+        {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} />}
       </div>
 
       {/* Settings Modal */}

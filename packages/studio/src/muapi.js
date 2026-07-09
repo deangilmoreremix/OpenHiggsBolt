@@ -1,5 +1,59 @@
 import { getModelById, getVideoModelById, getI2IModelById, getI2VModelById, getV2VModelById, getRecastModelById, getLipSyncModelById, getAudioModelById } from './models.js';
 
+// Local mirrors for workflow/agent thumbnails. Maps upstream MuAPI thumbnail
+// URLs -> local files in /public/thumbnails/workflows. Plain ESM import so it
+// bundles cleanly in the browser (Turbopack/Webpack/Vite) with no fs/JSON-assert.
+import thumbnailLocalMap from './thumbnail-map.js';
+
+function rewriteThumbnail(url) {
+  if (!url || typeof url !== 'string') return url;
+  if (thumbnailLocalMap[url]) return thumbnailLocalMap[url];
+  // Same-origin proxy: server fetches the upstream image (with Referer) and
+  // streams it back so it always loads regardless of CDN hotlink protection.
+  return `/api/thumbnail?url=${encodeURIComponent(url)}`;
+}
+
+function rewriteThumbnails(list) {
+  if (!Array.isArray(list)) return list;
+  return list.map((item) => {
+    if (!item || typeof item !== "object") return item;
+    const next = { ...item };
+    // Workflows use `thumbnail`; agents use `icon_url` (and sometimes `image_url`).
+    // Rewrite every known image field through the same-origin /api/thumbnail proxy
+    // so CDN hotlink protection never blocks images in the browser.
+    if (next.thumbnail) next.thumbnail = rewriteThumbnail(next.thumbnail);
+    if (next.icon_url) next.icon_url = rewriteThumbnail(next.icon_url);
+    if (next.image_url) next.image_url = rewriteThumbnail(next.image_url);
+    // Conversations list returns agent_icon_url / agent_avatar_url.
+    if (next.agent_icon_url) next.agent_icon_url = rewriteThumbnail(next.agent_icon_url);
+    if (next.agent_avatar_url) next.agent_avatar_url = rewriteThumbnail(next.agent_avatar_url);
+    return next;
+  });
+}
+
+/**
+ * Normalize a MuAPI prediction response into a consistent shape.
+ * MuAPI wraps payloads in `data` and sometimes nests `video`/`output`,
+ * so we tolerate both the flat and the wrapped response shapes.
+ */
+function normalizeMuapiResult(raw) {
+  const body = (raw && raw.data) ? raw.data : raw;
+  const video = (raw && raw.video) ? raw.video : (body && body.video);
+  const requestId = (raw && (raw.request_id || raw.id)) || (body && (body.request_id || body.id));
+  const status = String((raw && raw.status) || (body && body.status) || '').toLowerCase();
+  const outputs = (raw && raw.outputs) || (body && body.outputs) || (video ? [video.url] : null);
+  const url =
+    (Array.isArray(outputs) && outputs[0]) ||
+    (raw && (raw.url || raw.video_url)) ||
+    (body && (body.url || body.video_url)) ||
+    (video && video.url) ||
+    (raw && raw.output && raw.output.url) ||
+    (body && body.output && body.output.url) || null;
+  const error = (raw && raw.error) || (body && body.error) || null;
+  return { requestId, status, outputs, url, error, body };
+}
+
+
 // In an http(s) browser we route through the host app's proxy (Next.js routes
 // under /api/* re-issue the call server-side) so api.muapi.ai CORS is bypassed.
 // SSR (no window) and Electron's file:// renderer call the upstream directly.
@@ -31,9 +85,10 @@ async function pollForResult(requestId, key, maxAttempts = 900, interval = 2000)
                 throw new Error(`Poll Failed: ${response.status} - ${errText.slice(0, 100)}`);
             }
             const data = await response.json();
-            const status = data.status?.toLowerCase();
-            if (status === 'completed' || status === 'succeeded' || status === 'success') return data;
-            if (status === 'failed' || status === 'error') throw new Error(`Generation failed: ${data.error || 'Unknown error'}`);
+            const norm = normalizeMuapiResult(data);
+            const status = norm.status;
+            if (status === 'completed' || status === 'succeeded' || status === 'success') return norm.body;
+            if (status === 'failed' || status === 'error') throw new Error(`Generation failed: ${norm.error || 'Unknown error'}`);
         } catch (error) {
             if (attempt === maxAttempts) throw error;
         }
@@ -60,9 +115,10 @@ async function submitAndPoll(endpoint, payload, key, onRequestId, maxAttempts = 
     if (!requestId) return submitData;
     if (onRequestId) onRequestId(requestId);
     const result = await pollForResult(requestId, key, maxAttempts);
-    const outputUrl = result.outputs?.[0] || result.url || result.output?.url;
+    const outputUrl = normalizeMuapiResult(result).url;
     return { ...result, url: outputUrl };
 }
+
 
 export async function generateImage(apiKey, params) {
     const modelInfo = getModelById(params.model);
@@ -93,6 +149,9 @@ export async function generateI2I(apiKey, params) {
     if (imagesList) {
         if (imageField === 'images_list') payload.images_list = imagesList;
         else payload[imageField] = imagesList[0];
+    }
+    if (modelInfo?.swapField && params.swap_url) {
+        payload[modelInfo.swapField] = params.swap_url;
     }
     if (params.aspect_ratio) payload.aspect_ratio = params.aspect_ratio;
     if (params.resolution) payload.resolution = params.resolution;
@@ -326,7 +385,7 @@ export async function getTemplateWorkflows(apiKey) {
         throw new Error(`Failed to fetch template workflows: ${response.status} - ${errText.slice(0, 100)}`);
     }
     const data = await response.json();
-    return Array.isArray(data) ? data : (data.workflows || data.items || []);
+    return rewriteThumbnails(Array.isArray(data) ? data : (data.workflows || data.items || []));
 };
 
 export async function getUserWorkflows(apiKey) {
@@ -341,7 +400,7 @@ export async function getUserWorkflows(apiKey) {
         throw new Error(`Failed to fetch user workflows: ${response.status} - ${errText.slice(0, 100)}`);
     }
     const data = await response.json();
-    return Array.isArray(data) ? data : (data.workflows || data.items || []);
+    return rewriteThumbnails(Array.isArray(data) ? data : (data.workflows || data.items || []));
 };
 
 export async function getPublishedWorkflows(apiKey) {
@@ -356,7 +415,7 @@ export async function getPublishedWorkflows(apiKey) {
         throw new Error(`Failed to fetch published workflows: ${response.status} - ${errText.slice(0, 100)}`);
     }
     const data = await response.json();
-    return Array.isArray(data) ? data : (data.workflows || data.items || []);
+    return rewriteThumbnails(Array.isArray(data) ? data : (data.workflows || data.items || []));
 };
 
 // Agents — uses direct URL → https://api.muapi.ai/agents/...
@@ -372,7 +431,7 @@ export async function getTemplateAgents(apiKey) {
         throw new Error(`Failed to fetch template agents: ${response.status} - ${errText.slice(0, 100)}`);
     }
     const data = await response.json();
-    return Array.isArray(data) ? data : (data.agents || data.items || []);
+    return rewriteThumbnails(Array.isArray(data) ? data : (data.agents || data.items || []));
 };
 
 export async function getUserAgents(apiKey) {
@@ -387,7 +446,7 @@ export async function getUserAgents(apiKey) {
         throw new Error(`Failed to fetch user agents: ${response.status} - ${errText.slice(0, 100)}`);
     }
     const data = await response.json();
-    return Array.isArray(data) ? data : (data.agents || data.items || []);
+    return rewriteThumbnails(Array.isArray(data) ? data : (data.agents || data.items || []));
 };
 
 export async function getPublishedAgents(apiKey) {
@@ -403,7 +462,7 @@ export async function getPublishedAgents(apiKey) {
         throw new Error(`Failed to fetch featured agents: ${response.status} - ${errText.slice(0, 100)}`);
     }
     const data = await response.json();
-    return Array.isArray(data) ? data : (data.agents || data.items || []);
+    return rewriteThumbnails(Array.isArray(data) ? data : (data.agents || data.items || []));
 };
 
 // GET /agents/user/conversations — returns the user's chat history across all agents
@@ -483,14 +542,21 @@ export async function getWorkflowInputs(apiKey, workflowId) {
     return await response.json();
 };
 
-export async function executeWorkflow(apiKey, workflowId, inputs) {
+// Single source of truth for the workflow execute request body. Keeping this in
+// one place ensures the copy-paste snippets (buildWorkflowApiSnippets) stay in
+// sync with what executeWorkflow actually sends over the wire.
+export function buildWorkflowBody(inputs = {}, webhookUrl) {
+    return { inputs, ...(webhookUrl ? { webhook_url: webhookUrl } : {}) };
+}
+
+export async function executeWorkflow(apiKey, workflowId, inputs, webhookUrl) {
     const response = await fetch(`${BASE_URL}/workflow/${workflowId}/api-execute`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'x-api-key': apiKey
         },
-        body: JSON.stringify({ inputs })
+        body: JSON.stringify(buildWorkflowBody(inputs, webhookUrl))
     });
     if (!response.ok) {
         const errText = await response.text();
@@ -503,6 +569,72 @@ export async function executeWorkflow(apiKey, workflowId, inputs) {
     // Poll for results
     return await pollWorkflowResult(runId, apiKey);
 };
+
+// Pure helper: builds copy-paste "how to use" snippets for a workflow's playground.
+// No network calls. Returns strings the UI can render + copy.
+export function buildWorkflowApiSnippets(workflowId, inputs = {}, options = {}) {
+    const id = workflowId || '<workflow_id>';
+    const webhookUrl = options.webhookUrl || '';
+    const publicBase = 'https://api.muapi.ai';
+    const endpoint = `${publicBase}/workflow/${id}/api-execute`;
+    const pollUrl = `${publicBase}/workflow/run/{run_id}/api-outputs`;
+
+    const bodyObj = buildWorkflowBody(inputs, webhookUrl);
+    const json = JSON.stringify(bodyObj, null, 2);
+
+    // Escape single quotes so the body survives bash single-quoted strings
+    // (JSON.stringify does not escape "'"; a prompt like "don't" would break it).
+    const curlBody = JSON.stringify(bodyObj).replace(/'/g, `'\\''`);
+
+    const curl = [
+        `curl -X POST '${endpoint}' \\`,
+        `  -H 'Content-Type: application/json' \\`,
+        `  -H 'x-api-key: YOUR_API_KEY' \\`,
+        `  -d '${curlBody}'`,
+    ].join('\n');
+
+    const node = [
+        `const res = await fetch('${endpoint}', {`,
+        `  method: 'POST',`,
+        `  headers: {`,
+        `    'Content-Type': 'application/json',`,
+        `    'x-api-key': process.env.MUAPI_API_KEY,`,
+        `  },`,
+        `  body: JSON.stringify(${JSON.stringify(bodyObj, null, 2).replace(/\n/g, '\n  ')}),`,
+        `});`,
+        `const { run_id } = await res.json();`,
+        `// Then poll: GET ${pollUrl}`,
+    ].join('\n');
+
+    const python = [
+        `import requests`,
+        ``,
+        `resp = requests.post(`,
+        `    "${endpoint}",`,
+        `    headers={"Content-Type": "application/json", "x-api-key": "YOUR_API_KEY"},`,
+        `    json=${json.replace(/\n/g, '\n    ')},`,
+        `)`,
+        `run_id = resp.json()["run_id"]`,
+        `# Then poll: GET ${pollUrl}`,
+    ].join('\n');
+
+    const cliGet = `muapi workflow get ${id} --output-json`;
+    const cliRun = `muapi workflow run-interactive ${id}`;
+    const cliDiscover = `muapi workflow discover --output-json`;
+
+    return {
+        endpoint,
+        pollUrl,
+        method: 'POST',
+        json,
+        curl,
+        node,
+        python,
+        cliGet,
+        cliRun,
+        cliDiscover,
+    };
+}
 
 async function pollWorkflowResult(runId, apiKey, maxAttempts = 900, interval = 2000) {
     const pollUrl = `${BASE_URL}/workflow/run/${runId}/api-outputs`;

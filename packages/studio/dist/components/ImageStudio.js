@@ -8,8 +8,10 @@ Object.defineProperty(exports, "__esModule", {
 exports["default"] = ImageStudio;
 var _react = require("react");
 var _muapi = require("../muapi.js");
+var _DrawModal = _interopRequireDefault(require("./DrawModal.jsx"));
 var _models = require("../models.js");
 var _jsxRuntime = require("react/jsx-runtime");
+function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
 function _regenerator() { /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ var e, t, r = "function" == typeof Symbol ? Symbol : {}, n = r.iterator || "@@iterator", o = r.toStringTag || "@@toStringTag"; function i(r, n, o, i) { var c = n && n.prototype instanceof Generator ? n : Generator, u = Object.create(c.prototype); return _regeneratorDefine2(u, "_invoke", function (r, n, o) { var i, c, u, f = 0, p = o || [], y = !1, G = { p: 0, n: 0, v: e, a: d, f: d.bind(e, 4), d: function d(t, r) { return i = t, c = 0, u = e, G.n = r, a; } }; function d(r, n) { for (c = r, u = n, t = 0; !y && f && !o && t < p.length; t++) { var o, i = p[t], d = G.p, l = i[2]; r > 3 ? (o = l === n) && (u = i[(c = i[4]) ? 5 : (c = 3, 3)], i[4] = i[5] = e) : i[0] <= d && ((o = r < 2 && d < i[1]) ? (c = 0, G.v = n, G.n = i[1]) : d < l && (o = r < 3 || i[0] > n || n > l) && (i[4] = r, i[5] = n, G.n = l, c = 0)); } if (o || r > 1) return a; throw y = !0, n; } return function (o, p, l) { if (f > 1) throw TypeError("Generator is already running"); for (y && 1 === p && d(p, l), c = p, u = l; (t = c < 2 ? e : u) || !y;) { i || (c ? c < 3 ? (c > 1 && (G.n = -1), d(c, u)) : G.n = u : G.v = u); try { if (f = 2, i) { if (c || (o = "next"), t = i[o]) { if (!(t = t.call(i, u))) throw TypeError("iterator result is not an object"); if (!t.done) return t; u = t.value, c < 2 && (c = 0); } else 1 === c && (t = i["return"]) && t.call(i), c < 2 && (u = TypeError("The iterator does not provide a '" + o + "' method"), c = 1); i = e; } else if ((t = (y = G.n < 0) ? u : r.call(n, G)) !== a) break; } catch (t) { i = e, c = 1, u = t; } finally { f = 1; } } return { value: t, done: y }; }; }(r, o, i), !0), u; } var a = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} t = Object.getPrototypeOf; var c = [][n] ? t(t([][n]())) : (_regeneratorDefine2(t = {}, n, function () { return this; }), t), u = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(c); function f(e) { return Object.setPrototypeOf ? Object.setPrototypeOf(e, GeneratorFunctionPrototype) : (e.__proto__ = GeneratorFunctionPrototype, _regeneratorDefine2(e, o, "GeneratorFunction")), e.prototype = Object.create(u), e; } return GeneratorFunction.prototype = GeneratorFunctionPrototype, _regeneratorDefine2(u, "constructor", GeneratorFunctionPrototype), _regeneratorDefine2(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = "GeneratorFunction", _regeneratorDefine2(GeneratorFunctionPrototype, o, "GeneratorFunction"), _regeneratorDefine2(u), _regeneratorDefine2(u, o, "Generator"), _regeneratorDefine2(u, n, function () { return this; }), _regeneratorDefine2(u, "toString", function () { return "[object Generator]"; }), (_regenerator = function _regenerator() { return { w: i, m: f }; })(); }
 function _regeneratorDefine2(e, r, n, t) { var i = Object.defineProperty; try { i({}, "", {}); } catch (e) { i = 0; } _regeneratorDefine2 = function _regeneratorDefine(e, r, n, t) { function o(r, n) { _regeneratorDefine2(e, r, function (e) { return this._invoke(r, n, e); }); } r ? i ? i(e, r, { value: n, enumerable: !t, configurable: !t, writable: !t }) : e[r] = n : (o("next", 0), o("throw", 1), o("return", 2)); }, _regeneratorDefine2(e, r, n, t); }
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
@@ -677,6 +679,14 @@ function UploadButton(_ref) {
                   points: "20 6 9 17 4 12"
                 })
               })
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_DrawModal["default"], {
+              isOpen: isDrawModalOpen,
+              onClose: function onClose() {
+                return setIsDrawModalOpen(false);
+              },
+              apiKey: apiKey,
+              batchSize: 1,
+              onAddHistoryItem: addToHistory
             })]
           }, entry.id);
         })
@@ -707,9 +717,116 @@ function ModelDropdown(_ref4) {
     _useState10 = _slicedToArray(_useState1, 2),
     search = _useState10[0],
     setSearch = _useState10[1];
-  var filtered = models.filter(function (m) {
-    return m.name.toLowerCase().includes(search.toLowerCase()) || m.id.toLowerCase().includes(search.toLowerCase());
+  var _useState11 = (0, _react.useState)("all"),
+    _useState12 = _slicedToArray(_useState11, 2),
+    selectedProvider = _useState12[0],
+    setSelectedProvider = _useState12[1];
+  var getProviderStyle = function getProviderStyle(provider) {
+    switch (provider) {
+      case "grok":
+        return {
+          text: "xI",
+          bg: "bg-orange-500/10 text-orange-400 border-orange-500/25"
+        };
+      case "openai":
+        return {
+          text: "O",
+          bg: "bg-emerald-500/10 text-emerald-400 border-emerald-500/25"
+        };
+      case "google":
+        return {
+          text: "G",
+          bg: "bg-blue-500/10 text-blue-400 border-blue-500/25"
+        };
+      case "blackforest":
+        return {
+          text: "BF",
+          bg: "bg-amber-500/10 text-amber-400 border-amber-500/25"
+        };
+      case "bytedance":
+        return {
+          text: "BD",
+          bg: "bg-purple-500/10 text-purple-400 border-purple-500/25"
+        };
+      case "midjourney":
+        return {
+          text: "MJ",
+          bg: "bg-indigo-500/10 text-indigo-400 border-indigo-500/25"
+        };
+      case "kling":
+        return {
+          text: "KL",
+          bg: "bg-rose-500/10 text-rose-400 border-rose-500/25"
+        };
+      case "vidu":
+        return {
+          text: "VD",
+          bg: "bg-cyan-500/10 text-cyan-400 border-cyan-500/25"
+        };
+      case "minimax":
+        return {
+          text: "MX",
+          bg: "bg-pink-500/10 text-pink-400 border-pink-500/25"
+        };
+      case "ideogram":
+        return {
+          text: "ID",
+          bg: "bg-yellow-500/10 text-yellow-400 border-yellow-500/25"
+        };
+      case "luma":
+        return {
+          text: "LM",
+          bg: "bg-teal-500/10 text-teal-400 border-teal-500/25"
+        };
+      case "alibaba":
+        return {
+          text: "AL",
+          bg: "bg-sky-500/10 text-sky-400 border-sky-500/25"
+        };
+      case "leonardoai":
+        return {
+          text: "LE",
+          bg: "bg-violet-500/10 text-violet-400 border-violet-500/25"
+        };
+      case "stability":
+        return {
+          text: "SD",
+          bg: "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/25"
+        };
+      default:
+        var name = provider ? provider.toUpperCase() : "AI";
+        return {
+          text: name.substring(0, 2),
+          bg: "bg-primary/10 text-primary border-primary/25"
+        };
+    }
+  };
+
+  // Dynamically compute list of providers from the input models list
+  var availableProviders = [];
+  var seenProviders = new Set();
+  models.forEach(function (m) {
+    var pId = m.provider || "muapi";
+    var pName = m.provider_name || "Muapi";
+    if (!seenProviders.has(pId)) {
+      seenProviders.add(pId);
+      availableProviders.push({
+        id: pId,
+        name: pName
+      });
+    }
   });
+  var filterFn = function filterFn(m) {
+    // 1. Filter by provider
+    if (selectedProvider !== "all") {
+      var pId = m.provider || "muapi";
+      if (pId !== selectedProvider) return false;
+    }
+    // 2. Filter by search query
+    var query = search.toLowerCase();
+    return m.name.toLowerCase().includes(query) || m.id.toLowerCase().includes(query);
+  };
+  var filtered = models.filter(filterFn);
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     className: "flex flex-col gap-2 h-full max-h-[60vh]",
     children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
@@ -742,6 +859,27 @@ function ModelDropdown(_ref4) {
             return setSearch(e.target.value);
           },
           className: "bg-transparent border-none text-xs text-white focus:ring-0 w-full p-0 focus:outline-none"
+        })]
+      })
+    }), availableProviders.length > 1 && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+      className: "shrink-0",
+      children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("select", {
+        value: selectedProvider,
+        onClick: function onClick(e) {
+          return e.stopPropagation();
+        },
+        onChange: function onChange(e) {
+          return setSelectedProvider(e.target.value);
+        },
+        className: "w-full bg-white/5 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-primary/50 transition-colors",
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("option", {
+          value: "all",
+          children: "All Providers"
+        }), availableProviders.map(function (p) {
+          return /*#__PURE__*/(0, _jsxRuntime.jsx)("option", {
+            value: p.id,
+            children: p.name
+          }, p.id);
         })]
       })
     }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
@@ -840,83 +978,87 @@ function ImageStudio(_ref6) {
   var PERSIST_KEY = "hg_image_studio_persistent";
 
   // ── Model / mode state ──────────────────────────────────────────────────
-  var _useState11 = (0, _react.useState)(false),
-    _useState12 = _slicedToArray(_useState11, 2),
-    imageMode = _useState12[0],
-    setImageMode = _useState12[1]; // false=t2i, true=i2i
-  var _useState13 = (0, _react.useState)(_models.t2iModels[0].id),
+  var _useState13 = (0, _react.useState)(false),
     _useState14 = _slicedToArray(_useState13, 2),
-    selectedModelId = _useState14[0],
-    setSelectedModelId = _useState14[1];
-  var _useState15 = (0, _react.useState)(_models.t2iModels[0].name),
+    imageMode = _useState14[0],
+    setImageMode = _useState14[1]; // false=t2i, true=i2i
+  var _useState15 = (0, _react.useState)(_models.t2iModels[0].id),
     _useState16 = _slicedToArray(_useState15, 2),
-    selectedModelName = _useState16[0],
-    setSelectedModelName = _useState16[1];
-  var _useState17 = (0, _react.useState)(((_t2iModels$0$inputs = _models.t2iModels[0].inputs) === null || _t2iModels$0$inputs === void 0 || (_t2iModels$0$inputs = _t2iModels$0$inputs.aspect_ratio) === null || _t2iModels$0$inputs === void 0 ? void 0 : _t2iModels$0$inputs["default"]) || "1:1"),
+    selectedModelId = _useState16[0],
+    setSelectedModelId = _useState16[1];
+  var _useState17 = (0, _react.useState)(_models.t2iModels[0].name),
     _useState18 = _slicedToArray(_useState17, 2),
-    selectedAr = _useState18[0],
-    setSelectedAr = _useState18[1];
-  var _useState19 = (0, _react.useState)(function () {
+    selectedModelName = _useState18[0],
+    setSelectedModelName = _useState18[1];
+  var _useState19 = (0, _react.useState)(((_t2iModels$0$inputs = _models.t2iModels[0].inputs) === null || _t2iModels$0$inputs === void 0 || (_t2iModels$0$inputs = _t2iModels$0$inputs.aspect_ratio) === null || _t2iModels$0$inputs === void 0 ? void 0 : _t2iModels$0$inputs["default"]) || "1:1"),
+    _useState20 = _slicedToArray(_useState19, 2),
+    selectedAr = _useState20[0],
+    setSelectedAr = _useState20[1];
+  var _useState21 = (0, _react.useState)(function () {
       var resolutions = (0, _models.getResolutionsForModel)(_models.t2iModels[0].id);
       return resolutions[0] || null;
     }),
-    _useState20 = _slicedToArray(_useState19, 2),
-    selectedQuality = _useState20[0],
-    setSelectedQuality = _useState20[1];
-  var _useState21 = (0, _react.useState)(""),
     _useState22 = _slicedToArray(_useState21, 2),
-    selectedEffect = _useState22[0],
-    setSelectedEffect = _useState22[1];
-  var _useState23 = (0, _react.useState)(1),
+    selectedQuality = _useState22[0],
+    setSelectedQuality = _useState22[1];
+  var _useState23 = (0, _react.useState)(""),
     _useState24 = _slicedToArray(_useState23, 2),
-    maxImages = _useState24[0],
-    setMaxImages = _useState24[1];
+    selectedEffect = _useState24[0],
+    setSelectedEffect = _useState24[1];
+  var _useState25 = (0, _react.useState)(1),
+    _useState26 = _slicedToArray(_useState25, 2),
+    maxImages = _useState26[0],
+    setMaxImages = _useState26[1];
 
   // ── Prompt / upload state ───────────────────────────────────────────────
-  var _useState25 = (0, _react.useState)(""),
-    _useState26 = _slicedToArray(_useState25, 2),
-    prompt = _useState26[0],
-    setPrompt = _useState26[1];
-  var _useState27 = (0, _react.useState)([]),
+  var _useState27 = (0, _react.useState)(""),
     _useState28 = _slicedToArray(_useState27, 2),
-    uploadedImageUrls = _useState28[0],
-    setUploadedImageUrls = _useState28[1];
+    prompt = _useState28[0],
+    setPrompt = _useState28[1];
+  var _useState29 = (0, _react.useState)([]),
+    _useState30 = _slicedToArray(_useState29, 2),
+    uploadedImageUrls = _useState30[0],
+    setUploadedImageUrls = _useState30[1];
 
   // ── UI state ────────────────────────────────────────────────────────────
-  var _useState29 = (0, _react.useState)(null),
-    _useState30 = _slicedToArray(_useState29, 2),
-    dropdownOpen = _useState30[0],
-    setDropdownOpen = _useState30[1]; // 'model' | 'ar' | 'quality' | null
-  var _useState31 = (0, _react.useState)(false),
+  var _useState31 = (0, _react.useState)(null),
     _useState32 = _slicedToArray(_useState31, 2),
-    generating = _useState32[0],
-    setGenerating = _useState32[1];
-  var _useState33 = (0, _react.useState)(null),
+    dropdownOpen = _useState32[0],
+    setDropdownOpen = _useState32[1]; // 'model' | 'ar' | 'quality' | null
+  var _useState33 = (0, _react.useState)(false),
     _useState34 = _slicedToArray(_useState33, 2),
-    generateError = _useState34[0],
-    setGenerateError = _useState34[1];
+    generating = _useState34[0],
+    setGenerating = _useState34[1];
   var _useState35 = (0, _react.useState)(null),
     _useState36 = _slicedToArray(_useState35, 2),
-    fullscreenUrl = _useState36[0],
-    setFullscreenUrl = _useState36[1];
-
-  // ── Canvas / history state ──────────────────────────────────────────────
+    generateError = _useState36[0],
+    setGenerateError = _useState36[1];
   var _useState37 = (0, _react.useState)(null),
     _useState38 = _slicedToArray(_useState37, 2),
-    currentImageUrl = _useState38[0],
-    setCurrentImageUrl = _useState38[1];
-  var _useState39 = (0, _react.useState)(0),
+    fullscreenUrl = _useState38[0],
+    setFullscreenUrl = _useState38[1];
+  var _useState39 = (0, _react.useState)(false),
     _useState40 = _slicedToArray(_useState39, 2),
-    activeHistoryIdx = _useState40[0],
-    setActiveHistoryIdx = _useState40[1];
-  var _useState41 = (0, _react.useState)(1),
+    isDrawModalOpen = _useState40[0],
+    setIsDrawModalOpen = _useState40[1];
+
+  // ── Canvas / history state ──────────────────────────────────────────────
+  var _useState41 = (0, _react.useState)(null),
     _useState42 = _slicedToArray(_useState41, 2),
-    batchSize = _useState42[0],
-    setBatchSize = _useState42[1];
-  var _useState43 = (0, _react.useState)([]),
+    currentImageUrl = _useState42[0],
+    setCurrentImageUrl = _useState42[1];
+  var _useState43 = (0, _react.useState)(0),
     _useState44 = _slicedToArray(_useState43, 2),
-    localHistory = _useState44[0],
-    setLocalHistory = _useState44[1]; // [{id,url,prompt,model,aspect_ratio,timestamp}]
+    activeHistoryIdx = _useState44[0],
+    setActiveHistoryIdx = _useState44[1];
+  var _useState45 = (0, _react.useState)(1),
+    _useState46 = _slicedToArray(_useState45, 2),
+    batchSize = _useState46[0],
+    setBatchSize = _useState46[1];
+  var _useState47 = (0, _react.useState)([]),
+    _useState48 = _slicedToArray(_useState47, 2),
+    localHistory = _useState48[0],
+    setLocalHistory = _useState48[1]; // [{id,url,prompt,model,aspect_ratio,timestamp}]
 
   // Use prop history if provided, otherwise local
   var history = historyItems !== null && historyItems !== void 0 ? historyItems : localHistory;
@@ -1693,6 +1835,29 @@ function ImageStudio(_ref6) {
                   children: num
                 }, num);
               })
+            })]
+          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+            type: "button",
+            className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
+            onClick: function onClick() {
+              return setIsDrawModalOpen(true);
+            },
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+              width: "12",
+              height: "12",
+              viewBox: "0 0 24 24",
+              fill: "none",
+              stroke: "currentColor",
+              strokeWidth: "2.5",
+              className: "opacity-40 text-white group-hover:text-[#22d3ee] transition-colors",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                d: "M12 20h9"
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                d: "M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"
+              })]
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+              className: "text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
+              children: "Draw"
             })]
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
             type: "button",

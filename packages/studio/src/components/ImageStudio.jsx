@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { generateImage, generateI2I, uploadFile } from "../muapi.js";
+import DrawModal from "./DrawModal.jsx";
 import {
   t2iModels,
   i2iModels,
@@ -580,9 +581,18 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [] }
                           </svg>
                         )}
                       </div>
-                    )}
-                  </div>
-                );
+      )}
+
+      {/* ── DRAW CANVAS MODAL ── */}
+      <DrawModal
+        isOpen={isDrawModalOpen}
+        onClose={() => setIsDrawModalOpen(false)}
+        apiKey={apiKey}
+        batchSize={1}
+        onAddHistoryItem={addToHistory}
+      />
+    </div>
+  );
               })}
             </div>
           )}
@@ -612,12 +622,71 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [] }
 
 function ModelDropdown({ models, selectedModel, onSelect, onClose }) {
   const [search, setSearch] = useState("");
+  const [selectedProvider, setSelectedProvider] = useState("all");
 
-  const filtered = models.filter(
-    (m) =>
-      m.name.toLowerCase().includes(search.toLowerCase()) ||
-      m.id.toLowerCase().includes(search.toLowerCase()),
-  );
+  const getProviderStyle = (provider) => {
+    switch (provider) {
+      case "grok":
+        return { text: "xI", bg: "bg-orange-500/10 text-orange-400 border-orange-500/25" };
+      case "openai":
+        return { text: "O", bg: "bg-emerald-500/10 text-emerald-400 border-emerald-500/25" };
+      case "google":
+        return { text: "G", bg: "bg-blue-500/10 text-blue-400 border-blue-500/25" };
+      case "blackforest":
+        return { text: "BF", bg: "bg-amber-500/10 text-amber-400 border-amber-500/25" };
+      case "bytedance":
+        return { text: "BD", bg: "bg-purple-500/10 text-purple-400 border-purple-500/25" };
+      case "midjourney":
+        return { text: "MJ", bg: "bg-indigo-500/10 text-indigo-400 border-indigo-500/25" };
+      case "kling":
+        return { text: "KL", bg: "bg-rose-500/10 text-rose-400 border-rose-500/25" };
+      case "vidu":
+        return { text: "VD", bg: "bg-cyan-500/10 text-cyan-400 border-cyan-500/25" };
+      case "minimax":
+        return { text: "MX", bg: "bg-pink-500/10 text-pink-400 border-pink-500/25" };
+      case "ideogram":
+        return { text: "ID", bg: "bg-yellow-500/10 text-yellow-400 border-yellow-500/25" };
+      case "luma":
+        return { text: "LM", bg: "bg-teal-500/10 text-teal-400 border-teal-500/25" };
+      case "alibaba":
+        return { text: "AL", bg: "bg-sky-500/10 text-sky-400 border-sky-500/25" };
+      case "leonardoai":
+        return { text: "LE", bg: "bg-violet-500/10 text-violet-400 border-violet-500/25" };
+      case "stability":
+        return { text: "SD", bg: "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/25" };
+      default:
+        const name = provider ? provider.toUpperCase() : "AI";
+        return { text: name.substring(0, 2), bg: "bg-primary/10 text-primary border-primary/25" };
+    }
+  };
+
+  // Dynamically compute list of providers from the input models list
+  const availableProviders = [];
+  const seenProviders = new Set();
+  models.forEach((m) => {
+    const pId = m.provider || "muapi";
+    const pName = m.provider_name || "Muapi";
+    if (!seenProviders.has(pId)) {
+      seenProviders.add(pId);
+      availableProviders.push({ id: pId, name: pName });
+    }
+  });
+
+  const filterFn = (m) => {
+    // 1. Filter by provider
+    if (selectedProvider !== "all") {
+      const pId = m.provider || "muapi";
+      if (pId !== selectedProvider) return false;
+    }
+    // 2. Filter by search query
+    const query = search.toLowerCase();
+    return (
+      m.name.toLowerCase().includes(query) ||
+      m.id.toLowerCase().includes(query)
+    );
+  };
+
+  const filtered = models.filter(filterFn);
 
   return (
     <div className="flex flex-col gap-2 h-full max-h-[60vh]">
@@ -645,6 +714,23 @@ function ModelDropdown({ models, selectedModel, onSelect, onClose }) {
           />
         </div>
       </div>
+      {availableProviders.length > 1 && (
+        <div className="shrink-0">
+          <select
+            value={selectedProvider}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => setSelectedProvider(e.target.value)}
+            className="w-full bg-white/5 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-primary/50 transition-colors"
+          >
+            <option value="all">All Providers</option>
+            {availableProviders.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="text-xs font-medium text-secondary py-2 shrink-0">
         Available models
       </div>
@@ -773,6 +859,7 @@ export default function ImageStudio({
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(null);
   const [fullscreenUrl, setFullscreenUrl] = useState(null);
+  const [isDrawModalOpen, setIsDrawModalOpen] = useState(false);
 
   // ── Canvas / history state ──────────────────────────────────────────────
   const [currentImageUrl, setCurrentImageUrl] = useState(null);
@@ -1427,6 +1514,21 @@ export default function ImageStudio({
                 ))}
               </div>
             </div>
+
+            {/* Draw button */}
+            <button
+              type="button"
+              className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+              onClick={() => setIsDrawModalOpen(true)}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="opacity-40 text-white group-hover:text-[#22d3ee] transition-colors">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
+              </svg>
+              <span className="text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors">
+                Draw
+              </span>
+            </button>
 
             {/* Generate button */}
             <button

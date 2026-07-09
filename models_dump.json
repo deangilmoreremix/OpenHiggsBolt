@@ -77,7 +77,8 @@
           "maxValue": 4,
           "step": 1
         }
-      }
+      },
+      "endpoint": "flux-dev"
     },
     {
       "id": "flux-dev-lora",
@@ -587,7 +588,8 @@
           "maxValue": 3000,
           "step": 1
         }
-      }
+      },
+      "endpoint": "midjourney-v7"
     },
     {
       "id": "flux-schnell",
@@ -632,7 +634,8 @@
           "maxValue": 4,
           "step": 1
         }
-      }
+      },
+      "endpoint": "flux-schnell"
     },
     {
       "id": "bytedance-seedream-v3",
@@ -2086,7 +2089,8 @@
           "maxValue": 4,
           "step": 1
         }
-      }
+      },
+      "endpoint": "minimax-image-01-subject-reference"
     }
   ]
 }

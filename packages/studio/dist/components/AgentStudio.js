@@ -35,6 +35,15 @@ function AgentCard(_ref) {
   var agent = _ref.agent,
     _onClick = _ref.onClick,
     onEdit = _ref.onEdit;
+  var _useState = (0, _react.useState)(false),
+    _useState2 = _slicedToArray(_useState, 2),
+    imgError = _useState2[0],
+    setImgError = _useState2[1];
+  // Route the upstream icon through the same-origin proxy (and fall back to the
+  // raw URL if the proxy fails) so CDN hotlink protection can't block the image.
+  var hasIcon = !!agent.icon_url;
+  var proxiedIcon = hasIcon ? "/api/thumbnail?url=".concat(encodeURIComponent(agent.icon_url)) : null;
+  var showIcon = hasIcon && proxiedIcon && !imgError;
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     className: "group relative aspect-[4/5] rounded-xl cursor-pointer",
     children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
@@ -42,7 +51,14 @@ function AgentCard(_ref) {
         return _onClick(agent);
       },
       className: "absolute inset-0 rounded-xl overflow-hidden border border-white/5 bg-[#0a0a0a] transition-all group-hover:border-[#22d3ee]/30 group-hover:scale-[1.02] shadow-2xl",
-      children: [agent.icon_url ? /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+      children: [showIcon ? /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+        src: proxiedIcon,
+        alt: agent.name,
+        onError: function onError() {
+          return setImgError(true);
+        },
+        className: "absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+      }) : hasIcon ? /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
         src: agent.icon_url,
         alt: agent.name,
         className: "absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
@@ -104,8 +120,15 @@ function AgentCard(_ref) {
 function ConversationCard(_ref2) {
   var conv = _ref2.conv,
     _onClick2 = _ref2.onClick;
+  var _useState3 = (0, _react.useState)(false),
+    _useState4 = _slicedToArray(_useState3, 2),
+    imgError = _useState4[0],
+    setImgError = _useState4[1];
   var displayTitle = conv.title || "New Chat";
   var agentSlug = conv.agent_slug || conv.agent_id;
+  var hasIcon = !!conv.agent_icon_url;
+  var proxiedIcon = hasIcon ? "/api/thumbnail?url=".concat(encodeURIComponent(conv.agent_icon_url)) : null;
+  var showIcon = hasIcon && proxiedIcon && !imgError;
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     onClick: function onClick() {
       return _onClick2(agentSlug, conv.id);
@@ -115,7 +138,14 @@ function ConversationCard(_ref2) {
       className: "flex items-center gap-3",
       children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
         className: "relative w-10 h-10 rounded-xl overflow-hidden bg-white/5 border border-white/5 shrink-0",
-        children: conv.agent_icon_url ? /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+        children: showIcon ? /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+          src: proxiedIcon,
+          alt: conv.agent_name || "Agent",
+          onError: function onError() {
+            return setImgError(true);
+          },
+          className: "w-full h-full object-cover"
+        }) : hasIcon ? /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
           src: conv.agent_icon_url,
           alt: conv.agent_name || "Agent",
           className: "w-full h-full object-cover"
@@ -160,26 +190,26 @@ var TABS = ["templates", "my-agents", "my-chats"];
 function AgentStudio(_ref3) {
   var apiKey = _ref3.apiKey;
   var router = (0, _navigation.useRouter)();
-  var _useState = (0, _react.useState)("templates"),
-    _useState2 = _slicedToArray(_useState, 2),
-    activeMainTab = _useState2[0],
-    setActiveMainTab = _useState2[1];
-  var _useState3 = (0, _react.useState)([]),
-    _useState4 = _slicedToArray(_useState3, 2),
-    agents = _useState4[0],
-    setAgents = _useState4[1];
-  var _useState5 = (0, _react.useState)([]),
+  var _useState5 = (0, _react.useState)("templates"),
     _useState6 = _slicedToArray(_useState5, 2),
-    conversations = _useState6[0],
-    setConversations = _useState6[1];
-  var _useState7 = (0, _react.useState)(true),
+    activeMainTab = _useState6[0],
+    setActiveMainTab = _useState6[1];
+  var _useState7 = (0, _react.useState)([]),
     _useState8 = _slicedToArray(_useState7, 2),
-    loading = _useState8[0],
-    setLoading = _useState8[1];
-  var _useState9 = (0, _react.useState)(null),
+    agents = _useState8[0],
+    setAgents = _useState8[1];
+  var _useState9 = (0, _react.useState)([]),
     _useState0 = _slicedToArray(_useState9, 2),
-    error = _useState0[0],
-    setError = _useState0[1];
+    conversations = _useState0[0],
+    setConversations = _useState0[1];
+  var _useState1 = (0, _react.useState)(true),
+    _useState10 = _slicedToArray(_useState1, 2),
+    loading = _useState10[0],
+    setLoading = _useState10[1];
+  var _useState11 = (0, _react.useState)(null),
+    _useState12 = _slicedToArray(_useState11, 2),
+    error = _useState12[0],
+    setError = _useState12[1];
 
   // Navigate to the standalone /agents page — AiAgent handles its own routing there
   var handleSelectAgent = (0, _react.useCallback)(function (agent) {

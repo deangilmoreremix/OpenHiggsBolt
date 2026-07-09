@@ -2137,7 +2137,7 @@ export const t2iModels = [
   {
     "id": "minimax-image-01",
     "name": "MiniMax Image 01",
-    "endpoint": "minimax-image-01",
+    "endpoint": "minimax-01-subject-reference",
     "family": "minimax",
     "inputs": {
       "prompt": {
@@ -2647,6 +2647,7 @@ export const i2iModels = [
     "endpoint": "ai-image-face-swap",
     "family": "tools",
     "imageField": "image_url",
+    "swapField": "swap_url",
     "hasPrompt": false,
     "inputs": {
       "target_index": {

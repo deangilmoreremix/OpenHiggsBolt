@@ -1,6 +1,6 @@
 {
   "name": "open-generative-ai",
-  "description": "Open-source alternative to HF AI — AI image, video, cinema and lip sync studio",
+  "description": "Open-source alternative to HF AI \u2014 AI image, video, cinema and lip sync studio",
   "homepage": "https://github.com/Anil-matcha/Open-Generative-AI",
   "private": true,
   "version": "2.0.0",
@@ -17,6 +17,7 @@
     "build": "next build",
     "typecheck": "tsc --noEmit",
     "test:vfx": "node --test tests/vfx-service.test.js tests/vfx-validation.test.js",
+    "verify:muapi": "node scripts/verify-muapi-apis.mjs",
     "start": "next start",
     "lint": "next lint",
     "cutai:frontend": "npm run dev -w @openhiggsbolt/cutai",
@@ -44,7 +45,7 @@
   "build": {
     "appId": "ai.generative.open",
     "productName": "SmartVideo GO",
-    "copyright": "Copyright © 2025",
+    "copyright": "Copyright \u00a9 2025",
     "directories": {
       "output": "release"
     },
