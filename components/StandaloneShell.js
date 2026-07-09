@@ -25,6 +25,7 @@ const TABS = [
   { id: 'vibe-motion', label: 'Vibe Motion' },
   { id: 'lipsync', label: 'Lip Sync' },
   { id: 'cinema',  label: 'Cinema Studio' },
+  { id: 'storyboard', label: 'Storyboard' },
   { id: 'marketing', label: 'Marketing Studio' },
   { id: 'recast', label: 'Body Swap' },
   { id: 'workflows', label: 'Workflows' },
