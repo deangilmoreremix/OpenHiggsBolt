@@ -14,6 +14,7 @@ const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { 
 const ScenePlanner = dynamic(() => import('../src/apps/scene-planner/ScenePlanner'), { ssr: false });
 const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
 const ScriptWriter = dynamic(() => import('../src/apps/script-writer/ScriptWriter'), { ssr: false });
+const SocialPublishing = dynamic(() => import('../src/apps/social-publishing/SocialPublishing'), { ssr: false });
 const Presentation = dynamic(() => import('../src/apps/presentation/Presentation'), { ssr: false });
 const ContentPlanner = dynamic(() => import('../src/apps/content-planner/ContentPlanner'), { ssr: false });
 const TABS = [
@@ -32,6 +33,7 @@ const TABS = [
   { id: 'vfx-studio', label: 'VFX' },
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
+  { id: 'social-publishing', label: 'Social Publishing' },
 ];
 
 const STORAGE_KEY = 'muapi_key';
@@ -406,6 +408,7 @@ export default function StandaloneShell() {
         )}
         {activeTab === 'apps' && <AppsStudio apiKey={apiKey} />}
         {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} />}
+        {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
       </div>
 
       {/* Settings Modal */}

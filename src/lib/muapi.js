@@ -1,4 +1,5 @@
 import { getModelById, getVideoModelById, getI2IModelById, getI2VModelById, getV2VModelById, getLipSyncModelById } from './models.js';
+import axios from 'axios';
 
 /**
  * Normalize a MuAPI prediction response into a consistent shape.
@@ -629,3 +630,86 @@ export class MuapiClient {
 }
 
 export const muapi = new MuapiClient();
+
+function cleanKey(apiKey) {
+  return String(apiKey || '').replace(/[^\u0000-\u00FF]/g, '').trim();
+}
+
+function withKey(config, apiKey) {
+  return {
+    ...config,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': cleanKey(apiKey),
+      ...(config.headers || {}),
+    },
+  };
+}
+
+export async function listSocialAccounts(apiKey) {
+  const res = await axios.get('/api/social/accounts', withKey({ method: 'GET' }, apiKey));
+  return res.data;
+}
+
+export async function connectSocialAccount(apiKey, externalUserId, redirectTo) {
+  const res = await axios.post(
+    '/api/v1/social/youtube/connect-url',
+    { external_user_id: externalUserId, redirect_to: redirectTo },
+    withKey({ method: 'POST' }, apiKey)
+  );
+  return res.data;
+}
+
+export async function listExternalSocialAccounts(apiKey, externalUserId) {
+  const res = await axios.get(
+    `/api/v1/social/ext/accounts?external_user_id=${encodeURIComponent(externalUserId)}`,
+    withKey({ method: 'GET' }, apiKey)
+  );
+  return res.data;
+}
+
+export async function disconnectExternalSocialAccount(apiKey, id) {
+  const res = await axios.delete(
+    `/api/v1/social/ext/accounts/${id}`,
+    withKey({ method: 'DELETE' }, apiKey)
+  );
+  return res.data;
+}
+
+export async function publishToYouTube(apiKey, payload) {
+  const res = await axios.post('/api/v1/youtube-publish', payload, withKey({ method: 'POST' }, apiKey));
+  return res.data;
+}
+
+export async function publishToInstagram(apiKey, payload) {
+  const res = await axios.post('/api/v1/instagram-publish', payload, withKey({ method: 'POST' }, apiKey));
+  return res.data;
+}
+
+export async function publishToTikTok(apiKey, payload) {
+  const res = await axios.post('/api/v1/tiktok-publish', payload, withKey({ method: 'POST' }, apiKey));
+  return res.data;
+}
+
+export async function pollSocialResult(apiKey, requestId, maxAttempts = 120, interval = 2000) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, interval));
+    try {
+      const res = await axios.get(
+        `/api/v1/predictions/${requestId}/result`,
+        withKey({ method: 'GET' }, apiKey)
+      );
+      const data = res.data || {};
+      const status = String(data.status || '').toLowerCase();
+      if (status === 'completed' || status === 'succeeded' || status === 'success') {
+        return data;
+      }
+      if (status === 'failed' || status === 'error') {
+        throw new Error(data.error || 'Publish failed');
+      }
+    } catch (err) {
+      if (attempt === maxAttempts) throw err;
+    }
+  }
+  throw new Error('Publish timed out after polling.');
+}

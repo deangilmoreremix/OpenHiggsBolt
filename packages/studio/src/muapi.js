@@ -16,18 +16,10 @@ function rewriteThumbnail(url) {
 function rewriteThumbnails(list) {
   if (!Array.isArray(list)) return list;
   return list.map((item) => {
-    if (!item || typeof item !== "object") return item;
-    const next = { ...item };
-    // Workflows use `thumbnail`; agents use `icon_url` (and sometimes `image_url`).
-    // Rewrite every known image field through the same-origin /api/thumbnail proxy
-    // so CDN hotlink protection never blocks images in the browser.
-    if (next.thumbnail) next.thumbnail = rewriteThumbnail(next.thumbnail);
-    if (next.icon_url) next.icon_url = rewriteThumbnail(next.icon_url);
-    if (next.image_url) next.image_url = rewriteThumbnail(next.image_url);
-    // Conversations list returns agent_icon_url / agent_avatar_url.
-    if (next.agent_icon_url) next.agent_icon_url = rewriteThumbnail(next.agent_icon_url);
-    if (next.agent_avatar_url) next.agent_avatar_url = rewriteThumbnail(next.agent_avatar_url);
-    return next;
+    if (item && item.thumbnail) {
+      return { ...item, thumbnail: rewriteThumbnail(item.thumbnail) };
+    }
+    return item;
   });
 }
 

@@ -19,9 +19,13 @@ const BASE_URL = 'https://api.muapi.ai';
 async function fetchAgentDetails(agentId, apiKey) {
   if (!apiKey) return null;
   // Documented endpoint first (GET /agents/{agent_id}), then by-slug fallback.
+  // Live API: GET /agents/{id} only accepts a UUID, while slugs must go
+  // through /agents/by-slug/{slug}. The studio navigates via agent_id (a slug
+  // for templates, an id for user agents), so try by-slug first and fall back
+  // to the documented id route to cover both shapes.
   const candidates = [
-    `${BASE_URL}/agents/${agentId}`,
     `${BASE_URL}/agents/by-slug/${agentId}`,
+    `${BASE_URL}/agents/${agentId}`,
   ];
   for (const url of candidates) {
     try {

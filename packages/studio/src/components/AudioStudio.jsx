@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { generateAudio, uploadFile } from "../muapi.js";
 import { audioModels, getAudioModelById } from "../models.js";
+import CostEstimator from "./CostEstimator.jsx";
 
 // ---------------------------------------------------------------------------
 // Upload button states
@@ -910,6 +911,9 @@ export default function AudioStudio({
 
         {/* Dynamic Cost & Generate Section */}
         <div className="p-4 border-t border-zinc-900 bg-zinc-950/80 backdrop-blur-xl absolute bottom-0 left-0 w-full lg:w-[400px] z-40">
+          {selectedModel && (
+            <CostEstimator apiKey={apiKey} model={selectedModel} params={params} />
+          )}
           <button
             type="button"
             onClick={handleGenerate}

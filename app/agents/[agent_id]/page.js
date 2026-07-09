@@ -26,9 +26,13 @@ async function fetchAgentDetails(agentId, apiKey) {
   // fell back to the documented id route when the id looked like a UUID
   // (length > 20) — so short ids like "agent_12345" never resolved and the
   // agent chat rendered empty.
+  // Live API: GET /agents/{id} only accepts a UUID, while slugs must go
+  // through /agents/by-slug/{slug}. The studio navigates via agent_id (a slug
+  // for templates, an id for user agents), so try by-slug first and fall back
+  // to the documented id route to cover both shapes.
   const candidates = [
-    `${BASE_URL}/agents/${agentId}`,
     `${BASE_URL}/agents/by-slug/${agentId}`,
+    `${BASE_URL}/agents/${agentId}`,
   ];
 
   for (const url of candidates) {
