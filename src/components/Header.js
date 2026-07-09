@@ -1,5 +1,6 @@
 import { SettingsModal } from './SettingsModal.js';
 import { t, getLang, setLang } from '../lib/i18n.js';
+import { getWorkspaceId, getUserId } from '../lib/identity.js';
 
 export function Header(navigate) {
     const header = document.createElement('header');
@@ -86,6 +87,11 @@ export function Header(navigate) {
     langBtn.textContent = currentLang === 'zh' ? 'EN' : '中文';
     langBtn.onclick = () => setLang(currentLang === 'zh' ? 'en' : 'zh');
 
+    const userBadge = document.createElement('div');
+    const _ws = getWorkspaceId();
+    userBadge.className = 'flex items-center px-3 py-1.5 rounded-md border border-white/10 bg-white/5 text-[12px] font-bold text-white/60';
+    userBadge.textContent = _ws ? `Workspace: ${_ws}` : (getUserId() ? 'Signed in' : 'Guest');
+    rightPart.appendChild(userBadge);
     rightPart.appendChild(langBtn);
     rightPart.appendChild(settingsBtn);
 

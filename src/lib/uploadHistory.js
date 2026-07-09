@@ -1,4 +1,6 @@
-const STORAGE_KEY = 'muapi_uploads';
+import { nsKey } from './identity.js';
+
+const STORAGE_KEY = nsKey('muapi_uploads');
 const MAX_UPLOADS = 20;
 
 export function getUploadHistory() {
