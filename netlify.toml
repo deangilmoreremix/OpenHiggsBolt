@@ -1,5 +1,7 @@
 [build]
-  command = "npm run build"
+  # ai-agent is a local file dependency (git submodule) whose dist/ is
+  # gitignored and must be built before next build can resolve it.
+  command = "npm run build:agent && npm run build"
   publish = ".next"
 
 [[plugins]]
