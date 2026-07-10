@@ -54,3 +54,7 @@ apps/cutai/frontend/dist/
 
 # Local Netlify folder
 .netlify
+
+# Playwright test artifacts
+test-results/
+playwright-report/

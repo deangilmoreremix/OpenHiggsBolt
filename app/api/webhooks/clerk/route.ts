@@ -1,51 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Webhook } from 'svix';
+import { verifyWebhook } from '@clerk/nextjs/webhooks';
 import { syncUserFromClerk } from '../../../../src/lib/tenantSync';
 import { getSupabaseAdmin } from '../../../../src/lib/supabaseServer';
 
 export const runtime = 'nodejs';
 
-type ClerkEmailAddress = { id: string; email_address: string };
-type ClerkUserEvent = {
-  type: string;
-  data: {
-    id: string;
-    first_name: string | null;
-    last_name: string | null;
-    image_url: string | null;
-    email_addresses: ClerkEmailAddress[];
-    primary_email_address_id: string | null;
-    deleted?: boolean;
-  };
-};
-
 export async function POST(req: NextRequest) {
-  const secret = process.env.CLERK_WEBHOOK_SECRET;
-  if (!secret) {
-    return NextResponse.json(
-      { error: 'CLERK_WEBHOOK_SECRET is not set' },
-      { status: 500 }
-    );
-  }
-
-  const svixId = req.headers.get('svix-id');
-  const svixTimestamp = req.headers.get('svix-timestamp');
-  const svixSignature = req.headers.get('svix-signature');
-  if (!svixId || !svixTimestamp || !svixSignature) {
-    return NextResponse.json({ error: 'Missing Svix headers' }, { status: 400 });
-  }
-
-  const payload = await req.text();
-  const wh = new Webhook(secret);
-
-  let event: ClerkUserEvent;
+  let event;
   try {
-    event = wh.verify(payload, {
-      'svix-id': svixId,
-      'svix-timestamp': svixTimestamp,
-      'svix-signature': svixSignature,
-    }) as ClerkUserEvent;
+    event = await verifyWebhook(req);
   } catch (err) {
+    console.error('[clerk webhook] verification failed', err);
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
@@ -53,7 +18,7 @@ export async function POST(req: NextRequest) {
 
   if (type === 'user.created' || type === 'user.updated') {
     const primary = data.email_addresses.find(
-      (e) => e.id === data.primary_email_address_id
+      (e: { id: string }) => e.id === data.primary_email_address_id
     );
     try {
       await syncUserFromClerk(
@@ -76,3 +41,4 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true });
 }
+

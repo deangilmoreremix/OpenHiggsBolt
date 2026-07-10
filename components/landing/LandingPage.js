@@ -1,7 +1,8 @@
 import Link from 'next/link';
-import { PRODUCT_NAME, NAV_ITEMS, LOGOS, FEATURES, TESTIMONIALS, PRICING, FAQS } from './landingData';
+import StandaloneShell from '@/components/StandaloneShell';
+import { PRODUCT_NAME, NAV_ITEMS, LOGOS, TESTIMONIALS, PRICING, FAQS } from './landingData';
 
-export default function LandingPage({ FeatureDemos, AuthControls }) {
+export default function LandingPage({ FullStudio, AuthControls }) {
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
       <div className="landing-noise" aria-hidden="true" />
@@ -20,11 +21,7 @@ export default function LandingPage({ FeatureDemos, AuthControls }) {
             ))}
           </nav>
           <div className="flex items-center gap-3">
-            {AuthControls ? <AuthControls /> : (
-              <Link href="/studio" className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90">
-                Open studio
-              </Link>
-            )}
+            {AuthControls}
           </div>
         </div>
       </header>
@@ -44,12 +41,12 @@ export default function LandingPage({ FeatureDemos, AuthControls }) {
             Generate images, cinematic video, UGC ads, VFX, agents, workflows, music, thumbnails, scripts, and marketing assets from one polished creative operating system.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <a href="#demos" className="w-full rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-6 py-3 text-sm font-bold text-black shadow-lg transition hover:scale-[1.02] sm:w-auto">
-              Try the demos
+            <a href="#studio" className="w-full rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-6 py-3 text-sm font-bold text-black shadow-lg transition hover:scale-[1.02] sm:w-auto">
+              Try the studio
             </a>
-            <Link href="/studio" className="w-full rounded-full border border-white/10 bg-white/[0.04] px-6 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/[0.08] sm:w-auto">
+            <a href="#studio" className="w-full rounded-full border border-white/10 bg-white/[0.04] px-6 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/[0.08] sm:w-auto">
               Launch full studio
-            </Link>
+            </a>
           </div>
           <div className="mt-12 grid grid-cols-3 gap-3 text-center text-white/60">
             {[['20+','studio apps'],['200+','models'],['0','demo API key required']].map(([value,label]) => (
@@ -74,8 +71,19 @@ export default function LandingPage({ FeatureDemos, AuthControls }) {
         </div>
       </section>
 
-      {/* ── Interactive demos island ── */}
-      <FeatureDemos features={FEATURES} />
+      {/* ── Full studio ── */}
+      <section id="studio" className="border-y border-white/10 bg-[#030303]">
+        <div className="mx-auto max-w-7xl px-6 pt-16">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">Full studio</p>
+            <h2 className="mt-4 text-4xl font-black tracking-tight md:text-5xl">Every feature, live on this page.</h2>
+            <p className="mt-5 text-lg leading-8 text-white/60">
+              The complete studio — switch between any tool, generate with your key, and explore every function without leaving the landing page.
+            </p>
+          </div>
+        </div>
+        {FullStudio ? <FullStudio embedded initialTab="image" /> : <StandaloneShell embedded initialTab="image" />}
+      </section>
 
       {/* ── Workflow ── */}
       <section id="workflow" className="mx-auto max-w-7xl px-6 py-24">
@@ -160,8 +168,8 @@ export default function LandingPage({ FeatureDemos, AuthControls }) {
           <h2 className="text-4xl font-black tracking-tight md:text-5xl">Make the first demo feel like the full product.</h2>
           <p className="mt-5 text-lg leading-8 text-white/60">Visitors should understand the platform, try a feature, and know exactly where to go next.</p>
           <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
-            <a href="#demos" className="rounded-full bg-white px-6 py-3 text-sm font-bold text-black transition hover:bg-white/90">Try a demo</a>
-            <Link href="/studio" className="rounded-full border border-white/10 bg-transparent px-6 py-3 text-sm font-bold text-white transition hover:bg-white/[0.08]">Open full studio</Link>
+            <a href="#studio" className="rounded-full bg-white px-6 py-3 text-sm font-bold text-black transition hover:bg-white/90">Try the studio</a>
+            <a href="#studio" className="rounded-full border border-white/10 bg-transparent px-6 py-3 text-sm font-bold text-white transition hover:bg-white/[0.08]">Open full studio</a>
           </div>
         </div>
       </section>
@@ -170,8 +178,7 @@ export default function LandingPage({ FeatureDemos, AuthControls }) {
       <footer className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-10 text-sm text-white/40 md:flex-row md:items-center md:justify-between">
         <div>{PRODUCT_NAME} — premium AI image, video, and campaign studio.</div>
         <div className="flex gap-5">
-          <Link href="/studio" className="hover:text-white">Studio</Link>
-          <a href="#demos" className="hover:text-white">Demos</a>
+          <a href="#studio" className="hover:text-white">Studio</a>
           <a href="#faq" className="hover:text-white">FAQ</a>
         </div>
       </footer>
