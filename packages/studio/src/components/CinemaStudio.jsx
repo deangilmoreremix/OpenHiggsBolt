@@ -819,106 +819,114 @@ export default function CinemaStudio({
 
       {/* ── BOTTOM PROMPT BAR ── */}
       <div className="absolute bottom-4 left-4 right-4 md:left-0 md:right-0 md:mx-auto md:max-w-[95%] lg:max-w-4xl z-30 transition-all duration-700 animate-fade-in-up">
-        <div className="bg-[#0a0a0a]/80 backdrop-blur-3xl border border-white/10 rounded-md p-4 flex justify-between shadow-2xl items-end relative gap-2">
-          {/* Left Column */}
-          <div className="flex-1 flex flex-col gap-3 min-h-[80px] justify-between py-1">
-            {/* Input Row */}
-            <div className="flex items-start gap-4 w-full px-1">
-              {/* Image Upload Button */}
-              <div className="relative pt-0.5">
-                <input
-                  type="file"
-                  ref={imageInputRef}
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                />
-                
-                <button
-                  onClick={() =>
-                    uploadedImage
-                      ? removeImage()
-                      : imageInputRef.current?.click()
-                  }
-                  disabled={isUploadingImage}
-                  className={`w-10 h-10 shrink-0 rounded-full border transition-all flex items-center justify-center relative overflow-hidden ${uploadedImage ? "border-primary/60 bg-white/5" : "bg-white/[0.03] border-white/[0.03] hover:bg-white/10 hover:border-primary/40"} group`}
-                >
-                  {isUploadingImage ? (
-                    <div className="flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]">
-                      <svg className="w-8 h-8 -rotate-90">
-                        <circle
-                          cx="16"
-                          cy="16"
-                          r="14"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          fill="transparent"
-                          className="text-white/10"
-                        />
-                        <circle
-                          cx="16"
-                          cy="16"
-                          r="14"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          fill="transparent"
-                          strokeDasharray={88}
-                          strokeDashoffset={88 - (88 * imageUploadProgress) / 100}
-                          className="text-primary transition-all duration-300"
-                        />
-                      </svg>
-                      <span className="absolute text-[8px] font-bold text-white">
-                        {imageUploadProgress}%
-                      </span>
-                    </div>
-                  ) : uploadedImage ? (
-                    <div className="relative w-full h-full group">
-                      <img
-                        src={uploadedImage}
-                        alt="Reference"
-                        className="w-full h-full object-cover opacity-80 group-hover:opacity-40 transition-opacity"
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-white">
-                          <path d="M18 6L6 18M6 6l12 12" />
-                        </svg>
-                      </div>
-                    </div>
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-white/40 group-hover:text-white transition-colors">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                      <circle cx="8.5" cy="8.5" r="1.5" />
-                      <polyline points="21 15 16 10 5 21" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-
-              <textarea
-                ref={textareaRef}
-                placeholder="Describe your cinema scene..."
-                className="w-full bg-transparent border-none text-white text-sm placeholder:text-white/10 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar disabled:opacity-40"
-                rows={1}
-                onInput={handleTextareaInput}
+        <div className="w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]">
+          {/* Upper Row: Image Upload & Textarea */}
+          <div className="flex items-start gap-4 w-full px-1">
+            {/* Image Upload Button */}
+            <div className="relative pt-0.5">
+              <input
+                type="file"
+                ref={imageInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleImageUpload}
               />
-            </div>
-            <div className="flex justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-3">
-                {/* Aspect Ratio Button */}
-                <div className="relative">
-                  <button
-                    ref={arBtnRef}
-                    className="flex items-center gap-1.5 px-3 py-1 bg-white/[0.03] hover:bg-white/10 text-xs font-bold text-white/40 hover:text-white transition-colors rounded-md border border-white/[0.03]"
-                    onClick={() =>
-                      setOpenDropdown((d) => (d === "ar" ? null : "ar"))
-                    }
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-40">
-                      <rect x="2" y="7" width="20" height="10" rx="2" ry="2" />
+              
+              <button
+                onClick={() =>
+                  uploadedImage
+                    ? removeImage()
+                    : imageInputRef.current?.click()
+                }
+                disabled={isUploadingImage}
+                className={`w-10 h-10 shrink-0 rounded-full border transition-all flex items-center justify-center relative overflow-hidden ${uploadedImage ? "border-[#22d3ee]/60 bg-white/5" : "bg-white/[0.03] border-white/[0.03] hover:bg-white/10 hover:border-[#22d3ee]/40"} group`}
+              >
+                {isUploadingImage ? (
+                  <div className="flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]">
+                    <svg className="w-8 h-8 -rotate-90">
+                      <circle
+                        cx="16"
+                        cy="16"
+                        r="14"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        fill="transparent"
+                        className="text-white/10"
+                      />
+                      <circle
+                        cx="16"
+                        cy="16"
+                        r="14"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        fill="transparent"
+                        strokeDasharray={88}
+                        strokeDashoffset={88 - (88 * imageUploadProgress) / 100}
+                        className="text-primary transition-all duration-300"
+                      />
                     </svg>
-                    {settings.aspect_ratio}
-                  </button>
-                  {openDropdown === "ar" && (
+                    <span className="absolute text-[8px] font-bold text-white">
+                      {imageUploadProgress}%
+                    </span>
+                  </div>
+                ) : uploadedImage ? (
+                  <div className="relative w-full h-full group">
+                    <img
+                      src={uploadedImage}
+                      alt="Reference"
+                      className="w-full h-full object-cover opacity-80 group-hover:opacity-40 transition-opacity"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-white">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                      </svg>
+                    </div>
+                  </div>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-white/40 group-hover:text-[#22d3ee] transition-colors">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </svg>
+                )}
+              </button>
+            </div>
+
+            <textarea
+              ref={textareaRef}
+              value={settings.prompt}
+              onChange={(e) => {
+                setSettings(prev => ({ ...prev, prompt: e.target.value }));
+                const el = e.target;
+                el.style.height = "auto";
+                const maxH = window.innerWidth < 768 ? 150 : 250;
+                el.style.height = Math.min(el.scrollHeight, maxH) + "px";
+              }}
+              placeholder="Describe your cinema scene..."
+              className="w-full bg-transparent border-none text-white text-sm placeholder:text-white/20 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar disabled:opacity-40"
+              rows={1}
+            />
+          </div>
+
+          {/* Bottom Row: Controls & Generate */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-3 border-t border-white/[0.03] relative">
+            <div className="flex items-center gap-2 relative flex-wrap pb-1 md:pb-0">
+              {/* Aspect Ratio Button */}
+              <div className="relative">
+                <button
+                  ref={arBtnRef}
+                  className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner text-[11px] font-semibold text-white/70 hover:text-white"
+                  onClick={() =>
+                    setOpenDropdown((d) => (d === "ar" ? null : "ar"))
+                  }
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-40">
+                    <rect x="2" y="7" width="20" height="10" rx="2" ry="2" />
+                  </svg>
+                  {settings.aspect_ratio}
+                </button>
+                {openDropdown === "ar" && (
+                  <div className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[140px]">
                     <Dropdown
                       items={ASPECT_RATIOS}
                       selected={settings.aspect_ratio}
@@ -928,24 +936,26 @@ export default function CinemaStudio({
                       triggerRef={arBtnRef}
                       onClose={() => setOpenDropdown(null)}
                     />
-                  )}
-                </div>
+                  </div>
+                )}
+              </div>
 
-                {/* Resolution Button */}
-                <div className="relative">
-                  <button
-                    ref={resBtnRef}
-                    className="flex items-center gap-1.5 px-3 py-1 bg-white/[0.03] hover:bg-white/10 text-xs font-bold text-white/40 hover:text-white transition-colors rounded-md border border-white/[0.03]"
-                    onClick={() =>
-                      setOpenDropdown((d) => (d === "res" ? null : "res"))
-                    }
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-40">
-                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                    </svg>
-                    {resolution}
-                  </button>
-                  {openDropdown === "res" && (
+              {/* Resolution Button */}
+              <div className="relative">
+                <button
+                  ref={resBtnRef}
+                  className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner text-[11px] font-semibold text-white/70 hover:text-white"
+                  onClick={() =>
+                    setOpenDropdown((d) => (d === "res" ? null : "res"))
+                  }
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-40">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                  </svg>
+                  {resolution}
+                </button>
+                {openDropdown === "res" && (
+                  <div className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[140px]">
                     <Dropdown
                       items={RESOLUTIONS}
                       selected={resolution}
@@ -953,43 +963,39 @@ export default function CinemaStudio({
                       triggerRef={resBtnRef}
                       onClose={() => setOpenDropdown(null)}
                     />
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-3 h-full self-end mb-1">
-                {/* Summary Card (triggers overlay) */}
-                <button
-                  className="flex flex-col items-start justify-center px-4 py-1.5 bg-white/[0.03] rounded-md border border-white/[0.03] hover:border-white/20 transition-all text-left flex-1 min-w-[100px] md:min-w-[160px] max-w-[240px] h-[50px] relative group overflow-hidden"
-                  onClick={() => setIsOverlayOpen(true)}
-                >
-                  <div className="absolute top-3 right-3 w-1.5 h-1.5 bg-[#22d3ee] rounded-full shadow-lg shadow-[#22d3ee]/20" />
-                  <span className="text-[9px] font-bold text-white/30 uppercase truncate w-full tracking-wider group-hover:text-white transition-colors">
-                    {settings.camera}
-                  </span>
-                  <span className="text-xs font-semibold text-white/70 truncate w-full group-hover:text-[#22d3ee] transition-colors">
-                    {formatSummaryValue()}
-                  </span>
-                </button>
 
-                {/* Generate Button */}
-                <button
-                  className="h-[50px] px-8 bg-[#22d3ee] text-black rounded-md font-medium text-sm hover:bg-[#e5ff33] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#22d3ee]/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={isGenerating || !settings.prompt.trim()}
-                  onClick={handleGenerate}
-                >
-                  {isGenerating ? (
-                    <>
-                      <span className="animate-spin inline-block text-black">◌</span> SHOOTING...
-                    </>
-                  ) : (
-                    <>
-                      <span>SHOOT</span>
-                    </>
-                  )}
-                </button>
-              </div>
+              {/* Summary Card (triggers overlay) */}
+              <button
+                className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] text-left group overflow-hidden shadow-inner text-[11px] font-semibold text-white/70 hover:text-white"
+                onClick={() => setIsOverlayOpen(true)}
+              >
+                <div className="w-1.5 h-1.5 bg-[#22d3ee] rounded-full shadow-lg shadow-[#22d3ee]/20 shrink-0" />
+                <span className="max-w-[120px] truncate text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors">
+                  {settings.camera} · {formatSummaryValue()}
+                </span>
+              </button>
             </div>
-          </div>  
+
+            {/* Generate Button */}
+            <button
+              className="bg-[#22d3ee] text-black px-7 py-3 rounded-full font-black text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10 uppercase tracking-wider"
+              disabled={isGenerating || !settings.prompt.trim()}
+              onClick={handleGenerate}
+            >
+              {isGenerating ? (
+                <>
+                  <span className="animate-spin inline-block text-black">◌</span> SHOOTING...
+                </>
+              ) : (
+                <>
+                  <span>SHOOT</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
       {fullscreenUrl && (

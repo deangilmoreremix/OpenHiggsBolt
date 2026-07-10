@@ -400,7 +400,7 @@ export default function VibeMotionStudio({ apiKey }) {
 
       {/* ── BOTTOM PROMPT BAR — matches VideoStudio exactly ── */}
       <div className="absolute bottom-4 w-full max-w-[95%] lg:max-w-4xl z-40 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
-        <div className="w-full bg-[#0a0a0a]/80 backdrop-blur-3xl rounded-md border border-white/10 p-4 flex flex-col gap-2 shadow-2xl">
+        <div className="w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]">
 
           {/* ── Edit mode banner ── */}
           {editMode && (
@@ -473,7 +473,7 @@ export default function VibeMotionStudio({ apiKey }) {
           )}
 
           {/* ── Controls row: dropdowns + generate button ── */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-2 border-t border-white/[0.03] relative">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-3 border-t border-white/[0.03] relative">
             <div className="flex items-center gap-2 relative flex-wrap pb-1 md:pb-0">
 
               {/* ── Aspect Ratio dropdown ── */}
@@ -603,7 +603,7 @@ export default function VibeMotionStudio({ apiKey }) {
               type="button"
               onClick={handleGenerate}
               disabled={generating || !prompt.trim() || (editMode && !editSourceId)}
-              className="bg-[#22d3ee] text-black px-4 py-2 rounded-md font-medium text-sm hover:bg-[#e5ff33] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-[#22d3ee] text-black px-7 py-3 rounded-full font-black text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10"
             >
               {generating ? (
                 <>

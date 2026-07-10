@@ -301,6 +301,7 @@ export default function RecastStudio({
   const [openDropdown, setOpenDropdown] = useState(null); // 'model' | 'aspect' | null
   const modelBtnRef = useRef(null);
   const aspectBtnRef = useRef(null);
+  const textareaRef = useRef(null);
   const hasRestored = useRef(false);
 
   // ── Persistence: Load ──────────────────────────────────────────────────────
@@ -393,6 +394,14 @@ export default function RecastStudio({
     },
     [apiKey],
   );
+
+  const handlePromptInput = (e) => {
+    setPrompt(e.target.value);
+    const el = e.target;
+    el.style.height = "auto";
+    const maxH = window.innerWidth < 768 ? 150 : 250;
+    el.style.height = Math.min(el.scrollHeight, maxH) + "px";
+  };
 
   const handleImageUpload = useCallback(
     async (file) => {
@@ -619,7 +628,7 @@ export default function RecastStudio({
 
       {/* ── BOTTOM PROMPT BAR ── */}
       <div className="absolute bottom-4 w-full max-w-[95%] lg:max-w-4xl z-40 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
-        <div className="w-full bg-[#0a0a0a]/80 backdrop-blur-3xl rounded-md border border-white/10 p-4 flex flex-col gap-2 shadow-2xl">
+        <div className="w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]">
           {/* Uploads row */}
           <div className="flex items-center gap-2 px-1">
             <div className="flex items-center gap-2">
@@ -627,7 +636,7 @@ export default function RecastStudio({
               <MediaPickerButton
                 accept="video/*"
                 label="Video"
-                icon={<VideoIcon />}
+                icon={<VideoIcon className="text-white/40 group-hover:text-[#22d3ee] transition-colors" />}
                 onUpload={handleVideoPick}
                 onClear={() => {
                   setVideoUrl(null);
@@ -645,7 +654,7 @@ export default function RecastStudio({
               <MediaPickerButton
                 accept="image/*"
                 label="Character image"
-                icon={<ImageIcon />}
+                icon={<ImageIcon className="text-white/40 group-hover:text-[#22d3ee] transition-colors" />}
                 onUpload={handleImageUpload}
                 onClear={() => {
                   setImageUrl(null);
@@ -660,28 +669,21 @@ export default function RecastStudio({
               />
             </div>
 
-            {/* Hint / prompt */}
-            {showPrompt ? (
-              <div className="flex-1 flex flex-col">
-                <textarea
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Optional — describe the motion or scene..."
-                  className="w-full bg-transparent border-none text-white text-sm placeholder:text-white/10 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar disabled:opacity-40"
-                  rows={1}
-                />
-              </div>
-            ) : (
-              <div className="flex-1 flex items-center pl-2">
-                <span className="text-xs text-white/30 font-medium">
-                  Your Video + Character Image → swapped video
-                </span>
-              </div>
-            )}
+            {/* Prompt textarea */}
+            <div className="flex-1 flex flex-col">
+              <textarea
+                ref={textareaRef}
+                value={prompt}
+                onChange={handlePromptInput}
+                placeholder="Optional — describe the motion or scene..."
+                className="w-full bg-transparent border-none text-white text-sm placeholder:text-white/10 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar disabled:opacity-40"
+                rows={1}
+              />
+            </div>
           </div>
 
           {/* Bottom controls row */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-2 border-t border-white/[0.03] relative">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-3 border-t border-white/[0.03] relative">
             <div className="flex items-center gap-2 px-1">
               {/* Model selector */}
               <div className="relative">
@@ -692,7 +694,7 @@ export default function RecastStudio({
                     e.stopPropagation();
                     setOpenDropdown(openDropdown === "model" ? null : "model");
                   }}
-                  className="flex items-center gap-2 px-2 py-1.5 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap"
+                  className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                 >
                   <div className="w-3.5 h-3.5 bg-[#22d3ee] rounded-sm flex items-center justify-center">
                     <span className="text-[9px] font-black text-black">R</span>
@@ -732,7 +734,7 @@ export default function RecastStudio({
                       e.stopPropagation();
                       setOpenDropdown(openDropdown === "aspect" ? null : "aspect");
                     }}
-                    className="flex items-center gap-2 px-2 py-1.5 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap"
+                    className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                   >
                     <span className="text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors">
                       {selectedAspectRatio}
@@ -755,7 +757,7 @@ export default function RecastStudio({
               type="button"
               onClick={handleGenerate}
               disabled={isGenerating}
-              className="bg-[#22d3ee] text-black px-4 py-2 rounded-md font-medium text-sm hover:bg-[#e5ff33] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-[#22d3ee] text-black px-7 py-3 rounded-full font-black text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10"
             >
               {isGenerating ? (
                 <>

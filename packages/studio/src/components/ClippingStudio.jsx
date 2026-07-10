@@ -100,6 +100,7 @@ export default function ClippingStudio({
   const [numHighlights, setNumHighlights] = useState(3);
   const [aspectRatio, setAspectRatio] = useState("9:16");
   const [returnCoordinatesOnly, setReturnCoordinatesOnly] = useState(false);
+  const [prompt, setPrompt] = useState("");
   
   // ── Dropdowns state ──
   const [aspectDropdownOpen, setAspectDropdownOpen] = useState(false);
@@ -107,6 +108,7 @@ export default function ClippingStudio({
   const dropdownRef = useRef(null);
   const highlightsDropdownRef = useRef(null);
   const textareaRef = useRef(null);
+  const promptTextareaRef = useRef(null);
 
   // ── Upload State ──
   const [videoUploading, setVideoUploading] = useState(false);
@@ -283,6 +285,20 @@ export default function ClippingStudio({
 
   const handleUrlInput = (e) => {
     setVideoUrl(e.target.value);
+    const el = e.target;
+    el.style.height = "auto";
+    const maxH = window.innerWidth < 768 ? 150 : 250;
+    el.style.height = Math.min(el.scrollHeight, maxH) + "px";
+  };
+
+  const handlePromptInput = (e) => {
+    const val = e.target.value;
+    if (val.trim().match(/^https?:\/\/[^\s]+$/i)) {
+      setVideoUrl(val.trim());
+      setPrompt("");
+      return;
+    }
+    setPrompt(val);
     const el = e.target;
     el.style.height = "auto";
     const maxH = window.innerWidth < 768 ? 150 : 250;
@@ -720,10 +736,27 @@ export default function ClippingStudio({
 
       {/* ─── FLOATING BOTTOM PROMPT BAR ─── */}
       <div className="absolute bottom-4 w-full max-w-[95%] lg:max-w-4xl z-40 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
-        <div className="w-full bg-[#0a0a0a]/80 backdrop-blur-3xl rounded-md border border-white/10 p-4 flex flex-col gap-2 shadow-2xl">
+        <div className="w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]">
           
-          {/* Upper row: upload button & paste input field */}
-          <div className="flex items-center gap-3 px-1">
+          {/* Inline list of uploaded media files */}
+          {videoUrl && (
+            <div className="flex items-center gap-2.5 px-1 pb-1">
+              <div className="relative w-12 h-12 rounded-xl border border-white/10 overflow-hidden shadow-md group">
+                <video src={videoUrl} className="w-full h-full object-cover" muted playsInline />
+                <button
+                  type="button"
+                  onClick={clearVideoUpload}
+                  className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 hover:bg-black rounded-full flex items-center justify-center text-white/85 hover:text-white text-[8px] border border-white/5"
+                  title="Clear video"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Upper row: upload button & prompt field */}
+          <div className="flex items-start gap-3 px-1">
             {/* Hidden file input */}
             <input
               ref={videoFileInputRef}
@@ -734,91 +767,65 @@ export default function ClippingStudio({
             />
             
             {/* Sleek round upload button */}
-            <button
-              type="button"
-              title={videoUrl ? "Clear video" : "Upload source video"}
-              onClick={() => videoUrl ? clearVideoUpload() : videoFileInputRef.current?.click()}
-              className={`w-10 h-10 shrink-0 rounded-full border transition-all flex items-center justify-center relative overflow-hidden ${
-                videoUrl 
-                  ? "border-[#22d3ee]/60 bg-[#22d3ee]/5" 
-                  : "bg-white/5 border-white/[0.03] hover:bg-white/10 hover:border-[#22d3ee]/40"
-              } group`}
-            >
-              {videoUploading ? (
-                <div className="flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/85 z-20 backdrop-blur-[1px]">
-                  <svg className="w-8 h-8 -rotate-90">
-                    <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2" fill="transparent" className="text-white/10" />
-                    <circle
-                      cx="16"
-                      cy="16"
-                      r="14"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      fill="transparent"
-                      strokeDasharray={88}
-                      strokeDashoffset={88 - (88 * videoProgress) / 100}
-                      className="text-[#22d3ee] transition-all duration-300"
-                    />
-                  </svg>
-                  <span className="absolute text-[8px] font-black text-[#22d3ee] leading-none">
-                    {videoProgress}%
-                  </span>
-                </div>
-              ) : null}
+            {!videoUrl && (
+              <button
+                type="button"
+                title="Upload source video"
+                onClick={() => videoFileInputRef.current?.click()}
+                className="w-10 h-10 shrink-0 rounded-full border bg-white/5 border-white/[0.03] hover:bg-white/10 hover:border-[#22d3ee]/40 transition-all flex items-center justify-center relative overflow-hidden group"
+              >
+                {videoUploading ? (
+                  <div className="flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/85 z-20 backdrop-blur-[1px]">
+                    <svg className="w-8 h-8 -rotate-90">
+                      <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2" fill="transparent" className="text-white/10" />
+                      <circle
+                        cx="16"
+                        cy="16"
+                        r="14"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        fill="transparent"
+                        strokeDasharray={88}
+                        strokeDashoffset={88 - (88 * videoProgress) / 100}
+                        className="text-[#22d3ee] transition-all duration-300"
+                      />
+                    </svg>
+                    <span className="absolute text-[8px] font-black text-[#22d3ee] leading-none">
+                      {videoProgress}%
+                    </span>
+                  </div>
+                ) : null}
 
-              {videoUrl ? (
-                <div className="w-full h-full flex items-center justify-center bg-[#22d3ee]/10 text-[#22d3ee]">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polygon points="23 7 16 12 23 17 23 7" />
-                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-                  </svg>
-                </div>
-              ) : (
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/40 group-hover:text-[#22d3ee] transition-colors">
                   <polygon points="23 7 16 12 23 17 23 7" />
                   <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
                 </svg>
-              )}
-            </button>
-
-            {/* Prompt textarea for URL paste */}
-            <div className="flex-1 flex flex-col gap-1">
-              <textarea
-                ref={textareaRef}
-                value={videoUrl}
-                onChange={handleUrlInput}
-                placeholder="Upload a video file or paste a video S3 URL here..."
-                rows={1}
-                className="w-full bg-transparent border-none text-white text-sm placeholder:text-white/20 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] overflow-y-auto custom-scrollbar disabled:opacity-40"
-              />
-            </div>
-
-            {/* Clear button if URL exists */}
-            {videoUrl && (
-              <button
-                type="button"
-                onClick={clearVideoUpload}
-                className="p-1.5 hover:bg-white/5 rounded text-zinc-400 hover:text-white transition-colors self-start mt-1"
-                title="Clear input"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
               </button>
             )}
+
+            {/* Prompt textarea (supports direct URL pasting too) */}
+            <div className="flex-1 flex flex-col gap-1">
+              <textarea
+                ref={promptTextareaRef}
+                value={prompt}
+                onChange={handlePromptInput}
+                placeholder="Describe prompt / highlights to extract"
+                rows={1}
+                className="w-full bg-transparent border-none text-white text-sm placeholder:text-white/20 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] overflow-y-auto custom-scrollbar"
+              />
+            </div>
           </div>
 
           {/* Bottom row: controls + generate button */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-2 border-t border-white/[0.03] relative">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-3 border-t border-white/[0.03] relative">
             <div className="flex items-center gap-2 relative flex-wrap pb-1 md:pb-0">
               
               {/* Model Identifier (C) */}
-              <div className="flex items-center gap-2 px-3 py-2 bg-white/[0.03] rounded-md border border-white/[0.03] whitespace-nowrap">
+              <div className="flex items-center gap-2 px-3.5 h-[34px] bg-[#16161a]/60 rounded-md border border-white/[0.06] shadow-inner whitespace-nowrap">
                 <div className="w-4 h-4 bg-[#22d3ee] rounded flex items-center justify-center shadow-lg shadow-[#22d3ee]/10">
                   <span className="text-[9px] font-bold text-black uppercase">C</span>
                 </div>
-                <span className="text-[11px] font-semibold text-white/70">
+                <span className="text-xs font-semibold text-white/70">
                   AI Clipping
                 </span>
               </div>
@@ -828,7 +835,7 @@ export default function ClippingStudio({
                 <button
                   type="button"
                   onClick={() => setAspectDropdownOpen(!aspectDropdownOpen)}
-                  className="flex items-center gap-2 px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap"
+                  className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-40 text-white">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
@@ -839,15 +846,15 @@ export default function ClippingStudio({
                   <ChevronDownIcon />
                 </button>
                 {aspectDropdownOpen && (
-                  <div className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-lg p-3 shadow-2xl border border-white/[0.05] min-w-[160px]">
-                    <div className="text-xs font-bold text-white/20 border-b border-white/[0.03] mb-2">
+                  <div className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[160px]">
+                    <div className="text-xs font-bold text-white/20 border-b border-white/[0.03] mb-2 pb-1">
                       Aspect Ratio
                     </div>
                     <div className="flex flex-col gap-1 max-h-60 overflow-y-auto custom-scrollbar">
                       {ASPECT_RATIOS.map((r) => (
                         <div
                           key={r.value}
-                          className="flex items-center justify-between p-3 hover:bg-white/5 rounded cursor-pointer transition-all group/opt"
+                          className="flex items-center justify-between p-2.5 hover:bg-white/5 rounded cursor-pointer transition-all group/opt"
                           onClick={() => {
                             setAspectRatio(r.value);
                             setAspectDropdownOpen(false);
@@ -869,7 +876,7 @@ export default function ClippingStudio({
                 <button
                   type="button"
                   onClick={() => setHighlightsDropdownOpen(!highlightsDropdownOpen)}
-                  className="flex items-center gap-2 px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap"
+                  className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                 >
                   <ClockIcon />
                   <span className="text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors">
@@ -878,8 +885,8 @@ export default function ClippingStudio({
                   <ChevronDownIcon />
                 </button>
                 {highlightsDropdownOpen && (
-                  <div className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-md p-3 shadow-2xl border border-white/10 min-w-[180px]">
-                    <div className="text-xs font-bold text-white/20 border-b border-white/[0.03] mb-3">
+                  <div className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[180px]">
+                    <div className="text-xs font-bold text-white/20 border-b border-white/[0.03] mb-3 pb-1">
                       Max Highlights
                     </div>
                     <div className="space-y-3">
@@ -907,10 +914,10 @@ export default function ClippingStudio({
               <button
                 type="button"
                 onClick={() => setReturnCoordinatesOnly(!returnCoordinatesOnly)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md transition-all border whitespace-nowrap text-[11px] font-semibold ${
+                className={`h-[34px] flex items-center gap-2 px-3.5 rounded-md transition-all border whitespace-nowrap text-[11px] font-semibold shadow-inner ${
                   returnCoordinatesOnly 
-                    ? "bg-primary/10 border-primary/20 text-[#22d3ee]" 
-                    : "bg-white/[0.03] border-white/[0.03] text-white/70 hover:bg-white/[0.06] hover:text-white"
+                    ? "bg-[#22d3ee]/10 border-[#22d3ee]/20 text-[#22d3ee]" 
+                    : "bg-[#16161a]/60 border-white/[0.06] text-white/70 hover:bg-[#202026]/80 hover:text-white"
                 }`}
               >
                 <ScissorsIcon className="w-3.5 h-3.5 text-current" />
@@ -924,7 +931,7 @@ export default function ClippingStudio({
               type="button"
               onClick={handleGenerate}
               disabled={isGenerating}
-              className="bg-[#22d3ee] text-black px-4 py-2 rounded-md font-medium text-sm hover:bg-[#e5ff33] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/10 disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider"
+              className="bg-[#22d3ee] text-black px-7 py-3 rounded-full font-black text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10 uppercase tracking-wider"
             >
               {isGenerating ? (
                 <>
