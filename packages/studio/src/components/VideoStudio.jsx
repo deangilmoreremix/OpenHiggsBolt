@@ -861,35 +861,46 @@ export default function VideoStudio({
         setPromptDisabled(false);
         setUploadedImageUrls([url]);
       } else {
-        // Clear v2v if active
-        setUploadedVideoUrl(null);
-        setUploadedVideoName(null);
-        setV2vMode(false);
-
-        let targetModelId = selectedModel;
-        if (!imageMode) {
-          const currentT2V = t2vModels.find((m) => m.id === selectedModel);
-          const sibling = currentT2V?.family
-            ? i2vModels.find((m) => m.family === currentT2V.family)
-            : null;
-          const target = sibling || i2vModels[0];
-          targetModelId = target.id;
-          setImageMode(true);
-          setSelectedModel(target.id);
-          setSelectedModelName(target.name);
-          applyControlsForModel(target.id, true, false);
-        }
-
-        const maxImgs = getMaxImagesForI2VModel(targetModelId);
-        if (maxImgs > 2) {
+        // Model-native image reference (e.g. Seedance 2.0 Extend with inputs.images_list):
+        // keep the current model & mode; just accumulate the image URL
+        const currentT2VOrExtend = t2vModels.find((m) => m.id === selectedModel);
+        if (currentT2VOrExtend?.inputs?.images_list) {
+          const maxImgs = currentT2VOrExtend.inputs?.images_list?.maxItems || 8;
           setUploadedImageUrls((prev) => {
             if (prev.includes(url)) return prev;
             return [...prev, url].slice(0, maxImgs);
           });
+          setPromptDisabled(false);
         } else {
-          setUploadedImageUrls([url]);
+          // Standard flow: clear v2v and switch to an I2V sibling model
+          setUploadedVideoUrl(null);
+          setUploadedVideoName(null);
+          setV2vMode(false);
+
+          let targetModelId = selectedModel;
+          if (!imageMode) {
+            const sibling = currentT2VOrExtend?.family
+              ? i2vModels.find((m) => m.family === currentT2VOrExtend.family)
+              : null;
+            const target = sibling || i2vModels[0];
+            targetModelId = target.id;
+            setImageMode(true);
+            setSelectedModel(target.id);
+            setSelectedModelName(target.name);
+            applyControlsForModel(target.id, true, false);
+          }
+
+          const maxImgs = getMaxImagesForI2VModel(targetModelId);
+          if (maxImgs > 2) {
+            setUploadedImageUrls((prev) => {
+              if (prev.includes(url)) return prev;
+              return [...prev, url].slice(0, maxImgs);
+            });
+          } else {
+            setUploadedImageUrls([url]);
+          }
+          setPromptDisabled(false);
         }
-        setPromptDisabled(false);
       }
     } catch (err) {
       console.error("[VideoStudio] Image upload failed:", err);
@@ -905,8 +916,10 @@ export default function VideoStudio({
     setUploadedImageUrl(null);
     setUploadedImageUrls([]);
     setUploadedEndImageUrl(null);
-    // Motion-control v2v: keep model and video; just drop the image
+    // Motion-control v2v or model with inputs.images_list: keep model, just drop the image
     if (isMotionControlSelection(selectedModel, v2vMode)) return;
+    const currentT2V = t2vModels.find((m) => m.id === selectedModel);
+    if (currentT2V?.inputs?.images_list) return;
     setImageMode(false);
     const first = t2vModels[0];
     setSelectedModel(first.id);
@@ -980,18 +993,25 @@ export default function VideoStudio({
         // Already in motion-control mode — keep model and image, allow prompt
         setPromptDisabled(false);
       } else {
-        // Default v2v flow (e.g. watermark remover) — auto-pick the first v2v model
-        if (imageMode) {
-          setUploadedImageUrl(null);
-          setImageMode(false);
+        // Model-native video reference (e.g. Seedance 2.0 Extend with inputs.video_files):
+        // keep the current model & mode; just store the video URL as a reference
+        const currentT2VOrExtend = t2vModels.find((m) => m.id === selectedModel);
+        if (currentT2VOrExtend?.inputs?.video_files) {
+          setPromptDisabled(false);
+        } else {
+          // Default v2v flow (e.g. watermark remover) — auto-pick the first v2v model
+          if (imageMode) {
+            setUploadedImageUrl(null);
+            setImageMode(false);
+          }
+          setV2vMode(true);
+          const firstV2V = v2vModels[0];
+          setSelectedModel(firstV2V.id);
+          setSelectedModelName(firstV2V.name);
+          applyControlsForModel(firstV2V.id, false, true);
+          setPrompt("");
+          setPromptDisabled(true);
         }
-        setV2vMode(true);
-        const firstV2V = v2vModels[0];
-        setSelectedModel(firstV2V.id);
-        setSelectedModelName(firstV2V.name);
-        applyControlsForModel(firstV2V.id, false, true);
-        setPrompt("");
-        setPromptDisabled(true);
       }
     } catch (err) {
       console.error("[VideoStudio] Video upload failed:", err);
@@ -1210,6 +1230,14 @@ export default function VideoStudio({
 
         if (isExtendMode) {
           params.request_id = lastGenerationId;
+          // Optional reference media for Seedance 2.0 Extend:
+          // images map to @image2…@image9 and videos map to @video1…@video3 in the prompt
+          if (uploadedImageUrls.length > 0) {
+            params.images_list = uploadedImageUrls;
+          }
+          if (uploadedVideoUrl) {
+            params.videos_list = [uploadedVideoUrl];
+          }
         } else {
           params.aspect_ratio = selectedAr;
         }
@@ -1586,8 +1614,14 @@ export default function VideoStudio({
               )}
 
               {/* Upload trigger buttons */}
-              {/* Image upload button */}
-              {imageMode && (
+              {/* Image upload button — shown when the model accepts image input:
+                  • T2V mode: uploading an image auto-switches to the sibling I2V model
+                  • I2V mode: uploading the start-frame (multi-image logic applies)
+                  • V2V motion-control: reference image is required alongside the video
+                  • T2V with inputs.images_list: optional reference images (e.g. Seedance 2.0 Extend)
+                  • Hidden in regular V2V mode (watermark remover etc. needs no image)
+                  • Hidden for extend-type models without inputs.images_list */}
+              {((!v2vMode || isMotionControlSelection(selectedModel, v2vMode)) && (!isExtendMode || currentModelObj?.inputs?.images_list)) && (
                 getMaxImagesForI2VModel(selectedModel) > 2 ? (
                   uploadedImageUrls.length < getMaxImagesForI2VModel(selectedModel) && (
                     <div className="relative">
@@ -1721,8 +1755,9 @@ export default function VideoStudio({
                 </div>
               )}
 
-              {/* Video upload button */}
-              {!uploadedVideoUrl && (
+              {/* Video upload button — shown when a V2V model is active, OR when
+                  the current model has inputs.video_files (e.g. Seedance 2.0 Extend). */}
+              {!uploadedVideoUrl && (v2vMode || currentModelObj?.inputs?.video_files) && (
                 <div className="relative">
                   <input
                     ref={videoFileInputRef}

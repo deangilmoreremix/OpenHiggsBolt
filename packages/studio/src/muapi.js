@@ -107,12 +107,15 @@ export async function generateVideo(apiKey, params) {
     const endpoint = modelInfo?.endpoint || params.model;
     const payload = {};
     if (params.prompt) payload.prompt = params.prompt;
+    if (params.request_id) payload.request_id = params.request_id;
     if (params.aspect_ratio) payload.aspect_ratio = params.aspect_ratio;
     if (params.duration) payload.duration = params.duration;
     if (params.resolution) payload.resolution = params.resolution;
     if (params.quality) payload.quality = params.quality;
     if (params.mode) payload.mode = params.mode;
     if (params.image_url) payload.image_url = params.image_url;
+    if (params.images_list?.length > 0) payload.images_list = params.images_list;
+    if (params.videos_list?.length > 0) payload.videos_list = params.videos_list;
     return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900);
 }
 
