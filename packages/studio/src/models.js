@@ -2658,7 +2658,21 @@ export const t2vModels = [
         "type": "string",
         "title": "Prompt",
         "name": "prompt",
-        "description": "Optional prompt to guide the extension. If omitted, the model continues with the original scene."
+        "description": "Optional prompt to guide the extension. Reference images with @image2…@image9, videos with @video1…@video3 (the source video's last frame is always @image1)."
+      },
+      "images_list": {
+        "type": "array",
+        "title": "Reference Images",
+        "name": "images_list",
+        "description": "Up to 8 additional reference image URLs. Each Nth image maps to @image(N+1) in the prompt.",
+        "maxItems": 8
+      },
+      "video_files": {
+        "type": "array",
+        "title": "Reference Videos",
+        "name": "video_files",
+        "description": "Up to 3 reference video clip URLs (MP4, max 15s each). Each Nth video maps to @videoN in the prompt.",
+        "maxItems": 3
       },
       "duration": {
         "enum": [
