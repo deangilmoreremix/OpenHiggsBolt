@@ -9,14 +9,14 @@ import { MemoryRouter } from 'react-router-dom';
 
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
 const Videco = dynamic(() => import('../src/apps/videco/Videco'), { ssr: false });
-const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ssr: false });
-const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
 const ScenePlanner = dynamic(() => import('../src/apps/scene-planner/ScenePlanner'), { ssr: false });
-const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
 const ScriptWriter = dynamic(() => import('../src/apps/script-writer/ScriptWriter'), { ssr: false });
-const SocialPublishing = dynamic(() => import('../src/apps/social-publishing/SocialPublishing'), { ssr: false });
 const Presentation = dynamic(() => import('../src/apps/presentation/Presentation'), { ssr: false });
 const ContentPlanner = dynamic(() => import('../src/apps/content-planner/ContentPlanner'), { ssr: false });
+const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ssr: false });
+const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
+const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
+const SocialPublishing = dynamic(() => import('../src/apps/social-publishing/SocialPublishing'), { ssr: false });
 const TABS = [
   { id: 'image',   label: 'Image Studio' },
   { id: 'video',   label: 'Video Studio' },
@@ -33,9 +33,27 @@ const TABS = [
   { id: 'design-agent', label: 'Design Agent AI' },
   { id: 'vfx-studio', label: 'VFX' },
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
+  { id: 'script-writer', label: 'Script Writer' },
+  { id: 'presentation', label: 'Presentation' },
+  { id: 'content-planner', label: 'Content Planner' },
+  { id: 'scene-planner', label: 'Scene Planner' },
+  { id: 'videco', label: 'Videco' },
+  { id: 'apps', label: 'Explore Apps' },
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'social-publishing', label: 'Social Publishing' },
 ];
+
+// Maps every landing-page studio slug to the studio tab that renders it.
+const SLUG_TO_TAB = {
+  image: 'image', video: 'video', audio: 'audio', clipping: 'clipping',
+  'vibe-motion': 'vibe-motion', lipsync: 'lipsync', cinema: 'cinema',
+  storyboard: 'storyboard', marketing: 'marketing', recast: 'recast',
+  workflows: 'workflows', agents: 'agents', 'design-agent': 'design-agent',
+  videco: 'videco', 'vfx-studio': 'vfx-studio', 'scene-planner': 'scene-planner',
+  'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio',
+  'script-writer': 'script-writer', presentation: 'presentation',
+  'content-planner': 'content-planner', apps: 'apps',
+};
 
 const STORAGE_KEY = 'muapi_key';
 
@@ -63,13 +81,11 @@ export default function StandaloneShell() {
 
   // Initialize activeTab from URL slug/params or default to 'image'
   const getInitialTab = () => {
-    if (idFromParams || slug.includes('workflow')) return 'workflows';
+    if (idFromParams || slug.includes('workflow') || slug.includes('workflows')) return 'workflows';
     if (slug.includes('agents')) return 'agents';
     if (slug.includes('design-agent')) return 'design-agent';
-    if (slug.includes('apps')) return 'apps';
     const firstSegment = slug[0];
-    if (firstSegment && TABS.find(t => t.id === firstSegment)) return firstSegment;
-    return 'image';
+    return (firstSegment && SLUG_TO_TAB[firstSegment]) || 'image';
   };
   
   const [apiKey, setApiKey] = useState(null);
@@ -100,12 +116,11 @@ export default function StandaloneShell() {
         setActiveTab('agents');
     } else if (slug.includes('design-agent')) {
         setActiveTab('design-agent');
-    } else if (slug.includes('apps')) {
-        setActiveTab('apps');
     } else {
         const firstSegment = slug[0];
-        if (firstSegment && TABS.find(t => t.id === firstSegment)) {
-          setActiveTab(firstSegment);
+        const mapped = firstSegment && SLUG_TO_TAB[firstSegment];
+        if (mapped) {
+          setActiveTab(mapped);
         }
     }
   }, [slug, getWorkflowInfo]);
@@ -397,8 +412,8 @@ export default function StandaloneShell() {
         {activeTab === 'videco' && <MemoryRouter initialEntries={['/dashboard']}><Videco apiKey={apiKey} /></MemoryRouter>}
         {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} /></MemoryRouter>}
         {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} /></MemoryRouter>}
-        {activeTab === 'scene-planner' && <MemoryRouter initialEntries={['/']}><ScenePlanner apiKey={apiKey} /></MemoryRouter>}
         {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
+        {activeTab === 'scene-planner' && <MemoryRouter initialEntries={['/']}><ScenePlanner apiKey={apiKey} /></MemoryRouter>}
         {activeTab === 'script-writer' && <ScriptWriter apiKey={apiKey} />}
         {activeTab === 'presentation' && <MemoryRouter initialEntries={['/']}><Presentation /></MemoryRouter>}
         {activeTab === 'content-planner' && <ContentPlanner apiKey={apiKey} />}

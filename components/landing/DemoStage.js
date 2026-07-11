@@ -211,22 +211,6 @@ function DesignOutput({ feature, result }) {
   );
 }
 
-function VidecoOutput({ feature, result }) {
-  return (
-    <Frame>
-      <div className="grid gap-3 md:grid-cols-3 mb-4">
-        {[['Videos','24'],['Leads','118'],['CTR','+18%']].map(([label, value]) => (
-          <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-center">
-            <div className="text-3xl font-black text-white">{value}</div>
-            <div className="mt-1 text-xs uppercase tracking-wider text-white/45">{label}</div>
-          </div>
-        ))}
-      </div>
-      <Generic feature={feature} result={result} />
-    </Frame>
-  );
-}
-
 function VfxOutput({ feature, result }) {
   return (
     <Frame>
@@ -257,23 +241,6 @@ function StoryboardOutput({ feature, result }) {
   );
 }
 
-function SceneOutput({ feature, result }) {
-  return (
-    <Frame>
-      <div className="space-y-3 mb-4">
-        {['Prompt node', 'Generate node', 'Output node'].map((node, i) => (
-          <div key={node} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-4">
-            <span className="h-2 w-16 rounded-full bg-gradient-to-r from-cyan-300 to-purple-400" />
-            <span className="text-sm font-bold text-white">{node}</span>
-            <span className="ml-auto text-xs text-white/45">Node {i + 1}</span>
-          </div>
-        ))}
-      </div>
-      <Generic feature={feature} result={result} />
-    </Frame>
-  );
-}
-
 function ThumbnailOutput({ feature, result }) {
   return (
     <Frame>
@@ -288,43 +255,15 @@ function ThumbnailOutput({ feature, result }) {
   );
 }
 
-function ScriptOutput({ feature, result }) {
-  return (
-    <Frame>
-      <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-sm leading-6 text-white/70 mb-4">
-        <p><span className="font-bold text-cyan-200">Hook:</span> What if your next campaign video could be built in minutes?</p>
-         <p className="mt-3"><span className="font-bold text-cyan-200">Body:</span> SmartVideo GO turns prompts into images, video, UGC ads, VFX, and launch assets.</p>
-        <p className="mt-3"><span className="font-bold text-cyan-200">CTA:</span> Try the studio and create your first asset today.</p>
-      </div>
-      <Generic feature={feature} result={result} />
-    </Frame>
-  );
-}
-
-function PresentationOutput({ feature, result }) {
-  return (
-    <Frame>
-      <div className="space-y-3 mb-4">
-        {['Problem', 'Solution', 'Demo', 'Pricing', 'CTA'].map((slide, i) => (
-          <div key={slide} className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
-            <div className="text-xs uppercase tracking-wider text-cyan-200">Slide {i + 1}</div>
-            <div className="mt-1 text-sm font-bold text-white">{slide}</div>
-          </div>
-        ))}
-      </div>
-      <Generic feature={feature} result={result} />
-    </Frame>
-  );
-}
-
-function ContentOutput({ feature, result }) {
+function RecastOutput({ feature, result }) {
   return (
     <Frame>
       <div className="grid gap-3 md:grid-cols-2 mb-4">
-        {['Educational post', 'Founder story', 'Product demo', 'Customer proof'].map((item) => (
-          <div key={item} className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
-            <div className="text-sm font-bold text-white">{item}</div>
-            <div className="mt-2 text-xs text-white/45">Planned for launch week</div>
+        {[['Source clip','Uploaded'],['Character image','Uploaded'],['Swapped video','Rendered']].map(([label, status]) => (
+          <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-center">
+            <div className="aspect-video rounded-xl bg-gradient-to-br from-cyan-400/20 to-purple-500/20 mb-3" />
+            <div className="text-sm font-bold text-white">{label}</div>
+            <div className="mt-1 text-xs text-cyan-200">{status}</div>
           </div>
         ))}
       </div>
@@ -371,10 +310,9 @@ const RENDERERS = {
   image: ImageOutput, video: VideoOutput, audio: AudioOutput,
   clip: ClipOutput, motion: MotionOutput, lipsync: LipsyncOutput,
   cinema: CinemaOutput, marketing: MarketingOutput, workflow: WorkflowOutput,
-  agent: AgentOutput, design: DesignOutput, videco: VidecoOutput,
-  vfx: VfxOutput, storyboard: StoryboardOutput, scene: SceneOutput,
-  thumbnail: ThumbnailOutput, script: ScriptOutput, presentation: PresentationOutput,
-  content: ContentOutput, ugc: UgcOutput, apps: AppsOutput,
+  agent: AgentOutput, design: DesignOutput,
+  vfx: VfxOutput, storyboard: StoryboardOutput,
+  thumbnail: ThumbnailOutput, ugc: UgcOutput, recast: RecastOutput, apps: AppsOutput,
 };
 
 /* ─── DemoStage ────────────────────────────────────────────────────────── */
