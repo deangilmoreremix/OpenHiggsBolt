@@ -1,16 +1,17 @@
+import { clerkMiddleware } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
-export function middleware(request) {
+export default clerkMiddleware((auth, request) => {
     const url = request.nextUrl;
-    
+
     // Catch requests to /api/workflow, /api/app, and /api/v1
-    const isMuApi = url.pathname.startsWith('/api/workflow') || 
-                    url.pathname.startsWith('/api/app') || 
+    const isMuApi = url.pathname.startsWith('/api/workflow') ||
+                    url.pathname.startsWith('/api/app') ||
                     url.pathname.startsWith('/api/v1');
 
     if (isMuApi) {
         // Exclude paths that have their own dedicated route handlers with custom logic
-        const isHandledByRoute = url.pathname.startsWith('/api/v1/creative-agent') || 
+        const isHandledByRoute = url.pathname.startsWith('/api/v1/creative-agent') ||
                                 url.pathname.startsWith('/api/v1/get_upload_url') ||
                                 url.pathname.startsWith('/api/v1/upload-binary');
 
@@ -21,13 +22,12 @@ export function middleware(request) {
     }
 
     return NextResponse.next();
-}
+});
 
-// Match the paths we want to proxy
+// Match the paths we want to proxy, plus all app routes for Clerk
 export const config = {
     matcher: [
-        '/api/workflow/:path*', 
-        '/api/app/:path*',
-        '/api/v1/:path*'
+        '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+        '/(api|trpc)(.*)',
     ],
 };

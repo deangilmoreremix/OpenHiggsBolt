@@ -117,6 +117,60 @@ html { scroll-behavior: smooth; }
     rgba(0,0,0,0.28);
 }
 
+/* ── Clerk auth pages (sign-in / sign-up) branding ──────── */
+.svgo-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: 1.5rem !important;
+  box-shadow: 0 30px 90px rgba(0,0,0,0.5) !important;
+  color: #fff !important;
+}
+
+.svgo-gradient-btn {
+  background: linear-gradient(90deg, #22d3ee, #a855f7) !important;
+  color: #000 !important;
+  font-weight: 700 !important;
+  border: none !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 8px 24px rgba(34,211,238,0.25) !important;
+  transition: opacity 0.15s ease, transform 0.15s ease !important;
+}
+.svgo-gradient-btn:hover {
+  opacity: 0.92 !important;
+}
+
+.svgo-social-btn {
+  background: rgba(255,255,255,0.05) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  color: #fff !important;
+  border-radius: 0.75rem !important;
+}
+.svgo-social-btn:hover {
+  background: rgba(255,255,255,0.1) !important;
+}
+.svgo-social-btn-text { color: #fff !important; }
+
+.svgo-input {
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  color: #fff !important;
+  border-radius: 0.6rem !important;
+}
+.svgo-input::placeholder { color: rgba(255,255,255,0.4) !important; }
+.svgo-input:focus {
+  border-color: #22d3ee !important;
+  box-shadow: 0 0 0 1px #22d3ee !important;
+  outline: none !important;
+}
+
+.svgo-link { color: #22d3ee !important; font-weight: 600 !important; }
+.svgo-link:hover { color: #67e8f9 !important; }
+.svgo-footer-text { color: rgba(255,255,255,0.6) !important; }
+.svgo-header-title { color: #fff !important; font-weight: 800 !important; }
+.svgo-header-subtitle { color: rgba(255,255,255,0.6) !important; }
+.svgo-divider-text { color: rgba(255,255,255,0.4) !important; }
+.svgo-divider-line { background: rgba(255,255,255,0.12) !important; }
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
