@@ -36,6 +36,8 @@ exports.processLipSync = processLipSync;
 exports.processRecast = processRecast;
 exports.processV2V = processV2V;
 exports.registerAppInterest = registerAppInterest;
+exports.rewriteThumbnail = rewriteThumbnail;
+exports.rewriteThumbnails = rewriteThumbnails;
 exports.runClipping = runClipping;
 exports.runMotionGraphics = runMotionGraphics;
 exports.runMotionGraphicsEdit = runMotionGraphicsEdit;
@@ -48,6 +50,7 @@ var _window$location;
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
 function _regenerator() { /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ var e, t, r = "function" == typeof Symbol ? Symbol : {}, n = r.iterator || "@@iterator", o = r.toStringTag || "@@toStringTag"; function i(r, n, o, i) { var c = n && n.prototype instanceof Generator ? n : Generator, u = Object.create(c.prototype); return _regeneratorDefine2(u, "_invoke", function (r, n, o) { var i, c, u, f = 0, p = o || [], y = !1, G = { p: 0, n: 0, v: e, a: d, f: d.bind(e, 4), d: function d(t, r) { return i = t, c = 0, u = e, G.n = r, a; } }; function d(r, n) { for (c = r, u = n, t = 0; !y && f && !o && t < p.length; t++) { var o, i = p[t], d = G.p, l = i[2]; r > 3 ? (o = l === n) && (u = i[(c = i[4]) ? 5 : (c = 3, 3)], i[4] = i[5] = e) : i[0] <= d && ((o = r < 2 && d < i[1]) ? (c = 0, G.v = n, G.n = i[1]) : d < l && (o = r < 3 || i[0] > n || n > l) && (i[4] = r, i[5] = n, G.n = l, c = 0)); } if (o || r > 1) return a; throw y = !0, n; } return function (o, p, l) { if (f > 1) throw TypeError("Generator is already running"); for (y && 1 === p && d(p, l), c = p, u = l; (t = c < 2 ? e : u) || !y;) { i || (c ? c < 3 ? (c > 1 && (G.n = -1), d(c, u)) : G.n = u : G.v = u); try { if (f = 2, i) { if (c || (o = "next"), t = i[o]) { if (!(t = t.call(i, u))) throw TypeError("iterator result is not an object"); if (!t.done) return t; u = t.value, c < 2 && (c = 0); } else 1 === c && (t = i["return"]) && t.call(i), c < 2 && (u = TypeError("The iterator does not provide a '" + o + "' method"), c = 1); i = e; } else if ((t = (y = G.n < 0) ? u : r.call(n, G)) !== a) break; } catch (t) { i = e, c = 1, u = t; } finally { f = 1; } } return { value: t, done: y }; }; }(r, o, i), !0), u; } var a = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} t = Object.getPrototypeOf; var c = [][n] ? t(t([][n]())) : (_regeneratorDefine2(t = {}, n, function () { return this; }), t), u = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(c); function f(e) { return Object.setPrototypeOf ? Object.setPrototypeOf(e, GeneratorFunctionPrototype) : (e.__proto__ = GeneratorFunctionPrototype, _regeneratorDefine2(e, o, "GeneratorFunction")), e.prototype = Object.create(u), e; } return GeneratorFunction.prototype = GeneratorFunctionPrototype, _regeneratorDefine2(u, "constructor", GeneratorFunctionPrototype), _regeneratorDefine2(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = "GeneratorFunction", _regeneratorDefine2(GeneratorFunctionPrototype, o, "GeneratorFunction"), _regeneratorDefine2(u), _regeneratorDefine2(u, o, "Generator"), _regeneratorDefine2(u, n, function () { return this; }), _regeneratorDefine2(u, "toString", function () { return "[object Generator]"; }), (_regenerator = function _regenerator() { return { w: i, m: f }; })(); }
 function _regeneratorDefine2(e, r, n, t) { var i = Object.defineProperty; try { i({}, "", {}); } catch (e) { i = 0; } _regeneratorDefine2 = function _regeneratorDefine(e, r, n, t) { function o(r, n) { _regeneratorDefine2(e, r, function (e) { return this._invoke(r, n, e); }); } r ? i ? i(e, r, { value: n, enumerable: !t, configurable: !t, writable: !t }) : e[r] = n : (o("next", 0), o("throw", 1), o("return", 2)); }, _regeneratorDefine2(e, r, n, t); }
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
@@ -60,8 +63,7 @@ function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbol
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
 function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
 function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
-function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
-function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); } // Local mirrors for workflow/agent thumbnails. Maps upstream MuAPI thumbnail
+function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); } // Local mirrors for workflow/agent thumbnails. Maps upstream MuAPI thumbnail
 // URLs -> local files in /public/thumbnails/workflows. Plain ESM import so it
 // bundles cleanly in the browser (Turbopack/Webpack/Vite) with no fs/JSON-assert.
 function rewriteThumbnail(url) {
@@ -74,18 +76,12 @@ function rewriteThumbnail(url) {
 function rewriteThumbnails(list) {
   if (!Array.isArray(list)) return list;
   return list.map(function (item) {
-    if (!item || _typeof(item) !== "object") return item;
-    var next = _objectSpread({}, item);
-    // Workflows use `thumbnail`; agents use `icon_url` (and sometimes `image_url`).
-    // Rewrite every known image field through the same-origin /api/thumbnail proxy
-    // so CDN hotlink protection never blocks images in the browser.
-    if (next.thumbnail) next.thumbnail = rewriteThumbnail(next.thumbnail);
-    if (next.icon_url) next.icon_url = rewriteThumbnail(next.icon_url);
-    if (next.image_url) next.image_url = rewriteThumbnail(next.image_url);
-    // Conversations list returns agent_icon_url / agent_avatar_url.
-    if (next.agent_icon_url) next.agent_icon_url = rewriteThumbnail(next.agent_icon_url);
-    if (next.agent_avatar_url) next.agent_avatar_url = rewriteThumbnail(next.agent_avatar_url);
-    return next;
+    if (item && item.thumbnail) {
+      return _objectSpread(_objectSpread({}, item), {}, {
+        thumbnail: rewriteThumbnail(item.thumbnail)
+      });
+    }
+    return item;
   });
 }
 
@@ -669,16 +665,17 @@ function getTemplateWorkflows(_x24) {
 }
 function _getTemplateWorkflows() {
   _getTemplateWorkflows = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee11(apiKey) {
-    var response, errText, data;
+    var headers, response, errText, data;
     return _regenerator().w(function (_context11) {
       while (1) switch (_context11.n) {
         case 0:
+          headers = {
+            'Content-Type': 'application/json'
+          };
+          if (apiKey) headers['x-api-key'] = apiKey;
           _context11.n = 1;
           return fetch("".concat(BASE_URL, "/workflow/get-template-workflows"), {
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': apiKey
-            }
+            headers: headers
           });
         case 1:
           response = _context11.v;

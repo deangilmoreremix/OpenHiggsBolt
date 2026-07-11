@@ -38,13 +38,15 @@ function WorkflowCard({ workflow, onClick, activeTab, onRename, onDelete }) {
   // If the local/proxied thumbnail fails, fall back to the original raw URL.
   const handleImgError = (e) => {
     const src = e.currentTarget.src;
-    const proxied = src.match(/[?&]url=([^&]+)/);
-    const fallback = proxied ? decodeURIComponent(proxied[1]) : workflow.thumbnail;
-    if (fallback && src !== fallback) {
-      e.currentTarget.src = fallback;
-    } else {
+    // If this is already the proxy fallback, give up and show the placeholder.
+    if (src.includes('/api/thumbnail')) {
       setImgError(true);
+      return;
     }
+    // Prefer the app's same-origin proxy (works even when the CDN asset is
+    // missing/unreachable), otherwise fall back to the raw CDN url.
+    const viaProxy = `/api/thumbnail?url=${encodeURIComponent(workflow.thumbnail || src)}`;
+    e.currentTarget.src = viaProxy;
   };
 
   return (
@@ -405,7 +407,11 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
 
   useEffect(() => {
     async function loadWorkflows() {
-      if (!apiKey) {
+      // Templates are a PUBLIC endpoint — load them even without an API key so
+      // the workflow gallery and its thumbnails are always visible. The
+      // user-specific tabs (my-workflows / published) still require a key.
+      if (!apiKey && activeMainTab !== "templates") {
+        setWorkflows([]);
         setLoading(false);
         return;
       }

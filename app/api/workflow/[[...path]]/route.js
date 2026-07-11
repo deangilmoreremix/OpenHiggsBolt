@@ -1,6 +1,23 @@
 import { NextResponse } from 'next/server';
+import { rewriteThumbnails } from './thumbnail-rewrite.js';
 
 const MUAPI_BASE = 'https://api.muapi.ai';
+
+// The MuAPI API returns thumbnail URLs pointing at cdn.muapi.ai. Some of those
+// assets are unreliable in the browser, so we rewrite any known thumbnail to a
+// same-origin local path (public/thumbnails/...) that the app serves. This runs
+// server-side so every consumer (including the browser) gets local URLs.
+function withLocalThumbnails(data) {
+    if (Array.isArray(data)) {
+        return rewriteThumbnails(data);
+    }
+    if (data && typeof data === 'object') {
+        if (Array.isArray(data.workflows)) data.workflows = rewriteThumbnails(data.workflows);
+        if (Array.isArray(data.agents)) data.agents = rewriteThumbnails(data.agents);
+        if (Array.isArray(data.items)) data.items = rewriteThumbnails(data.items);
+    }
+    return data;
+}
 
 function getApiKey(request) {
     return (
@@ -40,10 +57,7 @@ export async function GET(request, { params }) {
             method: 'GET',
         });
         const data = await response.json();
-        if (path.includes('get-workflow-def')) {
-            console.log(`[proxy GET] get-workflow-def response: is_owner=${data?.is_owner}, workflow_id=${data?.workflow_id}`);
-        }
-        return NextResponse.json(data, { status: response.status });
+        return NextResponse.json(withLocalThumbnails(data), { status: response.status });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -53,7 +67,7 @@ export async function POST(request, { params }) {
     const slug = await params;
     const pathSegments = slug.path || [];
     const path = pathSegments.join('/');
-    
+
     const { search } = new URL(request.url);
     const targetUrl = `${MUAPI_BASE}/workflow/${path}${search}`;
 
@@ -88,7 +102,7 @@ export async function DELETE(request, { params }) {
     const slug = await params;
     const pathSegments = slug.path || [];
     const path = pathSegments.join('/');
-    
+
     const { search } = new URL(request.url);
     const targetUrl = `${MUAPI_BASE}/workflow/${path}${search}`;
 
@@ -113,7 +127,7 @@ export async function PUT(request, { params }) {
     const slug = await params;
     const pathSegments = slug.path || [];
     const path = pathSegments.join('/');
-    
+
     const { search } = new URL(request.url);
     const targetUrl = `${MUAPI_BASE}/workflow/${path}${search}`;
 

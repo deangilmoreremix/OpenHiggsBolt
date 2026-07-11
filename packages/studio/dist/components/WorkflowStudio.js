@@ -67,13 +67,15 @@ function WorkflowCard(_ref) {
   // If the local/proxied thumbnail fails, fall back to the original raw URL.
   var handleImgError = function handleImgError(e) {
     var src = e.currentTarget.src;
-    var proxied = src.match(/[?&]url=([^&]+)/);
-    var fallback = proxied ? decodeURIComponent(proxied[1]) : workflow.thumbnail;
-    if (fallback && src !== fallback) {
-      e.currentTarget.src = fallback;
-    } else {
+    // If this is already the proxy fallback, give up and show the placeholder.
+    if (src.includes('/api/thumbnail')) {
       setImgError(true);
+      return;
     }
+    // Prefer the app's same-origin proxy (works even when the CDN asset is
+    // missing/unreachable), otherwise fall back to the raw CDN url.
+    var viaProxy = "/api/thumbnail?url=".concat(encodeURIComponent(workflow.thumbnail || src));
+    e.currentTarget.src = viaProxy;
   };
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     onClick: function onClick() {
@@ -633,10 +635,11 @@ function WorkflowStudio(_ref2) {
         return _regenerator().w(function (_context6) {
           while (1) switch (_context6.p = _context6.n) {
             case 0:
-              if (apiKey) {
+              if (!(!apiKey && activeMainTab !== "templates")) {
                 _context6.n = 1;
                 break;
               }
+              setWorkflows([]);
               setLoading(false);
               return _context6.a(2);
             case 1:
