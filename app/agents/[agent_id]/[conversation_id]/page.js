@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import AgentChatClient from "../AgentChatClient";
-import { fetchAgentDetails, fetchHistory, fetchUserData } from "../agentApi.js";
+import { fetchAgentDetails, fetchHistory, fetchUserData } from "../../agentApi.js";
 
 /**
  * Server component — fetches both agentDetails and initialHistory

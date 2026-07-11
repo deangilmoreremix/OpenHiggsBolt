@@ -5,7 +5,7 @@ import { getModelById, getVideoModelById, getI2IModelById, getI2VModelById, getV
 // bundles cleanly in the browser (Turbopack/Webpack/Vite) with no fs/JSON-assert.
 import thumbnailLocalMap from './thumbnail-map.js';
 
-function rewriteThumbnail(url) {
+export function rewriteThumbnail(url) {
   if (!url || typeof url !== 'string') return url;
   if (thumbnailLocalMap[url]) return thumbnailLocalMap[url];
   // Same-origin proxy: server fetches the upstream image (with Referer) and
@@ -13,7 +13,7 @@ function rewriteThumbnail(url) {
   return `/api/thumbnail?url=${encodeURIComponent(url)}`;
 }
 
-function rewriteThumbnails(list) {
+export function rewriteThumbnails(list) {
   if (!Array.isArray(list)) return list;
   return list.map((item) => {
     if (item && item.thumbnail) {
@@ -366,11 +366,10 @@ export async function getUserBalance(apiKey) {
 }
 
 export async function getTemplateWorkflows(apiKey) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['x-api-key'] = apiKey;
     const response = await fetch(`${BASE_URL}/workflow/get-template-workflows`, {
-        headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey
-        }
+        headers
     });
     if (!response.ok) {
         const errText = await response.text();
