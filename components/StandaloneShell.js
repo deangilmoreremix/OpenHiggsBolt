@@ -8,11 +8,6 @@ import axios from 'axios';
 import { MemoryRouter } from 'react-router-dom';
 
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
-const Videco = dynamic(() => import('../src/apps/videco/Videco'), { ssr: false });
-const ScenePlanner = dynamic(() => import('../src/apps/scene-planner/ScenePlanner'), { ssr: false });
-const ScriptWriter = dynamic(() => import('../src/apps/script-writer/ScriptWriter'), { ssr: false });
-const Presentation = dynamic(() => import('../src/apps/presentation/Presentation'), { ssr: false });
-const ContentPlanner = dynamic(() => import('../src/apps/content-planner/ContentPlanner'), { ssr: false });
 const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ssr: false });
 const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
 const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
@@ -33,11 +28,6 @@ const TABS = [
   { id: 'design-agent', label: 'Design Agent AI' },
   { id: 'vfx-studio', label: 'VFX' },
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
-  { id: 'script-writer', label: 'Script Writer' },
-  { id: 'presentation', label: 'Presentation' },
-  { id: 'content-planner', label: 'Content Planner' },
-  { id: 'scene-planner', label: 'Scene Planner' },
-  { id: 'videco', label: 'Videco' },
   { id: 'apps', label: 'Explore Apps' },
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'social-publishing', label: 'Social Publishing' },
@@ -49,10 +39,8 @@ const SLUG_TO_TAB = {
   'vibe-motion': 'vibe-motion', lipsync: 'lipsync', cinema: 'cinema',
   storyboard: 'storyboard', marketing: 'marketing', recast: 'recast',
   workflows: 'workflows', agents: 'agents', 'design-agent': 'design-agent',
-  videco: 'videco', 'vfx-studio': 'vfx-studio', 'scene-planner': 'scene-planner',
-  'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio',
-  'script-writer': 'script-writer', presentation: 'presentation',
-  'content-planner': 'content-planner', apps: 'apps',
+  'vfx-studio': 'vfx-studio', 'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio',
+  apps: 'apps',
 };
 
 const STORAGE_KEY = 'muapi_key';
@@ -409,14 +397,9 @@ export default function StandaloneShell() {
          {activeTab === 'workflows' && <WorkflowStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
         {activeTab === 'agents' && <AgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
         {activeTab === 'design-agent' && <DesignAgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
-        {activeTab === 'videco' && <MemoryRouter initialEntries={['/dashboard']}><Videco apiKey={apiKey} /></MemoryRouter>}
         {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} /></MemoryRouter>}
         {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} /></MemoryRouter>}
         {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
-        {activeTab === 'scene-planner' && <MemoryRouter initialEntries={['/']}><ScenePlanner apiKey={apiKey} /></MemoryRouter>}
-        {activeTab === 'script-writer' && <ScriptWriter apiKey={apiKey} />}
-        {activeTab === 'presentation' && <MemoryRouter initialEntries={['/']}><Presentation /></MemoryRouter>}
-        {activeTab === 'content-planner' && <ContentPlanner apiKey={apiKey} />}
         {activeTab === 'brand-studio' && (
           <div className="flex items-center justify-center h-full">
             <p style={{ color: semantic.textSecondary }}>Loading Brand Studio…</p>
