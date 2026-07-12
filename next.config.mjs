@@ -1,10 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    turbo: {
-      resolveAlias: {
-        '@': './src',
-      },
+  turbopack: {
+    resolveAlias: {
+      '@': './src',
     },
   },
   transpilePackages: ['studio', 'ai-agent', 'workflow-builder', 'design-agent'],

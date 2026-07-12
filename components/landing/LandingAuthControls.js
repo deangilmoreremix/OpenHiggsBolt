@@ -24,6 +24,7 @@ export default function LandingAuthControls() {
           Open studio
         </Link>
         <UserButton
+          userProfileUrl="/account"
           afterSignOutUrl="/"
           appearance={{
             elements: { avatarBox: 'h-9 w-9' },

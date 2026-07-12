@@ -1,22 +1,9 @@
 'use client';
-import { useEffect } from 'react';
-import { SignIn, useAuth } from '@clerk/nextjs';
+import { UserProfile } from '@clerk/nextjs';
 import Link from 'next/link';
 import { PRODUCT_NAME } from '../../components/landing/landingData';
 
-export default function SignInPage() {
-  const { isLoaded, isSignedIn } = useAuth();
-
-  // Provision the user's workspace in Supabase once the session is active.
-  // (Idempotent on the server via onConflict: clerk_user_id.)
-  // Post-sign-in navigation is owned by Clerk via fallbackRedirectUrl below
-  // (honors ?redirect_url= set by middleware when arriving from a protected route).
-  useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      fetch('/api/workspace/provision', { method: 'POST' }).catch(() => {});
-    }
-  }, [isLoaded, isSignedIn]);
-
+export default function AccountPage() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
       <div className="landing-noise" aria-hidden="true" />
@@ -47,10 +34,10 @@ export default function SignInPage() {
             <span className="font-semibold tracking-tight">{PRODUCT_NAME}</span>
           </Link>
           <Link
-            href="/"
+            href="/studio"
             className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
           >
-            Back to home
+            Back to studio
           </Link>
         </div>
       </header>
@@ -59,24 +46,26 @@ export default function SignInPage() {
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
             <p className="mb-4 inline-flex rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs uppercase tracking-[0.3em] text-cyan-200">
-              Welcome back
+              Account
             </p>
             <h1 className="landing-gradient-text text-4xl font-black tracking-tight md:text-5xl">
-              Sign in to the studio
+              Manage your account
             </h1>
             <p className="mx-auto mt-4 max-w-sm text-sm leading-7 text-white/60">
-              Pick up where you left off — your assets, campaigns, and workflows are waiting.
+              Update your profile, secure your account, and change your password.
             </p>
           </div>
 
-          <SignIn routing="hash" fallbackRedirectUrl="/studio" />
-
-          <p className="mt-6 text-center text-sm text-white/55">
-            New to {PRODUCT_NAME}?{' '}
-            <Link href="/sign-up" className="font-semibold text-cyan-300 hover:text-cyan-200">
-              Create an account
-            </Link>
-          </p>
+          <div className="landing-card rounded-3xl p-2 md:p-4">
+            <UserProfile
+              appearance={{
+                elements: {
+                  card: 'bg-transparent shadow-none',
+                  rootBox: 'w-full',
+                },
+              }}
+            />
+          </div>
         </div>
       </section>
     </main>

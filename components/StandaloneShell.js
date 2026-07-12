@@ -3,9 +3,27 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { ImageStudio, VideoStudio, ClippingStudio, VibeMotionStudio, LipSyncStudio, CinemaStudio, AudioStudio, MarketingStudio, RecastStudio, WorkflowStudio, AgentStudio, AppsStudio, AiInfluencerStudio, getUserBalance } from 'studio';
 import axios from 'axios';
 import { MemoryRouter } from 'react-router-dom';
+
+// Lazily load the heavy `studio` package so its many studio modules are not
+// part of the initial bundle for /, /studio and /workflow. Each export is only
+// fetched when its tab becomes active.
+const loadStudio = (name) => dynamic(() => import('studio').then((m) => m[name]), { ssr: false });
+
+const ImageStudio = loadStudio('ImageStudio');
+const VideoStudio = loadStudio('VideoStudio');
+const ClippingStudio = loadStudio('ClippingStudio');
+const VibeMotionStudio = loadStudio('VibeMotionStudio');
+const LipSyncStudio = loadStudio('LipSyncStudio');
+const CinemaStudio = loadStudio('CinemaStudio');
+const AudioStudio = loadStudio('AudioStudio');
+const MarketingStudio = loadStudio('MarketingStudio');
+const RecastStudio = loadStudio('RecastStudio');
+const WorkflowStudio = loadStudio('WorkflowStudio');
+const AgentStudio = loadStudio('AgentStudio');
+const AppsStudio = loadStudio('AppsStudio');
+const AiInfluencerStudio = loadStudio('AiInfluencerStudio');
 
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
 const Videco = dynamic(() => import('../src/apps/videco/Videco'), { ssr: false });
@@ -150,6 +168,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
 
   const fetchBalance = useCallback(async (key) => {
     try {
+      const { getUserBalance } = await import('studio');
       const data = await getUserBalance(key);
       setBalance(data.balance);
     } catch (err) {

@@ -8,7 +8,10 @@ export const runtime = 'nodejs';
 export async function POST(req: NextRequest) {
   let event;
   try {
-    event = await verifyWebhook(req);
+    event = await verifyWebhook(req, {
+      signingSecret:
+        process.env.CLERK_WEBHOOK_SIGNING_SECRET ?? process.env.CLERK_WEBHOOK_SECRET,
+    });
   } catch (err) {
     console.error('[clerk webhook] verification failed', err);
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
