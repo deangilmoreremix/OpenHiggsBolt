@@ -2,14 +2,9 @@ import { NavLink } from 'react-router-dom'
 import {
   Video,
   LayoutTemplate,
-  Workflow,
   Film,
   Image,
-  FileText,
-  Presentation,
-  CalendarDays,
-  Sparkles,
-  Clapperboard
+  Sparkles
 } from 'lucide-react'
 
 interface NavItem {
@@ -21,15 +16,10 @@ interface NavItem {
 export default function SideNavigation() {
   const navItems: NavItem[] = [
     { to: '/video-studio', icon: <Video size={20} />, label: 'Video Studio' },
-    { to: '/videco', icon: <Clapperboard size={20} />, label: 'VideoCo' },
     { to: '/vfx-studio', icon: <Sparkles size={20} />, label: 'VFX Studio' },
     { to: '/storyboard', icon: <LayoutTemplate size={20} />, label: 'Storyboard' },
-    { to: '/scene-planner', icon: <Workflow size={20} />, label: 'Scene Planner' },
     { to: '/cinema', icon: <Film size={20} />, label: 'Cinema' },
-    { to: '/thumbnail-studio', icon: <Image size={20} />, label: 'Thumbnail' },
-    { to: '/script-writer', icon: <FileText size={20} />, label: 'Script Writer' },
-    { to: '/presentation', icon: <Presentation size={20} />, label: 'Presentation' },
-    { to: '/content-planner', icon: <CalendarDays size={20} />, label: 'Content Planner' }
+    { to: '/thumbnail-studio', icon: <Image size={20} />, label: 'Thumbnail' }
   ]
 
   return (
