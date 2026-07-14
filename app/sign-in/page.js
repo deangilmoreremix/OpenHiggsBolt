@@ -71,6 +71,15 @@ export default function SignInPage() {
 
           <SignIn routing="hash" fallbackRedirectUrl="/studio" />
 
+          <p className="mt-4 text-center text-sm text-white/55">
+            <Link
+              href="/forgot-password"
+              className="font-semibold text-cyan-300 hover:text-cyan-200"
+            >
+              Forgot your password?
+            </Link>
+          </p>
+
           <p className="mt-6 text-center text-sm text-white/55">
             New to {PRODUCT_NAME}?{' '}
             <Link href="/sign-up" className="font-semibold text-cyan-300 hover:text-cyan-200">
