@@ -69,7 +69,7 @@ export default function SignInPage() {
             </p>
           </div>
 
-          <SignIn routing="hash" fallbackRedirectUrl="/studio" />
+          <SignIn routing="path" fallbackRedirectUrl="/studio" />
 
           <p className="mt-4 text-center text-sm text-white/55">
             <Link

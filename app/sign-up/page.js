@@ -70,7 +70,7 @@ export default function SignUpPage() {
             </p>
           </div>
 
-          <SignUp routing="hash" fallbackRedirectUrl="/studio" />
+          <SignUp routing="path" fallbackRedirectUrl="/studio" />
 
           <p className="mt-6 text-center text-sm text-white/55">
             Already have an account?{' '}

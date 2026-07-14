@@ -56,7 +56,7 @@ export default function ForgotPasswordPage() {
             </p>
           </div>
 
-          <SignIn routing="hash" />
+          <SignIn routing="path" />
 
           <p className="mt-6 text-center text-sm text-white/55">
             Remember your password?{' '}
