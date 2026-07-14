@@ -46,7 +46,6 @@ const TABS = [
   { id: 'design-agent', label: 'Design Agent AI' },
   { id: 'vfx-studio', label: 'VFX' },
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
-  { id: 'apps', label: 'Explore Apps' },
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'social-publishing', label: 'Social Publishing' },
 ];
@@ -59,7 +58,6 @@ const SLUG_TO_TAB = {
   workflows: 'workflows', agents: 'agents', 'design-agent': 'design-agent',
   'vfx-studio': 'vfx-studio',
   'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio',
-  apps: 'apps',
   'ai-influencer': 'ai-influencer',
   'social-publishing': 'social-publishing',
 };
@@ -196,7 +194,30 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
       // Sync cookie immediately on mount to establish identity for background requests.
       // Encode so special characters in the key don't corrupt the cookie string.
       document.cookie = `muapi_key=${encodeURIComponent(cleanKey)}; path=/; max-age=31536000; SameSite=Lax`;
+      return;
     }
+
+    // No key in this browser — try to restore it from the signed-in user's
+    // account so the key follows them across browsers, devices and sign-ins.
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/muapi-key', { credentials: 'same-origin' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const restored = data?.key
+          ? String(data.key).replace(/[^\u0000-\u00FF]/g, '').trim()
+          : '';
+        if (!restored || cancelled) return;
+        localStorage.setItem(STORAGE_KEY, restored);
+        setApiKey(restored);
+        fetchBalance(restored);
+        document.cookie = `muapi_key=${encodeURIComponent(restored)}; path=/; max-age=31536000; SameSite=Lax`;
+      } catch {
+        // Offline or not signed in — the user can still enter a key manually.
+      }
+    })();
+    return () => { cancelled = true; };
   }, [fetchBalance]);
 
   const handleKeySave = useCallback((key) => {
@@ -211,6 +232,14 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
     // proxy routes can resolve it even when the x-api-key header is not present.
     // Encode so special characters in the key don't corrupt the cookie string.
     document.cookie = `muapi_key=${encodeURIComponent(trimmed)}; path=/; max-age=31536000; SameSite=Lax`;
+    // Persist the key against the signed-in user's account so it is restored
+    // automatically on future sign-ins and on other browsers/devices.
+    fetch('/api/auth/muapi-key', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ key: trimmed }),
+    }).catch(() => {});
     fetchBalance(trimmed);
   }, [fetchBalance]);
 
@@ -221,6 +250,8 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
     setSettingsKeyInput('');
     setAuthError(null);
     document.cookie = "muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    // Also forget the key stored against the user's account.
+    fetch('/api/auth/muapi-key', { method: 'DELETE', credentials: 'same-origin' }).catch(() => {});
   }, []);
 
   // Inject API key into all outgoing Axios requests (prop-based approach)
@@ -446,7 +477,6 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
             <p style={{ color: semantic.textSecondary }}>Loading Brand Studio…</p>
           </div>
         )}
-        {activeTab === 'apps' && <AppsStudio apiKey={apiKey} />}
         {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} />}
         {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
       </div>
