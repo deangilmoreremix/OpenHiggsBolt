@@ -89,9 +89,9 @@ const randEmail = `test+flow${Date.now()}@go.smartvid.app`;
     const title = await page.title();
     check('Landing page loads with correct title', /SmartVideo GO|Studio/i.test(title), title);
     const signInLink = page.getByRole('link', { name: /sign in/i });
-    const getStarted = page.getByRole('link', { name: /get started/i });
+    const getStarted = page.getByRole('link', { name: /sign up/i });
     check('Landing shows "Sign in" link', (await signInLink.count()) > 0);
-    check('Landing shows "Get started" link', (await getStarted.count()) > 0);
+    check('Landing shows "Sign up" link', (await getStarted.count()) > 0);
 
     // ── 2. Clicking "Sign in" navigates to /sign-in and form renders ───────
     await signInLink.first().click();
