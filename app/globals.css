@@ -92,9 +92,10 @@ html { scroll-behavior: smooth; }
 }
 
 .landing-card {
-  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.025));
-  border: 1px solid rgba(255,255,255,0.1);
-  box-shadow: 0 24px 80px rgba(0,0,0,0.35);
+  background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.09));
+  border: 1px solid rgba(255,255,255,0.18);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.45);
+  backdrop-filter: blur(16px);
 }
 
 .demo-stage {

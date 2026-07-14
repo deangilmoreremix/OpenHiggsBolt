@@ -38,9 +38,13 @@ export const TESTIMONIALS = [
 ];
 
 export const PRICING = [
-  { name: 'Starter', price: 'Free', description: 'Try the studio and export lightweight previews.', features: ['Interactive landing demos', 'Studio preview access', 'Community generation limits'] },
-  { name: 'Pro', price: '$29', description: 'For creators and teams shipping weekly AI video campaigns.', features: ['Full studio access', 'Priority generation queue', 'Campaign and workflow tools'] },
-  { name: 'Studio', price: 'Custom', description: 'For agencies and enterprise teams with volume and workflow needs.', features: ['Team seats', 'Custom workflows', 'Priority support'] }
+  {
+    name: 'Pro',
+    price: '$299',
+    badge: 'Lifetime',
+    description: 'One-time payment. Unlock every studio, forever.',
+    features: FEATURES.map((f) => f.label)
+  }
 ];
 
 export const FAQS = [
