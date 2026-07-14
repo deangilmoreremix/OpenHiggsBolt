@@ -411,5 +411,47 @@ export function createUploadPicker({ anchorContainer, onSelect, onClear, maxImag
         fireOnSelect();
     };
 
-    return { trigger, panel, reset, setMaxImages, getSelectedUrls, setImage };
+    // Feature 8: programmatic upload (drag & drop into the studio)
+    const addFiles = async (files) => {
+        const fileList = Array.from(files || []);
+        if (!fileList.length) return;
+        if (needsKey()) {
+            const apiKey = localStorage.getItem('muapi_key');
+            if (!apiKey) { AuthModal(() => addFiles(files)); return; }
+        }
+        showSpinner();
+        try {
+            if (maxImages === 1) {
+                const file = fileList[0];
+                const [uploadResult, thumbnail] = await Promise.all([doUpload(file), generateThumbnail(file)]);
+                const uploadedUrl = typeof uploadResult === 'string' ? uploadResult : uploadResult?.url;
+                const entry = { id: Date.now().toString(), name: file.name, uploadedUrl, thumbnail, timestamp: new Date().toISOString() };
+                saveUpload(entry);
+                selectedEntries = [{ url: uploadedUrl, thumbnail }];
+                updateTrigger();
+                fireOnSelect();
+            } else {
+                const slots = maxImages - selectedEntries.length;
+                const toUpload = fileList.slice(0, Math.max(slots, 1));
+                const results = await Promise.all(toUpload.map(async (file) => {
+                    const [uploadResult, thumbnail] = await Promise.all([doUpload(file), generateThumbnail(file)]);
+                    const uploadedUrl = typeof uploadResult === 'string' ? uploadResult : uploadResult?.url;
+                    return { id: Date.now().toString() + Math.random(), name: file.name, uploadedUrl, thumbnail, timestamp: new Date().toISOString() };
+                }));
+                results.forEach(entry => {
+                    saveUpload(entry);
+                    if (selectedEntries.length < maxImages) selectedEntries.push({ url: entry.uploadedUrl, thumbnail: entry.thumbnail });
+                });
+                updateTrigger();
+                openPanel();
+            }
+        } catch (err) {
+            console.error('[UploadPicker] addFiles failed:', err);
+            updateTrigger();
+            alert(`Image upload failed: ${err.message}`);
+        }
+        fileInput.value = '';
+    };
+
+    return { trigger, panel, reset, setMaxImages, getSelectedUrls, setImage, addFiles };
 }

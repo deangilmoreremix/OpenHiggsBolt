@@ -1,5 +1,4 @@
 import { getModelById, getVideoModelById, getI2IModelById, getI2VModelById, getV2VModelById, getLipSyncModelById } from './models.js';
-import { nsKey } from './identity.js';
 import axios from 'axios';
 
 /**
@@ -60,7 +59,7 @@ export class MuapiClient {
     }
 
     getKey() {
-        const key = window.__MUAPI_KEY__ || localStorage.getItem(nsKey('muapi_key'));
+        const key = window.__MUAPI_KEY__ || localStorage.getItem('muapi_key');
         if (!key) throw new Error('API Key missing. Please set it in Settings.');
         return key;
     }
@@ -315,6 +314,9 @@ export class MuapiClient {
         if (params.aspect_ratio) finalPayload.aspect_ratio = params.aspect_ratio;
         if (params.resolution) finalPayload.resolution = params.resolution;
         if (params.quality) finalPayload.quality = params.quality;
+        // Effect name (e.g. for Kontext/effects models) and face-swap source image.
+        if (params.name) finalPayload.name = params.name;
+        if (params.swap_url) finalPayload.swap_url = params.swap_url;
 
         console.log('[Muapi] I2I Request:', url);
         console.log('[Muapi] I2I Payload:', finalPayload);

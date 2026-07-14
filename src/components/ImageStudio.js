@@ -10,6 +10,7 @@ import { ENHANCE_TAGS, QUICK_PROMPTS } from '../lib/promptUtils.js';
 import { AuthModal } from './AuthModal.js';
 import { t } from '../lib/i18n.js';
 import { createUploadPicker } from './UploadPicker.js';
+import { DrawModal } from './DrawModal.js';
 import { savePendingJob, removePendingJob, getPendingJobs } from '../lib/pendingJobs.js';
 
 function createInlineInstructions(type) {
@@ -59,6 +60,8 @@ export function ImageStudio() {
     let referenceStrength = 50;  // 0-100, for style reference models
     let selectedLora = '';  // LoRA model ID from Civitai
     let loraWeight = 1.0;
+    let selectedEffect = '';  // i2i effect name (Feature 5)
+    let swapImageUrl = null;  // swap-face source image (Feature 7)
 
     // Quick tools panel state
     let showToolsPanel = false;
@@ -67,6 +70,37 @@ export function ImageStudio() {
     const getCurrentAspectRatios = (id) => imageMode ? getAspectRatiosForI2IModel(id) : getAspectRatiosForModel(id);
     const getCurrentResolutions = (id) => imageMode ? getResolutionsForI2IModel(id) : getResolutionsForModel(id);
     const getCurrentQualityField = (id) => imageMode ? getQualityFieldForI2IModel(id) : getQualityFieldForModel(id);
+
+    // ── Feature 2: provider logos for the model picker ──
+    const PROVIDER_LOGOS = {
+        openai: "https://cdn.muapi.ai/models/openai.png",
+        google: "https://cdn.muapi.ai/models/gemini.png",
+        kling: "https://cdn.muapi.ai/models/kling.png",
+        alibaba: "https://cdn.muapi.ai/models/alibaba.png",
+        bytedance: "https://cdn.muapi.ai/models/bytedance.png",
+        blackforest: "https://cdn.muapi.ai/models/bfl.png",
+        minimax: "https://cdn.muapi.ai/models/minimax.png",
+        suno: "https://cdn.muapi.ai/models/suno.png",
+        anthropic: "https://cdn.muapi.ai/models/claude.png",
+        meshy: "https://cdn.muapi.ai/models/meshy-3.png",
+        tripo3d: "https://cdn.muapi.ai/models/tripo3d.png",
+        grok: "https://cdn.muapi.ai/models/xai.png",
+        muapi: "https://cdn.muapi.ai/models/muapi.png",
+        midjourney: "https://cdn.muapi.ai/models/midjourney.png",
+        vidu: "https://cdn.muapi.ai/models/vidu.png",
+        runway: "https://cdn.muapi.ai/models/runway.png",
+        luma: "https://cdn.muapi.ai/models/luma.png",
+        ideogram: "https://cdn.muapi.ai/models/ideogram.png",
+        leonardoai: "https://cdn.muapi.ai/models/leonardoai.png",
+        hunyuan: "https://cdn.muapi.ai/models/hunyuan.png",
+        hidream: "https://cdn.muapi.ai/models/hidream.png",
+        lightricks: "https://cdn.muapi.ai/models/lightricks.png",
+        pixverse: "https://cdn.muapi.ai/models/pixverse.png",
+        reve: "https://cdn.muapi.ai/models/reve.png",
+        stability: "https://cdn.muapi.ai/models/stability.png"
+    };
+    const invertLogos = ['openai', 'blackforest', 'runway', 'ideogram', 'lightricks', 'grok'];
+    let modelProviderFilter = 'all';
 
     // ==========================================
     // 1. HERO SECTION
@@ -128,10 +162,14 @@ export function ImageStudio() {
                 qualityBtn.style.display = validResolutions.length > 0 ? 'flex' : 'none';
                 if (validResolutions.length > 0) document.getElementById('quality-btn-label').textContent = validResolutions[0];
                 picker.setMaxImages(getMaxImagesForI2IModel(selectedModel));
+                selectedEffect = '';
+                updateEffectBtn();
+                updateSwapBtn();
             }
             textarea.placeholder = uploadedImageUrls.length > 1
                 ? `${uploadedImageUrls.length} ${t('image.multiImageNote') || 'images selected — describe the transformation (optional)'}`
                 : t('image.placeholderTransform');
+            saveSettings();
         },
         onClear: () => {
             uploadedImageUrls = [];
@@ -146,10 +184,56 @@ export function ImageStudio() {
             if (t2iResolutions.length > 0) document.getElementById('quality-btn-label').textContent = t2iResolutions[0];
             picker.setMaxImages(1);
             textarea.placeholder = t('image.placeholder');
+            selectedEffect = '';
+            updateEffectBtn();
+            swapImageUrl = null;
+            updateSwapBtn();
+            saveSettings();
         }
     });
     topRow.appendChild(picker.trigger);
     container.appendChild(picker.panel);
+
+    // ── Feature 8: Drag & drop upload ──
+    let dragDepth = 0;
+    container.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        dragDepth++;
+        container.classList.add('ring-2', 'ring-primary/50');
+    });
+    container.addEventListener('dragover', (e) => { e.preventDefault(); });
+    container.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dragDepth = Math.max(0, dragDepth - 1);
+        if (dragDepth === 0) container.classList.remove('ring-2', 'ring-primary/50');
+    });
+    container.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dragDepth = 0;
+        container.classList.remove('ring-2', 'ring-primary/50');
+        const files = Array.from(e.dataTransfer?.files || []).filter(f => f.type.startsWith('image/'));
+        if (files.length && typeof picker.addFiles === 'function') picker.addFiles(files);
+    });
+
+    // ── Feature 7: Swap-face source uploader ──
+    const swapPicker = createUploadPicker({
+        anchorContainer: container,
+        uploadFn: (file) => muapi.uploadFile(file),
+        requireApiKey: () => true,
+        onSelect: ({ url }) => { swapImageUrl = url; saveSettings(); },
+        onClear: () => { swapImageUrl = null; saveSettings(); },
+    });
+    swapPicker.trigger.title = 'Swap face';
+    topRow.appendChild(swapPicker.trigger);
+    container.appendChild(swapPicker.panel);
+    swapPicker.trigger.style.display = 'none';
+
+    const updateSwapBtn = () => {
+        const model = imageMode ? i2iModels.find(m => m.id === selectedModel) : null;
+        const show = !!(model && model.swapField);
+        swapPicker.trigger.style.display = show ? 'flex' : 'none';
+    };
+    updateSwapBtn();
 
     const textarea = document.createElement('textarea');
     textarea.placeholder = 'Describe the image you want to create';
@@ -159,6 +243,7 @@ export function ImageStudio() {
         textarea.style.height = 'auto';
         const maxHeight = window.innerWidth < 768 ? 150 : 250;
         textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + 'px';
+        saveSettings();
     };
 
     topRow.appendChild(textarea);
@@ -232,6 +317,24 @@ export function ImageStudio() {
     controlsLeft.appendChild(modelBtn);
     controlsLeft.appendChild(arBtn);
     controlsLeft.appendChild(qualityBtn);
+
+    // Feature 5: i2i effect picker
+    const effectBtn = createControlBtn(`
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="opacity-40 text-white"><path d="M5 3l14 9-14 9V3z"/></svg>
+    `, 'Effect', 'effect-btn', t('image.effectTooltip') || 'Effect type');
+    effectBtn.style.display = 'none';
+    controlsLeft.appendChild(effectBtn);
+
+    const updateEffectBtn = () => {
+        const effects = imageMode ? getEffectsForI2IModel(selectedModel) : [];
+        const show = effects.length > 0;
+        effectBtn.style.display = show ? 'flex' : 'none';
+        if (show) {
+            const lbl = document.getElementById('effect-btn-label');
+            if (lbl) lbl.textContent = selectedEffect || 'Effect';
+        }
+    };
+    updateEffectBtn();
     
     // Advanced options toggle button
     const advancedBtn = createControlBtn(`
@@ -244,6 +347,11 @@ export function ImageStudio() {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="opacity-60 text-secondary"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
     `, t('common.tools'), 'tools-btn', t('image.toolsTooltip'));
     controlsLeft.appendChild(toolsBtn);
+    // Feature 14: Draw button
+    const drawBtn = createControlBtn(`
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="opacity-40 text-white group-hover:text-primary transition-colors"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+    `, 'Draw', 'draw-btn', t('image.drawTooltip') || 'Draw');
+    controlsLeft.appendChild(drawBtn);
     // Show quality button if the default model has quality/resolution options
     const _initResolutions = getResolutionsForModel(defaultModel.id);
     qualityBtn.style.display = _initResolutions.length > 0 ? 'flex' : 'none';
@@ -603,7 +711,7 @@ export function ImageStudio() {
     
     // Negative prompt
     const negPromptInput = advancedPanel.querySelector('#negative-prompt-input');
-    if (negPromptInput) negPromptInput.oninput = (e) => { negativePrompt = e.target.value; };
+    if (negPromptInput) negPromptInput.oninput = (e) => { negativePrompt = e.target.value; saveSettings(); };
     
     // Guidance scale slider
     const guidanceSlider = advancedPanel.querySelector('#guidance-slider');
@@ -612,6 +720,7 @@ export function ImageStudio() {
         guidanceSlider.oninput = (e) => {
             guidanceScale = parseFloat(e.target.value);
             guidanceValue.textContent = guidanceScale;
+            saveSettings();
         };
     }
     
@@ -622,12 +731,13 @@ export function ImageStudio() {
         stepsSlider.oninput = (e) => {
             steps = parseInt(e.target.value);
             stepsValue.textContent = steps;
+            saveSettings();
         };
     }
     
     // Seed input
     const seedInput = advancedPanel.querySelector('#seed-input');
-    if (seedInput) seedInput.oninput = (e) => { seed = parseInt(e.target.value) || -1; };
+    if (seedInput) seedInput.oninput = (e) => { seed = parseInt(e.target.value) || -1; saveSettings(); };
     
     // Randomize seed button
     const randSeedBtn = advancedPanel.querySelector('#randomize-seed-btn');
@@ -645,6 +755,7 @@ export function ImageStudio() {
         batchSlider.oninput = (e) => {
             batchCount = parseInt(e.target.value);
             batchValueEl.textContent = batchCount;
+            saveSettings();
         };
     }
     
@@ -653,6 +764,7 @@ export function ImageStudio() {
     if (widthInput) {
         widthInput.oninput = (e) => {
             customWidth = parseInt(e.target.value) || 0;
+            saveSettings();
         };
     }
     
@@ -661,6 +773,7 @@ export function ImageStudio() {
     if (heightInput) {
         heightInput.oninput = (e) => {
             customHeight = parseInt(e.target.value) || 0;
+            saveSettings();
         };
     }
     
@@ -671,6 +784,7 @@ export function ImageStudio() {
         refStrengthSlider.oninput = (e) => {
             referenceStrength = parseInt(e.target.value);
             refStrengthValue.textContent = referenceStrength + '%';
+            saveSettings();
         };
     }
     
@@ -679,6 +793,7 @@ export function ImageStudio() {
     if (loraInput) {
         loraInput.oninput = (e) => {
             selectedLora = e.target.value.trim();
+            saveSettings();
         };
     }
     
@@ -687,8 +802,67 @@ export function ImageStudio() {
     if (loraWeightInput) {
         loraWeightInput.oninput = (e) => {
             loraWeight = parseFloat(e.target.value) || 1.0;
+            saveSettings();
         };
     }
+
+    // ── Studio settings persistence (Feature 12) ──
+    const PERSIST_KEY = 'hg_image_studio_state';
+    const saveSettings = () => {
+        try {
+            const state = {
+                selectedModel, selectedModelName, selectedAr,
+                quality: document.getElementById('quality-btn-label')?.textContent || '',
+                imageMode, uploadedImageUrls,
+                batchCount, prompt: textarea.value,
+                selectedStyle, negativePrompt, guidanceScale, steps, seed,
+                customWidth, customHeight, referenceStrength, selectedLora, loraWeight,
+                useLocalModel, selectedLocalModel,
+                selectedEffect,
+            };
+            localStorage.setItem(PERSIST_KEY, JSON.stringify(state));
+        } catch (e) { /* ignore */ }
+    };
+    const loadSettings = () => {
+        try {
+            const s = JSON.parse(localStorage.getItem(PERSIST_KEY) || '{}');
+            if (s.selectedModel) {
+                selectedModel = s.selectedModel;
+                selectedModelName = s.selectedModelName || selectedModelName;
+                const ml = document.getElementById('model-btn-label'); if (ml) ml.textContent = selectedModelName;
+            }
+            if (s.selectedAr) {
+                selectedAr = s.selectedAr;
+                const al = document.getElementById('ar-btn-label'); if (al) al.textContent = selectedAr;
+            }
+            if (s.quality) {
+                const ql = document.getElementById('quality-btn-label'); if (ql) ql.textContent = s.quality;
+            }
+            if (typeof s.imageMode === 'boolean') imageMode = s.imageMode;
+            if (Array.isArray(s.uploadedImageUrls)) uploadedImageUrls = s.uploadedImageUrls;
+            if (typeof s.batchCount === 'number') {
+                batchCount = s.batchCount;
+                const be = document.getElementById('batch-value'); if (be) be.textContent = batchCount;
+                const bs = document.getElementById('batch-slider'); if (bs) bs.value = batchCount;
+            }
+            if (typeof s.prompt === 'string' && s.prompt) textarea.value = s.prompt;
+            if (typeof s.selectedStyle === 'string') selectedStyle = s.selectedStyle;
+            if (typeof s.negativePrompt === 'string') negativePrompt = s.negativePrompt;
+            if (typeof s.guidanceScale === 'number') guidanceScale = s.guidanceScale;
+            if (typeof s.steps === 'number') steps = s.steps;
+            if (typeof s.seed === 'number') seed = s.seed;
+            if (typeof s.customWidth === 'number') customWidth = s.customWidth;
+            if (typeof s.customHeight === 'number') customHeight = s.customHeight;
+            if (typeof s.referenceStrength === 'number') referenceStrength = s.referenceStrength;
+            if (typeof s.selectedLora === 'string') selectedLora = s.selectedLora;
+            if (typeof s.loraWeight === 'number') loraWeight = s.loraWeight;
+            if (typeof s.useLocalModel === 'boolean') useLocalModel = s.useLocalModel;
+            if (s.selectedLocalModel) selectedLocalModel = s.selectedLocalModel;
+            if (typeof s.selectedEffect === 'string') selectedEffect = s.selectedEffect;
+            updateEffectBtn();
+            updateSwapBtn();
+        } catch (e) { /* ignore */ }
+    };
     
     // Style preset handlers
     advancedPanel.querySelectorAll('.style-preset-btn').forEach(btn => {
@@ -699,8 +873,9 @@ export function ImageStudio() {
                 b.classList.add('bg-white/5', 'text-secondary');
             });
             btn.classList.add('bg-primary/20', 'text-primary', 'border-primary/30');
-            btn.classList.remove('bg-white/5', 'text-secondary');
-        };
+                btn.classList.remove('bg-white/5', 'text-secondary');
+                saveSettings();
+            };
     });
     // ==========================================
     // 3. DROPDOWNS (Professional implementation)
@@ -714,21 +889,54 @@ export function ImageStudio() {
         dropdown.classList.add('opacity-100', 'pointer-events-auto');
 
         if (type === 'model') {
-            dropdown.classList.add('w-[calc(100vw-3rem)]', 'max-w-xs');
-            dropdown.classList.remove('max-w-[240px]', 'max-w-[200px]');
+            dropdown.classList.add('max-w-md');
+            dropdown.classList.remove('max-w-[240px]', 'max-w-[200px]', 'w-[calc(100vw-3rem)]', 'max-w-xs');
             dropdown.innerHTML = `
-                <div class="flex flex-col h-full max-h-[70vh]">
-                    <div class="px-2 pb-3 mb-2 border-b border-white/5 shrink-0">
-                        <div class="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-2.5 border border-white/5 focus-within:border-primary/50 transition-colors">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="text-muted"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                            <input type="text" id="model-search" placeholder="${t('common.searchModels')}" class="bg-transparent border-none text-xs text-white focus:ring-0 w-full p-0">
+                <div class="flex gap-3 h-full max-h-[70vh] min-h-[320px] overflow-hidden">
+                    <div id="model-provider-tabs" class="flex flex-col gap-2 items-center pr-3 border-r border-white/5 shrink-0 overflow-y-auto custom-scrollbar w-12 py-0.5"></div>
+                    <div class="flex-1 flex flex-col gap-2 min-w-0">
+                        <div class="border-b border-white/5 shrink-0 pb-2">
+                            <div class="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-2 border border-white/5 focus-within:border-primary/50 transition-colors">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="text-muted"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                                <input type="text" id="model-search" placeholder="${t('common.searchModels')}" class="bg-transparent border-none text-xs text-white focus:ring-0 w-full p-0">
+                            </div>
                         </div>
+                        <div class="text-xs font-semibold text-secondary py-1 shrink-0">Available models</div>
+                        <div id="model-list-container" class="flex flex-col gap-1.5 overflow-y-auto custom-scrollbar pr-1 pb-2 flex-1"></div>
                     </div>
-                    <div class="text-[10px] font-bold text-secondary uppercase tracking-widest px-3 py-2 shrink-0">Available models</div>
-                    <div id="model-list-container" class="flex flex-col gap-1.5 overflow-y-auto custom-scrollbar pr-1 pb-2"></div>
                 </div>
             `;
             const list = dropdown.querySelector('#model-list-container');
+            const tabsEl = dropdown.querySelector('#model-provider-tabs');
+
+            const renderTabs = () => {
+                tabsEl.innerHTML = '';
+                if (useLocalModel) return; // local models have no provider logos
+                const models = getCurrentModels();
+                const seen = new Set();
+                const providers = [];
+                models.forEach(m => {
+                    const pId = m.provider || 'muapi';
+                    if (!seen.has(pId)) { seen.add(pId); providers.push({ id: pId, name: m.provider_name || 'Muapi' }); }
+                });
+                const mkTab = (pId, pName, isAll) => {
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    const active = isAll ? modelProviderFilter === 'all' : modelProviderFilter === pId;
+                    b.className = `w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center border transition-all ${active ? 'bg-white/10 text-yellow-400 border-yellow-500/30 scale-105 shadow-md' : 'bg-white/[0.02] text-white/50 border-white/[0.03] hover:bg-white/5 hover:text-white'}`;
+                    b.title = pName;
+                    if (PROVIDER_LOGOS[pId]) {
+                        b.innerHTML = `<img src="${PROVIDER_LOGOS[pId]}" alt="${pName}" class="w-full h-full rounded-full object-contain ${invertLogos.includes(pId) ? 'invert' : ''}">`;
+                    } else {
+                        b.textContent = (pName || 'AI').substring(0, 2);
+                    }
+                    b.onclick = (e) => { e.stopPropagation(); modelProviderFilter = pId; renderTabs(); renderModels(); };
+                    return b;
+                };
+                tabsEl.appendChild(mkTab('all', 'All Providers', true));
+                providers.forEach(p => tabsEl.appendChild(mkTab(p.id, p.name, false)));
+            };
+            renderTabs();
 
             const renderModels = (filter = '') => {
                 list.innerHTML = '';
@@ -766,6 +974,7 @@ export function ImageStudio() {
                             selectedAr = m.aspectRatios[0];
                             document.getElementById('ar-btn-label').textContent = selectedAr;
                             qualityBtn.style.display = 'none';
+                            saveSettings();
                             closeDropdown();
                         };
                         list.appendChild(item);
@@ -774,16 +983,32 @@ export function ImageStudio() {
                 }
 
                 // ── Remote (API) model list ───────────────────────────────────
-                const filtered = getCurrentModels().filter(m => m.name.toLowerCase().includes(filter.toLowerCase()) || m.id.toLowerCase().includes(filter.toLowerCase()));
+                const q = (filter || '').toLowerCase();
+                const filtered = getCurrentModels().filter(m => {
+                    if (modelProviderFilter !== 'all') {
+                        const pId = m.provider || 'muapi';
+                        if (pId !== modelProviderFilter) return false;
+                    }
+                    return m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q);
+                });
+
+                if (filtered.length === 0) {
+                    list.innerHTML = `<div class="text-xs text-muted text-center py-4">${t('common.noResults')}</div>`;
+                    return;
+                }
 
                 filtered.forEach(m => {
+                    const logo = PROVIDER_LOGOS[m.provider]
+                        ? `<img src="${PROVIDER_LOGOS[m.provider]}" alt="${m.provider_name || ''}" class="w-8 h-8 rounded-full object-contain p-1 ${invertLogos.includes(m.provider) ? 'invert' : ''}">`
+                        : `<div class="w-8.5 h-8.5 ${m.family === 'kontext' ? 'bg-blue-500/10 text-blue-400' : m.family === 'effects' ? 'bg-purple-500/10 text-purple-400' : 'bg-primary/10 text-primary'} border rounded-full flex items-center justify-center font-bold text-xs shadow-inner uppercase">${m.name.charAt(0)}</div>`;
                     const item = document.createElement('div');
-                    item.className = `flex items-center justify-between p-3.5 hover:bg-white/5 rounded-2xl cursor-pointer transition-all border border-transparent hover:border-white/5 ${selectedModel === m.id ? 'bg-white/5 border-white/5' : ''}`;
+                    item.className = `flex items-center justify-between p-3 hover:bg-white/5 rounded-2xl cursor-pointer transition-all border border-transparent hover:border-white/5 ${selectedModel === m.id ? 'bg-white/5 border-white/5' : ''}`;
                     item.innerHTML = `
                         <div class="flex items-center gap-3.5">
-                             <div class="w-10 h-10 ${m.family === 'kontext' ? 'bg-blue-500/10 text-blue-400' : m.family === 'effects' ? 'bg-purple-500/10 text-purple-400' : 'bg-primary/10 text-primary'} border border-white/5 rounded-xl flex items-center justify-center font-black text-sm shadow-inner uppercase">${m.name.charAt(0)}</div>
+                             ${logo}
                              <div class="flex flex-col gap-0.5">
                                 <span class="text-xs font-bold text-white tracking-tight">${m.name}</span>
+                                ${modelProviderFilter === 'all' && m.provider_name ? `<span class="text-[10px] text-white/40">${m.provider_name}</span>` : ''}
                              </div>
                         </div>
                         ${selectedModel === m.id ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="4"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
@@ -806,8 +1031,13 @@ export function ImageStudio() {
                         // Update picker's max images when switching i2i models
                         if (imageMode) {
                             picker.setMaxImages(getMaxImagesForI2IModel(selectedModel));
+                            selectedEffect = '';
+                            updateEffectBtn();
+                            swapImageUrl = '';
+                            updateSwapBtn();
                         }
 
+                        saveSettings();
                         closeDropdown();
                     };
                     list.appendChild(item);
@@ -843,6 +1073,7 @@ export function ImageStudio() {
                     e.stopPropagation();
                     selectedAr = r;
                     document.getElementById('ar-btn-label').textContent = r;
+                    saveSettings();
                     closeDropdown();
                 };
                 list.appendChild(item);
@@ -866,6 +1097,32 @@ export function ImageStudio() {
                 item.onclick = (e) => {
                     e.stopPropagation();
                     document.getElementById('quality-btn-label').textContent = opt;
+                    saveSettings();
+                    closeDropdown();
+                };
+                list.appendChild(item);
+            });
+            dropdown.appendChild(list);
+        } else if (type === 'effect') {
+            dropdown.classList.add('max-w-[200px]');
+            dropdown.classList.remove('max-w-[240px]', 'max-w-xs', 'max-w-md');
+            dropdown.innerHTML = `<div class="text-[10px] font-bold text-secondary uppercase tracking-widest px-3 py-2 border-b border-white/5 mb-2">Effect Type</div>`;
+            const list = document.createElement('div');
+            list.className = 'flex flex-col gap-1';
+            const effects = getEffectsForI2IModel(selectedModel);
+            effects.forEach(eff => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between p-3.5 hover:bg-white/5 rounded-2xl cursor-pointer transition-all group';
+                item.innerHTML = `
+                    <span class="text-xs font-bold text-white opacity-80 group-hover:opacity-100">${eff}</span>
+                    ${selectedEffect === eff ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="4"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+                `;
+                item.onclick = (e) => {
+                    e.stopPropagation();
+                    selectedEffect = eff;
+                    const lbl = document.getElementById('effect-btn-label');
+                    if (lbl) lbl.textContent = eff;
+                    saveSettings();
                     closeDropdown();
                 };
                 list.appendChild(item);
@@ -925,6 +1182,15 @@ export function ImageStudio() {
         }
     };
 
+    effectBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (dropdownOpen === 'effect') closeDropdown();
+        else {
+            dropdownOpen = 'effect';
+            showDropdown('effect', effectBtn);
+        }
+    };
+
     window.onclick = () => closeDropdown();
     container.appendChild(dropdown);
 
@@ -933,21 +1199,33 @@ export function ImageStudio() {
     // ==========================================
     const generationHistory = [];
 
-    // History sidebar
-    const historySidebar = document.createElement('div');
-    historySidebar.className = 'fixed right-0 top-0 h-full w-20 md:w-24 bg-black/60 backdrop-blur-xl border-l border-white/5 z-50 flex flex-col items-center py-4 gap-3 overflow-y-auto transition-all duration-500 translate-x-full opacity-0';
-    historySidebar.id = 'history-sidebar';
+    // History gallery (Features 11/13) — responsive grid in the main flow
+    const gallery = document.createElement('div');
+    gallery.className = 'w-full max-w-7xl mx-auto px-2 pb-32 mt-8';
+    gallery.id = 'image-gallery';
+    gallery.style.display = 'none';
+    const galleryGrid = document.createElement('div');
+    galleryGrid.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6';
+    gallery.appendChild(galleryGrid);
+    container.appendChild(gallery);
 
-    const historyLabel = document.createElement('div');
-    historyLabel.className = 'text-[9px] font-bold text-muted uppercase tracking-widest mb-2 rotate-0';
-    historyLabel.textContent = t('common.history');
-    historySidebar.appendChild(historyLabel);
-
-    const historyList = document.createElement('div');
-    historyList.className = 'flex flex-col gap-2 w-full px-2';
-    historySidebar.appendChild(historyList);
-
-    container.appendChild(historySidebar);
+    // Fullscreen modal (Feature 13)
+    const fullscreenModal = document.createElement('div');
+    fullscreenModal.className = 'fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm hidden';
+    const fsImg = document.createElement('img');
+    fsImg.className = 'max-w-[95vw] max-h-[95vh] rounded-2xl shadow-2xl object-contain';
+    fsImg.onclick = (e) => e.stopPropagation();
+    fullscreenModal.appendChild(fsImg);
+    const fsClose = document.createElement('button');
+    fsClose.type = 'button';
+    fsClose.className = 'absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors border border-white/10';
+    fsClose.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+    fsClose.onclick = () => closeFullscreen();
+    fullscreenModal.appendChild(fsClose);
+    fullscreenModal.onclick = () => closeFullscreen();
+    document.body.appendChild(fullscreenModal);
+    function openFullscreen(url) { fsImg.src = url; fullscreenModal.classList.remove('hidden'); }
+    function closeFullscreen() { fullscreenModal.classList.add('hidden'); fsImg.src = ''; }
 
     // Main canvas
     const canvas = document.createElement('div');
@@ -1006,44 +1284,77 @@ export function ImageStudio() {
         // Save to localStorage
         localStorage.setItem('muapi_history', JSON.stringify(generationHistory.slice(0, 50)));
 
-        // Show sidebar
-        historySidebar.classList.remove('translate-x-full', 'opacity-0');
-        historySidebar.classList.add('translate-x-0', 'opacity-100');
-
         renderHistory();
     };
 
     const renderHistory = () => {
-        historyList.innerHTML = '';
+        galleryGrid.innerHTML = '';
+        if (generationHistory.length === 0) {
+            gallery.style.display = 'none';
+            return;
+        }
+        gallery.style.display = '';
+
+        const svgFull = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+        const svgDown = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>';
+        const svgDel = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>';
+
         generationHistory.forEach((entry, idx) => {
-            const thumb = document.createElement('div');
-            thumb.className = `relative group/thumb cursor-pointer rounded-xl overflow-hidden border-2 transition-all duration-300 ${idx === 0 ? 'border-primary shadow-glow' : 'border-white/10 hover:border-white/30'}`;
+            const card = document.createElement('div');
+            card.className = 'relative group rounded-lg overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-xl hover:border-primary/50 transition-all duration-300 flex flex-col animate-fade-in-up';
 
-            thumb.innerHTML = `
-                <img src="${entry.url}" alt="${entry.prompt?.substring(0, 30) || 'Generated'}" class="w-full aspect-square object-cover">
-                <div class="absolute inset-0 bg-black/60 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                    <button class="hist-download p-1.5 bg-primary rounded-lg text-black hover:scale-110 transition-transform" title="Download">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                    </button>
-                </div>
-            `;
+            const img = document.createElement('img');
+            img.src = entry.url;
+            img.alt = entry.prompt?.substring(0, 30) || 'Generated image';
+            img.className = 'w-full aspect-square object-cover bg-black/40 cursor-pointer hover:opacity-80 transition-opacity';
+            img.onclick = () => openFullscreen(entry.url);
+            card.appendChild(img);
 
-            thumb.onclick = (e) => {
-                if (e.target.closest('.hist-download')) {
-                    downloadImage(entry.url, `muapi-${entry.id || idx}.jpg`);
-                    return;
-                }
-                showImageInCanvas(entry.url);
-                // Update active border
-                historyList.querySelectorAll('div').forEach(t => {
-                    t.classList.remove('border-primary', 'shadow-glow');
-                    t.classList.add('border-white/10');
-                });
-                thumb.classList.remove('border-white/10');
-                thumb.classList.add('border-primary', 'shadow-glow');
+            // Hover actions (Feature 13: fullscreen / download / delete)
+            const actions = document.createElement('div');
+            actions.className = 'absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity';
+            const mkBtn = (title, svg, handler) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.title = title;
+                b.className = 'p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10';
+                b.innerHTML = svg;
+                b.onclick = (e) => { e.stopPropagation(); handler(); };
+                return b;
             };
+            actions.appendChild(mkBtn('Fullscreen', svgFull, () => openFullscreen(entry.url)));
+            actions.appendChild(mkBtn('Download', svgDown, () => downloadImage(entry.url, `muapi-${entry.id || idx}.jpg`)));
+            actions.appendChild(mkBtn('Delete', svgDel, () => {
+                if (confirm('Delete this generated image?')) {
+                    generationHistory.splice(idx, 1);
+                    localStorage.setItem('muapi_history', JSON.stringify(generationHistory.slice(0, 50)));
+                    renderHistory();
+                }
+            }));
+            card.appendChild(actions);
 
-            historyList.appendChild(thumb);
+            // Prompt + meta
+            const meta = document.createElement('div');
+            meta.className = 'p-3 bg-black/80 backdrop-blur-sm border-t border-white/5 flex-1 flex flex-col justify-between gap-2';
+            const p = document.createElement('p');
+            p.className = 'text-white/70 text-xs line-clamp-3 leading-relaxed';
+            p.textContent = entry.prompt || 'No prompt provided';
+            p.title = entry.prompt;
+            const metaRow = document.createElement('div');
+            metaRow.className = 'flex items-center justify-between mt-1';
+            const modelBadge = document.createElement('span');
+            modelBadge.className = 'text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded border border-primary/20';
+            modelBadge.textContent = (entry.model || '').replace('-', ' ');
+            const arSpan = document.createElement('span');
+            arSpan.className = 'text-[10px] text-white/40';
+            arSpan.textContent = entry.aspect_ratio || '';
+            metaRow.appendChild(modelBadge);
+            metaRow.appendChild(arSpan);
+            meta.appendChild(p);
+            meta.appendChild(metaRow);
+            card.appendChild(meta);
+
+            galleryGrid.appendChild(card);
         });
     };
 
@@ -1066,13 +1377,16 @@ export function ImageStudio() {
         }
     };
 
+    // Feature 14: Draw modal
+    const drawModal = DrawModal({ apiKey: localStorage.getItem('muapi_key') || '', onAddHistoryItem: addToHistory });
+    document.body.appendChild(drawModal.el);
+    drawBtn.onclick = () => { drawModal.open(); };
+
     // --- Load history from localStorage ---
     try {
         const saved = JSON.parse(localStorage.getItem('muapi_history') || '[]');
         if (saved.length > 0) {
             saved.forEach(e => generationHistory.push(e));
-            historySidebar.classList.remove('translate-x-full', 'opacity-0');
-            historySidebar.classList.add('translate-x-0', 'opacity-100');
             renderHistory();
         }
     } catch (e) { /* ignore */ }
@@ -1245,65 +1559,50 @@ export function ImageStudio() {
 
         hero.classList.add('opacity-0', 'scale-95', '-translate-y-10', 'pointer-events-none');
         generateBtn.disabled = true;
-        generateBtn.innerHTML = `<span class="animate-spin inline-block mr-2 text-black">◌</span> Generating...`;
 
         let hadError = false;
-        let capturedRequestId = null;
         const historyMeta = { prompt, model: selectedModel, aspect_ratio: selectedAr };
 
-        try {
-            let res;
+        // Feature 6: one generation; called N times in parallel for batch size.
+        const generateOnce = async (idx) => {
             const qualityLabel = document.getElementById('quality-btn-label')?.textContent;
-            if (imageMode) {
-                const genParams = {
-                    model: selectedModel,
-                    images_list: uploadedImageUrls,
-                    image_url: uploadedImageUrls[0], // backward compat for single-image models
-                    aspect_ratio: selectedAr,
-                    onRequestId: (rid) => {
-                        capturedRequestId = rid;
-                        savePendingJob({ requestId: rid, studioType: 'image', historyMeta, maxAttempts: 60, interval: 2000, submittedAt: Date.now() });
-                    }
-                };
-                if (prompt) genParams.prompt = prompt;
-                const qualityField = getCurrentQualityField(selectedModel);
-                if (qualityField && qualityLabel) genParams[qualityField] = qualityLabel;
-                res = await muapi.generateI2I(genParams);
-            } else {
-                const genParams = {
-                    model: selectedModel,
-                    prompt,
-                    aspect_ratio: selectedAr,
-                    onRequestId: (rid) => {
-                        capturedRequestId = rid;
-                        savePendingJob({ requestId: rid, studioType: 'image', historyMeta, maxAttempts: 60, interval: 2000, submittedAt: Date.now() });
-                    }
-                };
-                const qualityField = getCurrentQualityField(selectedModel);
-                if (qualityField && qualityLabel) genParams[qualityField] = qualityLabel;
-                res = await muapi.generateImage(genParams);
-            }
-
-            console.log('[ImageStudio] Full response:', res);
-
+            const genParams = imageMode
+                ? { model: selectedModel, images_list: uploadedImageUrls, image_url: uploadedImageUrls[0], aspect_ratio: selectedAr }
+                : { model: selectedModel, prompt, aspect_ratio: selectedAr };
+            if (prompt) genParams.prompt = prompt;
+            const qualityField = getCurrentQualityField(selectedModel);
+            if (qualityField && qualityLabel) genParams[qualityField] = qualityLabel;
+            // Feature 5 (effects) + Feature 7 (swap face)
+            if (imageMode && selectedEffect) genParams.name = selectedEffect;
+            if (imageMode && swapImageUrl) genParams.swap_url = swapImageUrl;
+            let capturedRequestId = null;
+            genParams.onRequestId = (rid) => {
+                capturedRequestId = rid;
+                savePendingJob({ requestId: rid, studioType: 'image', historyMeta, maxAttempts: 60, interval: 2000, submittedAt: Date.now() });
+            };
+            const res = await (imageMode ? muapi.generateI2I(genParams) : muapi.generateImage(genParams));
+            if (capturedRequestId) removePendingJob(capturedRequestId);
             if (res && res.url) {
-                if (capturedRequestId) removePendingJob(capturedRequestId);
                 addToHistory({
-                    id: res.id || capturedRequestId || Date.now().toString(),
+                    id: res.id || `${Date.now().toString()}-${idx}`,
                     url: res.url,
-                    prompt: prompt,
+                    prompt,
                     model: selectedModel,
                     aspect_ratio: selectedAr,
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().toISOString(),
                 });
                 showImageInCanvas(res.url);
-            } else {
-                console.error('[ImageStudio] No image URL in response:', res);
-                throw new Error('No image URL returned by API');
+                return res;
             }
+            throw new Error('No image URL returned by API');
+        };
+
+        try {
+            const runs = Math.max(1, batchCount || 1);
+            generateBtn.innerHTML = `<span class="animate-spin inline-block mr-2 text-black">◌</span> ${t('common.generating')} ${runs}…`;
+            await Promise.all(Array.from({ length: runs }, (_, i) => generateOnce(i)));
         } catch (e) {
             hadError = true;
-            if (capturedRequestId) removePendingJob(capturedRequestId);
             console.error(e);
             // Restore hero so the page doesn't look broken after a failed generation
             hero.classList.remove('opacity-0', 'scale-95', '-translate-y-10', 'pointer-events-none');
@@ -1317,6 +1616,9 @@ export function ImageStudio() {
             if (!hadError) generateBtn.innerHTML = t('common.generate');
         }
     };
+
+    // Restore persisted studio settings (Feature 12)
+    loadSettings();
 
     return container;
 }
