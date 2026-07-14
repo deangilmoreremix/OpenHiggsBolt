@@ -5,8 +5,21 @@ import { getModelById, getVideoModelById, getI2IModelById, getI2VModelById, getV
 // bundles cleanly in the browser (Turbopack/Webpack/Vite) with no fs/JSON-assert.
 import thumbnailLocalMap from './thumbnail-map.js';
 
+// A URL is already "final" (no further rewriting needed) when it is a
+// same-origin path — either a local file under /public (e.g.
+// /thumbnails/workflows/foo.jpg) or an already-proxied URL
+// (/api/thumbnail?url=...). This makes the function idempotent so it can be
+// applied safely on data that the /api/workflow and /api/agents proxies have
+// ALREADY rewritten (previously a second pass turned local paths into broken
+// "/api/thumbnail?url=/thumbnails/..." URLs, collapsing every card to the
+// placeholder).
+function isFinalUrl(url) {
+  return typeof url === 'string' && url.startsWith('/');
+}
+
 export function rewriteThumbnail(url) {
   if (!url || typeof url !== 'string') return url;
+  if (isFinalUrl(url)) return url;
   if (thumbnailLocalMap[url]) return thumbnailLocalMap[url];
   // Same-origin proxy: server fetches the upstream image (with Referer) and
   // streams it back so it always loads regardless of CDN hotlink protection.
@@ -16,10 +29,16 @@ export function rewriteThumbnail(url) {
 export function rewriteThumbnails(list) {
   if (!Array.isArray(list)) return list;
   return list.map((item) => {
-    if (item && item.thumbnail) {
-      return { ...item, thumbnail: rewriteThumbnail(item.thumbnail) };
+    if (!item || typeof item !== 'object') return item;
+    let next = item;
+    if (item.thumbnail) {
+      next = { ...next, thumbnail: rewriteThumbnail(item.thumbnail) };
     }
-    return item;
+    // Agents expose their artwork as `icon_url` rather than `thumbnail`.
+    if (item.icon_url) {
+      next = { ...next, icon_url: rewriteThumbnail(item.icon_url) };
+    }
+    return next;
   });
 }
 

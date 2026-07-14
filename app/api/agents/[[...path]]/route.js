@@ -2,6 +2,33 @@ import { NextResponse } from 'next/server';
 
 const MUAPI_BASE = 'https://api.muapi.ai';
 
+// Rewrite upstream artwork URLs (icon_url / thumbnail / agent_icon_url) into our
+// same-origin /api/thumbnail proxy so CDN hotlink protection can't block them in
+// the browser. Idempotent: already-local or already-proxied URLs pass through.
+function proxyArtworkUrl(url) {
+  if (!url || typeof url !== 'string' || url.startsWith('/')) return url;
+  return `/api/thumbnail?url=${encodeURIComponent(url)}`;
+}
+
+function rewriteArtwork(item) {
+  if (!item || typeof item !== 'object') return item;
+  const next = { ...item };
+  for (const key of ['icon_url', 'thumbnail', 'agent_icon_url']) {
+    if (next[key]) next[key] = proxyArtworkUrl(next[key]);
+  }
+  return next;
+}
+
+function withProxiedArtwork(data) {
+  if (Array.isArray(data)) return data.map(rewriteArtwork);
+  if (data && typeof data === 'object') {
+    if (Array.isArray(data.agents)) data.agents = data.agents.map(rewriteArtwork);
+    if (Array.isArray(data.items)) data.items = data.items.map(rewriteArtwork);
+    if (Array.isArray(data.conversations)) data.conversations = data.conversations.map(rewriteArtwork);
+  }
+  return data;
+}
+
 function getApiKey(request) {
     // Priority 1: Direct x-api-key header
     const headerKey = request.headers.get('x-api-key');
@@ -43,7 +70,7 @@ export async function GET(request, { params }) {
     try {
         const response = await fetch(targetUrl, { headers, method: 'GET' });
         const data = await response.json();
-        return NextResponse.json(data, { status: response.status });
+        return NextResponse.json(withProxiedArtwork(data), { status: response.status });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
