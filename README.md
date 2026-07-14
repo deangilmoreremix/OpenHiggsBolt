@@ -610,7 +610,7 @@ SmartVideo-GO/
 ├── packages/
 │   └── studio/                 # Shared React component library
 │       └── src/
-│           ├── index.js        # Exports: ImageStudio, VideoStudio, AudioStudio, ClippingStudio, VibeMotionStudio, LipSyncStudio, CinemaStudio, MarketingStudio, RecastStudio, WorkflowStudio, AgentStudio, DesignAgentStudio, AppsStudio, AiInfluencerStudio
+│           ├── index.js        # Exports: ImageStudio, VideoStudio, AudioStudio, ClippingStudio, VibeMotionStudio, LipSyncStudio, CinemaStudio, MarketingStudio, RecastStudio, WorkflowStudio, AgentStudio, DesignAgentStudio, AiInfluencerStudio
 │           # (Note: the live Design Agent AI tab uses src/apps/design-agent/DesignAgent; the package DesignAgentStudio wrapper is unused)
 │           ├── models.js       # 200+ model definitions (single source of truth)
 │           ├── muapi.js        # API client (named exports, apiKey as first param)
