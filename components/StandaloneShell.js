@@ -23,7 +23,6 @@ const MarketingStudio = loadStudio('MarketingStudio');
 const RecastStudio = loadStudio('RecastStudio');
 const WorkflowStudio = loadStudio('WorkflowStudio');
 const AgentStudio = loadStudio('AgentStudio');
-const AppsStudio = loadStudio('AppsStudio');
 const AiInfluencerStudio = loadStudio('AiInfluencerStudio');
 
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
@@ -61,6 +60,8 @@ const SLUG_TO_TAB = {
   'vfx-studio': 'vfx-studio',
   'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio',
   apps: 'apps',
+  'ai-influencer': 'ai-influencer',
+  'social-publishing': 'social-publishing',
 };
 
 const STORAGE_KEY = 'muapi_key';
