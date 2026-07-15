@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { ImageStudio, VideoStudio, ClippingStudio, VibeMotionStudio, LipSyncStudio, RecastStudio, CinemaStudio, AudioStudio, MarketingStudio, WorkflowStudio, AgentStudio, AppsStudio, AiInfluencerStudio, getUserBalance } from 'studio';
@@ -80,6 +80,32 @@ export default function StandaloneShell() {
   const [isDragging, setIsDragging] = useState(false);
   const [droppedFiles, setDroppedFiles] = useState(null);
 
+  // ── Global Generation Notifications ────────────────────────────────────────
+  const [notifications, setNotifications] = useState([]);
+  const activeTabRef = useRef(null);
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+
+  const pushNotification = useCallback((notif) => {
+    const id = `notif-${Date.now()}-${Math.random()}`;
+    const entry = { ...notif, id };
+    setNotifications(prev => [entry, ...prev].slice(0, 5));
+    const ttl = notif.type === 'success' ? 8000 : 6000;
+    setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), ttl);
+  }, []);
+
+  const dismissNotification = useCallback((id) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  }, []);
+
+  const makeSuccessCallback = useCallback((tabId) => (data) => {
+    const tab = TABS.find(t => t.id === tabId);
+    pushNotification({ type: 'success', tabId, label: tab?.label || tabId, data });
+  }, [pushNotification]);
+
+  const makeErrorCallback = useCallback((tabId) => (message) => {
+    const tab = TABS.find(t => t.id === tabId);
+    pushNotification({ type: 'error', tabId, label: tab?.label || tabId, message });
+  }, [pushNotification]);
 
   // Popstate event listener to sync tab state with URL on back/forward navigation
   useEffect(() => {
@@ -364,31 +390,31 @@ export default function StandaloneShell() {
       {/* Studio Content */}
       <div className="flex-1 min-h-0 relative overflow-hidden">
         <div className={activeTab === 'image' ? "h-full w-full" : "hidden"}>
-          <ImageStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />
+          <ImageStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationComplete={makeSuccessCallback('image')} onGenerationError={makeErrorCallback('image')} />
         </div>
         <div className={activeTab === 'video' ? "h-full w-full" : "hidden"}>
-          <VideoStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />
+          <VideoStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationComplete={makeSuccessCallback('video')} onGenerationError={makeErrorCallback('video')} />
         </div>
         <div className={activeTab === 'clipping' ? "h-full w-full" : "hidden"}>
-          <ClippingStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />
+          <ClippingStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationComplete={makeSuccessCallback('clipping')} onGenerationError={makeErrorCallback('clipping')} />
         </div>
         <div className={activeTab === 'vibe-motion' ? "h-full w-full" : "hidden"}>
-          <VibeMotionStudio apiKey={apiKey} />
+          <VibeMotionStudio apiKey={apiKey} onGenerationComplete={makeSuccessCallback('vibe-motion')} onGenerationError={makeErrorCallback('vibe-motion')} />
         </div>
         <div className={activeTab === 'lipsync' ? "h-full w-full" : "hidden"}>
-          <LipSyncStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />
+          <LipSyncStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationComplete={makeSuccessCallback('lipsync')} onGenerationError={makeErrorCallback('lipsync')} />
         </div>
         <div className={activeTab === 'body-swap' ? "h-full w-full" : "hidden"}>
-          <RecastStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />
+          <RecastStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationComplete={makeSuccessCallback('body-swap')} onGenerationError={makeErrorCallback('body-swap')} />
         </div>
         <div className={activeTab === 'cinema' ? "h-full w-full" : "hidden"}>
-          <CinemaStudio apiKey={apiKey} />
+          <CinemaStudio apiKey={apiKey} onGenerationComplete={makeSuccessCallback('cinema')} onGenerationError={makeErrorCallback('cinema')} />
         </div>
         <div className={activeTab === 'audio' ? "h-full w-full" : "hidden"}>
-          <AudioStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />
+          <AudioStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationComplete={makeSuccessCallback('audio')} onGenerationError={makeErrorCallback('audio')} />
         </div>
         <div className={activeTab === 'marketing' ? "h-full w-full" : "hidden"}>
-          <MarketingStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />
+          <MarketingStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationComplete={makeSuccessCallback('marketing')} onGenerationError={makeErrorCallback('marketing')} />
         </div>
         <div className={activeTab === 'workflows' ? "h-full w-full" : "hidden"}>
           <WorkflowStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />
@@ -408,6 +434,80 @@ export default function StandaloneShell() {
           <AiInfluencerStudio apiKey={apiKey} />
         </div>
       </div>
+
+      {/* ── Global Generation Notification Stack ── */}
+      {notifications.length > 0 && (
+        <div
+          aria-live="polite"
+          className="fixed bottom-6 right-6 z-[200] flex flex-col gap-3 pointer-events-none"
+          style={{ maxWidth: '360px' }}
+        >
+          {notifications.map((notif) => (
+            <div
+              key={notif.id}
+              className="pointer-events-auto flex items-start gap-3 bg-[#0e0e10] border rounded-xl px-4 py-3 shadow-2xl shadow-black/60"
+              style={{
+                borderColor: notif.type === 'success' ? 'rgba(34,211,238,0.35)' : 'rgba(239,68,68,0.35)',
+                borderLeftWidth: '3px',
+                borderLeftColor: notif.type === 'success' ? '#22d3ee' : '#ef4444',
+                animation: 'slideInRight 280ms cubic-bezier(0.16,1,0.3,1) forwards',
+              }}
+            >
+              {/* Icon */}
+              <div
+                className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center mt-0.5"
+                style={{ background: notif.type === 'success' ? 'rgba(34,211,238,0.12)' : 'rgba(239,68,68,0.12)' }}
+              >
+                {notif.type === 'success' ? (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+                ) : (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="3"><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                )}
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-bold text-white/90 leading-tight">
+                  {notif.label}
+                  <span className="font-normal text-white/50">
+                    {notif.type === 'success' ? ' · Generation complete' : ' · Generation failed'}
+                  </span>
+                </p>
+                {notif.type === 'error' && notif.message && (
+                  <p className="text-[11px] text-red-400/80 mt-0.5 leading-snug truncate" title={notif.message}>
+                    {notif.message}
+                  </p>
+                )}
+                {notif.type === 'success' && (
+                  <button
+                    onClick={() => { handleTabChange(notif.tabId); dismissNotification(notif.id); }}
+                    className="mt-1.5 text-[11px] font-bold text-[#22d3ee] hover:underline"
+                  >
+                    Open →
+                  </button>
+                )}
+              </div>
+
+              {/* Dismiss */}
+              <button
+                onClick={() => dismissNotification(notif.id)}
+                className="flex-shrink-0 text-white/30 hover:text-white/70 transition-colors text-lg leading-none mt-0.5"
+                aria-label="Dismiss"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Keyframe for toast slide-in */}
+      <style>{`
+        @keyframes slideInRight {
+          from { transform: translateX(110%); opacity: 0; }
+          to   { transform: translateX(0);    opacity: 1; }
+        }
+      `}</style>
 
       {/* Settings Modal */}
       {showSettings && (

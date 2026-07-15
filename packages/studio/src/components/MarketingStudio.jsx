@@ -250,7 +250,7 @@ function SimpleDropdown({ isOpen, title, options, selected, onSelect, onClose })
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled }) {
+export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled, onGenerationComplete, onGenerationError }) {
   const PERSIST_KEY = "hg_marketing_studio_persistent";
   
   const [prompt, setPrompt] = useState("");
@@ -369,9 +369,10 @@ export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled }
         };
         setHistory(prev => [entry, ...prev]);
         setFullscreenUrl(result.url);
+        onGenerationComplete?.({ url: result.url, type: "video" });
       }
     } catch (err) {
-      alert("Generation failed: " + err.message);
+      onGenerationError?.(err.message?.slice(0, 120) || "Marketing generation failed");
     } finally {
       setIsGenerating(false);
     }

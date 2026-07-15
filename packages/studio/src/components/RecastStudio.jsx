@@ -388,6 +388,7 @@ const ImageIcon = ({
 export default function RecastStudio({
   apiKey,
   onGenerationComplete,
+  onGenerationError,
   historyItems,
   droppedFiles,
   onFilesHandled,
@@ -745,6 +746,7 @@ export default function RecastStudio({
       console.error("[RecastStudio]", e);
       setGenerateError(e.message?.slice(0, 80) ?? "Unknown error");
       setTimeout(() => setGenerateError(null), 4000);
+      onGenerationError?.(e.message?.slice(0, 120) || "Body swap generation failed");
     } finally {
       setIsGenerating(false);
     }

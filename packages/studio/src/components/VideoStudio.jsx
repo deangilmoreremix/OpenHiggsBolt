@@ -410,6 +410,7 @@ function ControlBtn({ icon, label, onClick, style }) {
 export default function VideoStudio({
   apiKey,
   onGenerationComplete,
+  onGenerationError,
   historyItems,
   droppedFiles,
   onFilesHandled,
@@ -1287,6 +1288,7 @@ export default function VideoStudio({
       console.error("[VideoStudio]", e);
       setGenerateError(e.message?.slice(0, 80) || "Generation failed");
       setTimeout(() => setGenerateError(null), 4000);
+      onGenerationError?.(e.message?.slice(0, 120) || "Video generation failed");
     } finally {
       setGenerating(false);
     }

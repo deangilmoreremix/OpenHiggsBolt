@@ -90,6 +90,7 @@ const getAspectClass = (ar) => {
 export default function ClippingStudio({
   apiKey,
   onGenerationComplete,
+  onGenerationError,
   droppedFiles,
   onFilesHandled,
 }) {
@@ -397,6 +398,7 @@ export default function ClippingStudio({
     } catch (err) {
       console.error("[ClippingStudio] Error generating clips:", err);
       setGenerateError(err.message || "Failed to process AI clipping.");
+      onGenerationError?.(err.message?.slice(0, 120) || "AI Clipping failed");
     } finally {
       setIsGenerating(false);
     }

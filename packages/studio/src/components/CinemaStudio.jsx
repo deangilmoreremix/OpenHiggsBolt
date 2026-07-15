@@ -444,6 +444,7 @@ function CameraControlsOverlay({
 export default function CinemaStudio({
   apiKey,
   onGenerationComplete,
+  onGenerationError,
   historyItems,
 }) {
   const PERSIST_KEY = "hg_cinema_studio_persistent";
@@ -632,7 +633,7 @@ export default function CinemaStudio({
       }
     } catch (e) {
       console.error(e);
-      alert("Generation Failed: " + e.message);
+      onGenerationError?.(e.message?.slice(0, 120) || "Cinema generation failed");
     } finally {
       setIsGenerating(false);
     }

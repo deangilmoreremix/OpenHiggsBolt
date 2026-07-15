@@ -318,6 +318,7 @@ const VideoIcon = ({
 export default function LipSyncStudio({
   apiKey,
   onGenerationComplete,
+  onGenerationError,
   historyItems,
   droppedFiles,
   onFilesHandled,
@@ -692,6 +693,7 @@ export default function LipSyncStudio({
       console.error("[LipSyncStudio]", e);
       setGenerateError(e.message?.slice(0, 80) ?? "Unknown error");
       setTimeout(() => setGenerateError(null), 4000);
+      onGenerationError?.(e.message?.slice(0, 120) || "Lip sync generation failed");
     } finally {
       setIsGenerating(false);
     }

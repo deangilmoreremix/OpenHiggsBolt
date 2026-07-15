@@ -811,6 +811,7 @@ function SimpleDropdown({ title, options, selected, onSelect, onClose }) {
 export default function ImageStudio({
   apiKey,
   onGenerationComplete,
+  onGenerationError,
   historyItems,
   droppedFiles,
   onFilesHandled,
@@ -1176,6 +1177,7 @@ export default function ImageStudio({
       console.error("[ImageStudio] Generation failed:", e);
       setGenerateError(e.message.slice(0, 80));
       setTimeout(() => setGenerateError(null), 4000);
+      onGenerationError?.(e.message?.slice(0, 120) || "Image generation failed");
     } finally {
       setGenerating(false);
     }
