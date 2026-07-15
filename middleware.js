@@ -43,7 +43,18 @@ export default clerkMiddleware(async (auth, request) => {
 
     if (url.pathname.startsWith('/api/v1') && !isHandledByRoute) {
       const targetUrl = new URL(url.pathname + url.search, 'https://api.muapi.ai');
-      return NextResponse.rewrite(targetUrl);
+      // Rewrite preserves the original request headers, which would leak the
+      // app's session cookie (Clerk) and muapi_key to api.muapi.ai. Strip
+      // cookies and forward only what MuAPI needs.
+      const headers = new Headers(request.headers);
+      headers.delete('cookie');
+      const rewritten = new Request(targetUrl, {
+        method: request.method,
+        headers,
+        body: request.body,
+        redirect: 'follow',
+      });
+      return NextResponse.rewrite(rewritten);
     }
   }
 

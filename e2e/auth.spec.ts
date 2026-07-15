@@ -79,9 +79,15 @@ test.describe('Clerk auth integration', () => {
     });
 
     test('login reaches the studio', async ({ page }) => {
+      // The active session is reflected on the landing page (signed-in header).
+      // Auth controls (incl. the user button) live on the landing page, not on
+      // the standalone /studio shell, so we assert the session here first.
+      await page.goto('/');
+      await expect(page.getByRole('button', { name: /open user menu/i })).toBeVisible();
       await page.goto('/studio');
+      // Authenticated users reach the protected studio; unauthenticated users
+      // are redirected to /sign-in by middleware.
       await expect(page).toHaveURL(/\/studio/);
-      await expect(page.getByTestId('clerk-user-button')).toBeVisible();
     });
 
     test('account page (change password) is reachable and renders UserProfile', async ({
@@ -96,9 +102,11 @@ test.describe('Clerk auth integration', () => {
     test('logout (sign out) returns to the landing page', async ({ page }) => {
       await page.goto('/');
       await page.getByRole('button', { name: /open user menu/i }).click();
-      await page.getByRole('menuitem', { name: /sign out/i }).click();
+      // Clerk renders "Sign out" as a button inside the account panel.
+      await page.getByRole('button', { name: /sign out/i }).click();
       await expect(page).toHaveURL(/\/$/);
-      await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
+      // After sign-out the landing header shows the "Sign in" link (not a button).
+      await expect(page.getByRole('link', { name: /sign in/i })).toBeVisible();
     });
   });
 });

@@ -11,10 +11,14 @@ if (!process.env.CLERK_PUBLISHABLE_KEY && process.env.NEXT_PUBLIC_CLERK_PUBLISHA
 
 export default defineConfig({
   testDir: './e2e',
-  timeout: 60_000,
-  expect: { timeout: 15_000 },
-  fullyParallel: true,
-  retries: 0,
+  timeout: 90_000,
+  expect: { timeout: 30_000 },
+  // Clerk's testing-token sign-in and client-rendered auth forms don't play
+  // well with parallel workers (shared dev instance + CDN contention), so run
+  // serially. Retries absorb the occasional cold-start/rate-limit flake from
+  // the live Clerk dev instance.
+  fullyParallel: false,
+  retries: 1,
   reporter: 'list',
   use: {
     baseURL: 'http://localhost:3000',
