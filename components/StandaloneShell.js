@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import axios from 'axios';
@@ -73,6 +73,16 @@ function muapiCookie(value) {
     return `muapi_key=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax${secure}`;
   }
   return `muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
+}
+
+// MuAPI keys are opaque tokens. We only reject values containing whitespace or
+// control characters (almost always a copy/paste artifact) which would otherwise
+// be sent verbatim and fail auth. We deliberately do NOT strip or transform the
+// key beyond trimming, so a valid key with unusual-but-legal characters is
+// never corrupted.
+const API_KEY_SAFE = /^[^\s\x00-\x1F]+$/;
+function isValidApiKey(key) {
+  return typeof key === 'string' && key.length > 0 && API_KEY_SAFE.test(key);
 }
 
 export default function StandaloneShell({ embedded = false, initialTab = null } = {}) {
@@ -170,15 +180,21 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
     }
   }, [activeTab, urlWorkflowId, idFromParams]);
 
-  // Global builder CSS cleanup when switching away from Workflows or Design Agent tabs
+  // Global builder CSS cleanup when switching away from Workflows or Design Agent tabs.
+  // We only clear the session flags here. A full page reload was previously used
+  // to drop builder-injected global CSS, but it destroyed all other studios'
+  // in-memory state (generated assets, prompts, selections) — a data-loss
+  // footgun. Builders should expose an explicit teardown hook to remove their own
+  // DOM/CSS; until that exists we intentionally avoid the reload.
   useEffect(() => {
     const fromBuilder = sessionStorage.getItem("fromWorkflowBuilder");
     const fromDesignAgent = sessionStorage.getItem("fromDesignAgent");
-    
+
     if ((fromBuilder && activeTab !== 'workflows') || (fromDesignAgent && activeTab !== 'design-agent')) {
       sessionStorage.removeItem("fromWorkflowBuilder");
       sessionStorage.removeItem("fromDesignAgent");
-      window.location.reload();
+      // TODO(remediation): call the builder's teardown hook here instead of
+      // silently leaving its global CSS behind.
     }
   }, [activeTab]);
 
@@ -199,7 +215,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
     setHasMounted(true);
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      const cleanKey = stored.replace(/[^\u0000-\u00FF]/g, '').trim();
+      const cleanKey = stored.trim();
       setApiKey(cleanKey);
       fetchBalance(cleanKey);
       // Sync cookie immediately on mount to establish identity for background requests.
@@ -218,7 +234,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
         if (res.ok) {
           const data = await res.json();
           restored = data?.key
-            ? String(data.key).replace(/[^\u0000-\u00FF]/g, '').trim()
+            ? String(data.key).trim()
             : '';
         }
       } catch {
@@ -242,6 +258,10 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
   const handleKeySave = useCallback((key) => {
     const trimmed = key.trim();
     if (!trimmed) return;
+    if (!isValidApiKey(trimmed)) {
+      setAuthError('API key looks invalid (contains spaces or control characters). Re-copy it from your MuAPI dashboard.');
+      return;
+    }
     localStorage.setItem(STORAGE_KEY, trimmed);
     setApiKey(trimmed);
     setSettingsKeyInput('');
@@ -287,7 +307,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
       const isInternalProxy = config.url.includes('/api/app') || config.url.includes('/api/workflow') || config.url.includes('/api/agents') || config.url.includes('/api/api') || config.url.includes('/api/v1');
 
       if (isRelative || isInternalProxy) {
-        config.headers['x-api-key'] = apiKey.replace(/[^\u0000-\u00FF]/g, '').trim();
+        config.headers['x-api-key'] = apiKey.trim();
       }
       
       return config;
@@ -329,6 +349,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
   }, []);
 
   // Drag and Drop Handlers
+  const dragDepth = useRef(0);
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -337,22 +358,23 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
   const handleDragEnter = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-      setIsDragging(true);
-    }
+    dragDepth.current += 1;
+    setIsDragging(true);
   }, []);
 
   const handleDragLeave = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
-    // Only set to false if we're leaving the container itself, not moving between children
-    if (e.currentTarget.contains(e.relatedTarget)) return;
-    setIsDragging(false);
+    // Track nested enter/leave events with a depth counter so moving between
+    // child elements doesn't flicker the overlay off prematurely.
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setIsDragging(false);
   }, []);
 
   const handleDrop = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
+    dragDepth.current = 0;
     setIsDragging(false);
 
     const files = Array.from(e.dataTransfer.files);

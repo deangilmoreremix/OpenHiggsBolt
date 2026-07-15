@@ -27,14 +27,26 @@ describe('muapiKeyCrypto', () => {
     assert.equal(decryptMuapiKey(b), SAMPLE);
   });
 
-  it('stores ciphertext in the v1:<iv>:<tag>:<data> format', () => {
+  it('stores ciphertext in the v1:<salt>:<iv>:<tag>:<data> format', () => {
     const enc = encryptMuapiKey(SAMPLE);
     const parts = enc.split(':');
     assert.equal(parts[0], 'v1');
-    assert.equal(parts.length, 4);
-    // IV and tag are non-empty base64
+    assert.equal(parts.length, 5);
+    // salt, IV and tag are non-empty base64
     assert.ok(parts[1].length > 0);
     assert.ok(parts[2].length > 0);
+    assert.ok(parts[3].length > 0);
+  });
+
+  it('uses a UNIQUE random salt per encryption (no static salt)', () => {
+    // Distinct salts mean two encryptions of the same key differ beyond just
+    // the random IV — proving the KDF salt is not a shared constant.
+    const a = encryptMuapiKey(SAMPLE).split(':');
+    const b = encryptMuapiKey(SAMPLE).split(':');
+    assert.notEqual(a[1], b[1], 'per-row salt must differ between encryptions');
+    assert.notEqual(a, b);
+    assert.equal(decryptMuapiKey(a.join(':')), SAMPLE);
+    assert.equal(decryptMuapiKey(b.join(':')), SAMPLE);
   });
 
   it('returns null for empty / null / undefined input', () => {
@@ -50,12 +62,12 @@ describe('muapiKeyCrypto', () => {
 
   it('returns null when ciphertext is tampered (auth tag fails)', () => {
     const enc = encryptMuapiKey(SAMPLE);
-    const [prefix, iv, tag, data] = enc.split(':');
+    const [prefix, salt, iv, tag, data] = enc.split(':');
     // Corrupt the actual ciphertext bytes (not just the base64 text) so the
     // GCM authentication tag fails on decrypt.
     const buf = Buffer.from(data, 'base64');
     buf[buf.length - 1] ^= 0xff;
-    const tampered = `${prefix}:${iv}:${tag}:${buf.toString('base64')}`;
+    const tampered = `${prefix}:${salt}:${iv}:${tag}:${buf.toString('base64')}`;
     assert.equal(decryptMuapiKey(tampered), null);
   });
 

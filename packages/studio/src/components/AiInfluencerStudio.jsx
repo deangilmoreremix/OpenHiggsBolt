@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { generateImage } from "../muapi.js";
 
 const CDN = "https://cdn.muapi.ai/influencer";
@@ -350,6 +350,10 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
   const [history, setHistory] = useState([]);                  // all generated images
   const [selectedHistoryIdx, setSelectedHistoryIdx] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const abortRef = useRef(null);
+  // Abort any in-flight generation when this studio unmounts (e.g. the user
+  // switches tabs) so we stop polling MuAPI and burning API quota.
+  useEffect(() => () => { abortRef.current?.abort(); }, []);
 
   const isGenerating = externalIsGenerating || isGeneratingInternal;
 
@@ -390,6 +394,11 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
     setIsGeneratingInternal(true);
     setErrorMsg("");
 
+    // New controller per generation; also lets a tab-switch unmount abort a
+    // long-running poll loop early.
+    const ac = new AbortController();
+    abortRef.current = ac;
+
     const prompt = buildPrompt();
     try {
       let res;
@@ -400,14 +409,18 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
           model: INFLUENCER_MODEL,
           prompt,
           aspect_ratio: aspectRatio,
+          signal: ac.signal,
         });
       }
       if (res?.url) {
         setCurrentResult(res.url);
-        setHistory((prev) => [{ url: res.url, ts: Date.now() }, ...prev]);
+        // Bound history so a long session can't grow memory without limit.
+        setHistory((prev) => [{ url: res.url, ts: Date.now() }, ...prev].slice(0, 50));
         setSelectedHistoryIdx(0);
       }
     } catch (err) {
+      // Ignore aborts (unmount / superseded) — not a user-facing failure.
+      if (ac.signal.aborted) return;
       setErrorMsg(err?.message || "Generation failed. Please try again.");
     } finally {
       setIsGeneratingInternal(false);

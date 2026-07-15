@@ -9,11 +9,16 @@ function getApiKey(request) {
     return cookieKey;
 }
 
-function cleanHeaders(request) {
-    const headers = new Headers(request.headers);
-    headers.delete('host');
-    headers.delete('connection');
-    headers.delete('cookie');
+// Build the upstream request headers as a strict allowlist. We forward
+// ONLY what MuAPI needs (content type + the api key). Everything else from the
+// incoming browser request — including referer, user-agent, sec-fetch-*, and
+// any present auth/custom headers — is deliberately dropped so nothing is
+// leaked to the third-party upstream.
+function buildUpstreamHeaders(request, apiKey) {
+    const headers = new Headers();
+    const contentType = request.headers.get('content-type');
+    if (contentType) headers.set('content-type', contentType);
+    if (apiKey) headers.set('x-api-key', apiKey);
     return headers;
 }
 
@@ -23,22 +28,25 @@ export async function GET(request, { params }) {
     const slug = await params;
     const pathSegments = slug.path || [];
     const path = pathSegments.join('/');
-    
+
     const { search } = new URL(request.url);
     const targetUrl = `${MUAPI_BASE}/api/v1/${path}${search}`;
 
-    const headers = cleanHeaders(request);
     const apiKey = getApiKey(request);
-    
-    console.log(`[double-api proxy GET] ${targetUrl} | apiKey: ${apiKey ? apiKey.slice(0,8)+'...' : 'MISSING'}`);
-    if (apiKey) headers.set('x-api-key', apiKey);
+    const headers = buildUpstreamHeaders(request, apiKey);
 
     try {
-        const response = await fetch(targetUrl, { headers, method: 'GET' });
+        const response = await fetch(targetUrl, { headers, method: 'GET', signal: AbortSignal.timeout(60000) });
         const data = await response.json();
         return NextResponse.json(data, { status: response.status });
     } catch (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        // Never echo the upstream error body to the client; surface a generic
+        // message and rely on server logs for diagnostics.
+        const isAbort = error?.name === 'AbortError' || error?.name === 'TimeoutError';
+        return NextResponse.json(
+            { error: isAbort ? 'Upstream request timed out' : 'Upstream request failed' },
+            { status: isAbort ? 504 : 502 }
+        );
     }
 }
 
@@ -46,20 +54,23 @@ export async function POST(request, { params }) {
     const slug = await params;
     const pathSegments = slug.path || [];
     const path = pathSegments.join('/');
-    
+
     const { search } = new URL(request.url);
     const targetUrl = `${MUAPI_BASE}/api/v1/${path}${search}`;
 
-    const headers = cleanHeaders(request);
     const apiKey = getApiKey(request);
-    if (apiKey) headers.set('x-api-key', apiKey);
+    const headers = buildUpstreamHeaders(request, apiKey);
 
     try {
         const body = await request.arrayBuffer();
-        const response = await fetch(targetUrl, { method: 'POST', headers, body });
+        const response = await fetch(targetUrl, { method: 'POST', headers, body, signal: AbortSignal.timeout(60000) });
         const data = await response.json();
         return NextResponse.json(data, { status: response.status });
     } catch (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const isAbort = error?.name === 'AbortError' || error?.name === 'TimeoutError';
+        return NextResponse.json(
+            { error: isAbort ? 'Upstream request timed out' : 'Upstream request failed' },
+            { status: isAbort ? 504 : 502 }
+        );
     }
 }

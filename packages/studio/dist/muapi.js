@@ -50,7 +50,6 @@ var _window$location;
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
 function _regenerator() { /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ var e, t, r = "function" == typeof Symbol ? Symbol : {}, n = r.iterator || "@@iterator", o = r.toStringTag || "@@toStringTag"; function i(r, n, o, i) { var c = n && n.prototype instanceof Generator ? n : Generator, u = Object.create(c.prototype); return _regeneratorDefine2(u, "_invoke", function (r, n, o) { var i, c, u, f = 0, p = o || [], y = !1, G = { p: 0, n: 0, v: e, a: d, f: d.bind(e, 4), d: function d(t, r) { return i = t, c = 0, u = e, G.n = r, a; } }; function d(r, n) { for (c = r, u = n, t = 0; !y && f && !o && t < p.length; t++) { var o, i = p[t], d = G.p, l = i[2]; r > 3 ? (o = l === n) && (u = i[(c = i[4]) ? 5 : (c = 3, 3)], i[4] = i[5] = e) : i[0] <= d && ((o = r < 2 && d < i[1]) ? (c = 0, G.v = n, G.n = i[1]) : d < l && (o = r < 3 || i[0] > n || n > l) && (i[4] = r, i[5] = n, G.n = l, c = 0)); } if (o || r > 1) return a; throw y = !0, n; } return function (o, p, l) { if (f > 1) throw TypeError("Generator is already running"); for (y && 1 === p && d(p, l), c = p, u = l; (t = c < 2 ? e : u) || !y;) { i || (c ? c < 3 ? (c > 1 && (G.n = -1), d(c, u)) : G.n = u : G.v = u); try { if (f = 2, i) { if (c || (o = "next"), t = i[o]) { if (!(t = t.call(i, u))) throw TypeError("iterator result is not an object"); if (!t.done) return t; u = t.value, c < 2 && (c = 0); } else 1 === c && (t = i["return"]) && t.call(i), c < 2 && (u = TypeError("The iterator does not provide a '" + o + "' method"), c = 1); i = e; } else if ((t = (y = G.n < 0) ? u : r.call(n, G)) !== a) break; } catch (t) { i = e, c = 1, u = t; } finally { f = 1; } } return { value: t, done: y }; }; }(r, o, i), !0), u; } var a = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} t = Object.getPrototypeOf; var c = [][n] ? t(t([][n]())) : (_regeneratorDefine2(t = {}, n, function () { return this; }), t), u = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(c); function f(e) { return Object.setPrototypeOf ? Object.setPrototypeOf(e, GeneratorFunctionPrototype) : (e.__proto__ = GeneratorFunctionPrototype, _regeneratorDefine2(e, o, "GeneratorFunction")), e.prototype = Object.create(u), e; } return GeneratorFunction.prototype = GeneratorFunctionPrototype, _regeneratorDefine2(u, "constructor", GeneratorFunctionPrototype), _regeneratorDefine2(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = "GeneratorFunction", _regeneratorDefine2(GeneratorFunctionPrototype, o, "GeneratorFunction"), _regeneratorDefine2(u), _regeneratorDefine2(u, o, "Generator"), _regeneratorDefine2(u, n, function () { return this; }), _regeneratorDefine2(u, "toString", function () { return "[object Generator]"; }), (_regenerator = function _regenerator() { return { w: i, m: f }; })(); }
 function _regeneratorDefine2(e, r, n, t) { var i = Object.defineProperty; try { i({}, "", {}); } catch (e) { i = 0; } _regeneratorDefine2 = function _regeneratorDefine(e, r, n, t) { function o(r, n) { _regeneratorDefine2(e, r, function (e) { return this._invoke(r, n, e); }); } r ? i ? i(e, r, { value: n, enumerable: !t, configurable: !t, writable: !t }) : e[r] = n : (o("next", 0), o("throw", 1), o("return", 2)); }, _regeneratorDefine2(e, r, n, t); }
-function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
@@ -63,11 +62,24 @@ function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbol
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
 function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
 function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
-function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); } // Local mirrors for workflow/agent thumbnails. Maps upstream MuAPI thumbnail
+function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); } // Local mirrors for workflow/agent thumbnails. Maps upstream MuAPI thumbnail
 // URLs -> local files in /public/thumbnails/workflows. Plain ESM import so it
 // bundles cleanly in the browser (Turbopack/Webpack/Vite) with no fs/JSON-assert.
+// A URL is already "final" (no further rewriting needed) when it is a
+// same-origin path — either a local file under /public (e.g.
+// /thumbnails/workflows/foo.jpg) or an already-proxied URL
+// (/api/thumbnail?url=...). This makes the function idempotent so it can be
+// applied safely on data that the /api/workflow and /api/agents proxies have
+// ALREADY rewritten (previously a second pass turned local paths into broken
+// "/api/thumbnail?url=/thumbnails/..." URLs, collapsing every card to the
+// placeholder).
+function isFinalUrl(url) {
+  return typeof url === 'string' && url.startsWith('/');
+}
 function rewriteThumbnail(url) {
   if (!url || typeof url !== 'string') return url;
+  if (isFinalUrl(url)) return url;
   if (_thumbnailMap["default"][url]) return _thumbnailMap["default"][url];
   // Same-origin proxy: server fetches the upstream image (with Referer) and
   // streams it back so it always loads regardless of CDN hotlink protection.
@@ -76,12 +88,20 @@ function rewriteThumbnail(url) {
 function rewriteThumbnails(list) {
   if (!Array.isArray(list)) return list;
   return list.map(function (item) {
-    if (item && item.thumbnail) {
-      return _objectSpread(_objectSpread({}, item), {}, {
+    if (!item || _typeof(item) !== 'object') return item;
+    var next = item;
+    if (item.thumbnail) {
+      next = _objectSpread(_objectSpread({}, next), {}, {
         thumbnail: rewriteThumbnail(item.thumbnail)
       });
     }
-    return item;
+    // Agents expose their artwork as `icon_url` rather than `thumbnail`.
+    if (item.icon_url) {
+      next = _objectSpread(_objectSpread({}, next), {}, {
+        icon_url: rewriteThumbnail(item.icon_url)
+      });
+    }
+    return next;
   });
 }
 
@@ -113,6 +133,20 @@ function normalizeMuapiResult(raw) {
 // SSR (no window) and Electron's file:// renderer call the upstream directly.
 var BASE_URL = typeof window !== 'undefined' && (_window$location = window.location) !== null && _window$location !== void 0 && (_window$location = _window$location.protocol) !== null && _window$location !== void 0 && _window$location.startsWith('http') ? '/api' : 'https://api.muapi.ai';
 var PROXY_WF_BASE = '/api/workflow';
+
+// Combine a caller-supplied AbortSignal (e.g. from a component's unmount
+// cleanup) with a hard client-side timeout so a hung upstream connection
+// cannot block forever. Degrades gracefully where AbortSignal.timeout /
+// AbortSignal.any are unavailable (older runtimes / jsdom).
+function toSignal(signal) {
+  var timeoutMs = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 120000;
+  var hasTimeout = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function';
+  var timeout = hasTimeout ? AbortSignal.timeout(timeoutMs) : null;
+  if (signal && timeout && typeof AbortSignal.any === 'function') {
+    return AbortSignal.any([signal, timeout]);
+  }
+  return signal || timeout;
+}
 function notifyAuthRequired(status, detail) {
   if (typeof window === 'undefined') return;
   if (status !== 401 && status !== 403) return;
@@ -130,7 +164,9 @@ function _pollForResult() {
   _pollForResult = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee(requestId, key) {
     var maxAttempts,
       interval,
+      signal,
       pollUrl,
+      effSignal,
       attempt,
       headers,
       response,
@@ -145,7 +181,9 @@ function _pollForResult() {
         case 0:
           maxAttempts = _args.length > 2 && _args[2] !== undefined ? _args[2] : 900;
           interval = _args.length > 3 && _args[3] !== undefined ? _args[3] : 2000;
+          signal = _args.length > 4 && _args[4] !== undefined ? _args[4] : null;
           pollUrl = "".concat(BASE_URL, "/api/v1/predictions/").concat(requestId, "/result");
+          effSignal = toSignal(signal);
           attempt = 1;
         case 1:
           if (!(attempt <= maxAttempts)) {
@@ -164,7 +202,8 @@ function _pollForResult() {
           if (key) headers['x-api-key'] = key;
           _context.n = 3;
           return fetch(pollUrl, {
-            headers: headers
+            headers: headers,
+            signal: effSignal
           });
         case 3:
           response = _context.v;
@@ -232,8 +271,10 @@ function submitAndPoll(_x3, _x4, _x5, _x6) {
 function _submitAndPoll() {
   _submitAndPoll = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2(endpoint, payload, key, onRequestId) {
     var maxAttempts,
+      signal,
       url,
       headers,
+      effSignal,
       response,
       errText,
       submitData,
@@ -245,16 +286,19 @@ function _submitAndPoll() {
       while (1) switch (_context2.n) {
         case 0:
           maxAttempts = _args2.length > 4 && _args2[4] !== undefined ? _args2[4] : 60;
+          signal = _args2.length > 5 && _args2[5] !== undefined ? _args2[5] : null;
           url = "".concat(BASE_URL, "/api/v1/").concat(endpoint);
           headers = {
             'Content-Type': 'application/json'
           };
           if (key) headers['x-api-key'] = key;
+          effSignal = toSignal(signal);
           _context2.n = 1;
           return fetch(url, {
             method: 'POST',
             headers: headers,
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: effSignal
           });
         case 1:
           response = _context2.v;
@@ -316,11 +360,12 @@ function _generateImage() {
             payload.strength = params.strength || 0.6;
           } else if (params.images_list) {
             payload.images_list = params.images_list;
-          } else {
-            payload.image_url = null;
           }
+          // NOTE: when neither is provided we intentionally send NO image reference
+          // at all (previously an explicit `image_url: null`, which some endpoints
+          // reject). The model defaults to a text-to-image generation.
           if (params.seed && params.seed !== -1) payload.seed = params.seed;
-          return _context3.a(2, submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 60));
+          return _context3.a(2, submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 60, params.signal));
       }
     }, _callee3);
   }));
@@ -354,7 +399,7 @@ function _generateI2I() {
           if (modelInfo !== null && modelInfo !== void 0 && (_modelInfo$inputs = modelInfo.inputs) !== null && _modelInfo$inputs !== void 0 && _modelInfo$inputs.name) {
             payload.name = params.name || modelInfo.inputs.name["default"];
           }
-          return _context4.a(2, submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 60));
+          return _context4.a(2, submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 60, params.signal));
       }
     }, _callee4);
   }));
@@ -379,7 +424,7 @@ function _generateVideo() {
           if (params.quality) payload.quality = params.quality;
           if (params.mode) payload.mode = params.mode;
           if (params.image_url) payload.image_url = params.image_url;
-          return _context5.a(2, submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900));
+          return _context5.a(2, submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal));
       }
     }, _callee5);
   }));
@@ -424,7 +469,7 @@ function _generateI2V() {
           if (modelInfo !== null && modelInfo !== void 0 && (_modelInfo$inputs2 = modelInfo.inputs) !== null && _modelInfo$inputs2 !== void 0 && _modelInfo$inputs2.name) {
             payload.name = params.name || modelInfo.inputs.name["default"];
           }
-          return _context6.a(2, submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900));
+          return _context6.a(2, submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal));
       }
     }, _callee6);
   }));
@@ -447,7 +492,7 @@ function _generateMarketingStudioAd() {
             images_list: params.images_list || [],
             video_files: params.video_files || []
           };
-          return _context7.a(2, submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900));
+          return _context7.a(2, submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal));
       }
     }, _callee7);
   }));
@@ -472,7 +517,7 @@ function _processV2V() {
           if (modelInfo !== null && modelInfo !== void 0 && modelInfo.hasPrompt && params.prompt) {
             payload.prompt = params.prompt;
           }
-          return _context8.a(2, submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900));
+          return _context8.a(2, submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal));
       }
     }, _callee8);
   }));
@@ -500,7 +545,7 @@ function _processRecast() {
           if (params.aspect_ratio) {
             payload.aspect_ratio = params.aspect_ratio;
           }
-          return _context9.a(2, submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900));
+          return _context9.a(2, submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal));
       }
     }, _callee9);
   }));
@@ -524,7 +569,7 @@ function _processLipSync() {
           if (modelInfo !== null && modelInfo !== void 0 && modelInfo.hasPrompt) payload.prompt = params.prompt || '';
           if (params.resolution) payload.resolution = params.resolution;
           if (params.seed !== undefined && params.seed !== -1) payload.seed = params.seed;
-          return _context0.a(2, submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900));
+          return _context0.a(2, submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal));
       }
     }, _callee0);
   }));
@@ -549,7 +594,7 @@ function _generateAudio() {
               payload[key] = params[key];
             }
           }
-          return _context1.a(2, submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900));
+          return _context1.a(2, submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal));
       }
     }, _callee1);
   }));
@@ -1761,7 +1806,7 @@ function _runClipping() {
             aspect_ratio: params.aspect_ratio || "9:16",
             return_coordinates_only: !!params.return_coordinates_only
           };
-          return _context35.a(2, submitAndPoll("ai-clipping", payload, apiKey, params.onRequestId, 900));
+          return _context35.a(2, submitAndPoll("ai-clipping", payload, apiKey, params.onRequestId, 900, params.signal));
       }
     }, _callee35);
   }));
@@ -1781,7 +1826,7 @@ function _runMotionGraphics() {
             aspect_ratio: params.aspect_ratio || "16:9",
             duration_seconds: params.duration_seconds || 6
           };
-          return _context36.a(2, submitAndPoll("motion-graphics", payload, apiKey, params.onRequestId, 900));
+          return _context36.a(2, submitAndPoll("motion-graphics", payload, apiKey, params.onRequestId, 900, params.signal));
       }
     }, _callee36);
   }));
@@ -1802,7 +1847,7 @@ function _runMotionGraphicsEdit() {
             aspect_ratio: params.aspect_ratio || "16:9",
             duration_seconds: params.duration_seconds || 6
           };
-          return _context37.a(2, submitAndPoll("motion-graphics-edit", payload, apiKey, params.onRequestId, 900));
+          return _context37.a(2, submitAndPoll("motion-graphics-edit", payload, apiKey, params.onRequestId, 900, params.signal));
       }
     }, _callee37);
   }));
