@@ -136,33 +136,165 @@ function MediaPickerButton({
 }
 
 // ---------------------------------------------------------------------------
+// Assets history dropdown
+// ---------------------------------------------------------------------------
+function AssetsDropdown({
+  videos,
+  images,
+  results,
+  onSelectVideo,
+  onSelectImage,
+  onSelectResultAsVideo,
+  onDeleteAsset,
+  setFullscreenUrl,
+  onClose,
+  anchorRef,
+}) {
+  const [activeTab, setActiveTab] = useState("videos"); // 'videos' | 'images' | 'results'
+  const dropRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (
+        !dropRef.current?.contains(e.target) &&
+        !anchorRef?.current?.contains(e.target)
+      ) {
+        onClose();
+      }
+    };
+    window.addEventListener("click", handler);
+    return () => window.removeEventListener("click", handler);
+  }, [onClose, anchorRef]);
+
+  const items = activeTab === "videos" ? videos : activeTab === "images" ? images : results;
+
+  return (
+    <div
+      ref={dropRef}
+      className="absolute bottom-[calc(100%+8px)] left-0 z-50 bg-[#111] border border-white/10 rounded-lg shadow-3xl p-3 custom-scrollbar w-80 max-h-80 flex flex-col gap-2 animate-fade-in"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Tabs */}
+      <div className="flex border-b border-white/5 pb-1">
+        {["videos", "images", "results"].map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 text-center py-1 text-xs font-bold capitalize transition-colors ${
+              activeTab === tab
+                ? "text-[#22d3ee] border-b border-[#22d3ee]"
+                : "text-white/40 hover:text-white/80"
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* Items list */}
+      <div className="overflow-y-auto custom-scrollbar flex-1 flex flex-col gap-1.5 min-h-[180px] max-h-60">
+        {items.length === 0 ? (
+          <div className="flex flex-col items-center justify-center flex-1 py-10 text-xs text-white/20">
+            No assets found
+          </div>
+        ) : (
+          items.map((item, idx) => (
+            <div
+              key={idx}
+              onClick={() => {
+                if (activeTab === "videos") {
+                  onSelectVideo(item.url, item.name);
+                } else if (activeTab === "images") {
+                  onSelectImage(item.url, item.name);
+                } else {
+                  onSelectResultAsVideo(item.url, item.name);
+                }
+              }}
+              className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/5 hover:border-white/10 transition-all gap-2 group/item cursor-pointer"
+            >
+              {/* Media Preview Thumbnail */}
+              <div className="w-10 h-10 rounded-lg overflow-hidden bg-white/5 flex-shrink-0 relative">
+                {activeTab === "images" ? (
+                  <img
+                    src={item.url}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <video
+                    src={item.url}
+                    className="w-full h-full object-cover"
+                    muted
+                    playsInline
+                    loop
+                  />
+                )}
+                {/* Enlarge preview overlay */}
+                <button
+                  type="button"
+                  title="Enlarge preview"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFullscreenUrl(item.url);
+                  }}
+                  className="absolute inset-0 bg-black/60 opacity-0 group-hover/item:opacity-100 flex items-center justify-center transition-opacity text-white hover:text-[#22d3ee]"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    <line x1="11" y1="8" x2="11" y2="14" />
+                    <line x1="8" y1="11" x2="14" y2="11" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Info */}
+              <div className="flex-1 min-w-0 flex flex-col">
+                <span className="text-xs text-white/95 font-semibold truncate" title={item.name}>
+                  {item.name}
+                </span>
+                <span className="text-[9px] text-white/30 truncate mt-0.5">
+                  {new Date(item.timestamp || Date.now()).toLocaleDateString()}
+                </span>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  className="text-xs text-black font-black px-2.5 py-1 bg-[#22d3ee] rounded-md hover:bg-[#22d3ee]/90 transition-colors"
+                >
+                  Use
+                </button>
+                <button
+                  type="button"
+                  title="Delete from Library"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteAsset(activeTab, item.url);
+                  }}
+                  className="p-1.5 text-white/30 hover:text-red-500 rounded hover:bg-white/5 transition-colors"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Inline dropdown
 // ---------------------------------------------------------------------------
 function Dropdown({ isOpen, items, selectedId, onSelect, onClose, anchorRef }) {
   const dropRef = useRef(null);
-  const [style, setStyle] = useState({});
-
-  useEffect(() => {
-    if (!isOpen || !anchorRef?.current || !dropRef.current) return;
-
-    const rect = anchorRef.current.getBoundingClientRect();
-    const ddHeight = dropRef.current.offsetHeight;
-    const spaceBelow = window.innerHeight - rect.bottom - 8;
-    const spaceAbove = rect.top - 8;
-
-    let top, bottom, maxHeight;
-    if (spaceBelow >= ddHeight || spaceBelow >= spaceAbove) {
-      top = rect.bottom + 8;
-      bottom = "auto";
-      maxHeight = Math.max(150, spaceBelow - 8);
-    } else {
-      top = "auto";
-      bottom = window.innerHeight - rect.top + 8;
-      maxHeight = Math.max(150, spaceAbove - 8);
-    }
-    const left = Math.min(rect.left, window.innerWidth - 220);
-    setStyle({ top, bottom, left, maxHeight });
-  }, [isOpen, anchorRef]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -183,13 +315,8 @@ function Dropdown({ isOpen, items, selectedId, onSelect, onClose, anchorRef }) {
   return (
     <div
       ref={dropRef}
-      style={{
-        position: "fixed",
-        zIndex: 100,
-        overflowY: "auto",
-        ...style,
-      }}
-      className="bg-[#111] border border-white/10 rounded-lg shadow-3xl p-2 custom-scrollbar w-[calc(100vw-3rem)] max-w-xs"
+      className="absolute bottom-[calc(100%+8px)] left-0 z-50 bg-[#111] border border-white/10 rounded-lg shadow-3xl p-2 custom-scrollbar w-64 max-h-60 overflow-y-auto animate-fade-in"
+      onClick={(e) => e.stopPropagation()}
     >
       {items.map((item) => (
         <button
@@ -207,8 +334,8 @@ function Dropdown({ isOpen, items, selectedId, onSelect, onClose, anchorRef }) {
         >
           <div>{item.name}</div>
           {item.description && (
-            <div className="text-xs text-muted mt-0.5">
-              {item.description.slice(0, 60)}...
+            <div className="text-xs text-white/40 mt-0.5">
+              {item.description.slice(0, 75)}
             </div>
           )}
         </button>
@@ -288,6 +415,49 @@ export default function RecastStudio({
   // ── Prompt ────────────────────────────────────────────────────────────────
   const [prompt, setPrompt] = useState("");
 
+  // ── Character Orientation ─────────────────────────────────────────────────
+  const [characterOrientation, setCharacterOrientation] = useState("image");
+
+  // ── Assets Library ────────────────────────────────────────────────────────
+  const [assetVideos, setAssetVideos] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("hg_recast_studio_assets");
+        if (stored) {
+          const data = JSON.parse(stored);
+          return data.videos || [];
+        }
+      } catch (err) {}
+    }
+    return [];
+  });
+
+  const [assetImages, setAssetImages] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("hg_recast_studio_assets");
+        if (stored) {
+          const data = JSON.parse(stored);
+          return data.images || [];
+        }
+      } catch (err) {}
+    }
+    return [];
+  });
+
+  const [assetResults, setAssetResults] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("hg_recast_studio_assets");
+        if (stored) {
+          const data = JSON.parse(stored);
+          return data.results || [];
+        }
+      } catch (err) {}
+    }
+    return [];
+  });
+
   // ── Generation / UI state ─────────────────────────────────────────────────
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(null);
@@ -298,9 +468,11 @@ export default function RecastStudio({
   const history = historyItems ?? internalHistory;
 
   // ── Dropdown state ────────────────────────────────────────────────────────
-  const [openDropdown, setOpenDropdown] = useState(null); // 'model' | 'aspect' | null
+  const [openDropdown, setOpenDropdown] = useState(null); // 'model' | 'aspect' | 'orientation' | 'assets' | null
   const modelBtnRef = useRef(null);
   const aspectBtnRef = useRef(null);
+  const orientationBtnRef = useRef(null);
+  const assetsBtnRef = useRef(null);
   const textareaRef = useRef(null);
   const hasRestored = useRef(false);
 
@@ -312,6 +484,7 @@ export default function RecastStudio({
         const data = JSON.parse(stored);
         if (data.selectedModelId) setSelectedModelId(data.selectedModelId);
         if (data.selectedAspectRatio) setSelectedAspectRatio(data.selectedAspectRatio);
+        if (data.characterOrientation) setCharacterOrientation(data.characterOrientation);
         if (data.videoUrl) {
           setVideoUrl(data.videoUrl);
           setVideoState(UPLOAD_STATE.READY);
@@ -332,6 +505,32 @@ export default function RecastStudio({
     }
   }, []);
 
+  // ── Save Assets ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "hg_recast_studio_assets",
+        JSON.stringify({
+          videos: assetVideos,
+          images: assetImages,
+          results: assetResults,
+        })
+      );
+    } catch (err) {
+      console.warn("Failed to save RecastStudio assets:", err);
+    }
+  }, [assetVideos, assetImages, assetResults]);
+
+  const handleDeleteAsset = (tab, url) => {
+    if (tab === "videos") {
+      setAssetVideos((prev) => prev.filter((item) => item.url !== url));
+    } else if (tab === "images") {
+      setAssetImages((prev) => prev.filter((item) => item.url !== url));
+    } else {
+      setAssetResults((prev) => prev.filter((item) => item.url !== url));
+    }
+  };
+
   // ── Persistence: Save ──────────────────────────────────────────────────────
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -341,6 +540,7 @@ export default function RecastStudio({
           JSON.stringify({
             selectedModelId,
             selectedAspectRatio,
+            characterOrientation,
             videoUrl,
             videoName,
             imageUrl,
@@ -357,6 +557,7 @@ export default function RecastStudio({
   }, [
     selectedModelId,
     selectedAspectRatio,
+    characterOrientation,
     videoUrl,
     videoName,
     imageUrl,
@@ -385,6 +586,13 @@ export default function RecastStudio({
         setVideoUrl(url);
         setVideoName(file.name);
         setVideoState(UPLOAD_STATE.READY);
+
+        // Add to assets
+        setAssetVideos((prev) => {
+          const exists = prev.some((item) => item.url === url);
+          if (exists) return prev;
+          return [{ url, name: file.name, timestamp: new Date().toISOString() }, ...prev].slice(0, 30);
+        });
       } catch (err) {
         setVideoState(UPLOAD_STATE.IDLE);
         alert(`Video upload failed: ${err.message}`);
@@ -416,6 +624,13 @@ export default function RecastStudio({
         setImageUrl(url);
         setImageName(file.name);
         setImageState(UPLOAD_STATE.READY);
+
+        // Add to assets
+        setAssetImages((prev) => {
+          const exists = prev.some((item) => item.url === url);
+          if (exists) return prev;
+          return [{ url, name: file.name, timestamp: new Date().toISOString() }, ...prev].slice(0, 30);
+        });
       } catch (err) {
         setImageState(UPLOAD_STATE.IDLE);
         alert(`Image upload failed: ${err.message}`);
@@ -490,6 +705,9 @@ export default function RecastStudio({
       };
       if (showAspect) params.aspect_ratio = selectedAspectRatio;
       if (prompt && selectedModel?.hasPrompt) params.prompt = prompt;
+      if (selectedModelId === "kling-v3.0-pro-recast") {
+        params.character_orientation = characterOrientation;
+      }
 
       const res = await processRecast(apiKey, params);
 
@@ -505,6 +723,15 @@ export default function RecastStudio({
       };
 
       if (!historyItems) addToInternalHistory(entry);
+
+      // Add to assets
+      setAssetResults((prev) => {
+        const url = res.url;
+        const name = prompt ? (prompt.slice(0, 20) + "...") : `Result ${new Date().toLocaleTimeString()}`;
+        const exists = prev.some((item) => item.url === url);
+        if (exists) return prev;
+        return [{ url, name, timestamp: new Date().toISOString() }, ...prev].slice(0, 30);
+      });
 
       if (onGenerationComplete) {
         onGenerationComplete({
@@ -776,6 +1003,17 @@ export default function RecastStudio({
                     <span className="text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors">
                       {selectedAspectRatio}
                     </span>
+                    <svg
+                      width="10"
+                      height="10"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      className="opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                    >
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
                   </button>
                   <Dropdown
                     isOpen={openDropdown === "aspect"}
@@ -787,6 +1025,119 @@ export default function RecastStudio({
                   />
                 </div>
               )}
+
+              {/* Character Orientation selector */}
+              {selectedModelId === "kling-v3.0-pro-recast" && (
+                <div className="relative">
+                  <button
+                    ref={orientationBtnRef}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenDropdown(openDropdown === "orientation" ? null : "orientation");
+                    }}
+                    className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+                  >
+                    <span className="text-xs font-semibold text-white/50 group-hover:text-[#22d3ee] transition-colors">
+                      Orientation:
+                    </span>
+                    <span className="text-xs font-bold text-white group-hover:text-[#22d3ee] transition-colors capitalize">
+                      {characterOrientation}
+                    </span>
+                    <svg
+                      width="10"
+                      height="10"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      className="opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                    >
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </button>
+                  <Dropdown
+                    isOpen={openDropdown === "orientation"}
+                    items={[
+                      { id: "image", name: "Image", description: "Use image orientation (Max 10s video)" },
+                      { id: "video", name: "Video", description: "Use video orientation (Max 30s video)" },
+                    ]}
+                    selectedId={characterOrientation}
+                    onSelect={(item) => setCharacterOrientation(item.id)}
+                    onClose={() => setOpenDropdown(null)}
+                    anchorRef={orientationBtnRef}
+                  />
+                </div>
+              )}
+
+              {/* Assets Library selector */}
+              <div className="relative">
+                <button
+                  ref={assetsBtnRef}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenDropdown(openDropdown === "assets" ? null : "assets");
+                  }}
+                  className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="text-white/50 group-hover:text-[#22d3ee] transition-colors"
+                  >
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                  </svg>
+                  <span className="text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors">
+                    Library
+                  </span>
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    className="opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                  >
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+                {openDropdown === "assets" && (
+                  <AssetsDropdown
+                    videos={assetVideos}
+                    images={assetImages}
+                    results={assetResults}
+                    onSelectVideo={(url, name) => {
+                      setVideoUrl(url);
+                      setVideoName(name || "Selected Video");
+                      setVideoState(UPLOAD_STATE.READY);
+                      setOpenDropdown(null);
+                    }}
+                    onSelectImage={(url, name) => {
+                      setImageUrl(url);
+                      setImageName(name || "Selected Image");
+                      setImageState(UPLOAD_STATE.READY);
+                      setOpenDropdown(null);
+                    }}
+                    onSelectResultAsVideo={(url, name) => {
+                      setVideoUrl(url);
+                      setVideoName(name || "Result Video");
+                      setVideoState(UPLOAD_STATE.READY);
+                      setOpenDropdown(null);
+                    }}
+                    onDeleteAsset={handleDeleteAsset}
+                    setFullscreenUrl={setFullscreenUrl}
+                    onClose={() => setOpenDropdown(null)}
+                    anchorRef={assetsBtnRef}
+                  />
+                )}
+              </div>
             </div>
 
             {/* Generate button */}
@@ -830,14 +1181,29 @@ export default function RecastStudio({
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
-          <video
-            src={fullscreenUrl}
-            controls
-            autoPlay
-            loop
-            className="max-w-[95vw] max-h-[95vh] rounded-2xl shadow-2xl object-contain animate-scale-up"
-            onClick={(e) => e.stopPropagation()}
-          />
+          {(() => {
+            const isImg = fullscreenUrl.match(/\.(jpeg|jpg|gif|png|webp|avif)/i) || 
+                          fullscreenUrl.includes("/ai-images/") || 
+                          fullscreenUrl.includes("image") || 
+                          fullscreenUrl.startsWith("data:image");
+            return isImg ? (
+              <img
+                src={fullscreenUrl}
+                alt="Fullscreen Preview"
+                className="max-w-[95vw] max-h-[95vh] rounded-2xl shadow-2xl object-contain animate-scale-up"
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <video
+                src={fullscreenUrl}
+                controls
+                autoPlay
+                loop
+                className="max-w-[95vw] max-h-[95vh] rounded-2xl shadow-2xl object-contain animate-scale-up"
+                onClick={(e) => e.stopPropagation()}
+              />
+            );
+          })()}
         </div>
       )}
     </div>

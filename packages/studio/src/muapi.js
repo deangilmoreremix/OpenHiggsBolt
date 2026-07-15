@@ -194,6 +194,9 @@ export async function processRecast(apiKey, params) {
     if (params.aspect_ratio) {
         payload.aspect_ratio = params.aspect_ratio;
     }
+    if (params.character_orientation) {
+        payload.character_orientation = params.character_orientation;
+    }
     return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900);
 }
 
