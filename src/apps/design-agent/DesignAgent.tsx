@@ -47,18 +47,44 @@ const PLACEHOLDERS = [
   'Ask Go-AI to create a thumbnail...',
 ]
 
-// ── API helper ────────────────────────────────────────────────────────────────
+// ── API helper (MuAPI Design Agent — https://muapi.ai/docs/design-agent-api)
+// The browser calls the /api/design-agent/* Next.js proxies, which forward the
+// `x-api-key` header to https://api.muapi.ai/api/v1/creative-agent.
 async function apiCall(path: string, options: RequestInit = {}, apiKey: string) {
   const res = await fetch(path, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': apiKey,
-      ...options.headers,
+      ...(options.headers || {}),
     },
   })
-  if (!res.ok) throw new Error(`API error ${res.status}`)
-  return res.json()
+  const text = await res.text()
+  let data: any = null
+  if (text) {
+    try { data = JSON.parse(text) } catch { data = text }
+  }
+  if (!res.ok) {
+    const detail =
+      (data && (data.detail || data.error || data.message)) ||
+      text ||
+      `API error ${res.status}`
+    throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail))
+  }
+  return data
+}
+
+// Normalize a MuAPI AssetObject (or proxy asset) into the app's Asset shape.
+// MuAPI assets expose { asset_label, kind: 'image'|'video'|'audio', url, ... }.
+function mapAsset(a: any): Asset {
+  const kind: string = a?.kind || 'image'
+  const type: Asset['type'] = kind === 'video' ? 'video' : kind === 'audio' ? 'text' : 'image'
+  return {
+    id: a?.asset_label || a?.id || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    type,
+    url: a?.url || '',
+    name: a?.asset_label || a?.name || 'Generated asset',
+  }
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -93,9 +119,13 @@ function loadProjects(): Project[] {
 }
 function saveProjects(p: Project[]) { localStorage.setItem(LOCAL_KEY + '_projects', JSON.stringify(p)) }
 
-export default function DesignAgent() {
-  // API key
-  const [apiKey, setApiKey] = useState(() => typeof window !== 'undefined' ? localStorage.getItem(API_KEY_STORAGE) || '' : '')
+export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string }) {
+  // API key — seeded from the global key passed by StandaloneShell, falling
+  // back to a previously saved key. The in-studio key modal can still override.
+  const [apiKey, setApiKey] = useState(() =>
+    propApiKey ||
+    (typeof window !== 'undefined' ? localStorage.getItem(API_KEY_STORAGE) || '' : '')
+  )
   const [showKeyModal, setShowKeyModal] = useState(false)
   const [keyInput, setKeyInput] = useState('')
 
@@ -115,6 +145,9 @@ export default function DesignAgent() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // Tracks whether the component is still mounted so long-running polling can
+  // bail out if the user navigates away (avoids setState-after-unmount).
+  const aliveRef = useRef(true)
 
   // Typewriter animation
   useEffect(() => {
@@ -144,6 +177,9 @@ export default function DesignAgent() {
 
   // Persist projects
   useEffect(() => { saveProjects(projects) }, [projects])
+
+  // Stop polling if the component unmounts.
+  useEffect(() => () => { aliveRef.current = false }, [])
 
   const saveApiKey = () => {
     localStorage.setItem(API_KEY_STORAGE, keyInput)
@@ -186,43 +222,62 @@ export default function DesignAgent() {
     if (!apiKey) { setShowKeyModal(true); return }
     if (!activeProject) { await createNewProject(); return }
 
+    const userContent = selectedTemplate ? `[${selectedTemplate.label}] ${input}` : input
     const userMsg: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: selectedTemplate ? `[${selectedTemplate.label}] ${input}` : input,
+      content: userContent,
       createdAt: new Date().toISOString(),
     }
+    // Snapshot of prior turns for agent context (optional, docs-recommended).
+    const prior = messages
+      .filter(m => m.role === 'user' || m.role === 'assistant')
+      .map(m => ({ role: m.role, content: m.content }))
+
     setMessages(prev => [...prev, userMsg])
     setInput('')
     setSelectedTemplate(null)
     setIsLoading(true)
 
     try {
-      const payload: any = { message: userMsg.content }
-      if (selectedTemplate) payload.skill = selectedTemplate.id
+      let res: any
+      if (selectedTemplate) {
+        // Invoke a named expert skill (bypasses intent detection).
+        res = await apiCall('/api/design-agent/run-skill', {
+          method: 'POST',
+          body: JSON.stringify({
+            sessionId: activeProject.id,
+            skill_name: selectedTemplate.id,
+            messages_snapshot: [...prior, { role: 'user', content: userContent }],
+          }),
+        }, apiKey)
+      } else {
+        res = await apiCall('/api/design-agent/chat', {
+          method: 'POST',
+          body: JSON.stringify({
+            sessionId: activeProject.id,
+            message: input,
+            messages_snapshot: prior,
+          }),
+        }, apiKey)
+      }
 
-      const res = await apiCall('/api/design-agent/chat', {
-        method: 'POST',
-        body: JSON.stringify({ sessionId: activeProject.id, ...payload }),
-      }, apiKey)
-
-      // Poll for job completion if async
-      if (res.job_id) {
+      if (res?.job_id) {
         await pollJob(res.job_id, activeProject.id)
       } else {
-        const assistantMsg: Message = {
+        // Synchronous response (not the standard async pattern).
+        setMessages(prev => [...prev, {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: res.message || res.response || 'Working on your request...',
+          content: res?.message || res?.response || 'Done.',
           createdAt: new Date().toISOString(),
-        }
-        setMessages(prev => [...prev, assistantMsg])
+        }])
       }
     } catch (err: any) {
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `Error: ${err.message}. Please check your API key.`,
+        content: `Error: ${err?.message || 'Request failed'}. Please check your API key.`,
         createdAt: new Date().toISOString(),
       }])
     } finally {
@@ -230,36 +285,85 @@ export default function DesignAgent() {
     }
   }
 
-  const pollJob = async (jobId: string, sessionId: string, attempts = 0): Promise<void> => {
-    if (attempts > 60) return
-    await new Promise(r => setTimeout(r, 3000))
-    try {
-      const events = await apiCall(`/api/design-agent/jobs?jobId=${jobId}`, {}, apiKey)
-      const completed = events?.find?.((e: any) => e.type === 'job.completed')
-      const failed = events?.find?.((e: any) => e.type === 'job.failed')
+  // Submit-and-poll: the chat/run-skill call returns a job_id immediately. We poll
+  // GET /jobs/{job_id}/events (cursor-based) until `done`, auto-approving any
+  // proposed plan and collecting generated assets from `tool_result` events.
+  // https://muapi.ai/docs/design-agent-api
+  const pollJob = async (jobId: string, sessionId: string): Promise<void> => {
+    const MAX_ATTEMPTS = 120 // ~4 min at 2s cadence
+    const textParts: string[] = []
+    const streamedAssets: Asset[] = []
+    let cursor = 0
+    let failed = false
+    let errorMessage = ''
 
-      if (completed || failed) {
-        // Get assets
-        const assets = await apiCall(`/api/design-agent/assets?sessionId=${sessionId}`, {}, apiKey)
-        const assetList: Asset[] = (assets?.items || assets || []).map((a: any) => ({
-          id: a.id,
-          type: a.type || 'image',
-          url: a.url,
-          name: a.name || 'Generated asset',
-        }))
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(),
-          role: 'assistant',
-          content: completed ? 'Here are your generated assets:' : 'Generation failed. Please try again.',
-          assets: assetList,
-          createdAt: new Date().toISOString(),
-        }])
-      } else {
-        await pollJob(jobId, sessionId, attempts + 1)
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      if (!aliveRef.current) return
+      if (attempt > 0) await new Promise(r => setTimeout(r, 2000))
+      let poll: any
+      try {
+        poll = await apiCall(
+          `/api/design-agent/jobs?jobId=${encodeURIComponent(jobId)}&since=${cursor}`,
+          {},
+          apiKey,
+        )
+      } catch (err: any) {
+        if (attempt === MAX_ATTEMPTS - 1) { failed = true; errorMessage = err?.message || 'Polling failed' }
+        continue
       }
-    } catch {
-      await pollJob(jobId, sessionId, attempts + 1)
+
+      const events: any[] = Array.isArray(poll?.events) ? poll.events : []
+      for (const ev of events) {
+        if (ev?.type === 'text' && ev?.payload?.content) {
+          textParts.push(ev.payload.content)
+        } else if (ev?.type === 'plan_propose') {
+          // No plan-approval UI — approve automatically so generation proceeds.
+          try {
+            await apiCall('/api/design-agent/approve', {
+              method: 'POST',
+              body: JSON.stringify({ jobId }),
+            }, apiKey)
+          } catch { /* already approved / not required */ }
+        } else if (ev?.type === 'tool_result' && ev?.payload?.asset) {
+          streamedAssets.push(mapAsset(ev.payload.asset))
+        } else if (ev?.type === 'error' && ev?.payload?.message) {
+          errorMessage = ev.payload.message
+        }
+      }
+
+      if (typeof poll?.cursor === 'number') cursor = poll.cursor
+      if (poll?.status === 'failed') {
+        failed = true
+        errorMessage = poll?.error || errorMessage || 'Generation failed'
+        break
+      }
+      if (poll?.done) break
     }
+
+    // Pull the authoritative asset list for the session.
+    let finalAssets: Asset[] = streamedAssets
+    if (!failed) {
+      try {
+        const assetResp = await apiCall(
+          `/api/design-agent/assets?sessionId=${encodeURIComponent(sessionId)}`,
+          {},
+          apiKey,
+        )
+        const list = Array.isArray(assetResp) ? assetResp : (assetResp?.items || [])
+        if (list.length) finalAssets = list.map(mapAsset)
+      } catch { /* fall back to streamed assets */ }
+    }
+
+    if (!aliveRef.current) return
+    setMessages(prev => [...prev, {
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: failed
+        ? `Error: ${errorMessage || 'Generation failed'}`
+        : (textParts.join('') || (finalAssets.length ? 'Here are your generated assets:' : 'Done.')),
+      assets: failed ? [] : finalAssets,
+      createdAt: new Date().toISOString(),
+    }])
   }
 
   const deleteProject = (id: string) => {
