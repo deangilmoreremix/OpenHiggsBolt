@@ -1,16 +1,18 @@
 'use client'
 /**
  * Thumbnail Studio — full thumbnaily-ai feature set
- * Uses shared ImageGen components + gpt-image-2 API
- * No auth required — session-based gallery + public community feed
+ * Uses shared ImageGen components + the user's MuAPI key (flux-dev image models)
+ * The route is Clerk-gated (see middleware.js); once signed in, generation uses the
+ * user's own MuAPI key. Gallery is session-based + public community feed.
  */
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Image, Wand2, Loader2, Globe, User, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react'
-import { ImageGallery, ImageStream, ImageEditor } from '@/shared/components/ImageGen'
+import { ImageGallery, MuapiImageStream, ImageEditor } from '@/shared/components/ImageGen'
 import type { GeneratedImage, GenerationRequest, SizePreset } from '@/shared/components/ImageGen'
 import { SIZE_PRESETS, QUALITY_PRESETS } from '@/shared/components/ImageGen'
 import { generateCTRPrompt } from '@/shared/components/ImageGen/ctrEngine'
 import { SEED_THUMBNAILS } from '@/shared/components/ImageGen/seedThumbnails'
+import { DEFAULT_IMAGE_MODEL, getImageClient } from '@/shared/api/muapiImage'
 import { panels, buttons, semantic, tabStyle, optionStyle, appWrapper } from '@/shared/styles/designTokens'
 import { supabase } from '@/shared/api/supabase'
 import { enhancePrompt } from '@/shared/api/openai'
@@ -77,7 +79,8 @@ async function saveToSupabase(img: GeneratedImage): Promise<void> {
       session_id: img.sessionId,
     })
   } catch (e) {
-    console.warn('Supabase save failed (using local only):', e)
+    console.warn('Thumbnail share failed', e)
+    throw e
   }
 }
 
@@ -89,12 +92,12 @@ async function loadCommunityGallery(): Promise<GeneratedImage[]> {
       .eq('is_public', true)
       .order('created_at', { ascending: false })
       .limit(50)
-    const mapped = (data || []).map((row: any) => ({
+    const mapped = (data || []).map((row): GeneratedImage => ({
       id: row.id,
       url: row.url,
       prompt: row.prompt || row.prompt_used || '',
       enhancedPrompt: row.enhanced_prompt,
-      model: row.model || 'gpt-image-2',
+      model: row.model || DEFAULT_IMAGE_MODEL,
       quality: row.quality || 'medium',
       format: row.format || 'png',
       style: row.style,
@@ -188,8 +191,11 @@ export default function ThumbnailStudio({ apiKey }: { apiKey?: string }) {
   const [communityImages, setCommunityImages] = useState<GeneratedImage[]>([])
   const [communityLoading, setCommunityLoading] = useState(false)
 
-  // Multi-turn refinement
-  const [lastResponseId, setLastResponseId] = useState<string | null>(null)
+  // Share-to-community notice (surfaces Supabase write failures without losing local images)
+  const [shareNotice, setShareNotice] = useState<string | null>(null)
+
+  // Multi-turn refinement (last generated image URL, used for image-to-image)
+  const [lastImageUrl, setLastImageUrl] = useState<string | null>(null)
 
   // Track object URLs so we can revoke them on delete
   const objectUrlsRef = useRef<Set<string>>(new Set())
@@ -243,7 +249,7 @@ export default function ThumbnailStudio({ apiKey }: { apiKey?: string }) {
 
     const request: GenerationRequest = {
       prompt: buildPrompt(),
-      model: 'gpt-image-2',
+      model: DEFAULT_IMAGE_MODEL,
       quality,
       format,
       compression: format !== 'png' ? compression : undefined,
@@ -255,6 +261,7 @@ export default function ThumbnailStudio({ apiKey }: { apiKey?: string }) {
       mode,
       isPublic,
       sessionId: sessionId.current,
+      apiKey,
     }
     setActiveRequest(request)
   }
@@ -272,11 +279,12 @@ export default function ThumbnailStudio({ apiKey }: { apiKey?: string }) {
       isPublic,
     }))
     setMyImages(prev => [...tagged, ...prev])
-    // Save to Supabase in background
-    for (const img of tagged) {
-      saveToSupabase(img)
+    // Save to Supabase, surfacing failures without breaking the local gallery
+    const results = await Promise.allSettled(tagged.map(img => saveToSupabase(img)))
+    if (results.some(r => r.status === 'rejected')) {
+      setShareNotice('Some thumbnails saved locally but could not be shared to the community.')
     }
-    if (tagged[0]?.responseId) setLastResponseId(tagged[0].responseId)
+    if (tagged[0]?.url) setLastImageUrl(tagged[0].url)
     setActiveTab('mine')
   }, [prompt, enhancedPrompt, selectedStyle, isPublic])
 
@@ -287,46 +295,41 @@ export default function ThumbnailStudio({ apiKey }: { apiKey?: string }) {
   }, [])
 
   const handleRefine = async () => {
-    if (!refinePrompt.trim() || !lastResponseId) return
+    if (!refinePrompt.trim() || !lastImageUrl || !apiKey) return
     setError('')
     setIsGenerating(true)
     try {
-      const OPENAI_KEY = process.env.NEXT_PUBLIC_OPENAI_API_KEY || ''
-      const res = await fetch('https://api.openai.com/v1/responses', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          input: refinePrompt,
-          previous_response_id: lastResponseId,
-          tools: [{ type: 'image_generation', quality, action: 'edit' }],
-        }),
+      const client = getImageClient(apiKey)
+      const results = await client.generate({
+        prompt: generateCTRPrompt(refinePrompt, selectedStyle),
+        model: DEFAULT_IMAGE_MODEL,
+        aspectRatio: selectedSize.ratio,
+        quality,
+        n: 1,
+        imageUrl: lastImageUrl,
+        strength: 0.5,
       })
-      const data = await res.json()
-      const call = data.output?.find((o: any) => o.type === 'image_generation_call')
-      if (call?.result) {
-        const blob = await fetch(`data:image/png;base64,${call.result}`).then(r => r.blob())
-        const url = URL.createObjectURL(blob)
-        trackObjectUrl(url)
+      if (results[0]?.url) {
         const img: GeneratedImage = {
           id: `${Date.now()}-refined`,
-          url, b64: call.result,
+          url: results[0].url,
           prompt: refinePrompt,
-          model: 'gpt-image-2', quality, format,
+          model: DEFAULT_IMAGE_MODEL, quality, format,
           style: selectedStyle,
           aspectRatio: selectedSize.ratio,
           width: selectedSize.width, height: selectedSize.height,
           isPublic, sessionId: sessionId.current,
           createdAt: new Date().toISOString(),
-          responseId: data.id,
         }
         setMyImages(prev => [img, ...prev])
-        setLastResponseId(data.id)
-        saveToSupabase(img)
+        setLastImageUrl(results[0].url)
+        saveToSupabase(img).catch(() => {})
         setActiveTab('mine')
+      } else {
+        setError('Refinement returned no image. Please try again.')
       }
-    } catch (err: any) {
-      setError(err.message || 'Refinement failed')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Refinement failed')
     } finally {
       setIsGenerating(false)
     }
@@ -381,7 +384,7 @@ export default function ThumbnailStudio({ apiKey }: { apiKey?: string }) {
           </div>
           <span className="text-sm font-semibold tracking-tight">Thumbnail Studio</span>
           <span className="text-xs px-2 py-0.5 rounded-full ml-1" style={{ background: 'rgba(34,211,238,0.1)', color: 'var(--color-primary)' }}>
-            gpt-image-2
+            {DEFAULT_IMAGE_MODEL}
           </span>
         </div>
         <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
@@ -430,7 +433,7 @@ export default function ThumbnailStudio({ apiKey }: { apiKey?: string }) {
                   selectedImage={referenceImage}
                 />
                 <p className="text-xs mt-2" style={{ color: semantic.textMuted }}>
-                  Edit mode requires ImageStream support for reference images/masks.
+                  Edit mode sends your reference image to MuAPI for image-to-image generation.
                 </p>
               </div>
             )}
@@ -510,7 +513,7 @@ export default function ThumbnailStudio({ apiKey }: { apiKey?: string }) {
               <p className="text-xs font-medium mb-3" style={{ color: semantic.textLabel }}>QUALITY</p>
               <div className="grid grid-cols-3 gap-2">
                 {QUALITY_PRESETS.map(q => (
-                  <button key={q.value} onClick={() => setQuality(q.value as any)}
+                  <button key={q.value} onClick={() => setQuality(q.value as 'low' | 'medium' | 'high')}
                     className="py-2.5 rounded-lg text-center transition-all"
                     style={optionStyle(quality === q.value)}
                   >
@@ -598,8 +601,8 @@ export default function ThumbnailStudio({ apiKey }: { apiKey?: string }) {
               </div>
             )}
 
-            {/* Streaming progress */}
-            <ImageStream
+            {/* Streaming progress (MuAPI) */}
+            <MuapiImageStream
               request={activeRequest}
               onComplete={handleStreamComplete}
               onError={handleStreamError}
@@ -624,7 +627,7 @@ export default function ThumbnailStudio({ apiKey }: { apiKey?: string }) {
             </button>
 
             {/* Multi-turn refinement */}
-            {lastResponseId && myImages.length > 0 && (
+            {lastImageUrl && myImages.length > 0 && (
               <div className="rounded-xl p-4 space-y-3" style={panels.glass}>
                 <button onClick={() => setShowRefine(!showRefine)}
                   className="flex items-center gap-2 text-xs w-full"
@@ -660,6 +663,15 @@ export default function ThumbnailStudio({ apiKey }: { apiKey?: string }) {
         {/* ── MY GALLERY TAB ── */}
         {activeTab === 'mine' && (
           <div className="p-4">
+            {shareNotice && (
+              <div
+                onClick={() => setShareNotice(null)}
+                className="mb-3 p-3 rounded-xl text-xs cursor-pointer"
+                style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.25)', color: '#fbbf24' }}
+              >
+                {shareNotice}
+              </div>
+            )}
             <ImageGallery
               images={myImages}
               onDelete={handleDelete}
