@@ -64,6 +64,17 @@ const SLUG_TO_TAB = {
 
 const STORAGE_KEY = 'muapi_key';
 
+// Build the muapi_key cookie string. `Secure` is added only over HTTPS so the
+// key still persists on http:// localhost dev servers (Secure cookies are dropped
+// on plain HTTP, which would otherwise break local key saving).
+function muapiCookie(value) {
+  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+  if (value) {
+    return `muapi_key=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax${secure}`;
+  }
+  return `muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
+}
+
 export default function StandaloneShell({ embedded = false, initialTab = null } = {}) {
   const params = useParams();
   const router = useRouter();
@@ -193,7 +204,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
       fetchBalance(cleanKey);
       // Sync cookie immediately on mount to establish identity for background requests.
       // Encode so special characters in the key don't corrupt the cookie string.
-      document.cookie = `muapi_key=${encodeURIComponent(cleanKey)}; path=/; max-age=31536000; SameSite=Lax`;
+      document.cookie = muapiCookie(cleanKey);
       return;
     }
 
@@ -201,24 +212,32 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
     // account so the key follows them across browsers, devices and sign-ins.
     let cancelled = false;
     (async () => {
+      let restored = '';
       try {
         const res = await fetch('/api/auth/muapi-key', { credentials: 'same-origin' });
-        if (!res.ok) return;
-        const data = await res.json();
-        const restored = data?.key
-          ? String(data.key).replace(/[^\u0000-\u00FF]/g, '').trim()
-          : '';
-        if (!restored || cancelled) return;
-        localStorage.setItem(STORAGE_KEY, restored);
-        setApiKey(restored);
-        fetchBalance(restored);
-        document.cookie = `muapi_key=${encodeURIComponent(restored)}; path=/; max-age=31536000; SameSite=Lax`;
+        if (res.ok) {
+          const data = await res.json();
+          restored = data?.key
+            ? String(data.key).replace(/[^\u0000-\u00FF]/g, '').trim()
+            : '';
+        }
       } catch {
         // Offline or not signed in — the user can still enter a key manually.
       }
+      if (cancelled) return;
+      if (restored) {
+        localStorage.setItem(STORAGE_KEY, restored);
+        setApiKey(restored);
+        fetchBalance(restored);
+        document.cookie = muapiCookie(restored);
+      } else if (!embedded) {
+        // First run: no key on this device and none saved to the user's
+        // account yet — prompt them to add their own MuAPI key.
+        setShowSettings(true);
+      }
     })();
     return () => { cancelled = true; };
-  }, [fetchBalance]);
+  }, [fetchBalance, embedded]);
 
   const handleKeySave = useCallback((key) => {
     const trimmed = key.trim();
@@ -231,7 +250,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
     // Persist the key as a cookie before any background requests so server-side
     // proxy routes can resolve it even when the x-api-key header is not present.
     // Encode so special characters in the key don't corrupt the cookie string.
-    document.cookie = `muapi_key=${encodeURIComponent(trimmed)}; path=/; max-age=31536000; SameSite=Lax`;
+    document.cookie = muapiCookie(trimmed);
     // Persist the key against the signed-in user's account so it is restored
     // automatically on future sign-ins and on other browsers/devices.
     fetch('/api/auth/muapi-key', {
@@ -249,7 +268,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
     setBalance(null);
     setSettingsKeyInput('');
     setAuthError(null);
-    document.cookie = "muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    document.cookie = muapiCookie(null);
     // Also forget the key stored against the user's account.
     fetch('/api/auth/muapi-key', { method: 'DELETE', credentials: 'same-origin' }).catch(() => {});
   }, []);
@@ -485,9 +504,13 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
       {showSettings && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in-up">
           <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-8 w-full max-w-sm shadow-2xl">
-            <h2 className="text-white font-bold text-lg mb-2">Settings</h2>
+            <h2 className="text-white font-bold text-lg mb-2">
+              {apiKey ? 'Settings' : 'Add your API key'}
+            </h2>
             <p className="text-white/40 text-[13px] mb-4">
-              Manage your AI studio preferences and authentication.
+              {apiKey
+                ? 'Manage your AI studio preferences and authentication.'
+                : 'Welcome! Add your own MuAPI key to start generating.'}
             </p>
             
             {authError && (
@@ -518,6 +541,19 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
                   placeholder="Enter your MuAPI key..."
                   className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[13px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
                 />
+                <p className="mt-2 text-[11px] leading-relaxed text-white/40">
+                  {apiKey
+                    ? 'Your key is stored securely to your account and restored automatically when you sign in.'
+                    : 'Add your own MuAPI key to start generating. It is stored securely to your account, so you only need to enter it once.'}{' '}
+                  <a
+                    href="https://muapi.ai/access-keys"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#22d3ee] font-semibold hover:underline"
+                  >
+                    Get your key at muapi.ai
+                  </a>
+                </p>
               </div>
             </div>
 
