@@ -1,0 +1,21 @@
+import { chromium } from 'playwright-core';
+const EXEC = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const BASE = 'http://127.0.0.1:3000';
+const browser = await chromium.launch({ executablePath: EXEC, headless: true });
+const page = await browser.newPage();
+const errors = [];
+page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
+await page.goto(BASE + '/sign-in', { waitUntil: 'networkidle' });
+await page.waitForTimeout(4000);
+const email = page.getByLabel(/email address/i);
+const pwd = page.getByLabel(/^password$/i);
+console.log('email input count:', await email.count());
+console.log('password input count:', await pwd.count());
+// Dump the Clerk card / main region text to see what actually rendered
+const mainText = await page.locator('main').innerText().catch(() => '(no main)');
+console.log('--- main innerText (first 600 chars) ---');
+console.log(mainText.slice(0, 600));
+console.log('--- console/page errors ---');
+console.log(errors.slice(0, 15).join('\n') || '(none)');
+await browser.close();
