@@ -14,6 +14,16 @@ const isAuthRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
+  // Dev-only E2E auth bypass. When the `__e2e_auth_bypass` cookie is present and
+  // we are NOT in production, skip Clerk auth so the Playwright suite can run
+  // fully offline (no live Clerk session). Never active in production.
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    request.cookies.get('__e2e_auth_bypass')?.value === '1'
+  ) {
+    return NextResponse.next()
+  }
+
   const url = request.nextUrl;
 
   const { userId } = await auth();

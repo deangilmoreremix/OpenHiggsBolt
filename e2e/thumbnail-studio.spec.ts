@@ -1,56 +1,40 @@
 import { test, expect } from '@playwright/test';
-import { clerkSetup, clerk, setupClerkTestingToken } from '@clerk/testing/playwright';
 
 /**
- * Thumbnail Studio smoke test (mocked MuAPI).
+ * Thumbnail Studio smoke test (mocked MuAPI, mocked auth).
  *
- * This spec exercises the real UI at `/studio/thumbnail-studio` but NEVER touches
- * the live MuAPI API. Every `https://api.muapi.ai/**` request is intercepted with
- * `page.route` and fulfilled with a fake `request_id` + a fake completed result, so
- * generation completes end-to-end without a real key or network.
+ * Fully self-contained / CI-safe:
+ *  - Auth is bypassed via the dev-only `__e2e_auth_bypass` cookie (see middleware.js),
+ *    so no live Clerk session is required.
+ *  - Every `https://api.muapi.ai/**` request is intercepted with `page.route` and
+ *    fulfilled with a fake `request_id` + a completed result, so generation completes
+ *    end-to-end without a real key or network.
+ *  - The MuAPI result URL is fulfilled with a tiny PNG so the gallery `<img>` renders.
  *
- * NOTE on the mocked image URL: the production client's `extractImageUrl` helper only
- * accepts URLs that start with `http(s)` (see src/shared/api/muapiImage.ts). A `data:`
- * URL would be silently discarded, so we return a plain `https://` URL here. If you
- * change the mocked result to a `data:` URL, the gallery assertion would fail until
- * that helper is extended to accept non-http URLs.
- *
- * AUTH: `/studio/*` is Clerk-protected (middleware.js). We sign in with the same
- * `@clerk/testing` token pattern used by e2e/auth.spec.ts. If `E2E_TEST_EMAIL` is not
- * configured the test is skipped. We do not fake or bypass auth — if Clerk sign-in
- * cannot complete in the environment, this test will fail at sign-in (not silently
- * pass), which is the intended, honest behavior.
+ * NOTE: the production client's `extractImageUrl` only accepts http(s) / data:image URLs,
+ * so the mocked result uses a plain `https://` URL.
  */
 
-const email = process.env.E2E_TEST_EMAIL;
-const password = process.env.E2E_TEST_PASSWORD;
 const FAKE_KEY = 'e2e-fake-muapi-key';
 const FAKE_IMAGE_URL = 'https://example.com/thumbnail.png';
+const BASE = 'http://localhost:3111';
 
-test.beforeAll(async () => {
-  await clerkSetup();
-});
-
-test.describe('Thumbnail Studio (mocked MuAPI)', () => {
-  test.beforeEach(async ({ page }) => {
-    test.skip(!email, 'No E2E test credentials configured (set E2E_TEST_EMAIL)');
-    // Establish a Clerk session via the testing token so the protected studio renders.
-    await setupClerkTestingToken({ page });
-    await page.goto('/');
-    await clerk.signIn({ page, emailAddress: email, password });
+test.describe('Thumbnail Studio (mocked MuAPI, mocked auth)', () => {
+  test.beforeEach(async ({ context, page }) => {
+    // Bypass Clerk auth in dev (middleware.js honours this cookie).
+    await context.addCookies([
+      { name: '__e2e_auth_bypass', value: '1', url: BASE },
+    ]);
+    // Seed a fake MuAPI key so getImageClient() has something to use.
+    await page.addInitScript((key) => {
+      localStorage.setItem('muapi_key', key);
+    }, FAKE_KEY);
   });
 
   test('renders the studio, generates a thumbnail, and shows it in the My gallery', async ({
     page,
   }) => {
-    // Seed a fake MuAPI key so the studio's getImageClient() has something to use.
-    // Registered before navigation so it is present when StandaloneShell mounts.
-    await page.addInitScript((key) => {
-      localStorage.setItem('muapi_key', key);
-    }, FAKE_KEY);
-
-    // Intercept all MuAPI traffic. Specific routes first (first match wins); the
-    // catch-all fulfills any other muapi.ai call (e.g. balance) so we stay offline.
+    // Specific MuAPI routes first (first match wins); catch-all after.
     await page.route('**/api.muapi.ai/api/v1/flux-dev', async (route) => {
       const req = route.request();
       expect(req.method()).toBe('POST');
@@ -78,8 +62,7 @@ test.describe('Thumbnail Studio (mocked MuAPI)', () => {
       });
     });
 
-    // Fulfill the returned image URL with a real (tiny) PNG so the <img> actually
-    // renders instead of 404-ing in the gallery.
+    // Fulfill the returned image URL with a real (tiny) PNG so the <img> renders.
     await page.route(FAKE_IMAGE_URL, async (route) => {
       const png =
         'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC';
@@ -106,7 +89,6 @@ test.describe('Thumbnail Studio (mocked MuAPI)', () => {
     const galleryImage = page.locator(`img[src="${FAKE_IMAGE_URL}"]`);
     await expect(galleryImage).toBeVisible({ timeout: 30_000 });
 
-    // The My tab should now reflect at least one image (count badge or the image).
     await expect(page.getByRole('button', { name: /mine/i })).toBeVisible();
   });
 });
