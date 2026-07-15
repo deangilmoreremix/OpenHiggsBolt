@@ -5,7 +5,7 @@
       "source": "clerk/skills",
       "sourceType": "github",
       "skillPath": "skills/core/clerk/SKILL.md",
-      "computedHash": "2ec160843e0e4d4a46d46f9442f5dc97d82055384189881e80d128c090651bb7"
+      "computedHash": "93f74ad69ae27356e994fb25b52dcda0f9d63fff43ed2c52e1de744e98d35599"
     },
     "clerk-android": {
       "source": "clerk/skills",
@@ -53,7 +53,7 @@
       "source": "clerk/skills",
       "sourceType": "github",
       "skillPath": "skills/mobile/clerk-expo/SKILL.md",
-      "computedHash": "f880c1ef1ed1c5740aaa984514cefe1c8e8f2edd4209bbbac6abc67c10726b55"
+      "computedHash": "db8101de14305d683ebdee39123ab43041e1f0265b38814812a5e550aa4d14a0"
     },
     "clerk-expo-patterns": {
       "source": "clerk/skills",
@@ -89,13 +89,13 @@
       "source": "clerk/skills",
       "sourceType": "github",
       "skillPath": "skills/frameworks/clerk-react-router-patterns/SKILL.md",
-      "computedHash": "9483ecb8afea7aa4dd6ae9c784b839cb9cb5948db552837a24913d5d9946c7e4"
+      "computedHash": "929d5912f42a2769f81aa027294a1caec65e0ce83f1f1db47c6df6758c5952bb"
     },
     "clerk-setup": {
       "source": "clerk/skills",
       "sourceType": "github",
       "skillPath": "skills/core/clerk-setup/SKILL.md",
-      "computedHash": "a35fe4e4d03a71825d9880c9cd76ddcae536beed535a2be44908117b4661e749"
+      "computedHash": "2142fbbf99008c3152e7044730e57d6063b26a9f2523da1fd21a83f6207a2b81"
     },
     "clerk-swift": {
       "source": "clerk/skills",
