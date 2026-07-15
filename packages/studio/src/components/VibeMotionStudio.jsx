@@ -47,7 +47,7 @@ function DropdownItem({ label, selected, onClick }) {
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function VibeMotionStudio({ apiKey }) {
+export default function VibeMotionStudio({ apiKey, onGenerationComplete, onGenerationError }) {
   const PERSIST_KEY = "hg_vibe_motion_studio_persistent";
 
   // ── Params ────────────────────────────────────────────────────────────────
@@ -160,6 +160,7 @@ export default function VibeMotionStudio({ apiKey }) {
 
       const next = [entry, ...history].slice(0, 30);
       saveHistory(next);
+      onGenerationComplete?.({ url: videoUrl, type: "video" });
     } catch (err) {
       // Detect the backend's "animation code not saved" limitation
       const raw = err.message || "";
@@ -183,6 +184,7 @@ export default function VibeMotionStudio({ apiKey }) {
         setGenerateError(raw.slice(0, 120) || "Generation failed");
       }
       setTimeout(() => setGenerateError(null), 10000);
+      onGenerationError?.(err.message?.slice(0, 120) || "Vibe Motion generation failed");
     } finally {
       setGenerating(false);
       stopTimer();
@@ -644,7 +646,7 @@ export default function VibeMotionStudio({ apiKey }) {
               type="button"
               onClick={handleGenerate}
               disabled={generating || !prompt.trim() || (editMode && !editSourceId)}
-              className="bg-[#22d3ee] text-black px-7 py-3 rounded-full font-black text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10"
+              className="bg-[#22d3ee] text-black px-7 py-3 rounded-full font-bold text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10"
             >
               {generating ? (
                 <>

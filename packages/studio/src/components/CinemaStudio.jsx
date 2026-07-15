@@ -444,6 +444,7 @@ function CameraControlsOverlay({
 export default function CinemaStudio({
   apiKey,
   onGenerationComplete,
+  onGenerationError,
   historyItems,
 }) {
   const PERSIST_KEY = "hg_cinema_studio_persistent";
@@ -632,7 +633,7 @@ export default function CinemaStudio({
       }
     } catch (e) {
       console.error(e);
-      alert("Generation Failed: " + e.message);
+      onGenerationError?.(e.message?.slice(0, 120) || "Cinema generation failed");
     } finally {
       setIsGenerating(false);
     }
@@ -1021,7 +1022,7 @@ export default function CinemaStudio({
 
             {/* Generate Button */}
             <button
-              className="bg-[#22d3ee] text-black px-7 py-3 rounded-full font-black text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10 uppercase tracking-wider"
+              className="bg-[#22d3ee] text-black px-7 py-3 rounded-full font-bold text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10 uppercase tracking-wider"
               disabled={isGenerating || !settings.prompt.trim()}
               onClick={handleGenerate}
             >

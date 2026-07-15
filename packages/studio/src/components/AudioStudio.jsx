@@ -475,6 +475,7 @@ function PremiumAudioPlayer({ url, title }) {
 export default function AudioStudio({
   apiKey,
   onGenerationComplete,
+  onGenerationError,
   historyItems,
   droppedFiles,
   onFilesHandled,
@@ -661,6 +662,7 @@ export default function AudioStudio({
     } catch (e) {
       console.error("[AudioStudio]", e);
       setGenerateError(e.message?.slice(0, 100) ?? "Audio generation failed");
+      onGenerationError?.(e.message?.slice(0, 120) || "Audio generation failed");
     } finally {
       setIsGenerating(false);
     }
