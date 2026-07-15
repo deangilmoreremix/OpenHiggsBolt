@@ -122,3 +122,66 @@ describe('muapi-key route (integration)', () => {
     store.userId = 'user_test_123';
   });
 });
+
+describe('muapi-key route — rate limiting + audit timestamp', () => {
+  function makeBuilder2() {
+    const b = {
+      update: (payload) => {
+        store.app_users.set(store.userId, {
+          muapi_key: payload?.muapi_key ?? null,
+          key_updated_at: payload?.key_updated_at ?? null,
+        });
+        return b;
+      },
+      insert: (payload) => {
+        store.app_users.set(store.userId, {
+          muapi_key: payload?.muapi_key ?? null,
+          key_updated_at: payload?.key_updated_at ?? null,
+        });
+        return b;
+      },
+      eq: () => b,
+      select: () => b,
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+    };
+    return b;
+  }
+
+  it('returns 429 when the rate limiter blocks a save', async () => {
+    const calls = [];
+    const limiter = (k) => { calls.push(k); return false; }; // always blocked
+    const h = buildHandlersForTest2(limiter);
+    const res = await h.POST(postReq({ key: 'sk_should_be_blocked' }));
+    assert.equal(res.status, 429);
+    const json = await res.json();
+    assert.equal(json.ok, false);
+    assert.match(json.error, /too many requests/i);
+  });
+
+  it('records key_updated_at (audit timestamp) on save and on clear', async () => {
+    let allow = true;
+    const limiter = () => allow;
+    const h = buildHandlersForTest2(limiter);
+
+    await h.POST(postReq({ key: 'sk_audit_me' }));
+    const afterSave = store.app_users.get(store.userId);
+    assert.ok(afterSave.key_updated_at, 'key_updated_at set on save');
+    assert.ok(!Number.isNaN(Date.parse(afterSave.key_updated_at)), 'valid ISO timestamp');
+
+    await h.DELETE();
+    const afterClear = store.app_users.get(store.userId);
+    assert.ok(afterClear.key_updated_at, 'key_updated_at set on clear');
+  });
+
+  function buildHandlersForTest2(limiter) {
+    store.app_users.clear();
+    return route2.buildHandlers({ auth: mockAuth, getSupabaseAdmin: mockSb2, rateLimit: limiter });
+  }
+  const mockSb2 = () => ({ from: () => makeBuilder2() });
+
+  let route2;
+  before(async () => {
+    const mod = await import('../app/api/auth/muapi-key/route.ts');
+    route2 = mod;
+  });
+});
