@@ -6,6 +6,8 @@
 export const t2iModels = [
   {
     "id": "nano-banana",
+    "provider": "google",
+    "provider_name": "Google",
     "name": "Nano Banana",
     "endpoint": "nano-banana",
     "inputs": {
@@ -41,6 +43,8 @@ export const t2iModels = [
   },
   {
     "id": "flux-dev",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux Dev",
     "endpoint": "flux-dev-image",
     "inputs": {
@@ -87,6 +91,8 @@ export const t2iModels = [
   },
   {
     "id": "flux-dev-lora",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux Dev Lora",
     "inputs": {
       "prompt": {
@@ -168,6 +174,8 @@ export const t2iModels = [
   },
   {
     "id": "flux-kontext-dev-t2i",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux Kontext Dev T2I",
     "inputs": {
       "prompt": {
@@ -212,6 +220,8 @@ export const t2iModels = [
   },
   {
     "id": "hidream-i1-fast",
+    "provider": "hidream",
+    "provider_name": "Hidream",
     "name": "Hidream I1 Fast",
     "inputs": {
       "prompt": {
@@ -257,6 +267,8 @@ export const t2iModels = [
   },
   {
     "id": "hidream-i1-dev",
+    "provider": "hidream",
+    "provider_name": "Hidream",
     "name": "Hidream I1 Dev",
     "inputs": {
       "prompt": {
@@ -302,6 +314,8 @@ export const t2iModels = [
   },
   {
     "id": "hidream-i1-full",
+    "provider": "hidream",
+    "provider_name": "Hidream",
     "name": "Hidream I1 Full",
     "inputs": {
       "prompt": {
@@ -347,6 +361,8 @@ export const t2iModels = [
   },
   {
     "id": "ai-anime-generator",
+    "provider": "muapi",
+    "provider_name": "MuapiApp",
     "name": "Ai Anime Generator",
     "inputs": {
       "prompt": {
@@ -384,6 +400,8 @@ export const t2iModels = [
   },
   {
     "id": "wan2.1-text-to-image",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Wan2.1 Text To Image",
     "inputs": {
       "prompt": {
@@ -419,6 +437,8 @@ export const t2iModels = [
   },
   {
     "id": "flux-kontext-pro-t2i",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux Kontext Pro T2I",
     "inputs": {
       "prompt": {
@@ -450,6 +470,8 @@ export const t2iModels = [
   },
   {
     "id": "flux-kontext-max-t2i",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux Kontext Max T2I",
     "inputs": {
       "prompt": {
@@ -481,6 +503,8 @@ export const t2iModels = [
   },
   {
     "id": "gpt4o-text-to-image",
+    "provider": "openai",
+    "provider_name": "OpenAI",
     "name": "Gpt4o Text To Image",
     "inputs": {
       "prompt": {
@@ -520,6 +544,8 @@ export const t2iModels = [
   },
   {
     "id": "midjourney-v7-text-to-image",
+    "provider": "midjourney",
+    "provider_name": "Midjourney",
     "name": "Midjourney v7 Text To Image",
     "inputs": {
       "prompt": {
@@ -597,6 +623,8 @@ export const t2iModels = [
   },
   {
     "id": "flux-schnell",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux Schnell",
     "endpoint": "flux-schnell-image",
     "inputs": {
@@ -643,6 +671,8 @@ export const t2iModels = [
   },
   {
     "id": "bytedance-seedream-v3",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Bytedance Seedream v3",
     "inputs": {
       "prompt": {
@@ -672,6 +702,8 @@ export const t2iModels = [
   },
   {
     "id": "qwen-image",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Qwen Image",
     "inputs": {
       "prompt": {
@@ -715,6 +747,8 @@ export const t2iModels = [
   },
   {
     "id": "flux-pulid",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux Pulid",
     "inputs": {
       "prompt": {
@@ -754,6 +788,8 @@ export const t2iModels = [
   },
   {
     "id": "ideogram-v3-t2i",
+    "provider": "ideogram",
+    "provider_name": "Ideogram",
     "name": "Ideogram v3 T2I",
     "inputs": {
       "prompt": {
@@ -819,6 +855,8 @@ export const t2iModels = [
   },
   {
     "id": "google-imagen4",
+    "provider": "google",
+    "provider_name": "Google",
     "name": "Google Imagen4",
     "inputs": {
       "prompt": {
@@ -859,6 +897,8 @@ export const t2iModels = [
   },
   {
     "id": "google-imagen4-fast",
+    "provider": "google",
+    "provider_name": "Google",
     "name": "Google Imagen4 Fast",
     "inputs": {
       "prompt": {
@@ -899,6 +939,8 @@ export const t2iModels = [
   },
   {
     "id": "google-imagen4-ultra",
+    "provider": "google",
+    "provider_name": "Google",
     "name": "Google Imagen4 Ultra",
     "inputs": {
       "prompt": {
@@ -928,6 +970,8 @@ export const t2iModels = [
   },
   {
     "id": "sdxl-image",
+    "provider": "stability",
+    "provider_name": "Stability AI",
     "name": "Sdxl Image",
     "inputs": {
       "prompt": {
@@ -963,6 +1007,8 @@ export const t2iModels = [
   },
   {
     "id": "bytedance-seedream-v4",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Bytedance Seedream v4",
     "inputs": {
       "prompt": {
@@ -1017,6 +1063,8 @@ export const t2iModels = [
   },
   {
     "id": "hunyuan-image-2.1",
+    "provider": "hunyuan",
+    "provider_name": "Hunyuan",
     "name": "Hunyuan Image 2.1",
     "inputs": {
       "prompt": {
@@ -1052,6 +1100,8 @@ export const t2iModels = [
   },
   {
     "id": "chroma-image",
+    "provider": "stability",
+    "provider_name": "Stability AI",
     "name": "Chroma Image",
     "inputs": {
       "prompt": {
@@ -1087,6 +1137,8 @@ export const t2iModels = [
   },
   {
     "id": "flux-redux",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux Redux",
     "inputs": {
       "prompt": {
@@ -1140,6 +1192,8 @@ export const t2iModels = [
   },
   {
     "id": "flux-krea-dev",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux Krea Dev",
     "inputs": {
       "prompt": {
@@ -1183,6 +1237,8 @@ export const t2iModels = [
   },
   {
     "id": "perfect-pony-xl",
+    "provider": "stability",
+    "provider_name": "Stability AI",
     "name": "Perfect Pony Xl",
     "inputs": {
       "prompt": {
@@ -1218,6 +1274,8 @@ export const t2iModels = [
   },
   {
     "id": "neta-lumina",
+    "provider": "stability",
+    "provider_name": "Stability AI",
     "name": "Neta Lumina",
     "inputs": {
       "prompt": {
@@ -1253,6 +1311,8 @@ export const t2iModels = [
   },
   {
     "id": "wan2.5-text-to-image",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Wan2.5 Text To Image",
     "inputs": {
       "prompt": {
@@ -1288,6 +1348,8 @@ export const t2iModels = [
   },
   {
     "id": "hunyuan-image-3.0",
+    "provider": "hunyuan",
+    "provider_name": "Hunyuan",
     "name": "Hunyuan Image 3.0",
     "inputs": {
       "prompt": {
@@ -1323,6 +1385,8 @@ export const t2iModels = [
   },
   {
     "id": "leonardoai-phoenix-1.0",
+    "provider": "leonardoai",
+    "provider_name": "Leonardo AI",
     "name": "Leonardoai Phoenix 1.0",
     "inputs": {
       "prompt": {
@@ -1356,6 +1420,8 @@ export const t2iModels = [
   },
   {
     "id": "leonardoai-lucid-origin",
+    "provider": "leonardoai",
+    "provider_name": "Leonardo AI",
     "name": "Leonardoai Lucid Origin",
     "inputs": {
       "prompt": {
@@ -1389,6 +1455,8 @@ export const t2iModels = [
   },
   {
     "id": "reve-text-to-image",
+    "provider": "reve",
+    "provider_name": "Reve",
     "name": "Reve Text To Image",
     "inputs": {
       "prompt": {
@@ -1420,6 +1488,8 @@ export const t2iModels = [
   },
   {
     "id": "grok-imagine-text-to-image",
+    "provider": "grok",
+    "provider_name": "xAI",
     "name": "Grok Imagine Text To Image",
     "inputs": {
       "prompt": {
@@ -1449,6 +1519,8 @@ export const t2iModels = [
   },
   {
     "id": "nano-banana-pro",
+    "provider": "google",
+    "provider_name": "Google",
     "name": "Nano Banana Pro",
     "endpoint": "nano-banana-pro",
     "inputs": {
@@ -1496,6 +1568,8 @@ export const t2iModels = [
   },
   {
     "id": "kling-o1-text-to-image",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling O1 Text To Image",
     "inputs": {
       "prompt": {
@@ -1549,6 +1623,8 @@ export const t2iModels = [
   },
   {
     "id": "z-image-turbo",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Z Image Turbo",
     "inputs": {
       "prompt": {
@@ -1584,6 +1660,8 @@ export const t2iModels = [
   },
   {
     "id": "flux-2-dev",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux 2 Dev",
     "inputs": {
       "prompt": {
@@ -1619,6 +1697,8 @@ export const t2iModels = [
   },
   {
     "id": "flux-2-flex",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux 2 Flex",
     "inputs": {
       "prompt": {
@@ -1661,6 +1741,8 @@ export const t2iModels = [
   },
   {
     "id": "flux-2-pro",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux 2 Pro",
     "inputs": {
       "prompt": {
@@ -1703,6 +1785,8 @@ export const t2iModels = [
   },
   {
     "id": "vidu-q2-text-to-image",
+    "provider": "vidu",
+    "provider_name": "Vidu",
     "name": "Vidu Q2 Text To Image",
     "inputs": {
       "prompt": {
@@ -1747,6 +1831,8 @@ export const t2iModels = [
   },
   {
     "id": "bytedance-seedream-v4.5",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Bytedance Seedream V4.5",
     "inputs": {
       "prompt": {
@@ -1790,6 +1876,8 @@ export const t2iModels = [
   },
   {
     "id": "gpt-image-1.5",
+    "provider": "openai",
+    "provider_name": "OpenAI",
     "name": "Gpt Image 1.5",
     "inputs": {
       "prompt": {
@@ -1829,6 +1917,8 @@ export const t2iModels = [
   },
   {
     "id": "gpt-image-2",
+    "provider": "openai",
+    "provider_name": "OpenAI",
     "name": "Gpt Image 2",
     "endpoint": "gpt-image-2-text-to-image",
     "family": "gpt-2",
@@ -1873,6 +1963,8 @@ export const t2iModels = [
   },
   {
     "id": "wan2.6-text-to-image",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Wan2.6 Text To Image",
     "inputs": {
       "prompt": {
@@ -1908,6 +2000,8 @@ export const t2iModels = [
   },
   {
     "id": "qwen-text-to-image-2512",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Qwen Text To Image 2512",
     "inputs": {
       "prompt": {
@@ -1943,6 +2037,8 @@ export const t2iModels = [
   },
   {
     "id": "flux-2-klein-4b",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux 2 Klein 4b",
     "inputs": {
       "prompt": {
@@ -1974,6 +2070,8 @@ export const t2iModels = [
   },
   {
     "id": "flux-2-klein-9b",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux 2 Klein 9b",
     "inputs": {
       "prompt": {
@@ -2005,6 +2103,8 @@ export const t2iModels = [
   },
   {
     "id": "z-image-base",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Z Image Base",
     "inputs": {
       "prompt": {
@@ -2056,6 +2156,8 @@ export const t2iModels = [
   },
   {
     "id": "nano-banana-2",
+    "provider": "google",
+    "provider_name": "Google",
     "name": "Nano Banana 2",
     "endpoint": "nano-banana-2",
     "family": "nano",
@@ -2107,6 +2209,8 @@ export const t2iModels = [
   },
   {
     "id": "seedream-5.0",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Seedream 5.0",
     "endpoint": "seedream-5.0",
     "family": "seedream",
@@ -2140,6 +2244,8 @@ export const t2iModels = [
   },
   {
     "id": "minimax-image-01",
+    "provider": "minimax",
+    "provider_name": "Minimax",
     "name": "MiniMax Image 01",
     "endpoint": "minimax-01-subject-reference",
     "family": "minimax",
@@ -2511,6 +2617,8 @@ export const getAspectRatiosForModel = (modelId) => {
 export const t2vModels = [
   {
     "id": "seedance-lite-t2v",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Seedance Lite",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "The prompt to generate the video" },
@@ -2521,6 +2629,8 @@ export const t2vModels = [
   },
   {
     "id": "seedance-pro-t2v",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Seedance Pro",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "The prompt to generate the video" },
@@ -2531,6 +2641,8 @@ export const t2vModels = [
   },
   {
     "id": "seedance-pro-t2v-fast",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Seedance Pro Fast",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "The prompt to generate the video" },
@@ -2541,6 +2653,8 @@ export const t2vModels = [
   },
   {
     "id": "seedance-v1.5-pro-t2v",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Seedance v1.5 Pro",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2551,6 +2665,8 @@ export const t2vModels = [
   },
   {
     "id": "seedance-v1.5-pro-t2v-fast",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Seedance v1.5 Pro Fast",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2561,6 +2677,8 @@ export const t2vModels = [
   },
   {
     "id": "seedance-v2.0-t2v",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Seedance 2.0",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "The prompt to generate the video" },
@@ -2571,6 +2689,8 @@ export const t2vModels = [
   },
   {
     "id": "seedance-v2.0-extend",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Seedance 2.0 Extend",
     "requiresRequestId": true,
     "inputs": {
@@ -2582,6 +2702,8 @@ export const t2vModels = [
   },
   {
     "id": "kling-v2.1-master-t2v",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling v2.1 Master",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2591,6 +2713,8 @@ export const t2vModels = [
   },
   {
     "id": "kling-v2.5-turbo-pro-t2v",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling v2.5 Turbo Pro",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2600,6 +2724,8 @@ export const t2vModels = [
   },
   {
     "id": "kling-v2.6-pro-t2v",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling v2.6 Pro",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "The prompt to generate the video" },
@@ -2609,6 +2735,8 @@ export const t2vModels = [
   },
   {
     "id": "kling-o1-text-to-video",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling O1 Pro",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2618,6 +2746,8 @@ export const t2vModels = [
   },
   {
     "id": "kling-v3.0-pro-text-to-video",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling v3.0 Pro",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2627,6 +2757,8 @@ export const t2vModels = [
   },
   {
     "id": "kling-v3.0-standard-text-to-video",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling v3.0 Standard",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2636,6 +2768,8 @@ export const t2vModels = [
   },
   {
     "id": "veo3-text-to-video",
+    "provider": "google",
+    "provider_name": "Google",
     "name": "Veo 3",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the desired video content." },
@@ -2644,6 +2778,8 @@ export const t2vModels = [
   },
   {
     "id": "veo3-fast-text-to-video",
+    "provider": "google",
+    "provider_name": "Google",
     "name": "Veo 3 Fast",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the desired video content." },
@@ -2652,6 +2788,8 @@ export const t2vModels = [
   },
   {
     "id": "veo3.1-text-to-video",
+    "provider": "google",
+    "provider_name": "Google",
     "name": "Veo 3.1",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2662,6 +2800,8 @@ export const t2vModels = [
   },
   {
     "id": "veo3.1-fast-text-to-video",
+    "provider": "google",
+    "provider_name": "Google",
     "name": "Veo 3.1 Fast",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2672,6 +2812,8 @@ export const t2vModels = [
   },
   {
     "id": "veo3.1-lite-text-to-video",
+    "provider": "google",
+    "provider_name": "Google",
     "name": "Veo 3.1 Lite",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2682,6 +2824,8 @@ export const t2vModels = [
   },
   {
     "id": "runway-text-to-video",
+    "provider": "runway",
+    "provider_name": "RunwayML",
     "name": "Runway Gen-3",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "The prompt to be used to generate a video" },
@@ -2692,6 +2836,8 @@ export const t2vModels = [
   },
   {
     "id": "wan2.1-text-to-video",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Wan 2.1",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "The prompt to generate the video" },
@@ -2703,6 +2849,8 @@ export const t2vModels = [
   },
   {
     "id": "wan2.2-text-to-video",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Wan 2.2",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "The prompt to generate the video" },
@@ -2714,6 +2862,8 @@ export const t2vModels = [
   },
   {
     "id": "wan2.2-5b-fast-t2v",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Wan 2.2 Fast",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2723,6 +2873,8 @@ export const t2vModels = [
   },
   {
     "id": "wan2.5-text-to-video",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Wan 2.5",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "The prompt to generate the video" },
@@ -2733,6 +2885,8 @@ export const t2vModels = [
   },
   {
     "id": "wan2.5-text-to-video-fast",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Wan 2.5 Fast",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "The prompt to generate the video" },
@@ -2743,6 +2897,8 @@ export const t2vModels = [
   },
   {
     "id": "wan2.6-text-to-video",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Wan 2.6",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "The prompt to generate the video" },
@@ -2753,6 +2909,8 @@ export const t2vModels = [
   },
   {
     "id": "hunyuan-text-to-video",
+    "provider": "hunyuan",
+    "provider_name": "Hunyuan",
     "name": "Hunyuan",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2761,6 +2919,8 @@ export const t2vModels = [
   },
   {
     "id": "hunyuan-fast-text-to-video",
+    "provider": "hunyuan",
+    "provider_name": "Hunyuan",
     "name": "Hunyuan Fast",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2769,6 +2929,8 @@ export const t2vModels = [
   },
   {
     "id": "pixverse-v4.5-t2v",
+    "provider": "pixverse",
+    "provider_name": "Pixverse",
     "name": "Pixverse v4.5",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "The prompt to generate the video" },
@@ -2779,6 +2941,8 @@ export const t2vModels = [
   },
   {
     "id": "pixverse-v5-t2v",
+    "provider": "pixverse",
+    "provider_name": "Pixverse",
     "name": "Pixverse v5",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "The prompt to generate the video" },
@@ -2789,6 +2953,8 @@ export const t2vModels = [
   },
   {
     "id": "pixverse-v5.5-t2v",
+    "provider": "pixverse",
+    "provider_name": "Pixverse",
     "name": "Pixverse v5.5",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "The prompt to generate the video" },
@@ -2799,6 +2965,8 @@ export const t2vModels = [
   },
   {
     "id": "minimax-hailuo-02-standard-t2v",
+    "provider": "minimax",
+    "provider_name": "Minimax",
     "name": "Hailuo 02 Standard",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2808,6 +2976,8 @@ export const t2vModels = [
   },
   {
     "id": "minimax-hailuo-02-pro-t2v",
+    "provider": "minimax",
+    "provider_name": "Minimax",
     "name": "Hailuo 02 Pro",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2817,6 +2987,8 @@ export const t2vModels = [
   },
   {
     "id": "minimax-hailuo-2.3-pro-t2v",
+    "provider": "minimax",
+    "provider_name": "Minimax",
     "name": "Hailuo 2.3 Pro",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2825,6 +2997,8 @@ export const t2vModels = [
   },
   {
     "id": "minimax-hailuo-2.3-standard-t2v",
+    "provider": "minimax",
+    "provider_name": "Minimax",
     "name": "Hailuo 2.3 Standard",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2833,6 +3007,8 @@ export const t2vModels = [
   },
   {
     "id": "openai-sora",
+    "provider": "openai",
+    "provider_name": "OpenAI",
     "name": "Sora",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2842,6 +3018,8 @@ export const t2vModels = [
   },
   {
     "id": "openai-sora-2-text-to-video",
+    "provider": "openai",
+    "provider_name": "OpenAI",
     "name": "Sora 2",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "The prompt to generate the video" },
@@ -2851,6 +3029,8 @@ export const t2vModels = [
   },
   {
     "id": "openai-sora-2-pro-text-to-video",
+    "provider": "openai",
+    "provider_name": "OpenAI",
     "name": "Sora 2 Pro",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "The prompt to generate the video" },
@@ -2861,6 +3041,8 @@ export const t2vModels = [
   },
   {
     "id": "vidu-v2.0-t2v",
+    "provider": "vidu",
+    "provider_name": "Vidu",
     "name": "Vidu v2.0",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "The prompt to generate the video" },
@@ -2871,6 +3053,8 @@ export const t2vModels = [
   },
   {
     "id": "ovi-text-to-video",
+    "provider": "muapi",
+    "provider_name": "Muapi",
     "name": "OVI",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2879,6 +3063,8 @@ export const t2vModels = [
   },
   {
     "id": "grok-imagine-text-to-video",
+    "provider": "grok",
+    "provider_name": "xAI",
     "name": "Grok Imagine",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2889,6 +3075,8 @@ export const t2vModels = [
   },
   {
     "id": "ltx-2-pro-text-to-video",
+    "provider": "lightricks",
+    "provider_name": "Lightricks",
     "name": "LTX 2 Pro",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2897,6 +3085,8 @@ export const t2vModels = [
   },
   {
     "id": "ltx-2-fast-text-to-video",
+    "provider": "lightricks",
+    "provider_name": "Lightricks",
     "name": "LTX 2 Fast",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -2905,6 +3095,8 @@ export const t2vModels = [
   },
   {
     "id": "ltx-2-19b-text-to-video",
+    "provider": "lightricks",
+    "provider_name": "Lightricks",
     "name": "LTX 2 19B",
     "inputs": {
       "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Text prompt describing the video." },
@@ -3609,6 +3801,8 @@ export const getResolutionsForVideoModel = (modelId) => {
 export const i2iModels = [
   {
     "id": "ai-image-upscaler",
+    "provider": "muapi",
+    "provider_name": "Fal",
     "name": "AI Image Upscaler",
     "endpoint": "ai-image-upscale",
     "family": "tools",
@@ -3618,6 +3812,8 @@ export const i2iModels = [
   },
   {
     "id": "ai-image-face-swap",
+    "provider": "muapi",
+    "provider_name": "MuapiApp",
     "name": "AI Image Face Swap",
     "endpoint": "ai-image-face-swap",
     "family": "tools",
@@ -3639,6 +3835,8 @@ export const i2iModels = [
   },
   {
     "id": "ai-dress-change",
+    "provider": "muapi",
+    "provider_name": "Fal",
     "name": "AI Dress Change",
     "endpoint": "ai-dress-change",
     "family": "tools",
@@ -3648,6 +3846,8 @@ export const i2iModels = [
   },
   {
     "id": "ai-background-remover",
+    "provider": "muapi",
+    "provider_name": "Fal",
     "name": "AI Background Remover",
     "endpoint": "ai-background-remover",
     "family": "tools",
@@ -3657,6 +3857,8 @@ export const i2iModels = [
   },
   {
     "id": "ai-product-shot",
+    "provider": "muapi",
+    "provider_name": "Fal",
     "name": "AI Product Shot",
     "endpoint": "ai-product-shot",
     "family": "tools",
@@ -3676,6 +3878,8 @@ export const i2iModels = [
   },
   {
     "id": "ai-skin-enhancer",
+    "provider": "muapi",
+    "provider_name": "Fal",
     "name": "AI Skin Enhancer",
     "endpoint": "ai-skin-enhancer",
     "family": "tools",
@@ -3685,6 +3889,8 @@ export const i2iModels = [
   },
   {
     "id": "ai-color-photo",
+    "provider": "muapi",
+    "provider_name": "Fal",
     "name": "AI Color Photo",
     "endpoint": "ai-color-photo",
     "family": "tools",
@@ -3694,6 +3900,8 @@ export const i2iModels = [
   },
   {
     "id": "flux-kontext-dev-i2i",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux Kontext Dev I2I",
     "endpoint": "flux-kontext-dev-i2i",
     "family": "kontext",
@@ -3742,6 +3950,8 @@ export const i2iModels = [
   },
   {
     "id": "ai-product-photography",
+    "provider": "muapi",
+    "provider_name": "Fal",
     "name": "AI Product Photography",
     "endpoint": "ai-product-photography",
     "family": "tools",
@@ -3761,6 +3971,8 @@ export const i2iModels = [
   },
   {
     "id": "ai-ghibli-style",
+    "provider": "muapi",
+    "provider_name": "Fal",
     "name": "AI Ghibli Style",
     "endpoint": "ai-ghibli-style",
     "family": "tools",
@@ -3770,6 +3982,8 @@ export const i2iModels = [
   },
   {
     "id": "ai-image-extension",
+    "provider": "muapi",
+    "provider_name": "Fal",
     "name": "AI Image Extension",
     "endpoint": "ai-image-extension",
     "family": "tools",
@@ -3779,6 +3993,8 @@ export const i2iModels = [
   },
   {
     "id": "ai-object-eraser",
+    "provider": "muapi",
+    "provider_name": "Fal",
     "name": "AI Object Eraser",
     "endpoint": "ai-object-eraser",
     "family": "tools",
@@ -3788,6 +4004,8 @@ export const i2iModels = [
   },
   {
     "id": "flux-kontext-pro-i2i",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux Kontext Pro I2I",
     "endpoint": "flux-kontext-pro-i2i",
     "family": "kontext",
@@ -3824,6 +4042,8 @@ export const i2iModels = [
   },
   {
     "id": "flux-kontext-max-i2i",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux Kontext Max I2I",
     "endpoint": "flux-kontext-max-i2i",
     "family": "kontext",
@@ -3860,6 +4080,8 @@ export const i2iModels = [
   },
   {
     "id": "gpt4o-image-to-image",
+    "provider": "openai",
+    "provider_name": "OpenAI",
     "name": "GPT-4o Image To Image",
     "endpoint": "gpt4o-image-to-image",
     "family": "gpt",
@@ -3904,6 +4126,8 @@ export const i2iModels = [
   },
   {
     "id": "gpt4o-edit",
+    "provider": "openai",
+    "provider_name": "OpenAI",
     "name": "GPT-4o Edit",
     "endpoint": "gpt4o-edit",
     "family": "gpt",
@@ -3947,6 +4171,8 @@ export const i2iModels = [
   },
   {
     "id": "midjourney-v7-image-to-image",
+    "provider": "midjourney",
+    "provider_name": "Midjourney",
     "name": "Midjourney v7 Image To Image",
     "endpoint": "midjourney-v7-image-to-image",
     "family": "midjourney",
@@ -4028,6 +4254,8 @@ export const i2iModels = [
   },
   {
     "id": "bytedance-seededit-v3",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Bytedance Seededit v3",
     "endpoint": "bytedance-seededit-image",
     "family": "seedream",
@@ -4047,6 +4275,8 @@ export const i2iModels = [
   },
   {
     "id": "midjourney-v7-style-reference",
+    "provider": "midjourney",
+    "provider_name": "Midjourney",
     "name": "Midjourney v7 Style Reference",
     "endpoint": "midjourney-v7-style-reference",
     "family": "midjourney",
@@ -4128,6 +4358,8 @@ export const i2iModels = [
   },
   {
     "id": "midjourney-v7-omni-reference",
+    "provider": "midjourney",
+    "provider_name": "Midjourney",
     "name": "Midjourney v7 Omni Reference",
     "endpoint": "midjourney-v7-omni-reference",
     "family": "midjourney",
@@ -4219,6 +4451,8 @@ export const i2iModels = [
   },
   {
     "id": "minimax-image-01-subject-reference",
+    "provider": "minimax",
+    "provider_name": "Minimax",
     "name": "Minimax Image 01 Subject Reference",
     "endpoint": "minimax-01-subject-reference",
     "family": "minimax",
@@ -4265,6 +4499,8 @@ export const i2iModels = [
   },
   {
     "id": "ideogram-character",
+    "provider": "ideogram",
+    "provider_name": "Ideogram",
     "name": "Ideogram Character",
     "endpoint": "ideogram-character",
     "family": "ideogram",
@@ -4332,6 +4568,8 @@ export const i2iModels = [
   },
   {
     "id": "flux-pulid",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux Pulid",
     "endpoint": "flux-pulid",
     "family": "flux",
@@ -4365,6 +4603,8 @@ export const i2iModels = [
   },
   {
     "id": "qwen-image-edit",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Qwen Image Edit",
     "endpoint": "qwen-image-edit",
     "family": "qwen",
@@ -4402,6 +4642,8 @@ export const i2iModels = [
   },
   {
     "id": "image-effects",
+    "provider": "muapi",
+    "provider_name": "Muapi",
     "name": "Image Effects",
     "endpoint": "image-effects",
     "family": "effects",
@@ -4439,6 +4681,8 @@ export const i2iModels = [
   },
   {
     "id": "nano-banana-edit",
+    "provider": "google",
+    "provider_name": "Google",
     "name": "Nano Banana Edit",
     "endpoint": "nano-banana-edit",
     "family": "nano",
@@ -4479,6 +4723,8 @@ export const i2iModels = [
   },
   {
     "id": "ideogram-v3-reframe",
+    "provider": "ideogram",
+    "provider_name": "Ideogram",
     "name": "Ideogram v3 Reframe",
     "endpoint": "ideogram-v3-reframe",
     "family": "ideogram",
@@ -4538,6 +4784,8 @@ export const i2iModels = [
   },
   {
     "id": "bytedance-seedream-edit-v4",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Bytedance Seedream Edit v4",
     "endpoint": "bytedance-seedream-edit-v4",
     "family": "seedream",
@@ -4597,6 +4845,8 @@ export const i2iModels = [
   },
   {
     "id": "nano-banana-effects",
+    "provider": "google",
+    "provider_name": "Google",
     "name": "Nano Banana Effects",
     "endpoint": "nano-banana-effects",
     "family": "nano",
@@ -4653,6 +4903,8 @@ export const i2iModels = [
   },
   {
     "id": "flux-kontext-effects",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux Kontext Effects",
     "endpoint": "flux-kontext-effects",
     "family": "kontext",
@@ -4694,6 +4946,8 @@ export const i2iModels = [
   },
   {
     "id": "flux-redux",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux Redux",
     "endpoint": "flux-redux",
     "family": "flux",
@@ -4741,6 +4995,8 @@ export const i2iModels = [
   },
   {
     "id": "qwen-image-edit-plus",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Qwen Image Edit Plus",
     "endpoint": "qwen-image-edit-plus",
     "family": "qwen",
@@ -4781,6 +5037,8 @@ export const i2iModels = [
   },
   {
     "id": "wan2.5-image-edit",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Wan2.5 Image Edit",
     "endpoint": "wan2.5-image-edit",
     "family": "wan2.5",
@@ -4821,6 +5079,8 @@ export const i2iModels = [
   },
   {
     "id": "reve-image-edit",
+    "provider": "reve",
+    "provider_name": "Reve",
     "name": "Reve Image Edit",
     "endpoint": "reve-image-edit",
     "family": "reve",
@@ -4840,6 +5100,8 @@ export const i2iModels = [
   },
   {
     "id": "topaz-image-upscale",
+    "provider": "openai",
+    "provider_name": "OpenAI",
     "name": "Topaz Image Upscale",
     "endpoint": "topaz-image-upscale",
     "family": "topaz",
@@ -4863,6 +5125,8 @@ export const i2iModels = [
   },
   {
     "id": "seedvr2-image-upscale",
+    "provider": "muapi",
+    "provider_name": "Muapi",
     "name": "Seedvr2 Image Upscale",
     "endpoint": "seedvr2-image-upscale",
     "family": "seedvr2",
@@ -4885,6 +5149,8 @@ export const i2iModels = [
   },
   {
     "id": "qwen-image-edit-plus-lora",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Qwen Image Edit Plus Lora",
     "endpoint": "qwen-image-edit-plus-lora",
     "family": "qwen",
@@ -4953,6 +5219,8 @@ export const i2iModels = [
   },
   {
     "id": "nano-banana-pro-edit",
+    "provider": "google",
+    "provider_name": "Google",
     "name": "Nano Banana Pro Edit",
     "endpoint": "nano-banana-pro-edit",
     "family": "nano",
@@ -5004,6 +5272,8 @@ export const i2iModels = [
   },
   {
     "id": "image-passthrough",
+    "provider": "muapi",
+    "provider_name": "Muapi",
     "name": "Image Passthrough",
     "endpoint": "image-passthrough",
     "family": "image",
@@ -5020,6 +5290,8 @@ export const i2iModels = [
   },
   {
     "id": "kling-o1-edit-image",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling O1 Edit Image",
     "endpoint": "kling-o1-edit-image",
     "family": "kling-o1",
@@ -5069,6 +5341,8 @@ export const i2iModels = [
   },
   {
     "id": "flux-2-dev-edit",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux 2 Dev Edit",
     "endpoint": "flux-2-dev-edit",
     "family": "flux-2",
@@ -5109,6 +5383,8 @@ export const i2iModels = [
   },
   {
     "id": "flux-2-flex-edit",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux 2 Flex Edit",
     "endpoint": "flux-2-flex-edit",
     "family": "flux-2",
@@ -5157,6 +5433,8 @@ export const i2iModels = [
   },
   {
     "id": "flux-2-pro-edit",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux 2 Pro Edit",
     "endpoint": "flux-2-pro-edit",
     "family": "flux-2",
@@ -5205,6 +5483,8 @@ export const i2iModels = [
   },
   {
     "id": "vidu-q2-reference-to-image",
+    "provider": "vidu",
+    "provider_name": "Vidu",
     "name": "Vidu Q2 Reference To Image",
     "endpoint": "vidu-q2-reference-to-image",
     "family": "vidu-q2",
@@ -5255,6 +5535,8 @@ export const i2iModels = [
   },
   {
     "id": "bytedance-seedream-v4.5-edit",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Bytedance Seedream v4.5 Edit",
     "endpoint": "bytedance-seedream-v4.5-edit",
     "family": "seedream-v45",
@@ -5303,6 +5585,8 @@ export const i2iModels = [
   },
   {
     "id": "qwen-image-edit-2511",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Qwen Image Edit 2511",
     "endpoint": "qwen-image-edit-2511",
     "family": "qwen",
@@ -5343,6 +5627,8 @@ export const i2iModels = [
   },
   {
     "id": "wan2.6-image-edit",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Wan2.6 Image Edit",
     "endpoint": "wan2.6-image-edit",
     "family": "wan2.6",
@@ -5363,6 +5649,8 @@ export const i2iModels = [
   },
   {
     "id": "qwen-text-to-image-2512",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Qwen Text To Image 2512",
     "endpoint": "qwen-text-to-image-2512",
     "family": "qwen",
@@ -5402,6 +5690,8 @@ export const i2iModels = [
   },
   {
     "id": "gpt-image-2-edit",
+    "provider": "openai",
+    "provider_name": "OpenAI",
     "name": "Gpt Image 2 Edit",
     "endpoint": "gpt-image-2-image-to-image",
     "family": "gpt-2",
@@ -5449,6 +5739,8 @@ export const i2iModels = [
   },
   {
     "id": "gpt-image-1.5-edit",
+    "provider": "openai",
+    "provider_name": "OpenAI",
     "name": "Gpt Image 1.5 Edit",
     "endpoint": "gpt-image-1.5-edit",
     "family": "gpt-1.5",
@@ -5493,6 +5785,8 @@ export const i2iModels = [
   },
   {
     "id": "grok-imagine-image-to-image",
+    "provider": "grok",
+    "provider_name": "xAI",
     "name": "Grok Imagine Image To Image",
     "endpoint": "grok-imagine-image-to-image",
     "family": "grok",
@@ -5512,6 +5806,8 @@ export const i2iModels = [
   },
   {
     "id": "Api Node",
+    "provider": "muapi",
+    "provider_name": "Muapi",
     "name": "Api Node",
     "endpoint": "Api Node",
     "family": "wavespeed",
@@ -5540,6 +5836,8 @@ export const i2iModels = [
   },
   {
     "id": "flux-2-klein-4b-edit",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux 2 Klein 4b Edit",
     "endpoint": "flux-2-klein-4b-edit",
     "family": "flux-2",
@@ -5576,6 +5874,8 @@ export const i2iModels = [
   },
   {
     "id": "flux-2-klein-9b-edit",
+    "provider": "blackforest",
+    "provider_name": "Black Forest Labs",
     "name": "Flux 2 Klein 9b Edit",
     "endpoint": "flux-2-klein-9b-edit",
     "family": "flux-2",
@@ -5612,6 +5912,8 @@ export const i2iModels = [
   },
   {
     "id": "add-image-watermark",
+    "provider": "muapi",
+    "provider_name": "Muapi",
     "name": "Add Image Watermark",
     "endpoint": "add-image-watermark",
     "family": "watermark",
@@ -5650,6 +5952,8 @@ export const i2iModels = [
   },
   {
     "id": "nano-banana-2-edit",
+    "provider": "google",
+    "provider_name": "Google",
     "name": "Nano Banana 2 Edit",
     "endpoint": "nano-banana-2-edit",
     "family": "nano",
@@ -5704,6 +6008,8 @@ export const i2iModels = [
   },
   {
     "id": "seedream-5.0-edit",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Seedream 5.0 Edit",
     "endpoint": "seedream-5.0-edit",
     "family": "seedream",
@@ -6152,6 +6458,8 @@ export const i2iModels = [
 export const i2vModels = [
   {
     "id": "ai-video-effects",
+    "provider": "muapi",
+    "provider_name": "MuapiApp",
     "name": "AI Video Effects",
     "endpoint": "generate_wan_ai_effects",
     "family": "effects",
@@ -6288,6 +6596,8 @@ export const i2vModels = [
   },
   {
     "id": "motion-controls",
+    "provider": "muapi",
+    "provider_name": "MuapiApp",
     "name": "Motion Controls",
     "endpoint": "generate_wan_ai_effects",
     "family": "effects",
@@ -6407,6 +6717,8 @@ export const i2vModels = [
   },
   {
     "id": "vfx",
+    "provider": "muapi",
+    "provider_name": "MuapiApp",
     "name": "VFX",
     "endpoint": "generate_wan_ai_effects",
     "family": "effects",
@@ -6488,6 +6800,8 @@ export const i2vModels = [
   },
   {
     "id": "veo3-image-to-video",
+    "provider": "google",
+    "provider_name": "Google",
     "name": "Veo3 Image To Video",
     "endpoint": "veo3-image-to-video",
     "family": "veo",
@@ -6518,6 +6832,8 @@ export const i2vModels = [
   },
   {
     "id": "veo3-fast-image-to-video",
+    "provider": "google",
+    "provider_name": "Google",
     "name": "Veo3 Fast Image To Video",
     "endpoint": "veo3-fast-image-to-video",
     "family": "veo",
@@ -6548,6 +6864,8 @@ export const i2vModels = [
   },
   {
     "id": "runway-image-to-video",
+    "provider": "runway",
+    "provider_name": "RunwayML",
     "name": "Runway Image To Video",
     "endpoint": "runway-image-to-video",
     "family": "runway",
@@ -6603,6 +6921,8 @@ export const i2vModels = [
   },
   {
     "id": "wan2.1-image-to-video",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Wan2.1 Image To Video",
     "endpoint": "wan2.1-image-to-video",
     "family": "wan2.1",
@@ -6665,6 +6985,8 @@ export const i2vModels = [
   },
   {
     "id": "midjourney-v7-image-to-video",
+    "provider": "midjourney",
+    "provider_name": "Midjourney",
     "name": "Midjourney v7 Image To Video",
     "endpoint": "midjourney-v7-image-to-video",
     "family": "midjourney",
@@ -6757,6 +7079,8 @@ export const i2vModels = [
   },
   {
     "id": "hunyuan-image-to-video",
+    "provider": "hunyuan",
+    "provider_name": "Hunyuan",
     "name": "Hunyuan Image To Video",
     "endpoint": "hunyuan-image-to-video",
     "family": "hunyuan",
@@ -6788,6 +7112,8 @@ export const i2vModels = [
   },
   {
     "id": "kling-v2.1-master-i2v",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling v2.1 Master I2V",
     "endpoint": "kling-v2.1-master-i2v",
     "family": "kling-v2.1",
@@ -6830,6 +7156,8 @@ export const i2vModels = [
   },
   {
     "id": "kling-v2.1-standard-i2v",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling v2.1 Standard I2V",
     "endpoint": "kling-v2.1-standard-i2v",
     "family": "kling-v2.1",
@@ -6872,6 +7200,8 @@ export const i2vModels = [
   },
   {
     "id": "kling-v2.1-pro-i2v",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling v2.1 Pro I2V",
     "endpoint": "kling-v2.1-pro-i2v",
     "family": "kling-v2.1",
@@ -6914,6 +7244,8 @@ export const i2vModels = [
   },
   {
     "id": "wan2.2-image-to-video",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Wan2.2 Image To Video",
     "endpoint": "wan2.2-image-to-video",
     "family": "wan2.2",
@@ -6977,6 +7309,8 @@ export const i2vModels = [
   },
   {
     "id": "runway-act-two-i2v",
+    "provider": "runway",
+    "provider_name": "Runway",
     "name": "Runway Act Two I2V",
     "endpoint": "runway-act-two-i2v",
     "family": "runway",
@@ -7002,6 +7336,8 @@ export const i2vModels = [
   },
   {
     "id": "pixverse-v4.5-i2v",
+    "provider": "pixverse",
+    "provider_name": "Pixverse",
     "name": "Pixverse v4.5 I2V",
     "endpoint": "pixverse-v4.5-i2v",
     "family": "pixverse-v4.5",
@@ -7059,6 +7395,8 @@ export const i2vModels = [
   },
   {
     "id": "vidu-v2.0-i2v",
+    "provider": "vidu",
+    "provider_name": "Vidu",
     "name": "Vidu v2.0 I2V",
     "endpoint": "vidu-v2.0-i2v",
     "family": "vidu-v2",
@@ -7112,6 +7450,8 @@ export const i2vModels = [
   },
   {
     "id": "vidu-q1-reference",
+    "provider": "vidu",
+    "provider_name": "Vidu",
     "name": "Vidu Q1 Reference",
     "endpoint": "vidu-q1-reference",
     "family": "vidu-q1",
@@ -7144,6 +7484,8 @@ export const i2vModels = [
   },
   {
     "id": "minimax-hailuo-02-standard-i2v",
+    "provider": "minimax",
+    "provider_name": "Minimax",
     "name": "Minimax Hailuo 02 Standard I2V",
     "endpoint": "minimax-hailuo-02-standard-i2v",
     "family": "minimax-2",
@@ -7186,6 +7528,8 @@ export const i2vModels = [
   },
   {
     "id": "minimax-hailuo-02-pro-i2v",
+    "provider": "minimax",
+    "provider_name": "Minimax",
     "name": "Minimax Hailuo 02 Pro I2V",
     "endpoint": "minimax-hailuo-02-pro-i2v",
     "family": "minimax-2",
@@ -7226,6 +7570,8 @@ export const i2vModels = [
   },
   {
     "id": "video-effects",
+    "provider": "muapi",
+    "provider_name": "Muapi",
     "name": "Video Effects",
     "endpoint": "video-effects",
     "family": "effects",
@@ -7286,6 +7632,8 @@ export const i2vModels = [
   },
   {
     "id": "seedance-lite-i2v",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Seedance Lite I2V",
     "endpoint": "seedance-lite-i2v",
     "family": "bytedance",
@@ -7335,6 +7683,8 @@ export const i2vModels = [
   },
   {
     "id": "seedance-pro-i2v",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Seedance Pro I2V",
     "endpoint": "seedance-pro-i2v",
     "family": "bytedance",
@@ -7383,6 +7733,8 @@ export const i2vModels = [
   },
   {
     "id": "pixverse-v5-i2v",
+    "provider": "pixverse",
+    "provider_name": "Pixverse",
     "name": "Pixverse v5 I2V",
     "endpoint": "pixverse-v5-i2v",
     "family": "pixverse-v5",
@@ -7440,6 +7792,8 @@ export const i2vModels = [
   },
   {
     "id": "seedance-lite-reference-video",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Seedance Lite Reference Video",
     "endpoint": "seedance-lite-reference-to-video",
     "family": "bytedance",
@@ -7481,6 +7835,8 @@ export const i2vModels = [
   },
   {
     "id": "wan2.1-reference-video",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Wan2.1 Reference Video",
     "endpoint": "wan2.1-reference-video",
     "family": "wan2.1",
@@ -7533,6 +7889,8 @@ export const i2vModels = [
   },
   {
     "id": "kling-v2.5-turbo-pro-i2v",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling v2.5 Turbo Pro I2V",
     "endpoint": "kling-v2.5-turbo-pro-i2v",
     "family": "kling-v2.5",
@@ -7562,6 +7920,8 @@ export const i2vModels = [
   },
   {
     "id": "wan2.5-image-to-video",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Wan2.5 Image To Video",
     "endpoint": "wan2.5-image-to-video",
     "family": "wan2.5",
@@ -7603,6 +7963,8 @@ export const i2vModels = [
   },
   {
     "id": "wan2.5-image-to-video-fast",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Wan2.5 Image To Video Fast",
     "endpoint": "wan2.5-image-to-video-fast",
     "family": "wan2.5",
@@ -7643,6 +8005,8 @@ export const i2vModels = [
   },
   {
     "id": "openai-sora-2-image-to-video",
+    "provider": "openai",
+    "provider_name": "OpenAI",
     "name": "Openai Sora 2 Image To Video",
     "endpoint": "openai-sora-2-image-to-video",
     "family": "sora",
@@ -7691,6 +8055,8 @@ export const i2vModels = [
   },
   {
     "id": "ovi-image-to-video",
+    "provider": "muapi",
+    "provider_name": "Muapi",
     "name": "Ovi Image To Video",
     "endpoint": "ovi-image-to-video",
     "family": "ovi",
@@ -7710,6 +8076,8 @@ export const i2vModels = [
   },
   {
     "id": "openai-sora-2-pro-image-to-video",
+    "provider": "openai",
+    "provider_name": "OpenAI",
     "name": "Openai Sora 2 Pro Image To Video",
     "endpoint": "openai-sora-2-pro-image-to-video",
     "family": "sora",
@@ -7770,6 +8138,8 @@ export const i2vModels = [
   },
   {
     "id": "leonardoai-motion-2.0",
+    "provider": "leonardoai",
+    "provider_name": "Leonardo AI",
     "name": "Leonardoai Motion 2.0",
     "endpoint": "leonardoai-motion-2.0",
     "family": "leonardoai",
@@ -7800,6 +8170,8 @@ export const i2vModels = [
   },
   {
     "id": "veo3.1-image-to-video",
+    "provider": "google",
+    "provider_name": "Google",
     "name": "Veo3.1 Image To Video",
     "endpoint": "veo3.1-image-to-video",
     "family": "veo3.1",
@@ -7851,6 +8223,8 @@ export const i2vModels = [
   },
   {
     "id": "veo3.1-fast-image-to-video",
+    "provider": "google",
+    "provider_name": "Google",
     "name": "Veo3.1 Fast Image To Video",
     "endpoint": "veo3.1-fast-image-to-video",
     "family": "veo3.1",
@@ -7902,6 +8276,8 @@ export const i2vModels = [
   },
   {
     "id": "veo3.1-lite-image-to-video",
+    "provider": "google",
+    "provider_name": "Google",
     "name": "Veo3.1 Lite Image To Video",
     "endpoint": "veo3.1-lite-image-to-video",
     "family": "veo3.1",
@@ -7950,6 +8326,8 @@ export const i2vModels = [
   },
   {
     "id": "veo3.1-reference-to-video",
+    "provider": "google",
+    "provider_name": "Google",
     "name": "Veo3.1 Reference To Video",
     "endpoint": "veo3.1-reference-to-video",
     "family": "veo3.1",
@@ -7998,6 +8376,8 @@ export const i2vModels = [
   },
   {
     "id": "seedance-pro-i2v-fast",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Seedance Pro I2V Fast",
     "endpoint": "seedance-pro-i2v-fast",
     "family": "bytedance",
@@ -8046,6 +8426,8 @@ export const i2vModels = [
   },
   {
     "id": "ltx-2-pro-image-to-video",
+    "provider": "lightricks",
+    "provider_name": "Lightricks",
     "name": "Ltx 2 Pro Image To Video",
     "endpoint": "ltx-2-pro-image-to-video",
     "family": "ltx",
@@ -8084,6 +8466,8 @@ export const i2vModels = [
   },
   {
     "id": "ltx-2-fast-image-to-video",
+    "provider": "lightricks",
+    "provider_name": "Lightricks",
     "name": "Ltx 2 Fast Image To Video",
     "endpoint": "ltx-2-fast-image-to-video",
     "family": "ltx",
@@ -8127,6 +8511,8 @@ export const i2vModels = [
   },
   {
     "id": "vidu-q2-reference",
+    "provider": "vidu",
+    "provider_name": "Vidu",
     "name": "Vidu Q2 Reference",
     "endpoint": "vidu-q2-reference",
     "family": "vidu-q2",
@@ -8197,6 +8583,8 @@ export const i2vModels = [
   },
   {
     "id": "vidu-q2-turbo-start-end-video",
+    "provider": "vidu",
+    "provider_name": "Vidu",
     "name": "Vidu Q2 Turbo Start End Video",
     "endpoint": "vidu-q2-turbo-start-end-video",
     "family": "vidu-q2",
@@ -8258,6 +8646,8 @@ export const i2vModels = [
   },
   {
     "id": "vidu-q2-pro-start-end-video",
+    "provider": "vidu",
+    "provider_name": "Vidu",
     "name": "Vidu Q2 Pro Start End Video",
     "endpoint": "vidu-q2-pro-start-end-video",
     "family": "vidu-q2",
@@ -8319,6 +8709,8 @@ export const i2vModels = [
   },
   {
     "id": "minimax-hailuo-2.3-pro-i2v",
+    "provider": "minimax",
+    "provider_name": "Minimax",
     "name": "Minimax Hailuo 2.3 Pro I2V",
     "endpoint": "minimax-hailuo-2.3-pro-i2v",
     "family": "minimax-2.3",
@@ -8348,6 +8740,8 @@ export const i2vModels = [
   },
   {
     "id": "minimax-hailuo-2.3-standard-i2v",
+    "provider": "minimax",
+    "provider_name": "Minimax",
     "name": "Minimax Hailuo 2.3 Standard I2V",
     "endpoint": "minimax-hailuo-2.3-standard-i2v",
     "family": "minimax-2.3",
@@ -8378,6 +8772,8 @@ export const i2vModels = [
   },
   {
     "id": "minimax-hailuo-2.3-fast",
+    "provider": "minimax",
+    "provider_name": "Minimax",
     "name": "Minimax Hailuo 2.3 Fast",
     "endpoint": "minimax-hailuo-2.3-fast",
     "family": "minimax-2.3",
@@ -8415,6 +8811,8 @@ export const i2vModels = [
   },
   {
     "id": "kling-v2.5-turbo-std-i2v",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling v2.5 Turbo Std I2V",
     "endpoint": "kling-v2.5-turbo-std-i2v",
     "family": "kling-v2.5",
@@ -8444,6 +8842,8 @@ export const i2vModels = [
   },
   {
     "id": "grok-imagine-image-to-video",
+    "provider": "grok",
+    "provider_name": "xAI",
     "name": "Grok Imagine Image To Video",
     "endpoint": "grok-imagine-image-to-video",
     "family": "grok",
@@ -8488,6 +8888,8 @@ export const i2vModels = [
   },
   {
     "id": "kling-o1-image-to-video",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling O1 Image To Video",
     "endpoint": "kling-o1-image-to-video",
     "family": "kling-o1",
@@ -8531,6 +8933,8 @@ export const i2vModels = [
   },
   {
     "id": "kling-o1-reference-to-video",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling O1 Reference To Video",
     "endpoint": "kling-o1-reference-to-video",
     "family": "kling-o1",
@@ -8580,6 +8984,8 @@ export const i2vModels = [
   },
   {
     "id": "kling-v2.6-pro-i2v",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling v2.6 Pro I2V",
     "endpoint": "kling-v2.6-pro-i2v",
     "family": "kling-v2.6",
@@ -8617,6 +9023,8 @@ export const i2vModels = [
   },
   {
     "id": "pixverse-v5.5-i2v",
+    "provider": "pixverse",
+    "provider_name": "Pixverse",
     "name": "Pixverse v5.5 I2V",
     "endpoint": "pixverse-v5.5-i2v",
     "family": "pixverse-v5.5",
@@ -8717,6 +9125,8 @@ export const i2vModels = [
   },
   {
     "id": "wan2.2-spicy-image-to-video",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Wan2.2 Spicy Image To Video",
     "endpoint": "wan2.2-spicy-image-to-video",
     "family": "wan2.2",
@@ -8758,6 +9168,8 @@ export const i2vModels = [
   },
   {
     "id": "wan2.6-image-to-video",
+    "provider": "alibaba",
+    "provider_name": "Alibaba",
     "name": "Wan2.6 Image To Video",
     "endpoint": "wan2.6-image-to-video",
     "family": "wan2.6",
@@ -8811,6 +9223,8 @@ export const i2vModels = [
   },
   {
     "id": "kling-o1-standard-image-to-video",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling O1 Standard Image To Video",
     "endpoint": "kling-o1-standard-image-to-video",
     "family": "kling-o1",
@@ -8842,6 +9256,8 @@ export const i2vModels = [
   },
   {
     "id": "kling-o1-standard-reference-to-video",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling O1 Standard Reference To Video",
     "endpoint": "kling-o1-standard-reference-to-video",
     "family": "kling-o1",
@@ -8885,6 +9301,8 @@ export const i2vModels = [
   },
   {
     "id": "seedance-v1.5-pro-i2v",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Seedance v1.5 Pro I2V",
     "endpoint": "seedance-v1.5-pro-i2v",
     "family": "seedance-v1.5-pro",
@@ -8956,6 +9374,8 @@ export const i2vModels = [
   },
   {
     "id": "seedance-v1.5-pro-i2v-fast",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Seedance v1.5 Pro I2V Fast",
     "endpoint": "seedance-v1.5-pro-i2v-fast",
     "family": "seedance-v1.5-pro",
@@ -9026,6 +9446,8 @@ export const i2vModels = [
   },
   {
     "id": "ltx-2-19b-image-to-video",
+    "provider": "lightricks",
+    "provider_name": "Lightricks",
     "name": "Ltx 2 19b Image To Video",
     "endpoint": "ltx-2-19b-image-to-video",
     "family": "ltx",
@@ -9067,6 +9489,8 @@ export const i2vModels = [
   },
   {
     "id": "kling-v3.0-omni-standard-image-to-video",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling v3.0 Omni Standard Image To Video",
     "endpoint": "kling-v3.0-omni-standard-image-to-video",
     "family": "kling-v3.0-omni",
@@ -9114,6 +9538,8 @@ export const i2vModels = [
   },
   {
     "id": "kling-v3.0-omni-pro-image-to-video",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling v3.0 Omni Pro Image To Video",
     "endpoint": "kling-v3.0-omni-pro-image-to-video",
     "family": "kling-v3.0-omni",
@@ -9161,6 +9587,8 @@ export const i2vModels = [
   },
   {
     "id": "kling-v3.0-omni-4k-image-to-video",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling v3.0 Omni 4K Image To Video",
     "endpoint": "kling-v3.0-omni-4k-image-to-video",
     "family": "kling-v3.0-omni",
@@ -9201,6 +9629,8 @@ export const i2vModels = [
   },
   {
     "id": "kling-v3.0-pro-image-to-video",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling v3.0 Pro Image To Video",
     "endpoint": "kling-v3.0-pro-image-to-video",
     "family": "kling-v3.0",
@@ -9238,6 +9668,8 @@ export const i2vModels = [
   },
   {
     "id": "kling-v3.0-standard-image-to-video",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling v3.0 Standard Image To Video",
     "endpoint": "kling-v3.0-standard-image-to-video",
     "family": "kling-v3.0",
@@ -9275,6 +9707,8 @@ export const i2vModels = [
   },
   {
     "id": "seedance-v2.0-i2v",
+    "provider": "bytedance",
+    "provider_name": "ByteDance",
     "name": "Seedance 2.0 I2V",
     "endpoint": "seedance-v2.0-i2v",
     "family": "seedance-v2.0",
@@ -10989,6 +11423,8 @@ export const getMaxImagesForI2IModel = (modelId) => {
 export const v2vModels = [
   {
     "id": "video-watermark-remover",
+    "provider": "muapi",
+    "provider_name": "Muapi",
     "name": "AI Video Watermark Remover",
     "endpoint": "video-watermark-remover",
     "family": "tools",
@@ -10998,6 +11434,8 @@ export const v2vModels = [
   },
   {
     "id": "kling-v2.6-std-motion-control",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling 2.6 Std Motion Control",
     "endpoint": "kling-v2.6-std-motion-control",
     "family": "kling",
@@ -11009,6 +11447,8 @@ export const v2vModels = [
   },
   {
     "id": "kling-v3.0-std-motion-control",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling 3.0 Std Motion Control",
     "endpoint": "kling-v3.0-std-motion-control",
     "family": "kling",
@@ -11019,6 +11459,8 @@ export const v2vModels = [
   },
   {
     "id": "kling-v3.0-pro-motion-control",
+    "provider": "kling",
+    "provider_name": "Kling AI",
     "name": "Kling 3.0 Pro Motion Control",
     "endpoint": "kling-v3.0-pro-motion-control",
     "family": "kling",
