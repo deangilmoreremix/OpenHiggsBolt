@@ -8,6 +8,16 @@
 **Community:** Join [Discord](https://discord.gg/tANKJkHck) for discussions and support
 
 <p align="center">
+  <a href="https://www.youtube.com/watch?v=jEcH713jndg">
+    <img src="https://img.youtube.com/vi/jEcH713jndg/maxresdefault.jpg" alt="Watch: MuAPI — The Best Fal.ai Alternative" width="640">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=jEcH713jndg"><b>📺 Watch: MuAPI — The Best Fal.ai Alternative (cheaper AI video &amp; image APIs) →</b></a>
+</p>
+
+<p align="center">
   <a href="https://github.com/Anil-matcha/awesome-generative-ai-apps">
     <img src="https://img.shields.io/badge/Part%20of-Awesome%20Generative%20AI%20Apps-FFD700?style=for-the-badge&logo=github&logoColor=black" alt="Awesome Generative AI Apps">
   </a>
