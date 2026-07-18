@@ -2508,7 +2508,7 @@ export const getAspectRatiosForModel = (modelId) => {
 // ==========================================
 // Text-to-Video Models
 // ==========================================
-export const t2vModels = [
+export let t2vModels = [
   {
     "id": "seedance-lite-t2v",
     "name": "Seedance Lite",
@@ -6149,7 +6149,7 @@ export const i2iModels = [
 ];
 
 // Auto-generated from schema_data.json — Image to Video models
-export const i2vModels = [
+export let i2vModels = [
   {
     "id": "ai-video-effects",
     "name": "AI Video Effects",
@@ -10986,7 +10986,7 @@ export const getMaxImagesForI2IModel = (modelId) => {
 };
 
 // ─── Video-to-Video models ────────────────────────────────────────────────────
-export const v2vModels = [
+export let v2vModels = [
   {
     "id": "video-watermark-remover",
     "name": "AI Video Watermark Remover",
@@ -11941,6 +11941,81 @@ export const v2vModels = [
     "description": "Extend existing videos seamlessly with Wan 2.7."
   }
 ];
+
+// ─── Provider derivation for video models ──────────────────────────────────
+// The Video Studio UI groups models by provider (sidebar tabs) and renders a
+// provider logo for each. Upstream derives `provider` / `provider_name` from
+// the model id; the local catalog didn't carry those fields, so we normalize
+// them here. Keys match PROVIDER_LOGOS in VideoStudio.jsx.
+const VIDEO_PROVIDER_MAP = {
+  seedance: "bytedance",
+  kling: "kling",
+  veo: "google",
+  veo3: "google",
+  runway: "runway",
+  wan2: "alibaba",
+  wan: "alibaba",
+  hunyuan: "hunyuan",
+  pixverse: "pixverse",
+  minimax: "minimax",
+  hailuo: "minimax",
+  openai: "openai",
+  vidu: "vidu",
+  ovi: "muapi",
+  grok: "grok",
+  ltx: "lightricks",
+  ai: "muapi",
+  motion: "muapi",
+  vfx: "muapi",
+  midjourney: "midjourney",
+  video: "muapi",
+  leonardoai: "leonardoai",
+  gemini: "google",
+  happy: "muapi",
+  add: "muapi",
+  autocrop: "muapi",
+  heygen: "muapi",
+  mmaudio: "muapi",
+  remix: "muapi",
+  topaz: "muapi",
+  luma: "luma",
+};
+
+const VIDEO_PROVIDER_NAMES = {
+  bytedance: "ByteDance",
+  kling: "Kling AI",
+  google: "Google",
+  runway: "RunwayML",
+  alibaba: "Alibaba",
+  hunyuan: "Hunyuan",
+  pixverse: "Pixverse",
+  minimax: "Minimax",
+  openai: "OpenAI",
+  vidu: "Vidu",
+  muapi: "MuapiApp",
+  grok: "xAI",
+  lightricks: "Lightricks",
+  midjourney: "Midjourney",
+  leonardoai: "Leonardo AI",
+  luma: "Luma",
+};
+
+function normalizeVideoProviders(models) {
+  return models.map((m) => {
+    if (m.provider) return m;
+    const prefix = m.id.split("-")[0];
+    const provider = VIDEO_PROVIDER_MAP[prefix] || "muapi";
+    return {
+      ...m,
+      provider,
+      provider_name: m.provider_name || VIDEO_PROVIDER_NAMES[provider] || "MuapiApp",
+    };
+  });
+}
+
+t2vModels = normalizeVideoProviders(t2vModels);
+i2vModels = normalizeVideoProviders(i2vModels);
+v2vModels = normalizeVideoProviders(v2vModels);
 
 // ─── LipSync / Speech-to-Video models ────────────────────────────────────────
 // Image-based: portrait image + audio → talking video
