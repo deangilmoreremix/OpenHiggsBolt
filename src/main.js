@@ -1,6 +1,7 @@
 import './style.css';
 import { Header } from './components/Header.js';
 import { ImageStudio } from './components/ImageStudio.js';
+import { initIdentity } from './lib/identity.js';
 
 const app = document.querySelector('#app');
 let contentArea;
@@ -39,17 +40,24 @@ function navigate(page) {
   }
 }
 
-app.innerHTML = '';
-// Pass navigate to Header so links work
-app.appendChild(Header(navigate));
+async function boot() {
+  // Load the Clerk-derived identity (userId + workspace) from the server so the
+  // SPA can scope its localStorage per workspace. The SPA never talks to Supabase
+  // directly — all Supabase access is enforced server-side (Option 2).
+  await initIdentity();
 
-contentArea = document.createElement('main');
-contentArea.id = 'content-area';
-contentArea.className = 'flex-1 relative w-full overflow-hidden flex flex-col bg-app-bg';
-app.appendChild(contentArea);
+  app.innerHTML = '';
+  // Pass navigate to Header so links work
+  app.appendChild(Header(navigate));
 
-// Initial Route
-navigate('image');
+  contentArea = document.createElement('main');
+  contentArea.id = 'content-area';
+  contentArea.className = 'flex-1 relative w-full overflow-hidden flex flex-col bg-app-bg';
+  app.appendChild(contentArea);
+
+  // Initial Route
+  navigate('image');
+}
 
 // Event Listener for Navigation
 window.addEventListener('navigate', (e) => {
@@ -61,3 +69,5 @@ window.addEventListener('navigate', (e) => {
     navigate(e.detail.page);
   }
 });
+
+boot();

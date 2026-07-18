@@ -23,5 +23,29 @@ export default function RootLayout({ children }) {
     </html>
   );
 
-  return isClerkEnabled ? <ClerkProvider>{tree}</ClerkProvider> : tree;
+  return isClerkEnabled ? <ClerkProvider
+    appearance={{
+      variables: {
+        colorPrimary: '#22d3ee',
+        colorBackground: '#050505',
+        colorInputBackground: 'rgba(255,255,255,0.04)',
+        colorInputText: '#ffffff',
+        colorText: '#ffffff',
+        colorTextSecondary: 'rgba(255,255,255,0.65)',
+        colorNeutral: 'rgba(255,255,255,0.1)',
+        borderRadius: '0.75rem',
+        fontFamily: 'Inter, sans-serif',
+      },
+      elements: {
+        card: 'landing-card',
+        formButtonPrimary:
+          'bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold hover:opacity-90',
+        formFieldInput:
+          'bg-white/5 border border-white/10 text-white placeholder:text-white/40',
+        footerActionLink: 'text-cyan-300 hover:text-cyan-200',
+        identityPreviewText: 'text-white',
+        identityPreviewEditButton: 'text-cyan-300',
+      },
+    }}
+  >{tree}</ClerkProvider> : tree;
 }

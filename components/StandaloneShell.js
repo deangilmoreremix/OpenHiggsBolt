@@ -47,7 +47,7 @@ const SLUG_TO_TAB = {
 
 const STORAGE_KEY = 'muapi_key';
 
-export default function StandaloneShell() {
+export default function StandaloneShell({ embedded = false, initialTab = null } = {}) {
   const params = useParams();
   const router = useRouter();
   const slug = params?.slug || []; 
@@ -79,13 +79,14 @@ export default function StandaloneShell() {
   };
   
   const [apiKey, setApiKey] = useState(null);
-  const [activeTab, setActiveTab] = useState(getInitialTab());
+  const [activeTab, setActiveTab] = useState(initialTab || getInitialTab());
 
   useEffect(() => {
+    if (embedded) return;
     if (activeTab === 'brand-studio') {
       router.push('/brand-studio');
     }
-  }, [activeTab, router]);
+  }, [activeTab, router, embedded]);
 
   const [balance, setBalance] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -99,6 +100,7 @@ export default function StandaloneShell() {
 
   // Sync tab with URL if user navigates manually or via browser back/forward
   useEffect(() => {
+    if (embedded) return;
     const info = getWorkflowInfo();
     if (info.id) {
         setActiveTab('workflows');
@@ -113,14 +115,19 @@ export default function StandaloneShell() {
           setActiveTab(mapped);
         }
     }
-  }, [slug, getWorkflowInfo]);
+  }, [slug, getWorkflowInfo, embedded]);
 
   const handleTabChange = (tabId) => {
     if (tabId === 'brand-studio') {
+      if (embedded) { setActiveTab('brand-studio'); return; }
       router.push('/brand-studio');
-    } else {
-      router.push(`/studio/${tabId}`);
+      return;
     }
+    if (embedded) {
+      setActiveTab(tabId);
+      return;
+    }
+    router.push(`/studio/${tabId}`);
   };
 
   // Auto-hide header when inside a specific workflow view or design agent
@@ -328,7 +335,7 @@ export default function StandaloneShell() {
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
               </svg>
             </div>
-            <span className="text-sm font-bold tracking-tight hidden sm:block">OpenGenerativeAI</span>
+            <span className="text-sm font-bold tracking-tight hidden sm:block">SmartVideo GO</span>
           </div>
 
           {/* Center: Navigation Container with fade edges */}

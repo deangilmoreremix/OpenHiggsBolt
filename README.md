@@ -1,6 +1,6 @@
-# Open Generative AI — Open-Source Alternative to AI Video Platforms
+# SmartVideo GO — Open-Source AI Video & Image Studio
 
-[![Powered by MuAPI](https://img.shields.io/badge/Powered%20by-MuAPI-6366f1?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMSAxNHYtNGgtMnYtMmg0djZoLTJ6bTAtOFY2aDJ2MmgtMnoiLz48L3N2Zz4=)](https://muapi.ai?utm_source=github&utm_medium=badge&utm_campaign=open-generative-ai)
+[![Powered by MuAPI](https://img.shields.io/badge/Powered%20by-MuAPI-6366f1?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMSAxNHYtNGgtMnYtMmg0djZoLTJ6bTAtOFY2aDJ2MmgtMnoiLz48L3N2Zz4=)](https://muapi.ai?utm_source=github&utm_medium=badge&utm_campaign=smartvideo-go)
 
 
 > **The free, open-source alternative to AI Video Platforms.** Generate AI images and videos using 200+ state-of-the-art models — no content filters, no closed ecosystem, no subscription fees.
@@ -11,7 +11,7 @@
 
 > 🤖 **Automate media generations with AI coding agents:** [Generative-Media-Skills](https://github.com/SamurAIGPT/Generative-Media-Skills) — a library of skills that let agents like **Claude Code**, **Codex**, and other coding assistants drive 200+ image/video models end-to-end (prompt → generate → edit → stitch) directly from your terminal. Perfect for building automated media pipelines without touching a UI.
 
-> 🍌 **Claude Fable 5 use cases + 20% off on MuAPI:** [awesome-claude-fable-5](https://github.com/Anil-matcha/awesome-claude-fable-5) — 60 curated real-world use cases, prompts, and benchmarks for Claude Fable 5, with **20% off Fable 5 access** via [MuAPI](https://muapi.ai/pricing?utm_source=github&utm_medium=readme&utm_campaign=open-generative-ai).
+> 🍌 **Claude Fable 5 use cases + 20% off on MuAPI:** [awesome-claude-fable-5](https://github.com/Anil-matcha/awesome-claude-fable-5) — 60 curated real-world use cases, prompts, and benchmarks for Claude Fable 5, with **20% off Fable 5 access** via [MuAPI](https://muapi.ai/pricing?utm_source=github&utm_medium=readme&utm_campaign=smartvideo-go).
 
 <p align="center">
   <a href="https://github.com/Anil-matcha/awesome-generative-ai-apps">
@@ -37,9 +37,9 @@
 
 ## 🌐 Try it Online — No Install Required
 
-**Hosted version:** [https://muapi.ai/open-generative-ai?utm_source=github&utm_medium=readme&utm_campaign=open-generative-ai](https://muapi.ai/open-generative-ai?utm_source=github&utm_medium=readme&utm_campaign=open-generative-ai)
+**Hosted version:** [https://muapi.ai/smartvideo-go?utm_source=github&utm_medium=readme&utm_campaign=smartvideo-go](https://muapi.ai/smartvideo-go?utm_source=github&utm_medium=readme&utm_campaign=smartvideo-go)
 
-Use all studios (Image, Video, Audio, AI Clipping, Vibe Motion, Lip Sync, Cinema, Marketing, Workflows, Agents, Design Agent, Apps, MCP & CLI) directly in your browser — no Node.js, no setup. Sign up for a free account to start generating. The hosted version is always up to date with the latest models.
+Use all studios directly in your browser — no Node.js, no setup. The studio shell ships 17 creative apps (Image, Video, Audio, AI Clipping, Vibe Motion, Lip Sync, Cinema, Storyboard, Marketing, Body Swap, Workflows, Agents, Design Agent AI, VFX, Thumbnail Studio, AI Influencer, Social Publishing) — all reachable via their `/studio/<id>` URLs. Sign up for a free account to start generating. The hosted version is always up to date with the latest models.
 
 **Follow** the [creator](https://x.com/matchaman11) for updates
 
@@ -51,12 +51,12 @@ One-click installers — no Node.js or terminal required.
 
 | Platform | Download |
 |---|---|
-| macOS Apple Silicon (M1/M2/M3/M4) | [Open Generative AI-1.0.9-arm64.dmg](https://github.com/Anil-matcha/Open-Generative-AI/releases/download/v1.0.9/Open.Generative.AI-1.0.9-arm64.dmg) |
-| macOS Intel (x64) | [Open Generative AI-1.0.9.dmg](https://github.com/Anil-matcha/Open-Generative-AI/releases/download/v1.0.9/Open.Generative.AI-1.0.9.dmg) |
-| Windows (x64) | [Open Generative AI Setup 1.0.9.exe](https://github.com/Anil-matcha/Open-Generative-AI/releases/download/v1.0.9/Open.Generative.AI.Setup.1.0.9.exe) |
-| Linux (Ubuntu x64) | [v1.0.9 release](https://github.com/Anil-matcha/Open-Generative-AI/releases/tag/v1.0.9) (`.AppImage` / `.deb`), or build locally with `npm run electron:build:linux`. |
+| macOS Apple Silicon (M1/M2/M3/M4) | [SmartVideo GO-1.0.9-arm64.dmg](https://github.com/Anil-matcha/SmartVideo-GO/releases/download/v1.0.9/SmartVideo.GO-1.0.9-arm64.dmg) |
+| macOS Intel (x64) | [SmartVideo GO-1.0.9.dmg](https://github.com/Anil-matcha/SmartVideo-GO/releases/download/v1.0.9/SmartVideo.GO-1.0.9.dmg) |
+| Windows (x64) | [SmartVideo GO Setup 1.0.9.exe](https://github.com/Anil-matcha/SmartVideo-GO/releases/download/v1.0.9/SmartVideo.GO.Setup.1.0.9.exe) |
+| Linux (Ubuntu x64) | [v1.0.9 release](https://github.com/Anil-matcha/SmartVideo-GO/releases/tag/v1.0.9) (`.AppImage` / `.deb`), or build locally with `npm run electron:build:linux`. |
 
-All releases: [github.com/Anil-matcha/Open-Generative-AI/releases](https://github.com/Anil-matcha/Open-Generative-AI/releases)
+All releases: [github.com/Anil-matcha/SmartVideo-GO/releases](https://github.com/Anil-matcha/SmartVideo-GO/releases)
 
 ### macOS Installation Guide
 
@@ -66,7 +66,7 @@ Because the app is not notarized by Apple, macOS Gatekeeper will block it on fir
 
 **Step 2** — Open Terminal and run:
 ```bash
-xattr -cr "/Applications/Open Generative AI.app"
+xattr -cr "/Applications/SmartVideo GO.app"
 ```
 
 **Step 3** — Right-click the app in `/Applications` → click **Open** → click **Open** again on the dialog
@@ -76,7 +76,7 @@ xattr -cr "/Applications/Open Generative AI.app"
 **Alternative (no Terminal):**
 1. Try to open the app — macOS will block it
 2. Go to **System Settings → Privacy & Security**
-3. Scroll down to find _"Open Generative AI was blocked"_
+3. Scroll down to find _"SmartVideo GO was blocked"_
 4. Click **Open Anyway** → **Open**
 
 ### Windows Installation — SmartScreen warning fix
@@ -100,12 +100,12 @@ npm run electron:build:linux
 Generated files are written to the `release/` folder:
 - **AppImage** — portable, run directly after making executable:
   ```bash
-  chmod +x "release/Open Generative AI-*.AppImage"
-  ./release/Open\ Generative\ AI-*.AppImage
+  chmod +x "release/SmartVideo GO-*.AppImage"
+  ./release/SmartVideo\ GO-*.AppImage
   ```
 - **.deb** — install on Debian/Ubuntu:
   ```bash
-  sudo apt install ./release/open-generative-ai_*_amd64.deb
+  sudo apt install ./release/smartvideo-go_*_amd64.deb
   ```
 
 If AppImage fails to start on older systems, install `libfuse2`:
@@ -132,9 +132,9 @@ echo 'kernel.apparmor_restrict_unprivileged_userns=0' | sudo tee /etc/sysctl.d/9
 
 ---
 
-Open Generative AI is a free, open-source AI image, video, cinema, and lip sync studio that brings creative workflows to everyone. No content filters, no prompt rejections, no guardrails — just full creative freedom. Powered by [Muapi.ai](https://muapi.ai?utm_source=github&utm_medium=readme&utm_campaign=open-generative-ai), it supports text-to-image, image-to-image, text-to-video, image-to-video, and audio-driven lip sync generation across models like Flux, Nano Banana, Midjourney, Kling, Sora, Veo, Seedream, Infinite Talk, LTX Lipsync, Wan 2.2, and more — all from a sleek, modern interface you can self-host and customize.
+SmartVideo GO is a free, open-source AI image, video, cinema, and lip sync studio that brings creative workflows to everyone. No content filters, no prompt rejections, no guardrails — just full creative freedom. Powered by [Muapi.ai](https://muapi.ai?utm_source=github&utm_medium=readme&utm_campaign=smartvideo-go), it supports text-to-image, image-to-image, text-to-video, image-to-video, and audio-driven lip sync generation across models like Flux, Nano Banana, Midjourney, Kling, Sora, Veo, Seedream, Infinite Talk, LTX Lipsync, Wan 2.2, and more — all from a sleek, modern interface you can self-host and customize.
 
-**Why Open Generative AI instead of other AI Video Platforms?**
+**Why SmartVideo GO instead of other AI Video Platforms?**
 - **No filters** — no content filters, no nanny guardrails, no prompt rejections
 - **Free & open-source** — no subscription, no vendor lock-in
 - **Self-hosted** — your data stays on your machine, full creative control
@@ -182,11 +182,11 @@ All downloads happen inside the app. Nothing is installed system-wide.
 
 By default, `sd.cpp` stores the engine, model weights, and temporary downloads under Electron's app data directory. Common paths are:
 
-- macOS: `~/Library/Application Support/open-generative-ai/local-ai`
-- Windows: `%APPDATA%\open-generative-ai\local-ai`
-- Linux: `~/.config/open-generative-ai/local-ai`
+- macOS: `~/Library/Application Support/smartvideo-go/local-ai`
+- Windows: `%APPDATA%\smartvideo-go\local-ai`
+- Linux: `~/.config/smartvideo-go/local-ai`
 
-To keep multi-GB model weights on another drive, set `OPEN_GENERATIVE_AI_LOCAL_AI_DIR`
+To keep multi-GB model weights on another drive, set `SMARTVIDEO_GO_LOCAL_AI_DIR`
 before launching the desktop app. The app will create `bin/`, `models/`, and `tmp/`
 inside that directory, and **Settings -> Local Models** shows the resolved model folder.
 Local engine output and download errors are written to the app process console, so launch
@@ -231,7 +231,7 @@ If you want to confirm sd.cpp is installed correctly without going through the U
 
 ```bash
 # 1. App data layout (created on first app launch)
-APP_DATA="${OPEN_GENERATIVE_AI_LOCAL_AI_DIR:-$HOME/Library/Application Support/open-generative-ai/local-ai}"
+APP_DATA="${SMARTVIDEO_GO_LOCAL_AI_DIR:-$HOME/Library/Application Support/smartvideo-go/local-ai}"
 ls "$APP_DATA/bin"     # sd-cli, libstable-diffusion.dylib
 ls "$APP_DATA/models"  # whatever you've downloaded
 
@@ -253,23 +253,44 @@ A healthy run on Apple Silicon prints `total params memory size = 1969.78MB (VRA
 
 ---
 
-## ✨ Features
+## ✨ Studios & Features
 
-- **Image Studio** — Generate images from text prompts (50+ text-to-image models) or transform existing images (55+ image-to-image models). Switches model set automatically based on whether a reference image is provided. Quality and resolution controls visible for models that support them.
-- **Local Inference** — Two engines: **sd.cpp** (bundled, runs on Mac/Win/Linux with Metal/CUDA/Vulkan/ROCm) for SD 1.5, SDXL, and Z-Image; and **Wan2GP** (BYO Gradio server) for Flux, Qwen-Image, and video models (Wan 2.2, Hunyuan, LTX). Configure both in Settings → Local Models.
+SmartVideo GO is a single studio shell that bundles **17 creative apps (studios)**, all powered by the shared `packages/studio` library and 200+ Muapi models. The top navigation exposes the core studios; all are reachable directly at `/studio/<id>`.
+
+### All Studios at a Glance
+
+| Studio | Route | Category | What it does |
+| :--- | :--- | :--- | :--- |
+| **Image Studio** | `/studio/image` | Generation | Text-to-image & image-to-image with 74+ models, multi-image input, inpainting |
+| **Video Studio** | `/studio/video` | Generation | Text-to-video, image-to-video & video-to-video with 230+ models and motion control |
+| **Audio Studio** | `/studio/audio` | Generation | Music, voice & sound generation (Suno, Minimax, ElevenLabs, MMAudio) |
+| **AI Clipping** | `/studio/clipping` | Editing | Extract viral highlight clips & timings from long videos |
+| **Vibe Motion** | `/studio/vibe-motion` | Motion | Generate & remix animated motion-graphics from prompts |
+| **Lip Sync** | `/studio/lipsync` | Animation | Portrait/face → talking video & video lip-sync (14 models) |
+| **Cinema Studio** | `/studio/cinema` | Generation | Photorealistic cinematic stills with director-grade camera controls |
+| **Storyboard** | `/studio/storyboard` | Pre-production | Multi-scene storyboards with characters, episodes & AI shot generation |
+| **Marketing Studio** | `/studio/marketing` | Marketing | AI video ads with avatars, templates & product images |
+| **Body Swap** | `/studio/recast` | Editing | Swap the character in any video (Kling / Runway recast) |
+| **Workflows** | `/studio/workflows` | Automation | Node-based multi-step pipeline builder, runner & API |
+| **Agents** | `/studio/agents` | AI Assistant | Browse & chat with template/user AI agents |
+| **Design Agent AI** | `/studio/design-agent` | AI Assistant | Chat-based autonomous creative assistant ("Go-AI") with 33 templates |
+| **VFX** | `/studio/vfx-studio` | Effects | AI effects, motion controls & VFX on video/image |
+| **Thumbnail Studio** | `/studio/thumbnail-studio` | Marketing | CTR-optimized YouTube thumbnails + community gallery |
+| **AI Influencer Studio** | `/studio/ai-influencer` | Generation | Consistent AI-influencer portraits via attribute builder |
+| **Social Publishing** | `/studio/social-publishing` | Publishing | Publish media to YouTube, Instagram & TikTok |
+
+### Cross-Studio Features
+
 - **Multi-Image Input** — Upload up to 14 reference images for compatible edit models (Nano Banana 2 Edit, Flux Kontext Dev, GPT-4o Edit, and more). Multi-select picker with order badges, batch upload, and a "Use Selected" confirmation flow.
-- **Video Studio** — Generate videos from text prompts (40+ text-to-video models) or animate a start-frame image (60+ image-to-video models). Same intelligent mode switching as Image Studio.
-- **Lip Sync Studio** — Animate portrait images or sync lips on existing videos using audio. 9 dedicated models across two modes: portrait image + audio → talking video, and video + audio → lipsync video.
-- **Cinema Studio** — Interface for photorealistic cinematic shots with pro camera controls (Lens, Focal Length, Aperture)
-- **Workflow Studio** — Build and run multi-step AI pipelines visually. Chain image, video, and audio models into automated flows. Browse community templates, create your own with a node-based editor, and run them via an interactive playground.
+- **Smart Controls** — Dynamic aspect ratio, resolution/quality, and duration pickers that adapt to each model's capabilities (including t2i models with resolution or quality options).
 - **Upload History** — Reference images are uploaded once and stored locally. A picker panel lets you reuse any previously uploaded image across sessions — no re-uploading.
-- **Smart Controls** — Dynamic aspect ratio, resolution/quality, and duration pickers that adapt to each model's capabilities (including t2i models with resolution or quality options)
-- **Generation History** — Browse, revisit, and download all past generations (persisted in browser storage)
-- **Image & Video Download** — One-click download of generated outputs in full resolution
-- **API Key Management** — Secure API key storage in browser localStorage (never sent to any server except Muapi)
-- **Responsive Design** — Works seamlessly on desktop and mobile with dark glassmorphism UI
+- **Generation History** — Browse, revisit, and download all past generations (persisted in browser storage).
+- **Image & Video Download** — One-click download of generated outputs in full resolution.
+- **API Key Management** — Secure API key storage in browser localStorage (never sent to any server except Muapi).
+- **Responsive Design** — Works seamlessly on desktop and mobile with dark glassmorphism UI.
+- **Local Inference** (desktop app only) — Two engines: **sd.cpp** (bundled) for SD 1.5 / SDXL / Z-Image, and **Wan2GP** (BYO Gradio server) for Flux, Qwen-Image, and video models. Configure both in Settings → Local Models.
 
-### 🖼️ Image Studio — Dual Mode
+### Image Studio — Dual Mode
 
 The Image Studio automatically switches between two model sets:
 
@@ -320,7 +341,7 @@ When a multi-image model is selected the upload trigger switches to multi-select
 The Video Studio follows the same pattern:
 
 | Mode | Trigger | Models | Prompt |
-| :--- | :--- | :--- | :--- |
+| :--- | :--- | :--- |
 | **Text-to-Video** | Default (no image) | 40+ t2v models (Kling, Sora, Veo, Wan, Seedance 2.0, Hailuo, Runway…) | Required |
 | **Image-to-Video** | Start frame uploaded | 60+ i2v models (Kling I2V, Veo3 I2V, Runway I2V, Wan I2V, Seedance 2.0 I2V, Midjourney I2V…) | Optional |
 
@@ -337,7 +358,7 @@ The Video Studio follows the same pattern:
 
 ### 🎙️ Lip Sync Studio
 
-The **Lip Sync Studio** generates audio-driven talking videos using 9 models across two input modes:
+The **Lip Sync Studio** generates audio-driven talking videos using 14 models across image, video, and avatar/talking modes:
 
 | Mode | Trigger | Description |
 | :--- | :--- | :--- |
@@ -362,6 +383,16 @@ The **Lip Sync Studio** generates audio-driven talking videos using 9 models acr
 | **Creatify Lipsync** | `creatify-lipsync` | — | — |
 | **Veed Lipsync** | `veed-lipsync` | — | — |
 | **Infinite Talk V2V** | `infinitetalk-video-to-video` | 480p, 720p | Optional |
+
+#### Avatar / Talking Models (Image + Audio → Talking Video)
+
+| Model | Endpoint | Notes |
+| :--- | :--- | :--- |
+| **Kling v1 Avatar Pro** | `kling-v1-avatar-pro` | Photorealistic talking avatar |
+| **Kling v1 Avatar Standard** | `kling-v1-avatar-standard` | Standard talking avatar |
+| **Kling v2 Avatar Pro** | `kling-v2-avatar-pro` | Next-gen talking avatar |
+| **Kling v2 Avatar Standard** | `kling-v2-avatar-standard` | Standard next-gen avatar |
+| **OmniHuman 1.5** | `omnihuman-1-5` | Full-body talking human |
 
 **How it works:**
 1. Select **Portrait Image** or **Video** mode using the toggle
@@ -409,16 +440,82 @@ Every image you upload is saved locally (URL + thumbnail) so you never upload th
 - Remove individual images from history with the ✕ button
 - History persists across browser sessions (stored in `localStorage`)
 
+## Studio Deep Dives
+
+The studios below are documented in full. Studios already covered in their own sections (Image, Video, Lip Sync, Cinema, Workflows) are detailed above.
+
+### Audio Studio
+AI music, voice, and sound generation driven by a model-specific dynamic form.
+- **Models:** Suno (create / remix / extend / sounds / add-vocals / mashup / add-instrumental / voice-clone / convert-to-wav), Minimax (voice-clone, speech-2.6 HD & turbo), MMAudio v2 text-to-audio, ElevenLabs text-to-dialogue v3.
+- **Inputs:** text prompt + optional audio file(s) / voice reference (up to 2 via the multi-uploader, 20 MB each).
+- **Features:** dynamic parameter controls auto-generated from each model's `inputs` schema, a premium audio player with waveform / seek / download, result history, and localStorage persistence.
+
+### AI Clipping
+Turn long-form video into short-form highlights.
+- **How it works:** paste a video URL or upload a file, choose the number of highlights (default 3) and an aspect ratio (9:16 default; also 16:9 / 1:1 / 4:5 / 4:3 / 3:4), then run the `ai-clipping` model.
+- **Outputs:** an array of highlight clip videos and/or coordinate timings, shown in a results grid with a full-screen viewer, copy-URL, and download.
+
+### Vibe Motion
+Generate and remix animated **motion graphics** from a prompt (kinetic typography, charts, logo reveals).
+- **Modes:** `generate` (create) and `edit` (remix a previous result).
+- **Models:** `motion-graphics`, `motion-graphics-edit`. Prompt → mp4; edit takes a prior result + new prompt → remixed mp4. Result history and download included.
+
+### Body Swap (Recast)
+Swap the character in any video while preserving motion.
+- **Inputs:** a source video + a character image (optional prompt).
+- **Models:** `kling-v3.0-pro-recast`, `runway-act-two-recast`. Output is a `bodyswap-*.mp4` with hover-play and download.
+
+### VFX Studio
+Apply AI effects, motion controls, and VFX to video or image.
+- **Three categories:** *AI Effects* (Kiss Me AI, Venom, Hulk, Muscle Surge, Holy Wings, Microwave, …), *Motion Controls* (360 Orbit, Matrix Shot, Car Chase, Crane shots, Crash Zoom, …), *VFX* (Levitate, Disintegration, Flying, Explosions, Tornado, Electricity, Fire, …).
+- **Controls:** aspect ratio, resolution, quality; bottom prompt bar; localStorage UI state.
+
+### Marketing Studio
+Generate high-converting AI **video ads**.
+- **Inputs:** ad script with `@image1` / `@image2` tokens, a required product image, an optional avatar image, and up to 6 additional images.
+- **Options:** 8 AI avatars (Priya, Elena, Kai, Sora, Minji, Margot, Niko, Jin) and 6 video templates (UGC, Tutorial, Unboxing, Hyper Motion, Product Review, TV Spot).
+- **Output:** generated mp4 ad(s) with download; localStorage persistence.
+
+### Thumbnail Studio
+Create YouTube CTR-optimized thumbnails with a community gallery.
+- **Tabs:** `generate` (with `generate` / `edit` modes), `mine`, `community`.
+- **Features:** CTR prompt engine, 8 style presets (Cinematic, Vibrant, Bold Text, Face Focus, Minimal, Neon Glow, Retro, Photorealistic), 10 category templates (Gaming, Tutorial, Finance, Fitness, Food, Tech, Reaction, Vlog, Music, Education). Edit mode uploads an existing image; Supabase persistence with an `is_public` community toggle.
+
+### AI Influencer Studio
+Build consistent AI-influencer / character portraits via a hierarchical attribute builder.
+- **Attribute groups:** Character Type (human, elf, alien, and more), Gender, Ethnicity / Origin, Eye Color / Type / Features, Mouth & Teeth, Ears, Horns, Skin Conditions, Accessories & Markings, Rendering Style (Hyper-Realistic, Anime, Cartoon, 2D Illustration).
+- **Model:** `nano-banana-pro`. Selected attributes compile into a prompt → portrait image(s); shuffle / regenerate and a history grid are included.
+
+### Agents
+Browse and chat with AI agents (template gallery + your agents + conversations).
+- **Tabs:** `templates`, `my-agents`, `my-chats`. Agent cards include an icon, category, and owner; clicking routes into the `/agents` chat experience for full conversations.
+
+### Design Agent AI
+Chat-based autonomous creative assistant ("Go-AI") for generating images, videos, and designs.
+- **33 built-in templates:** 3D logo animation, action-figure generator, ad-creative, Amazon product listing, brand-kit, brochures, comic-strip, corporate headshot, explainer video, fashion lookbook, infographic, logo-design, meme-generator, movie-poster, product-mockup, real-estate staging, social-media-pack, thumbnail-generator, travel-postcard, wedding-invitation, and more.
+- **Features:** conversational UI with typewriter prompts, attachments (image / video / file), and backend generation.
+
+### Storyboard
+Multi-scene storyboard planner with characters, episodes, and AI shot generation.
+- **Planner:** create Project (name, brief, style), Character (traits, outfit, reference images), and Episode (title, summary).
+- **Shot Editor:** per-scene shots with camera (Wide / Close-up / Medium / Over-Shoulder) and angle (Eye Level / High / Low / Dutch), description, generation status, and asset URL.
+- **Scene Analysis:** context-aware analysis panels.
+
+### Social Publishing
+Publish generated media to social platforms.
+- **Platforms:** YouTube (title, description, tags, privacy, category, madeForKids), Instagram (caption, Reels, shareToFeed), TikTok (caption, privacy, comment / duet / stitch toggles).
+- **Features:** connect / disconnect accounts, media-URL input, publish + poll for result, local publish history.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) (v18+)
-- A [Muapi.ai access key](https://muapi.ai/access-keys?utm_source=github&utm_medium=readme&utm_campaign=open-generative-ai). Copy the generated key value into the app; do not enter the key name or label.
+- A [Muapi.ai access key](https://muapi.ai/access-keys?utm_source=github&utm_medium=readme&utm_campaign=smartvideo-go). Copy the generated key value into the app; do not enter the key name or label.
 
 ### Setup
 
-> **Most users want the desktop app, not this dev path.** If you just want to run Open Generative AI on your machine, [download a prebuilt installer](#-download-desktop-app) instead — no Node.js required. The instructions below are for contributors building from source.
+> **Most users want the desktop app, not this dev path.** If you just want to run SmartVideo GO on your machine, [download a prebuilt installer](#-download-desktop-app) instead — no Node.js required. The instructions below are for contributors building from source.
 
 Pick the entry point that matches your goal:
 
@@ -427,8 +524,8 @@ Pick the entry point that matches your goal:
 
 ```bash
 # Clone the repository (with submodules — required for the workflow + agent packages)
-git clone --recurse-submodules https://github.com/Anil-matcha/Open-Generative-AI.git
-cd Open-Generative-AI
+git clone --recurse-submodules https://github.com/Anil-matcha/SmartVideo-GO.git
+cd SmartVideo-GO
 
 # If you already cloned without --recurse-submodules, run this once:
 # git submodule update --init --recursive
@@ -472,14 +569,36 @@ npm run electron:build:linux
 npm run electron:build:all
 ```
 
-Installers are output to the `release/` folder. Pre-built binaries are also available on the [Releases page](https://github.com/Anil-matcha/Open-Generative-AI/releases).
+Installers are output to the `release/` folder. Pre-built binaries are also available on the [Releases page](https://github.com/Anil-matcha/SmartVideo-GO/releases).
+
+### Deploy to Render (CLI)
+
+SmartVideo GO ships a [Render Blueprint](./render.yaml) describing the web service and its environment variables. Deploy it from your terminal with the [Render CLI](https://render.com/docs/cli):
+
+```bash
+# 1. Install the Render CLI
+#    macOS / Linux:
+curl -fsSL https://raw.githubusercontent.com/render-oss/cli/refs/heads/main/bin/install.sh | sh
+#    macOS (Homebrew):  brew install render
+
+# 2. Authenticate (opens a browser to authorize the CLI)
+render login
+
+# 3. Validate the blueprint locally
+npm run render:validate        # → render blueprints validate
+
+# 4. Create / update the service on Render
+npm run render:deploy          # → render blueprints apply --confirm
+```
+
+For non-interactive CI/CD, set the `RENDER_API_KEY` environment variable and pass `--confirm` (see the [Render CLI docs](https://render.com/docs/cli#non-interactive-mode)). After the first deploy, set the `sync: false` environment variables (Clerk keys, Supabase keys, `CLERK_WEBHOOK_SECRET`) in the Render Dashboard before the service will start cleanly.
 
 ## 🏗️ Architecture
 
 The app is a **Next.js monorepo** with a shared `packages/studio` component library.
 
 ```
-Open-Generative-AI/
+SmartVideo-GO/
 ├── app/                        # Next.js App Router
 │   ├── layout.js               # Root layout (Tailwind, fonts)
 │   ├── page.js                 # Redirects → /studio
@@ -491,7 +610,8 @@ Open-Generative-AI/
 ├── packages/
 │   └── studio/                 # Shared React component library
 │       └── src/
-│           ├── index.js        # Exports: ImageStudio, VideoStudio, AudioStudio, ClippingStudio, VibeMotionStudio, LipSyncStudio, CinemaStudio, MarketingStudio, WorkflowStudio, AgentStudio, DesignAgentStudio, AppsStudio, McpCliStudio
+│           ├── index.js        # Exports: ImageStudio, VideoStudio, AudioStudio, ClippingStudio, VibeMotionStudio, LipSyncStudio, CinemaStudio, MarketingStudio, RecastStudio, WorkflowStudio, AgentStudio, DesignAgentStudio, AppsStudio, AiInfluencerStudio
+│           # (Note: the live Design Agent AI tab uses src/apps/design-agent/DesignAgent; the package DesignAgentStudio wrapper is unused)
 │           ├── models.js       # 200+ model definitions (single source of truth)
 │           ├── muapi.js        # API client (named exports, apiKey as first param)
 │           └── components/
@@ -505,11 +625,11 @@ Open-Generative-AI/
 └── package.json                # workspaces: ["packages/studio"]
 ```
 
-The `packages/studio` library is also consumed by the hosted version on [muapi.ai](https://muapi.ai?utm_source=github&utm_medium=readme&utm_campaign=open-generative-ai) — model updates made in `packages/studio/src/models.js` apply to both the self-hosted app and the hosted version automatically.
+The `packages/studio` library is also consumed by the hosted version on [muapi.ai](https://muapi.ai?utm_source=github&utm_medium=readme&utm_campaign=smartvideo-go) — model updates made in `packages/studio/src/models.js` apply to both the self-hosted app and the hosted version automatically.
 
 ## 🔌 API Integration
 
-The app communicates with [Muapi.ai](https://muapi.ai?utm_source=github&utm_medium=readme&utm_campaign=open-generative-ai) using a two-step pattern:
+The app communicates with [Muapi.ai](https://muapi.ai?utm_source=github&utm_medium=readme&utm_campaign=smartvideo-go) using a two-step pattern:
 
 1. **Submit** — `POST /api/v1/{model-endpoint}` with prompt and parameters
 2. **Poll** — `GET /api/v1/predictions/{request_id}/result` until status is `completed`
@@ -524,11 +644,12 @@ Lip sync jobs use the same two-step pattern: a dedicated `processLipSync()` meth
 
 | Category | Count | Examples |
 |---|---|---|
-| **Text-to-Image** | 50+ | Flux Dev, Nano Banana 2, Seedream 5.0, Ideogram v3, Midjourney v7, GPT-4o, SDXL |
-| **Image-to-Image** | 55+ | Nano Banana 2 Edit (×14), Flux Kontext Pro, GPT-4o Edit, Seededit v3, Upscaler, Background Remover |
-| **Text-to-Video** | 40+ | Kling v3, Sora 2, Veo 3, Wan 2.6, Seedance 2.0, Seedance 2.0 Extend, Seedance Pro, Hailuo 2.3, Runway Gen-3 |
-| **Image-to-Video** | 60+ | Kling v2.1 I2V, Veo3 I2V, Runway I2V, Seedance 2.0 I2V, Midjourney v7 I2V, Hunyuan I2V, Wan2.2 I2V |
-| **Lip Sync** | 9 | Infinite Talk I2V, Wan 2.2 Speech to Video, LTX 2.3 Lipsync, LTX 2 19B Lipsync, Sync, LatentSync, Creatify, Veed, Infinite Talk V2V |
+| **Text-to-Image** | 74+ | Flux Dev, Nano Banana 2, Seedream 5.0, Ideogram v3, Midjourney v7, GPT-4o / GPT Image 1.5 / 2, SDXL, Qwen-Image |
+| **Image-to-Image** | 74+ | Nano Banana 2 Edit (×14), Flux Kontext Pro/Max, GPT-4o Edit, Seedream 5.0 Edit, Upscaler, Background Remover, Face Swap |
+| **Text-to-Video** | 73+ | Kling v3, Sora 2, Veo 3/4, Wan 2.7, Seedance 2.0 / 2.5, Hailuo 2.3, Runway Gen-3, Pixverse v6, LTX 2.x |
+| **Image-to-Video** | 107+ | Kling I2V, Veo3 I2V, Runway I2V, Seedance 2.0 I2V, Midjourney v7 I2V, Hunyuan I2V, Wan2.2 I2V, Vidu Q-series |
+| **Video-to-Video** | 53+ | Video Upscaler, Watermark Remover, Kling Motion Control, AI Clipping, AI Dance, Video Face Swap, Topaz Upscale |
+| **Lip Sync** | 14 | Infinite Talk I2V, Wan 2.2 Speech to Video, LTX 2.3 Lipsync, LTX 2 19B Lipsync, Sync, LatentSync, Creatify, Veed, Infinite Talk V2V, Kling v1/v2 Avatar, OmniHuman 1.5 |
 
 ## 🛠️ Tech Stack
 
@@ -540,17 +661,17 @@ Lip sync jobs use the same two-step pattern: a dedicated `processLipSync()` meth
 
 ## 🤔 How is this different from other AI Video Platforms?
 
-**Open Generative AI** is a community-driven, open-source alternative that provides similar creative capabilities without the closed ecosystem:
+**SmartVideo GO** is a community-driven, open-source alternative that provides similar creative capabilities without the closed ecosystem:
 
-| | Other providers | Open Generative AI |
+| | Other providers | SmartVideo GO |
 | :--- | :--- | :--- |
 | **Cost** | Subscription-based | Free (open-source) |
 | **Content filters** | Yes — prompts blocked or altered | None |
 | **Restrictions** | Platform guardrails enforced | Full creative freedom |
 | **Models** | Proprietary | 200+ open & commercial models |
 | **Multi-image input** | Limited | Up to 14 images per request |
-| **Lip sync** | No | 9 models, image & video modes |
-| **Hosted version** | Subscription | Free at [muapi.ai/open-generative-ai](https://muapi.ai/open-generative-ai?utm_source=github&utm_medium=readme&utm_campaign=open-generative-ai) |
+| **Lip sync** | No | 14 models, image, video & avatar modes |
+| **Hosted version** | Subscription | Free at [muapi.ai/smartvideo-go](https://muapi.ai/smartvideo-go?utm_source=github&utm_medium=readme&utm_campaign=smartvideo-go) |
 | **Self-hosting** | No | Yes |
 | **Customizable** | No | Fully hackable |
 | **Data privacy** | Cloud-based | Your data stays local |
@@ -562,10 +683,10 @@ MIT
 
 ## 🙏 Credits
 
-Built with [Muapi.ai](https://muapi.ai?utm_source=github&utm_medium=readme&utm_campaign=open-generative-ai) — the unified API for AI image and video generation models.
+Built with [Muapi.ai](https://muapi.ai?utm_source=github&utm_medium=readme&utm_campaign=smartvideo-go) — the unified API for AI image and video generation models.
 
 ---
 **Deep Dive**: For more details on the "AI Influencer" engine, upcoming "Popcorn" storyboarding features, and the future of this project, read the [full technical overview](https://medium.com/@anilmatcha/).
 
 ---
-*Looking for a free, open-source AI Video Platform? Open Generative AI is an open-source AI image and video generation studio — with no content filters that you can self-host, customize, and extend.*
+*Looking for a free, open-source AI Video Platform? SmartVideo GO is an open-source AI image and video generation studio — with no content filters that you can self-host, customize, and extend.*

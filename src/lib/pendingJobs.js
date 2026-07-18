@@ -1,4 +1,6 @@
-const PENDING_KEY = 'muapi_pending_jobs';
+import { nsKey } from './identity.js';
+
+const PENDING_KEY = nsKey('muapi_pending_jobs');
 
 export function savePendingJob(job) {
     try {

@@ -1,4 +1,5 @@
 import { getModelById, getVideoModelById, getI2IModelById, getI2VModelById, getV2VModelById, getLipSyncModelById } from './models.js';
+import { nsKey } from './identity.js';
 import axios from 'axios';
 
 /**
@@ -51,6 +52,7 @@ const ENDPOINT_ALIASES = {
   'mmaudio-v2-text-to-audio': 'mmaudio-v2-text-to-audio',
 };
 
+
 export class MuapiClient {
     constructor() {
         // Ideally user provides this in settings
@@ -58,7 +60,7 @@ export class MuapiClient {
     }
 
     getKey() {
-        const key = window.__MUAPI_KEY__ || localStorage.getItem('muapi_key');
+        const key = window.__MUAPI_KEY__ || localStorage.getItem(nsKey('muapi_key'));
         if (!key) throw new Error('API Key missing. Please set it in Settings.');
         return key;
     }
