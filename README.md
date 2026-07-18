@@ -8,13 +8,13 @@
 **Community:** Join [Discord](https://discord.gg/tANKJkHck) for discussions and support
 
 <p align="center">
-  <a href="https://www.youtube.com/watch?v=jEcH713jndg">
-    <img src="https://img.youtube.com/vi/jEcH713jndg/maxresdefault.jpg" alt="Watch: MuAPI — The Best Fal.ai Alternative" width="640">
+  <a href="https://www.youtube.com/watch?v=chK_pnV1wqQ">
+    <img src="https://img.youtube.com/vi/chK_pnV1wqQ/maxresdefault.jpg" alt="Watch: Free AI Tool — Vox-Style Motion Graphics From One Prompt" width="640">
   </a>
 </p>
 
 <p align="center">
-  <a href="https://www.youtube.com/watch?v=jEcH713jndg"><b>📺 Watch: MuAPI — The Best Fal.ai Alternative (cheaper AI video &amp; image APIs) →</b></a>
+  <a href="https://www.youtube.com/watch?v=chK_pnV1wqQ"><b>📺 Watch: Free AI Tool — Vox-Style Motion Graphics From One Prompt (Open-Source) →</b></a>
 </p>
 
 <p align="center">
