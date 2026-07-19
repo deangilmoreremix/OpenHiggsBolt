@@ -8,13 +8,13 @@
 **Community:** Join [Discord](https://discord.gg/tANKJkHck) for discussions and support
 
 <p align="center">
-  <a href="https://www.youtube.com/watch?v=chK_pnV1wqQ">
-    <img src="https://img.youtube.com/vi/chK_pnV1wqQ/maxresdefault.jpg" alt="Watch: Free AI Tool — Vox-Style Motion Graphics From One Prompt" width="640">
+  <a href="https://www.youtube.com/watch?v=X_kbyQyhgmI">
+    <img src="docs/assets/video-17-thumbnail.png" alt="Watch: 50 Free AI Apps You Can Clone and Sell" width="640">
   </a>
 </p>
 
 <p align="center">
-  <a href="https://www.youtube.com/watch?v=chK_pnV1wqQ"><b>📺 Watch: Free AI Tool — Vox-Style Motion Graphics From One Prompt (Open-Source) →</b></a>
+  <a href="https://www.youtube.com/watch?v=X_kbyQyhgmI"><b>📺 Watch: 50 Free AI Apps You Can Clone and Sell (Free Alternatives to Paid AI Tools) →</b></a>
 </p>
 
 <p align="center">
