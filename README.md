@@ -9,12 +9,12 @@
 
 <p align="center">
   <a href="https://www.youtube.com/watch?v=X_kbyQyhgmI">
-    <img src="docs/assets/video-17-thumbnail.png" alt="Watch: 50 Free AI Apps You Can Clone and Sell" width="640">
+    <img src="docs/assets/video-17-thumbnail.png" alt="I Found 50 Free AI Apps You Can Clone and Sell" width="640">
   </a>
 </p>
 
 <p align="center">
-  <a href="https://www.youtube.com/watch?v=X_kbyQyhgmI"><b>📺 Watch: 50 Free AI Apps You Can Clone and Sell (Free Alternatives to Paid AI Tools) →</b></a>
+  <a href="https://www.youtube.com/watch?v=X_kbyQyhgmI"><b>📺 I Found 50 Free AI Apps You Can Clone and Sell (Alternatives to Paid Tools) →</b></a>
 </p>
 
 <p align="center">
