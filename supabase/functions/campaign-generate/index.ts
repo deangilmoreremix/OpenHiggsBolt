@@ -1,6 +1,6 @@
-import OpenAI from "npm:openai";
 import { createServerClient } from "../_shared/supabase.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { MissingOpenAiKeyError, openAiFromRequest } from "../_shared/openai.ts";
 
 const OPENAI_MODEL = "gpt-4o";
 
@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createServerClient();
-    const openai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY") || "" });
+    const openai = openAiFromRequest(req);
 
     const { data: brand, error: brandError } = await supabase.from("brand_dna")
       .select("*").eq("id", brandId).single();
@@ -142,6 +142,9 @@ Make the concepts distinct, specific to this brand, and ready for visual executi
 
     return jsonResponse(campaign);
   } catch (error) {
+    if (error instanceof MissingOpenAiKeyError) {
+      return jsonResponse({ error: error.message }, 400);
+    }
     return jsonResponse({
       error: error instanceof Error ? error.message : "Unknown error",
     }, 500);

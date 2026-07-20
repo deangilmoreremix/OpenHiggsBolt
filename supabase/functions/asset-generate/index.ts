@@ -1,7 +1,7 @@
-import OpenAI from "npm:openai";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { mirrorUrlToStorage } from "../_shared/supabase.ts";
+import { MissingOpenAiKeyError, openAiFromRequest } from "../_shared/openai.ts";
 
 const OPENAI_MODEL = "gpt-4o";
 const IMAGE_MODEL = "dall-e-3";
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
     const platform = PLATFORMS.find((item) => item.id === platformId) ||
       PLATFORMS[0];
     const supabase = createServerClient();
-    const openai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY") || "" });
+    const openai = openAiFromRequest(req);
 
     const { data: campaignWithBrand, error: campaignError } = await supabase
       .from("brand_campaigns")
@@ -242,6 +242,9 @@ Keep the body under ${platform.wordCap} words. Do not include markdown fences.`;
 
     return jsonResponse(asset);
   } catch (error) {
+    if (error instanceof MissingOpenAiKeyError) {
+      return jsonResponse({ error: error.message }, 400);
+    }
     return jsonResponse({
       error: error instanceof Error ? error.message : "Unknown error",
     }, 500);

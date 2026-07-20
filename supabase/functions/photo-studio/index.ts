@@ -1,7 +1,7 @@
-import OpenAI from "npm:openai";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { mirrorUrlToStorage } from "../_shared/supabase.ts";
+import { MissingOpenAiKeyError, openAiFromRequest } from "../_shared/openai.ts";
 
 const IMAGE_MODEL = "dall-e-3";
 
@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createServerClient();
-    const openai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY") || "" });
+    const openai = openAiFromRequest(req);
 
     let brand = null;
     if (brandId) {
@@ -214,6 +214,9 @@ Deno.serve(async (req) => {
 
     return jsonResponse(photoshoot);
   } catch (error) {
+    if (error instanceof MissingOpenAiKeyError) {
+      return jsonResponse({ error: error.message }, 400);
+    }
     return jsonResponse({
       error: error instanceof Error ? error.message : "Unknown error",
     }, 500);

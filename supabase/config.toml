@@ -1,0 +1,21 @@
+# Supabase project configuration
+# Docs: https://supabase.com/docs/guides/cli/config
+# Linked project ref: bzxohkrxcwodllketcpz (VideoRemix Product)
+project_id = "bzxohkrxcwodllketcpz"
+
+[functions.enhance-prompt]
+# Called from the browser (src/shared/api/openai.ts) with no Supabase JWT.
+verify_jwt = false
+
+[functions.brand-analyze]
+# Called from the Brand Studio frontend without a Supabase JWT.
+verify_jwt = false
+
+[functions.campaign-generate]
+verify_jwt = false
+
+[functions.asset-generate]
+verify_jwt = false
+
+[functions.photo-studio]
+verify_jwt = false

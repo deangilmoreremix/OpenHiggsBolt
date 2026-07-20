@@ -1,7 +1,7 @@
-import OpenAI from "npm:openai";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { mirrorUrlToStorage } from "../_shared/supabase.ts";
+import { MissingOpenAiKeyError, openAiFromRequest, resolveOpenAiKey } from "../_shared/openai.ts";
 
 const OPENAI_MODEL = "gpt-4o";
 
@@ -160,6 +160,9 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Missing website URL" }, 400);
     }
 
+    // Fail fast before any network/storage work if the caller has no key.
+    if (!resolveOpenAiKey(req)) throw new MissingOpenAiKeyError();
+
     const normalizedUrl = websiteUrl.startsWith("http")
       ? websiteUrl
       : `https://${websiteUrl}`;
@@ -191,7 +194,7 @@ Deno.serve(async (req) => {
     const absoluteOgImage = ogImage ? new URL(ogImage, normalizedUrl).href : "";
 
     const supabase = createServerClient();
-    const openai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY") || "" });
+    const openai = openAiFromRequest(req);
     let screenshotUrl = "";
 
     if (absoluteOgImage) {
@@ -306,6 +309,9 @@ HTML text excerpt: ${bodyText}`;
 
     return jsonResponse(data);
   } catch (error) {
+    if (error instanceof MissingOpenAiKeyError) {
+      return jsonResponse({ error: error.message }, 400);
+    }
     return jsonResponse({
       error: error instanceof Error ? error.message : "Unknown error",
     }, 500);
