@@ -58,11 +58,12 @@ export function buildHandlers(deps: {
         const sb = getSupabaseAdmin();
         const { data } = await sb
           .from('app_users')
-          .select('muapi_key')
+          .select('muapi_key, openai_key')
           .eq('clerk_user_id', userId)
           .maybeSingle();
         const key = data?.muapi_key ? decryptMuapiKey(data.muapi_key) : null;
-        return NextResponse.json({ key });
+        const openaiKey = data?.openai_key ? decryptMuapiKey(data.openai_key) : null;
+        return NextResponse.json({ key, openaiKey });
       } catch {
         // Never leak details; treat as "no key" so the UI just prompts for one.
         return NextResponse.json({ key: null });
@@ -83,6 +84,7 @@ export function buildHandlers(deps: {
 
       const body = await request.json().catch(() => ({}));
       const key = typeof body?.key === 'string' ? body.key.trim() : '';
+      const openaiKey = typeof body?.openaiKey === 'string' ? body.openaiKey.trim() : '';
       if (!key) {
         return NextResponse.json({ ok: false, error: 'Missing key' }, { status: 400 });
       }
@@ -90,6 +92,8 @@ export function buildHandlers(deps: {
       try {
         const sb = getSupabaseAdmin();
         const enc = encryptMuapiKey(key);
+        // OpenAI key is optional; only encrypt + persist when provided.
+        const openaiEnc = openaiKey ? encryptMuapiKey(openaiKey) : null;
         const nowIso = new Date().toISOString();
 
         // Update the existing row when present; otherwise create a minimal row.
@@ -97,7 +101,13 @@ export function buildHandlers(deps: {
         // referenced by workspace_members) via an onConflict upsert.
         const { data: updated, error: updErr } = await sb
           .from('app_users')
-          .update({ muapi_key: enc, updated_at: nowIso, key_updated_at: nowIso })
+          .update({
+            muapi_key: enc,
+            openai_key: openaiEnc,
+            updated_at: nowIso,
+            key_updated_at: nowIso,
+            openai_key_updated_at: openaiKey ? nowIso : null,
+          })
           .eq('clerk_user_id', userId)
           .select('clerk_user_id');
         if (updErr) throw updErr;
@@ -105,7 +115,14 @@ export function buildHandlers(deps: {
         if (!updated || updated.length === 0) {
           const { error: insErr } = await sb
             .from('app_users')
-            .insert({ id: userId, clerk_user_id: userId, muapi_key: enc, key_updated_at: nowIso });
+            .insert({
+              id: userId,
+              clerk_user_id: userId,
+              muapi_key: enc,
+              openai_key: openaiEnc,
+              key_updated_at: nowIso,
+              openai_key_updated_at: openaiKey ? nowIso : null,
+            });
           if (insErr) throw insErr;
         }
 
@@ -124,7 +141,13 @@ export function buildHandlers(deps: {
         const nowIso = new Date().toISOString();
         await sb
           .from('app_users')
-          .update({ muapi_key: null, updated_at: nowIso, key_updated_at: nowIso })
+          .update({
+            muapi_key: null,
+            openai_key: null,
+            updated_at: nowIso,
+            key_updated_at: nowIso,
+            openai_key_updated_at: null,
+          })
           .eq('clerk_user_id', userId);
         return NextResponse.json({ ok: true });
       } catch {

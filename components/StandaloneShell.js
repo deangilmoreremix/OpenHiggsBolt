@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import axios from 'axios';
 import { MemoryRouter } from 'react-router-dom';
 import { useClerk } from '@clerk/nextjs';
+import ApiKeyModal from './ApiKeyModal';
 
 // Lazily load the heavy `studio` package so its many studio modules are not
 // part of the initial bundle for /, /studio and /workflow. Each export is only
@@ -63,6 +64,7 @@ const SLUG_TO_TAB = {
 };
 
 const STORAGE_KEY = 'muapi_key';
+const OPENAI_STORAGE_KEY = 'openai_key';
 
 // Build the muapi_key cookie string. `Secure` is added only over HTTPS so the
 // key still persists on http:// localhost dev servers (Secure cookies are dropped
@@ -73,6 +75,24 @@ function muapiCookie(value) {
     return `muapi_key=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax${secure}`;
   }
   return `muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
+}
+
+// Same shape as muapiCookie but for the user's OpenAI key, which is sent to the
+// Supabase edge functions (via the x-openai-key header) for text/image features.
+function openaiCookie(value) {
+  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+  if (value) {
+    return `openai_key=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax${secure}`;
+  }
+  return `openai_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
+}
+
+// Read a cookie value (used as a fallback when localStorage is empty, e.g. a key
+// set in another tab/session). Returns '' if not present.
+function readCookie(name) {
+  if (typeof document === 'undefined') return '';
+  const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return match ? decodeURIComponent(match[1]) : '';
 }
 
 // MuAPI keys are opaque tokens. We only reject values containing whitespace or
@@ -118,6 +138,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
   };
   
   const [apiKey, setApiKey] = useState(null);
+  const [openaiKey, setOpenaiKey] = useState(null);
   const [activeTab, setActiveTab] = useState(initialTab || getInitialTab());
 
   useEffect(() => {
@@ -129,7 +150,11 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
 
   const [balance, setBalance] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  // First-login API key popup — shown once when the user has no key on this
+  // device and none saved to their account. Uses the on-brand ApiKeyModal.
+  const [showApiKeyPopup, setShowApiKeyPopup] = useState(false);
   const [settingsKeyInput, setSettingsKeyInput] = useState('');
+  const [settingsOpenaiInput, setSettingsOpenaiInput] = useState('');
   const [authError, setAuthError] = useState(null);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [hasMounted, setHasMounted] = useState(false);
@@ -213,32 +238,43 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
 
   useEffect(() => {
     setHasMounted(true);
-    const stored = localStorage.getItem(STORAGE_KEY);
+    // Each key is restored independently — a user may have saved only one
+    // (e.g. MuAPI) in the past. We set whichever are present. localStorage
+    // is the primary store; the cookie is read as a fallback so a key set on
+    // another tab/session still resolves into state (the interceptor reads state).
+    const stored = localStorage.getItem(STORAGE_KEY) || readCookie(STORAGE_KEY);
+    const storedOpenai = localStorage.getItem(OPENAI_STORAGE_KEY) || readCookie(OPENAI_STORAGE_KEY);
     if (stored) {
       const cleanKey = stored.trim();
       setApiKey(cleanKey);
       fetchBalance(cleanKey);
-      // Sync cookie immediately on mount to establish identity for background requests.
-      // Encode so special characters in the key don't corrupt the cookie string.
+      // Sync cookie immediately on mount to establish identity for background
+      // requests. Encode so special characters don't corrupt the cookie string.
       document.cookie = muapiCookie(cleanKey);
-      return;
     }
+    if (storedOpenai) {
+      const cleanOpenai = storedOpenai.trim();
+      setOpenaiKey(cleanOpenai);
+      document.cookie = openaiCookie(cleanOpenai);
+    }
+    // Both keys present locally → fully authenticated, no prompt.
+    if (stored && storedOpenai) return;
 
-    // No key in this browser — try to restore it from the signed-in user's
-    // account so the key follows them across browsers, devices and sign-ins.
+    // Missing at least one key — try to restore from the signed-in user's
+    // account so the keys follow them across browsers, devices and sign-ins.
     let cancelled = false;
     (async () => {
       let restored = '';
+      let restoredOpenai = '';
       try {
         const res = await fetch('/api/auth/muapi-key', { credentials: 'same-origin' });
         if (res.ok) {
           const data = await res.json();
-          restored = data?.key
-            ? String(data.key).trim()
-            : '';
+          restored = data?.key ? String(data.key).trim() : '';
+          restoredOpenai = data?.openaiKey ? String(data.openaiKey).trim() : '';
         }
       } catch {
-        // Offline or not signed in — the user can still enter a key manually.
+        // Offline or not signed in — the user can still enter keys manually.
       }
       if (cancelled) return;
       if (restored) {
@@ -246,60 +282,122 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
         setApiKey(restored);
         fetchBalance(restored);
         document.cookie = muapiCookie(restored);
-      } else if (!embedded) {
-        // First run: no key on this device and none saved to the user's
-        // account yet — prompt them to add their own MuAPI key.
-        setShowSettings(true);
+      }
+      if (restoredOpenai) {
+        localStorage.setItem(OPENAI_STORAGE_KEY, restoredOpenai);
+        setOpenaiKey(restoredOpenai);
+        document.cookie = openaiCookie(restoredOpenai);
+      }
+      // Still missing at least one key after restore → prompt via the
+      // dedicated first-login popup (both keys required to proceed).
+      if (restored && restoredOpenai) return;
+      if (!embedded) {
+        setShowApiKeyPopup(true);
       }
     })();
     return () => { cancelled = true; };
   }, [fetchBalance, embedded]);
 
-  const handleKeySave = useCallback((key) => {
+  const [isSavingKey, setIsSavingKey] = useState(false);
+
+  const handleKeySave = useCallback(async (key, openaiKeyValue) => {
     const trimmed = key.trim();
+    const trimmedOpenai = (openaiKeyValue || '').trim();
     if (!trimmed) return;
     if (!isValidApiKey(trimmed)) {
       setAuthError('API key looks invalid (contains spaces or control characters). Re-copy it from your MuAPI dashboard.');
       return;
     }
+
+    // Verify BOTH keys before committing. Previously a format-valid-but-wrong
+    // key was silently saved, leaving the user stranded in the studio with a
+    // stale invalid key and no clean way to replace it. OpenAI is required for
+    // prompt enhancement, script generation and several image paths, so an
+    // invalid OpenAI key would silently break those features.
+    setIsSavingKey(true);
+    try {
+      await fetchBalance(trimmed);
+    } catch (err) {
+      const isAuthError =
+        err?.message?.includes?.('401') ||
+        err?.message?.includes?.('403') ||
+        err?.message?.includes?.('Not authorized');
+      setIsSavingKey(false);
+      setAuthError(
+        isAuthError
+          ? 'That MuAPI key is invalid or unauthorized. Double-check it on your MuAPI dashboard and try again.'
+          : 'Could not verify the MuAPI key. Check your connection and try again.'
+      );
+      return; // Do NOT save an unverified key.
+    }
+
+    try {
+      const { verifyOpenAIKey } = await import('@/shared/api/verifyOpenAIKey');
+      await verifyOpenAIKey(trimmedOpenai);
+    } catch (err) {
+      setIsSavingKey(false);
+      const kind = err?.message;
+      setAuthError(
+        kind === 'unauthorized'
+          ? 'That OpenAI key is invalid or unauthorized. Double-check it on your OpenAI dashboard and try again.'
+          : 'Could not verify the OpenAI key. Check your connection and try again.'
+      );
+      return; // Do NOT save an unverified key.
+    }
+
+    // Both keys verified — persist them locally, as cookies, and to the
+    // user's account.
     localStorage.setItem(STORAGE_KEY, trimmed);
+    localStorage.setItem(OPENAI_STORAGE_KEY, trimmedOpenai);
     setApiKey(trimmed);
+    setOpenaiKey(trimmedOpenai);
     setSettingsKeyInput('');
+    setSettingsOpenaiInput('');
     setAuthError(null);
     setShowSettings(false);
-    // Persist the key as a cookie before any background requests so server-side
-    // proxy routes can resolve it even when the x-api-key header is not present.
-    // Encode so special characters in the key don't corrupt the cookie string.
+    setShowApiKeyPopup(false);
+    setIsSavingKey(false);
+    // Persist the keys as cookies before any background requests so server-side
+    // proxy routes can resolve them even when the header is not present.
+    // Encode so special characters don't corrupt the cookie string.
     document.cookie = muapiCookie(trimmed);
-    // Persist the key against the signed-in user's account so it is restored
+    document.cookie = openaiCookie(trimmedOpenai);
+    // Persist the keys against the signed-in user's account so they are restored
     // automatically on future sign-ins and on other browsers/devices.
     fetch('/api/auth/muapi-key', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ key: trimmed }),
+      body: JSON.stringify({ key: trimmed, openaiKey: trimmedOpenai }),
     }).catch(() => {});
     fetchBalance(trimmed);
   }, [fetchBalance]);
 
   const handleKeyChange = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(OPENAI_STORAGE_KEY);
     setApiKey(null);
+    setOpenaiKey(null);
     setBalance(null);
     setSettingsKeyInput('');
+    setSettingsOpenaiInput('');
     setAuthError(null);
     document.cookie = muapiCookie(null);
-    // Also forget the key stored against the user's account.
+    document.cookie = openaiCookie(null);
+    // Also forget the keys stored against the user's account.
     fetch('/api/auth/muapi-key', { method: 'DELETE', credentials: 'same-origin' }).catch(() => {});
   }, []);
 
-  // Inject API key into all outgoing Axios requests (prop-based approach)
-  // We use an interceptor to be selective and NOT send the key to external domains like S3
+  // Inject API keys into all outgoing Axios requests (prop-based approach).
+  // We use an interceptor to be selective and NOT send the keys to external
+  // domains like S3. The MuAPI key goes to x-api-key; the OpenAI key goes to
+  // x-openai-key so the Supabase edge functions can use the user's own key.
   useEffect(() => {
     // Safety: Clear any global defaults that might have been set previously
     delete axios.defaults.headers.common['x-api-key'];
+    delete axios.defaults.headers.common['x-openai-key'];
 
-    if (!apiKey) return;
+    if (!apiKey && !openaiKey) return;
 
     const interceptorId = axios.interceptors.request.use((config) => {
       // Check if URL is local/proxied
@@ -307,16 +405,17 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
       const isInternalProxy = config.url.includes('/api/app') || config.url.includes('/api/workflow') || config.url.includes('/api/agents') || config.url.includes('/api/api') || config.url.includes('/api/v1');
 
       if (isRelative || isInternalProxy) {
-        config.headers['x-api-key'] = apiKey.trim();
+        if (apiKey) config.headers['x-api-key'] = apiKey.trim();
+        if (openaiKey) config.headers['x-openai-key'] = openaiKey.trim();
       }
-      
+
       return config;
     });
 
     return () => {
       axios.interceptors.request.eject(interceptorId);
     };
-  }, [apiKey]);
+  }, [apiKey, openaiKey]);
 
   // Poll for balance every 30 seconds if key is present
   useEffect(() => {
@@ -522,17 +621,34 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
         {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
       </div>
 
+      {/* First-login API key popup — on-brand overlay modal with an X close
+          button, wired to the same handleKeySave / MuAPI persistence logic as
+          the Settings modal. Shown once when a signed-in user has no key yet. */}
+      {showApiKeyPopup && !apiKey && (
+        <ApiKeyModal
+          overlay
+          onSave={handleKeySave}
+          onClose={() => { setAuthError(null); setShowApiKeyPopup(false); }}
+          error={authError}
+          loading={isSavingKey}
+          title="Welcome to SmartVideo GO"
+          subtitle={
+            <>Enter your <a href="https://muapi.ai/access-keys" target="_blank" rel="noreferrer" className="text-[#22d3ee] hover:text-[#e5ff33] transition-colors">Muapi.ai</a> and <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-[#22d3ee] hover:text-[#e5ff33] transition-colors">OpenAI</a> API keys to start creating</>
+          }
+        />
+      )}
+
       {/* Settings Modal */}
       {showSettings && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in-up">
-          <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-8 w-full max-w-sm shadow-2xl">
+          <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-8 w-full max-w-sm shadow-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-white font-bold text-lg mb-2">
-              {apiKey ? 'Settings' : 'Add your API key'}
+              {apiKey || openaiKey ? 'Settings' : 'Add your API keys'}
             </h2>
             <p className="text-white/40 text-[13px] mb-4">
-              {apiKey
+              {apiKey || openaiKey
                 ? 'Manage your AI studio preferences and authentication.'
-                : 'Welcome! Add your own MuAPI key to start generating.'}
+                : 'Welcome! Add your own MuAPI and OpenAI keys to start generating.'}
             </p>
             
             {authError && (
@@ -545,23 +661,34 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
               {apiKey && (
                 <div className="bg-white/5 border border-white/[0.03] rounded-md p-4">
                   <label className="block text-xs font-bold text-white/30 mb-2">
-                    Active API Key
+                    Active MuAPI Key
                   </label>
                   <div className="text-[13px] font-mono text-white/80">
-                    {apiKey.slice(0, 8)}••••••••••••••••
+                    {apiKey.slice(0, 8)}••••••••••••••
+                  </div>
+                </div>
+              )}
+              {openaiKey && (
+                <div className="bg-white/5 border border-white/[0.03] rounded-md p-4">
+                  <label className="block text-xs font-bold text-white/30 mb-2">
+                    Active OpenAI Key
+                  </label>
+                  <div className="text-[13px] font-mono text-white/80">
+                    {openaiKey.slice(0, 8)}••••••••••••••
                   </div>
                 </div>
               )}
               <div>
                 <label className="block text-xs font-bold text-white/30 mb-2">
-                  {apiKey ? 'New API Key' : 'API Key'}
+                  {apiKey ? 'New MuAPI Key' : 'MuAPI Key'}
                 </label>
                 <input
                   type="password"
                   value={settingsKeyInput}
                   onChange={(e) => setSettingsKeyInput(e.target.value)}
                   placeholder="Enter your MuAPI key..."
-                  className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[13px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
+                  disabled={isSavingKey}
+                  className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[13px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 disabled:opacity-60"
                 />
                 <p className="mt-2 text-[11px] leading-relaxed text-white/40">
                   {apiKey
@@ -577,27 +704,60 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
                   </a>
                 </p>
               </div>
+              <div>
+                <label className="block text-xs font-bold text-white/30 mb-2">
+                  {openaiKey ? 'New OpenAI Key' : 'OpenAI Key'}
+                </label>
+                <input
+                  type="password"
+                  value={settingsOpenaiInput}
+                  onChange={(e) => setSettingsOpenaiInput(e.target.value)}
+                  placeholder="sk-... (OpenAI key)"
+                  disabled={isSavingKey}
+                  className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[13px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 disabled:opacity-60"
+                />
+                <p className="mt-2 text-[11px] leading-relaxed text-white/40">
+                  {openaiKey
+                    ? 'Used for prompt enhancement, script generation and some image paths. Stored securely to your account.'
+                    : 'Used for prompt enhancement, script generation and some image paths. Add your own OpenAI key to enable them.'}{' '}
+                  <a
+                    href="https://platform.openai.com/api-keys"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#22d3ee] font-semibold hover:underline"
+                  >
+                    Get your key at platform.openai.com
+                  </a>
+                </p>
+              </div>
             </div>
 
             <div className="flex gap-3">
               <button
-                onClick={() => handleKeySave(settingsKeyInput)}
-                disabled={!settingsKeyInput.trim()}
-                className="flex-1 h-10 rounded-md bg-[#22d3ee]/10 text-[#22d3ee] hover:bg-[#22d3ee]/20 text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={() => handleKeySave(settingsKeyInput, settingsOpenaiInput)}
+                disabled={isSavingKey || (!settingsKeyInput.trim() && !settingsOpenaiInput.trim())}
+                className="flex-1 h-10 rounded-md bg-[#22d3ee]/10 text-[#22d3ee] hover:bg-[#22d3ee]/20 text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Save Key
+                {isSavingKey && (
+                  <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                  </svg>
+                )}
+                {isSavingKey ? 'Verifying…' : 'Save Key'}
               </button>
               {apiKey && (
                 <button
                   onClick={handleKeyChange}
-                  className="flex-1 h-10 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-semibold transition-all"
+                  disabled={isSavingKey}
+                  className="flex-1 h-10 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Change Key
                 </button>
               )}
               <button
                 onClick={() => { setAuthError(null); setShowSettings(false); }}
-                className="flex-1 h-10 rounded-md bg-white/5 text-white/80 hover:bg-white/10 text-xs font-semibold transition-all border border-white/5"
+                disabled={isSavingKey}
+                className="flex-1 h-10 rounded-md bg-white/5 text-white/80 hover:bg-white/10 text-xs font-semibold transition-all border border-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Close
               </button>
