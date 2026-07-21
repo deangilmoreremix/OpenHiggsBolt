@@ -63,6 +63,7 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], 
       });
     }
   }, [persistedHistory]);
+  
   const [lastUploadProgress, setLastUploadProgress] = useState(0);
   const fileInputRef = useRef(null);
   const panelRef = useRef(null);
@@ -1040,28 +1041,42 @@ export default function ImageStudio({
       setUploadedImageUrls(newUrls);
 
       if (!imageMode) {
-        // Try to find the i2i edit sibling of the currently selected t2i model.
-        // Models use varied naming conventions, so try multiple matching strategies.
+        // Find the i2i sibling of the currently selected t2i model.
+        // Many models follow conventions, but some have completely irregular names —
+        // those are handled via a hardcoded exceptions map.
         const curId = selectedModelId;
+        const i2iIds = new Set(i2iModels.map((m) => m.id));
 
-        // 1. Current model already exists in the i2i list (e.g. qwen-text-to-image-2512)
-        const directMatch = i2iModels.find((m) => m.id === curId);
-        // 2. {id}-edit convention (e.g. nano-banana → nano-banana-edit)
-        const editSuffix = !directMatch ? i2iModels.find((m) => m.id === `${curId}-edit`) : null;
-        // 3. -t2i → -i2i swap (e.g. flux-kontext-dev-t2i → flux-kontext-dev-i2i)
-        const t2iSwap = !directMatch && !editSuffix && curId.includes('-t2i')
-          ? i2iModels.find((m) => m.id === curId.replace('-t2i', '-i2i'))
-          : null;
-        // 4. text-to-image → image-to-image (e.g. gpt4o-text-to-image → gpt4o-image-to-image)
-        const txtSwap = !directMatch && !editSuffix && !t2iSwap && curId.includes('text-to-image')
-          ? i2iModels.find((m) => m.id === curId.replace('text-to-image', 'image-to-image'))
-          : null;
-        // 5. Prefix match fallback (e.g. nano-banana → nano-banana-effects)
-        const prefixMatch = !directMatch && !editSuffix && !t2iSwap && !txtSwap
-          ? i2iModels.find((m) => m.id.startsWith(curId))
-          : null;
+        // Hardcoded exceptions for models with irregular t2i → i2i naming
+        const EXCEPTIONS = {
+          'reve-text-to-image':          'reve-image-edit',
+          'wan2.1-text-to-image':        'wan2.5-image-edit',   // no wan2.1 i2i — closest
+          'wan2.5-text-to-image':        'wan2.5-image-edit',
+          'wan2.6-text-to-image':        'wan2.6-image-edit',
+          'kling-o1-text-to-image':      'kling-o1-edit-image',
+          'vidu-q2-text-to-image':       'vidu-q2-reference-to-image',
+          'bytedance-seedream-v3':       'bytedance-seededit-v3',
+          'bytedance-seedream-v4':       'bytedance-seedream-edit-v4',
+          'ideogram-v3-t2i':             'ideogram-v3-reframe',
+        };
 
-        const target = directMatch || editSuffix || t2iSwap || txtSwap || prefixMatch || i2iModels[0];
+        const findI2I = (id) => i2iModels.find((m) => m.id === id) ?? null;
+
+        const target =
+          // 0. Hardcoded exceptions for irregular names
+          findI2I(EXCEPTIONS[curId]) ||
+          // 1. Model exists directly in i2i list (e.g. qwen-text-to-image-2512, flux-pulid, flux-redux)
+          findI2I(curId) ||
+          // 2. {id}-edit suffix (e.g. nano-banana → nano-banana-edit, gpt-image-1.5 → gpt-image-1.5-edit)
+          findI2I(`${curId}-edit`) ||
+          // 3. -t2i → -i2i (e.g. flux-kontext-dev-t2i → flux-kontext-dev-i2i)
+          (curId.includes('-t2i') && findI2I(curId.replace('-t2i', '-i2i'))) ||
+          // 4. text-to-image → image-to-image (e.g. gpt4o-text-to-image, midjourney-v7, grok-imagine)
+          (curId.includes('text-to-image') && findI2I(curId.replace('text-to-image', 'image-to-image'))) ||
+          // 5. Prefix match fallback (e.g. minimax-image-01 → minimax-image-01-subject-reference)
+          i2iModels.find((m) => m.id.startsWith(curId)) ||
+          // 6. No sibling exists — use first i2i model
+          i2iModels[0];
 
         const ars = getAspectRatiosForI2IModel(target.id);
         const resolutions = getResolutionsForI2IModel(target.id);
@@ -1081,16 +1096,46 @@ export default function ImageStudio({
   const handleUploadClear = useCallback(() => {
     setUploadedImageUrls([]);
     setImageMode(false);
-    const firstT2I = t2iModels[0];
-    const ars = getAspectRatiosForModel(firstT2I.id);
-    const resolutions = getResolutionsForModel(firstT2I.id);
-    setSelectedModelId(firstT2I.id);
-    setSelectedModelName(firstT2I.name);
+
+    // Find the t2i parent of the currently selected i2i model (reverse of upload logic)
+    const curId = selectedModelId;
+    const findT2I = (id) => id ? (t2iModels.find((m) => m.id === id) ?? null) : null;
+
+    // Reverse exceptions map (i2i → t2i for irregular names)
+    const REVERSE_EXCEPTIONS = {
+      'reve-image-edit':               'reve-text-to-image',
+      'wan2.5-image-edit':             'wan2.5-text-to-image',
+      'wan2.6-image-edit':             'wan2.6-text-to-image',
+      'kling-o1-edit-image':           'kling-o1-text-to-image',
+      'vidu-q2-reference-to-image':    'vidu-q2-text-to-image',
+      'bytedance-seededit-v3':         'bytedance-seedream-v3',
+      'bytedance-seedream-edit-v4':    'bytedance-seedream-v4',
+      'ideogram-v3-reframe':           'ideogram-v3-t2i',
+    };
+
+    const target =
+      // 0. Hardcoded reverse exceptions
+      findT2I(REVERSE_EXCEPTIONS[curId]) ||
+      // 1. Model exists directly in t2i list (e.g. qwen-text-to-image-2512, flux-pulid, flux-redux)
+      findT2I(curId) ||
+      // 2. Strip -edit suffix (e.g. nano-banana-edit → nano-banana, gpt-image-1.5-edit → gpt-image-1.5)
+      (curId.endsWith('-edit') && findT2I(curId.slice(0, -5))) ||
+      // 3. -i2i → -t2i (e.g. flux-kontext-dev-i2i → flux-kontext-dev-t2i)
+      (curId.includes('-i2i') && findT2I(curId.replace('-i2i', '-t2i'))) ||
+      // 4. image-to-image → text-to-image (e.g. gpt4o-image-to-image → gpt4o-text-to-image)
+      (curId.includes('image-to-image') && findT2I(curId.replace('image-to-image', 'text-to-image'))) ||
+      // 5. No parent found — use first t2i model
+      t2iModels[0];
+
+    const ars = getAspectRatiosForModel(target.id);
+    const resolutions = getResolutionsForModel(target.id);
+    setSelectedModelId(target.id);
+    setSelectedModelName(target.name);
     setSelectedAr(ars[0] || "1:1");
     setSelectedQuality(resolutions[0] || null);
     setSelectedEffect("");
     setMaxImages(1);
-  }, []);
+  }, [selectedModelId]);
 
   // ── Model selection ──────────────────────────────────────────────────────
   const handleModelSelect = (m) => {
