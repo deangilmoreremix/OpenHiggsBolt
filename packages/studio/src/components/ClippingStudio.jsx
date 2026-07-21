@@ -823,8 +823,8 @@ export default function ClippingStudio({
                         className="text-[#22d3ee] transition-all duration-300"
                       />
                     </svg>
-                    <span className="absolute text-[8px] font-black text-[#22d3ee] leading-none">
-                      {videoProgress}%
+                    <span className={`absolute text-[8px] font-black text-[#22d3ee] leading-none ${videoProgress >= 100 ? "animate-pulse" : ""}`}>
+                      {videoProgress >= 100 ? "..." : `${videoProgress}%`}
                     </span>
                   </div>
                 ) : null}
