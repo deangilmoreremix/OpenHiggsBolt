@@ -107,6 +107,18 @@ export default function VibeMotionStudio({ apiKey, onGenerationComplete, onGener
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+  // ── Textarea auto-resize ──────────────────────────────────────────────────
+  const handleTextareaInput = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const maxHeight = window.innerWidth < 768 ? 150 : 250;
+    el.style.height = Math.min(el.scrollHeight, maxHeight) + "px";
+  };
+
+  useEffect(() => {
+    handleTextareaInput();
+  }, [prompt, editMode]);
 
   // ── Timer ─────────────────────────────────────────────────────────────────
   const startTimer = () => {
@@ -495,6 +507,7 @@ export default function VibeMotionStudio({ apiKey, onGenerationComplete, onGener
                 ref={textareaRef}
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
+                onInput={handleTextareaInput}
                 onKeyDown={handleKeyDown}
                 placeholder={
                   editMode
