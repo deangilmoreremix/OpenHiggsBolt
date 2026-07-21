@@ -27,6 +27,8 @@
 
 ## Related Projects
 
+> 🎓 **Learn to monetize generative AI:** [ai-creator-academy](https://github.com/Anil-matcha/ai-creator-academy) — a free, open-source curriculum teaching creators, freelancers, and agencies how to make money with generative AI image/video/audio tools, covering monetization, pricing, and client delivery — not just how the models work.
+
 > 🤖 **Automate media generations with AI coding agents:** [Generative-Media-Skills](https://github.com/SamurAIGPT/Generative-Media-Skills) — a library of skills that let agents like **Claude Code**, **Codex**, and other coding assistants drive 200+ image/video models end-to-end (prompt → generate → edit → stitch) directly from your terminal. Perfect for building automated media pipelines without touching a UI.
 
 > 🎬 **Seedance 2.5 prompts & API guide:** [awesome-seedance-2.5-api-prompts](https://github.com/Anil-matcha/awesome-seedance-2.5-api-prompts) — Curated prompt templates, camera control vocabulary, MuAPI reference, and cinematic examples for Seedance 2.5 video generation.
