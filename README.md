@@ -8,13 +8,13 @@
 **Community:** Join [Discord](https://discord.gg/tANKJkHck) for discussions and support
 
 <p align="center">
-  <a href="https://www.youtube.com/watch?v=X_kbyQyhgmI">
-    <img src="docs/assets/video-17-thumbnail.png" alt="I Found 50 Free AI Apps You Can Clone and Sell" width="640">
+  <a href="https://www.youtube.com/watch?v=SC9zJ6AxDek">
+    <img src="docs/assets/video-20-thumbnail.png" alt="AI Creator Academy: The Free Course Paid Communities Don't Want You to Find" width="640">
   </a>
 </p>
 
 <p align="center">
-  <a href="https://www.youtube.com/watch?v=X_kbyQyhgmI"><b>📺 I Found 50 Free AI Apps You Can Clone and Sell (Alternatives to Paid Tools) →</b></a>
+  <a href="https://www.youtube.com/watch?v=SC9zJ6AxDek"><b>📺 AI Creator Academy: The Free Course Paid Communities Don't Want You to Find →</b></a>
 </p>
 
 <p align="center">
