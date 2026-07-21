@@ -39,11 +39,32 @@ async function downloadImage(url, filename) {
 
 // ─── UploadButton (inline picker) ───────────────────────────────────────────
 
-function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], label = null }) {
+function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], label = null, persistedHistory = null, onHistoryChange = null }) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedEntries, setSelectedEntries] = useState([]); // [{url, thumbnail}]
-  const [uploadHistory, setUploadHistory] = useState([]); // [{id, name, url, thumbnail}]
+  const [uploadHistory, _setUploadHistory] = useState(persistedHistory || []); // [{id, name, url, thumbnail}]
+
+  // Wrapper that also notifies the parent for persistence
+  const setUploadHistory = useCallback((updater) => {
+    _setUploadHistory((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      onHistoryChange?.(next);
+      return next;
+    });
+  }, [onHistoryChange]);
+
+  // Sync if parent provides a new persistedHistory (e.g. on first mount from localStorage)
+  useEffect(() => {
+    if (persistedHistory && persistedHistory.length > 0) {
+      _setUploadHistory((prev) => {
+        // Merge: add any entries from persistedHistory that aren't already present
+        const existingUrls = new Set(prev.map(h => h.url));
+        const missing = persistedHistory.filter(h => h.url && !existingUrls.has(h.url));
+        return missing.length > 0 ? [...prev, ...missing] : prev;
+      });
+    }
+  }, [persistedHistory]);
   const [lastUploadProgress, setLastUploadProgress] = useState(0);
   const fileInputRef = useRef(null);
   const panelRef = useRef(null);
@@ -836,6 +857,7 @@ export default function ImageStudio({
   const [prompt, setPrompt] = useState("");
   const [uploadedImageUrls, setUploadedImageUrls] = useState([]);
   const [swapImageUrl, setSwapImageUrl] = useState(null);
+  const [uploadHistory, setUploadHistory] = useState([]); // persisted reference images history
 
   // ── UI state ────────────────────────────────────────────────────────────
   const [dropdownOpen, setDropdownOpen] = useState(null); // 'model' | 'ar' | 'quality' | null
@@ -885,6 +907,7 @@ export default function ImageStudio({
         if (data.maxImages) setMaxImages(data.maxImages);
         if (data.prompt) setPrompt(data.prompt);
         if (data.uploadedImageUrls) setUploadedImageUrls(data.uploadedImageUrls);
+        if (data.uploadHistory) setUploadHistory(data.uploadHistory);
         if (data.batchSize) setBatchSize(data.batchSize);
         if (data.localHistory) setLocalHistory(data.localHistory);
       }
@@ -915,6 +938,7 @@ export default function ImageStudio({
           maxImages,
           prompt,
           uploadedImageUrls,
+          uploadHistory,
           batchSize,
           localHistory,
         };
@@ -934,6 +958,7 @@ export default function ImageStudio({
     maxImages,
     prompt,
     uploadedImageUrls,
+    uploadHistory,
     batchSize,
     localHistory,
   ]);
@@ -1369,6 +1394,8 @@ export default function ImageStudio({
                   onSelect={handleUploadSelect}
                   onClear={handleUploadClear}
                   initialUrls={uploadedImageUrls}
+                  persistedHistory={uploadHistory}
+                  onHistoryChange={setUploadHistory}
                 />
               )}
 
