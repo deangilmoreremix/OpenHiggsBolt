@@ -1043,16 +1043,27 @@ export default function ImageStudio({
 
       if (!imageMode) {
         // Try to find the i2i edit sibling of the currently selected t2i model.
-        // Match by id convention (e.g. "nano-banana" → "nano-banana-edit") or
-        // by the current t2i model's id being a prefix of an i2i model's id.
-        const currentT2I = t2iModels.find((m) => m.id === selectedModelId);
-        const siblingById = i2iModels.find(
-          (m) => m.id === `${selectedModelId}-edit`
-        );
-        const siblingByPrefix = !siblingById
-          ? i2iModels.find((m) => m.id.startsWith(selectedModelId))
+        // Models use varied naming conventions, so try multiple matching strategies.
+        const curId = selectedModelId;
+
+        // 1. Current model already exists in the i2i list (e.g. qwen-text-to-image-2512)
+        const directMatch = i2iModels.find((m) => m.id === curId);
+        // 2. {id}-edit convention (e.g. nano-banana → nano-banana-edit)
+        const editSuffix = !directMatch ? i2iModels.find((m) => m.id === `${curId}-edit`) : null;
+        // 3. -t2i → -i2i swap (e.g. flux-kontext-dev-t2i → flux-kontext-dev-i2i)
+        const t2iSwap = !directMatch && !editSuffix && curId.includes('-t2i')
+          ? i2iModels.find((m) => m.id === curId.replace('-t2i', '-i2i'))
           : null;
-        const target = siblingById || siblingByPrefix || i2iModels[0];
+        // 4. text-to-image → image-to-image (e.g. gpt4o-text-to-image → gpt4o-image-to-image)
+        const txtSwap = !directMatch && !editSuffix && !t2iSwap && curId.includes('text-to-image')
+          ? i2iModels.find((m) => m.id === curId.replace('text-to-image', 'image-to-image'))
+          : null;
+        // 5. Prefix match fallback (e.g. nano-banana → nano-banana-effects)
+        const prefixMatch = !directMatch && !editSuffix && !t2iSwap && !txtSwap
+          ? i2iModels.find((m) => m.id.startsWith(curId))
+          : null;
+
+        const target = directMatch || editSuffix || t2iSwap || txtSwap || prefixMatch || i2iModels[0];
 
         const ars = getAspectRatiosForI2IModel(target.id);
         const resolutions = getResolutionsForI2IModel(target.id);
