@@ -43,21 +43,19 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], 
   const [panelOpen, setPanelOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedEntries, setSelectedEntries] = useState([]); // [{url, thumbnail}]
-  const [uploadHistory, _setUploadHistory] = useState(persistedHistory || []); // [{id, name, url, thumbnail}]
+  const [uploadHistory, setUploadHistory] = useState(persistedHistory || []); // [{id, name, url, thumbnail}]
 
-  // Wrapper that also notifies the parent for persistence
-  const setUploadHistory = useCallback((updater) => {
-    _setUploadHistory((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      onHistoryChange?.(next);
-      return next;
-    });
-  }, [onHistoryChange]);
+  // Notify parent whenever uploadHistory changes (for localStorage persistence)
+  const onHistoryChangeRef = useRef(onHistoryChange);
+  onHistoryChangeRef.current = onHistoryChange;
+  useEffect(() => {
+    onHistoryChangeRef.current?.(uploadHistory);
+  }, [uploadHistory]);
 
   // Sync if parent provides a new persistedHistory (e.g. on first mount from localStorage)
   useEffect(() => {
     if (persistedHistory && persistedHistory.length > 0) {
-      _setUploadHistory((prev) => {
+      setUploadHistory((prev) => {
         // Merge: add any entries from persistedHistory that aren't already present
         const existingUrls = new Set(prev.map(h => h.url));
         const missing = persistedHistory.filter(h => h.url && !existingUrls.has(h.url));
