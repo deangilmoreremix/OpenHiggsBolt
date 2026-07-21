@@ -562,7 +562,20 @@ const invertLogos = ['openai', 'blackforest', 'runway', 'ideogram', 'lightricks'
 
 function ModelDropdown({ models, selectedModel, onSelect, onClose }) {
   const [search, setSearch] = useState("");
-  const [selectedProvider, setSelectedProvider] = useState("all");
+  
+  // Find current model's provider to pre-select the provider tab ("slide")
+  const currentModelObj = models.find((m) => m.id === selectedModel);
+  const initialProvider = currentModelObj?.provider || "all";
+  const [selectedProvider, setSelectedProvider] = useState(initialProvider);
+
+  const activeItemRef = useRef(null);
+
+  useEffect(() => {
+    // Automatically scroll the active model into view when opening
+    if (activeItemRef.current) {
+      activeItemRef.current.scrollIntoView({ block: "nearest" });
+    }
+  }, []);
 
   const getProviderStyle = (provider) => {
     switch (provider) {
@@ -722,6 +735,7 @@ function ModelDropdown({ models, selectedModel, onSelect, onClose }) {
             filtered.map((m) => (
               <div
                 key={m.id}
+                ref={selectedModel === m.id ? activeItemRef : null}
                 onClick={(e) => {
                   e.stopPropagation();
                   onSelect(m);

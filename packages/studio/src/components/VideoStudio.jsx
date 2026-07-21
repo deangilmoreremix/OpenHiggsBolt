@@ -136,9 +136,22 @@ const invertLogos = ['openai', 'blackforest', 'runway', 'ideogram', 'lightricks'
 
 function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
   const [search, setSearch] = useState("");
-  const [selectedProvider, setSelectedProvider] = useState("all");
-
   const generationModels = imageMode ? i2vModels : t2vModels;
+  
+  // Find current model's provider to pre-select the provider tab ("slide")
+  const allCurrentModels = [...generationModels, ...v2vModels];
+  const currentModelObj = allCurrentModels.find((m) => m.id === selectedModel);
+  const initialProvider = currentModelObj?.provider || "all";
+  const [selectedProvider, setSelectedProvider] = useState(initialProvider);
+
+  const activeItemRef = useRef(null);
+
+  useEffect(() => {
+    // Automatically scroll the active model into view when opening
+    if (activeItemRef.current) {
+      activeItemRef.current.scrollIntoView({ block: "nearest" });
+    }
+  }, []);
 
   const getProviderStyle = (provider) => {
     switch (provider) {
@@ -179,7 +192,6 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
   // Dynamically compute list of providers from the input models lists
   const availableProviders = [];
   const seenProviders = new Set();
-  const allCurrentModels = [...generationModels, ...v2vModels];
   
   allCurrentModels.forEach(m => {
     const pId = m.provider || 'muapi';
@@ -219,6 +231,7 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
   const renderItem = (m, isV2V = false) => (
     <div
       key={m.id}
+      ref={selectedModel === m.id ? activeItemRef : null}
       className={`flex items-center justify-between p-3.5 hover:bg-white/5 rounded-2xl cursor-pointer transition-all border border-transparent hover:border-white/5 ${selectedModel === m.id ? "bg-white/5 border-white/5" : ""}`}
       onClick={(e) => {
         e.stopPropagation();
