@@ -1017,20 +1017,31 @@ export default function ImageStudio({
       setUploadedImageUrls(newUrls);
 
       if (!imageMode) {
-        const firstI2I = i2iModels[0];
-        const ars = getAspectRatiosForI2IModel(firstI2I.id);
-        const resolutions = getResolutionsForI2IModel(firstI2I.id);
-        const effects = getEffectsForI2IModel(firstI2I.id);
+        // Try to find the i2i edit sibling of the currently selected t2i model.
+        // Match by id convention (e.g. "nano-banana" → "nano-banana-edit") or
+        // by the current t2i model's id being a prefix of an i2i model's id.
+        const currentT2I = t2iModels.find((m) => m.id === selectedModelId);
+        const siblingById = i2iModels.find(
+          (m) => m.id === `${selectedModelId}-edit`
+        );
+        const siblingByPrefix = !siblingById
+          ? i2iModels.find((m) => m.id.startsWith(selectedModelId))
+          : null;
+        const target = siblingById || siblingByPrefix || i2iModels[0];
+
+        const ars = getAspectRatiosForI2IModel(target.id);
+        const resolutions = getResolutionsForI2IModel(target.id);
+        const effects = getEffectsForI2IModel(target.id);
         setImageMode(true);
-        setSelectedModelId(firstI2I.id);
-        setSelectedModelName(firstI2I.name);
+        setSelectedModelId(target.id);
+        setSelectedModelName(target.name);
         setSelectedAr(ars[0] || "1:1");
         setSelectedQuality(resolutions[0] || null);
-        setSelectedEffect(effects.length > 0 ? (getDefaultEffectForI2IModel(firstI2I.id) || effects[0]) : "");
-        setMaxImages(getMaxImagesForI2IModel(firstI2I.id));
+        setSelectedEffect(effects.length > 0 ? (getDefaultEffectForI2IModel(target.id) || effects[0]) : "");
+        setMaxImages(getMaxImagesForI2IModel(target.id));
       }
     },
-    [imageMode],
+    [imageMode, selectedModelId],
   );
 
   const handleUploadClear = useCallback(() => {
