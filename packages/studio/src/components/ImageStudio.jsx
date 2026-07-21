@@ -39,11 +39,31 @@ async function downloadImage(url, filename) {
 
 // ─── UploadButton (inline picker) ───────────────────────────────────────────
 
-function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], label = null }) {
+function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], label = null, persistedHistory = null, onHistoryChange = null }) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedEntries, setSelectedEntries] = useState([]); // [{url, thumbnail}]
-  const [uploadHistory, setUploadHistory] = useState([]); // [{id, name, url, thumbnail}]
+  const [uploadHistory, setUploadHistory] = useState(persistedHistory || []); // [{id, name, url, thumbnail}]
+
+  // Notify parent whenever uploadHistory changes (for localStorage persistence)
+  const onHistoryChangeRef = useRef(onHistoryChange);
+  onHistoryChangeRef.current = onHistoryChange;
+  useEffect(() => {
+    onHistoryChangeRef.current?.(uploadHistory);
+  }, [uploadHistory]);
+
+  // Sync if parent provides a new persistedHistory (e.g. on first mount from localStorage)
+  useEffect(() => {
+    if (persistedHistory && persistedHistory.length > 0) {
+      setUploadHistory((prev) => {
+        // Merge: add any entries from persistedHistory that aren't already present
+        const existingUrls = new Set(prev.map(h => h.url));
+        const missing = persistedHistory.filter(h => h.url && !existingUrls.has(h.url));
+        return missing.length > 0 ? [...prev, ...missing] : prev;
+      });
+    }
+  }, [persistedHistory]);
+  
   const [lastUploadProgress, setLastUploadProgress] = useState(0);
   const fileInputRef = useRef(null);
   const panelRef = useRef(null);
@@ -542,7 +562,20 @@ const invertLogos = ['openai', 'blackforest', 'runway', 'ideogram', 'lightricks'
 
 function ModelDropdown({ models, selectedModel, onSelect, onClose }) {
   const [search, setSearch] = useState("");
-  const [selectedProvider, setSelectedProvider] = useState("all");
+  
+  // Find current model's provider to pre-select the provider tab ("slide")
+  const currentModelObj = models.find((m) => m.id === selectedModel);
+  const initialProvider = currentModelObj?.provider || "all";
+  const [selectedProvider, setSelectedProvider] = useState(initialProvider);
+
+  const activeItemRef = useRef(null);
+
+  useEffect(() => {
+    // Automatically scroll the active model into view when opening
+    if (activeItemRef.current) {
+      activeItemRef.current.scrollIntoView({ block: "nearest" });
+    }
+  }, []);
 
   const getProviderStyle = (provider) => {
     switch (provider) {
@@ -612,11 +645,11 @@ function ModelDropdown({ models, selectedModel, onSelect, onClose }) {
   return (
     <div className="flex gap-4 h-full max-h-[60vh] min-h-[350px] overflow-x-hidden">
       {/* Left Sidebar: Provider tabs */}
-      <div className="flex flex-col gap-2.5 items-center pr-3 border-r border-white/5 shrink-0 select-none overflow-y-auto custom-scrollbar w-12 pt-0.5">
+      <div className="flex flex-col gap-2.5 items-center pr-2 border-r border-white/5 shrink-0 select-none overflow-y-auto custom-scrollbar w-14 pt-0.5">
         <button
           type="button"
           onClick={() => setSelectedProvider("all")}
-          className={`w-8.5 h-8.5 rounded-full flex items-center justify-center border transition-all flex-shrink-0 cursor-pointer ${
+          className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all flex-shrink-0 cursor-pointer ${
             selectedProvider === "all"
               ? "bg-white/10 text-yellow-400 border-yellow-500/30 shadow-md scale-105"
               : "bg-white/[0.02] text-white/50 border-white/[0.03] hover:bg-white/5 hover:text-white"
@@ -702,6 +735,7 @@ function ModelDropdown({ models, selectedModel, onSelect, onClose }) {
             filtered.map((m) => (
               <div
                 key={m.id}
+                ref={selectedModel === m.id ? activeItemRef : null}
                 onClick={(e) => {
                   e.stopPropagation();
                   onSelect(m);
@@ -722,7 +756,7 @@ function ModelDropdown({ models, selectedModel, onSelect, onClose }) {
                     </div>
                   ) : (
                     <div
-                      className={`w-8.5 h-8.5 ${
+                      className={`w-8 h-8 ${
                         m.family === "kontext"
                           ? "bg-blue-500/10 text-blue-400 border-blue-500/10"
                           : m.family === "effects"
@@ -836,6 +870,7 @@ export default function ImageStudio({
   const [prompt, setPrompt] = useState("");
   const [uploadedImageUrls, setUploadedImageUrls] = useState([]);
   const [swapImageUrl, setSwapImageUrl] = useState(null);
+  const [uploadHistory, setUploadHistory] = useState([]); // persisted reference images history
 
   // ── UI state ────────────────────────────────────────────────────────────
   const [dropdownOpen, setDropdownOpen] = useState(null); // 'model' | 'ar' | 'quality' | null
@@ -885,6 +920,7 @@ export default function ImageStudio({
         if (data.maxImages) setMaxImages(data.maxImages);
         if (data.prompt) setPrompt(data.prompt);
         if (data.uploadedImageUrls) setUploadedImageUrls(data.uploadedImageUrls);
+        if (data.uploadHistory) setUploadHistory(data.uploadHistory);
         if (data.batchSize) setBatchSize(data.batchSize);
         if (data.localHistory) setLocalHistory(data.localHistory);
       }
@@ -915,6 +951,7 @@ export default function ImageStudio({
           maxImages,
           prompt,
           uploadedImageUrls,
+          uploadHistory,
           batchSize,
           localHistory,
         };
@@ -934,6 +971,7 @@ export default function ImageStudio({
     maxImages,
     prompt,
     uploadedImageUrls,
+    uploadHistory,
     batchSize,
     localHistory,
   ]);
@@ -1017,35 +1055,101 @@ export default function ImageStudio({
       setUploadedImageUrls(newUrls);
 
       if (!imageMode) {
-        const firstI2I = i2iModels[0];
-        const ars = getAspectRatiosForI2IModel(firstI2I.id);
-        const resolutions = getResolutionsForI2IModel(firstI2I.id);
-        const effects = getEffectsForI2IModel(firstI2I.id);
+        // Find the i2i sibling of the currently selected t2i model.
+        // Many models follow conventions, but some have completely irregular names —
+        // those are handled via a hardcoded exceptions map.
+        const curId = selectedModelId;
+        const i2iIds = new Set(i2iModels.map((m) => m.id));
+
+        // Hardcoded exceptions for models with irregular t2i → i2i naming
+        const EXCEPTIONS = {
+          'reve-text-to-image':          'reve-image-edit',
+          'wan2.1-text-to-image':        'wan2.5-image-edit',   // no wan2.1 i2i — closest
+          'wan2.5-text-to-image':        'wan2.5-image-edit',
+          'wan2.6-text-to-image':        'wan2.6-image-edit',
+          'kling-o1-text-to-image':      'kling-o1-edit-image',
+          'vidu-q2-text-to-image':       'vidu-q2-reference-to-image',
+          'bytedance-seedream-v3':       'bytedance-seededit-v3',
+          'bytedance-seedream-v4':       'bytedance-seedream-edit-v4',
+          'ideogram-v3-t2i':             'ideogram-v3-reframe',
+        };
+
+        const findI2I = (id) => i2iModels.find((m) => m.id === id) ?? null;
+
+        const target =
+          // 0. Hardcoded exceptions for irregular names
+          findI2I(EXCEPTIONS[curId]) ||
+          // 1. Model exists directly in i2i list (e.g. qwen-text-to-image-2512, flux-pulid, flux-redux)
+          findI2I(curId) ||
+          // 2. {id}-edit suffix (e.g. nano-banana → nano-banana-edit, gpt-image-1.5 → gpt-image-1.5-edit)
+          findI2I(`${curId}-edit`) ||
+          // 3. -t2i → -i2i (e.g. flux-kontext-dev-t2i → flux-kontext-dev-i2i)
+          (curId.includes('-t2i') && findI2I(curId.replace('-t2i', '-i2i'))) ||
+          // 4. text-to-image → image-to-image (e.g. gpt4o-text-to-image, midjourney-v7, grok-imagine)
+          (curId.includes('text-to-image') && findI2I(curId.replace('text-to-image', 'image-to-image'))) ||
+          // 5. Prefix match fallback (e.g. minimax-image-01 → minimax-image-01-subject-reference)
+          i2iModels.find((m) => m.id.startsWith(curId)) ||
+          // 6. No sibling exists — use first i2i model
+          i2iModels[0];
+
+        const ars = getAspectRatiosForI2IModel(target.id);
+        const resolutions = getResolutionsForI2IModel(target.id);
+        const effects = getEffectsForI2IModel(target.id);
         setImageMode(true);
-        setSelectedModelId(firstI2I.id);
-        setSelectedModelName(firstI2I.name);
+        setSelectedModelId(target.id);
+        setSelectedModelName(target.name);
         setSelectedAr(ars[0] || "1:1");
         setSelectedQuality(resolutions[0] || null);
-        setSelectedEffect(effects.length > 0 ? (getDefaultEffectForI2IModel(firstI2I.id) || effects[0]) : "");
-        setMaxImages(getMaxImagesForI2IModel(firstI2I.id));
+        setSelectedEffect(effects.length > 0 ? (getDefaultEffectForI2IModel(target.id) || effects[0]) : "");
+        setMaxImages(getMaxImagesForI2IModel(target.id));
       }
     },
-    [imageMode],
+    [imageMode, selectedModelId],
   );
 
   const handleUploadClear = useCallback(() => {
     setUploadedImageUrls([]);
     setImageMode(false);
-    const firstT2I = t2iModels[0];
-    const ars = getAspectRatiosForModel(firstT2I.id);
-    const resolutions = getResolutionsForModel(firstT2I.id);
-    setSelectedModelId(firstT2I.id);
-    setSelectedModelName(firstT2I.name);
+
+    // Find the t2i parent of the currently selected i2i model (reverse of upload logic)
+    const curId = selectedModelId;
+    const findT2I = (id) => id ? (t2iModels.find((m) => m.id === id) ?? null) : null;
+
+    // Reverse exceptions map (i2i → t2i for irregular names)
+    const REVERSE_EXCEPTIONS = {
+      'reve-image-edit':               'reve-text-to-image',
+      'wan2.5-image-edit':             'wan2.5-text-to-image',
+      'wan2.6-image-edit':             'wan2.6-text-to-image',
+      'kling-o1-edit-image':           'kling-o1-text-to-image',
+      'vidu-q2-reference-to-image':    'vidu-q2-text-to-image',
+      'bytedance-seededit-v3':         'bytedance-seedream-v3',
+      'bytedance-seedream-edit-v4':    'bytedance-seedream-v4',
+      'ideogram-v3-reframe':           'ideogram-v3-t2i',
+    };
+
+    const target =
+      // 0. Hardcoded reverse exceptions
+      findT2I(REVERSE_EXCEPTIONS[curId]) ||
+      // 1. Model exists directly in t2i list (e.g. qwen-text-to-image-2512, flux-pulid, flux-redux)
+      findT2I(curId) ||
+      // 2. Strip -edit suffix (e.g. nano-banana-edit → nano-banana, gpt-image-1.5-edit → gpt-image-1.5)
+      (curId.endsWith('-edit') && findT2I(curId.slice(0, -5))) ||
+      // 3. -i2i → -t2i (e.g. flux-kontext-dev-i2i → flux-kontext-dev-t2i)
+      (curId.includes('-i2i') && findT2I(curId.replace('-i2i', '-t2i'))) ||
+      // 4. image-to-image → text-to-image (e.g. gpt4o-image-to-image → gpt4o-text-to-image)
+      (curId.includes('image-to-image') && findT2I(curId.replace('image-to-image', 'text-to-image'))) ||
+      // 5. No parent found — use first t2i model
+      t2iModels[0];
+
+    const ars = getAspectRatiosForModel(target.id);
+    const resolutions = getResolutionsForModel(target.id);
+    setSelectedModelId(target.id);
+    setSelectedModelName(target.name);
     setSelectedAr(ars[0] || "1:1");
     setSelectedQuality(resolutions[0] || null);
     setSelectedEffect("");
     setMaxImages(1);
-  }, []);
+  }, [selectedModelId]);
 
   // ── Model selection ──────────────────────────────────────────────────────
   const handleModelSelect = (m) => {
@@ -1358,6 +1462,8 @@ export default function ImageStudio({
                   onSelect={handleUploadSelect}
                   onClear={handleUploadClear}
                   initialUrls={uploadedImageUrls}
+                  persistedHistory={uploadHistory}
+                  onHistoryChange={setUploadHistory}
                 />
               )}
 

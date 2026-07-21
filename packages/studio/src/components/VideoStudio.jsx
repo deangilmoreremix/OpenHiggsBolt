@@ -136,9 +136,22 @@ const invertLogos = ['openai', 'blackforest', 'runway', 'ideogram', 'lightricks'
 
 function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
   const [search, setSearch] = useState("");
-  const [selectedProvider, setSelectedProvider] = useState("all");
-
   const generationModels = imageMode ? i2vModels : t2vModels;
+  
+  // Find current model's provider to pre-select the provider tab ("slide")
+  const allCurrentModels = [...generationModels, ...v2vModels];
+  const currentModelObj = allCurrentModels.find((m) => m.id === selectedModel);
+  const initialProvider = currentModelObj?.provider || "all";
+  const [selectedProvider, setSelectedProvider] = useState(initialProvider);
+
+  const activeItemRef = useRef(null);
+
+  useEffect(() => {
+    // Automatically scroll the active model into view when opening
+    if (activeItemRef.current) {
+      activeItemRef.current.scrollIntoView({ block: "nearest" });
+    }
+  }, []);
 
   const getProviderStyle = (provider) => {
     switch (provider) {
@@ -179,7 +192,6 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
   // Dynamically compute list of providers from the input models lists
   const availableProviders = [];
   const seenProviders = new Set();
-  const allCurrentModels = [...generationModels, ...v2vModels];
   
   allCurrentModels.forEach(m => {
     const pId = m.provider || 'muapi';
@@ -219,6 +231,7 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
   const renderItem = (m, isV2V = false) => (
     <div
       key={m.id}
+      ref={selectedModel === m.id ? activeItemRef : null}
       className={`flex items-center justify-between p-3.5 hover:bg-white/5 rounded-2xl cursor-pointer transition-all border border-transparent hover:border-white/5 ${selectedModel === m.id ? "bg-white/5 border-white/5" : ""}`}
       onClick={(e) => {
         e.stopPropagation();
@@ -268,11 +281,11 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
   return (
     <div className="flex gap-4 h-full max-h-[70vh] min-h-[350px]">
       {/* Left Sidebar: Provider tabs */}
-      <div className="flex flex-col gap-2.5 items-center pr-3 border-r border-white/5 shrink-0 select-none overflow-y-auto custom-scrollbar w-12 pt-0.5">
+      <div className="flex flex-col gap-2.5 items-center pr-2 border-r border-white/5 shrink-0 select-none overflow-y-auto custom-scrollbar w-14 pt-0.5">
         <button
           type="button"
           onClick={() => setSelectedProvider("all")}
-          className={`w-8.5 h-8.5 rounded-full flex items-center justify-center border transition-all flex-shrink-0 cursor-pointer ${
+          className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all flex-shrink-0 cursor-pointer ${
             selectedProvider === "all"
               ? "bg-white/10 text-yellow-400 border-yellow-500/30 shadow-md scale-105"
               : "bg-white/[0.02] text-white/50 border-white/[0.03] hover:bg-white/5 hover:text-white"

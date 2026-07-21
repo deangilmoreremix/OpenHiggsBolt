@@ -214,9 +214,15 @@ export default function ClippingStudio({
     if (droppedFiles && droppedFiles.length > 0) {
       const videoFiles = droppedFiles.filter(f => f.type.startsWith('video/'));
       if (videoFiles.length > 0) {
+        const file = videoFiles[0];
+        if (file.size > 100 * 1024 * 1024) {
+          alert("Video exceeds 100MB limit.");
+          onFilesHandled?.();
+          return;
+        }
         setVideoUploading(true);
         setVideoProgress(0);
-        uploadFile(apiKey, videoFiles[0], (pct) => {
+        uploadFile(apiKey, file, (pct) => {
           setVideoProgress(pct);
         })
           .then(url => {
