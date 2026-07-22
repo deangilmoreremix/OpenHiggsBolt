@@ -1371,10 +1371,28 @@ export default function ImageStudio({
                     {entry.prompt || "No prompt provided"}
                   </p>
                   <div className="flex items-center justify-between mt-1">
-                    <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded border border-primary/20">
-                      {entry.model?.replace("-", " ")}
-                    </span>
-                    <span className="text-[10px] text-white/40">{entry.aspect_ratio}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded border border-primary/20 capitalize">
+                        {entry.model?.replace("-", " ") || "Image Studio"}
+                      </span>
+                      <span className="text-[10px] text-white/40">{entry.aspect_ratio}</span>
+                    </div>
+                    {entry.prompt && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(entry.prompt);
+                          const btn = e.currentTarget;
+                          btn.innerText = "Copied!";
+                          setTimeout(() => { btn.innerText = "Copy"; }, 2000);
+                        }}
+                        className="px-2 py-0.5 bg-white/5 hover:bg-primary/20 hover:text-primary rounded text-[10px] font-medium text-white/70 transition-all border border-white/10"
+                        title="Copy prompt"
+                      >
+                        Copy Prompt
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

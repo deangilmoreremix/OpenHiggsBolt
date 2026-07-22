@@ -456,14 +456,30 @@ export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled, 
                   </button>
                 </div>
 
-                <div className="p-3 bg-black/80 backdrop-blur-sm border-t border-white/5 flex flex-col gap-1.5 flex-1">
-                  <p className="text-white/60 text-[10px] line-clamp-2 leading-relaxed font-medium">{entry.prompt}</p>
-                  <div className="flex items-center justify-between mt-auto">
+                <div className="p-3 bg-black/80 backdrop-blur-sm border-t border-white/5 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
                     <span className="text-[9px] font-black text-primary px-2 py-0.5 bg-primary/10 rounded border border-primary/20 uppercase tracking-tighter">
-                      {entry.format}
+                      Marketing Studio
                     </span>
-                    <span className="text-[9px] text-white/30 font-bold">{new Date(entry.timestamp).toLocaleDateString()}</span>
+                    {entry.format && (
+                      <span className="text-[9px] text-white/40 font-bold">{entry.format}</span>
+                    )}
                   </div>
+                  {entry.prompt && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(entry.prompt);
+                        const btn = e.currentTarget;
+                        btn.innerText = "Copied!";
+                        setTimeout(() => { btn.innerText = "Copy Prompt"; }, 2000);
+                      }}
+                      className="px-2 py-1 bg-white/5 hover:bg-primary/20 hover:text-primary rounded text-[10px] font-medium text-white/70 transition-all border border-white/10"
+                    >
+                      Copy Prompt
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

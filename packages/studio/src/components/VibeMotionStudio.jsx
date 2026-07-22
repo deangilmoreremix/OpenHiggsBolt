@@ -389,17 +389,35 @@ export default function VibeMotionStudio({ apiKey, onGenerationComplete, onGener
                     {entry.prompt || "No prompt"}
                   </p>
                   <div className="flex items-center justify-between mt-1 flex-wrap gap-1">
-                    <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded border border-primary/20 whitespace-nowrap">
-                      motion-graphics{entry.mode === "edit" ? "-edit" : ""}
-                    </span>
-                    <div className="flex gap-2">
-                      {entry.aspectRatio && (
-                        <span className="text-[10px] text-white/40">{entry.aspectRatio}</span>
-                      )}
-                      {entry.duration && (
-                        <span className="text-[10px] text-white/40">{entry.duration}s</span>
-                      )}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded border border-primary/20 whitespace-nowrap">
+                        Vibe Motion
+                      </span>
+                      <div className="flex gap-2">
+                        {entry.aspectRatio && (
+                          <span className="text-[10px] text-white/40">{entry.aspectRatio}</span>
+                        )}
+                        {entry.duration && (
+                          <span className="text-[10px] text-white/40">{entry.duration}s</span>
+                        )}
+                      </div>
                     </div>
+                    {entry.prompt && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(entry.prompt);
+                          const btn = e.currentTarget;
+                          btn.innerText = "Copied!";
+                          setTimeout(() => { btn.innerText = "Copy"; }, 2000);
+                        }}
+                        className="px-2 py-0.5 bg-white/5 hover:bg-primary/20 hover:text-primary rounded text-[10px] font-medium text-white/70 transition-all border border-white/10"
+                        title="Copy prompt"
+                      >
+                        Copy Prompt
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

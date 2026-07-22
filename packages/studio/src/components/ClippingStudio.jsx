@@ -745,11 +745,32 @@ export default function ClippingStudio({
                         </div>
 
                         <div className="p-3 bg-black/80 backdrop-blur-sm border-t border-white/5 flex-1 flex flex-col justify-between gap-2">
+                          {result.prompt && (
+                            <p className="text-white/70 text-xs line-clamp-2 leading-relaxed" title={result.prompt}>
+                              {result.prompt}
+                            </p>
+                          )}
                           <div className="flex items-center justify-between mt-1">
-                            <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded border border-primary/20 whitespace-nowrap">
-                              Clip #{i + 1}
-                            </span>
-                            <span className="text-[10px] text-white/40">{result.aspectRatio}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded border border-primary/20 whitespace-nowrap">
+                                AI Clipping
+                              </span>
+                              <span className="text-[10px] text-white/40">{result.aspectRatio || `Clip #${i + 1}`}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(result.prompt || clipUrl);
+                                const btn = e.currentTarget;
+                                btn.innerText = "Copied!";
+                                setTimeout(() => { btn.innerText = "Copy"; }, 2000);
+                              }}
+                              className="px-2 py-0.5 bg-white/5 hover:bg-primary/20 hover:text-primary rounded text-[10px] font-medium text-white/70 transition-all border border-white/10"
+                              title="Copy prompt"
+                            >
+                              Copy Prompt
+                            </button>
                           </div>
                         </div>
                       </div>
