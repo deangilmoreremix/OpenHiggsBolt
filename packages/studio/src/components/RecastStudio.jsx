@@ -893,7 +893,7 @@ export default function RecastStudio({
       </div>
 
       {/* ── BOTTOM PROMPT BAR ── */}
-      <div className="absolute bottom-4 w-full max-w-[95%] lg:max-w-4xl z-40 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
+      <div className="absolute bottom-4 w-full max-w-[95%] lg:max-w-4xl z-30 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
         <div className="w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]">
           {/* Uploads row */}
           <div className="flex items-center gap-2 px-1">
