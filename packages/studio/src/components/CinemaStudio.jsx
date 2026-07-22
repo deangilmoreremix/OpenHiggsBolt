@@ -1022,17 +1022,18 @@ export default function CinemaStudio({
 
             {/* Generate Button */}
             <button
-              className="bg-[#22d3ee] text-black px-7 py-3 rounded-full font-bold text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10 uppercase tracking-wider"
+              className="bg-[#22d3ee] text-black px-7 py-3 rounded-full font-bold text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10"
               disabled={isGenerating || !settings.prompt.trim()}
               onClick={handleGenerate}
             >
               {isGenerating ? (
                 <>
-                  <span className="animate-spin inline-block text-black">◌</span> SHOOTING...
+                  <span className="animate-spin inline-block text-black">◌</span>
+                  <span>Generating...</span>
                 </>
               ) : (
                 <>
-                  <span>SHOOT</span>
+                  <span>Shoot ✦ 10</span>
                 </>
               )}
             </button>
