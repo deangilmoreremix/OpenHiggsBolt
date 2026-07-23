@@ -13,20 +13,169 @@ import axios from 'axios';
 import ApiKeyModal from './ApiKeyModal';
 
 const TABS = [
-  { id: 'image',   label: 'Image Studio' },
-  { id: 'video',   label: 'Video Studio' },
-  { id: 'audio',   label: 'Audio Studio' },
-  { id: 'clipping', label: 'AI Clipping' },
-  { id: 'vibe-motion', label: 'Vibe Motion' },
-  { id: 'lipsync', label: 'Lip Sync' },
-  { id: 'body-swap', label: 'Body Swap' },
-  { id: 'cinema',  label: 'Cinema Studio' },
-  { id: 'marketing', label: 'Marketing Studio' },
-  { id: 'workflows', label: 'Workflows' },
-  { id: 'agents', label: 'Agents' },
-  { id: 'design-agent', label: 'Design Agent' },
-  { id: 'apps', label: 'Explore Apps' },
-  { id: 'ai-influencer', label: 'AI Influencer Studio' },
+  {
+    id: 'image',
+    label: 'Image Studio',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+        <circle cx="8.5" cy="8.5" r="1.5"/>
+        <polyline points="21 15 16 10 5 21"/>
+      </svg>
+    )
+  },
+  {
+    id: 'video',
+    label: 'Video Studio',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="23 7 16 12 23 17 23 7"/>
+        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+      </svg>
+    )
+  },
+  {
+    id: 'audio',
+    label: 'Audio Studio',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 18V5l12-2v13"/>
+        <circle cx="6" cy="18" r="3"/>
+        <circle cx="18" cy="16" r="3"/>
+      </svg>
+    )
+  },
+  {
+    id: 'clipping',
+    label: 'AI Clipping',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="6" cy="6" r="3"/>
+        <circle cx="6" cy="18" r="3"/>
+        <line x1="20" y1="4" x2="8.12" y2="15.88"/>
+        <line x1="14.47" y1="14.47" x2="20" y2="20"/>
+        <line x1="8.12" y1="8.12" x2="12" y2="12"/>
+      </svg>
+    )
+  },
+  {
+    id: 'vibe-motion',
+    label: 'Vibe Motion',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+      </svg>
+    )
+  },
+  {
+    id: 'lipsync',
+    label: 'Lip Sync',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+        <line x1="12" y1="19" x2="12" y2="22"/>
+      </svg>
+    )
+  },
+  {
+    id: 'body-swap',
+    label: 'Body Swap',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="8.5" cy="7" r="4"/>
+        <polyline points="17 11 19 13 23 9"/>
+        <path d="M23 13v-2"/>
+      </svg>
+    )
+  },
+  {
+    id: 'cinema',
+    label: 'Cinema Studio',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+        <line x1="7" y1="2" x2="7" y2="22"/>
+        <line x1="17" y1="2" x2="17" y2="22"/>
+        <line x1="2" y1="12" x2="22" y2="12"/>
+        <line x1="2" y1="7" x2="7" y2="7"/>
+        <line x1="2" y1="17" x2="7" y2="17"/>
+        <line x1="17" y1="17" x2="22" y2="17"/>
+        <line x1="17" y1="7" x2="22" y2="7"/>
+      </svg>
+    )
+  },
+  {
+    id: 'marketing',
+    label: 'Marketing Studio',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        <line x1="8" y1="9" x2="16" y2="9"/>
+        <line x1="8" y1="13" x2="14" y2="13"/>
+      </svg>
+    )
+  },
+  {
+    id: 'workflows',
+    label: 'Workflows',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="6" height="6" rx="1"/>
+        <rect x="15" y="3" width="6" height="6" rx="1"/>
+        <rect x="9" y="15" width="6" height="6" rx="1"/>
+        <path d="M6 9v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9"/>
+        <path d="M12 13v2"/>
+      </svg>
+    )
+  },
+  {
+    id: 'agents',
+    label: 'Agents',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="11" width="18" height="10" rx="2"/>
+        <circle cx="12" cy="5" r="2"/>
+        <path d="M12 7v4"/>
+        <line x1="8" y1="16" x2="8.01" y2="16"/>
+        <line x1="16" y1="16" x2="16.01" y2="16"/>
+      </svg>
+    )
+  },
+  {
+    id: 'design-agent',
+    label: 'Design Agent',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+        <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+        <path d="M2 2l7.586 7.586"/>
+        <circle cx="11" cy="11" r="2"/>
+      </svg>
+    )
+  },
+  {
+    id: 'apps',
+    label: 'Explore Apps',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="7"/>
+        <rect x="14" y="3" width="7" height="7"/>
+        <rect x="14" y="14" width="7" height="7"/>
+        <rect x="3" y="14" width="7" height="7"/>
+      </svg>
+    )
+  },
+  {
+    id: 'ai-influencer',
+    label: 'AI Influencer Studio',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+      </svg>
+    )
+  }
 ];
 
 const STORAGE_KEY = 'muapi_key';
@@ -75,6 +224,21 @@ export default function StandaloneShell() {
     if (typeof window !== 'undefined') return localStorage.getItem('vadoo_banner_dismissed') !== '1';
     return true;
   });
+
+  // Sidebar Collapsed & Mobile Drawer State
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('sidebar_collapsed') === 'true';
+    return false;
+  });
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  const toggleSidebar = useCallback(() => {
+    setIsSidebarCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('sidebar_collapsed', next ? 'true' : 'false');
+      return next;
+    });
+  }, []);
 
   // Drag and Drop State
   const [isDragging, setIsDragging] = useState(false);
@@ -321,74 +485,166 @@ export default function StandaloneShell() {
 
       {/* Header */}
       {isHeaderVisible && (
-        <header className="flex-shrink-0 h-14 border-b border-white/[0.03] flex items-center justify-between px-6 bg-black/20 backdrop-blur-md z-40 gap-4">
-          {/* Left: Logo */}
-          <div className="flex-shrink-0 flex items-center gap-2">
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        <header className="flex-shrink-0 h-14 border-b border-white/[0.05] flex items-center justify-between px-4 bg-[#0a0a0b]/80 backdrop-blur-md z-50 gap-4">
+          {/* Left: Mobile menu toggle + Logo + Desktop Sidebar Toggle */}
+          <div className="flex items-center gap-3">
+            {/* Mobile drawer toggle */}
+            <button
+              onClick={() => setIsMobileOpen(!isMobileOpen)}
+              className="md:hidden p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+              aria-label="Toggle Navigation Menu"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="18" x2="21" y2="18" />
               </svg>
+            </button>
+
+            {/* Desktop Sidebar Toggle Button (Single Toggle Button) */}
+            <div className="hidden md:block relative group">
+              <button
+                onClick={toggleSidebar}
+                className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors border border-white/5"
+                aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className={`transition-transform duration-300 ${isSidebarCollapsed ? 'rotate-180' : ''}`}
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <path d="M9 3v18" />
+                  <path d="M14 9l-3 3 3 3" />
+                </svg>
+              </button>
+              {/* Custom Tooltip */}
+              <div className="absolute left-0 top-full mt-2 px-2.5 py-1 bg-[#121215]/95 backdrop-blur-md text-white text-[11px] font-medium rounded-md shadow-2xl border border-white/15 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50 whitespace-nowrap">
+                {isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              </div>
             </div>
-            <span className="text-sm font-bold tracking-tight hidden sm:block">OpenGenerativeAI</span>
+
+            {/* Logo & Title */}
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 bg-[#22d3ee] rounded-lg flex items-center justify-center shadow-lg shadow-[#22d3ee]/20">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+              </div>
+              <span className="text-sm font-bold tracking-tight hidden sm:block text-white">
+                OpenGenerativeAI
+              </span>
+            </div>
           </div>
 
-          {/* Center: Navigation Container with fade edges */}
-          <div className="flex-1 min-w-0 mx-4 sm:mx-6 relative overflow-hidden h-full flex items-center justify-start lg:justify-center">
-            {/* Fade Left Overlay */}
-            <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#030303] to-transparent pointer-events-none z-10 block lg:hidden" />
-            
-            <nav className="flex items-center gap-4 overflow-x-auto scrollbar-none w-full lg:w-auto h-full px-4 lg:px-0">
-              {TABS.map((tab) => (
-                <a
-                  key={tab.id}
-                  href={`/studio/${tab.id}`}
-                  onClick={(e) => handleTabClick(e, tab.id)}
-                  className={`relative text-[13px] font-medium transition-all duration-300 whitespace-nowrap px-1 flex-shrink-0 flex items-center h-full ${
-                    activeTab === tab.id
-                      ? 'text-[#22d3ee]'
-                      : 'text-white/50 hover:text-white'
-                  }`}
-                >
-                  <span className="relative z-10">{tab.label}</span>
-                  {activeTab === tab.id && (
-                    <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#22d3ee] to-[#a855f7] rounded-full shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
-                  )}
-                </a>
-              ))}
-            </nav>
-            
-            {/* Fade Right Overlay */}
-            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#030303] to-transparent pointer-events-none z-10 block lg:hidden" />
+          {/* Active Tab Breadcrumb Badge */}
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.05] text-xs text-white/60">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#22d3ee]" />
+            <span className="font-medium text-white/80">
+              {TABS.find(t => t.id === activeTab)?.label || 'Studio'}
+            </span>
           </div>
 
           {/* Right: Actions */}
-          <div className="flex-shrink-0 flex items-center gap-4">
-            <div className="flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded-full border border-white/5 transition-colors">
+          <div className="flex-shrink-0 flex items-center gap-3">
+            <div className="flex items-center gap-2.5 bg-white/5 px-3 py-1.5 rounded-full border border-white/5 transition-colors">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-white/90">
-                  ${balance !== null ? `${balance}` : '---'}
-                </span>
-              </div>
+              <span className="text-xs font-bold text-white/90">
+                ${balance !== null ? `${balance}` : '---'}
+              </span>
             </div>
 
             <button
               onClick={() => setShowSettings(true)}
-              title="Settings — API key, local models, preferences"
               className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-white/10 bg-white/5 text-[13px] font-bold text-white/80 hover:text-white hover:bg-white/10 hover:border-white/20 transition-colors"
+              aria-label="Settings"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="3" />
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
-              <span>Settings</span>
+              <span className="hidden sm:inline">Settings</span>
             </button>
           </div>
         </header>
       )}
 
-      {/* Studio Content */}
-      <div className="flex-1 min-h-0 relative overflow-hidden">
+      {/* Main Body Layout: Left Sidebar + Studio Content Area */}
+      <div className="flex-1 min-h-0 flex relative overflow-hidden">
+        {/* Mobile Backdrop Overlay */}
+        {isMobileOpen && (
+          <div 
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 md:hidden animate-fade-in"
+            onClick={() => setIsMobileOpen(false)}
+          />
+        )}
+
+        {/* Left Sidebar Navigation */}
+        {isHeaderVisible && (
+          <aside
+            className={`
+              fixed top-14 bottom-0 left-0 md:static md:h-full z-30 bg-[#0a0a0b]/95 backdrop-blur-md border-r border-white/[0.06] flex flex-col transition-all duration-300 ease-in-out flex-shrink-0 select-none
+              ${isMobileOpen ? 'translate-x-0 w-60 z-50' : '-translate-x-full md:translate-x-0'}
+              ${isSidebarCollapsed ? 'md:w-16' : 'md:w-52'}
+            `}
+          >
+            {/* Navigation Tab Links */}
+            <nav className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-none py-2 px-2 space-y-1">
+              {TABS.map((tab) => {
+                const isActive = activeTab === tab.id;
+                const isCollapsed = isSidebarCollapsed && !isMobileOpen;
+                return (
+                  <a
+                    key={tab.id}
+                    href={`/studio/${tab.id}`}
+                    onClick={(e) => {
+                      handleTabClick(e, tab.id);
+                      setIsMobileOpen(false);
+                    }}
+                    className={`
+                      group relative flex items-center rounded-lg transition-all duration-150 text-[13px] font-medium
+                      ${isCollapsed ? 'h-10 w-10 justify-center mx-auto' : 'px-3 py-2.5 w-full gap-3'}
+                      ${isActive 
+                        ? 'bg-gradient-to-r from-[#22d3ee]/15 to-purple-500/10 text-[#22d3ee] font-semibold border border-[#22d3ee]/20 shadow-[0_0_15px_rgba(34,211,238,0.1)]' 
+                        : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
+                      }
+                    `}
+                  >
+                    {/* Active Accent Pill */}
+                    {isActive && (
+                      <div className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-gradient-to-b from-[#22d3ee] to-[#a855f7] rounded-r-full shadow-[0_0_8px_rgba(34,211,238,0.6)]" />
+                    )}
+
+                    {/* SVG Icon */}
+                    <span className={`flex-shrink-0 transition-colors ${isActive ? 'text-[#22d3ee]' : 'text-white/50 group-hover:text-white'}`}>
+                      {tab.icon}
+                    </span>
+
+                    {/* Tab Label (visible when expanded) */}
+                    {!isCollapsed && (
+                      <span className="truncate flex-1 tracking-tight">{tab.label}</span>
+                    )}
+
+                    {/* Sleek Custom Floating Tooltip (Fixed outside sidebar so it never clips or causes overflow) */}
+                    {isCollapsed && (
+                      <div className="fixed left-16 ml-1 px-3 py-1.5 bg-[#121215]/95 backdrop-blur-md text-white text-xs font-semibold rounded-lg shadow-2xl border border-white/15 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-[100] whitespace-nowrap flex items-center gap-2 -translate-x-1 group-hover:translate-x-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#22d3ee] shadow-[0_0_6px_#22d3ee]" />
+                        <span>{tab.label}</span>
+                      </div>
+                    )}
+                  </a>
+                );
+              })}
+            </nav>
+          </aside>
+        )}
+
+        {/* Studio Content */}
+        <div className="flex-1 min-h-0 h-full relative overflow-hidden bg-[#030303]">
         <div className={activeTab === 'image' ? "h-full w-full" : "hidden"}>
           <ImageStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationComplete={makeSuccessCallback('image')} onGenerationError={makeErrorCallback('image')} />
         </div>
@@ -434,6 +690,7 @@ export default function StandaloneShell() {
           <AiInfluencerStudio apiKey={apiKey} />
         </div>
       </div>
+    </div>
 
       {/* ── Global Generation Notification Stack ── */}
       {notifications.length > 0 && (

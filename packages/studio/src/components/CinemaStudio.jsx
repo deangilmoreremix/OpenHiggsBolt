@@ -797,15 +797,30 @@ export default function CinemaStudio({
                     {entry.settings?.prompt || "No prompt"}
                   </p>
                   <div className="flex items-center justify-between mt-1 flex-wrap gap-1">
-                    <span className="text-[10px] font-bold text-[#22d3ee] px-2 py-0.5 bg-[#22d3ee]/10 rounded border border-[#22d3ee]/20">
-                      {entry.settings?.camera || "Standard"}
-                    </span>
-                    <div className="flex gap-2">
-                      <span className="text-[10px] text-white/40">{entry.settings?.lens || "35mm"}</span>
-                      {entry.settings?.aspect_ratio && (
-                        <span className="text-[10px] text-white/40">{entry.settings.aspect_ratio}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-[#22d3ee] px-2 py-0.5 bg-[#22d3ee]/10 rounded border border-[#22d3ee]/20">
+                        Cinema Studio
+                      </span>
+                      {entry.settings?.camera && (
+                        <span className="text-[10px] text-white/40">{entry.settings.camera}</span>
                       )}
                     </div>
+                    {entry.settings?.prompt && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(entry.settings.prompt);
+                          const btn = e.currentTarget;
+                          btn.innerText = "Copied!";
+                          setTimeout(() => { btn.innerText = "Copy"; }, 2000);
+                        }}
+                        className="px-2 py-0.5 bg-white/5 hover:bg-primary/20 hover:text-primary rounded text-[10px] font-medium text-white/70 transition-all border border-white/10"
+                        title="Copy prompt"
+                      >
+                        Copy Prompt
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1022,17 +1037,18 @@ export default function CinemaStudio({
 
             {/* Generate Button */}
             <button
-              className="bg-[#22d3ee] text-black px-7 py-3 rounded-full font-bold text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10 uppercase tracking-wider"
+              className="bg-[#22d3ee] text-black px-7 py-3 rounded-full font-bold text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10"
               disabled={isGenerating || !settings.prompt.trim()}
               onClick={handleGenerate}
             >
               {isGenerating ? (
                 <>
-                  <span className="animate-spin inline-block text-black">◌</span> SHOOTING...
+                  <span className="animate-spin inline-block text-black">◌</span>
+                  <span>Generating...</span>
                 </>
               ) : (
                 <>
-                  <span>SHOOT</span>
+                  <span>Shoot ✦ 10</span>
                 </>
               )}
             </button>

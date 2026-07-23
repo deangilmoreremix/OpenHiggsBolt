@@ -389,17 +389,35 @@ export default function VibeMotionStudio({ apiKey, onGenerationComplete, onGener
                     {entry.prompt || "No prompt"}
                   </p>
                   <div className="flex items-center justify-between mt-1 flex-wrap gap-1">
-                    <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded border border-primary/20 whitespace-nowrap">
-                      motion-graphics{entry.mode === "edit" ? "-edit" : ""}
-                    </span>
-                    <div className="flex gap-2">
-                      {entry.aspectRatio && (
-                        <span className="text-[10px] text-white/40">{entry.aspectRatio}</span>
-                      )}
-                      {entry.duration && (
-                        <span className="text-[10px] text-white/40">{entry.duration}s</span>
-                      )}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded border border-primary/20 whitespace-nowrap">
+                        Vibe Motion
+                      </span>
+                      <div className="flex gap-2">
+                        {entry.aspectRatio && (
+                          <span className="text-[10px] text-white/40">{entry.aspectRatio}</span>
+                        )}
+                        {entry.duration && (
+                          <span className="text-[10px] text-white/40">{entry.duration}s</span>
+                        )}
+                      </div>
                     </div>
+                    {entry.prompt && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(entry.prompt);
+                          const btn = e.currentTarget;
+                          btn.innerText = "Copied!";
+                          setTimeout(() => { btn.innerText = "Copy"; }, 2000);
+                        }}
+                        className="px-2 py-0.5 bg-white/5 hover:bg-primary/20 hover:text-primary rounded text-[10px] font-medium text-white/70 transition-all border border-white/10"
+                        title="Copy prompt"
+                      >
+                        Copy Prompt
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -454,37 +472,18 @@ export default function VibeMotionStudio({ apiKey, onGenerationComplete, onGener
       </div>
 
       {/* ── BOTTOM PROMPT BAR — matches VideoStudio exactly ── */}
-      <div className="absolute bottom-4 w-full max-w-[95%] lg:max-w-4xl z-40 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
+      <div className="absolute bottom-4 w-full max-w-[95%] lg:max-w-4xl z-30 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
         <div className="w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]">
 
-          {/* ── Edit mode banner ── */}
-          {editMode && (
-            <div className="flex items-center gap-2 px-3 py-1.5 mx-0 bg-[#22d3ee]/5 border border-[#22d3ee]/10 rounded text-[10px] text-[#22d3ee]/80 font-medium tracking-tight">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-              <span>
-                {sourceEntry
-                  ? `Editing: "${sourceEntry.prompt?.slice(0, 50)}${sourceEntry.prompt?.length > 50 ? "…" : ""}"`
-                  : "Select a source generation from the gallery"}
-              </span>
-              <button
-                onClick={() => { setEditMode(false); setEditSourceId(null); setPrompt(""); }}
-                className="ml-auto text-[#22d3ee]/40 hover:text-[#22d3ee] transition-colors text-base leading-none"
-              >×</button>
-            </div>
-          )}
-
-          {/* ── Textarea row ── */}
-          <div className="flex items-center gap-2 px-1">
-            {/* Mode toggle pill */}
+          {/* ── Top Row: Mode Toggle & Edit Source Banner ── */}
+          <div className="flex items-center justify-between gap-3 px-1">
+            {/* Left: Mode toggle pill */}
             <div className="flex items-center gap-1 bg-white/[0.03] border border-white/[0.05] rounded-full p-0.5 flex-shrink-0">
               <button
                 type="button"
                 onClick={() => { setEditMode(false); setEditSourceId(null); }}
-                className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all ${
-                  !editMode ? "bg-[#22d3ee] text-black shadow" : "text-white/40 hover:text-white/70"
+                className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all ${
+                  !editMode ? "bg-[#22d3ee] text-black shadow-md shadow-[#22d3ee]/20" : "text-white/40 hover:text-white/70"
                 }`}
               >
                 Generate
@@ -493,16 +492,39 @@ export default function VibeMotionStudio({ apiKey, onGenerationComplete, onGener
                 type="button"
                 onClick={() => setEditMode(true)}
                 disabled={editSources.length === 0}
-                className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
-                  editMode ? "bg-[#22d3ee] text-black shadow" : "text-white/40 hover:text-white/70"
+                className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
+                  editMode ? "bg-[#22d3ee] text-black shadow-md shadow-[#22d3ee]/20" : "text-white/40 hover:text-white/70"
                 }`}
               >
                 Edit
               </button>
             </div>
 
-            {/* Prompt textarea */}
-            <div className="flex-1 flex flex-col gap-1">
+            {/* Right: Edit mode status banner beside toggle buttons */}
+            {editMode && (
+              <div className="flex items-center gap-2 px-3 py-1 bg-[#22d3ee]/5 border border-[#22d3ee]/10 rounded-full text-[11px] text-[#22d3ee] font-medium tracking-tight min-w-0 max-w-full overflow-hidden">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="flex-shrink-0">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                <span className="truncate">
+                  {sourceEntry
+                    ? `Editing: "${sourceEntry.prompt?.slice(0, 45)}${sourceEntry.prompt?.length > 45 ? "…" : ""}"`
+                    : "Select a source generation from the gallery"}
+                </span>
+                <button
+                  onClick={() => { setEditMode(false); setEditSourceId(null); setPrompt(""); }}
+                  className="ml-auto text-[#22d3ee]/40 hover:text-[#22d3ee] transition-colors text-sm leading-none flex-shrink-0"
+                  title="Cancel Edit Mode"
+                >
+                  ×
+                </button>
+              </div>
+            )}
+          </div>
+
+            {/* Bottom: Textarea full width */}
+            <div className="w-full">
               <textarea
                 ref={textareaRef}
                 value={prompt}
@@ -515,10 +537,9 @@ export default function VibeMotionStudio({ apiKey, onGenerationComplete, onGener
                     : "Describe the motion graphic — 'Animated sales dashboard with glowing bar charts and rising numbers'"
                 }
                 rows={1}
-                className="w-full bg-transparent border-none text-white text-sm placeholder:text-white/10 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar"
+                className="w-full bg-transparent border-none text-white text-sm placeholder:text-white/20 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar"
               />
             </div>
-          </div>
 
           {/* ── Error banner ── */}
           {generateError && (
