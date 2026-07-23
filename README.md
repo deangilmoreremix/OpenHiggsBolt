@@ -3,7 +3,7 @@
 [![Powered by MuAPI](https://img.shields.io/badge/Powered%20by-MuAPI-6366f1?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0tMSAxNHYtNGgtMnYtMmg0djZoLTJ6bTAtOFY2aDJ2MmgtMnoiLz48L3N2Zz4=)](https://muapi.ai?utm_source=github&utm_medium=badge&utm_campaign=open-generative-ai)
 
 
-> **The free, open-source alternative to AI Video Platforms.** Generate AI images and videos using 200+ state-of-the-art models — no content filters, no closed ecosystem, no subscription fees.
+> **The free, open-source alternative to AI Video Platforms.** Generate AI images and videos using 400+ state-of-the-art models across 14 studios — no content filters, no closed ecosystem, no subscription fees.
 
 **Community:** Join [Discord](https://discord.gg/tANKJkHck) for discussions and support
 
@@ -280,9 +280,18 @@ A healthy run on Apple Silicon prints `total params memory size = 1969.78MB (VRA
 - **Local Inference** — Two engines: **sd.cpp** (bundled, runs on Mac/Win/Linux with Metal/CUDA/Vulkan/ROCm) for SD 1.5, SDXL, and Z-Image; and **Wan2GP** (BYO Gradio server) for Flux, Qwen-Image, and video models (Wan 2.2, Hunyuan, LTX). Configure both in Settings → Local Models.
 - **Multi-Image Input** — Upload up to 14 reference images for compatible edit models (Nano Banana 2 Edit, Flux Kontext Dev, GPT-4o Edit, and more). Multi-select picker with order badges, batch upload, and a "Use Selected" confirmation flow.
 - **Video Studio** — Generate videos from text prompts (40+ text-to-video models) or animate a start-frame image (60+ image-to-video models). Same intelligent mode switching as Image Studio.
+- **Audio Studio** — Generate and edit AI audio/music from text prompts.
+- **AI Clipping** — Auto-clip and extract highlights from longer video content.
+- **Vibe Motion Studio** — Motion/animation generation studio for stylized video effects.
 - **Lip Sync Studio** — Animate portrait images or sync lips on existing videos using audio. 9 dedicated models across two modes: portrait image + audio → talking video, and video + audio → lipsync video.
+- **Body Swap (Recast) Studio** — Swap/recast a subject's body or appearance in an image or video.
 - **Cinema Studio** — Interface for photorealistic cinematic shots with pro camera controls (Lens, Focal Length, Aperture)
+- **Marketing Studio** — Generate ad and marketing-ready creative variations from a single input.
 - **Workflow Studio** — Build and run multi-step AI pipelines visually. Chain image, video, and audio models into automated flows. Browse community templates, create your own with a node-based editor, and run them via an interactive playground.
+- **Agent Studio** — Multi-turn creative agent that plans and executes generation tasks conversationally.
+- **Design Agent Studio** — Canvas-based autonomous design agent for iterative visual work.
+- **Explore Apps** — Directory of app templates and use-cases built on the same model catalog.
+- **AI Influencer Studio** — Tools for creating and managing consistent AI persona/influencer content.
 - **Upload History** — Reference images are uploaded once and stored locally. A picker panel lets you reuse any previously uploaded image across sessions — no re-uploading.
 - **Smart Controls** — Dynamic aspect ratio, resolution/quality, and duration pickers that adapt to each model's capabilities (including t2i models with resolution or quality options)
 - **Generation History** — Browse, revisit, and download all past generations (persisted in browser storage)
@@ -512,8 +521,8 @@ Open-Generative-AI/
 ├── packages/
 │   └── studio/                 # Shared React component library
 │       └── src/
-│           ├── index.js        # Exports: ImageStudio, VideoStudio, AudioStudio, ClippingStudio, VibeMotionStudio, LipSyncStudio, CinemaStudio, MarketingStudio, WorkflowStudio, AgentStudio, DesignAgentStudio, AppsStudio, McpCliStudio
-│           ├── models.js       # 200+ model definitions (single source of truth)
+│           ├── index.js        # Exports: ImageStudio, VideoStudio, AudioStudio, ClippingStudio, VibeMotionStudio, LipSyncStudio, RecastStudio, CinemaStudio, MarketingStudio, WorkflowStudio, AgentStudio, DesignAgentStudio, AppsStudio, AiInfluencerStudio, McpCliStudio
+│           ├── models.js       # 400+ model definitions (single source of truth)
 │           ├── muapi.js        # API client (named exports, apiKey as first param)
 │           └── components/
 │               ├── ImageStudio.jsx    # Dual-mode t2i/i2i studio
@@ -545,11 +554,16 @@ Lip sync jobs use the same two-step pattern: a dedicated `processLipSync()` meth
 
 | Category | Count | Examples |
 |---|---|---|
-| **Text-to-Image** | 50+ | Flux Dev, Nano Banana 2, Seedream 5.0, Ideogram v3, Midjourney v7, GPT-4o, SDXL |
-| **Image-to-Image** | 55+ | Nano Banana 2 Edit (×14), Flux Kontext Pro, GPT-4o Edit, Seededit v3, Upscaler, Background Remover |
-| **Text-to-Video** | 40+ | Kling v3, Sora 2, Veo 3, Wan 2.6, Seedance 2.0, Seedance 2.0 Extend, Seedance Pro, Hailuo 2.3, Runway Gen-3 |
-| **Image-to-Video** | 60+ | Kling v2.1 I2V, Veo3 I2V, Runway I2V, Seedance 2.0 I2V, Midjourney v7 I2V, Hunyuan I2V, Wan2.2 I2V |
-| **Lip Sync** | 9 | Infinite Talk I2V, Wan 2.2 Speech to Video, LTX 2.3 Lipsync, LTX 2 19B Lipsync, Sync, LatentSync, Creatify, Veed, Infinite Talk V2V |
+| **Text-to-Image** | 70+ | Flux Dev, Nano Banana 2, Seedream 5.0, Ideogram v3, Midjourney v7, GPT-4o, SDXL |
+| **Image-to-Image** | 70+ | Nano Banana 2 Edit (×14), Flux Kontext Pro, GPT-4o Edit, Seededit v3, Upscaler, Background Remover |
+| **Text-to-Video** | 85+ | Kling v3, Sora 2, Veo 3, Wan 2.6, Seedance 2.0, Seedance 2.0 Extend, Seedance Pro, Hailuo 2.3, Runway Gen-3 |
+| **Image-to-Video** | 120+ | Kling v2.1 I2V, Veo3 I2V, Runway I2V, Seedance 2.0 I2V, Midjourney v7 I2V, Hunyuan I2V, Wan2.2 I2V |
+| **Video-to-Video** | 35+ | Video effects, AI Clipping, Vibe Motion, video-conditioned edits |
+| **Lip Sync** | 15 | Infinite Talk I2V, Wan 2.2 Speech to Video, LTX 2.3 Lipsync, LTX 2 19B Lipsync, Sync, LatentSync, Creatify, Veed, Infinite Talk V2V |
+| **Body Swap / Recast** | 3 | Subject/appearance recast across image and video |
+| **Audio** | 15+ | Text-to-music, remix, and audio editing models |
+
+(Counts verified against `packages/studio/src/models.js` — total 420+ models across these 8 categories, plus additional models surfaced through Marketing, Agent, and Design Agent studios.)
 
 ## 🛠️ Tech Stack
 
@@ -568,7 +582,7 @@ Lip sync jobs use the same two-step pattern: a dedicated `processLipSync()` meth
 | **Cost** | Subscription-based | Free (open-source) |
 | **Content filters** | Yes — prompts blocked or altered | None |
 | **Restrictions** | Platform guardrails enforced | Full creative freedom |
-| **Models** | Proprietary | 200+ open & commercial models |
+| **Models** | Proprietary | 400+ open & commercial models |
 | **Multi-image input** | Limited | Up to 14 images per request |
 | **Lip sync** | No | 9 models, image & video modes |
 | **Hosted version** | Subscription | Free at [muapi.ai/open-generative-ai](https://muapi.ai/open-generative-ai?utm_source=github&utm_medium=readme&utm_campaign=open-generative-ai) |
