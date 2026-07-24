@@ -8,13 +8,13 @@
 **Community:** Join [Discord](https://discord.gg/tANKJkHck) for discussions and support
 
 <p align="center">
-  <a href="https://www.youtube.com/watch?v=SC9zJ6AxDek">
-    <img src="docs/assets/video-20-thumbnail.png" alt="AI Creator Academy: The Free Course Paid Communities Don't Want You to Find" width="640">
+  <a href="https://www.youtube.com/watch?v=YhHHut-pDOY">
+    <img src="docs/assets/video-23-thumbnail.png" alt="Uncensored AI Image & Video Generator — Free & Open Source (500+ Models)" width="640">
   </a>
 </p>
 
 <p align="center">
-  <a href="https://www.youtube.com/watch?v=SC9zJ6AxDek"><b>📺 AI Creator Academy: The Free Course Paid Communities Don't Want You to Find →</b></a>
+  <a href="https://www.youtube.com/watch?v=YhHHut-pDOY"><b>📺 Uncensored AI Image & Video Generator — Free & Open Source (500+ Models) →</b></a>
 </p>
 
 <p align="center">
