@@ -68,7 +68,8 @@ export default clerkMiddleware(async (auth, request) => {
 
   if (isMuApi) {
     const isHandledByRoute = url.pathname.startsWith('/api/v1/creative-agent') ||
-                            url.pathname.startsWith('/api/v1/get_upload_url');
+                            url.pathname.startsWith('/api/v1/get_upload_url') ||
+                            url.pathname.startsWith('/api/v1/upload-binary');
 
     if (url.pathname.startsWith('/api/v1') && !isHandledByRoute) {
       const targetUrl = new URL(url.pathname + url.search, 'https://api.muapi.ai');

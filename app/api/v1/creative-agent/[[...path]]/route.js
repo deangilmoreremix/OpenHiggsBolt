@@ -85,7 +85,9 @@ export async function POST(request, { params }) {
         if (contentType.includes('multipart/form-data')) {
             body = await request.formData();
         } else {
-            body = await request.json().catch(() => ({}));
+            const jsonBody = await request.json().catch(() => ({}));
+            body = JSON.stringify(jsonBody);
+            headers.set('content-type', 'application/json');
         }
         const response = await fetch(targetUrl, {
             method: 'POST',
