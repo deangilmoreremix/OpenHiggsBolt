@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getDesignAgentApiKey } from '../lib/auth'
+
 const BASE = 'https://api.muapi.ai/api/v1/creative-agent'
+
 export async function GET(req: NextRequest) {
-  const key = req.headers.get('x-api-key') || ''
-  const { searchParams } = new URL(req.url)
-  const sessionId = searchParams.get('sessionId')
-  if (!sessionId) return NextResponse.json({ error: 'sessionId required' }, { status: 400 })
-  const res = await fetch(`${BASE}/sessions/${sessionId}/assets`, { headers: { 'x-api-key': key }, signal: AbortSignal.timeout(30000) })
-  const data = await res.json()
-  return NextResponse.json(data, { status: res.status })
+  try {
+    const key = await getDesignAgentApiKey()
+    const { searchParams } = new URL(req.url)
+    const sessionId = searchParams.get('sessionId')
+    if (!sessionId) return NextResponse.json({ error: 'sessionId required' }, { status: 400 })
+    const res = await fetch(`${BASE}/sessions/${sessionId}/assets`, { headers: { 'x-api-key': key }, signal: AbortSignal.timeout(30000) })
+    const data = await res.json()
+    return NextResponse.json(data, { status: res.status })
+  } catch (err: any) {
+    const status = err instanceof Response ? err.status : 500
+    const message = status === 401 ? 'Unauthorized' : status === 400 ? err.message : 'Internal server error'
+    return NextResponse.json({ error: message }, { status })
+  }
 }

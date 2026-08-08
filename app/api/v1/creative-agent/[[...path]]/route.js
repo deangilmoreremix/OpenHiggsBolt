@@ -1,17 +1,7 @@
 import { NextResponse } from 'next/server';
+import { getDesignAgentApiKey } from '../../../design-agent/lib/auth';
 
-const MUAPI_BASE = 'https://api.muapi.ai';
-
-function getApiKey(request) {
-    const authHeader = request.headers.get('Authorization');
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7).trim();
-        if (token) return token;
-    }
-    const headerKey = request.headers.get('x-api-key');
-    if (headerKey && headerKey.trim()) return headerKey.trim();
-    return null;
-}
+const BASE = 'https://api.muapi.ai/api/v1/creative-agent';
 
 function cleanHeaders(request) {
     const headers = new Headers(request.headers);
@@ -29,16 +19,18 @@ export async function GET(request, { params }) {
     const path = pathSegments.join('/');
     
     const { search } = new URL(request.url);
-    const targetUrl = `${MUAPI_BASE}/api/v1/creative-agent/${path}${search}`;
+    const targetUrl = `${BASE}/${path}${search}`;
 
     const headers = cleanHeaders(request);
-    const apiKey = getApiKey(request);
-    // NOTE: credential logging removed for security (CWE-200)
-
-    if (apiKey) headers.set('x-api-key', apiKey);
+    const key = await getDesignAgentApiKey();
+    if (key) headers.set('x-api-key', key);
 
     try {
-        const response = await fetch(targetUrl, { headers, method: 'GET' });
+        const response = await fetch(targetUrl, {
+            headers,
+            method: 'GET',
+            signal: AbortSignal.timeout(30000),
+        });
         const data = await response.json();
         return NextResponse.json(data, { status: response.status });
     } catch (error) {
@@ -53,17 +45,26 @@ export async function POST(request, { params }) {
     const path = pathSegments.join('/');
     
     const { search } = new URL(request.url);
-    const targetUrl = `${MUAPI_BASE}/api/v1/creative-agent/${path}${search}`;
+    const targetUrl = `${BASE}/${path}${search}`;
 
     const headers = cleanHeaders(request);
-    const apiKey = getApiKey(request);
-    // NOTE: credential logging removed for security (CWE-200)
-
-    if (apiKey) headers.set('x-api-key', apiKey);
+    const key = await getDesignAgentApiKey();
+    if (key) headers.set('x-api-key', key);
 
     try {
-        const body = await request.arrayBuffer();
-        const response = await fetch(targetUrl, { method: 'POST', headers, body });
+        const contentType = request.headers.get('content-type') || '';
+        let body;
+        if (contentType.includes('multipart/form-data')) {
+            body = await request.formData();
+        } else {
+            body = await request.json().catch(() => ({}));
+        }
+        const response = await fetch(targetUrl, {
+            method: 'POST',
+            headers,
+            body,
+            signal: AbortSignal.timeout(120000),
+        });
         const data = await response.json();
         return NextResponse.json(data, { status: response.status });
     } catch (error) {
@@ -78,17 +79,20 @@ export async function PATCH(request, { params }) {
     const path = pathSegments.join('/');
     
     const { search } = new URL(request.url);
-    const targetUrl = `${MUAPI_BASE}/api/v1/creative-agent/${path}${search}`;
+    const targetUrl = `${BASE}/${path}${search}`;
 
     const headers = cleanHeaders(request);
-    const apiKey = getApiKey(request);
-    // NOTE: credential logging removed for security (CWE-200)
-
-    if (apiKey) headers.set('x-api-key', apiKey);
+    const key = await getDesignAgentApiKey();
+    if (key) headers.set('x-api-key', key);
 
     try {
-        const body = await request.arrayBuffer();
-        const response = await fetch(targetUrl, { method: 'PATCH', headers, body });
+        const body = await request.json();
+        const response = await fetch(targetUrl, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(30000),
+        });
         const data = await response.json();
         return NextResponse.json(data, { status: response.status });
     } catch (error) {
@@ -103,13 +107,11 @@ export async function DELETE(request, { params }) {
     const path = pathSegments.join('/');
     
     const { search } = new URL(request.url);
-    const targetUrl = `${MUAPI_BASE}/api/v1/creative-agent/${path}${search}`;
+    const targetUrl = `${BASE}/${path}${search}`;
 
     const headers = cleanHeaders(request);
-    const apiKey = getApiKey(request);
-    // NOTE: credential logging removed for security (CWE-200)
-
-    if (apiKey) headers.set('x-api-key', apiKey);
+    const key = await getDesignAgentApiKey();
+    if (key) headers.set('x-api-key', key);
 
     try {
         const response = await fetch(targetUrl, { method: 'DELETE', headers });

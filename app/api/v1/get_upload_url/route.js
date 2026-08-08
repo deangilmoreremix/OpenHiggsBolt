@@ -5,7 +5,9 @@ const MUAPI_BASE = 'https://api.muapi.ai';
 function getApiKey(request) {
     const headerKey = request.headers.get('x-api-key');
     if (headerKey) return headerKey;
-    // Cookie-based auth removed for security (CWE-522)
+    // Support Bearer token auth from the upstream client.
+    const auth = request.headers.get('authorization');
+    if (auth && auth.startsWith('Bearer ')) return auth.slice(7);
     return null;
 }
 
