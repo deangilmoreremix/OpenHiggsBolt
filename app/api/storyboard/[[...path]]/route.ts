@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isValidStoryboardModel, DEFAULT_STORYBOARD_MODEL_ID } from '@/apps/storyboard/models';
 
 const MUAPI_BASE = 'https://api.muapi.ai';
 

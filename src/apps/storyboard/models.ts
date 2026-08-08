@@ -220,6 +220,21 @@ export const STORYBOARD_MODELS: StoryboardModel[] = [
 
 export const DEFAULT_STORYBOARD_MODEL_ID = 'flux-dev'
 
+// Flat set of valid model ids — single source of truth for backend validation.
+export const STORYBOARD_MODEL_IDS: ReadonlySet<string> = new Set(
+  STORYBOARD_MODELS.map((m) => m.id)
+)
+
+// Resolve the provider id for a given model id (or null if unknown).
+export function getProviderForModel(id: string): string | null {
+  return STORYBOARD_MODELS.find((m) => m.id === id)?.provider ?? null
+}
+
+// True when the id is a known, selectable storyboard image model.
+export function isValidStoryboardModel(id: unknown): id is string {
+  return typeof id === 'string' && STORYBOARD_MODEL_IDS.has(id)
+}
+
 export function getStoryboardModel(id: string): StoryboardModel {
   return STORYBOARD_MODELS.find((m) => m.id === id) || STORYBOARD_MODELS[0]
 }
