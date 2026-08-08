@@ -30,13 +30,10 @@ function withProxiedArtwork(data) {
 }
 
 function getApiKey(request) {
-    // Priority 1: Direct x-api-key header
+    // Only accept x-api-key header. Cookie-based auth is removed for security:
+    // cookies without HttpOnly flag can be stolen by XSS (CWE-522).
     const headerKey = request.headers.get('x-api-key');
-    if (headerKey) return headerKey;
-
-    // Priority 2: muapi_key cookie
-    const cookieKey = request.cookies.get('muapi_key')?.value;
-    return cookieKey;
+    return headerKey || null;
 }
 
 function cleanHeaders(request) {
@@ -64,7 +61,7 @@ export async function GET(request, { params }) {
 
     const headers = cleanHeaders(request);
     const apiKey = getApiKey(request);
-    console.log(`[agents proxy GET] ${targetUrl} | apiKey: ${apiKey ? apiKey.slice(0,8)+'...' : 'MISSING'}`);
+    // NOTE: credential logging removed for security (CWE-200)
     if (apiKey) headers.set('x-api-key', apiKey);
 
     try {
@@ -84,7 +81,7 @@ export async function POST(request, { params }) {
 
     const headers = cleanHeaders(request);
     const apiKey = getApiKey(request);
-    console.log(`[agents proxy POST] ${targetUrl} | apiKey: ${apiKey ? apiKey.slice(0,8)+'...' : 'MISSING'}`);
+    // NOTE: credential logging removed for security (CWE-200)
     if (apiKey) headers.set('x-api-key', apiKey);
 
     try {

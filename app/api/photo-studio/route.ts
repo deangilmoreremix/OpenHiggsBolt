@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { ok, apiError } from '@/lib/apiError'
 
 // Photo Studio — MuAPI-backed product photography generation.
 // Pattern: POST submits the job and returns { requestId } immediately (no
@@ -7,12 +8,30 @@ import { NextRequest, NextResponse } from 'next/server'
 // the result to history. This keeps the HTTP request short so it works on
 // serverless (Netlify/Vercel) function runtimes.
 // https://muapi.ai/docs/introduction  (submit + poll pattern)
+//
+// ⚠️ IN-MEMORY STATE — EPHEMERAL & GLOBAL ⚠️
+// `history` (PhotoRecord[]) and `jobs` (Map) are module-level variables
+// stored in a single Node.js instance's memory. Limitations:
+//   • All data is lost on server restart, redeploy, or cold-start.
+//   • In a scaled/multi-instance deployment each instance has its own
+//     independent store — records created on instance A are invisible to
+//     instance B.
+//   • There is NO per-user isolation. Any caller who knows (or guesses) a
+//     requestId can poll its status via GET ?requestId=... regardless of
+//     who submitted it.
+//   • The `brand_id` field on PhotoRecord supports per-brand filtering on
+//     GET ?brand_id=... but does not enforce access control — any caller
+//     can list another brand's records by supplying its brand_id.
+// Replace with a database (Postgres, Redis, etc.) for production use.
+
 const MUAPI = 'https://api.muapi.ai/api/v1'
 const STATUS_TIMEOUT_MS = 30000
 const SUBMIT_TIMEOUT_MS = 30000
+const DEFAULT_PAGE_SIZE = 20
+const MAX_PAGE_SIZE = 100
 
 function getKey(req: NextRequest): string {
-  return req.headers.get('x-api-key') || req.cookies.get('muapi_key')?.value || ''
+  return req.headers.get('x-api-key') || ''
 }
 
 type PhotoRecord = {
@@ -61,7 +80,7 @@ export async function GET(req: NextRequest) {
 
   if (requestId) {
     const key = getKey(req)
-    if (!key) return NextResponse.json({ error: 'MuAPI key required' }, { status: 400 })
+    if (!key) return apiError('bad_request', 'MuAPI key required', 400)
     const meta = jobs.get(requestId)
     try {
       const poll = await fetch(`${MUAPI}/predictions/${requestId}/result`, {
@@ -72,7 +91,7 @@ export async function GET(req: NextRequest) {
       if (!poll.ok) {
         let detail = pollText
         try { detail = JSON.parse(pollText)?.detail || detail } catch {}
-        return NextResponse.json({ status: 'failed', error: `MuAPI poll failed (${poll.status}): ${detail}` }, { status: 502 })
+        return apiError('upstream_error', `MuAPI poll failed (${poll.status}): ${detail}`, 502)
       }
       const data = JSON.parse(pollText)
       const status = statusFrom(data)
@@ -90,30 +109,39 @@ export async function GET(req: NextRequest) {
             status: 'completed',
           })
         }
-        return NextResponse.json({ status: 'completed', image_url: imageUrl })
+        return ok({ status: 'completed', image_url: imageUrl })
       }
       if (status === 'failed') {
-        return NextResponse.json({ status: 'failed', error: data.error || 'Generation failed' })
+        return apiError('generation_failed', data.error || 'Generation failed', 502)
       }
-      return NextResponse.json({ status: 'pending' })
+      return ok({ status: 'pending' })
     } catch (err: any) {
-      return NextResponse.json({ status: 'failed', error: err.message || 'Polling failed' }, { status: 502 })
+      return apiError('poll_failed', err.message || 'Polling failed', 502)
     }
   }
 
-  // History by brand (or all)
-  const list = brandId ? history.filter((h) => h.brand_id === brandId) : history
-  return NextResponse.json(list)
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
+  const rawPageSize = parseInt(searchParams.get('pageSize') || String(DEFAULT_PAGE_SIZE), 10) || DEFAULT_PAGE_SIZE
+  const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, rawPageSize))
+
+  const filtered = brandId ? history.filter((h) => h.brand_id === brandId) : history
+  const total = filtered.length
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const start = (safePage - 1) * pageSize
+  const items = filtered.slice(start, start + pageSize)
+
+  return ok(items, { page: safePage, pageSize, total, totalPages })
 }
 
 export async function POST(req: NextRequest) {
   const key = getKey(req)
-  if (!key) return NextResponse.json({ error: 'MuAPI key required' }, { status: 400 })
+  if (!key) return apiError('bad_request', 'MuAPI key required', 400)
 
   let body: any
-  try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
+  try { body = await req.json() } catch { return apiError('bad_request', 'Invalid JSON', 400) }
   const { brand_id, product_url, category, style } = body
-  if (!style) return NextResponse.json({ error: 'style is required' }, { status: 400 })
+  if (!style) return apiError('bad_request', 'style is required', 400)
 
   const prompt = [
     'Professional product photography',
@@ -123,13 +151,13 @@ export async function POST(req: NextRequest) {
   ].filter(Boolean).join(', ')
 
   const payload: any = { prompt, aspect_ratio: '1:1', n: 1 }
-  if (product_url) payload.image_url = product_url // image-to-image reference
+  if (product_url) payload.image_url = product_url
 
   try {
     const requestId = await submitImage(payload, key)
     jobs.set(requestId, { brand_id: brand_id || undefined, style, category: category || '' })
-    return NextResponse.json({ requestId, status: 'pending' })
+    return ok({ requestId, status: 'pending' })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Submission failed' }, { status: 500 })
+    return apiError('submit_failed', err.message || 'Submission failed', 500)
   }
 }

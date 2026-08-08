@@ -9,7 +9,9 @@ export interface StoryboardCharacter {
   traits?: string
   outfit?: string
   reference_images?: string[]
-  [key: string]: any
+  avatar_url?: string
+  backstory?: string
+  voice_id?: string
 }
 
 export interface StoryboardEpisode {
@@ -17,7 +19,9 @@ export interface StoryboardEpisode {
   title: string
   summary?: string
   project_id?: string
-  [key: string]: any
+  color?: string
+  description?: string
+  duration_seconds?: number
 }
 
 export interface StoryboardProject {
@@ -25,7 +29,7 @@ export interface StoryboardProject {
   name: string
   brief: string
   style?: string
-  [key: string]: any
+  description?: string
 }
 
 export interface StoryboardShot {
@@ -36,7 +40,11 @@ export interface StoryboardShot {
   description: string
   character_ids?: string[]
   reference_images?: string[]
-  [key: string]: any
+  shot_type?: string
+  camera_movement?: string
+  dialogue?: string
+  duration_seconds?: number
+  image_prompt?: string
 }
 
 export interface StoryboardResult {
@@ -44,7 +52,7 @@ export interface StoryboardResult {
   status?: string
   url?: string | null
   outputs?: string[]
-  [key: string]: any
+  error?: string
 }
 
 function getApiKey(): string | null {

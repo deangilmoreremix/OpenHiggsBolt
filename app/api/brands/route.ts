@@ -1,19 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import dns from 'node:dns/promises'
 import { brands, type Brand } from '@/shared/brandStore'
+import { ok, apiError } from '@/lib/apiError'
 
-// GET /api/brands        -> list (id, url, brand_name, industry)
-// POST /api/brands       -> create from a website URL.
-//
-// SECURITY: the URL is user-supplied. We validate the scheme, resolve every
-// address and reject private/loopback/link-local ranges (SSRF), refuse
-// redirects (redirect-based SSRF), cap response size and apply a timeout.
 const MAX_BYTES = 1_000_000
 const FETCH_TIMEOUT_MS = 5000
+const DEFAULT_PAGE_SIZE = 20
+const MAX_PAGE_SIZE = 100
 
 function isPrivateIp(ip: string): boolean {
   if (ip.includes(':')) {
-    // IPv6
     if (ip === '::1' || ip.startsWith('fc') || ip.startsWith('fd') || ip.startsWith('fe80')) return true
     return false
   }
@@ -21,7 +17,7 @@ function isPrivateIp(ip: string): boolean {
   if (p.length !== 4 || p.some((n) => Number.isNaN(n))) return true
   if (p[0] === 10) return true
   if (p[0] === 127) return true
-  if (p[0] === 169 && p[1] === 254) return true // link-local / cloud metadata
+  if (p[0] === 169 && p[1] === 254) return true
   if (p[0] === 172 && p[1] >= 16 && p[1] <= 31) return true
   if (p[0] === 192 && p[1] === 168) return true
   return false
@@ -56,15 +52,27 @@ function meta(name: string, html: string): string | undefined {
   return (a || b)?.[1]?.trim()
 }
 
-export async function GET() {
-  const list = [...brands.values()].map((b) => ({
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
+  const rawPageSize = parseInt(searchParams.get('pageSize') || String(DEFAULT_PAGE_SIZE), 10) || DEFAULT_PAGE_SIZE
+  const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, rawPageSize))
+
+  const all = [...brands.values()].map((b) => ({
     id: b.id,
     url: b.url,
     brand_name: b.brand_name || '',
     industry: b.industry || '',
     primary_colors: b.primary_colors || '',
   }))
-  return NextResponse.json(list)
+
+  const total = all.length
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const start = (safePage - 1) * pageSize
+  const items = all.slice(start, start + pageSize)
+
+  return ok(items, { page: safePage, pageSize, total, totalPages })
 }
 
 export async function POST(req: NextRequest) {
@@ -74,7 +82,7 @@ export async function POST(req: NextRequest) {
   } catch {}
   const url = body.url
   if (!url || typeof url !== 'string') {
-    return NextResponse.json({ error: 'url is required' }, { status: 400 })
+    return apiError('bad_request', 'url is required', 400)
   }
 
   let brand_name: string | undefined
@@ -83,11 +91,10 @@ export async function POST(req: NextRequest) {
     const safe = await assertSafeUrl(url)
     const res = await fetch(safe.toString(), {
       headers: { 'User-Agent': 'Mozilla/5.0' },
-      redirect: 'manual', // refuse redirects (redirect-based SSRF)
+      redirect: 'manual',
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     })
     if (res.status >= 300 && res.status < 400) {
-      // Redirects are not followed.
     } else if (res.ok) {
       const buf = Buffer.from(await res.arrayBuffer())
       if (buf.length <= MAX_BYTES) {

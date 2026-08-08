@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { generateVideo, generateI2V, processV2V, uploadFile } from "../muapi.js";
+import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
 import {
   t2vModels,
   i2vModels,
@@ -614,6 +615,34 @@ export default function VideoStudio({
     [],
   );
 
+  // ── Cross-studio: import a Storyboard hand-off ────────────────────────────
+  // Applies once per payload (guarded by createdAt) so React Strict Mode's
+  // double-invoke can't duplicate it. Sets the prompt, an optional reference
+  // image (image-to-video mode), and the aspect ratio.
+  const handoffApplied = useRef(null);
+  useEffect(() => {
+    try {
+      const handoff = readStoryboardHandoff("video");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+      const ref = handoff.firstFrameUrl || handoff.referenceImageUrl;
+      if (ref) {
+        setUploadedImageUrl(ref);
+        setUploadedImageUrls([ref]);
+        setImageMode(true);
+      }
+      if (handoff.aspectRatio === "9:16" || handoff.aspectRatio === "16:9") {
+        setSelectedAr(handoff.aspectRatio);
+      }
+    } catch (err) {
+      console.warn("Failed to apply Storyboard hand-off:", err);
+    }
+  }, []);
+
   // ── Persistence: Load ────────────────────────────────────────────────────
   useEffect(() => {
     try {
@@ -833,6 +862,7 @@ export default function VideoStudio({
 
   // ── textarea auto-resize ──────────────────────────────────────────────────
   const handlePromptInput = (e) => {
+    clearStoryboardHandoff();
     setPrompt(e.target.value);
     const el = e.target;
     el.style.height = "auto";
