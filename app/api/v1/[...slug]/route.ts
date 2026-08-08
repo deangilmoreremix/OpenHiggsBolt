@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getDesignAgentApiKey } from '../../design-agent/lib/auth'
+import { getMuApiKeyFromRequest } from '../lib/auth'
 
 const BASE = 'https://api.muapi.ai/api/v1'
 
 export async function GET(req: NextRequest, { params }: { params: { slug: string[] } }) {
   const path = '/' + (params.slug || []).join('/')
   try {
-    const key = await getDesignAgentApiKey()
+    const key = await getMuApiKeyFromRequest(req)
     const { searchParams } = new URL(req.url)
     const qs = searchParams.toString()
     const url = `${BASE}${path}${qs ? `?${qs}` : ''}`
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
 export async function POST(req: NextRequest, { params }: { params: { slug: string[] } }) {
   const path = '/' + (params.slug || []).join('/')
   try {
-    const key = await getDesignAgentApiKey()
+    const key = await getMuApiKeyFromRequest(req)
     const contentType = req.headers.get('content-type') || ''
     let body: any
     if (contentType.includes('multipart/form-data')) {

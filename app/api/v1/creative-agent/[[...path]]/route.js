@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getDesignAgentApiKey } from '../../../design-agent/lib/auth';
+import { getMuApiKeyFromRequest } from '../../lib/auth';
 
 const BASE = 'https://api.muapi.ai/api/v1/creative-agent';
 
@@ -13,6 +14,21 @@ function cleanHeaders(request) {
     return headers;
 }
 
+/**
+ * Resolves the API key from either:
+ * 1. `Authorization: Bearer <token>` — upstream CreativeCanvas client
+ * 2. Clerk session — Next.js app routes
+ */
+async function resolveKey(request) {
+    // Try Bearer token first (upstream client compat)
+    try {
+        return await getMuApiKeyFromRequest(request);
+    } catch {
+        // Fall back to Clerk session (Next.js app)
+        return await getDesignAgentApiKey();
+    }
+}
+
 export async function GET(request, { params }) {
     const slug = await params;
     const pathSegments = slug.path || [];
@@ -22,8 +38,14 @@ export async function GET(request, { params }) {
     const targetUrl = `${BASE}/${path}${search}`;
 
     const headers = cleanHeaders(request);
-    const key = await getDesignAgentApiKey();
-    if (key) headers.set('x-api-key', key);
+    try {
+        const key = await resolveKey(request);
+        headers.set('x-api-key', key);
+    } catch (err) {
+        const status = err instanceof Response ? err.status : 401;
+        const message = status === 401 ? 'Unauthorized' : err.message || 'Unauthorized';
+        return NextResponse.json({ error: message }, { status });
+    }
 
     try {
         const response = await fetch(targetUrl, {
@@ -48,8 +70,14 @@ export async function POST(request, { params }) {
     const targetUrl = `${BASE}/${path}${search}`;
 
     const headers = cleanHeaders(request);
-    const key = await getDesignAgentApiKey();
-    if (key) headers.set('x-api-key', key);
+    try {
+        const key = await resolveKey(request);
+        headers.set('x-api-key', key);
+    } catch (err) {
+        const status = err instanceof Response ? err.status : 401;
+        const message = status === 401 ? 'Unauthorized' : err.message || 'Unauthorized';
+        return NextResponse.json({ error: message }, { status });
+    }
 
     try {
         const contentType = request.headers.get('content-type') || '';
@@ -82,8 +110,14 @@ export async function PATCH(request, { params }) {
     const targetUrl = `${BASE}/${path}${search}`;
 
     const headers = cleanHeaders(request);
-    const key = await getDesignAgentApiKey();
-    if (key) headers.set('x-api-key', key);
+    try {
+        const key = await resolveKey(request);
+        headers.set('x-api-key', key);
+    } catch (err) {
+        const status = err instanceof Response ? err.status : 401;
+        const message = status === 401 ? 'Unauthorized' : err.message || 'Unauthorized';
+        return NextResponse.json({ error: message }, { status });
+    }
 
     try {
         const body = await request.json();
@@ -110,8 +144,14 @@ export async function DELETE(request, { params }) {
     const targetUrl = `${BASE}/${path}${search}`;
 
     const headers = cleanHeaders(request);
-    const key = await getDesignAgentApiKey();
-    if (key) headers.set('x-api-key', key);
+    try {
+        const key = await resolveKey(request);
+        headers.set('x-api-key', key);
+    } catch (err) {
+        const status = err instanceof Response ? err.status : 401;
+        const message = status === 401 ? 'Unauthorized' : err.message || 'Unauthorized';
+        return NextResponse.json({ error: message }, { status });
+    }
 
     try {
         const response = await fetch(targetUrl, { method: 'DELETE', headers });
