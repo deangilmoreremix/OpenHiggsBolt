@@ -4,6 +4,49 @@ import { Plus, Send, ChevronDown, X, Loader2, Image, Video, FileText, Sparkles, 
 import { panels, buttons, semantic, appWrapper } from '@/shared/styles/designTokens'
 import DesignAgentErrorBoundary from './ErrorBoundary'
 
+function AssetModal({ asset, onClose }: { asset: Asset; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.9)' }} onClick={onClose}>
+      <div className="max-w-4xl max-h-[90vh] w-full mx-4 rounded-2xl overflow-hidden relative" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }} onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">{asset.name}</span>
+            <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--text-secondary)' }}>{asset.type}</span>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg transition-all hover:bg-white/10">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="p-4 flex items-center justify-center" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+          {asset.type === 'image' && (
+            <img src={asset.url} alt={asset.name} className="max-w-full max-h-[70vh] object-contain rounded-xl" />
+          )}
+          {asset.type === 'video' && (
+            <video src={asset.url} controls autoPlay className="max-w-full max-h-[70vh] rounded-xl" />
+          )}
+          {asset.type === 'audio' && (
+            <div className="w-full p-8 text-center space-y-4">
+              <div className="text-6xl">🎵</div>
+              <audio src={asset.url} controls autoPlay className="w-full" />
+            </div>
+          )}
+          {asset.type === 'text' && (
+            <div className="w-full p-6 rounded-xl whitespace-pre-wrap text-sm" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)' }}>
+              {asset.url}
+            </div>
+          )}
+        </div>
+        <div className="p-4 border-t flex items-center justify-between" style={{ borderColor: 'var(--border-color)' }}>
+          <span className="text-xs" style={{ color: semantic.textMuted }}>Generated asset</span>
+          <a href={asset.url} download target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-lg text-sm font-medium transition-all" style={{ background: 'var(--color-primary)', color: 'white' }}>
+            Download
+          </a>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Templates (from muapi.ai/assistant screenshots) ───────────────────────────
 const TEMPLATES = [
   { id: '3d-logo-animation', label: '3d Logo Animation', description: 'Transform a 2D logo into a premium 3D version and animate it with professional cinematic effects.' },
@@ -79,7 +122,7 @@ async function apiCall(path: string, options: RequestInit = {}, apiKey: string) 
 // MuAPI assets expose { asset_label, kind: 'image'|'video'|'audio', url, ... }.
 function mapAsset(a: any): Asset {
   const kind: string = a?.kind || 'image'
-  const type: Asset['type'] = kind === 'video' ? 'video' : kind === 'audio' ? 'text' : 'image'
+  const type: Asset['type'] = kind === 'video' ? 'video' : kind === 'audio' ? 'audio' : 'image'
   return {
     id: a?.asset_label || a?.id || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     type,
@@ -107,7 +150,7 @@ interface Message {
 
 interface Asset {
   id: string
-  type: 'image' | 'video' | 'text'
+  type: 'image' | 'video' | 'audio' | 'text'
   url: string
   name: string
 }
@@ -143,6 +186,7 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
   const [placeholderIdx, setPlaceholderIdx] = useState(0)
   const [charIdx, setCharIdx] = useState(0)
   const [isTyping, setIsTyping] = useState(true)
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -676,16 +720,19 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
               {msg.assets && msg.assets.length > 0 && (
                 <div className="grid grid-cols-2 gap-2">
                   {msg.assets.map(asset => (
-                    <div key={asset.id} className="relative rounded-xl overflow-hidden group" style={{ border: '1px solid var(--border-color)' }}>
+                    <div key={asset.id} className="relative rounded-xl overflow-hidden group cursor-pointer" style={{ border: '1px solid var(--border-color)' }} onClick={() => setSelectedAsset(asset)}>
                       {asset.type === 'image'
                         ? <img src={asset.url} alt={asset.name} className="w-full object-cover" />
                         : asset.type === 'video'
                         ? <video src={asset.url} controls className="w-full" />
+                        : asset.type === 'audio'
+                        ? <div className="p-3 text-xs" style={{ color: semantic.textSecondary }}>🎵 {asset.name}</div>
                         : <div className="p-3 text-xs" style={{ color: semantic.textSecondary }}>{asset.name}</div>
                       }
                       <a href={asset.url} download target="_blank" rel="noopener noreferrer"
                         className="absolute top-2 right-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                        style={{ background: 'rgba(0,0,0,0.7)', color: 'white' }}>
+                        style={{ background: 'rgba(0,0,0,0.7)', color: 'white' }}
+                        onClick={(e) => e.stopPropagation()}>
                         <Download size={12} />
                       </a>
                     </div>
@@ -758,7 +805,10 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
           </div>
         </div>
       </div>
-    </div>
+      </div>
+
+      {/* Asset viewer modal */}
+      {selectedAsset && <AssetModal asset={selectedAsset!} onClose={() => setSelectedAsset(null)} />}
     </DesignAgentErrorBoundary>
   )
 }
