@@ -5,7 +5,7 @@ const BASE = 'https://api.muapi.ai/api/v1/creative-agent'
 
 export async function GET(req: NextRequest) {
   try {
-    const key = await getDesignAgentApiKey()
+    const key = await getDesignAgentApiKey(req)
     const { searchParams } = new URL(req.url)
     const sessionId = searchParams.get('sessionId')
     if (!sessionId) return NextResponse.json({ error: 'sessionId required' }, { status: 400 })

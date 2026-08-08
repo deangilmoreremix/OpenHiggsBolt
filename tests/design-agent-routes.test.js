@@ -29,6 +29,15 @@ function makeBuilder() {
   return builder;
 }
 
+function mockReq(opts = {}) {
+  return {
+    headers: new Headers({
+      ...(opts.authorization ? { authorization: opts.authorization } : {}),
+      ...(opts['x-api-key'] ? { 'x-api-key': opts['x-api-key'] } : {}),
+    }),
+  };
+}
+
 const mockAuth = () => Promise.resolve({ userId: store.userId });
 const mockSb = () => ({ from: () => makeBuilder() });
 
@@ -38,27 +47,56 @@ describe('design-agent auth helper', () => {
   before(async () => {
     store.app_users.clear();
     const mod = await import('../app/api/design-agent/lib/auth.ts');
-    getDesignAgentApiKey = (userId, muapiKey) => mod.getDesignAgentApiKey({
-      auth: () => Promise.resolve({ userId }),
+    getDesignAgentApiKey = (req, deps) => mod.getDesignAgentApiKey(req, {
+      auth: () => Promise.resolve({ userId: store.userId }),
       getSupabaseAdmin: () => ({
         from: () => ({
           select: () => ({
             eq: () => ({
-              maybeSingle: () => Promise.resolve({ data: muapiKey ? { muapi_key: muapiKey } : null, error: null }),
+              maybeSingle: () => Promise.resolve({ data: store.app_users.get(store.userId) || null, error: null }),
             }),
           }),
         }),
       }),
+      ...deps,
     });
   });
 
   after(() => { store.app_users.clear(); });
 
-  it('throws 401 when unauthenticated', async () => {
+  it('accepts Bearer token directly without Clerk', async () => {
+    const key = await getDesignAgentApiKey(mockReq({ authorization: 'Bearer direct-key-123' }));
+    assert.equal(key, 'direct-key-123');
+  });
+
+  it('accepts x-api-key directly without Clerk', async () => {
+    const key = await getDesignAgentApiKey(mockReq({ 'x-api-key': 'x-key-456' }));
+    assert.equal(key, 'x-key-456');
+  });
+
+  it('falls back to Clerk when no direct key is provided', async () => {
+    store.app_users.set('user_design_123', { muapi_key: 'clerk-key-789' });
+    const key = await getDesignAgentApiKey(mockReq());
+    assert.equal(key, 'clerk-key-789');
+  });
+
+  it('throws 401 when unauthenticated and no key provided', async () => {
+    store.app_users.set('user_design_123', { muapi_key: null });
     let threw = false;
     let status = 500;
     try {
-      await getDesignAgentApiKey(null, 'k');
+      await getDesignAgentApiKey(mockReq(), {
+        auth: () => Promise.resolve({ userId: null }),
+        getSupabaseAdmin: () => ({
+          from: () => ({
+            select: () => ({
+              eq: () => ({
+                maybeSingle: () => Promise.resolve({ data: null, error: null }),
+              }),
+            }),
+          }),
+        }),
+      });
     } catch (err) {
       threw = true;
       status = err.status || 500;
@@ -67,17 +105,12 @@ describe('design-agent auth helper', () => {
     assert.equal(status, 401);
   });
 
-  it('returns the decrypted key when user has one', async () => {
-    const plaintext = 'muapi-test-key-123';
-    const key = await getDesignAgentApiKey('user_design_123', plaintext);
-    assert.equal(key, plaintext);
-  });
-
-  it('throws 400 when no key is configured', async () => {
+  it('throws 400 when no key is configured in Supabase', async () => {
+    store.app_users.set('user_design_123', { muapi_key: null });
     let threw = false;
     let status = 500;
     try {
-      await getDesignAgentApiKey('user_design_123', null);
+      await getDesignAgentApiKey(mockReq());
     } catch (err) {
       threw = true;
       status = err.status || 500;

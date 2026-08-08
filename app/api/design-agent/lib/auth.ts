@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/src/lib/supabaseServer';
 import { decryptMuapiKey } from '@/src/lib/muapiKeyCrypto';
 
@@ -8,15 +8,33 @@ export type GetSupabaseAdminFn = () => {
 };
 
 /**
- * Resolves the authenticated user and returns their decrypted MuAPI key.
- * Returns 401 if not authenticated, 400 if no key is configured.
+ * Resolves the MuAPI key from the request.
+ *
+ * Priority:
+ * 1. `Authorization: Bearer <muapi_key>` — direct upstream client usage, no Clerk required
+ * 2. Clerk session + encrypted per-user key from Supabase — fallback for app users
+ *
+ * Returns 401 only if neither auth method is available.
  */
-export async function getDesignAgentApiKey(deps?: {
+export async function getDesignAgentApiKey(req: NextRequest, deps?: {
   auth?: AuthFn;
   getSupabaseAdmin?: GetSupabaseAdminFn;
 }): Promise<string> {
+  // 1. Accept Bearer token directly (upstream client / direct MuAPI key usage).
+  const authHeader = req.headers.get('authorization') || '';
+  const bearerKey = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
+  if (bearerKey) {
+    return bearerKey;
+  }
+
+  // Also accept x-api-key header directly.
+  const xApiKey = req.headers.get('x-api-key')?.trim();
+  if (xApiKey) {
+    return xApiKey;
+  }
+
+  // 2. Fall back to Clerk session + encrypted key from Supabase.
   const auth = deps?.auth || (async () => {
-    // Lazy import to avoid client-bundle/server-only issues in tests/build.
     const { auth: clerkAuth } = await import('@clerk/nextjs/server');
     return clerkAuth();
   });
@@ -24,7 +42,7 @@ export async function getDesignAgentApiKey(deps?: {
 
   const { userId } = await auth();
   if (!userId) {
-    throw new Response('Unauthorized', { status: 401 });
+    throw new Response('Unauthorized: Missing API key or session', { status: 401 });
   }
 
   const supabase = getSb();

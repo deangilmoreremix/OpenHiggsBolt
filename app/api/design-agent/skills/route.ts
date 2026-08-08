@@ -5,7 +5,7 @@ const BASE = 'https://api.muapi.ai/api/v1/creative-agent'
 
 export async function GET(req: NextRequest) {
   try {
-    const key = await getDesignAgentApiKey()
+    const key = await getDesignAgentApiKey(req)
     const res = await fetch(`${BASE}/agent-skills`, { headers: { 'x-api-key': key }, signal: AbortSignal.timeout(30000) })
     const data = await res.json()
     return NextResponse.json(data, { status: res.status })

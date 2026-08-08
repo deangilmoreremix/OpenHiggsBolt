@@ -8,7 +8,7 @@ const BASE = 'https://api.muapi.ai/api/v1/creative-agent'
 // https://muapi.ai/docs/design-agent-api
 export async function POST(req: NextRequest) {
   try {
-    const key = await getDesignAgentApiKey()
+    const key = await getDesignAgentApiKey(req)
     const { jobId } = await req.json()
     if (!jobId) return NextResponse.json({ error: 'jobId required' }, { status: 400 })
     const res = await fetch(`${BASE}/jobs/${jobId}/approve`, {

@@ -8,7 +8,7 @@ const BASE = 'https://api.muapi.ai/api/v1/creative-agent'
 // https://muapi.ai/docs/design-agent-api
 export async function POST(req: NextRequest) {
   try {
-    const key = await getDesignAgentApiKey()
+    const key = await getDesignAgentApiKey(req)
     const { sessionId, ...body } = await req.json()
     if (!sessionId) return NextResponse.json({ error: 'sessionId required' }, { status: 400 })
     const res = await fetch(`${BASE}/sessions/${sessionId}/run-skill`, {
