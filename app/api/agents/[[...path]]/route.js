@@ -2,14 +2,38 @@ import { NextResponse } from 'next/server';
 
 const MUAPI_BASE = 'https://api.muapi.ai';
 
-function getApiKey(request) {
-    // Priority 1: Direct x-api-key header
-    const headerKey = request.headers.get('x-api-key');
-    if (headerKey) return headerKey;
+// Rewrite upstream artwork URLs (icon_url / thumbnail / agent_icon_url) into our
+// same-origin /api/thumbnail proxy so CDN hotlink protection can't block them in
+// the browser. Idempotent: already-local or already-proxied URLs pass through.
+function proxyArtworkUrl(url) {
+  if (!url || typeof url !== 'string' || url.startsWith('/')) return url;
+  return `/api/thumbnail?url=${encodeURIComponent(url)}`;
+}
 
-    // Priority 2: muapi_key cookie
-    const cookieKey = request.cookies.get('muapi_key')?.value;
-    return cookieKey;
+function rewriteArtwork(item) {
+  if (!item || typeof item !== 'object') return item;
+  const next = { ...item };
+  for (const key of ['icon_url', 'thumbnail', 'agent_icon_url']) {
+    if (next[key]) next[key] = proxyArtworkUrl(next[key]);
+  }
+  return next;
+}
+
+function withProxiedArtwork(data) {
+  if (Array.isArray(data)) return data.map(rewriteArtwork);
+  if (data && typeof data === 'object') {
+    if (Array.isArray(data.agents)) data.agents = data.agents.map(rewriteArtwork);
+    if (Array.isArray(data.items)) data.items = data.items.map(rewriteArtwork);
+    if (Array.isArray(data.conversations)) data.conversations = data.conversations.map(rewriteArtwork);
+  }
+  return data;
+}
+
+function getApiKey(request) {
+    // Only accept x-api-key header. Cookie-based auth is removed for security:
+    // cookies without HttpOnly flag can be stolen by XSS (CWE-522).
+    const headerKey = request.headers.get('x-api-key');
+    return headerKey || null;
 }
 
 function cleanHeaders(request) {
@@ -37,13 +61,13 @@ export async function GET(request, { params }) {
 
     const headers = cleanHeaders(request);
     const apiKey = getApiKey(request);
-    console.log(`[agents proxy GET] ${targetUrl} | apiKey: ${apiKey ? apiKey.slice(0,8)+'...' : 'MISSING'}`);
+    // NOTE: credential logging removed for security (CWE-200)
     if (apiKey) headers.set('x-api-key', apiKey);
 
     try {
         const response = await fetch(targetUrl, { headers, method: 'GET' });
         const data = await response.json();
-        return NextResponse.json(data, { status: response.status });
+        return NextResponse.json(withProxiedArtwork(data), { status: response.status });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -57,7 +81,7 @@ export async function POST(request, { params }) {
 
     const headers = cleanHeaders(request);
     const apiKey = getApiKey(request);
-    console.log(`[agents proxy POST] ${targetUrl} | apiKey: ${apiKey ? apiKey.slice(0,8)+'...' : 'MISSING'}`);
+    // NOTE: credential logging removed for security (CWE-200)
     if (apiKey) headers.set('x-api-key', apiKey);
 
     try {

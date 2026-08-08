@@ -5,7 +5,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const sessionId = searchParams.get('sessionId')
   if (!sessionId) return NextResponse.json({ error: 'sessionId required' }, { status: 400 })
-  const res = await fetch(`${BASE}/sessions/${sessionId}/assets`, { headers: { 'x-api-key': key } })
+  const res = await fetch(`${BASE}/sessions/${sessionId}/assets`, { headers: { 'x-api-key': key }, signal: AbortSignal.timeout(30000) })
   const data = await res.json()
   return NextResponse.json(data, { status: res.status })
 }

@@ -3,13 +3,14 @@ import { NextResponse } from 'next/server';
 const MUAPI_BASE = 'https://api.muapi.ai';
 
 function getApiKey(request) {
-    // Priority 1: Direct x-api-key header
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7).trim();
+        if (token) return token;
+    }
     const headerKey = request.headers.get('x-api-key');
-    if (headerKey) return headerKey;
-
-    // Priority 2: muapi_key cookie (used by the fixed builder library)
-    const cookieKey = request.cookies.get('muapi_key')?.value;
-    return cookieKey;
+    if (headerKey && headerKey.trim()) return headerKey.trim();
+    return null;
 }
 
 function cleanHeaders(request) {
@@ -34,6 +35,10 @@ export async function GET(request, { params }) {
     const headers = cleanHeaders(request);
 
     const apiKey = getApiKey(request);
+    if (effectivePath === 'get_file_upload_url' && !apiKey) {
+        return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 });
+    }
+
     if (apiKey) headers.set('x-api-key', apiKey);
 
     try {

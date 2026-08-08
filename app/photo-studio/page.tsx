@@ -34,6 +34,17 @@ export default function PhotoStudioPage() {
     setResult(null);
   }, [brandId]);
 
+  const pollUntilDone = async (requestId: string): Promise<string> => {
+    for (let i = 0; i < 90; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      const r = await fetch(`/api/photo-studio?requestId=${encodeURIComponent(requestId)}`);
+      const d = await r.json();
+      if (d.status === 'completed') return d.image_url;
+      if (d.status === 'failed') throw new Error(d.error || 'Generation failed');
+    }
+    throw new Error('Generation timed out');
+  };
+
   const generate = async () => {
     if (!style) return;
     setLoading(true);
@@ -45,8 +56,10 @@ export default function PhotoStudioPage() {
         body: JSON.stringify({ brand_id: brandId || undefined, product_url: productUrl || undefined, category, style }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setResult(data);
+      if (!res.ok) throw new Error(data.error || 'Submission failed');
+      if (!data.requestId) throw new Error('No request id returned');
+      const imageUrl = await pollUntilDone(data.requestId);
+      setResult({ image_url: imageUrl });
     } catch (err: any) {
       alert(err.message);
     } finally {

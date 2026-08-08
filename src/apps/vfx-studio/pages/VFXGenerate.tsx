@@ -162,7 +162,7 @@ function saveUIState(state: UIState) {
   }
 }
 
-export default function VFXGenerate() {
+export default function VFXGenerate({ apiKey }: { apiKey?: string }) {
   const saved = loadUIState();
 
   const [activeCategory, setActiveCategory] = useState<CategoryId>(saved?.activeCategory || 'ai-effects');
@@ -180,7 +180,9 @@ export default function VFXGenerate() {
   const [isDragging, setIsDragging] = useState(false);
   const [showInputBar, setShowInputBar] = useState(true);
   const [showChatButton, setShowChatButton] = useState(false);
-  const [userApiKey, setUserApiKey] = useState('');
+  // Seed from the global key passed down by StandaloneShell (fall back to the
+  // studio's own ApiKeyModal entry, which calls setUserApiKey on save).
+  const [userApiKey, setUserApiKey] = useState(apiKey || '');
   const [showGenerationModal, setShowGenerationModal] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);

@@ -47,7 +47,7 @@ function buildAndSend(opts: {
     return {
       scene: s.scene,
       prompt: withCharacters(buildShotPrompt(s.scene, s.camera), chars),
-      duration: s.duration,
+      duration: s.duration ?? 0,
       frameUrl: s.frameUrl,
       characterNames: chars.map((c) => c.name),
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { generateImage } from "../muapi.js";
 
 const CDN = "https://cdn.muapi.ai/influencer";
@@ -350,6 +350,10 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
   const [history, setHistory] = useState([]);                  // all generated images
   const [selectedHistoryIdx, setSelectedHistoryIdx] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const abortRef = useRef(null);
+  // Abort any in-flight generation when this studio unmounts (e.g. the user
+  // switches tabs) so we stop polling MuAPI and burning API quota.
+  useEffect(() => () => { abortRef.current?.abort(); }, []);
 
   const isGenerating = externalIsGenerating || isGeneratingInternal;
 
@@ -390,6 +394,11 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
     setIsGeneratingInternal(true);
     setErrorMsg("");
 
+    // New controller per generation; also lets a tab-switch unmount abort a
+    // long-running poll loop early.
+    const ac = new AbortController();
+    abortRef.current = ac;
+
     const prompt = buildPrompt();
     try {
       let res;
@@ -400,14 +409,18 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
           model: INFLUENCER_MODEL,
           prompt,
           aspect_ratio: aspectRatio,
+          signal: ac.signal,
         });
       }
       if (res?.url) {
         setCurrentResult(res.url);
-        setHistory((prev) => [{ url: res.url, ts: Date.now() }, ...prev]);
+        // Bound history so a long session can't grow memory without limit.
+        setHistory((prev) => [{ url: res.url, ts: Date.now() }, ...prev].slice(0, 50));
         setSelectedHistoryIdx(0);
       }
     } catch (err) {
+      // Ignore aborts (unmount / superseded) — not a user-facing failure.
+      if (ac.signal.aborted) return;
       setErrorMsg(err?.message || "Generation failed. Please try again.");
     } finally {
       setIsGeneratingInternal(false);
@@ -555,7 +568,7 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
                 onClick={() => setAspectRatio(r)}
                 className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
                   aspectRatio === r
-                    ? "bg-violet-600 text-white shadow-md shadow-violet-600/40"
+                    ? "bg-[#22d3ee] text-black shadow-md shadow-[#22d3ee]/30"
                     : "text-gray-500 hover:text-white"
                 }`}
               >
@@ -580,8 +593,8 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
               disabled={isGenerating}
               className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[13px] font-bold transition-all shadow-lg ${
                 isGenerating
-                  ? "bg-violet-600/40 text-white/60 cursor-not-allowed"
-                  : "bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-violet-600/30 hover:shadow-violet-500/40"
+                  ? "bg-[#22d3ee]/40 text-white/60 cursor-not-allowed"
+                  : "bg-[#22d3ee] text-black shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10"
               }`}
             >
               {isGenerating ? (
@@ -607,7 +620,7 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
           >
             {isGenerating ? (
               <div className="flex flex-col items-center gap-4 text-center px-8 py-12">
-                <div className="w-12 h-12 border-[3px] border-violet-500/20 border-t-violet-500 rounded-full animate-spin" />
+                <div className="w-12 h-12 border-[3px] border-[#22d3ee]/20 border-t-[#22d3ee] rounded-full animate-spin" />
                 <p className="text-sm text-gray-400 font-medium">Generating your AI influencer…</p>
               </div>
             ) : previewUrl ? (
@@ -679,7 +692,7 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
             value={customPrompt}
             onChange={(e) => setCustomPrompt(e.target.value)}
             placeholder="Add extra details… e.g. neon cyberpunk lighting, dramatic shadows"
-            className="w-full h-9 bg-[#161616] border border-white/[0.07] rounded-xl px-3 text-[12px] text-gray-200 placeholder-gray-600 outline-none focus:border-violet-500/40 transition-colors"
+            className="w-full h-9 bg-[#161616] border border-white/[0.07] rounded-xl px-3 text-[12px] text-gray-200 placeholder-gray-600 outline-none focus:border-[#22d3ee]/40 transition-colors"
           />
         </div>
       </div>
@@ -714,7 +727,7 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
                 onKeyDown={(e) => e.key === "Enter" && setSelectedHistoryIdx(idx)}
                 className={`group relative w-full aspect-[3/4] rounded-xl overflow-hidden border transition-all cursor-pointer ${
                   selectedHistoryIdx === idx
-                    ? "border-violet-500 ring-1 ring-violet-500/40"
+                    ? "border-[#22d3ee] ring-1 ring-[#22d3ee]/40"
                     : "border-white/[0.08] hover:border-white/20"
                 }`}
               >

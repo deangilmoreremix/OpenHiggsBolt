@@ -2156,6 +2156,117 @@ export default function VideoStudio({
                   )}
                 </div>
               )}
+
+              {/* Quality btn */}
+              {showQuality && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={toggleDropdown("quality")}
+                    className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      className="opacity-60 text-secondary"
+                    >
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
+                    <span className="text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors capitalize">
+                      {selectedQuality || "basic"}
+                    </span>
+                  </button>
+                  {openDropdown === "quality" && (
+                    <div
+                      ref={dropdownRef}
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[140px]"
+                    >
+                      <div className="text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-2 px-1">
+                        Quality
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        {getQualitiesForModel(imageMode ? i2vModels : t2vModels, selectedModel).map((q) => (
+                          <div
+                            key={q}
+                            className="flex items-center justify-between p-2.5 px-3 hover:bg-[#22d3ee]/10 hover:text-white rounded-xl cursor-pointer transition-all group/opt"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedQuality(q);
+                              setOpenDropdown(null);
+                            }}
+                          >
+                            <span className="text-xs font-semibold text-white/70 group-hover/opt:text-[#22d3ee] transition-colors capitalize">
+                              {q}
+                            </span>
+                            {selectedQuality === q && <CheckSvg />}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Mode btn */}
+              {showMode && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={toggleDropdown("mode")}
+                    className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      className="opacity-60 text-secondary"
+                    >
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>
+                    <span className="text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors capitalize">
+                      {selectedMode || "normal"}
+                    </span>
+                  </button>
+                  {openDropdown === "mode" && (
+                    <div
+                      ref={dropdownRef}
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[140px]"
+                    >
+                      <div className="text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-2 px-1">
+                        Mode
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        {getModesForModel(selectedModel).map((m) => (
+                          <div
+                            key={m}
+                            className="flex items-center justify-between p-2.5 px-3 hover:bg-[#22d3ee]/10 hover:text-white rounded-xl cursor-pointer transition-all group/opt"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedMode(m);
+                              setOpenDropdown(null);
+                            }}
+                          >
+                            <span className="text-xs font-semibold text-white/70 group-hover/opt:text-[#22d3ee] transition-colors capitalize">
+                              {m}
+                            </span>
+                            {selectedMode === m && <CheckSvg />}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
             </div>
 
             {/* Generate button */}
@@ -2163,7 +2274,7 @@ export default function VideoStudio({
               type="button"
               onClick={handleGenerate}
               disabled={generating}
-              className="bg-[#22d3ee] text-black px-7 py-3 rounded-full font-bold text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-[#22d3ee] text-black px-7 py-3 rounded-full font-black text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {generating ? (
                 <>

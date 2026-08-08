@@ -21,7 +21,7 @@ export default function LandingPage({ FullStudio, AuthControls }) {
             ))}
           </nav>
           <div className="flex items-center gap-3">
-            {AuthControls}
+            <AuthControls />
           </div>
         </div>
       </header>

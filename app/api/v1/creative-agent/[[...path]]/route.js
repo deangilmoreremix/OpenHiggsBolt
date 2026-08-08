@@ -5,12 +5,12 @@ const MUAPI_BASE = 'https://api.muapi.ai';
 function getApiKey(request) {
     const authHeader = request.headers.get('Authorization');
     if (authHeader && authHeader.startsWith('Bearer ')) {
-        return authHeader.substring(7);
+        const token = authHeader.substring(7).trim();
+        if (token) return token;
     }
     const headerKey = request.headers.get('x-api-key');
-    if (headerKey) return headerKey;
-    const cookieKey = request.cookies.get('muapi_key')?.value;
-    return cookieKey;
+    if (headerKey && headerKey.trim()) return headerKey.trim();
+    return null;
 }
 
 function cleanHeaders(request) {
@@ -33,8 +33,8 @@ export async function GET(request, { params }) {
 
     const headers = cleanHeaders(request);
     const apiKey = getApiKey(request);
-    console.log(`[creative-agent proxy GET] ${targetUrl} | apiKey: ${apiKey ? apiKey.slice(0,8)+'...' : 'MISSING'}`);
-    
+    // NOTE: credential logging removed for security (CWE-200)
+
     if (apiKey) headers.set('x-api-key', apiKey);
 
     try {
@@ -57,7 +57,7 @@ export async function POST(request, { params }) {
 
     const headers = cleanHeaders(request);
     const apiKey = getApiKey(request);
-    console.log(`[creative-agent proxy POST] ${targetUrl} | apiKey: ${apiKey ? apiKey.slice(0,8)+'...' : 'MISSING'}`);
+    // NOTE: credential logging removed for security (CWE-200)
 
     if (apiKey) headers.set('x-api-key', apiKey);
 
@@ -82,7 +82,7 @@ export async function PATCH(request, { params }) {
 
     const headers = cleanHeaders(request);
     const apiKey = getApiKey(request);
-    console.log(`[creative-agent proxy PATCH] ${targetUrl} | apiKey: ${apiKey ? apiKey.slice(0,8)+'...' : 'MISSING'}`);
+    // NOTE: credential logging removed for security (CWE-200)
 
     if (apiKey) headers.set('x-api-key', apiKey);
 
@@ -107,7 +107,7 @@ export async function DELETE(request, { params }) {
 
     const headers = cleanHeaders(request);
     const apiKey = getApiKey(request);
-    console.log(`[creative-agent proxy DELETE] ${targetUrl} | apiKey: ${apiKey ? apiKey.slice(0,8)+'...' : 'MISSING'}`);
+    // NOTE: credential logging removed for security (CWE-200)
 
     if (apiKey) headers.set('x-api-key', apiKey);
 

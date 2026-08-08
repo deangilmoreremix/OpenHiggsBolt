@@ -5,8 +5,7 @@ const MUAPI_BASE = 'https://api.muapi.ai';
 function getApiKey(request: Request): string | null {
   const headerKey = request.headers.get('x-api-key');
   if (headerKey) return headerKey;
-  const cookieKey = request.headers.get('cookie')?.match(/muapi_key=([^;]+)/)?.[1];
-  return cookieKey || null;
+  return null;
 }
 
 function cleanHeaders(request: Request): Headers {

@@ -5,59 +5,71 @@
 // /public/thumbnails/...; anything unknown falls back to the same-origin
 // /api/thumbnail proxy so images always load.
 
+// A URL is already "final" (no further rewriting needed) when it is a
+// same-origin path — either a local file under /public (e.g.
+// /thumbnails/workflows/foo.jpg) or an already-proxied URL
+// (/api/thumbnail?url=...). This makes the function idempotent so it can be
+// applied safely on data that has already been rewritten (previously a second
+// pass turned local paths into broken "/api/thumbnail?url=/thumbnails/..."
+// URLs, collapsing every card to the placeholder).
+function isFinalUrl(url) {
+  return typeof url === 'string' && url.startsWith('/');
+}
+
 const thumbnailLocalMap = {
-  "https://cdn.muapi.ai/outputs/0f60850e684847d2b824bd493bb923e3.jpg": "/thumbnails/workflows/ugc-ads-workflow-seedance-2-omni.jpg",
-  "https://cdn.muapi.ai/outputs/5688a16c0af641f7bc5e0ed96d919ff9.jpg": "/thumbnails/workflows/product-redesigner-seedream-v4-kling-o1.jpg",
-  "https://cdn.muapi.ai/outputs/f0e392dafbdd482da1737d66f2025b61.jpg": "/thumbnails/workflows/product-showcase-video-seedream-v5-seedance-v1-5.jpg",
-  "https://cdn.muapi.ai/outputs/bdd3c54deee146b7aeacce13f56a62cb.jpg": "/thumbnails/workflows/character-story-video-nano-banana-2-seedance-pro.jpg",
-  "https://cdn.muapi.ai/outputs/485a649099af424d82bf7616294cdee0.jpg": "/thumbnails/workflows/monkey-video-generator-nano-banana-veo-3-1.jpg",
-  "https://cdn.muapi.ai/data/2/275585417593/9d1e5efced63471e84c721bc56f3b5e7__1_.jpg": "/thumbnails/workflows/indie-anime-maker-qwen-flux-2-pro-wan2-2.jpg",
-  "https://cdn.muapi.ai/outputs/5e681e2e669d4028852114ccebbef15e.jpg": "/thumbnails/workflows/3d-logo-animation-nano-banana-2-veo-3-1.jpg",
-  "https://cdn.muapi.ai/data/2/902295592951/abfa2ea772434fc3b08deacd44e0ae01.jpg": "/thumbnails/workflows/product-video-ad-maker-flux-2-pro-wan2-5.jpg",
-  "https://cdn.muapi.ai/data/2/218869843981/d5e1cf2da999468eb8c95c5576f770c0.jpg": "/thumbnails/workflows/virtual-try-on-seedream-flux-kling-o1.jpg",
-  "https://cdn.muapi.ai/outputs/b93f37ac486948579f5f1482e5743a80.jpg": "/thumbnails/workflows/influencer-content-package-generator-seedance-lite.jpg",
-  "https://cdn.muapi.ai/outputs/ce5dbc55e8e44579b160286711ad3ad5.jpg": "/thumbnails/workflows/multi-angle-photo-reshoot-nano-banana-2.jpg",
-  "https://d3adwkbyhxyrtq.cloudfront.net/data/186/816557014682/08b8e45280c6470f9931260909540e12.jpg": "/thumbnails/workflows/keyboard-art-image-maker-ideogram-v3.jpg",
-  "https://cdn.muapi.ai/outputs/d63344efdc9144ceaf786de5ce791283.jpg": "/thumbnails/workflows/logo-transformer-nano-banana-2.jpg",
-  "https://cdn.muapi.ai/outputs/cb9b083d6ba542a085e842148e4a7669.jpg": "/thumbnails/workflows/ai-action-figure-generator-nano-banana-2.jpg",
-  "https://cdn.muapi.ai/outputs/273ae6f150824f5889337fdd36a6b96e.jpg": "/thumbnails/workflows/interior-design-visualizer-seedream-v5-flux-2-pro.jpg",
-  "https://cdn.muapi.ai/data/2/542121723961/4c6737fb9b114db4b673bc291a751b68.jpg": "/thumbnails/workflows/ai-home-decor-designer-nano-banana.jpg",
-  "https://cdn.muapi.ai/outputs/b2128b99232140a7ab54c7092c344331.jpg": "/thumbnails/workflows/product-advertisement-wan2-6-image-edit.jpg",
-  "https://cdn.muapi.ai/data/2/943308397627/c1929cd981dd46ada5884b0b2228696d.jpg": "/thumbnails/workflows/giant-product-showcase-animation-veo-3-1-nano-banana.jpg",
+  "https://cdn.muapi.ai/outputs/generated/f66e3b6a88a24179a97e557a0ee1e4dd.png": "/thumbnails/workflows/ugc-ads-workflow-seedance-2-omni.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/cf0ccf45-f061-41fa-999a-0b7760b5bd32/9de80861-88e6-4511-b6d1-0fe383434b27.jpg": "/thumbnails/workflows/product-photoshoot-video-nano-banana-2-kling-v2-6.jpg",
   "https://cdn.muapi.ai/data/2/101502278511/5242c0f5300f403b903e868106f90868.jpg": "/thumbnails/workflows/kinetic-recall-effect-nano-banana-2-kling-o1.jpg",
-  "https://cdn.muapi.ai/outputs/2258714259874b998b8d4e315350e5d3.jpg": "/thumbnails/workflows/virtual-try-on-indian-ethnic-wear-nano-banana.jpg",
-  "https://cdn.muapi.ai/outputs/07b2ad2051184f61ba426b11fa247fc9.jpg": "/thumbnails/workflows/fashion-video-generator-qwen-image-seedance-v1-5.jpg",
   "https://cdn.muapi.ai/data/2/149826823732/a26f6bf769b349139684fe3979d152c6.jpg": "/thumbnails/workflows/viral-talking-baby-video-maker-kling-grok-imagine.jpg",
-  "https://cdn.muapi.ai/outputs/3f08e5546e0b45049873f08a71cc8ae6.jpg": "/thumbnails/workflows/product-photoshoot-video-nano-banana-2-kling-v2-6.jpg",
-  "https://cdn.muapi.ai/outputs/db8173687fa04f73a55d0513bc878bb1.jpg": "/thumbnails/workflows/selfie-with-celebrities-kling-o1-pixverse-v5.jpg",
-  "https://cdn.muapi.ai/outputs/be9929c49f4a49d8b18c390cbc56ff6a.jpg": "/thumbnails/workflows/jewelry-product-video-nano-banana-2-grok-imagine.jpg",
-  "https://cdn.muapi.ai/outputs/ce671ecafd804eda9610ffabca0ef575.jpg": "/thumbnails/workflows/double-exposure-portrait-maker-nano-banana-2.jpg",
-  "https://cdn.muapi.ai/outputs/bf6f597469d94138883cb6267fe6bf99.jpg": "/thumbnails/workflows/ai-book-cover-design-wan2-5-qwen-image.jpg",
-  "https://cdn.muapi.ai/data/2/213383401706/5ebbaebd7ba644f09925f6e13f271c93.png": "/thumbnails/workflows/ai-wig-try-on-nano-banana.png",
-  "https://cdn.muapi.ai/data/2/828782314284/5f85db78e865408d88dc20d5114e7a87.png": "/thumbnails/workflows/product-360-video-flux-2-flex-wan2-5.png",
-  "https://cdn.muapi.ai/outputs/7609e97197af46a19325bb8bbdbc4282.jpg": "/thumbnails/workflows/photography-editing-wan2-5-nano-banana-2-seedream-v5.jpg",
-  "https://cdn.muapi.ai/outputs/69ba962983fc4286bdb5d1c4879a14b5.jpg": "/thumbnails/workflows/professional-fashion-headshots-flux-2-pro.jpg",
-  "https://cdn.muapi.ai/outputs/1d586086a9454a10ad7cd1fbe615c8e6.jpg": "/thumbnails/workflows/3d-floor-plan-rendering-nano-banana-2.jpg",
-  "https://cdn.muapi.ai/outputs/0c8d2bbb00d24d3ab987992e6f8ccc94.jpg": "/thumbnails/workflows/product-mockup-creation-nano-banana-pro.jpg",
-  "https://cdn.muapi.ai/outputs/7bfa4995f8c74b1f80d03fc560b85f0e.jpg": "/thumbnails/workflows/giant-product-vfx-ad-nano-banana-2.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/5ffb26a0-4ce2-49c2-b799-9d63c7609d5a/3822baaa-32e3-4aee-ba43-3147f93abe32.png": "/thumbnails/workflows/virtual-try-on-indian-ethnic-wear-nano-banana.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/9b4b8013-3ffd-4b0f-93b2-2fad8b1a26b2/a5ee433a-8d65-4cdf-86e9-0a2152405898.jpg": "/thumbnails/workflows/3d-logo-animation-nano-banana-2-veo-3-1.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/69a7db7c-2598-44fd-b0d3-ffb1490f8710/87a62412-9eba-46d5-af4d-19b8a46e7e03.png": "/thumbnails/workflows/photography-editing-wan2-5-nano-banana-2-seedream-v5.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/e2db61a8-a413-4d1b-bc4c-0c042fba5bf1/ceb77c9f-bc22-4cd2-902d-d114318285bd.jpg": "/thumbnails/workflows/3d-floor-plan-rendering-nano-banana-2.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/09f6e93a-c5d6-465f-8e8b-a2d286e16332/efb63d81-e15c-4756-8d3b-a7caec863719.jpg": "/thumbnails/workflows/product-showcase-video-seedream-v5-seedance-v1-5.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/cfe935c4-705f-4c86-b0ea-efdbac69e293/8e2e8b45-69e6-4b3c-98a2-9eacc3ab6738.jpg": "/thumbnails/workflows/monkey-video-generator-nano-banana-veo-3-1.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/0fabec51-5639-4d2c-b388-91aff25bc8a2/14e0bc1d-dd29-4f27-881b-3746399465f5.jpg": "/thumbnails/workflows/product-mockup-creation-nano-banana-pro.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/a4cc68cb-5870-4f2d-86f5-82a53fbd10b4/ee56fcb2-5e40-4281-a9b7-40e19a86d57c.png": "/thumbnails/workflows/product-advertisement-wan2-6-image-edit.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/6b41af09-a40f-459f-8179-7ee3a90d300b/2d277bea-1190-4dd2-8252-8716522ada8e.png": "/thumbnails/workflows/professional-fashion-headshots-flux-2-pro.jpg",
+  "https://cdn.muapi.ai/data/2/902295592951/abfa2ea772434fc3b08deacd44e0ae01.jpg": "/thumbnails/workflows/product-video-ad-maker-flux-2-pro-wan2-5.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/f9d988cf-00e5-49eb-9bdf-d34c7967274d/9a73ddfb-32b6-4c48-a482-d0b1cb41e956.jpg": "/thumbnails/workflows/fashion-video-generator-qwen-image-seedance-v1-5.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/3e3ecf18-47ef-4c66-aa99-03c51c818950/ef70d6a0-f2a0-463b-9694-31ad65981a1d.jpg": "/thumbnails/workflows/interior-design-visualizer-seedream-v5-flux-2-pro.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/44f95b14-7810-4196-9734-513d6d76031c/e1ec38b0-0bfa-4b32-be58-abb88d20509b.jpg": "/thumbnails/workflows/character-story-video-nano-banana-2-seedance-pro.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/77c8c9db-2790-4e76-b058-50930eae9057/ea8561c7-27e7-45f5-9b34-4aefc92b4853.jpg": "/thumbnails/workflows/street-portrait-photography-seedream-v5-chroma.jpg",
+  "https://cdn.muapi.ai/data/2/218869843981/d5e1cf2da999468eb8c95c5576f770c0.jpg": "/thumbnails/workflows/virtual-try-on-seedream-flux-kling-o1.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/ba3bbf0b-cf88-4245-94f6-62fd49f5afde/737ef926-853d-4a50-b769-4b5f5af4c7fe.png": "/thumbnails/workflows/furniture-photography-studio-seedream-v5-nano-banana.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/a81c3c2c-4177-481c-b321-597dbf418278/9bc14ba5-e4e2-455a-8644-4a939b686856.png": "/thumbnails/workflows/room-style-transformation-qwen-image-nano-banana.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/fc3f2c5a-458d-43c9-811e-6a1c93d49061/2ac429a6-40d0-4e72-a657-b540b0287599.jpg": "/thumbnails/workflows/ai-real-estate-photographer-nano-banana-2.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/3ae4a0a1-42bf-4230-97e5-363e57ffd252/92f35aa2-aa6b-4371-8094-974fdd91cb27.png": "/thumbnails/workflows/virtual-furniture-staging-qwen-flux-2-flex.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/2e13c7f0-0273-4ad7-b3dc-966741b08ffa/a0d0afa6-8d8e-47eb-a336-bd088312f0ac.png": "/thumbnails/workflows/ai-book-cover-design-wan2-5-qwen-image.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/63d42ee7-be47-4bbc-83f0-001d195a263f/44e2daf6-2d0c-450e-8096-a9961ce41dca.jpg": "/thumbnails/workflows/logo-transformer-nano-banana-2.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/c965b74d-a703-4464-b9ea-97977f1054ab/ace211c7-9878-49c0-9d3a-9c20a2e14aa9.jpg": "/thumbnails/workflows/couple-photo-grid-creator-qwen-image.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/0fb56847-2334-44d7-ab93-d2318cf3cc28/bdefdd29-1099-4b63-9b73-f5629d21a965.jpg": "/thumbnails/workflows/giant-product-vfx-ad-nano-banana-2.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/7041dd15-cf7a-45bc-83d8-4a8cb414a816/8a1e977e-83dd-41e3-a89c-2cfe60bb1f35.jpg": "/thumbnails/workflows/jewelry-product-video-nano-banana-2-grok-imagine.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/f9a30f99-93a6-467e-a3ee-f4c97577b1b4/e61b479e-2490-44d1-bd00-f6d38896b93a.png": "/thumbnails/workflows/influencer-content-package-generator-seedance-lite.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/ab3e25bb-ff0e-4df5-9932-b2e1b7e37341/2f09b374-7eb9-4053-a15b-cd8d454ed4fa.jpg": "/thumbnails/workflows/product-redesigner-seedream-v4-kling-o1.jpg",
+  "https://cdn.muapi.ai/workflow-thumbnails/0849ffba-248d-4608-b480-d0a7958d825f/dc9feb33-d456-4c19-ab07-ff489c9d8877.jpg": "/thumbnails/workflows/ai-action-figure-generator-nano-banana-2.jpg",
+  "https://cdn.muapi.ai/outputs/generated/9c5d7533c1f94c2882f08e1a27eac66d.jpg": "/thumbnails/workflows/multi-angle-photo-reshoot-nano-banana-2.jpg",
+  "https://cdn.muapi.ai/data/2/275585417593/9d1e5efced63471e84c721bc56f3b5e7__1_.jpg": "/thumbnails/workflows/indie-anime-maker-qwen-flux-2-pro-wan2-2.jpg",
   "https://cdn.muapi.ai/data/2/167746841446/a05a774f9c4b44edbde3c267fc98a8ba.jpg": "/thumbnails/workflows/cartoon-dance-animation-nano-banana-2-kling-motion-control.jpg",
-  "https://cdn.muapi.ai/outputs/a005a929f6154f5b9c42784fad3fe438.jpg": "/thumbnails/workflows/street-portrait-photography-seedream-v5-chroma.jpg",
+  "https://cdn.muapi.ai/data/2/194206118460/d4b1c9035f624d588a25c0a6a10fa8d4.jpg": "/thumbnails/workflows/ai-interior-makeover-nano-banana.jpg",
+  "https://cdn.muapi.ai/data/2/542121723961/4c6737fb9b114db4b673bc291a751b68.jpg": "/thumbnails/workflows/ai-home-decor-designer-nano-banana.jpg",
+  "https://cdn.muapi.ai/data/2/213383401706/5ebbaebd7ba644f09925f6e13f271c93.png": "/thumbnails/workflows/ai-wig-try-on-nano-banana.png",
+  "https://cdn.muapi.ai/data/2/940819646438/ffa61562e9544b6c83cc3607e1429483.jpg": "/thumbnails/workflows/ai-interior-designer-midjourney-v7-kling-o1.jpg",
+  "https://cdn.muapi.ai/data/2/943308397627/c1929cd981dd46ada5884b0b2228696d.jpg": "/thumbnails/workflows/giant-product-showcase-animation-veo-3-1-nano-banana.jpg",
+  "https://cdn.muapi.ai/data/2/828782314284/5f85db78e865408d88dc20d5114e7a87.png": "/thumbnails/workflows/product-360-video-flux-2-flex-wan2-5.png",
+  "https://cdn.muapi.ai/outputs/ce671ecafd804eda9610ffabca0ef575.jpg": "/thumbnails/workflows/double-exposure-portrait-maker-nano-banana-2.jpg",
+  "https://cdn.muapi.ai/outputs/db8173687fa04f73a55d0513bc878bb1.jpg": "/thumbnails/workflows/selfie-with-celebrities-kling-o1-pixverse-v5.jpg",
+  "https://d3adwkbyhxyrtq.cloudfront.net/data/186/816557014682/08b8e45280c6470f9931260909540e12.jpg": "/thumbnails/workflows/keyboard-art-image-maker-ideogram-v3.jpg",
   "https://cdn.muapi.ai/outputs/3000550ad162428d8b98afeb7065c20c.jpg": "/thumbnails/workflows/soccer-collectable-card-maker-nano-banana.jpg",
   "https://cdn.muapi.ai/outputs/3939f69e112f47fda84f3da6845c7482.jpg": "/thumbnails/workflows/ai-sculpture-maker-nano-banana-2.jpg",
-  "https://cdn.muapi.ai/outputs/ee6f09765c9549518f86025f054c3cab.jpg": "/thumbnails/workflows/room-style-transformation-qwen-image-nano-banana.jpg",
-  "https://cdn.muapi.ai/outputs/994ec40ad743494197b5ca6c3f39e13d.jpg": "/thumbnails/workflows/furniture-photography-studio-seedream-v5-nano-banana.jpg",
   "https://cdn.muapi.ai/outputs/ebc035845ad94da9818b8a9454f484bf.jpg": "/thumbnails/workflows/furniture-campaign-generator-seedream-v5-qwen-nano.jpg",
-  "https://cdn.muapi.ai/data/2/940819646438/ffa61562e9544b6c83cc3607e1429483.jpg": "/thumbnails/workflows/ai-interior-designer-midjourney-v7-kling-o1.jpg",
-  "https://cdn.muapi.ai/data/2/194206118460/d4b1c9035f624d588a25c0a6a10fa8d4.jpg": "/thumbnails/workflows/ai-interior-makeover-nano-banana.jpg",
-  "https://cdn.muapi.ai/outputs/555ad54e26674e95b3b5c97f4eebc0d5.jpg": "/thumbnails/workflows/ai-real-estate-photographer-nano-banana-2.jpg",
-  "https://cdn.muapi.ai/outputs/205a85ded05941c99e836286ff0d3a39.jpg": "/thumbnails/workflows/virtual-furniture-staging-qwen-flux-2-flex.jpg",
   "https://cdn.muapi.ai/outputs/8be1261a6cbb4c47be9e26873059c9b7.jpg": "/thumbnails/workflows/paper-cutting-art-seedream-v5.jpg",
   "https://cdn.muapi.ai/outputs/87ecbea083264af288a0d832064e312a.jpg": "/thumbnails/workflows/phoenix-multi-model-image-to-video-wan2-seedream.jpg",
-  "https://cdn.muapi.ai/outputs/5e02b92738cb4f2bb7ca419ee2df7673.jpg": "/thumbnails/workflows/couple-photo-grid-creator-qwen-image.jpg",
 };
 
 export function rewriteThumbnail(url) {
   if (!url || typeof url !== 'string') return url;
+  if (isFinalUrl(url)) return url;
   if (thumbnailLocalMap[url]) return thumbnailLocalMap[url];
   return `/api/thumbnail?url=${encodeURIComponent(url)}`;
 }
@@ -65,9 +77,14 @@ export function rewriteThumbnail(url) {
 export function rewriteThumbnails(list) {
   if (!Array.isArray(list)) return list;
   return list.map((item) => {
-    if (item && item.thumbnail) {
-      return { ...item, thumbnail: rewriteThumbnail(item.thumbnail) };
+    if (!item || typeof item !== 'object') return item;
+    let next = item;
+    if (item.thumbnail) {
+      next = { ...next, thumbnail: rewriteThumbnail(item.thumbnail) };
     }
-    return item;
+    if (item.icon_url) {
+      next = { ...next, icon_url: rewriteThumbnail(item.icon_url) };
+    }
+    return next;
   });
 }

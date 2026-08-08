@@ -1,14 +1,31 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { ImageStudio, VideoStudio, ClippingStudio, VibeMotionStudio, LipSyncStudio, CinemaStudio, AudioStudio, MarketingStudio, RecastStudio, WorkflowStudio, AgentStudio, AppsStudio, AiInfluencerStudio, getUserBalance } from 'studio';
 import axios from 'axios';
 import { MemoryRouter } from 'react-router-dom';
+import { useClerk } from '@clerk/nextjs';
+
+// Lazily load the heavy `studio` package so its many studio modules are not
+// part of the initial bundle for /, /studio and /workflow. Each export is only
+// fetched when its tab becomes active.
+const loadStudio = (name) => dynamic(() => import('studio').then((m) => m[name]), { ssr: false });
+
+const ImageStudio = loadStudio('ImageStudio');
+const VideoStudio = loadStudio('VideoStudio');
+const ClippingStudio = loadStudio('ClippingStudio');
+const VibeMotionStudio = loadStudio('VibeMotionStudio');
+const LipSyncStudio = loadStudio('LipSyncStudio');
+const CinemaStudio = loadStudio('CinemaStudio');
+const AudioStudio = loadStudio('AudioStudio');
+const MarketingStudio = loadStudio('MarketingStudio');
+const RecastStudio = loadStudio('RecastStudio');
+const WorkflowStudio = loadStudio('WorkflowStudio');
+const AgentStudio = loadStudio('AgentStudio');
+const AiInfluencerStudio = loadStudio('AiInfluencerStudio');
 
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
-const Videco = dynamic(() => import('../src/apps/videco/Videco'), { ssr: false });
 const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ssr: false });
 const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
 const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
@@ -27,7 +44,6 @@ const TABS = [
   { id: 'workflows', label: 'Workflows' },
   { id: 'agents', label: 'Agents' },
   { id: 'design-agent', label: 'Design Agent AI' },
-  { id: 'videco', label: 'Videco' },
   { id: 'vfx-studio', label: 'VFX' },
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
   { id: 'apps', label: 'Explore Apps' },
@@ -41,15 +57,40 @@ const SLUG_TO_TAB = {
   'vibe-motion': 'vibe-motion', lipsync: 'lipsync', cinema: 'cinema',
   storyboard: 'storyboard', marketing: 'marketing', recast: 'recast',
   workflows: 'workflows', agents: 'agents', 'design-agent': 'design-agent',
-  videco: 'videco', 'vfx-studio': 'vfx-studio', 'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio',
+  'vfx-studio': 'vfx-studio',
+  'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio',
   apps: 'apps',
+  'ai-influencer': 'ai-influencer',
+  'social-publishing': 'social-publishing',
 };
 
 const STORAGE_KEY = 'muapi_key';
 
+// Build the muapi_key cookie string. `Secure` is added only over HTTPS so the
+// key still persists on http:// localhost dev servers (Secure cookies are dropped
+// on plain HTTP, which would otherwise break local key saving).
+function muapiCookie(value) {
+  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+  if (value) {
+    return `muapi_key=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax${secure}`;
+  }
+  return `muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
+}
+
+// MuAPI keys are opaque tokens. We only reject values containing whitespace or
+// control characters (almost always a copy/paste artifact) which would otherwise
+// be sent verbatim and fail auth. We deliberately do NOT strip or transform the
+// key beyond trimming, so a valid key with unusual-but-legal characters is
+// never corrupted.
+const API_KEY_SAFE = /^[^\s\x00-\x1F]+$/;
+function isValidApiKey(key) {
+  return typeof key === 'string' && key.length > 0 && API_KEY_SAFE.test(key);
+}
+
 export default function StandaloneShell({ embedded = false, initialTab = null } = {}) {
   const params = useParams();
   const router = useRouter();
+  const { signOut } = useClerk();
   const slug = params?.slug || []; 
   const idFromParams = params?.id;
   const tabFromParams = params?.tab;
@@ -141,20 +182,27 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
     }
   }, [activeTab, urlWorkflowId, idFromParams]);
 
-  // Global builder CSS cleanup when switching away from Workflows or Design Agent tabs
+  // Global builder CSS cleanup when switching away from Workflows or Design Agent tabs.
+  // We only clear the session flags here. A full page reload was previously used
+  // to drop builder-injected global CSS, but it destroyed all other studios'
+  // in-memory state (generated assets, prompts, selections) — a data-loss
+  // footgun. Builders should expose an explicit teardown hook to remove their own
+  // DOM/CSS; until that exists we intentionally avoid the reload.
   useEffect(() => {
     const fromBuilder = sessionStorage.getItem("fromWorkflowBuilder");
     const fromDesignAgent = sessionStorage.getItem("fromDesignAgent");
-    
+
     if ((fromBuilder && activeTab !== 'workflows') || (fromDesignAgent && activeTab !== 'design-agent')) {
       sessionStorage.removeItem("fromWorkflowBuilder");
       sessionStorage.removeItem("fromDesignAgent");
-      window.location.reload();
+      // TODO(remediation): call the builder's teardown hook here instead of
+      // silently leaving its global CSS behind.
     }
   }, [activeTab]);
 
   const fetchBalance = useCallback(async (key) => {
     try {
+      const { getUserBalance } = await import('studio');
       const data = await getUserBalance(key);
       setBalance(data.balance);
     } catch (err) {
@@ -169,18 +217,53 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
     setHasMounted(true);
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      const cleanKey = stored.replace(/[^\u0000-\u00FF]/g, '').trim();
+      const cleanKey = stored.trim();
       setApiKey(cleanKey);
       fetchBalance(cleanKey);
       // Sync cookie immediately on mount to establish identity for background requests.
       // Encode so special characters in the key don't corrupt the cookie string.
-      document.cookie = `muapi_key=${encodeURIComponent(cleanKey)}; path=/; max-age=31536000; SameSite=Lax`;
+      document.cookie = muapiCookie(cleanKey);
+      return;
     }
-  }, [fetchBalance]);
+
+    // No key in this browser — try to restore it from the signed-in user's
+    // account so the key follows them across browsers, devices and sign-ins.
+    let cancelled = false;
+    (async () => {
+      let restored = '';
+      try {
+        const res = await fetch('/api/auth/muapi-key', { credentials: 'same-origin' });
+        if (res.ok) {
+          const data = await res.json();
+          restored = data?.key
+            ? String(data.key).trim()
+            : '';
+        }
+      } catch {
+        // Offline or not signed in — the user can still enter a key manually.
+      }
+      if (cancelled) return;
+      if (restored) {
+        localStorage.setItem(STORAGE_KEY, restored);
+        setApiKey(restored);
+        fetchBalance(restored);
+        document.cookie = muapiCookie(restored);
+      } else if (!embedded) {
+        // First run: no key on this device and none saved to the user's
+        // account yet — prompt them to add their own MuAPI key.
+        setShowSettings(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [fetchBalance, embedded]);
 
   const handleKeySave = useCallback((key) => {
     const trimmed = key.trim();
     if (!trimmed) return;
+    if (!isValidApiKey(trimmed)) {
+      setAuthError('API key looks invalid (contains spaces or control characters). Re-copy it from your MuAPI dashboard.');
+      return;
+    }
     localStorage.setItem(STORAGE_KEY, trimmed);
     setApiKey(trimmed);
     setSettingsKeyInput('');
@@ -189,7 +272,15 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
     // Persist the key as a cookie before any background requests so server-side
     // proxy routes can resolve it even when the x-api-key header is not present.
     // Encode so special characters in the key don't corrupt the cookie string.
-    document.cookie = `muapi_key=${encodeURIComponent(trimmed)}; path=/; max-age=31536000; SameSite=Lax`;
+    document.cookie = muapiCookie(trimmed);
+    // Persist the key against the signed-in user's account so it is restored
+    // automatically on future sign-ins and on other browsers/devices.
+    fetch('/api/auth/muapi-key', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ key: trimmed }),
+    }).catch(() => {});
     fetchBalance(trimmed);
   }, [fetchBalance]);
 
@@ -199,7 +290,9 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
     setBalance(null);
     setSettingsKeyInput('');
     setAuthError(null);
-    document.cookie = "muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    document.cookie = muapiCookie(null);
+    // Also forget the key stored against the user's account.
+    fetch('/api/auth/muapi-key', { method: 'DELETE', credentials: 'same-origin' }).catch(() => {});
   }, []);
 
   // Inject API key into all outgoing Axios requests (prop-based approach)
@@ -216,7 +309,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
       const isInternalProxy = config.url.includes('/api/app') || config.url.includes('/api/workflow') || config.url.includes('/api/agents') || config.url.includes('/api/api') || config.url.includes('/api/v1');
 
       if (isRelative || isInternalProxy) {
-        config.headers['x-api-key'] = apiKey.replace(/[^\u0000-\u00FF]/g, '').trim();
+        config.headers['x-api-key'] = apiKey.trim();
       }
       
       return config;
@@ -258,6 +351,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
   }, []);
 
   // Drag and Drop Handlers
+  const dragDepth = useRef(0);
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -266,22 +360,23 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
   const handleDragEnter = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-      setIsDragging(true);
-    }
+    dragDepth.current += 1;
+    setIsDragging(true);
   }, []);
 
   const handleDragLeave = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
-    // Only set to false if we're leaving the container itself, not moving between children
-    if (e.currentTarget.contains(e.relatedTarget)) return;
-    setIsDragging(false);
+    // Track nested enter/leave events with a depth counter so moving between
+    // child elements doesn't flicker the overlay off prematurely.
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setIsDragging(false);
   }, []);
 
   const handleDrop = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
+    dragDepth.current = 0;
     setIsDragging(false);
 
     const files = Array.from(e.dataTransfer.files);
@@ -388,6 +483,17 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
               </svg>
               <span>Settings</span>
             </button>
+
+            <button
+              onClick={() => signOut({ redirectUrl: '/' })}
+              title="Sign out of your account"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-white/10 bg-white/5 text-[13px] font-bold text-white/80 hover:text-white hover:bg-white/10 hover:border-white/20 transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+              </svg>
+              <span>Sign out</span>
+            </button>
           </div>
         </header>
       )}
@@ -406,7 +512,6 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
          {activeTab === 'workflows' && <WorkflowStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
         {activeTab === 'agents' && <AgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
         {activeTab === 'design-agent' && <DesignAgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
-        {activeTab === 'videco' && <MemoryRouter initialEntries={['/dashboard']}><Videco apiKey={apiKey} /></MemoryRouter>}
         {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} /></MemoryRouter>}
         {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} /></MemoryRouter>}
         {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
@@ -415,7 +520,6 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
             <p style={{ color: semantic.textSecondary }}>Loading Brand Studio…</p>
           </div>
         )}
-        {activeTab === 'apps' && <AppsStudio apiKey={apiKey} />}
         {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} />}
         {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
       </div>
@@ -424,9 +528,13 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
       {showSettings && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in-up">
           <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-8 w-full max-w-sm shadow-2xl">
-            <h2 className="text-white font-bold text-lg mb-2">Settings</h2>
+            <h2 className="text-white font-bold text-lg mb-2">
+              {apiKey ? 'Settings' : 'Add your API key'}
+            </h2>
             <p className="text-white/40 text-[13px] mb-4">
-              Manage your AI studio preferences and authentication.
+              {apiKey
+                ? 'Manage your AI studio preferences and authentication.'
+                : 'Welcome! Add your own MuAPI key to start generating.'}
             </p>
             
             {authError && (
@@ -457,6 +565,19 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
                   placeholder="Enter your MuAPI key..."
                   className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[13px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
                 />
+                <p className="mt-2 text-[11px] leading-relaxed text-white/40">
+                  {apiKey
+                    ? 'Your key is stored securely to your account and restored automatically when you sign in.'
+                    : 'Add your own MuAPI key to start generating. It is stored securely to your account, so you only need to enter it once.'}{' '}
+                  <a
+                    href="https://muapi.ai/access-keys"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#22d3ee] font-semibold hover:underline"
+                  >
+                    Get your key at muapi.ai
+                  </a>
+                </p>
               </div>
             </div>
 

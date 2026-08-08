@@ -5,7 +5,7 @@
 
 export type ImageQuality   = 'low' | 'medium' | 'high' | 'auto'
 export type ImageFormat    = 'png' | 'jpeg' | 'webp'
-export type ImageModel     = 'gpt-image-2' | 'gpt-image-1' | 'dall-e-3' | 'dall-e-2'
+export type ImageModel     = 'gpt-image-2' | 'gpt-image-1' | 'dall-e-3' | 'dall-e-2' | 'flux-dev' | 'flux-schnell' | 'seedream-5.0' | 'midjourney-v7'
 export type GenerationMode = 'generate' | 'edit' | 'refine'
 
 // ── Canvas size presets ───────────────────────────────────────────────────────
@@ -77,6 +77,10 @@ export interface GenerationRequest {
   mask?: File | Blob               // for inpainting
   mode: GenerationMode
   previousResponseId?: string      // for multi-turn refinement
+  /** User's MuAPI key (passed from the shell) used to authorize the request. */
+  apiKey?: string
+  /** URL of a previously generated image, used for refine (image-to-image). */
+  previousImageUrl?: string
   isPublic?: boolean
   sessionId?: string
 }

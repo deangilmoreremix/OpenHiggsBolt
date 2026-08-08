@@ -5,8 +5,21 @@ import { getModelById, getVideoModelById, getI2IModelById, getI2VModelById, getV
 // bundles cleanly in the browser (Turbopack/Webpack/Vite) with no fs/JSON-assert.
 import thumbnailLocalMap from './thumbnail-map.js';
 
+// A URL is already "final" (no further rewriting needed) when it is a
+// same-origin path — either a local file under /public (e.g.
+// /thumbnails/workflows/foo.jpg) or an already-proxied URL
+// (/api/thumbnail?url=...). This makes the function idempotent so it can be
+// applied safely on data that the /api/workflow and /api/agents proxies have
+// ALREADY rewritten (previously a second pass turned local paths into broken
+// "/api/thumbnail?url=/thumbnails/..." URLs, collapsing every card to the
+// placeholder).
+function isFinalUrl(url) {
+  return typeof url === 'string' && url.startsWith('/');
+}
+
 export function rewriteThumbnail(url) {
   if (!url || typeof url !== 'string') return url;
+  if (isFinalUrl(url)) return url;
   if (thumbnailLocalMap[url]) return thumbnailLocalMap[url];
   // Same-origin proxy: server fetches the upstream image (with Referer) and
   // streams it back so it always loads regardless of CDN hotlink protection.
@@ -16,10 +29,16 @@ export function rewriteThumbnail(url) {
 export function rewriteThumbnails(list) {
   if (!Array.isArray(list)) return list;
   return list.map((item) => {
-    if (item && item.thumbnail) {
-      return { ...item, thumbnail: rewriteThumbnail(item.thumbnail) };
+    if (!item || typeof item !== 'object') return item;
+    let next = item;
+    if (item.thumbnail) {
+      next = { ...next, thumbnail: rewriteThumbnail(item.thumbnail) };
     }
-    return item;
+    // Agents expose their artwork as `icon_url` rather than `thumbnail`.
+    if (item.icon_url) {
+      next = { ...next, icon_url: rewriteThumbnail(item.icon_url) };
+    }
+    return next;
   });
 }
 
@@ -54,21 +73,36 @@ const BASE_URL = (typeof window !== 'undefined' && window.location?.protocol?.st
     : 'https://api.muapi.ai';
 const PROXY_WF_BASE = '/api/workflow';
 
+// Combine a caller-supplied AbortSignal (e.g. from a component's unmount
+// cleanup) with a hard client-side timeout so a hung upstream connection
+// cannot block forever. Degrades gracefully where AbortSignal.timeout /
+// AbortSignal.any are unavailable (older runtimes / jsdom).
+function toSignal(signal, timeoutMs = 120000) {
+  const hasTimeout = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function';
+  const timeout = hasTimeout ? AbortSignal.timeout(timeoutMs) : null;
+  if (signal && timeout && typeof AbortSignal.any === 'function') {
+    return AbortSignal.any([signal, timeout]);
+  }
+  return signal || timeout;
+}
+
 function notifyAuthRequired(status, detail) {
     if (typeof window === 'undefined') return;
     if (status !== 401 && status !== 403) return;
     window.dispatchEvent(new CustomEvent('muapi:auth-required', { detail: { status, message: detail } }));
 }
 
-async function pollForResult(requestId, key, maxAttempts = 900, interval = 2000) {
+async function pollForResult(requestId, key, maxAttempts = 900, interval = 2000, signal = null) {
     const pollUrl = `${BASE_URL}/api/v1/predictions/${requestId}/result`;
+    const effSignal = toSignal(signal);
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         await new Promise(resolve => setTimeout(resolve, interval));
         try {
             const headers = { 'Content-Type': 'application/json' };
             if (key) headers['x-api-key'] = key;
             const response = await fetch(pollUrl, {
-                headers
+                headers,
+                signal: effSignal,
             });
             if (!response.ok) {
                 const errText = await response.text();
@@ -88,14 +122,16 @@ async function pollForResult(requestId, key, maxAttempts = 900, interval = 2000)
     throw new Error('Generation timed out after polling.');
 }
 
-async function submitAndPoll(endpoint, payload, key, onRequestId, maxAttempts = 60) {
+async function submitAndPoll(endpoint, payload, key, onRequestId, maxAttempts = 60, signal = null) {
     const url = `${BASE_URL}/api/v1/${endpoint}`;
     const headers = { 'Content-Type': 'application/json' };
     if (key) headers['x-api-key'] = key;
+    const effSignal = toSignal(signal);
     const response = await fetch(url, {
         method: 'POST',
         headers,
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: effSignal,
     });
     if (!response.ok) {
         const errText = await response.text();
@@ -119,16 +155,17 @@ export async function generateImage(apiKey, params) {
     if (params.aspect_ratio) payload.aspect_ratio = params.aspect_ratio;
     if (params.resolution) payload.resolution = params.resolution;
     if (params.quality) payload.quality = params.quality;
-    if (params.image_url) { 
-        payload.image_url = params.image_url; 
-        payload.strength = params.strength || 0.6; 
+    if (params.image_url) {
+        payload.image_url = params.image_url;
+        payload.strength = params.strength || 0.6;
     } else if (params.images_list) {
         payload.images_list = params.images_list;
-    } else {
-        payload.image_url = null;
     }
+    // NOTE: when neither is provided we intentionally send NO image reference
+    // at all (previously an explicit `image_url: null`, which some endpoints
+    // reject). The model defaults to a text-to-image generation.
     if (params.seed && params.seed !== -1) payload.seed = params.seed;
-    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 60);
+    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 60, params.signal);
 }
 
 export async function generateI2I(apiKey, params) {
@@ -151,7 +188,7 @@ export async function generateI2I(apiKey, params) {
     if (modelInfo?.inputs?.name) {
         payload.name = params.name || modelInfo.inputs.name.default;
     }
-    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 60);
+    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 60, params.signal);
 }
 
 export async function generateVideo(apiKey, params) {
@@ -165,7 +202,7 @@ export async function generateVideo(apiKey, params) {
     if (params.quality) payload.quality = params.quality;
     if (params.mode) payload.mode = params.mode;
     if (params.image_url) payload.image_url = params.image_url;
-    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900);
+    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal);
 }
 
 export async function generateI2V(apiKey, params) {
@@ -200,7 +237,7 @@ export async function generateI2V(apiKey, params) {
     if (modelInfo?.inputs?.name) {
         payload.name = params.name || modelInfo.inputs.name.default;
     }
-    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900);
+    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal);
 }
 
 export async function generateMarketingStudioAd(apiKey, params) {
@@ -212,7 +249,7 @@ export async function generateMarketingStudioAd(apiKey, params) {
         images_list: params.images_list || [],
         video_files: params.video_files || []
     };
-    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900);
+    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal);
 }
 
 export async function processV2V(apiKey, params) {
@@ -226,7 +263,7 @@ export async function processV2V(apiKey, params) {
     if (modelInfo?.hasPrompt && params.prompt) {
         payload.prompt = params.prompt;
     }
-    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900);
+    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal);
 }
 
 export async function processRecast(apiKey, params) {
@@ -243,7 +280,7 @@ export async function processRecast(apiKey, params) {
     if (params.aspect_ratio) {
         payload.aspect_ratio = params.aspect_ratio;
     }
-    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900);
+    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal);
 }
 
 export async function processLipSync(apiKey, params) {
@@ -256,7 +293,7 @@ export async function processLipSync(apiKey, params) {
     if (modelInfo?.hasPrompt) payload.prompt = params.prompt || '';
     if (params.resolution) payload.resolution = params.resolution;
     if (params.seed !== undefined && params.seed !== -1) payload.seed = params.seed;
-    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900);
+    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal);
 }
 
 export async function generateAudio(apiKey, params) {
@@ -270,7 +307,7 @@ export async function generateAudio(apiKey, params) {
             payload[key] = params[key];
         }
     }
-    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900);
+    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal);
 }
 
 const ALLOWED_UPLOAD_MIME_TYPES = new Set([
@@ -857,7 +894,7 @@ export async function runClipping(apiKey, params) {
         aspect_ratio: params.aspect_ratio || "9:16",
         return_coordinates_only: !!params.return_coordinates_only
     };
-    return submitAndPoll("ai-clipping", payload, apiKey, params.onRequestId, 900);
+    return submitAndPoll("ai-clipping", payload, apiKey, params.onRequestId, 900, params.signal);
 }
 
 export async function runMotionGraphics(apiKey, params) {
@@ -866,7 +903,7 @@ export async function runMotionGraphics(apiKey, params) {
         aspect_ratio: params.aspect_ratio || "16:9",
         duration_seconds: params.duration_seconds || 6,
     };
-    return submitAndPoll("motion-graphics", payload, apiKey, params.onRequestId, 900);
+    return submitAndPoll("motion-graphics", payload, apiKey, params.onRequestId, 900, params.signal);
 }
 
 export async function runMotionGraphicsEdit(apiKey, params) {
@@ -876,5 +913,5 @@ export async function runMotionGraphicsEdit(apiKey, params) {
         aspect_ratio: params.aspect_ratio || "16:9",
         duration_seconds: params.duration_seconds || 6,
     };
-    return submitAndPoll("motion-graphics-edit", payload, apiKey, params.onRequestId, 900);
+    return submitAndPoll("motion-graphics-edit", payload, apiKey, params.onRequestId, 900, params.signal);
 }

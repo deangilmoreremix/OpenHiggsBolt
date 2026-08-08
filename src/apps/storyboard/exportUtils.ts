@@ -38,10 +38,12 @@ function esc(s: string): string {
  * print dialog (Save as PDF). Dependency-free PDF export.
  */
 export function exportPdf(project: StoryboardProject) {
-  const charById = new Map(project.characters.map((c) => [c.id, c]))
-  const totalSeconds = project.shots.reduce((sum, s) => sum + (Number(s.duration) || 0), 0)
+  const characters = project.characters ?? []
+  const shots = project.shots ?? []
+  const charById = new Map(characters.map((c) => [c.id, c]))
+  const totalSeconds = shots.reduce((sum, s) => sum + (Number(s.duration) || 0), 0)
 
-  const cards = project.shots
+  const cards = shots
     .map((s, i) => {
       const chars = (s.characterIds || [])
         .map((id) => charById.get(id))
@@ -53,9 +55,9 @@ export function exportPdf(project: StoryboardProject) {
         : `<div class="frame placeholder">No frame generated</div>`
       return `
         <div class="card">
-          <div class="frame-wrap ${project.aspectRatio === '16:9' ? 'ar-16-9' : 'ar-9-16'}">${img}</div>
+          <div class="frame-wrap ${(project.aspectRatio ?? '16:9') === '16:9' ? 'ar-16-9' : 'ar-9-16'}">${img}</div>
           <div class="meta">
-            <div class="num">Shot ${i + 1} · ${esc(String(s.duration))}s${cam ? ` · ${esc(cam)}` : ''}</div>
+            <div class="num">Shot ${i + 1} · ${esc(String(s.duration ?? 0))}s${cam ? ` · ${esc(cam)}` : ''}</div>
             ${chars.length ? `<div class="chars">${esc(chars.map((c) => c.name).join(', '))}</div>` : ''}
             <div class="scene">${esc(s.scene)}</div>
             ${fullPrompt !== s.scene ? `<div class="prompt">${esc(fullPrompt)}</div>` : ''}
@@ -64,8 +66,8 @@ export function exportPdf(project: StoryboardProject) {
     })
     .join('')
 
-  const charsBlock = project.characters.length
-    ? `<div class="section"><h2>Characters</h2>${project.characters
+  const charsBlock = characters.length
+    ? `<div class="section"><h2>Characters</h2>${characters
         .map(
           (c) =>
             `<div class="char">${
@@ -103,7 +105,7 @@ export function exportPdf(project: StoryboardProject) {
 </style></head>
 <body>
   <h1>${esc(project.projectName || 'Untitled Storyboard')}</h1>
-  <div class="sub">${project.shots.length} shot(s) · ${totalSeconds.toFixed(1)}s total · ${esc(project.aspectRatio)} · episode target ${esc(String(project.episodeDuration))}s</div>
+  <div class="sub">${shots.length} shot(s) · ${totalSeconds.toFixed(1)}s total · ${esc(project.aspectRatio ?? '16:9')} · episode target ${esc(String(project.episodeDuration ?? 60))}s</div>
   ${charsBlock}
   <h2>Shots</h2>
   <div class="grid">${cards || '<p>No shots yet.</p>'}</div>

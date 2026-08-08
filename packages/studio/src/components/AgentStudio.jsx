@@ -9,6 +9,16 @@ import {
 } from "../muapi.js";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
+// The API client (muapi.js) already rewrites upstream artwork URLs (thumbnail /
+// icon_url) into either a same-origin local path or an /api/thumbnail proxy URL.
+// If the value is already a same-origin path, use it directly instead of
+// re-wrapping it (which would produce a broken "/api/thumbnail?url=/api/thumbnail?...").
+function toProxiedIcon(rawUrl) {
+  if (!rawUrl) return null;
+  if (rawUrl.startsWith("/")) return rawUrl;
+  return `/api/thumbnail?url=${encodeURIComponent(rawUrl)}`;
+}
+
 function timeAgo(dateStr) {
   if (!dateStr) return "";
   const utcStr =
@@ -27,7 +37,7 @@ function AgentCard({ agent, onClick, onEdit }) {
   // Route the upstream icon through the same-origin proxy (and fall back to the
   // raw URL if the proxy fails) so CDN hotlink protection can't block the image.
   const hasIcon = !!agent.icon_url;
-  const proxiedIcon = hasIcon ? `/api/thumbnail?url=${encodeURIComponent(agent.icon_url)}` : null;
+  const proxiedIcon = toProxiedIcon(agent.icon_url);
   const showIcon = hasIcon && proxiedIcon && !imgError;
   return (
     <div className="group relative aspect-[4/5] rounded-xl cursor-pointer">
@@ -95,7 +105,7 @@ function ConversationCard({ conv, onClick }) {
   const displayTitle = conv.title || "New Chat";
   const agentSlug = conv.agent_slug || conv.agent_id;
   const hasIcon = !!conv.agent_icon_url;
-  const proxiedIcon = hasIcon ? `/api/thumbnail?url=${encodeURIComponent(conv.agent_icon_url)}` : null;
+  const proxiedIcon = toProxiedIcon(conv.agent_icon_url);
   const showIcon = hasIcon && proxiedIcon && !imgError;
   return (
     <div

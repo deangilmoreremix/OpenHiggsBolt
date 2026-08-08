@@ -10,7 +10,7 @@ export default function ProjectBar() {
       <FolderOpen size={15} style={{ color: 'var(--color-primary)' }} />
       <span className="text-xs font-medium mr-1" style={{ color: semantic.textLabel }}>PROJECT</span>
       <select
-        value={projectId}
+        value={projectId ?? ''}
         onChange={(e) => switchProject(e.target.value)}
         className="rounded-lg p-1.5 text-sm outline-none max-w-xs"
         style={{ ...panels.card, color: 'white' }}
@@ -29,7 +29,7 @@ export default function ProjectBar() {
       >
         <Plus size={13} /> New
       </button>
-      {projects.length > 1 && (
+      {projects.length > 1 && projectId && (
         <button
           onClick={() => {
             if (confirm('Delete this project? This cannot be undone.')) deleteProject(projectId)

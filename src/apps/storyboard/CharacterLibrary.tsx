@@ -4,7 +4,7 @@ import { useStoryboard, type StoryboardCharacter } from './StoryboardContext'
 import { panels, buttons, semantic } from '@/shared/styles/designTokens'
 
 export default function CharacterLibrary() {
-  const { characters, addCharacter, updateCharacter, removeCharacter } = useStoryboard()
+  const { characters, addCharacterObject, updateCharacter, removeCharacter } = useStoryboard()
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -14,7 +14,7 @@ export default function CharacterLibrary() {
 
   const handleAdd = () => {
     if (!name.trim()) return
-    addCharacter({
+    addCharacterObject({
       name: name.trim(),
       description: description.trim() || undefined,
       referenceImageUrl: referenceImageUrl.trim() || undefined,
@@ -25,7 +25,7 @@ export default function CharacterLibrary() {
   }
 
   const startEdit = (c: StoryboardCharacter) => {
-    setEditingId(c.id)
+    setEditingId(c.id || null)
     setDraft({ name: c.name, description: c.description, referenceImageUrl: c.referenceImageUrl })
   }
 
@@ -148,7 +148,7 @@ export default function CharacterLibrary() {
                     <button onClick={() => startEdit(c)} className="p-1.5 rounded-lg" style={buttons.ghost} title="Edit">
                       <Pencil size={14} />
                     </button>
-                    <button onClick={() => removeCharacter(c.id)} className="p-1.5 rounded-lg" style={buttons.ghost} title="Remove">
+                    <button onClick={() => c.id && removeCharacter(c.id)} className="p-1.5 rounded-lg" style={buttons.ghost} title="Remove">
                       <Trash2 size={14} />
                     </button>
                   </>
