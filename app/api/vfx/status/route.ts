@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerVFXClient } from '@/api/vfx'
+import { isRequestCancelled } from '../cancel/route'
+
+function cancelledResponse(id: string) {
+  return { request_id: id, status: 'cancelled' as const }
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -10,6 +15,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'id is required' }, { status: 400 })
     }
 
+    // If this job was cancelled, never report a billable completion back to the
+    // client. Return `cancelled` so polling stops and the result is discarded.
+    if (isRequestCancelled(id)) {
+      return NextResponse.json(cancelledResponse(id))
+    }
+
     const clientKey = req.headers.get('x-api-key')?.trim()
     const apiKey = clientKey || process.env.MUAPI_API_KEY || process.env.MUAPI_KEY || ''
     if (!apiKey) {
@@ -17,6 +28,12 @@ export async function GET(req: NextRequest) {
     }
     const client = getServerVFXClient(apiKey)
     const status = await client.getGenerationResult(id)
+
+    // Guard against a race: the job may have completed between the cancel call
+    // and this poll. If it finished after cancellation, discard the result.
+    if (isRequestCancelled(id)) {
+      return NextResponse.json(cancelledResponse(id))
+    }
 
     return NextResponse.json(status)
   } catch (err: unknown) {

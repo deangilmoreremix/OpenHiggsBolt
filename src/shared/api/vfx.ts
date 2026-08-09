@@ -15,6 +15,7 @@ import type {
 const MUAPI_BASE = process.env.MUAPI_BASE_URL || 'https://api.muapi.ai'
 const DEFAULT_POLL_INTERVAL_MS = 5000
 const DEFAULT_MAX_POLL_ATTEMPTS = 180 // ~15 minutes
+const CANCEL_PROBE_TIMEOUT_MS = 8000
 
 type MuAPIStatusResponse = {
   request_id?: string
@@ -290,8 +291,39 @@ export class MuAPIVFXClient {
   }
 
   /**
+   * Best-effort server-side cancellation of a MuAPI prediction.
+   *
+   * MuAPI's public API exposes no documented cancel/delete endpoint for
+   * predictions (only GET /predictions/{id}/result and /media). We probe the
+   * two plausible shapes anyway so that, if MuAPI adds support or a specific
+   * model honors it, the worker may abandon the job early and avoid a charge.
+   * Any non-2xx (notably 404/405) is treated as "not supported" and swallowed.
+   */
+  async requestCancellation(requestId: string): Promise<void> {
+    const candidates: { method: string; path: string }[] = [
+      { method: 'DELETE', path: `/api/v1/predictions/${requestId}` },
+      { method: 'POST', path: `/api/v1/predictions/${requestId}/cancel` },
+    ]
+
+    for (const { method, path } of candidates) {
+      try {
+        const res = await fetch(`${this.baseUrl}${path}`, {
+          method,
+          headers: createAuthHeaders(this.apiKey),
+          signal: AbortSignal.timeout(CANCEL_PROBE_TIMEOUT_MS),
+        })
+        // 2xx => accepted; 404/405 => not supported for this model; anything
+        // else => ignore. Never throw — cancellation is best-effort.
+        if (res.ok || res.status === 404 || res.status === 405) return
+      } catch {
+        // Network/timeout — try next candidate, then give up silently.
+      }
+    }
+  }
+
+  /**
    * Cancel an in-flight generation or polling session.
-   * Note: MuAPI does not expose a public cancel endpoint, so this aborts local polling.
+   * Aborts local polling. Server-side stop is handled by the cancel route.
    */
   cancelGeneration(): void {
     if (this.abortController) {
