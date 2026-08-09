@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 const isProtectedRoute = createRouteMatcher([
   '/studio(.*)',
   '/vfx(.*)',
+  '/api/vfx(.*)',
   '/api/v1/protected(.*)',
 ]);
 
@@ -75,6 +76,7 @@ export const config = {
   matcher: [
     '/api/workflow/:path*',
     '/api/app/:path*',
+    '/api/vfx/:path*',
     '/api/v1/:path*',
     '/((?!_next|.*\\..*).*)',
     '/__clerk/:path*',
