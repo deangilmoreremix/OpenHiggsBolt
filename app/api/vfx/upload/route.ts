@@ -2,9 +2,26 @@ import { NextRequest, NextResponse } from 'next/server'
 import { validateMuAPIKey } from '../_helpers'
 import { validateUploadFile } from '../_validation'
 import { createClient } from '@supabase/supabase-js'
+import { rateLimit, rateLimit429 } from '@/lib/rateLimit'
+
+// Per-key rate limit: 10 requests / 60s, keyed by the resolved MuAPI apiKey.
+// Tune via rateLimit(key, { windowMs, max }).
+const RATE_LIMIT_MAX = 10
+const RATE_LIMIT_WINDOW_MS = 60_000
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate-limit key: env key OR client-provided x-api-key (do NOT call the
+    // async cookie helper here just for the limit key — the route resolves the
+    // real key via validateMuAPIKey() below).
+    const clientKey = req.headers.get('x-api-key')?.trim()
+    const limitKey =
+      clientKey || process.env.MUAPI_API_KEY || process.env.MUAPI_KEY || ''
+    const limit = rateLimit(limitKey, { windowMs: RATE_LIMIT_WINDOW_MS, max: RATE_LIMIT_MAX })
+    if (!limit.allowed) {
+      return rateLimit429(limit.retryAfterMs)
+    }
+
     const contentType = req.headers.get('content-type') || ''
     if (!contentType.includes('multipart/form-data')) {
       return NextResponse.json({ error: 'Request must be multipart/form-data' }, { status: 400 })
