@@ -55,6 +55,18 @@ describe('buildAdvancedPayload', () => {
     });
   });
 
+  describe('camera_fixed (distinct lock-camera boolean, not a camera axis)', () => {
+    const controls = getAdvancedControlsForModel(bytedanceModel);
+    it('forwards camera_fixed when true', () => {
+      const payload = buildAdvancedPayload(controls, { camera_fixed: true });
+      expect(payload.camera_fixed).toBe(true);
+    });
+    it('omits camera_fixed when false (default)', () => {
+      const payload = buildAdvancedPayload(controls, { camera_fixed: false });
+      expect(payload).not.toHaveProperty('camera_fixed');
+    });
+  });
+
   describe('empty / undefined values', () => {
     const controls = getAdvancedControlsForModel(bytedanceModel);
     it('omits undefined values', () => {
