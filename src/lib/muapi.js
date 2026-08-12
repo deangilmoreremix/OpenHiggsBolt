@@ -655,9 +655,17 @@ export async function listSocialAccounts(apiKey) {
   return res.data;
 }
 
-export async function connectSocialAccount(apiKey, externalUserId, redirectTo) {
+const SOCIAL_CONNECT_PATHS = {
+  youtube: '/api/v1/social/youtube/connect-url',
+  tiktok: '/api/v1/social/tiktok/connect-url',
+  instagram: '/api/v1/social/instagram/connect-url',
+  facebook: '/api/v1/social/facebook/connect-url',
+};
+
+export async function connectSocialAccount(apiKey, externalUserId, redirectTo, platform = 'youtube') {
+  const path = SOCIAL_CONNECT_PATHS[platform] || SOCIAL_CONNECT_PATHS.youtube;
   const res = await axios.post(
-    '/api/v1/social/youtube/connect-url',
+    path,
     { external_user_id: externalUserId, redirect_to: redirectTo },
     withKey({ method: 'POST' }, apiKey)
   );

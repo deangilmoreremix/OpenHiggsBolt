@@ -7,6 +7,7 @@ import axios from 'axios';
 import { MemoryRouter } from 'react-router-dom';
 import { useClerk } from '@clerk/nextjs';
 import ApiKeyModal from './ApiKeyModal';
+import { SocialPublishProvider } from '@/components/SocialPublishProvider';
 
 // Lazily load the heavy `studio` package so its many studio modules are not
 // part of the initial bundle for /, /studio and /workflow. Each export is only
@@ -598,6 +599,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
       )}
 
       {/* Studio Content */}
+      <SocialPublishProvider apiKey={apiKey}>
       <div className="flex-1 min-h-0 relative overflow-hidden">
         {activeTab === 'image'   && <ImageStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
         {activeTab === 'video'   && <VideoStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
@@ -622,6 +624,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
         {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} />}
         {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
       </div>
+      </SocialPublishProvider>
 
       {/* First-login API key popup — on-brand overlay modal with an X close
           button, wired to the same handleKeySave / MuAPI persistence logic as

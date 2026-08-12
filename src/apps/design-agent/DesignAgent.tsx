@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Plus, Send, ChevronDown, X, Loader2, Image, Video, FileText, Sparkles, FolderOpen, Trash2, Download, RefreshCw, Key } from 'lucide-react'
 import { panels, buttons, semantic, appWrapper } from '@/shared/styles/designTokens'
 import DesignAgentErrorBoundary from './ErrorBoundary'
+import { PublishStep } from '@/components/SocialPublishProvider'
 
 function AssetModal({ asset, onClose }: { asset: Asset; onClose: () => void }) {
   return (
@@ -36,11 +37,22 @@ function AssetModal({ asset, onClose }: { asset: Asset; onClose: () => void }) {
             </div>
           )}
         </div>
-        <div className="p-4 border-t flex items-center justify-between" style={{ borderColor: 'var(--border-color)' }}>
+        <div className="p-4 border-t flex items-center justify-between gap-2" style={{ borderColor: 'var(--border-color)' }}>
           <span className="text-xs" style={{ color: semantic.textMuted }}>Generated asset</span>
-          <a href={asset.url} download target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-lg text-sm font-medium transition-all" style={{ background: 'var(--color-primary)', color: 'white' }}>
-            Download
-          </a>
+          <div className="flex items-center gap-2">
+            {(asset.type === 'image' || asset.type === 'video') && (
+              <PublishStep
+                mediaUrl={asset.url}
+                mediaType={asset.type === 'image' ? 'image' : 'video'}
+                title={asset.name}
+                className="px-4 py-2 rounded-lg text-sm font-medium"
+                style={{ background: 'var(--bg-page)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
+              />
+            )}
+            <a href={asset.url} download target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-lg text-sm font-medium transition-all" style={{ background: 'var(--color-primary)', color: 'white' }}>
+              Download
+            </a>
+          </div>
         </div>
       </div>
     </div>
