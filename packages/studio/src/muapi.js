@@ -1,4 +1,5 @@
 import { getModelById, getVideoModelById, getI2IModelById, getI2VModelById, getV2VModelById, getRecastModelById, getLipSyncModelById, getAudioModelById } from './models.js';
+import { getAdvancedControlsForModel } from './videoAdvancedControls.js';
 
 // Local mirrors for workflow/agent thumbnails. Maps upstream MuAPI thumbnail
 // URLs -> local files in /public/thumbnails/workflows. Plain ESM import so it
@@ -191,6 +192,24 @@ export async function generateI2I(apiKey, params) {
     return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 60, params.signal);
 }
 
+// Compute the set of advanced keys the CURRENT model actually declares via
+// getAdvancedControlsForModel. Endpoints reject unknown params, so each wrapper
+// resolves its model and only forwards the declared advanced keys that are
+// present in `params`.
+function allowedAdvancedKeys(modelInfo) {
+  if (!modelInfo) return new Set();
+  return new Set(getAdvancedControlsForModel(modelInfo).map((c) => c.key));
+}
+
+function applyAdvancedVideoParams(payload, params, allowed) {
+  for (const k of allowed) {
+    if (params[k] !== undefined && params[k] !== null && params[k] !== "") {
+      payload[k] = params[k];
+    }
+  }
+  return payload;
+}
+
 export async function generateVideo(apiKey, params) {
     const modelInfo = getVideoModelById(params.model);
     const endpoint = modelInfo?.endpoint || params.model;
@@ -205,6 +224,7 @@ export async function generateVideo(apiKey, params) {
     if (params.image_url) payload.image_url = params.image_url;
     if (params.images_list?.length > 0) payload.images_list = params.images_list;
     if (params.videos_list?.length > 0) payload.videos_list = params.videos_list;
+    applyAdvancedVideoParams(payload, params, allowedAdvancedKeys(modelInfo));
     return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal);
 }
 
@@ -240,6 +260,7 @@ export async function generateI2V(apiKey, params) {
     if (modelInfo?.inputs?.name) {
         payload.name = params.name || modelInfo.inputs.name.default;
     }
+    applyAdvancedVideoParams(payload, params, allowedAdvancedKeys(modelInfo));
     return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal);
 }
 
@@ -266,6 +287,7 @@ export async function processV2V(apiKey, params) {
     if (modelInfo?.hasPrompt && params.prompt) {
         payload.prompt = params.prompt;
     }
+    applyAdvancedVideoParams(payload, params, allowedAdvancedKeys(modelInfo));
     return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal);
 }
 

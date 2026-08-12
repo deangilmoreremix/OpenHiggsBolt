@@ -18,6 +18,7 @@ import {
   getModesForModel,
   getMaxImagesForI2VModel,
 } from "../models.js";
+import { getAdvancedControlsForModel, buildAdvancedPayload } from "../videoAdvancedControls.js";
 
 // ── tiny helpers ──────────────────────────────────────────────────────────────
 
@@ -43,6 +44,26 @@ async function downloadFile(url, filename) {
   }
 }
 
+// Build a compact list of summary chips from a persisted advanced-control snapshot.
+function buildAdvChips(adv) {
+  if (!adv) return [];
+  const chips = [];
+  if (adv.seed !== undefined) chips.push(`seed: ${adv.seed}`);
+  if (adv.generate_audio === false) chips.push("audio: off");
+  else if (adv.generate_audio === true) chips.push("audio: on");
+  if (adv.enable_sound === false) chips.push("sound: off");
+  else if (adv.enable_sound === true) chips.push("sound: on");
+  if (adv.camera_fixed === true) chips.push("cam: locked");
+  if (adv.cfg_scale !== undefined) chips.push(`cfg: ${adv.cfg_scale}`);
+  if (adv.output_format) chips.push(`fmt: ${adv.output_format}`);
+  if (adv.bitrate_mode) chips.push(`br: ${adv.bitrate_mode}`);
+  if (adv.watermark === true) chips.push("wm: on");
+  if (adv.return_last_frame === true) chips.push("last: on");
+  if (adv.negative_prompt) chips.push("neg");
+  if (adv.camera_control) chips.push(`cam: ${adv.camera_control.type}`);
+  return chips;
+}
+
 // ── SVG icons (kept inline to avoid extra deps) ───────────────────────────────
 
 const CheckSvg = () => (
@@ -57,6 +78,96 @@ const CheckSvg = () => (
     <polyline points="20 6 9 17 4 12" />
   </svg>
 );
+
+// ── advanced control field (rendered inside the "Advanced" panel) ────────────
+function AdvancedField({ control, value, onChange }) {
+  const v = value ?? control.default;
+  const id = `adv-${control.key}`;
+  const inputCls =
+    "h-[30px] w-full bg-[#16161a]/60 border border-white/[0.06] rounded-md text-white text-xs px-2.5 focus:outline-none focus:border-[#22d3ee]/40";
+
+  let controlEl;
+  if (control.type === "boolean") {
+    controlEl = (
+      <button
+        type="button"
+        onClick={() => onChange(!v)}
+        className={`h-[30px] px-3 rounded-md text-xs font-semibold transition-all border ${
+          v
+            ? "bg-[#22d3ee]/20 border-[#22d3ee]/50 text-[#22d3ee]"
+            : "bg-[#16161a]/60 border-white/[0.06] text-white/50"
+        }`}
+      >
+        {v ? "On" : "Off"}
+      </button>
+    );
+  } else if (control.type === "enum") {
+    controlEl = (
+      <select
+        id={id}
+        value={v}
+        onChange={(e) => onChange(e.target.value)}
+        className={inputCls}
+      >
+        {control.enum.map((opt) => (
+          <option key={opt} value={opt} className="bg-[#0c0c0f]">
+            {opt}
+          </option>
+        ))}
+      </select>
+    );
+  } else if (control.type === "textarea") {
+    controlEl = (
+      <textarea
+        id={id}
+        value={v}
+        placeholder={control.description}
+        onChange={(e) => onChange(e.target.value)}
+        rows={2}
+        className="w-full bg-[#16161a]/60 border border-white/[0.06] rounded-md text-white text-xs px-2.5 py-1.5 resize-none focus:outline-none focus:border-[#22d3ee]/40"
+      />
+    );
+  } else {
+    controlEl = (
+      <input
+        id={id}
+        type={control.type === "int" || control.type === "number" ? "number" : "text"}
+        value={v}
+        min={control.min}
+        max={control.max}
+        step={control.step}
+        placeholder={control.description}
+        onChange={(e) =>
+          onChange(
+            control.type === "int" || control.type === "number"
+              ? e.target.value === ""
+                ? ""
+                : Number(e.target.value)
+              : e.target.value,
+          )
+        }
+        className={inputCls}
+      />
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <label
+        htmlFor={id}
+        className="text-[11px] font-semibold text-white/60"
+      >
+        {control.label}
+      </label>
+      {controlEl}
+      {control.description && control.type !== "textarea" && (
+        <span className="text-[10px] text-white/30 leading-tight">
+          {control.description}
+        </span>
+      )}
+    </div>
+  );
+}
 
 const VideoIconSvg = ({ className }) => (
   <svg
@@ -441,6 +552,9 @@ export default function VideoStudio({
   const [selectedMode, setSelectedMode] = useState("");
   const [selectedEffect, setSelectedEffect] = useState("");
 
+  // ── advanced model controls (negative_prompt, seed, audio, camera, etc.) ──
+  const [advancedValues, setAdvancedValues] = useState({});
+
   // ── upload progress ──
   const [imageProgress, setImageProgress] = useState(0);
   const [videoProgress, setVideoProgress] = useState(0);
@@ -530,6 +644,9 @@ export default function VideoStudio({
     [getCurrentModels, selectedModel],
   );
 
+  // Advanced, model-aware controls (negative_prompt, seed, audio, camera, …).
+  const advancedControls = getAdvancedControlsForModel(getCurrentModel());
+
   const isMotionControlSelection = useCallback(
     (modelId, isV2v) => {
       if (!isV2v) return false;
@@ -542,6 +659,9 @@ export default function VideoStudio({
   // ── update controls when model/mode changes ──────────────────────────────
   const applyControlsForModel = useCallback(
     (modelId, isImageMode, isV2vMode) => {
+      // Reset advanced controls whenever the model changes.
+      setAdvancedValues({});
+
       if (isV2vMode) {
         setShowAr(false);
         setShowDuration(false);
@@ -1120,6 +1240,13 @@ export default function VideoStudio({
     const isExtendMode = currentModel?.requiresRequestId;
     const trimmedPrompt = prompt.trim();
 
+    // Advanced, model-aware controls (negative_prompt, seed, audio, camera…).
+    const advPayload = buildAdvancedPayload(advancedControls, advancedValues);
+    // Snapshot of the advanced controls to persist on the history entry.
+    const advSnapshot = advPayload;
+    const advField =
+      Object.keys(advSnapshot).length > 0 ? { advanced: advSnapshot } : {};
+
     if (v2vMode) {
       if (!uploadedVideoUrl) {
         alert("Please upload a video first.");
@@ -1174,6 +1301,7 @@ export default function VideoStudio({
         const v2vParams = {
           model: selectedModel,
           video_url: uploadedVideoUrl,
+          ...advPayload,
         };
         if (currentModel?.imageField && uploadedImageUrl) {
           v2vParams.image_url = uploadedImageUrl;
@@ -1192,6 +1320,7 @@ export default function VideoStudio({
           url: res.url,
           prompt: currentModel?.hasPrompt ? trimmedPrompt : "",
           model: selectedModel,
+          ...advField,
           timestamp: new Date().toISOString(),
         };
         addToLocalHistory(entry);
@@ -1205,7 +1334,7 @@ export default function VideoStudio({
           });
       } else if (imageMode) {
         const maxImgs = getMaxImagesForI2VModel(selectedModel);
-        const i2vParams = { model: selectedModel };
+        const i2vParams = { model: selectedModel, ...advPayload };
         if (maxImgs > 2) {
           i2vParams.images_list = uploadedImageUrls;
         } else {
@@ -1243,6 +1372,7 @@ export default function VideoStudio({
           model: selectedModel,
           aspect_ratio: selectedAr,
           duration: selectedDuration,
+          ...advField,
           timestamp: new Date().toISOString(),
         };
         addToLocalHistory(entry);
@@ -1256,7 +1386,7 @@ export default function VideoStudio({
           });
       } else {
         // T2V (including extend mode)
-        const params = { model: selectedModel };
+        const params = { model: selectedModel, ...advPayload };
         if (trimmedPrompt) params.prompt = trimmedPrompt;
 
         if (isExtendMode) {
@@ -1301,6 +1431,7 @@ export default function VideoStudio({
           model: selectedModel,
           aspect_ratio: selectedAr,
           duration: selectedDuration,
+          ...advField,
           timestamp: new Date().toISOString(),
         };
         addToLocalHistory(entry);
@@ -1519,6 +1650,10 @@ export default function VideoStudio({
                         {entry.duration && (
                           <span className="text-[10px] text-white/40">{entry.duration}s</span>
                         )}
+                        {entry.advanced &&
+                          buildAdvChips(entry.advanced).map((c, i) => (
+                            <span key={i} className="text-[10px] text-white/40">{c}</span>
+                          ))}
                       </div>
                     </div>
                   </div>
@@ -2260,6 +2395,66 @@ export default function VideoStudio({
                             </span>
                             {selectedMode === m && <CheckSvg />}
                           </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Advanced controls btn */}
+              {!v2vMode && advancedControls.length > 0 && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={toggleDropdown("advanced")}
+                    className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="opacity-50 text-white"
+                    >
+                      <line x1="4" y1="21" x2="4" y2="14" />
+                      <line x1="4" y1="10" x2="4" y2="3" />
+                      <line x1="12" y1="21" x2="12" y2="12" />
+                      <line x1="12" y1="8" x2="12" y2="3" />
+                      <line x1="20" y1="21" x2="20" y2="16" />
+                      <line x1="20" y1="12" x2="20" y2="3" />
+                      <line x1="1" y1="14" x2="7" y2="14" />
+                      <line x1="9" y1="8" x2="15" y2="8" />
+                      <line x1="17" y1="16" x2="23" y2="16" />
+                    </svg>
+                    <span className="text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors">
+                      Advanced
+                    </span>
+                  </button>
+                  {openDropdown === "advanced" && (
+                    <div
+                      ref={dropdownRef}
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-4 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl w-[320px] max-h-[70vh] overflow-y-auto custom-scrollbar"
+                    >
+                      <div className="text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-3 px-1">
+                        Advanced Controls
+                      </div>
+                      <div className="flex flex-col gap-3">
+                        {advancedControls.map((c) => (
+                          <AdvancedField
+                            key={c.key}
+                            control={c}
+                            value={advancedValues[c.key]}
+                            onChange={(val) =>
+                              setAdvancedValues((prev) => ({
+                                ...prev,
+                                [c.key]: val,
+                              }))
+                            }
+                          />
                         ))}
                       </div>
                     </div>

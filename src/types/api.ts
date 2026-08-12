@@ -4,6 +4,26 @@ export interface VideoGenerationParams {
   aspectRatio?: string
   model?: string
   image_url?: string
+  // Advanced, model-aware controls (muapi.ai capability research).
+  negative_prompt?: string
+  seed?: number
+  resolution?: string
+  quality?: string
+  generate_audio?: boolean
+  camera_fixed?: boolean
+  cfg_scale?: number
+  bitrate_mode?: string
+  output_format?: string
+  watermark?: boolean
+  return_last_frame?: boolean
+  camera_control?: {
+    type: string
+    config?: Record<string, number>
+  }
+  enable_sound?: boolean
+  last_image?: string
+  images_list?: string[]
+  videos_list?: string[]
 }
 
 export interface VideoResult {
