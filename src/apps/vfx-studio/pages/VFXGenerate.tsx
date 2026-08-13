@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { useVideoGeneration } from '@/hooks/useVideoGeneration';
 import BottomInputBar from '@/apps/vfx-studio/components/BottomInputBar';
+import { PublishStep } from '@/components/SocialPublishProvider';
+import { AssistStep } from '@/components/AiAssistantProvider';
 import type { VFXEffect, AspectRatio, Resolution, Quality } from '@/types/vfx';
 
 const STORAGE_KEY_UI = 'vfx_ui_state';
@@ -728,6 +730,22 @@ export default function VFXGenerate({ apiKey }: { apiKey?: string }) {
               {copied ? <Check size={14} /> : <Copy size={14} />}
               {copied ? 'Copied' : 'Copy URL'}
             </button>
+            <PublishStep
+              mediaUrl={videoUrl}
+              mediaType="video"
+              title={selectedEffect?.name ? `${selectedEffect.name} video` : 'My VFX video'}
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+              style={{ background: 'var(--bg-card)', color: 'var(--text-primary)' }}
+            />
+            <AssistStep
+              assetUrl={videoUrl}
+              assetType="video"
+              onApply={() => {}}
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+              style={{ background: 'var(--bg-card)', color: 'var(--text-primary)' }}
+            >
+              Enhance
+            </AssistStep>
             <button
               type="button"
               onClick={handleRegenerate}

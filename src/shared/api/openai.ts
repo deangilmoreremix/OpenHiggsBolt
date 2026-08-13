@@ -63,6 +63,34 @@ export async function callOpenAI(
 }
 
 /**
+ * Chat completion via the same Supabase Edge Function used by `callOpenAI`,
+ * but with an explicit system + user message list (BYOK via `x-openai-key`).
+ * Returns the raw assistant text. Used by the AI Assistant modal for the
+ * per-operation text tools (rewrite, tone, expand, summarize, translate).
+ */
+export async function callOpenAIChat(
+  messages: { role: 'system' | 'user' | 'assistant'; content: string }[]
+): Promise<string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  const userKey = getUserOpenAiKey()
+  if (userKey) headers['x-openai-key'] = userKey
+
+  const response = await fetch(OPENAI_FUNCTION_URL, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ messages, mode: 'chat' }),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+    throw new Error(errorData.error || `OpenAI error: ${response.status}`)
+  }
+
+  const data = await response.json()
+  return data.text || data.choices?.[0]?.message?.content || ''
+}
+
+/**
  * Enhance a video prompt using AI
  */
 export async function enhancePrompt(prompt: string): Promise<string> {

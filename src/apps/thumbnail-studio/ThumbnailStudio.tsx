@@ -8,6 +8,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Image, Wand2, Loader2, Globe, User, ChevronDown, ChevronUp, RefreshCw, Search } from 'lucide-react'
 import { ImageGallery, MuapiImageStream, ImageEditor } from '@/shared/components/ImageGen'
+import { PublishStep } from '@/components/SocialPublishProvider'
+import { AssistStep } from '@/components/AiAssistantProvider'
 import type { GeneratedImage, GenerationRequest, SizePreset } from '@/shared/components/ImageGen'
 import { SIZE_PRESETS, QUALITY_PRESETS } from '@/shared/components/ImageGen'
 import type { ImageModel } from '@/shared/components/ImageGen'
@@ -864,6 +866,22 @@ export default function ThumbnailStudio({ apiKey }: { apiKey?: string }) {
                     </button>
                   </div>
                 )}
+                <PublishStep
+                  mediaUrl={lastImageUrl}
+                  mediaType="image"
+                  title="My thumbnail"
+                  className="w-full py-2.5 rounded-lg text-xs font-medium"
+                  style={{ background: 'var(--bg-page)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
+                />
+                <AssistStep
+                  assetUrl={lastImageUrl}
+                  assetType="image"
+                  onApply={() => {}}
+                  className="w-full py-2.5 rounded-lg text-xs font-medium"
+                  style={{ background: 'var(--bg-page)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
+                >
+                  Enhance
+                </AssistStep>
               </div>
             )}
           </div>

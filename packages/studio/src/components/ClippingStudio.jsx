@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { runClipping, uploadFile } from "../muapi.js";
+import { PublishStep } from "../../../../components/SocialPublishProvider";
 
 // ---------------------------------------------------------------------------
 // Inline SVG Icons
@@ -729,6 +730,11 @@ export default function ClippingStudio({
                             >
                               <DownloadIcon />
                             </button>
+                            <PublishStep
+                              mediaUrl={clipUrl}
+                              mediaType="video"
+                              className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center"
+                            />
                           </div>
 
                           <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded border border-white/5 text-[9px] uppercase font-black tracking-wider text-primary">
