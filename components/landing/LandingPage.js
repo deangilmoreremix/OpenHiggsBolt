@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import StandaloneShell from '@/components/StandaloneShell';
 import { PRODUCT_NAME, NAV_ITEMS, LOGOS, TESTIMONIALS, PRICING, FAQS } from './landingData';
+import MinimaxShowcase from './MinimaxShowcase';
 
 export default function LandingPage({ FullStudio, AuthControls }) {
   return (
@@ -70,6 +71,9 @@ export default function LandingPage({ FullStudio, AuthControls }) {
           </div>
         </div>
       </section>
+
+      {/* ── MiniMax H3 video showcase ── */}
+      <MinimaxShowcase />
 
       {/* ── Full studio ── */}
       <section id="studio" className="border-y border-white/10 bg-[#030303]">

@@ -1,0 +1,982 @@
+[
+  {
+    "track": "02-ai-filmmaking",
+    "trackTitle": "AI Filmmaking",
+    "type": "image",
+    "src": "/academy/02-ai-filmmaking/templates/examples/astronaut-anchor.jpg",
+    "file": "templates/examples/astronaut-anchor.jpg"
+  },
+  {
+    "track": "02-ai-filmmaking",
+    "trackTitle": "AI Filmmaking",
+    "type": "gif",
+    "src": "/academy/02-ai-filmmaking/templates/examples/astronaut-clip.gif",
+    "file": "templates/examples/astronaut-clip.gif"
+  },
+  {
+    "track": "02-ai-filmmaking",
+    "trackTitle": "AI Filmmaking",
+    "type": "video",
+    "src": "/academy/02-ai-filmmaking/templates/examples/astronaut-clip.mp4",
+    "file": "templates/examples/astronaut-clip.mp4"
+  },
+  {
+    "track": "02-ai-filmmaking",
+    "trackTitle": "AI Filmmaking",
+    "type": "gif",
+    "src": "/academy/02-ai-filmmaking/templates/examples/astronaut-intro-clip.gif",
+    "file": "templates/examples/astronaut-intro-clip.gif"
+  },
+  {
+    "track": "02-ai-filmmaking",
+    "trackTitle": "AI Filmmaking",
+    "type": "video",
+    "src": "/academy/02-ai-filmmaking/templates/examples/astronaut-intro-clip.mp4",
+    "file": "templates/examples/astronaut-intro-clip.mp4"
+  },
+  {
+    "track": "02-ai-filmmaking",
+    "trackTitle": "AI Filmmaking",
+    "type": "gif",
+    "src": "/academy/02-ai-filmmaking/templates/examples/storyboard-anim-clip.gif",
+    "file": "templates/examples/storyboard-anim-clip.gif"
+  },
+  {
+    "track": "02-ai-filmmaking",
+    "trackTitle": "AI Filmmaking",
+    "type": "video",
+    "src": "/academy/02-ai-filmmaking/templates/examples/storyboard-anim-clip.mp4",
+    "file": "templates/examples/storyboard-anim-clip.mp4"
+  },
+  {
+    "track": "02-ai-filmmaking",
+    "trackTitle": "AI Filmmaking",
+    "type": "image",
+    "src": "/academy/02-ai-filmmaking/templates/examples/storyboard-shot1-wide.jpg",
+    "file": "templates/examples/storyboard-shot1-wide.jpg"
+  },
+  {
+    "track": "02-ai-filmmaking",
+    "trackTitle": "AI Filmmaking",
+    "type": "image",
+    "src": "/academy/02-ai-filmmaking/templates/examples/storyboard-shot2-medium.jpg",
+    "file": "templates/examples/storyboard-shot2-medium.jpg"
+  },
+  {
+    "track": "02-ai-filmmaking",
+    "trackTitle": "AI Filmmaking",
+    "type": "image",
+    "src": "/academy/02-ai-filmmaking/templates/examples/storyboard-shot3-closeup.jpg",
+    "file": "templates/examples/storyboard-shot3-closeup.jpg"
+  },
+  {
+    "track": "02-ai-filmmaking",
+    "trackTitle": "AI Filmmaking",
+    "type": "image",
+    "src": "/academy/02-ai-filmmaking/templates/examples/the-last-signal-poster.jpg",
+    "file": "templates/examples/the-last-signal-poster.jpg"
+  },
+  {
+    "track": "03-faceless-ai-channels",
+    "trackTitle": "Faceless AI Channels",
+    "type": "image",
+    "src": "/academy/03-faceless-ai-channels/templates/examples/faceless-anchor.jpg",
+    "file": "templates/examples/faceless-anchor.jpg"
+  },
+  {
+    "track": "03-faceless-ai-channels",
+    "trackTitle": "Faceless AI Channels",
+    "type": "gif",
+    "src": "/academy/03-faceless-ai-channels/templates/examples/faceless-clip.gif",
+    "file": "templates/examples/faceless-clip.gif"
+  },
+  {
+    "track": "03-faceless-ai-channels",
+    "trackTitle": "Faceless AI Channels",
+    "type": "video",
+    "src": "/academy/03-faceless-ai-channels/templates/examples/faceless-clip.mp4",
+    "file": "templates/examples/faceless-clip.mp4"
+  },
+  {
+    "track": "03-faceless-ai-channels",
+    "trackTitle": "Faceless AI Channels",
+    "type": "image",
+    "src": "/academy/03-faceless-ai-channels/templates/examples/faceless-finance-niche.jpg",
+    "file": "templates/examples/faceless-finance-niche.jpg"
+  },
+  {
+    "track": "03-faceless-ai-channels",
+    "trackTitle": "Faceless AI Channels",
+    "type": "image",
+    "src": "/academy/03-faceless-ai-channels/templates/examples/faceless-monetization.jpg",
+    "file": "templates/examples/faceless-monetization.jpg"
+  },
+  {
+    "track": "03-faceless-ai-channels",
+    "trackTitle": "Faceless AI Channels",
+    "type": "gif",
+    "src": "/academy/03-faceless-ai-channels/templates/examples/faceless-niche-intro.gif",
+    "file": "templates/examples/faceless-niche-intro.gif"
+  },
+  {
+    "track": "03-faceless-ai-channels",
+    "trackTitle": "Faceless AI Channels",
+    "type": "video",
+    "src": "/academy/03-faceless-ai-channels/templates/examples/faceless-niche-intro.mp4",
+    "file": "templates/examples/faceless-niche-intro.mp4"
+  },
+  {
+    "track": "03-faceless-ai-channels",
+    "trackTitle": "Faceless AI Channels",
+    "type": "image",
+    "src": "/academy/03-faceless-ai-channels/templates/examples/faceless-workstation.jpg",
+    "file": "templates/examples/faceless-workstation.jpg"
+  },
+  {
+    "track": "04-ai-content-factories",
+    "trackTitle": "AI Content Factories",
+    "type": "image",
+    "src": "/academy/04-ai-content-factories/templates/examples/agency-client-pitch.jpg",
+    "file": "templates/examples/agency-client-pitch.jpg"
+  },
+  {
+    "track": "04-ai-content-factories",
+    "trackTitle": "AI Content Factories",
+    "type": "gif",
+    "src": "/academy/04-ai-content-factories/templates/examples/agency-pitch-clip.gif",
+    "file": "templates/examples/agency-pitch-clip.gif"
+  },
+  {
+    "track": "04-ai-content-factories",
+    "trackTitle": "AI Content Factories",
+    "type": "video",
+    "src": "/academy/04-ai-content-factories/templates/examples/agency-pitch-clip.mp4",
+    "file": "templates/examples/agency-pitch-clip.mp4"
+  },
+  {
+    "track": "04-ai-content-factories",
+    "trackTitle": "AI Content Factories",
+    "type": "image",
+    "src": "/academy/04-ai-content-factories/templates/examples/batch-production-suite.jpg",
+    "file": "templates/examples/batch-production-suite.jpg"
+  },
+  {
+    "track": "04-ai-content-factories",
+    "trackTitle": "AI Content Factories",
+    "type": "gif",
+    "src": "/academy/04-ai-content-factories/templates/examples/batch-suite-clip.gif",
+    "file": "templates/examples/batch-suite-clip.gif"
+  },
+  {
+    "track": "04-ai-content-factories",
+    "trackTitle": "AI Content Factories",
+    "type": "video",
+    "src": "/academy/04-ai-content-factories/templates/examples/batch-suite-clip.mp4",
+    "file": "templates/examples/batch-suite-clip.mp4"
+  },
+  {
+    "track": "04-ai-content-factories",
+    "trackTitle": "AI Content Factories",
+    "type": "image",
+    "src": "/academy/04-ai-content-factories/templates/examples/content-factory-studio.jpg",
+    "file": "templates/examples/content-factory-studio.jpg"
+  },
+  {
+    "track": "04-ai-content-factories",
+    "trackTitle": "AI Content Factories",
+    "type": "gif",
+    "src": "/academy/04-ai-content-factories/templates/examples/fitness-reel-clip.gif",
+    "file": "templates/examples/fitness-reel-clip.gif"
+  },
+  {
+    "track": "04-ai-content-factories",
+    "trackTitle": "AI Content Factories",
+    "type": "video",
+    "src": "/academy/04-ai-content-factories/templates/examples/fitness-reel-clip.mp4",
+    "file": "templates/examples/fitness-reel-clip.mp4"
+  },
+  {
+    "track": "04-ai-content-factories",
+    "trackTitle": "AI Content Factories",
+    "type": "image",
+    "src": "/academy/04-ai-content-factories/templates/examples/fitness-reel-preview.jpg",
+    "file": "templates/examples/fitness-reel-preview.jpg"
+  },
+  {
+    "track": "04-ai-content-factories",
+    "trackTitle": "AI Content Factories",
+    "type": "image",
+    "src": "/academy/04-ai-content-factories/templates/examples/focus-anchor.jpg",
+    "file": "templates/examples/focus-anchor.jpg"
+  },
+  {
+    "track": "04-ai-content-factories",
+    "trackTitle": "AI Content Factories",
+    "type": "gif",
+    "src": "/academy/04-ai-content-factories/templates/examples/focus-loop-clip.gif",
+    "file": "templates/examples/focus-loop-clip.gif"
+  },
+  {
+    "track": "04-ai-content-factories",
+    "trackTitle": "AI Content Factories",
+    "type": "video",
+    "src": "/academy/04-ai-content-factories/templates/examples/focus-loop-clip.mp4",
+    "file": "templates/examples/focus-loop-clip.mp4"
+  },
+  {
+    "track": "04-ai-content-factories",
+    "trackTitle": "AI Content Factories",
+    "type": "image",
+    "src": "/academy/04-ai-content-factories/templates/examples/get-rich-automated-thumbnail.jpg",
+    "file": "templates/examples/get-rich-automated-thumbnail.jpg"
+  },
+  {
+    "track": "04-ai-content-factories",
+    "trackTitle": "AI Content Factories",
+    "type": "gif",
+    "src": "/academy/04-ai-content-factories/templates/examples/thumbnail-motion-clip.gif",
+    "file": "templates/examples/thumbnail-motion-clip.gif"
+  },
+  {
+    "track": "04-ai-content-factories",
+    "trackTitle": "AI Content Factories",
+    "type": "video",
+    "src": "/academy/04-ai-content-factories/templates/examples/thumbnail-motion-clip.mp4",
+    "file": "templates/examples/thumbnail-motion-clip.mp4"
+  },
+  {
+    "track": "05-ai-avatars-and-influencers",
+    "trackTitle": "AI Avatars & Influencers",
+    "type": "gif",
+    "src": "/academy/05-ai-avatars-and-influencers/templates/examples/avatar-agency-suite-clip.gif",
+    "file": "templates/examples/avatar-agency-suite-clip.gif"
+  },
+  {
+    "track": "05-ai-avatars-and-influencers",
+    "trackTitle": "AI Avatars & Influencers",
+    "type": "video",
+    "src": "/academy/05-ai-avatars-and-influencers/templates/examples/avatar-agency-suite-clip.mp4",
+    "file": "templates/examples/avatar-agency-suite-clip.mp4"
+  },
+  {
+    "track": "05-ai-avatars-and-influencers",
+    "trackTitle": "AI Avatars & Influencers",
+    "type": "image",
+    "src": "/academy/05-ai-avatars-and-influencers/templates/examples/avatar-agency-suite.jpg",
+    "file": "templates/examples/avatar-agency-suite.jpg"
+  },
+  {
+    "track": "05-ai-avatars-and-influencers",
+    "trackTitle": "AI Avatars & Influencers",
+    "type": "image",
+    "src": "/academy/05-ai-avatars-and-influencers/templates/examples/avatar-brand-sponsor.jpg",
+    "file": "templates/examples/avatar-brand-sponsor.jpg"
+  },
+  {
+    "track": "05-ai-avatars-and-influencers",
+    "trackTitle": "AI Avatars & Influencers",
+    "type": "image",
+    "src": "/academy/05-ai-avatars-and-influencers/templates/examples/avatar-recording-studio.jpg",
+    "file": "templates/examples/avatar-recording-studio.jpg"
+  },
+  {
+    "track": "05-ai-avatars-and-influencers",
+    "trackTitle": "AI Avatars & Influencers",
+    "type": "gif",
+    "src": "/academy/05-ai-avatars-and-influencers/templates/examples/avatar-sponsor-clip.gif",
+    "file": "templates/examples/avatar-sponsor-clip.gif"
+  },
+  {
+    "track": "05-ai-avatars-and-influencers",
+    "trackTitle": "AI Avatars & Influencers",
+    "type": "video",
+    "src": "/academy/05-ai-avatars-and-influencers/templates/examples/avatar-sponsor-clip.mp4",
+    "file": "templates/examples/avatar-sponsor-clip.mp4"
+  },
+  {
+    "track": "05-ai-avatars-and-influencers",
+    "trackTitle": "AI Avatars & Influencers",
+    "type": "gif",
+    "src": "/academy/05-ai-avatars-and-influencers/templates/examples/avatar-studio-clip.gif",
+    "file": "templates/examples/avatar-studio-clip.gif"
+  },
+  {
+    "track": "05-ai-avatars-and-influencers",
+    "trackTitle": "AI Avatars & Influencers",
+    "type": "video",
+    "src": "/academy/05-ai-avatars-and-influencers/templates/examples/avatar-studio-clip.mp4",
+    "file": "templates/examples/avatar-studio-clip.mp4"
+  },
+  {
+    "track": "05-ai-avatars-and-influencers",
+    "trackTitle": "AI Avatars & Influencers",
+    "type": "image",
+    "src": "/academy/05-ai-avatars-and-influencers/templates/examples/emma-cafe-consistent.jpg",
+    "file": "templates/examples/emma-cafe-consistent.jpg"
+  },
+  {
+    "track": "05-ai-avatars-and-influencers",
+    "trackTitle": "AI Avatars & Influencers",
+    "type": "gif",
+    "src": "/academy/05-ai-avatars-and-influencers/templates/examples/emma-cafe-motion.gif",
+    "file": "templates/examples/emma-cafe-motion.gif"
+  },
+  {
+    "track": "05-ai-avatars-and-influencers",
+    "trackTitle": "AI Avatars & Influencers",
+    "type": "video",
+    "src": "/academy/05-ai-avatars-and-influencers/templates/examples/emma-cafe-motion.mp4",
+    "file": "templates/examples/emma-cafe-motion.mp4"
+  },
+  {
+    "track": "05-ai-avatars-and-influencers",
+    "trackTitle": "AI Avatars & Influencers",
+    "type": "image",
+    "src": "/academy/05-ai-avatars-and-influencers/templates/examples/emma-cafe-raw.jpg",
+    "file": "templates/examples/emma-cafe-raw.jpg"
+  },
+  {
+    "track": "05-ai-avatars-and-influencers",
+    "trackTitle": "AI Avatars & Influencers",
+    "type": "gif",
+    "src": "/academy/05-ai-avatars-and-influencers/templates/examples/emma-clip.gif",
+    "file": "templates/examples/emma-clip.gif"
+  },
+  {
+    "track": "05-ai-avatars-and-influencers",
+    "trackTitle": "AI Avatars & Influencers",
+    "type": "video",
+    "src": "/academy/05-ai-avatars-and-influencers/templates/examples/emma-clip.mp4",
+    "file": "templates/examples/emma-clip.mp4"
+  },
+  {
+    "track": "05-ai-avatars-and-influencers",
+    "trackTitle": "AI Avatars & Influencers",
+    "type": "image",
+    "src": "/academy/05-ai-avatars-and-influencers/templates/examples/emma-master.jpg",
+    "file": "templates/examples/emma-master.jpg"
+  },
+  {
+    "track": "06-ai-audio-and-music",
+    "trackTitle": "AI Audio & Music",
+    "type": "gif",
+    "src": "/academy/06-ai-audio-and-music/templates/examples/ai-music-workstation-clip.gif",
+    "file": "templates/examples/ai-music-workstation-clip.gif"
+  },
+  {
+    "track": "06-ai-audio-and-music",
+    "trackTitle": "AI Audio & Music",
+    "type": "video",
+    "src": "/academy/06-ai-audio-and-music/templates/examples/ai-music-workstation-clip.mp4",
+    "file": "templates/examples/ai-music-workstation-clip.mp4"
+  },
+  {
+    "track": "06-ai-audio-and-music",
+    "trackTitle": "AI Audio & Music",
+    "type": "image",
+    "src": "/academy/06-ai-audio-and-music/templates/examples/ai-music-workstation.jpg",
+    "file": "templates/examples/ai-music-workstation.jpg"
+  },
+  {
+    "track": "06-ai-audio-and-music",
+    "trackTitle": "AI Audio & Music",
+    "type": "gif",
+    "src": "/academy/06-ai-audio-and-music/templates/examples/dubbing-studio-clip.gif",
+    "file": "templates/examples/dubbing-studio-clip.gif"
+  },
+  {
+    "track": "06-ai-audio-and-music",
+    "trackTitle": "AI Audio & Music",
+    "type": "video",
+    "src": "/academy/06-ai-audio-and-music/templates/examples/dubbing-studio-clip.mp4",
+    "file": "templates/examples/dubbing-studio-clip.mp4"
+  },
+  {
+    "track": "06-ai-audio-and-music",
+    "trackTitle": "AI Audio & Music",
+    "type": "image",
+    "src": "/academy/06-ai-audio-and-music/templates/examples/dubbing-studio.jpg",
+    "file": "templates/examples/dubbing-studio.jpg"
+  },
+  {
+    "track": "06-ai-audio-and-music",
+    "trackTitle": "AI Audio & Music",
+    "type": "image",
+    "src": "/academy/06-ai-audio-and-music/templates/examples/podcast-audio-console.jpg",
+    "file": "templates/examples/podcast-audio-console.jpg"
+  },
+  {
+    "track": "06-ai-audio-and-music",
+    "trackTitle": "AI Audio & Music",
+    "type": "gif",
+    "src": "/academy/06-ai-audio-and-music/templates/examples/podcast-console-clip.gif",
+    "file": "templates/examples/podcast-console-clip.gif"
+  },
+  {
+    "track": "06-ai-audio-and-music",
+    "trackTitle": "AI Audio & Music",
+    "type": "video",
+    "src": "/academy/06-ai-audio-and-music/templates/examples/podcast-console-clip.mp4",
+    "file": "templates/examples/podcast-console-clip.mp4"
+  },
+  {
+    "track": "06-ai-audio-and-music",
+    "trackTitle": "AI Audio & Music",
+    "type": "gif",
+    "src": "/academy/06-ai-audio-and-music/templates/examples/singing-vocal-studio-clip.gif",
+    "file": "templates/examples/singing-vocal-studio-clip.gif"
+  },
+  {
+    "track": "06-ai-audio-and-music",
+    "trackTitle": "AI Audio & Music",
+    "type": "video",
+    "src": "/academy/06-ai-audio-and-music/templates/examples/singing-vocal-studio-clip.mp4",
+    "file": "templates/examples/singing-vocal-studio-clip.mp4"
+  },
+  {
+    "track": "06-ai-audio-and-music",
+    "trackTitle": "AI Audio & Music",
+    "type": "image",
+    "src": "/academy/06-ai-audio-and-music/templates/examples/singing-vocal-studio.jpg",
+    "file": "templates/examples/singing-vocal-studio.jpg"
+  },
+  {
+    "track": "06-ai-audio-and-music",
+    "trackTitle": "AI Audio & Music",
+    "type": "gif",
+    "src": "/academy/06-ai-audio-and-music/templates/examples/voice-studio-clip.gif",
+    "file": "templates/examples/voice-studio-clip.gif"
+  },
+  {
+    "track": "06-ai-audio-and-music",
+    "trackTitle": "AI Audio & Music",
+    "type": "video",
+    "src": "/academy/06-ai-audio-and-music/templates/examples/voice-studio-clip.mp4",
+    "file": "templates/examples/voice-studio-clip.mp4"
+  },
+  {
+    "track": "06-ai-audio-and-music",
+    "trackTitle": "AI Audio & Music",
+    "type": "image",
+    "src": "/academy/06-ai-audio-and-music/templates/examples/voice-studio-setup.jpg",
+    "file": "templates/examples/voice-studio-setup.jpg"
+  },
+  {
+    "track": "07-ai-product-photography",
+    "trackTitle": "AI Product Photography",
+    "type": "gif",
+    "src": "/academy/07-ai-product-photography/templates/examples/batch-skincare-grid-clip.gif",
+    "file": "templates/examples/batch-skincare-grid-clip.gif"
+  },
+  {
+    "track": "07-ai-product-photography",
+    "trackTitle": "AI Product Photography",
+    "type": "video",
+    "src": "/academy/07-ai-product-photography/templates/examples/batch-skincare-grid-clip.mp4",
+    "file": "templates/examples/batch-skincare-grid-clip.mp4"
+  },
+  {
+    "track": "07-ai-product-photography",
+    "trackTitle": "AI Product Photography",
+    "type": "image",
+    "src": "/academy/07-ai-product-photography/templates/examples/batch-skincare-grid.jpg",
+    "file": "templates/examples/batch-skincare-grid.jpg"
+  },
+  {
+    "track": "07-ai-product-photography",
+    "trackTitle": "AI Product Photography",
+    "type": "image",
+    "src": "/academy/07-ai-product-photography/templates/examples/coffee-before-after.jpg",
+    "file": "templates/examples/coffee-before-after.jpg"
+  },
+  {
+    "track": "07-ai-product-photography",
+    "trackTitle": "AI Product Photography",
+    "type": "gif",
+    "src": "/academy/07-ai-product-photography/templates/examples/coffee-motion.gif",
+    "file": "templates/examples/coffee-motion.gif"
+  },
+  {
+    "track": "07-ai-product-photography",
+    "trackTitle": "AI Product Photography",
+    "type": "video",
+    "src": "/academy/07-ai-product-photography/templates/examples/coffee-motion.mp4",
+    "file": "templates/examples/coffee-motion.mp4"
+  },
+  {
+    "track": "07-ai-product-photography",
+    "trackTitle": "AI Product Photography",
+    "type": "image",
+    "src": "/academy/07-ai-product-photography/templates/examples/perfume-before-after.jpg",
+    "file": "templates/examples/perfume-before-after.jpg"
+  },
+  {
+    "track": "07-ai-product-photography",
+    "trackTitle": "AI Product Photography",
+    "type": "image",
+    "src": "/academy/07-ai-product-photography/templates/examples/perfume-bottle-studio.jpg",
+    "file": "templates/examples/perfume-bottle-studio.jpg"
+  },
+  {
+    "track": "07-ai-product-photography",
+    "trackTitle": "AI Product Photography",
+    "type": "gif",
+    "src": "/academy/07-ai-product-photography/templates/examples/perfume-motion.gif",
+    "file": "templates/examples/perfume-motion.gif"
+  },
+  {
+    "track": "07-ai-product-photography",
+    "trackTitle": "AI Product Photography",
+    "type": "video",
+    "src": "/academy/07-ai-product-photography/templates/examples/perfume-motion.mp4",
+    "file": "templates/examples/perfume-motion.mp4"
+  },
+  {
+    "track": "07-ai-product-photography",
+    "trackTitle": "AI Product Photography",
+    "type": "gif",
+    "src": "/academy/07-ai-product-photography/templates/examples/product-agency-studio-clip.gif",
+    "file": "templates/examples/product-agency-studio-clip.gif"
+  },
+  {
+    "track": "07-ai-product-photography",
+    "trackTitle": "AI Product Photography",
+    "type": "video",
+    "src": "/academy/07-ai-product-photography/templates/examples/product-agency-studio-clip.mp4",
+    "file": "templates/examples/product-agency-studio-clip.mp4"
+  },
+  {
+    "track": "07-ai-product-photography",
+    "trackTitle": "AI Product Photography",
+    "type": "image",
+    "src": "/academy/07-ai-product-photography/templates/examples/product-agency-studio.jpg",
+    "file": "templates/examples/product-agency-studio.jpg"
+  },
+  {
+    "track": "08-ai-fashion-and-virtual-tryon",
+    "trackTitle": "AI Fashion & Virtual Try-On",
+    "type": "gif",
+    "src": "/academy/08-ai-fashion-and-virtual-tryon/templates/examples/denim-model-clip.gif",
+    "file": "templates/examples/denim-model-clip.gif"
+  },
+  {
+    "track": "08-ai-fashion-and-virtual-tryon",
+    "trackTitle": "AI Fashion & Virtual Try-On",
+    "type": "video",
+    "src": "/academy/08-ai-fashion-and-virtual-tryon/templates/examples/denim-model-clip.mp4",
+    "file": "templates/examples/denim-model-clip.mp4"
+  },
+  {
+    "track": "08-ai-fashion-and-virtual-tryon",
+    "trackTitle": "AI Fashion & Virtual Try-On",
+    "type": "image",
+    "src": "/academy/08-ai-fashion-and-virtual-tryon/templates/examples/denim-model-measurements.jpg",
+    "file": "templates/examples/denim-model-measurements.jpg"
+  },
+  {
+    "track": "08-ai-fashion-and-virtual-tryon",
+    "trackTitle": "AI Fashion & Virtual Try-On",
+    "type": "gif",
+    "src": "/academy/08-ai-fashion-and-virtual-tryon/templates/examples/fashion-lookbook-loop.gif",
+    "file": "templates/examples/fashion-lookbook-loop.gif"
+  },
+  {
+    "track": "08-ai-fashion-and-virtual-tryon",
+    "trackTitle": "AI Fashion & Virtual Try-On",
+    "type": "video",
+    "src": "/academy/08-ai-fashion-and-virtual-tryon/templates/examples/fashion-lookbook-loop.mp4",
+    "file": "templates/examples/fashion-lookbook-loop.mp4"
+  },
+  {
+    "track": "08-ai-fashion-and-virtual-tryon",
+    "trackTitle": "AI Fashion & Virtual Try-On",
+    "type": "image",
+    "src": "/academy/08-ai-fashion-and-virtual-tryon/templates/examples/fashion-lookbook-model.jpg",
+    "file": "templates/examples/fashion-lookbook-model.jpg"
+  },
+  {
+    "track": "08-ai-fashion-and-virtual-tryon",
+    "trackTitle": "AI Fashion & Virtual Try-On",
+    "type": "gif",
+    "src": "/academy/08-ai-fashion-and-virtual-tryon/templates/examples/linen-shirt-motion.gif",
+    "file": "templates/examples/linen-shirt-motion.gif"
+  },
+  {
+    "track": "08-ai-fashion-and-virtual-tryon",
+    "trackTitle": "AI Fashion & Virtual Try-On",
+    "type": "video",
+    "src": "/academy/08-ai-fashion-and-virtual-tryon/templates/examples/linen-shirt-motion.mp4",
+    "file": "templates/examples/linen-shirt-motion.mp4"
+  },
+  {
+    "track": "08-ai-fashion-and-virtual-tryon",
+    "trackTitle": "AI Fashion & Virtual Try-On",
+    "type": "image",
+    "src": "/academy/08-ai-fashion-and-virtual-tryon/templates/examples/linen-shirt-vto.jpg",
+    "file": "templates/examples/linen-shirt-vto.jpg"
+  },
+  {
+    "track": "08-ai-fashion-and-virtual-tryon",
+    "trackTitle": "AI Fashion & Virtual Try-On",
+    "type": "image",
+    "src": "/academy/08-ai-fashion-and-virtual-tryon/templates/examples/mannequin-grid-alignment.jpg",
+    "file": "templates/examples/mannequin-grid-alignment.jpg"
+  },
+  {
+    "track": "08-ai-fashion-and-virtual-tryon",
+    "trackTitle": "AI Fashion & Virtual Try-On",
+    "type": "gif",
+    "src": "/academy/08-ai-fashion-and-virtual-tryon/templates/examples/mannequin-grid-clip.gif",
+    "file": "templates/examples/mannequin-grid-clip.gif"
+  },
+  {
+    "track": "08-ai-fashion-and-virtual-tryon",
+    "trackTitle": "AI Fashion & Virtual Try-On",
+    "type": "video",
+    "src": "/academy/08-ai-fashion-and-virtual-tryon/templates/examples/mannequin-grid-clip.mp4",
+    "file": "templates/examples/mannequin-grid-clip.mp4"
+  },
+  {
+    "track": "09-ai-real-estate-staging",
+    "trackTitle": "AI Real Estate Staging",
+    "type": "gif",
+    "src": "/academy/09-ai-real-estate-staging/templates/examples/bedroom-staging-motion.gif",
+    "file": "templates/examples/bedroom-staging-motion.gif"
+  },
+  {
+    "track": "09-ai-real-estate-staging",
+    "trackTitle": "AI Real Estate Staging",
+    "type": "video",
+    "src": "/academy/09-ai-real-estate-staging/templates/examples/bedroom-staging-motion.mp4",
+    "file": "templates/examples/bedroom-staging-motion.mp4"
+  },
+  {
+    "track": "09-ai-real-estate-staging",
+    "trackTitle": "AI Real Estate Staging",
+    "type": "image",
+    "src": "/academy/09-ai-real-estate-staging/templates/examples/empty-to-staged-before-after.jpg",
+    "file": "templates/examples/empty-to-staged-before-after.jpg"
+  },
+  {
+    "track": "09-ai-real-estate-staging",
+    "trackTitle": "AI Real Estate Staging",
+    "type": "gif",
+    "src": "/academy/09-ai-real-estate-staging/templates/examples/living-room-staging-motion.gif",
+    "file": "templates/examples/living-room-staging-motion.gif"
+  },
+  {
+    "track": "09-ai-real-estate-staging",
+    "trackTitle": "AI Real Estate Staging",
+    "type": "video",
+    "src": "/academy/09-ai-real-estate-staging/templates/examples/living-room-staging-motion.mp4",
+    "file": "templates/examples/living-room-staging-motion.mp4"
+  },
+  {
+    "track": "09-ai-real-estate-staging",
+    "trackTitle": "AI Real Estate Staging",
+    "type": "image",
+    "src": "/academy/09-ai-real-estate-staging/templates/examples/staged-bedroom-luxury.jpg",
+    "file": "templates/examples/staged-bedroom-luxury.jpg"
+  },
+  {
+    "track": "09-ai-real-estate-staging",
+    "trackTitle": "AI Real Estate Staging",
+    "type": "image",
+    "src": "/academy/09-ai-real-estate-staging/templates/examples/staged-living-room.jpg",
+    "file": "templates/examples/staged-living-room.jpg"
+  },
+  {
+    "track": "10-ai-headshots-and-portraits",
+    "trackTitle": "AI Headshots & Portraits",
+    "type": "image",
+    "src": "/academy/10-ai-headshots-and-portraits/templates/examples/corporate-executive-headshot.jpg",
+    "file": "templates/examples/corporate-executive-headshot.jpg"
+  },
+  {
+    "track": "10-ai-headshots-and-portraits",
+    "trackTitle": "AI Headshots & Portraits",
+    "type": "gif",
+    "src": "/academy/10-ai-headshots-and-portraits/templates/examples/creative-studio-headshot-motion.gif",
+    "file": "templates/examples/creative-studio-headshot-motion.gif"
+  },
+  {
+    "track": "10-ai-headshots-and-portraits",
+    "trackTitle": "AI Headshots & Portraits",
+    "type": "video",
+    "src": "/academy/10-ai-headshots-and-portraits/templates/examples/creative-studio-headshot-motion.mp4",
+    "file": "templates/examples/creative-studio-headshot-motion.mp4"
+  },
+  {
+    "track": "10-ai-headshots-and-portraits",
+    "trackTitle": "AI Headshots & Portraits",
+    "type": "image",
+    "src": "/academy/10-ai-headshots-and-portraits/templates/examples/creative-studio-headshot.jpg",
+    "file": "templates/examples/creative-studio-headshot.jpg"
+  },
+  {
+    "track": "10-ai-headshots-and-portraits",
+    "trackTitle": "AI Headshots & Portraits",
+    "type": "gif",
+    "src": "/academy/10-ai-headshots-and-portraits/templates/examples/headshot-lighting-motion.gif",
+    "file": "templates/examples/headshot-lighting-motion.gif"
+  },
+  {
+    "track": "10-ai-headshots-and-portraits",
+    "trackTitle": "AI Headshots & Portraits",
+    "type": "video",
+    "src": "/academy/10-ai-headshots-and-portraits/templates/examples/headshot-lighting-motion.mp4",
+    "file": "templates/examples/headshot-lighting-motion.mp4"
+  },
+  {
+    "track": "10-ai-headshots-and-portraits",
+    "trackTitle": "AI Headshots & Portraits",
+    "type": "image",
+    "src": "/academy/10-ai-headshots-and-portraits/templates/examples/headshot-transformation-before-after.jpg",
+    "file": "templates/examples/headshot-transformation-before-after.jpg"
+  },
+  {
+    "track": "10-ai-headshots-and-portraits",
+    "trackTitle": "AI Headshots & Portraits",
+    "type": "gif",
+    "src": "/academy/10-ai-headshots-and-portraits/templates/examples/headshot-transformation-motion.gif",
+    "file": "templates/examples/headshot-transformation-motion.gif"
+  },
+  {
+    "track": "10-ai-headshots-and-portraits",
+    "trackTitle": "AI Headshots & Portraits",
+    "type": "video",
+    "src": "/academy/10-ai-headshots-and-portraits/templates/examples/headshot-transformation-motion.mp4",
+    "file": "templates/examples/headshot-transformation-motion.mp4"
+  },
+  {
+    "track": "11-ai-print-on-demand-and-merch",
+    "trackTitle": "AI Print-on-Demand & Merch",
+    "type": "image",
+    "src": "/academy/11-ai-print-on-demand-and-merch/templates/examples/cyberpunk-cat-merch-tshirt.jpg",
+    "file": "templates/examples/cyberpunk-cat-merch-tshirt.jpg"
+  },
+  {
+    "track": "11-ai-print-on-demand-and-merch",
+    "trackTitle": "AI Print-on-Demand & Merch",
+    "type": "gif",
+    "src": "/academy/11-ai-print-on-demand-and-merch/templates/examples/merch-design-motion.gif",
+    "file": "templates/examples/merch-design-motion.gif"
+  },
+  {
+    "track": "11-ai-print-on-demand-and-merch",
+    "trackTitle": "AI Print-on-Demand & Merch",
+    "type": "video",
+    "src": "/academy/11-ai-print-on-demand-and-merch/templates/examples/merch-design-motion.mp4",
+    "file": "templates/examples/merch-design-motion.mp4"
+  },
+  {
+    "track": "11-ai-print-on-demand-and-merch",
+    "trackTitle": "AI Print-on-Demand & Merch",
+    "type": "image",
+    "src": "/academy/11-ai-print-on-demand-and-merch/templates/examples/merch-design-vector-art.jpg",
+    "file": "templates/examples/merch-design-vector-art.jpg"
+  },
+  {
+    "track": "11-ai-print-on-demand-and-merch",
+    "trackTitle": "AI Print-on-Demand & Merch",
+    "type": "gif",
+    "src": "/academy/11-ai-print-on-demand-and-merch/templates/examples/merch-design-vector-motion.gif",
+    "file": "templates/examples/merch-design-vector-motion.gif"
+  },
+  {
+    "track": "11-ai-print-on-demand-and-merch",
+    "trackTitle": "AI Print-on-Demand & Merch",
+    "type": "video",
+    "src": "/academy/11-ai-print-on-demand-and-merch/templates/examples/merch-design-vector-motion.mp4",
+    "file": "templates/examples/merch-design-vector-motion.mp4"
+  },
+  {
+    "track": "11-ai-print-on-demand-and-merch",
+    "trackTitle": "AI Print-on-Demand & Merch",
+    "type": "image",
+    "src": "/academy/11-ai-print-on-demand-and-merch/templates/examples/vintage-botanical-mug-mockup.jpg",
+    "file": "templates/examples/vintage-botanical-mug-mockup.jpg"
+  },
+  {
+    "track": "11-ai-print-on-demand-and-merch",
+    "trackTitle": "AI Print-on-Demand & Merch",
+    "type": "gif",
+    "src": "/academy/11-ai-print-on-demand-and-merch/templates/examples/vintage-botanical-mug-motion.gif",
+    "file": "templates/examples/vintage-botanical-mug-motion.gif"
+  },
+  {
+    "track": "11-ai-print-on-demand-and-merch",
+    "trackTitle": "AI Print-on-Demand & Merch",
+    "type": "video",
+    "src": "/academy/11-ai-print-on-demand-and-merch/templates/examples/vintage-botanical-mug-motion.mp4",
+    "file": "templates/examples/vintage-botanical-mug-motion.mp4"
+  },
+  {
+    "track": "12-ai-stock-content-and-licensing",
+    "trackTitle": "AI Stock Content & Licensing",
+    "type": "image",
+    "src": "/academy/12-ai-stock-content-and-licensing/templates/examples/corporate-handshake-stock.jpg",
+    "file": "templates/examples/corporate-handshake-stock.jpg"
+  },
+  {
+    "track": "12-ai-stock-content-and-licensing",
+    "trackTitle": "AI Stock Content & Licensing",
+    "type": "gif",
+    "src": "/academy/12-ai-stock-content-and-licensing/templates/examples/future-technology-stock-motion.gif",
+    "file": "templates/examples/future-technology-stock-motion.gif"
+  },
+  {
+    "track": "12-ai-stock-content-and-licensing",
+    "trackTitle": "AI Stock Content & Licensing",
+    "type": "video",
+    "src": "/academy/12-ai-stock-content-and-licensing/templates/examples/future-technology-stock-motion.mp4",
+    "file": "templates/examples/future-technology-stock-motion.mp4"
+  },
+  {
+    "track": "12-ai-stock-content-and-licensing",
+    "trackTitle": "AI Stock Content & Licensing",
+    "type": "image",
+    "src": "/academy/12-ai-stock-content-and-licensing/templates/examples/future-technology-stock.jpg",
+    "file": "templates/examples/future-technology-stock.jpg"
+  },
+  {
+    "track": "12-ai-stock-content-and-licensing",
+    "trackTitle": "AI Stock Content & Licensing",
+    "type": "gif",
+    "src": "/academy/12-ai-stock-content-and-licensing/templates/examples/stock-catalog-motion.gif",
+    "file": "templates/examples/stock-catalog-motion.gif"
+  },
+  {
+    "track": "12-ai-stock-content-and-licensing",
+    "trackTitle": "AI Stock Content & Licensing",
+    "type": "video",
+    "src": "/academy/12-ai-stock-content-and-licensing/templates/examples/stock-catalog-motion.mp4",
+    "file": "templates/examples/stock-catalog-motion.mp4"
+  },
+  {
+    "track": "13-ai-tools-mastery",
+    "trackTitle": "AI Tools Mastery",
+    "type": "gif",
+    "src": "/academy/13-ai-tools-mastery/templates/examples/camera-motion-matrix-motion.gif",
+    "file": "templates/examples/camera-motion-matrix-motion.gif"
+  },
+  {
+    "track": "13-ai-tools-mastery",
+    "trackTitle": "AI Tools Mastery",
+    "type": "video",
+    "src": "/academy/13-ai-tools-mastery/templates/examples/camera-motion-matrix-motion.mp4",
+    "file": "templates/examples/camera-motion-matrix-motion.mp4"
+  },
+  {
+    "track": "13-ai-tools-mastery",
+    "trackTitle": "AI Tools Mastery",
+    "type": "image",
+    "src": "/academy/13-ai-tools-mastery/templates/examples/camera-motion-matrix.jpg",
+    "file": "templates/examples/camera-motion-matrix.jpg"
+  },
+  {
+    "track": "13-ai-tools-mastery",
+    "trackTitle": "AI Tools Mastery",
+    "type": "image",
+    "src": "/academy/13-ai-tools-mastery/templates/examples/model-benchmark-comparison.jpg",
+    "file": "templates/examples/model-benchmark-comparison.jpg"
+  },
+  {
+    "track": "13-ai-tools-mastery",
+    "trackTitle": "AI Tools Mastery",
+    "type": "gif",
+    "src": "/academy/13-ai-tools-mastery/templates/examples/tools-workflow-motion.gif",
+    "file": "templates/examples/tools-workflow-motion.gif"
+  },
+  {
+    "track": "13-ai-tools-mastery",
+    "trackTitle": "AI Tools Mastery",
+    "type": "video",
+    "src": "/academy/13-ai-tools-mastery/templates/examples/tools-workflow-motion.mp4",
+    "file": "templates/examples/tools-workflow-motion.mp4"
+  },
+  {
+    "track": "14-ai-freelancing-and-agency-business",
+    "trackTitle": "AI Freelancing & Agency Business",
+    "type": "image",
+    "src": "/academy/14-ai-freelancing-and-agency-business/templates/examples/agency-pricing-deck-mockup.jpg",
+    "file": "templates/examples/agency-pricing-deck-mockup.jpg"
+  },
+  {
+    "track": "14-ai-freelancing-and-agency-business",
+    "trackTitle": "AI Freelancing & Agency Business",
+    "type": "gif",
+    "src": "/academy/14-ai-freelancing-and-agency-business/templates/examples/agency-pricing-deck-motion.gif",
+    "file": "templates/examples/agency-pricing-deck-motion.gif"
+  },
+  {
+    "track": "14-ai-freelancing-and-agency-business",
+    "trackTitle": "AI Freelancing & Agency Business",
+    "type": "video",
+    "src": "/academy/14-ai-freelancing-and-agency-business/templates/examples/agency-pricing-deck-motion.mp4",
+    "file": "templates/examples/agency-pricing-deck-motion.mp4"
+  },
+  {
+    "track": "14-ai-freelancing-and-agency-business",
+    "trackTitle": "AI Freelancing & Agency Business",
+    "type": "image",
+    "src": "/academy/14-ai-freelancing-and-agency-business/templates/examples/client-dashboard-metrics.jpg",
+    "file": "templates/examples/client-dashboard-metrics.jpg"
+  },
+  {
+    "track": "14-ai-freelancing-and-agency-business",
+    "trackTitle": "AI Freelancing & Agency Business",
+    "type": "gif",
+    "src": "/academy/14-ai-freelancing-and-agency-business/templates/examples/client-dashboard-motion.gif",
+    "file": "templates/examples/client-dashboard-motion.gif"
+  },
+  {
+    "track": "14-ai-freelancing-and-agency-business",
+    "trackTitle": "AI Freelancing & Agency Business",
+    "type": "video",
+    "src": "/academy/14-ai-freelancing-and-agency-business/templates/examples/client-dashboard-motion.mp4",
+    "file": "templates/examples/client-dashboard-motion.mp4"
+  },
+  {
+    "track": "15-ai-agents-and-vibe-coding",
+    "trackTitle": "AI Agents & Vibe Coding",
+    "type": "image",
+    "src": "/academy/15-ai-agents-and-vibe-coding/templates/examples/micro-tool-app-interface.jpg",
+    "file": "templates/examples/micro-tool-app-interface.jpg"
+  },
+  {
+    "track": "15-ai-agents-and-vibe-coding",
+    "trackTitle": "AI Agents & Vibe Coding",
+    "type": "gif",
+    "src": "/academy/15-ai-agents-and-vibe-coding/templates/examples/micro-tool-app-motion.gif",
+    "file": "templates/examples/micro-tool-app-motion.gif"
+  },
+  {
+    "track": "15-ai-agents-and-vibe-coding",
+    "trackTitle": "AI Agents & Vibe Coding",
+    "type": "video",
+    "src": "/academy/15-ai-agents-and-vibe-coding/templates/examples/micro-tool-app-motion.mp4",
+    "file": "templates/examples/micro-tool-app-motion.mp4"
+  },
+  {
+    "track": "15-ai-agents-and-vibe-coding",
+    "trackTitle": "AI Agents & Vibe Coding",
+    "type": "gif",
+    "src": "/academy/15-ai-agents-and-vibe-coding/templates/examples/vibe-coding-workspace-motion.gif",
+    "file": "templates/examples/vibe-coding-workspace-motion.gif"
+  },
+  {
+    "track": "15-ai-agents-and-vibe-coding",
+    "trackTitle": "AI Agents & Vibe Coding",
+    "type": "video",
+    "src": "/academy/15-ai-agents-and-vibe-coding/templates/examples/vibe-coding-workspace-motion.mp4",
+    "file": "templates/examples/vibe-coding-workspace-motion.mp4"
+  },
+  {
+    "track": "15-ai-agents-and-vibe-coding",
+    "trackTitle": "AI Agents & Vibe Coding",
+    "type": "image",
+    "src": "/academy/15-ai-agents-and-vibe-coding/templates/examples/vibe-coding-workspace.jpg",
+    "file": "templates/examples/vibe-coding-workspace.jpg"
+  }
+]
