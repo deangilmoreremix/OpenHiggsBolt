@@ -6,6 +6,8 @@ import {
   pollStoryboardResult,
   extractStoryboardAsset,
 } from '@/api/storyboard'
+import { PublishStep } from '@/components/SocialPublishProvider'
+import { AssistStep } from '@/components/AiAssistantProvider'
 import { useStoryboard } from '../StoryboardContext'
 
 interface Shot {
@@ -185,11 +187,31 @@ export default function ShotEditor() {
                   </div>
                 )}
                 {shot.status === 'done' && shot.assetUrl && (
-                  <img
-                    src={shot.assetUrl}
-                    alt={shot.description}
-                    className="w-full aspect-video object-cover rounded-xl"
-                  />
+                  <div className="relative">
+                    <img
+                      src={shot.assetUrl}
+                      alt={shot.description}
+                      className="w-full aspect-video object-cover rounded-xl"
+                    />
+                    <div className="absolute top-2 right-2 flex flex-col gap-2">
+                      <PublishStep
+                        mediaUrl={shot.assetUrl}
+                        mediaType="image"
+                        title={shot.description?.substring(0, 50) || 'Storyboard shot'}
+                        className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center"
+                      />
+                      <AssistStep
+                        assetUrl={shot.assetUrl}
+                        assetType="image"
+                        onApply={() => {}}
+                        className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
+                        </svg>
+                      </AssistStep>
+                    </div>
+                  </div>
                 )}
                 {shot.status === 'error' && (
                   <div className="aspect-video bg-[var(--bg-card)] rounded-xl flex items-center justify-center text-sm text-red-300 p-4 text-center">

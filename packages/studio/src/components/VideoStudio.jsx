@@ -19,6 +19,8 @@ import {
   getMaxImagesForI2VModel,
 } from "../models.js";
 import { getAdvancedControlsForModel, buildAdvancedPayload } from "../videoAdvancedControls.js";
+import { PublishStep } from "../../../../components/SocialPublishProvider";
+import { AssistStep } from "../../../../components/AiAssistantProvider";
 
 // ── tiny helpers ──────────────────────────────────────────────────────────────
 
@@ -125,6 +127,28 @@ function AdvancedField({ control, value, onChange }) {
         onChange={(e) => onChange(e.target.value)}
         rows={2}
         className="w-full bg-[#16161a]/60 border border-white/[0.06] rounded-md text-white text-xs px-2.5 py-1.5 resize-none focus:outline-none focus:border-[#22d3ee]/40"
+      />
+    );
+  } else if (control.type === "url_list") {
+    controlEl = (
+      <textarea
+        id={id}
+        value={v}
+        placeholder={control.description || "One URL per line"}
+        onChange={(e) => onChange(e.target.value)}
+        rows={3}
+        className="w-full bg-[#16161a]/60 border border-white/[0.06] rounded-md text-white text-xs px-2.5 py-1.5 resize-none focus:outline-none focus:border-[#22d3ee]/40"
+      />
+    );
+  } else if (control.type === "url") {
+    controlEl = (
+      <input
+        id={id}
+        type="text"
+        value={v}
+        placeholder={control.description || "https://…"}
+        onChange={(e) => onChange(e.target.value)}
+        className={inputCls}
       />
     );
   } else {
@@ -1614,24 +1638,40 @@ export default function VideoStudio({
                         </svg>
                       </button>
                     )}
-                    <button
-                      type="button"
-                      title="Delete"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm("Are you sure you want to delete this generated item?")) {
-                          setLocalHistory(prev => prev.filter((_, i) => i !== idx));
-                        }
-                      }}
-                      className="p-2 bg-black/60 backdrop-blur-md rounded-full text-red-400 hover:bg-red-500 hover:text-white transition-all border border-white/10"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <polyline points="3 6 5 6 21 6" />
-                        <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                        <line x1="10" y1="11" x2="10" y2="17" />
-                        <line x1="14" y1="11" x2="14" y2="17" />
-                      </svg>
-                    </button>
+                  <PublishStep
+                    mediaUrl={entry.url}
+                    mediaType="video"
+                    title={entry.prompt?.substring(0, 50) || 'Generated video'}
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center"
+                  />
+                  <AssistStep
+                    assetUrl={entry.url}
+                    assetType="video"
+                    onApply={() => {}}
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
+                    </svg>
+                  </AssistStep>
+                  <button
+                    type="button"
+                    title="Delete"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm("Are you sure you want to delete this generated item?")) {
+                        setLocalHistory(prev => prev.filter((_, i) => i !== idx));
+                      }
+                    }}
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-red-400 hover:bg-red-500 hover:text-white transition-all border border-white/10"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      <line x1="10" y1="11" x2="10" y2="17" />
+                      <line x1="14" y1="11" x2="14" y2="17" />
+                    </svg>
+                  </button>
                   </div>
 
                   {/* Prompt & Details */}

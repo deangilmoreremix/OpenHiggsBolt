@@ -198,7 +198,12 @@ export async function generateI2I(apiKey, params) {
 // present in `params`.
 function allowedAdvancedKeys(modelInfo) {
   if (!modelInfo) return new Set();
-  return new Set(getAdvancedControlsForModel(modelInfo).map((c) => c.key));
+  // Union the declared control keys with the keys buildAdvancedPayload can
+  // DERIVE (images_list from first/last frame, camera_control, multi_prompt
+  // array, ratio) — those derived keys aren't always raw control keys.
+  const derived = ["images_list", "camera_control", "multi_prompt", "ratio"];
+  const keys = getAdvancedControlsForModel(modelInfo).map((c) => c.key);
+  return new Set([...keys, ...derived]);
 }
 
 function applyAdvancedVideoParams(payload, params, allowed) {

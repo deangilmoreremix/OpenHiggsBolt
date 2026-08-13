@@ -24,6 +24,15 @@ export interface VideoGenerationParams {
   last_image?: string
   images_list?: string[]
   videos_list?: string[]
+  reference_image_urls?: string[]
+  multi_prompt?: string[]
+  multi_shots?: boolean
+  first_frame?: string
+  last_frame?: string
+  audio_url?: string
+  ratio?: string
+  shot_type?: string
+  generate_audio_switch?: boolean
 }
 
 export interface VideoResult {

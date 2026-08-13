@@ -10,17 +10,7 @@ import React, {
 } from 'react';
 import { Share2, Play, Camera, Music2 } from 'lucide-react';
 import SocialPublishModal from './SocialPublishModal';
-
-/**
- * Central social-publishing hub.
- *
- * Wrap the studio content once (in StandaloneShell) with
- * <SocialPublishProvider apiKey={apiKey}>. Any studio can then call
- * `useSocialPublish().openPublish(...)` — or drop in <PublishButton /> /
- * <PublishStep /> — to open the shared publish modal pre-filled with the
- * generated media URL. A single modal instance is mounted for the whole app, so
- * wiring a new studio is just adding a button/step in its result area.
- */
+import type { Asset, CopyState, ThumbnailState, Destination, PublishResult, WriteCopyState } from './social-publishing/types';
 
 export type SocialPublishOptions = {
   mediaUrl: string;
@@ -32,7 +22,44 @@ export type SocialPublishOptions = {
 type SocialPublishContextValue = {
   openPublish: (opts: SocialPublishOptions) => void;
   closePublish: () => void;
+  openSocialPublisher: (opts: { asset: Asset }) => void;
 };
+
+type SocialPublishState = {
+  open: boolean;
+  currentStep: number;
+  asset: Asset | null;
+  writeCopy: WriteCopyState;
+  socialCopy: CopyState;
+  thumbnail: ThumbnailState;
+  destinations: Destination[];
+  publishResults: PublishResult[];
+};
+
+const EMPTY_WRITE_COPY: WriteCopyState = {
+  master: '',
+  platforms: {},
+  variants: [],
+  selectedVariantId: undefined,
+};
+
+const EMPTY_COPY: CopyState = {
+  master: '',
+  platforms: {},
+  variants: [],
+  selectedVariantId: undefined,
+  title: '',
+  description: '',
+  tags: '',
+  caption: '',
+  tiktokTitle: '',
+  headline: '',
+  subheadline: '',
+  subject: '',
+  visualIdea: '',
+};
+
+const EMPTY_THUMBNAIL: ThumbnailState = {};
 
 const SocialPublishContext = createContext<SocialPublishContextValue | null>(null);
 
@@ -43,27 +70,54 @@ export function SocialPublishProvider({
   apiKey: string | null;
   children: ReactNode;
 }) {
-  const [state, setState] = useState<{
-    open: boolean;
-    mediaUrl: string;
-    mediaType: 'image' | 'video';
-    title: string;
-    caption: string;
-  }>({
+  const [state, setState] = useState<SocialPublishState>({
     open: false,
-    mediaUrl: '',
-    mediaType: 'video',
-    title: '',
-    caption: '',
+    currentStep: 0,
+    asset: null,
+    writeCopy: EMPTY_WRITE_COPY,
+    socialCopy: EMPTY_COPY,
+    thumbnail: EMPTY_THUMBNAIL,
+    destinations: [],
+    publishResults: [],
   });
 
   const openPublish = useCallback((opts: SocialPublishOptions) => {
+    const title = opts.title || '';
+    const caption = opts.caption || '';
     setState({
       open: true,
-      mediaUrl: opts.mediaUrl || '',
-      mediaType: opts.mediaType === 'image' ? 'image' : 'video',
-      title: opts.title || '',
-      caption: opts.caption || '',
+      currentStep: 0,
+      asset: {
+        id: `asset-${Date.now()}`,
+        url: opts.mediaUrl || '',
+        type: opts.mediaType === 'image' ? 'image' : 'video',
+      },
+      writeCopy: {
+        ...EMPTY_WRITE_COPY,
+        master: title || caption || '',
+      },
+      socialCopy: {
+        ...EMPTY_COPY,
+        title,
+        caption,
+        tiktokTitle: title,
+      },
+      thumbnail: EMPTY_THUMBNAIL,
+      destinations: [],
+      publishResults: [],
+    });
+  }, []);
+
+  const openSocialPublisher = useCallback((opts: { asset: Asset }) => {
+    setState({
+      open: true,
+      currentStep: 0,
+      asset: opts.asset,
+      writeCopy: { ...EMPTY_WRITE_COPY },
+      socialCopy: { ...EMPTY_COPY },
+      thumbnail: EMPTY_THUMBNAIL,
+      destinations: [],
+      publishResults: [],
     });
   }, []);
 
@@ -71,7 +125,38 @@ export function SocialPublishProvider({
     setState((s) => ({ ...s, open: false }));
   }, []);
 
-  const value = useMemo(() => ({ openPublish, closePublish }), [openPublish, closePublish]);
+  const setCurrentStep = useCallback((currentStep: number) => {
+    setState((s) => ({ ...s, currentStep }));
+  }, []);
+
+  const updateWriteCopy = useCallback((writeCopy: WriteCopyState) => {
+    setState((s) => ({ ...s, writeCopy }));
+  }, []);
+
+  const updateSocialCopy = useCallback((socialCopy: CopyState) => {
+    setState((s) => ({ ...s, socialCopy }));
+  }, []);
+
+  const updateThumbnail = useCallback((thumbnail: ThumbnailState) => {
+    setState((s) => ({ ...s, thumbnail }));
+  }, []);
+
+  const updateDestinations = useCallback((destinations: Destination[]) => {
+    setState((s) => ({ ...s, destinations }));
+  }, []);
+
+  const updatePublishResults = useCallback((publishResults: PublishResult[]) => {
+    setState((s) => ({ ...s, publishResults }));
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      openPublish,
+      closePublish,
+      openSocialPublisher,
+    }),
+    [openPublish, closePublish, openSocialPublisher]
+  );
 
   return (
     <SocialPublishContext.Provider value={value}>
@@ -80,10 +165,19 @@ export function SocialPublishProvider({
         open={state.open}
         onClose={closePublish}
         apiKey={apiKey ?? ''}
-        mediaUrl={state.mediaUrl}
-        mediaType={state.mediaType}
-        defaultTitle={state.title}
-        defaultCaption={state.caption}
+        currentStep={state.currentStep}
+        setCurrentStep={setCurrentStep}
+        asset={state.asset}
+        writeCopy={state.writeCopy}
+        socialCopy={state.socialCopy}
+        thumbnail={state.thumbnail}
+        destinations={state.destinations}
+        publishResults={state.publishResults}
+        updateWriteCopy={updateWriteCopy}
+        updateSocialCopy={updateSocialCopy}
+        updateThumbnail={updateThumbnail}
+        updateDestinations={updateDestinations}
+        updatePublishResults={updatePublishResults}
       />
     </SocialPublishContext.Provider>
   );
@@ -103,14 +197,6 @@ const PLATFORM_ICONS: Record<string, React.ComponentType<any>> = {
   tiktok: Music2,
 };
 
-/**
- * Drop-in "Post to social" step for any studio's result area.
- *
- * Renders a compact, theme-neutral step card (Share icon + label + the platforms
- * this media type supports). Clicking it opens the shared publish modal
- * pre-filled with the asset. Renders nothing when there is no mediaUrl, so it is
- * safe to place unconditionally next to Download / Copy URL.
- */
 export function PublishStep({
   mediaUrl,
   mediaType = 'video',
@@ -154,9 +240,6 @@ export function PublishStep({
   );
 }
 
-/**
- * Bare publish button (no card chrome) — use inline next to Download / Copy URL.
- */
 export function PublishButton({
   mediaUrl,
   mediaType = 'video',

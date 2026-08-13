@@ -33,25 +33,6 @@ const PLATFORMS = [
   { id: 'tiktok', name: 'TikTok', icon: Music2, accent: '#22d3ee' },
 ];
 
-function uuidv4() {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
-
-function getExternalUserId() {
-  if (typeof window === 'undefined') return uuidv4();
-  let id = localStorage.getItem(EXT_UID_KEY);
-  if (!id) {
-    id = uuidv4();
-    localStorage.setItem(EXT_UID_KEY, id);
-  }
-  return id;
-}
-
 function loadMediaHistory() {
   if (typeof window === 'undefined') return [];
   try {
@@ -131,7 +112,7 @@ export default function SocialPublishing({ apiKey }) {
     setLoadingAccounts(true);
     setError(null);
     try {
-      const data = await listExternalSocialAccounts(apiKey, getExternalUserId());
+      const data = await listExternalSocialAccounts(apiKey);
       const list = Array.isArray(data) ? data : (data?.accounts || []);
       setAccounts(list);
       if (list.length === 0) {
@@ -153,7 +134,7 @@ export default function SocialPublishing({ apiKey }) {
     setError(null);
     try {
       const redirectTo = window.location.origin + '/studio/social-publishing';
-      const data = await connectSocialAccount(apiKey, getExternalUserId(), redirectTo);
+      const data = await connectSocialAccount(apiKey, redirectTo);
       const url = data?.url || data?.authorize_url || data?.connect_url;
       if (!url) throw new Error('No connect URL returned by API.');
       window.open(url, '_blank', 'noopener,noreferrer');
@@ -244,7 +225,7 @@ export default function SocialPublishing({ apiKey }) {
 
       const out = final?.output || final?.data?.output || final;
       const link = out?.url || out?.media_id || out?.publish_id || final?.url;
-      setResult({ requestId, platform, output: out, link });
+      setResult({ platform, status: 'published', url: link || undefined });
       setPollStatus('');
     } catch (err) {
       setError(formatError(err));
@@ -274,8 +255,8 @@ export default function SocialPublishing({ apiKey }) {
   ]);
 
   const handleCopy = useCallback(() => {
-    if (!result?.link) return;
-    navigator.clipboard?.writeText(String(result.link)).then(() => {
+    if (!result?.url) return;
+    navigator.clipboard?.writeText(String(result.url)).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
@@ -527,7 +508,7 @@ export default function SocialPublishing({ apiKey }) {
           {publishing ? (pollStatus || 'Publishing…') : `Publish to ${platformMeta?.name}`}
         </button>
 
-        {result && result.link && (
+        {result && result.url && (
           <div className="mt-4 p-4 rounded-xl border border-[#22d3ee]/30 bg-[#22d3ee]/5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-white">Published successfully</span>
@@ -540,14 +521,14 @@ export default function SocialPublishing({ apiKey }) {
               </button>
             </div>
             <a
-              href={String(result.link)}
+              href={String(result.url)}
               target="_blank"
               rel="noopener noreferrer"
               className="block text-xs text-[#22d3ee] break-all hover:underline"
             >
-              {String(result.link)}
+              {String(result.url)}
             </a>
-            <p className="mt-1 text-[11px] text-white/40">request_id: {result.requestId}</p>
+            <p className="mt-1 text-[11px] text-white/40">status: {result.status}</p>
           </div>
         )}
       </div>

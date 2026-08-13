@@ -8,6 +8,8 @@ import {
   buildAdvancedParams,
   type AdvancedModelRef,
 } from '@/shared/components/AdvancedControlsPanel'
+import { PublishStep } from '@/components/SocialPublishProvider'
+import { AssistStep } from '@/components/AiAssistantProvider'
 
 // Map the modal's friendly model options to real MuAPI t2v model ids so the
 // unified generateVideo hits the correct /api/v1/{endpoint}.
@@ -180,10 +182,22 @@ export default function VideoGenerate() {
                 <Download size={16} />
                 Download
               </button>
-              <button className="px-4 py-2 bg-bg-card rounded-xl text-sm hover:bg-border-color transition-all flex items-center gap-2">
-                <Share2 size={16} />
-                Share
-              </button>
+              <PublishStep
+                mediaUrl={result?.url}
+                mediaType="video"
+                title={prompt?.substring(0, 50) || 'Generated video'}
+                className="px-4 py-2 bg-bg-card rounded-xl text-sm hover:bg-border-color transition-all flex items-center gap-2"
+              />
+              <AssistStep
+                assetUrl={result?.url}
+                assetType="video"
+                onApply={() => {}}
+                className="px-4 py-2 bg-bg-card rounded-xl text-sm hover:bg-border-color transition-all flex items-center gap-2"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
+                </svg>
+              </AssistStep>
             </div>
           </div>
         )}

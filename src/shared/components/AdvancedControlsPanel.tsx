@@ -49,6 +49,27 @@ export function AdvancedControlsPanel({ controls, values, onChange }: AdvancedCo
               />
             )}
 
+            {c.type === 'url_list' && (
+              <textarea
+                id={fieldId}
+                value={value}
+                placeholder={c.description || 'One URL per line'}
+                onChange={(e) => onChange(c.key, e.target.value)}
+                className="w-full h-20 bg-bg-card border border-border-color rounded-xl p-3 text-white placeholder-muted resize-none"
+              />
+            )}
+
+            {c.type === 'url' && (
+              <input
+                id={fieldId}
+                type="text"
+                value={value}
+                placeholder={c.description || 'https://…'}
+                onChange={(e) => onChange(c.key, e.target.value)}
+                className="w-full bg-bg-card border border-border-color rounded-xl p-2 text-white"
+              />
+            )}
+
             {(c.type === 'int' || c.type === 'number') && (
               <input
                 id={fieldId}

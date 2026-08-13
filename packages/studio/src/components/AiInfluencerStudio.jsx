@@ -2,6 +2,8 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { generateImage } from "../muapi.js";
+import { PublishStep } from "../../../../components/SocialPublishProvider";
+import { AssistStep } from "../../../../components/AiAssistantProvider";
 
 const CDN = "https://cdn.muapi.ai/influencer";
 
@@ -634,6 +636,22 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
                   <DownloadIcon />
                   Save
                 </button>
+                <PublishStep
+                  mediaUrl={previewUrl}
+                  mediaType="image"
+                  title="AI Influencer"
+                  className="absolute bottom-3 right-20 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-white text-[11px] font-semibold hover:bg-black/80 transition-all"
+                />
+                <AssistStep
+                  assetUrl={previewUrl}
+                  assetType="image"
+                  onApply={() => {}}
+                  className="absolute bottom-3 right-36 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-white text-[11px] font-semibold hover:bg-black/80 transition-all"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
+                  </svg>
+                </AssistStep>
               </>
             ) : (
               <div className="flex flex-col items-center gap-3 text-center px-8 py-12">
@@ -734,15 +752,31 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
                 <img src={item.url} alt={`Character ${idx + 1}`} className="w-full h-full object-cover" />
                 {/* Download on hover */}
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-2">
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => { e.stopPropagation(); downloadImg(item.url); }}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); downloadImg(item.url); } }}
-                    className="p-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 transition-all cursor-pointer"
-                  >
-                    <DownloadIcon />
-                  </div>
+                 <div
+                     role="button"
+                     tabIndex={0}
+                     onClick={(e) => { e.stopPropagation(); downloadImg(item.url); }}
+                     onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); downloadImg(item.url); } }}
+                     className="p-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 transition-all cursor-pointer"
+                   >
+                     <DownloadIcon />
+                   </div>
+                   <PublishStep
+                     mediaUrl={item.url}
+                     mediaType="image"
+                     title={`Influencer #${history.length - idx}`}
+                     className="p-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 transition-all cursor-pointer"
+                   />
+                   <AssistStep
+                     assetUrl={item.url}
+                     assetType="image"
+                     onApply={() => {}}
+                     className="p-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 transition-all cursor-pointer"
+                   >
+                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                       <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
+                     </svg>
+                   </AssistStep>
                 </div>
                 {/* Index badge */}
                 <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[8px] text-gray-300 font-bold">
