@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { CreativeCanvas, logger } from 'design-agent';
 import { getUserBalance } from '../muapi';
 
