@@ -1,13 +1,13 @@
 import OpenAI from "npm:openai";
 
-// Resolve the OpenAI API key for a request using a strict "bring your own key"
-// (BYOK) model. Users store their own OpenAI key (encrypted in
-// app_users.openai_key) and the frontend forwards it on each call via the
-// `x-openai-key` header. There is intentionally NO shared server-side
-// fallback: every request must carry the caller's own key, so one user can
-// never spend another user's (or the platform's) OpenAI quota.
+// Resolve the OpenAI API key for a request. Prefer the user-supplied key that
+// the frontend forwards on each call via the `x-openai-key` header (bring your
+// own key / BYOK), falling back to the platform-level OPENAI_API_KEY env var so
+// requests still work when the caller has not provided their own key.
 export function resolveOpenAiKey(req: Request): string {
-  return req.headers.get("x-openai-key")?.trim() || "";
+  const header = req.headers.get("x-openai-key");
+  if (header && header.trim()) return header.trim();
+  return Deno.env.get("OPENAI_API_KEY") || "";
 }
 
 // Thrown when no usable key is available. Callers translate this into a 400

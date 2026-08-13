@@ -23,7 +23,7 @@ import type {
 
 const STORAGE_KEY = 'vfx_generation_state'
 const POLL_INTERVAL_MS = 5000
-const MAX_POLL_ATTEMPTS = 72 // ~6 minutes at 5s intervals
+const MAX_POLL_ATTEMPTS = 180 // ~15 minutes at 5s intervals — must match server MuAPIVFXClient timeout
 
 interface PersistedState {
   requestId: string | null
@@ -307,9 +307,17 @@ export function useVideoGeneration(userApiKey?: string): UseVideoGenerationRetur
     clearPoll()
 
     try {
-      await fetch('/api/vfx/cancel', { method: 'POST' })
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (userApiKey) {
+        headers['x-api-key'] = userApiKey
+      }
+      await fetch('/api/vfx/cancel', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ request_id: requestId }),
+      })
     } catch {
-      // ignore
+      // ignore network errors — local abort already stops polling
     }
 
     setStatus('cancelled')
@@ -318,7 +326,7 @@ export function useVideoGeneration(userApiKey?: string): UseVideoGenerationRetur
     if (requestId) {
       persist({ requestId, status: 'cancelled' })
     }
-  }, [clearPoll, persist, requestId])
+  }, [clearPoll, persist, requestId, userApiKey])
 
   const retryVideo = useCallback(() => {
     if (!lastRequestRef.current) {

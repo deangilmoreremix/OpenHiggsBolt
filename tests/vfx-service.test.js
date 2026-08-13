@@ -215,4 +215,38 @@ describe('MuAPIVFXClient', () => {
     assert.ok(generateCalled)
     assert.ok(pollCalls >= 2)
   })
+
+  it('requestCancellation is best-effort and non-fatal on 404/405', async () => {
+    const seen = []
+    global.fetch = async (url, options) => {
+      seen.push({ url, method: options.method })
+      // Simulate MuAPI not supporting prediction cancellation.
+      return {
+        ok: false,
+        status: 404,
+        async json() {
+          return { error: 'not found' }
+        },
+      }
+    }
+
+    const client = new MuAPIVFXClient({ apiKey: 'test-key' })
+    // Must not throw even though the candidate returns 404.
+    await client.requestCancellation('cancel-job-1')
+
+    // Probed the DELETE shape (first candidate); 404 means unsupported, so it
+    // stops rather than wasting a second call.
+    assert.ok(seen.some((c) => c.method === 'DELETE' && c.url.endsWith('/predictions/cancel-job-1')))
+    assert.equal(seen.length, 1)
+  })
+
+  it('requestCancellation swallows network errors', async () => {
+    global.fetch = async () => {
+      throw new Error('network down')
+    }
+
+    const client = new MuAPIVFXClient({ apiKey: 'test-key' })
+    // Must not throw.
+    await client.requestCancellation('cancel-job-2')
+  })
 })
