@@ -1,16 +1,17 @@
 'use client';
 import { useEffect } from 'react';
-import { SignIn, useAuth } from '@clerk/nextjs';
+import { SignUp, useAuth } from '@clerk/nextjs';
 import Link from 'next/link';
-import { PRODUCT_NAME } from '../../components/landing/landingData';
+import { PRODUCT_NAME } from '../../../components/landing/landingData';
 
-export default function SignInPage() {
+export default function SignUpPage() {
   const { isLoaded, isSignedIn } = useAuth();
 
   // Provision the user's workspace in Supabase once the session is active.
   // (Idempotent on the server via onConflict: clerk_user_id.)
-  // Post-sign-in navigation is owned by Clerk via fallbackRedirectUrl below
-  // (honors ?redirect_url= set by middleware when arriving from a protected route).
+  // Navigation after sign-up is owned by Clerk via fallbackRedirectUrl below,
+  // which also honors the ?redirect_url= set by middleware when a protected
+  // route sent the user here (so they return to the page they intended).
   useEffect(() => {
     if (isLoaded && isSignedIn) {
       fetch('/api/workspace/provision', { method: 'POST' }).catch(() => {});
@@ -59,31 +60,24 @@ export default function SignInPage() {
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
             <p className="mb-4 inline-flex rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs uppercase tracking-[0.3em] text-cyan-200">
-              Welcome back
+              Get started
             </p>
             <h1 className="landing-gradient-text text-4xl font-black tracking-tight md:text-5xl">
-              Sign in to the studio
+              Create your studio account
             </h1>
             <p className="mx-auto mt-4 max-w-sm text-sm leading-7 text-white/60">
-              Pick up where you left off — your assets, campaigns, and workflows are waiting.
+              Join creators, agencies, and teams shipping AI video campaigns in minutes.
             </p>
           </div>
 
-          <SignIn routing="path" fallbackRedirectUrl="/studio" />
-
-          <p className="mt-4 text-center text-sm text-white/55">
-            <Link
-              href="/forgot-password"
-              className="font-semibold text-cyan-300 hover:text-cyan-200"
-            >
-              Forgot your password?
-            </Link>
-          </p>
+          <div className="landing-card rounded-3xl p-6 md:p-8">
+            <SignUp routing="path" fallbackRedirectUrl="/studio" />
+          </div>
 
           <p className="mt-6 text-center text-sm text-white/55">
-            New to {PRODUCT_NAME}?{' '}
-            <Link href="/sign-up" className="font-semibold text-cyan-300 hover:text-cyan-200">
-              Create an account
+            Already have an account?{' '}
+            <Link href="/sign-in" className="font-semibold text-cyan-300 hover:text-cyan-200">
+              Sign in
             </Link>
           </p>
         </div>

@@ -15,10 +15,10 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <ClerkProvider
+      publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
       appearance={{
         variables: {
           colorPrimary: '#22d3ee',
-          colorBackground: '#050505',
           colorInputBackground: 'rgba(255,255,255,0.1)',
           colorInputText: '#ffffff',
           colorText: '#ffffff',
