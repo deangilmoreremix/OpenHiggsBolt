@@ -63,6 +63,12 @@
       ],
       "design-agent": [
         "./packages/Open-AI-Design-Agent/packages/design-agent/src/index.js"
+      ],
+      "studio": [
+        "./packages/studio/src/index.js"
+      ],
+      "studio/*": [
+        "./packages/studio/*"
       ]
     },
     "plugins": [
