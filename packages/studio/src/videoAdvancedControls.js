@@ -97,7 +97,7 @@ export const ADVANCED_CONTROLS = {
   enable_sound: {
     label: "Enable Sound",
     type: "boolean",
-    default: true,
+    default: false,
     description: "Generate native audio for the clip (Kling).",
   },
   camera_control_type: {
