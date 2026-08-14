@@ -221,66 +221,71 @@ function ClippingStudio(_ref2) {
     _useState8 = _slicedToArray(_useState7, 2),
     returnCoordinatesOnly = _useState8[0],
     setReturnCoordinatesOnly = _useState8[1];
+  var _useState9 = (0, _react.useState)(""),
+    _useState0 = _slicedToArray(_useState9, 2),
+    prompt = _useState0[0],
+    setPrompt = _useState0[1];
 
   // ── Dropdowns state ──
-  var _useState9 = (0, _react.useState)(false),
-    _useState0 = _slicedToArray(_useState9, 2),
-    aspectDropdownOpen = _useState0[0],
-    setAspectDropdownOpen = _useState0[1];
   var _useState1 = (0, _react.useState)(false),
     _useState10 = _slicedToArray(_useState1, 2),
-    highlightsDropdownOpen = _useState10[0],
-    setHighlightsDropdownOpen = _useState10[1];
+    aspectDropdownOpen = _useState10[0],
+    setAspectDropdownOpen = _useState10[1];
+  var _useState11 = (0, _react.useState)(false),
+    _useState12 = _slicedToArray(_useState11, 2),
+    highlightsDropdownOpen = _useState12[0],
+    setHighlightsDropdownOpen = _useState12[1];
   var dropdownRef = (0, _react.useRef)(null);
   var highlightsDropdownRef = (0, _react.useRef)(null);
   var textareaRef = (0, _react.useRef)(null);
+  var promptTextareaRef = (0, _react.useRef)(null);
 
   // ── Upload State ──
-  var _useState11 = (0, _react.useState)(false),
-    _useState12 = _slicedToArray(_useState11, 2),
-    videoUploading = _useState12[0],
-    setVideoUploading = _useState12[1];
-  var _useState13 = (0, _react.useState)(0),
+  var _useState13 = (0, _react.useState)(false),
     _useState14 = _slicedToArray(_useState13, 2),
-    videoProgress = _useState14[0],
-    setVideoProgress = _useState14[1];
+    videoUploading = _useState14[0],
+    setVideoUploading = _useState14[1];
+  var _useState15 = (0, _react.useState)(0),
+    _useState16 = _slicedToArray(_useState15, 2),
+    videoProgress = _useState16[0],
+    setVideoProgress = _useState16[1];
   var videoFileInputRef = (0, _react.useRef)(null);
 
   // ── Generation State ─────────────────────────────────────────────────────
-  var _useState15 = (0, _react.useState)(false),
-    _useState16 = _slicedToArray(_useState15, 2),
-    isGenerating = _useState16[0],
-    setIsGenerating = _useState16[1];
-  var _useState17 = (0, _react.useState)(null),
+  var _useState17 = (0, _react.useState)(false),
     _useState18 = _slicedToArray(_useState17, 2),
-    generateError = _useState18[0],
-    setGenerateError = _useState18[1];
+    isGenerating = _useState18[0],
+    setIsGenerating = _useState18[1];
   var _useState19 = (0, _react.useState)(null),
     _useState20 = _slicedToArray(_useState19, 2),
-    fullscreenUrl = _useState20[0],
-    setFullscreenUrl = _useState20[1];
-  var _useState21 = (0, _react.useState)(0),
+    generateError = _useState20[0],
+    setGenerateError = _useState20[1];
+  var _useState21 = (0, _react.useState)(null),
     _useState22 = _slicedToArray(_useState21, 2),
-    elapsedTime = _useState22[0],
-    setElapsedTime = _useState22[1];
+    fullscreenUrl = _useState22[0],
+    setFullscreenUrl = _useState22[1];
+  var _useState23 = (0, _react.useState)(0),
+    _useState24 = _slicedToArray(_useState23, 2),
+    elapsedTime = _useState24[0],
+    setElapsedTime = _useState24[1];
   var timerRef = (0, _react.useRef)(null);
 
   // ── Output State ─────────────────────────────────────────────────────────
-  var _useState23 = (0, _react.useState)(null),
-    _useState24 = _slicedToArray(_useState23, 2),
-    result = _useState24[0],
-    setResult = _useState24[1]; // stores parsed completed API output
-  var _useState25 = (0, _react.useState)(0),
+  var _useState25 = (0, _react.useState)(null),
     _useState26 = _slicedToArray(_useState25, 2),
-    activeHighlightIndex = _useState26[0],
-    setActiveHighlightIndex = _useState26[1];
+    result = _useState26[0],
+    setResult = _useState26[1]; // stores parsed completed API output
+  var _useState27 = (0, _react.useState)(0),
+    _useState28 = _slicedToArray(_useState27, 2),
+    activeHighlightIndex = _useState28[0],
+    setActiveHighlightIndex = _useState28[1];
   var mainVideoRef = (0, _react.useRef)(null);
 
   // ── History State ────────────────────────────────────────────────────────
-  var _useState27 = (0, _react.useState)([]),
-    _useState28 = _slicedToArray(_useState27, 2),
-    history = _useState28[0],
-    setHistory = _useState28[1];
+  var _useState29 = (0, _react.useState)([]),
+    _useState30 = _slicedToArray(_useState29, 2),
+    history = _useState30[0],
+    setHistory = _useState30[1];
   var ASPECT_RATIOS = [{
     label: "9:16 (TikTok / Reels / Shorts)",
     value: "9:16"
@@ -487,6 +492,19 @@ function ClippingStudio(_ref2) {
     var maxH = window.innerWidth < 768 ? 150 : 250;
     el.style.height = Math.min(el.scrollHeight, maxH) + "px";
   };
+  var handlePromptInput = function handlePromptInput(e) {
+    var val = e.target.value;
+    if (val.trim().match(/^https?:\/\/[^\s]+$/i)) {
+      setVideoUrl(val.trim());
+      setPrompt("");
+      return;
+    }
+    setPrompt(val);
+    var el = e.target;
+    el.style.height = "auto";
+    var maxH = window.innerWidth < 768 ? 150 : 250;
+    el.style.height = Math.min(el.scrollHeight, maxH) + "px";
+  };
 
   // ── Video File Handlers ──
   var handleVideoFileChange = /*#__PURE__*/function () {
@@ -651,33 +669,48 @@ function ClippingStudio(_ref2) {
       }), !result && history.length === 0 && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
         className: "flex-grow flex flex-col items-center justify-center animate-fade-in-up transition-all duration-700 min-h-[55vh]",
         children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "mb-12 relative group",
+          className: "flex items-center justify-center gap-1.5 md:gap-3 mb-10 select-none scale-90 sm:scale-100",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-            className: "absolute inset-0 bg-primary/10 blur-[120px] rounded-full opacity-30 group-hover:opacity-60 transition-opacity duration-1000"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "relative w-24 h-24 md:w-32 md:h-32 bg-white/[0.02] rounded-[2rem] flex items-center justify-center border border-white/[0.05] overflow-hidden backdrop-blur-sm",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-              className: "w-16 h-16 bg-primary/5 rounded-2xl flex items-center justify-center border border-primary/10 relative z-10 transition-transform duration-500 group-hover:scale-110",
-              children: /*#__PURE__*/(0, _jsxRuntime.jsx)(ScissorsIcon, {
-                className: "text-primary opacity-80 w-8 h-8"
-              })
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-              className: "absolute top-4 right-4 text-[10px] text-primary/40 animate-pulse",
-              children: "\u2728"
-            })]
+            className: "w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl -rotate-[12deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/sdxl-image.avif",
+              alt: "Creative asset 1",
+              className: "w-full h-full object-cover"
+            })
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            className: "w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl -rotate-[4deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/chroma-image.avif",
+              alt: "Creative asset 2",
+              className: "w-full h-full object-cover"
+            })
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            className: "w-18 h-18 sm:w-24 sm:h-24 rounded-full border border-white/10 shadow-2xl rotate-[6deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/neta-lumina.avif",
+              alt: "Creative asset 3",
+              className: "w-full h-full object-cover"
+            })
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            className: "w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl rotate-[12deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/perfect-pony-xl.avif",
+              alt: "Creative asset 4",
+              className: "w-full h-full object-cover"
+            })
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("h1", {
-          className: "text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-4 text-center px-4",
+          className: "text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-center px-4 flex flex-col items-center",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-            className: "text-white/40 font-medium",
+            className: "text-white font-black uppercase text-xl sm:text-3xl tracking-wide mb-1 opacity-90",
             children: "START CREATING WITH"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("br", {}), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-            className: "text-white",
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+            className: "text-[#22d3ee] font-black uppercase text-2xl sm:text-4xl sm:mt-1 tracking-tight",
             children: "AI CLIPPING STUDIO"
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
-          className: "text-white/40 text-sm md:text-base font-medium tracking-wide text-center max-w-lg leading-relaxed",
-          children: "Extract viral highlights and timings from your videos automatically"
+          className: "text-white/40 text-xs sm:text-sm font-medium tracking-wide text-center max-w-lg leading-relaxed px-4",
+          children: "Extract viral highlights and precise timings from your videos automatically."
         })]
       }), !result && history.length > 0 && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
         className: "space-y-6 pt-4",
@@ -989,23 +1022,40 @@ function ClippingStudio(_ref2) {
         animationDelay: "0.2s"
       },
       children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-        className: "w-full bg-[#0a0a0a]/80 backdrop-blur-3xl rounded-md border border-white/10 p-4 flex flex-col gap-2 shadow-2xl",
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "flex items-center gap-3 px-1",
+        className: "w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]",
+        children: [videoUrl && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+          className: "flex items-center gap-2.5 px-1 pb-1",
+          children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            className: "relative w-12 h-12 rounded-xl border border-white/10 overflow-hidden shadow-md group",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("video", {
+              src: videoUrl,
+              className: "w-full h-full object-cover",
+              muted: true,
+              playsInline: true
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+              type: "button",
+              onClick: clearVideoUpload,
+              className: "absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 hover:bg-black rounded-full flex items-center justify-center text-white/85 hover:text-white text-[8px] border border-white/5",
+              title: "Clear video",
+              children: "\xD7"
+            })]
+          })
+        }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+          className: "flex items-start gap-3 px-1",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
             ref: videoFileInputRef,
             type: "file",
             accept: "video/*",
             className: "hidden",
             onChange: handleVideoFileChange
-          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+          }), !videoUrl && /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
             type: "button",
-            title: videoUrl ? "Clear video" : "Upload source video",
+            title: "Upload source video",
             onClick: function onClick() {
               var _videoFileInputRef$cu;
-              return videoUrl ? clearVideoUpload() : (_videoFileInputRef$cu = videoFileInputRef.current) === null || _videoFileInputRef$cu === void 0 ? void 0 : _videoFileInputRef$cu.click();
+              return (_videoFileInputRef$cu = videoFileInputRef.current) === null || _videoFileInputRef$cu === void 0 ? void 0 : _videoFileInputRef$cu.click();
             },
-            className: "w-10 h-10 shrink-0 rounded-full border transition-all flex items-center justify-center relative overflow-hidden ".concat(videoUrl ? "border-[#22d3ee]/60 bg-[#22d3ee]/5" : "bg-white/5 border-white/[0.03] hover:bg-white/10 hover:border-[#22d3ee]/40", " group"),
+            className: "w-10 h-10 shrink-0 rounded-full border bg-white/5 border-white/[0.03] hover:bg-white/10 hover:border-[#22d3ee]/40 transition-all flex items-center justify-center relative overflow-hidden group",
             children: [videoUploading ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
               className: "flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/85 z-20 backdrop-blur-[1px]",
               children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
@@ -1033,27 +1083,7 @@ function ClippingStudio(_ref2) {
                 className: "absolute text-[8px] font-black text-[#22d3ee] leading-none",
                 children: [videoProgress, "%"]
               })]
-            }) : null, videoUrl ? /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-              className: "w-full h-full flex items-center justify-center bg-[#22d3ee]/10 text-[#22d3ee]",
-              children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-                width: "18",
-                height: "18",
-                viewBox: "0 0 24 24",
-                fill: "none",
-                stroke: "currentColor",
-                strokeWidth: "2.5",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("polygon", {
-                  points: "23 7 16 12 23 17 23 7"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("rect", {
-                  x: "1",
-                  y: "5",
-                  width: "15",
-                  height: "14",
-                  rx: "2",
-                  ry: "2"
-                })]
-              })
-            }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+            }) : null, /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
               width: "18",
               height: "18",
               viewBox: "0 0 24 24",
@@ -1075,44 +1105,20 @@ function ClippingStudio(_ref2) {
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
             className: "flex-1 flex flex-col gap-1",
             children: /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
-              ref: textareaRef,
-              value: videoUrl,
-              onChange: handleUrlInput,
-              placeholder: "Upload a video file or paste a video S3 URL here...",
+              ref: promptTextareaRef,
+              value: prompt,
+              onChange: handlePromptInput,
+              placeholder: "Describe prompt / highlights to extract",
               rows: 1,
-              className: "w-full bg-transparent border-none text-white text-sm placeholder:text-white/20 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] overflow-y-auto custom-scrollbar disabled:opacity-40"
-            })
-          }), videoUrl && /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-            type: "button",
-            onClick: clearVideoUpload,
-            className: "p-1.5 hover:bg-white/5 rounded text-zinc-400 hover:text-white transition-colors self-start mt-1",
-            title: "Clear input",
-            children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-              width: "16",
-              height: "16",
-              viewBox: "0 0 24 24",
-              fill: "none",
-              stroke: "currentColor",
-              strokeWidth: "2.5",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
-                x1: "18",
-                y1: "6",
-                x2: "6",
-                y2: "18"
-              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
-                x1: "6",
-                y1: "6",
-                x2: "18",
-                y2: "18"
-              })]
+              className: "w-full bg-transparent border-none text-white text-sm placeholder:text-white/20 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] overflow-y-auto custom-scrollbar"
             })
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-2 border-t border-white/[0.03] relative",
+          className: "flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-3 border-t border-white/[0.03] relative",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "flex items-center gap-2 relative flex-wrap pb-1 md:pb-0",
             children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-              className: "flex items-center gap-2 px-3 py-2 bg-white/[0.03] rounded-md border border-white/[0.03] whitespace-nowrap",
+              className: "flex items-center gap-2 px-3.5 h-[34px] bg-[#16161a]/60 rounded-md border border-white/[0.06] shadow-inner whitespace-nowrap",
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
                 className: "w-4 h-4 bg-[#22d3ee] rounded flex items-center justify-center shadow-lg shadow-[#22d3ee]/10",
                 children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
@@ -1120,7 +1126,7 @@ function ClippingStudio(_ref2) {
                   children: "C"
                 })
               }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                className: "text-[11px] font-semibold text-white/70",
+                className: "text-xs font-semibold text-white/70",
                 children: "AI Clipping"
               })]
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
@@ -1131,7 +1137,7 @@ function ClippingStudio(_ref2) {
                 onClick: function onClick() {
                   return setAspectDropdownOpen(!aspectDropdownOpen);
                 },
-                className: "flex items-center gap-2 px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap",
+                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
                   width: "14",
                   height: "14",
@@ -1153,15 +1159,15 @@ function ClippingStudio(_ref2) {
                   children: aspectRatio
                 }), /*#__PURE__*/(0, _jsxRuntime.jsx)(ChevronDownIcon, {})]
               }), aspectDropdownOpen && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-lg p-3 shadow-2xl border border-white/[0.05] min-w-[160px]",
+                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[160px]",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                  className: "text-xs font-bold text-white/20 border-b border-white/[0.03] mb-2",
+                  className: "text-xs font-bold text-white/20 border-b border-white/[0.03] mb-2 pb-1",
                   children: "Aspect Ratio"
                 }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
                   className: "flex flex-col gap-1 max-h-60 overflow-y-auto custom-scrollbar",
                   children: ASPECT_RATIOS.map(function (r) {
                     return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                      className: "flex items-center justify-between p-3 hover:bg-white/5 rounded cursor-pointer transition-all group/opt",
+                      className: "flex items-center justify-between p-2.5 hover:bg-white/5 rounded cursor-pointer transition-all group/opt",
                       onClick: function onClick() {
                         setAspectRatio(r.value);
                         setAspectDropdownOpen(false);
@@ -1182,15 +1188,15 @@ function ClippingStudio(_ref2) {
                 onClick: function onClick() {
                   return setHighlightsDropdownOpen(!highlightsDropdownOpen);
                 },
-                className: "flex items-center gap-2 px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap",
+                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(ClockIcon, {}), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
                   className: "text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
                   children: [numHighlights, " Highlights"]
                 }), /*#__PURE__*/(0, _jsxRuntime.jsx)(ChevronDownIcon, {})]
               }), highlightsDropdownOpen && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-md p-3 shadow-2xl border border-white/10 min-w-[180px]",
+                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[180px]",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                  className: "text-xs font-bold text-white/20 border-b border-white/[0.03] mb-3",
+                  className: "text-xs font-bold text-white/20 border-b border-white/[0.03] mb-3 pb-1",
                   children: "Max Highlights"
                 }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
                   className: "space-y-3",
@@ -1221,7 +1227,7 @@ function ClippingStudio(_ref2) {
               onClick: function onClick() {
                 return setReturnCoordinatesOnly(!returnCoordinatesOnly);
               },
-              className: "flex items-center gap-2 px-3 py-2 rounded-md transition-all border whitespace-nowrap text-[11px] font-semibold ".concat(returnCoordinatesOnly ? "bg-primary/10 border-primary/20 text-[#22d3ee]" : "bg-white/[0.03] border-white/[0.03] text-white/70 hover:bg-white/[0.06] hover:text-white"),
+              className: "h-[34px] flex items-center gap-2 px-3.5 rounded-md transition-all border whitespace-nowrap text-[11px] font-semibold shadow-inner ".concat(returnCoordinatesOnly ? "bg-[#22d3ee]/10 border-[#22d3ee]/20 text-[#22d3ee]" : "bg-[#16161a]/60 border-white/[0.06] text-white/70 hover:bg-[#202026]/80 hover:text-white"),
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(ScissorsIcon, {
                 className: "w-3.5 h-3.5 text-current"
               }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
@@ -1232,7 +1238,7 @@ function ClippingStudio(_ref2) {
             type: "button",
             onClick: handleGenerate,
             disabled: isGenerating,
-            className: "bg-[#22d3ee] text-black px-4 py-2 rounded-md font-medium text-sm hover:bg-[#e5ff33] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/10 disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider",
+            className: "bg-[#22d3ee] text-black px-7 py-3 rounded-full font-black text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10 uppercase tracking-wider",
             children: isGenerating ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                 className: "animate-spin inline-block text-black",

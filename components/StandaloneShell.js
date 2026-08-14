@@ -25,6 +25,7 @@ const RecastStudio = loadStudio('RecastStudio');
 const WorkflowStudio = loadStudio('WorkflowStudio');
 const AgentStudio = loadStudio('AgentStudio');
 const AiInfluencerStudio = loadStudio('AiInfluencerStudio');
+const SkillsBrowser = loadStudio('SkillsBrowser');
 
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
 const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ssr: false });
@@ -49,6 +50,7 @@ const TABS = [
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'social-publishing', label: 'Social Publishing' },
+  { id: 'skills', label: 'Skills' },
 ];
 
 // Maps every landing-page studio slug to the studio tab that renders it.
@@ -61,6 +63,7 @@ const SLUG_TO_TAB = {
   'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio',
   'ai-influencer': 'ai-influencer',
   'social-publishing': 'social-publishing',
+  'skills': 'skills',
 };
 
 const STORAGE_KEY = 'muapi_key';
@@ -238,6 +241,13 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
 
   useEffect(() => {
     setHasMounted(true);
+    // When embedded on the public landing page we must NOT auto-load the signed-
+    // in owner's saved key (from localStorage, the muapi_key cookie, or their
+    // account). Doing so would run the landing demo on the owner's personal key,
+    // which is exactly the "hard-coded key" symptom. The embedded studio therefore
+    // starts with no key; a visitor who wants to generate enters their OWN key via
+    // Settings (BYOK). The full /studio route (non-embedded) keeps the restore.
+    if (embedded) return;
     // Each key is restored independently — a user may have saved only one
     // (e.g. MuAPI) in the past. We set whichever are present. localStorage
     // is the primary store; the cookie is read as a fallback so a key set on
@@ -619,6 +629,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
         )}
         {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} />}
         {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
+        {activeTab === 'skills' && <SkillsBrowser apiKey={apiKey} />}
       </div>
 
       {/* First-login API key popup — on-brand overlay modal with an X close

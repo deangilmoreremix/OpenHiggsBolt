@@ -16,7 +16,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "typecheck": "tsc --noEmit",
-    "test:vfx": "node --test tests/vfx-service.test.js tests/vfx-validation.test.js",
+    "test:vfx": "tsx --test tests/vfx-service.test.js tests/vfx-validation.test.js",
     "test:muapi": "tsx --test tests/muapiKeyCrypto.test.js tests/muapi-key-route.test.js",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",

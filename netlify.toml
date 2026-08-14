@@ -4,6 +4,15 @@
   command = "npm run build:agent && npm run build"
   publish = ".next"
 
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Allow Clerk (served from the instance domain, a different origin than the app)
+    # and Google Fonts. Without this the Netlify Essential Next.js plugin's default
+    # CSP blocks Clerk's JS/CSS/API and leaves /sign-in, /sign-up and the password-reset
+    # pages blank.
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.go.smartvid.app; style-src 'self' 'unsafe-inline' https://clerk.go.smartvid.app https://fonts.googleapis.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://clerk.go.smartvid.app https://api.clerk.com https://muapi.ai https://*.muapi.ai https://*.supabase.co; font-src 'self' data: https://clerk.go.smartvid.app https://fonts.gstatic.com;"
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 

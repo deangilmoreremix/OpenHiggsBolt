@@ -5,7 +5,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   esbuild: { jsx: 'automatic' },
   test: {
-    include: ['**/*.test.{js,jsx,ts,tsx}', 'tests/**/*.test.js'],
-    exclude: ['**/node_modules/**', '**/e2e/**', '**/*.spec.ts'],
+    include: ['src/**/*.test.{js,jsx,ts,tsx}'],
+    exclude: ['**/node_modules/**', '**/e2e/**', '**/*.spec.ts', '**/.kilo/**', 'tests/**/*.test.js'],
   },
 });

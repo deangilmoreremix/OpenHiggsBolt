@@ -902,6 +902,43 @@ function CinemaStudio(_ref4) {
                     d: "M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"
                   })
                 })
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+                type: "button",
+                title: "Delete",
+                onClick: function onClick(e) {
+                  e.stopPropagation();
+                  if (confirm("Are you sure you want to delete this generated item?")) {
+                    setInternalHistory(function (prev) {
+                      return prev.filter(function (_, i) {
+                        return i !== idx;
+                      });
+                    });
+                  }
+                },
+                className: "p-2 bg-black/60 backdrop-blur-md rounded-full text-red-400 hover:bg-red-500 hover:text-white transition-all border border-white/10",
+                children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                  width: "14",
+                  height: "14",
+                  viewBox: "0 0 24 24",
+                  fill: "none",
+                  stroke: "currentColor",
+                  strokeWidth: "2.5",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
+                    points: "3 6 5 6 21 6"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                    d: "M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "10",
+                    y1: "11",
+                    x2: "10",
+                    y2: "17"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "14",
+                    y1: "11",
+                    x2: "14",
+                    y2: "17"
+                  })]
+                })
               })]
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
               className: "p-3 bg-black/80 backdrop-blur-sm border-t border-white/5 flex-1 flex flex-col justify-between gap-2",
@@ -930,185 +967,195 @@ function CinemaStudio(_ref4) {
       }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
         className: "flex flex-col items-center justify-center h-full text-center px-4 animate-fade-in-up transition-all duration-700 min-h-[50vh]",
         children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "mb-12 relative group",
+          className: "flex items-center justify-center gap-1.5 md:gap-3 mb-10 select-none scale-90 sm:scale-100",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-            className: "absolute inset-0 bg-primary/10 blur-[120px] rounded-full opacity-30 group-hover:opacity-60 transition-opacity duration-1000"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "relative w-24 h-24 md:w-32 md:h-32 bg-white/[0.02] rounded-[2rem] flex items-center justify-center border border-white/[0.05] overflow-hidden backdrop-blur-sm",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-              className: "w-16 h-16 bg-primary/5 rounded-2xl flex items-center justify-center border border-primary/10 relative z-10 transition-transform duration-500 group-hover:scale-110",
-              children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-                width: "32",
-                height: "32",
-                viewBox: "0 0 24 24",
-                fill: "none",
-                stroke: "currentColor",
-                strokeWidth: "1.5",
-                className: "text-primary opacity-80",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-                  d: "M23 7l-7 5 7 5V7z"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("rect", {
-                  x: "1",
-                  y: "5",
-                  width: "15",
-                  height: "14",
-                  rx: "2",
-                  ry: "2"
-                })]
-              })
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-              className: "absolute top-4 right-4 text-[10px] text-primary/40 animate-pulse",
-              children: "REC"
-            })]
+            className: "w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl -rotate-[12deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/sdxl-image.avif",
+              alt: "Creative asset 1",
+              className: "w-full h-full object-cover"
+            })
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            className: "w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl -rotate-[4deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/chroma-image.avif",
+              alt: "Creative asset 2",
+              className: "w-full h-full object-cover"
+            })
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            className: "w-18 h-18 sm:w-24 sm:h-24 rounded-full border border-white/10 shadow-2xl rotate-[6deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/neta-lumina.avif",
+              alt: "Creative asset 3",
+              className: "w-full h-full object-cover"
+            })
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            className: "w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl rotate-[12deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/perfect-pony-xl.avif",
+              alt: "Creative asset 4",
+              className: "w-full h-full object-cover"
+            })
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("h1", {
-          className: "text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-4 text-center px-4",
+          className: "text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-center px-4 flex flex-col items-center",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-            className: "text-white/40 font-medium",
+            className: "text-white font-black uppercase text-xl sm:text-3xl tracking-wide mb-1 opacity-90",
             children: "START CREATING WITH"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("br", {}), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-            className: "text-white uppercase tracking-wider",
-            children: "Cinema Studio"
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+            className: "text-[#22d3ee] font-black uppercase text-2xl sm:text-4xl sm:mt-1 tracking-tight",
+            children: "CINEMA STUDIO"
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
-          className: "text-white/40 text-sm md:text-base font-medium tracking-wide text-center max-w-lg leading-relaxed",
-          children: "What would you shoot with infinite budget?"
+          className: "text-white/40 text-xs sm:text-sm font-medium tracking-wide text-center max-w-lg leading-relaxed px-4",
+          children: "What would you shoot with infinite budget? Control cameras, lighting, lenses, and prompt high-end cinematic scenes."
         })]
       })
     }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
       className: "absolute bottom-4 left-4 right-4 md:left-0 md:right-0 md:mx-auto md:max-w-[95%] lg:max-w-4xl z-30 transition-all duration-700 animate-fade-in-up",
-      children: /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-        className: "bg-[#0a0a0a]/80 backdrop-blur-3xl border border-white/10 rounded-md p-4 flex justify-between shadow-2xl items-end relative gap-2",
-        children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "flex-1 flex flex-col gap-3 min-h-[80px] justify-between py-1",
+      children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+        className: "w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]",
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+          className: "flex items-start gap-4 w-full px-1",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "flex items-start gap-4 w-full px-1",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-              className: "relative pt-0.5",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
-                type: "file",
-                ref: imageInputRef,
-                className: "hidden",
-                accept: "image/*",
-                onChange: handleImageUpload
-              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-                onClick: function onClick() {
-                  var _imageInputRef$curren;
-                  return uploadedImage ? removeImage() : (_imageInputRef$curren = imageInputRef.current) === null || _imageInputRef$curren === void 0 ? void 0 : _imageInputRef$curren.click();
-                },
-                disabled: isUploadingImage,
-                className: "w-10 h-10 shrink-0 rounded-full border transition-all flex items-center justify-center relative overflow-hidden ".concat(uploadedImage ? "border-primary/60 bg-white/5" : "bg-white/[0.03] border-white/[0.03] hover:bg-white/10 hover:border-primary/40", " group"),
-                children: isUploadingImage ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                  className: "flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]",
-                  children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-                    className: "w-8 h-8 -rotate-90",
-                    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-                      cx: "16",
-                      cy: "16",
-                      r: "14",
-                      stroke: "currentColor",
-                      strokeWidth: "2",
-                      fill: "transparent",
-                      className: "text-white/10"
-                    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-                      cx: "16",
-                      cy: "16",
-                      r: "14",
-                      stroke: "currentColor",
-                      strokeWidth: "2",
-                      fill: "transparent",
-                      strokeDasharray: 88,
-                      strokeDashoffset: 88 - 88 * imageUploadProgress / 100,
-                      className: "text-primary transition-all duration-300"
-                    })]
-                  }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
-                    className: "absolute text-[8px] font-bold text-white",
-                    children: [imageUploadProgress, "%"]
-                  })]
-                }) : uploadedImage ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                  className: "relative w-full h-full group",
-                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
-                    src: uploadedImage,
-                    alt: "Reference",
-                    className: "w-full h-full object-cover opacity-80 group-hover:opacity-40 transition-opacity"
-                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                    className: "absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity",
-                    children: /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
-                      width: "14",
-                      height: "14",
-                      viewBox: "0 0 24 24",
-                      fill: "none",
-                      stroke: "currentColor",
-                      strokeWidth: "3",
-                      className: "text-white",
-                      children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-                        d: "M18 6L6 18M6 6l12 12"
-                      })
-                    })
-                  })]
-                }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-                  width: "16",
-                  height: "16",
-                  viewBox: "0 0 24 24",
-                  fill: "none",
-                  stroke: "currentColor",
-                  strokeWidth: "2.5",
-                  className: "text-white/40 group-hover:text-white transition-colors",
-                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("rect", {
-                    x: "3",
-                    y: "3",
-                    width: "18",
-                    height: "18",
-                    rx: "2",
-                    ry: "2"
+            className: "relative pt-0.5",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
+              type: "file",
+              ref: imageInputRef,
+              className: "hidden",
+              accept: "image/*",
+              onChange: handleImageUpload
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+              onClick: function onClick() {
+                var _imageInputRef$curren;
+                return uploadedImage ? removeImage() : (_imageInputRef$curren = imageInputRef.current) === null || _imageInputRef$curren === void 0 ? void 0 : _imageInputRef$curren.click();
+              },
+              disabled: isUploadingImage,
+              className: "w-10 h-10 shrink-0 rounded-full border transition-all flex items-center justify-center relative overflow-hidden ".concat(uploadedImage ? "border-[#22d3ee]/60 bg-white/5" : "bg-white/[0.03] border-white/[0.03] hover:bg-white/10 hover:border-[#22d3ee]/40", " group"),
+              children: isUploadingImage ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                className: "flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                  className: "w-8 h-8 -rotate-90",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                    cx: "16",
+                    cy: "16",
+                    r: "14",
+                    stroke: "currentColor",
+                    strokeWidth: "2",
+                    fill: "transparent",
+                    className: "text-white/10"
                   }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-                    cx: "8.5",
-                    cy: "8.5",
-                    r: "1.5"
-                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
-                    points: "21 15 16 10 5 21"
+                    cx: "16",
+                    cy: "16",
+                    r: "14",
+                    stroke: "currentColor",
+                    strokeWidth: "2",
+                    fill: "transparent",
+                    strokeDasharray: 88,
+                    strokeDashoffset: 88 - 88 * imageUploadProgress / 100,
+                    className: "text-primary transition-all duration-300"
                   })]
-                })
-              })]
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
-              ref: textareaRef,
-              placeholder: "Describe your cinema scene...",
-              className: "w-full bg-transparent border-none text-white text-sm placeholder:text-white/10 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar disabled:opacity-40",
-              rows: 1,
-              onInput: handleTextareaInput
-            })]
-          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "flex justify-between gap-2",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-              className: "flex flex-wrap items-center gap-3",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                className: "relative",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-                  ref: arBtnRef,
-                  className: "flex items-center gap-1.5 px-3 py-1 bg-white/[0.03] hover:bg-white/10 text-xs font-bold text-white/40 hover:text-white transition-colors rounded-md border border-white/[0.03]",
-                  onClick: function onClick() {
-                    return setOpenDropdown(function (d) {
-                      return d === "ar" ? null : "ar";
-                    });
-                  },
-                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
-                    width: "12",
-                    height: "12",
+                }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
+                  className: "absolute text-[8px] font-bold text-white",
+                  children: [imageUploadProgress, "%"]
+                })]
+              }) : uploadedImage ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                className: "relative w-full h-full group",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+                  src: uploadedImage,
+                  alt: "Reference",
+                  className: "w-full h-full object-cover opacity-80 group-hover:opacity-40 transition-opacity"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                  className: "absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity",
+                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
+                    width: "14",
+                    height: "14",
                     viewBox: "0 0 24 24",
                     fill: "none",
                     stroke: "currentColor",
-                    strokeWidth: "2",
-                    className: "opacity-40",
-                    children: /*#__PURE__*/(0, _jsxRuntime.jsx)("rect", {
-                      x: "2",
-                      y: "7",
-                      width: "20",
-                      height: "10",
-                      rx: "2",
-                      ry: "2"
+                    strokeWidth: "3",
+                    className: "text-white",
+                    children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                      d: "M18 6L6 18M6 6l12 12"
                     })
-                  }), settings.aspect_ratio]
-                }), openDropdown === "ar" && /*#__PURE__*/(0, _jsxRuntime.jsx)(Dropdown, {
+                  })
+                })]
+              }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                width: "16",
+                height: "16",
+                viewBox: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "2.5",
+                className: "text-white/40 group-hover:text-[#22d3ee] transition-colors",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("rect", {
+                  x: "3",
+                  y: "3",
+                  width: "18",
+                  height: "18",
+                  rx: "2",
+                  ry: "2"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                  cx: "8.5",
+                  cy: "8.5",
+                  r: "1.5"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
+                  points: "21 15 16 10 5 21"
+                })]
+              })
+            })]
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
+            ref: textareaRef,
+            value: settings.prompt,
+            onChange: function onChange(e) {
+              setSettings(function (prev) {
+                return _objectSpread(_objectSpread({}, prev), {}, {
+                  prompt: e.target.value
+                });
+              });
+              var el = e.target;
+              el.style.height = "auto";
+              var maxH = window.innerWidth < 768 ? 150 : 250;
+              el.style.height = Math.min(el.scrollHeight, maxH) + "px";
+            },
+            placeholder: "Describe your cinema scene...",
+            className: "w-full bg-transparent border-none text-white text-sm placeholder:text-white/20 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar disabled:opacity-40",
+            rows: 1
+          })]
+        }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+          className: "flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-3 border-t border-white/[0.03] relative",
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            className: "flex items-center gap-2 relative flex-wrap pb-1 md:pb-0",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+              className: "relative",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+                ref: arBtnRef,
+                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner text-[11px] font-semibold text-white/70 hover:text-white",
+                onClick: function onClick() {
+                  return setOpenDropdown(function (d) {
+                    return d === "ar" ? null : "ar";
+                  });
+                },
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
+                  width: "12",
+                  height: "12",
+                  viewBox: "0 0 24 24",
+                  fill: "none",
+                  stroke: "currentColor",
+                  strokeWidth: "2",
+                  className: "opacity-40",
+                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("rect", {
+                    x: "2",
+                    y: "7",
+                    width: "20",
+                    height: "10",
+                    rx: "2",
+                    ry: "2"
+                  })
+                }), settings.aspect_ratio]
+              }), openDropdown === "ar" && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[140px]",
+                children: /*#__PURE__*/(0, _jsxRuntime.jsx)(Dropdown, {
                   items: ASPECT_RATIOS,
                   selected: settings.aspect_ratio,
                   onSelect: function onSelect(val) {
@@ -1122,30 +1169,33 @@ function CinemaStudio(_ref4) {
                   onClose: function onClose() {
                     return setOpenDropdown(null);
                   }
-                })]
-              }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                className: "relative",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-                  ref: resBtnRef,
-                  className: "flex items-center gap-1.5 px-3 py-1 bg-white/[0.03] hover:bg-white/10 text-xs font-bold text-white/40 hover:text-white transition-colors rounded-md border border-white/[0.03]",
-                  onClick: function onClick() {
-                    return setOpenDropdown(function (d) {
-                      return d === "res" ? null : "res";
-                    });
-                  },
-                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
-                    width: "12",
-                    height: "12",
-                    viewBox: "0 0 24 24",
-                    fill: "none",
-                    stroke: "currentColor",
-                    strokeWidth: "2",
-                    className: "opacity-40",
-                    children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-                      d: "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
-                    })
-                  }), resolution]
-                }), openDropdown === "res" && /*#__PURE__*/(0, _jsxRuntime.jsx)(Dropdown, {
+                })
+              })]
+            }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+              className: "relative",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+                ref: resBtnRef,
+                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner text-[11px] font-semibold text-white/70 hover:text-white",
+                onClick: function onClick() {
+                  return setOpenDropdown(function (d) {
+                    return d === "res" ? null : "res";
+                  });
+                },
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
+                  width: "12",
+                  height: "12",
+                  viewBox: "0 0 24 24",
+                  fill: "none",
+                  stroke: "currentColor",
+                  strokeWidth: "2",
+                  className: "opacity-40",
+                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                    d: "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
+                  })
+                }), resolution]
+              }), openDropdown === "res" && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[140px]",
+                children: /*#__PURE__*/(0, _jsxRuntime.jsx)(Dropdown, {
                   items: RESOLUTIONS,
                   selected: resolution,
                   onSelect: setResolution,
@@ -1153,42 +1203,36 @@ function CinemaStudio(_ref4) {
                   onClose: function onClose() {
                     return setOpenDropdown(null);
                   }
-                })]
-              })]
-            }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-              className: "flex items-center gap-3 h-full self-end mb-1",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-                className: "flex flex-col items-start justify-center px-4 py-1.5 bg-white/[0.03] rounded-md border border-white/[0.03] hover:border-white/20 transition-all text-left flex-1 min-w-[100px] md:min-w-[160px] max-w-[240px] h-[50px] relative group overflow-hidden",
-                onClick: function onClick() {
-                  return setIsOverlayOpen(true);
-                },
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                  className: "absolute top-3 right-3 w-1.5 h-1.5 bg-[#22d3ee] rounded-full shadow-lg shadow-[#22d3ee]/20"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                  className: "text-[9px] font-bold text-white/30 uppercase truncate w-full tracking-wider group-hover:text-white transition-colors",
-                  children: settings.camera
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                  className: "text-xs font-semibold text-white/70 truncate w-full group-hover:text-[#22d3ee] transition-colors",
-                  children: formatSummaryValue()
-                })]
-              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-                className: "h-[50px] px-8 bg-[#22d3ee] text-black rounded-md font-medium text-sm hover:bg-[#e5ff33] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#22d3ee]/10 disabled:opacity-50 disabled:cursor-not-allowed",
-                disabled: isGenerating || !settings.prompt.trim(),
-                onClick: handleGenerate,
-                children: isGenerating ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
-                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                    className: "animate-spin inline-block text-black",
-                    children: "\u25CC"
-                  }), " SHOOTING..."]
-                }) : /*#__PURE__*/(0, _jsxRuntime.jsx)(_jsxRuntime.Fragment, {
-                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                    children: "SHOOT"
-                  })
                 })
               })]
+            }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+              className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] text-left group overflow-hidden shadow-inner text-[11px] font-semibold text-white/70 hover:text-white",
+              onClick: function onClick() {
+                return setIsOverlayOpen(true);
+              },
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                className: "w-1.5 h-1.5 bg-[#22d3ee] rounded-full shadow-lg shadow-[#22d3ee]/20 shrink-0"
+              }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
+                className: "max-w-[120px] truncate text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
+                children: [settings.camera, " \xB7 ", formatSummaryValue()]
+              })]
             })]
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+            className: "bg-[#22d3ee] text-black px-7 py-3 rounded-full font-black text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10 uppercase tracking-wider",
+            disabled: isGenerating || !settings.prompt.trim(),
+            onClick: handleGenerate,
+            children: isGenerating ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                className: "animate-spin inline-block text-black",
+                children: "\u25CC"
+              }), " SHOOTING..."]
+            }) : /*#__PURE__*/(0, _jsxRuntime.jsx)(_jsxRuntime.Fragment, {
+              children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                children: "SHOOT"
+              })
+            })
           })]
-        })
+        })]
       })
     }), fullscreenUrl && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
       className: "fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm animate-fade-in",

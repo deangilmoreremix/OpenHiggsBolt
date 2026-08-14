@@ -17,6 +17,10 @@ import {
   getDefaultEffectForI2IModel,
   getI2IModelById,
 } from "../models.js";
+import registry from "../skills/registry.json";
+import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
+import { fillTemplate } from "../lib/promptRecipes";
+import { useRouter } from "next/navigation";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -817,6 +821,7 @@ export default function ImageStudio({
   onFilesHandled,
 }) {
   const PERSIST_KEY = "hg_image_studio_persistent";
+  const router = useRouter();
 
   // ── Model / mode state ──────────────────────────────────────────────────
   const [imageMode, setImageMode] = useState(false); // false=t2i, true=i2i
@@ -899,6 +904,17 @@ export default function ImageStudio({
       handleTextareaInput();
     }, 150);
     return () => clearTimeout(timer);
+  }, []);
+
+  // ── Apply pending Skills recipe (set by SkillsBrowser) ────────────────────
+  useEffect(() => {
+    const pending = getPendingRecipe("image");
+    if (!pending) return;
+    const skill = registry.skills.find((s) => s.slug === pending);
+    clearPendingRecipe("image");
+    if (!skill) return;
+    applyRecipe(skill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Persistence: Save ────────────────────────────────────────────────────
@@ -1098,6 +1114,34 @@ export default function ImageStudio({
     setSelectedEffect("");
     setMaxImages(1);
   };
+
+  // ── Apply a skill recipe to the form ─────────────────────────────────────
+  function applyRecipe(skill) {
+    const step0 = skill.steps && skill.steps[0];
+    if (!step0) {
+      if (skill.description) setPrompt(skill.description);
+      return;
+    }
+    const modelId = step0.endpoint || step0.model;
+    const allModels = [...t2iModels, ...i2iModels];
+    const model = allModels.find((m) => m.id === modelId);
+    const wantsI2I =
+      i2iModels.some((m) => m.id === modelId) ||
+      step0.type === "i2v" ||
+      step0.type === "edit" ||
+      (step0.references && step0.references.length > 0);
+    if (model) {
+      setImageMode(!!wantsI2I);
+      setSelectedModelId(model.id);
+      setSelectedModelName(model.name);
+    }
+    if (step0.aspectRatio) setSelectedAr(step0.aspectRatio);
+    const vals = {};
+    (skill.inputs || []).forEach((i) => {
+      vals[i.name] = "";
+    });
+    setPrompt(fillTemplate(step0.prompt || skill.description || "", vals));
+  }
 
   // ── Generation ───────────────────────────────────────────────────────────
   const handleGenerate = async () => {
@@ -1586,6 +1630,23 @@ export default function ImageStudio({
                 </svg>
                 <span className="text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors">
                   Draw
+                </span>
+              </button>
+
+              {/* Recipes button → Skills hub */}
+              <button
+                type="button"
+                className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-[#22d3ee]/40 group whitespace-nowrap shadow-inner"
+                onClick={() => router.push("/studio/skills")}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-60 text-[#22d3ee] group-hover:text-[#22d3ee] transition-colors">
+                  <path d="M4 4h6v6H4z" />
+                  <path d="M14 4h6v6h-6z" />
+                  <path d="M4 14h6v6H4z" />
+                  <path d="M14 14h6v6h-6z" />
+                </svg>
+                <span className="text-[11px] font-semibold text-[#22d3ee]/80 group-hover:text-[#22d3ee] transition-colors">
+                  Recipes
                 </span>
               </button>
             </div>

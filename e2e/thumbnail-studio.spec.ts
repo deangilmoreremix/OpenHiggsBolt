@@ -17,7 +17,7 @@ import { test, expect } from '@playwright/test';
 
 const FAKE_KEY = 'e2e-fake-muapi-key';
 const FAKE_IMAGE_URL = 'https://example.com/thumbnail.png';
-const BASE = 'http://localhost:3111';
+const BASE = 'http://localhost:3210';
 
 test.describe('Thumbnail Studio (mocked MuAPI, mocked auth)', () => {
   test.beforeEach(async ({ context, page }) => {
@@ -62,6 +62,18 @@ test.describe('Thumbnail Studio (mocked MuAPI, mocked auth)', () => {
       });
     });
 
+    // The studio package uses a RELATIVE `/api/v1/...` base under http (e.g.
+    // `/api/v1/account/balance`). With the dev auth-bypass the server-side proxy
+    // is skipped, so these hit the app directly; mock them so the balance check
+    // succeeds and no `muapi:auth-required` modal is triggered.
+    await page.route('**/api/v1/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ balance: 0 }),
+      });
+    });
+
     // Fulfill the returned image URL with a real (tiny) PNG so the <img> renders.
     await page.route(FAKE_IMAGE_URL, async (route) => {
       const png =
@@ -74,6 +86,17 @@ test.describe('Thumbnail Studio (mocked MuAPI, mocked auth)', () => {
     });
 
     await page.goto('/studio/thumbnail-studio');
+
+    // The studio may auto-open the "Add your API key" Settings modal (first run /
+    // auth-required). Enter the (fake) key through the modal so `apiKey` is set the
+    // way the app expects, then the modal closes.
+    const keyInput = page.getByPlaceholder(/enter your muapi key/i);
+    if (await keyInput.isVisible().catch(() => false)) {
+      await keyInput.fill(FAKE_KEY);
+      await page.getByRole('button', { name: /save key/i }).click();
+      // Modal should dismiss once the key is saved.
+      await expect(keyInput).toBeHidden({ timeout: 10_000 });
+    }
 
     // The heading and generate form render without needing a real key.
     await expect(page.getByText('Thumbnail Studio')).toBeVisible();

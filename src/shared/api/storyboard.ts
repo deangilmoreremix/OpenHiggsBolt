@@ -50,8 +50,13 @@ export interface StoryboardResult {
 function getApiKey(): string | null {
   if (typeof window === 'undefined') return null
   const w = window as any
-  const stored = w.__MUAPI_KEY__ || (w.localStorage && w.localStorage.getItem('muapi_key'))
-  return stored || null
+  // The key is sourced solely from the in-memory global that StandaloneShell
+  // seeds from the `apiKey` prop. We intentionally do NOT fall back to
+  // localStorage: when the studio is embedded on the public landing page the
+  // shell forwards no key, so the owner's saved key must never be picked up.
+  // On /studio the shell restores the key and forwards it, so this resolves
+  // correctly there too.
+  return (w.__MUAPI_KEY__ as string | undefined) || null
 }
 
 function withKey(config: any): any {
