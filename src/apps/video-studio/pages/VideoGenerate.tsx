@@ -1,20 +1,60 @@
 import { useState } from 'react'
-import { Video, Loader2, Download, Share2, Image } from 'lucide-react'
-import { generateVideo } from '@/api/muapi'
+import { Video, Loader2, Download, Share2, Image, SlidersHorizontal } from 'lucide-react'
+import { generateVideo } from 'studio/src/muapi.js'
+import { resolveMuapiKey } from '@/lib/keys'
+import {
+  AdvancedControlsPanel,
+  getControlsForModel,
+  buildAdvancedParams,
+  type AdvancedModelRef,
+} from '@/shared/components/AdvancedControlsPanel'
+import { PublishStep } from '@/components/SocialPublishProvider'
+import { AssistStep } from '@/components/AiAssistantProvider'
+
+// Map the modal's friendly model options to real MuAPI t2v model ids so the
+// unified generateVideo hits the correct /api/v1/{endpoint}.
+const MODEL_OPTIONS: Array<{ value: string; label: string } & AdvancedModelRef> = [
+  { value: 'kling-3.0', label: 'Kling 3.0', id: 'kling-v3.0-pro-text-to-video', provider: 'kling' },
+  { value: 'veo-3', label: 'Veo 3', id: 'veo3-text-to-video', provider: 'google' },
+  { value: 'sora', label: 'Sora', id: 'openai-sora-2-text-to-video', provider: 'openai' },
+  { value: 'ltx-2.3', label: 'LTX 2.3', id: 'ltx-2.3-text-to-video', provider: 'lightricks' },
+]
 
 export default function VideoGenerate() {
   const [prompt, setPrompt] = useState('')
   const [duration, setDuration] = useState(5)
   const [aspectRatio, setAspectRatio] = useState<'16:9' | '9:16' | '1:1'>('16:9')
   const [model, setModel] = useState('kling-3.0')
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [advValues, setAdvValues] = useState<Record<string, any>>({})
   const [isGenerating, setIsGenerating] = useState(false)
   const [result, setResult] = useState<any>(null)
+
+  const selected = MODEL_OPTIONS.find((o) => o.value === model) || MODEL_OPTIONS[0]
+  const controls = getControlsForModel(selected)
+
+  const handleModelChange = (value: string) => {
+    setModel(value)
+    setAdvValues({})
+  }
+
+  const handleAdvancedChange = (key: string, value: any) => {
+    setAdvValues((prev) => ({ ...prev, [key]: value }))
+  }
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return
     setIsGenerating(true)
     try {
-      const video = await generateVideo({ prompt, duration, aspectRatio, model })
+      const apiKey = resolveMuapiKey()
+      const advanced = buildAdvancedParams(controls, advValues)
+      const video = await generateVideo(apiKey, {
+        model: selected.id,
+        prompt,
+        aspect_ratio: aspectRatio,
+        duration,
+        ...advanced,
+      })
       setResult(video)
     } catch (error) {
       console.error(error)
@@ -29,13 +69,22 @@ export default function VideoGenerate() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold">Video Studio</h1>
           <div className="flex gap-2">
+            <button
+              onClick={() => setShowAdvanced((v) => !v)}
+              className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${
+                showAdvanced ? 'bg-primary text-black' : 'bg-bg-card hover:bg-border-color'
+              }`}
+            >
+              <SlidersHorizontal size={16} />
+              Advanced
+            </button>
             <button className="px-4 py-2 bg-bg-card rounded-xl hover:bg-border-color transition-all flex items-center gap-2">
               <Image size={16} />
               Add Reference
             </button>
           </div>
         </div>
-        
+
         <div className="glass p-6 rounded-xl mb-6">
           <div className="space-y-4">
             <div>
@@ -47,22 +96,23 @@ export default function VideoGenerate() {
                 className="w-full h-32 bg-bg-card border border-border-color rounded-xl p-3 text-white placeholder-muted resize-none"
               />
             </div>
-            
+
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Model</label>
                 <select
                   value={model}
-                  onChange={(e) => setModel(e.target.value)}
+                  onChange={(e) => handleModelChange(e.target.value)}
                   className="w-full bg-bg-card border border-border-color rounded-xl p-2"
                 >
-                  <option value="kling-3.0">Kling 3.0</option>
-                  <option value="veo-3">Veo 3</option>
-                  <option value="sora">Sora</option>
-                  <option value="ltx-2.3">LTX 2.3</option>
+                  {MODEL_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-2">Duration (seconds)</label>
                 <select
@@ -75,7 +125,7 @@ export default function VideoGenerate() {
                   <option value={10}>10 seconds</option>
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-2">Aspect Ratio</label>
                 <select
@@ -89,7 +139,18 @@ export default function VideoGenerate() {
                 </select>
               </div>
             </div>
-            
+
+            {showAdvanced && (
+              <div className="border border-border-color rounded-xl p-4 bg-bg-card/40">
+                <h3 className="text-sm font-semibold mb-3">Advanced Controls</h3>
+                <AdvancedControlsPanel
+                  controls={controls}
+                  values={advValues}
+                  onChange={handleAdvancedChange}
+                />
+              </div>
+            )}
+
             <button
               onClick={handleGenerate}
               disabled={isGenerating || !prompt.trim()}
@@ -121,10 +182,22 @@ export default function VideoGenerate() {
                 <Download size={16} />
                 Download
               </button>
-              <button className="px-4 py-2 bg-bg-card rounded-xl text-sm hover:bg-border-color transition-all flex items-center gap-2">
-                <Share2 size={16} />
-                Share
-              </button>
+              <PublishStep
+                mediaUrl={result?.url}
+                mediaType="video"
+                title={prompt?.substring(0, 50) || 'Generated video'}
+                className="px-4 py-2 bg-bg-card rounded-xl text-sm hover:bg-border-color transition-all flex items-center gap-2"
+              />
+              <AssistStep
+                assetUrl={result?.url}
+                assetType="video"
+                onApply={() => {}}
+                className="px-4 py-2 bg-bg-card rounded-xl text-sm hover:bg-border-color transition-all flex items-center gap-2"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
+                </svg>
+              </AssistStep>
             </div>
           </div>
         )}

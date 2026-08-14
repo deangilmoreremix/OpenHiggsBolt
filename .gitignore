@@ -51,6 +51,7 @@ cutai.db
 apps/cutai/backend/cutai.db
 apps/cutai/backend/generated/
 apps/cutai/frontend/dist/
+tsconfig.tsbuildinfo
 
 # Local Netlify folder
 .netlify

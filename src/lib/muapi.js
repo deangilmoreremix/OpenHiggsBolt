@@ -1,5 +1,6 @@
 import { getModelById, getVideoModelById, getI2IModelById, getI2VModelById, getV2VModelById, getLipSyncModelById } from './models.js';
 import axios from 'axios';
+import { getStableUserId } from '../shared/auth/stableUserId';
 
 /**
  * Normalize a MuAPI prediction response into a consistent shape.
@@ -655,10 +656,19 @@ export async function listSocialAccounts(apiKey) {
   return res.data;
 }
 
-export async function connectSocialAccount(apiKey, externalUserId, redirectTo) {
+const SOCIAL_CONNECT_PATHS = {
+  youtube: '/api/v1/social/youtube/connect-url',
+  tiktok: '/api/v1/social/tiktok/connect-url',
+  instagram: '/api/v1/social/instagram/connect-url',
+  facebook: '/api/v1/social/facebook/connect-url',
+};
+
+export async function connectSocialAccount(apiKey, externalUserId, redirectTo, platform = 'youtube') {
+  const path = SOCIAL_CONNECT_PATHS[platform] || SOCIAL_CONNECT_PATHS.youtube;
+  const userId = externalUserId || getStableUserId();
   const res = await axios.post(
-    '/api/v1/social/youtube/connect-url',
-    { external_user_id: externalUserId, redirect_to: redirectTo },
+    path,
+    { external_user_id: userId, redirect_to: redirectTo },
     withKey({ method: 'POST' }, apiKey)
   );
   return res.data;
@@ -666,7 +676,7 @@ export async function connectSocialAccount(apiKey, externalUserId, redirectTo) {
 
 export async function listExternalSocialAccounts(apiKey, externalUserId) {
   const res = await axios.get(
-    `/api/v1/social/ext/accounts?external_user_id=${encodeURIComponent(externalUserId)}`,
+    `/api/v1/social/ext/accounts?external_user_id=${encodeURIComponent(externalUserId || getStableUserId())}`,
     withKey({ method: 'GET' }, apiKey)
   );
   return res.data;
@@ -693,6 +703,48 @@ export async function publishToInstagram(apiKey, payload) {
 export async function publishToTikTok(apiKey, payload) {
   const res = await axios.post('/api/v1/tiktok-publish', payload, withKey({ method: 'POST' }, apiKey));
   return res.data;
+}
+
+export async function publishToFacebook(apiKey, payload) {
+  const res = await axios.post('/api/v1/facebook-publish', payload, withKey({ method: 'POST' }, apiKey));
+  return res.data;
+}
+
+export async function publishToLinkedIn(apiKey, payload) {
+  const res = await axios.post('/api/v1/linkedin-publish', payload, withKey({ method: 'POST' }, apiKey));
+  return res.data;
+}
+
+export async function publishToPinterest(apiKey, payload) {
+  const res = await axios.post('/api/v1/pinterest-publish', payload, withKey({ method: 'POST' }, apiKey));
+  return res.data;
+}
+
+export async function publishToThreads(apiKey, payload) {
+  const res = await axios.post('/api/v1/threads-publish', payload, withKey({ method: 'POST' }, apiKey));
+  return res.data;
+}
+
+export async function publishToX(apiKey, payload) {
+  const res = await axios.post('/api/v1/x-publish', payload, withKey({ method: 'POST' }, apiKey));
+  return res.data;
+}
+
+/**
+ * Enhance/transform an image through a MuAPI image-tool endpoint and poll for
+ * the result. Reuses the same proxy + key pattern as the social-publish flow.
+ *
+ * @param {string} apiKey   MuAPI key (BYOK)
+ * @param {string} endpoint Endpoint slug appended to `/api/v1/` (e.g. `ai-image-upscale`)
+ * @param {object} payload  Request body — typically `{ image_url, ...params }`
+ * @returns {Promise<string>} Final hosted image URL (`output.url` or `url`)
+ */
+export async function enhanceImage(apiKey, endpoint, payload) {
+  const res = await axios.post(`/api/v1/${endpoint}`, payload, withKey({ method: 'POST' }, apiKey));
+  const requestId = res.data?.request_id || res.data?.id;
+  const final = await pollSocialResult(apiKey, requestId, 120, 2000);
+  const url = final?.output?.url || final?.url;
+  return url;
 }
 
 export async function pollSocialResult(apiKey, requestId, maxAttempts = 120, interval = 2000) {

@@ -4,14 +4,41 @@ export interface VideoGenerationParams {
   aspectRatio?: string
   model?: string
   image_url?: string
-  [key: string]: unknown
+  // Advanced, model-aware controls (muapi.ai capability research).
+  negative_prompt?: string
+  seed?: number
+  resolution?: string
+  quality?: string
+  generate_audio?: boolean
+  camera_fixed?: boolean
+  cfg_scale?: number
+  bitrate_mode?: string
+  output_format?: string
+  watermark?: boolean
+  return_last_frame?: boolean
+  camera_control?: {
+    type: string
+    config?: Record<string, number>
+  }
+  enable_sound?: boolean
+  last_image?: string
+  images_list?: string[]
+  videos_list?: string[]
+  reference_image_urls?: string[]
+  multi_prompt?: string[]
+  multi_shots?: boolean
+  first_frame?: string
+  last_frame?: string
+  audio_url?: string
+  ratio?: string
+  shot_type?: string
+  generate_audio_switch?: boolean
 }
 
 export interface VideoResult {
   url?: string
   requestId?: string
   status?: string
-  [key: string]: unknown
 }
 
 export interface ImageGenerationParams {
@@ -19,25 +46,21 @@ export interface ImageGenerationParams {
   aspectRatio?: string
   model?: string
   image_url?: string
-  [key: string]: unknown
 }
 
 export interface ImageResult {
   url?: string
   requestId?: string
   status?: string
-  [key: string]: unknown
 }
 
 export interface AudioGenerationParams {
   prompt: string
   model?: string
-  [key: string]: unknown
 }
 
 export interface AudioResult {
   url?: string
-  [key: string]: unknown
 }
 
 export interface TextGenerationParams {
@@ -46,11 +69,9 @@ export interface TextGenerationParams {
   model?: string
   temperature?: number
   maxTokens?: number
-  [key: string]: unknown
 }
 
 export interface TextResult {
   text: string
   model?: string
-  [key: string]: unknown
 }

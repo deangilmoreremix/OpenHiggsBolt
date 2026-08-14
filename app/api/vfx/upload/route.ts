@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: validationError }, { status: 400 })
     }
 
-    const apiKey = await validateMuAPIKey()
+    const apiKey = await validateMuAPIKey(req)
 
     // Try MuAPI upload first
     const muapiForm = new FormData()

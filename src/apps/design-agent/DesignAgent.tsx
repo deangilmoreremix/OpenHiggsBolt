@@ -1,7 +1,75 @@
 'use client'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Plus, Send, ChevronDown, X, Loader2, Image, Video, FileText, Sparkles, FolderOpen, Trash2, Download, RefreshCw, Key } from 'lucide-react'
 import { panels, buttons, semantic, appWrapper } from '@/shared/styles/designTokens'
+import DesignAgentErrorBoundary from './ErrorBoundary'
+import { PublishStep } from '@/components/SocialPublishProvider'
+import { AssistStep } from '@/components/AiAssistantProvider'
+
+function AssetModal({ asset, onClose }: { asset: Asset; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.9)' }} onClick={onClose}>
+      <div className="max-w-4xl max-h-[90vh] w-full mx-4 rounded-2xl overflow-hidden relative" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }} onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">{asset.name}</span>
+            <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--text-secondary)' }}>{asset.type}</span>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg transition-all hover:bg-white/10">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="p-4 flex items-center justify-center" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+          {asset.type === 'image' && (
+            <img src={asset.url} alt={asset.name} className="max-w-full max-h-[70vh] object-contain rounded-xl" />
+          )}
+          {asset.type === 'video' && (
+            <video src={asset.url} controls autoPlay className="max-w-full max-h-[70vh] rounded-xl" />
+          )}
+          {asset.type === 'audio' && (
+            <div className="w-full p-8 text-center space-y-4">
+              <div className="text-6xl">🎵</div>
+              <audio src={asset.url} controls autoPlay className="w-full" />
+            </div>
+          )}
+          {asset.type === 'text' && (
+            <div className="w-full p-6 rounded-xl whitespace-pre-wrap text-sm" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)' }}>
+              {asset.url}
+            </div>
+          )}
+        </div>
+        <div className="p-4 border-t flex items-center justify-between gap-2" style={{ borderColor: 'var(--border-color)' }}>
+          <span className="text-xs" style={{ color: semantic.textMuted }}>Generated asset</span>
+          <div className="flex items-center gap-2">
+            {(asset.type === 'image' || asset.type === 'video') && (
+              <PublishStep
+                mediaUrl={asset.url}
+                mediaType={asset.type === 'image' ? 'image' : 'video'}
+                title={asset.name}
+                className="px-4 py-2 rounded-lg text-sm font-medium"
+                style={{ background: 'var(--bg-page)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
+              />
+            )}
+            <a href={asset.url} download target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-lg text-sm font-medium transition-all" style={{ background: 'var(--color-primary)', color: 'white' }}>
+              Download
+            </a>
+            {(asset.type === 'image') && (
+              <AssistStep
+                assetUrl={asset.url}
+                assetType="image"
+                onApply={() => {}}
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                style={{ background: 'var(--bg-page)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
+              >
+                Enhance
+              </AssistStep>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ── Templates (from muapi.ai/assistant screenshots) ───────────────────────────
 const TEMPLATES = [
@@ -78,7 +146,7 @@ async function apiCall(path: string, options: RequestInit = {}, apiKey: string) 
 // MuAPI assets expose { asset_label, kind: 'image'|'video'|'audio', url, ... }.
 function mapAsset(a: any): Asset {
   const kind: string = a?.kind || 'image'
-  const type: Asset['type'] = kind === 'video' ? 'video' : kind === 'audio' ? 'text' : 'image'
+  const type: Asset['type'] = kind === 'video' ? 'video' : kind === 'audio' ? 'audio' : 'image'
   return {
     id: a?.asset_label || a?.id || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     type,
@@ -106,7 +174,7 @@ interface Message {
 
 interface Asset {
   id: string
-  type: 'image' | 'video' | 'text'
+  type: 'image' | 'video' | 'audio' | 'text'
   url: string
   name: string
 }
@@ -143,6 +211,7 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
   const [placeholderIdx, setPlaceholderIdx] = useState(0)
   const [charIdx, setCharIdx] = useState(0)
   const [isTyping, setIsTyping] = useState(true)
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -182,13 +251,13 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
   // Stop polling if the component unmounts.
   useEffect(() => () => { aliveRef.current = false }, [])
 
-  const saveApiKey = () => {
+  const saveApiKey = useCallback(() => {
     localStorage.setItem(API_KEY_STORAGE, keyInput)
     setApiKey(keyInput)
     setShowKeyModal(false)
-  }
+  }, [keyInput])
 
-  const createNewProject = async () => {
+  const createNewProject = useCallback(async () => {
     if (!apiKey) { setShowKeyModal(true); return }
     try {
       const session = await apiCall('/api/design-agent/sessions', {
@@ -216,9 +285,9 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
       setActiveProject(project)
       setMessages([])
     }
-  }
+  }, [apiKey, projects.length])
 
-  const sendMessage = async () => {
+  const sendMessage = useCallback(async () => {
     if (!input.trim() && !selectedTemplate) return
     if (!apiKey) { setShowKeyModal(true); return }
     if (!activeProject) { await createNewProject(); return }
@@ -284,13 +353,13 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [input, selectedTemplate, apiKey, activeProject, messages, createNewProject])
 
   // Submit-and-poll: the chat/run-skill call returns a job_id immediately. We poll
   // GET /jobs/{job_id}/events (cursor-based) until `done`, auto-approving any
   // proposed plan and collecting generated assets from `tool_result` events.
   // https://muapi.ai/docs/design-agent-api
-  const pollJob = async (jobId: string, sessionId: string): Promise<void> => {
+  const pollJob = useCallback(async (jobId: string, sessionId: string): Promise<void> => {
     const MAX_ATTEMPTS = 120 // ~4 min at 2s cadence
     const textParts: string[] = []
     const streamedAssets: Asset[] = []
@@ -365,20 +434,22 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
       assets: failed ? [] : finalAssets,
       createdAt: new Date().toISOString(),
     }])
-  }
+  }, [apiKey])
 
-  const deleteProject = (id: string) => {
+  const deleteProject = useCallback((id: string) => {
     setProjects(prev => prev.filter(p => p.id !== id))
     if (activeProject?.id === id) { setActiveProject(null); setMessages([]) }
-  }
+  }, [activeProject?.id])
 
-  const filteredTemplates = templateSearch
-    ? TEMPLATES.filter(t => t.label.toLowerCase().includes(templateSearch.toLowerCase()))
-    : TEMPLATES
+  const filteredTemplates = useMemo(() => {
+    return templateSearch
+      ? TEMPLATES.filter(t => t.label.toLowerCase().includes(templateSearch.toLowerCase()))
+      : TEMPLATES
+  }, [templateSearch])
 
   // ── HOME VIEW (no active project) ─────────────────────────────────────────
-  if (!activeProject) {
-    return (
+  return (
+    <DesignAgentErrorBoundary>
       <div className="flex flex-col h-full" style={appWrapper}>
         {showTemplates && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -503,7 +574,8 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
               <div className="flex items-center gap-2">
                 <button onClick={() => fileInputRef.current?.click()}
                   className="p-1.5 rounded-full transition-all hover:bg-white/10"
-                  style={{ color: semantic.textMuted }}>
+                  style={{ color: semantic.textMuted }}
+                  aria-label="Upload file">
                   <Plus size={16} />
                 </button>
                 <input ref={fileInputRef} type="file" className="hidden" accept="image/*,video/*" />
@@ -516,20 +588,24 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
                   Templates
                   <ChevronDown size={11} />
                 </button>
-                {selectedTemplate && (
-                  <div className="inline-flex items-center gap-1.5 ml-2 px-3 py-1.5 rounded-full text-xs"
-                    style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa' }}>
-                    <Sparkles size={11} />
-                    {selectedTemplate.id}
-                    <button onClick={() => setSelectedTemplate(null)} className="ml-0.5"><X size={10} /></button>
-                  </div>
-                )}
+            {selectedTemplate && (() => {
+              const t = selectedTemplate;
+              return (
+                <div className="inline-flex items-center gap-1.5 ml-2 px-3 py-1.5 rounded-full text-xs"
+                  style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa' }}>
+                  <Sparkles size={11} />
+                  {t.id}
+                  <button onClick={() => setSelectedTemplate(null)} className="ml-0.5"><X size={10} /></button>
+                </div>
+              );
+            })()}
 
                 <div className="flex-1" />
 
                 <button onClick={sendMessage} disabled={!input.trim() && !selectedTemplate}
                   className="p-2 rounded-full transition-all disabled:opacity-30"
-                  style={{ color: (input.trim() || selectedTemplate) ? 'var(--color-primary)' : semantic.textMuted }}>
+                  style={{ color: (input.trim() || selectedTemplate) ? 'var(--color-primary)' : semantic.textMuted }}
+                  aria-label="Send message">
                   <Send size={16} />
                 </button>
               </div>
@@ -561,10 +637,11 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
                   }
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-all flex flex-col justify-end p-2">
                     <p className="text-xs font-medium truncate">{p.name}</p>
-                    <button onClick={e => { e.stopPropagation(); deleteProject(p.id) }}
-                      className="absolute top-2 right-2 p-1 rounded-lg transition-all" style={{ background: 'rgba(0,0,0,0.6)' }}>
-                      <Trash2 size={11} className="text-red-400" />
-                    </button>
+                     <button onClick={e => { e.stopPropagation(); deleteProject(p.id) }}
+                       className="absolute top-2 right-2 p-1 rounded-lg transition-all" style={{ background: 'rgba(0,0,0,0.6)' }}
+                       aria-label={`Delete project ${p.name}`}>
+                       <Trash2 size={11} className="text-red-400" />
+                     </button>
                   </div>
                 </div>
               ))}
@@ -572,12 +649,13 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
           </div>
         </div>
       </div>
-    )
-  }
+    </DesignAgentErrorBoundary>
+  )
 
   // ── CHAT VIEW (active project) ────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-full" style={appWrapper}>
+    <DesignAgentErrorBoundary>
+      <div className="flex flex-col h-full" style={appWrapper}>
       {showTemplates && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
@@ -640,9 +718,9 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
       <div className="flex items-center gap-3 px-6 py-3 border-b flex-shrink-0" style={{ borderColor: 'var(--border-color)' }}>
         <button onClick={() => { setActiveProject(null); setMessages([]) }}
           className="text-xs transition-all hover:text-white" style={{ color: semantic.textMuted }}>← Back</button>
-        <span className="text-sm font-medium">{activeProject.name}</span>
+        <span className="text-sm font-medium">{activeProject?.name}</span>
         <div className="flex-1" />
-        <button onClick={() => setShowKeyModal(true)} className="p-1.5 rounded-lg transition-all" style={{ color: apiKey ? 'var(--color-primary)' : semantic.textMuted }}><Key size={13} /></button>
+        <button onClick={() => setShowKeyModal(true)} className="p-1.5 rounded-lg transition-all" style={{ color: apiKey ? 'var(--color-primary)' : semantic.textMuted }} aria-label="API Key settings"><Key size={13} /></button>
       </div>
 
       {/* Messages */}
@@ -667,16 +745,19 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
               {msg.assets && msg.assets.length > 0 && (
                 <div className="grid grid-cols-2 gap-2">
                   {msg.assets.map(asset => (
-                    <div key={asset.id} className="relative rounded-xl overflow-hidden group" style={{ border: '1px solid var(--border-color)' }}>
+                    <div key={asset.id} className="relative rounded-xl overflow-hidden group cursor-pointer" style={{ border: '1px solid var(--border-color)' }} onClick={() => setSelectedAsset(asset)}>
                       {asset.type === 'image'
                         ? <img src={asset.url} alt={asset.name} className="w-full object-cover" />
                         : asset.type === 'video'
                         ? <video src={asset.url} controls className="w-full" />
+                        : asset.type === 'audio'
+                        ? <div className="p-3 text-xs" style={{ color: semantic.textSecondary }}>🎵 {asset.name}</div>
                         : <div className="p-3 text-xs" style={{ color: semantic.textSecondary }}>{asset.name}</div>
                       }
                       <a href={asset.url} download target="_blank" rel="noopener noreferrer"
                         className="absolute top-2 right-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                        style={{ background: 'rgba(0,0,0,0.7)', color: 'white' }}>
+                        style={{ background: 'rgba(0,0,0,0.7)', color: 'white' }}
+                        onClick={(e) => e.stopPropagation()}>
                         <Download size={12} />
                       </a>
                     </div>
@@ -718,7 +799,7 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
             />
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => fileInputRef.current?.click()} className="p-1.5 rounded-full transition-all hover:bg-white/10" style={{ color: semantic.textMuted }}>
+            <button onClick={() => fileInputRef.current?.click()} className="p-1.5 rounded-full transition-all hover:bg-white/10" style={{ color: semantic.textMuted }} aria-label="Upload file">
               <Plus size={16} />
             </button>
             {/* Templates button */}
@@ -729,15 +810,18 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
               Templates
               <ChevronDown size={11} />
             </button>
-            {selectedTemplate && (
-              <div className="inline-flex items-center gap-1.5 ml-2 px-3 py-1.5 rounded-full text-xs"
-                style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa' }}>
-                <Sparkles size={11} />
-                {selectedTemplate.id}
-                <button onClick={() => setSelectedTemplate(null)} className="ml-0.5"><X size={10} /></button>
-              </div>
-            )}
-            <div className="flex-1" />
+             {selectedTemplate && (() => {
+               const t = selectedTemplate;
+               return (
+                 <div className="inline-flex items-center gap-1.5 ml-2 px-3 py-1.5 rounded-full text-xs"
+                   style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa' }}>
+                   <Sparkles size={11} />
+                   {t!.id}
+                   <button onClick={() => setSelectedTemplate(null)} className="ml-0.5"><X size={10} /></button>
+                 </div>
+               );
+             })()}
+             <div className="flex-1" />
             <button onClick={sendMessage} disabled={!input.trim() && !selectedTemplate}
               className="p-2 rounded-full transition-all disabled:opacity-30"
               style={{ color: (input.trim() || selectedTemplate) ? 'var(--color-primary)' : semantic.textMuted }}>
@@ -746,6 +830,10 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
           </div>
         </div>
       </div>
-    </div>
+      </div>
+
+      {/* Asset viewer modal */}
+      {selectedAsset && <AssetModal asset={selectedAsset!} onClose={() => setSelectedAsset(null)} />}
+    </DesignAgentErrorBoundary>
   )
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ensureUserAndWorkspace } from '../../../../src/lib/tenantSync';
+import { apiError } from '@/lib/apiError';
 
 export async function POST() {
   try {
@@ -7,6 +8,6 @@ export async function POST() {
     return NextResponse.json({ ok: true, user, workspace });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return apiError('provision_failed', message, 500);
   }
 }

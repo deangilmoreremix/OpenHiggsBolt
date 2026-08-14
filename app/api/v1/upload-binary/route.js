@@ -1,14 +1,49 @@
 import { NextResponse } from 'next/server';
+import { getApiKeyFromRequest, validateUploadProxyTarget, isBlockedFileType } from '@/lib/uploadProxyTarget';
 
+// Upload binary proxy — forwards a multipart upload server-to-server.
+// Mirrors /api/upload-binary for upstream clients calling /api/v1/upload-binary.
 export async function POST(request) {
     try {
+        const apiKey = getApiKeyFromRequest(request);
+        if (!apiKey) {
+            return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 });
+        }
+
         const formData = await request.formData();
-        
-        // Extract the original S3 target URL
+
         const targetUrl = formData.get('x-proxy-target-url');
-        
         if (!targetUrl) {
             return NextResponse.json({ error: 'Missing proxy target URL' }, { status: 400 });
+        }
+
+        const validatedTarget = validateUploadProxyTarget(targetUrl);
+        if (!validatedTarget.ok) {
+            return NextResponse.json(
+                { error: 'Invalid upload target', reason: validatedTarget.reason },
+                { status: 400 }
+            );
+        }
+
+        const fileContentType = formData.get('Content-Type') || formData.get('content-type') || '';
+        const keyName = formData.get('key') || '';
+
+        for (const [key, value] of formData.entries()) {
+            if (value && typeof value === 'object' && typeof value.name === 'string') {
+                if (isBlockedFileType(value.name, value.type || fileContentType)) {
+                    return NextResponse.json(
+                        { error: 'Invalid file type', reason: 'blocked_file_type' },
+                        { status: 400 }
+                    );
+                }
+            }
+        }
+
+        if (isBlockedFileType(keyName, fileContentType)) {
+            return NextResponse.json(
+                { error: 'Invalid file type', reason: 'blocked_file_type' },
+                { status: 400 }
+            );
         }
 
         const s3FormData = new FormData();
@@ -18,7 +53,7 @@ export async function POST(request) {
             }
         }
 
-        const s3Response = await fetch(targetUrl, {
+        const s3Response = await fetch(validatedTarget.url, {
             method: 'POST',
             body: s3FormData,
         });

@@ -1,7 +1,8 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import func
 from models.database import get_db
 from models.db_models import Project as DBProject, Script as DBScript
 from models.schemas import ProjectCreate, ProjectUpdate, ProjectResponse
@@ -25,9 +26,20 @@ async def create_project(project: ProjectCreate, db: AsyncSession = Depends(get_
 
 
 @router.get("/", response_model=List[ProjectResponse])
-async def list_projects(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(DBProject).order_by(DBProject.updated_at.desc()))
+async def list_projects(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    count_result = await db.execute(select(func.count(DBProject.id)))
+    total = count_result.scalar_one()
+
+    offset = (page - 1) * page_size
+    result = await db.execute(
+        select(DBProject).order_by(DBProject.updated_at.desc()).offset(offset).limit(page_size)
+    )
     projects = result.scalars().all()
+
     return [
         ProjectResponse(
             id=p.id,

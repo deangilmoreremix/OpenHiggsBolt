@@ -4,7 +4,7 @@ import json
 import io
 import logging
 from datetime import datetime
-from typing import AsyncGenerator
+from typing import AsyncGenerator, NotRequired, Required, TypedDict
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,7 +26,23 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _sse_event(event_type: str, data: dict) -> str:
+class _ProgressEvent(TypedDict):
+    stage: str
+    message: str
+    current: NotRequired[int]
+    total: NotRequired[int]
+
+
+class _DoneEvent(TypedDict):
+    script_id: int
+    message: str
+
+
+class _ErrorEvent(TypedDict):
+    message: str
+
+
+def _sse_event(event_type: str, data: _ProgressEvent | _DoneEvent | _ErrorEvent) -> str:
     return f"event: {event_type}\ndata: {json.dumps(data, default=str)}\n\n"
 
 

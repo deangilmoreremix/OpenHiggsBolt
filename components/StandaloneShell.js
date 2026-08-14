@@ -7,6 +7,8 @@ import axios from 'axios';
 import { MemoryRouter } from 'react-router-dom';
 import { useClerk } from '@clerk/nextjs';
 import ApiKeyModal from './ApiKeyModal';
+import { SocialPublishProvider } from '@/components/SocialPublishProvider';
+import { AiAssistantProvider } from '@/components/AiAssistantProvider';
 
 // Lazily load the heavy `studio` package so its many studio modules are not
 // part of the initial bundle for /, /studio and /workflow. Each export is only
@@ -48,6 +50,7 @@ const TABS = [
   { id: 'design-agent', label: 'Design Agent AI' },
   { id: 'vfx-studio', label: 'VFX' },
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
+  { id: 'apps', label: 'Explore Apps' },
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'social-publishing', label: 'Social Publishing' },
   { id: 'skills', label: 'Skills' },
@@ -61,6 +64,7 @@ const SLUG_TO_TAB = {
   workflows: 'workflows', agents: 'agents', 'design-agent': 'design-agent',
   'vfx-studio': 'vfx-studio',
   'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio',
+  apps: 'apps',
   'ai-influencer': 'ai-influencer',
   'social-publishing': 'social-publishing',
   'skills': 'skills',
@@ -606,6 +610,8 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
       )}
 
       {/* Studio Content */}
+      <AiAssistantProvider apiKey={apiKey} openaiKey={openaiKey}>
+      <SocialPublishProvider apiKey={apiKey}>
       <div className="flex-1 min-h-0 relative overflow-hidden">
         {activeTab === 'image'   && <ImageStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
         {activeTab === 'video'   && <VideoStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
@@ -631,6 +637,8 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
         {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
         {activeTab === 'skills' && <SkillsBrowser apiKey={apiKey} />}
       </div>
+      </SocialPublishProvider>
+      </AiAssistantProvider>
 
       {/* First-login API key popup — on-brand overlay modal with an X close
           button, wired to the same handleKeySave / MuAPI persistence logic as

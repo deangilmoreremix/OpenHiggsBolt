@@ -14,6 +14,23 @@ const isAuthRoute = createRouteMatcher([
   '/forgot-password(.*)',
 ]);
 
+// Complete CSP delivered at runtime. We intentionally set this in middleware
+// (not next.config.mjs headers()) because Next.js 15 augments/normalizes CSP
+// defined via headers(), which stripped Clerk's cross-origin style/font/connect
+// origins and dropped frame-src — leaving /sign-in, /sign-up and the password-reset
+// pages blank. Middleware-set response headers are not rewritten by Next.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.go.smartvid.app",
+  "style-src 'self' 'unsafe-inline' https://clerk.go.smartvid.app https://fonts.googleapis.com",
+  "img-src 'self' data: blob: https:",
+  "media-src 'self' data: blob: https:",
+  "connect-src 'self' https://clerk.go.smartvid.app https://api.clerk.com https://muapi.ai https://*.muapi.ai https://*.supabase.co",
+  "font-src 'self' data: https://clerk.go.smartvid.app https://fonts.gstatic.com",
+  "worker-src 'self' blob:",
+  "frame-src 'self' https://clerk.go.smartvid.app https://challenges.cloudflare.com",
+].join('; ');
+
 export default clerkMiddleware(async (auth, request) => {
   // Dev-only E2E auth bypass. When the `__e2e_auth_bypass` cookie is present and
   // we are NOT in production, skip Clerk auth so the Playwright suite can run
@@ -49,8 +66,8 @@ export default clerkMiddleware(async (auth, request) => {
 
   if (isMuApi) {
     const isHandledByRoute = url.pathname.startsWith('/api/v1/creative-agent') ||
-                            url.pathname.startsWith('/api/v1/get_upload_url') ||
-                            url.pathname.startsWith('/api/v1/upload-binary');
+                             url.pathname.startsWith('/api/v1/get_upload_url') ||
+                             url.pathname.startsWith('/api/v1/upload-binary');
 
     if (url.pathname.startsWith('/api/v1') && !isHandledByRoute) {
       const targetUrl = new URL(url.pathname + url.search, 'https://api.muapi.ai');
@@ -69,7 +86,9 @@ export default clerkMiddleware(async (auth, request) => {
     }
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  response.headers.set('Content-Security-Policy', CSP);
+  return response;
 });
 
 export const config = {
