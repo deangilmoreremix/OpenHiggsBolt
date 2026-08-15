@@ -75,13 +75,18 @@ const OPENAI_STORAGE_KEY = 'openai_key';
 
 // Build the muapi_key cookie string. `Secure` is added only over HTTPS so the
 // key still persists on http:// localhost dev servers (Secure cookies are dropped
-// on plain HTTP, which would otherwise break local key saving).
+// on plain HTTP, which would otherwise break local key saving). `HttpOnly` is set
+// so the secret key is never exposed to client-side JavaScript (XSS can no longer
+// exfiltrate it) — this addresses VIDEO_STUDIO_AUDIT §8 rec 7. The key is still
+// readable by the server (app/agents/* pages and the /api/v1 proxy resolve it from
+// the cookie) and is mirrored into localStorage by the shell, which is the primary
+// client-side source the agent pages fall back to.
 function muapiCookie(value) {
   const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
   if (value) {
-    return `muapi_key=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax${secure}`;
+    return `muapi_key=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax; HttpOnly${secure}`;
   }
-  return `muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
+  return `muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; HttpOnly${secure}`;
 }
 
 // Same shape as muapiCookie but for the user's OpenAI key, which is sent to the

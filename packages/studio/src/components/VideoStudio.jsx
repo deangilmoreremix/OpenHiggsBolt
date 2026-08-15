@@ -193,37 +193,6 @@ function AdvancedField({ control, value, onChange }) {
   );
 }
 
-const VideoIconSvg = ({ className }) => (
-  <svg
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    className={className}
-  >
-    <polygon points="23 7 16 12 23 17 23 7" />
-    <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-  </svg>
-);
-
-const VideoReadySvg = () => (
-  <svg
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    className="text-primary"
-  >
-    <polygon points="23 7 16 12 23 17 23 7" />
-    <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-    <polyline points="7 10 10 13 15 8" stroke="#22d3ee" strokeWidth="2.5" />
-  </svg>
-);
-
 // ── Dropdown components ───────────────────────────────────────────────────────
 
 function DropdownItem({ label, selected, onClick }) {
@@ -267,8 +236,6 @@ const PROVIDER_LOGOS = {
   reve: "https://cdn.muapi.ai/models/reve.png",
   stability: "https://cdn.muapi.ai/models/stability.png"
 };
-
-const invertLogos = ['openai', 'blackforest', 'runway', 'ideogram', 'lightricks', 'grok'];
 
 function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
   const [search, setSearch] = useState("");
@@ -346,10 +313,7 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
 
   const getIconColor = (m, isV2V) => {
     if (isV2V) return "bg-orange-500/10 text-orange-400 border-orange-500/10";
-    if (m.id.includes("kling")) return "bg-blue-500/10 text-blue-400 border-blue-500/10";
-    if (m.id.includes("veo")) return "bg-purple-500/10 text-purple-400 border-purple-500/10";
-    if (m.id.includes("sora")) return "bg-rose-500/10 text-rose-400 border-rose-500/10";
-    return "bg-primary/10 text-primary border-primary/10";
+    return getProviderStyle(m.provider).bg;
   };
 
   const renderItem = (m, isV2V = false) => (
@@ -368,7 +332,7 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
             <img
               src={PROVIDER_LOGOS[m.provider]}
               alt={m.provider_name}
-              className={`w-full h-full object-contain p-1 ${invertLogos.includes(m.provider) ? "invert" : ""}`}
+              className={`w-full h-full object-contain p-1 ${PROVIDER_INVERT[m.provider] ? "invert" : ""}`}
             />
           </div>
         ) : (
@@ -387,11 +351,18 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
               {m.imageField ? "Upload a video and image" : "Upload a video to use"}
             </span>
           ) : (
-            selectedProvider === "all" && m.provider_name && (
-              <span className="text-[9px] text-white/40">
-                {m.provider_name}
-              </span>
-            )
+            <>
+              {selectedProvider === "all" && m.provider_name && (
+                <span className="text-[9px] text-white/40">
+                  {m.provider_name}
+                </span>
+              )}
+              {m.family && (
+                <span className="text-[8px] uppercase tracking-wider text-white/50 bg-white/[0.06] border border-white/[0.08] rounded px-1.5 py-0.5 mt-0.5 w-fit">
+                  {m.family}
+                </span>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -399,7 +370,7 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
     </div>
   );
 
-  const invertLogos = ['openai', 'blackforest', 'runway', 'ideogram', 'lightricks', 'grok'];
+const PROVIDER_INVERT = { openai: true, blackforest: true, runway: true, ideogram: true, lightricks: true, grok: true };
 
   return (
     <div className="flex gap-4 h-full max-h-[70vh] min-h-[350px]">
@@ -439,7 +410,7 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
                 <img
                   src={PROVIDER_LOGOS[p.id]}
                   alt={p.name}
-                  className={`w-full h-full rounded-full object-contain ${invertLogos.includes(p.id) ? "invert" : ""}`}
+                  className={`w-full h-full rounded-full object-contain ${PROVIDER_INVERT[p.id] ? "invert" : ""}`}
                 />
               ) : (
                 style.text
@@ -630,7 +601,6 @@ export default function VideoStudio({
   const imageFileInputRef = useRef(null);
   const endImageFileInputRef = useRef(null);
   const videoFileInputRef = useRef(null);
-  const resultVideoRef = useRef(null);
   const hasRestored = useRef(false);
 
   // ── derived data ──
@@ -667,6 +637,9 @@ export default function VideoStudio({
     () => getCurrentModels().find((m) => m.id === selectedModel),
     [getCurrentModels, selectedModel],
   );
+
+  // Surface model.inputs metadata as tooltips (only when present).
+  const inputDescription = (key) => getCurrentModel()?.inputs?.[key]?.description;
 
   // Advanced, model-aware controls (negative_prompt, seed, audio, camera, …).
   const advancedControls = getAdvancedControlsForModel(getCurrentModel());
@@ -2024,9 +1997,35 @@ export default function VideoStudio({
                 onChange={handlePromptInput}
                 placeholder={promptPlaceholder}
                 disabled={promptDisabled}
+                title={inputDescription("prompt")}
                 rows={1}
                 className="w-full bg-transparent border-none text-white text-sm placeholder:text-white/10 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar disabled:opacity-40"
               />
+              {getCurrentModel()?.inputs?.prompt?.examples?.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  {getCurrentModel().inputs.prompt.examples.map((ex, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      title={ex}
+                      onClick={() => {
+                        setPrompt(ex);
+                        requestAnimationFrame(() => {
+                          const el = textareaRef.current;
+                          if (el) {
+                            el.style.height = "auto";
+                            const maxH = window.innerWidth < 768 ? 150 : 250;
+                            el.style.height = Math.min(el.scrollHeight, maxH) + "px";
+                          }
+                        });
+                      }}
+                      className="text-[10px] text-white/50 hover:text-[#22d3ee] border border-white/[0.06] hover:border-[#22d3ee]/30 rounded-full px-2.5 py-1 transition-all truncate max-w-[220px]"
+                    >
+                      {ex}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -2066,7 +2065,7 @@ export default function VideoStudio({
                         <img 
                           src={PROVIDER_LOGOS[selectedModelProvider]} 
                           alt="" 
-                          className={`w-full h-full object-contain ${invertLogos.includes(selectedModelProvider) ? "invert" : ""}`} 
+                          className={`w-full h-full object-contain ${PROVIDER_INVERT[selectedModelProvider] ? "invert" : ""}`} 
                         />
                       ) : (
                         <span className="text-[9px] font-bold text-black uppercase">V</span>
@@ -2110,6 +2109,7 @@ export default function VideoStudio({
                   <button
                     type="button"
                     onClick={toggleDropdown("ar")}
+                      title={inputDescription("aspect_ratio")}
                     className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                   >
                     <svg
@@ -2172,6 +2172,7 @@ export default function VideoStudio({
                   <button
                     type="button"
                     onClick={toggleDropdown("effect")}
+                      title={inputDescription("effect")}
                     className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                   >
                     <svg
@@ -2227,6 +2228,7 @@ export default function VideoStudio({
                   <button
                     type="button"
                     onClick={toggleDropdown("duration")}
+                      title={inputDescription("duration")}
                     className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                   >
                     <svg
@@ -2283,6 +2285,7 @@ export default function VideoStudio({
                   <button
                     type="button"
                     onClick={toggleDropdown("resolution")}
+                      title={inputDescription("resolution")}
                     className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                   >
                     <svg
@@ -2338,6 +2341,7 @@ export default function VideoStudio({
                   <button
                     type="button"
                     onClick={toggleDropdown("quality")}
+                      title={inputDescription("quality")}
                     className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                   >
                     <svg
@@ -2393,6 +2397,7 @@ export default function VideoStudio({
                   <button
                     type="button"
                     onClick={toggleDropdown("mode")}
+                      title={inputDescription("mode")}
                     className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
                   >
                     <svg

@@ -20,6 +20,7 @@
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "verify:muapi": "node scripts/verify-muapi-apis.mjs",
+    "gen:models": "node scripts/generate-models.mjs",
     "start": "next start",
     "lint": "next lint",
     "cutai:frontend": "npm run dev -w @openhiggsbolt/cutai",

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { runClipping, uploadFile } from "../muapi.js";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
+import { AssistStep } from "../../../../components/AiAssistantProvider";
 
 // ---------------------------------------------------------------------------
 // Inline SVG Icons

@@ -869,7 +869,7 @@ export default function ThumbnailStudio({ apiKey }: { apiKey?: string }) {
                 <PublishStep
                   mediaUrl={lastImageUrl}
                   mediaType="image"
-                  title="My thumbnail"
+                  title={prompt || 'Thumbnail'}
                   className="w-full py-2.5 rounded-lg text-xs font-medium"
                   style={{ background: 'var(--bg-page)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
                 />

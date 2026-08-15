@@ -19,9 +19,16 @@ const isAuthRoute = createRouteMatcher([
 // defined via headers(), which stripped Clerk's cross-origin style/font/connect
 // origins and dropped frame-src — leaving /sign-in, /sign-up and the password-reset
 // pages blank. Middleware-set response headers are not rewritten by Next.
+//
+// Hardening (VIDEO_STUDIO_AUDIT §8 rec 7): 'unsafe-eval' is dropped in production
+// (Next.js dev tooling needs eval, so we keep it only outside production).
+// 'unsafe-inline' is retained for script-src because Next.js App Router inlines the
+// RSC flight payload and Clerk injects inline bootstrap — removing it would break
+// hydration. A nonce/hash migration is required to drop it (see report).
+const devEval = process.env.NODE_ENV !== 'production' ? " 'unsafe-eval'" : '';
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.go.smartvid.app",
+  `script-src 'self' 'unsafe-inline'${devEval} https://clerk.go.smartvid.app https://*.clerk.accounts.dev https://cdn.muapi.ai`,
   "style-src 'self' 'unsafe-inline' https://clerk.go.smartvid.app https://fonts.googleapis.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https:",
