@@ -72,6 +72,7 @@ export default function LazyVideo({
   const [inView, setInView] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [pinned, setPinned] = useState(false);
+  const [srcSet, setSrcSet] = useState(false);
 
   stopRef.current = () => {
     ref.current?.pause();
@@ -80,34 +81,49 @@ export default function LazyVideo({
   // Reveal (attach observer) when near viewport.
   useEffect(() => {
     const el = ref.current;
-    if (!el || typeof IntersectionObserver === 'undefined') {
+    if (!el) return;
+
+    if (typeof IntersectionObserver === 'undefined') {
       setInView(true);
       return;
     }
+
     const io = new IntersectionObserver(
       ([entry]) => setInView(entry.isIntersecting),
       { rootMargin: '300px 0px', threshold: 0.01 },
     );
     io.observe(el);
-    return () => io.disconnect();
+
+    // IntersectionObserver may not fire for elements already in view at
+    // mount time. Check after paint so layout is complete.
+    const raf = requestAnimationFrame(() => {
+      const rect = el.getBoundingClientRect();
+      if (rect.bottom > 0 && rect.top < window.innerHeight) {
+        setInView(true);
+      }
+    });
+
+    return () => {
+      io.disconnect();
+      cancelAnimationFrame(raf);
+    };
   }, []);
 
-  // Attach the source as soon as the element nears the viewport, instead of
-  // waiting for playback to start. This prevents videos from staying blank
-  // when they are off-screen but still within the reveal margin.
+  // Assign the video source once the element is near the viewport.
   useEffect(() => {
     const el = ref.current;
-    if (!el || !src) return;
-    if (!el.getAttribute('src')) {
-      el.setAttribute('src', src);
+    if (!el || !src || srcSet) return;
+    if (inView) {
+      el.src = src;
+      setSrcSet(true);
     }
-  }, [inView, src]);
+  }, [inView, src, srcSet]);
 
   const shouldPlay = !reduced && (pinned || (inView && autoPlayInView) || (hovered && hoverPlay));
 
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || !srcSet) return;
     if (shouldPlay) {
       if (!activeRef.current) {
         requestPlay(stopRef.current);
@@ -122,7 +138,7 @@ export default function LazyVideo({
       }
       el.pause();
     }
-  }, [shouldPlay, src]);
+  }, [shouldPlay, srcSet]);
 
   const handleClick = useCallback(() => {
     if (toggleOnClick) setPinned((p) => !p);
