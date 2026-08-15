@@ -8,7 +8,6 @@
   "workspaces": [
     "packages/studio",
     "packages/Vibe-Workflow/packages/workflow-builder",
-    "packages/Open-Poe-AI/packages/agents",
     "packages/Open-AI-Design-Agent/packages/design-agent",
     "apps/cutai/frontend"
   ],
@@ -28,7 +27,7 @@
     "cutai:dev": "concurrently \"npm run cutai:backend\" \"npm run cutai:frontend\"",
     "build:studio": "npm run build -w studio",
     "build:workflow": "npm run build -w workflow-builder",
-    "build:agent": "npm run build -w ai-agent",
+    "build:agent": "npm run build -w design-agent",
     "build:packages": "npm run build:workflow && npm run build:agent && npm run build:studio",
     "setup": "git submodule update --init --recursive && npm install && npm run build:packages",
     "vite:dev": "vite",
@@ -129,7 +128,6 @@
     "@clerk/nextjs": "^7.5.13",
     "@netlify/plugin-nextjs": "^5.15.12",
     "@supabase/supabase-js": "^2.108.2",
-    "ai-agent": "file:./packages/Open-Poe-AI/packages/agents",
     "axios": "^1.7.0",
     "lucide-react": "^1.21.0",
     "next": "^15.0.0",
