@@ -61,7 +61,7 @@ export default function LazyVideo({
   hoverPlay = false,
   autoPlayInView = true,
   decorative = false,
-  preload = 'none',
+  preload = 'metadata',
   objectFit = 'cover',
   toggleOnClick = false,
 }: LazyVideoProps) {
@@ -92,14 +92,23 @@ export default function LazyVideo({
     return () => io.disconnect();
   }, []);
 
+  // Attach the source as soon as the element nears the viewport, instead of
+  // waiting for playback to start. This prevents videos from staying blank
+  // when they are off-screen but still within the reveal margin.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !src) return;
+    if (!el.getAttribute('src')) {
+      el.setAttribute('src', src);
+    }
+  }, [inView, src]);
+
   const shouldPlay = !reduced && (pinned || (inView && autoPlayInView) || (hovered && hoverPlay));
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     if (shouldPlay) {
-      // Attach the source lazily — never at page load.
-      if (!el.getAttribute('src')) el.setAttribute('src', src);
       if (!activeRef.current) {
         requestPlay(stopRef.current);
         activeRef.current = true;

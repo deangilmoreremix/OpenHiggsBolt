@@ -62,6 +62,7 @@ export default function InteractiveStudioSection() {
                 label="Ice Gunslinger interactive web loop"
                 hoverPlay
                 toggleOnClick
+                preload="metadata"
                 className="aspect-video w-full rounded-2xl"
                 videoClassName="rounded-2xl"
               />

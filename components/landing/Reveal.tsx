@@ -43,7 +43,7 @@ export default function Reveal({
   return (
     <Tag
       ref={ref as never}
-      className={`${className} ${shown ? 'animate-fade-in-up' : 'opacity-0'}`}
+      className={`${className} ${shown ? 'animate-fade-in-up' : ''}`}
       style={shown ? { animationDelay: `${delay}ms` } : undefined}
     >
       {children}

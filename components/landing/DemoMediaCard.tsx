@@ -37,12 +37,23 @@ export default function DemoMediaCard({
     >
       {/* Media */}
       <div className="relative">
+        {/* Image fallback guarantees the poster renders immediately even if
+            the video element suppresses the poster attribute under preload=none
+            or other browser quirks. The <video> sits on top and covers it once
+            it loads. */}
+        <img
+          src={demo.posterSrc}
+          alt=""
+          aria-hidden="true"
+          className={`absolute inset-0 ${aspectClassName} w-full ${objectFit === 'contain' ? 'object-contain' : 'object-cover'}`}
+        />
         <LazyVideo
           src={demo.videoSrc}
           poster={demo.posterSrc}
           label={`${demo.title} — video preview`}
           hoverPlay
           toggleOnClick
+          preload="metadata"
           className={`${aspectClassName} w-full`}
           objectFit={objectFit}
         />

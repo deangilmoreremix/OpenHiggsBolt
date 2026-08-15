@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Upload, Download, Loader2, ChevronRight } from 'lucide-react';
 import { panels, buttons, semantic, appWrapper, optionStyle } from '@/shared/styles/designTokens';
+import { PublishStep } from '@/components/SocialPublishProvider';
+import { AssistStep } from '@/components/AiAssistantProvider';
 
 const CATEGORIES = [
   'E-commerce', 'Lifestyle', 'Food & Beverage', 'Tech & Electronics', 'Beauty & Fashion', 'Health & Wellness'
@@ -138,9 +140,29 @@ export default function PhotoStudioPage() {
             {result.image_url && (
               <img src={result.image_url} alt={result.style} className="max-h-96 mx-auto rounded-lg" />
             )}
-            <button onClick={() => window.open(result.image_url, '_blank')} className="mt-4 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2" style={buttons.ghost}>
-              <Download size={14} /> Download
-            </button>
+            <div className="flex gap-3">
+              <button onClick={() => window.open(result.image_url, '_blank')} className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2" style={buttons.ghost}>
+                <Download size={14} /> Download
+              </button>
+              <PublishStep
+                mediaUrl={result.image_url}
+                mediaType="image"
+                title={result.style || 'Generated photo'}
+                className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
+                style={buttons.ghost}
+              />
+              <AssistStep
+                assetUrl={result.image_url}
+                assetType="image"
+                onApply={() => {}}
+                className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
+                style={buttons.ghost}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
+                </svg>
+              </AssistStep>
+            </div>
           </div>
         )}
 
