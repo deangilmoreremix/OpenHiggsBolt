@@ -27,7 +27,6 @@ const RecastStudio = loadStudio('RecastStudio');
 const WorkflowStudio = loadStudio('WorkflowStudio');
 const AgentStudio = loadStudio('AgentStudio');
 const AiInfluencerStudio = loadStudio('AiInfluencerStudio');
-const SkillsBrowser = loadStudio('SkillsBrowser');
 
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
 const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ssr: false });
@@ -53,7 +52,6 @@ const TABS = [
   { id: 'apps', label: 'Explore Apps' },
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'social-publishing', label: 'Social Publishing' },
-  { id: 'skills', label: 'Skills' },
 ];
 
 // Maps every landing-page studio slug to the studio tab that renders it.
@@ -67,7 +65,6 @@ const SLUG_TO_TAB = {
   apps: 'apps',
   'ai-influencer': 'ai-influencer',
   'social-publishing': 'social-publishing',
-  'skills': 'skills',
 };
 
 const STORAGE_KEY = 'muapi_key';
@@ -75,18 +72,13 @@ const OPENAI_STORAGE_KEY = 'openai_key';
 
 // Build the muapi_key cookie string. `Secure` is added only over HTTPS so the
 // key still persists on http:// localhost dev servers (Secure cookies are dropped
-// on plain HTTP, which would otherwise break local key saving). `HttpOnly` is set
-// so the secret key is never exposed to client-side JavaScript (XSS can no longer
-// exfiltrate it) — this addresses VIDEO_STUDIO_AUDIT §8 rec 7. The key is still
-// readable by the server (app/agents/* pages and the /api/v1 proxy resolve it from
-// the cookie) and is mirrored into localStorage by the shell, which is the primary
-// client-side source the agent pages fall back to.
+// on plain HTTP, which would otherwise break local key saving).
 function muapiCookie(value) {
   const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
   if (value) {
-    return `muapi_key=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax; HttpOnly${secure}`;
+    return `muapi_key=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax${secure}`;
   }
-  return `muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; HttpOnly${secure}`;
+  return `muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
 }
 
 // Same shape as muapiCookie but for the user's OpenAI key, which is sent to the
@@ -250,13 +242,6 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
 
   useEffect(() => {
     setHasMounted(true);
-    // When embedded on the public landing page we must NOT auto-load the signed-
-    // in owner's saved key (from localStorage, the muapi_key cookie, or their
-    // account). Doing so would run the landing demo on the owner's personal key,
-    // which is exactly the "hard-coded key" symptom. The embedded studio therefore
-    // starts with no key; a visitor who wants to generate enters their OWN key via
-    // Settings (BYOK). The full /studio route (non-embedded) keeps the restore.
-    if (embedded) return;
     // Each key is restored independently — a user may have saved only one
     // (e.g. MuAPI) in the past. We set whichever are present. localStorage
     // is the primary store; the cookie is read as a fallback so a key set on
@@ -640,7 +625,6 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
         )}
         {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} />}
         {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
-        {activeTab === 'skills' && <SkillsBrowser apiKey={apiKey} />}
       </div>
       </SocialPublishProvider>
       </AiAssistantProvider>

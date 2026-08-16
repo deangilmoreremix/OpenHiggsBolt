@@ -23,13 +23,16 @@ export default function AIVideoGallery() {
   return (
     <section id="minimax-gallery" className="border-y border-white/10 bg-[#030303] py-24">
       <div className="mx-auto max-w-7xl px-6">
-         <div className="mx-auto max-w-3xl text-center">
+        <div className="mx-auto max-w-3xl text-center">
           <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">
             Full showcase
           </p>
           <h2 className="mt-4 text-4xl font-black tracking-tight md:text-5xl">
             Every MiniMax H3 Demo, On Demand
           </h2>
+          <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-white/60">
+            Browse the full library. Open any prompt or jump straight into the matching studio.
+          </p>
         </div>
 
         {/* Category filter */}

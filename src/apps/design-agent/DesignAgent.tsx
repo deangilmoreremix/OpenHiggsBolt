@@ -188,13 +188,12 @@ function loadProjects(): Project[] {
 function saveProjects(p: Project[]) { localStorage.setItem(LOCAL_KEY + '_projects', JSON.stringify(p)) }
 
 export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string }) {
-  // API key — comes exclusively from the key passed by StandaloneShell (the
-  // `apiKey` prop). We intentionally do NOT self-seed from localStorage here:
-  // when the studio is embedded on the public landing page the shell passes no
-  // key (so the owner's saved key is never used), and on /studio the shell
-  // already restores and forwards the key via the prop. The in-studio key modal
-  // can still override by calling setApiKey.
-  const [apiKey, setApiKey] = useState(() => propApiKey || '')
+  // API key — seeded from the global key passed by StandaloneShell, falling
+  // back to a previously saved key. The in-studio key modal can still override.
+  const [apiKey, setApiKey] = useState(() =>
+    propApiKey ||
+    (typeof window !== 'undefined' ? localStorage.getItem(API_KEY_STORAGE) || '' : '')
+  )
   const [showKeyModal, setShowKeyModal] = useState(false)
   const [keyInput, setKeyInput] = useState('')
 

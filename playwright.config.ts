@@ -21,7 +21,7 @@ export default defineConfig({
   retries: 1,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:3210',
+    baseURL: 'http://localhost:3111',
     trace: 'on-first-retry',
   },
   projects: [
@@ -31,8 +31,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npx next dev --port 3210 --turbopack',
-    url: 'http://localhost:3210/sign-in',
+    command: 'npx next dev --port 3111 --turbopack',
+    url: 'http://localhost:3111',
     reuseExistingServer: true,
     timeout: 180_000,
   },

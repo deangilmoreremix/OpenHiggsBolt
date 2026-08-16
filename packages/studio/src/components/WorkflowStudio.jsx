@@ -16,8 +16,6 @@ import {
   buildWorkflowApiSnippets,
 } from "../muapi.js";
 import dynamic from "next/dynamic";
-import { PublishStep } from "../../../../components/SocialPublishProvider";
-import { AssistStep } from "../../../../components/AiAssistantProvider";
 
 const WorkflowUI = dynamic(() => import("./WorkflowUI"), {
   ssr: false,
@@ -919,48 +917,30 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
                             </div>
                           )}
 
-                           <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/80 to-transparent translate-y-full group-hover:translate-y-0 transition-transform">
-                             <div className="flex items-center justify-between">
-                               <span className="text-[10px] font-black text-[#22d3ee] uppercase tracking-widest">
-                                 {out.id}
-                               </span>
-                               <div className="flex items-center gap-2">
-                                 <PublishStep
-                                   mediaUrl={out.value}
-                                   mediaType={out.type === "video_url" ? "video" : "image"}
-                                   title={out.id || "Generated asset"}
-                                   className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-[#22d3ee] hover:text-black transition-colors"
-                                 />
-                                 <AssistStep
-                                   assetUrl={out.value}
-                                   assetType={out.type === "video_url" ? "video" : "image"}
-                                   onApply={() => {}}
-                                   className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-[#22d3ee] hover:text-black transition-colors"
-                                 >
-                                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                     <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
-                                   </svg>
-                                 </AssistStep>
-                                 <a
-                                   href={out.value}
-                                   target="_blank"
-                                   rel="noreferrer"
-                                   className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-[#22d3ee] hover:text-black transition-colors"
-                                 >
-                                   <svg
-                                     width="14"
-                                     height="14"
-                                     viewBox="0 0 24 24"
-                                     fill="none"
-                                     stroke="currentColor"
-                                     strokeWidth="2.5"
-                                   >
-                                     <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
-                                   </svg>
-                                 </a>
-                               </div>
-                             </div>
-                           </div>
+                          <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/80 to-transparent translate-y-full group-hover:translate-y-0 transition-transform">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black text-[#22d3ee] uppercase tracking-widest">
+                                {out.id}
+                              </span>
+                              <a
+                                href={out.value}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-[#22d3ee] hover:text-black transition-colors"
+                              >
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                >
+                                  <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
+                                </svg>
+                              </a>
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>

@@ -639,7 +639,7 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
                 <PublishStep
                   mediaUrl={previewUrl}
                   mediaType="image"
-                  title={customPrompt || 'AI Influencer'}
+                  title="AI Influencer"
                   className="absolute bottom-3 right-20 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-white text-[11px] font-semibold hover:bg-black/80 transition-all"
                 />
                 <AssistStep

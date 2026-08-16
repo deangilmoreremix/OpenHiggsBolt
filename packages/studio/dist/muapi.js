@@ -410,7 +410,6 @@ function generateVideo(_x1, _x10) {
 }
 function _generateVideo() {
   _generateVideo = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee5(apiKey, params) {
-    var _params$images_list2, _params$videos_list;
     var modelInfo, endpoint, payload;
     return _regenerator().w(function (_context5) {
       while (1) switch (_context5.n) {
@@ -419,15 +418,12 @@ function _generateVideo() {
           endpoint = (modelInfo === null || modelInfo === void 0 ? void 0 : modelInfo.endpoint) || params.model;
           payload = {};
           if (params.prompt) payload.prompt = params.prompt;
-          if (params.request_id) payload.request_id = params.request_id;
           if (params.aspect_ratio) payload.aspect_ratio = params.aspect_ratio;
           if (params.duration) payload.duration = params.duration;
           if (params.resolution) payload.resolution = params.resolution;
           if (params.quality) payload.quality = params.quality;
           if (params.mode) payload.mode = params.mode;
           if (params.image_url) payload.image_url = params.image_url;
-          if (((_params$images_list2 = params.images_list) === null || _params$images_list2 === void 0 ? void 0 : _params$images_list2.length) > 0) payload.images_list = params.images_list;
-          if (((_params$videos_list = params.videos_list) === null || _params$videos_list === void 0 ? void 0 : _params$videos_list.length) > 0) payload.videos_list = params.videos_list;
           return _context5.a(2, submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal));
       }
     }, _callee5);
@@ -548,9 +544,6 @@ function _processRecast() {
           }
           if (params.aspect_ratio) {
             payload.aspect_ratio = params.aspect_ratio;
-          }
-          if (params.character_orientation) {
-            payload.character_orientation = params.character_orientation;
           }
           return _context9.a(2, submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal));
       }

@@ -37,25 +37,13 @@ export default function Reveal({
       { rootMargin: '0px 0px -10% 0px', threshold: 0.1 },
     );
     io.observe(el);
-    // If the element is already in view when the observer attaches,
-    // IntersectionObserver may not fire a callback. Detect that case
-    // immediately so already-visible content does not animate on reload.
-    const raf = requestAnimationFrame(() => {
-      const rect = el.getBoundingClientRect();
-      if (rect.bottom > 0 && rect.top < window.innerHeight) {
-        setShown(true);
-      }
-    });
-    return () => {
-      io.disconnect();
-      cancelAnimationFrame(raf);
-    };
+    return () => io.disconnect();
   }, []);
 
   return (
     <Tag
       ref={ref as never}
-      className={`${className} ${shown ? 'animate-fade-in-up' : ''}`}
+      className={`${className} ${shown ? 'animate-fade-in-up' : 'opacity-0'}`}
       style={shown ? { animationDelay: `${delay}ms` } : undefined}
     >
       {children}

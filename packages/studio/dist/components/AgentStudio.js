@@ -19,15 +19,6 @@ function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) 
 function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
 function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
 function _arrayWithHoles(r) { if (Array.isArray(r)) return r; } // ─── Helpers ────────────────────────────────────────────────────────────────
-// The API client (muapi.js) already rewrites upstream artwork URLs (thumbnail /
-// icon_url) into either a same-origin local path or an /api/thumbnail proxy URL.
-// If the value is already a same-origin path, use it directly instead of
-// re-wrapping it (which would produce a broken "/api/thumbnail?url=/api/thumbnail?...").
-function toProxiedIcon(rawUrl) {
-  if (!rawUrl) return null;
-  if (rawUrl.startsWith("/")) return rawUrl;
-  return "/api/thumbnail?url=".concat(encodeURIComponent(rawUrl));
-}
 function timeAgo(dateStr) {
   if (!dateStr) return "";
   var utcStr = dateStr.endsWith("Z") || dateStr.includes("+") ? dateStr : dateStr + "Z";
@@ -51,7 +42,7 @@ function AgentCard(_ref) {
   // Route the upstream icon through the same-origin proxy (and fall back to the
   // raw URL if the proxy fails) so CDN hotlink protection can't block the image.
   var hasIcon = !!agent.icon_url;
-  var proxiedIcon = toProxiedIcon(agent.icon_url);
+  var proxiedIcon = hasIcon ? "/api/thumbnail?url=".concat(encodeURIComponent(agent.icon_url)) : null;
   var showIcon = hasIcon && proxiedIcon && !imgError;
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     className: "group relative aspect-[4/5] rounded-xl cursor-pointer",
@@ -136,7 +127,7 @@ function ConversationCard(_ref2) {
   var displayTitle = conv.title || "New Chat";
   var agentSlug = conv.agent_slug || conv.agent_id;
   var hasIcon = !!conv.agent_icon_url;
-  var proxiedIcon = toProxiedIcon(conv.agent_icon_url);
+  var proxiedIcon = hasIcon ? "/api/thumbnail?url=".concat(encodeURIComponent(conv.agent_icon_url)) : null;
   var showIcon = hasIcon && proxiedIcon && !imgError;
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     onClick: function onClick() {

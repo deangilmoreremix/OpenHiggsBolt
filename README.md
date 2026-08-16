@@ -506,13 +506,6 @@ Publish generated media to social platforms.
 - **Platforms:** YouTube (title, description, tags, privacy, category, madeForKids), Instagram (caption, Reels, shareToFeed), TikTok (caption, privacy, comment / duet / stitch toggles).
 - **Features:** connect / disconnect accounts, media-URL input, publish + poll for result, local publish history.
 
-#### Post to social — from any studio's result panel
-Every studio's result panel includes a **Post to social** button (share icon). It opens a four-step publish flow — write copy → generate a thumbnail → pick destinations → review & publish — pre-seeded with the asset you just generated.
-- **Images publish to Instagram only** (feed + Reels).
-- **Videos publish to YouTube + Instagram + TikTok.**
-- **Cost:** roughly **$0.01 per publish**, billed through your MuAPI key.
-- **No dashboard account needed:** connecting a platform uses an **external-user OAuth connect flow** — you authorize your own YouTube / Instagram / TikTok account in a popup and MuAPI stores it under an external-user ID. You never create a MuAPI-side social account in a dashboard.
-
 ## 🚀 Quick Start
 
 ### Prerequisites

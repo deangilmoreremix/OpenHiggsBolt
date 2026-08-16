@@ -62,7 +62,7 @@ export const academyAssets: AcademyAsset[] = [
     src: `${BASE}/images/character-anchor.jpg`,
     thumbnail: `${BASE}/images/character-anchor.jpg`,
     category: 'character',
-    lesson: '02-character-consistency',
+    lesson: 'character-consistency',
     template: 'character-consistency-checklist',
     description:
       'The reference anchor portrait (woman, late 20s, brown hair, freckles) used for reference-image conditioning across every other shot. This is the "source of truth" image the consistency checklist is measured against.',
@@ -76,7 +76,7 @@ export const academyAssets: AcademyAsset[] = [
     src: `${BASE}/images/character-drift-car.jpg`,
     thumbnail: `${BASE}/images/character-drift-car.jpg`,
     category: 'character',
-    lesson: '02-character-consistency',
+    lesson: 'character-consistency',
     template: 'character-consistency-checklist',
     description:
       'Same anchor character, new setting (car interior). Produced by passing the anchor image as an edit input to a reference-conditioned model — face shape, freckles and age stay locked.',
@@ -90,7 +90,7 @@ export const academyAssets: AcademyAsset[] = [
     src: `${BASE}/images/character-drift-kitchen.jpg`,
     thumbnail: `${BASE}/images/character-drift-kitchen.jpg`,
     category: 'character',
-    lesson: '02-character-consistency',
+    lesson: 'character-consistency',
     template: 'character-consistency-checklist',
     description:
       'Same anchor character on a kitchen counter. Drift-check sample #2 — identity held across a different scene and lighting.',
@@ -104,7 +104,7 @@ export const academyAssets: AcademyAsset[] = [
     src: `${BASE}/images/character-drift-outside.jpg`,
     thumbnail: `${BASE}/images/character-drift-outside.jpg`,
     category: 'character',
-    lesson: '02-character-consistency',
+    lesson: 'character-consistency',
     template: 'character-consistency-checklist',
     description:
       'Same anchor character walking outside with completely different outdoor lighting. Drift-check sample #3 — the hardest case, identity still holds.',
@@ -121,7 +121,7 @@ export const academyAssets: AcademyAsset[] = [
     gifSrc: `${BASE}/gifs/gripmount-hook-clip.gif`,
     thumbnail: `${BASE}/gifs/gripmount-hook-clip.gif`,
     category: 'ugc-hook',
-    lesson: '01-how-ugc-works',
+    lesson: 'how-ugc-works',
     template: 'ugc-script-template',
     description:
       'Unedited first-pass clip: the anchor image animated into a short talking clip from the Module 1 hook line. Shows what a real first-pass output looks like before b-roll/captions.',
@@ -138,7 +138,7 @@ export const academyAssets: AcademyAsset[] = [
     gifSrc: `${BASE}/gifs/gripmount-ad2-problem-first.gif`,
     thumbnail: `${BASE}/gifs/gripmount-ad2-problem-first.gif`,
     category: 'ugc-problem-first',
-    lesson: '03-building-an-ad-batch',
+    lesson: 'building-ad-batch',
     template: 'batch-matrix-template',
     description:
       'Ad #2 of the 5-ad batch. Problem-first hook ("My old mount fell off literally every drive.") — same anchor character and product, only the opening line changes.',
@@ -155,7 +155,7 @@ export const academyAssets: AcademyAsset[] = [
     gifSrc: `${BASE}/gifs/gripmount-ad3-pov.gif`,
     thumbnail: `${BASE}/gifs/gripmount-ad3-pov.gif`,
     category: 'ugc-pov',
-    lesson: '03-building-an-ad-batch',
+    lesson: 'building-ad-batch',
     template: 'batch-matrix-template',
     description:
       'Ad #3 of the 5-ad batch. Relatable/POV format ("POV: you\'re driving and your phone doesn\'t fall for once.") — tests whether POV framing changes hook rate.',

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, memo } from 'react';
-import { CreativeCanvas } from 'design-agent';
+import { CreativeCanvas, logger } from 'design-agent';
 import { getUserBalance } from '../muapi';
 
 // Simple error boundary base class
@@ -14,7 +14,7 @@ class ErrorBoundary extends React.Component {
     return { hasError: true, error };
   }
   componentDidCatch(error, errorInfo) {
-    console.error('[DesignAgentStudio] Unhandled error', { error: error?.message || error, stack: errorInfo?.componentStack });
+    logger.error('[DesignAgentStudio] Unhandled error', { error: error?.message || error, stack: errorInfo?.componentStack });
   }
   handleReset = () => {
     this.setState({ hasError: false, error: null });
@@ -63,7 +63,7 @@ function DesignAgentStudio({ apiKey, isHeaderVisible, onToggleHeader }) {
           balance: data.balance || 0
         });
       } catch (err) {
-        console.error('Failed to fetch user data for Design Agent', { error: err?.message || err });
+        logger.error('Failed to fetch user data for Design Agent', { error: err?.message || err });
       }
     };
 

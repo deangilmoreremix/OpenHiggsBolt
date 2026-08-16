@@ -12,6 +12,8 @@ export const metadata = {
   description: 'Generate videos, VFX, and campaign assets using 200+ models — Flux, Midjourney, Kling, Veo, Seedance and more.',
 };
 
+// Clerk is optional. If the publishable key is missing we still render the app
+// (landing page + studios) instead of white-screening everything.
 const isClerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
 export default function RootLayout({ children }) {
@@ -22,10 +24,6 @@ export default function RootLayout({ children }) {
   );
 
   return isClerkEnabled ? <ClerkProvider
-    publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
-    signInUrl={process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL || '/sign-in'}
-    signUpUrl={process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL || '/sign-up'}
-    forgotPasswordUrl="/forgot-password"
     appearance={{
       variables: {
         colorPrimary: '#22d3ee',
@@ -45,6 +43,8 @@ export default function RootLayout({ children }) {
         formFieldInput:
           'bg-white/5 border border-white/10 text-white placeholder:text-white/40',
         formFieldLabel: 'text-white/80',
+        // Show / hide password toggle (eye icon) — make it clearly visible
+        // on the dark glass card so users can reveal the password they type.
         formFieldInputShowPasswordButton:
           'text-white/70 hover:text-white hover:bg-white/10 rounded-md',
         formFieldInputShowPasswordIcon: 'text-white/70 hover:text-white',

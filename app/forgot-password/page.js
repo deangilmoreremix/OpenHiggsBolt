@@ -1,20 +1,9 @@
 'use client';
-import { useEffect } from 'react';
-import { TaskResetPassword, useAuth } from '@clerk/nextjs';
+import { SignIn } from '@clerk/nextjs';
 import Link from 'next/link';
-import { PRODUCT_NAME } from '../../../components/landing/landingData';
+import { PRODUCT_NAME } from '../../components/landing/landingData';
 
 export default function ForgotPasswordPage() {
-  const { isLoaded, isSignedIn } = useAuth();
-
-  // Provision the user's workspace in Supabase once the session is active.
-  // (Idempotent on the server via onConflict: clerk_user_id.)
-  useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      fetch('/api/workspace/provision', { method: 'POST' }).catch(() => {});
-    }
-  }, [isLoaded, isSignedIn]);
-
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
       <div className="landing-noise" aria-hidden="true" />
@@ -67,9 +56,7 @@ export default function ForgotPasswordPage() {
             </p>
           </div>
 
-          <div className="landing-card rounded-3xl p-6 md:p-8">
-            <TaskResetPassword redirectUrlComplete="/studio" />
-          </div>
+          <SignIn routing="path" />
 
           <p className="mt-6 text-center text-sm text-white/55">
             Remember your password?{' '}

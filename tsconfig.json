@@ -55,6 +55,9 @@
         "./components",
         "./src/shared/components"
       ],
+      "ai-agent": [
+        "./packages/Open-Poe-AI/packages/agents/src/index.js"
+      ],
       "workflow-builder": [
         "./packages/Vibe-Workflow/packages/workflow-builder/src/index.js"
       ],

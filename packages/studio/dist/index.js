@@ -17,6 +17,7 @@ var _exportNames = {
   WorkflowStudio: true,
   AgentStudio: true,
   DesignAgentStudio: true,
+  AppsStudio: true,
   McpCliStudio: true,
   AiInfluencerStudio: true
 };
@@ -30,6 +31,12 @@ Object.defineProperty(exports, "AiInfluencerStudio", {
   enumerable: true,
   get: function get() {
     return _AiInfluencerStudio["default"];
+  }
+});
+Object.defineProperty(exports, "AppsStudio", {
+  enumerable: true,
+  get: function get() {
+    return _AppsStudio["default"];
   }
 });
 Object.defineProperty(exports, "AudioStudio", {
@@ -116,6 +123,7 @@ var _RecastStudio = _interopRequireDefault(require("./components/RecastStudio"))
 var _WorkflowStudio = _interopRequireDefault(require("./components/WorkflowStudio"));
 var _AgentStudio = _interopRequireDefault(require("./components/AgentStudio"));
 var _DesignAgentStudio = _interopRequireDefault(require("./components/DesignAgentStudio"));
+var _AppsStudio = _interopRequireDefault(require("./components/AppsStudio"));
 var _McpCliStudio = _interopRequireDefault(require("./components/McpCliStudio"));
 var _AiInfluencerStudio = _interopRequireDefault(require("./components/AiInfluencerStudio"));
 var _muapi = require("./muapi");
