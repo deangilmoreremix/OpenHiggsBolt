@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-08-13T15:29:22.206Z",
-  "skillCount": 57,
+  "skillCount": 65,
   "skills": [
     {
       "slug": "muapi-3d-logo-animation",
@@ -2572,6 +2572,492 @@
         "youtube cover"
       ],
       "promptFormula": ""
+    },
+    {
+      "slug": "flux-3-dev-flagship",
+      "name": "flux-3-dev-flagship",
+      "description": "Generate flagship-grade 4K images with FLUX 3 Dev from a text prompt using a structured visual formula (subject + style + lighting + composition + detail).",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "subject",
+          "type": "text",
+          "required": true,
+          "default": "a lone astronaut standing on a neon-lit alien shore"
+        },
+        {
+          "name": "style",
+          "type": "text",
+          "required": false,
+          "default": "cinematic photoreal, anamorphic lens, high contrast"
+        },
+        {
+          "name": "lighting",
+          "type": "text",
+          "required": false,
+          "default": "golden hour, volumetric god rays"
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "flux-3-dev",
+          "endpoint": "flux-3-dev",
+          "aspectRatio": "16:9",
+          "resolution": "4k",
+          "prompt": "{{subject}}. {{style}}. {{lighting}}. Ultra-detailed, 8k, polished, award-winning composition.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "flux 3",
+        "flux3",
+        "flux dev",
+        "flagship image",
+        "4k image"
+      ],
+      "promptFormula": "subject + style + lighting + detail"
+    },
+    {
+      "slug": "grok-imagine-2",
+      "name": "grok-imagine-2",
+      "description": "Create vivid images with Grok Imagine 2 from a text prompt using a clean visual formula.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "subject",
+          "type": "text",
+          "required": true,
+          "default": "a cyberpunk street market at night"
+        },
+        {
+          "name": "style",
+          "type": "text",
+          "required": false,
+          "default": "hyper-realistic, neon, wet reflections"
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "grok-imagine-image-2",
+          "endpoint": "grok-imagine-image-2",
+          "aspectRatio": "1:1",
+          "resolution": "1080p",
+          "prompt": "{{subject}}. {{style}}. Highly detailed, vibrant, professional.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "grok imagine",
+        "grok image",
+        "grok imagine 2"
+      ],
+      "promptFormula": "subject + style"
+    },
+    {
+      "slug": "minimax-h3-i2v",
+      "name": "minimax-h3-i2v",
+      "description": "Animate a still image into a cinematic 10-second clip with MiniMax H3 Image-to-Video.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "start_image",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "motion",
+          "type": "text",
+          "required": false,
+          "default": "the camera slowly pushes in as wind ripples through the scene"
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "minimax-h3-image-to-video",
+          "endpoint": "minimax-h3-image-to-video",
+          "aspectRatio": "16:9",
+          "resolution": "1080p",
+          "duration": 10,
+          "prompt": "{{motion}}. Cinematic, smooth motion, coherent subject, high detail.",
+          "references": [
+            "{{start_image}}"
+          ]
+        }
+      ],
+      "triggers": [
+        "minimax h3",
+        "minimax image to video",
+        "h3 i2v"
+      ],
+      "promptFormula": "image + motion"
+    },
+    {
+      "slug": "wan-3-t2v",
+      "name": "wan-3-t2v",
+      "description": "Generate a native-audio video clip from a text prompt with Wan 3.0 Text-to-Video.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "scene",
+          "type": "text",
+          "required": true,
+          "default": "a drone flying over a misty fjord at sunrise"
+        },
+        {
+          "name": "audio_note",
+          "type": "text",
+          "required": false,
+          "default": "ambient wind and distant bird calls"
+        }
+      ],
+      "steps": [
+        {
+          "type": "t2v",
+          "model": "wan-3.0-t2v",
+          "endpoint": "wan-3.0-t2v",
+          "aspectRatio": "16:9",
+          "resolution": "1080p",
+          "duration": 10,
+          "audio": true,
+          "prompt": "{{scene}}. {{audio_note}}. Cinematic, smooth, high fidelity.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "wan 3",
+        "wan t2v",
+        "wan text to video"
+      ],
+      "promptFormula": "scene + audio"
+    },
+    {
+      "slug": "flux-3-t2v",
+      "name": "flux-3-t2v",
+      "description": "Generate a native-audio video clip from a text prompt with FLUX 3 Text-to-Video.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "scene",
+          "type": "text",
+          "required": true,
+          "default": "a futuristic city skyline pulsing with holographic ads"
+        },
+        {
+          "name": "audio_note",
+          "type": "text",
+          "required": false,
+          "default": "soft synth hum and city ambience"
+        }
+      ],
+      "steps": [
+        {
+          "type": "t2v",
+          "model": "flux-3-text-to-video",
+          "endpoint": "flux-3-text-to-video",
+          "aspectRatio": "16:9",
+          "resolution": "1080p",
+          "duration": 10,
+          "audio": true,
+          "prompt": "{{scene}}. {{audio_note}}. Cinematic, coherent, ultra-detailed.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "flux 3 video",
+        "flux t2v",
+        "flux text to video"
+      ],
+      "promptFormula": "scene + audio"
+    },
+    {
+      "slug": "seedance-omni-reference",
+      "name": "seedance-omni-reference",
+      "description": "Drive a native-audio video from a text prompt while keeping a referenced character sheet consistent with Seedance 2.5 Pro Omni Reference.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "character_ref",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "action",
+          "type": "text",
+          "required": false,
+          "default": "the character walks through a bustling market, turning to smile at the camera"
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "seedance-2.5-pro-omni-reference",
+          "endpoint": "seedance-2.5-pro-omni-reference",
+          "aspectRatio": "16:9",
+          "resolution": "1080p",
+          "duration": 10,
+          "audio": true,
+          "prompt": "{{action}}. Keep the referenced character sheet exactly consistent. Cinematic, smooth, high detail.",
+          "references": [
+            {
+              "role": "character_sheet",
+              "url": "{{character_ref}}"
+            }
+          ]
+        }
+      ],
+      "triggers": [
+        "seedance omni",
+        "seedance reference",
+        "character consistent video"
+      ],
+      "promptFormula": "character sheet + action"
+    },
+    {
+      "slug": "seedance-first-last-frame-cinematic",
+      "name": "seedance-first-last-frame-cinematic",
+      "description": "Generate a native-audio cinematic clip that begins on a first frame and ends exactly on a last frame with Seedance 2.5 Pro First-Last-Frame.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "start_img",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "end_img",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "motion",
+          "type": "text",
+          "required": false,
+          "default": "a slow dolly through the environment transitioning between the two keyframes"
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "seedance-2.5-pro-first-last-frame",
+          "endpoint": "seedance-2.5-pro-first-last-frame",
+          "aspectRatio": "16:9",
+          "resolution": "1080p",
+          "duration": 10,
+          "audio": true,
+          "prompt": "{{motion}}. Cinematic, coherent, smooth transition between keyframes.",
+          "references": [
+            {
+              "role": "first_frame",
+              "url": "{{start_img}}"
+            },
+            {
+              "role": "last_frame",
+              "url": "{{end_img}}"
+            }
+          ]
+        }
+      ],
+      "triggers": [
+        "first last frame",
+        "keyframe video",
+        "seedance first last"
+      ],
+      "promptFormula": "first frame + last frame + motion"
+    },
+    {
+      "slug": "ai-influencer-character-consistency",
+      "name": "ai-influencer-character-consistency",
+      "description": "Build a consistent AI influencer: first create a character from a reference sheet, then animate that character in a native-audio video while preserving identity.",
+      "category": "motion",
+      "studio": "ai-influencer",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "character_ref",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "scene",
+          "type": "text",
+          "required": false,
+          "default": "the influencer waves to the camera and introduces their channel with a bright smile"
+        }
+      ],
+      "steps": [
+        {
+          "type": "character",
+          "model": "seedance-2.5-pro-create_character",
+          "endpoint": "seedance-2.5-pro-create_character",
+          "aspectRatio": "16:9",
+          "prompt": "Create a consistent character from the reference sheet, preserving face, hair, outfit, and style.",
+          "references": [
+            {
+              "role": "character_sheet",
+              "url": "{{character_ref}}"
+            }
+          ]
+        },
+        {
+          "type": "i2v",
+          "model": "seedance-2.5-pro-omni-reference",
+          "endpoint": "seedance-2.5-pro-omni-reference",
+          "aspectRatio": "16:9",
+          "resolution": "1080p",
+          "duration": 10,
+          "audio": true,
+          "prompt": "{{scene}}. Keep the character from the previous step exactly consistent. Cinematic, smooth, high detail.",
+          "references": [
+            {
+              "role": "character_sheet",
+              "url": "{{phase0.output}}"
+            }
+          ]
+        }
+      ],
+      "triggers": [
+        "ai influencer",
+        "character consistency",
+        "consistent influencer",
+        "virtual influencer"
+      ],
+      "promptFormula": "character sheet + scene"
     }
-  ]
+  ],
+  "prompts": {
+    "visual": [
+      {
+        "title": "FLUX 3 Product Hero",
+        "prompt": "A floating {{product}} on a reflective obsidian pedestal, rim-lit with cool studio light, shallow depth of field, ultra-detailed, 8k product photography.",
+        "model": "flux-3-dev",
+        "params": { "resolution": "4k", "aspect_ratio": "1:1" }
+      },
+      {
+        "title": "FLUX 3 Cinematic Portrait",
+        "prompt": "Close-up portrait of {{subject}}, dramatic side lighting, film grain, anamorphic bokeh, moody color grade, photorealistic skin.",
+        "model": "flux-3-dev",
+        "params": { "resolution": "4k", "aspect_ratio": "9:16" }
+      },
+      {
+        "title": "Grok Imagine Concept Art",
+        "prompt": "Epic concept art of {{subject}}, sweeping environment, intricate detail, volumetric light, painterly fantasy style.",
+        "model": "grok-imagine-image-2",
+        "params": { "resolution": "2k", "aspect_ratio": "16:9" }
+      },
+      {
+        "title": "FLUX 3 Image Edit",
+        "prompt": "Restyle the input image into {{style}}, keep the subject and composition, upgrade lighting and detail.",
+        "model": "flux-3-image-to-image",
+        "params": { "resolution": "4k", "aspect_ratio": "16:9" }
+      }
+    ],
+    "motion": [
+      {
+        "title": "MiniMax H3 6-Part Formula",
+        "prompt": "Subject: {{subject}}. Action: {{action}}. Camera: {{camera}}. Light: {{light}}. Sound: {{sound}}. Atmosphere: {{atmosphere}}.",
+        "model": "minimax-h3-image-to-video",
+        "params": { "resolution": "1080p", "duration": 10, "aspect_ratio": "16:9" }
+      },
+      {
+        "title": "Seedance 6-Step Formula",
+        "prompt": "Shot: {{shot}}. Subject: {{subject}}. Motion: {{motion}}. Camera: {{camera}}. Style: {{style}}. Audio: {{audio}}.",
+        "model": "seedance-2.5-pro-omni-reference",
+        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "16:9" }
+      },
+      {
+        "title": "FLUX 3 Native-Audio T2V",
+        "prompt": "{{scene}}. Native synchronized ambient audio, cinematic, coherent, ultra-detailed.",
+        "model": "flux-3-text-to-video",
+        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "16:9" }
+      },
+      {
+        "title": "Wan 3.0 Native-Audio T2V",
+        "prompt": "{{scene}}. Native synchronized audio, smooth motion, high fidelity.",
+        "model": "wan-3.0-t2v",
+        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "16:9" }
+      }
+    ],
+    "social": [
+      {
+        "title": "Influencer Intro Reel",
+        "prompt": "A virtual influencer waves to the camera and delivers a cheerful channel intro, bright studio background, energetic.",
+        "model": "seedance-2.5-pro-omni-reference",
+        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "9:16" }
+      },
+      {
+        "title": "Product Ad Short",
+        "prompt": "A sleek product reveal with spinning hero shot and pulsing neon accents, upbeat music.",
+        "model": "flux-3-text-to-video",
+        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "9:16" }
+      },
+      {
+        "title": "Keyframe Story Reel",
+        "prompt": "A cinematic transition that opens on a first frame and resolves on a last frame, smooth and emotional.",
+        "model": "seedance-2.5-pro-first-last-frame",
+        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "9:16" }
+      }
+    ],
+    "edit": [
+      {
+        "title": "Seedance Video Edit",
+        "prompt": "Restyle the input video into {{style}}, preserve motion and subjects, upgrade detail and color.",
+        "model": "seedance-2.5-pro-video-edit",
+        "params": { "resolution": "1080p", "duration": 10, "aspect_ratio": "16:9" }
+      },
+      {
+        "title": "Seedance Video Extend",
+        "prompt": "Continue the input video naturally, matching style and motion, adding {{extra_scene}}.",
+        "model": "seedance-2.5-pro-video-extend",
+        "params": { "resolution": "1080p", "duration": 10, "aspect_ratio": "16:9" }
+      },
+      {
+        "title": "FLUX 3 Image Restyle",
+        "prompt": "Edit the input image to {{style}}, maintain subject and composition.",
+        "model": "flux-3-image-to-image",
+        "params": { "resolution": "1080p", "aspect_ratio": "1:1" }
+      }
+    ],
+    "workflow": [
+      {
+        "title": "AI Influencer Pipeline",
+        "prompt": "Create a consistent character from the reference sheet, then animate the character while preserving identity.",
+        "model": "seedance-2.5-pro-create_character",
+        "params": { "aspect_ratio": "16:9" }
+      },
+      {
+        "title": "First-Last Keyframe Pipeline",
+        "prompt": "Generate a native-audio clip constrained to a first and last keyframe for precise shot control.",
+        "model": "seedance-2.5-pro-first-last-frame",
+        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "16:9" }
+      },
+      {
+        "title": "Omni-Reference Consistency Pipeline",
+        "prompt": "Drive a video while referencing up to 20 images to lock character and style consistency.",
+        "model": "seedance-2.5-pro-omni-reference",
+        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "16:9" }
+      }
+    ]
+  }
 }

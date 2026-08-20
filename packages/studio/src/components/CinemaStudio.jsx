@@ -4,6 +4,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { generateImage, uploadFile } from "../muapi.js";
+import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
+import registry from "../skills/registry.json";
+import { fillTemplate } from "../lib/promptRecipes";
 
 // ─── Constants (inlined from promptUtils) ───────────────────────────────────
 
@@ -508,6 +511,35 @@ export default function CinemaStudio({
   const removeImage = () => {
     setUploadedImage(null);
   };
+
+  // ── Apply pending Skills recipe (set by SkillsBrowser) ────────────────────
+  useEffect(() => {
+    const pending = getPendingRecipe("cinema");
+    if (!pending) return;
+    const skill = registry.skills.find((s) => s.slug === pending);
+    clearPendingRecipe("cinema");
+    if (!skill) return;
+    applyRecipe(skill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function applyRecipe(skill) {
+    const step0 = skill.steps && skill.steps[0];
+    if (!step0) {
+      if (skill.description)
+        setSettings((s) => ({ ...s, prompt: skill.description }));
+      return;
+    }
+    if (step0.prompt || skill.description) {
+      setSettings((s) => ({
+        ...s,
+        prompt: fillTemplate(step0.prompt || skill.description || "", {}),
+      }));
+    }
+    if (step0.aspectRatio)
+      setSettings((s) => ({ ...s, aspect_ratio: step0.aspectRatio }));
+    if (step0.resolution) setResolution(step0.resolution);
+  }
 
   // ── Persistence: Load ────────────────────────────────────────────────────
   useEffect(() => {

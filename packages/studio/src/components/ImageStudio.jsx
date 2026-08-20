@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { generateImage, generateI2I, uploadFile } from "../muapi.js";
+import { generateImage, generateI2I, uploadFile, generateImageEditGrok } from "../muapi.js";
+import { setCharacterSheet } from "../lib/characterStore";
 import DrawModal from "./DrawModal.jsx";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
@@ -844,6 +845,13 @@ export default function ImageStudio({
   const [uploadedImageUrls, setUploadedImageUrls] = useState([]);
   const [swapImageUrl, setSwapImageUrl] = useState(null);
 
+  // ── Wave 1 recipe-driven state ───────────────────────────────────────────
+  const [selectedResolution, setSelectedResolution] = useState(null);
+  const [grokEditMode, setGrokEditMode] = useState(false);
+  const [grokRequestId, setGrokRequestId] = useState("");
+  const [grokMask, setGrokMask] = useState("");
+  const [characterSheetUrl, setCharacterSheetUrl] = useState(null);
+
   // ── UI state ────────────────────────────────────────────────────────────
   const [dropdownOpen, setDropdownOpen] = useState(null); // 'model' | 'ar' | 'quality' | null
   const [generating, setGenerating] = useState(false);
@@ -1143,6 +1151,57 @@ export default function ImageStudio({
       vals[i.name] = "";
     });
     setPrompt(fillTemplate(step0.prompt || skill.description || "", vals));
+
+    const flags = step0.flags || {};
+    if (step0.rate !== undefined) { /* noop */ }
+
+    // Resolution: prefer mapping onto the quality enum, else a custom field.
+    if (step0.resolution) {
+      const resList = imageMode
+        ? getResolutionsForI2IModel(selectedModelId)
+        : getResolutionsForModel(selectedModelId);
+      if (resList.includes(step0.resolution)) {
+        setSelectedQuality(step0.resolution);
+      } else {
+        setSelectedResolution(step0.resolution);
+      }
+    }
+
+    // Grok edit mode → surface request_id / mask inputs.
+    if (flags.grokEdit) setGrokEditMode(true);
+
+    // Dev mode → flux-3-dev model.
+    if (flags.devMode) {
+      const dev = allModels.find((m) => m.id === "flux-3-dev");
+      if (dev) {
+        setImageMode(false);
+        setSelectedModelId(dev.id);
+        setSelectedModelName(dev.name);
+        const ars = getAspectRatiosForModel(dev.id);
+        const res = getResolutionsForModel(dev.id);
+        setSelectedAr(ars[0] || "1:1");
+        setSelectedQuality(res[0] || null);
+      }
+    }
+
+    // References (string refs or {url, role} objects).
+    const refs = step0.references || [];
+    const imageRefs = [];
+    refs.forEach((ref) => {
+      const url = typeof ref === "string" ? ref : ref.url;
+      const role = typeof ref === "string" ? null : ref.role || null;
+      if (!url) return;
+      if (role === "character_sheet") {
+        setCharacterSheet("image", url);
+        setCharacterSheetUrl(url);
+        return;
+      }
+      imageRefs.push(url);
+    });
+    if (imageRefs.length > 0) {
+      setImageMode(true);
+      setUploadedImageUrls(imageRefs);
+    }
   }
 
   // ── Generation ───────────────────────────────────────────────────────────
@@ -1172,6 +1231,16 @@ export default function ImageStudio({
     try {
       const results = await Promise.all(
         Array.from({ length: batchSize }).map(async () => {
+          if (grokEditMode) {
+            const genParams = {
+              request_id: grokRequestId,
+              mask: grokMask || undefined,
+              prompt: prompt.trim(),
+              aspect_ratio: selectedAr,
+            };
+            if (selectedResolution) genParams.resolution = selectedResolution;
+            return await generateImageEditGrok(apiKey, genParams);
+          }
           if (imageMode) {
             const genParams = {
               model: selectedModelId,
@@ -1184,6 +1253,7 @@ export default function ImageStudio({
             if (currentQualityField && selectedQuality) {
               genParams[currentQualityField] = selectedQuality;
             }
+            if (selectedResolution) genParams.resolution = selectedResolution;
             if (showEffectBtn && selectedEffect) genParams.name = selectedEffect;
             return await generateI2I(apiKey, genParams);
           } else {
@@ -1195,6 +1265,7 @@ export default function ImageStudio({
             if (currentQualityField && selectedQuality) {
               genParams[currentQualityField] = selectedQuality;
             }
+            if (selectedResolution) genParams.resolution = selectedResolution;
             return await generateImage(apiKey, genParams);
           }
         })
@@ -1446,6 +1517,26 @@ export default function ImageStudio({
               rows={1}
               className="w-full bg-transparent border-none text-white text-sm placeholder:text-white/20 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar"
             />
+
+            {/* Grok edit inputs (recipe-driven) */}
+            {grokEditMode && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <input
+                  type="text"
+                  value={grokRequestId}
+                  onChange={(e) => setGrokRequestId(e.target.value)}
+                  placeholder="request_id"
+                  className="h-[34px] w-44 bg-black/40 border border-white/10 rounded-md px-3 text-xs text-white/80 placeholder:text-white/30 focus:outline-none focus:border-[#22d3ee]/40"
+                />
+                <input
+                  type="text"
+                  value={grokMask}
+                  onChange={(e) => setGrokMask(e.target.value)}
+                  placeholder="mask URL (optional)"
+                  className="h-[34px] flex-1 min-w-[160px] bg-black/40 border border-white/10 rounded-md px-3 text-xs text-white/80 placeholder:text-white/30 focus:outline-none focus:border-[#22d3ee]/40"
+                />
+              </div>
+            )}
           </div>
 
           {/* Bottom row: controls + generate */}
@@ -1577,6 +1668,36 @@ export default function ImageStudio({
                     </div>
                   )}
                 </div>
+              )}
+
+              {/* Custom resolution select (recipe-driven) */}
+              {selectedResolution && (
+                <div className="relative">
+                  <select
+                    value={selectedResolution}
+                    onChange={(e) => setSelectedResolution(e.target.value)}
+                    className="h-[34px] flex items-center px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] text-[11px] font-semibold text-white/70 hover:text-[#22d3ee] shadow-inner"
+                  >
+                    <option value={selectedResolution}>{selectedResolution}</option>
+                    {currentResolutions.filter((r) => r !== selectedResolution).map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Grok edit toggle */}
+              {grokEditMode && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDropdownOpen((o) => (o === "grok" ? null : "grok"));
+                  }}
+                  className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-white/10 rounded-md transition-all border border-[#22d3ee]/40 group whitespace-nowrap shadow-inner"
+                >
+                  <span className="text-[11px] font-semibold text-[#22d3ee]/80">Grok Edit</span>
+                </button>
               )}
 
               {/* Effect type button */}

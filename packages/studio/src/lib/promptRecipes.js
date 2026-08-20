@@ -43,11 +43,22 @@ export function buildParams(step, inputValues, stepOutputs) {
     prompt,
     aspect_ratio: step.aspectRatio || '16:9',
   };
-  const refs = (step.references || []).map((token) =>
-    resolveRef(token, inputValues, stepOutputs)
-  );
-  if (refs.length > 0) {
-    params.images_list = refs;
+  if (step.duration !== undefined) params.duration = step.duration;
+  if (step.resolution !== undefined) params.resolution = step.resolution;
+  if (step.audio !== undefined) params.generate_audio = step.audio;
+  const refs = (step.references || []).map((ref) => {
+    if (typeof ref === 'string') {
+      return { url: resolveRef(ref, inputValues, stepOutputs), role: null };
+    }
+    return { url: resolveRef(ref.url, inputValues, stepOutputs), role: ref.role || null };
+  });
+  const urls = refs.map((r) => r.url).filter(Boolean);
+  if (urls.length > 0) {
+    params.images_list = urls;
+  }
+  const withRole = refs.filter((r) => r.role);
+  if (withRole.length > 0) {
+    params.references = withRole.map((r) => ({ url: r.url, role: r.role }));
   }
   return params;
 }
@@ -91,6 +102,8 @@ export async function runSkill(apiKey, skill, inputValues, onStep) {
         result = await muapi.generateVideo(apiKey, params);
       } else if (step.type === 'audio') {
         result = await muapi.generateAudio(apiKey, params);
+      } else if (step.type === 'character') {
+        result = await muapi.generateCharacterVideo(apiKey, params);
       } else {
         // edit / clipping
         result =

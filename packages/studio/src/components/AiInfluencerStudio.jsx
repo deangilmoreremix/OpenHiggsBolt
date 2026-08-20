@@ -4,6 +4,9 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { generateImage } from "../muapi.js";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
+import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
+import registry from "../skills/registry.json";
+import { fillTemplate } from "../lib/promptRecipes";
 
 const CDN = "https://cdn.muapi.ai/influencer";
 
@@ -358,6 +361,33 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
   useEffect(() => () => { abortRef.current?.abort(); }, []);
 
   const isGenerating = externalIsGenerating || isGeneratingInternal;
+
+  // ── Apply pending Skills recipe (set by SkillsBrowser) ────────────────────
+  useEffect(() => {
+    const pending = getPendingRecipe("ai-influencer");
+    if (!pending) return;
+    const skill = registry.skills.find((s) => s.slug === pending);
+    clearPendingRecipe("ai-influencer");
+    if (!skill) return;
+    applyRecipe(skill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function applyRecipe(skill) {
+    const step0 = skill.steps && skill.steps[0];
+    if (!step0) {
+      if (skill.description) setCustomPrompt(skill.description);
+      return;
+    }
+    if (step0.aspectRatio) setAspectRatio(step0.aspectRatio);
+    const vals = {};
+    (skill.inputs || []).forEach((i) => {
+      vals[i.name] = "";
+    });
+    setCustomPrompt(
+      fillTemplate(step0.prompt || skill.description || "", vals),
+    );
+  }
 
   // ── Build prompt from selections ──────────────────────────────────────────
   const buildPrompt = useCallback(() => {

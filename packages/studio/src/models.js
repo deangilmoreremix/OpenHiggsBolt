@@ -2594,6 +2594,145 @@ export const t2iModels = [
       }
     },
     "description": "Z-Image P is based on PiAPI's Qubico/z-image text-to-image model."
+  },
+  {
+    "id": "flux-3-dev",
+    "name": "Flux 3 Dev",
+    "endpoint": "flux-3-dev",
+    "family": "flux-3",
+    "category": "Text to Image",
+    "hasPrompt": true,
+    "inputs": {
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "name": "prompt",
+        "description": "FLUX 3 Dev generates high-fidelity images from text prompts."
+      },
+      "aspect_ratio": {
+        "enum": ["16:9", "9:16", "1:1"],
+        "title": "Aspect Ratio",
+        "name": "aspect_ratio",
+        "type": "string",
+        "description": "Aspect ratio of the output image.",
+        "default": "16:9"
+      },
+      "resolution": {
+        "enum": ["1080p", "2k", "4k"],
+        "title": "Resolution",
+        "name": "resolution",
+        "type": "string",
+        "description": "Resolution of the output image.",
+        "default": "4k"
+      }
+    },
+    "description": "FLUX 3 Dev is the flagship open text-to-image model with native 4K output."
+  },
+  {
+    "id": "flux-3-text-to-image",
+    "name": "Flux 3 Text To Image",
+    "endpoint": "flux-3-text-to-image",
+    "family": "flux-3",
+    "category": "Text to Image",
+    "hasPrompt": true,
+    "inputs": {
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "name": "prompt",
+        "description": "FLUX 3 Text-to-Image generates high-quality images from text prompts."
+      },
+      "aspect_ratio": {
+        "enum": ["16:9", "9:16", "1:1"],
+        "title": "Aspect Ratio",
+        "name": "aspect_ratio",
+        "type": "string",
+        "description": "Aspect ratio of the output image.",
+        "default": "16:9"
+      },
+      "resolution": {
+        "enum": ["1080p", "2k", "4k"],
+        "title": "Resolution",
+        "name": "resolution",
+        "type": "string",
+        "description": "Resolution of the output image.",
+        "default": "1080p"
+      }
+    },
+    "description": "FLUX 3 Text-to-Image generates high-quality images from text prompts."
+  },
+  {
+    "id": "grok-imagine-image-2",
+    "name": "Grok Imagine Image 2",
+    "endpoint": "grok-imagine-image-2",
+    "family": "grok-imagine",
+    "category": "Text to Image",
+    "hasPrompt": true,
+    "inputs": {
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "name": "prompt",
+        "description": "Grok Imagine Image 2 generates images from text prompts."
+      },
+      "aspect_ratio": {
+        "enum": ["9:16", "16:9", "2:3", "3:2", "1:1"],
+        "title": "Aspect Ratio",
+        "name": "aspect_ratio",
+        "type": "string",
+        "description": "Aspect ratio of the output image.",
+        "default": "1:1"
+      },
+      "resolution": {
+        "enum": ["1080p", "2k"],
+        "title": "Resolution",
+        "name": "resolution",
+        "type": "string",
+        "description": "Resolution of the output image.",
+        "default": "1080p"
+      }
+    },
+    "description": "Grok Imagine Image 2 generates images from text prompts."
+  },
+  {
+    "id": "grok-imagine-image-2-edit",
+    "name": "Grok Imagine Image 2 Edit",
+    "endpoint": "grok-imagine-image-2-edit",
+    "family": "grok-imagine",
+    "category": "Text to Image",
+    "hasPrompt": true,
+    "imageField": "image",
+    "inputs": {
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "name": "prompt",
+        "description": "Grok Imagine Image 2 Edit performs prompt-driven image editing."
+      },
+      "image": {
+        "type": "image",
+        "title": "Image",
+        "name": "image",
+        "description": "Input image."
+      },
+      "aspect_ratio": {
+        "enum": ["9:16", "16:9", "2:3", "3:2", "1:1"],
+        "title": "Aspect Ratio",
+        "name": "aspect_ratio",
+        "type": "string",
+        "description": "Aspect ratio of the output image.",
+        "default": "1:1"
+      },
+      "resolution": {
+        "enum": ["1080p", "2k"],
+        "title": "Resolution",
+        "name": "resolution",
+        "type": "string",
+        "description": "Resolution of the output image.",
+        "default": "1080p"
+      }
+    },
+    "description": "Grok Imagine Image 2 Edit performs prompt-driven image editing."
   }
 ];
 
@@ -3768,6 +3907,215 @@ export let t2vModels = [
       }
     },
     "description": "Alibaba WAN 2.7 Text-to-Video turns plain prompts into coherent, cinematic clips."
+  },
+  {
+    "id": "minimax-h3-text-to-video",
+    "name": "MiniMax H3 Text To Video",
+    "endpoint": "minimax-h3-text-to-video",
+    "family": "minimax-h3",
+    "category": "Text to Video",
+    "hasPrompt": true,
+    "inputs": {
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "name": "prompt",
+        "description": "MiniMax H3 Text-to-Video generates cinematic clips from text prompts."
+      },
+      "aspect_ratio": {
+        "enum": ["16:9", "9:16", "1:1"],
+        "title": "Aspect Ratio",
+        "name": "aspect_ratio",
+        "type": "string",
+        "description": "Aspect ratio of the output video.",
+        "default": "16:9"
+      },
+      "resolution": {
+        "enum": ["720p", "1080p"],
+        "title": "Resolution",
+        "name": "resolution",
+        "type": "string",
+        "description": "Resolution of the output video.",
+        "default": "1080p"
+      },
+      "duration": {
+        "enum": [5, 10],
+        "title": "Duration",
+        "name": "duration",
+        "type": "int",
+        "description": "Duration of the output video in seconds.",
+        "default": 10
+      }
+    },
+    "description": "MiniMax H3 Text-to-Video generates cinematic clips from text prompts."
+  },
+  {
+    "id": "wan-3.0-t2v",
+    "name": "Wan 3.0 Text To Video",
+    "endpoint": "wan-3.0-t2v",
+    "family": "wan-3.0",
+    "category": "Text to Video",
+    "hasPrompt": true,
+    "audio": true,
+    "inputs": {
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "name": "prompt",
+        "description": "Wan 3.0 Text-to-Video generates native-audio video clips from text prompts."
+      },
+      "aspect_ratio": {
+        "enum": ["16:9", "9:16", "1:1"],
+        "title": "Aspect Ratio",
+        "name": "aspect_ratio",
+        "type": "string",
+        "description": "Aspect ratio of the output video.",
+        "default": "16:9"
+      },
+      "resolution": {
+        "enum": ["480p", "720p", "1080p"],
+        "title": "Resolution",
+        "name": "resolution",
+        "type": "string",
+        "description": "Resolution of the output video.",
+        "default": "1080p"
+      },
+      "duration": {
+        "enum": [5, 10],
+        "title": "Duration",
+        "name": "duration",
+        "type": "int",
+        "description": "Duration of the output video in seconds.",
+        "default": 10
+      }
+    },
+    "description": "Wan 3.0 Text-to-Video generates native-audio video clips from text prompts."
+  },
+  {
+    "id": "flux-3-text-to-video",
+    "name": "Flux 3 Text To Video",
+    "endpoint": "flux-3-text-to-video",
+    "family": "flux-3",
+    "category": "Text to Video",
+    "hasPrompt": true,
+    "audio": true,
+    "inputs": {
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "name": "prompt",
+        "description": "FLUX 3 Text-to-Video generates native-audio video clips from text prompts."
+      },
+      "aspect_ratio": {
+        "enum": ["16:9", "9:16", "1:1"],
+        "title": "Aspect Ratio",
+        "name": "aspect_ratio",
+        "type": "string",
+        "description": "Aspect ratio of the output video.",
+        "default": "16:9"
+      },
+      "resolution": {
+        "enum": ["720p", "1080p", "4k"],
+        "title": "Resolution",
+        "name": "resolution",
+        "type": "string",
+        "description": "Resolution of the output video.",
+        "default": "1080p"
+      },
+      "duration": {
+        "enum": [5, 10],
+        "title": "Duration",
+        "name": "duration",
+        "type": "int",
+        "description": "Duration of the output video in seconds.",
+        "default": 10
+      }
+    },
+    "description": "FLUX 3 Text-to-Video generates native-audio video clips from text prompts."
+  },
+  {
+    "id": "flux-3-video-api-text-to-video",
+    "name": "Flux 3 Video API Text To Video",
+    "endpoint": "flux-3-video-api-text-to-video",
+    "family": "flux-3",
+    "category": "Text to Video",
+    "hasPrompt": true,
+    "audio": true,
+    "inputs": {
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "name": "prompt",
+        "description": "FLUX 3 Video API Text-to-Video generates native-audio video clips from text prompts."
+      },
+      "aspect_ratio": {
+        "enum": ["16:9", "9:16", "1:1"],
+        "title": "Aspect Ratio",
+        "name": "aspect_ratio",
+        "type": "string",
+        "description": "Aspect ratio of the output video.",
+        "default": "16:9"
+      },
+      "resolution": {
+        "enum": ["720p", "1080p", "4k"],
+        "title": "Resolution",
+        "name": "resolution",
+        "type": "string",
+        "description": "Resolution of the output video.",
+        "default": "1080p"
+      },
+      "duration": {
+        "enum": [5, 10],
+        "title": "Duration",
+        "name": "duration",
+        "type": "int",
+        "description": "Duration of the output video in seconds.",
+        "default": 10
+      }
+    },
+    "description": "FLUX 3 Video API Text-to-Video generates native-audio video clips from text prompts."
+  },
+  {
+    "id": "seedance-2.5-pro-text-to-video",
+    "name": "Seedance 2.5 Pro Text To Video",
+    "endpoint": "seedance-2.5-pro-text-to-video",
+    "family": "seedance-2.5-pro",
+    "category": "Text to Video",
+    "hasPrompt": true,
+    "audio": true,
+    "inputs": {
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "name": "prompt",
+        "description": "Seedance 2.5 Pro Text-to-Video generates native-audio video clips from text prompts."
+      },
+      "aspect_ratio": {
+        "enum": ["16:9", "9:16", "1:1"],
+        "title": "Aspect Ratio",
+        "name": "aspect_ratio",
+        "type": "string",
+        "description": "Aspect ratio of the output video.",
+        "default": "16:9"
+      },
+      "resolution": {
+        "enum": ["540p", "720p", "1080p", "2k", "4k"],
+        "title": "Resolution",
+        "name": "resolution",
+        "type": "string",
+        "description": "Resolution of the output video.",
+        "default": "1080p"
+      },
+      "duration": {
+        "enum": [5, 10, 15, 20, 30],
+        "title": "Duration",
+        "name": "duration",
+        "type": "int",
+        "description": "Duration of the output video in seconds.",
+        "default": 10
+      }
+    },
+    "description": "Seedance 2.5 Pro Text-to-Video generates native-audio video clips up to 4K and 30 seconds."
   }
 ];
 
@@ -6451,6 +6799,47 @@ export const i2iModels = [
       }
     },
     "description": "Alibaba WAN 2.7 Image Edit Pro performs prompt-driven image editing with multi-image reference support and up to 2K output."
+  },
+  {
+    "id": "flux-3-image-to-image",
+    "name": "Flux 3 Image To Image",
+    "endpoint": "flux-3-image-to-image",
+    "family": "flux-3",
+    "category": "Image to Image",
+    "hasPrompt": true,
+    "imageField": "image",
+    "maxImages": 4,
+    "inputs": {
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "name": "prompt",
+        "description": "FLUX 3 Image-to-Image performs prompt-driven image editing."
+      },
+      "image": {
+        "type": "image",
+        "title": "Image",
+        "name": "image",
+        "description": "Input image."
+      },
+      "aspect_ratio": {
+        "enum": ["16:9", "9:16", "1:1"],
+        "title": "Aspect Ratio",
+        "name": "aspect_ratio",
+        "type": "string",
+        "description": "Aspect ratio of the output image.",
+        "default": "16:9"
+      },
+      "resolution": {
+        "enum": ["1080p", "2k", "4k"],
+        "title": "Resolution",
+        "name": "resolution",
+        "type": "string",
+        "description": "Resolution of the output image.",
+        "default": "1080p"
+      }
+    },
+    "description": "FLUX 3 Image-to-Image performs prompt-driven image editing with up to 4 reference images."
   }
 ];
 
@@ -11298,6 +11687,265 @@ export let i2vModels = [
       }
     },
     "description": "Alibaba WAN 2.7 Reference-to-Video. Reference characters/props to generate new shots."
+  },
+  {
+    "id": "minimax-h3-image-to-video",
+    "name": "MiniMax H3 Image To Video",
+    "endpoint": "minimax-h3-image-to-video",
+    "family": "minimax-h3",
+    "category": "Image to Video",
+    "hasPrompt": true,
+    "imageField": "image",
+    "lastImageField": "last_image_url",
+    "inputs": {
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "name": "prompt",
+        "description": "MiniMax H3 Image-to-Video animates a still image into a video clip."
+      },
+      "image": {
+        "type": "image",
+        "title": "First Frame",
+        "name": "image",
+        "description": "Input first frame image."
+      },
+      "last_image_url": {
+        "type": "image",
+        "title": "Last Frame",
+        "name": "last_image_url",
+        "description": "Optional last frame image to end the clip on."
+      },
+      "aspect_ratio": {
+        "enum": ["16:9", "9:16", "1:1"],
+        "title": "Aspect Ratio",
+        "name": "aspect_ratio",
+        "type": "string",
+        "description": "Aspect ratio of the output video.",
+        "default": "16:9"
+      },
+      "resolution": {
+        "enum": ["720p", "1080p"],
+        "title": "Resolution",
+        "name": "resolution",
+        "type": "string",
+        "description": "Resolution of the output video.",
+        "default": "1080p"
+      },
+      "duration": {
+        "enum": [5, 10],
+        "title": "Duration",
+        "name": "duration",
+        "type": "int",
+        "description": "Duration of the output video in seconds.",
+        "default": 10
+      }
+    },
+    "description": "MiniMax H3 Image-to-Video animates a still image into a video clip."
+  },
+  {
+    "id": "wan-3.0-i2v",
+    "name": "Wan 3.0 Image To Video",
+    "endpoint": "wan-3.0-i2v",
+    "family": "wan-3.0",
+    "category": "Image to Video",
+    "hasPrompt": true,
+    "imageField": "image",
+    "audio": true,
+    "inputs": {
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "name": "prompt",
+        "description": "Wan 3.0 Image-to-Video animates a still image into a native-audio video clip."
+      },
+      "image": {
+        "type": "image",
+        "title": "Image",
+        "name": "image",
+        "description": "Input image."
+      },
+      "aspect_ratio": {
+        "enum": ["16:9", "9:16", "1:1"],
+        "title": "Aspect Ratio",
+        "name": "aspect_ratio",
+        "type": "string",
+        "description": "Aspect ratio of the output video.",
+        "default": "16:9"
+      },
+      "resolution": {
+        "enum": ["480p", "720p", "1080p"],
+        "title": "Resolution",
+        "name": "resolution",
+        "type": "string",
+        "description": "Resolution of the output video.",
+        "default": "1080p"
+      },
+      "duration": {
+        "enum": [5, 10],
+        "title": "Duration",
+        "name": "duration",
+        "type": "int",
+        "description": "Duration of the output video in seconds.",
+        "default": 10
+      }
+    },
+    "description": "Wan 3.0 Image-to-Video animates a still image into a native-audio video clip."
+  },
+  {
+    "id": "flux-3-image-to-video",
+    "name": "Flux 3 Image To Video",
+    "endpoint": "flux-3-image-to-video",
+    "family": "flux-3",
+    "category": "Image to Video",
+    "hasPrompt": true,
+    "imageField": "image",
+    "audio": true,
+    "inputs": {
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "name": "prompt",
+        "description": "FLUX 3 Image-to-Video animates a still image into a native-audio video clip."
+      },
+      "image": {
+        "type": "image",
+        "title": "Image",
+        "name": "image",
+        "description": "Input image."
+      },
+      "aspect_ratio": {
+        "enum": ["16:9", "9:16", "1:1"],
+        "title": "Aspect Ratio",
+        "name": "aspect_ratio",
+        "type": "string",
+        "description": "Aspect ratio of the output video.",
+        "default": "16:9"
+      },
+      "resolution": {
+        "enum": ["720p", "1080p", "4k"],
+        "title": "Resolution",
+        "name": "resolution",
+        "type": "string",
+        "description": "Resolution of the output video.",
+        "default": "1080p"
+      },
+      "duration": {
+        "enum": [5, 10],
+        "title": "Duration",
+        "name": "duration",
+        "type": "int",
+        "description": "Duration of the output video in seconds.",
+        "default": 10
+      }
+    },
+    "description": "FLUX 3 Image-to-Video animates a still image into a native-audio video clip."
+  },
+  {
+    "id": "seedance-2.5-pro-first-last-frame",
+    "name": "Seedance 2.5 Pro First Last Frame",
+    "endpoint": "seedance-2.5-pro-first-last-frame",
+    "family": "seedance-2.5-pro",
+    "category": "Image to Video",
+    "hasPrompt": true,
+    "imageField": "image",
+    "lastImageField": "last_image_url",
+    "audio": true,
+    "inputs": {
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "name": "prompt",
+        "description": "Seedance 2.5 Pro First-Last-Frame generates a video that begins and ends on the supplied frames."
+      },
+      "image": {
+        "type": "image",
+        "title": "First Frame",
+        "name": "image",
+        "description": "Input first frame image."
+      },
+      "last_image_url": {
+        "type": "image",
+        "title": "Last Frame",
+        "name": "last_image_url",
+        "description": "Input last frame image."
+      },
+      "aspect_ratio": {
+        "enum": ["16:9", "9:16", "1:1"],
+        "title": "Aspect Ratio",
+        "name": "aspect_ratio",
+        "type": "string",
+        "description": "Aspect ratio of the output video.",
+        "default": "16:9"
+      },
+      "resolution": {
+        "enum": ["540p", "720p", "1080p", "2k", "4k"],
+        "title": "Resolution",
+        "name": "resolution",
+        "type": "string",
+        "description": "Resolution of the output video.",
+        "default": "1080p"
+      },
+      "duration": {
+        "enum": [5, 10, 15],
+        "title": "Duration",
+        "name": "duration",
+        "type": "int",
+        "description": "Duration of the output video in seconds.",
+        "default": 10
+      }
+    },
+    "description": "Seedance 2.5 Pro First-Last-Frame generates a native-audio video between two supplied keyframes."
+  },
+  {
+    "id": "seedance-2.5-pro-omni-reference",
+    "name": "Seedance 2.5 Pro Omni Reference",
+    "endpoint": "seedance-2.5-pro-omni-reference",
+    "family": "seedance-2.5-pro",
+    "category": "Image to Video",
+    "hasPrompt": true,
+    "imageField": "image",
+    "maxImages": 20,
+    "audio": true,
+    "inputs": {
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "name": "prompt",
+        "description": "Seedance 2.5 Pro Omni Reference generates a video while referencing up to 20 images (e.g. a character sheet)."
+      },
+      "image": {
+        "type": "image",
+        "title": "Reference Image",
+        "name": "image",
+        "description": "Input reference image."
+      },
+      "aspect_ratio": {
+        "enum": ["16:9", "9:16", "1:1"],
+        "title": "Aspect Ratio",
+        "name": "aspect_ratio",
+        "type": "string",
+        "description": "Aspect ratio of the output video.",
+        "default": "16:9"
+      },
+      "resolution": {
+        "enum": ["540p", "720p", "1080p", "2k", "4k"],
+        "title": "Resolution",
+        "name": "resolution",
+        "type": "string",
+        "description": "Resolution of the output video.",
+        "default": "1080p"
+      },
+      "duration": {
+        "enum": [5, 10, 15],
+        "title": "Duration",
+        "name": "duration",
+        "type": "int",
+        "description": "Duration of the output video in seconds.",
+        "default": 10
+      }
+    },
+    "description": "Seedance 2.5 Pro Omni Reference generates native-audio video while referencing up to 20 images."
   }
 ];
 
@@ -12381,6 +13029,102 @@ export let v2vModels = [
       }
     },
     "description": "Extend existing videos seamlessly with Wan 2.7."
+  },
+  {
+    "id": "seedance-2.5-pro-video-edit",
+    "name": "Seedance 2.5 Pro Video Edit",
+    "endpoint": "seedance-2.5-pro-video-edit",
+    "family": "seedance-2.5-pro",
+    "category": "Video to Video",
+    "hasPrompt": true,
+    "videoField": "video",
+    "inputs": {
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "name": "prompt",
+        "description": "Seedance 2.5 Pro Video Edit restyles or edits an existing video from a text prompt."
+      },
+      "video": {
+        "type": "video",
+        "title": "Video",
+        "name": "video",
+        "description": "Input video."
+      },
+      "aspect_ratio": {
+        "enum": ["16:9", "9:16", "1:1"],
+        "title": "Aspect Ratio",
+        "name": "aspect_ratio",
+        "type": "string",
+        "description": "Aspect ratio of the output video.",
+        "default": "16:9"
+      },
+      "resolution": {
+        "enum": ["540p", "720p", "1080p", "2k", "4k"],
+        "title": "Resolution",
+        "name": "resolution",
+        "type": "string",
+        "description": "Resolution of the output video.",
+        "default": "1080p"
+      },
+      "duration": {
+        "enum": [5, 10, 15],
+        "title": "Duration",
+        "name": "duration",
+        "type": "int",
+        "description": "Duration of the output video in seconds.",
+        "default": 10
+      }
+    },
+    "description": "Seedance 2.5 Pro Video Edit restyles or edits an existing video from a text prompt."
+  },
+  {
+    "id": "seedance-2.5-pro-video-extend",
+    "name": "Seedance 2.5 Pro Video Extend",
+    "endpoint": "seedance-2.5-pro-video-extend",
+    "family": "seedance-2.5-pro",
+    "category": "Video to Video",
+    "hasPrompt": true,
+    "videoField": "video",
+    "inputs": {
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "name": "prompt",
+        "description": "Seedance 2.5 Pro Video Extend continues an existing video with additional footage."
+      },
+      "video": {
+        "type": "video",
+        "title": "Video",
+        "name": "video",
+        "description": "Input video."
+      },
+      "aspect_ratio": {
+        "enum": ["16:9", "9:16", "1:1"],
+        "title": "Aspect Ratio",
+        "name": "aspect_ratio",
+        "type": "string",
+        "description": "Aspect ratio of the output video.",
+        "default": "16:9"
+      },
+      "resolution": {
+        "enum": ["540p", "720p", "1080p", "2k", "4k"],
+        "title": "Resolution",
+        "name": "resolution",
+        "type": "string",
+        "description": "Resolution of the output video.",
+        "default": "1080p"
+      },
+      "duration": {
+        "enum": [5, 10, 15],
+        "title": "Duration",
+        "name": "duration",
+        "type": "int",
+        "description": "Duration of the output video in seconds.",
+        "default": 10
+      }
+    },
+    "description": "Seedance 2.5 Pro Video Extend continues an existing video with additional footage."
   }
 ];
 
@@ -12825,6 +13569,86 @@ export const recastModels = [
       }
     },
     "description": "Recast any character — drive a character image with the motion and performance from your video."
+  },
+  {
+    "id": "seedance-2.5-pro-video-edit",
+    "name": "Seedance 2.5 Pro Video Edit",
+    "endpoint": "seedance-2.5-pro-video-edit",
+    "family": "seedance-2.5-pro",
+    "category": "Video to Video",
+    "hasPrompt": true,
+    "videoField": "video",
+    "inputs": {
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "name": "prompt",
+        "description": "Seedance 2.5 Pro Video Edit restyles or edits an existing video from a text prompt."
+      },
+      "video": {
+        "type": "video",
+        "title": "Video",
+        "name": "video",
+        "description": "Input video."
+      },
+      "resolution": {
+        "enum": ["540p", "720p", "1080p", "2k", "4k"],
+        "title": "Resolution",
+        "name": "resolution",
+        "type": "string",
+        "description": "Resolution of the output video.",
+        "default": "1080p"
+      },
+      "duration": {
+        "enum": [5, 10, 15],
+        "title": "Duration",
+        "name": "duration",
+        "type": "int",
+        "description": "Duration of the output video in seconds.",
+        "default": 10
+      }
+    },
+    "description": "Seedance 2.5 Pro Video Edit restyles or edits an existing video from a text prompt."
+  },
+  {
+    "id": "seedance-2.5-pro-video-extend",
+    "name": "Seedance 2.5 Pro Video Extend",
+    "endpoint": "seedance-2.5-pro-video-extend",
+    "family": "seedance-2.5-pro",
+    "category": "Video to Video",
+    "hasPrompt": true,
+    "videoField": "video",
+    "inputs": {
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "name": "prompt",
+        "description": "Seedance 2.5 Pro Video Extend continues an existing video with additional footage."
+      },
+      "video": {
+        "type": "video",
+        "title": "Video",
+        "name": "video",
+        "description": "Input video."
+      },
+      "resolution": {
+        "enum": ["540p", "720p", "1080p", "2k", "4k"],
+        "title": "Resolution",
+        "name": "resolution",
+        "type": "string",
+        "description": "Resolution of the output video.",
+        "default": "1080p"
+      },
+      "duration": {
+        "enum": [5, 10, 15],
+        "title": "Duration",
+        "name": "duration",
+        "type": "int",
+        "description": "Duration of the output video in seconds.",
+        "default": 10
+      }
+    },
+    "description": "Seedance 2.5 Pro Video Extend continues an existing video with additional footage."
   }
 ];
 

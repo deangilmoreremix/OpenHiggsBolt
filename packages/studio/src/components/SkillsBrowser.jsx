@@ -3,6 +3,7 @@ import registry from '../skills/registry.json';
 import { useRouter } from 'next/navigation';
 import { setPendingRecipe } from '../lib/skillStore';
 import SkillRunner from './SkillRunner';
+import PromptLibrary from './PromptLibrary';
 
 const CATEGORIES = ['all', 'visual', 'motion', 'social', 'edit', 'workflow'];
 
@@ -19,6 +20,7 @@ export default function SkillsBrowser({ apiKey }) {
   const router = useRouter();
   const [activeCat, setActiveCat] = useState('all');
   const [runnerSkill, setRunnerSkill] = useState(null);
+  const [view, setView] = useState('skills');
 
   const skills = registry.skills || [];
   const filtered =
@@ -29,6 +31,32 @@ export default function SkillsBrowser({ apiKey }) {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
+        {[
+          { id: 'skills', label: 'Skills' },
+          { id: 'prompts', label: 'Prompt Library' },
+        ].map((tab) => {
+          const active = view === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setView(tab.id)}
+              className={`rounded-full border px-4 py-1.5 text-sm transition ${
+                active
+                  ? 'border-[#22d3ee] bg-[#22d3ee]/15 text-[#22d3ee]'
+                  : 'border-white/10 bg-black/40 text-white/60 hover:border-white/20 hover:text-white'
+              }`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {view === 'prompts' ? (
+        <PromptLibrary apiKey={apiKey} />
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-2">
         {CATEGORIES.map((cat) => {
           const active = activeCat === cat;
           return (
@@ -106,6 +134,8 @@ export default function SkillsBrowser({ apiKey }) {
           apiKey={apiKey}
           onClose={() => setRunnerSkill(null)}
         />
+      )}
+        </>
       )}
     </div>
   );
