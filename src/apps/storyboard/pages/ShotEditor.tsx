@@ -7,6 +7,7 @@ import {
   extractStoryboardAsset,
 } from '@/api/storyboard'
 import { useStoryboard } from '../StoryboardContext'
+import ModelSelector from '../ModelSelector'
 
 interface Shot {
   id: string
@@ -24,7 +25,7 @@ const ANGLE_OPTIONS = ['Eye Level', 'High Angle', 'Low Angle', 'Dutch Angle']
 export default function ShotEditor() {
   const { sceneId } = useParams()
   const navigate = useNavigate()
-  const { episodeId, characterIds, projectName } = useStoryboard()
+  const { episodeId, characterIds, projectName, model, setModel } = useStoryboard()
 
   const [camera, setCamera] = useState(CAMERA_OPTIONS[0])
   const [angle, setAngle] = useState(ANGLE_OPTIONS[0])
@@ -44,6 +45,7 @@ export default function ShotEditor() {
         angle: shot.angle,
         description: shot.description,
         character_ids: characterIds,
+        model,
       })
       const requestId = res.request_id
       if (!requestId) throw new Error('No request_id returned from shot generation')
@@ -111,6 +113,9 @@ export default function ShotEditor() {
           </button>
           <h1 className="text-3xl font-bold">Shot Editor</h1>
           {projectName && <span className="text-sm text-muted">- {projectName}</span>}
+          <div className="ml-auto">
+            <ModelSelector value={model} onChange={setModel} />
+          </div>
         </div>
 
         <div className="glass p-6 rounded-xl mb-6">

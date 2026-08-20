@@ -169,34 +169,10 @@ export const STORYBOARD_MODELS: StoryboardModel[] = [
     provider_name: 'Ideogram',
   },
   {
-    id: 'openai-sora-2-pro-image-to-video',
-    name: 'GPT Image (OpenAI)',
+    id: 'gpt-image-2',
+    name: 'GPT Image 2 (OpenAI)',
     provider: 'openai',
     provider_name: 'OpenAI',
-  },
-  {
-    id: 'imagen-4',
-    name: 'Imagen 4',
-    provider: 'google',
-    provider_name: 'Google',
-  },
-  {
-    id: 'imagen-3',
-    name: 'Imagen 3',
-    provider: 'google',
-    provider_name: 'Google',
-  },
-  {
-    id: 'recraft-v3',
-    name: 'Recraft V3',
-    provider: 'muapi',
-    provider_name: 'MuAPI',
-  },
-  {
-    id: 'stable-diffusion-3.5',
-    name: 'Stable Diffusion 3.5',
-    provider: 'stability',
-    provider_name: 'Stability',
   },
   {
     id: 'wan2.6-text-to-image',
@@ -205,16 +181,10 @@ export const STORYBOARD_MODELS: StoryboardModel[] = [
     provider_name: 'Alibaba',
   },
   {
-    id: 'hidream-i1',
-    name: 'HiDream i1',
+    id: 'hidream-i1-dev',
+    name: 'HiDream i1 Dev',
     provider: 'hidream',
     provider_name: 'HiDream',
-  },
-  {
-    id: 'lightricks-lora',
-    name: 'Lightricks',
-    provider: 'lightricks',
-    provider_name: 'Lightricks',
   },
 ]
 
@@ -222,6 +192,22 @@ export const DEFAULT_STORYBOARD_MODEL_ID = 'flux-dev'
 
 export function getStoryboardModel(id: string): StoryboardModel {
   return STORYBOARD_MODELS.find((m) => m.id === id) || STORYBOARD_MODELS[0]
+}
+
+// Flat set of valid model ids — used by the backend to validate the selected
+// model before proxying to MuAPI (single source of truth, mirrors STORYBOARD_MODELS).
+export const STORYBOARD_MODEL_IDS: ReadonlySet<string> = new Set(
+  STORYBOARD_MODELS.map((m) => m.id)
+)
+
+// Resolve the provider id for a given model id (or null if unknown).
+export function getProviderForModel(id: string): string | null {
+  return STORYBOARD_MODELS.find((m) => m.id === id)?.provider ?? null
+}
+
+// True when the id is a known, selectable storyboard image model.
+export function isValidStoryboardModel(id: unknown): id is string {
+  return typeof id === 'string' && STORYBOARD_MODEL_IDS.has(id)
 }
 
 // Dynamically compute the list of providers present in the catalog.

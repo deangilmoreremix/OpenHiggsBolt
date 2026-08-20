@@ -171,6 +171,16 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
         return { text: "LE", bg: "bg-violet-500/10 text-violet-400 border-violet-500/25" };
       case "stability":
         return { text: "SD", bg: "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/25" };
+      case "runway":
+        return { text: "RW", bg: "bg-red-500/10 text-red-400 border-red-500/25" };
+      case "hunyuan":
+        return { text: "HY", bg: "bg-orange-500/10 text-orange-400 border-orange-500/25" };
+      case "pixverse":
+        return { text: "PX", bg: "bg-emerald-500/10 text-emerald-400 border-emerald-500/25" };
+      case "lightricks":
+        return { text: "LT", bg: "bg-pink-500/10 text-pink-400 border-pink-500/25" };
+      case "muapi":
+        return { text: "MU", bg: "bg-primary/10 text-primary border-primary/25" };
       default:
         const name = provider ? provider.toUpperCase() : "AI";
         return { text: name.substring(0, 2), bg: "bg-primary/10 text-primary border-primary/25" };
@@ -263,8 +273,6 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
       {selectedModel === m.id && <CheckSvg />}
     </div>
   );
-
-  const invertLogos = ['openai', 'blackforest', 'runway', 'ideogram', 'lightricks', 'grok'];
 
   return (
     <div className="flex gap-4 h-full max-h-[70vh] min-h-[350px]">

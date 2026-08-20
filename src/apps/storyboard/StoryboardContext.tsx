@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { DEFAULT_STORYBOARD_MODEL_ID } from './models'
 
 export interface StoryboardContextValue {
   projectId: string | null
@@ -6,9 +7,12 @@ export interface StoryboardContextValue {
   episodeId: string | null
   projectName: string
   brief: string
+  /** Selected image-generation model id used when rendering storyboard shot frames. */
+  model: string
   setProject: (p: { projectId: string; projectName: string; brief: string }) => void
   addCharacter: (id: string) => void
   setEpisode: (id: string) => void
+  setModel: (id: string) => void
   reset: () => void
 }
 
@@ -22,6 +26,7 @@ export function StoryboardProvider({ children }: { children: ReactNode }) {
   const [episodeId, setEpisodeId] = useState<string | null>(null)
   const [projectName, setProjectName] = useState('')
   const [brief, setBrief] = useState('')
+  const [model, setModelState] = useState<string>(DEFAULT_STORYBOARD_MODEL_ID)
 
   useEffect(() => {
     try {
@@ -33,6 +38,7 @@ export function StoryboardProvider({ children }: { children: ReactNode }) {
         setEpisodeId(parsed.episodeId ?? null)
         setProjectName(parsed.projectName ?? '')
         setBrief(parsed.brief ?? '')
+        if (typeof parsed.model === 'string' && parsed.model) setModelState(parsed.model)
       }
     } catch {
       /* ignore */
@@ -46,6 +52,7 @@ export function StoryboardProvider({ children }: { children: ReactNode }) {
       episodeId: string | null
       projectName: string
       brief: string
+      model: string
     }>
   ) => {
     setProjectId((prev) => next.projectId ?? prev)
@@ -53,6 +60,7 @@ export function StoryboardProvider({ children }: { children: ReactNode }) {
     setEpisodeId((prev) => next.episodeId ?? prev)
     setProjectName((prev) => next.projectName ?? prev)
     setBrief((prev) => next.brief ?? prev)
+    setModelState((prev) => next.model ?? prev)
     try {
       const current = {
         projectId: next.projectId ?? projectId,
@@ -60,6 +68,7 @@ export function StoryboardProvider({ children }: { children: ReactNode }) {
         episodeId: next.episodeId ?? episodeId,
         projectName: next.projectName ?? projectName,
         brief: next.brief ?? brief,
+        model: next.model ?? model,
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(current))
     } catch {
@@ -73,16 +82,19 @@ export function StoryboardProvider({ children }: { children: ReactNode }) {
     episodeId,
     projectName,
     brief,
+    model,
     setProject: ({ projectId, projectName, brief }) =>
       persist({ projectId, projectName, brief }),
     addCharacter: (id) => persist({ characterIds: [...characterIds, id] }),
     setEpisode: (id) => persist({ episodeId: id }),
+    setModel: (id) => persist({ model: id }),
     reset: () => {
       setProjectId(null)
       setCharacterIds([])
       setEpisodeId(null)
       setProjectName('')
       setBrief('')
+      setModelState(DEFAULT_STORYBOARD_MODEL_ID)
       try {
         localStorage.removeItem(STORAGE_KEY)
       } catch {

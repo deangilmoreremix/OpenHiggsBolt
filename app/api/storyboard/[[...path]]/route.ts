@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isValidStoryboardModel, DEFAULT_STORYBOARD_MODEL_ID } from '@/apps/storyboard/models';
 
 const MUAPI_BASE = 'https://api.muapi.ai';
 
@@ -28,8 +29,34 @@ async function proxy(request: Request, path: string): Promise<NextResponse> {
   const init: RequestInit = { method: request.method, headers };
 
   if (request.method !== 'GET' && request.method !== 'HEAD') {
-    const body = await request.arrayBuffer();
-    init.body = body;
+    // For shot generation (POST .../episodes/{id}/shots) the selected image model
+    // is carried in the JSON body. Validate it against the catalog so an unknown
+    // model id fails fast with a clear error instead of an opaque MuAPI 404.
+    if (/\/episodes\/[^/]+\/shots$/.test(path)) {
+      try {
+        const text = await request.text();
+        const parsed = text ? JSON.parse(text) : {};
+        const requested = typeof parsed.model === 'string' ? parsed.model : DEFAULT_STORYBOARD_MODEL_ID;
+        if (!isValidStoryboardModel(requested)) {
+          return NextResponse.json(
+            {
+              error: `Unknown storyboard image model: "${requested}". Choose one of the available models in the Shot Editor.`,
+            },
+            { status: 400 }
+          );
+        }
+        // Normalize to a known id and forward.
+        parsed.model = requested;
+        init.body = JSON.stringify(parsed);
+      } catch {
+        // If the body isn't JSON we still forward it; MuAPI will reject if needed.
+        const body = await request.arrayBuffer();
+        init.body = body;
+      }
+    } else {
+      const body = await request.arrayBuffer();
+      init.body = body;
+    }
   }
 
   try {
