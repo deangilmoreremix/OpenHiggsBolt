@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import StandaloneShell from '@/components/StandaloneShell';
 import { PRODUCT_NAME, NAV_ITEMS, LOGOS, TESTIMONIALS, PRICING, FAQS } from './landingData';
-import MinimaxShowcase from './MinimaxShowcase';
+import SmartVideoShowcase from './SmartVideoShowcase';
 
 export default function LandingPage({ FullStudio, AuthControls }) {
   return (
@@ -72,8 +72,8 @@ export default function LandingPage({ FullStudio, AuthControls }) {
         </div>
       </section>
 
-      {/* ── MiniMax H3 video showcase ── */}
-      <MinimaxShowcase />
+      {/* ── SmartVideo GO AI video showcase ── */}
+      <SmartVideoShowcase />
 
       {/* ── Full studio ── */}
       <section id="studio" className="border-y border-white/10 bg-[#030303]">
@@ -183,7 +183,7 @@ export default function LandingPage({ FullStudio, AuthControls }) {
 
       {/* ── Footer ── */}
       <footer className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-10 text-sm text-white/40 md:flex-row md:items-center md:justify-between">
-        <div>{PRODUCT_NAME} — premium AI image, video, and campaign studio.</div>
+        <div>{PRODUCT_NAME} — premium AI image, video, and campaign studio. Made with SmartVideo GO AI</div>
         <div className="flex gap-5">
           <a href="#studio" className="hover:text-white">Studio</a>
           <a href="#faq" className="hover:text-white">FAQ</a>

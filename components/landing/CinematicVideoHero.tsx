@@ -15,7 +15,7 @@ export default function CinematicVideoHero() {
       <LazyVideo
         src={videoSrc}
         poster={posterSrc}
-        label="Golden Guardian cinematic hero loop"
+        label="Porto Francesinha comedy recipe hero loop"
         decorative
         preload="metadata"
         className="absolute inset-0 h-full w-full"
@@ -47,7 +47,7 @@ export default function CinematicVideoHero() {
         {/* LEFT 40–45%: headline + CTA */}
         <div className="w-full max-w-2xl py-24 md:w-[45%]">
           <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.05] px-4 py-1.5 text-xs font-medium uppercase tracking-[0.25em] text-cyan-200 backdrop-blur">
-            Powered by MiniMax H3
+            Powered by SmartVideo GO AI Demos
           </p>
           <h1 className="text-5xl font-black leading-[0.95] tracking-tight text-white md:text-7xl lg:text-8xl">
             Create Anything.
@@ -76,7 +76,7 @@ export default function CinematicVideoHero() {
               Start Creating
             </a>
             <Link
-              href="#minimax-showcase"
+              href="#smartvideo-showcase"
               className="inline-flex w-full items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-7 py-3.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/[0.08] sm:w-auto"
             >
               Watch What You Can Make

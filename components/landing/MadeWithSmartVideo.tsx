@@ -28,7 +28,7 @@ export default function MadeWithSmartVideo() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="max-w-2xl">
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">
-              Made with SmartVideo
+              Made with SmartVideo GO AI
             </p>
             <h2 className="mt-4 text-4xl font-black tracking-tight md:text-5xl">
               From a single idea to a finished commercial.
