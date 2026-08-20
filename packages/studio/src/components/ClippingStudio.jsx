@@ -3,6 +3,9 @@
 import { useState, useEffect, useRef } from "react";
 import { runClipping, uploadFile } from "../muapi.js";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
+import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
+import registry from "../skills/registry.json";
+import { fillTemplate } from "../lib/promptRecipes";
 
 // ---------------------------------------------------------------------------
 // Inline SVG Icons
@@ -244,6 +247,31 @@ export default function ClippingStudio({
     }, 150);
     return () => clearTimeout(timer);
   }, [videoUrl]);
+
+  // ── Apply pending Skills recipe (set by SkillsBrowser) ────────────────────
+  useEffect(() => {
+    const pending = getPendingRecipe("clipping");
+    if (!pending) return;
+    const skill = registry.skills.find((s) => s.slug === pending);
+    clearPendingRecipe("clipping");
+    if (!skill) return;
+    applyRecipe(skill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function applyRecipe(skill) {
+    const step0 = skill.steps && skill.steps[0];
+    if (!step0) {
+      if (skill.description) setPrompt(skill.description);
+      return;
+    }
+    if (step0.aspectRatio) setAspectRatio(step0.aspectRatio);
+    const vals = {};
+    (skill.inputs || []).forEach((i) => {
+      vals[i.name] = "";
+    });
+    setPrompt(fillTemplate(step0.prompt || skill.description || "", vals));
+  }
 
   // ── Highlight Seeking Helper ─────────────────────────────────────────────
   const seekToHighlight = (startSec) => {

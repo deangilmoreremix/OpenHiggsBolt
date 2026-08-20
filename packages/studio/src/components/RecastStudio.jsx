@@ -9,6 +9,9 @@ import {
   getRecastModelById,
   getAspectRatiosForRecastModel,
 } from "../models.js";
+import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
+import registry from "../skills/registry.json";
+import { fillTemplate } from "../lib/promptRecipes";
 
 // ---------------------------------------------------------------------------
 // Upload button states
@@ -305,6 +308,34 @@ export default function RecastStudio({
   const aspectBtnRef = useRef(null);
   const textareaRef = useRef(null);
   const hasRestored = useRef(false);
+
+  // ── Apply pending Skills recipe (set by SkillsBrowser) ────────────────────
+  useEffect(() => {
+    const pending = getPendingRecipe("recast");
+    if (!pending) return;
+    const skill = registry.skills.find((s) => s.slug === pending);
+    clearPendingRecipe("recast");
+    if (!skill) return;
+    applyRecipe(skill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function applyRecipe(skill) {
+    const step0 = skill.steps && skill.steps[0];
+    if (!step0) {
+      if (skill.description) setPrompt(skill.description);
+      return;
+    }
+    const modelId = step0.endpoint || step0.model;
+    const model = recastModels.find((m) => m.id === modelId);
+    if (model) setSelectedModelId(model.id);
+    if (step0.aspectRatio) setSelectedAspectRatio(step0.aspectRatio);
+    const vals = {};
+    (skill.inputs || []).forEach((i) => {
+      vals[i.name] = "";
+    });
+    setPrompt(fillTemplate(step0.prompt || skill.description || "", vals));
+  }
 
   // ── Persistence: Load ──────────────────────────────────────────────────────
   useEffect(() => {

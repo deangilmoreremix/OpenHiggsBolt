@@ -257,6 +257,45 @@ export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled }
 
   const textareaRef = useRef(null);
 
+  // ── Apply pending Skills recipe (set by SkillsBrowser) ────────────────────
+  useEffect(() => {
+    const pending = getPendingRecipe("marketing");
+    if (!pending) return;
+    const skill = registry.skills.find((s) => s.slug === pending);
+    clearPendingRecipe("marketing");
+    if (!skill) return;
+    applyRecipe(skill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function applyRecipe(skill) {
+    const step0 = skill.steps && skill.steps[0];
+    if (!step0) {
+      if (skill.description) setPrompt(skill.description);
+      return;
+    }
+    if (step0.aspectRatio)
+      setParams((p) => ({ ...p, ratio: step0.aspectRatio }));
+    if (step0.duration)
+      setParams((p) => ({ ...p, duration: Number(step0.duration) }));
+    if (step0.resolution)
+      setParams((p) => ({ ...p, res: step0.resolution }));
+    const refs = step0.references || [];
+    const urls = refs
+      .map((r) => (typeof r === "object" && r ? r.url : r))
+      .filter((u) => u && !String(u).startsWith("{{"));
+    if (urls.length > 0) {
+      setProductImage(urls[0] || null);
+      setAvatarImage(urls[1] || null);
+      setAdditionalImages(urls.slice(2));
+    }
+    const vals = {};
+    (skill.inputs || []).forEach((i) => {
+      vals[i.name] = "";
+    });
+    setPrompt(fillTemplate(step0.prompt || skill.description || "", vals));
+  }
+
   // ── Persistence ───────────────────────────────────────────────────────────
 
   useEffect(() => {

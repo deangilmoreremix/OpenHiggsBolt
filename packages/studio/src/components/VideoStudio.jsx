@@ -3,6 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { generateVideo, generateI2V, processV2V, uploadFile } from "../muapi.js";
 import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
+import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
+import { setCharacterSheet } from "../lib/characterStore";
+import { fillTemplate } from "../lib/promptRecipes";
+import registry from "../skills/registry.json";
 import {
   t2vModels,
   i2vModels,
@@ -623,6 +627,10 @@ export default function VideoStudio({
   const [prompt, setPrompt] = useState("");
   const [promptDisabled, setPromptDisabled] = useState(false);
 
+  // ── Wave 1 recipe-driven state ──
+  const [nativeAudio, setNativeAudio] = useState(false);
+  const [characterSheetUrl, setCharacterSheetUrl] = useState(null);
+
   // ── refs ──
   const containerRef = useRef(null);
   const textareaRef = useRef(null);
@@ -786,6 +794,68 @@ export default function VideoStudio({
       console.warn("Failed to apply Storyboard hand-off:", err);
     }
   }, []);
+
+  // ── Apply pending Skills recipe (set by SkillsBrowser) ────────────────────
+  useEffect(() => {
+    const pending = getPendingRecipe("video");
+    if (!pending) return;
+    const skill = registry.skills.find((s) => s.slug === pending);
+    clearPendingRecipe("video");
+    if (!skill) return;
+    applyRecipe(skill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function applyRecipe(skill) {
+    const step0 = skill.steps && skill.steps[0];
+    if (!step0) {
+      if (skill.description) setPrompt(skill.description);
+      return;
+    }
+    const modelId = step0.endpoint || step0.model;
+    const allModels = [...t2vModels, ...i2vModels];
+    const model = allModels.find((m) => m.id === modelId);
+    const wantsI2V =
+      i2vModels.some((m) => m.id === modelId) ||
+      step0.type === "i2v" ||
+      step0.type === "edit" ||
+      (step0.references && step0.references.length > 0);
+    if (model) {
+      setImageMode(!!wantsI2V);
+      setSelectedModel(model.id);
+      setSelectedModelName(model.name);
+    }
+    if (step0.aspectRatio) setSelectedAr(step0.aspectRatio);
+    const flags = step0.flags || {};
+    if (step0.audio || flags.nativeAudio) setNativeAudio(true);
+    if (step0.duration) setSelectedDuration(Number(step0.duration));
+    if (step0.resolution) setSelectedResolution(step0.resolution);
+    const refs = step0.references || [];
+    for (const r of refs) {
+      const isObj = r && typeof r === "object";
+      const rawUrl = isObj ? r.url : r;
+      const role = isObj ? r.role : null;
+      const url = rawUrl && !String(rawUrl).startsWith("{{") ? rawUrl : null;
+      if (!url) continue;
+      if (role === "first_frame") {
+        setUploadedImageUrl(url);
+        setImageMode(true);
+      } else if (role === "last_frame") {
+        setUploadedEndImageUrl(url);
+      } else if (role === "character_sheet") {
+        setCharacterSheet("video", url);
+        setCharacterSheetUrl(url);
+      } else {
+        setUploadedImageUrls((prev) => [...prev, url]);
+        setImageMode(true);
+      }
+    }
+    const vals = {};
+    (skill.inputs || []).forEach((i) => {
+      vals[i.name] = "";
+    });
+    setPrompt(fillTemplate(step0.prompt || skill.description || "", vals));
+  }
 
   // ── Persistence: Load ────────────────────────────────────────────────────
   useEffect(() => {

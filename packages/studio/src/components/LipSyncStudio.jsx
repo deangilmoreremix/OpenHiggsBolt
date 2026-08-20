@@ -11,6 +11,10 @@ import {
   getLipSyncModelById,
   getResolutionsForLipSyncModel,
 } from "../models.js";
+import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
+import { setCharacterSheet } from "../lib/characterStore";
+import registry from "../skills/registry.json";
+import { fillTemplate } from "../lib/promptRecipes";
 
 // ---------------------------------------------------------------------------
 // Upload button states
@@ -359,6 +363,9 @@ export default function LipSyncStudio({
   // ── Prompt ──────────────────────────────────────────────────────────────
   const [prompt, setPrompt] = useState("");
 
+  // ── Native audio flag (set by Skills recipe) ───────────────────────────
+  const [nativeAudio, setNativeAudio] = useState(false);
+
   // ── Generation / UI state ───────────────────────────────────────────────
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(null);
@@ -381,6 +388,91 @@ export default function LipSyncStudio({
   // ── Video ref for result ────────────────────────────────────────────────
   const resultVideoRef = useRef(null);
   const hasRestored = useRef(false);
+
+  // ── Apply pending Skills recipe (set by SkillsBrowser) ────────────────────
+  useEffect(() => {
+    const pending = getPendingRecipe("lipsync");
+    if (!pending) return;
+    const skill = registry.skills.find((s) => s.slug === pending);
+    clearPendingRecipe("lipsync");
+    if (!skill) return;
+    applyRecipe(skill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Resolve a recipe reference url. Returns null for unresolved {{token}}s
+  // so the studio leaves them for the user to supply.
+  function resolveRefUrl(raw) {
+    if (typeof raw !== "string") return null;
+    if (raw.startsWith("{{") && raw.endsWith("}}")) return null;
+    return raw;
+  }
+
+  function applyRecipe(skill) {
+    const step0 = skill.steps && skill.steps[0];
+    if (!step0) {
+      if (skill.description) setPrompt(skill.description);
+      return;
+    }
+    const modelId = step0.endpoint || step0.model;
+    const allModels = [
+      ...lipsyncModels,
+      ...imageLipSyncModels,
+      ...videoLipSyncModels,
+    ];
+    const model = allModels.find((m) => m.id === modelId);
+
+    // Native-audio toggle (recipe-driven)
+    if (step0.audio || (step0.flags && step0.flags.nativeAudio)) {
+      setNativeAudio(true);
+    }
+
+    if (model) setSelectedModelId(model.id);
+
+    // ── References ──
+    const refs = step0.references;
+    if (refs) {
+      const list = Array.isArray(refs) ? refs : [refs];
+      for (const r of list) {
+        const isObj = r && typeof r === "object";
+        const rawUrl = isObj ? r.url : r;
+        const role = isObj ? r.role : null;
+        const url = resolveRefUrl(rawUrl);
+        if (!url) continue; // token — leave for user
+
+        if (role === "character_sheet") {
+          setCharacterSheet("lipsync", url);
+          continue;
+        }
+
+        const isVideo =
+          role === "video" ||
+          (typeof role === "string" && role.toLowerCase().includes("video"));
+        const name = url.split("/").pop() || "reference";
+        if (isVideo) {
+          switchToVideo();
+          setVideoUrl(url);
+          setVideoState(UPLOAD_STATE.READY);
+          setVideoName(name);
+        } else {
+          switchToImage();
+          setImageUrl(url);
+          setImageState(UPLOAD_STATE.READY);
+          setImageName(name);
+        }
+      }
+    }
+
+    // Re-assert recipe model/resolution after any mode switch triggered above
+    if (model) setSelectedModelId(model.id);
+    if (step0.resolution) setSelectedResolution(step0.resolution);
+
+    const vals = {};
+    (skill.inputs || []).forEach((i) => {
+      vals[i.name] = "";
+    });
+    setPrompt(fillTemplate(step0.prompt || skill.description || "", vals));
+  }
 
   // ── Persistence: Load ────────────────────────────────────────────────────
   useEffect(() => {
@@ -407,6 +499,7 @@ export default function LipSyncStudio({
         if (data.videoName) setVideoName(data.videoName);
         if (data.audioName) setAudioName(data.audioName);
         if (data.prompt) setPrompt(data.prompt);
+        if (data.nativeAudio !== undefined) setNativeAudio(data.nativeAudio);
         if (data.internalHistory) setInternalHistory(data.internalHistory);
       }
     } catch (err) {
@@ -429,9 +522,10 @@ export default function LipSyncStudio({
           videoUrl,
           videoName,
           audioUrl,
-          audioName,
-          prompt,
-          internalHistory,
+           audioName,
+           prompt,
+           nativeAudio,
+           internalHistory,
         };
         localStorage.setItem(PERSIST_KEY, JSON.stringify(state));
       } catch (err) {
@@ -450,6 +544,7 @@ export default function LipSyncStudio({
     audioUrl,
     audioName,
     prompt,
+    nativeAudio,
     internalHistory,
   ]);
 
@@ -1098,6 +1193,20 @@ export default function LipSyncStudio({
                   />
                 </div>
               )}
+
+              {/* Native audio toggle (recipe-driven) */}
+              <button
+                type="button"
+                onClick={() => setNativeAudio(!nativeAudio)}
+                className={`h-[34px] flex items-center gap-2 px-3.5 rounded-md transition-all border whitespace-nowrap text-[11px] font-semibold shadow-inner ${
+                  nativeAudio
+                    ? "bg-[#22d3ee]/10 border-[#22d3ee]/20 text-[#22d3ee]"
+                    : "bg-[#16161a]/60 border-white/[0.06] text-white/70 hover:bg-[#202026]/80 hover:text-white"
+                }`}
+              >
+                <MicIcon className="w-3.5 h-3.5 text-current" />
+                <span>Native Audio</span>
+              </button>
             </div>
 
             {/* Generate button */}
