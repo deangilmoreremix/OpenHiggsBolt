@@ -172,7 +172,7 @@ export function DemoPromptProvider({ children }: { children: ReactNode }) {
 
               <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {[
-                  ['Model', 'MiniMax H3'],
+                  ['Model', 'SmartVideo GO AI'],
                   ['Duration', demo.durationLabel || '—'],
                   ['Aspect', demo.aspectRatio || '—'],
                   ['Studio', STUDIO_LABELS[demo.studioTab] || 'Video Studio'],
