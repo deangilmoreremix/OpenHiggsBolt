@@ -47,7 +47,7 @@ export default function CinematicVideoHero() {
         {/* LEFT 40–45%: headline + CTA */}
         <div className="w-full max-w-2xl py-24 md:w-[45%]">
           <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.05] px-4 py-1.5 text-xs font-medium uppercase tracking-[0.25em] text-cyan-200 backdrop-blur">
-            Powered by SmartVideo GO AI Demos
+            Powered by SmartVideo GO AI
           </p>
           <h1 className="text-5xl font-black leading-[0.95] tracking-tight text-white md:text-7xl lg:text-8xl">
             Create Anything.
