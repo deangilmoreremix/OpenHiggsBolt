@@ -159,6 +159,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
   const [showApiKeyPopup, setShowApiKeyPopup] = useState(false);
   const [settingsKeyInput, setSettingsKeyInput] = useState('');
   const [settingsOpenaiInput, setSettingsOpenaiInput] = useState('');
+  const settingsClosedAt = useRef(0);
   const [authError, setAuthError] = useState(null);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [hasMounted, setHasMounted] = useState(false);
@@ -360,6 +361,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
     setAuthError(null);
     setShowSettings(false);
     setShowApiKeyPopup(false);
+    settingsClosedAt.current = Date.now();
     setIsSavingKey(false);
     // Persist the keys as cookies before any background requests so server-side
     // proxy routes can resolve them even when the header is not present.
@@ -374,7 +376,6 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
       credentials: 'same-origin',
       body: JSON.stringify({ key: trimmed, openaiKey: trimmedOpenai }),
     }).catch(() => {});
-    fetchBalance(trimmed);
   }, [fetchBalance]);
 
   const handleKeyChange = useCallback(() => {
@@ -434,6 +435,10 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const onAuthRequired = (e) => {
+      // Ignore auth-required events for 3 seconds after the user manually
+      // closed the settings modal. This prevents background balance polls
+      // or redundant verify requests from immediately reopening it.
+      if (Date.now() - settingsClosedAt.current < 3000) return;
       let message = 'Your API key is missing or invalid. Please enter a valid key.';
       const raw = e?.detail?.message;
       if (raw) {
@@ -763,7 +768,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
                 </button>
               )}
               <button
-                onClick={() => { setAuthError(null); setShowSettings(false); }}
+                onClick={() => { setAuthError(null); setShowSettings(false); settingsClosedAt.current = Date.now(); }}
                 disabled={isSavingKey}
                 className="flex-1 h-10 rounded-md bg-white/5 text-white/80 hover:bg-white/10 text-xs font-semibold transition-all border border-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
               >
