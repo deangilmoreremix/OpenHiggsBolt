@@ -127,8 +127,31 @@ export default function LazyVideo({
   }, [shouldPlay, src]);
 
   const handleClick = useCallback(() => {
-    if (toggleOnClick) setPinned((p) => !p);
-  }, [toggleOnClick]);
+    if (!toggleOnClick) return;
+    const el = ref.current;
+    const willPin = !pinned;
+    setPinned(willPin);
+    if (!el) return;
+    if (willPin) {
+      // Ensure the source is attached, then play directly. The global playback
+      // limiter may have paused this element outside of React's state flow, so
+      // calling play() here guarantees click-to-play works even when the React
+      // effect won't re-run (shouldPlay was already true).
+      if (!el.getAttribute('src')) el.setAttribute('src', src);
+      if (!activeRef.current) {
+        requestPlay(stopRef.current);
+        activeRef.current = true;
+      }
+      const p = el.play();
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    } else {
+      if (activeRef.current) {
+        releasePlay(stopRef.current);
+        activeRef.current = false;
+      }
+      el.pause();
+    }
+  }, [toggleOnClick, pinned, src]);
 
   return (
     <div
