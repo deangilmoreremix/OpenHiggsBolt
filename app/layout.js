@@ -10,6 +10,11 @@ const inter = Inter({
 export const metadata = {
   title: 'SmartVideo GO — Free AI Video Studio',
   description: 'Generate videos, VFX, and campaign assets using 200+ models — Flux, Midjourney, Kling, Veo, Seedance and more.',
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+  },
 };
 
 // Clerk is optional. If the publishable key is missing we still render the app
