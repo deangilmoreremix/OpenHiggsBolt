@@ -88,6 +88,21 @@ export default function LazyVideo({
     return () => el.removeEventListener('error', onError);
   }, []);
 
+  // Reveal (attach observer) when near viewport.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setInView(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      ([entry]) => setInView(entry.isIntersecting),
+      { rootMargin: '300px 0px', threshold: 0.01 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   const shouldPlay = !reduced && !errored && (pinned || (inView && autoPlayInView) || (hovered && hoverPlay));
 
   useEffect(() => {
