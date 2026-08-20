@@ -8,10 +8,11 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { MINIMAX_H3_DEMOS, getCreateUrl, type MinimaxDemo } from '@/data/minimaxH3Demos';
+import { MINIMAX_H3_DEMOS } from '@/data/minimaxH3Demos';
+import { getCreateUrl, type VideoDemo } from '@/data/types';
 
 type PromptContextValue = {
-  openPrompt: (demo: MinimaxDemo, trigger?: HTMLElement | null) => void;
+  openPrompt: (demo: VideoDemo, trigger?: HTMLElement | null) => void;
 };
 
 const PromptContext = createContext<PromptContextValue | null>(null);
@@ -42,13 +43,13 @@ const STUDIO_LABELS: Record<string, string> = {
 };
 
 export function DemoPromptProvider({ children }: { children: ReactNode }) {
-  const [demo, setDemo] = useState<MinimaxDemo | null>(null);
+  const [demo, setDemo] = useState<VideoDemo | null>(null);
   const [trigger, setTrigger] = useState<HTMLElement | null>(null);
   const [copied, setCopied] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
-  const openPrompt = useCallback((d: MinimaxDemo, trig?: HTMLElement | null) => {
+  const openPrompt = useCallback((d: VideoDemo, trig?: HTMLElement | null) => {
     previouslyFocused.current = (trig as HTMLElement) || document.activeElement;
     setTrigger(trig || null);
     setCopied(false);

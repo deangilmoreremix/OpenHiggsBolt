@@ -1,7 +1,8 @@
 'use client';
 import Link from 'next/link';
 import LazyVideo from './LazyVideo';
-import { HERO_DEMO, getCreateUrl } from '@/data/minimaxH3Demos';
+import { HERO_DEMO } from '@/data/minimaxH3Demos';
+import { getCreateUrl } from '@/data/types';
 
 export default function CinematicVideoHero() {
   const hero = HERO_DEMO;

@@ -2,10 +2,10 @@
 import LazyVideo from './LazyVideo';
 import Reveal from './Reveal';
 import { useDemoPrompt } from './DemoPromptModal';
-import { getCreateUrl, type MinimaxDemo } from '@/data/minimaxH3Demos';
+import { getCreateUrl, type VideoDemo } from '@/data/types';
 
 type DemoMediaCardProps = {
-  demo: MinimaxDemo;
+   demo: VideoDemo;
   ctaLabel?: string;
   showUseCase?: boolean;
   showViewPrompt?: boolean;

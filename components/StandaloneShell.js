@@ -30,6 +30,7 @@ const AiInfluencerStudio = loadStudio('AiInfluencerStudio');
 
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
 const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ssr: false });
+const GoAiViralStudio = dynamic(() => import('../src/apps/go-ai-viral/GoAiViralStudio'), { ssr: false });
 const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
 const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
 const SocialPublishing = dynamic(() => import('../src/apps/social-publishing/SocialPublishing'), { ssr: false });
@@ -52,6 +53,7 @@ const TABS = [
   { id: 'apps', label: 'Explore Apps' },
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'social-publishing', label: 'Social Publishing' },
+  { id: 'go-ai-viral', label: 'GO- AI Viral' },
 ];
 
 // Maps every landing-page studio slug to the studio tab that renders it.
@@ -65,6 +67,7 @@ const SLUG_TO_TAB = {
   apps: 'apps',
   'ai-influencer': 'ai-influencer',
   'social-publishing': 'social-publishing',
+  'go-ai-viral': 'go-ai-viral',
 };
 
 const STORAGE_KEY = 'muapi_key';
@@ -633,6 +636,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
         )}
         {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} />}
         {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
+        {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
       </div>
       </SocialPublishProvider>
       </AiAssistantProvider>

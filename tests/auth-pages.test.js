@@ -28,24 +28,18 @@ test('sign-in page renders', async (t) => {
   if (!(await ensureServer())) return t.skip(`dev server not reachable at ${BASE_URL}`);
   const { status, body } = await get('/sign-in');
   assert.equal(status, 200);
-  assert.match(body, /Sign in to the studio/);
-  // The sign-in form is rendered client-side after Clerk loads (the page
-  // shows a skeleton while `isLoaded` is false), so we assert on the route's
-  // compiled client chunk rather than post-hydration text. The sign-up test
-  // below uses the same approach.
-  assert.match(body, /app_sign-in_page/);
-  assert.match(body, /min-h-screen/);
+  assert.match(body, /SignIn/);
+  assert.match(body, /flex min-h-screen items-center justify-center bg-\[#050505\] px-4/);
+  assert.match(body, /clerk\.go\.smartvid\.app\/npm\/@clerk\/clerk-js/);
 });
 
 test('sign-up page is served and compiled', async (t) => {
   if (!(await ensureServer())) return t.skip(`dev server not reachable at ${BASE_URL}`);
   const { status, body } = await get('/sign-up');
   assert.equal(status, 200);
-  // The sign-up form is rendered client-side after Clerk loads (the page
-  // shows a skeleton while `isLoaded` is false), so we assert on the route's
-  // compiled client chunk rather than post-hydration text.
-  assert.match(body, /app_sign-up_page/);
-  assert.match(body, /Create your studio account|min-h-screen bg-black/);
+  assert.match(body, /SignUp/);
+  assert.match(body, /flex min-h-screen items-center justify-center bg-\[#050505\] px-4/);
+  assert.match(body, /clerk\.go\.smartvid\.app\/npm\/@clerk\/clerk-js/);
 });
 
 test('forgot-password page renders', async (t) => {

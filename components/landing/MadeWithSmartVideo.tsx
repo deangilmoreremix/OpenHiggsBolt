@@ -2,8 +2,9 @@
 import { useRef } from 'react';
 import DemoMediaCard from './DemoMediaCard';
 import { MINIMAX_H3_DEMOS } from '@/data/minimaxH3Demos';
+import { type VideoDemo } from '@/data/types';
 
-const REEL_SLUGS = [
+const DEFAULT_REEL_SLUGS = [
   'luxury-perfume-commercial',
   'luxury-skincare-storyboard-commercial',
   'yellow-sunglasses-in-a-black-studio',
@@ -12,11 +13,20 @@ const REEL_SLUGS = [
   'black-and-gold-perfume-commercial',
 ];
 
-export default function MadeWithSmartVideo() {
+type MadeWithSmartVideoProps = {
+  /** Slugs to feature in the reel. Defaults to the existing 6 Commercial/Fashion demos. */
+  slugs?: string[];
+  /** Override: pass pre-filtered demos directly instead of using slugs. */
+  demos?: VideoDemo[];
+};
+
+export default function MadeWithSmartVideo({ slugs, demos }: MadeWithSmartVideoProps) {
   const reelRef = useRef<HTMLDivElement>(null);
-  const demos = REEL_SLUGS.map((s) => MINIMAX_H3_DEMOS.find((d) => d.slug === s)).filter(
-    Boolean,
-  ) as typeof MINIMAX_H3_DEMOS;
+  const activeDemos =
+    demos ??
+    (slugs ?? DEFAULT_REEL_SLUGS)
+      .map((s) => MINIMAX_H3_DEMOS.find((d) => d.slug === s))
+      .filter(Boolean) as typeof MINIMAX_H3_DEMOS;
 
   const scrollBy = (dir: 1 | -1) => {
     reelRef.current?.scrollBy({ left: dir * 380, behavior: 'smooth' });
@@ -64,7 +74,7 @@ export default function MadeWithSmartVideo() {
           ref={reelRef}
           className="scrollbar-none mt-10 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scroll-padding:0_1.5rem]"
         >
-          {demos.map((demo, i) => (
+          {activeDemos.map((demo, i) => (
             <div key={demo.slug} className="w-[85vw] shrink-0 snap-start sm:w-[45%] lg:w-[31%]">
               <DemoMediaCard demo={demo} index={i} />
             </div>

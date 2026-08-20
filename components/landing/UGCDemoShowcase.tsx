@@ -1,19 +1,28 @@
 'use client';
 import DemoMediaCard from './DemoMediaCard';
 import { MINIMAX_H3_DEMOS } from '@/data/minimaxH3Demos';
+import { type VideoDemo } from '@/data/types';
 
 // Four UGC concepts presented as social-style cards.
-const UGC = [
+const DEFAULT_UGC = [
   { slug: 'ramen-bowl-ugc-taste-test', badge: 'Restaurant' },
   { slug: 'gourmet-burger-ugc-taste-test', badge: 'Local Business' },
   { slug: 'blackberry-vanilla-soda-ugc-vlog', badge: 'Beverage' },
   { slug: 'morning-lip-oil-ugc-testimonial', badge: 'Beauty' },
 ];
 
-export default function UGCDemoShowcase() {
-  const demos = UGC.map((u) => MINIMAX_H3_DEMOS.find((d) => d.slug === u.slug)).filter(
-    Boolean,
-  ) as typeof MINIMAX_H3_DEMOS;
+type UGCDemoShowcaseProps = {
+  /** Override: pass pre-filtered demos directly. */
+  demos?: VideoDemo[];
+};
+
+export default function UGCDemoShowcase({ demos }: UGCDemoShowcaseProps) {
+  const activeDemos = demos ?? DEFAULT_UGC
+    .map((u) => {
+      const d = MINIMAX_H3_DEMOS.find((d) => d.slug === u.slug);
+      return d ? { demo: d, badge: u.badge } : null;
+    })
+    .filter(Boolean) as { demo: VideoDemo; badge: string }[];
 
   return (
     <section className="border-y border-white/10 bg-[#030303] py-24">
@@ -31,19 +40,16 @@ export default function UGCDemoShowcase() {
         </div>
 
         <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {demos.map((demo, i) => {
-            const badge = UGC.find((u) => u.slug === demo.slug)?.badge;
-            return (
-              <DemoMediaCard
-                key={demo.slug}
-                demo={demo}
-                index={i}
-                badge={badge}
-                ctaLabel="Create This Type of Video"
-                showViewPrompt={false}
-              />
-            );
-          })}
+          {activeDemos.map((item, i) => (
+            <DemoMediaCard
+              key={item.demo.slug}
+              demo={item.demo}
+              index={i}
+              badge={item.badge}
+              ctaLabel="Create This Type of Video"
+              showViewPrompt={false}
+            />
+          ))}
         </div>
       </div>
     </section>
