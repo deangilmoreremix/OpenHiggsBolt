@@ -35,7 +35,6 @@ export function Header(navigate) {
         { label: t('nav.cinema'),  page: 'cinema' },
         { label: t('nav.workflows'), page: 'workflows' },
         { label: t('nav.agents'),  page: 'agents' },
-        { label: t('nav.mcpcli'),  page: 'mcp-cli' },
     ];
 
     items.forEach(({ label, page }, idx) => {

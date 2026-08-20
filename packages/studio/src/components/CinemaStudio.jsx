@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { generateImage, uploadFile } from "../muapi.js";
+import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
 
 // ─── Constants (inlined from promptUtils) ───────────────────────────────────
 
@@ -523,6 +524,32 @@ export default function CinemaStudio({
     }
   }, []);
 
+  // ── Cross-studio: import a Storyboard hand-off ────────────────────────────
+  // Applies once per payload (guarded by createdAt). Fills the movie concept
+  // with the compiled storyboard prompt and sets the aspect ratio.
+  const handoffApplied = useRef(null);
+  useEffect(() => {
+    try {
+      const handoff = readStoryboardHandoff("cinema");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+
+      const prompt = handoff.combinedPrompt || handoff.projectName || "";
+      // The concept textarea is uncontrolled (driven by a ref), so set its DOM
+      // value directly in addition to the settings state.
+      if (textareaRef.current && prompt) {
+        textareaRef.current.value = prompt;
+      }
+      setSettings((prev) => ({
+        ...prev,
+        prompt,
+        aspect_ratio: handoff.aspectRatio === "9:16" ? "9:16" : prev.aspect_ratio,
+      }));
+    } catch (err) {
+      console.warn("Failed to apply Storyboard hand-off:", err);
+    }
+  }, []);
+
   // ── Adjust height on load ────────────────────────────────────────────────
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -566,6 +593,7 @@ export default function CinemaStudio({
 
   // ── Textarea auto-height ──
   const handleTextareaInput = (e) => {
+    clearStoryboardHandoffCache();
     const el = e.target;
     el.style.height = "auto";
     el.style.height = el.scrollHeight + "px";

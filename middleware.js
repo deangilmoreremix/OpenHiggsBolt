@@ -36,12 +36,14 @@ export default isClerkEnabled
       return muApiProxy(request);
     };
 
-// Match the paths we want to proxy, plus all app routes for Clerk
+// Match the paths we want to proxy, plus all app routes for Clerk.
+// NOTE: `config.matcher` must be statically analyzable by Next.js at build time,
+// so it cannot be a runtime conditional. We use a single static matcher that
+// covers both modes; the per-mode logic lives in the middleware body above
+// (Clerk vs. plain MuAPI proxy), and non-proxied paths are a harmless no-op.
 export const config = {
-  matcher: isClerkEnabled
-    ? [
-        '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-        '/(api|trpc)(.*)',
-      ]
-    : ['/api/workflow/:path*', '/api/app/:path*', '/api/v1/:path*'],
+  matcher: [
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/(api|trpc)(.*)',
+  ],
 };

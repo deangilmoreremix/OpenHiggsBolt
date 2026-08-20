@@ -9,8 +9,8 @@ export default function StoryboardApp() {
     <StoryboardProvider>
       <Routes>
         <Route path="/" element={<StoryboardPlanner />} />
-        <Route path="/shots/:sceneId" element={<ShotEditor />} />
-        <Route path="/analysis/:sceneId" element={<SceneAnalysis />} />
+        <Route path="/shots" element={<ShotEditor />} />
+        <Route path="/analysis" element={<SceneAnalysis />} />
       </Routes>
     </StoryboardProvider>
   )

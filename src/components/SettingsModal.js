@@ -1,6 +1,7 @@
 import { LocalModelManager } from './LocalModelManager.js';
 import { isLocalAIAvailable } from '../lib/localInferenceClient.js';
 import { t } from '../lib/i18n.js';
+import { MUAPI_KEY_STORAGE, OPENAI_KEY_STORAGE, isValidKeyFormat } from '../lib/keys.js';
 
 export function SettingsModal(onClose) {
     const overlay = document.createElement('div');
@@ -53,14 +54,20 @@ export function SettingsModal(onClose) {
         <div style="display:flex;flex-direction:column;gap:0.75rem;">
             <div>
                 <label style="display:block;font-size:0.75rem;color:rgba(255,255,255,0.5);margin-bottom:0.4rem;font-weight:600;">${t('settings.muapiKeyLabel')}</label>
-                <input id="settings-api-key" type="password"
+                <input id="settings-api-key" type="password" autocomplete="off"
                     style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:0.75rem;padding:0.6rem 0.9rem;color:#fff;font-size:0.875rem;outline:none;"
-                    placeholder="${t('settings.keyPlaceholder')}"
-                    value="${localStorage.getItem('muapi_key') || ''}">
+                    placeholder="${t('settings.keyPlaceholder')}">
+            </div>
+            <div>
+                <label style="display:block;font-size:0.75rem;color:rgba(255,255,255,0.5);margin-bottom:0.4rem;font-weight:600;">${t('settings.openaiKeyLabel')}</label>
+                <input id="settings-openai-key" type="password" autocomplete="off"
+                    style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:0.75rem;padding:0.6rem 0.9rem;color:#fff;font-size:0.875rem;outline:none;"
+                    placeholder="${t('settings.openaiKeyPlaceholder')}">
             </div>
             <p style="font-size:0.7rem;color:rgba(255,255,255,0.3);margin:0;">
                 ${t('settings.keyNote')}
             </p>
+            <p id="settings-status" style="font-size:0.7rem;color:#f87171;margin:0;min-height:0.9rem;"></p>
             <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-top:0.5rem;">
                 <button id="settings-cancel-btn" style="padding:0.5rem 1rem;border-radius:0.5rem;background:none;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:0.75rem;font-weight:700;cursor:pointer;">${t('common.cancel')}</button>
                 <button id="settings-save-btn" style="padding:0.5rem 1rem;border-radius:0.5rem;background:var(--color-primary,#22d3ee);color:#000;font-size:0.75rem;font-weight:700;cursor:pointer;border:none;">${t('common.save')}</button>
@@ -93,21 +100,55 @@ export function SettingsModal(onClose) {
 
     switchTab('api');
 
+    // Seed existing values via .value (not the HTML string) to avoid breaking
+    // the attribute if a stored key contains quotes.
+    apiPanel.querySelector('#settings-api-key').value = localStorage.getItem('muapi_key') || '';
+    apiPanel.querySelector('#settings-openai-key').value = localStorage.getItem('openai_key') || '';
+
     // ── API key save/cancel handlers ──────────────────────────────────────────
     const close = () => {
         if (document.body.contains(overlay)) document.body.removeChild(overlay);
         if (onClose) onClose();
     };
 
+    const setMuapiCookie = (key) => {
+        // Mirror StandaloneShell: persist the MuAPI key as a cookie so the
+        // server-side /api/* proxy routes (which resolve the key from the
+        // x-api-key header OR the muapi_key cookie) can authenticate requests.
+        document.cookie = `muapi_key=${encodeURIComponent(key)}; path=/; max-age=31536000; SameSite=Lax`;
+    };
+
     apiPanel.querySelector('#settings-cancel-btn').onclick = close;
     apiPanel.querySelector('#settings-save-btn').onclick = () => {
-        const key = apiPanel.querySelector('#settings-api-key').value.trim();
-        if (key) {
-            localStorage.setItem('muapi_key', key);
-            close();
-        } else {
-            alert(t('settings.invalidKey'));
+        const muapiKey = apiPanel.querySelector('#settings-api-key').value.trim();
+        const openaiKey = apiPanel.querySelector('#settings-openai-key').value.trim();
+        const statusEl = apiPanel.querySelector('#settings-status');
+
+        // MuAPI key is required for the studio to function.
+        if (!muapiKey) {
+            statusEl.textContent = t('settings.invalidKey');
+            return;
         }
+        if (!isValidKeyFormat(muapiKey)) {
+            statusEl.textContent = 'MuAPI key looks invalid — make sure you pasted the full key value.';
+            return;
+        }
+
+        localStorage.setItem('muapi_key', muapiKey);
+        setMuapiCookie(muapiKey);
+
+        // OpenAI key is optional but, when provided, must be well-formed.
+        if (openaiKey) {
+            if (!isValidKeyFormat(openaiKey)) {
+                statusEl.textContent = 'OpenAI key looks invalid — make sure you pasted the full key (starts with sk-).';
+                return;
+            }
+            localStorage.setItem('openai_key', openaiKey);
+        } else {
+            localStorage.removeItem('openai_key');
+        }
+
+        close();
     };
 
     header.querySelector('#settings-close-btn').onclick = close;

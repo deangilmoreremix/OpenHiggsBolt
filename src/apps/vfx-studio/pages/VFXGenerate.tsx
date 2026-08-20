@@ -15,10 +15,12 @@ import {
   Check,
   Loader2,
   Plus,
+  Link2,
 } from 'lucide-react';
 import { useVideoGeneration } from '@/hooks/useVideoGeneration';
 import BottomInputBar from '@/apps/vfx-studio/components/BottomInputBar';
 import type { VFXEffect, AspectRatio, Resolution, Quality } from '@/types/vfx';
+import { readHandoff, clearHandoff } from '@/shared/crossStudio';
 
 const STORAGE_KEY_UI = 'vfx_ui_state';
 
@@ -182,6 +184,8 @@ export default function VFXGenerate() {
   const [showChatButton, setShowChatButton] = useState(false);
   const [userApiKey, setUserApiKey] = useState('');
   const [showGenerationModal, setShowGenerationModal] = useState(false);
+  const [importedFrom, setImportedFrom] = useState<string | null>(null);
+  const appliedRef = useRef<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -243,6 +247,18 @@ export default function VFXGenerate() {
       quality,
     });
   }, [activeCategory, selectedEffectId, imageUrl, prompt, aspectRatio, resolution, duration, quality]);
+
+  // Mount-time: pull a Storyboard hand-off (if any) into the VFX form.
+  useEffect(() => {
+    const handoff = readHandoff('vfx-studio');
+    if (!handoff || appliedRef.current === handoff.createdAt) return;
+    appliedRef.current = handoff.createdAt;
+    const ref = handoff.firstFrameUrl || handoff.referenceImageUrl;
+    if (ref) setImageUrl(ref);
+    setPrompt(handoff.combinedPrompt || handoff.projectName);
+    setAspectRatio(handoff.aspectRatio === '9:16' ? '9:16' : '16:9');
+    setImportedFrom(handoff.projectName || 'Storyboard');
+  }, []);
 
   const handleFileSelect = useCallback(
     async (file: File) => {
@@ -537,6 +553,16 @@ export default function VFXGenerate() {
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>AI effects, motion controls, and VFX</p>
         </div>
       </div>
+
+      {importedFrom && (
+        <div
+          className="mx-4 sm:mx-6 mt-4 p-3 rounded-xl text-sm flex items-center gap-2"
+          style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+        >
+          <Link2 size={14} />
+          <span>Imported from <b>{importedFrom}</b> (Storyboard). Pick an effect, then generate.</span>
+        </div>
+      )}
 
       <div className="flex flex-1 overflow-hidden flex-col sm:flex-row">
         {/* Sidebar categories */}

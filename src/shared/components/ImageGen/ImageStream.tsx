@@ -106,7 +106,10 @@ export default function ImageStream({ request, onComplete, onError }: Props) {
         }
       } else {
         // Generate / refine flow
-        const OPENAI_KEY = process.env.NEXT_PUBLIC_OPENAI_API_KEY || ''
+        const OPENAI_KEY =
+          (typeof window !== 'undefined' && window.localStorage?.getItem('openai_key')?.trim()) ||
+          process.env.NEXT_PUBLIC_OPENAI_API_KEY ||
+          ''
         const body: Record<string, any> = {
           model: request.model,
           prompt: request.prompt,

@@ -8,7 +8,6 @@ import axios from 'axios';
 import { MemoryRouter } from 'react-router-dom';
 
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
-const Videco = dynamic(() => import('../src/apps/videco/Videco'), { ssr: false });
 const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ssr: false });
 const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
 const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
@@ -27,7 +26,6 @@ const TABS = [
   { id: 'workflows', label: 'Workflows' },
   { id: 'agents', label: 'Agents' },
   { id: 'design-agent', label: 'Design Agent AI' },
-  { id: 'videco', label: 'Videco' },
   { id: 'vfx-studio', label: 'VFX' },
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
   { id: 'apps', label: 'Explore Apps' },
@@ -40,8 +38,8 @@ const SLUG_TO_TAB = {
   image: 'image', video: 'video', audio: 'audio', clipping: 'clipping',
   'vibe-motion': 'vibe-motion', lipsync: 'lipsync', cinema: 'cinema',
   storyboard: 'storyboard', marketing: 'marketing', recast: 'recast',
-  workflows: 'workflows', agents: 'agents', 'design-agent': 'design-agent',
-  videco: 'videco', 'vfx-studio': 'vfx-studio', 'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio',
+  workflows: 'workflows', agents: 'agents',   'design-agent': 'design-agent',
+  'vfx-studio': 'vfx-studio', 'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio',
   apps: 'apps',
 };
 
@@ -79,6 +77,7 @@ export default function StandaloneShell() {
   };
   
   const [apiKey, setApiKey] = useState(null);
+  const [openaiKey, setOpenaiKey] = useState(null);
   const [activeTab, setActiveTab] = useState(getInitialTab());
 
   useEffect(() => {
@@ -90,6 +89,7 @@ export default function StandaloneShell() {
   const [balance, setBalance] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsKeyInput, setSettingsKeyInput] = useState('');
+  const [settingsOpenaiInput, setSettingsOpenaiInput] = useState('');
   const [authError, setAuthError] = useState(null);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [hasMounted, setHasMounted] = useState(false);
@@ -122,6 +122,18 @@ export default function StandaloneShell() {
       router.push(`/studio/${tabId}`);
     }
   };
+
+  // Listen for cross-studio hand-off requests from the Storyboard studio.
+  // The storyboard runs inside its own MemoryRouter and cannot navigate the
+  // shell directly, so it emits this event with the target tab to switch to.
+  useEffect(() => {
+    const onSendTo = (e) => {
+      const target = e?.detail?.target;
+      if (target) handleTabChange(target);
+    };
+    window.addEventListener('storyboard:send-to', onSendTo);
+    return () => window.removeEventListener('storyboard:send-to', onSendTo);
+  }, [handleTabChange]);
 
   // Auto-hide header when inside a specific workflow view or design agent
   useEffect(() => {
@@ -169,14 +181,26 @@ export default function StandaloneShell() {
       // Encode so special characters in the key don't corrupt the cookie string.
       document.cookie = `muapi_key=${encodeURIComponent(cleanKey)}; path=/; max-age=31536000; SameSite=Lax`;
     }
+    const storedOpenai = localStorage.getItem('openai_key');
+    if (storedOpenai) setOpenaiKey(storedOpenai.trim());
   }, [fetchBalance]);
 
-  const handleKeySave = useCallback((key) => {
+  const handleKeySave = useCallback((key, openai) => {
     const trimmed = key.trim();
     if (!trimmed) return;
     localStorage.setItem(STORAGE_KEY, trimmed);
     setApiKey(trimmed);
     setSettingsKeyInput('');
+    // OpenAI key is optional; persist or clear it alongside the MuAPI key.
+    if (openai && openai.trim()) {
+      const oai = openai.trim();
+      localStorage.setItem('openai_key', oai);
+      setOpenaiKey(oai);
+    } else {
+      localStorage.removeItem('openai_key');
+      setOpenaiKey(null);
+    }
+    setSettingsOpenaiInput('');
     setAuthError(null);
     setShowSettings(false);
     // Persist the key as a cookie before any background requests so server-side
@@ -188,9 +212,12 @@ export default function StandaloneShell() {
 
   const handleKeyChange = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem('openai_key');
     setApiKey(null);
+    setOpenaiKey(null);
     setBalance(null);
     setSettingsKeyInput('');
+    setSettingsOpenaiInput('');
     setAuthError(null);
     document.cookie = "muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
   }, []);
@@ -399,7 +426,6 @@ export default function StandaloneShell() {
          {activeTab === 'workflows' && <WorkflowStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
         {activeTab === 'agents' && <AgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
         {activeTab === 'design-agent' && <DesignAgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
-        {activeTab === 'videco' && <MemoryRouter initialEntries={['/dashboard']}><Videco apiKey={apiKey} /></MemoryRouter>}
         {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} /></MemoryRouter>}
         {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} /></MemoryRouter>}
         {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
@@ -441,7 +467,7 @@ export default function StandaloneShell() {
               )}
               <div>
                 <label className="block text-xs font-bold text-white/30 mb-2">
-                  {apiKey ? 'New API Key' : 'API Key'}
+                  {apiKey ? 'New MuAPI Key' : 'MuAPI API Key'}
                 </label>
                 <input
                   type="password"
@@ -451,11 +477,23 @@ export default function StandaloneShell() {
                   className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[13px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
                 />
               </div>
+              <div>
+                <label className="block text-xs font-bold text-white/30 mb-2">
+                  {openaiKey ? 'New OpenAI Key' : 'OpenAI API Key'}
+                </label>
+                <input
+                  type="password"
+                  value={settingsOpenaiInput}
+                  onChange={(e) => setSettingsOpenaiInput(e.target.value)}
+                  placeholder="Enter your OpenAI key (sk-...) — optional"
+                  className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[13px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
+                />
+              </div>
             </div>
 
             <div className="flex gap-3">
               <button
-                onClick={() => handleKeySave(settingsKeyInput)}
+                onClick={() => handleKeySave(settingsKeyInput, settingsOpenaiInput)}
                 disabled={!settingsKeyInput.trim()}
                 className="flex-1 h-10 rounded-md bg-[#22d3ee]/10 text-[#22d3ee] hover:bg-[#22d3ee]/20 text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >

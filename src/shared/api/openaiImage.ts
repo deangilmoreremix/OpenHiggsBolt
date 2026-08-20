@@ -4,8 +4,20 @@
  * Docs: https://developers.openai.com/api/docs/guides/image-generation
  */
 
-const OPENAI_KEY = process.env.NEXT_PUBLIC_OPENAI_API_KEY || ''
 const BASE = 'https://api.openai.com/v1'
+
+// The OpenAI key is supplied by the user via the Settings popup and stored in
+// localStorage['openai_key']. It previously came ONLY from a build-time env var
+// (empty for end users), which is why OpenAI generation failed with an auth
+// error. Resolve it lazily on every call so updates to the stored key take
+// effect immediately.
+function resolveOpenAIKey(): string {
+  if (typeof window !== 'undefined') {
+    const stored = window.localStorage?.getItem('openai_key')
+    if (stored && stored.trim()) return stored.trim()
+  }
+  return process.env.NEXT_PUBLIC_OPENAI_API_KEY || ''
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -47,7 +59,7 @@ export interface ImageResult {
 
 // ── Helper: headers ───────────────────────────────────────────────────────────
 function authHeaders() {
-  return { 'Authorization': `Bearer ${OPENAI_KEY}` }
+  return { 'Authorization': `Bearer ${resolveOpenAIKey()}` }
 }
 
 // ── Helper: convert b64 to object URL for display ────────────────────────────

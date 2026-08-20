@@ -18,7 +18,6 @@ const translations = {
         'nav.cinema': 'Cinema Studio',
         'nav.workflows': 'Workflows',
         'nav.agents': 'Agents',
-        'nav.mcpcli': 'MCP & CLI',
         'nav.settings': 'Settings',
 
         // Sidebar
@@ -53,8 +52,10 @@ const translations = {
         'settings.apiKey': 'API Key',
         'settings.localModels': 'Local Models',
         'settings.muapiKeyLabel': 'Muapi API Key',
+        'settings.openaiKeyLabel': 'OpenAI API Key',
         'settings.keyPlaceholder': 'Enter your Muapi API key...',
-        'settings.keyNote': 'Your API key is stored locally and never sent anywhere except api.muapi.ai.',
+        'settings.openaiKeyPlaceholder': 'Enter your OpenAI API key (sk-...)',
+        'settings.keyNote': 'Your API keys are stored locally in your browser and used only to call api.muapi.ai (MuAPI) and api.openai.com (OpenAI).',
         'settings.invalidKey': 'Please enter a valid API key.',
 
         // Auth Modal
@@ -208,7 +209,6 @@ const translations = {
         'nav.cinema': '电影工作室',
         'nav.workflows': '工作流',
         'nav.agents': '智能体',
-        'nav.mcpcli': 'MCP & CLI',
         'nav.settings': '设置',
 
         // Sidebar
@@ -243,8 +243,10 @@ const translations = {
         'settings.apiKey': 'API 密钥',
         'settings.localModels': '本地模型',
         'settings.muapiKeyLabel': 'Muapi API 密钥',
+        'settings.openaiKeyLabel': 'OpenAI API 密钥',
         'settings.keyPlaceholder': '输入您的 Muapi API 密钥...',
-        'settings.keyNote': '您的 API 密钥仅存储在本地，除 api.muapi.ai 外不会发送到任何地方。',
+        'settings.openaiKeyPlaceholder': '输入您的 OpenAI API 密钥 (sk-...)',
+        'settings.keyNote': '您的 API 密钥仅存储在本地浏览器中，仅用于调用 api.muapi.ai（MuAPI）和 api.openai.com（OpenAI）。',
         'settings.invalidKey': '请输入有效的 API 密钥。',
 
         // Auth Modal
