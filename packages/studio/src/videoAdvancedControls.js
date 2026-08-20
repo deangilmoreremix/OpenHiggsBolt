@@ -17,6 +17,8 @@
  *  - Veo 3/3.1: negative_prompt + seed only (no audio toggle on simplified).
  *  - Wan: quality, shot_type; Wan 2.6: audio_url. PixVerse v6: generate_audio_switch.
  *  - LTX: seed. Runway/Hunyuan/Vidu/MiniMax: negative_prompt + seed only.
+ *  - Seedance 2.5 character consistency: create_character + consistent_video
+ *    (plus `references` [{url, role}] and `video_url` on edit/extend/v2v).
  *  - webhook_url is a query param, not a body field — intentionally excluded.
  *
  * These layer on top of the base model.inputs (prompt, aspect_ratio, duration,
@@ -153,6 +155,33 @@ export const ADVANCED_CONTROLS = {
   first_frame: { label: "First Frame URL", type: "url", default: "" },
   last_frame: { label: "Last Frame URL", type: "url", default: "" },
   audio_url: { label: "Audio URL", type: "url", default: "" },
+  video_url: {
+    label: "Source Video URL",
+    type: "url",
+    default: "",
+    description: "Source/reference video for edit, extend and consistent_video endpoints.",
+  },
+  references: {
+    label: "References (url|role per line)",
+    type: "reference_list",
+    default: "",
+    maxItems: 10,
+    description: 'One per line as "https://…|character". Role is optional (defaults to "reference").',
+  },
+
+  // ── Seedance 2.5 character consistency (create_character → consistent_video) ──
+  create_character: {
+    label: "Create Character Sheet",
+    type: "boolean",
+    default: false,
+    description: "Seedance 2.5: build a reusable character sheet from the reference image.",
+  },
+  consistent_video: {
+    label: "Consistent Character",
+    type: "boolean",
+    default: false,
+    description: "Seedance 2.5: hold the character-sheet identity across the whole clip.",
+  },
 
   // ── Model-specific simple controls ──
   shot_type: {
@@ -179,12 +208,19 @@ const MODEL_RULES = [
   // Seedance 2.5 / 2.x family: 2.x-only controls are native-supported.
   {
     match: /^seedance-2\.5|^seedance-2(-|$)|^seedance-2-vip/,
-    add: ["camera_fixed", "bitrate_mode", "output_format", "watermark", "return_last_frame", "generate_audio", "ratio_adaptive"],
+    add: ["camera_fixed", "bitrate_mode", "output_format", "watermark", "return_last_frame", "generate_audio", "ratio_adaptive", "first_frame", "last_frame"],
   },
   // Seedance omni-reference endpoints.
-  { match: /omni-reference/, add: ["images_list", "videos_list", "audios_list"] },
+  { match: /omni-reference/, add: ["images_list", "videos_list", "audios_list", "references"] },
   // Seedance first/last-frame endpoints.
   { match: /first-last-frame/, add: ["first_frame", "last_frame"] },
+  // Seedance 2.5 character consistency pair (create_character → consistent_video).
+  {
+    match: /create_character|consistent_video/,
+    add: ["create_character", "consistent_video", "references", "generate_audio", "images_list", "first_frame", "last_frame"],
+  },
+  // Endpoints that consume a source video URL (edit / extend / v2v / consistent_video).
+  { match: /^seedance-.*(-edit|-extend)|consistent_video|video-to-video/, add: ["video_url"] },
   // Kling 3.0 / 3.0 Omni: native-only but scoped to 3.x (older Kling drops them).
   {
     match: /kling-v3|kling-3/,
@@ -223,6 +259,26 @@ export function getAdvancedControlsForModel(model) {
 }
 
 /**
+ * Normalize a `references` value into an array of { url, role } objects.
+ * Accepts either an already-structured array (objects or bare url strings) or a
+ * textarea string with one `url|role` entry per line (role optional).
+ */
+export function normalizeReferences(value) {
+  if (!value) return [];
+  const entries = Array.isArray(value) ? value : String(value).split(/\n/);
+  return entries
+    .map((entry) => {
+      if (entry && typeof entry === "object") {
+        const url = entry.url || entry.image_url || "";
+        return url ? { url, role: entry.role || "reference" } : null;
+      }
+      const [url, role] = String(entry).split("|").map((s) => s.trim());
+      return url ? { url, role: role || "reference" } : null;
+    })
+    .filter(Boolean);
+}
+
+/**
  * Build the payload fragment from current advanced values, omitting defaults and
  * assembling Kling's nested `camera_control` object from the flat cam_* fields.
  * Returns an object containing only advanced keys (no base fields).
@@ -250,6 +306,11 @@ export function buildAdvancedPayload(controls, values) {
         .map((s) => s.trim())
         .filter(Boolean)
         .slice(0, c.maxItems || 999);
+      if (arr.length) payload[c.key] = arr;
+      continue;
+    }
+    if (c.type === "reference_list") {
+      const arr = normalizeReferences(v).slice(0, c.maxItems || 999);
       if (arr.length) payload[c.key] = arr;
       continue;
     }

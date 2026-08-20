@@ -65,6 +65,27 @@ function normalizeMuapiResult(raw) {
   return { requestId, status, outputs, url, error, body };
 }
 
+/**
+ * Pull a 0–100 progress value out of a raw prediction response, tolerating both
+ * the flat and `data`-wrapped shapes and either `progress` or
+ * `progress_percent`. Returns null when the response carries no progress field.
+ */
+function extractProgress(raw) {
+  const body = (raw && raw.data) ? raw.data : raw;
+  const candidates = [
+    raw && raw.progress,
+    raw && raw.progress_percent,
+    body && body.progress,
+    body && body.progress_percent,
+  ];
+  for (const candidate of candidates) {
+    if (candidate === undefined || candidate === null || candidate === '') continue;
+    const num = Number(candidate);
+    if (Number.isFinite(num)) return num;
+  }
+  return null;
+}
+
 
 // In an http(s) browser we route through the host app's proxy (Next.js routes
 // under /api/* re-issue the call server-side) so api.muapi.ai CORS is bypassed.
@@ -93,7 +114,10 @@ function notifyAuthRequired(status, detail) {
     window.dispatchEvent(new CustomEvent('muapi:auth-required', { detail: { status, message: detail } }));
 }
 
-async function pollForResult(requestId, key, maxAttempts = 900, interval = 2000, signal = null) {
+// `onProgress` (optional) is invoked with the numeric progress reported by the
+// prediction result endpoint (0–100) on every poll that carries one. It is
+// deliberately best-effort: a throwing callback must never abort polling.
+async function pollForResult(requestId, key, maxAttempts = 900, interval = 2000, signal = null, onProgress = null) {
     const pollUrl = `${BASE_URL}/api/v1/predictions/${requestId}/result`;
     const effSignal = toSignal(signal);
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -112,6 +136,16 @@ async function pollForResult(requestId, key, maxAttempts = 900, interval = 2000,
                 throw new Error(`Poll Failed: ${response.status} - ${errText.slice(0, 100)}`);
             }
             const data = await response.json();
+            if (onProgress) {
+                const progress = extractProgress(data);
+                if (progress !== null) {
+                    try {
+                        onProgress(progress);
+                    } catch {
+                        // A broken progress listener must not fail the generation.
+                    }
+                }
+            }
             const norm = normalizeMuapiResult(data);
             const status = norm.status;
             if (status === 'completed' || status === 'succeeded' || status === 'success') return norm.body;
@@ -123,7 +157,10 @@ async function pollForResult(requestId, key, maxAttempts = 900, interval = 2000,
     throw new Error('Generation timed out after polling.');
 }
 
-async function submitAndPoll(endpoint, payload, key, onRequestId, maxAttempts = 60, signal = null) {
+// `onProgress` is optional and purely additive: existing callers that omit it
+// behave exactly as before (no extra requests — progress is read off the same
+// result poll, so there is no parallel job-status loop).
+async function submitAndPoll(endpoint, payload, key, onRequestId, maxAttempts = 60, signal = null, onProgress = null) {
     const url = `${BASE_URL}/api/v1/${endpoint}`;
     const headers = { 'Content-Type': 'application/json' };
     if (key) headers['x-api-key'] = key;
@@ -143,7 +180,7 @@ async function submitAndPoll(endpoint, payload, key, onRequestId, maxAttempts = 
     const requestId = submitData.request_id || submitData.id;
     if (!requestId) return submitData;
     if (onRequestId) onRequestId(requestId);
-    const result = await pollForResult(requestId, key, maxAttempts);
+    const result = await pollForResult(requestId, key, maxAttempts, 2000, null, onProgress);
     const outputUrl = normalizeMuapiResult(result).url;
     return { ...result, url: outputUrl };
 }
@@ -230,7 +267,7 @@ export async function generateVideo(apiKey, params) {
     if (params.images_list?.length > 0) payload.images_list = params.images_list;
     if (params.videos_list?.length > 0) payload.videos_list = params.videos_list;
     applyAdvancedVideoParams(payload, params, allowedAdvancedKeys(modelInfo));
-    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal);
+    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal, params.onProgress);
 }
 
 export async function generateI2V(apiKey, params) {
@@ -266,7 +303,68 @@ export async function generateI2V(apiKey, params) {
         payload.name = params.name || modelInfo.inputs.name.default;
     }
     applyAdvancedVideoParams(payload, params, allowedAdvancedKeys(modelInfo));
-    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal);
+    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal, params.onProgress);
+}
+
+/**
+ * Seedance 2.5 character-consistency recipe (two chained endpoints):
+ *   1. `create_character` turns a single reference image into a character sheet.
+ *   2. `consistent_video` renders the clip with the sheet leading images_list so
+ *      the identity is held across every shot.
+ * The sheet URL is returned by step 1 and can be persisted via
+ * lib/characterStore.js so AI-Influencer runs reuse the same character.
+ */
+export async function generateCharacterVideo(apiKey, params) {
+    const variant = params.variant || 'pro';
+    const sheet = await submitAndPoll(
+        `seedance-2.5-${variant}-create_character`,
+        { prompt: params.prompt, images_list: params.images_list?.slice(0, 1) || [] },
+        apiKey,
+        null,
+        900,
+        params.signal,
+        params.onProgress,
+    );
+    const sheetUrl = normalizeMuapiResult(sheet).url;
+    const res = await submitAndPoll(
+        `seedance-2.5-${variant}-consistent_video`,
+        {
+            prompt: params.prompt,
+            aspect_ratio: params.aspect_ratio || '16:9',
+            duration: params.duration || 5,
+            images_list: [sheetUrl, ...(params.images_list || [])],
+            create_character: true,
+            consistent_video: true,
+            ...(params.audio ? { generate_audio: true } : {}),
+        },
+        apiKey,
+        params.onRequestId,
+        900,
+        params.signal,
+        params.onProgress,
+    );
+    return { ...res, sheetUrl };
+}
+
+/**
+ * Grok Imagine inpaint/edit: re-edits a previous image generation by
+ * `request_id` using an optional mask.
+ */
+export async function generateImageEditGrok(apiKey, params) {
+    return submitAndPoll(
+        'grok-imagine-image-2-edit',
+        {
+            request_id: params.request_id,
+            mask: params.mask,
+            prompt: params.prompt,
+            aspect_ratio: params.aspect_ratio || '1:1',
+        },
+        apiKey,
+        params.onRequestId,
+        60,
+        params.signal,
+        params.onProgress,
+    );
 }
 
 export async function generateMarketingStudioAd(apiKey, params) {
@@ -278,7 +376,7 @@ export async function generateMarketingStudioAd(apiKey, params) {
         images_list: params.images_list || [],
         video_files: params.video_files || []
     };
-    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal);
+    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal, params.onProgress);
 }
 
 export async function processV2V(apiKey, params) {
@@ -293,7 +391,7 @@ export async function processV2V(apiKey, params) {
         payload.prompt = params.prompt;
     }
     applyAdvancedVideoParams(payload, params, allowedAdvancedKeys(modelInfo));
-    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal);
+    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal, params.onProgress);
 }
 
 export async function processRecast(apiKey, params) {
@@ -313,7 +411,7 @@ export async function processRecast(apiKey, params) {
     if (params.character_orientation) {
         payload.character_orientation = params.character_orientation;
     }
-    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal);
+    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal, params.onProgress);
 }
 
 export async function processLipSync(apiKey, params) {
@@ -326,7 +424,7 @@ export async function processLipSync(apiKey, params) {
     if (modelInfo?.hasPrompt) payload.prompt = params.prompt || '';
     if (params.resolution) payload.resolution = params.resolution;
     if (params.seed !== undefined && params.seed !== -1) payload.seed = params.seed;
-    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal);
+    return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900, params.signal, params.onProgress);
 }
 
 export async function generateAudio(apiKey, params) {

@@ -4,6 +4,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { runMotionGraphics, runMotionGraphicsEdit } from "../muapi.js";
+import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
+import registry from "../skills/registry.json";
+import { fillTemplate } from "../lib/promptRecipes";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 async function downloadFile(url, filename) {
@@ -61,6 +64,9 @@ export default function VibeMotionStudio({ apiKey }) {
   const [editMode, setEditMode] = useState(false);
   const [editSourceId, setEditSourceId] = useState(null);  // request_id of source
 
+  // ── Native audio flag (driven by Skills recipe) ───────────────────────────
+  const [nativeAudio, setNativeAudio] = useState(false);
+
   // ── Dropdown open state ───────────────────────────────────────────────────
   const [openDropdown, setOpenDropdown] = useState(null); // "ar" | "dur" | "source"
   const containerRef = useRef(null);
@@ -88,9 +94,25 @@ export default function VibeMotionStudio({ apiKey }) {
           return rest; // canEdit is only an in-memory hint, never persisted
         });
         setHistory(restored);
+        try {
+          const flags = JSON.parse(
+            localStorage.getItem(PERSIST_KEY + "_flags") || "null",
+          );
+          if (flags && flags.nativeAudio) setNativeAudio(true);
+        } catch (_) {}
       }
     } catch (_) {}
   }, []);
+
+  // ── Persist native-audio flag ─────────────────────────────────────────────
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        PERSIST_KEY + "_flags",
+        JSON.stringify({ nativeAudio }),
+      );
+    } catch (_) {}
+  }, [nativeAudio]);
 
   const saveHistory = useCallback((items) => {
     setHistory(items);
@@ -117,6 +139,35 @@ export default function VibeMotionStudio({ apiKey }) {
   };
   const stopTimer = () => { clearInterval(timerRef.current); timerRef.current = null; };
   useEffect(() => () => stopTimer(), []);
+
+  // ── Apply pending Skills recipe (set by SkillsBrowser) ────────────────────
+  useEffect(() => {
+    const pending = getPendingRecipe("vibemotion");
+    if (!pending) return;
+    const skill = registry.skills.find((s) => s.slug === pending);
+    clearPendingRecipe("vibemotion");
+    if (!skill) return;
+    applyRecipe(skill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function applyRecipe(skill) {
+    const step0 = skill.steps && skill.steps[0];
+    if (!step0) {
+      if (skill.description) setPrompt(skill.description);
+      return;
+    }
+    if (step0.aspectRatio) setAspectRatio(step0.aspectRatio);
+    if (step0.duration) setDuration(Number(step0.duration));
+    if (step0.audio || (step0.flags && step0.flags.nativeAudio)) {
+      setNativeAudio(true);
+    }
+    const vals = {};
+    (skill.inputs || []).forEach((i) => {
+      vals[i.name] = "";
+    });
+    setPrompt(fillTemplate(step0.prompt || skill.description || "", vals));
+  }
 
   // ── Generate ──────────────────────────────────────────────────────────────
   const handleGenerate = useCallback(async () => {
@@ -653,6 +704,22 @@ export default function VibeMotionStudio({ apiKey }) {
                   )}
                 </div>
               )}
+
+              {/* ── Native audio toggle (recipe-driven) ── */}
+              <button
+                type="button"
+                onClick={() => setNativeAudio(!nativeAudio)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md transition-all border whitespace-nowrap ${
+                  nativeAudio
+                    ? "bg-[#22d3ee]/[0.08] hover:bg-[#22d3ee]/[0.12] border-[#22d3ee]/[0.15] text-[#22d3ee]"
+                    : "bg-white/[0.03] hover:bg-white/[0.06] border-white/[0.03] text-white/40 hover:text-white/70"
+                }`}
+              >
+                <div className={`w-4 h-4 rounded flex items-center justify-center shadow-lg shadow-[#22d3ee]/10 ${nativeAudio ? "bg-[#22d3ee]" : "bg-white/10"}`}>
+                  <span className="text-[9px] font-bold text-black uppercase">A</span>
+                </div>
+                <span className="text-[11px] font-semibold">Native Audio</span>
+              </button>
 
               <span className="text-[10px] text-white/20 hidden sm:block ml-2">Ctrl+Enter to run</span>
             </div>

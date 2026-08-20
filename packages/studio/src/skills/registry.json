@@ -1,0 +1,3063 @@
+{
+  "generatedAt": "2026-08-13T15:29:22.206Z",
+  "skillCount": 65,
+  "skills": [
+    {
+      "slug": "muapi-3d-logo-animation",
+      "name": "muapi-3d-logo-animation",
+      "description": "Transform a 2D logo into a premium 3D version and animate it with professional cinematic effects.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "logo_image",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "material_style",
+          "type": "text",
+          "required": false,
+          "default": "glossy glass and chrome"
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "nano-banana-2-edit",
+          "endpoint": "nano-banana-2-edit",
+          "aspectRatio": "1:1",
+          "prompt": "Transform this 2D logo into a premium, high-quality 3D version. The logo should have depth and be made of {{material_style}}. Smooth edges, realistic reflections, and professional studio lighting. The logo is centered on a clean, minimal, out-of-focus background. High-end graphic design aesthetic, 8k resolution.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "3d logo",
+        "logo animation",
+        "2d to 3d logo",
+        "animated logo",
+        "cinematic logo"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-action-figure-generator",
+      "name": "muapi-action-figure-generator",
+      "description": "Convert a photo of a person into a custom 3D action figure, complete with collectible toy packaging.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "user_image",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "toy_theme",
+          "type": "text",
+          "required": false,
+          "default": "superhero"
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "nano-banana-2-edit",
+          "endpoint": "nano-banana-2-edit",
+          "aspectRatio": "1:1",
+          "prompt": "A high-quality 3D stylized action figure based on the person in the input image. The action figure should maintain the person's likeness (face, hairstyle, skin tone) but be rendered as a plastic toy with visible joints and a semi-glossy finish. The character is dressed in a {{toy_theme}} outfit. The figure is displayed inside its original collectible cardboard and plastic blister packaging. The packaging has the person's name printed on it and features clean, modern graphic design. Soft studio lighting, realistic plastic textures, 8k resolution, cinematic look.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "action figure",
+        "custom toy",
+        "toy packaging",
+        "character toy",
+        "collectible figure"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-ad-creative",
+      "name": "muapi-ad-creative",
+      "description": "Generate a high-converting ad creative set — hero image, ad copy variations, and platform-optimized crops for Meta, Google Display, and LinkedIn.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "product_or_service",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "target_audience",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "campaign_goal",
+          "type": "text",
+          "required": false,
+          "default": "awareness"
+        },
+        {
+          "name": "tone",
+          "type": "text",
+          "required": false,
+          "default": "professional, clean, modern"
+        },
+        {
+          "name": "product_image",
+          "type": "image_url",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "nano-banana-pro",
+          "endpoint": "nano-banana-pro",
+          "aspectRatio": "1:1",
+          "prompt": "\"Reframe for [platform] ad format. Keep product/subject centered and uncropped. Maintain original palette and tone. Leave headroom/footroom for text overlays.\"",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "ad creative",
+        "advertisement",
+        "facebook ad",
+        "meta ad",
+        "google ad",
+        "linkedin ad",
+        "paid ad",
+        "ad banner",
+        "display ad"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-ai-clipping",
+      "name": "muapi-ai-clipping",
+      "description": "Turn a long video into N viral-ready short clips with a single managed API call. Wraps muapi.ai's `/ai-clipping` endpoint, which handles transcription, highlight ranking through a virality framework (hook / emotional peak / opinion bomb / revelation / conflict / quotable / story peak / practical value), overlap dedupe, and vertical face-tracking auto-crop server-side. No local Whisper, no local LLM, no GPU.",
+      "category": "edit",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [],
+      "steps": [
+        {
+          "type": "image",
+          "model": "muapi-cli",
+          "endpoint": "muapi-cli",
+          "aspectRatio": "9:16",
+          "prompt": "--coords-only",
+          "references": []
+        }
+      ],
+      "triggers": [],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-ai-fight-scene",
+      "name": "muapi-ai-fight-scene",
+      "description": "Generate a high-cut-density action / fight scene by first composing a 16-cell storyboard image, then driving Seedance 2.0 image-to-video off that storyboard. Stacks GPT-Image-2 (character sheet + storyboard), Nano-Banana-2 (environment concept), and Seedance 2.0 i2v.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "character_description",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "environment_description",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "action_script",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "style_direction",
+          "type": "text",
+          "required": false,
+          "default": "cinematic action film, anamorphic lens, high contrast, motion blur on hits"
+        },
+        {
+          "name": "duration",
+          "type": "text",
+          "required": false,
+          "default": "15"
+        },
+        {
+          "name": "aspect_ratio",
+          "type": "text",
+          "required": false,
+          "default": "16:9"
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "gpt-image-2-text-to-image",
+          "endpoint": "gpt-image-2-text-to-image",
+          "aspectRatio": "16:9",
+          "prompt": "Character reference sheet of {{character_description}}. Three views — front, 3/4, profile — on a neutral grey backdrop. Studio lighting, full body, no text overlays, photoreal. Asymmetric identifying details preserved on the correct side. {{style_direction}}.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "fight scene",
+        "action sequence",
+        "storyboard to video",
+        "cut density",
+        "cinematic action",
+        "combat choreography",
+        "seedance 2 storyboard"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-amazon-product-listing",
+      "name": "muapi-amazon-product-listing",
+      "description": "Generate a complete Amazon product listing image set — hero image, lifestyle shot, infographic with features, and comparison/detail closeups optimized for Amazon standards.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "product_name",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "product_category",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "key_features",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "target_buyer",
+          "type": "text",
+          "required": false,
+          "default": "general consumer"
+        },
+        {
+          "name": "product_image",
+          "type": "image_url",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "ai-product-photography",
+          "endpoint": "ai-product-photography",
+          "aspectRatio": "1:1",
+          "prompt": "Professional Amazon main listing hero image of {{product_name}}. Pure white background #FFFFFF. Product centered, perfectly lit with soft studio lighting, no shadows. High resolution, commercial product photography, sharp focus on all details, 2000x2000px equivalent quality.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "amazon listing",
+        "amazon product",
+        "product listing",
+        "ecommerce listing",
+        "amazon images",
+        "product photography amazon",
+        "listing images"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-animal-video-generator",
+      "name": "muapi-animal-video-generator",
+      "description": "Create a hilarious and ultra-realistic video of an anthropomorphic animal acting like a human vlogger in a real-world setting.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "animal_type",
+          "type": "text",
+          "required": false,
+          "default": "monkey"
+        },
+        {
+          "name": "location",
+          "type": "text",
+          "required": false,
+          "default": "busy streets of Noida, India"
+        },
+        {
+          "name": "clothing",
+          "type": "text",
+          "required": false,
+          "default": "a bright red t-shirt"
+        },
+        {
+          "name": "script",
+          "type": "text",
+          "required": false,
+          "default": "क्या यार, कहाँ फंस गया नॉएडा में आके? इससे तो बैंगलोर ही अच्छा था. यहाँ तो बड़ी गर्मी है भाई. पसीने ही छूट गए मेरे तो."
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "nano-banana",
+          "endpoint": "nano-banana",
+          "aspectRatio": "9:16",
+          "prompt": "Ultra-realistic, cinematic portrait of an expressive {{animal_type}} wearing {{clothing}}, holding a selfie stick on the {{location}}. The {{animal_type}} is anthropomorphic, walking upright, and looks like a believable vlogger. Sweating slightly in the heat, highly detailed, photorealistic. Background shows a bustling street, people eating at stalls, vibrant urban details.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "animal video",
+        "funny monkey video",
+        "animal vlogger",
+        "vlog video",
+        "monkey in noida"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-award-ceremony-video",
+      "name": "muapi-award-ceremony-video",
+      "description": "Generate a 15-second cinematic awards-ceremony video — a host announces a winner from the stage, a spotlight finds them in the crowd, they walk up to the podium, receive the award, and the LED display reveals their name and \"THE BEST ACTOR\".",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "winner_image",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "host_image",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "winner_name",
+          "type": "text",
+          "required": false,
+          "default": "Olivia"
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "seedance-2-image-to-video-fast",
+          "endpoint": "seedance-2-image-to-video-fast",
+          "aspectRatio": "16:9",
+          "prompt": "winner_image",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "award ceremony",
+        "awards show video",
+        "oscars video",
+        "grammy ceremony",
+        "best actor award",
+        "winner announcement video",
+        "red carpet award"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-blog-header",
+      "name": "muapi-blog-header",
+      "description": "Create a professional, eye-catching blog post header image sized for web (1200×628) with optional title composition guidance.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "topic",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "publication_style",
+          "type": "text",
+          "required": false,
+          "default": "clean, editorial, modern, professional"
+        },
+        {
+          "name": "dominant_color",
+          "type": "text",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "gpt-image-2-text-to-image",
+          "endpoint": "gpt-image-2-text-to-image",
+          "aspectRatio": "16:9",
+          "prompt": "publication_style",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "blog header",
+        "blog image",
+        "article image",
+        "featured image",
+        "og image",
+        "open graph image",
+        "hero image"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-brand-kit",
+      "name": "muapi-brand-kit",
+      "description": "Generate a cohesive brand visual kit — logo concept, color palette moodboard, and typography pairing suggestions.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "brand_name",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "industry",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "personality",
+          "type": "text",
+          "required": false,
+          "default": "modern, trustworthy, approachable"
+        },
+        {
+          "name": "color_preference",
+          "type": "text",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "gpt-image-2-text-to-image",
+          "endpoint": "gpt-image-2-text-to-image",
+          "aspectRatio": "1:1",
+          "prompt": "\"Minimalist logo for '{{brand_name}}', {{industry}} brand, {{personality}} personality. Clean vector-style, white background, professional. {{color_preference}}\".",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "brand kit",
+        "brand identity",
+        "logo",
+        "branding",
+        "brand design",
+        "visual identity"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-brochures",
+      "name": "muapi-brochures",
+      "description": "Generate a professional multi-page brochure design — cover, inner spread, and back cover — for business, real estate, events, or product launches.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "brand_name",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "topic",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "style",
+          "type": "text",
+          "required": false,
+          "default": "modern, professional, premium"
+        },
+        {
+          "name": "color_scheme",
+          "type": "text",
+          "required": false,
+          "default": "navy blue and gold"
+        },
+        {
+          "name": "format",
+          "type": "text",
+          "required": false,
+          "default": "tri-fold"
+        },
+        {
+          "name": "brand_logo",
+          "type": "image_url",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "gpt4o-edit",
+          "endpoint": "gpt4o-edit",
+          "aspectRatio": "2:3",
+          "prompt": "Professional {{format}} brochure FRONT COVER for {{brand_name}} — {{topic}}. {{style}} design, {{color_scheme}} color scheme. Bold headline area, hero image, brand name prominently displayed, luxury print-quality design. A4 portrait format, high resolution, commercial print ready. Clean professional layout.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "brochure",
+        "flyer",
+        "leaflet",
+        "pamphlet",
+        "bi-fold",
+        "tri-fold",
+        "company brochure",
+        "marketing brochure",
+        "product brochure"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-cartoon-dance-animation",
+      "name": "muapi-cartoon-dance-animation",
+      "description": "Convert a photo of a person into a Pixar-style 3D cartoon character, then animate it using a reference dance or motion video.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "user_image",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "reference_video",
+          "type": "text",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "nano-banana-2-edit",
+          "endpoint": "nano-banana-2-edit",
+          "aspectRatio": "9:16",
+          "prompt": "Use the uploaded input photo as the exact same person in the final render. Preserve identity accurately: same face shape, eyes, nose, lips, jawline, skin tone, hairstyle, hairline, expression, age, and overall vibe. Do NOT change the person into a different face. Keep it clearly recognizable as the same person. Create one full-size ultra-high-quality 3D stylized character illustration, Pixar-inspired but original, based on the input person. Smooth plastic-like skin, soft rounded facial features, big expressive eyes, small nose, subtle blush (very minimal), cozy wholesome aesthetic. High-end character sculpting with stylized proportions while maintaining the real person’s likeness. 👕 Outfit / Costume (MUST MATCH INPUT) Keep the costume/outfit EXACTLY the same as the input image. Do not change colors, fabric type, accessories, layers, patterns, logos, or fit. No added glasses, no headphones, no new jacket, no new styling. 💇 Hair (Exact Match) Hair must remain the same as the input image: same hairstyle, same length, same hairline, only converted into clean stylized 3D hair shapes. 🎨 Render Quality Premium character sculpting, soft studio lighting, global illumination, subsurface scattering, soft shadows, cinematic depth of field, crisp edges. Octane/Arnold render look, ultra-clean, high-quality shading, 8K detail. 🎯 Composition Single full-size image (NOT a grid). Full-body or medium shot matching the input pose and vibe. Minimal clean studio background (solid color), no clutter.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "cartoon dance",
+        "3d animation",
+        "pixar character",
+        "animate my photo",
+        "motion control video",
+        "dance video",
+        "cartoonify and animate"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-character-story-video",
+      "name": "muapi-character-story-video",
+      "description": "Create a multi-part animated story video by first establishing a consistent character and then generating sequential scenes and animating them.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "character_description",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "story_premise",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "reference_image",
+          "type": "image_url",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "nano-banana-pro",
+          "endpoint": "nano-banana-pro",
+          "aspectRatio": "4:5",
+          "prompt": "{{character_description}}, introducing the main character, cinematic lighting, highly detailed, Pixar 3D animation style.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "character story",
+        "story video",
+        "animated story",
+        "sequel video",
+        "multi part video",
+        "sequential story"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-chibi-collage-effect",
+      "name": "muapi-chibi-collage-effect",
+      "description": "Turn a real lifestyle photo into a polished \"chibi clone sticker diary\" image — the original person stays photorealistic, surrounded by 5–8 kawaii chibi mini-clones, scrapbook doodles, and handwritten-style captions that match the scene.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "person_image",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "gpt-image-2-image-to-image",
+          "endpoint": "gpt-image-2-image-to-image",
+          "aspectRatio": "9:16",
+          "prompt": "person_image",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "chibi collage",
+        "chibi sticker diary",
+        "mini me stickers",
+        "kawaii clone collage",
+        "sticker diary photo",
+        "scrapbook chibi"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-cinema-director",
+      "name": "muapi-cinema-director",
+      "description": "Direct high-fidelity cinematic video with AI — translates creative intent into technical cinematographic directives for Veo3, Kling, and Luma video models via muapi.ai",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [],
+      "steps": [
+        {
+          "type": "image",
+          "model": "generate-film.sh",
+          "endpoint": "generate-film.sh",
+          "aspectRatio": "",
+          "prompt": "Dolly In/Out",
+          "references": []
+        }
+      ],
+      "triggers": [],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-color-analysis-board",
+      "name": "muapi-color-analysis-board",
+      "description": "Turn a portrait photo into a high-end editorial \"Color Analysis Board\" in a luxury fashion-magazine style (Dior / Ralph Lauren aesthetic) — best colors, undertone, makeup guide, capsule wardrobe, hair & jewelry recommendations, all laid out on a clean beige/ivory grid.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "person_image",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "gpt-image-2-image-to-image",
+          "endpoint": "gpt-image-2-image-to-image",
+          "aspectRatio": "16:9",
+          "prompt": "person_image",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "color analysis",
+        "color analysis board",
+        "personal color palette",
+        "seasonal color analysis",
+        "undertone analysis",
+        "style guide board",
+        "fashion color board",
+        "capsule wardrobe board"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-couple-grid-creator",
+      "name": "muapi-couple-grid-creator",
+      "description": "Create a stylized 6-box grid featuring a couple in various romantic poses and outfits, with each pose framed inside a unique cardboard box packaging.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "couple_image",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "qwen-image-edit-plus",
+          "endpoint": "qwen-image-edit-plus",
+          "aspectRatio": "1:1",
+          "prompt": "Convert the above image into an 8k portrait of both faces. Both faces should be clearly visible inside separate packaging: brown square hollow cardboard boxes. There should be 6 big boxes fully occupying the frame in a grid layout. In each box, the couple's faces should be visible, striking different decent romantic poses. Each box should feature a different costume for the couple to differentiate the scenes, with both wearing decent western wear. The background inside each box should be solid black. Maintain strict identity consistency for both the man and the woman from the reference image. Cinematic tone, sharp focus, professional photography.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "couple grid",
+        "romantic grid",
+        "packaging grid",
+        "couple photo box",
+        "stylized couple portrait"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-design-guide",
+      "name": "muapi-design-guide",
+      "description": "Create a comprehensive brand design guide — color palette, typography pairings, UI component previews, and visual identity rules with example mockups.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "brand_name",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "industry",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "style_direction",
+          "type": "text",
+          "required": false,
+          "default": "modern, minimal, premium"
+        },
+        {
+          "name": "primary_color",
+          "type": "text",
+          "required": false,
+          "default": ""
+        },
+        {
+          "name": "existing_logo",
+          "type": "image_url",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "bytedance-seedream-v4.5",
+          "endpoint": "bytedance-seedream-v4.5",
+          "aspectRatio": "16:9",
+          "prompt": "Clean design guide color palette card for {{brand_name}} — {{style_direction}} style brand for {{industry}}. Shows 5 swatches: primary, secondary, accent, background, text. Each swatch labeled with hex code. Modern design reference card, white background, editorial typography, flat design.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "design guide",
+        "brand guide",
+        "style guide",
+        "design system",
+        "brand identity",
+        "visual identity",
+        "brand colors",
+        "typography"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-drone-style-video",
+      "name": "muapi-drone-style-video",
+      "description": "Generate aerial drone-perspective footage — sweeping bird's-eye views, orbit shots, and flyover sequences for landscapes, architecture, and events.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "location_or_subject",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "shot_type",
+          "type": "text",
+          "required": false,
+          "default": "reveal"
+        },
+        {
+          "name": "style",
+          "type": "text",
+          "required": false,
+          "default": "golden hour, cinematic, 4K, ultra-detailed"
+        },
+        {
+          "name": "aspect_ratio",
+          "type": "text",
+          "required": false,
+          "default": "16:9"
+        },
+        {
+          "name": "reference_image",
+          "type": "image_url",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "veo3.1-image-to-video",
+          "endpoint": "veo3.1-image-to-video",
+          "aspectRatio": "16:9",
+          "prompt": "location_or_subject",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "drone",
+        "aerial",
+        "bird's eye",
+        "flyover",
+        "aerial shot",
+        "drone footage",
+        "top down",
+        "overhead video"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-fashion-try-on",
+      "name": "muapi-fashion-try-on",
+      "description": "Virtually try on different outfits by combining a person's photo and a clothing item, then optionally generate a professional fashion model video.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "person_image",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "clothing_image",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "qwen-image-edit-2511",
+          "endpoint": "qwen-image-edit-2511",
+          "aspectRatio": "1:1",
+          "prompt": "A high-quality fashion photograph of the person from the first reference image wearing the exact clothing item from the second reference image. The fit should be natural and realistic, maintaining the person's pose and the clothing's texture and patterns. Soft studio lighting, neutral background, professional fashion photography style.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "fashion try on",
+        "virtual fitting room",
+        "try on clothes",
+        "model fashion",
+        "clothing preview"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-floor-plan-rendering",
+      "name": "muapi-floor-plan-rendering",
+      "description": "Design a 2D floor plan and convert it into a realistic, high-quality 3D architectural rendering.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "floor_plan_description",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "base_plan_image",
+          "type": "image_url",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "nano-banana-2",
+          "endpoint": "nano-banana-2",
+          "aspectRatio": "4:3",
+          "prompt": "A professional, clean 2D architectural floor plan of {{floor_plan_description}}. Top-down view, technical drawing style, white background, black lines, labeled rooms (Living Room, Kitchen, Bedroom, etc.), high contrast, minimalist design.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "3d floor plan",
+        "architectural rendering",
+        "2d to 3d plan",
+        "house design",
+        "interior plan"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-freeze-effect-video",
+      "name": "muapi-freeze-effect-video",
+      "description": "Generate a cinematic \"freeze effect\" video where time stops mid-scene, the subject walks through the frozen world, then time resumes with a snap.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "photo",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "scene",
+          "type": "text",
+          "required": false,
+          "default": "a packed, dimly lit sports bar with neon accents, blurred TVs showing a championship celebration"
+        },
+        {
+          "name": "freeze_moment",
+          "type": "text",
+          "required": false,
+          "default": "golden arcs of beer suspended midair, popcorn floating motionless, people frozen mid-cheer"
+        },
+        {
+          "name": "closing_line",
+          "type": "text",
+          "required": false,
+          "default": "perfect"
+        },
+        {
+          "name": "aspect_ratio",
+          "type": "text",
+          "required": false,
+          "default": "16:9"
+        },
+        {
+          "name": "duration",
+          "type": "text",
+          "required": false,
+          "default": "15"
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "seedance-v2.0-i2v",
+          "endpoint": "seedance-v2.0-i2v",
+          "aspectRatio": "16:9",
+          "prompt": "freeze_moment",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "freeze effect",
+        "time freeze video",
+        "time stop video",
+        "snap freeze",
+        "frozen world",
+        "bullet time crowd",
+        "time stand still",
+        "pause time effect"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-giant-product-showcase",
+      "name": "muapi-giant-product-showcase",
+      "description": "Create a dramatic \"Giant Product\" visual where a regular item is showcased as a massive, building-sized object next to a person, then optionally animate the scene.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "product_image",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "person_description",
+          "type": "text",
+          "required": false,
+          "default": "a stylishly dressed man"
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "nano-banana-2-edit",
+          "endpoint": "nano-banana-2-edit",
+          "aspectRatio": "3:4",
+          "prompt": "A professional commercial photograph featuring a massive, giant-sized version of the product from the reference image. The product is the size of a person and is standing on a clean, modern floor. Next to the giant product, {{person_description}} is leaning against it or standing nearby, highlighting the enormous scale. High-end product photography, soft studio lighting, realistic reflections, 8k resolution.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "giant product",
+        "massive object",
+        "product showcase",
+        "scale comparison",
+        "product animation"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-instagram-post",
+      "name": "muapi-instagram-post",
+      "description": "Create a polished, on-brand Instagram post — square or portrait hero image with matching caption and hashtags.",
+      "category": "social",
+      "studio": "marketing",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "brief",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "brand_style",
+          "type": "text",
+          "required": false,
+          "default": "modern, vibrant, clean typography, lifestyle photography aesthetic"
+        },
+        {
+          "name": "format",
+          "type": "text",
+          "required": false,
+          "default": "1:1"
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "nano-banana-2",
+          "endpoint": "nano-banana-2",
+          "aspectRatio": "1:1",
+          "prompt": "brand_style",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "instagram post",
+        "ig post",
+        "instagram",
+        "feed post",
+        "instagram creative"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-interior-design",
+      "name": "muapi-interior-design",
+      "description": "Create professional interior design visualizations — redesign existing rooms, generate new room concepts, or visualize specific furniture styles in a space.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "room_type",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "design_style",
+          "type": "text",
+          "required": false,
+          "default": "modern minimalist"
+        },
+        {
+          "name": "color_palette",
+          "type": "text",
+          "required": false,
+          "default": "neutral tones with wood accents"
+        },
+        {
+          "name": "specific_elements",
+          "type": "text",
+          "required": false,
+          "default": ""
+        },
+        {
+          "name": "room_photo",
+          "type": "image_url",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "flux-kontext-pro-i2i",
+          "endpoint": "flux-kontext-pro-i2i",
+          "aspectRatio": "16:9",
+          "prompt": "Professional interior design visualization of a {{room_type}}. Style: {{design_style}}. Color palette: {{color_palette}}. {{specific_elements}}. Cinematic lighting, architectural photography style, wide angle lens, 8k resolution, photorealistic textures. High-end interior design magazine quality.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "interior design",
+        "room redesign",
+        "home decor",
+        "architecture visualization",
+        "room concept",
+        "furniture layout",
+        "house design",
+        "interior visualization"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-interior-design-visualizer",
+      "name": "muapi-interior-design-visualizer",
+      "description": "Visualize interior design by generating an empty room and filling it with stylish furniture and decor, or by redesigning an existing room.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "room_type",
+          "type": "text",
+          "required": false,
+          "default": "modern living room"
+        },
+        {
+          "name": "design_style",
+          "type": "text",
+          "required": false,
+          "default": "contemporary minimalist"
+        },
+        {
+          "name": "empty_room_image",
+          "type": "image_url",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "gpt-image-2-text-to-image",
+          "endpoint": "gpt-image-2-text-to-image",
+          "aspectRatio": "4:3",
+          "prompt": "A professional wide-angle photograph of a completely empty {{room_type}} with {{design_style}} architecture. Large windows with natural light, clean wooden or tiled flooring, white or neutral-colored walls, no furniture, high ceiling. High-quality architectural photography, cinematic look.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "interior design",
+        "room visualizer",
+        "furniture design",
+        "home decor",
+        "redesign room"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-jewelry-product-video",
+      "name": "muapi-jewelry-product-video",
+      "description": "Create a luxury jewelry advertisement with high-end commercial cinematography and detailed macro animation.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "jewelry_description",
+          "type": "text",
+          "required": false,
+          "default": "a delicate rose gold ring with a lotus design and a sparkling diamond"
+        },
+        {
+          "name": "surface_description",
+          "type": "text",
+          "required": false,
+          "default": "a beige surface"
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "nano-banana-2-edit",
+          "endpoint": "nano-banana-2-edit",
+          "aspectRatio": "1:1",
+          "prompt": "Style: Luxury product ad, high-end commercial feel. Scene: {{jewelry_description}} resting on {{surface_description}}. A soft, warm light highlights the diamond, creating subtle highlights on the metal. 100mm macro lens photography, shallow DOF, incredible detail, elegant and minimal composition.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "jewelry video",
+        "luxury ad",
+        "diamond animation",
+        "ring commercial",
+        "high-end jewelry showcase"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-keyboard-art-maker",
+      "name": "muapi-keyboard-art-maker",
+      "description": "Generate artistic top-down photos of keyboard keycaps arranged to spell out custom text messages.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "display_text",
+          "type": "text",
+          "required": true,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "ideogram-v3-t2i",
+          "endpoint": "ideogram-v3-t2i",
+          "aspectRatio": "1:1",
+          "prompt": "The photograph captures white keycaps, arranged neatly on a dusty black surface to spell \"{{display_text}}\". Each keycap displays a crisp black letter, with soft, diffused lighting highlighting the subtle shadows, creating a harmonious contrast between the keycaps and their backdrop, while the top-down shot ensures the phrase is clear and in perfect focus. There should be adequate spacing between words. Cinematic quality, professional studio lighting, 8k resolution.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "keyboard art",
+        "keycap text",
+        "spell with keys",
+        "keyboard message",
+        "custom keycap image"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-logo-branding",
+      "name": "muapi-logo-branding",
+      "description": "Design a professional logo with full branding package — primary logo, variations (dark/light/icon-only), color palette, and real-world application mockups.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "brand_name",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "industry",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "style_preference",
+          "type": "text",
+          "required": false,
+          "default": "modern, minimal, versatile"
+        },
+        {
+          "name": "color_preference",
+          "type": "text",
+          "required": false,
+          "default": ""
+        },
+        {
+          "name": "mood",
+          "type": "text",
+          "required": false,
+          "default": "professional, trustworthy, premium"
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "ideogram-v3-t2i",
+          "endpoint": "ideogram-v3-t2i",
+          "aspectRatio": "1:1",
+          "prompt": "Professional logo design for \"{{brand_name}}\" — {{industry}} brand. {{style_preference}} style. {{mood}} personality. {{color_preference}} color palette. Clean vector-style logo, white background, no gradients unless requested, scalable mark. Include brand name typeset below icon if applicable. Logo design, isolated on white, professional quality.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "logo",
+        "logo design",
+        "brand logo",
+        "logo branding",
+        "logo creator",
+        "design logo",
+        "branding package",
+        "logo generator",
+        "brand identity logo"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-logo-creator",
+      "name": "muapi-logo-creator",
+      "description": "Engineer professional-grade brand logos using geometric primitives and negative space — generates minimalist, scalable vector-style marks via muapi.ai",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [],
+      "steps": [
+        {
+          "type": "image",
+          "model": "create-logo.sh",
+          "endpoint": "create-logo.sh",
+          "aspectRatio": "",
+          "prompt": "Color Theory",
+          "references": []
+        }
+      ],
+      "triggers": [],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-logo-generator",
+      "name": "muapi-logo-generator",
+      "description": "Quickly generate a single polished logo for any brand — fast, focused, single output with clean vector aesthetic and accurate brand name text.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "brand_name",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "style",
+          "type": "text",
+          "required": false,
+          "default": "modern wordmark with icon, minimal"
+        },
+        {
+          "name": "industry",
+          "type": "text",
+          "required": false,
+          "default": "technology"
+        },
+        {
+          "name": "colors",
+          "type": "text",
+          "required": false,
+          "default": "brand blue and white"
+        },
+        {
+          "name": "background",
+          "type": "text",
+          "required": false,
+          "default": "white"
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "ideogram-v3-t2i",
+          "endpoint": "ideogram-v3-t2i",
+          "aspectRatio": "1:1",
+          "prompt": "Professional logo for \"{{brand_name}}\" — {{style}}, {{industry}} brand. Color scheme: {{colors}}. {{background}} background. Clean, scalable, vector-quality logo design. Legible brand name text, balanced proportions. Modern 2025 logo design, no drop shadows, no gradients unless requested, isolated on {{background}} background.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "logo generator",
+        "make a logo",
+        "create logo",
+        "design a logo",
+        "quick logo",
+        "generate logo",
+        "logo for my brand"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-multi-angle-reshoot",
+      "name": "muapi-multi-angle-reshoot",
+      "description": "Re-render a subject or scene from multiple dramatic camera angles, such as fish-eye, bird's-eye, low-angle, and macro, while maintaining consistent identity and detail.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "subject_description",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "reference_image",
+          "type": "image_url",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "nano-banana-pro",
+          "endpoint": "nano-banana-pro",
+          "aspectRatio": "3:4",
+          "prompt": "A high-quality, professional photograph of {{subject_description}}. Clean studio lighting, sharp focus, realistic textures, cinematic quality.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "multi angle",
+        "photo reshoot",
+        "change camera angle",
+        "fish eye view",
+        "birds eye view",
+        "low angle shot",
+        "macro photography",
+        "camera perspective"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-multi-angle-shots",
+      "name": "muapi-multi-angle-shots",
+      "description": "Generate a complete set of multi-angle product shots — front, side, back, top-down, and 45-degree perspective — for comprehensive product visualization.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "product_name",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "product_image",
+          "type": "image_url",
+          "required": false,
+          "default": ""
+        },
+        {
+          "name": "background_style",
+          "type": "text",
+          "required": false,
+          "default": "pure white studio"
+        },
+        {
+          "name": "lighting",
+          "type": "text",
+          "required": false,
+          "default": "soft studio lighting, product photography"
+        },
+        {
+          "name": "category",
+          "type": "text",
+          "required": false,
+          "default": "general product"
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "ai-product-photography",
+          "endpoint": "ai-product-photography",
+          "aspectRatio": "1:1",
+          "prompt": "{{product_name}} — perfectly centered FRONT VIEW, eye-level angle. {{background_style}} background. {{lighting}}. Sharp focus, commercial product photography, ultra detailed, no props.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "multi angle",
+        "multiple angles",
+        "360 product",
+        "product angles",
+        "all sides",
+        "front back side",
+        "product views",
+        "angle shots",
+        "product photography set"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-music-video",
+      "name": "muapi-music-video",
+      "description": "Build a short music video from a song theme — N keyframes, animate each, generate matching music.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "theme",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "scenes",
+          "type": "text",
+          "required": false,
+          "default": "3"
+        },
+        {
+          "name": "music_style",
+          "type": "text",
+          "required": false,
+          "default": "ambient cinematic, instrumental, slow tempo, warm"
+        },
+        {
+          "name": "visual_style",
+          "type": "text",
+          "required": false,
+          "default": "cinematic, photoreal, soft volumetric light, 16:9"
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "nano-banana-pro",
+          "endpoint": "nano-banana-pro",
+          "aspectRatio": "16:9",
+          "prompt": "music_style",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "music video",
+        "mv",
+        "video story",
+        "song visualization"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-nano-banana",
+      "name": "muapi-nano-banana",
+      "description": "Reasoning-driven image generation using structured creative briefs (Gemini 3 style) — generates high-fidelity images via muapi.ai with logic-based prompting",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [],
+      "steps": [
+        {
+          "type": "image",
+          "model": "generate-nano-art.sh",
+          "endpoint": "generate-nano-art.sh",
+          "aspectRatio": "",
+          "prompt": "Subject + Action + Context + Composition + Lighting",
+          "references": []
+        }
+      ],
+      "triggers": [],
+      "promptFormula": "Subject + Action + Context + Composition + Lighting"
+    },
+    {
+      "slug": "muapi-one-shot-video",
+      "name": "muapi-one-shot-video",
+      "description": "Generate a single continuous cinematic shot video — no cuts, one seamless flowing scene with dramatic lighting and motion.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "scene",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "style",
+          "type": "text",
+          "required": false,
+          "default": "cinematic, anamorphic lens, shallow depth of field, dramatic lighting"
+        },
+        {
+          "name": "duration",
+          "type": "text",
+          "required": false,
+          "default": "10s"
+        },
+        {
+          "name": "aspect_ratio",
+          "type": "text",
+          "required": false,
+          "default": "16:9"
+        },
+        {
+          "name": "reference_image",
+          "type": "image_url",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "veo3.1-image-to-video",
+          "endpoint": "veo3.1-image-to-video",
+          "aspectRatio": "16:9",
+          "prompt": "{{scene}}, one continuous uncut shot, no transitions, camera slowly moves through scene, {{style}}, ultra cinematic, film grain, 4K quality",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "one shot video",
+        "single take",
+        "continuous video",
+        "one take",
+        "cinematic shot",
+        "seamless video"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-photo-pack-generator",
+      "name": "muapi-photo-pack-generator",
+      "description": "Generate a pack of professional or aesthetic photos from a single reference image while preserving the exact identity of the person.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [],
+      "steps": [
+        {
+          "type": "image",
+          "model": "",
+          "endpoint": "",
+          "aspectRatio": "",
+          "prompt": "Generate a pack of professional or aesthetic photos from a single reference image while preserving the exact identity of the person.",
+          "references": []
+        }
+      ],
+      "triggers": [],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-product-ad-cinematic",
+      "name": "muapi-product-ad-cinematic",
+      "description": "Cinematic 5–10s product ad from a product photo + brand brief.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "product_image",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "brand_brief",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "duration_sec",
+          "type": "text",
+          "required": false,
+          "default": "6"
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "nano-banana-2",
+          "endpoint": "nano-banana-2",
+          "aspectRatio": "16:9",
+          "prompt": "product_image",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "product ad",
+        "commercial",
+        "cinematic ad",
+        "product video"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-product-campaign",
+      "name": "muapi-product-campaign",
+      "description": "Generate a full multi-channel product campaign — hero visuals, social media assets, short ad video, and platform-specific crops for an end-to-end launch campaign.",
+      "category": "social",
+      "studio": "marketing",
+      "kind": "workflow",
+      "inputs": [
+        {
+          "name": "product_name",
+          "type": "text",
+          "required": true,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "nano-banana",
+          "endpoint": "nano-banana",
+          "aspectRatio": "1:1",
+          "prompt": "A clean minimalist product shot of {{product_name}} on a soft gradient background, studio lighting, high detail.",
+          "references": []
+        },
+        {
+          "type": "i2v",
+          "model": "sd-2-omni-reference",
+          "endpoint": "sd-2-omni-reference",
+          "aspectRatio": "9:16",
+          "prompt": "Slow cinematic push-in on {{product_name}}, elegant motion, premium feel.",
+          "references": [
+            "{{phase0.output}}"
+          ]
+        }
+      ],
+      "triggers": [
+        "product campaign",
+        "campaign",
+        "launch campaign",
+        "product launch",
+        "marketing campaign",
+        "brand campaign",
+        "full campaign",
+        "campaign assets"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-product-showcase-video",
+      "name": "muapi-product-showcase-video",
+      "description": "Create a dynamic product showcase with explosive ingredient arrangements, followed by a realistic motion animation.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "product_image",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "ingredients_description",
+          "type": "text",
+          "required": false,
+          "default": "fresh and raw ingredients"
+        },
+        {
+          "name": "brand_colors",
+          "type": "text",
+          "required": false,
+          "default": "matching brand colors"
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "bytedance-seedream-v4.5-edit",
+          "endpoint": "bytedance-seedream-v4.5-edit",
+          "aspectRatio": "1:1",
+          "prompt": "Photograph this product in a dramatic modern scene accompanied by an explosive outward dynamic arrangement of {{ingredients_description}} flying around the product, signifying its freshness and nutritional value. Promo ad shot, without text, product is emphasized, with {{brand_colors}} as the background. High-quality commercial lighting, sharp detail, vibrant colors.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "product showcase video",
+        "dynamic product ad",
+        "ingredient explosion",
+        "fresh product animation",
+        "commercial video"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-product-video-ad-maker",
+      "name": "muapi-product-video-ad-maker",
+      "description": "Create a high-end cinematic product video advertisement starting from a simple product photo.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "product_image",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "scene_description",
+          "type": "text",
+          "required": false,
+          "default": "surrounded by fresh flowers and soft morning sunlight"
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "flux-2-pro-edit",
+          "endpoint": "flux-2-pro-edit",
+          "aspectRatio": "1:1",
+          "prompt": "A high-end, professional commercial photograph of the product from the reference image, {{scene_description}}. Soft studio lighting, realistic reflections, cinematic depth of field, sharp focus on the product. 8k resolution, elegant and minimal composition.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "product video ad",
+        "video ad maker",
+        "cinematic product video",
+        "commercial video maker",
+        "professional product ad"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-rednote-cover",
+      "name": "muapi-rednote-cover",
+      "description": "Create a Xiaohongshu (RedNote/小红书) style cover image — vibrant, lifestyle-focused, with aesthetic typography overlay suitable for the Chinese social platform.",
+      "category": "social",
+      "studio": "marketing",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "topic",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "style",
+          "type": "text",
+          "required": false,
+          "default": "aesthetic, warm tones, lifestyle photography"
+        },
+        {
+          "name": "text_overlay",
+          "type": "text",
+          "required": false,
+          "default": ""
+        },
+        {
+          "name": "orientation",
+          "type": "text",
+          "required": false,
+          "default": "portrait"
+        },
+        {
+          "name": "reference_image",
+          "type": "image_url",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "bytedance-seedream-v4.5-edit",
+          "endpoint": "bytedance-seedream-v4.5-edit",
+          "aspectRatio": "3:4",
+          "prompt": "Xiaohongshu (RedNote/小红书) style cover photo for {{topic}} post. {{style}}. Aesthetic lifestyle photography, soft natural lighting, visually appealing composition, clean and airy feel. High engagement social media cover, editorial quality. Platform optimized for Chinese lifestyle app.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "rednote",
+        "xiaohongshu",
+        "小红书",
+        "red note",
+        "rednote cover",
+        "xhs cover",
+        "chinese social",
+        "lifestyle cover"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-seedance-2",
+      "name": "muapi-seedance-2",
+      "description": "Expert Cinema Director skill for Seedance 2.0 (ByteDance) — high-fidelity video generation across Chinese, Global, and VIP tiers. Supports text-to-video, image-to-video, first-last-frame, omni reference, character training, omni-reference training, video editing, and watermark removal.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "seedance-v2.0-t2v",
+          "endpoint": "seedance-v2.0-t2v",
+          "aspectRatio": "16:9",
+          "prompt": "--tier chinese",
+          "references": []
+        }
+      ],
+      "triggers": [],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-selfie-with-celebrities",
+      "name": "muapi-selfie-with-celebrities",
+      "description": "Generate a realistic behind-the-scenes selfie of the user with a celebrity or main actor from a specific movie, followed by an option to generate a cinematic long-take video connecting multiple selfies.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "movie_name",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "user_image",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "nano-banana-2-edit",
+          "endpoint": "nano-banana-2-edit",
+          "aspectRatio": "9:16",
+          "prompt": "POV: close up shot, A realistic photo of the person (don't change the person's original clothes) holding a black iPhone 16 to take a picture with the main actor from the movie \"{{movie_name}}\" on a movie set with movie scene background. Behind-the-scenes atmosphere, including film equipment, film cameras, filled with props, and busy crew members. Sharp focus on the characters. bright scene. Aspect ratio 9:16.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "selfie with celebrity",
+        "movie star selfie",
+        "celebrity photo",
+        "take a picture with actor",
+        "behind the scenes selfie"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-social-media-video",
+      "name": "muapi-social-media-video",
+      "description": "Brand-aware social media video creator. Reads brand-identity.md, ICP.md, and messaging.md to write a post/storyboard, craft an optimized Seedance 2.0 Director prompt, generate reference frames with the best available image model, and produce platform-ready video.",
+      "category": "social",
+      "studio": "marketing",
+      "kind": "recipe",
+      "inputs": [],
+      "steps": [
+        {
+          "type": "image",
+          "model": "brand-identity.md",
+          "endpoint": "brand-identity.md",
+          "aspectRatio": "9:16",
+          "prompt": "brand-identity.md",
+          "references": []
+        }
+      ],
+      "triggers": [],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-social-pack",
+      "name": "muapi-social-pack",
+      "description": "Re-render a hero image into Instagram, TikTok, YouTube-shorts and Twitter/X aspect ratios.",
+      "category": "social",
+      "studio": "marketing",
+      "kind": "workflow",
+      "inputs": [
+        {
+          "name": "product_name",
+          "type": "text",
+          "required": true,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "nano-banana",
+          "endpoint": "nano-banana",
+          "aspectRatio": "1:1",
+          "prompt": "Instagram square post for {{product_name}}, vibrant, on-trend aesthetic.",
+          "references": []
+        },
+        {
+          "type": "image",
+          "model": "nano-banana",
+          "endpoint": "nano-banana",
+          "aspectRatio": "9:16",
+          "prompt": "TikTok/Reels vertical post for {{product_name}}, dynamic, eye-catching.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "social pack",
+        "resize for social",
+        "cross-post",
+        "multi-platform"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-storyboard",
+      "name": "muapi-storyboard",
+      "description": "Generate N keyframes for a short story or scene sequence (image only, no video).",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "premise",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "scenes",
+          "type": "text",
+          "required": false,
+          "default": "6"
+        },
+        {
+          "name": "style",
+          "type": "text",
+          "required": false,
+          "default": "cinematic, photoreal, soft lighting, 16:9"
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "nano-banana-2",
+          "endpoint": "nano-banana-2",
+          "aspectRatio": "16:9",
+          "prompt": "{{scenes}}",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "storyboard",
+        "keyframes",
+        "scene sequence",
+        "story panels"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-storyboard-to-cooking-video",
+      "name": "muapi-storyboard-to-cooking-video",
+      "description": "Turn a single photo of a person into a 15-second cinematic pasta-making (or other cuisine) tutorial video. First builds a composite reference sheet (character + kitchen + 9-step action board), then animates the full cooking sequence with audio in a single continuous shot.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "workflow",
+      "inputs": [
+        {
+          "name": "topic",
+          "type": "text",
+          "required": true,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "script",
+          "note": "Write a shot list / storyboard for: {{topic}}."
+        },
+        {
+          "type": "i2v",
+          "model": "sd-2-omni-reference",
+          "endpoint": "sd-2-omni-reference",
+          "aspectRatio": "16:9",
+          "prompt": "Cinematic cooking sequence: {{topic}}. Smooth camera moves, appetizing lighting.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "cooking video",
+        "cooking tutorial",
+        "pasta video",
+        "recipe video",
+        "food video",
+        "chef video",
+        "cooking storyboard",
+        "kitchen tutorial",
+        "cooking reel",
+        "tutorial video from photo",
+        "storyboard to video"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-talking-baby-video",
+      "name": "muapi-talking-baby-video",
+      "description": "Create a viral-style video of a talking baby with custom costumes and scripts.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "baby_costume",
+          "type": "text",
+          "required": false,
+          "default": "a pilot uniform"
+        },
+        {
+          "name": "dialogue",
+          "type": "text",
+          "required": false,
+          "default": "Airbus A380 big plane! Go zoom! Have lots seats. People like fly in it. Best plane ever!"
+        },
+        {
+          "name": "baby_description",
+          "type": "text",
+          "required": false,
+          "default": "A cute 6 months old male baby"
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "nano-banana",
+          "endpoint": "nano-banana",
+          "aspectRatio": "9:16",
+          "prompt": "{{baby_description}} sitting and wearing {{baby_costume}}. High-quality photography, soft natural lighting, adorable expression, detailed fabric textures, shallow depth of field, Pixar-like charm but realistic.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "talking baby",
+        "viral baby video",
+        "baby pilot",
+        "baby doctor",
+        "funny baby animation"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-ugc-ads-workflow",
+      "name": "muapi-ugc-ads-workflow",
+      "description": "Create a User-Generated Content (UGC) video ad by combining a human selfie and a product image, then generating a video script and an animated ad.",
+      "category": "social",
+      "studio": "marketing",
+      "kind": "workflow",
+      "inputs": [
+        {
+          "name": "product_name",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "human_image",
+          "type": "image_url",
+          "required": false,
+          "default": ""
+        },
+        {
+          "name": "product_image",
+          "type": "image_url",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "gpt-image-2-text-to-image",
+          "endpoint": "gpt-image-2-text-to-image",
+          "aspectRatio": "9:16",
+          "prompt": "A natural, candid UGC-style photo of the influencer from the first reference image holding and showcasing the product from the second reference image. Smiling genuinely at the camera, natural indoor lighting, lifestyle aesthetic, high quality.",
+          "references": [
+            "{{human_image}}",
+            "{{product_image}}"
+          ]
+        },
+        {
+          "type": "approval",
+          "note": "Approve the combined image before animating."
+        },
+        {
+          "type": "i2v",
+          "model": "sd-2-omni-reference",
+          "endpoint": "sd-2-omni-reference",
+          "aspectRatio": "9:16",
+          "prompt": "A UGC-style video. The influencer holds the {{product_name}}, smiling genuinely. Brings it closer to the camera, then applies it smoothly. Nods in approval and smiles. Natural movements, talking to the camera, lifestyle vlog style.",
+          "references": [
+            "{{phase0.output}}"
+          ]
+        }
+      ],
+      "triggers": [
+        "ugc ad",
+        "ugc video",
+        "influencer ad",
+        "product ad video",
+        "combine product and human"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-ugc-lifestyle-try-on",
+      "name": "muapi-ugc-lifestyle-try-on",
+      "description": "Generate UGC-style (User Generated Content) lifestyle photos of a person wearing or using your product — authentic, relatable, social-media-native imagery.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "product_name",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "product_image",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "model_description",
+          "type": "text",
+          "required": false,
+          "default": "woman, 25-30 years old, natural look, diverse"
+        },
+        {
+          "name": "setting",
+          "type": "text",
+          "required": false,
+          "default": "casual lifestyle, natural lighting"
+        },
+        {
+          "name": "platform",
+          "type": "text",
+          "required": false,
+          "default": "instagram"
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "ai-dress-change",
+          "endpoint": "ai-dress-change",
+          "aspectRatio": "4:5",
+          "prompt": "{{model_description}} wearing the product naturally in a {{setting}} environment. Authentic UGC-style photo, candid pose, natural expression.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "ugc",
+        "try on",
+        "lifestyle photo",
+        "model wearing",
+        "outfit photo",
+        "wear product",
+        "user generated",
+        "ugc content",
+        "lifestyle try on"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-ugc-video-factory",
+      "name": "muapi-ugc-video-factory",
+      "description": "Turn a person photo + a product photo + an optional script into a vertical 9:16 UGC-style video ad. Generates a lifestyle hero image (Nano-Banana Pro Edit), then animates it with native audio using Seedance 2.0 VIP image-to-video.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "person",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "product",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "script",
+          "type": "text",
+          "required": false,
+          "default": "Okay… first of all, ship happens. And this hat is honestly my favorite. It also comes in navy and black, so you can pick your vibe."
+        },
+        {
+          "name": "environment",
+          "type": "text",
+          "required": false,
+          "default": "study room, laptop in front of it"
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "person",
+          "endpoint": "person",
+          "aspectRatio": "9:16",
+          "prompt": "You are a helpful assistant.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "ugc video factory",
+        "ugc video ad",
+        "person plus product video",
+        "talking product ad",
+        "ugc reel",
+        "lifestyle product video",
+        "vertical ugc video"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-ui-design",
+      "name": "muapi-ui-design",
+      "description": "Generate high-fidelity UI/UX mockups for mobile and web apps using Atomic Design principles — creates wireframes and design systems via muapi.ai",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [],
+      "steps": [
+        {
+          "type": "image",
+          "model": "generate-mockup.sh",
+          "endpoint": "generate-mockup.sh",
+          "aspectRatio": "",
+          "prompt": "Typography",
+          "references": []
+        }
+      ],
+      "triggers": [],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-url-to-design",
+      "name": "muapi-url-to-design",
+      "description": "Analyze a website URL and generate a redesigned, improved UI — recreate the visual design with modern aesthetics, better hierarchy, and fresh brand direction.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "url",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "page_type",
+          "type": "text",
+          "required": false,
+          "default": "landing page"
+        },
+        {
+          "name": "redesign_style",
+          "type": "text",
+          "required": false,
+          "default": "modern, minimal, premium, dark mode"
+        },
+        {
+          "name": "keep_brand",
+          "type": "text",
+          "required": false,
+          "default": "yes"
+        },
+        {
+          "name": "screenshot",
+          "type": "image_url",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "gpt4o-edit",
+          "endpoint": "gpt4o-edit",
+          "aspectRatio": "9:16",
+          "prompt": "Professional UI/UX redesign of a {{page_type}} for the website at {{url}}. {{redesign_style}} design. Modern web design, 2025 aesthetic. Includes: hero section with clear headline and CTA button, features/benefits section, social proof, clean footer. Pixel-perfect, Figma-quality mockup. Desktop viewport, 1440px width design.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "url to design",
+        "redesign website",
+        "website redesign",
+        "ui redesign",
+        "landing page design",
+        "page redesign",
+        "website to design",
+        "convert url to design"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-workflow",
+      "name": "muapi-workflow",
+      "description": "Build, run, and visualize multi-step AI generation workflows. The AI architect translates natural language descriptions into connected node graphs — chain image generation, video creation, enhancement, and editing into automated pipelines.",
+      "category": "workflow",
+      "studio": "workflows",
+      "kind": "workflow",
+      "inputs": [],
+      "steps": [
+        {
+          "type": "image",
+          "model": "muapi",
+          "endpoint": "muapi",
+          "aspectRatio": "",
+          "prompt": "/path/to/muapi-cli",
+          "references": []
+        }
+      ],
+      "triggers": [],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-youtube-shorts",
+      "name": "muapi-youtube-shorts",
+      "description": "Auto-generate viral 9:16 YouTube Shorts (or TikTok / Reels clips) from a long-form video. Thin platform-aware wrapper around the AI Clipping skill — picks sensible defaults for short-form social platforms (9:16, 30–60s sweet spot) and delegates the actual highlight extraction + crop to muapi.ai's `/ai-clipping` endpoint.",
+      "category": "social",
+      "studio": "marketing",
+      "kind": "workflow",
+      "inputs": [
+        {
+          "name": "source_video",
+          "type": "image_url",
+          "required": true,
+          "default": "",
+          "label": "Video URL"
+        }
+      ],
+      "steps": [
+        {
+          "type": "upload",
+          "inputName": "source_video",
+          "note": "Use the long-form video URL as the source."
+        },
+        {
+          "type": "clipping",
+          "model": "ai-clipping",
+          "endpoint": "ai-clipping",
+          "aspectRatio": "9:16",
+          "prompt": "Extract the most viral 9:16 highlights ranked by virality.",
+          "references": [
+            "{{source_video}}"
+          ]
+        }
+      ],
+      "triggers": [],
+      "promptFormula": ""
+    },
+    {
+      "slug": "muapi-youtube-thumbnail",
+      "name": "muapi-youtube-thumbnail",
+      "description": "Design a high-CTR YouTube thumbnail — striking imagery, bold text placement, and emotional face/subject if needed.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "title",
+          "type": "text",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "channel_style",
+          "type": "text",
+          "required": false,
+          "default": "bold, high contrast, bright colors, clean design, YouTube tech aesthetic"
+        },
+        {
+          "name": "subject_description",
+          "type": "text",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "gpt-image-2-text-to-image",
+          "endpoint": "gpt-image-2-text-to-image",
+          "aspectRatio": "16:9",
+          "prompt": "channel_style",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "youtube thumbnail",
+        "yt thumbnail",
+        "thumbnail",
+        "video thumbnail",
+        "youtube cover"
+      ],
+      "promptFormula": ""
+    },
+    {
+      "slug": "flux-3-dev-flagship",
+      "name": "flux-3-dev-flagship",
+      "description": "Generate flagship-grade 4K images with FLUX 3 Dev from a text prompt using a structured visual formula (subject + style + lighting + composition + detail).",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "subject",
+          "type": "text",
+          "required": true,
+          "default": "a lone astronaut standing on a neon-lit alien shore"
+        },
+        {
+          "name": "style",
+          "type": "text",
+          "required": false,
+          "default": "cinematic photoreal, anamorphic lens, high contrast"
+        },
+        {
+          "name": "lighting",
+          "type": "text",
+          "required": false,
+          "default": "golden hour, volumetric god rays"
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "flux-3-dev",
+          "endpoint": "flux-3-dev",
+          "aspectRatio": "16:9",
+          "resolution": "4k",
+          "prompt": "{{subject}}. {{style}}. {{lighting}}. Ultra-detailed, 8k, polished, award-winning composition.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "flux 3",
+        "flux3",
+        "flux dev",
+        "flagship image",
+        "4k image"
+      ],
+      "promptFormula": "subject + style + lighting + detail"
+    },
+    {
+      "slug": "grok-imagine-2",
+      "name": "grok-imagine-2",
+      "description": "Create vivid images with Grok Imagine 2 from a text prompt using a clean visual formula.",
+      "category": "visual",
+      "studio": "image",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "subject",
+          "type": "text",
+          "required": true,
+          "default": "a cyberpunk street market at night"
+        },
+        {
+          "name": "style",
+          "type": "text",
+          "required": false,
+          "default": "hyper-realistic, neon, wet reflections"
+        }
+      ],
+      "steps": [
+        {
+          "type": "image",
+          "model": "grok-imagine-image-2",
+          "endpoint": "grok-imagine-image-2",
+          "aspectRatio": "1:1",
+          "resolution": "1080p",
+          "prompt": "{{subject}}. {{style}}. Highly detailed, vibrant, professional.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "grok imagine",
+        "grok image",
+        "grok imagine 2"
+      ],
+      "promptFormula": "subject + style"
+    },
+    {
+      "slug": "minimax-h3-i2v",
+      "name": "minimax-h3-i2v",
+      "description": "Animate a still image into a cinematic 10-second clip with MiniMax H3 Image-to-Video.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "start_image",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "motion",
+          "type": "text",
+          "required": false,
+          "default": "the camera slowly pushes in as wind ripples through the scene"
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "minimax-h3-image-to-video",
+          "endpoint": "minimax-h3-image-to-video",
+          "aspectRatio": "16:9",
+          "resolution": "1080p",
+          "duration": 10,
+          "prompt": "{{motion}}. Cinematic, smooth motion, coherent subject, high detail.",
+          "references": [
+            "{{start_image}}"
+          ]
+        }
+      ],
+      "triggers": [
+        "minimax h3",
+        "minimax image to video",
+        "h3 i2v"
+      ],
+      "promptFormula": "image + motion"
+    },
+    {
+      "slug": "wan-3-t2v",
+      "name": "wan-3-t2v",
+      "description": "Generate a native-audio video clip from a text prompt with Wan 3.0 Text-to-Video.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "scene",
+          "type": "text",
+          "required": true,
+          "default": "a drone flying over a misty fjord at sunrise"
+        },
+        {
+          "name": "audio_note",
+          "type": "text",
+          "required": false,
+          "default": "ambient wind and distant bird calls"
+        }
+      ],
+      "steps": [
+        {
+          "type": "t2v",
+          "model": "wan-3.0-t2v",
+          "endpoint": "wan-3.0-t2v",
+          "aspectRatio": "16:9",
+          "resolution": "1080p",
+          "duration": 10,
+          "audio": true,
+          "prompt": "{{scene}}. {{audio_note}}. Cinematic, smooth, high fidelity.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "wan 3",
+        "wan t2v",
+        "wan text to video"
+      ],
+      "promptFormula": "scene + audio"
+    },
+    {
+      "slug": "flux-3-t2v",
+      "name": "flux-3-t2v",
+      "description": "Generate a native-audio video clip from a text prompt with FLUX 3 Text-to-Video.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "scene",
+          "type": "text",
+          "required": true,
+          "default": "a futuristic city skyline pulsing with holographic ads"
+        },
+        {
+          "name": "audio_note",
+          "type": "text",
+          "required": false,
+          "default": "soft synth hum and city ambience"
+        }
+      ],
+      "steps": [
+        {
+          "type": "t2v",
+          "model": "flux-3-text-to-video",
+          "endpoint": "flux-3-text-to-video",
+          "aspectRatio": "16:9",
+          "resolution": "1080p",
+          "duration": 10,
+          "audio": true,
+          "prompt": "{{scene}}. {{audio_note}}. Cinematic, coherent, ultra-detailed.",
+          "references": []
+        }
+      ],
+      "triggers": [
+        "flux 3 video",
+        "flux t2v",
+        "flux text to video"
+      ],
+      "promptFormula": "scene + audio"
+    },
+    {
+      "slug": "seedance-omni-reference",
+      "name": "seedance-omni-reference",
+      "description": "Drive a native-audio video from a text prompt while keeping a referenced character sheet consistent with Seedance 2.5 Pro Omni Reference.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "character_ref",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "action",
+          "type": "text",
+          "required": false,
+          "default": "the character walks through a bustling market, turning to smile at the camera"
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "seedance-2.5-pro-omni-reference",
+          "endpoint": "seedance-2.5-pro-omni-reference",
+          "aspectRatio": "16:9",
+          "resolution": "1080p",
+          "duration": 10,
+          "audio": true,
+          "prompt": "{{action}}. Keep the referenced character sheet exactly consistent. Cinematic, smooth, high detail.",
+          "references": [
+            {
+              "role": "character_sheet",
+              "url": "{{character_ref}}"
+            }
+          ]
+        }
+      ],
+      "triggers": [
+        "seedance omni",
+        "seedance reference",
+        "character consistent video"
+      ],
+      "promptFormula": "character sheet + action"
+    },
+    {
+      "slug": "seedance-first-last-frame-cinematic",
+      "name": "seedance-first-last-frame-cinematic",
+      "description": "Generate a native-audio cinematic clip that begins on a first frame and ends exactly on a last frame with Seedance 2.5 Pro First-Last-Frame.",
+      "category": "motion",
+      "studio": "video",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "start_img",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "end_img",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "motion",
+          "type": "text",
+          "required": false,
+          "default": "a slow dolly through the environment transitioning between the two keyframes"
+        }
+      ],
+      "steps": [
+        {
+          "type": "i2v",
+          "model": "seedance-2.5-pro-first-last-frame",
+          "endpoint": "seedance-2.5-pro-first-last-frame",
+          "aspectRatio": "16:9",
+          "resolution": "1080p",
+          "duration": 10,
+          "audio": true,
+          "prompt": "{{motion}}. Cinematic, coherent, smooth transition between keyframes.",
+          "references": [
+            {
+              "role": "first_frame",
+              "url": "{{start_img}}"
+            },
+            {
+              "role": "last_frame",
+              "url": "{{end_img}}"
+            }
+          ]
+        }
+      ],
+      "triggers": [
+        "first last frame",
+        "keyframe video",
+        "seedance first last"
+      ],
+      "promptFormula": "first frame + last frame + motion"
+    },
+    {
+      "slug": "ai-influencer-character-consistency",
+      "name": "ai-influencer-character-consistency",
+      "description": "Build a consistent AI influencer: first create a character from a reference sheet, then animate that character in a native-audio video while preserving identity.",
+      "category": "motion",
+      "studio": "ai-influencer",
+      "kind": "recipe",
+      "inputs": [
+        {
+          "name": "character_ref",
+          "type": "image_url",
+          "required": true,
+          "default": ""
+        },
+        {
+          "name": "scene",
+          "type": "text",
+          "required": false,
+          "default": "the influencer waves to the camera and introduces their channel with a bright smile"
+        }
+      ],
+      "steps": [
+        {
+          "type": "character",
+          "model": "seedance-2.5-pro-create_character",
+          "endpoint": "seedance-2.5-pro-create_character",
+          "aspectRatio": "16:9",
+          "prompt": "Create a consistent character from the reference sheet, preserving face, hair, outfit, and style.",
+          "references": [
+            {
+              "role": "character_sheet",
+              "url": "{{character_ref}}"
+            }
+          ]
+        },
+        {
+          "type": "i2v",
+          "model": "seedance-2.5-pro-omni-reference",
+          "endpoint": "seedance-2.5-pro-omni-reference",
+          "aspectRatio": "16:9",
+          "resolution": "1080p",
+          "duration": 10,
+          "audio": true,
+          "prompt": "{{scene}}. Keep the character from the previous step exactly consistent. Cinematic, smooth, high detail.",
+          "references": [
+            {
+              "role": "character_sheet",
+              "url": "{{phase0.output}}"
+            }
+          ]
+        }
+      ],
+      "triggers": [
+        "ai influencer",
+        "character consistency",
+        "consistent influencer",
+        "virtual influencer"
+      ],
+      "promptFormula": "character sheet + scene"
+    }
+  ],
+  "prompts": {
+    "visual": [
+      {
+        "title": "FLUX 3 Product Hero",
+        "prompt": "A floating {{product}} on a reflective obsidian pedestal, rim-lit with cool studio light, shallow depth of field, ultra-detailed, 8k product photography.",
+        "model": "flux-3-dev",
+        "params": { "resolution": "4k", "aspect_ratio": "1:1" }
+      },
+      {
+        "title": "FLUX 3 Cinematic Portrait",
+        "prompt": "Close-up portrait of {{subject}}, dramatic side lighting, film grain, anamorphic bokeh, moody color grade, photorealistic skin.",
+        "model": "flux-3-dev",
+        "params": { "resolution": "4k", "aspect_ratio": "9:16" }
+      },
+      {
+        "title": "Grok Imagine Concept Art",
+        "prompt": "Epic concept art of {{subject}}, sweeping environment, intricate detail, volumetric light, painterly fantasy style.",
+        "model": "grok-imagine-image-2",
+        "params": { "resolution": "2k", "aspect_ratio": "16:9" }
+      },
+      {
+        "title": "FLUX 3 Image Edit",
+        "prompt": "Restyle the input image into {{style}}, keep the subject and composition, upgrade lighting and detail.",
+        "model": "flux-3-image-to-image",
+        "params": { "resolution": "4k", "aspect_ratio": "16:9" }
+      }
+    ],
+    "motion": [
+      {
+        "title": "MiniMax H3 6-Part Formula",
+        "prompt": "Subject: {{subject}}. Action: {{action}}. Camera: {{camera}}. Light: {{light}}. Sound: {{sound}}. Atmosphere: {{atmosphere}}.",
+        "model": "minimax-h3-image-to-video",
+        "params": { "resolution": "1080p", "duration": 10, "aspect_ratio": "16:9" }
+      },
+      {
+        "title": "Seedance 6-Step Formula",
+        "prompt": "Shot: {{shot}}. Subject: {{subject}}. Motion: {{motion}}. Camera: {{camera}}. Style: {{style}}. Audio: {{audio}}.",
+        "model": "seedance-2.5-pro-omni-reference",
+        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "16:9" }
+      },
+      {
+        "title": "FLUX 3 Native-Audio T2V",
+        "prompt": "{{scene}}. Native synchronized ambient audio, cinematic, coherent, ultra-detailed.",
+        "model": "flux-3-text-to-video",
+        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "16:9" }
+      },
+      {
+        "title": "Wan 3.0 Native-Audio T2V",
+        "prompt": "{{scene}}. Native synchronized audio, smooth motion, high fidelity.",
+        "model": "wan-3.0-t2v",
+        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "16:9" }
+      }
+    ],
+    "social": [
+      {
+        "title": "Influencer Intro Reel",
+        "prompt": "A virtual influencer waves to the camera and delivers a cheerful channel intro, bright studio background, energetic.",
+        "model": "seedance-2.5-pro-omni-reference",
+        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "9:16" }
+      },
+      {
+        "title": "Product Ad Short",
+        "prompt": "A sleek product reveal with spinning hero shot and pulsing neon accents, upbeat music.",
+        "model": "flux-3-text-to-video",
+        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "9:16" }
+      },
+      {
+        "title": "Keyframe Story Reel",
+        "prompt": "A cinematic transition that opens on a first frame and resolves on a last frame, smooth and emotional.",
+        "model": "seedance-2.5-pro-first-last-frame",
+        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "9:16" }
+      }
+    ],
+    "edit": [
+      {
+        "title": "Seedance Video Edit",
+        "prompt": "Restyle the input video into {{style}}, preserve motion and subjects, upgrade detail and color.",
+        "model": "seedance-2.5-pro-video-edit",
+        "params": { "resolution": "1080p", "duration": 10, "aspect_ratio": "16:9" }
+      },
+      {
+        "title": "Seedance Video Extend",
+        "prompt": "Continue the input video naturally, matching style and motion, adding {{extra_scene}}.",
+        "model": "seedance-2.5-pro-video-extend",
+        "params": { "resolution": "1080p", "duration": 10, "aspect_ratio": "16:9" }
+      },
+      {
+        "title": "FLUX 3 Image Restyle",
+        "prompt": "Edit the input image to {{style}}, maintain subject and composition.",
+        "model": "flux-3-image-to-image",
+        "params": { "resolution": "1080p", "aspect_ratio": "1:1" }
+      }
+    ],
+    "workflow": [
+      {
+        "title": "AI Influencer Pipeline",
+        "prompt": "Create a consistent character from the reference sheet, then animate the character while preserving identity.",
+        "model": "seedance-2.5-pro-create_character",
+        "params": { "aspect_ratio": "16:9" }
+      },
+      {
+        "title": "First-Last Keyframe Pipeline",
+        "prompt": "Generate a native-audio clip constrained to a first and last keyframe for precise shot control.",
+        "model": "seedance-2.5-pro-first-last-frame",
+        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "16:9" }
+      },
+      {
+        "title": "Omni-Reference Consistency Pipeline",
+        "prompt": "Drive a video while referencing up to 20 images to lock character and style consistency.",
+        "model": "seedance-2.5-pro-omni-reference",
+        "params": { "resolution": "1080p", "duration": 10, "audio": true, "aspect_ratio": "16:9" }
+      }
+    ]
+  }
+}

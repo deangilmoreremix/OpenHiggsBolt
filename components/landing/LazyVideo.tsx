@@ -44,14 +44,6 @@ export type LazyVideoProps = {
   toggleOnClick?: boolean;
 };
 
-/**
- * A performance-conscious <video> that:
- *  - never loads the file until it nears the viewport (poster first),
- *  - plays muted/inline only when visible + not reduced-motion,
- *  - pauses when scrolled away,
- *  - respects a global cap on simultaneously playing videos,
- *  - falls back to the poster under prefers-reduced-motion.
- */
 export default function LazyVideo({
   src,
   poster,
@@ -68,6 +60,7 @@ export default function LazyVideo({
   const ref = useRef<HTMLVideoElement>(null);
   const stopRef = useRef<() => void>(() => {});
   const activeRef = useRef(false);
+  const [errored, setErrored] = useState(false);
   const reduced = useReducedMotion();
   const [inView, setInView] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -76,6 +69,24 @@ export default function LazyVideo({
   stopRef.current = () => {
     ref.current?.pause();
   };
+
+  // Mark the video as errored when the source fails to load (e.g. 404).
+  // The browser will continue showing the poster attribute; we just stop
+  // trying to replay a missing file and release the global playback slot.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onError = () => {
+      setErrored(true);
+      if (activeRef.current) {
+        releasePlay(stopRef.current);
+        activeRef.current = false;
+      }
+      el.pause();
+    };
+    el.addEventListener('error', onError);
+    return () => el.removeEventListener('error', onError);
+  }, []);
 
   // Reveal (attach observer) when near viewport.
   useEffect(() => {
@@ -92,7 +103,7 @@ export default function LazyVideo({
     return () => io.disconnect();
   }, []);
 
-  const shouldPlay = !reduced && (pinned || (inView && autoPlayInView) || (hovered && hoverPlay));
+  const shouldPlay = !reduced && !errored && (pinned || (inView && autoPlayInView) || (hovered && hoverPlay));
 
   useEffect(() => {
     const el = ref.current;
@@ -139,6 +150,16 @@ export default function LazyVideo({
         tabIndex={-1}
         className={`h-full w-full ${objectFit === 'contain' ? 'object-contain' : 'object-cover'} ${videoClassName}`}
       />
+      {errored && (
+        <div
+          className="pointer-events-none absolute inset-0 flex items-center justify-center"
+          aria-hidden="true"
+        >
+          <div className="rounded-full bg-black/60 px-3 py-1 text-xs font-medium text-white/70">
+            Preview unavailable
+          </div>
+        </div>
+      )}
     </div>
   );
 }
