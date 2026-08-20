@@ -20,6 +20,10 @@ import {
   getDefaultEffectForI2IModel,
   getI2IModelById,
 } from "../models.js";
+import registry from "../skills/registry.json";
+import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
+import { fillTemplate } from "../lib/promptRecipes";
+import { useRouter } from "next/navigation";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -820,6 +824,7 @@ export default function ImageStudio({
   onFilesHandled,
 }) {
   const PERSIST_KEY = "hg_image_studio_persistent";
+  const router = useRouter();
 
   // ── Model / mode state ──────────────────────────────────────────────────
   const [imageMode, setImageMode] = useState(false); // false=t2i, true=i2i
@@ -909,6 +914,17 @@ export default function ImageStudio({
       handleTextareaInput();
     }, 150);
     return () => clearTimeout(timer);
+  }, []);
+
+  // ── Apply pending Skills recipe (set by SkillsBrowser) ────────────────────
+  useEffect(() => {
+    const pending = getPendingRecipe("image");
+    if (!pending) return;
+    const skill = registry.skills.find((s) => s.slug === pending);
+    clearPendingRecipe("image");
+    if (!skill) return;
+    applyRecipe(skill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Persistence: Save ────────────────────────────────────────────────────
@@ -1109,3 +1125,731 @@ export default function ImageStudio({
     setMaxImages(1);
   };
 
+  // ── Apply a skill recipe to the form ─────────────────────────────────────
+  function applyRecipe(skill) {
+    const step0 = skill.steps && skill.steps[0];
+    if (!step0) {
+      if (skill.description) setPrompt(skill.description);
+      return;
+    }
+    const modelId = step0.endpoint || step0.model;
+    const allModels = [...t2iModels, ...i2iModels];
+    const model = allModels.find((m) => m.id === modelId);
+    const wantsI2I =
+      i2iModels.some((m) => m.id === modelId) ||
+      step0.type === "i2v" ||
+      step0.type === "edit" ||
+      (step0.references && step0.references.length > 0);
+    if (model) {
+      setImageMode(!!wantsI2I);
+      setSelectedModelId(model.id);
+      setSelectedModelName(model.name);
+    }
+    if (step0.aspectRatio) setSelectedAr(step0.aspectRatio);
+    const vals = {};
+    (skill.inputs || []).forEach((i) => {
+      vals[i.name] = "";
+    });
+    setPrompt(fillTemplate(step0.prompt || skill.description || "", vals));
+
+    const flags = step0.flags || {};
+    if (step0.rate !== undefined) { /* noop */ }
+
+    // Resolution: prefer mapping onto the quality enum, else a custom field.
+    if (step0.resolution) {
+      const resList = imageMode
+        ? getResolutionsForI2IModel(selectedModelId)
+        : getResolutionsForModel(selectedModelId);
+      if (resList.includes(step0.resolution)) {
+        setSelectedQuality(step0.resolution);
+      } else {
+        setSelectedResolution(step0.resolution);
+      }
+    }
+
+    // Grok edit mode → surface request_id / mask inputs.
+    if (flags.grokEdit) setGrokEditMode(true);
+
+    // Dev mode → flux-3-dev model.
+    if (flags.devMode) {
+      const dev = allModels.find((m) => m.id === "flux-3-dev");
+      if (dev) {
+        setImageMode(false);
+        setSelectedModelId(dev.id);
+        setSelectedModelName(dev.name);
+        const ars = getAspectRatiosForModel(dev.id);
+        const res = getResolutionsForModel(dev.id);
+        setSelectedAr(ars[0] || "1:1");
+        setSelectedQuality(res[0] || null);
+      }
+    }
+
+    // References (string refs or {url, role} objects).
+    const refs = step0.references || [];
+    const imageRefs = [];
+    refs.forEach((ref) => {
+      const url = typeof ref === "string" ? ref : ref.url;
+      const role = typeof ref === "string" ? null : ref.role || null;
+      if (!url) return;
+      if (role === "character_sheet") {
+        setCharacterSheet("image", url);
+        setCharacterSheetUrl(url);
+        return;
+      }
+      imageRefs.push(url);
+    });
+    if (imageRefs.length > 0) {
+      setImageMode(true);
+      setUploadedImageUrls(imageRefs);
+    }
+  }
+
+  // ── Generation ───────────────────────────────────────────────────────────
+  const handleGenerate = async () => {
+    if (generating) return;
+
+    if (imageMode) {
+      if (uploadedImageUrls.length === 0) {
+        alert("Please upload a reference image first.");
+        return;
+      }
+      const modelInfo = getI2IModelById(selectedModelId);
+      if (modelInfo?.swapField && !swapImageUrl) {
+        alert("Please upload a swap face image.");
+        return;
+      }
+    } else {
+      if (!prompt.trim()) {
+        alert("Please enter a prompt to generate an image.");
+        return;
+      }
+    }
+
+    setGenerating(true);
+    setGenerateError(null);
+
+    try {
+      const results = await Promise.all(
+        Array.from({ length: batchSize }).map(async () => {
+          if (grokEditMode) {
+            const genParams = {
+              request_id: grokRequestId,
+              mask: grokMask || undefined,
+              prompt: prompt.trim(),
+              aspect_ratio: selectedAr,
+            };
+            if (selectedResolution) genParams.resolution = selectedResolution;
+            return await generateImageEditGrok(apiKey, genParams);
+          }
+          if (imageMode) {
+            const genParams = {
+              model: selectedModelId,
+              images_list: uploadedImageUrls,
+              image_url: uploadedImageUrls[0],
+              aspect_ratio: selectedAr,
+            };
+            if (swapImageUrl) genParams.swap_url = swapImageUrl;
+            if (prompt.trim()) genParams.prompt = prompt.trim();
+            if (currentQualityField && selectedQuality) {
+              genParams[currentQualityField] = selectedQuality;
+            }
+            if (selectedResolution) genParams.resolution = selectedResolution;
+            if (showEffectBtn && selectedEffect) genParams.name = selectedEffect;
+            return await generateI2I(apiKey, genParams);
+          } else {
+            const genParams = {
+              model: selectedModelId,
+              prompt: prompt.trim(),
+              aspect_ratio: selectedAr,
+            };
+            if (currentQualityField && selectedQuality) {
+              genParams[currentQualityField] = selectedQuality;
+            }
+            if (selectedResolution) genParams.resolution = selectedResolution;
+            return await generateImage(apiKey, genParams);
+          }
+        })
+      );
+
+      results.forEach((res) => {
+        if (res && res.url) {
+          const entry = {
+            id: res.id || Math.random().toString(36).substring(7),
+            url: res.url,
+            prompt: prompt.trim(),
+            model: selectedModelId,
+            aspect_ratio: selectedAr,
+            timestamp: new Date().toISOString(),
+          };
+          addToHistory(entry);
+          onGenerationComplete?.({
+            url: res.url,
+            model: selectedModelId,
+            prompt: prompt.trim(),
+            type: "image",
+          });
+        }
+      });
+    } catch (e) {
+      console.error("[ImageStudio] Generation failed:", e);
+      setGenerateError(e.message.slice(0, 80));
+      setTimeout(() => setGenerateError(null), 4000);
+      onGenerationError?.(e.message?.slice(0, 120) || "Image generation failed");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const placeholderText =
+    uploadedImageUrls.length > 1
+      ? `${uploadedImageUrls.length} images selected — describe the transformation (optional)`
+      : imageMode
+        ? "Describe how to transform this image (optional)"
+        : "Describe the image you want to create";
+
+  // ── Render ───────────────────────────────────────────────────────────────
+  return (
+    <div className="w-full h-full flex flex-col items-center justify-center bg-app-bg relative p-4 md:p-6 overflow-hidden">
+      
+      {/* ── CENTRAL GALLERY AREA ── */}
+      <div className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto custom-scrollbar pb-40 lg:pb-32 px-2">
+        {history.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full pt-4 animate-fade-in-up">
+            {history.map((entry, idx) => (
+              <div
+                key={entry.id || idx}
+                className="relative group rounded-lg overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-xl hover:border-primary/50 transition-all duration-300 flex flex-col"
+              >
+                <img
+                  src={entry.url}
+                  alt={entry.prompt?.substring(0, 30) || "Generated image"}
+                  className="w-full aspect-square object-cover bg-black/40 cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => setFullscreenUrl(entry.url)}
+                />
+                
+                {/* Overlay actions */}
+                <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    type="button"
+                    title="Fullscreen"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFullscreenUrl(entry.url);
+                    }}
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polyline points="15 3 21 3 21 9" />
+                      <polyline points="9 21 3 21 3 15" />
+                      <line x1="21" y1="3" x2="14" y2="10" />
+                      <line x1="3" y1="21" x2="10" y2="14" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    title="Download"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      downloadImage(entry.url, `muapi-${entry.id || idx}.jpg`);
+                    }}
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                    </svg>
+                  </button>
+                  <PublishStep
+                    mediaUrl={entry.url}
+                    mediaType="image"
+                    title={entry.prompt?.substring(0, 50) || 'Generated image'}
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center"
+                  />
+                  <AssistStep
+                    assetUrl={entry.url}
+                    assetType="image"
+                    onApply={() => {}}
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
+                    </svg>
+                  </AssistStep>
+                  <button
+                    type="button"
+                    title="Delete"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm("Are you sure you want to delete this generated item?")) {
+                        setLocalHistory(prev => prev.filter((_, i) => i !== idx));
+                      }
+                    }}
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-red-400 hover:bg-red-500 hover:text-white transition-all border border-white/10"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      <line x1="10" y1="11" x2="10" y2="17" />
+                      <line x1="14" y1="11" x2="14" y2="17" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Prompt & Details */}
+                <div className="p-3 bg-black/80 backdrop-blur-sm border-t border-white/5 flex-1 flex flex-col justify-between gap-2">
+                  <p className="text-white/70 text-xs line-clamp-3 leading-relaxed" title={entry.prompt}>
+                    {entry.prompt || "No prompt provided"}
+                  </p>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded border border-primary/20">
+                      {entry.model?.replace("-", " ")}
+                    </span>
+                    <span className="text-[10px] text-white/40">{entry.aspect_ratio}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full animate-fade-in-up transition-all duration-700 min-h-[50vh]">
+            {/* Overlapping floating cards */}
+            <div className="flex items-center justify-center gap-1.5 md:gap-3 mb-10 select-none scale-90 sm:scale-100">
+              <div className="w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl -rotate-[12deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] flex-shrink-0">
+                <img
+                  src="https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/sdxl-image.avif"
+                  alt="Creative asset 1"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl -rotate-[4deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0">
+                <img
+                  src="https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/chroma-image.avif"
+                  alt="Creative asset 2"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="w-18 h-18 sm:w-24 sm:h-24 rounded-full border border-white/10 shadow-2xl rotate-[6deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0">
+                <img
+                  src="https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/neta-lumina.avif"
+                  alt="Creative asset 3"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl rotate-[12deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0">
+                <img
+                  src="https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/perfect-pony-xl.avif"
+                  alt="Creative asset 4"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+
+            <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-center px-4 flex flex-col items-center">
+              <span className="text-white font-black uppercase text-xl sm:text-3xl tracking-wide mb-1 opacity-90">START CREATING WITH</span>
+              <span className="text-[#22d3ee] font-black uppercase text-2xl sm:text-4xl sm:mt-1 tracking-tight">
+                {selectedModelName}
+              </span>
+            </h1>
+            <p className="text-white/40 text-xs sm:text-sm font-medium tracking-wide text-center max-w-lg leading-relaxed px-4">
+              Describe a scene, character, mood, or style — and watch it come to life
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* ── BOTTOM PROMPT BAR ── */}
+      <div 
+        className="absolute bottom-4 w-full max-w-[95%] lg:max-w-4xl z-40 animate-fade-in-up" 
+        style={{ animationDelay: "0.2s" }}
+      >
+        <div className="w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]">
+          {/* Top row: upload picker + textarea */}
+          <div className="flex flex-col gap-3">
+            {/* Inline list of uploaded files */}
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {uploadedImageUrls && uploadedImageUrls.length > 0 && uploadedImageUrls.map((url, idx) => (
+                <div key={idx} className="relative w-12 h-12 rounded-xl border border-white/10 overflow-hidden shadow-md group">
+                  <img src={url} alt="" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = uploadedImageUrls.filter((_, i) => i !== idx);
+                      setUploadedImageUrls(next);
+                      if (next.length === 0) handleUploadClear();
+                    }}
+                    className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 hover:bg-black rounded-full flex items-center justify-center text-white/85 hover:text-white text-[8px] border border-white/5"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              
+              {/* Main Upload Trigger */}
+              {uploadedImageUrls.length < maxImages && (
+                <UploadButton
+                  apiKey={apiKey}
+                  maxImages={maxImages}
+                  onSelect={handleUploadSelect}
+                  onClear={handleUploadClear}
+                  initialUrls={uploadedImageUrls}
+                />
+              )}
+
+              {/* Swap Image Upload Trigger */}
+              {imageMode && getI2IModelById(selectedModelId)?.swapField && (
+                <UploadButton
+                  apiKey={apiKey}
+                  maxImages={1}
+                  onSelect={({ urls }) => setSwapImageUrl(urls[0] || null)}
+                  onClear={() => setSwapImageUrl(null)}
+                  initialUrls={swapImageUrl ? [swapImageUrl] : []}
+                  label="Swap Face"
+                />
+              )}
+            </div>
+
+            {/* Input prompt text area */}
+            <textarea
+              ref={textareaRef}
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onInput={handleTextareaInput}
+              placeholder={placeholderText}
+              rows={1}
+              className="w-full bg-transparent border-none text-white text-sm placeholder:text-white/20 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar"
+            />
+
+            {/* Grok edit inputs (recipe-driven) */}
+            {grokEditMode && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <input
+                  type="text"
+                  value={grokRequestId}
+                  onChange={(e) => setGrokRequestId(e.target.value)}
+                  placeholder="request_id"
+                  className="h-[34px] w-44 bg-black/40 border border-white/10 rounded-md px-3 text-xs text-white/80 placeholder:text-white/30 focus:outline-none focus:border-[#22d3ee]/40"
+                />
+                <input
+                  type="text"
+                  value={grokMask}
+                  onChange={(e) => setGrokMask(e.target.value)}
+                  placeholder="mask URL (optional)"
+                  className="h-[34px] flex-1 min-w-[160px] bg-black/40 border border-white/10 rounded-md px-3 text-xs text-white/80 placeholder:text-white/30 focus:outline-none focus:border-[#22d3ee]/40"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Bottom row: controls + generate */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-3 border-t border-white/[0.03] relative">
+            {/* Left controls */}
+            <div className="flex items-center gap-2 relative flex-wrap pb-1 md:pb-0">
+              {/* Model button */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDropdownOpen((o) => (o === "model" ? null : "model"));
+                  }}
+                  className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+                >
+                  <div className="w-4 h-4 rounded overflow-hidden shrink-0 flex items-center justify-center bg-white/5">
+                    {(() => {
+                      const selectedModelObj = currentModels.find(m => m.id === selectedModelId);
+                      const selectedModelProvider = selectedModelObj?.provider || 'muapi';
+                      return PROVIDER_LOGOS[selectedModelProvider] ? (
+                        <img 
+                          src={PROVIDER_LOGOS[selectedModelProvider]} 
+                          alt="" 
+                          className={`w-full h-full object-contain ${invertLogos.includes(selectedModelProvider) ? "invert" : ""}`} 
+                        />
+                      ) : (
+                        <span className="text-[9px] font-bold text-black uppercase">G</span>
+                      );
+                    })()}
+                  </div>
+                  <span className="text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors">
+                    {selectedModelName}
+                  </span>
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    className="opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                  >
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+
+                {dropdownOpen === "model" && (
+                  <div
+                    ref={dropdownRef}
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl w-[calc(100vw-2rem)] md:w-[480px] max-w-md md:max-w-none"
+                  >
+                    <ModelDropdown
+                      models={currentModels}
+                      selectedModel={selectedModelId}
+                      onSelect={handleModelSelect}
+                      onClose={() => setDropdownOpen(null)}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Aspect ratio button */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDropdownOpen((o) => (o === "ar" ? null : "ar"));
+                  }}
+                  className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-40 text-white">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  </svg>
+                  <span className="text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors">
+                    {selectedAr}
+                  </span>
+                </button>
+
+                {dropdownOpen === "ar" && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 max-h-[40vh] overflow-y-auto custom-scrollbar shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[160px]"
+                  >
+                    <SimpleDropdown
+                      title="Aspect Ratio"
+                      options={currentAspectRatios}
+                      selected={selectedAr}
+                      onSelect={(val) => setSelectedAr(val)}
+                      onClose={() => setDropdownOpen(null)}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Quality/resolution button (represented as Diamond icon) */}
+              {showQualityBtn && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDropdownOpen((o) => (o === "quality" ? null : "quality"));
+                    }}
+                    className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="opacity-40 text-white">
+                      <polygon points="12 2 22 12 12 22 2 12" />
+                    </svg>
+                    <span className="text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors">
+                      {selectedQuality || currentResolutions[0]}
+                    </span>
+                  </button>
+
+                  {dropdownOpen === "quality" && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 max-h-[40vh] overflow-y-auto custom-scrollbar shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[160px]"
+                    >
+                      <SimpleDropdown
+                        title="Resolution"
+                        options={currentResolutions}
+                        selected={selectedQuality}
+                        onSelect={(val) => setSelectedQuality(val)}
+                        onClose={() => setDropdownOpen(null)}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Custom resolution select (recipe-driven) */}
+              {selectedResolution && (
+                <div className="relative">
+                  <select
+                    value={selectedResolution}
+                    onChange={(e) => setSelectedResolution(e.target.value)}
+                    className="h-[34px] flex items-center px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] text-[11px] font-semibold text-white/70 hover:text-[#22d3ee] shadow-inner"
+                  >
+                    <option value={selectedResolution}>{selectedResolution}</option>
+                    {currentResolutions.filter((r) => r !== selectedResolution).map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Grok edit toggle */}
+              {grokEditMode && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDropdownOpen((o) => (o === "grok" ? null : "grok"));
+                  }}
+                  className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-white/10 rounded-md transition-all border border-[#22d3ee]/40 group whitespace-nowrap shadow-inner"
+                >
+                  <span className="text-[11px] font-semibold text-[#22d3ee]/80">Grok Edit</span>
+                </button>
+              )}
+
+              {/* Effect type button */}
+              {showEffectBtn && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDropdownOpen((o) => (o === "effect" ? null : "effect"));
+                    }}
+                    className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-40 text-white">
+                      <path d="M5 3l14 9-14 9V3z" />
+                    </svg>
+                    <span className="text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors max-w-[140px] truncate">
+                      {selectedEffect || "Effect"}
+                    </span>
+                  </button>
+
+                  {dropdownOpen === "effect" && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 max-h-[40vh] overflow-y-auto custom-scrollbar shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[200px]"
+                    >
+                      <SimpleDropdown
+                        title="Effect Type"
+                        options={currentEffects}
+                        selected={selectedEffect}
+                        onSelect={(val) => setSelectedEffect(val)}
+                        onClose={() => setDropdownOpen(null)}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Batch size stepper */}
+              <div className="h-[34px] flex items-center gap-2 bg-[#16161a]/60 rounded-md px-2.5 border border-white/[0.06] shadow-inner select-none">
+                <button
+                  type="button"
+                  onClick={() => setBatchSize(prev => Math.max(1, prev - 1))}
+                  className="text-white/40 hover:text-white/80 font-extrabold text-xs transition-colors px-1"
+                >
+                  -
+                </button>
+                <span className="text-[11px] font-black text-white/70 min-w-[24px] text-center">
+                  {batchSize}/4
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setBatchSize(prev => Math.min(4, prev + 1))}
+                  className="text-white/40 hover:text-white/80 font-extrabold text-xs transition-colors px-1"
+                >
+                  +
+                </button>
+              </div>
+
+              {/* Draw button */}
+              <button
+                type="button"
+                className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+                onClick={() => setIsDrawModalOpen(true)}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="opacity-40 text-white group-hover:text-[#22d3ee] transition-colors">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+                <span className="text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors">
+                  Draw
+                </span>
+              </button>
+
+              {/* Recipes button → Skills hub */}
+              <button
+                type="button"
+                className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-[#22d3ee]/40 group whitespace-nowrap shadow-inner"
+                onClick={() => router.push("/studio/skills")}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-60 text-[#22d3ee] group-hover:text-[#22d3ee] transition-colors">
+                  <path d="M4 4h6v6H4z" />
+                  <path d="M14 4h6v6h-6z" />
+                  <path d="M4 14h6v6H4z" />
+                  <path d="M14 14h6v6h-6z" />
+                </svg>
+                <span className="text-[11px] font-semibold text-[#22d3ee]/80 group-hover:text-[#22d3ee] transition-colors">
+                  Recipes
+                </span>
+              </button>
+            </div>
+
+            {/* Generate button */}
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={generating}
+              className="bg-[#22d3ee] text-black px-7 py-3 rounded-full font-bold text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10"
+            >
+              {generating ? (
+                <>
+                  <span className="animate-spin inline-block text-black">◌</span>
+                  Generating...
+                </>
+              ) : generateError ? (
+                `Error: ${generateError}`
+              ) : (
+                <>
+                  <span>Generate ✦ {batchSize}</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── FULLSCREEN IMAGE MODAL ── */}
+      {fullscreenUrl && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm animate-fade-in"
+          onClick={() => setFullscreenUrl(null)}
+        >
+          <button
+            type="button"
+            className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors border border-white/10"
+            onClick={(e) => {
+              e.stopPropagation();
+              setFullscreenUrl(null);
+            }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+          <img 
+            src={fullscreenUrl} 
+            alt="Fullscreen Preview" 
+            className="max-w-[95vw] max-h-[95vh] rounded-2xl shadow-2xl object-contain animate-scale-up" 
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+
+      {/* ── DRAW CANVAS MODAL ── */}
+      <DrawModal
+        isOpen={isDrawModalOpen}
+        onClose={() => setIsDrawModalOpen(false)}
+        apiKey={apiKey}
+        batchSize={1}
+        onAddHistoryItem={addToHistory}
+      />
+    </div>
+  );
+}

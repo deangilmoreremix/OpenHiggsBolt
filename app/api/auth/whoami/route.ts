@@ -4,6 +4,7 @@ import {
   getCurrentWorkspace,
   ensureUserAndWorkspace,
 } from '../../../../src/lib/tenantSync';
+import { Workspace } from '../../../../src/lib/tenantSync';
 import { apiError } from '@/lib/apiError';
 
 export async function GET() {
@@ -21,7 +22,7 @@ export async function GET() {
     // but with no workspace — features break and it looks like they are "signed
     // in when they are not". Provisioning here makes the studio robust
     // regardless of webhook health.
-    let workspace = null;
+    let workspace: Workspace | null = null;
     try {
       const result = await ensureUserAndWorkspace();
       workspace = result.workspace;
