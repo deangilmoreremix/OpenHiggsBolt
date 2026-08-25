@@ -21,7 +21,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   Search, Copy, ExternalLink, User, Heart,
   Grid, List, ChevronRight,
-  Image as ImageIcon, Video, Calendar, BookOpen
+  Image as ImageIcon, Video, Calendar, BookOpen,
+  Repeat2, MessageCircle, Flame
 } from 'lucide-react'
 import { buttons, semantic, tabStyle, optionStyle, appWrapper, iconBadge } from '@/shared/styles/designTokens'
 import type { PromptRecord, FeedStats } from '@/types/go-ai-viral/prompt'
@@ -148,9 +149,34 @@ function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
 
         {/* Engagement overlay */}
         {record.source?.engagement && (
-          <div className="absolute top-2 right-2 flex gap-1 rounded-full bg-black/50 px-1.5 py-0.5 text-xs font-medium">
-            <Heart size={10} className="fill-white/30 text-white" />
-            <span>{formatNumber(record.source.engagement.likes)}</span>
+          <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+            <div className="flex gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+              <Heart size={10} className="fill-white/30 text-white" />
+              <span>{formatNumber(record.source.engagement.likes)}</span>
+            </div>
+            {(record.source.engagement.reposts || 0) > 0 && (
+              <div className="flex gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                <Repeat2 size={10} className="text-white" />
+                <span>{formatNumber(record.source.engagement.reposts)}</span>
+              </div>
+            )}
+            {(record.source.engagement.replies || 0) > 0 && (
+              <div className="flex gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                <MessageCircle size={10} className="text-white" />
+                <span>{formatNumber(record.source.engagement.replies)}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Viral badge */}
+        {record.source?.engagement?.likes && record.source.engagement.likes >= 50 && (
+          <div
+            className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+            style={{ background: 'rgba(239,68,68,0.2)', color: '#fca5a5' }}
+          >
+            <Flame size={10} className="text-red-400" />
+            Viral
           </div>
         )}
       </div>
@@ -906,11 +932,37 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
                           Prompt: {record.prompt.slice(0, 80)}
                           {record.prompt.length > 80 && '...'}
                         </p>
-                        <div className="mt-1 flex items-center gap-3 text-xs" style={{ color: semantic.textMuted }}>
-                          <span>@{record.source?.author?.handle}</span>
-                          <span>•</span>
-                          <span>{formatDate(record.source?.publishedAt)}</span>
-                        </div>
+                         <div className="mt-1 flex items-center gap-3 text-xs" style={{ color: semantic.textMuted }}>
+                           <span>@{record.source?.author?.handle}</span>
+                           <span>•</span>
+                           <span>{formatDate(record.source?.publishedAt)}</span>
+                         </div>
+                         {record.source?.engagement && (
+                           <div className="mt-1 flex items-center gap-3 text-[10px]" style={{ color: semantic.textMuted }}>
+                             <span className="flex items-center gap-1">
+                               <Heart size={10} className="fill-white/30 text-white" />
+                               {formatNumber(record.source.engagement.likes)}
+                             </span>
+                             {record.source.engagement.reposts ? (
+                               <span className="flex items-center gap-1">
+                                 <Repeat2 size={10} />
+                                 {formatNumber(record.source.engagement.reposts)}
+                               </span>
+                             ) : null}
+                             {record.source.engagement.replies ? (
+                               <span className="flex items-center gap-1">
+                                 <MessageCircle size={10} />
+                                 {formatNumber(record.source.engagement.replies)}
+                               </span>
+                             ) : null}
+                             {record.source.engagement.likes != null && record.source.engagement.likes >= 50 && (
+                               <span className="flex items-center gap-1 text-red-400">
+                                 <Flame size={10} />
+                                 Viral
+                               </span>
+                             )}
+                           </div>
+                         )}
                       </div>
                       <ChevronRight size={14} style={{ color: semantic.textMuted }} />
                     </button>
