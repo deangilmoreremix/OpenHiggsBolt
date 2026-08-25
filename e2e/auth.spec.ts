@@ -52,8 +52,9 @@ test.describe('Clerk auth integration', () => {
 
   test('forgot-password (reset) page renders the form', async ({ page }) => {
     await page.goto('/forgot-password');
-    await expect(page.getByPlaceholder(/you@example.com/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /continue|reset password/i })).toBeVisible();
+    // The forgot-password page uses Clerk's built-in SignIn component with path routing.
+    await expect(page.getByLabel(/email address/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /continue|sign in/i })).toBeVisible();
   });
 
   test('account page redirects unauthenticated users to sign-in', async ({ page }) => {
@@ -100,14 +101,10 @@ test.describe('Clerk auth integration', () => {
     test.skip(!email, 'No E2E test credentials configured');
     await setupClerkTestingToken({ page });
     await page.goto('/forgot-password');
-    await page.getByPlaceholder(/you@example.com/i).fill(email);
-    await page.getByRole('button', { name: /continue|reset password/i }).click();
-    // NOTE: The custom forgot-password page uses useSignIn on a non-standard route,
-    // and the sign-in instance is not initialized there. The form stays on the
-    // email step instead of advancing to the reset-code step. This is a known
-    // limitation of the current implementation; the page itself renders correctly.
-    await expect(page.getByPlaceholder(/you@example.com/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /continue|reset password/i })).toBeVisible();
+    // The forgot-password page renders Clerk's built-in SignIn component.
+    // Users can sign in from here or navigate to sign-up.
+    await expect(page.getByLabel(/email address/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /continue|sign in/i })).toBeVisible();
   });
 
   // --- Authenticated flows (MFA-safe: authenticate via Clerk's sign-in token) ---

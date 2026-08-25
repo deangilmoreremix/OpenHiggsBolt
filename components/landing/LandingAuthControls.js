@@ -32,18 +32,26 @@ export default function LandingAuthControls() {
   // state showed a skeleton, which left the buttons invisible if Clerk was
   // slow or blocked.
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-col items-center gap-3">
+      <div className="flex items-center gap-3">
+        <Link
+          href="/sign-in"
+          className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
+        >
+          Sign in
+        </Link>
+        <Link
+          href="/sign-up"
+          className="rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-4 py-2 text-sm font-bold text-black shadow-lg transition hover:opacity-90"
+        >
+          Sign up
+        </Link>
+      </div>
       <Link
-        href="/sign-in"
-        className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
+        href="/forgot-password"
+        className="text-sm text-cyan-300 hover:text-cyan-200"
       >
-        Sign in
-      </Link>
-      <Link
-        href="/sign-up"
-        className="rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-4 py-2 text-sm font-bold text-black shadow-lg transition hover:opacity-90"
-      >
-        Sign up
+        Forgot password?
       </Link>
     </div>
   );
