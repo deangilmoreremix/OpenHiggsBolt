@@ -19684,12 +19684,9 @@ export const getQualityFieldForI2IModel = (modelId) => {
 
 // Returns the maximum number of images an i2i model accepts (defaults to 1)
 export const getMaxImagesForI2IModel = (modelId) => {
-  const model = getI2IModelById(modelId);
-  return model?.inputs?.images?.max ?? 1;
+    const model = getI2IModelById(modelId);
+    return model ? getMediaCapability(model, 'image').maxItems : 1;
 };
-
-// Stub: returns empty array for models without modes. Pre-existing usage in VideoStudio.jsx.
-export const getModesForModel = (_modelId) => [];
 
 // ─── Video-to-Video models ────────────────────────────────────────────────────
 export const v2vModels = [

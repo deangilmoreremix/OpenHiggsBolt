@@ -1,0 +1,245 @@
+name: Upstream Sync Monitor
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+  UPSTREAM_REPO: 'https://github.com/deangilmoreremix/OpenHiggsBolt.git'
+
+jobs:
+  check-upstream:
+    name: Check Upstream Changes
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.compare.outputs.changed }}
+      added: ${{ steps.compare.outputs.added }}
+      removed: ${{ steps.compare.outputs.removed }}
+      modified: ${{ steps.compare.outputs.modified }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream ${{ env.UPSTREAM_REPO }} 2>/dev/null || git remote set-url upstream ${{ env.UPSTREAM_REPO }}
+          git fetch upstream main
+
+      - name: Compare models_dump.json
+        id: compare
+        run: |
+          # Get upstream models_dump.json
+          git show upstream/main:models_dump.json > /tmp/upstream_models_dump.json 2>/dev/null
+
+          if [ ! -f /tmp/upstream_models_dump.json ]; then
+            echo "Could not fetch upstream models_dump.json"
+            echo "changed=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Compare with local
+          if diff -q models_dump.json /tmp/upstream_models_dump.json > /dev/null 2>&1; then
+            echo "No changes detected in models_dump.json"
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "added=0" >> $GITHUB_OUTPUT
+            echo "removed=0" >> $GITHUB_OUTPUT
+            echo "modified=0" >> $GITHUB_OUTPUT
+          else
+            echo "Changes detected in models_dump.json"
+            echo "changed=true" >> $GITHUB_OUTPUT
+
+            # Use the sync script for detailed comparison
+            node scripts/muapi-catalog-sync.mjs --compare-upstream 2>&1 | tee compare-output.log || true
+
+            # Parse comparison results
+            ADDED=$(grep -oP 'Added upstream \(new\): \K\d+' compare-output.log || echo "0")
+            REMOVED=$(grep -oP 'Removed upstream \(deleted\): \K\d+' compare-output.log || echo "0")
+            MODIFIED=$(grep -oP 'Modified: \K\d+' compare-output.log || echo "0")
+
+            echo "added=${ADDED:-0}" >> $GITHUB_OUTPUT
+            echo "removed=${REMOVED:-0}" >> $GITHUB_OUTPUT
+            echo "modified=${MODIFIED:-0}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload comparison report
+        if: steps.compare.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: upstream-comparison-${{ github.run_number }}
+          path: catalogs/diffs/
+          retention-days: 30
+
+  sync-and-pr:
+    name: Sync Changes & Create PR
+    needs: check-upstream
+    if: needs.check-upstream.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream ${{ env.UPSTREAM_REPO }} 2>/dev/null || git remote set-url upstream ${{ env.UPSTREAM_REPO }}
+          git fetch upstream main
+
+      - name: Create sync branch
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          BRANCH_NAME="auto/sync-upstream-${DATE}"
+          echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
+          git checkout -b ${BRANCH_NAME}
+
+      - name: Copy changed files from upstream
+        run: |
+          # Copy models_dump.json from upstream
+          git show upstream/main:models_dump.json > models_dump.json
+
+          # Copy other synced files from upstream (same list as sync script)
+          for file in \
+            packages/studio/src/models.js \
+            catalogs/muapi-catalog-latest.json \
+            .upstream-sync \
+            scripts/muapi-catalog-sync.mjs \
+            scripts/muapi-health-monitor.mjs \
+            scripts/verify-muapi-apis.mjs
+          do
+            if git show upstream/main:${file} > /dev/null 2>&1; then
+              git show upstream/main:${file} > "${file}"
+              echo "Synced: ${file}"
+            else
+              echo "Not found in upstream: ${file}"
+            fi
+          done
+
+      - name: Update upstream sync hash
+        run: |
+          UPSTREAM_HASH=$(git rev-parse upstream/main)
+          echo "${UPSTREAM_HASH}" > .upstream-sync
+          echo "Updated .upstream-sync to ${UPSTREAM_HASH}"
+
+      - name: Run tests
+        run: |
+          npm run test:unit -- --run
+        continue-on-error: true
+
+      - name: Run verification
+        run: |
+          node scripts/verify-muapi-apis.mjs
+        continue-on-error: true
+
+      - name: Generate PR body
+        id: pr-body
+        run: |
+          DATE=$(date +%Y-%m-%d)
+
+          # Generate detailed model changes
+          node scripts/muapi-catalog-sync.mjs --compare-upstream 2>&1 > /tmp/compare-detail.log || true
+
+          # Build PR body
+          cat > /tmp/pr-body.md << 'EOF'
+          ## Automated Upstream Sync
+
+          This PR was automatically generated by the Upstream Sync Monitor workflow.
+
+          **Sync Date:** ${DATE}
+          **Upstream Commit:** $(git rev-parse upstream/main)
+
+          EOF
+
+          # Add comparison summary
+          echo "### Model Changes" >> /tmp/pr-body.md
+          echo "" >> /tmp/pr-body.md
+          echo "| Type | Count |" >> /tmp/pr-body.md
+          echo "|------|-------|" >> /tmp/pr-body.md
+          echo "| 🟢 New models | ${{ needs.check-upstream.outputs.added }} |" >> /tmp/pr-body.md
+          echo "| 🔴 Removed models | ${{ needs.check-upstream.outputs.removed }} |" >> /tmp/pr-body.md
+          echo "| 🟡 Modified models | ${{ needs.check-upstream.outputs.modified }} |" >> /tmp/pr-body.md
+          echo "" >> /tmp/pr-body.md
+
+          # Add detailed changes if available
+          if [ -f /tmp/compare-detail.log ]; then
+            echo "### Detailed Changes" >> /tmp/pr-body.md
+            echo '```' >> /tmp/pr-body.md
+            cat /tmp/compare-detail.log >> /tmp/pr-body.md
+            echo '```' >> /tmp/pr-body.md
+            echo "" >> /tmp/pr-body.md
+          fi
+
+          echo "### Files Synced" >> /tmp/pr-body.md
+          echo "- models_dump.json" >> /tmp/pr-body.md
+          echo "- packages/studio/src/models.js" >> /tmp/pr-body.md
+          echo "- catalogs/muapi-catalog-latest.json" >> /tmp/pr-body.md
+          echo "- .upstream-sync" >> /tmp/pr-body.md
+          echo "- scripts/muapi-catalog-sync.mjs" >> /tmp/pr-body.md
+          echo "- scripts/muapi-health-monitor.mjs" >> /tmp/pr-body.md
+          echo "- scripts/verify-muapi-apis.mjs" >> /tmp/pr-body.md
+          echo "" >> /tmp/pr-body.md
+
+          echo "### Verification" >> /tmp/pr-body.md
+          echo "- [x] Upstream changes detected" >> /tmp/pr-body.md
+          echo "- [x] Files synced from upstream" >> /tmp/pr-body.md
+          echo "- [ ] Tests passed (check status)" >> /tmp/pr-body.md
+          echo "- [ ] Manual review completed" >> /tmp/pr-body.md
+          echo "" >> /tmp/pr-body.md
+
+          echo "### Review Checklist" >> /tmp/pr-body.md
+          echo "- [ ] Review new model entries for correctness" >> /tmp/pr-body.md
+          echo "- [ ] Verify endpoint mappings are accurate" >> /tmp/pr-body.md
+          echo "- [ ] Test new models in staging environment" >> /tmp/pr-body.md
+          echo "- [ ] Confirm no breaking changes to existing functionality" >> /tmp/pr-body.md
+          echo "" >> /tmp/pr-body.md
+          echo "---" >> /tmp/pr-body.md
+          echo "*Generated at ${{ github.event.schedule || 'manual trigger' }}*" >> /tmp/pr-body.md
+
+          echo "pr-body=/tmp/pr-body.md" >> $GITHUB_OUTPUT
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore(sync): sync upstream changes - ${{ needs.check-upstream.outputs.added }} added, ${{ needs.check-upstream.outputs.removed }} removed, ${{ needs.check-upstream.outputs.modified }} modified"
+
+      - name: Push branch
+        run: |
+          git push origin ${{ env.BRANCH_NAME }}
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ env.BRANCH_NAME }}
+          title: "🔄 Upstream Sync: ${{ needs.check-upstream.outputs.added }} new, ${{ needs.check-upstream.outputs.removed }} removed, ${{ needs.check-upstream.outputs.modified }} modified"
+          body-path: /tmp/pr-body.md
+          delete-branch: true
+          labels: |
+            automated
+            upstream-sync
+            model-update

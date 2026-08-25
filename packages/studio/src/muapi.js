@@ -985,16 +985,3 @@ export async function expandImage(apiKey, { image_url, onRequestId }) {
     const payload = { image_url };
     return submitAndPoll(endpoint, payload, apiKey, onRequestId, 90);
 }
-
-// Stub: pre-existing import in ImageStudio.jsx but function was never implemented.
-export async function generateImageEditGrok(_apiKey, _params) {
-    throw new Error("generateImageEditGrok is not implemented");
-}
-
-export function buildWorkflowApiSnippets(workflowId, inputs, options) {
-  return "";
-}
-
-export async function generateCharacterVideo(_apiKey, _params) {
-    throw new Error("generateCharacterVideo is not implemented");
-}
