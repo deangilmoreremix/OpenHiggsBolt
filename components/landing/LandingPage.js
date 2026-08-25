@@ -86,7 +86,7 @@ export default function LandingPage({ FullStudio, AuthControls }) {
             </p>
           </div>
         </div>
-        {FullStudio ? <FullStudio embedded initialTab="image" /> : <StandaloneShell embedded initialTab="image" />}
+        {FullStudio ? <FullStudio embedded initialTab="image" demoMode /> : <StandaloneShell embedded initialTab="image" demoMode />}
       </section>
 
       {/* ── Workflow ── */}

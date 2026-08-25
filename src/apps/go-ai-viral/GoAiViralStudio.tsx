@@ -17,7 +17,7 @@
  *  - Jump to the original X post for source attribution
  *  - Filter by recommended model (gptimage, nanobanana, seedance, etc.)
  */
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   Search, Copy, ExternalLink, User, Heart,
   Grid, List, ChevronRight,
@@ -213,6 +213,49 @@ interface PromptDetailModalProps {
 
 function PromptDetailModal({ record, onClose }: PromptDetailModalProps) {
   const [copied, setCopied] = useState(false)
+  const modalRef = useRef<HTMLDivElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement as HTMLElement | null
+    const modal = modalRef.current
+    if (!modal) return
+    const focusable = modal.querySelectorAll<HTMLElement>(
+      'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])'
+    )
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    if (first) first.focus()
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose()
+        return
+      }
+      if (e.key !== 'Tab') return
+      if (!first || !last) return
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
+  useEffect(() => {
+    return () => {
+      previousFocusRef.current?.focus()
+    }
+  }, [])
 
   const handleCopy = async () => {
     try {
@@ -239,11 +282,15 @@ function PromptDetailModal({ record, onClose }: PromptDetailModalProps) {
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="prompt-detail-title"
       className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto"
       style={{ background: 'rgba(0,0,0,0.8)' }}
       onClick={onClose}
     >
       <div
+        ref={modalRef}
         className="relative mx-4 my-8 w-full max-w-4xl rounded-2xl border border-white/10"
         style={{ background: 'var(--bg-panel)' }}
         onClick={(e) => e.stopPropagation()}
@@ -258,6 +305,7 @@ function PromptDetailModal({ record, onClose }: PromptDetailModalProps) {
           </div>
           <button
             onClick={onClose}
+            aria-label="Close prompt details"
             className="rounded-lg p-1.5 text-white/50 hover:text-white hover:bg-white/10 transition-colors"
           >
             ×
@@ -267,8 +315,8 @@ function PromptDetailModal({ record, onClose }: PromptDetailModalProps) {
         {/* Body */}
         <div className="max-h-[70vh] overflow-y-auto custom-scrollbar">
           <div className="p-6 space-y-6">
-            {/* Title */}
-            <h1 className="text-xl font-bold text-white">{record.title}</h1>
+             {/* Title */}
+             <h1 id="prompt-detail-title" className="text-xl font-bold text-white">{record.title}</h1>
 
             {/* Media preview */}
             {primaryMedia && (
@@ -462,6 +510,7 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
   // Pagination
   const [page, setPage] = useState(1)
   const pageSize = 24
+  const [isPageLoading, setIsPageLoading] = useState(false)
 
   // View / selection
   const [selectedRecord, setSelectedRecord] = useState<PromptRecord | null>(null)
@@ -469,6 +518,10 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
 
   // Sort
   const [sort, setSort] = useState<SortOption>('newest')
+
+  // Abort/race-protection refs for fetchFeed
+  const fetchIdRef = useRef(0)
+  const controllerRef = useRef<AbortController | null>(null)
 
   // Debounced search
   const [searchInput, setSearchInput] = useState('')
@@ -478,8 +531,19 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
   }, [searchInput])
 
   const fetchFeed = useCallback(async (pageNum = 1) => {
-    setIsLoading(true)
+    const isInitial = pageNum === 1
+    if (isInitial) setIsLoading(true)
+    else setIsPageLoading(true)
     setError(null)
+
+    // Abort any in-flight request before starting a new one
+    if (controllerRef.current) {
+      controllerRef.current.abort()
+    }
+    const controller = new AbortController()
+    controllerRef.current = controller
+    const currentId = ++fetchIdRef.current
+
     try {
       const params = new URLSearchParams({
         page: String(pageNum),
@@ -490,20 +554,32 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
         ...(search && { search }),
         sort,
       })
-      const res = await fetch(`/api/go-ai-viral/prompts?${params}`)
+      const res = await fetch(`/api/go-ai-viral/prompts?${params}`, {
+        signal: controller.signal,
+      })
       if (!res.ok) throw new Error(`Failed to fetch feed: ${res.status}`)
+      // Guard: only apply results from the latest request
+      if (controllerRef.current !== controller) return
+      if (currentId !== fetchIdRef.current) return
       const json: FeedResponse = await res.json()
       setRecords(json.data)
       setStats(json.meta?.stats || null)
       setAvailableCategories(json.meta?.availableCategories || [])
       setAvailableModels(json.meta?.availableModels || [])
     } catch (err: unknown) {
+      if ((err as Error)?.name === 'AbortError') return
       const errMsg = err instanceof Error ? err.message : 'Failed to load the prompt feed'
       setError(errMsg)
     } finally {
-      setIsLoading(false)
+      if (controllerRef.current === controller) {
+        controllerRef.current = null
+      }
+      if (currentId === fetchIdRef.current) {
+        if (isInitial) setIsLoading(false)
+        else setIsPageLoading(false)
+      }
     }
-  }, [mediaType, selectedCategory, selectedModel, search, sort, pageSize])
+  }, [mediaType, selectedCategory, selectedModel, search, sort])
 
   // Fetch when filters change
   useEffect(() => {
@@ -563,6 +639,7 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
               onClick={() => { setMediaType(type); setPage(1) }}
               className="relative px-3 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 capitalize"
               style={tabStyle(mediaType === type)}
+              aria-pressed={mediaType === type}
             >
               {type === 'all' && <Grid size={10} />}
               {type === 'image' && <ImageIcon size={10} />}
@@ -594,6 +671,7 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="Search prompts, tags..."
+                  aria-label="Search prompts"
                   className="w-full rounded-xl bg-white/5 border border-white/10 px-9 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-cyan-400/50 transition-colors"
                 />
               </div>
@@ -712,6 +790,7 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
                   onClick={() => setViewMode('grid')}
                   className="rounded-md p-1.5 text-xs transition-all"
                   style={optionStyle(viewMode === 'grid')}
+                  aria-label="Grid view"
                   title="Grid view"
                 >
                   <Grid size={14} />
@@ -720,6 +799,7 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
                   onClick={() => setViewMode('list')}
                   className="rounded-md p-1.5 text-xs transition-all"
                   style={optionStyle(viewMode === 'list')}
+                  aria-label="List view"
                   title="List view"
                 >
                   <List size={14} />
@@ -730,7 +810,12 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
         </aside>
 
         {/* ── Main Feed ── */}
-        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar relative">
+          {isPageLoading && page > 1 && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 backdrop-blur-sm">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
+            </div>
+          )}
           {isLoading && page === 1 ? (
             <div className="p-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -753,6 +838,24 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
                 Retry
               </button>
             </div>
+          ) : records.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className="text-white/50 text-sm">No prompts match your current filters.</p>
+              <button
+                onClick={() => {
+                  setSearch('')
+                  setSearchInput('')
+                  setSelectedCategory('')
+                  setSelectedModel('')
+                  setMediaType('all')
+                  setSort('newest')
+                }}
+                className="mt-4 rounded-xl px-4 py-2 text-sm font-semibold"
+                style={buttons.primary}
+              >
+                Clear all filters
+              </button>
+            </div>
           ) : (
             <div className="p-6">
               {viewMode === 'grid' ? (
@@ -769,11 +872,11 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
               ) : (
                 <div className="space-y-2">
                   {records.map((record) => (
-                    <div
+                    <button
                       key={record.id}
                       onClick={() => setSelectedRecord(record)}
                       className={classNames(
-                        'flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-all',
+                        'w-full text-left flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-all',
                         selectedRecord?.id === record.id
                           ? 'border-cyan-400/50 bg-cyan-400/[0.03]'
                           : 'border-white/10 bg-white/[0.02] hover:border-white/20'
@@ -810,7 +913,7 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
                         </div>
                       </div>
                       <ChevronRight size={14} style={{ color: semantic.textMuted }} />
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
@@ -822,21 +925,21 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
                     Page {page} of {Math.ceil((stats?.total || 0) / pageSize)} · {stats?.total || 0} total prompts
                   </p>
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => setPage(p => Math.max(1, p - 1))}
-                      disabled={page <= 1 || isLoading}
-                      className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50"
-                      style={buttons.ghost}
-                    >
-                      Previous
-                    </button>
-                    <button
-                      onClick={() => setPage(p => p + 1)}
-                      disabled={page >= Math.ceil((stats?.total || 0) / pageSize) || isLoading}
-                      className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50"
-                      style={buttons.ghost}
-                    >
-                      Next
+                     <button
+                       onClick={() => setPage(p => Math.max(1, p - 1))}
+                       disabled={page <= 1 || isLoading || isPageLoading}
+                       className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50"
+                       style={buttons.ghost}
+                     >
+                       Previous
+                     </button>
+                     <button
+                       onClick={() => setPage(p => p + 1)}
+                       disabled={page >= Math.ceil((stats?.total || 0) / pageSize) || isLoading || isPageLoading}
+                       className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50"
+                       style={buttons.ghost}
+                     >
+                       Next
                     </button>
                   </div>
                 </div>

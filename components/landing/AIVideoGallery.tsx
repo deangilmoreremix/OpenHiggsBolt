@@ -4,7 +4,7 @@ import DemoMediaCard from './DemoMediaCard';
 import { MINIMAX_H3_DEMOS, DEMO_CATEGORIES } from '@/data/minimaxH3Demos';
 import { type VideoDemo } from '@/data/types';
 
-const INITIAL_COUNT = 12;
+const INITIAL_COUNT = 1000;
 const STEP = 12;
 
 type AIVideoGalleryProps = {

@@ -3,10 +3,25 @@ import { getMuApiKeyFromRequest } from '../lib/auth'
 
 const BASE = 'https://api.muapi.ai/api/v1'
 
+function getDemoKey(): string | null {
+  if (typeof process !== 'undefined') {
+    return process.env.MUAPI_DEMO_KEY || null
+  }
+  return null
+}
+
 export async function GET(req: NextRequest, { params }: { params: { slug: string[] } }) {
   const path = '/' + (params.slug || []).join('/')
   try {
-    const key = await getMuApiKeyFromRequest(req)
+    let key: string
+    try {
+      key = await getMuApiKeyFromRequest(req)
+    } catch {
+      key = getDemoKey() || ''
+    }
+    if (!key) {
+      return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 })
+    }
     const { searchParams } = new URL(req.url)
     const qs = searchParams.toString()
     const url = `${BASE}${path}${qs ? `?${qs}` : ''}`
@@ -26,7 +41,15 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
 export async function POST(req: NextRequest, { params }: { params: { slug: string[] } }) {
   const path = '/' + (params.slug || []).join('/')
   try {
-    const key = await getMuApiKeyFromRequest(req)
+    let key: string
+    try {
+      key = await getMuApiKeyFromRequest(req)
+    } catch {
+      key = getDemoKey() || ''
+    }
+    if (!key) {
+      return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 })
+    }
     const contentType = req.headers.get('content-type') || ''
     let body: any
     if (contentType.includes('multipart/form-data')) {

@@ -53,7 +53,9 @@ const translations = {
         'settings.apiKey': 'API Key',
         'settings.localModels': 'Local Models',
         'settings.muapiKeyLabel': 'Muapi API Key',
+        'settings.openaiKeyLabel': 'OpenAI API Key',
         'settings.keyPlaceholder': 'Enter your Muapi API key...',
+        'settings.openaiKeyPlaceholder': 'Enter your OpenAI API key...',
         'settings.keyNote': 'Your API key is stored locally and never sent anywhere except api.muapi.ai.',
         'settings.invalidKey': 'Please enter a valid API key.',
 
@@ -243,7 +245,9 @@ const translations = {
         'settings.apiKey': 'API 密钥',
         'settings.localModels': '本地模型',
         'settings.muapiKeyLabel': 'Muapi API 密钥',
+        'settings.openaiKeyLabel': 'OpenAI API 密钥',
         'settings.keyPlaceholder': '输入您的 Muapi API 密钥...',
+        'settings.openaiKeyPlaceholder': '输入您的 OpenAI API 密钥...',
         'settings.keyNote': '您的 API 密钥仅存储在本地，除 api.muapi.ai 外不会发送到任何地方。',
         'settings.invalidKey': '请输入有效的 API 密钥。',
 

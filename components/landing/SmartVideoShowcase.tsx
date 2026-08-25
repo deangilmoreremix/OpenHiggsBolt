@@ -1,11 +1,9 @@
 'use client';
 import { DemoPromptProvider } from './DemoPromptModal';
-import CinematicVideoHero from './CinematicVideoHero';
 import InteractiveStudioSection from './InteractiveStudioSection';
 import MadeWithSmartVideo from './MadeWithSmartVideo';
 import UGCDemoShowcase from './UGCDemoShowcase';
 import AIVideoGallery from './AIVideoGallery';
-import Seedance25Hero from './Seedance25Hero';
 import Seedance1Reel from './Seedance1Reel';
 import SeedancePromptsHero from './SeedancePromptsHero';
 import PromptFeedHero from './PromptFeedHero';
@@ -31,13 +29,11 @@ export default function SmartVideoShowcase() {
   return (
     <DemoPromptProvider>
       <div id="smartvideo-showcase">
-        <CinematicVideoHero />
         <InteractiveStudioSection />
         <MadeWithSmartVideo />
         <UGCDemoShowcase />
 
         {/* Seedance 2.5 — BeatAPI curated cinematic demos */}
-        <Seedance25Hero />
         <AIVideoGallery
           demos={SEEDANCE_25_DEMOS}
           label="Full showcase"

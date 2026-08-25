@@ -5,6 +5,12 @@ const MUAPI_BASE = 'https://api.muapi.ai';
 function getApiKey(request) {
     const headerKey = request.headers.get('x-api-key');
     if (headerKey) return headerKey;
+    
+    // Demo mode fallback: use server-side sandbox key when no user key is provided
+    if (typeof process !== 'undefined' && process.env.MUAPI_DEMO_KEY) {
+        return process.env.MUAPI_DEMO_KEY;
+    }
+    
     // Cookie-based auth removed for security (CWE-522)
     return null;
 }

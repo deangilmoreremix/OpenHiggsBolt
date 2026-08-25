@@ -519,7 +519,14 @@ export function uploadFile(apiKey, file, onProgress) {
 }
 
 export async function getUserBalance(apiKey) {
-    const response = await fetch(`${BASE_URL}/api/v1/account/balance`, {
+    // In-browser requests must go through the host app's /api/v1 proxy so
+    // we avoid CORS and don't expose the key to the browser's upstream call.
+    // SSR / Electron call the upstream directly.
+    const isBrowser = typeof window !== 'undefined' && window.location?.protocol?.startsWith('http');
+    const url = isBrowser
+        ? '/api/v1/account/balance'
+        : 'https://api.muapi.ai/api/v1/account/balance';
+    const response = await fetch(url, {
         headers: {
             'Content-Type': 'application/json',
             'x-api-key': apiKey

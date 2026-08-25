@@ -112,7 +112,7 @@ function isValidApiKey(key) {
   return typeof key === 'string' && key.length > 0 && API_KEY_SAFE.test(key);
 }
 
-export default function StandaloneShell({ embedded = false, initialTab = null } = {}) {
+export default function StandaloneShell({ embedded = false, initialTab = null, demoMode = false } = {}) {
   const params = useParams();
   const router = useRouter();
   const { signOut } = useClerk();
@@ -247,6 +247,11 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
 
   useEffect(() => {
     setHasMounted(true);
+    if (demoMode) {
+      setApiKey(null);
+      setOpenaiKey(null);
+      return;
+    }
     // Each key is restored independently — a user may have saved only one
     // (e.g. MuAPI) in the past. We set whichever are present. localStorage
     // is the primary store; the cookie is read as a fallback so a key set on
@@ -305,11 +310,12 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
       }
     })();
     return () => { cancelled = true; };
-  }, [fetchBalance, embedded]);
+  }, [fetchBalance, embedded, demoMode]);
 
   const [isSavingKey, setIsSavingKey] = useState(false);
 
   const handleKeySave = useCallback(async (key, openaiKeyValue) => {
+    if (demoMode) return;
     const trimmed = key.trim();
     const trimmedOpenai = (openaiKeyValue || '').trim();
     if (!trimmed) return;
@@ -383,6 +389,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
   }, [fetchBalance]);
 
   const handleKeyChange = useCallback(() => {
+    if (demoMode) return;
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(OPENAI_STORAGE_KEY);
     setApiKey(null);
@@ -582,19 +589,21 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
               </div>
             </div>
 
-            <button
-              onClick={() => { setAuthError(null); setShowSettings(true); }}
-              title="Settings — API key, local models, preferences"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-white/10 bg-white/5 text-[13px] font-bold text-white/80 hover:text-white hover:bg-white/10 hover:border-white/20 transition-colors"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-              </svg>
-              <span>Settings</span>
-            </button>
+            {!demoMode && (
+              <button
+                onClick={() => { setAuthError(null); setShowSettings(true); }}
+                title="Settings — API key, local models, preferences"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-white/10 bg-white/5 text-[13px] font-bold text-white/80 hover:text-white hover:bg-white/10 hover:border-white/20 transition-colors"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                </svg>
+                <span>Settings</span>
+              </button>
+            )}
 
-            {isSignedIn && (
+            {!demoMode && isSignedIn && (
               <button
                 onClick={() => signOut({ redirectUrl: '/' })}
                 title="Sign out of your account"
@@ -644,7 +653,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
       {/* First-login API key popup — on-brand overlay modal with an X close
           button, wired to the same handleKeySave / MuAPI persistence logic as
           the Settings modal. Shown once when a signed-in user has no key yet. */}
-      {showApiKeyPopup && !apiKey && (
+      {showApiKeyPopup && !apiKey && !demoMode && (
         <ApiKeyModal
           overlay
           onSave={handleKeySave}
@@ -659,7 +668,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null } 
       )}
 
       {/* Settings Modal */}
-      {showSettings && (
+      {showSettings && !demoMode && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in-up">
           <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-8 w-full max-w-sm shadow-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-white font-bold text-lg mb-2">
