@@ -1,0 +1,145 @@
+name: Upstream Sync
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'  # Every Monday at 00:00 UTC
+  workflow_dispatch:
+    inputs:
+      force_sync:
+        description: 'Force sync even if no new commits'
+        required: false
+        default: 'false'
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/Anil-matcha/Open-Generative-AI.git || true
+          git fetch upstream
+
+      - name: Check for new commits
+        id: check
+        run: |
+          SYNC_POINT=$(cat .upstream-sync 2>/dev/null || echo "none")
+          UPSTREAM_HEAD=$(git rev-parse upstream/main)
+          echo "sync_point=$SYNC_POINT" >> $GITHUB_OUTPUT
+          echo "upstream_head=$UPSTREAM_HEAD" >> $GITHUB_OUTPUT
+
+          if [ "$SYNC_POINT" = "$UPSTREAM_HEAD" ] && [ "${{ inputs.force_sync }}" != "true" ]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No new upstream commits since $SYNC_POINT"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "New commits found: $SYNC_POINT..$UPSTREAM_HEAD"
+          fi
+
+      - name: Create sync branch
+        if: steps.check.outputs.has_changes == 'true'
+        run: |
+          DATE=$(date +%Y%m%d)
+          git checkout -b sync-upstream-$DATE
+
+      - name: Merge upstream
+        if: steps.check.outputs.has_changes == 'true'
+        run: |
+          git merge upstream/main --no-commit --no-ff || true
+
+      - name: Apply exclusions
+        if: steps.check.outputs.has_changes == 'true'
+        run: |
+          # Restore fork-only files that upstream may have modified
+          git checkout HEAD -- \
+            middleware.js \
+            clerkAppearance.js \
+            packages/studio/src/persistKey.js \
+            app/sign-in/ \
+            app/sign-up/ \
+            app/forgot-password/ \
+            app/api/webhooks/ \
+            app/api/auth/ \
+            app/api/design-agent/ \
+            app/api/photo-studio/ \
+            app/api/storyboard/ \
+            app/api/thumbnail/ \
+            app/api/vfx/ \
+            app/api/brand/ \
+            app/api/brands/ \
+            app/api/workspace/ \
+            supabase/ \
+            src/apps/ \
+            apps/cutai/ \
+            e2e/ \
+            tests/ \
+            2>/dev/null || true
+
+      - name: Check for conflicts
+        if: steps.check.outputs.has_changes == 'true'
+        id: conflicts
+        run: |
+          CONFLICTS=$(git diff --name-only --diff-filter=U)
+          if [ -n "$CONFLICTS" ]; then
+            echo "has_conflicts=true" >> $GITHUB_OUTPUT
+            echo "conflicts<<EOF" >> $GITHUB_OUTPUT
+            echo "$CONFLICTS" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "has_conflicts=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Abort on conflicts
+        if: steps.check.outputs.has_changes == 'true' && steps.conflicts.outputs.has_conflicts == 'true'
+        run: |
+          git merge --abort
+          echo "::error::Merge conflicts detected. Manual resolution required."
+          echo "Conflicted files:"
+          echo "${{ steps.conflicts.outputs.conflicts }}"
+          exit 1
+
+      - name: Record sync point
+        if: steps.check.outputs.has_changes == 'true' && steps.conflicts.outputs.has_conflicts == 'false'
+        run: |
+          NEW_SYNC_POINT=$(git rev-parse upstream/main)
+          echo $NEW_SYNC_POINT > .upstream-sync
+          git add .upstream-sync
+          git commit -m "chore: automated upstream sync to $NEW_SYNC_POINT"
+
+      - name: Push and create PR
+        if: steps.check.outputs.has_changes == 'true' && steps.conflicts.outputs.has_conflicts == 'false'
+        run: |
+          DATE=$(date +%Y%m%d)
+          git push origin sync-upstream-$DATE
+
+          gh pr create \
+            --title "sync: automated upstream $(date +%Y-%m-%d)" \
+            --body "## Automated Upstream Sync
+
+- Sync point: $(cat .upstream-sync)
+- Previous: ${{ steps.check.outputs.sync_point }}
+- Commits: $(git log ${{ steps.check.outputs.sync_point }}..upstream/main --oneline | wc -l)
+
+### Action Required
+- [ ] Review changes
+- [ ] Run tests locally if needed
+- [ ] Merge when ready" \
+            --base main \
+            --head sync-upstream-$DATE
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
