@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from './useReducedMotion';
 
 /* ── Global playback limiter ────────────────────────────────────────────────
@@ -62,7 +62,6 @@ export default function LazyVideo({
   const activeRef = useRef(false);
   const [errored, setErrored] = useState(false);
   const reduced = useReducedMotion();
-  const [inView, setInView] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [pinned, setPinned] = useState(false);
 
@@ -88,63 +87,12 @@ export default function LazyVideo({
     return () => el.removeEventListener('error', onError);
   }, []);
 
-  // Reveal (attach observer) when near viewport.
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof IntersectionObserver === 'undefined') {
-      setInView(true);
-      return;
-    }
-
-    // Check if already in view on mount (handles SSR + hydration).
-    const rect = el.getBoundingClientRect();
-    const alreadyInView =
-      rect.top < window.innerHeight + 300 && rect.bottom > -300;
-    if (alreadyInView) {
-      setInView(true);
-    }
-
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setInView(true);
-        }
-      },
-      { rootMargin: '2000px 0px', threshold: 0 },
-    );
-    io.observe(el);
-
-    // Fallback: re-check after a short delay in case the observer missed it.
-    const timer = setTimeout(() => {
-      const r = el.getBoundingClientRect();
-      if (r.top < window.innerHeight + 300 && r.bottom > -300) {
-        setInView(true);
-      }
-    }, 200);
-
-    return () => {
-      io.disconnect();
-      clearTimeout(timer);
-    };
-  }, []);
-
-  // Immediate check: if element is already in view on mount, set src right away.
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    if (rect.top < window.innerHeight + 300 && rect.bottom > -300) {
-      if (!el.getAttribute('src')) el.setAttribute('src', src);
-    }
-  }, [src]);
-
-  const shouldPlay = !reduced && !errored && (pinned || (inView && autoPlayInView) || (hovered && hoverPlay));
+  const shouldPlay = !reduced && !errored;
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     if (shouldPlay) {
-      // Attach the source lazily — never at page load.
       if (!el.getAttribute('src')) el.setAttribute('src', src);
       if (!activeRef.current) {
         requestPlay(stopRef.current);
@@ -198,6 +146,7 @@ export default function LazyVideo({
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <video
         ref={ref}
+        src={shouldPlay ? src : undefined}
         poster={poster}
         muted
         playsInline

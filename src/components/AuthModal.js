@@ -53,8 +53,8 @@ export function AuthModal(onSuccess) {
         if (key && isValidKeyFormat(key)) {
             // Clean key before saving to remove invisible Unicode characters
             const cleanedKey = key
-                .replace(/[​-‍﻿﻿­]/g, '')
-                .replace(/^[\s\x00-\x1F]+|[\s\x00-\x1F]+$/g, '')
+                .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')
+                .replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '')
                 .trim();
             localStorage.setItem('muapi_key', cleanedKey);
             document.body.removeChild(overlay);

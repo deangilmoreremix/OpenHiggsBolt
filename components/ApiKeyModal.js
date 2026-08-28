@@ -9,8 +9,8 @@ import { isValidKeyFormat } from '@/lib/keys';
 function cleanApiKey(key) {
   if (!key) return '';
   return String(key)
-    .replace(/[​-‍﻿﻿­]/g, '')  // zero-width chars, BOM, word joiner, soft hyphen
-    .replace(/^[\s\x00-\x1F]+|[\s\x00-\x1F]+$/g, '')
+    .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')  // zero-width chars, BOM, word joiner, soft hyphen
+    .replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '')
     .trim();
 }
 

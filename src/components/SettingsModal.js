@@ -121,11 +121,11 @@ export function SettingsModal(onClose) {
         }
         // Clean keys before saving to remove invisible Unicode characters
         const cleanMuapi = muapiKey
-            .replace(/[​-‍﻿﻿­]/g, '')
+            .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')
             .replace(/^[\s\x00-\x1F]+|[\s\x00-\x1F]+$/g, '')
             .trim();
         const cleanOpenai = openaiKey
-            .replace(/[​-‍﻿﻿­]/g, '')
+            .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')
             .replace(/^[\s\x00-\x1F]+|[\s\x00-\x1F]+$/g, '')
             .trim();
         localStorage.setItem('muapi_key', cleanMuapi);

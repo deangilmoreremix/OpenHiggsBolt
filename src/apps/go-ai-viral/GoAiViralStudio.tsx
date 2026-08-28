@@ -26,11 +26,13 @@ import {
 } from 'lucide-react'
 import { buttons, semantic, tabStyle, optionStyle, appWrapper, iconBadge } from '@/shared/styles/designTokens'
 import type { PromptRecord, FeedStats } from '@/types/go-ai-viral/prompt'
+import type { SeedancePrompt, SeedanceStats } from '@/types/go-ai-viral/seedance'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type MediaType = 'all' | 'image' | 'video'
 type SortOption = 'newest' | 'oldest'
+type StudioMode = 'feed' | 'video-prompts'
 
 interface FeedResponse {
   data: PromptRecord[]
@@ -227,6 +229,239 @@ function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
         </div>
       </div>
     </button>
+  )
+}
+
+// ── VideoPromptCard ───────────────────────────────────────────────────────────
+
+interface VideoPromptCardProps {
+  record: SeedancePrompt
+  onSelect: (record: SeedancePrompt) => void
+}
+
+function VideoPromptCard({ record, onSelect }: VideoPromptCardProps) {
+  const primaryMedia = record.outputUrl
+    ? { previewUrl: record.outputUrl, altText: record.prompt }
+    : null
+
+  return (
+    <button
+      onClick={() => onSelect(record)}
+      className={classNames(
+        'group relative flex flex-col rounded-xl border text-left transition-all duration-200',
+        'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
+      )}
+    >
+      {/* Video preview */}
+      <div className="relative aspect-video overflow-hidden rounded-t-xl bg-black">
+        {primaryMedia ? (
+          <>
+             <video
+               src={primaryMedia.previewUrl}
+               className="h-full w-full object-cover"
+               preload="metadata"
+               playsInline
+               muted
+             />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          </>
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <Video size={24} style={{ color: semantic.textMuted }} />
+          </div>
+        )}
+
+        {/* Media type badge */}
+        <div
+          className="absolute top-2 left-2 rounded-full p-1"
+          style={{ background: 'rgba(0,0,0,0.5)' }}
+        >
+          <Video size={12} className="text-white" />
+        </div>
+
+        {/* Engagement overlay */}
+        {record.engagement && record.engagement.likes > 0 && (
+          <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+            <div className="flex gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+              <Heart size={10} className="fill-white/30 text-white" />
+              <span>{formatNumber(record.engagement.likes)}</span>
+            </div>
+            {record.engagement.reposts > 0 && (
+              <div className="flex gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                <Repeat2 size={10} className="text-white" />
+                <span>{formatNumber(record.engagement.reposts)}</span>
+              </div>
+            )}
+            {record.engagement.replies > 0 && (
+              <div className="flex gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                <MessageCircle size={10} className="text-white" />
+                <span>{formatNumber(record.engagement.replies)}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Viral badge */}
+        {record.engagement && record.engagement.likes >= 50 && (
+          <div
+            className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+            style={{ background: 'rgba(239,68,68,0.2)', color: '#fca5a5' }}
+          >
+            <Flame size={10} className="text-red-400" />
+            Viral
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="p-3 space-y-2">
+        <h3 className="text-sm font-semibold text-white line-clamp-1">{record.prompt}</h3>
+
+        {/* Prompt text preview */}
+        <p className="text-xs leading-relaxed text-white/50 line-clamp-2">
+          {record.fullPrompt.slice(0, 120)}
+          {record.fullPrompt.length > 120 && '...'}
+        </p>
+
+        {/* Source / author */}
+        <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center gap-1.5">
+            <User size={10} style={{ color: semantic.textMuted }} />
+            <span style={{ color: semantic.textMuted }}>
+              {record.author || 'Seedance Community'}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Calendar size={10} style={{ color: semantic.textMuted }} />
+            <span style={{ color: semantic.textMuted }}>
+              {formatDate(record.publishedAt)}
+            </span>
+          </div>
+        </div>
+
+        {/* Recommended model + categories */}
+        <div className="flex flex-wrap gap-1">
+          <span
+            className="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+            style={{ background: 'rgba(34,211,238,0.1)', color: 'var(--color-primary)' }}
+          >
+            {getModelDisplay(record.recommendedModel || 'seedance')}
+          </span>
+          {(record.categories || []).slice(0, 2).map((cat) => (
+            <span
+              key={cat}
+              className="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+              style={{ background: 'rgba(255,255,255,0.05)', color: semantic.textMuted }}
+            >
+              {cat}
+            </span>
+          ))}
+        </div>
+      </div>
+    </button>
+  )
+}
+
+// ── VideoPromptModal ──────────────────────────────────────────────────────────
+
+interface VideoPromptModalProps {
+  record: SeedancePrompt
+  onClose: () => void
+}
+
+function VideoPromptModal({ record, onClose }: VideoPromptModalProps) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="video-prompt-title"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto"
+      style={{ background: 'rgba(0,0,0,0.8)' }}
+      onClick={onClose}
+    >
+      <div
+        className="relative mx-4 my-8 w-full max-w-4xl rounded-2xl border border-white/10"
+        style={{ background: 'var(--bg-panel)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-white/10 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ ...iconBadge }}>
+              <Video size={14} className="text-black" />
+            </div>
+            <h2 className="text-lg font-bold text-white">Video Prompt</h2>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close video prompt details"
+            className="rounded-lg p-1.5 text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {record.outputUrl && (
+            <div className="aspect-video w-full overflow-hidden rounded-xl bg-black">
+              <video
+                src={record.outputUrl}
+                controls
+                className="h-full w-full"
+                preload="metadata"
+              />
+            </div>
+          )}
+
+          <div>
+            <h1 id="video-prompt-title" className="text-xl font-bold text-white">{record.prompt}</h1>
+            <p className="mt-2 text-sm text-white/60">{record.fullPrompt}</p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 text-xs" style={{ color: semantic.textMuted }}>
+            <span className="capitalize">Language: {record.sourceLanguage || 'unknown'}</span>
+            <span>•</span>
+            <span>Slug: {record.slug}</span>
+          </div>
+
+          <div className="flex gap-2">
+            {record.detailHref && (
+              <a
+                href={record.detailHref}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold"
+                style={buttons.primary}
+              >
+                <ExternalLink size={14} />
+                View Details
+              </a>
+            )}
+            {record.outputUrl && (
+              <a
+                href={record.outputUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold"
+                style={buttons.ghost}
+              >
+                Open Video
+              </a>
+            )}
+            <button
+              onClick={async () => {
+                await navigator.clipboard.writeText(record.fullPrompt || record.prompt)
+              }}
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold"
+              style={buttons.ghost}
+            >
+              <Copy size={14} />
+              Copy Prompt
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -545,16 +780,42 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
   // Sort
   const [sort, setSort] = useState<SortOption>('newest')
 
+  // Studio mode: 'feed' or 'video-prompts'
+  const [studioMode, setStudioMode] = useState<StudioMode>('feed')
+
+  // Video prompts state
+  const [videoRecords, setVideoRecords] = useState<SeedancePrompt[]>([])
+  const [videoStats, setVideoStats] = useState<SeedanceStats | null>(null)
+  const [availableLanguages, setAvailableLanguages] = useState<string[]>([])
+  const [videoPage, setVideoPage] = useState(1)
+  const videoPageSize = 24
+  const [isVideoPageLoading, setIsVideoPageLoading] = useState(false)
+  const [videoError, setVideoError] = useState<string | null>(null)
+  const [selectedVideoRecord, setSelectedVideoRecord] = useState<SeedancePrompt | null>(null)
+  const [videoLanguage, setVideoLanguage] = useState('')
+  const [videoOnly, setVideoOnly] = useState(true)
+
   // Abort/race-protection refs for fetchFeed
   const fetchIdRef = useRef(0)
   const controllerRef = useRef<AbortController | null>(null)
 
+  // Abort/race-protection refs for video feed
+  const videoFetchIdRef = useRef(0)
+  const videoControllerRef = useRef<AbortController | null>(null)
+
   // Debounced search
   const [searchInput, setSearchInput] = useState('')
+  const [videoSearchInput, setVideoSearchInput] = useState('')
   useEffect(() => {
-    const timer = setTimeout(() => setSearch(searchInput), 500)
+    const timer = setTimeout(() => {
+      if (studioMode === 'video-prompts') {
+        // videoSearchInput is used directly by fetchVideoFeed
+      } else {
+        setSearch(searchInput)
+      }
+    }, 500)
     return () => clearTimeout(timer)
-  }, [searchInput])
+  }, [searchInput, videoSearchInput, studioMode])
 
   const fetchFeed = useCallback(async (pageNum = 1) => {
     const isInitial = pageNum === 1
@@ -618,6 +879,67 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
     if (page !== 1) fetchFeed(page)
   }, [page, fetchFeed])
 
+  const fetchVideoFeed = useCallback(async (pageNum = 1) => {
+    const isInitial = pageNum === 1
+    if (isInitial) setIsLoading(true)
+    else setIsVideoPageLoading(true)
+    setVideoError(null)
+
+    if (videoControllerRef.current) {
+      videoControllerRef.current.abort()
+    }
+    const controller = new AbortController()
+    videoControllerRef.current = controller
+    const currentId = ++videoFetchIdRef.current
+
+    try {
+      const params = new URLSearchParams({
+        page: String(pageNum),
+        pageSize: String(videoPageSize),
+        ...(videoSearchInput && { search: videoSearchInput }),
+        ...(videoLanguage && { language: videoLanguage }),
+        ...(videoOnly ? { hasVideo: 'true' } : {}),
+      })
+      const res = await fetch(`/api/go-ai-viral/seedance?${params}`, {
+        signal: controller.signal,
+      })
+      if (!res.ok) throw new Error(`Failed to fetch video prompts: ${res.status}`)
+      if (videoControllerRef.current !== controller) return
+      if (currentId !== videoFetchIdRef.current) return
+      const json: {
+        data: SeedancePrompt[]
+        pagination: { page: number; pageSize: number; total: number; totalPages: number }
+        meta: { stats: SeedanceStats; availableLanguages: string[]; fetchedAt: number }
+      } = await res.json()
+      setVideoRecords(json.data)
+      setVideoStats(json.meta?.stats || null)
+      setAvailableLanguages(json.meta?.availableLanguages || [])
+    } catch (err: unknown) {
+      if ((err as Error)?.name === 'AbortError') return
+      const errMsg = err instanceof Error ? err.message : 'Failed to load video prompts'
+      setVideoError(errMsg)
+    } finally {
+      if (videoControllerRef.current === controller) {
+        videoControllerRef.current = null
+      }
+      if (currentId === videoFetchIdRef.current) {
+        if (isInitial) setIsLoading(false)
+        else setIsVideoPageLoading(false)
+      }
+    }
+  }, [videoSearchInput, videoLanguage, videoOnly])
+
+  useEffect(() => {
+    if (studioMode !== 'video-prompts') return
+    setVideoPage(1)
+    fetchVideoFeed(1)
+  }, [studioMode, videoSearchInput, videoLanguage, videoOnly, fetchVideoFeed])
+
+  useEffect(() => {
+    if (studioMode !== 'video-prompts' || videoPage === 1) return
+    fetchVideoFeed(videoPage)
+  }, [studioMode, videoPage, fetchVideoFeed])
+
   // ── Sidebar category data ────────────────────────────────────────────────────
   const categoryCounts = useMemo(() => {
     if (!stats?.categories) return {}
@@ -659,20 +981,24 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
 
         {/* Media type tabs */}
         <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
-          {(['all', 'image', 'video'] as MediaType[]).map((type) => (
-            <button
-              key={type}
-              onClick={() => { setMediaType(type); setPage(1) }}
-              className="relative px-3 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 capitalize"
-              style={tabStyle(mediaType === type)}
-              aria-pressed={mediaType === type}
-            >
-              {type === 'all' && <Grid size={10} />}
-              {type === 'image' && <ImageIcon size={10} />}
-              {type === 'video' && <Video size={10} />}
-              {type}
-            </button>
-          ))}
+          <button
+            onClick={() => setStudioMode('feed')}
+            className="relative px-3 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1.5"
+            style={tabStyle(studioMode === 'feed')}
+            aria-pressed={studioMode === 'feed'}
+          >
+            <Grid size={10} />
+            Feed
+          </button>
+          <button
+            onClick={() => setStudioMode('video-prompts')}
+            className="relative px-3 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1.5"
+            style={tabStyle(studioMode === 'video-prompts')}
+            aria-pressed={studioMode === 'video-prompts'}
+          >
+            <Video size={10} />
+            Video Prompts
+          </button>
         </div>
       </div>
 
@@ -681,27 +1007,57 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
         {/* ── Sidebar (Side Menu) ── */}
         <aside className="flex-shrink-0 w-64 border-r border-white/5 overflow-y-auto custom-scrollbar">
           <div className="p-4 space-y-5">
-            {/* Search */}
-            <div>
-              <p className="text-xs font-medium mb-2" style={{ color: semantic.textLabel }}>
-                Search
-              </p>
-              <div className="relative">
-                <Search
-                  size={14}
-                  className="absolute left-3 top-2.5"
-                  style={{ color: semantic.textMuted }}
-                />
-                <input
-                  type="text"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="Search prompts, tags..."
-                  aria-label="Search prompts"
-                  className="w-full rounded-xl bg-white/5 border border-white/10 px-9 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-cyan-400/50 transition-colors"
-                />
-              </div>
-            </div>
+             {/* Search */}
+             <div>
+               <p className="text-xs font-medium mb-2" style={{ color: semantic.textLabel }}>
+                 Search
+               </p>
+               <div className="relative">
+                 <Search
+                   size={14}
+                   className="absolute left-3 top-2.5"
+                   style={{ color: semantic.textMuted }}
+                 />
+                 <input
+                   type="text"
+                   value={studioMode === 'video-prompts' ? videoSearchInput : searchInput}
+                   onChange={(e) => {
+                     if (studioMode === 'video-prompts') {
+                       setVideoSearchInput(e.target.value)
+                     } else {
+                       setSearchInput(e.target.value)
+                     }
+                   }}
+                   placeholder={studioMode === 'video-prompts' ? 'Search video prompts...' : 'Search prompts, tags...'}
+                   aria-label="Search prompts"
+                   className="w-full rounded-xl bg-white/5 border border-white/10 px-9 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-cyan-400/50 transition-colors"
+                 />
+               </div>
+             </div>
+
+             {studioMode === 'video-prompts' && (
+               <div>
+                 <p className="text-xs font-medium mb-2" style={{ color: semantic.textLabel }}>
+                   Availability
+                 </p>
+                 <div className="flex flex-col gap-1">
+                   <button
+                     onClick={() => { setVideoOnly(true); setVideoPage(1) }}
+                     className="text-left px-3 py-2 rounded-lg text-sm transition-all"
+                     style={optionStyle(videoOnly)}
+                   >
+                     With video only
+                   </button>
+                   <button
+                     onClick={() => { setVideoOnly(false); setVideoPage(1) }}
+                     className="text-left px-3 py-2 rounded-lg text-sm transition-all"
+                     style={optionStyle(!videoOnly)}
+                   >
+                     All prompts
+                   </button>
+                 </div>
+               </div>
+             )}
 
             {/* Sort */}
             <div>
@@ -806,54 +1162,81 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
               </div>
             </div>
 
-            {/* View mode */}
-            <div>
-              <p className="text-xs font-medium mb-2" style={{ color: semantic.textLabel }}>
-                View
-              </p>
-              <div className="flex gap-1 p-1 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className="rounded-md p-1.5 text-xs transition-all"
-                  style={optionStyle(viewMode === 'grid')}
-                  aria-label="Grid view"
-                  title="Grid view"
-                >
-                  <Grid size={14} />
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className="rounded-md p-1.5 text-xs transition-all"
-                  style={optionStyle(viewMode === 'list')}
-                  aria-label="List view"
-                  title="List view"
-                >
-                  <List size={14} />
-                </button>
-              </div>
-            </div>
-          </div>
-        </aside>
+             {/* View mode */}
+             <div>
+               <p className="text-xs font-medium mb-2" style={{ color: semantic.textLabel }}>
+                 View
+               </p>
+               <div className="flex gap-1 p-1 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                 <button
+                   onClick={() => setViewMode('grid')}
+                   className="rounded-md p-1.5 text-xs transition-all"
+                   style={optionStyle(viewMode === 'grid')}
+                   aria-label="Grid view"
+                   title="Grid view"
+                 >
+                   <Grid size={14} />
+                 </button>
+                 <button
+                   onClick={() => setViewMode('list')}
+                   className="rounded-md p-1.5 text-xs transition-all"
+                   style={optionStyle(viewMode === 'list')}
+                   aria-label="List view"
+                   title="List view"
+                 >
+                   <List size={14} />
+                 </button>
+               </div>
+             </div>
+
+             {studioMode === 'video-prompts' && (
+               <div>
+                 <p className="text-xs font-medium mb-2" style={{ color: semantic.textLabel }}>
+                   Source Language
+                 </p>
+                 <div className="flex flex-col gap-1 max-h-64 overflow-y-auto custom-scrollbar">
+                   <button
+                     onClick={() => { setVideoLanguage(''); setVideoPage(1) }}
+                     className="text-left px-3 py-2 rounded-lg text-sm transition-all"
+                     style={optionStyle(videoLanguage === '')}
+                   >
+                     All languages
+                   </button>
+                   {availableLanguages.map((lang) => (
+                     <button
+                       key={lang}
+                       onClick={() => { setVideoLanguage(lang); setVideoPage(1) }}
+                       className="text-left px-3 py-2 rounded-lg text-sm transition-all capitalize"
+                       style={optionStyle(videoLanguage === lang)}
+                     >
+                       {lang}
+                     </button>
+                   ))}
+                 </div>
+               </div>
+             )}
+           </div>
+         </aside>
 
         {/* ── Main Feed ── */}
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar relative">
-          {isPageLoading && page > 1 && (
+          {(studioMode === 'feed' ? isPageLoading : isVideoPageLoading) && (studioMode === 'feed' ? page : videoPage) > 1 && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 backdrop-blur-sm">
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
             </div>
           )}
-          {isLoading && page === 1 ? (
+          {isLoading && (studioMode === 'feed' ? page : videoPage) === 1 ? (
             <div className="p-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {Array.from({ length: pageSize }).map((_, i) => (
                   <div
                     key={i}
-                    className="aspect-[3/2] rounded-xl border border-white/10 bg-white/[0.02] animate-pulse"
+                    className="aspect-video rounded-xl border border-white/10 bg-white/[0.02] animate-pulse"
                   />
                 ))}
               </div>
             </div>
-          ) : error && records.length === 0 ? (
+          ) : studioMode === 'feed' && error && records.length === 0 ? (
             <div className="p-8 text-center">
               <p className="text-red-400">{error}</p>
               <button
@@ -864,7 +1247,7 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
                 Retry
               </button>
             </div>
-          ) : records.length === 0 ? (
+          ) : studioMode === 'feed' && records.length === 0 ? (
             <div className="p-8 text-center">
               <p className="text-white/50 text-sm">No prompts match your current filters.</p>
               <button
@@ -882,112 +1265,158 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
                 Clear all filters
               </button>
             </div>
+          ) : studioMode === 'video-prompts' && videoError && videoRecords.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className="text-red-400">{videoError}</p>
+              <button
+                onClick={() => fetchVideoFeed(1)}
+                className="mt-4 rounded-xl px-4 py-2 text-sm font-semibold"
+                style={buttons.primary}
+              >
+                Retry
+              </button>
+            </div>
+          ) : studioMode === 'video-prompts' && videoRecords.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className="text-white/50 text-sm">No video prompts match your current filters.</p>
+               <button
+                 onClick={() => {
+                   setVideoSearchInput('')
+                   setVideoLanguage('')
+                   setVideoOnly(true)
+                 }}
+                 className="mt-4 rounded-xl px-4 py-2 text-sm font-semibold"
+                 style={buttons.primary}
+               >
+                 Clear all filters
+               </button>
+            </div>
           ) : (
             <div className="p-6">
-              {viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {records.map((record) => (
-                    <PromptCard
-                      key={record.id}
-                      record={record}
-                      isSelected={selectedRecord?.id === record.id}
-                      onSelect={setSelectedRecord}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {records.map((record) => (
-                    <button
-                      key={record.id}
-                      onClick={() => setSelectedRecord(record)}
-                      className={classNames(
-                        'w-full text-left flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-all',
-                        selectedRecord?.id === record.id
-                          ? 'border-cyan-400/50 bg-cyan-400/[0.03]'
-                          : 'border-white/10 bg-white/[0.02] hover:border-white/20'
-                      )}
-                    >
-                       <div className="relative h-20 w-32 shrink-0 overflow-hidden rounded-lg">
-                         {(() => {
-                           const primaryMedia =
-                             record.media.find((m) => m.role === 'result') || record.media[0]
-                           return primaryMedia ? (
-                             <img
-                               src={primaryMedia.previewUrl}
-                               alt={record.title}
-                               loading="lazy"
-                               className="h-full w-full object-cover"
-                             />
-                           ) : (
-                             <div className="flex h-full w-full items-center justify-center">
-                               <Video size={16} style={{ color: semantic.textMuted }} />
-                             </div>
-                           )
-                         })()}
-                       </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="text-sm font-semibold text-white line-clamp-1">{record.title}</h3>
-                        <p className="text-xs text-white/40 line-clamp-1">
-                          Prompt: {record.prompt.slice(0, 80)}
-                          {record.prompt.length > 80 && '...'}
-                        </p>
-                         <div className="mt-1 flex items-center gap-3 text-xs" style={{ color: semantic.textMuted }}>
-                           <span>@{record.source?.author?.handle}</span>
-                           <span>•</span>
-                           <span>{formatDate(record.source?.publishedAt)}</span>
+              {studioMode === 'feed' ? (
+                viewMode === 'grid' ? (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {records.map((record) => (
+                      <PromptCard
+                        key={record.id}
+                        record={record}
+                        isSelected={selectedRecord?.id === record.id}
+                        onSelect={setSelectedRecord}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {records.map((record) => (
+                      <button
+                        key={record.id}
+                        onClick={() => setSelectedRecord(record)}
+                        className={classNames(
+                          'w-full text-left flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-all',
+                          selectedRecord?.id === record.id
+                            ? 'border-cyan-400/50 bg-cyan-400/[0.03]'
+                            : 'border-white/10 bg-white/[0.02] hover:border-white/20'
+                        )}
+                      >
+                         <div className="relative h-20 w-32 shrink-0 overflow-hidden rounded-lg">
+                           {(() => {
+                             const primaryMedia =
+                               record.media.find((m) => m.role === 'result') || record.media[0]
+                             return primaryMedia ? (
+                               <img
+                                 src={primaryMedia.previewUrl}
+                                 alt={record.title}
+                                 loading="lazy"
+                                 className="h-full w-full object-cover"
+                               />
+                             ) : (
+                               <div className="flex h-full w-full items-center justify-center">
+                                 <Video size={16} style={{ color: semantic.textMuted }} />
+                               </div>
+                             )
+                           })()}
                          </div>
-                         {record.source?.engagement && (
-                           <div className="mt-1 flex items-center gap-3 text-[10px]" style={{ color: semantic.textMuted }}>
-                             <span className="flex items-center gap-1">
-                               <Heart size={10} className="fill-white/30 text-white" />
-                               {formatNumber(record.source.engagement.likes)}
-                             </span>
-                             {record.source.engagement.reposts ? (
-                               <span className="flex items-center gap-1">
-                                 <Repeat2 size={10} />
-                                 {formatNumber(record.source.engagement.reposts)}
-                               </span>
-                             ) : null}
-                             {record.source.engagement.replies ? (
-                               <span className="flex items-center gap-1">
-                                 <MessageCircle size={10} />
-                                 {formatNumber(record.source.engagement.replies)}
-                               </span>
-                             ) : null}
-                             {record.source.engagement.likes != null && record.source.engagement.likes >= 50 && (
-                               <span className="flex items-center gap-1 text-red-400">
-                                 <Flame size={10} />
-                                 Viral
-                               </span>
-                             )}
-                           </div>
-                         )}
-                      </div>
-                      <ChevronRight size={14} style={{ color: semantic.textMuted }} />
-                    </button>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-sm font-semibold text-white line-clamp-1">{record.title}</h3>
+                          <p className="text-xs text-white/40 line-clamp-1">
+                            Prompt: {record.prompt.slice(0, 80)}
+                            {record.prompt.length > 80 && '...'}
+                          </p>
+                           <div className="mt-1 flex items-center gap-3 text-xs" style={{ color: semantic.textMuted }}>
+                              <span>@{record.source?.author?.handle}</span>
+                              <span>•</span>
+                              <span>{formatDate(record.source?.publishedAt)}</span>
+                            </div>
+                            {record.source?.engagement && (
+                              <div className="mt-1 flex items-center gap-3 text-[10px]" style={{ color: semantic.textMuted }}>
+                                <span className="flex items-center gap-1">
+                                  <Heart size={10} className="fill-white/30 text-white" />
+                                  {formatNumber(record.source.engagement.likes)}
+                                </span>
+                                {record.source.engagement.reposts ? (
+                                  <span className="flex items-center gap-1">
+                                    <Repeat2 size={10} />
+                                    {formatNumber(record.source.engagement.reposts)}
+                                  </span>
+                                ) : null}
+                                {record.source.engagement.replies ? (
+                                  <span className="flex items-center gap-1">
+                                    <MessageCircle size={10} />
+                                    {formatNumber(record.source.engagement.replies)}
+                                  </span>
+                                ) : null}
+                                {record.source.engagement.likes != null && record.source.engagement.likes >= 50 && (
+                                  <span className="flex items-center gap-1 text-red-400">
+                                    <Flame size={10} />
+                                    Viral
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                        </div>
+                        <ChevronRight size={14} style={{ color: semantic.textMuted }} />
+                      </button>
+                    ))}
+                  </div>
+                )
+              ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {videoRecords.map((record) => (
+                    <VideoPromptCard
+                      key={record.slug}
+                      record={record}
+                      onSelect={setSelectedVideoRecord}
+                    />
                   ))}
                 </div>
               )}
 
               {/* Pagination */}
-              {records.length > 0 && (
+              {(studioMode === 'feed' ? records.length : videoRecords.length) > 0 && (
                 <div className="mt-6 flex items-center justify-between">
                   <p className="text-xs" style={{ color: semantic.textMuted }}>
-                    Page {page} of {Math.ceil((stats?.total || 0) / pageSize)} · {stats?.total || 0} total prompts
+                    {studioMode === 'feed'
+                      ? `Page ${page} of ${Math.ceil((stats?.total || 0) / pageSize)} · ${stats?.total || 0} total prompts`
+                      : `Page ${videoPage} of ${Math.ceil((videoStats?.total || 0) / videoPageSize)} · ${videoStats?.total || 0} video prompts`}
                   </p>
                   <div className="flex gap-2">
                      <button
-                       onClick={() => setPage(p => Math.max(1, p - 1))}
-                       disabled={page <= 1 || isLoading || isPageLoading}
+                       onClick={() => (studioMode === 'feed' ? setPage(p => Math.max(1, p - 1)) : setVideoPage(p => Math.max(1, p - 1)))}
+                       disabled={(() => {
+                         if (studioMode === 'feed') return page <= 1 || isLoading || isPageLoading
+                         return videoPage <= 1 || isLoading || isVideoPageLoading
+                       })()}
                        className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50"
                        style={buttons.ghost}
                      >
                        Previous
                      </button>
                      <button
-                       onClick={() => setPage(p => p + 1)}
-                       disabled={page >= Math.ceil((stats?.total || 0) / pageSize) || isLoading || isPageLoading}
+                       onClick={() => (studioMode === 'feed' ? setPage(p => p + 1) : setVideoPage(p => p + 1))}
+                       disabled={(() => {
+                         if (studioMode === 'feed') return page >= Math.ceil((stats?.total || 0) / pageSize) || isLoading || isPageLoading
+                         return videoPage >= Math.ceil((videoStats?.total || 0) / videoPageSize) || isLoading || isVideoPageLoading
+                       })()}
                        className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50"
                        style={buttons.ghost}
                      >
@@ -1004,6 +1433,11 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
       {/* Prompt Detail Modal */}
       {selectedRecord && (
         <PromptDetailModal record={selectedRecord} onClose={() => setSelectedRecord(null)} />
+      )}
+
+      {/* Video Prompt Modal */}
+      {selectedVideoRecord && (
+        <VideoPromptModal record={selectedVideoRecord} onClose={() => setSelectedVideoRecord(null)} />
       )}
     </div>
   )

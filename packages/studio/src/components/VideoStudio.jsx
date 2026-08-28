@@ -554,6 +554,7 @@ export default function VideoStudio({
   historyItems,
   droppedFiles,
   onFilesHandled,
+  templateData,
 }) {
   const PERSIST_KEY = "hg_video_studio_persistent";
 
@@ -897,6 +898,24 @@ export default function VideoStudio({
       hasRestored.current = true;
     }
   }, [applyControlsForModel, defaultModel.id]);
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const templateApplied = useRef(null);
+  useEffect(() => {
+    if (!templateData || templateApplied.current === templateData.slug) return;
+    templateApplied.current = templateData.slug;
+
+    if (templateData.prompt) {
+      setPrompt(templateData.prompt);
+    }
+    if (templateData.aspectRatio) {
+      setSelectedAr(templateData.aspectRatio);
+    }
+    if (templateData.duration) {
+      const d = parseInt(String(templateData.duration), 10);
+      if (!isNaN(d)) setSelectedDuration(d);
+    }
+  }, [templateData]);
 
   // ── Adjust height on load ────────────────────────────────────────────────
   useEffect(() => {

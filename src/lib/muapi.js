@@ -46,7 +46,6 @@ const ENDPOINT_ALIASES = {
   'seedance-v2.0-t2v': 'seedance-2-t2v',
   'seedance-v2.0-extend': 'seedance-2-vip-extend',
   'seedance-v2.0-i2v': 'seedance-2-image-to-video',
-  'seedance-lite-reference-video': 'seedance-lite-reference-video',
   // Legacy model name differences
   'bytedance-seedream-edit-v4': 'bytedance-seedream-v4-edit',
   'minimax-image-01': 'minimax-image-01-subject-reference',

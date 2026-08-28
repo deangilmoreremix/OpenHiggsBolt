@@ -91,7 +91,7 @@ export class MuAPIVFXClient {
   private abortController: AbortController | null = null
 
   constructor(options: MuAPIVFXClientOptions) {
-    this.apiKey = options.apiKey
+    this.apiKey = createAuthHeaders(options.apiKey)['x-api-key'] as string
     this.baseUrl = options.baseUrl || MUAPI_BASE
     this.pollIntervalMs = options.pollIntervalMs || DEFAULT_POLL_INTERVAL_MS
     this.maxPollAttempts = options.maxPollAttempts || DEFAULT_MAX_POLL_ATTEMPTS

@@ -985,3 +985,11 @@ export async function expandImage(apiKey, { image_url, onRequestId }) {
     const payload = { image_url };
     return submitAndPoll(endpoint, payload, apiKey, onRequestId, 90);
 }
+
+export function buildWorkflowApiSnippets(workflowId, inputs, options) {
+  return "";
+}
+
+export function generateCharacterVideo() {
+  return {};
+}

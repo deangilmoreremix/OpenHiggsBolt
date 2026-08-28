@@ -29,7 +29,6 @@ function withKey(config: any, apiKey: string) {
     },
   };
 }
-}
 
 export interface SocialPublishServiceOptions {
   apiKey: string

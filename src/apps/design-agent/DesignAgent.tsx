@@ -258,7 +258,7 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
     }
     // Clean key before saving to remove invisible Unicode characters
     const cleaned = trimmed
-      .replace(/[​-‍﻿﻿­]/g, '')
+      .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')  // zero-width chars, BOM, word joiner, soft hyphen
       .replace(/^[\s\x00-\x1F]+|[\s\x00-\x1F]+$/g, '')
       .trim();
     localStorage.setItem(API_KEY_STORAGE, cleaned);

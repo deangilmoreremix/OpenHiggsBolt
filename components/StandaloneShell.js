@@ -119,12 +119,12 @@ function isValidApiKey(key) {
 function cleanApiKey(key) {
   if (!key) return '';
   return String(key)
-    .replace(/[​-‍﻿﻿­]/g, '')  // zero-width chars, BOM, word joiner, soft hyphen
-    .replace(/^[\s\x00-\x1F]+|[\s\x00-\x1F]+$/g, '')
+    .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')  // zero-width chars, BOM, word joiner, soft hyphen
+    .replace(/^[\s\u0000-\u001F]+|[\s\u0000-\u001F]+$/g, '')
     .trim();
 }
 
-export default function StandaloneShell({ embedded = false, initialTab = null, demoMode = false } = {}) {
+export default function StandaloneShell({ embedded = false, initialTab = null, demoMode = false, templateData = null } = {}) {
   const params = useParams();
   const router = useRouter();
   const { signOut } = useClerk();
@@ -635,29 +635,29 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       <AiAssistantProvider apiKey={apiKey} openaiKey={openaiKey}>
       <SocialPublishProvider apiKey={apiKey}>
       <div className="flex-1 min-h-0 relative overflow-hidden">
-        {activeTab === 'image'   && <ImageStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
-        {activeTab === 'video'   && <VideoStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
-        {activeTab === 'clipping' && <ClippingStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
-        {activeTab === 'vibe-motion' && <VibeMotionStudio apiKey={apiKey} />}
-        {activeTab === 'lipsync' && <LipSyncStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
-        {activeTab === 'cinema'  && <CinemaStudio  apiKey={apiKey} />}
-        {activeTab === 'audio'   && <AudioStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
-         {activeTab === 'marketing' && <MarketingStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
-         {activeTab === 'recast' && <RecastStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
-         {activeTab === 'workflows' && <WorkflowStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
-        {activeTab === 'agents' && <AgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
-        {activeTab === 'design-agent' && <DesignAgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
-        {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} /></MemoryRouter>}
-        {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} /></MemoryRouter>}
-        {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
-        {activeTab === 'brand-studio' && (
-          <div className="flex items-center justify-center h-full">
-            <p style={{ color: semantic.textSecondary }}>Loading Brand Studio…</p>
-          </div>
-        )}
-        {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} />}
-        {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
-        {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
+         {activeTab === 'image'   && <ImageStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
+         {activeTab === 'video'   && <VideoStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
+         {activeTab === 'clipping' && <ClippingStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
+         {activeTab === 'vibe-motion' && <VibeMotionStudio apiKey={apiKey} templateData={templateData} />}
+         {activeTab === 'lipsync' && <LipSyncStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
+         {activeTab === 'cinema'  && <CinemaStudio  apiKey={apiKey} templateData={templateData} />}
+         {activeTab === 'audio'   && <AudioStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
+          {activeTab === 'marketing' && <MarketingStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
+          {activeTab === 'recast' && <RecastStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
+          {activeTab === 'workflows' && <WorkflowStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
+         {activeTab === 'agents' && <AgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
+         {activeTab === 'design-agent' && <DesignAgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
+         {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} /></MemoryRouter>}
+         {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} /></MemoryRouter>}
+         {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
+         {activeTab === 'brand-studio' && (
+           <div className="flex items-center justify-center h-full">
+             <p style={{ color: semantic.textSecondary }}>Loading Brand Studio…</p>
+           </div>
+         )}
+         {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} />}
+         {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
+         {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
       </div>
       </SocialPublishProvider>
       </AiAssistantProvider>

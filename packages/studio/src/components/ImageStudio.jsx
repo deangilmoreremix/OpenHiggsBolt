@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { generateImage, generateI2I, uploadFile, generateImageEditGrok } from "../muapi.js";
+import { generateImage, generateI2I, uploadFile } from "../muapi.js";
 import { setCharacterSheet } from "../lib/characterStore";
 import DrawModal from "./DrawModal.jsx";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
@@ -1239,7 +1239,7 @@ export default function ImageStudio({
               aspect_ratio: selectedAr,
             };
             if (selectedResolution) genParams.resolution = selectedResolution;
-            return await generateImageEditGrok(apiKey, genParams);
+            return await generateImage(apiKey, genParams);
           }
           if (imageMode) {
             const genParams = {
