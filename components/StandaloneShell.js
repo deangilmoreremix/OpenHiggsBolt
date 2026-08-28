@@ -102,14 +102,26 @@ function readCookie(name) {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
-// MuAPI keys are opaque tokens. We only reject values containing whitespace or
-// control characters (almost always a copy/paste artifact) which would otherwise
-// be sent verbatim and fail auth. We deliberately do NOT strip or transform the
-// key beyond trimming, so a valid key with unusual-but-legal characters is
-// never corrupted.
-const API_KEY_SAFE = /^[^\s\x00-\x1F]+$/;
+// MuAPI keys are opaque tokens. We reject values containing whitespace or
+// control characters (almost always a copy/paste artifact). We also strip
+// invisible Unicode characters (zero-width spaces, BOM, word joiner, soft hyphen)
+// that users may accidentally copy from web dashboards. These characters are
+// invisible in most UIs but cause API auth to fail with a generic 401.
+const API_KEY_SAFE = /^[^\s\x00-\x1F​-‍﻿﻿­]+$/;
+
 function isValidApiKey(key) {
   return typeof key === 'string' && key.length > 0 && API_KEY_SAFE.test(key);
+}
+
+// Strip invisible Unicode characters that commonly corrupt copied API keys.
+// These characters are invisible in browser inputs but cause MuAPI to reject
+// the key with a 401 "Not authorized" error.
+function cleanApiKey(key) {
+  if (!key) return '';
+  return String(key)
+    .replace(/[​-‍﻿﻿­]/g, '')  // zero-width chars, BOM, word joiner, soft hyphen
+    .replace(/^[\s\x00-\x1F]+|[\s\x00-\x1F]+$/g, '')
+    .trim();
 }
 
 export default function StandaloneShell({ embedded = false, initialTab = null, demoMode = false } = {}) {
@@ -259,7 +271,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
     const stored = localStorage.getItem(STORAGE_KEY) || readCookie(STORAGE_KEY);
     const storedOpenai = localStorage.getItem(OPENAI_STORAGE_KEY) || readCookie(OPENAI_STORAGE_KEY);
     if (stored) {
-      const cleanKey = stored.trim();
+      const cleanKey = cleanApiKey(stored);
       setApiKey(cleanKey);
       fetchBalance(cleanKey);
       // Sync cookie immediately on mount to establish identity for background
@@ -267,7 +279,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       document.cookie = muapiCookie(cleanKey);
     }
     if (storedOpenai) {
-      const cleanOpenai = storedOpenai.trim();
+      const cleanOpenai = cleanApiKey(storedOpenai);
       setOpenaiKey(cleanOpenai);
       document.cookie = openaiCookie(cleanOpenai);
     }
@@ -316,8 +328,8 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
 
   const handleKeySave = useCallback(async (key, openaiKeyValue) => {
     if (demoMode) return;
-    const trimmed = key.trim();
-    const trimmedOpenai = (openaiKeyValue || '').trim();
+    const trimmed = cleanApiKey(key);
+    const trimmedOpenai = cleanApiKey(openaiKeyValue || '');
     if (!trimmed) return;
     if (!isValidApiKey(trimmed)) {
       setAuthError('API key looks invalid (contains spaces or control characters). Re-copy it from your MuAPI dashboard.');

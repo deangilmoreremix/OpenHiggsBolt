@@ -251,9 +251,19 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
   useEffect(() => () => { aliveRef.current = false }, [])
 
   const saveApiKey = useCallback(() => {
-    localStorage.setItem(API_KEY_STORAGE, keyInput)
-    setApiKey(keyInput)
-    setShowKeyModal(false)
+    const trimmed = keyInput.trim();
+    if (!trimmed || trimmed.length < 8) {
+      alert('Please enter a valid API key (at least 8 characters, no surrounding quotes).');
+      return;
+    }
+    // Clean key before saving to remove invisible Unicode characters
+    const cleaned = trimmed
+      .replace(/[​-‍﻿﻿­]/g, '')
+      .replace(/^[\s\x00-\x1F]+|[\s\x00-\x1F]+$/g, '')
+      .trim();
+    localStorage.setItem(API_KEY_STORAGE, cleaned);
+    setApiKey(cleaned);
+    setShowKeyModal(false);
   }, [keyInput])
 
   const createNewProject = useCallback(async () => {

@@ -1,5 +1,6 @@
 import { LocalModelManager } from './LocalModelManager.js';
 import { isLocalAIAvailable } from '../lib/localInferenceClient.js';
+import { isValidKeyFormat } from '../lib/keys.js';
 import { t } from '../lib/i18n.js';
 
 export function SettingsModal(onClose) {
@@ -110,17 +111,39 @@ export function SettingsModal(onClose) {
     apiPanel.querySelector('#settings-save-btn').onclick = () => {
         const muapiKey = apiPanel.querySelector('#settings-api-key').value.trim();
         const openaiKey = apiPanel.querySelector('#settings-openai-key').value.trim();
-        if (muapiKey) {
-            localStorage.setItem('muapi_key', muapiKey);
-            if (openaiKey) {
-                localStorage.setItem('openai_key', openaiKey);
-            } else {
-                localStorage.removeItem('openai_key');
-            }
-            close();
-        } else {
-            alert(t('settings.invalidKey'));
+        if (!muapiKey || !isValidKeyFormat(muapiKey)) {
+            alert('Please enter a valid MuAPI key (at least 8 characters, no surrounding quotes).');
+            return;
         }
+        if (openaiKey && !isValidKeyFormat(openaiKey)) {
+            alert('Please enter a valid OpenAI key (at least 8 characters, no surrounding quotes).');
+            return;
+        }
+        // Clean keys before saving to remove invisible Unicode characters
+        const cleanMuapi = muapiKey
+            .replace(/[​-‍﻿﻿­]/g, '')
+            .replace(/^[\s\x00-\x1F]+|[\s\x00-\x1F]+$/g, '')
+            .trim();
+        const cleanOpenai = openaiKey
+            .replace(/[​-‍﻿﻿­]/g, '')
+            .replace(/^[\s\x00-\x1F]+|[\s\x00-\x1F]+$/g, '')
+            .trim();
+        localStorage.setItem('muapi_key', cleanMuapi);
+        if (cleanOpenai) {
+            localStorage.setItem('openai_key', cleanOpenai);
+        } else {
+            localStorage.removeItem('openai_key');
+        }
+        // Success feedback: flash the button text
+        const saveBtn = apiPanel.querySelector('#settings-save-btn');
+        const originalText = saveBtn.textContent;
+        saveBtn.textContent = '✓ Saved';
+        saveBtn.style.background = '#22c55e';
+        setTimeout(() => {
+            saveBtn.textContent = originalText;
+            saveBtn.style.background = 'var(--color-primary,#22d3ee)';
+            close();
+        }, 600);
     };
 
     header.querySelector('#settings-close-btn').onclick = close;

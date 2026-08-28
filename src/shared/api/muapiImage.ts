@@ -20,15 +20,15 @@
 // opt into the proxy per-deploy by setting `MUAPI_BASE_URL=''`.
 const MUAPI_BASE = process.env.MUAPI_BASE_URL !== undefined ? process.env.MUAPI_BASE_URL : 'https://api.muapi.ai'
 
-/** Canonical image-model → endpoint aliases (verified against the live catalog). */
+/** Canonical image-model → endpoint aliases (verified against the live catalog).
+ *
+ * Maps model names to their correct API endpoints. Only include entries where the
+ * API endpoint differs from the model name. Models not listed fall back to using
+ * the model name as the endpoint path.
+ */
 const IMAGE_ENDPOINT_ALIASES: Record<string, string> = {
-  'flux-dev': 'flux-dev',
-  'flux-schnell': 'flux-schnell',
-  'seedream-5.0': 'bytedance-seedream-v5.0',
-  'midjourney-v7': 'midjourney-v7',
-  // Inpainting / edit model. Catalog endpoint is `bytedance-seededit-image`
-  // (packages/studio/src/models.js id `bytedance-seededit-v3`). Kept here so a
-  // mask-capable flow can target it once a `mask` field is catalog-verified.
+  'flux-dev': 'flux-dev-image',
+  'flux-schnell': 'flux-schnell-image',
   'bytedance-seededit-v3': 'bytedance-seededit-image',
 }
 
@@ -178,7 +178,11 @@ function isImageUrl(s: string): boolean {
 }
 
 function cleanKey(apiKey: string): string {
-  return typeof apiKey === 'string' ? apiKey.replace(/[^\u0000-\u00FF]/g, '').trim() : ''
+  if (!apiKey) return '';
+  return String(apiKey)
+    .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')  // zero-width chars, BOM, word joiner, soft hyphen
+    .replace(/^[\s\u0000-\u001F]+|[\s\u0000-\u001F]+$/g, '')
+    .trim();
 }
 
 function createAuthHeaders(apiKey: string): HeadersInit {

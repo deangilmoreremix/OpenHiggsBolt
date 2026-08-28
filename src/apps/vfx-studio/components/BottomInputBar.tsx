@@ -187,7 +187,14 @@ export default function BottomInputBar({
   function handleApiKeyContinue() {
     const key = apiKeyInput.trim();
     if (key) {
-      setUserApiKey(key);
+      // Clean the key before saving to prevent invisible Unicode characters
+      // from causing 401 errors during API calls
+      const cleanedKey = key
+        .replace(/[​-‍﻿﻿­]/g, '')
+        .replace(/^[\s\x00-\x1F]+|[\s\x00-\x1F]+$/g, '')
+        .trim();
+      localStorage.setItem('muapi_key', cleanedKey);
+      setUserApiKey(cleanedKey);
       setImageUrl('');
     }
     setShowApiKeyModal(false);

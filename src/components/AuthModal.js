@@ -1,3 +1,4 @@
+import { isValidKeyFormat } from '../lib/keys.js';
 import { t } from '../lib/i18n.js';
 
 export function AuthModal(onSuccess) {
@@ -49,12 +50,21 @@ export function AuthModal(onSuccess) {
 
     btn.onclick = () => {
         const key = input.value.trim();
-        if (key) {
-            localStorage.setItem('muapi_key', key);
+        if (key && isValidKeyFormat(key)) {
+            // Clean key before saving to remove invisible Unicode characters
+            const cleanedKey = key
+                .replace(/[​-‍﻿﻿­]/g, '')
+                .replace(/^[\s\x00-\x1F]+|[\s\x00-\x1F]+$/g, '')
+                .trim();
+            localStorage.setItem('muapi_key', cleanedKey);
             document.body.removeChild(overlay);
             if (onSuccess) onSuccess();
         } else {
             input.classList.add('border-red-500/50');
+            // Show specific error message for format issues
+            if (key && !isValidKeyFormat(key)) {
+                alert('Please enter a valid API key (at least 8 characters, no surrounding quotes).');
+            }
             setTimeout(() => input.classList.remove('border-red-500/50'), 2000);
         }
     };
