@@ -53,7 +53,7 @@ const TABS = [
   { id: 'apps', label: 'Explore Apps' },
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'social-publishing', label: 'Social Publishing' },
-  { id: 'go-ai-viral', label: 'GO- AI Viral' },
+  { id: 'go-ai-viral', label: 'GO-Viral' },
 ];
 
 // Maps every landing-page studio slug to the studio tab that renders it.

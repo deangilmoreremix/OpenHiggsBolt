@@ -1,6 +1,6 @@
 'use client'
 /**
- * GO- AI Viral Studio — Visual Prompt Feed Browser
+ * GO-Viral Studio — Visual Prompt Feed Browser
  *
  * A continuously-refreshed public feed of AI image and video prompts discovered
  * from public X (Twitter) posts. Every record preserves the original author,
@@ -19,9 +19,9 @@
  */
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
-  Search, Copy, ExternalLink, User, Heart,
+  Search, Copy, ExternalLink, Heart,
   Grid, List, ChevronRight,
-  Image as ImageIcon, Video, Calendar, BookOpen,
+  Image as ImageIcon, Video, BookOpen,
   Repeat2, MessageCircle, Flame
 } from 'lucide-react'
 import { buttons, semantic, tabStyle, optionStyle, appWrapper, iconBadge } from '@/shared/styles/designTokens'
@@ -106,7 +106,6 @@ interface PromptCardProps {
 
 function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
   const MediaIcon = getMediaTypeIcon(record.mediaType)
-  // Use the first "result" media asset, or the first media asset overall
   const primaryMedia =
     record.media.find((m) => m.role === 'result') || record.media[0]
 
@@ -114,118 +113,85 @@ function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
     <button
       onClick={() => onSelect(record)}
       className={classNames(
-        'group relative flex flex-col rounded-xl border text-left transition-all duration-200',
+        'group relative flex flex-col rounded-3xl border text-left transition-all duration-300 overflow-hidden',
         isSelected
           ? 'border-cyan-400/50 bg-cyan-400/[0.03]'
           : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
       )}
     >
-       {/* Media preview */}
-       <div className="relative aspect-[3/2] overflow-hidden rounded-t-xl">
-         {primaryMedia ? (
-           <>
-             <img
-               src={primaryMedia.previewUrl}
-               alt={primaryMedia.altText || record.title}
-               loading="lazy"
-               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-               onError={(e) => {
-                 ;(e.target as HTMLImageElement).style.display = 'none'
-               }}
-             />
-             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-           </>
-         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-white/5">
-            <MediaIcon size={24} style={{ color: semantic.textMuted }} />
+      {/* Media preview */}
+      <div className="relative">
+        {primaryMedia ? (
+          <div className="relative aspect-video overflow-hidden">
+            <img
+              src={primaryMedia.previewUrl}
+              alt={primaryMedia.altText || record.title}
+              loading="lazy"
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+              onError={(e) => {
+                ;(e.target as HTMLImageElement).style.display = 'none'
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+        ) : (
+          <div className="flex aspect-video w-full items-center justify-center bg-white/5">
+            <MediaIcon size={32} style={{ color: semantic.textMuted }} />
           </div>
         )}
 
-        {/* Media type badge */}
-        <div
-          className="absolute top-2 left-2 rounded-full p-1"
-          style={{ background: 'rgba(0,0,0,0.5)' }}
+        {/* Category badge - glass panel style */}
+        <span className="absolute left-3 top-3 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white/90"
+          style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)' }}
         >
-          <MediaIcon size={12} className="text-white" />
+          {(record.categories || []).slice(0, 1).join(', ') || record.mediaType}
+        </span>
+
+        {/* Play affordance on hover */}
+        <div className="pointer-events-none absolute inset-0 grid place-items-center opacity-0 transition group-hover:opacity-100">
+          <span className="grid h-12 w-12 place-items-center rounded-full bg-white/15 backdrop-blur">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white" aria-hidden="true">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </span>
         </div>
 
-        {/* Engagement overlay */}
+        {/* Engagement overlay - bottom left */}
         {record.source?.engagement && (
-          <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+          <div className="absolute bottom-2 left-2 flex gap-1">
             <div className="flex gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
               <Heart size={10} className="fill-white/30 text-white" />
               <span>{formatNumber(record.source.engagement.likes)}</span>
             </div>
-            {(record.source.engagement.reposts || 0) > 0 && (
-              <div className="flex gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                <Repeat2 size={10} className="text-white" />
-                <span>{formatNumber(record.source.engagement.reposts)}</span>
-              </div>
-            )}
-            {(record.source.engagement.replies || 0) > 0 && (
-              <div className="flex gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                <MessageCircle size={10} className="text-white" />
-                <span>{formatNumber(record.source.engagement.replies)}</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Viral badge */}
-        {record.source?.engagement?.likes && record.source.engagement.likes >= 50 && (
-          <div
-            className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold"
-            style={{ background: 'rgba(239,68,68,0.2)', color: '#fca5a5' }}
-          >
-            <Flame size={10} className="text-red-400" />
-            Viral
           </div>
         )}
       </div>
 
-      {/* Content */}
-      <div className="p-3 space-y-2">
-        <h3 className="text-sm font-semibold text-white line-clamp-1">{record.title}</h3>
-
-        {/* Prompt text preview */}
-        <p className="text-xs leading-relaxed text-white/50 line-clamp-2">
-          {record.prompt.slice(0, 120)}
-          {record.prompt.length > 120 && '...'}
+      {/* Body */}
+      <div className="flex flex-1 flex-col p-5">
+        <h3 className="text-lg font-bold leading-snug text-white line-clamp-2">{record.title}</h3>
+        <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-white/55">
+          {record.prompt}
         </p>
 
-        {/* Source / author */}
-        <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-1.5">
-            <User size={10} style={{ color: semantic.textMuted }} />
-            <span style={{ color: semantic.textMuted }}>
-              @{record.source?.author?.handle || 'unknown'}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Calendar size={10} style={{ color: semantic.textMuted }} />
-            <span style={{ color: semantic.textMuted }}>
-              {formatDate(record.source?.publishedAt)}
-            </span>
-          </div>
-        </div>
-
-        {/* Recommended model + categories */}
-        <div className="flex flex-wrap gap-1">
-          <span
-            className="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
-            style={{ background: 'rgba(34,211,238,0.1)', color: 'var(--color-primary)' }}
+        <div className="mt-auto flex flex-col gap-2 pt-5">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onSelect(record); }}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
           >
-            {getModelDisplay(record.recommendedModel)}
-          </span>
-          {(record.categories || []).slice(0, 2).map((cat) => (
-            <span
-              key={cat}
-              className="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
-              style={{ background: 'rgba(255,255,255,0.05)', color: semantic.textMuted }}
+            View Prompt
+          </button>
+          {record.source?.url && (
+            <a
+              href={record.source.url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-4 py-2.5 text-sm font-bold text-black shadow-glow transition hover:scale-[1.01]"
             >
-              {cat}
-            </span>
-          ))}
+              Open Source
+            </a>
+          )}
         </div>
       </div>
     </button>
@@ -248,114 +214,81 @@ function VideoPromptCard({ record, onSelect }: VideoPromptCardProps) {
     <button
       onClick={() => onSelect(record)}
       className={classNames(
-        'group relative flex flex-col rounded-xl border text-left transition-all duration-200',
+        'group relative flex flex-col rounded-3xl border text-left transition-all duration-300 overflow-hidden',
         'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
       )}
     >
       {/* Video preview */}
-      <div className="relative aspect-video overflow-hidden rounded-t-xl bg-black">
+      <div className="relative">
         {primaryMedia ? (
-          <>
-             <video
-               src={primaryMedia.previewUrl}
-               className="h-full w-full object-cover"
-               preload="metadata"
-               playsInline
-               muted
-             />
+          <div className="relative aspect-video overflow-hidden bg-black">
+            <video
+              src={primaryMedia.previewUrl}
+              className="h-full w-full object-cover"
+              preload="metadata"
+              playsInline
+              muted
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          </>
+          </div>
         ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <Video size={24} style={{ color: semantic.textMuted }} />
+          <div className="flex aspect-video w-full items-center justify-center bg-white/5">
+            <Video size={32} style={{ color: semantic.textMuted }} />
           </div>
         )}
 
-        {/* Media type badge */}
-        <div
-          className="absolute top-2 left-2 rounded-full p-1"
-          style={{ background: 'rgba(0,0,0,0.5)' }}
+        {/* Category badge - glass panel style */}
+        <span className="absolute left-3 top-3 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white/90"
+          style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)' }}
         >
-          <Video size={12} className="text-white" />
+          {(record.categories || []).slice(0, 1).join(', ') || record.sourceLanguage?.toUpperCase() || 'VIDEO'}
+        </span>
+
+        {/* Play affordance on hover */}
+        <div className="pointer-events-none absolute inset-0 grid place-items-center opacity-0 transition group-hover:opacity-100">
+          <span className="grid h-12 w-12 place-items-center rounded-full bg-white/15 backdrop-blur">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white" aria-hidden="true">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </span>
         </div>
 
-        {/* Engagement overlay */}
+        {/* Engagement overlay - bottom left */}
         {record.engagement && record.engagement.likes > 0 && (
-          <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+          <div className="absolute bottom-2 left-2 flex gap-1">
             <div className="flex gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
               <Heart size={10} className="fill-white/30 text-white" />
               <span>{formatNumber(record.engagement.likes)}</span>
             </div>
-            {record.engagement.reposts > 0 && (
-              <div className="flex gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                <Repeat2 size={10} className="text-white" />
-                <span>{formatNumber(record.engagement.reposts)}</span>
-              </div>
-            )}
-            {record.engagement.replies > 0 && (
-              <div className="flex gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                <MessageCircle size={10} className="text-white" />
-                <span>{formatNumber(record.engagement.replies)}</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Viral badge */}
-        {record.engagement && record.engagement.likes >= 50 && (
-          <div
-            className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold"
-            style={{ background: 'rgba(239,68,68,0.2)', color: '#fca5a5' }}
-          >
-            <Flame size={10} className="text-red-400" />
-            Viral
           </div>
         )}
       </div>
 
-      {/* Content */}
-      <div className="p-3 space-y-2">
-        <h3 className="text-sm font-semibold text-white line-clamp-1">{record.prompt}</h3>
-
-        {/* Prompt text preview */}
-        <p className="text-xs leading-relaxed text-white/50 line-clamp-2">
-          {record.fullPrompt.slice(0, 120)}
-          {record.fullPrompt.length > 120 && '...'}
+      {/* Body */}
+      <div className="flex flex-1 flex-col p-5">
+        <h3 className="text-lg font-bold leading-snug text-white line-clamp-2">{record.prompt}</h3>
+        <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-white/55">
+          {record.fullPrompt}
         </p>
 
-        {/* Source / author */}
-        <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-1.5">
-            <User size={10} style={{ color: semantic.textMuted }} />
-            <span style={{ color: semantic.textMuted }}>
-              {record.author || 'Seedance Community'}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Calendar size={10} style={{ color: semantic.textMuted }} />
-            <span style={{ color: semantic.textMuted }}>
-              {formatDate(record.publishedAt)}
-            </span>
-          </div>
-        </div>
-
-        {/* Recommended model + categories */}
-        <div className="flex flex-wrap gap-1">
-          <span
-            className="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
-            style={{ background: 'rgba(34,211,238,0.1)', color: 'var(--color-primary)' }}
+        <div className="mt-auto flex flex-col gap-2 pt-5">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onSelect(record); }}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
           >
-            {getModelDisplay(record.recommendedModel || 'seedance')}
-          </span>
-          {(record.categories || []).slice(0, 2).map((cat) => (
-            <span
-              key={cat}
-              className="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
-              style={{ background: 'rgba(255,255,255,0.05)', color: semantic.textMuted }}
+            View Prompt
+          </button>
+          {record.outputUrl && (
+            <a
+              href={record.outputUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-4 py-2.5 text-sm font-bold text-black shadow-glow transition hover:scale-[1.01]"
             >
-              {cat}
-            </span>
-          ))}
+              Play Video
+            </a>
+          )}
         </div>
       </div>
     </button>
@@ -970,7 +903,7 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
           >
             <Video size={13} className="text-black" />
           </div>
-          <span className="text-sm font-semibold tracking-tight">GO- AI Viral</span>
+          <span className="text-sm font-semibold tracking-tight">GO-Viral</span>
           <span
             className="text-xs px-2 py-0.5 rounded-full"
             style={{ background: 'rgba(34,211,238,0.1)', color: 'var(--color-primary)' }}
