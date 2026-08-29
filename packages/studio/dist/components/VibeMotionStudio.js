@@ -6,10 +6,16 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports["default"] = VibeMotionStudio;
 var _react = require("react");
+var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
+var _AiAssistantProvider = require("../../../../components/AiAssistantProvider");
 var _muapi = require("../muapi.js");
+var _skillStore = require("../lib/skillStore");
+var _registry = _interopRequireDefault(require("../skills/registry.json"));
+var _promptRecipes = require("../lib/promptRecipes");
 var _jsxRuntime = require("react/jsx-runtime");
 var _excluded = ["canEdit"],
   _excluded2 = ["canEdit"];
+function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
 function _regenerator() { /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ var e, t, r = "function" == typeof Symbol ? Symbol : {}, n = r.iterator || "@@iterator", o = r.toStringTag || "@@toStringTag"; function i(r, n, o, i) { var c = n && n.prototype instanceof Generator ? n : Generator, u = Object.create(c.prototype); return _regeneratorDefine2(u, "_invoke", function (r, n, o) { var i, c, u, f = 0, p = o || [], y = !1, G = { p: 0, n: 0, v: e, a: d, f: d.bind(e, 4), d: function d(t, r) { return i = t, c = 0, u = e, G.n = r, a; } }; function d(r, n) { for (c = r, u = n, t = 0; !y && f && !o && t < p.length; t++) { var o, i = p[t], d = G.p, l = i[2]; r > 3 ? (o = l === n) && (u = i[(c = i[4]) ? 5 : (c = 3, 3)], i[4] = i[5] = e) : i[0] <= d && ((o = r < 2 && d < i[1]) ? (c = 0, G.v = n, G.n = i[1]) : d < l && (o = r < 3 || i[0] > n || n > l) && (i[4] = r, i[5] = n, G.n = l, c = 0)); } if (o || r > 1) return a; throw y = !0, n; } return function (o, p, l) { if (f > 1) throw TypeError("Generator is already running"); for (y && 1 === p && d(p, l), c = p, u = l; (t = c < 2 ? e : u) || !y;) { i || (c ? c < 3 ? (c > 1 && (G.n = -1), d(c, u)) : G.n = u : G.v = u); try { if (f = 2, i) { if (c || (o = "next"), t = i[o]) { if (!(t = t.call(i, u))) throw TypeError("iterator result is not an object"); if (!t.done) return t; u = t.value, c < 2 && (c = 0); } else 1 === c && (t = i["return"]) && t.call(i), c < 2 && (u = TypeError("The iterator does not provide a '" + o + "' method"), c = 1); i = e; } else if ((t = (y = G.n < 0) ? u : r.call(n, G)) !== a) break; } catch (t) { i = e, c = 1, u = t; } finally { f = 1; } } return { value: t, done: y }; }; }(r, o, i), !0), u; } var a = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} t = Object.getPrototypeOf; var c = [][n] ? t(t([][n]())) : (_regeneratorDefine2(t = {}, n, function () { return this; }), t), u = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(c); function f(e) { return Object.setPrototypeOf ? Object.setPrototypeOf(e, GeneratorFunctionPrototype) : (e.__proto__ = GeneratorFunctionPrototype, _regeneratorDefine2(e, o, "GeneratorFunction")), e.prototype = Object.create(u), e; } return GeneratorFunction.prototype = GeneratorFunctionPrototype, _regeneratorDefine2(u, "constructor", GeneratorFunctionPrototype), _regeneratorDefine2(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = "GeneratorFunction", _regeneratorDefine2(GeneratorFunctionPrototype, o, "GeneratorFunction"), _regeneratorDefine2(u), _regeneratorDefine2(u, o, "Generator"), _regeneratorDefine2(u, n, function () { return this; }), _regeneratorDefine2(u, "toString", function () { return "[object Generator]"; }), (_regenerator = function _regenerator() { return { w: i, m: f }; })(); }
 function _regeneratorDefine2(e, r, n, t) { var i = Object.defineProperty; try { i({}, "", {}); } catch (e) { i = 0; } _regeneratorDefine2 = function _regeneratorDefine(e, r, n, t) { function o(r, n) { _regeneratorDefine2(e, r, function (e) { return this._invoke(r, n, e); }); } r ? i ? i(e, r, { value: n, enumerable: !t, configurable: !t, writable: !t }) : e[r] = n : (o("next", 0), o("throw", 1), o("return", 2)); }, _regeneratorDefine2(e, r, n, t); }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
@@ -129,39 +135,45 @@ function VibeMotionStudio(_ref2) {
     editSourceId = _useState0[0],
     setEditSourceId = _useState0[1]; // request_id of source
 
-  // ── Dropdown open state ───────────────────────────────────────────────────
-  var _useState1 = (0, _react.useState)(null),
+  // ── Native audio flag (driven by Skills recipe) ───────────────────────────
+  var _useState1 = (0, _react.useState)(false),
     _useState10 = _slicedToArray(_useState1, 2),
-    openDropdown = _useState10[0],
-    setOpenDropdown = _useState10[1]; // "ar" | "dur" | "source"
+    nativeAudio = _useState10[0],
+    setNativeAudio = _useState10[1];
+
+  // ── Dropdown open state ───────────────────────────────────────────────────
+  var _useState11 = (0, _react.useState)(null),
+    _useState12 = _slicedToArray(_useState11, 2),
+    openDropdown = _useState12[0],
+    setOpenDropdown = _useState12[1]; // "ar" | "dur" | "source"
   var containerRef = (0, _react.useRef)(null);
   var textareaRef = (0, _react.useRef)(null);
 
   // ── Generation state ──────────────────────────────────────────────────────
-  var _useState11 = (0, _react.useState)(false),
-    _useState12 = _slicedToArray(_useState11, 2),
-    generating = _useState12[0],
-    setGenerating = _useState12[1];
-  var _useState13 = (0, _react.useState)(null),
+  var _useState13 = (0, _react.useState)(false),
     _useState14 = _slicedToArray(_useState13, 2),
-    generateError = _useState14[0],
-    setGenerateError = _useState14[1];
-  var _useState15 = (0, _react.useState)(0),
+    generating = _useState14[0],
+    setGenerating = _useState14[1];
+  var _useState15 = (0, _react.useState)(null),
     _useState16 = _slicedToArray(_useState15, 2),
-    elapsedTime = _useState16[0],
-    setElapsedTime = _useState16[1];
+    generateError = _useState16[0],
+    setGenerateError = _useState16[1];
+  var _useState17 = (0, _react.useState)(0),
+    _useState18 = _slicedToArray(_useState17, 2),
+    elapsedTime = _useState18[0],
+    setElapsedTime = _useState18[1];
   var timerRef = (0, _react.useRef)(null);
   var pendingRequestId = (0, _react.useRef)(null);
 
   // ── History ───────────────────────────────────────────────────────────────
-  var _useState17 = (0, _react.useState)([]),
-    _useState18 = _slicedToArray(_useState17, 2),
-    history = _useState18[0],
-    setHistory = _useState18[1];
-  var _useState19 = (0, _react.useState)(null),
+  var _useState19 = (0, _react.useState)([]),
     _useState20 = _slicedToArray(_useState19, 2),
-    fullscreenUrl = _useState20[0],
-    setFullscreenUrl = _useState20[1];
+    history = _useState20[0],
+    setHistory = _useState20[1];
+  var _useState21 = (0, _react.useState)(null),
+    _useState22 = _slicedToArray(_useState21, 2),
+    fullscreenUrl = _useState22[0],
+    setFullscreenUrl = _useState22[1];
 
   // ── Load from localStorage ─────────────────────────────────────────────────
   (0, _react.useEffect)(function () {
@@ -175,9 +187,22 @@ function VibeMotionStudio(_ref2) {
           return rest; // canEdit is only an in-memory hint, never persisted
         });
         setHistory(restored);
+        try {
+          var flags = JSON.parse(localStorage.getItem(PERSIST_KEY + "_flags") || "null");
+          if (flags && flags.nativeAudio) setNativeAudio(true);
+        } catch (_) {}
       }
     } catch (_) {}
   }, []);
+
+  // ── Persist native-audio flag ─────────────────────────────────────────────
+  (0, _react.useEffect)(function () {
+    try {
+      localStorage.setItem(PERSIST_KEY + "_flags", JSON.stringify({
+        nativeAudio: nativeAudio
+      }));
+    } catch (_) {}
+  }, [nativeAudio]);
   var saveHistory = (0, _react.useCallback)(function (items) {
     setHistory(items);
     // Strip canEdit from persisted data — it is an in-memory hint only
@@ -222,6 +247,36 @@ function VibeMotionStudio(_ref2) {
       return stopTimer();
     };
   }, []);
+
+  // ── Apply pending Skills recipe (set by SkillsBrowser) ────────────────────
+  (0, _react.useEffect)(function () {
+    var pending = (0, _skillStore.getPendingRecipe)("vibemotion");
+    if (!pending) return;
+    var skill = _registry["default"].skills.find(function (s) {
+      return s.slug === pending;
+    });
+    (0, _skillStore.clearPendingRecipe)("vibemotion");
+    if (!skill) return;
+    applyRecipe(skill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  function applyRecipe(skill) {
+    var step0 = skill.steps && skill.steps[0];
+    if (!step0) {
+      if (skill.description) setPrompt(skill.description);
+      return;
+    }
+    if (step0.aspectRatio) setAspectRatio(step0.aspectRatio);
+    if (step0.duration) setDuration(Number(step0.duration));
+    if (step0.audio || step0.flags && step0.flags.nativeAudio) {
+      setNativeAudio(true);
+    }
+    var vals = {};
+    (skill.inputs || []).forEach(function (i) {
+      vals[i.name] = "";
+    });
+    setPrompt((0, _promptRecipes.fillTemplate)(step0.prompt || skill.description || "", vals));
+  }
 
   // ── Generate ──────────────────────────────────────────────────────────────
   var handleGenerate = (0, _react.useCallback)(/*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee() {
@@ -434,6 +489,7 @@ function VibeMotionStudio(_ref2) {
       }), !generating && history.length > 0 ? /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
         className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full pt-4 animate-fade-in-up",
         children: history.map(function (entry, idx) {
+          var _entry$prompt;
           return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "relative group rounded overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-xl hover:border-primary/50 transition-all duration-300 flex flex-col",
             children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("video", {
@@ -566,7 +622,67 @@ function VibeMotionStudio(_ref2) {
                     strokeWidth: "2"
                   })]
                 })
-              }) : null]
+              }) : null, /*#__PURE__*/(0, _jsxRuntime.jsx)(_SocialPublishProvider.PublishStep, {
+                mediaUrl: entry.url,
+                mediaType: "video",
+                title: ((_entry$prompt = entry.prompt) === null || _entry$prompt === void 0 ? void 0 : _entry$prompt.substring(0, 50)) || 'Motion graphic',
+                className: "p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center"
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_AiAssistantProvider.AssistStep, {
+                assetUrl: entry.url,
+                assetType: "video",
+                onApply: function onApply() {},
+                className: "p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center",
+                children: /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
+                  width: "14",
+                  height: "14",
+                  viewBox: "0 0 24 24",
+                  fill: "none",
+                  stroke: "currentColor",
+                  strokeWidth: "2.5",
+                  strokeLinecap: "round",
+                  strokeLinejoin: "round",
+                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                    d: "M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"
+                  })
+                })
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+                type: "button",
+                title: "Delete",
+                onClick: function onClick(e) {
+                  e.stopPropagation();
+                  if (confirm("Are you sure you want to delete this generated item?")) {
+                    setHistory(function (prev) {
+                      return prev.filter(function (_, i) {
+                        return i !== idx;
+                      });
+                    });
+                  }
+                },
+                className: "p-2 bg-black/60 backdrop-blur-md rounded-full text-red-400 hover:bg-red-500 hover:text-white transition-all border border-white/10",
+                children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                  width: "14",
+                  height: "14",
+                  viewBox: "0 0 24 24",
+                  fill: "none",
+                  stroke: "currentColor",
+                  strokeWidth: "2.5",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
+                    points: "3 6 5 6 21 6"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                    d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "10",
+                    y1: "11",
+                    x2: "10",
+                    y2: "17"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "14",
+                    y1: "11",
+                    x2: "14",
+                    y2: "17"
+                  })]
+                })
+              })]
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
               className: "p-3 bg-black/80 backdrop-blur-sm border-t border-white/5 flex-1 flex flex-col justify-between gap-2",
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
@@ -598,42 +714,48 @@ function VibeMotionStudio(_ref2) {
       (0, _jsxRuntime.jsxs)("div", {
         className: "flex flex-col items-center justify-center h-full animate-fade-in-up transition-all duration-700 min-h-[50vh]",
         children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "mb-12 relative group",
+          className: "flex items-center justify-center gap-1.5 md:gap-3 mb-10 select-none scale-90 sm:scale-100",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-            className: "absolute inset-0 bg-primary/10 blur-[120px] rounded-full opacity-30 group-hover:opacity-60 transition-opacity duration-1000"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "relative w-24 h-24 md:w-32 md:h-32 bg-white/[0.02] rounded flex items-center justify-center border border-white/[0.05] overflow-hidden backdrop-blur-sm",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-              className: "w-16 h-16 bg-primary/5 rounded flex items-center justify-center border border-primary/10 relative z-10 transition-transform duration-500 group-hover:scale-110",
-              children: /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
-                width: "32",
-                height: "32",
-                viewBox: "0 0 24 24",
-                fill: "none",
-                stroke: "currentColor",
-                strokeWidth: "1.5",
-                className: "text-primary opacity-80",
-                children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-                  d: "M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"
-                })
-              })
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-              className: "absolute top-4 right-4 text-[10px] text-primary/40 animate-pulse",
-              children: "\u2728"
-            })]
+            className: "w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl -rotate-[12deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/sdxl-image.avif",
+              alt: "Creative asset 1",
+              className: "w-full h-full object-cover"
+            })
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            className: "w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl -rotate-[4deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/chroma-image.avif",
+              alt: "Creative asset 2",
+              className: "w-full h-full object-cover"
+            })
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            className: "w-18 h-18 sm:w-24 sm:h-24 rounded-full border border-white/10 shadow-2xl rotate-[6deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/neta-lumina.avif",
+              alt: "Creative asset 3",
+              className: "w-full h-full object-cover"
+            })
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            className: "w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl rotate-[12deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/perfect-pony-xl.avif",
+              alt: "Creative asset 4",
+              className: "w-full h-full object-cover"
+            })
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("h1", {
-          className: "text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-4 text-center px-4",
+          className: "text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-center px-4 flex flex-col items-center",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-            className: "text-white/40 font-medium",
+            className: "text-white font-black uppercase text-xl sm:text-3xl tracking-wide mb-1 opacity-90",
             children: "START CREATING WITH"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("br", {}), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-            className: "text-white",
-            children: "VIBE MOTION"
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+            className: "text-[#22d3ee] font-black uppercase text-2xl sm:text-4xl sm:mt-1 tracking-tight",
+            children: "VIBE MOTION STUDIO"
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
-          className: "text-white/40 text-sm md:text-base font-medium tracking-wide text-center max-w-lg leading-relaxed",
-          children: "Generate animated motion graphics from a text prompt \u2014 kinetic typography, data charts, logo reveals and more"
+          className: "text-white/40 text-xs sm:text-sm font-medium tracking-wide text-center max-w-lg leading-relaxed px-4",
+          children: "Generate animated motion graphics from a text prompt \u2014 kinetic typography, data charts, logo reveals, and more."
         })]
       }) : null]
     }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
@@ -642,7 +764,7 @@ function VibeMotionStudio(_ref2) {
         animationDelay: "0.2s"
       },
       children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-        className: "w-full bg-[#0a0a0a]/80 backdrop-blur-3xl rounded-md border border-white/10 p-4 flex flex-col gap-2 shadow-2xl",
+        className: "w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]",
         children: [editMode && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
           className: "flex items-center gap-2 px-3 py-1.5 mx-0 bg-[#22d3ee]/5 border border-[#22d3ee]/10 rounded text-[10px] text-[#22d3ee]/80 font-medium tracking-tight",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
@@ -731,7 +853,7 @@ function VibeMotionStudio(_ref2) {
             })]
           }), generateError]
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-2 border-t border-white/[0.03] relative",
+          className: "flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-3 border-t border-white/[0.03] relative",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "flex items-center gap-2 relative flex-wrap pb-1 md:pb-0",
             children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
@@ -906,6 +1028,22 @@ function VibeMotionStudio(_ref2) {
                   })
                 })]
               })]
+            }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+              type: "button",
+              onClick: function onClick() {
+                return setNativeAudio(!nativeAudio);
+              },
+              className: "flex items-center gap-2 px-3 py-2 rounded-md transition-all border whitespace-nowrap ".concat(nativeAudio ? "bg-[#22d3ee]/[0.08] hover:bg-[#22d3ee]/[0.12] border-[#22d3ee]/[0.15] text-[#22d3ee]" : "bg-white/[0.03] hover:bg-white/[0.06] border-white/[0.03] text-white/40 hover:text-white/70"),
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                className: "w-4 h-4 rounded flex items-center justify-center shadow-lg shadow-[#22d3ee]/10 ".concat(nativeAudio ? "bg-[#22d3ee]" : "bg-white/10"),
+                children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                  className: "text-[9px] font-bold text-black uppercase",
+                  children: "A"
+                })
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                className: "text-[11px] font-semibold",
+                children: "Native Audio"
+              })]
             }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
               className: "text-[10px] text-white/20 hidden sm:block ml-2",
               children: "Ctrl+Enter to run"
@@ -914,7 +1052,7 @@ function VibeMotionStudio(_ref2) {
             type: "button",
             onClick: handleGenerate,
             disabled: generating || !prompt.trim() || editMode && !editSourceId,
-            className: "bg-[#22d3ee] text-black px-4 py-2 rounded-md font-medium text-sm hover:bg-[#e5ff33] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/10 disabled:opacity-50 disabled:cursor-not-allowed",
+            className: "bg-[#22d3ee] text-black px-7 py-3 rounded-full font-black text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10",
             children: generating ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                 className: "animate-spin inline-block text-black",

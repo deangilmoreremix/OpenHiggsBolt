@@ -7,10 +7,26 @@ Object.defineProperty(exports, "__esModule", {
 exports["default"] = VideoStudio;
 var _react = require("react");
 var _muapi = require("../muapi.js");
+var _storyboardHandoff = require("../storyboardHandoff.js");
+var _skillStore = require("../lib/skillStore");
+var _characterStore = require("../lib/characterStore");
+var _promptRecipes = require("../lib/promptRecipes");
+var _registry = _interopRequireDefault(require("../skills/registry.json"));
 var _models = require("../models.js");
+var _videoAdvancedControls = require("../videoAdvancedControls.js");
+var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
+var _AiAssistantProvider = require("../../../../components/AiAssistantProvider");
 var _jsxRuntime = require("react/jsx-runtime");
+function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
+function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
+function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
+function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
+function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
+function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
 function _regenerator() { /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ var e, t, r = "function" == typeof Symbol ? Symbol : {}, n = r.iterator || "@@iterator", o = r.toStringTag || "@@toStringTag"; function i(r, n, o, i) { var c = n && n.prototype instanceof Generator ? n : Generator, u = Object.create(c.prototype); return _regeneratorDefine2(u, "_invoke", function (r, n, o) { var i, c, u, f = 0, p = o || [], y = !1, G = { p: 0, n: 0, v: e, a: d, f: d.bind(e, 4), d: function d(t, r) { return i = t, c = 0, u = e, G.n = r, a; } }; function d(r, n) { for (c = r, u = n, t = 0; !y && f && !o && t < p.length; t++) { var o, i = p[t], d = G.p, l = i[2]; r > 3 ? (o = l === n) && (u = i[(c = i[4]) ? 5 : (c = 3, 3)], i[4] = i[5] = e) : i[0] <= d && ((o = r < 2 && d < i[1]) ? (c = 0, G.v = n, G.n = i[1]) : d < l && (o = r < 3 || i[0] > n || n > l) && (i[4] = r, i[5] = n, G.n = l, c = 0)); } if (o || r > 1) return a; throw y = !0, n; } return function (o, p, l) { if (f > 1) throw TypeError("Generator is already running"); for (y && 1 === p && d(p, l), c = p, u = l; (t = c < 2 ? e : u) || !y;) { i || (c ? c < 3 ? (c > 1 && (G.n = -1), d(c, u)) : G.n = u : G.v = u); try { if (f = 2, i) { if (c || (o = "next"), t = i[o]) { if (!(t = t.call(i, u))) throw TypeError("iterator result is not an object"); if (!t.done) return t; u = t.value, c < 2 && (c = 0); } else 1 === c && (t = i["return"]) && t.call(i), c < 2 && (u = TypeError("The iterator does not provide a '" + o + "' method"), c = 1); i = e; } else if ((t = (y = G.n < 0) ? u : r.call(n, G)) !== a) break; } catch (t) { i = e, c = 1, u = t; } finally { f = 1; } } return { value: t, done: y }; }; }(r, o, i), !0), u; } var a = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} t = Object.getPrototypeOf; var c = [][n] ? t(t([][n]())) : (_regeneratorDefine2(t = {}, n, function () { return this; }), t), u = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(c); function f(e) { return Object.setPrototypeOf ? Object.setPrototypeOf(e, GeneratorFunctionPrototype) : (e.__proto__ = GeneratorFunctionPrototype, _regeneratorDefine2(e, o, "GeneratorFunction")), e.prototype = Object.create(u), e; } return GeneratorFunction.prototype = GeneratorFunctionPrototype, _regeneratorDefine2(u, "constructor", GeneratorFunctionPrototype), _regeneratorDefine2(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = "GeneratorFunction", _regeneratorDefine2(GeneratorFunctionPrototype, o, "GeneratorFunction"), _regeneratorDefine2(u), _regeneratorDefine2(u, o, "Generator"), _regeneratorDefine2(u, n, function () { return this; }), _regeneratorDefine2(u, "toString", function () { return "[object Generator]"; }), (_regenerator = function _regenerator() { return { w: i, m: f }; })(); }
 function _regeneratorDefine2(e, r, n, t) { var i = Object.defineProperty; try { i({}, "", {}); } catch (e) { i = 0; } _regeneratorDefine2 = function _regeneratorDefine(e, r, n, t) { function o(r, n) { _regeneratorDefine2(e, r, function (e) { return this._invoke(r, n, e); }); } r ? i ? i(e, r, { value: n, enumerable: !t, configurable: !t, writable: !t }) : e[r] = n : (o("next", 0), o("throw", 1), o("return", 2)); }, _regeneratorDefine2(e, r, n, t); }
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
@@ -32,7 +48,7 @@ function getQualitiesForModel(modelList, modelId) {
 }
 function downloadFile(_x, _x2) {
   return _downloadFile.apply(this, arguments);
-} // ── SVG icons (kept inline to avoid extra deps) ───────────────────────────────
+} // Build a compact list of summary chips from a persisted advanced-control snapshot.
 function _downloadFile() {
   _downloadFile = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee7(url, filename) {
     var response, blob, blobUrl, a, _t7;
@@ -69,6 +85,25 @@ function _downloadFile() {
   }));
   return _downloadFile.apply(this, arguments);
 }
+function buildAdvChips(adv) {
+  if (!adv) return [];
+  var chips = [];
+  if (adv.seed !== undefined) chips.push("seed: ".concat(adv.seed));
+  if (adv.generate_audio === false) chips.push("audio: off");else if (adv.generate_audio === true) chips.push("audio: on");
+  if (adv.enable_sound === false) chips.push("sound: off");else if (adv.enable_sound === true) chips.push("sound: on");
+  if (adv.camera_fixed === true) chips.push("cam: locked");
+  if (adv.cfg_scale !== undefined) chips.push("cfg: ".concat(adv.cfg_scale));
+  if (adv.output_format) chips.push("fmt: ".concat(adv.output_format));
+  if (adv.bitrate_mode) chips.push("br: ".concat(adv.bitrate_mode));
+  if (adv.watermark === true) chips.push("wm: on");
+  if (adv.return_last_frame === true) chips.push("last: on");
+  if (adv.negative_prompt) chips.push("neg");
+  if (adv.camera_control) chips.push("cam: ".concat(adv.camera_control.type));
+  return chips;
+}
+
+// ── SVG icons (kept inline to avoid extra deps) ───────────────────────────────
+
 var CheckSvg = function CheckSvg() {
   return /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
     width: "16",
@@ -82,8 +117,103 @@ var CheckSvg = function CheckSvg() {
     })
   });
 };
-var VideoIconSvg = function VideoIconSvg(_ref) {
-  var className = _ref.className;
+
+// ── advanced control field (rendered inside the "Advanced" panel) ────────────
+function AdvancedField(_ref) {
+  var control = _ref.control,
+    value = _ref.value,
+    _onChange = _ref.onChange;
+  var v = value !== null && value !== void 0 ? value : control["default"];
+  var id = "adv-".concat(control.key);
+  var inputCls = "h-[30px] w-full bg-[#16161a]/60 border border-white/[0.06] rounded-md text-white text-xs px-2.5 focus:outline-none focus:border-[#22d3ee]/40";
+  var controlEl;
+  if (control.type === "boolean") {
+    controlEl = /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+      type: "button",
+      onClick: function onClick() {
+        return _onChange(!v);
+      },
+      className: "h-[30px] px-3 rounded-md text-xs font-semibold transition-all border ".concat(v ? "bg-[#22d3ee]/20 border-[#22d3ee]/50 text-[#22d3ee]" : "bg-[#16161a]/60 border-white/[0.06] text-white/50"),
+      children: v ? "On" : "Off"
+    });
+  } else if (control.type === "enum") {
+    controlEl = /*#__PURE__*/(0, _jsxRuntime.jsx)("select", {
+      id: id,
+      value: v,
+      onChange: function onChange(e) {
+        return _onChange(e.target.value);
+      },
+      className: inputCls,
+      children: control["enum"].map(function (opt) {
+        return /*#__PURE__*/(0, _jsxRuntime.jsx)("option", {
+          value: opt,
+          className: "bg-[#0c0c0f]",
+          children: opt
+        }, opt);
+      })
+    });
+  } else if (control.type === "textarea") {
+    controlEl = /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
+      id: id,
+      value: v,
+      placeholder: control.description,
+      onChange: function onChange(e) {
+        return _onChange(e.target.value);
+      },
+      rows: 2,
+      className: "w-full bg-[#16161a]/60 border border-white/[0.06] rounded-md text-white text-xs px-2.5 py-1.5 resize-none focus:outline-none focus:border-[#22d3ee]/40"
+    });
+  } else if (control.type === "url_list") {
+    controlEl = /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
+      id: id,
+      value: v,
+      placeholder: control.description || "One URL per line",
+      onChange: function onChange(e) {
+        return _onChange(e.target.value);
+      },
+      rows: 3,
+      className: "w-full bg-[#16161a]/60 border border-white/[0.06] rounded-md text-white text-xs px-2.5 py-1.5 resize-none focus:outline-none focus:border-[#22d3ee]/40"
+    });
+  } else if (control.type === "url") {
+    controlEl = /*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
+      id: id,
+      type: "text",
+      value: v,
+      placeholder: control.description || "https://…",
+      onChange: function onChange(e) {
+        return _onChange(e.target.value);
+      },
+      className: inputCls
+    });
+  } else {
+    controlEl = /*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
+      id: id,
+      type: control.type === "int" || control.type === "number" ? "number" : "text",
+      value: v,
+      min: control.min,
+      max: control.max,
+      step: control.step,
+      placeholder: control.description,
+      onChange: function onChange(e) {
+        return _onChange(control.type === "int" || control.type === "number" ? e.target.value === "" ? "" : Number(e.target.value) : e.target.value);
+      },
+      className: inputCls
+    });
+  }
+  return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+    className: "flex flex-col gap-1",
+    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("label", {
+      htmlFor: id,
+      className: "text-[11px] font-semibold text-white/60",
+      children: control.label
+    }), controlEl, control.description && control.type !== "textarea" && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+      className: "text-[10px] text-white/30 leading-tight",
+      children: control.description
+    })]
+  });
+}
+var VideoIconSvg = function VideoIconSvg(_ref2) {
+  var className = _ref2.className;
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
     width: "18",
     height: "18",
@@ -132,10 +262,10 @@ var VideoReadySvg = function VideoReadySvg() {
 
 // ── Dropdown components ───────────────────────────────────────────────────────
 
-function DropdownItem(_ref2) {
-  var label = _ref2.label,
-    selected = _ref2.selected,
-    onClick = _ref2.onClick;
+function DropdownItem(_ref3) {
+  var label = _ref3.label,
+    selected = _ref3.selected,
+    onClick = _ref3.onClick;
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     className: "flex items-center justify-between p-3.5 hover:bg-white/5 rounded-2xl cursor-pointer transition-all group",
     onClick: onClick,
@@ -145,11 +275,40 @@ function DropdownItem(_ref2) {
     }), selected && /*#__PURE__*/(0, _jsxRuntime.jsx)(CheckSvg, {})]
   });
 }
-function ModelDropdown(_ref3) {
-  var imageMode = _ref3.imageMode,
-    selectedModel = _ref3.selectedModel,
-    onSelect = _ref3.onSelect,
-    onClose = _ref3.onClose;
+var PROVIDER_LOGOS = {
+  openai: "https://cdn.muapi.ai/models/openai.png",
+  google: "https://cdn.muapi.ai/models/gemini.png",
+  kling: "https://cdn.muapi.ai/models/kling.png",
+  alibaba: "https://cdn.muapi.ai/models/alibaba.png",
+  bytedance: "https://cdn.muapi.ai/models/bytedance.png",
+  blackforest: "https://cdn.muapi.ai/models/bfl.png",
+  minimax: "https://cdn.muapi.ai/models/minimax.png",
+  suno: "https://cdn.muapi.ai/models/suno.png",
+  anthropic: "https://cdn.muapi.ai/models/claude.png",
+  meshy: "https://cdn.muapi.ai/models/meshy-3.png",
+  tripo3d: "https://cdn.muapi.ai/models/tripo3d.png",
+  grok: "https://cdn.muapi.ai/models/xai.png",
+  muapi: "https://cdn.muapi.ai/models/muapi.png",
+  midjourney: "https://cdn.muapi.ai/models/midjourney.png",
+  vidu: "https://cdn.muapi.ai/models/vidu.png",
+  runway: "https://cdn.muapi.ai/models/runway.png",
+  luma: "https://cdn.muapi.ai/models/luma.png",
+  ideogram: "https://cdn.muapi.ai/models/ideogram.png",
+  leonardoai: "https://cdn.muapi.ai/models/leonardoai.png",
+  hunyuan: "https://cdn.muapi.ai/models/hunyuan.png",
+  hidream: "https://cdn.muapi.ai/models/hidream.png",
+  lightricks: "https://cdn.muapi.ai/models/lightricks.png",
+  pixverse: "https://cdn.muapi.ai/models/pixverse.png",
+  reve: "https://cdn.muapi.ai/models/reve.png",
+  stability: "https://cdn.muapi.ai/models/stability.png"
+};
+var invertLogos = ['openai', 'blackforest', 'runway', 'ideogram', 'lightricks', 'grok'];
+function ModelDropdown(_ref4) {
+  var _availableProviders$f;
+  var imageMode = _ref4.imageMode,
+    selectedModel = _ref4.selectedModel,
+    onSelect = _ref4.onSelect,
+    onClose = _ref4.onClose;
   var _useState = (0, _react.useState)(""),
     _useState2 = _slicedToArray(_useState, 2),
     search = _useState2[0],
@@ -240,12 +399,13 @@ function ModelDropdown(_ref3) {
     }
   };
 
-  // Dynamically compute list of providers from the currently-shown model list
+  // Dynamically compute list of providers from the input models lists
   var availableProviders = [];
   var seenProviders = new Set();
-  [].concat(_toConsumableArray(generationModels), _toConsumableArray(_models.v2vModels)).forEach(function (m) {
-    var pId = m.provider || "muapi";
-    var pName = m.provider_name || "Muapi";
+  var allCurrentModels = [].concat(_toConsumableArray(generationModels), _toConsumableArray(_models.v2vModels));
+  allCurrentModels.forEach(function (m) {
+    var pId = m.provider || 'muapi';
+    var pName = m.provider_name || 'Muapi';
     if (!seenProviders.has(pId)) {
       seenProviders.add(pId);
       availableProviders.push({
@@ -256,20 +416,22 @@ function ModelDropdown(_ref3) {
   });
   var lf = search.toLowerCase();
   var filterFn = function filterFn(m) {
+    // 1. Filter by provider tab
     if (selectedProvider !== "all") {
-      var pId = m.provider || "muapi";
+      var pId = m.provider || 'muapi';
       if (pId !== selectedProvider) return false;
     }
+    // 2. Filter by search query
     return m.name.toLowerCase().includes(lf) || m.id.toLowerCase().includes(lf);
   };
   var filteredMain = generationModels.filter(filterFn);
   var filteredV2V = _models.v2vModels.filter(filterFn);
   var getIconColor = function getIconColor(m, isV2V) {
-    if (isV2V) return "bg-orange-500/10 text-orange-400";
-    if (m.id.includes("kling")) return "bg-blue-500/10 text-blue-400";
-    if (m.id.includes("veo")) return "bg-purple-500/10 text-purple-400";
-    if (m.id.includes("sora")) return "bg-rose-500/10 text-rose-400";
-    return "bg-primary/10 text-primary";
+    if (isV2V) return "bg-orange-500/10 text-orange-400 border-orange-500/10";
+    if (m.id.includes("kling")) return "bg-blue-500/10 text-blue-400 border-blue-500/10";
+    if (m.id.includes("veo")) return "bg-purple-500/10 text-purple-400 border-purple-500/10";
+    if (m.id.includes("sora")) return "bg-rose-500/10 text-rose-400 border-rose-500/10";
+    return "bg-primary/10 text-primary border-primary/10";
   };
   var renderItem = function renderItem(m) {
     var isV2V = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
@@ -282,91 +444,133 @@ function ModelDropdown(_ref3) {
       },
       children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
         className: "flex items-center gap-3.5",
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-          className: "w-10 h-10 ".concat(getIconColor(m, isV2V), " border border-white/5 rounded-xl flex items-center justify-center font-black text-sm shadow-inner uppercase"),
+        children: [PROVIDER_LOGOS[m.provider] ? /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+          className: "w-8 h-8 rounded-xl border border-white/5 overflow-hidden shrink-0 flex items-center justify-center bg-white/[0.02]",
+          children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+            src: PROVIDER_LOGOS[m.provider],
+            alt: m.provider_name,
+            className: "w-full h-full object-contain p-1 ".concat(invertLogos.includes(m.provider) ? "invert" : "")
+          })
+        }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+          className: "w-9 h-9 ".concat(getIconColor(m, isV2V), " border rounded-xl flex items-center justify-center font-black text-xs shadow-inner uppercase"),
           children: m.name.charAt(0)
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "flex flex-col gap-0.5",
+          className: "flex flex-col gap-0.5 min-w-0",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-            className: "text-xs font-bold text-white tracking-tight",
+            className: "text-xs font-bold text-white tracking-tight truncate",
             children: m.name
-          }), isV2V && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+          }), isV2V ? /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
             className: "text-[9px] text-orange-400/70",
             children: m.imageField ? "Upload a video and image" : "Upload a video to use"
+          }) : selectedProvider === "all" && m.provider_name && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+            className: "text-[9px] text-white/40",
+            children: m.provider_name
           })]
         })]
       }), selectedModel === m.id && /*#__PURE__*/(0, _jsxRuntime.jsx)(CheckSvg, {})]
     }, m.id);
   };
+  var invertLogos = ['openai', 'blackforest', 'runway', 'ideogram', 'lightricks', 'grok'];
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-    className: "flex flex-col h-full max-h-[70vh]",
-    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-      className: "px-2 pb-3 mb-2 border-b border-white/5 shrink-0",
-      children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-        className: "flex items-center gap-3 bg-white/5 rounded-xl px-4 py-2.5 border border-white/5 focus-within:border-primary/50 transition-colors",
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-          width: "14",
-          height: "14",
+    className: "flex gap-4 h-full max-h-[70vh] min-h-[350px]",
+    children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+      className: "flex flex-col gap-2.5 items-center pr-3 border-r border-white/5 shrink-0 select-none overflow-y-auto custom-scrollbar w-12 pt-0.5",
+      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+        type: "button",
+        onClick: function onClick() {
+          return setSelectedProvider("all");
+        },
+        className: "w-8.5 h-8.5 rounded-full flex items-center justify-center border transition-all flex-shrink-0 cursor-pointer ".concat(selectedProvider === "all" ? "bg-white/10 text-yellow-400 border-yellow-500/30 shadow-md scale-105" : "bg-white/[0.02] text-white/50 border-white/[0.03] hover:bg-white/5 hover:text-white"),
+        title: "All Providers",
+        children: /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
+          width: "15",
+          height: "15",
           viewBox: "0 0 24 24",
-          fill: "none",
+          fill: selectedProvider === "all" ? "currentColor" : "none",
           stroke: "currentColor",
-          strokeWidth: "3",
-          className: "text-muted",
-          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-            cx: "11",
-            cy: "11",
-            r: "8"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-            d: "M21 21l-4.35-4.35"
-          })]
-        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
-          type: "text",
-          placeholder: "Search models...",
-          value: search,
-          onChange: function onChange(e) {
-            return setSearch(e.target.value);
+          strokeWidth: "2",
+          children: /*#__PURE__*/(0, _jsxRuntime.jsx)("polygon", {
+            points: "12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+          })
+        })
+      }), availableProviders.map(function (p) {
+        var style = getProviderStyle(p.id);
+        var isSelected = selectedProvider === p.id;
+        return /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+          type: "button",
+          onClick: function onClick() {
+            return setSelectedProvider(p.id);
           },
-          onClick: function onClick(e) {
-            return e.stopPropagation();
-          },
-          className: "bg-transparent border-none text-xs text-white focus:ring-0 w-full p-0 outline-none"
-        })]
-      })
-    }), availableProviders.length > 1 && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-      className: "px-2 pb-2 shrink-0",
-      children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("select", {
-        value: selectedProvider,
-        onClick: function onClick(e) {
-          return e.stopPropagation();
-        },
-        onChange: function onChange(e) {
-          return setSelectedProvider(e.target.value);
-        },
-        className: "w-full bg-white/5 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-primary/50 transition-colors",
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("option", {
-          value: "all",
-          children: "All Providers"
-        }), availableProviders.map(function (p) {
-          return /*#__PURE__*/(0, _jsxRuntime.jsx)("option", {
-            value: p.id,
-            children: p.name
-          }, p.id);
-        })]
-      })
-    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-      className: "text-xs font-bold text-secondary px-3 py-2 shrink-0",
-      children: "Video models"
+          className: "w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center font-black text-[10px] border transition-all flex-shrink-0 cursor-pointer overflow-hidden ".concat(isSelected ? "".concat(style.bg, " border-white/25 scale-105 shadow-md") : "bg-white/[0.02] text-white/40 border-white/[0.02] hover:bg-white/5 hover:text-white/80"),
+          title: p.name,
+          children: PROVIDER_LOGOS[p.id] ? /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+            src: PROVIDER_LOGOS[p.id],
+            alt: p.name,
+            className: "w-full h-full rounded-full object-contain ".concat(invertLogos.includes(p.id) ? "invert" : "")
+          }) : style.text
+        }, p.id);
+      })]
     }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-      className: "flex flex-col gap-1.5 overflow-y-auto custom-scrollbar pr-1 pb-2",
-      children: [filteredMain.map(function (m) {
-        return renderItem(m, false);
-      }), filteredV2V.length > 0 && /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-          className: "text-xs font-bold text-orange-400/70 px-3 py-2 mt-1 border-t border-white/5",
-          children: "Video Tools"
-        }), filteredV2V.map(function (m) {
-          return renderItem(m, true);
+      className: "flex-1 flex flex-col gap-2 min-w-0",
+      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        className: "px-1 pb-2 border-b border-white/5 shrink-0",
+        children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+          className: "flex items-center gap-3 bg-white/5 rounded-xl px-4 py-2 border border-white/5 focus-within:border-primary/50 transition-colors",
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+            width: "14",
+            height: "14",
+            viewBox: "0 0 24 24",
+            fill: "none",
+            stroke: "currentColor",
+            strokeWidth: "3",
+            className: "text-muted",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+              cx: "11",
+              cy: "11",
+              r: "8"
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+              d: "M21 21l-4.35-4.35"
+            })]
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
+            type: "text",
+            placeholder: "Search models...",
+            value: search,
+            onChange: function onChange(e) {
+              return setSearch(e.target.value);
+            },
+            onClick: function onClick(e) {
+              return e.stopPropagation();
+            },
+            className: "bg-transparent border-none text-xs text-white focus:ring-0 w-full p-0 outline-none"
+          })]
+        })
+      }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+        className: "text-xs font-bold text-secondary px-2 py-1 shrink-0 flex items-center justify-between",
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+          children: "Video models"
+        }), selectedProvider !== "all" && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+          className: "text-[10px] bg-white/5 px-2 py-0.5 rounded text-white/60",
+          children: ((_availableProviders$f = availableProviders.find(function (p) {
+            return p.id === selectedProvider;
+          })) === null || _availableProviders$f === void 0 ? void 0 : _availableProviders$f.name) || selectedProvider
         })]
+      }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        className: "flex flex-col gap-1.5 overflow-y-auto custom-scrollbar pr-1 pb-2 flex-1",
+        children: filteredMain.length === 0 && filteredV2V.length === 0 ? /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+          className: "text-xs text-white/30 text-center py-6",
+          children: "No models found"
+        }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
+          children: [filteredMain.map(function (m) {
+            return renderItem(m, false);
+          }), filteredV2V.length > 0 && /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+              className: "text-xs font-bold text-orange-400/70 px-3 py-2 mt-1 border-t border-white/5",
+              children: "Video Tools"
+            }), filteredV2V.map(function (m) {
+              return renderItem(m, true);
+            })]
+          })]
+        })
       })]
     })]
   });
@@ -374,11 +578,11 @@ function ModelDropdown(_ref3) {
 
 // ── Control button ────────────────────────────────────────────────────────────
 
-function ControlBtn(_ref4) {
-  var icon = _ref4.icon,
-    label = _ref4.label,
-    onClick = _ref4.onClick,
-    style = _ref4.style;
+function ControlBtn(_ref5) {
+  var icon = _ref5.icon,
+    label = _ref5.label,
+    onClick = _ref5.onClick,
+    style = _ref5.style;
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
     type: "button",
     onClick: onClick,
@@ -407,13 +611,15 @@ function ControlBtn(_ref4) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-function VideoStudio(_ref5) {
-  var _defaultModel$inputs, _defaultModel$inputs2, _defaultModel$inputs3, _defaultModel$inputs4, _i2vModels$find;
-  var apiKey = _ref5.apiKey,
-    onGenerationComplete = _ref5.onGenerationComplete,
-    historyItems = _ref5.historyItems,
-    droppedFiles = _ref5.droppedFiles,
-    onFilesHandled = _ref5.onFilesHandled;
+function VideoStudio(_ref6) {
+  var _defaultModel$inputs, _defaultModel$inputs2, _defaultModel$inputs3, _defaultModel$inputs4, _currentModelObj$inpu, _i2vModels$find, _currentModelObj$inpu2;
+  var apiKey = _ref6.apiKey,
+    onGenerationComplete = _ref6.onGenerationComplete,
+    onGenerationError = _ref6.onGenerationError,
+    historyItems = _ref6.historyItems,
+    droppedFiles = _ref6.droppedFiles,
+    onFilesHandled = _ref6.onFilesHandled,
+    templateData = _ref6.templateData;
   var PERSIST_KEY = "hg_video_studio_persistent";
 
   // ── mode state ──
@@ -461,139 +667,155 @@ function VideoStudio(_ref5) {
     selectedEffect = _useState22[0],
     setSelectedEffect = _useState22[1];
 
-  // ── upload progress ──
-  var _useState23 = (0, _react.useState)(0),
+  // ── advanced model controls (negative_prompt, seed, audio, camera, etc.) ──
+  var _useState23 = (0, _react.useState)({}),
     _useState24 = _slicedToArray(_useState23, 2),
-    imageProgress = _useState24[0],
-    setImageProgress = _useState24[1];
+    advancedValues = _useState24[0],
+    setAdvancedValues = _useState24[1];
+
+  // ── upload progress ──
   var _useState25 = (0, _react.useState)(0),
     _useState26 = _slicedToArray(_useState25, 2),
-    videoProgress = _useState26[0],
-    setVideoProgress = _useState26[1];
+    imageProgress = _useState26[0],
+    setImageProgress = _useState26[1];
+  var _useState27 = (0, _react.useState)(0),
+    _useState28 = _slicedToArray(_useState27, 2),
+    videoProgress = _useState28[0],
+    setVideoProgress = _useState28[1];
 
   // ── control visibility ──
-  var _useState27 = (0, _react.useState)(true),
-    _useState28 = _slicedToArray(_useState27, 2),
-    showAr = _useState28[0],
-    setShowAr = _useState28[1];
   var _useState29 = (0, _react.useState)(true),
     _useState30 = _slicedToArray(_useState29, 2),
-    showDuration = _useState30[0],
-    setShowDuration = _useState30[1];
-  var _useState31 = (0, _react.useState)(false),
+    showAr = _useState30[0],
+    setShowAr = _useState30[1];
+  var _useState31 = (0, _react.useState)(true),
     _useState32 = _slicedToArray(_useState31, 2),
-    showResolution = _useState32[0],
-    setShowResolution = _useState32[1];
+    showDuration = _useState32[0],
+    setShowDuration = _useState32[1];
   var _useState33 = (0, _react.useState)(false),
     _useState34 = _slicedToArray(_useState33, 2),
-    showQuality = _useState34[0],
-    setShowQuality = _useState34[1];
+    showResolution = _useState34[0],
+    setShowResolution = _useState34[1];
   var _useState35 = (0, _react.useState)(false),
     _useState36 = _slicedToArray(_useState35, 2),
-    showMode = _useState36[0],
-    setShowMode = _useState36[1];
+    showQuality = _useState36[0],
+    setShowQuality = _useState36[1];
   var _useState37 = (0, _react.useState)(false),
     _useState38 = _slicedToArray(_useState37, 2),
-    showEffect = _useState38[0],
-    setShowEffect = _useState38[1];
+    showMode = _useState38[0],
+    setShowMode = _useState38[1];
+  var _useState39 = (0, _react.useState)(false),
+    _useState40 = _slicedToArray(_useState39, 2),
+    showEffect = _useState40[0],
+    setShowEffect = _useState40[1];
 
   // ── uploads ──
-  var _useState39 = (0, _react.useState)(null),
-    _useState40 = _slicedToArray(_useState39, 2),
-    uploadedImageUrl = _useState40[0],
-    setUploadedImageUrl = _useState40[1];
-  var _useState41 = (0, _react.useState)([]),
+  var _useState41 = (0, _react.useState)(null),
     _useState42 = _slicedToArray(_useState41, 2),
-    uploadedImageUrls = _useState42[0],
-    setUploadedImageUrls = _useState42[1];
-  var _useState43 = (0, _react.useState)(false),
+    uploadedImageUrl = _useState42[0],
+    setUploadedImageUrl = _useState42[1];
+  var _useState43 = (0, _react.useState)([]),
     _useState44 = _slicedToArray(_useState43, 2),
-    imageUploading = _useState44[0],
-    setImageUploading = _useState44[1];
-  var _useState45 = (0, _react.useState)(null),
+    uploadedImageUrls = _useState44[0],
+    setUploadedImageUrls = _useState44[1];
+  var _useState45 = (0, _react.useState)(false),
     _useState46 = _slicedToArray(_useState45, 2),
-    uploadedEndImageUrl = _useState46[0],
-    setUploadedEndImageUrl = _useState46[1];
-  var _useState47 = (0, _react.useState)(false),
+    imageUploading = _useState46[0],
+    setImageUploading = _useState46[1];
+  var _useState47 = (0, _react.useState)(null),
     _useState48 = _slicedToArray(_useState47, 2),
-    endImageUploading = _useState48[0],
-    setEndImageUploading = _useState48[1];
-  var _useState49 = (0, _react.useState)(0),
+    uploadedEndImageUrl = _useState48[0],
+    setUploadedEndImageUrl = _useState48[1];
+  var _useState49 = (0, _react.useState)(false),
     _useState50 = _slicedToArray(_useState49, 2),
-    endImageProgress = _useState50[0],
-    setEndImageProgress = _useState50[1];
-  var _useState51 = (0, _react.useState)(null),
+    endImageUploading = _useState50[0],
+    setEndImageUploading = _useState50[1];
+  var _useState51 = (0, _react.useState)(0),
     _useState52 = _slicedToArray(_useState51, 2),
-    uploadedVideoUrl = _useState52[0],
-    setUploadedVideoUrl = _useState52[1];
-  var _useState53 = (0, _react.useState)(false),
+    endImageProgress = _useState52[0],
+    setEndImageProgress = _useState52[1];
+  var _useState53 = (0, _react.useState)(null),
     _useState54 = _slicedToArray(_useState53, 2),
-    videoUploading = _useState54[0],
-    setVideoUploading = _useState54[1];
-  var _useState55 = (0, _react.useState)(null),
+    uploadedVideoUrl = _useState54[0],
+    setUploadedVideoUrl = _useState54[1];
+  var _useState55 = (0, _react.useState)(false),
     _useState56 = _slicedToArray(_useState55, 2),
-    uploadedVideoName = _useState56[0],
-    setUploadedVideoName = _useState56[1];
+    videoUploading = _useState56[0],
+    setVideoUploading = _useState56[1];
+  var _useState57 = (0, _react.useState)(null),
+    _useState58 = _slicedToArray(_useState57, 2),
+    uploadedVideoName = _useState58[0],
+    setUploadedVideoName = _useState58[1];
 
   // ── generation / canvas ──
-  var _useState57 = (0, _react.useState)(false),
-    _useState58 = _slicedToArray(_useState57, 2),
-    generating = _useState58[0],
-    setGenerating = _useState58[1];
-  var _useState59 = (0, _react.useState)(null),
+  var _useState59 = (0, _react.useState)(false),
     _useState60 = _slicedToArray(_useState59, 2),
-    generateError = _useState60[0],
-    setGenerateError = _useState60[1];
+    generating = _useState60[0],
+    setGenerating = _useState60[1];
   var _useState61 = (0, _react.useState)(null),
     _useState62 = _slicedToArray(_useState61, 2),
-    fullscreenUrl = _useState62[0],
-    setFullscreenUrl = _useState62[1];
+    generateError = _useState62[0],
+    setGenerateError = _useState62[1];
   var _useState63 = (0, _react.useState)(null),
     _useState64 = _slicedToArray(_useState63, 2),
-    canvasUrl = _useState64[0],
-    setCanvasUrl = _useState64[1];
+    fullscreenUrl = _useState64[0],
+    setFullscreenUrl = _useState64[1];
   var _useState65 = (0, _react.useState)(null),
     _useState66 = _slicedToArray(_useState65, 2),
-    canvasModel = _useState66[0],
-    setCanvasModel = _useState66[1];
-  var _useState67 = (0, _react.useState)(false),
+    canvasUrl = _useState66[0],
+    setCanvasUrl = _useState66[1];
+  var _useState67 = (0, _react.useState)(null),
     _useState68 = _slicedToArray(_useState67, 2),
-    showCanvas = _useState68[0],
-    setShowCanvas = _useState68[1];
-  var _useState69 = (0, _react.useState)(null),
+    canvasModel = _useState68[0],
+    setCanvasModel = _useState68[1];
+  var _useState69 = (0, _react.useState)(false),
     _useState70 = _slicedToArray(_useState69, 2),
-    lastGenerationId = _useState70[0],
-    setLastGenerationId = _useState70[1];
+    showCanvas = _useState70[0],
+    setShowCanvas = _useState70[1];
   var _useState71 = (0, _react.useState)(null),
     _useState72 = _slicedToArray(_useState71, 2),
-    lastGenerationModel = _useState72[0],
-    setLastGenerationModel = _useState72[1];
+    lastGenerationId = _useState72[0],
+    setLastGenerationId = _useState72[1];
+  var _useState73 = (0, _react.useState)(null),
+    _useState74 = _slicedToArray(_useState73, 2),
+    lastGenerationModel = _useState74[0],
+    setLastGenerationModel = _useState74[1];
 
   // ── history ──
-  var _useState73 = (0, _react.useState)([]),
-    _useState74 = _slicedToArray(_useState73, 2),
-    localHistory = _useState74[0],
-    setLocalHistory = _useState74[1];
-  var _useState75 = (0, _react.useState)(0),
+  var _useState75 = (0, _react.useState)([]),
     _useState76 = _slicedToArray(_useState75, 2),
-    activeHistoryIdx = _useState76[0],
-    setActiveHistoryIdx = _useState76[1];
+    localHistory = _useState76[0],
+    setLocalHistory = _useState76[1];
+  var _useState77 = (0, _react.useState)(0),
+    _useState78 = _slicedToArray(_useState77, 2),
+    activeHistoryIdx = _useState78[0],
+    setActiveHistoryIdx = _useState78[1];
 
   // ── dropdown ──
-  var _useState77 = (0, _react.useState)(null),
-    _useState78 = _slicedToArray(_useState77, 2),
-    openDropdown = _useState78[0],
-    setOpenDropdown = _useState78[1]; // 'model'|'ar'|'duration'|'resolution'|'quality'|'mode'|null
+  var _useState79 = (0, _react.useState)(null),
+    _useState80 = _slicedToArray(_useState79, 2),
+    openDropdown = _useState80[0],
+    setOpenDropdown = _useState80[1]; // 'model'|'ar'|'duration'|'resolution'|'quality'|'mode'|null
 
   // ── prompt ──
-  var _useState79 = (0, _react.useState)(""),
-    _useState80 = _slicedToArray(_useState79, 2),
-    prompt = _useState80[0],
-    setPrompt = _useState80[1];
-  var _useState81 = (0, _react.useState)(false),
+  var _useState81 = (0, _react.useState)(""),
     _useState82 = _slicedToArray(_useState81, 2),
-    promptDisabled = _useState82[0],
-    setPromptDisabled = _useState82[1];
+    prompt = _useState82[0],
+    setPrompt = _useState82[1];
+  var _useState83 = (0, _react.useState)(false),
+    _useState84 = _slicedToArray(_useState83, 2),
+    promptDisabled = _useState84[0],
+    setPromptDisabled = _useState84[1];
+
+  // ── Wave 1 recipe-driven state ──
+  var _useState85 = (0, _react.useState)(false),
+    _useState86 = _slicedToArray(_useState85, 2),
+    nativeAudio = _useState86[0],
+    setNativeAudio = _useState86[1];
+  var _useState87 = (0, _react.useState)(null),
+    _useState88 = _slicedToArray(_useState87, 2),
+    characterSheetUrl = _useState88[0],
+    setCharacterSheetUrl = _useState88[1];
 
   // ── refs ──
   var containerRef = (0, _react.useRef)(null);
@@ -625,6 +847,9 @@ function VideoStudio(_ref5) {
       return m.id === selectedModel;
     });
   }, [getCurrentModels, selectedModel]);
+
+  // Advanced, model-aware controls (negative_prompt, seed, audio, camera, …).
+  var advancedControls = (0, _videoAdvancedControls.getAdvancedControlsForModel)(getCurrentModel());
   var isMotionControlSelection = (0, _react.useCallback)(function (modelId, isV2v) {
     if (!isV2v) return false;
     var m = _models.v2vModels.find(function (x) {
@@ -635,6 +860,8 @@ function VideoStudio(_ref5) {
 
   // ── update controls when model/mode changes ──────────────────────────────
   var applyControlsForModel = (0, _react.useCallback)(function (modelId, isImageMode, isV2vMode) {
+    // Reset advanced controls whenever the model changes.
+    setAdvancedValues({});
     if (isV2vMode) {
       setShowAr(false);
       setShowDuration(false);
@@ -697,6 +924,110 @@ function VideoStudio(_ref5) {
     }
   }, []);
 
+  // ── Cross-studio: import a Storyboard hand-off ────────────────────────────
+  // Applies once per payload (guarded by createdAt) so React Strict Mode's
+  // double-invoke can't duplicate it. Sets the prompt, an optional reference
+  // image (image-to-video mode), and the aspect ratio.
+  var handoffApplied = (0, _react.useRef)(null);
+  (0, _react.useEffect)(function () {
+    try {
+      var handoff = (0, _storyboardHandoff.readStoryboardHandoff)("video");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+      var ref = handoff.firstFrameUrl || handoff.referenceImageUrl;
+      if (ref) {
+        setUploadedImageUrl(ref);
+        setUploadedImageUrls([ref]);
+        setImageMode(true);
+      }
+      if (handoff.aspectRatio === "9:16" || handoff.aspectRatio === "16:9") {
+        setSelectedAr(handoff.aspectRatio);
+      }
+    } catch (err) {
+      console.warn("Failed to apply Storyboard hand-off:", err);
+    }
+  }, []);
+
+  // ── Apply pending Skills recipe (set by SkillsBrowser) ────────────────────
+  (0, _react.useEffect)(function () {
+    var pending = (0, _skillStore.getPendingRecipe)("video");
+    if (!pending) return;
+    var skill = _registry["default"].skills.find(function (s) {
+      return s.slug === pending;
+    });
+    (0, _skillStore.clearPendingRecipe)("video");
+    if (!skill) return;
+    applyRecipe(skill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  function applyRecipe(skill) {
+    var step0 = skill.steps && skill.steps[0];
+    if (!step0) {
+      if (skill.description) setPrompt(skill.description);
+      return;
+    }
+    var modelId = step0.endpoint || step0.model;
+    var allModels = [].concat(_toConsumableArray(_models.t2vModels), _toConsumableArray(_models.i2vModels));
+    var model = allModels.find(function (m) {
+      return m.id === modelId;
+    });
+    var wantsI2V = _models.i2vModels.some(function (m) {
+      return m.id === modelId;
+    }) || step0.type === "i2v" || step0.type === "edit" || step0.references && step0.references.length > 0;
+    if (model) {
+      setImageMode(!!wantsI2V);
+      setSelectedModel(model.id);
+      setSelectedModelName(model.name);
+    }
+    if (step0.aspectRatio) setSelectedAr(step0.aspectRatio);
+    var flags = step0.flags || {};
+    if (step0.audio || flags.nativeAudio) setNativeAudio(true);
+    if (step0.duration) setSelectedDuration(Number(step0.duration));
+    if (step0.resolution) setSelectedResolution(step0.resolution);
+    var refs = step0.references || [];
+    var _iterator = _createForOfIteratorHelper(refs),
+      _step;
+    try {
+      var _loop = function _loop() {
+        var r = _step.value;
+        var isObj = r && _typeof(r) === "object";
+        var rawUrl = isObj ? r.url : r;
+        var role = isObj ? r.role : null;
+        var url = rawUrl && !String(rawUrl).startsWith("{{") ? rawUrl : null;
+        if (!url) return 1; // continue
+        if (role === "first_frame") {
+          setUploadedImageUrl(url);
+          setImageMode(true);
+        } else if (role === "last_frame") {
+          setUploadedEndImageUrl(url);
+        } else if (role === "character_sheet") {
+          (0, _characterStore.setCharacterSheet)("video", url);
+          setCharacterSheetUrl(url);
+        } else {
+          setUploadedImageUrls(function (prev) {
+            return [].concat(_toConsumableArray(prev), [url]);
+          });
+          setImageMode(true);
+        }
+      };
+      for (_iterator.s(); !(_step = _iterator.n()).done;) {
+        if (_loop()) continue;
+      }
+    } catch (err) {
+      _iterator.e(err);
+    } finally {
+      _iterator.f();
+    }
+    var vals = {};
+    (skill.inputs || []).forEach(function (i) {
+      vals[i.name] = "";
+    });
+    setPrompt((0, _promptRecipes.fillTemplate)(step0.prompt || skill.description || "", vals));
+  }
+
   // ── Persistence: Load ────────────────────────────────────────────────────
   (0, _react.useEffect)(function () {
     try {
@@ -733,6 +1064,23 @@ function VideoStudio(_ref5) {
       hasRestored.current = true;
     }
   }, [applyControlsForModel, defaultModel.id]);
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  var templateApplied = (0, _react.useRef)(null);
+  (0, _react.useEffect)(function () {
+    if (!templateData || templateApplied.current === templateData.slug) return;
+    templateApplied.current = templateData.slug;
+    if (templateData.prompt) {
+      setPrompt(templateData.prompt);
+    }
+    if (templateData.aspectRatio) {
+      setSelectedAr(templateData.aspectRatio);
+    }
+    if (templateData.duration) {
+      var d = parseInt(String(templateData.duration), 10);
+      if (!isNaN(d)) setSelectedDuration(d);
+    }
+  }, [templateData]);
 
   // ── Adjust height on load ────────────────────────────────────────────────
   (0, _react.useEffect)(function () {
@@ -784,7 +1132,7 @@ function VideoStudio(_ref5) {
   // ── Derived UI values ────────────────────────────────────────────────────
 
   var processDroppedImage = /*#__PURE__*/function () {
-    var _ref6 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee(file) {
+    var _ref7 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee(file) {
       var url, targetModelId, currentT2V, sibling, target, maxImgs, _t;
       return _regenerator().w(function (_context) {
         while (1) switch (_context.p = _context.n) {
@@ -851,11 +1199,11 @@ function VideoStudio(_ref5) {
       }, _callee, null, [[2, 4, 5, 6]]);
     }));
     return function processDroppedImage(_x3) {
-      return _ref6.apply(this, arguments);
+      return _ref7.apply(this, arguments);
     };
   }();
   var processDroppedVideo = /*#__PURE__*/function () {
-    var _ref7 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2(file) {
+    var _ref8 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2(file) {
       var url, firstV2V, _t2;
       return _regenerator().w(function (_context2) {
         while (1) switch (_context2.p = _context2.n) {
@@ -906,7 +1254,7 @@ function VideoStudio(_ref5) {
       }, _callee2, null, [[2, 4, 5, 6]]);
     }));
     return function processDroppedVideo(_x4) {
-      return _ref7.apply(this, arguments);
+      return _ref8.apply(this, arguments);
     };
   }();
 
@@ -951,6 +1299,7 @@ function VideoStudio(_ref5) {
 
   // ── textarea auto-resize ──────────────────────────────────────────────────
   var handlePromptInput = function handlePromptInput(e) {
+    (0, _storyboardHandoff.clearStoryboardHandoff)();
     setPrompt(e.target.value);
     var el = e.target;
     el.style.height = "auto";
@@ -960,8 +1309,8 @@ function VideoStudio(_ref5) {
 
   // ── image upload ─────────────────────────────────────────────────────────
   var handleImageFileChange = /*#__PURE__*/function () {
-    var _ref8 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3(e) {
-      var file, url, targetModelId, currentT2V, sibling, target, maxImgs, _t3;
+    var _ref9 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3(e) {
+      var file, url, _currentT2VOrExtend$i, currentT2VOrExtend, _currentT2VOrExtend$i2, maxImgs, targetModelId, sibling, target, _maxImgs, _t3;
       return _regenerator().w(function (_context3) {
         while (1) switch (_context3.p = _context3.n) {
           case 0:
@@ -995,35 +1344,46 @@ function VideoStudio(_ref5) {
               setPromptDisabled(false);
               setUploadedImageUrls([url]);
             } else {
-              // Clear v2v if active
-              setUploadedVideoUrl(null);
-              setUploadedVideoName(null);
-              setV2vMode(false);
-              targetModelId = selectedModel;
-              if (!imageMode) {
-                currentT2V = _models.t2vModels.find(function (m) {
-                  return m.id === selectedModel;
-                });
-                sibling = currentT2V !== null && currentT2V !== void 0 && currentT2V.family ? _models.i2vModels.find(function (m) {
-                  return m.family === currentT2V.family;
-                }) : null;
-                target = sibling || _models.i2vModels[0];
-                targetModelId = target.id;
-                setImageMode(true);
-                setSelectedModel(target.id);
-                setSelectedModelName(target.name);
-                applyControlsForModel(target.id, true, false);
-              }
-              maxImgs = (0, _models.getMaxImagesForI2VModel)(targetModelId);
-              if (maxImgs > 2) {
+              // Model-native image reference (e.g. Seedance 2.0 Extend with inputs.images_list):
+              // keep the current model & mode; just accumulate the image URL
+              currentT2VOrExtend = _models.t2vModels.find(function (m) {
+                return m.id === selectedModel;
+              });
+              if (currentT2VOrExtend !== null && currentT2VOrExtend !== void 0 && (_currentT2VOrExtend$i = currentT2VOrExtend.inputs) !== null && _currentT2VOrExtend$i !== void 0 && _currentT2VOrExtend$i.images_list) {
+                maxImgs = ((_currentT2VOrExtend$i2 = currentT2VOrExtend.inputs) === null || _currentT2VOrExtend$i2 === void 0 || (_currentT2VOrExtend$i2 = _currentT2VOrExtend$i2.images_list) === null || _currentT2VOrExtend$i2 === void 0 ? void 0 : _currentT2VOrExtend$i2.maxItems) || 8;
                 setUploadedImageUrls(function (prev) {
                   if (prev.includes(url)) return prev;
                   return [].concat(_toConsumableArray(prev), [url]).slice(0, maxImgs);
                 });
+                setPromptDisabled(false);
               } else {
-                setUploadedImageUrls([url]);
+                // Standard flow: clear v2v and switch to an I2V sibling model
+                setUploadedVideoUrl(null);
+                setUploadedVideoName(null);
+                setV2vMode(false);
+                targetModelId = selectedModel;
+                if (!imageMode) {
+                  sibling = currentT2VOrExtend !== null && currentT2VOrExtend !== void 0 && currentT2VOrExtend.family ? _models.i2vModels.find(function (m) {
+                    return m.family === currentT2VOrExtend.family;
+                  }) : null;
+                  target = sibling || _models.i2vModels[0];
+                  targetModelId = target.id;
+                  setImageMode(true);
+                  setSelectedModel(target.id);
+                  setSelectedModelName(target.name);
+                  applyControlsForModel(target.id, true, false);
+                }
+                _maxImgs = (0, _models.getMaxImagesForI2VModel)(targetModelId);
+                if (_maxImgs > 2) {
+                  setUploadedImageUrls(function (prev) {
+                    if (prev.includes(url)) return prev;
+                    return [].concat(_toConsumableArray(prev), [url]).slice(0, _maxImgs);
+                  });
+                } else {
+                  setUploadedImageUrls([url]);
+                }
+                setPromptDisabled(false);
               }
-              setPromptDisabled(false);
             }
             _context3.n = 6;
             break;
@@ -1044,15 +1404,20 @@ function VideoStudio(_ref5) {
       }, _callee3, null, [[3, 5, 6, 7]]);
     }));
     return function handleImageFileChange(_x5) {
-      return _ref8.apply(this, arguments);
+      return _ref9.apply(this, arguments);
     };
   }();
   var clearImageUpload = function clearImageUpload() {
+    var _currentT2V$inputs;
     setUploadedImageUrl(null);
     setUploadedImageUrls([]);
     setUploadedEndImageUrl(null);
-    // Motion-control v2v: keep model and video; just drop the image
+    // Motion-control v2v or model with inputs.images_list: keep model, just drop the image
     if (isMotionControlSelection(selectedModel, v2vMode)) return;
+    var currentT2V = _models.t2vModels.find(function (m) {
+      return m.id === selectedModel;
+    });
+    if (currentT2V !== null && currentT2V !== void 0 && (_currentT2V$inputs = currentT2V.inputs) !== null && _currentT2V$inputs !== void 0 && _currentT2V$inputs.images_list) return;
     setImageMode(false);
     var first = _models.t2vModels[0];
     setSelectedModel(first.id);
@@ -1082,7 +1447,7 @@ function VideoStudio(_ref5) {
 
   // ── end-frame upload (FLF i2v models) ──────────────────────────────────────
   var handleEndImageFileChange = /*#__PURE__*/function () {
-    var _ref9 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee4(e) {
+    var _ref0 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee4(e) {
       var file, url, _t4;
       return _regenerator().w(function (_context4) {
         while (1) switch (_context4.p = _context4.n) {
@@ -1129,7 +1494,7 @@ function VideoStudio(_ref5) {
       }, _callee4, null, [[3, 5, 6, 7]]);
     }));
     return function handleEndImageFileChange(_x6) {
-      return _ref9.apply(this, arguments);
+      return _ref0.apply(this, arguments);
     };
   }();
   var clearEndImage = function clearEndImage() {
@@ -1138,8 +1503,8 @@ function VideoStudio(_ref5) {
 
   // ── video upload ─────────────────────────────────────────────────────────
   var handleVideoFileChange = /*#__PURE__*/function () {
-    var _ref0 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee5(e) {
-      var file, url, firstV2V, _t5;
+    var _ref1 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee5(e) {
+      var file, url, _currentT2VOrExtend$i3, currentT2VOrExtend, firstV2V, _t5;
       return _regenerator().w(function (_context5) {
         while (1) switch (_context5.p = _context5.n) {
           case 0:
@@ -1172,18 +1537,27 @@ function VideoStudio(_ref5) {
               // Already in motion-control mode — keep model and image, allow prompt
               setPromptDisabled(false);
             } else {
-              // Default v2v flow (e.g. watermark remover) — auto-pick the first v2v model
-              if (imageMode) {
-                setUploadedImageUrl(null);
-                setImageMode(false);
+              // Model-native video reference (e.g. Seedance 2.0 Extend with inputs.video_files):
+              // keep the current model & mode; just store the video URL as a reference
+              currentT2VOrExtend = _models.t2vModels.find(function (m) {
+                return m.id === selectedModel;
+              });
+              if (currentT2VOrExtend !== null && currentT2VOrExtend !== void 0 && (_currentT2VOrExtend$i3 = currentT2VOrExtend.inputs) !== null && _currentT2VOrExtend$i3 !== void 0 && _currentT2VOrExtend$i3.video_files) {
+                setPromptDisabled(false);
+              } else {
+                // Default v2v flow (e.g. watermark remover) — auto-pick the first v2v model
+                if (imageMode) {
+                  setUploadedImageUrl(null);
+                  setImageMode(false);
+                }
+                setV2vMode(true);
+                firstV2V = _models.v2vModels[0];
+                setSelectedModel(firstV2V.id);
+                setSelectedModelName(firstV2V.name);
+                applyControlsForModel(firstV2V.id, false, true);
+                setPrompt("");
+                setPromptDisabled(true);
               }
-              setV2vMode(true);
-              firstV2V = _models.v2vModels[0];
-              setSelectedModel(firstV2V.id);
-              setSelectedModelName(firstV2V.name);
-              applyControlsForModel(firstV2V.id, false, true);
-              setPrompt("");
-              setPromptDisabled(true);
             }
             _context5.n = 6;
             break;
@@ -1204,7 +1578,7 @@ function VideoStudio(_ref5) {
       }, _callee5, null, [[3, 5, 6, 7]]);
     }));
     return function handleVideoFileChange(_x7) {
-      return _ref0.apply(this, arguments);
+      return _ref1.apply(this, arguments);
     };
   }();
   var clearVideoUpload = function clearVideoUpload() {
@@ -1268,13 +1642,18 @@ function VideoStudio(_ref5) {
 
   // ── generate ──────────────────────────────────────────────────────────────
   var handleGenerate = (0, _react.useCallback)(/*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee6() {
-    var currentModel, isExtendMode, trimmedPrompt, maxImgs, hadError, res, _res, v2vParams, genId, entry, _res2, _maxImgs, i2vParams, i2vModel, durations, resolutions, _genId, _entry, _res3, params, _durations, _resolutions, _genId2, _entry2, _e$message, _t6;
+    var currentModel, isExtendMode, trimmedPrompt, advPayload, advSnapshot, advField, maxImgs, hadError, res, _res, v2vParams, genId, entry, _res2, _maxImgs2, i2vParams, i2vModel, durations, resolutions, _genId, _entry, _res3, params, _durations, _resolutions, _genId2, _entry2, _e$message, _e$message2, _t6;
     return _regenerator().w(function (_context6) {
       while (1) switch (_context6.p = _context6.n) {
         case 0:
           currentModel = getCurrentModel();
           isExtendMode = currentModel === null || currentModel === void 0 ? void 0 : currentModel.requiresRequestId;
-          trimmedPrompt = prompt.trim();
+          trimmedPrompt = prompt.trim(); // Advanced, model-aware controls (negative_prompt, seed, audio, camera…).
+          advPayload = (0, _videoAdvancedControls.buildAdvancedPayload)(advancedControls, advancedValues); // Snapshot of the advanced controls to persist on the history entry.
+          advSnapshot = advPayload;
+          advField = Object.keys(advSnapshot).length > 0 ? {
+            advanced: advSnapshot
+          } : {};
           if (!v2vMode) {
             _context6.n = 4;
             break;
@@ -1286,7 +1665,7 @@ function VideoStudio(_ref5) {
           alert("Please upload a video first.");
           return _context6.a(2);
         case 1:
-          if (!(currentModel !== null && currentModel !== void 0 && currentModel.imageField && !uploadedImageUrl)) {
+          if (!(currentModel !== null && currentModel !== void 0 && currentModel.imageField && !(currentModel !== null && currentModel !== void 0 && currentModel.imageOptional) && !uploadedImageUrl)) {
             _context6.n = 2;
             break;
           }
@@ -1363,10 +1742,10 @@ function VideoStudio(_ref5) {
           }
           // V2V: dedicated processV2V handles single-input tools (e.g. watermark
           // remover) and motion-control models (which take video + image + prompt)
-          v2vParams = {
+          v2vParams = _objectSpread({
             model: selectedModel,
             video_url: uploadedVideoUrl
-          };
+          }, advPayload);
           if (currentModel !== null && currentModel !== void 0 && currentModel.imageField && uploadedImageUrl) {
             v2vParams.image_url = uploadedImageUrl;
           }
@@ -1386,13 +1765,14 @@ function VideoStudio(_ref5) {
           genId = res.id || Date.now().toString();
           setLastGenerationId(null);
           setLastGenerationModel(null);
-          entry = {
+          entry = _objectSpread(_objectSpread({
             id: genId,
             url: res.url,
             prompt: currentModel !== null && currentModel !== void 0 && currentModel.hasPrompt ? trimmedPrompt : "",
-            model: selectedModel,
+            model: selectedModel
+          }, advField), {}, {
             timestamp: new Date().toISOString()
-          };
+          });
           addToLocalHistory(entry);
           showVideoInCanvas(res.url, selectedModel);
           if (onGenerationComplete) onGenerationComplete({
@@ -1408,11 +1788,11 @@ function VideoStudio(_ref5) {
             _context6.n = 18;
             break;
           }
-          _maxImgs = (0, _models.getMaxImagesForI2VModel)(selectedModel);
-          i2vParams = {
+          _maxImgs2 = (0, _models.getMaxImagesForI2VModel)(selectedModel);
+          i2vParams = _objectSpread({
             model: selectedModel
-          };
-          if (_maxImgs > 2) {
+          }, advPayload);
+          if (_maxImgs2 > 2) {
             i2vParams.images_list = uploadedImageUrls;
           } else {
             i2vParams.image_url = uploadedImageUrl;
@@ -1450,15 +1830,16 @@ function VideoStudio(_ref5) {
             setLastGenerationId(null);
             setLastGenerationModel(null);
           }
-          _entry = {
+          _entry = _objectSpread(_objectSpread({
             id: _genId,
             url: res.url,
             prompt: trimmedPrompt,
             model: selectedModel,
             aspect_ratio: selectedAr,
-            duration: selectedDuration,
+            duration: selectedDuration
+          }, advField), {}, {
             timestamp: new Date().toISOString()
-          };
+          });
           addToLocalHistory(_entry);
           showVideoInCanvas(res.url, selectedModel);
           if (onGenerationComplete) onGenerationComplete({
@@ -1471,12 +1852,20 @@ function VideoStudio(_ref5) {
           break;
         case 18:
           // T2V (including extend mode)
-          params = {
+          params = _objectSpread({
             model: selectedModel
-          };
+          }, advPayload);
           if (trimmedPrompt) params.prompt = trimmedPrompt;
           if (isExtendMode) {
             params.request_id = lastGenerationId;
+            // Optional reference media for Seedance 2.0 Extend:
+            // images map to @image2…@image9 and videos map to @video1…@video3 in the prompt
+            if (uploadedImageUrls.length > 0) {
+              params.images_list = uploadedImageUrls;
+            }
+            if (uploadedVideoUrl) {
+              params.videos_list = [uploadedVideoUrl];
+            }
           } else {
             params.aspect_ratio = selectedAr;
           }
@@ -1504,15 +1893,16 @@ function VideoStudio(_ref5) {
             setLastGenerationId(null);
             setLastGenerationModel(null);
           }
-          _entry2 = {
+          _entry2 = _objectSpread(_objectSpread({
             id: _genId2,
             url: res.url,
             prompt: trimmedPrompt,
             model: selectedModel,
             aspect_ratio: selectedAr,
-            duration: selectedDuration,
+            duration: selectedDuration
+          }, advField), {}, {
             timestamp: new Date().toISOString()
-          };
+          });
           addToLocalHistory(_entry2);
           showVideoInCanvas(res.url, selectedModel);
           if (onGenerationComplete) onGenerationComplete({
@@ -1533,6 +1923,7 @@ function VideoStudio(_ref5) {
           setTimeout(function () {
             return setGenerateError(null);
           }, 4000);
+          onGenerationError === null || onGenerationError === void 0 || onGenerationError(((_e$message2 = _t6.message) === null || _e$message2 === void 0 ? void 0 : _e$message2.slice(0, 120)) || "Video generation failed");
         case 23:
           _context6.p = 23;
           setGenerating(false);
@@ -1606,7 +1997,7 @@ function VideoStudio(_ref5) {
       children: history.length > 0 ? /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
         className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full pt-4 animate-fade-in-up",
         children: history.map(function (entry, idx) {
-          var _entry$model;
+          var _entry$prompt, _entry$model;
           var isSeedance2 = entry.model === "seedance-v2.0-t2v" || entry.model === "seedance-v2.0-i2v";
           return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "relative group rounded-lg overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-xl hover:border-primary/50 transition-all duration-300 flex flex-col",
@@ -1699,6 +2090,66 @@ function VideoStudio(_ref5) {
                     d: "M5 12h14M12 5l7 7-7 7"
                   })
                 })
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_SocialPublishProvider.PublishStep, {
+                mediaUrl: entry.url,
+                mediaType: "video",
+                title: ((_entry$prompt = entry.prompt) === null || _entry$prompt === void 0 ? void 0 : _entry$prompt.substring(0, 50)) || 'Generated video',
+                className: "p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center"
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_AiAssistantProvider.AssistStep, {
+                assetUrl: entry.url,
+                assetType: "video",
+                onApply: function onApply() {},
+                className: "p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center",
+                children: /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
+                  width: "14",
+                  height: "14",
+                  viewBox: "0 0 24 24",
+                  fill: "none",
+                  stroke: "currentColor",
+                  strokeWidth: "2.5",
+                  strokeLinecap: "round",
+                  strokeLinejoin: "round",
+                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                    d: "M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"
+                  })
+                })
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+                type: "button",
+                title: "Delete",
+                onClick: function onClick(e) {
+                  e.stopPropagation();
+                  if (confirm("Are you sure you want to delete this generated item?")) {
+                    setLocalHistory(function (prev) {
+                      return prev.filter(function (_, i) {
+                        return i !== idx;
+                      });
+                    });
+                  }
+                },
+                className: "p-2 bg-black/60 backdrop-blur-md rounded-full text-red-400 hover:bg-red-500 hover:text-white transition-all border border-white/10",
+                children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                  width: "14",
+                  height: "14",
+                  viewBox: "0 0 24 24",
+                  fill: "none",
+                  stroke: "currentColor",
+                  strokeWidth: "2.5",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
+                    points: "3 6 5 6 21 6"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                    d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "10",
+                    y1: "11",
+                    x2: "10",
+                    y2: "17"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "14",
+                    y1: "11",
+                    x2: "14",
+                    y2: "17"
+                  })]
+                })
               })]
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
               className: "p-3 bg-black/80 backdrop-blur-sm border-t border-white/5 flex-1 flex flex-col justify-between gap-2",
@@ -1719,6 +2170,11 @@ function VideoStudio(_ref5) {
                   }), entry.duration && /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
                     className: "text-[10px] text-white/40",
                     children: [entry.duration, "s"]
+                  }), entry.advanced && buildAdvChips(entry.advanced).map(function (c, i) {
+                    return /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                      className: "text-[10px] text-white/40",
+                      children: c
+                    }, i);
                   })]
                 })]
               })]
@@ -1728,48 +2184,47 @@ function VideoStudio(_ref5) {
       }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
         className: "flex flex-col items-center justify-center h-full animate-fade-in-up transition-all duration-700 min-h-[50vh]",
         children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "mb-12 relative group",
+          className: "flex items-center justify-center gap-1.5 md:gap-3 mb-10 select-none scale-90 sm:scale-100",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-            className: "absolute inset-0 bg-primary/10 blur-[120px] rounded-full opacity-30 group-hover:opacity-60 transition-opacity duration-1000"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "relative w-24 h-24 md:w-32 md:h-32 bg-white/[0.02] rounded-[2rem] flex items-center justify-center border border-white/[0.05] overflow-hidden backdrop-blur-sm",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-              className: "w-16 h-16 bg-primary/5 rounded-2xl flex items-center justify-center border border-primary/10 relative z-10 transition-transform duration-500 group-hover:scale-110",
-              children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-                width: "32",
-                height: "32",
-                viewBox: "0 0 24 24",
-                fill: "none",
-                stroke: "currentColor",
-                strokeWidth: "1.5",
-                className: "text-primary opacity-80",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("polygon", {
-                  points: "23 7 16 12 23 17 23 7"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("rect", {
-                  x: "1",
-                  y: "5",
-                  width: "15",
-                  height: "14",
-                  rx: "2",
-                  ry: "2"
-                })]
-              })
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-              className: "absolute top-4 right-4 text-[10px] text-primary/40 animate-pulse",
-              children: "\u2728"
-            })]
+            className: "w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl -rotate-[12deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/sdxl-image.avif",
+              alt: "Creative asset 1",
+              className: "w-full h-full object-cover"
+            })
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            className: "w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl -rotate-[4deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/chroma-image.avif",
+              alt: "Creative asset 2",
+              className: "w-full h-full object-cover"
+            })
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            className: "w-18 h-18 sm:w-24 sm:h-24 rounded-full border border-white/10 shadow-2xl rotate-[6deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/neta-lumina.avif",
+              alt: "Creative asset 3",
+              className: "w-full h-full object-cover"
+            })
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            className: "w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl rotate-[12deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/perfect-pony-xl.avif",
+              alt: "Creative asset 4",
+              className: "w-full h-full object-cover"
+            })
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("h1", {
-          className: "text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-4 text-center px-4",
+          className: "text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-center px-4 flex flex-col items-center",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-            className: "text-white/40 font-medium",
+            className: "text-white font-black uppercase text-xl sm:text-3xl tracking-wide mb-1 opacity-90",
             children: "START CREATING WITH"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("br", {}), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-            className: "text-white",
-            children: "VIDEO STUDIO"
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+            className: "text-[#22d3ee] font-black uppercase text-2xl sm:text-4xl sm:mt-1 tracking-tight",
+            children: selectedModelName
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
-          className: "text-white/40 text-sm md:text-base font-medium tracking-wide text-center max-w-lg leading-relaxed",
+          className: "text-white/40 text-xs sm:text-sm font-medium tracking-wide text-center max-w-lg leading-relaxed px-4",
           children: "Animate images into stunning AI videos with motion effects"
         })]
       })
@@ -1779,32 +2234,72 @@ function VideoStudio(_ref5) {
         animationDelay: "0.2s"
       },
       children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-        className: "w-full bg-[#0a0a0a]/80 backdrop-blur-3xl rounded-md border border-white/10 p-4 flex flex-col gap-2 shadow-2xl",
+        className: "w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]",
         children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "flex items-center gap-2 px-1",
-          children: [imageMode && (0, _models.getMaxImagesForI2VModel)(selectedModel) > 2 ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "flex items-center gap-2 flex-wrap",
-            children: [uploadedImageUrls.map(function (url, idx) {
-              return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                className: "relative w-10 h-10 shrink-0 rounded-full border border-primary/60 bg-primary/5 overflow-hidden group",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
-                  src: url,
-                  alt: "",
-                  className: "w-full h-full object-cover"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-                  type: "button",
-                  onClick: function onClick() {
-                    return removeImageAtIndex(idx);
-                  },
-                  className: "absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-black transition-opacity",
-                  title: "Remove image",
-                  children: "\u2715"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                  className: "absolute bottom-0.5 right-0.5 px-1 h-3.5 bg-black/60 rounded-full text-[8px] font-black text-primary leading-none flex items-center justify-center pointer-events-none",
-                  children: idx + 1
-                })]
-              }, idx);
-            }), uploadedImageUrls.length < (0, _models.getMaxImagesForI2VModel)(selectedModel) && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+          className: "flex flex-col gap-3",
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            className: "flex items-center gap-2.5 flex-wrap",
+            children: [uploadedImageUrl && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+              className: "relative w-12 h-12 rounded-xl border border-white/10 overflow-hidden shadow-md group",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+                src: uploadedImageUrl,
+                alt: "",
+                className: "w-full h-full object-cover"
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+                type: "button",
+                onClick: clearImageUpload,
+                className: "absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 hover:bg-black rounded-full flex items-center justify-center text-white/85 hover:text-white text-[8px] border border-white/5",
+                children: "\xD7"
+              })]
+            }), uploadedEndImageUrl && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+              className: "relative w-12 h-12 rounded-xl border border-white/10 overflow-hidden shadow-md group",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+                src: uploadedEndImageUrl,
+                alt: "",
+                className: "w-full h-full object-cover"
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+                type: "button",
+                onClick: clearEndImage,
+                className: "absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 hover:bg-black rounded-full flex items-center justify-center text-white/85 hover:text-white text-[8px] border border-white/5",
+                children: "\xD7"
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                className: "absolute bottom-0.5 left-0.5 px-1 h-3.5 bg-black/60 rounded-md text-[7px] font-black text-[#22d3ee] leading-none flex items-center justify-center pointer-events-none",
+                children: "END"
+              })]
+            }), uploadedVideoUrl && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+              className: "relative w-12 h-12 rounded-xl border border-white/10 overflow-hidden shadow-md group",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("video", {
+                src: uploadedVideoUrl,
+                className: "w-full h-full object-cover",
+                muted: true
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+                type: "button",
+                onClick: clearVideoUpload,
+                className: "absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 hover:bg-black rounded-full flex items-center justify-center text-white/85 hover:text-white text-[8px] border border-white/5",
+                children: "\xD7"
+              })]
+            }), imageMode && (0, _models.getMaxImagesForI2VModel)(selectedModel) > 2 && /*#__PURE__*/(0, _jsxRuntime.jsx)(_jsxRuntime.Fragment, {
+              children: uploadedImageUrls.map(function (url, idx) {
+                return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                  className: "relative w-12 h-12 rounded-xl border border-white/10 overflow-hidden shadow-md group",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+                    src: url,
+                    alt: "",
+                    className: "w-full h-full object-cover"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+                    type: "button",
+                    onClick: function onClick() {
+                      return removeImageAtIndex(idx);
+                    },
+                    className: "absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 hover:bg-black rounded-full flex items-center justify-center text-white/85 hover:text-white text-[8px] border border-white/5",
+                    children: "\xD7"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                    className: "absolute bottom-0.5 right-0.5 px-1 h-3.5 bg-black/60 rounded-full text-[8px] font-black text-[#22d3ee] leading-none flex items-center justify-center pointer-events-none",
+                    children: idx + 1
+                  })]
+                }, idx);
+              })
+            }), (!v2vMode || isMotionControlSelection(selectedModel, v2vMode)) && (!isExtendMode || (currentModelObj === null || currentModelObj === void 0 || (_currentModelObj$inpu = currentModelObj.inputs) === null || _currentModelObj$inpu === void 0 ? void 0 : _currentModelObj$inpu.images_list)) && ((0, _models.getMaxImagesForI2VModel)(selectedModel) > 2 ? uploadedImageUrls.length < (0, _models.getMaxImagesForI2VModel)(selectedModel) && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
               className: "relative",
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
                 ref: imageFileInputRef,
@@ -1819,7 +2314,7 @@ function VideoStudio(_ref5) {
                   var _imageFileInputRef$cu;
                   return (_imageFileInputRef$cu = imageFileInputRef.current) === null || _imageFileInputRef$cu === void 0 ? void 0 : _imageFileInputRef$cu.click();
                 },
-                className: "w-10 h-10 shrink-0 rounded-full border transition-all flex items-center justify-center bg-white/5 border-white/[0.03] hover:bg-white/10 hover:border-primary/40 relative overflow-hidden group",
+                className: "w-12 h-12 shrink-0 rounded-xl border border-dashed border-white/10 hover:border-[#22d3ee]/40 bg-white/[0.02] hover:bg-white/5 transition-all flex items-center justify-center relative overflow-hidden group",
                 children: imageUploading ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
                   className: "flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]",
                   children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
@@ -1841,215 +2336,228 @@ function VideoStudio(_ref5) {
                       fill: "transparent",
                       strokeDasharray: 88,
                       strokeDashoffset: 88 - 88 * imageProgress / 100,
-                      className: "text-primary transition-all duration-300"
+                      className: "text-[#22d3ee] transition-all duration-300"
                     })]
                   }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
-                    className: "absolute text-[9px] font-black text-primary leading-none",
+                    className: "absolute text-[9px] font-black text-[#22d3ee] leading-none",
                     children: [imageProgress, "%"]
                   })]
-                }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                  className: "text-lg font-bold text-white/40 group-hover:text-primary transition-colors",
-                  children: "+"
+                }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                  width: "16",
+                  height: "16",
+                  viewBox: "0 0 24 24",
+                  fill: "none",
+                  stroke: "currentColor",
+                  strokeWidth: "2.5",
+                  className: "text-white/40 group-hover:text-[#22d3ee] transition-colors",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "12",
+                    y1: "5",
+                    x2: "12",
+                    y2: "19"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "5",
+                    y1: "12",
+                    x2: "19",
+                    y2: "12"
+                  })]
                 })
               })]
-            })]
-          }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "relative",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
-              ref: imageFileInputRef,
-              type: "file",
-              accept: "image/*",
-              className: "hidden",
-              onChange: handleImageFileChange
-            }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-              type: "button",
-              title: uploadedImageUrl ? "Clear image" : "Upload image for Image-to-Video",
-              onClick: function onClick() {
-                var _imageFileInputRef$cu2;
-                return uploadedImageUrl ? clearImageUpload() : (_imageFileInputRef$cu2 = imageFileInputRef.current) === null || _imageFileInputRef$cu2 === void 0 ? void 0 : _imageFileInputRef$cu2.click();
-              },
-              className: "w-10 h-10 shrink-0 rounded-full border transition-all flex items-center justify-center relative overflow-hidden ".concat(uploadedImageUrl ? "border-primary/60 bg-primary/5" : "bg-white/5 border-white/[0.03] hover:bg-white/10 hover:border-primary/40", " group"),
-              children: [imageUploading ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                className: "flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-                  className: "w-8 h-8 -rotate-90",
-                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-                    cx: "16",
-                    cy: "16",
-                    r: "14",
-                    stroke: "currentColor",
-                    strokeWidth: "2",
-                    fill: "transparent",
-                    className: "text-white/10"
-                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-                    cx: "16",
-                    cy: "16",
-                    r: "14",
-                    stroke: "currentColor",
-                    strokeWidth: "2",
-                    fill: "transparent",
-                    strokeDasharray: 88,
-                    strokeDashoffset: 88 - 88 * imageProgress / 100,
-                    className: "text-primary transition-all duration-300"
+            }) : !uploadedImageUrl && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+              className: "relative",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
+                ref: imageFileInputRef,
+                type: "file",
+                accept: "image/*",
+                className: "hidden",
+                onChange: handleImageFileChange
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+                type: "button",
+                title: "Upload reference image",
+                onClick: function onClick() {
+                  var _imageFileInputRef$cu2;
+                  return (_imageFileInputRef$cu2 = imageFileInputRef.current) === null || _imageFileInputRef$cu2 === void 0 ? void 0 : _imageFileInputRef$cu2.click();
+                },
+                className: "w-12 h-12 shrink-0 rounded-xl border border-dashed border-white/10 hover:border-[#22d3ee]/40 bg-white/[0.02] hover:bg-white/5 transition-all flex items-center justify-center relative overflow-hidden group",
+                children: imageUploading ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                  className: "flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                    className: "w-8 h-8 -rotate-90",
+                    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                      cx: "16",
+                      cy: "16",
+                      r: "14",
+                      stroke: "currentColor",
+                      strokeWidth: "2",
+                      fill: "transparent",
+                      className: "text-white/10"
+                    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                      cx: "16",
+                      cy: "16",
+                      r: "14",
+                      stroke: "currentColor",
+                      strokeWidth: "2",
+                      fill: "transparent",
+                      strokeDasharray: 88,
+                      strokeDashoffset: 88 - 88 * imageProgress / 100,
+                      className: "text-[#22d3ee] transition-all duration-300"
+                    })]
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
+                    className: "absolute text-[9px] font-black text-[#22d3ee] leading-none",
+                    children: [imageProgress, "%"]
                   })]
-                }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
-                  className: "absolute text-[9px] font-black text-primary leading-none",
-                  children: [imageProgress, "%"]
-                })]
-              }) : null, uploadedImageUrl ? /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
-                src: uploadedImageUrl,
-                alt: "",
-                className: "w-full h-full object-cover rounded-full ".concat(imageUploading ? "opacity-40 blur-[2px]" : "opacity-100")
-              }) : !imageUploading && /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-                width: "18",
-                height: "18",
-                viewBox: "0 0 24 24",
-                fill: "none",
-                stroke: "currentColor",
-                strokeWidth: "2",
-                className: "text-white/40 group-hover:text-primary transition-colors",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("rect", {
-                  x: "3",
-                  y: "3",
-                  width: "18",
-                  height: "18",
-                  rx: "2",
-                  ry: "2"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-                  cx: "8.5",
-                  cy: "8.5",
-                  r: "1.5"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
-                  points: "21 15 16 10 5 21"
-                })]
+                }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                  width: "16",
+                  height: "16",
+                  viewBox: "0 0 24 24",
+                  fill: "none",
+                  stroke: "currentColor",
+                  strokeWidth: "2.5",
+                  className: "text-white/40 group-hover:text-[#22d3ee] transition-colors",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "12",
+                    y1: "5",
+                    x2: "12",
+                    y2: "19"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "5",
+                    y1: "12",
+                    x2: "19",
+                    y2: "12"
+                  })]
+                })
               })]
-            })]
-          }), imageMode && ((_i2vModels$find = _models.i2vModels.find(function (m) {
-            return m.id === selectedModel;
-          })) === null || _i2vModels$find === void 0 ? void 0 : _i2vModels$find.lastImageField) && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "relative",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
-              ref: endImageFileInputRef,
-              type: "file",
-              accept: "image/*",
-              className: "hidden",
-              onChange: handleEndImageFileChange
-            }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-              type: "button",
-              title: uploadedEndImageUrl ? "Clear end frame" : "Upload end frame (optional)",
-              onClick: function onClick() {
-                var _endImageFileInputRef;
-                return uploadedEndImageUrl ? clearEndImage() : (_endImageFileInputRef = endImageFileInputRef.current) === null || _endImageFileInputRef === void 0 ? void 0 : _endImageFileInputRef.click();
-              },
-              className: "w-10 h-10 shrink-0 rounded-full border transition-all flex items-center justify-center relative overflow-hidden ".concat(uploadedEndImageUrl ? "border-primary/60 bg-primary/5" : "bg-white/5 border-white/[0.03] hover:bg-white/10 hover:border-primary/40", " group"),
-              children: [endImageUploading ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                className: "flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-                  className: "w-8 h-8 -rotate-90",
-                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-                    cx: "16",
-                    cy: "16",
-                    r: "14",
-                    stroke: "currentColor",
-                    strokeWidth: "2",
-                    fill: "transparent",
-                    className: "text-white/10"
-                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-                    cx: "16",
-                    cy: "16",
-                    r: "14",
-                    stroke: "currentColor",
-                    strokeWidth: "2",
-                    fill: "transparent",
-                    strokeDasharray: 88,
-                    strokeDashoffset: 88 - 88 * endImageProgress / 100,
-                    className: "text-primary transition-all duration-300"
+            })), imageMode && ((_i2vModels$find = _models.i2vModels.find(function (m) {
+              return m.id === selectedModel;
+            })) === null || _i2vModels$find === void 0 ? void 0 : _i2vModels$find.lastImageField) && !uploadedEndImageUrl && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+              className: "relative",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
+                ref: endImageFileInputRef,
+                type: "file",
+                accept: "image/*",
+                className: "hidden",
+                onChange: handleEndImageFileChange
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+                type: "button",
+                title: "Upload end frame (optional)",
+                onClick: function onClick() {
+                  var _endImageFileInputRef;
+                  return (_endImageFileInputRef = endImageFileInputRef.current) === null || _endImageFileInputRef === void 0 ? void 0 : _endImageFileInputRef.click();
+                },
+                className: "w-12 h-12 shrink-0 rounded-xl border border-dashed border-white/10 hover:border-[#22d3ee]/40 bg-white/[0.02] hover:bg-white/5 transition-all flex items-center justify-center relative overflow-hidden group",
+                children: endImageUploading ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                  className: "flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                    className: "w-8 h-8 -rotate-90",
+                    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                      cx: "16",
+                      cy: "16",
+                      r: "14",
+                      stroke: "currentColor",
+                      strokeWidth: "2",
+                      fill: "transparent",
+                      className: "text-white/10"
+                    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                      cx: "16",
+                      cy: "16",
+                      r: "14",
+                      stroke: "currentColor",
+                      strokeWidth: "2",
+                      fill: "transparent",
+                      strokeDasharray: 88,
+                      strokeDashoffset: 88 - 88 * endImageProgress / 100,
+                      className: "text-[#22d3ee] transition-all duration-300"
+                    })]
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
+                    className: "absolute text-[9px] font-black text-[#22d3ee] leading-none",
+                    children: [endImageProgress, "%"]
                   })]
-                }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
-                  className: "absolute text-[9px] font-black text-primary leading-none",
-                  children: [endImageProgress, "%"]
-                })]
-              }) : null, uploadedEndImageUrl ? /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
-                src: uploadedEndImageUrl,
-                alt: "",
-                className: "w-full h-full object-cover rounded-full ".concat(endImageUploading ? "opacity-40 blur-[2px]" : "opacity-100")
-              }) : !endImageUploading && /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-                width: "18",
-                height: "18",
-                viewBox: "0 0 24 24",
-                fill: "none",
-                stroke: "currentColor",
-                strokeWidth: "2",
-                className: "text-white/40 group-hover:text-primary transition-colors",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("rect", {
-                  x: "3",
-                  y: "3",
-                  width: "18",
-                  height: "18",
-                  rx: "2",
-                  ry: "2"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-                  cx: "8.5",
-                  cy: "8.5",
-                  r: "1.5"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
-                  points: "21 15 16 10 5 21"
-                })]
-              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                className: "absolute top-0.5 left-0.5 px-1 h-3.5 bg-black/60 rounded-md text-[7px] font-black text-primary leading-none flex items-center justify-center pointer-events-none",
-                children: "END"
+                }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                  width: "16",
+                  height: "16",
+                  viewBox: "0 0 24 24",
+                  fill: "none",
+                  stroke: "currentColor",
+                  strokeWidth: "2.5",
+                  className: "text-white/40 group-hover:text-[#22d3ee] transition-colors",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "12",
+                    y1: "5",
+                    x2: "12",
+                    y2: "19"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "5",
+                    y1: "12",
+                    x2: "19",
+                    y2: "12"
+                  })]
+                })
               })]
-            })]
-          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "relative",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
-              ref: videoFileInputRef,
-              type: "file",
-              accept: "video/*",
-              className: "hidden",
-              onChange: handleVideoFileChange
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-              type: "button",
-              title: uploadedVideoUrl ? "".concat(uploadedVideoName, " \u2014 click to clear") : "Upload video to remove watermark",
-              onClick: function onClick() {
-                var _videoFileInputRef$cu;
-                return uploadedVideoUrl ? clearVideoUpload() : (_videoFileInputRef$cu = videoFileInputRef.current) === null || _videoFileInputRef$cu === void 0 ? void 0 : _videoFileInputRef$cu.click();
-              },
-              className: "w-10 h-10 shrink-0 rounded-full border transition-all flex items-center justify-center relative overflow-hidden ".concat(uploadedVideoUrl ? "border-primary/60 bg-white/5" : "bg-white/[0.03] border-white/[0.03] hover:bg-white/10 hover:border-primary/40", " group"),
-              children: videoUploading ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                className: "flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-                  className: "w-8 h-8 -rotate-90",
-                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-                    cx: "16",
-                    cy: "16",
-                    r: "14",
-                    stroke: "currentColor",
-                    strokeWidth: "2",
-                    fill: "transparent",
-                    className: "text-white/10"
-                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-                    cx: "16",
-                    cy: "16",
-                    r: "14",
-                    stroke: "currentColor",
-                    strokeWidth: "2",
-                    fill: "transparent",
-                    strokeDasharray: 88,
-                    strokeDashoffset: 88 - 88 * videoProgress / 100,
-                    className: "text-primary transition-all duration-300"
+            }), !uploadedVideoUrl && (v2vMode || (currentModelObj === null || currentModelObj === void 0 || (_currentModelObj$inpu2 = currentModelObj.inputs) === null || _currentModelObj$inpu2 === void 0 ? void 0 : _currentModelObj$inpu2.video_files)) && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+              className: "relative",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
+                ref: videoFileInputRef,
+                type: "file",
+                accept: "video/*",
+                className: "hidden",
+                onChange: handleVideoFileChange
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+                type: "button",
+                title: "Upload video to remove watermark",
+                onClick: function onClick() {
+                  var _videoFileInputRef$cu;
+                  return (_videoFileInputRef$cu = videoFileInputRef.current) === null || _videoFileInputRef$cu === void 0 ? void 0 : _videoFileInputRef$cu.click();
+                },
+                className: "w-12 h-12 shrink-0 rounded-xl border border-dashed border-white/10 hover:border-[#22d3ee]/40 bg-white/[0.02] hover:bg-white/5 transition-all flex items-center justify-center relative overflow-hidden group",
+                children: videoUploading ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                  className: "flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                    className: "w-8 h-8 -rotate-90",
+                    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                      cx: "16",
+                      cy: "16",
+                      r: "14",
+                      stroke: "currentColor",
+                      strokeWidth: "2",
+                      fill: "transparent",
+                      className: "text-white/10"
+                    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                      cx: "16",
+                      cy: "16",
+                      r: "14",
+                      stroke: "currentColor",
+                      strokeWidth: "2",
+                      fill: "transparent",
+                      strokeDasharray: 88,
+                      strokeDashoffset: 88 - 88 * videoProgress / 100,
+                      className: "text-[#22d3ee] transition-all duration-300"
+                    })]
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
+                    className: "absolute text-[9px] font-black text-[#22d3ee] leading-none",
+                    children: [videoProgress, "%"]
                   })]
-                }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
-                  className: "absolute text-[9px] font-black text-primary leading-none",
-                  children: [videoProgress, "%"]
-                })]
-              }) : uploadedVideoUrl ? /*#__PURE__*/(0, _jsxRuntime.jsx)("video", {
-                src: uploadedVideoUrl,
-                className: "w-full h-full object-cover rounded-full ".concat(videoUploading ? "opacity-40 blur-[2px]" : "opacity-100"),
-                muted: true
-              }) : /*#__PURE__*/(0, _jsxRuntime.jsx)(VideoIconSvg, {
-                className: "text-white/40 group-hover:text-primary transition-colors"
-              })
+                }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                  width: "16",
+                  height: "16",
+                  viewBox: "0 0 24 24",
+                  fill: "none",
+                  stroke: "currentColor",
+                  strokeWidth: "2.5",
+                  className: "text-white/40 group-hover:text-[#22d3ee] transition-colors",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("polygon", {
+                    points: "23 7 16 12 23 17 23 7",
+                    fill: "currentColor"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("rect", {
+                    x: "1",
+                    y: "5",
+                    width: "15",
+                    height: "14",
+                    rx: "2",
+                    ry: "2",
+                    fill: "currentColor"
+                  })]
+                })
+              })]
             })]
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
             className: "flex-1 flex flex-col gap-1",
@@ -2079,7 +2587,7 @@ function VideoStudio(_ref5) {
             children: "Extending previous Seedance 2.0 generation"
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-2 border-t border-white/[0.03] relative",
+          className: "flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-3 border-t border-white/[0.03] relative",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "flex items-center gap-2 relative flex-wrap pb-1 md:pb-0",
             children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
@@ -2087,13 +2595,24 @@ function VideoStudio(_ref5) {
               children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
                 type: "button",
                 onClick: toggleDropdown("model"),
-                className: "flex items-center gap-2 px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap",
+                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                  className: "w-4 h-4 bg-[#22d3ee] rounded flex items-center justify-center shadow-lg shadow-[#22d3ee]/10",
-                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                    className: "text-[9px] font-bold text-black uppercase",
-                    children: "V"
-                  })
+                  className: "w-4 h-4 rounded overflow-hidden shrink-0 flex items-center justify-center bg-white/5",
+                  children: function () {
+                    var allCurrentModels = [].concat(_toConsumableArray(_models.t2vModels), _toConsumableArray(_models.i2vModels), _toConsumableArray(_models.v2vModels));
+                    var selectedModelObj = allCurrentModels.find(function (m) {
+                      return m.id === selectedModel;
+                    });
+                    var selectedModelProvider = (selectedModelObj === null || selectedModelObj === void 0 ? void 0 : selectedModelObj.provider) || 'muapi';
+                    return PROVIDER_LOGOS[selectedModelProvider] ? /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+                      src: PROVIDER_LOGOS[selectedModelProvider],
+                      alt: "",
+                      className: "w-full h-full object-contain ".concat(invertLogos.includes(selectedModelProvider) ? "invert" : "")
+                    }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                      className: "text-[9px] font-bold text-black uppercase",
+                      children: "V"
+                    });
+                  }()
                 }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                   className: "text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
                   children: selectedModelName
@@ -2114,7 +2633,7 @@ function VideoStudio(_ref5) {
                 onClick: function onClick(e) {
                   return e.stopPropagation();
                 },
-                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-[1.5rem] p-3 shadow-2xl border border-white/[0.05] w-[calc(100vw-3rem)] max-w-xs",
+                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-[1.5rem] p-3.5 shadow-2xl border border-white/[0.05] w-[calc(100vw-2rem)] md:w-[480px] max-w-md md:max-w-none",
                 children: /*#__PURE__*/(0, _jsxRuntime.jsx)(ModelDropdown, {
                   imageMode: imageMode,
                   selectedModel: selectedModel,
@@ -2129,7 +2648,7 @@ function VideoStudio(_ref5) {
               children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
                 type: "button",
                 onClick: toggleDropdown("ar"),
-                className: "flex items-center gap-2 px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap",
+                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
                   width: "14",
                   height: "14",
@@ -2155,22 +2674,22 @@ function VideoStudio(_ref5) {
                 onClick: function onClick(e) {
                   return e.stopPropagation();
                 },
-                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-lg p-3 shadow-2xl border border-white/[0.05] max-h-80 overflow-y-auto custom-scrollbar min-w-[160px]",
+                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 max-h-80 overflow-y-auto custom-scrollbar shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[160px]",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                  className: "text-xs font-bold text-white/20 border-b border-white/[0.03] mb-2",
+                  className: "text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-2 px-1",
                   children: "Aspect Ratio"
                 }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
                   className: "flex flex-col gap-1",
                   children: getCurrentAspectRatios(selectedModel).map(function (r) {
                     return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                      className: "flex items-center justify-between p-3 hover:bg-white/5 rounded cursor-pointer transition-all group/opt",
+                      className: "flex items-center justify-between p-2.5 px-3 hover:bg-[#22d3ee]/10 hover:text-white rounded-xl cursor-pointer transition-all group/opt",
                       onClick: function onClick(e) {
                         e.stopPropagation();
                         setSelectedAr(r);
                         setOpenDropdown(null);
                       },
                       children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                        className: "text-[11px] font-semibold text-white/70 group-hover/opt:text-white transition-opacity",
+                        className: "text-xs font-semibold text-white/70 group-hover/opt:text-[#22d3ee] transition-colors",
                         children: r
                       }), selectedAr === r && /*#__PURE__*/(0, _jsxRuntime.jsx)(CheckSvg, {})]
                     }, r);
@@ -2182,7 +2701,7 @@ function VideoStudio(_ref5) {
               children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
                 type: "button",
                 onClick: toggleDropdown("effect"),
-                className: "flex items-center gap-2 px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap",
+                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
                   width: "14",
                   height: "14",
@@ -2203,22 +2722,22 @@ function VideoStudio(_ref5) {
                 onClick: function onClick(e) {
                   return e.stopPropagation();
                 },
-                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-lg p-3 shadow-2xl border border-white/[0.05] max-h-80 overflow-y-auto custom-scrollbar min-w-[200px]",
+                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 max-h-80 overflow-y-auto custom-scrollbar shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[200px]",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                  className: "text-xs font-bold text-white/20 border-b border-white/[0.03] mb-2",
+                  className: "text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-2 px-1",
                   children: "Effect Type"
                 }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
                   className: "flex flex-col gap-1",
                   children: (0, _models.getEffectsForI2VModel)(selectedModel).map(function (eff) {
                     return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                      className: "flex items-center justify-between p-2 hover:bg-white/5 rounded cursor-pointer transition-all group/opt",
+                      className: "flex items-center justify-between p-2.5 px-3 hover:bg-[#22d3ee]/10 hover:text-white rounded-xl cursor-pointer transition-all group/opt",
                       onClick: function onClick(e) {
                         e.stopPropagation();
                         setSelectedEffect(eff);
                         setOpenDropdown(null);
                       },
                       children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                        className: "text-[11px] font-semibold text-white/70 group-hover/opt:text-white",
+                        className: "text-xs font-semibold text-white/70 group-hover/opt:text-[#22d3ee] transition-colors",
                         children: eff
                       }), selectedEffect === eff && /*#__PURE__*/(0, _jsxRuntime.jsx)(CheckSvg, {})]
                     }, eff);
@@ -2230,7 +2749,7 @@ function VideoStudio(_ref5) {
               children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
                 type: "button",
                 onClick: toggleDropdown("duration"),
-                className: "flex items-center gap-2 px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap",
+                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
                   width: "14",
                   height: "14",
@@ -2255,22 +2774,22 @@ function VideoStudio(_ref5) {
                 onClick: function onClick(e) {
                   return e.stopPropagation();
                 },
-                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-md p-3 shadow-2xl border border-white/10 min-w-[140px]",
+                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[140px]",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                  className: "text-xs font-bold text-white/20 border-b border-white/[0.03] mb-2",
+                  className: "text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-2 px-1",
                   children: "Duration"
                 }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
                   className: "flex flex-col gap-1",
                   children: getCurrentDurations(selectedModel).map(function (d) {
                     return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                      className: "flex items-center justify-between p-2 hover:bg-white/5 rounded-md cursor-pointer transition-all group/opt",
+                      className: "flex items-center justify-between p-2.5 px-3 hover:bg-[#22d3ee]/10 hover:text-white rounded-xl cursor-pointer transition-all group/opt",
                       onClick: function onClick(e) {
                         e.stopPropagation();
                         setSelectedDuration(d);
                         setOpenDropdown(null);
                       },
                       children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
-                        className: "text-xs font-semibold text-white/70 group-hover/opt:text-white",
+                        className: "text-xs font-semibold text-white/70 group-hover/opt:text-[#22d3ee] transition-colors",
                         children: [d, "s"]
                       }), selectedDuration === d && /*#__PURE__*/(0, _jsxRuntime.jsx)(CheckSvg, {})]
                     }, d);
@@ -2282,17 +2801,17 @@ function VideoStudio(_ref5) {
               children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
                 type: "button",
                 onClick: toggleDropdown("resolution"),
-                className: "flex items-center gap-2 px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap",
+                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
-                  width: "14",
-                  height: "14",
+                  width: "12",
+                  height: "12",
                   viewBox: "0 0 24 24",
                   fill: "none",
                   stroke: "currentColor",
-                  strokeWidth: "2",
+                  strokeWidth: "2.5",
                   className: "opacity-40 text-white",
-                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-                    d: "M6 2L3 6v15a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z"
+                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("polygon", {
+                    points: "12 2 22 12 12 22 2 12"
                   })
                 }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                   className: "text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
@@ -2303,25 +2822,209 @@ function VideoStudio(_ref5) {
                 onClick: function onClick(e) {
                   return e.stopPropagation();
                 },
-                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-md p-3 shadow-2xl border border-white/[0.05] min-w-[140px]",
+                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[140px]",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                  className: "text-xs font-bold text-white/20 border-b border-white/[0.03] mb-2",
+                  className: "text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-2 px-1",
                   children: "Resolution"
                 }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
                   className: "flex flex-col gap-1",
                   children: getCurrentResolutions(selectedModel).map(function (r) {
                     return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                      className: "flex items-center justify-between p-3 hover:bg-white/5 rounded cursor-pointer transition-all group/opt",
+                      className: "flex items-center justify-between p-2.5 px-3 hover:bg-[#22d3ee]/10 hover:text-white rounded-xl cursor-pointer transition-all group/opt",
                       onClick: function onClick(e) {
                         e.stopPropagation();
                         setSelectedResolution(r);
                         setOpenDropdown(null);
                       },
                       children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                        className: "text-[11px] font-semibold text-white/70 group-hover/opt:text-white",
+                        className: "text-xs font-semibold text-white/70 group-hover/opt:text-[#22d3ee] transition-colors",
                         children: r
                       }), selectedResolution === r && /*#__PURE__*/(0, _jsxRuntime.jsx)(CheckSvg, {})]
                     }, r);
+                  })
+                })]
+              })]
+            }), showQuality && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+              className: "relative",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+                type: "button",
+                onClick: toggleDropdown("quality"),
+                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
+                  width: "16",
+                  height: "16",
+                  viewBox: "0 0 24 24",
+                  fill: "none",
+                  stroke: "currentColor",
+                  strokeWidth: "2.5",
+                  className: "opacity-60 text-secondary",
+                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                    d: "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+                  })
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                  className: "text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors capitalize",
+                  children: selectedQuality || "basic"
+                })]
+              }), openDropdown === "quality" && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                ref: dropdownRef,
+                onClick: function onClick(e) {
+                  return e.stopPropagation();
+                },
+                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[140px]",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                  className: "text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-2 px-1",
+                  children: "Quality"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                  className: "flex flex-col gap-1",
+                  children: getQualitiesForModel(imageMode ? _models.i2vModels : _models.t2vModels, selectedModel).map(function (q) {
+                    return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                      className: "flex items-center justify-between p-2.5 px-3 hover:bg-[#22d3ee]/10 hover:text-white rounded-xl cursor-pointer transition-all group/opt",
+                      onClick: function onClick(e) {
+                        e.stopPropagation();
+                        setSelectedQuality(q);
+                        setOpenDropdown(null);
+                      },
+                      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                        className: "text-xs font-semibold text-white/70 group-hover/opt:text-[#22d3ee] transition-colors capitalize",
+                        children: q
+                      }), selectedQuality === q && /*#__PURE__*/(0, _jsxRuntime.jsx)(CheckSvg, {})]
+                    }, q);
+                  })
+                })]
+              })]
+            }), showMode && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+              className: "relative",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+                type: "button",
+                onClick: toggleDropdown("mode"),
+                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
+                  width: "16",
+                  height: "16",
+                  viewBox: "0 0 24 24",
+                  fill: "none",
+                  stroke: "currentColor",
+                  strokeWidth: "2.5",
+                  className: "opacity-60 text-secondary",
+                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                    d: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+                  })
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                  className: "text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors capitalize",
+                  children: selectedMode || "normal"
+                })]
+              }), openDropdown === "mode" && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                ref: dropdownRef,
+                onClick: function onClick(e) {
+                  return e.stopPropagation();
+                },
+                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[140px]",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                  className: "text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-2 px-1",
+                  children: "Mode"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                  className: "flex flex-col gap-1",
+                  children: (0, _models.getModesForModel)(selectedModel).map(function (m) {
+                    return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                      className: "flex items-center justify-between p-2.5 px-3 hover:bg-[#22d3ee]/10 hover:text-white rounded-xl cursor-pointer transition-all group/opt",
+                      onClick: function onClick(e) {
+                        e.stopPropagation();
+                        setSelectedMode(m);
+                        setOpenDropdown(null);
+                      },
+                      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                        className: "text-xs font-semibold text-white/70 group-hover/opt:text-[#22d3ee] transition-colors capitalize",
+                        children: m
+                      }), selectedMode === m && /*#__PURE__*/(0, _jsxRuntime.jsx)(CheckSvg, {})]
+                    }, m);
+                  })
+                })]
+              })]
+            }), !v2vMode && advancedControls.length > 0 && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+              className: "relative",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+                type: "button",
+                onClick: toggleDropdown("advanced"),
+                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                  width: "14",
+                  height: "14",
+                  viewBox: "0 0 24 24",
+                  fill: "none",
+                  stroke: "currentColor",
+                  strokeWidth: "2",
+                  className: "opacity-50 text-white",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "4",
+                    y1: "21",
+                    x2: "4",
+                    y2: "14"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "4",
+                    y1: "10",
+                    x2: "4",
+                    y2: "3"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "12",
+                    y1: "21",
+                    x2: "12",
+                    y2: "12"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "12",
+                    y1: "8",
+                    x2: "12",
+                    y2: "3"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "20",
+                    y1: "21",
+                    x2: "20",
+                    y2: "16"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "20",
+                    y1: "12",
+                    x2: "20",
+                    y2: "3"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "1",
+                    y1: "14",
+                    x2: "7",
+                    y2: "14"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "9",
+                    y1: "8",
+                    x2: "15",
+                    y2: "8"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "17",
+                    y1: "16",
+                    x2: "23",
+                    y2: "16"
+                  })]
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                  className: "text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
+                  children: "Advanced"
+                })]
+              }), openDropdown === "advanced" && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                ref: dropdownRef,
+                onClick: function onClick(e) {
+                  return e.stopPropagation();
+                },
+                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-4 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl w-[320px] max-h-[70vh] overflow-y-auto custom-scrollbar",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                  className: "text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-3 px-1",
+                  children: "Advanced Controls"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                  className: "flex flex-col gap-3",
+                  children: advancedControls.map(function (c) {
+                    return /*#__PURE__*/(0, _jsxRuntime.jsx)(AdvancedField, {
+                      control: c,
+                      value: advancedValues[c.key],
+                      onChange: function onChange(val) {
+                        return setAdvancedValues(function (prev) {
+                          return _objectSpread(_objectSpread({}, prev), {}, _defineProperty({}, c.key, val));
+                        });
+                      }
+                    }, c.key);
                   })
                 })]
               })]
@@ -2330,7 +3033,7 @@ function VideoStudio(_ref5) {
             type: "button",
             onClick: handleGenerate,
             disabled: generating,
-            className: "bg-[#22d3ee] text-black px-4 py-2 rounded-md font-medium text-sm hover:bg-[#e5ff33] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/10 disabled:opacity-50 disabled:cursor-not-allowed",
+            className: "bg-[#22d3ee] text-black px-7 py-3 rounded-full font-bold text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 disabled:opacity-50 disabled:cursor-not-allowed",
             children: generating ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                 className: "animate-spin inline-block text-black",

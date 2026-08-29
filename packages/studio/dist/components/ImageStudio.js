@@ -8,8 +8,15 @@ Object.defineProperty(exports, "__esModule", {
 exports["default"] = ImageStudio;
 var _react = require("react");
 var _muapi = require("../muapi.js");
+var _characterStore = require("../lib/characterStore");
 var _DrawModal = _interopRequireDefault(require("./DrawModal.jsx"));
+var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
+var _AiAssistantProvider = require("../../../../components/AiAssistantProvider");
 var _models = require("../models.js");
+var _registry = _interopRequireDefault(require("../skills/registry.json"));
+var _skillStore = require("../lib/skillStore");
+var _promptRecipes = require("../lib/promptRecipes");
+var _navigation = require("next/navigation");
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
 function _regenerator() { /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ var e, t, r = "function" == typeof Symbol ? Symbol : {}, n = r.iterator || "@@iterator", o = r.toStringTag || "@@toStringTag"; function i(r, n, o, i) { var c = n && n.prototype instanceof Generator ? n : Generator, u = Object.create(c.prototype); return _regeneratorDefine2(u, "_invoke", function (r, n, o) { var i, c, u, f = 0, p = o || [], y = !1, G = { p: 0, n: 0, v: e, a: d, f: d.bind(e, 4), d: function d(t, r) { return i = t, c = 0, u = e, G.n = r, a; } }; function d(r, n) { for (c = r, u = n, t = 0; !y && f && !o && t < p.length; t++) { var o, i = p[t], d = G.p, l = i[2]; r > 3 ? (o = l === n) && (u = i[(c = i[4]) ? 5 : (c = 3, 3)], i[4] = i[5] = e) : i[0] <= d && ((o = r < 2 && d < i[1]) ? (c = 0, G.v = n, G.n = i[1]) : d < l && (o = r < 3 || i[0] > n || n > l) && (i[4] = r, i[5] = n, G.n = l, c = 0)); } if (o || r > 1) return a; throw y = !0, n; } return function (o, p, l) { if (f > 1) throw TypeError("Generator is already running"); for (y && 1 === p && d(p, l), c = p, u = l; (t = c < 2 ? e : u) || !y;) { i || (c ? c < 3 ? (c > 1 && (G.n = -1), d(c, u)) : G.n = u : G.v = u); try { if (f = 2, i) { if (c || (o = "next"), t = i[o]) { if (!(t = t.call(i, u))) throw TypeError("iterator result is not an object"); if (!t.done) return t; u = t.value, c < 2 && (c = 0); } else 1 === c && (t = i["return"]) && t.call(i), c < 2 && (u = TypeError("The iterator does not provide a '" + o + "' method"), c = 1); i = e; } else if ((t = (y = G.n < 0) ? u : r.call(n, G)) !== a) break; } catch (t) { i = e, c = 1, u = t; } finally { f = 1; } } return { value: t, done: y }; }; }(r, o, i), !0), u; } var a = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} t = Object.getPrototypeOf; var c = [][n] ? t(t([][n]())) : (_regeneratorDefine2(t = {}, n, function () { return this; }), t), u = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(c); function f(e) { return Object.setPrototypeOf ? Object.setPrototypeOf(e, GeneratorFunctionPrototype) : (e.__proto__ = GeneratorFunctionPrototype, _regeneratorDefine2(e, o, "GeneratorFunction")), e.prototype = Object.create(u), e; } return GeneratorFunction.prototype = GeneratorFunctionPrototype, _regeneratorDefine2(u, "constructor", GeneratorFunctionPrototype), _regeneratorDefine2(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = "GeneratorFunction", _regeneratorDefine2(GeneratorFunctionPrototype, o, "GeneratorFunction"), _regeneratorDefine2(u), _regeneratorDefine2(u, o, "Generator"), _regeneratorDefine2(u, n, function () { return this; }), _regeneratorDefine2(u, "toString", function () { return "[object Generator]"; }), (_regenerator = function _regenerator() { return { w: i, m: f }; })(); }
@@ -76,7 +83,9 @@ function UploadButton(_ref) {
     onSelect = _ref.onSelect,
     onClear = _ref.onClear,
     _ref$initialUrls = _ref.initialUrls,
-    initialUrls = _ref$initialUrls === void 0 ? [] : _ref$initialUrls;
+    initialUrls = _ref$initialUrls === void 0 ? [] : _ref$initialUrls,
+    _ref$label = _ref.label,
+    label = _ref$label === void 0 ? null : _ref$label;
   var _useState = (0, _react.useState)(false),
     _useState2 = _slicedToArray(_useState, 2),
     panelOpen = _useState2[0],
@@ -182,38 +191,31 @@ function UploadButton(_ref) {
       return _regenerator().w(function (_context2) {
         while (1) switch (_context2.p = _context2.n) {
           case 0:
-            if (apiKey) {
+            files = Array.from(e.target.files);
+            if (files.length) {
               _context2.n = 1;
               break;
             }
-            alert('Please enter your MuAPI key in Settings to upload images.');
             return _context2.a(2);
           case 1:
-            files = Array.from(e.target.files);
-            if (files.length) {
-              _context2.n = 2;
-              break;
-            }
-            return _context2.a(2);
-          case 2:
             e.target.value = "";
             MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
             tooLarge = files.filter(function (f) {
               return f.size > MAX_IMAGE_SIZE;
             });
             if (!(tooLarge.length > 0)) {
-              _context2.n = 3;
+              _context2.n = 2;
               break;
             }
             alert("The following images are too large (max 10MB): ".concat(tooLarge.map(function (f) {
               return f.name;
             }).join(", ")));
             return _context2.a(2);
-          case 3:
+          case 2:
             setUploading(true);
-            _context2.p = 4;
+            _context2.p = 3;
             toUpload = maxImages === 1 ? files.slice(0, 1) : files.slice(0, maxImages - selectedEntries.length || 1);
-            _context2.n = 5;
+            _context2.n = 4;
             return Promise.all(toUpload.map(/*#__PURE__*/function () {
               var _ref3 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee(file) {
                 var id, placeholder, uploadedUrl, newEntry, _t;
@@ -291,22 +293,22 @@ function UploadButton(_ref) {
                 return _ref3.apply(this, arguments);
               };
             }()));
-          case 5:
-            _context2.n = 7;
+          case 4:
+            _context2.n = 6;
             break;
-          case 6:
-            _context2.p = 6;
+          case 5:
+            _context2.p = 5;
             _t2 = _context2.v;
             alert("Image upload failed: ".concat(_t2.message));
-          case 7:
-            _context2.p = 7;
+          case 6:
+            _context2.p = 6;
             setUploading(false);
             setLastUploadProgress(0);
-            return _context2.f(7);
-          case 8:
+            return _context2.f(6);
+          case 7:
             return _context2.a(2);
         }
-      }, _callee2, null, [[4, 6, 7, 8]]);
+      }, _callee2, null, [[3, 5, 6, 7]]);
     }));
     return function handleFileChange(_x3) {
       return _ref2.apply(this, arguments);
@@ -377,139 +379,62 @@ function UploadButton(_ref) {
   var hasSelection = count > 0;
 
   // Trigger icon content
-  var triggerContent;
-  if (hasSelection || uploading) {
-    var _selectedEntries$, _selectedEntries$2;
-    var mainEntry = selectedEntries[0] || uploadHistory[0];
-    var canAddMore = isMulti && count < maxImages;
-    var badge;
-    if (uploading && !hasSelection) {
-      badge = /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-        className: "flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]",
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-          className: "w-8 h-8 -rotate-90",
-          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-            cx: "16",
-            cy: "16",
-            r: "14",
-            stroke: "currentColor",
-            strokeWidth: "2",
-            fill: "transparent",
-            className: "text-white/10"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-            cx: "16",
-            cy: "16",
-            r: "14",
-            stroke: "currentColor",
-            strokeWidth: "2",
-            fill: "transparent",
-            strokeDasharray: 88,
-            strokeDashoffset: 88 - 88 * lastUploadProgress / 100,
-            className: "text-primary transition-all duration-300"
-          })]
-        }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
-          className: "absolute text-[9px] font-black text-primary leading-none",
-          children: [lastUploadProgress, "%"]
-        })]
-      });
-    } else if (count > 1) {
-      badge = /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-        className: "absolute bottom-0.5 right-0.5 min-w-[16px] h-4 bg-primary rounded-full flex items-center justify-center px-0.5",
-        children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-          className: "text-[9px] font-black text-black leading-none",
-          children: count
-        })
-      });
-    } else if (canAddMore) {
-      badge = /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-        className: "absolute bottom-0.5 right-0.5 min-w-[16px] h-4 bg-white/80 rounded-full flex items-center justify-center px-0.5 border border-primary/60",
-        children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-          className: "text-[9px] font-black text-black leading-none",
-          children: "+"
-        })
-      });
-    } else {
-      badge = /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-        className: "absolute bottom-0.5 right-0.5 min-w-[16px] h-4 bg-primary rounded-full flex items-center justify-center px-0.5",
-        children: /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
-          width: "8",
-          height: "8",
-          viewBox: "0 0 24 24",
-          fill: "none",
-          stroke: "black",
-          strokeWidth: "4",
-          children: /*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
-            points: "20 6 9 17 4 12"
-          })
-        })
-      });
-    }
-    triggerContent = /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
-      children: [uploading && hasSelection && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-        className: "absolute inset-0 flex flex-col items-center justify-center bg-black/60 z-30",
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-          className: "w-4 h-4 rounded-full border border-primary/30 border-t-primary animate-spin mb-0.5"
-        }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
-          className: "text-[8px] font-black text-primary",
-          children: [lastUploadProgress, "%"]
-        })]
-      }), count > 1 ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-        className: "relative w-full h-full p-1.5 flex items-center justify-center",
-        children: [((_selectedEntries$ = selectedEntries[1]) === null || _selectedEntries$ === void 0 ? void 0 : _selectedEntries$.url) && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-          className: "absolute top-1 left-1 w-6 h-6 rounded-md border border-black/40 overflow-hidden shadow-lg rotate-[-8deg] translate-x-[-1px] translate-y-[-1px]",
-          children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
-            src: selectedEntries[1].url,
-            alt: "",
-            className: "w-full h-full object-cover"
-          })
-        }), ((_selectedEntries$2 = selectedEntries[0]) === null || _selectedEntries$2 === void 0 ? void 0 : _selectedEntries$2.url) && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-          className: "absolute bottom-1 right-1 w-7 h-7 rounded-sm border-[1.5px] border-black/60 overflow-hidden shadow-2xl z-10 rotate-[4deg] translate-x-[1px] translate-y-[1px]",
-          children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
-            src: selectedEntries[0].url,
-            alt: "",
-            className: "w-full h-full object-cover transition-all duration-300 ".concat(uploading && hasSelection ? "blur-[2px] opacity-60" : "opacity-100")
-          })
-        })]
-      }) : mainEntry !== null && mainEntry !== void 0 && mainEntry.url ? /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
-        src: mainEntry.url,
-        alt: "",
-        className: "w-full h-full object-cover transition-all duration-300 ".concat(uploading && hasSelection ? "blur-[2px] scale-110 opacity-60" : "blur-0 scale-100 opacity-100")
-      }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-        className: "w-full h-full flex flex-col items-center justify-center bg-white/5 animate-pulse",
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-          className: "w-4 h-4 rounded-full border border-primary/20 border-t-primary animate-spin mb-0.5"
-        }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
-          className: "text-[8px] font-black text-primary",
-          children: [lastUploadProgress, "%"]
-        })]
-      }), !uploading && badge]
-    });
-  } else {
-    triggerContent = /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-      width: "18",
-      height: "18",
-      viewBox: "0 0 24 24",
-      fill: "none",
-      stroke: "currentColor",
-      strokeWidth: "2",
-      className: "text-white/40 group-hover:text-primary transition-colors",
-      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("rect", {
-        x: "3",
-        y: "3",
-        width: "18",
-        height: "18",
-        rx: "2",
-        ry: "2"
+  var triggerContent = uploading ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+    className: "flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]",
+    children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+      className: "w-8 h-8 -rotate-90",
+      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+        cx: "16",
+        cy: "16",
+        r: "14",
+        stroke: "currentColor",
+        strokeWidth: "2",
+        fill: "transparent",
+        className: "text-white/10"
       }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-        cx: "8.5",
-        cy: "8.5",
-        r: "1.5"
-      }), /*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
-        points: "21 15 16 10 5 21"
+        cx: "16",
+        cy: "16",
+        r: "14",
+        stroke: "currentColor",
+        strokeWidth: "2",
+        fill: "transparent",
+        strokeDasharray: 88,
+        strokeDashoffset: 88 - 88 * lastUploadProgress / 100,
+        className: "text-[#22d3ee] transition-all duration-300"
       })]
-    });
-  }
-  var triggerTitle = hasSelection ? count > 1 ? "".concat(count, " of ").concat(maxImages, " images selected \u2014 click to manage") : isMulti ? "1 image selected \u2014 click to add more (up to ".concat(maxImages, ")") : "Reference image" : isMulti ? "Add up to ".concat(maxImages, " images") : "Reference image";
+    }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
+      className: "absolute text-[9px] font-black text-[#22d3ee] leading-none",
+      children: [lastUploadProgress, "%"]
+    })]
+  }) : label === "Swap Face" ? hasSelection ? /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+    src: selectedEntries[0].url,
+    alt: "",
+    className: "w-full h-full object-cover"
+  }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+    className: "text-[10px] font-bold text-white/50",
+    children: "Face"
+  }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+    width: "16",
+    height: "16",
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "2.5",
+    className: "text-white/40 group-hover:text-[#22d3ee] transition-colors",
+    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+      x1: "12",
+      y1: "5",
+      x2: "12",
+      y2: "19"
+    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+      x1: "5",
+      y1: "12",
+      x2: "19",
+      y2: "12"
+    })]
+  });
+  var defaultLabel = isMulti ? "Add up to ".concat(maxImages, " images") : "Reference image";
+  var triggerTitle = hasSelection ? count > 1 ? "".concat(count, " of ").concat(maxImages, " images selected \u2014 click to manage") : isMulti ? "1 image selected \u2014 click to add more (up to ".concat(maxImages, ")") : label || "Reference image" : label || defaultLabel;
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     className: "relative",
     children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
@@ -529,7 +454,7 @@ function UploadButton(_ref) {
           return !o;
         });
       },
-      className: "w-10 h-10 shrink-0 rounded-full border transition-all flex items-center justify-center relative overflow-hidden mt-1.5 bg-white/5 hover:bg-white/10 group ".concat(hasSelection ? "border-primary/60 hover:border-primary/40" : "border-white/10 hover:border-primary/40"),
+      className: "w-12 h-12 shrink-0 rounded-xl border border-dashed transition-all flex items-center justify-center relative overflow-hidden bg-white/[0.02] hover:bg-white/5 group ".concat(hasSelection ? "border-[#22d3ee]/40 hover:border-[#22d3ee]/60" : "border-white/10 hover:border-[#22d3ee]/40"),
       children: triggerContent
     }), panelOpen && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
       ref: panelRef,
@@ -679,14 +604,6 @@ function UploadButton(_ref) {
                   points: "20 6 9 17 4 12"
                 })
               })
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_DrawModal["default"], {
-              isOpen: isDrawModalOpen,
-              onClose: function onClose() {
-                return setIsDrawModalOpen(false);
-              },
-              apiKey: apiKey,
-              batchSize: 1,
-              onAddHistoryItem: addToHistory
             })]
           }, entry.id);
         })
@@ -708,7 +625,36 @@ function UploadButton(_ref) {
 
 // ─── ModelDropdown ────────────────────────────────────────────────────────────
 
+var PROVIDER_LOGOS = {
+  openai: "https://cdn.muapi.ai/models/openai.png",
+  google: "https://cdn.muapi.ai/models/gemini.png",
+  kling: "https://cdn.muapi.ai/models/kling.png",
+  alibaba: "https://cdn.muapi.ai/models/alibaba.png",
+  bytedance: "https://cdn.muapi.ai/models/bytedance.png",
+  blackforest: "https://cdn.muapi.ai/models/bfl.png",
+  minimax: "https://cdn.muapi.ai/models/minimax.png",
+  suno: "https://cdn.muapi.ai/models/suno.png",
+  anthropic: "https://cdn.muapi.ai/models/claude.png",
+  meshy: "https://cdn.muapi.ai/models/meshy-3.png",
+  tripo3d: "https://cdn.muapi.ai/models/tripo3d.png",
+  grok: "https://cdn.muapi.ai/models/xai.png",
+  muapi: "https://cdn.muapi.ai/models/muapi.png",
+  midjourney: "https://cdn.muapi.ai/models/midjourney.png",
+  vidu: "https://cdn.muapi.ai/models/vidu.png",
+  runway: "https://cdn.muapi.ai/models/runway.png",
+  luma: "https://cdn.muapi.ai/models/luma.png",
+  ideogram: "https://cdn.muapi.ai/models/ideogram.png",
+  leonardoai: "https://cdn.muapi.ai/models/leonardoai.png",
+  hunyuan: "https://cdn.muapi.ai/models/hunyuan.png",
+  hidream: "https://cdn.muapi.ai/models/hidream.png",
+  lightricks: "https://cdn.muapi.ai/models/lightricks.png",
+  pixverse: "https://cdn.muapi.ai/models/pixverse.png",
+  reve: "https://cdn.muapi.ai/models/reve.png",
+  stability: "https://cdn.muapi.ai/models/stability.png"
+};
+var invertLogos = ['openai', 'blackforest', 'runway', 'ideogram', 'lightricks', 'grok'];
 function ModelDropdown(_ref4) {
+  var _availableProviders$f;
   var models = _ref4.models,
     selectedModel = _ref4.selectedModel,
     onSelect = _ref4.onSelect,
@@ -806,8 +752,8 @@ function ModelDropdown(_ref4) {
   var availableProviders = [];
   var seenProviders = new Set();
   models.forEach(function (m) {
-    var pId = m.provider || "muapi";
-    var pName = m.provider_name || "Muapi";
+    var pId = m.provider || 'muapi';
+    var pName = m.provider_name || 'Muapi';
     if (!seenProviders.has(pId)) {
       seenProviders.add(pId);
       availableProviders.push({
@@ -816,110 +762,149 @@ function ModelDropdown(_ref4) {
       });
     }
   });
-  var filterFn = function filterFn(m) {
-    // 1. Filter by provider
+  var filtered = models.filter(function (m) {
+    // 1. Filter by provider tab
     if (selectedProvider !== "all") {
-      var pId = m.provider || "muapi";
+      var pId = m.provider || 'muapi';
       if (pId !== selectedProvider) return false;
     }
     // 2. Filter by search query
     var query = search.toLowerCase();
     return m.name.toLowerCase().includes(query) || m.id.toLowerCase().includes(query);
-  };
-  var filtered = models.filter(filterFn);
+  });
+  var invertLogos = ['openai', 'blackforest', 'runway', 'ideogram', 'lightricks', 'grok'];
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-    className: "flex flex-col gap-2 h-full max-h-[60vh]",
-    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-      className: "border-b border-white/5 shrink-0",
-      children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-        className: "flex items-center gap-3 bg-white/5 rounded-xl px-4 py-2.5 border border-white/5 focus-within:border-primary/50 transition-colors",
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-          width: "14",
-          height: "14",
+    className: "flex gap-4 h-full max-h-[60vh] min-h-[350px] overflow-x-hidden",
+    children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+      className: "flex flex-col gap-2.5 items-center pr-3 border-r border-white/5 shrink-0 select-none overflow-y-auto custom-scrollbar w-12 pt-0.5",
+      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+        type: "button",
+        onClick: function onClick() {
+          return setSelectedProvider("all");
+        },
+        className: "w-8.5 h-8.5 rounded-full flex items-center justify-center border transition-all flex-shrink-0 cursor-pointer ".concat(selectedProvider === "all" ? "bg-white/10 text-yellow-400 border-yellow-500/30 shadow-md scale-105" : "bg-white/[0.02] text-white/50 border-white/[0.03] hover:bg-white/5 hover:text-white"),
+        title: "All Providers",
+        children: /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
+          width: "15",
+          height: "15",
           viewBox: "0 0 24 24",
-          fill: "none",
+          fill: selectedProvider === "all" ? "currentColor" : "none",
           stroke: "currentColor",
-          strokeWidth: "3",
-          className: "text-muted",
-          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-            cx: "11",
-            cy: "11",
-            r: "8"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-            d: "M21 21l-4.35-4.35"
-          })]
-        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
-          type: "text",
-          placeholder: "Search models...",
-          value: search,
-          onClick: function onClick(e) {
-            return e.stopPropagation();
+          strokeWidth: "2",
+          children: /*#__PURE__*/(0, _jsxRuntime.jsx)("polygon", {
+            points: "12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+          })
+        })
+      }), availableProviders.map(function (p) {
+        var style = getProviderStyle(p.id);
+        var isSelected = selectedProvider === p.id;
+        return /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+          type: "button",
+          onClick: function onClick() {
+            return setSelectedProvider(p.id);
           },
-          onChange: function onChange(e) {
-            return setSearch(e.target.value);
-          },
-          className: "bg-transparent border-none text-xs text-white focus:ring-0 w-full p-0 focus:outline-none"
-        })]
-      })
-    }), availableProviders.length > 1 && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-      className: "shrink-0",
-      children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("select", {
-        value: selectedProvider,
-        onClick: function onClick(e) {
-          return e.stopPropagation();
-        },
-        onChange: function onChange(e) {
-          return setSelectedProvider(e.target.value);
-        },
-        className: "w-full bg-white/5 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-primary/50 transition-colors",
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("option", {
-          value: "all",
-          children: "All Providers"
-        }), availableProviders.map(function (p) {
-          return /*#__PURE__*/(0, _jsxRuntime.jsx)("option", {
-            value: p.id,
-            children: p.name
-          }, p.id);
-        })]
-      })
-    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-      className: "text-xs font-medium text-secondary py-2 shrink-0",
-      children: "Available models"
-    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-      className: "flex flex-col gap-1.5 overflow-y-auto custom-scrollbar pr-1 pb-2",
-      children: filtered.map(function (m) {
-        return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          onClick: function onClick(e) {
-            e.stopPropagation();
-            onSelect(m);
-            onClose();
-          },
-          className: "flex items-center justify-between p-3.5 hover:bg-white/5 rounded-lg cursor-pointer transition-all border border-transparent hover:border-white/5 ".concat(selectedModel === m.id ? "bg-white/5 border-white/5" : ""),
-          children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "flex items-center gap-3.5",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-              className: "w-10 h-10 ".concat(m.family === "kontext" ? "bg-blue-500/10 text-blue-400" : m.family === "effects" ? "bg-purple-500/10 text-purple-400" : "bg-primary/10 text-primary", " border border-white/5 rounded-full flex items-center justify-center font-bold text-xs shadow-inner uppercase"),
-              children: m.name.charAt(0)
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-              className: "flex flex-col gap-0.5",
-              children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                className: "text-xs font-bold text-white tracking-tight",
-                children: m.name
-              })
-            })]
-          }), selectedModel === m.id && /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
-            width: "16",
-            height: "16",
+          className: "w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center font-black text-[10px] border transition-all flex-shrink-0 cursor-pointer overflow-hidden ".concat(isSelected ? "".concat(style.bg, " border-white/25 scale-105 shadow-md") : "bg-white/[0.02] text-white/40 border-white/[0.02] hover:bg-white/5 hover:text-white/80"),
+          title: p.name,
+          children: PROVIDER_LOGOS[p.id] ? /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+            src: PROVIDER_LOGOS[p.id],
+            alt: p.name,
+            className: "w-full h-full rounded-full object-contain ".concat(invertLogos.includes(p.id) ? "invert" : "")
+          }) : style.text
+        }, p.id);
+      })]
+    }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+      className: "flex-1 flex flex-col gap-2 min-w-0",
+      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        className: "border-b border-white/5 shrink-0 pb-2",
+        children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+          className: "flex items-center gap-3 bg-white/5 rounded-xl px-4 py-2 border border-white/5 focus-within:border-primary/50 transition-colors",
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+            width: "14",
+            height: "14",
             viewBox: "0 0 24 24",
             fill: "none",
-            stroke: "#22d3ee",
-            strokeWidth: "4",
-            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
-              points: "20 6 9 17 4 12"
-            })
+            stroke: "currentColor",
+            strokeWidth: "3",
+            className: "text-muted",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+              cx: "11",
+              cy: "11",
+              r: "8"
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+              d: "M21 21l-4.35-4.35"
+            })]
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
+            type: "text",
+            placeholder: "Search models...",
+            value: search,
+            onClick: function onClick(e) {
+              return e.stopPropagation();
+            },
+            onChange: function onChange(e) {
+              return setSearch(e.target.value);
+            },
+            className: "bg-transparent border-none text-xs text-white focus:ring-0 w-full p-0 focus:outline-none"
           })]
-        }, m.id);
-      })
+        })
+      }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+        className: "text-xs font-semibold text-secondary py-1 shrink-0 flex items-center justify-between",
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+          children: "Available models"
+        }), selectedProvider !== "all" && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+          className: "text-[10px] bg-white/5 px-2 py-0.5 rounded text-white/60",
+          children: ((_availableProviders$f = availableProviders.find(function (p) {
+            return p.id === selectedProvider;
+          })) === null || _availableProviders$f === void 0 ? void 0 : _availableProviders$f.name) || selectedProvider
+        })]
+      }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        className: "flex flex-col gap-1.5 overflow-y-auto custom-scrollbar pr-1 pb-2 flex-1",
+        children: filtered.length === 0 ? /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+          className: "text-xs text-white/30 text-center py-6",
+          children: "No models found"
+        }) : filtered.map(function (m) {
+          return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            onClick: function onClick(e) {
+              e.stopPropagation();
+              onSelect(m);
+              onClose();
+            },
+            className: "flex items-center justify-between p-3 hover:bg-white/5 rounded-lg cursor-pointer transition-all border border-transparent hover:border-white/5 ".concat(selectedModel === m.id ? "bg-white/5 border-white/5" : ""),
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+              className: "flex items-center gap-3",
+              children: [PROVIDER_LOGOS[m.provider] ? /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                className: "w-8 h-8 rounded-full border border-white/5 overflow-hidden shrink-0 flex items-center justify-center bg-white/[0.02]",
+                children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+                  src: PROVIDER_LOGOS[m.provider],
+                  alt: m.provider_name,
+                  className: "w-full h-full object-contain p-1 ".concat(invertLogos.includes(m.provider) ? "invert" : "")
+                })
+              }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                className: "w-8.5 h-8.5 ".concat(m.family === "kontext" ? "bg-blue-500/10 text-blue-400 border-blue-500/10" : m.family === "effects" ? "bg-purple-500/10 text-purple-400 border-purple-500/10" : "bg-primary/10 text-primary border-primary/10", " border rounded-full flex items-center justify-center font-bold text-xs shadow-inner uppercase"),
+                children: m.name.charAt(0)
+              }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                className: "flex flex-col gap-0.5 min-w-0",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                  className: "text-xs font-bold text-white tracking-tight truncate",
+                  children: m.name
+                }), selectedProvider === "all" && m.provider_name && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                  className: "text-[9px] text-white/40",
+                  children: m.provider_name
+                })]
+              })]
+            }), selectedModel === m.id && /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
+              width: "14",
+              height: "14",
+              viewBox: "0 0 24 24",
+              fill: "none",
+              stroke: "#22d3ee",
+              strokeWidth: "4",
+              children: /*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
+                points: "20 6 9 17 4 12"
+              })
+            })]
+          }, m.id);
+        })
+      })]
     })]
   });
 }
@@ -934,7 +919,7 @@ function SimpleDropdown(_ref5) {
     onClose = _ref5.onClose;
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
     children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-      className: "text-xs font-medium text-muted pb-2 border-b border-white/5 mb-2",
+      className: "text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-2 px-1",
       children: title
     }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
       className: "flex flex-col gap-1",
@@ -945,17 +930,17 @@ function SimpleDropdown(_ref5) {
             onSelect(opt);
             onClose();
           },
-          className: "flex items-center justify-between p-2 hover:bg-white/5 rounded-md cursor-pointer transition-all group",
+          className: "flex items-center justify-between p-2.5 px-3 hover:bg-[#22d3ee]/10 hover:text-white rounded-xl cursor-pointer transition-all group",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-            className: "text-xs font-bold text-white opacity-80 group-hover:opacity-100",
+            className: "text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
             children: opt
           }), selected === opt && /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
-            width: "16",
-            height: "16",
+            width: "12",
+            height: "12",
             viewBox: "0 0 24 24",
             fill: "none",
             stroke: "#22d3ee",
-            strokeWidth: "4",
+            strokeWidth: "4.5",
             children: /*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
               points: "20 6 9 17 4 12"
             })
@@ -969,13 +954,15 @@ function SimpleDropdown(_ref5) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 function ImageStudio(_ref6) {
-  var _t2iModels$0$inputs;
+  var _t2iModels$0$inputs, _getI2IModelById;
   var apiKey = _ref6.apiKey,
     onGenerationComplete = _ref6.onGenerationComplete,
+    onGenerationError = _ref6.onGenerationError,
     historyItems = _ref6.historyItems,
     droppedFiles = _ref6.droppedFiles,
     onFilesHandled = _ref6.onFilesHandled;
   var PERSIST_KEY = "hg_image_studio_persistent";
+  var router = (0, _navigation.useRouter)();
 
   // ── Model / mode state ──────────────────────────────────────────────────
   var _useState13 = (0, _react.useState)(false),
@@ -1019,46 +1006,72 @@ function ImageStudio(_ref6) {
     _useState30 = _slicedToArray(_useState29, 2),
     uploadedImageUrls = _useState30[0],
     setUploadedImageUrls = _useState30[1];
-
-  // ── UI state ────────────────────────────────────────────────────────────
   var _useState31 = (0, _react.useState)(null),
     _useState32 = _slicedToArray(_useState31, 2),
-    dropdownOpen = _useState32[0],
-    setDropdownOpen = _useState32[1]; // 'model' | 'ar' | 'quality' | null
-  var _useState33 = (0, _react.useState)(false),
-    _useState34 = _slicedToArray(_useState33, 2),
-    generating = _useState34[0],
-    setGenerating = _useState34[1];
-  var _useState35 = (0, _react.useState)(null),
-    _useState36 = _slicedToArray(_useState35, 2),
-    generateError = _useState36[0],
-    setGenerateError = _useState36[1];
-  var _useState37 = (0, _react.useState)(null),
-    _useState38 = _slicedToArray(_useState37, 2),
-    fullscreenUrl = _useState38[0],
-    setFullscreenUrl = _useState38[1];
-  var _useState39 = (0, _react.useState)(false),
-    _useState40 = _slicedToArray(_useState39, 2),
-    isDrawModalOpen = _useState40[0],
-    setIsDrawModalOpen = _useState40[1];
+    swapImageUrl = _useState32[0],
+    setSwapImageUrl = _useState32[1];
 
-  // ── Canvas / history state ──────────────────────────────────────────────
+  // ── Wave 1 recipe-driven state ───────────────────────────────────────────
+  var _useState33 = (0, _react.useState)(null),
+    _useState34 = _slicedToArray(_useState33, 2),
+    selectedResolution = _useState34[0],
+    setSelectedResolution = _useState34[1];
+  var _useState35 = (0, _react.useState)(false),
+    _useState36 = _slicedToArray(_useState35, 2),
+    grokEditMode = _useState36[0],
+    setGrokEditMode = _useState36[1];
+  var _useState37 = (0, _react.useState)(""),
+    _useState38 = _slicedToArray(_useState37, 2),
+    grokRequestId = _useState38[0],
+    setGrokRequestId = _useState38[1];
+  var _useState39 = (0, _react.useState)(""),
+    _useState40 = _slicedToArray(_useState39, 2),
+    grokMask = _useState40[0],
+    setGrokMask = _useState40[1];
   var _useState41 = (0, _react.useState)(null),
     _useState42 = _slicedToArray(_useState41, 2),
-    currentImageUrl = _useState42[0],
-    setCurrentImageUrl = _useState42[1];
-  var _useState43 = (0, _react.useState)(0),
+    characterSheetUrl = _useState42[0],
+    setCharacterSheetUrl = _useState42[1];
+
+  // ── UI state ────────────────────────────────────────────────────────────
+  var _useState43 = (0, _react.useState)(null),
     _useState44 = _slicedToArray(_useState43, 2),
-    activeHistoryIdx = _useState44[0],
-    setActiveHistoryIdx = _useState44[1];
-  var _useState45 = (0, _react.useState)(1),
+    dropdownOpen = _useState44[0],
+    setDropdownOpen = _useState44[1]; // 'model' | 'ar' | 'quality' | null
+  var _useState45 = (0, _react.useState)(false),
     _useState46 = _slicedToArray(_useState45, 2),
-    batchSize = _useState46[0],
-    setBatchSize = _useState46[1];
-  var _useState47 = (0, _react.useState)([]),
+    generating = _useState46[0],
+    setGenerating = _useState46[1];
+  var _useState47 = (0, _react.useState)(null),
     _useState48 = _slicedToArray(_useState47, 2),
-    localHistory = _useState48[0],
-    setLocalHistory = _useState48[1]; // [{id,url,prompt,model,aspect_ratio,timestamp}]
+    generateError = _useState48[0],
+    setGenerateError = _useState48[1];
+  var _useState49 = (0, _react.useState)(null),
+    _useState50 = _slicedToArray(_useState49, 2),
+    fullscreenUrl = _useState50[0],
+    setFullscreenUrl = _useState50[1];
+  var _useState51 = (0, _react.useState)(false),
+    _useState52 = _slicedToArray(_useState51, 2),
+    isDrawModalOpen = _useState52[0],
+    setIsDrawModalOpen = _useState52[1];
+
+  // ── Canvas / history state ──────────────────────────────────────────────
+  var _useState53 = (0, _react.useState)(null),
+    _useState54 = _slicedToArray(_useState53, 2),
+    currentImageUrl = _useState54[0],
+    setCurrentImageUrl = _useState54[1];
+  var _useState55 = (0, _react.useState)(0),
+    _useState56 = _slicedToArray(_useState55, 2),
+    activeHistoryIdx = _useState56[0],
+    setActiveHistoryIdx = _useState56[1];
+  var _useState57 = (0, _react.useState)(1),
+    _useState58 = _slicedToArray(_useState57, 2),
+    batchSize = _useState58[0],
+    setBatchSize = _useState58[1];
+  var _useState59 = (0, _react.useState)([]),
+    _useState60 = _slicedToArray(_useState59, 2),
+    localHistory = _useState60[0],
+    setLocalHistory = _useState60[1]; // [{id,url,prompt,model,aspect_ratio,timestamp}]
 
   // Use prop history if provided, otherwise local
   var history = historyItems !== null && historyItems !== void 0 ? historyItems : localHistory;
@@ -1115,6 +1128,19 @@ function ImageStudio(_ref6) {
     };
   }, []);
 
+  // ── Apply pending Skills recipe (set by SkillsBrowser) ────────────────────
+  (0, _react.useEffect)(function () {
+    var pending = (0, _skillStore.getPendingRecipe)("image");
+    if (!pending) return;
+    var skill = _registry["default"].skills.find(function (s) {
+      return s.slug === pending;
+    });
+    (0, _skillStore.clearPendingRecipe)("image");
+    if (!skill) return;
+    applyRecipe(skill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Persistence: Save ────────────────────────────────────────────────────
   (0, _react.useEffect)(function () {
     var timer = setTimeout(function () {
@@ -1147,30 +1173,23 @@ function ImageStudio(_ref6) {
       return _regenerator().w(function (_context4) {
         while (1) switch (_context4.p = _context4.n) {
           case 0:
-            if (apiKey) {
-              _context4.n = 1;
-              break;
-            }
-            alert('Please enter your MuAPI key in Settings to upload images.');
-            return _context4.a(2);
-          case 1:
             MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
             tooLarge = files.filter(function (f) {
               return f.size > MAX_IMAGE_SIZE;
             });
             if (!(tooLarge.length > 0)) {
-              _context4.n = 2;
+              _context4.n = 1;
               break;
             }
             alert("The following images are too large (max 10MB): ".concat(tooLarge.map(function (f) {
               return f.name;
             }).join(", ")));
             return _context4.a(2);
-          case 2:
+          case 1:
             setGenerating(true); // Show as generating/busy
-            _context4.p = 3;
+            _context4.p = 2;
             toUpload = maxImages === 1 ? files.slice(0, 1) : files.slice(0, maxImages);
-            _context4.n = 4;
+            _context4.n = 3;
             return Promise.all(toUpload.map(/*#__PURE__*/function () {
               var _ref8 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3(file) {
                 var _t3;
@@ -1196,25 +1215,25 @@ function ImageStudio(_ref6) {
                 return _ref8.apply(this, arguments);
               };
             }()));
-          case 4:
+          case 3:
             urls = _context4.v;
             handleUploadSelect({
               urls: urls
             });
-            _context4.n = 6;
+            _context4.n = 5;
             break;
-          case 5:
-            _context4.p = 5;
+          case 4:
+            _context4.p = 4;
             _t4 = _context4.v;
             alert("Image upload failed: ".concat(_t4.message));
-          case 6:
-            _context4.p = 6;
+          case 5:
+            _context4.p = 5;
             setGenerating(false);
-            return _context4.f(6);
-          case 7:
+            return _context4.f(5);
+          case 6:
             return _context4.a(2);
         }
-      }, _callee4, null, [[3, 5, 6, 7]]);
+      }, _callee4, null, [[2, 4, 5, 6]]);
     }));
     return function processDroppedImages(_x5) {
       return _ref7.apply(this, arguments);
@@ -1294,6 +1313,7 @@ function ImageStudio(_ref6) {
     setSelectedModelName(m.name);
     setSelectedAr(ars[0] || "1:1");
     setSelectedQuality(resolutions[0] || null);
+    setSwapImageUrl(null);
     if (imageMode) {
       setMaxImages((0, _models.getMaxImagesForI2IModel)(m.id));
       var effects = (0, _models.getEffectsForI2IModel)(m.id);
@@ -1332,10 +1352,88 @@ function ImageStudio(_ref6) {
     setMaxImages(1);
   };
 
+  // ── Apply a skill recipe to the form ─────────────────────────────────────
+  function applyRecipe(skill) {
+    var step0 = skill.steps && skill.steps[0];
+    if (!step0) {
+      if (skill.description) setPrompt(skill.description);
+      return;
+    }
+    var modelId = step0.endpoint || step0.model;
+    var allModels = [].concat(_toConsumableArray(_models.t2iModels), _toConsumableArray(_models.i2iModels));
+    var model = allModels.find(function (m) {
+      return m.id === modelId;
+    });
+    var wantsI2I = _models.i2iModels.some(function (m) {
+      return m.id === modelId;
+    }) || step0.type === "i2v" || step0.type === "edit" || step0.references && step0.references.length > 0;
+    if (model) {
+      setImageMode(!!wantsI2I);
+      setSelectedModelId(model.id);
+      setSelectedModelName(model.name);
+    }
+    if (step0.aspectRatio) setSelectedAr(step0.aspectRatio);
+    var vals = {};
+    (skill.inputs || []).forEach(function (i) {
+      vals[i.name] = "";
+    });
+    setPrompt((0, _promptRecipes.fillTemplate)(step0.prompt || skill.description || "", vals));
+    var flags = step0.flags || {};
+    if (step0.rate !== undefined) {/* noop */}
+
+    // Resolution: prefer mapping onto the quality enum, else a custom field.
+    if (step0.resolution) {
+      var resList = imageMode ? (0, _models.getResolutionsForI2IModel)(selectedModelId) : (0, _models.getResolutionsForModel)(selectedModelId);
+      if (resList.includes(step0.resolution)) {
+        setSelectedQuality(step0.resolution);
+      } else {
+        setSelectedResolution(step0.resolution);
+      }
+    }
+
+    // Grok edit mode → surface request_id / mask inputs.
+    if (flags.grokEdit) setGrokEditMode(true);
+
+    // Dev mode → flux-3-dev model.
+    if (flags.devMode) {
+      var dev = allModels.find(function (m) {
+        return m.id === "flux-3-dev";
+      });
+      if (dev) {
+        setImageMode(false);
+        setSelectedModelId(dev.id);
+        setSelectedModelName(dev.name);
+        var ars = (0, _models.getAspectRatiosForModel)(dev.id);
+        var res = (0, _models.getResolutionsForModel)(dev.id);
+        setSelectedAr(ars[0] || "1:1");
+        setSelectedQuality(res[0] || null);
+      }
+    }
+
+    // References (string refs or {url, role} objects).
+    var refs = step0.references || [];
+    var imageRefs = [];
+    refs.forEach(function (ref) {
+      var url = typeof ref === "string" ? ref : ref.url;
+      var role = typeof ref === "string" ? null : ref.role || null;
+      if (!url) return;
+      if (role === "character_sheet") {
+        (0, _characterStore.setCharacterSheet)("image", url);
+        setCharacterSheetUrl(url);
+        return;
+      }
+      imageRefs.push(url);
+    });
+    if (imageRefs.length > 0) {
+      setImageMode(true);
+      setUploadedImageUrls(imageRefs);
+    }
+  }
+
   // ── Generation ───────────────────────────────────────────────────────────
   var handleGenerate = /*#__PURE__*/function () {
     var _ref0 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee6() {
-      var results, _t5;
+      var modelInfo, results, _e$message, _t5;
       return _regenerator().w(function (_context6) {
         while (1) switch (_context6.p = _context6.n) {
           case 0:
@@ -1345,22 +1443,23 @@ function ImageStudio(_ref6) {
             }
             return _context6.a(2);
           case 1:
-            if (apiKey) {
-              _context6.n = 2;
-              break;
-            }
-            alert("Please enter your MuAPI key in Settings first.");
-            return _context6.a(2);
-          case 2:
             if (!imageMode) {
               _context6.n = 4;
               break;
             }
             if (!(uploadedImageUrls.length === 0)) {
-              _context6.n = 3;
+              _context6.n = 2;
               break;
             }
             alert("Please upload a reference image first.");
+            return _context6.a(2);
+          case 2:
+            modelInfo = (0, _models.getI2IModelById)(selectedModelId);
+            if (!(modelInfo !== null && modelInfo !== void 0 && modelInfo.swapField && !swapImageUrl)) {
+              _context6.n = 3;
+              break;
+            }
+            alert("Please upload a swap face image.");
             return _context6.a(2);
           case 3:
             _context6.n = 5;
@@ -1380,43 +1479,62 @@ function ImageStudio(_ref6) {
             return Promise.all(Array.from({
               length: batchSize
             }).map(/*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee5() {
-              var genParams, _genParams;
+              var genParams, _genParams, _genParams2;
               return _regenerator().w(function (_context5) {
                 while (1) switch (_context5.n) {
                   case 0:
-                    if (!imageMode) {
+                    if (!grokEditMode) {
                       _context5.n = 2;
                       break;
                     }
                     genParams = {
+                      request_id: grokRequestId,
+                      mask: grokMask || undefined,
+                      prompt: prompt.trim(),
+                      aspect_ratio: selectedAr
+                    };
+                    if (selectedResolution) genParams.resolution = selectedResolution;
+                    _context5.n = 1;
+                    return (0, _muapi.generateImage)(apiKey, genParams);
+                  case 1:
+                    return _context5.a(2, _context5.v);
+                  case 2:
+                    if (!imageMode) {
+                      _context5.n = 4;
+                      break;
+                    }
+                    _genParams = {
                       model: selectedModelId,
                       images_list: uploadedImageUrls,
                       image_url: uploadedImageUrls[0],
                       aspect_ratio: selectedAr
                     };
-                    if (prompt.trim()) genParams.prompt = prompt.trim();
+                    if (swapImageUrl) _genParams.swap_url = swapImageUrl;
+                    if (prompt.trim()) _genParams.prompt = prompt.trim();
                     if (currentQualityField && selectedQuality) {
-                      genParams[currentQualityField] = selectedQuality;
+                      _genParams[currentQualityField] = selectedQuality;
                     }
-                    if (showEffectBtn && selectedEffect) genParams.name = selectedEffect;
-                    _context5.n = 1;
-                    return (0, _muapi.generateI2I)(apiKey, genParams);
-                  case 1:
+                    if (selectedResolution) _genParams.resolution = selectedResolution;
+                    if (showEffectBtn && selectedEffect) _genParams.name = selectedEffect;
+                    _context5.n = 3;
+                    return (0, _muapi.generateI2I)(apiKey, _genParams);
+                  case 3:
                     return _context5.a(2, _context5.v);
-                  case 2:
-                    _genParams = {
+                  case 4:
+                    _genParams2 = {
                       model: selectedModelId,
                       prompt: prompt.trim(),
                       aspect_ratio: selectedAr
                     };
                     if (currentQualityField && selectedQuality) {
-                      _genParams[currentQualityField] = selectedQuality;
+                      _genParams2[currentQualityField] = selectedQuality;
                     }
-                    _context5.n = 3;
-                    return (0, _muapi.generateImage)(apiKey, _genParams);
-                  case 3:
+                    if (selectedResolution) _genParams2.resolution = selectedResolution;
+                    _context5.n = 5;
+                    return (0, _muapi.generateImage)(apiKey, _genParams2);
+                  case 5:
                     return _context5.a(2, _context5.v);
-                  case 4:
+                  case 6:
                     return _context5.a(2);
                 }
               }, _callee5);
@@ -1452,6 +1570,7 @@ function ImageStudio(_ref6) {
             setTimeout(function () {
               return setGenerateError(null);
             }, 4000);
+            onGenerationError === null || onGenerationError === void 0 || onGenerationError(((_e$message = _t5.message) === null || _e$message === void 0 ? void 0 : _e$message.slice(0, 120)) || "Image generation failed");
           case 9:
             _context6.p = 9;
             setGenerating(false);
@@ -1475,7 +1594,7 @@ function ImageStudio(_ref6) {
       children: history.length > 0 ? /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
         className: "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full pt-4 animate-fade-in-up",
         children: history.map(function (entry, idx) {
-          var _entry$prompt, _entry$model;
+          var _entry$prompt, _entry$prompt2, _entry$model;
           return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "relative group rounded-lg overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-xl hover:border-primary/50 transition-all duration-300 flex flex-col",
             children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
@@ -1537,6 +1656,66 @@ function ImageStudio(_ref6) {
                     d: "M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"
                   })
                 })
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_SocialPublishProvider.PublishStep, {
+                mediaUrl: entry.url,
+                mediaType: "image",
+                title: ((_entry$prompt2 = entry.prompt) === null || _entry$prompt2 === void 0 ? void 0 : _entry$prompt2.substring(0, 50)) || 'Generated image',
+                className: "p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center"
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_AiAssistantProvider.AssistStep, {
+                assetUrl: entry.url,
+                assetType: "image",
+                onApply: function onApply() {},
+                className: "p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center",
+                children: /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
+                  width: "14",
+                  height: "14",
+                  viewBox: "0 0 24 24",
+                  fill: "none",
+                  stroke: "currentColor",
+                  strokeWidth: "2.5",
+                  strokeLinecap: "round",
+                  strokeLinejoin: "round",
+                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                    d: "M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"
+                  })
+                })
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+                type: "button",
+                title: "Delete",
+                onClick: function onClick(e) {
+                  e.stopPropagation();
+                  if (confirm("Are you sure you want to delete this generated item?")) {
+                    setLocalHistory(function (prev) {
+                      return prev.filter(function (_, i) {
+                        return i !== idx;
+                      });
+                    });
+                  }
+                },
+                className: "p-2 bg-black/60 backdrop-blur-md rounded-full text-red-400 hover:bg-red-500 hover:text-white transition-all border border-white/10",
+                children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                  width: "14",
+                  height: "14",
+                  viewBox: "0 0 24 24",
+                  fill: "none",
+                  stroke: "currentColor",
+                  strokeWidth: "2.5",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
+                    points: "3 6 5 6 21 6"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                    d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "10",
+                    y1: "11",
+                    x2: "10",
+                    y2: "17"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "14",
+                    y1: "11",
+                    x2: "14",
+                    y2: "17"
+                  })]
+                })
               })]
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
               className: "p-3 bg-black/80 backdrop-blur-sm border-t border-white/5 flex-1 flex flex-col justify-between gap-2",
@@ -1560,52 +1739,47 @@ function ImageStudio(_ref6) {
       }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
         className: "flex flex-col items-center justify-center h-full animate-fade-in-up transition-all duration-700 min-h-[50vh]",
         children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "mb-12 relative group",
+          className: "flex items-center justify-center gap-1.5 md:gap-3 mb-10 select-none scale-90 sm:scale-100",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-            className: "absolute inset-0 bg-primary/10 blur-[120px] rounded-full opacity-30 group-hover:opacity-60 transition-opacity duration-1000"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "relative w-24 h-24 md:w-32 md:h-32 bg-white/[0.02] rounded-[2rem] flex items-center justify-center border border-white/[0.05] overflow-hidden backdrop-blur-sm",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-              className: "w-16 h-16 bg-primary/5 rounded-2xl flex items-center justify-center border border-primary/10 relative z-10 transition-transform duration-500 group-hover:scale-110",
-              children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-                width: "32",
-                height: "32",
-                viewBox: "0 0 24 24",
-                fill: "none",
-                stroke: "currentColor",
-                strokeWidth: "1.5",
-                className: "text-primary opacity-80",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("rect", {
-                  x: "3",
-                  y: "3",
-                  width: "18",
-                  height: "18",
-                  rx: "2",
-                  ry: "2"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-                  cx: "8.5",
-                  cy: "8.5",
-                  r: "1.5"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
-                  points: "21 15 16 10 5 21"
-                })]
-              })
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-              className: "absolute top-4 right-4 text-[10px] text-primary/40 animate-pulse",
-              children: "\u2728"
-            })]
+            className: "w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl -rotate-[12deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/sdxl-image.avif",
+              alt: "Creative asset 1",
+              className: "w-full h-full object-cover"
+            })
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            className: "w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl -rotate-[4deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/chroma-image.avif",
+              alt: "Creative asset 2",
+              className: "w-full h-full object-cover"
+            })
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            className: "w-18 h-18 sm:w-24 sm:h-24 rounded-full border border-white/10 shadow-2xl rotate-[6deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/neta-lumina.avif",
+              alt: "Creative asset 3",
+              className: "w-full h-full object-cover"
+            })
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            className: "w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl rotate-[12deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/perfect-pony-xl.avif",
+              alt: "Creative asset 4",
+              className: "w-full h-full object-cover"
+            })
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("h1", {
-          className: "text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-4 text-center px-4",
+          className: "text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-center px-4 flex flex-col items-center",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-            className: "text-white/40 font-medium",
+            className: "text-white font-black uppercase text-xl sm:text-3xl tracking-wide mb-1 opacity-90",
             children: "START CREATING WITH"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("br", {}), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-            className: "text-white",
-            children: "IMAGE STUDIO"
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+            className: "text-[#22d3ee] font-black uppercase text-2xl sm:text-4xl sm:mt-1 tracking-tight",
+            children: selectedModelName
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
-          className: "text-white/40 text-sm md:text-base font-medium tracking-wide text-center max-w-lg leading-relaxed",
+          className: "text-white/40 text-xs sm:text-sm font-medium tracking-wide text-center max-w-lg leading-relaxed px-4",
           children: "Describe a scene, character, mood, or style \u2014 and watch it come to life"
         })]
       })
@@ -1615,31 +1789,82 @@ function ImageStudio(_ref6) {
         animationDelay: "0.2s"
       },
       children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-        className: "w-full bg-[#0a0a0a]/80 backdrop-blur-3xl rounded-md border border-white/10 p-4 flex flex-col gap-2 shadow-2xl",
+        className: "w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]",
         children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "flex items-center gap-2",
-          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(UploadButton, {
-            apiKey: apiKey,
-            maxImages: maxImages,
-            onSelect: handleUploadSelect,
-            onClear: handleUploadClear,
-            initialUrls: uploadedImageUrls
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-            className: "flex-1 flex flex-col gap-2",
-            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
-              ref: textareaRef,
-              value: prompt,
-              onChange: function onChange(e) {
-                return setPrompt(e.target.value);
+          className: "flex flex-col gap-3",
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            className: "flex items-center gap-2.5 flex-wrap",
+            children: [uploadedImageUrls && uploadedImageUrls.length > 0 && uploadedImageUrls.map(function (url, idx) {
+              return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                className: "relative w-12 h-12 rounded-xl border border-white/10 overflow-hidden shadow-md group",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+                  src: url,
+                  alt: "",
+                  className: "w-full h-full object-cover"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+                  type: "button",
+                  onClick: function onClick() {
+                    var next = uploadedImageUrls.filter(function (_, i) {
+                      return i !== idx;
+                    });
+                    setUploadedImageUrls(next);
+                    if (next.length === 0) handleUploadClear();
+                  },
+                  className: "absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 hover:bg-black rounded-full flex items-center justify-center text-white/85 hover:text-white text-[8px] border border-white/5",
+                  children: "\xD7"
+                })]
+              }, idx);
+            }), uploadedImageUrls.length < maxImages && /*#__PURE__*/(0, _jsxRuntime.jsx)(UploadButton, {
+              apiKey: apiKey,
+              maxImages: maxImages,
+              onSelect: handleUploadSelect,
+              onClear: handleUploadClear,
+              initialUrls: uploadedImageUrls
+            }), imageMode && ((_getI2IModelById = (0, _models.getI2IModelById)(selectedModelId)) === null || _getI2IModelById === void 0 ? void 0 : _getI2IModelById.swapField) && /*#__PURE__*/(0, _jsxRuntime.jsx)(UploadButton, {
+              apiKey: apiKey,
+              maxImages: 1,
+              onSelect: function onSelect(_ref10) {
+                var urls = _ref10.urls;
+                return setSwapImageUrl(urls[0] || null);
               },
-              onInput: handleTextareaInput,
-              placeholder: placeholderText,
-              rows: 1,
-              className: "w-full bg-transparent border-none text-white text-sm placeholder:text-white/20 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar"
-            })
+              onClear: function onClear() {
+                return setSwapImageUrl(null);
+              },
+              initialUrls: swapImageUrl ? [swapImageUrl] : [],
+              label: "Swap Face"
+            })]
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
+            ref: textareaRef,
+            value: prompt,
+            onChange: function onChange(e) {
+              return setPrompt(e.target.value);
+            },
+            onInput: handleTextareaInput,
+            placeholder: placeholderText,
+            rows: 1,
+            className: "w-full bg-transparent border-none text-white text-sm placeholder:text-white/20 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar"
+          }), grokEditMode && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            className: "flex items-center gap-2 flex-wrap",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
+              type: "text",
+              value: grokRequestId,
+              onChange: function onChange(e) {
+                return setGrokRequestId(e.target.value);
+              },
+              placeholder: "request_id",
+              className: "h-[34px] w-44 bg-black/40 border border-white/10 rounded-md px-3 text-xs text-white/80 placeholder:text-white/30 focus:outline-none focus:border-[#22d3ee]/40"
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
+              type: "text",
+              value: grokMask,
+              onChange: function onChange(e) {
+                return setGrokMask(e.target.value);
+              },
+              placeholder: "mask URL (optional)",
+              className: "h-[34px] flex-1 min-w-[160px] bg-black/40 border border-white/10 rounded-md px-3 text-xs text-white/80 placeholder:text-white/30 focus:outline-none focus:border-[#22d3ee]/40"
+            })]
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-2 border-t border-white/[0.03] relative",
+          className: "flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-3 border-t border-white/[0.03] relative",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "flex items-center gap-2 relative flex-wrap pb-1 md:pb-0",
             children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
@@ -1652,13 +1877,23 @@ function ImageStudio(_ref6) {
                     return o === "model" ? null : "model";
                   });
                 },
-                className: "flex items-center gap-2 px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap",
+                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                  className: "w-4 h-4 bg-[#22d3ee] rounded flex items-center justify-center",
-                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                    className: "text-[9px] font-bold text-black uppercase",
-                    children: "G"
-                  })
+                  className: "w-4 h-4 rounded overflow-hidden shrink-0 flex items-center justify-center bg-white/5",
+                  children: function () {
+                    var selectedModelObj = currentModels.find(function (m) {
+                      return m.id === selectedModelId;
+                    });
+                    var selectedModelProvider = (selectedModelObj === null || selectedModelObj === void 0 ? void 0 : selectedModelObj.provider) || 'muapi';
+                    return PROVIDER_LOGOS[selectedModelProvider] ? /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+                      src: PROVIDER_LOGOS[selectedModelProvider],
+                      alt: "",
+                      className: "w-full h-full object-contain ".concat(invertLogos.includes(selectedModelProvider) ? "invert" : "")
+                    }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                      className: "text-[9px] font-bold text-black uppercase",
+                      children: "G"
+                    });
+                  }()
                 }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                   className: "text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
                   children: selectedModelName
@@ -1679,7 +1914,7 @@ function ImageStudio(_ref6) {
                 onClick: function onClick(e) {
                   return e.stopPropagation();
                 },
-                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-lg p-3 shadow-2xl border border-white/[0.05] w-[calc(100vw-3rem)] max-w-xs",
+                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl w-[calc(100vw-2rem)] md:w-[480px] max-w-md md:max-w-none",
                 children: /*#__PURE__*/(0, _jsxRuntime.jsx)(ModelDropdown, {
                   models: currentModels,
                   selectedModel: selectedModelId,
@@ -1699,7 +1934,7 @@ function ImageStudio(_ref6) {
                     return o === "ar" ? null : "ar";
                   });
                 },
-                className: "flex items-center gap-2 px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap",
+                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
                   width: "14",
                   height: "14",
@@ -1724,7 +1959,7 @@ function ImageStudio(_ref6) {
                 onClick: function onClick(e) {
                   return e.stopPropagation();
                 },
-                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-md p-3 max-h-[40vh] overflow-y-auto custom-scrollbar shadow-2xl border border-white/10 min-w-[160px]",
+                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 max-h-[40vh] overflow-y-auto custom-scrollbar shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[160px]",
                 children: /*#__PURE__*/(0, _jsxRuntime.jsx)(SimpleDropdown, {
                   title: "Aspect Ratio",
                   options: currentAspectRatios,
@@ -1747,17 +1982,17 @@ function ImageStudio(_ref6) {
                     return o === "quality" ? null : "quality";
                   });
                 },
-                className: "flex items-center gap-2 px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap",
+                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
-                  width: "14",
-                  height: "14",
+                  width: "12",
+                  height: "12",
                   viewBox: "0 0 24 24",
                   fill: "none",
                   stroke: "currentColor",
-                  strokeWidth: "2",
+                  strokeWidth: "2.5",
                   className: "opacity-40 text-white",
-                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-                    d: "M6 2L3 6v15a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z"
+                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("polygon", {
+                    points: "12 2 22 12 12 22 2 12"
                   })
                 }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                   className: "text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
@@ -1767,7 +2002,7 @@ function ImageStudio(_ref6) {
                 onClick: function onClick(e) {
                   return e.stopPropagation();
                 },
-                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-md p-3 max-h-[40vh] overflow-y-auto custom-scrollbar shadow-2xl border border-white/[0.05] min-w-[160px]",
+                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 max-h-[40vh] overflow-y-auto custom-scrollbar shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[160px]",
                 children: /*#__PURE__*/(0, _jsxRuntime.jsx)(SimpleDropdown, {
                   title: "Resolution",
                   options: currentResolutions,
@@ -1780,6 +2015,39 @@ function ImageStudio(_ref6) {
                   }
                 })
               })]
+            }), selectedResolution && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+              className: "relative",
+              children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("select", {
+                value: selectedResolution,
+                onChange: function onChange(e) {
+                  return setSelectedResolution(e.target.value);
+                },
+                className: "h-[34px] flex items-center px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] text-[11px] font-semibold text-white/70 hover:text-[#22d3ee] shadow-inner",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("option", {
+                  value: selectedResolution,
+                  children: selectedResolution
+                }), currentResolutions.filter(function (r) {
+                  return r !== selectedResolution;
+                }).map(function (r) {
+                  return /*#__PURE__*/(0, _jsxRuntime.jsx)("option", {
+                    value: r,
+                    children: r
+                  }, r);
+                })]
+              })
+            }), grokEditMode && /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+              type: "button",
+              onClick: function onClick(e) {
+                e.stopPropagation();
+                setDropdownOpen(function (o) {
+                  return o === "grok" ? null : "grok";
+                });
+              },
+              className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-white/10 rounded-md transition-all border border-[#22d3ee]/40 group whitespace-nowrap shadow-inner",
+              children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                className: "text-[11px] font-semibold text-[#22d3ee]/80",
+                children: "Grok Edit"
+              })
             }), showEffectBtn && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
               className: "relative",
               children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
@@ -1790,7 +2058,7 @@ function ImageStudio(_ref6) {
                     return o === "effect" ? null : "effect";
                   });
                 },
-                className: "flex items-center gap-2 px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap",
+                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
                   width: "14",
                   height: "14",
@@ -1810,7 +2078,7 @@ function ImageStudio(_ref6) {
                 onClick: function onClick(e) {
                   return e.stopPropagation();
                 },
-                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-md p-3 max-h-[40vh] overflow-y-auto custom-scrollbar shadow-2xl border border-white/[0.05] min-w-[200px]",
+                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 max-h-[40vh] overflow-y-auto custom-scrollbar shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[200px]",
                 children: /*#__PURE__*/(0, _jsxRuntime.jsx)(SimpleDropdown, {
                   title: "Effect Type",
                   options: currentEffects,
@@ -1823,55 +2091,94 @@ function ImageStudio(_ref6) {
                   }
                 })
               })]
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-              className: "flex items-center gap-1 bg-white/[0.03] rounded-md p-1 border border-white/[0.03]",
-              children: [1, 2, 3, 4].map(function (num) {
-                return /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-                  type: "button",
-                  onClick: function onClick() {
-                    return setBatchSize(num);
-                  },
-                  className: "w-7 h-7 flex items-center justify-center rounded-md text-[10px] font-black transition-all ".concat(batchSize === num ? "bg-[#22d3ee] text-black shadow-lg shadow-[#22d3ee]/20" : "text-white/40 hover:text-white/80 hover:bg-white/5"),
-                  children: num
-                }, num);
-              })
-            })]
-          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-            type: "button",
-            className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
-            onClick: function onClick() {
-              return setIsDrawModalOpen(true);
-            },
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-              width: "12",
-              height: "12",
-              viewBox: "0 0 24 24",
-              fill: "none",
-              stroke: "currentColor",
-              strokeWidth: "2.5",
-              className: "opacity-40 text-white group-hover:text-[#22d3ee] transition-colors",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-                d: "M12 20h9"
-              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-                d: "M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"
+            }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+              className: "h-[34px] flex items-center gap-2 bg-[#16161a]/60 rounded-md px-2.5 border border-white/[0.06] shadow-inner select-none",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+                type: "button",
+                onClick: function onClick() {
+                  return setBatchSize(function (prev) {
+                    return Math.max(1, prev - 1);
+                  });
+                },
+                className: "text-white/40 hover:text-white/80 font-extrabold text-xs transition-colors px-1",
+                children: "-"
+              }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
+                className: "text-[11px] font-black text-white/70 min-w-[24px] text-center",
+                children: [batchSize, "/4"]
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+                type: "button",
+                onClick: function onClick() {
+                  return setBatchSize(function (prev) {
+                    return Math.min(4, prev + 1);
+                  });
+                },
+                className: "text-white/40 hover:text-white/80 font-extrabold text-xs transition-colors px-1",
+                children: "+"
               })]
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-              className: "text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
-              children: "Draw"
+            }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+              type: "button",
+              className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
+              onClick: function onClick() {
+                return setIsDrawModalOpen(true);
+              },
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                width: "12",
+                height: "12",
+                viewBox: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "2.5",
+                className: "opacity-40 text-white group-hover:text-[#22d3ee] transition-colors",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                  d: "M12 20h9"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                  d: "M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"
+                })]
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                className: "text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
+                children: "Draw"
+              })]
+            }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+              type: "button",
+              className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-[#22d3ee]/40 group whitespace-nowrap shadow-inner",
+              onClick: function onClick() {
+                return router.push("/studio/skills");
+              },
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                width: "12",
+                height: "12",
+                viewBox: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "2",
+                className: "opacity-60 text-[#22d3ee] group-hover:text-[#22d3ee] transition-colors",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                  d: "M4 4h6v6H4z"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                  d: "M14 4h6v6h-6z"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                  d: "M4 14h6v6H4z"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                  d: "M14 14h6v6h-6z"
+                })]
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                className: "text-[11px] font-semibold text-[#22d3ee]/80 group-hover:text-[#22d3ee] transition-colors",
+                children: "Recipes"
+              })]
             })]
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
             type: "button",
             onClick: handleGenerate,
             disabled: generating,
-            className: "bg-[#22d3ee] text-black px-4 py-2 rounded-md font-medium text-sm hover:bg-[#e5ff33] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/10 disabled:opacity-50 disabled:cursor-not-allowed z-10",
+            className: "bg-[#22d3ee] text-black px-7 py-3 rounded-full font-bold text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10",
             children: generating ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                 className: "animate-spin inline-block text-black",
                 children: "\u25CC"
               }), "Generating..."]
             }) : generateError ? "Error: ".concat(generateError) : /*#__PURE__*/(0, _jsxRuntime.jsx)(_jsxRuntime.Fragment, {
-              children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                children: "Generate"
+              children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
+                children: ["Generate \u2726 ", batchSize]
               })
             })
           })]
@@ -1918,6 +2225,14 @@ function ImageStudio(_ref6) {
           return e.stopPropagation();
         }
       })]
+    }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_DrawModal["default"], {
+      isOpen: isDrawModalOpen,
+      onClose: function onClose() {
+        return setIsDrawModalOpen(false);
+      },
+      apiKey: apiKey,
+      batchSize: 1,
+      onAddHistoryItem: addToHistory
     })]
   });
 }

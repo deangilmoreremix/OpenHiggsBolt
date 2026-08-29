@@ -9,7 +9,9 @@ exports["default"] = AudioStudio;
 var _react = require("react");
 var _muapi = require("../muapi.js");
 var _models = require("../models.js");
+var _CostEstimator = _interopRequireDefault(require("./CostEstimator.jsx"));
 var _jsxRuntime = require("react/jsx-runtime");
+function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
 function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
@@ -1203,9 +1205,13 @@ function AudioStudio(_ref7) {
             }, key);
           })
         })]
-      }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+      }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
         className: "p-4 border-t border-zinc-900 bg-zinc-950/80 backdrop-blur-xl absolute bottom-0 left-0 w-full lg:w-[400px] z-40",
-        children: /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+        children: [selectedModel && /*#__PURE__*/(0, _jsxRuntime.jsx)(_CostEstimator["default"], {
+          apiKey: apiKey,
+          model: selectedModel,
+          params: params
+        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
           type: "button",
           onClick: handleGenerate,
           disabled: isGenerating || !selectedModel,
@@ -1231,7 +1237,7 @@ function AudioStudio(_ref7) {
               children: "Generate Track"
             })]
           })
-        })
+        })]
       })]
     }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
       className: "flex-1 flex flex-col min-w-0 h-full relative z-20",

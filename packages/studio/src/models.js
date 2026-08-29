@@ -3351,6 +3351,14 @@ export const getSelectableAspectRatiosForModel = (modelId) => {
   return getAspectRatioOptions(model, T2I_DIMENSION_RATIOS);
 };
 
+export const getModesForModel = (modelId) => {
+  const model = getModelById(modelId);
+  if (!model) return [];
+  const modeInput = model.inputs?.mode;
+  if (modeInput && Array.isArray(modeInput.enum)) return modeInput.enum;
+  return [];
+};
+
 export const getAspectRatiosForModel = (modelId) => {
   const model = getModelById(modelId);
   if (!model) return ['1:1'];
