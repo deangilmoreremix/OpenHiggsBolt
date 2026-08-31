@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
 import { runClipping, uploadFile } from "../muapi.js";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
@@ -275,18 +276,15 @@ export default function ClippingStudio({
   }
 
   // ── Apply template data from landing page "Create This Style" ──────────────
-  const templateApplied = useRef(null);
-  useEffect(() => {
-    if (!templateData || templateApplied.current === templateData.slug) return;
-    templateApplied.current = templateData.slug;
-
-    if (templateData.prompt) {
-      setPrompt(templateData.prompt);
+  const { reset: resetTemplate, isTemplateApplied } = useTemplateData(templateData, (data) => {
+    if (data.prompt) {
+      setPrompt(data.prompt);
     }
-    if (templateData.aspectRatio) {
-      setAspectRatio(templateData.aspectRatio);
+    if (data.aspectRatio) {
+      const normalized = normalizeAspectRatio(data.aspectRatio, "9:16");
+      setAspectRatio(normalized);
     }
-  }, [templateData]);
+  });
 
   // ── Highlight Seeking Helper ─────────────────────────────────────────────
   const seekToHighlight = (startSec) => {

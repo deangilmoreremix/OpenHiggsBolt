@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTemplateData } from "../hooks/useTemplateData";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { processLipSync, uploadFile } from "../muapi.js";
@@ -567,15 +568,11 @@ export default function LipSyncStudio({
   }, [inputMode]);
 
   // ── Apply template data from landing page "Create This Style" ──────────────
-  const templateApplied = useRef(null);
-  useEffect(() => {
-    if (!templateData || templateApplied.current === templateData.slug) return;
-    templateApplied.current = templateData.slug;
-
-    if (templateData.prompt) {
-      setPrompt(templateData.prompt);
+  const { reset: resetTemplate, isTemplateApplied } = useTemplateData(templateData, (data) => {
+    if (data.prompt) {
+      setPrompt(data.prompt);
     }
-  }, [templateData]);
+  });
 
   // ── Upload handlers ─────────────────────────────────────────────────────
   const handleImageUpload = useCallback(

@@ -7,6 +7,7 @@ import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
 import registry from "../skills/registry.json";
 import { fillTemplate } from "../lib/promptRecipes";
+import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
 
 const CDN = "https://cdn.muapi.ai/influencer";
 
@@ -390,18 +391,15 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
   }
 
   // ── Apply template data from landing page "Create This Style" ──────────────
-  const templateApplied = useRef(null);
-  useEffect(() => {
-    if (!templateData || templateApplied.current === templateData.slug) return;
-    templateApplied.current = templateData.slug;
-
-    if (templateData.prompt) {
-      setCustomPrompt(templateData.prompt);
+  const { reset: resetTemplate, isTemplateApplied } = useTemplateData(templateData, (data) => {
+    if (data.prompt) {
+      setCustomPrompt(data.prompt);
     }
-    if (templateData.aspectRatio) {
-      setAspectRatio(templateData.aspectRatio);
+    if (data.aspectRatio) {
+      const normalized = normalizeAspectRatio(data.aspectRatio, "3:4");
+      setAspectRatio(normalized);
     }
-  }, [templateData]);
+  });
 
   // ── Build prompt from selections ──────────────────────────────────────────
   const buildPrompt = useCallback(() => {

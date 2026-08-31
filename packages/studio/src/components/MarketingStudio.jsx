@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { uploadFile, generateMarketingStudioAd } from "../muapi.js";
+import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
 
 const SCROLLBAR_STYLE = `
   .custom-scrollbar-thin::-webkit-scrollbar {
@@ -322,18 +323,15 @@ export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled, 
   }, [prompt, params, productImage, avatarImage, additionalImages, history]);
 
   // ── Apply template data from landing page "Create This Style" ──────────────
-  const templateApplied = useRef(null);
-  useEffect(() => {
-    if (!templateData || templateApplied.current === templateData.slug) return;
-    templateApplied.current = templateData.slug;
-
-    if (templateData.prompt) {
-      setPrompt(templateData.prompt);
+  const { reset: resetTemplate, isTemplateApplied } = useTemplateData(templateData, (data) => {
+    if (data.prompt) {
+      setPrompt(data.prompt);
     }
-    if (templateData.aspectRatio) {
-      setParams((p) => ({ ...p, ratio: templateData.aspectRatio }));
+    if (data.aspectRatio) {
+      const normalized = normalizeAspectRatio(data.aspectRatio, "9:16");
+      setParams((p) => ({ ...p, ratio: normalized }));
     }
-  }, [templateData]);
+  });
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 

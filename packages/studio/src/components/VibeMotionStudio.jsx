@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { runMotionGraphics, runMotionGraphicsEdit } from "../muapi.js";
@@ -170,21 +171,18 @@ export default function VibeMotionStudio({ apiKey, templateData }) {
   }
 
   // ── Apply template data from landing page "Create This Style" ──────────────
-  const templateApplied = useRef(null);
-  useEffect(() => {
-    if (!templateData || templateApplied.current === templateData.slug) return;
-    templateApplied.current = templateData.slug;
-
-    if (templateData.prompt) {
-      setPrompt(templateData.prompt);
+  const { reset: resetTemplate, isTemplateApplied } = useTemplateData(templateData, (data) => {
+    if (data.prompt) {
+      setPrompt(data.prompt);
     }
-    if (templateData.aspectRatio) {
-      setAspectRatio(templateData.aspectRatio);
+    if (data.aspectRatio) {
+      const normalized = normalizeAspectRatio(data.aspectRatio, "16:9");
+      setAspectRatio(normalized);
     }
-    if (templateData.duration) {
-      setDuration(templateData.duration);
+    if (data.duration) {
+      setDuration(data.duration);
     }
-  }, [templateData]);
+  });
 
   // ── Generate ──────────────────────────────────────────────────────────────
   const handleGenerate = useCallback(async () => {

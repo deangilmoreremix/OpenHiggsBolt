@@ -655,7 +655,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
              <p style={{ color: semantic.textSecondary }}>Loading Brand Studio…</p>
            </div>
          )}
-         {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} />}
+          {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} templateData={templateData} />}
          {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
          {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
       </div>

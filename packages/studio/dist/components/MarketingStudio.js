@@ -9,6 +9,7 @@ var _react = require("react");
 var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
 var _AiAssistantProvider = require("../../../../components/AiAssistantProvider");
 var _muapi = require("../muapi.js");
+var _useTemplateData2 = require("../hooks/useTemplateData");
 var _jsxRuntime = require("react/jsx-runtime");
 function _regeneratorValues(e) { if (null != e) { var t = e["function" == typeof Symbol && Symbol.iterator || "@@iterator"], r = 0; if (t) return t.call(e); if ("function" == typeof e.next) return e; if (!isNaN(e.length)) return { next: function next() { return e && r >= e.length && (e = void 0), { value: e && e[r++], done: !e }; } }; } throw new TypeError(_typeof(e) + " is not iterable"); }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
@@ -525,21 +526,21 @@ function MarketingStudio(_ref4) {
   }, [prompt, params, productImage, avatarImage, additionalImages, history]);
 
   // ── Apply template data from landing page "Create This Style" ──────────────
-  var templateApplied = (0, _react.useRef)(null);
-  (0, _react.useEffect)(function () {
-    if (!templateData || templateApplied.current === templateData.slug) return;
-    templateApplied.current = templateData.slug;
-    if (templateData.prompt) {
-      setPrompt(templateData.prompt);
-    }
-    if (templateData.aspectRatio) {
-      setParams(function (p) {
-        return _objectSpread(_objectSpread({}, p), {}, {
-          ratio: templateData.aspectRatio
+  var _useTemplateData = (0, _useTemplateData2.useTemplateData)(templateData, function (data) {
+      if (data.prompt) {
+        setPrompt(data.prompt);
+      }
+      if (data.aspectRatio) {
+        var normalized = (0, _useTemplateData2.normalizeAspectRatio)(data.aspectRatio, "9:16");
+        setParams(function (p) {
+          return _objectSpread(_objectSpread({}, p), {}, {
+            ratio: normalized
+          });
         });
-      });
-    }
-  }, [templateData]);
+      }
+    }),
+    resetTemplate = _useTemplateData.reset,
+    isTemplateApplied = _useTemplateData.isTemplateApplied;
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 

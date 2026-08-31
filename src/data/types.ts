@@ -40,6 +40,10 @@ export type VideoDemo = {
   sourceUrl?: string;
   /** Short identifier for the source data file (e.g. "minimax-h3", "seedance-25"). */
   sourceRepo: string;
+  /** Optional model identifier to pre-select in VideoStudio. */
+  model?: string;
+  /** Optional display name for the model. */
+  modelName?: string;
 };
 
 /**
@@ -52,5 +56,9 @@ export type VideoDemo = {
  */
 export function getCreateUrl(demo: VideoDemo): string {
   const tab = demo.studioTab || 'video';
-  return `/studio/${tab}?template=${demo.sourceRepo ?? 'minimax-h3'}-${demo.slug}`;
+  if (!demo.sourceRepo) {
+    throw new Error(`VideoDemo missing sourceRepo for slug: ${demo.slug}`);
+  }
+  const templateId = `${demo.sourceRepo}-${demo.slug}`;
+  return `/studio/${tab}?template=${encodeURIComponent(templateId)}`;
 }

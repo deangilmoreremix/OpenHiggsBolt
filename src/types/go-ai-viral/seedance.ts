@@ -31,6 +31,7 @@ export interface SeedancePrompt {
 export interface SeedanceStats {
   total: number
   withVideo: number
+  withPrompt: number
   withDetailHref: number
   sourceLanguages: Record<string, number>
 }

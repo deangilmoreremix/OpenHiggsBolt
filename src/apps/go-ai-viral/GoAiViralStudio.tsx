@@ -726,7 +726,7 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
   const [videoError, setVideoError] = useState<string | null>(null)
   const [selectedVideoRecord, setSelectedVideoRecord] = useState<SeedancePrompt | null>(null)
   const [videoLanguage, setVideoLanguage] = useState('')
-  const [videoOnly, setVideoOnly] = useState(true)
+  const [videoOnly, setVideoOnly] = useState<'video-only' | 'video-and-prompt' | 'all'>('video-and-prompt')
 
   // Abort/race-protection refs for fetchFeed
   const fetchIdRef = useRef(0)
@@ -831,7 +831,8 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
         pageSize: String(videoPageSize),
         ...(videoSearchInput && { search: videoSearchInput }),
         ...(videoLanguage && { language: videoLanguage }),
-        ...(videoOnly ? { hasVideo: 'true' } : {}),
+        ...(videoOnly === 'video-only' || videoOnly === 'video-and-prompt' ? { hasVideo: 'true' } : {}),
+        ...(videoOnly === 'video-and-prompt' ? { hasPrompt: 'true' } : {}),
       })
       const res = await fetch(`/api/go-ai-viral/seedance?${params}`, {
         signal: controller.signal,
@@ -968,29 +969,36 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
                </div>
              </div>
 
-             {studioMode === 'video-prompts' && (
-               <div>
-                 <p className="text-xs font-medium mb-2" style={{ color: semantic.textLabel }}>
-                   Availability
-                 </p>
-                 <div className="flex flex-col gap-1">
-                   <button
-                     onClick={() => { setVideoOnly(true); setVideoPage(1) }}
-                     className="text-left px-3 py-2 rounded-lg text-sm transition-all"
-                     style={optionStyle(videoOnly)}
-                   >
-                     With video only
-                   </button>
-                   <button
-                     onClick={() => { setVideoOnly(false); setVideoPage(1) }}
-                     className="text-left px-3 py-2 rounded-lg text-sm transition-all"
-                     style={optionStyle(!videoOnly)}
-                   >
-                     All prompts
-                   </button>
-                 </div>
-               </div>
-             )}
+              {studioMode === 'video-prompts' && (
+                <div>
+                  <p className="text-xs font-medium mb-2" style={{ color: semantic.textLabel }}>
+                    Availability
+                  </p>
+                  <div className="flex flex-col gap-1">
+                    <button
+                      onClick={() => { setVideoOnly('video-and-prompt'); setVideoPage(1) }}
+                      className="text-left px-3 py-2 rounded-lg text-sm transition-all"
+                      style={optionStyle(videoOnly === 'video-and-prompt')}
+                    >
+                      With video + prompt
+                    </button>
+                    <button
+                      onClick={() => { setVideoOnly('video-only'); setVideoPage(1) }}
+                      className="text-left px-3 py-2 rounded-lg text-sm transition-all"
+                      style={optionStyle(videoOnly === 'video-only')}
+                    >
+                      With video only
+                    </button>
+                    <button
+                      onClick={() => { setVideoOnly('all'); setVideoPage(1) }}
+                      className="text-left px-3 py-2 rounded-lg text-sm transition-all"
+                      style={optionStyle(videoOnly === 'all')}
+                    >
+                      All prompts
+                    </button>
+                  </div>
+                </div>
+              )}
 
             {/* Sort */}
             <div>
@@ -1213,11 +1221,11 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
             <div className="p-8 text-center">
               <p className="text-white/50 text-sm">No video prompts match your current filters.</p>
                <button
-                 onClick={() => {
-                   setVideoSearchInput('')
-                   setVideoLanguage('')
-                   setVideoOnly(true)
-                 }}
+                  onClick={() => {
+                    setVideoSearchInput('')
+                    setVideoLanguage('')
+                    setVideoOnly('video-and-prompt')
+                  }}
                  className="mt-4 rounded-xl px-4 py-2 text-sm font-semibold"
                  style={buttons.primary}
                >

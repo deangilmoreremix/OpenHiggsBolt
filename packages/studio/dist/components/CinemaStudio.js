@@ -13,6 +13,7 @@ var _muapi = require("../muapi.js");
 var _skillStore = require("../lib/skillStore");
 var _registry = _interopRequireDefault(require("../skills/registry.json"));
 var _promptRecipes = require("../lib/promptRecipes");
+var _useTemplateData2 = require("../hooks/useTemplateData");
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
@@ -613,28 +614,28 @@ function CinemaStudio(_ref4) {
   }, []);
 
   // ── Apply template data from landing page "Create This Style" ──────────────
-  var templateApplied = (0, _react.useRef)(null);
-  (0, _react.useEffect)(function () {
-    if (!templateData || templateApplied.current === templateData.slug) return;
-    templateApplied.current = templateData.slug;
-    if (templateData.prompt) {
-      setSettings(function (s) {
-        return _objectSpread(_objectSpread({}, s), {}, {
-          prompt: templateData.prompt
+  var _useTemplateData = (0, _useTemplateData2.useTemplateData)(templateData, function (data) {
+      if (data.prompt) {
+        setSettings(function (s) {
+          return _objectSpread(_objectSpread({}, s), {}, {
+            prompt: data.prompt
+          });
         });
-      });
-    }
-    if (templateData.aspectRatio) {
-      setSettings(function (s) {
-        return _objectSpread(_objectSpread({}, s), {}, {
-          aspect_ratio: templateData.aspectRatio
+      }
+      if (data.aspectRatio) {
+        var normalized = (0, _useTemplateData2.normalizeAspectRatio)(data.aspectRatio, "16:9");
+        setSettings(function (s) {
+          return _objectSpread(_objectSpread({}, s), {}, {
+            aspect_ratio: normalized
+          });
         });
-      });
-    }
-    if (templateData.duration || templateData.resolution) {
-      setResolution(templateData.resolution || "2K");
-    }
-  }, [templateData]);
+      }
+      if (data.resolution) {
+        setResolution(data.resolution);
+      }
+    }),
+    resetTemplate = _useTemplateData.reset,
+    isTemplateApplied = _useTemplateData.isTemplateApplied;
 
   // ── Adjust height on load ────────────────────────────────────────────────
   (0, _react.useEffect)(function () {
@@ -1106,7 +1107,18 @@ function CinemaStudio(_ref4) {
       className: "absolute bottom-4 left-4 right-4 md:left-0 md:right-0 md:mx-auto md:max-w-[95%] lg:max-w-4xl z-30 transition-all duration-700 animate-fade-in-up",
       children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
         className: "w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]",
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+        children: [isTemplateApplied && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+          className: "flex items-center justify-between rounded-xl bg-[#22d3ee]/10 border border-[#22d3ee]/20 px-3 py-2 text-xs text-[#22d3ee]",
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+            className: "font-semibold",
+            children: "Template loaded"
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+            type: "button",
+            onClick: resetTemplate,
+            className: "rounded-md bg-white/5 px-2 py-1 text-[11px] font-bold text-white/80 hover:text-white hover:bg-white/10 transition-colors",
+            children: "Clear"
+          })]
+        }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
           className: "flex items-start gap-4 w-full px-1",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "relative pt-0.5",

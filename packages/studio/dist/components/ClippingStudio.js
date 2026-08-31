@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports["default"] = ClippingStudio;
 var _react = require("react");
+var _useTemplateData2 = require("../hooks/useTemplateData");
 var _muapi = require("../muapi.js");
 var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
 var _skillStore = require("../lib/skillStore");
@@ -452,17 +453,17 @@ function ClippingStudio(_ref2) {
   }
 
   // ── Apply template data from landing page "Create This Style" ──────────────
-  var templateApplied = (0, _react.useRef)(null);
-  (0, _react.useEffect)(function () {
-    if (!templateData || templateApplied.current === templateData.slug) return;
-    templateApplied.current = templateData.slug;
-    if (templateData.prompt) {
-      setPrompt(templateData.prompt);
-    }
-    if (templateData.aspectRatio) {
-      setAspectRatio(templateData.aspectRatio);
-    }
-  }, [templateData]);
+  var _useTemplateData = (0, _useTemplateData2.useTemplateData)(templateData, function (data) {
+      if (data.prompt) {
+        setPrompt(data.prompt);
+      }
+      if (data.aspectRatio) {
+        var normalized = (0, _useTemplateData2.normalizeAspectRatio)(data.aspectRatio, "9:16");
+        setAspectRatio(normalized);
+      }
+    }),
+    resetTemplate = _useTemplateData.reset,
+    isTemplateApplied = _useTemplateData.isTemplateApplied;
 
   // ── Highlight Seeking Helper ─────────────────────────────────────────────
   var seekToHighlight = function seekToHighlight(startSec) {

@@ -7,6 +7,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports["default"] = AudioStudio;
 var _react = require("react");
+var _useTemplateData2 = require("../hooks/useTemplateData");
 var _muapi = require("../muapi.js");
 var _models = require("../models.js");
 var _CostEstimator = _interopRequireDefault(require("./CostEstimator.jsx"));
@@ -783,18 +784,17 @@ function AudioStudio(_ref7) {
   }, [selectedModelId, params, internalHistory, activeResultUrl, activeResultTitle, view]);
 
   // ── Apply template data from landing page "Create This Style" ──────────────
-  var templateApplied = (0, _react.useRef)(null);
-  (0, _react.useEffect)(function () {
-    if (!templateData || templateApplied.current === templateData.slug) return;
-    templateApplied.current = templateData.slug;
-    if (templateData.prompt) {
-      setParams(function (p) {
-        return _objectSpread(_objectSpread({}, p), {}, {
-          prompt: templateData.prompt
+  var _useTemplateData = (0, _useTemplateData2.useTemplateData)(templateData, function (data) {
+      if (data.prompt) {
+        setParams(function (p) {
+          return _objectSpread(_objectSpread({}, p), {}, {
+            prompt: data.prompt
+          });
         });
-      });
-    }
-  }, [templateData]);
+      }
+    }),
+    resetTemplate = _useTemplateData.reset,
+    isTemplateApplied = _useTemplateData.isTemplateApplied;
 
   // ── Handle Dropped Files ────────────────────────────────────────────────
   (0, _react.useEffect)(function () {

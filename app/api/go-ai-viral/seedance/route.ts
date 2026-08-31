@@ -35,9 +35,11 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
 function buildStats(records: SeedancePrompt[]): SeedanceStats {
   const sourceLanguages: Record<string, number> = {}
   let withVideo = 0
+  let withPrompt = 0
   let withDetailHref = 0
   for (const r of records) {
     if (r.outputUrl) withVideo += 1
+    if (r.prompt || r.fullPrompt) withPrompt += 1
     if (r.detailHref) withDetailHref += 1
     const lang = r.sourceLanguage || 'unknown'
     sourceLanguages[lang] = (sourceLanguages[lang] || 0) + 1
@@ -45,6 +47,7 @@ function buildStats(records: SeedancePrompt[]): SeedanceStats {
   return {
     total: records.length,
     withVideo,
+    withPrompt,
     withDetailHref,
     sourceLanguages,
   }
@@ -156,6 +159,7 @@ export async function GET(req: NextRequest) {
     const search = (searchParams.get('search') || '').trim().toLowerCase()
     const language = (searchParams.get('language') || '').trim().toLowerCase()
     const hasVideo = searchParams.get('hasVideo')
+    const hasPrompt = searchParams.get('hasPrompt')
 
     const { records, stats } = await loadSeedance()
 
@@ -164,6 +168,9 @@ export async function GET(req: NextRequest) {
       filtered = filtered.filter((r) => !!r.outputUrl)
     } else if (hasVideo === 'false') {
       filtered = filtered.filter((r) => !r.outputUrl)
+    }
+    if (hasPrompt === 'true') {
+      filtered = filtered.filter((r) => !!(r.prompt || r.fullPrompt))
     }
     if (language) {
       filtered = filtered.filter((r) => (r.sourceLanguage || 'unknown').toLowerCase() === language)

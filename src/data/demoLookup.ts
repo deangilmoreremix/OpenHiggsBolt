@@ -22,9 +22,10 @@ export function findDemoById(templateId: string): VideoDemo | undefined {
 }
 
 export function parseTemplateId(templateId: string): { sourceRepo: string; slug: string } | undefined {
-  const idx = templateId.indexOf('-');
+  const idx = templateId.lastIndexOf('-');
   if (idx === -1) return undefined;
   const sourceRepo = templateId.slice(0, idx);
   const slug = templateId.slice(idx + 1);
+  if (!sourceRepo || !slug) return undefined;
   return { sourceRepo, slug };
 }

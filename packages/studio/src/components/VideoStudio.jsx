@@ -902,8 +902,11 @@ export default function VideoStudio({
   // ── Apply template data from landing page "Create This Style" ──────────────
   const templateApplied = useRef(null);
   useEffect(() => {
-    if (!templateData || templateApplied.current === templateData.slug) return;
-    templateApplied.current = templateData.slug;
+    const templateId = templateData?.sourceRepo && templateData?.slug
+      ? `${templateData.sourceRepo}-${templateData.slug}`
+      : templateData?.slug;
+    if (!templateData || templateApplied.current === templateId) return;
+    templateApplied.current = templateId;
 
     if (templateData.prompt) {
       setPrompt(templateData.prompt);
@@ -914,6 +917,10 @@ export default function VideoStudio({
     if (templateData.duration) {
       const d = parseInt(String(templateData.duration), 10);
       if (!isNaN(d)) setSelectedDuration(d);
+    }
+    if (templateData.model) {
+      setSelectedModel(templateData.model);
+      setSelectedModelName(templateData.modelName || templateData.model);
     }
   }, [templateData]);
 

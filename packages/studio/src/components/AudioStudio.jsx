@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTemplateData } from "../hooks/useTemplateData";
 import { generateAudio, uploadFile } from "../muapi.js";
 import { audioModels, getAudioModelById } from "../models.js";
 import CostEstimator from "./CostEstimator.jsx";
@@ -557,15 +558,11 @@ export default function AudioStudio({
   }, [selectedModelId, params, internalHistory, activeResultUrl, activeResultTitle, view]);
 
   // ── Apply template data from landing page "Create This Style" ──────────────
-  const templateApplied = useRef(null);
-  useEffect(() => {
-    if (!templateData || templateApplied.current === templateData.slug) return;
-    templateApplied.current = templateData.slug;
-
-    if (templateData.prompt) {
-      setParams((p) => ({ ...p, prompt: templateData.prompt }));
+  const { reset: resetTemplate, isTemplateApplied } = useTemplateData(templateData, (data) => {
+    if (data.prompt) {
+      setParams((p) => ({ ...p, prompt: data.prompt }));
     }
-  }, [templateData]);
+  });
 
   // ── Handle Dropped Files ────────────────────────────────────────────────
   useEffect(() => {

@@ -186,14 +186,17 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
   // ── Apply template data from landing page "Create This Style" ──────────────
   const templateApplied = useRef<string | null>(null);
   useEffect(() => {
-    if (!templateData || templateApplied.current === templateData.slug) return;
-    templateApplied.current = templateData.slug;
+    const templateId = templateData?.sourceRepo && templateData?.slug
+      ? `${templateData.sourceRepo}-${templateData.slug}`
+      : templateData?.slug;
+    if (!templateData || templateApplied.current === templateId) return;
+    templateApplied.current = templateId;
 
     if (templateData.prompt) {
       setPrompt(templateData.prompt);
     }
     if (templateData.aspectRatio) {
-      setAspectRatio(templateData.aspectRatio);
+      setAspectRatio(templateData.aspectRatio as AspectRatio);
     }
   }, [templateData]);
   const [copied, setCopied] = useState(false);

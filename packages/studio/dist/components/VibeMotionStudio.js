@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports["default"] = VibeMotionStudio;
 var _react = require("react");
+var _useTemplateData2 = require("../hooks/useTemplateData");
 var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
 var _AiAssistantProvider = require("../../../../components/AiAssistantProvider");
 var _muapi = require("../muapi.js");
@@ -280,20 +281,20 @@ function VibeMotionStudio(_ref2) {
   }
 
   // ── Apply template data from landing page "Create This Style" ──────────────
-  var templateApplied = (0, _react.useRef)(null);
-  (0, _react.useEffect)(function () {
-    if (!templateData || templateApplied.current === templateData.slug) return;
-    templateApplied.current = templateData.slug;
-    if (templateData.prompt) {
-      setPrompt(templateData.prompt);
-    }
-    if (templateData.aspectRatio) {
-      setAspectRatio(templateData.aspectRatio);
-    }
-    if (templateData.duration) {
-      setDuration(templateData.duration);
-    }
-  }, [templateData]);
+  var _useTemplateData = (0, _useTemplateData2.useTemplateData)(templateData, function (data) {
+      if (data.prompt) {
+        setPrompt(data.prompt);
+      }
+      if (data.aspectRatio) {
+        var normalized = (0, _useTemplateData2.normalizeAspectRatio)(data.aspectRatio, "16:9");
+        setAspectRatio(normalized);
+      }
+      if (data.duration) {
+        setDuration(data.duration);
+      }
+    }),
+    resetTemplate = _useTemplateData.reset,
+    isTemplateApplied = _useTemplateData.isTemplateApplied;
 
   // ── Generate ──────────────────────────────────────────────────────────────
   var handleGenerate = (0, _react.useCallback)(/*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee() {

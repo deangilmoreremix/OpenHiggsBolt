@@ -1068,8 +1068,9 @@ function VideoStudio(_ref6) {
   // ── Apply template data from landing page "Create This Style" ──────────────
   var templateApplied = (0, _react.useRef)(null);
   (0, _react.useEffect)(function () {
-    if (!templateData || templateApplied.current === templateData.slug) return;
-    templateApplied.current = templateData.slug;
+    var templateId = templateData !== null && templateData !== void 0 && templateData.sourceRepo && templateData !== null && templateData !== void 0 && templateData.slug ? "".concat(templateData.sourceRepo, "-").concat(templateData.slug) : templateData === null || templateData === void 0 ? void 0 : templateData.slug;
+    if (!templateData || templateApplied.current === templateId) return;
+    templateApplied.current = templateId;
     if (templateData.prompt) {
       setPrompt(templateData.prompt);
     }
@@ -1079,6 +1080,10 @@ function VideoStudio(_ref6) {
     if (templateData.duration) {
       var d = parseInt(String(templateData.duration), 10);
       if (!isNaN(d)) setSelectedDuration(d);
+    }
+    if (templateData.model) {
+      setSelectedModel(templateData.model);
+      setSelectedModelName(templateData.modelName || templateData.model);
     }
   }, [templateData]);
 
