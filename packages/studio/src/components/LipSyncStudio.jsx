@@ -327,6 +327,7 @@ export default function LipSyncStudio({
   historyItems,
   droppedFiles,
   onFilesHandled,
+  templateData,
 }) {
   const PERSIST_KEY = "hg_lipsync_studio_persistent";
 
@@ -564,6 +565,17 @@ export default function LipSyncStudio({
     setSelectedModelId(first.id);
     setSelectedResolution(first.inputs?.resolution?.default ?? "480p");
   }, [inputMode]);
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const templateApplied = useRef(null);
+  useEffect(() => {
+    if (!templateData || templateApplied.current === templateData.slug) return;
+    templateApplied.current = templateData.slug;
+
+    if (templateData.prompt) {
+      setPrompt(templateData.prompt);
+    }
+  }, [templateData]);
 
   // ── Upload handlers ─────────────────────────────────────────────────────
   const handleImageUpload = useCallback(

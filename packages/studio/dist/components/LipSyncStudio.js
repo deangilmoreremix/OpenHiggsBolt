@@ -355,7 +355,8 @@ function LipSyncStudio(_ref7) {
     onGenerationComplete = _ref7.onGenerationComplete,
     historyItems = _ref7.historyItems,
     droppedFiles = _ref7.droppedFiles,
-    onFilesHandled = _ref7.onFilesHandled;
+    onFilesHandled = _ref7.onFilesHandled,
+    templateData = _ref7.templateData;
   var PERSIST_KEY = "hg_lipsync_studio_persistent";
 
   // ── Mode & model state ──────────────────────────────────────────────────
@@ -655,6 +656,16 @@ function LipSyncStudio(_ref7) {
     setSelectedModelId(first.id);
     setSelectedResolution((_first$inputs$resolut = (_first$inputs = first.inputs) === null || _first$inputs === void 0 || (_first$inputs = _first$inputs.resolution) === null || _first$inputs === void 0 ? void 0 : _first$inputs["default"]) !== null && _first$inputs$resolut !== void 0 ? _first$inputs$resolut : "480p");
   }, [inputMode]);
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  var templateApplied = (0, _react.useRef)(null);
+  (0, _react.useEffect)(function () {
+    if (!templateData || templateApplied.current === templateData.slug) return;
+    templateApplied.current = templateData.slug;
+    if (templateData.prompt) {
+      setPrompt(templateData.prompt);
+    }
+  }, [templateData]);
 
   // ── Upload handlers ─────────────────────────────────────────────────────
   var handleImageUpload = (0, _react.useCallback)(/*#__PURE__*/function () {

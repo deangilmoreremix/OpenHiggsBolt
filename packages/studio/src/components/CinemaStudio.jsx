@@ -450,6 +450,7 @@ export default function CinemaStudio({
   apiKey,
   onGenerationComplete,
   historyItems,
+  templateData,
 }) {
   const PERSIST_KEY = "hg_cinema_studio_persistent";
 
@@ -556,6 +557,23 @@ export default function CinemaStudio({
       console.warn("Failed to load CinemaStudio persistence:", err);
     }
   }, []);
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const templateApplied = useRef(null);
+  useEffect(() => {
+    if (!templateData || templateApplied.current === templateData.slug) return;
+    templateApplied.current = templateData.slug;
+
+    if (templateData.prompt) {
+      setSettings((s) => ({ ...s, prompt: templateData.prompt }));
+    }
+    if (templateData.aspectRatio) {
+      setSettings((s) => ({ ...s, aspect_ratio: templateData.aspectRatio }));
+    }
+    if (templateData.duration || templateData.resolution) {
+      setResolution(templateData.resolution || "2K");
+    }
+  }, [templateData]);
 
   // ── Adjust height on load ────────────────────────────────────────────────
   useEffect(() => {

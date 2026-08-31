@@ -253,13 +253,28 @@ function saveLocal(images: GeneratedImage[]) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function ThumbnailStudio({ apiKey }: { apiKey?: string }) {
+export default function ThumbnailStudio({ apiKey, templateData }: { apiKey?: string; templateData?: { prompt?: string; tags?: string[]; [key: string]: any } }) {
   // Tabs
   const [activeTab, setActiveTab] = useState<'generate' | 'mine' | 'community'>('generate')
 
   // Generate form
   const [prompt, setPrompt] = useState('')
   const [selectedStyle, setSelectedStyle] = useState('cinematic')
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const templateApplied = useRef<string | null>(null)
+  useEffect(() => {
+    if (!templateData || templateApplied.current === templateData.slug) return;
+    templateApplied.current = templateData.slug
+
+    if (templateData.prompt) {
+      setPrompt(templateData.prompt)
+    }
+    const tag = templateData.tags?.[0]
+    if (tag && STYLES.some((s) => s.value === tag)) {
+      setSelectedStyle(tag)
+    }
+  }, [templateData])
   const [selectedSize, setSelectedSize] = useState<SizePreset>(SIZE_PRESETS[0])
   const [selectedModel, setSelectedModel] = useState<ImageModel>('gpt-image-2')
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)

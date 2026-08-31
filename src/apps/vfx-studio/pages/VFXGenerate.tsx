@@ -164,7 +164,12 @@ function saveUIState(state: UIState) {
   }
 }
 
-export default function VFXGenerate({ apiKey }: { apiKey?: string }) {
+export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, templateData }: { 
+  apiKey?: string; 
+  onRequestApiKey?: () => void;
+  onDismissApiKey?: () => void;
+  templateData?: { prompt?: string; aspectRatio?: string; [key: string]: any };
+}) {
   const saved = loadUIState();
 
   const [activeCategory, setActiveCategory] = useState<CategoryId>(saved?.activeCategory || 'ai-effects');
@@ -177,15 +182,29 @@ export default function VFXGenerate({ apiKey }: { apiKey?: string }) {
   const [resolution, setResolution] = useState<Resolution>(saved?.resolution || '480p');
   const [duration, setDuration] = useState(saved?.duration ?? 5);
   const [quality, setQuality] = useState<Quality>(saved?.quality || 'medium');
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const templateApplied = useRef<string | null>(null);
+  useEffect(() => {
+    if (!templateData || templateApplied.current === templateData.slug) return;
+    templateApplied.current = templateData.slug;
+
+    if (templateData.prompt) {
+      setPrompt(templateData.prompt);
+    }
+    if (templateData.aspectRatio) {
+      setAspectRatio(templateData.aspectRatio);
+    }
+  }, [templateData]);
   const [copied, setCopied] = useState(false);
   const [search, setSearch] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [showInputBar, setShowInputBar] = useState(true);
   const [showChatButton, setShowChatButton] = useState(false);
-  // Seed from the global key passed down by StandaloneShell (fall back to the
-  // studio's own ApiKeyModal entry, which calls setUserApiKey on save).
+  // Seed from the global key passed down by StandaloneShell.
   const [userApiKey, setUserApiKey] = useState(apiKey || '');
   const [showGenerationModal, setShowGenerationModal] = useState(false);
+  const [pendingGenerate, setPendingGenerate] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -359,6 +378,22 @@ export default function VFXGenerate({ apiKey }: { apiKey?: string }) {
     setPrompt('');
     setShowGenerationModal(false);
   }, [reset, clearImage]);
+
+  // If the user requested generation but the key was missing, auto-trigger
+  // generation once the global key is restored.
+  useEffect(() => {
+    if (pendingGenerate && userApiKey) {
+      setPendingGenerate(false);
+      handleGenerate();
+    }
+  }, [pendingGenerate, userApiKey, handleGenerate]);
+
+  // Reset pending generate when the global modal is dismissed without saving.
+  useEffect(() => {
+    if (!apiKey && !userApiKey && pendingGenerate) {
+      setPendingGenerate(false);
+    }
+  }, [apiKey, userApiKey, pendingGenerate]);
 
   const statusLabel = useMemo(() => {
     switch (status) {
@@ -671,6 +706,9 @@ export default function VFXGenerate({ apiKey }: { apiKey?: string }) {
         videoUrl={videoUrl}
         userApiKey={userApiKey}
         setUserApiKey={setUserApiKey}
+        pendingGenerate={pendingGenerate}
+        setPendingGenerate={setPendingGenerate}
+        onRequestApiKey={onRequestApiKey}
       />
 
       {/* Chat bubble button (upstream feature parity) */}

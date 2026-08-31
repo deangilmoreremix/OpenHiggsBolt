@@ -233,7 +233,7 @@ function SimpleDropdown({ isOpen, title, options, selected, onSelect, onClose })
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled }) {
+export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled, templateData }) {
   const PERSIST_KEY = "hg_marketing_studio_persistent";
   
   const [prompt, setPrompt] = useState("");
@@ -320,6 +320,20 @@ export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled }
     }, 500);
     return () => clearTimeout(timer);
   }, [prompt, params, productImage, avatarImage, additionalImages, history]);
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const templateApplied = useRef(null);
+  useEffect(() => {
+    if (!templateData || templateApplied.current === templateData.slug) return;
+    templateApplied.current = templateData.slug;
+
+    if (templateData.prompt) {
+      setPrompt(templateData.prompt);
+    }
+    if (templateData.aspectRatio) {
+      setParams((p) => ({ ...p, ratio: templateData.aspectRatio }));
+    }
+  }, [templateData]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 

@@ -383,7 +383,8 @@ function MarketingStudio(_ref4) {
   var _ASSETS$avatar$find;
   var apiKey = _ref4.apiKey,
     droppedFiles = _ref4.droppedFiles,
-    onFilesHandled = _ref4.onFilesHandled;
+    onFilesHandled = _ref4.onFilesHandled,
+    templateData = _ref4.templateData;
   var PERSIST_KEY = "hg_marketing_studio_persistent";
   var _useState = (0, _react.useState)(""),
     _useState2 = _slicedToArray(_useState, 2),
@@ -522,6 +523,23 @@ function MarketingStudio(_ref4) {
       return clearTimeout(timer);
     };
   }, [prompt, params, productImage, avatarImage, additionalImages, history]);
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  var templateApplied = (0, _react.useRef)(null);
+  (0, _react.useEffect)(function () {
+    if (!templateData || templateApplied.current === templateData.slug) return;
+    templateApplied.current = templateData.slug;
+    if (templateData.prompt) {
+      setPrompt(templateData.prompt);
+    }
+    if (templateData.aspectRatio) {
+      setParams(function (p) {
+        return _objectSpread(_objectSpread({}, p), {}, {
+          ratio: templateData.aspectRatio
+        });
+      });
+    }
+  }, [templateData]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 

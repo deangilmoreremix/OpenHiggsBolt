@@ -206,7 +206,8 @@ function ClippingStudio(_ref2) {
   var apiKey = _ref2.apiKey,
     onGenerationComplete = _ref2.onGenerationComplete,
     droppedFiles = _ref2.droppedFiles,
-    onFilesHandled = _ref2.onFilesHandled;
+    onFilesHandled = _ref2.onFilesHandled,
+    templateData = _ref2.templateData;
   var PERSIST_KEY = "hg_clipping_studio_persistent";
 
   // ── Clipping Parameters State ───────────────────────────────────────────
@@ -449,6 +450,19 @@ function ClippingStudio(_ref2) {
     });
     setPrompt((0, _promptRecipes.fillTemplate)(step0.prompt || skill.description || "", vals));
   }
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  var templateApplied = (0, _react.useRef)(null);
+  (0, _react.useEffect)(function () {
+    if (!templateData || templateApplied.current === templateData.slug) return;
+    templateApplied.current = templateData.slug;
+    if (templateData.prompt) {
+      setPrompt(templateData.prompt);
+    }
+    if (templateData.aspectRatio) {
+      setAspectRatio(templateData.aspectRatio);
+    }
+  }, [templateData]);
 
   // ── Highlight Seeking Helper ─────────────────────────────────────────────
   var seekToHighlight = function seekToHighlight(startSec) {

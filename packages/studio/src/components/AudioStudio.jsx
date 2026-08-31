@@ -479,6 +479,7 @@ export default function AudioStudio({
   historyItems,
   droppedFiles,
   onFilesHandled,
+  templateData,
 }) {
   const PERSIST_KEY = "hg_audio_studio_persistent";
 
@@ -554,6 +555,17 @@ export default function AudioStudio({
     }, 500);
     return () => clearTimeout(timer);
   }, [selectedModelId, params, internalHistory, activeResultUrl, activeResultTitle, view]);
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const templateApplied = useRef(null);
+  useEffect(() => {
+    if (!templateData || templateApplied.current === templateData.slug) return;
+    templateApplied.current = templateData.slug;
+
+    if (templateData.prompt) {
+      setParams((p) => ({ ...p, prompt: templateData.prompt }));
+    }
+  }, [templateData]);
 
   // ── Handle Dropped Files ────────────────────────────────────────────────
   useEffect(() => {

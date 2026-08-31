@@ -96,6 +96,7 @@ export default function ClippingStudio({
   onGenerationComplete,
   droppedFiles,
   onFilesHandled,
+  templateData,
 }) {
   const PERSIST_KEY = "hg_clipping_studio_persistent";
 
@@ -272,6 +273,20 @@ export default function ClippingStudio({
     });
     setPrompt(fillTemplate(step0.prompt || skill.description || "", vals));
   }
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const templateApplied = useRef(null);
+  useEffect(() => {
+    if (!templateData || templateApplied.current === templateData.slug) return;
+    templateApplied.current = templateData.slug;
+
+    if (templateData.prompt) {
+      setPrompt(templateData.prompt);
+    }
+    if (templateData.aspectRatio) {
+      setAspectRatio(templateData.aspectRatio);
+    }
+  }, [templateData]);
 
   // ── Highlight Seeking Helper ─────────────────────────────────────────────
   const seekToHighlight = (startSec) => {

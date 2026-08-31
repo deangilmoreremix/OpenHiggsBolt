@@ -437,7 +437,8 @@ function CameraControlsOverlay(_ref3) {
 function CinemaStudio(_ref4) {
   var apiKey = _ref4.apiKey,
     onGenerationComplete = _ref4.onGenerationComplete,
-    historyItems = _ref4.historyItems;
+    historyItems = _ref4.historyItems,
+    templateData = _ref4.templateData;
   var PERSIST_KEY = "hg_cinema_studio_persistent";
 
   // ── Settings state ──
@@ -610,6 +611,30 @@ function CinemaStudio(_ref4) {
       console.warn("Failed to load CinemaStudio persistence:", err);
     }
   }, []);
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  var templateApplied = (0, _react.useRef)(null);
+  (0, _react.useEffect)(function () {
+    if (!templateData || templateApplied.current === templateData.slug) return;
+    templateApplied.current = templateData.slug;
+    if (templateData.prompt) {
+      setSettings(function (s) {
+        return _objectSpread(_objectSpread({}, s), {}, {
+          prompt: templateData.prompt
+        });
+      });
+    }
+    if (templateData.aspectRatio) {
+      setSettings(function (s) {
+        return _objectSpread(_objectSpread({}, s), {}, {
+          aspect_ratio: templateData.aspectRatio
+        });
+      });
+    }
+    if (templateData.duration || templateData.resolution) {
+      setResolution(templateData.resolution || "2K");
+    }
+  }, [templateData]);
 
   // ── Adjust height on load ────────────────────────────────────────────────
   (0, _react.useEffect)(function () {

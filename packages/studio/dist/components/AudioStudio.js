@@ -671,7 +671,8 @@ function AudioStudio(_ref7) {
     onGenerationComplete = _ref7.onGenerationComplete,
     historyItems = _ref7.historyItems,
     droppedFiles = _ref7.droppedFiles,
-    onFilesHandled = _ref7.onFilesHandled;
+    onFilesHandled = _ref7.onFilesHandled,
+    templateData = _ref7.templateData;
   var PERSIST_KEY = "hg_audio_studio_persistent";
 
   // ── Mode & model state ──────────────────────────────────────────────────
@@ -780,6 +781,20 @@ function AudioStudio(_ref7) {
       return clearTimeout(timer);
     };
   }, [selectedModelId, params, internalHistory, activeResultUrl, activeResultTitle, view]);
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  var templateApplied = (0, _react.useRef)(null);
+  (0, _react.useEffect)(function () {
+    if (!templateData || templateApplied.current === templateData.slug) return;
+    templateApplied.current = templateData.slug;
+    if (templateData.prompt) {
+      setParams(function (p) {
+        return _objectSpread(_objectSpread({}, p), {}, {
+          prompt: templateData.prompt
+        });
+      });
+    }
+  }, [templateData]);
 
   // ── Handle Dropped Files ────────────────────────────────────────────────
   (0, _react.useEffect)(function () {

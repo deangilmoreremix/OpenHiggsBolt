@@ -269,6 +269,7 @@ export default function RecastStudio({
   historyItems,
   droppedFiles,
   onFilesHandled,
+  templateData,
 }) {
   const PERSIST_KEY = "hg_recast_studio_persistent";
 
@@ -397,6 +398,20 @@ export default function RecastStudio({
     prompt,
     internalHistory,
   ]);
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const templateApplied = useRef(null);
+  useEffect(() => {
+    if (!templateData || templateApplied.current === templateData.slug) return;
+    templateApplied.current = templateData.slug;
+
+    if (templateData.prompt) {
+      setPrompt(templateData.prompt);
+    }
+    if (templateData.aspectRatio) {
+      setSelectedAspectRatio(templateData.aspectRatio);
+    }
+  }, [templateData]);
 
   // ── Derived model info ──────────────────────────────────────────────────────
   const selectedModel = getRecastModelById(selectedModelId);

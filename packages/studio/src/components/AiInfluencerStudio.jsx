@@ -335,7 +335,7 @@ function HoverPill({ label, img, onClick }) {
 }
 
 // ─── Main Component ─────────────────────────────────────────────────────────
-export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: externalIsGenerating }) {
+export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: externalIsGenerating, templateData }) {
   const [activeTab, setActiveTab] = useState("face");
 
   const [selectedOptions, setSelectedOptions] = useState(() => {
@@ -388,6 +388,20 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
       fillTemplate(step0.prompt || skill.description || "", vals),
     );
   }
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const templateApplied = useRef(null);
+  useEffect(() => {
+    if (!templateData || templateApplied.current === templateData.slug) return;
+    templateApplied.current = templateData.slug;
+
+    if (templateData.prompt) {
+      setCustomPrompt(templateData.prompt);
+    }
+    if (templateData.aspectRatio) {
+      setAspectRatio(templateData.aspectRatio);
+    }
+  }, [templateData]);
 
   // ── Build prompt from selections ──────────────────────────────────────────
   const buildPrompt = useCallback(() => {

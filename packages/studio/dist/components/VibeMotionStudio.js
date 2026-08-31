@@ -108,7 +108,8 @@ function DropdownItem(_ref) {
 // ── Main Component ────────────────────────────────────────────────────────────
 function VibeMotionStudio(_ref2) {
   var _sourceEntry$prompt, _sourceEntry$prompt2, _sourceEntry$prompt3;
-  var apiKey = _ref2.apiKey;
+  var apiKey = _ref2.apiKey,
+    templateData = _ref2.templateData;
   var PERSIST_KEY = "hg_vibe_motion_studio_persistent";
 
   // ── Params ────────────────────────────────────────────────────────────────
@@ -277,6 +278,22 @@ function VibeMotionStudio(_ref2) {
     });
     setPrompt((0, _promptRecipes.fillTemplate)(step0.prompt || skill.description || "", vals));
   }
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  var templateApplied = (0, _react.useRef)(null);
+  (0, _react.useEffect)(function () {
+    if (!templateData || templateApplied.current === templateData.slug) return;
+    templateApplied.current = templateData.slug;
+    if (templateData.prompt) {
+      setPrompt(templateData.prompt);
+    }
+    if (templateData.aspectRatio) {
+      setAspectRatio(templateData.aspectRatio);
+    }
+    if (templateData.duration) {
+      setDuration(templateData.duration);
+    }
+  }, [templateData]);
 
   // ── Generate ──────────────────────────────────────────────────────────────
   var handleGenerate = (0, _react.useCallback)(/*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee() {
