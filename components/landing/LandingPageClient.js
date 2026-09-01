@@ -14,6 +14,12 @@ const FullStudio = dynamic(() => import('@/components/StandaloneShell'), {
   )
 });
 
+// Only render Clerk-dependent auth controls when the publishable key is present.
+// This prevents useAuth() from being called outside <ClerkProvider /> during
+// local development with empty/missing keys.
+const isClerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+const AuthControls = isClerkEnabled ? LandingAuthControls : null;
+
 export default function LandingPageClient() {
-  return <LandingPage FullStudio={FullStudio} AuthControls={LandingAuthControls} />;
+  return <LandingPage FullStudio={FullStudio} AuthControls={AuthControls} />;
 }
