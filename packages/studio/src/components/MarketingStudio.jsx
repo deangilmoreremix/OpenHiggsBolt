@@ -336,13 +336,20 @@ export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled, 
   });
 
   // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  const handoffApplied = useRef(null);
   useEffect(() => {
-    const handoff = readStoryboardHandoff("marketing");
-    if (!handoff) return;
-    if (handoff.combinedPrompt || handoff.projectName) {
-      setPrompt(handoff.combinedPrompt || handoff.projectName);
-    }
-    clearStoryboardHandoff();
+    try {
+      const handoff = readStoryboardHandoff("marketing");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+      if (['9:16', '3:4', '4:3', '16:9', '1:1'].includes(handoff.aspectRatio)) {
+        setParams((p) => ({ ...p, ratio: handoff.aspectRatio }));
+      }
+    } catch (error) { /* silent */ }
   }, []);
 
   // ── Handlers ───────────────────────────────────────────────────────────────

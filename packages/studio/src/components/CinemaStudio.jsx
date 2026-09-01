@@ -575,17 +575,23 @@ export default function CinemaStudio({
   });
 
   // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  const handoffApplied = useRef(null);
   useEffect(() => {
-    const handoff = readStoryboardHandoff("cinema");
-    if (!handoff) return;
-    if (handoff.combinedPrompt || handoff.projectName) {
-      setSettings((s) => ({ ...s, prompt: handoff.combinedPrompt || handoff.projectName }));
-    }
-    if (handoff.aspectRatio) {
-      const normalized = normalizeAspectRatio(handoff.aspectRatio, "16:9");
-      setSettings((s) => ({ ...s, aspect_ratio: normalized }));
-    }
-    clearStoryboardHandoff();
+    try {
+      const handoff = readStoryboardHandoff("cinema");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setSettings((s) => ({ ...s, prompt: handoff.combinedPrompt || handoff.projectName }));
+      }
+      if (handoff.firstFrameUrl || handoff.referenceImageUrl) {
+        setUploadedImage(handoff.firstFrameUrl || handoff.referenceImageUrl);
+      }
+      if (['1:1', '16:9', '9:16', '21:9', '4:5'].includes(handoff.aspectRatio)) {
+        setSettings((s) => ({ ...s, aspect_ratio: handoff.aspectRatio }));
+      }
+    } catch (error) { /* silent */ }
   }, []);
 
   // ── Adjust height on load ────────────────────────────────────────────────

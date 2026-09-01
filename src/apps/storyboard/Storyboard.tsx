@@ -1,16 +1,16 @@
 import { useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
-import { StoryboardProvider } from './StoryboardContext'
+import { StoryboardProvider, useStoryboard } from './StoryboardContext'
 import StoryboardPlanner from './pages/StoryboardPlanner'
 import ShotEditor from './pages/ShotEditor'
 import SceneAnalysis from './pages/SceneAnalysis'
 
 function StoryboardPlannerWithTemplate({ templateData }: { templateData?: { prompt?: string; [key: string]: any } }) {
-  const { brief, setBrief } = require('../StoryboardContext').useStoryboard()
+  const { brief, setBrief } = useStoryboard()
 
   useEffect(() => {
     if (!templateData?.prompt) return
-    if (brief) return // don't overwrite existing brief
+    if (brief != null && brief !== '') return // don't overwrite existing brief
     setBrief(templateData.prompt)
   }, [templateData, brief, setBrief])
 

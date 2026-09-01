@@ -27,6 +27,7 @@ import {
 import { buttons, semantic, tabStyle, optionStyle, appWrapper, iconBadge } from '@/shared/styles/designTokens'
 import type { PromptRecord, FeedStats } from '@/types/go-ai-viral/prompt'
 import type { SeedancePrompt, SeedanceStats } from '@/types/go-ai-viral/seedance'
+import { createViralHandoff, emitSendTo, TARGET_LABEL, VIRAL_TARGETS_BY_MEDIA, type StudioTarget, type ViralSourceMedia } from '@/shared/crossStudio'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -93,7 +94,65 @@ function getModelDisplay(model: string): string {
     stability: 'Stable Diffusion',
     alibaba: 'Alibaba',
   }
-  return map[model] || model
+   return map[model] || model
+}
+
+// ── StudioTargetPicker ─────────────────────────────────────────────────────────
+
+interface StudioTargetPickerProps {
+  mediaType: ViralSourceMedia | null | undefined
+  onClose: () => void
+  onSelectTarget?: (target: StudioTarget, record: Record<string, any>) => void
+  record?: Record<string, any>
+}
+
+function StudioTargetPicker({ mediaType, onClose, onSelectTarget, record }: StudioTargetPickerProps) {
+  const targets = (mediaType && VIRAL_TARGETS_BY_MEDIA[mediaType]) || VIRAL_TARGETS_BY_MEDIA.video
+
+  const handleSelect = (target: StudioTarget) => {
+    if (onSelectTarget && record) {
+      onSelectTarget(target, record)
+    } else {
+      emitSendTo(target)
+    }
+    onClose()
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Open in studio"
+      className="fixed inset-0 z-[60] flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.6)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl border border-white/10 p-4"
+        style={{ background: 'var(--bg-panel)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-sm font-semibold text-white mb-3">Open in...</p>
+        <div className="flex flex-col gap-2">
+          {targets.map((target) => (
+            <button
+              key={target}
+              onClick={() => handleSelect(target)}
+              className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] transition-colors"
+            >
+              {TARGET_LABEL[target]}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={onClose}
+          className="mt-3 w-full px-4 py-2 rounded-xl text-xs font-medium text-white/60 hover:text-white transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
 }
 
 // ── PromptCard ────────────────────────────────────────────────────────────────
@@ -105,20 +164,26 @@ interface PromptCardProps {
 }
 
 function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
+  const [showPicker, setShowPicker] = useState(false)
   const MediaIcon = getMediaTypeIcon(record.mediaType)
   const primaryMedia =
     record.media.find((m) => m.role === 'result') || record.media[0]
 
+  const handleOpenInStudio = () => {
+    setShowPicker(true)
+  }
+
   return (
-    <button
-      onClick={() => onSelect(record)}
-      className={classNames(
-        'group relative flex flex-col rounded-3xl border text-left transition-all duration-300 overflow-hidden',
-        isSelected
-          ? 'border-cyan-400/50 bg-cyan-400/[0.03]'
-          : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
-      )}
-    >
+    <>
+      <button
+        onClick={() => onSelect(record)}
+        className={classNames(
+          'group relative flex flex-col rounded-3xl border text-left transition-all duration-300 overflow-hidden',
+          isSelected
+            ? 'border-cyan-400/50 bg-cyan-400/[0.03]'
+            : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
+        )}
+      >
       {/* Media preview */}
       <div className="relative">
         {primaryMedia ? (
@@ -182,12 +247,22 @@ function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
           >
             View Prompt
           </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleOpenInStudio()
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-4 py-2.5 text-sm font-bold text-black shadow-glow transition hover:scale-[1.01]"
+          >
+            Open in Studio
+          </button>
           {record.source?.url && (
             <a
               href={record.source.url}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-4 py-2.5 text-sm font-bold text-black shadow-glow transition hover:scale-[1.01]"
+              className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
             >
               Open Source
             </a>
@@ -195,6 +270,33 @@ function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
         </div>
       </div>
     </button>
+    {showPicker && (
+      <StudioTargetPicker
+        mediaType={record.mediaType || 'image'}
+        onClose={() => setShowPicker(false)}
+        record={{
+          title: record.title,
+          prompt: record.prompt,
+          fullPrompt: record.prompt,
+          mediaType: record.mediaType,
+          media: record.media,
+          detailHref: record.source?.url || null,
+        }}
+        onSelectTarget={(target, recordData) => {
+          const handoff = createViralHandoff({
+            target,
+            record: recordData,
+          })
+          try {
+            localStorage.setItem('storyboard_to_studio', JSON.stringify(handoff))
+          } catch {
+            // ignore
+          }
+          emitSendTo(target)
+        }}
+      />
+    )}
+    </>
   )
 }
 
@@ -206,18 +308,24 @@ interface VideoPromptCardProps {
 }
 
 function VideoPromptCard({ record, onSelect }: VideoPromptCardProps) {
+  const [showPicker, setShowPicker] = useState(false)
   const primaryMedia = record.outputUrl
     ? { previewUrl: record.outputUrl, altText: record.prompt }
     : null
 
+  const handleOpenInStudio = () => {
+    setShowPicker(true)
+  }
+
   return (
-    <button
-      onClick={() => onSelect(record)}
-      className={classNames(
-        'group relative flex flex-col rounded-3xl border text-left transition-all duration-300 overflow-hidden',
-        'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
-      )}
-    >
+    <>
+      <button
+        onClick={() => onSelect(record)}
+        className={classNames(
+          'group relative flex flex-col rounded-3xl border text-left transition-all duration-300 overflow-hidden',
+          'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
+        )}
+      >
       {/* Video preview */}
       <div className="relative">
         {primaryMedia ? (
@@ -279,12 +387,22 @@ function VideoPromptCard({ record, onSelect }: VideoPromptCardProps) {
           >
             View Prompt
           </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleOpenInStudio()
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-4 py-2.5 text-sm font-bold text-black shadow-glow transition hover:scale-[1.01]"
+          >
+            Open in Studio
+          </button>
           {record.outputUrl && (
             <a
               href={record.outputUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-4 py-2.5 text-sm font-bold text-black shadow-glow transition hover:scale-[1.01]"
+              className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
             >
               Play Video
             </a>
@@ -292,6 +410,33 @@ function VideoPromptCard({ record, onSelect }: VideoPromptCardProps) {
         </div>
       </div>
     </button>
+    {showPicker && (
+      <StudioTargetPicker
+        mediaType="video"
+        onClose={() => setShowPicker(false)}
+        record={{
+          title: record.prompt,
+          prompt: record.prompt,
+          fullPrompt: record.fullPrompt,
+          mediaType: 'video',
+          outputUrl: record.outputUrl,
+          detailHref: record.detailHref,
+        }}
+        onSelectTarget={(target, recordData) => {
+          const handoff = createViralHandoff({
+            target,
+            record: recordData,
+          })
+          try {
+            localStorage.setItem('storyboard_to_studio', JSON.stringify(handoff))
+          } catch {
+            // ignore
+          }
+          emitSendTo(target)
+        }}
+      />
+    )}
+    </>
   )
 }
 
@@ -303,15 +448,22 @@ interface VideoPromptModalProps {
 }
 
 function VideoPromptModal({ record, onClose }: VideoPromptModalProps) {
+  const [showPicker, setShowPicker] = useState(false)
+
+  const handleOpenInStudio = () => {
+    setShowPicker(true)
+  }
+
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="video-prompt-title"
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto"
-      style={{ background: 'rgba(0,0,0,0.8)' }}
-      onClick={onClose}
-    >
+    <>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="video-prompt-title"
+        className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto"
+        style={{ background: 'rgba(0,0,0,0.8)' }}
+        onClick={onClose}
+      >
       <div
         className="relative mx-4 my-8 w-full max-w-4xl rounded-2xl border border-white/10"
         style={{ background: 'var(--bg-panel)' }}
@@ -358,6 +510,14 @@ function VideoPromptModal({ record, onClose }: VideoPromptModalProps) {
           </div>
 
           <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleOpenInStudio}
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold"
+              style={buttons.primary}
+            >
+              Open in Studio
+            </button>
             {record.detailHref && (
               <a
                 href={record.detailHref}
@@ -395,6 +555,33 @@ function VideoPromptModal({ record, onClose }: VideoPromptModalProps) {
         </div>
       </div>
     </div>
+    {showPicker && (
+      <StudioTargetPicker
+        mediaType="video"
+        onClose={() => setShowPicker(false)}
+        record={{
+          title: record.prompt,
+          prompt: record.prompt,
+          fullPrompt: record.fullPrompt,
+          mediaType: 'video',
+          outputUrl: record.outputUrl,
+          detailHref: record.detailHref,
+        }}
+        onSelectTarget={(target, recordData) => {
+          const handoff = createViralHandoff({
+            target,
+            record: recordData,
+          })
+          try {
+            localStorage.setItem('storyboard_to_studio', JSON.stringify(handoff))
+          } catch {
+            // ignore
+          }
+          emitSendTo(target)
+        }}
+      />
+    )}
+    </>
   )
 }
 
@@ -407,8 +594,13 @@ interface PromptDetailModalProps {
 
 function PromptDetailModal({ record, onClose }: PromptDetailModalProps) {
   const [copied, setCopied] = useState(false)
+  const [showPicker, setShowPicker] = useState(false)
   const modalRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
+
+  const handleOpenInStudio = () => {
+    setShowPicker(true)
+  }
 
   useEffect(() => {
     previousFocusRef.current = document.activeElement as HTMLElement | null
@@ -662,6 +854,14 @@ function PromptDetailModal({ record, onClose }: PromptDetailModalProps) {
         {/* Footer actions */}
         <div className="border-t border-white/10 p-4 flex gap-3">
           <button
+            type="button"
+            onClick={handleOpenInStudio}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+            style={buttons.primary}
+          >
+            Open in Studio
+          </button>
+          <button
             onClick={handleCopy}
             className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
             style={buttons.primary}
@@ -679,6 +879,32 @@ function PromptDetailModal({ record, onClose }: PromptDetailModalProps) {
           </a>
         </div>
       </div>
+    {showPicker && (
+      <StudioTargetPicker
+        mediaType="video"
+        onClose={() => setShowPicker(false)}
+        record={{
+          title: record.prompt,
+          prompt: record.prompt,
+          fullPrompt: record.fullPrompt,
+          mediaType: 'video',
+          outputUrl: record.outputUrl,
+          detailHref: record.detailHref,
+        }}
+        onSelectTarget={(target, recordData) => {
+          const handoff = createViralHandoff({
+            target,
+            record: recordData,
+          })
+          try {
+            localStorage.setItem('storyboard_to_studio', JSON.stringify(handoff))
+          } catch {
+            // ignore
+          }
+          emitSendTo(target)
+        }}
+      />
+    )}
     </div>
   )
 }

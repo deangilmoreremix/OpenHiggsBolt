@@ -887,22 +887,26 @@ export default function ImageStudio({
   }, [dropdownOpen]);
 
   // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  const handoffApplied = useRef(null);
   useEffect(() => {
-    const handoff = readStoryboardHandoff("image");
-    if (!handoff) return;
-    if (handoff.combinedPrompt || handoff.projectName) {
-      setPrompt(handoff.combinedPrompt || handoff.projectName);
-    }
-    if (handoff.aspectRatio) {
-      setSelectedAr(handoff.aspectRatio);
-    }
-    const ref = handoff.firstFrameUrl || handoff.referenceImageUrl;
-    if (ref) {
-      setUploadedImageUrls((prev) => (prev.includes(ref) ? prev : [...prev, ref]));
-      setSwapImageUrl(ref);
-      setImageMode(true);
-    }
-    clearStoryboardHandoff();
+    try {
+      const handoff = readStoryboardHandoff("image");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+      const ref = handoff.firstFrameUrl || handoff.referenceImageUrl;
+      if (ref) {
+        setUploadedImageUrls((prev) => (prev.includes(ref) ? prev : [...prev, ref]));
+        setSwapImageUrl(ref);
+        setImageMode(true);
+      }
+      if (handoff.aspectRatio) {
+        setSelectedAr(handoff.aspectRatio);
+      }
+    } catch (error) { /* silent */ }
   }, []);
 
   // ── Persistence: Load ────────────────────────────────────────────────────

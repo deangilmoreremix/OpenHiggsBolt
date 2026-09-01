@@ -639,25 +639,30 @@ function CinemaStudio(_ref4) {
     isTemplateApplied = _useTemplateData.isTemplateApplied;
 
   // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  var handoffApplied = (0, _react.useRef)(null);
   (0, _react.useEffect)(function () {
-    var handoff = (0, _storyboardHandoff.readStoryboardHandoff)("cinema");
-    if (!handoff) return;
-    if (handoff.combinedPrompt || handoff.projectName) {
-      setSettings(function (s) {
-        return _objectSpread(_objectSpread({}, s), {}, {
-          prompt: handoff.combinedPrompt || handoff.projectName
+    try {
+      var handoff = (0, _storyboardHandoff.readStoryboardHandoff)("cinema");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setSettings(function (s) {
+          return _objectSpread(_objectSpread({}, s), {}, {
+            prompt: handoff.combinedPrompt || handoff.projectName
+          });
         });
-      });
-    }
-    if (handoff.aspectRatio) {
-      var normalized = (0, _useTemplateData2.normalizeAspectRatio)(handoff.aspectRatio, "16:9");
-      setSettings(function (s) {
-        return _objectSpread(_objectSpread({}, s), {}, {
-          aspect_ratio: normalized
+      }
+      if (handoff.firstFrameUrl || handoff.referenceImageUrl) {
+        setUploadedImage(handoff.firstFrameUrl || handoff.referenceImageUrl);
+      }
+      if (['1:1', '16:9', '9:16', '21:9', '4:5'].includes(handoff.aspectRatio)) {
+        setSettings(function (s) {
+          return _objectSpread(_objectSpread({}, s), {}, {
+            aspect_ratio: handoff.aspectRatio
+          });
         });
-      });
-    }
-    (0, _storyboardHandoff.clearStoryboardHandoff)();
+      }
+    } catch (error) {/* silent */}
   }, []);
 
   // ── Adjust height on load ────────────────────────────────────────────────

@@ -219,6 +219,10 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
   // the shared `storyboard:send-to` event. The source studio writes its
   // payload to localStorage before emitting, so the target studio can apply
   // it on mount.
+  const handleTabChangeRef = useRef(handleTabChange)
+  useEffect(() => {
+    handleTabChangeRef.current = handleTabChange
+  })
   useEffect(() => {
     const handler = (e) => {
       const { target } = e.detail || {}
@@ -227,7 +231,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
         typeof target === 'string' && SLUG_TO_TAB[target]
           ? SLUG_TO_TAB[target]
           : target
-      handleTabChange(tabId)
+      handleTabChangeRef.current(tabId)
     }
     window.addEventListener('storyboard:send-to', handler)
     return () => window.removeEventListener('storyboard:send-to', handler)
@@ -665,7 +669,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
            {activeTab === 'workflows' && <WorkflowStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}
           {activeTab === 'agents' && <AgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}
           {activeTab === 'design-agent' && <DesignAgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}
-          {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} templateData={templateData} /></MemoryRouter>}
+           {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} onDismissApiKey={() => setShowApiKeyPopup(false)} templateData={templateData} /></MemoryRouter>}
           {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} templateData={templateData} /></MemoryRouter>}
          {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
          {activeTab === 'brand-studio' && (

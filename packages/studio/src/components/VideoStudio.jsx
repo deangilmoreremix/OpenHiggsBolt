@@ -903,7 +903,7 @@ export default function VideoStudio({
   const templateApplied = useRef(null);
   useEffect(() => {
     const templateId = templateData?.sourceRepo && templateData?.slug
-      ? `${templateData.sourceRepo}-${templateData.slug}`
+      ? `${templateData.sourceRepo}|${templateData.slug}`
       : templateData?.slug;
     if (!templateData || templateApplied.current === templateId) return;
     templateApplied.current = templateId;
@@ -926,7 +926,7 @@ export default function VideoStudio({
 
   // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
   useEffect(() => {
-    const handoff = readHandoff();
+    const handoff = readStoryboardHandoff("video");
     if (!handoff) return;
     if (handoff.combinedPrompt) {
       setPrompt(handoff.combinedPrompt);
@@ -937,7 +937,6 @@ export default function VideoStudio({
     if (handoff.videoUrl) {
       // Could set as source video if the studio supports it
     }
-    clearHandoff();
   }, []);
 
   // ── Adjust height on load ────────────────────────────────────────────────
@@ -1118,7 +1117,6 @@ export default function VideoStudio({
 
   // ── textarea auto-resize ──────────────────────────────────────────────────
   const handlePromptInput = (e) => {
-    clearStoryboardHandoff();
     setPrompt(e.target.value);
     const el = e.target;
     el.style.height = "auto";

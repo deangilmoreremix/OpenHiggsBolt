@@ -997,13 +997,19 @@ function AiInfluencerStudio(_ref2) {
     isTemplateApplied = _useTemplateData.isTemplateApplied;
 
   // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  var handoffApplied = (0, _react.useRef)(null);
   (0, _react.useEffect)(function () {
-    var handoff = (0, _storyboardHandoff.readStoryboardHandoff)("ai-influencer");
-    if (!handoff) return;
-    if (handoff.combinedPrompt || handoff.projectName) {
-      setCustomPrompt(handoff.combinedPrompt || handoff.projectName);
-    }
-    (0, _storyboardHandoff.clearStoryboardHandoff)();
+    try {
+      var handoff = (0, _storyboardHandoff.readStoryboardHandoff)("ai-influencer");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setCustomPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+      if (['3:4', '1:1', '9:16', '16:9'].includes(handoff.aspectRatio)) {
+        setAspectRatio(handoff.aspectRatio);
+      }
+    } catch (error) {/* silent */}
   }, []);
 
   // ── Build prompt from selections ──────────────────────────────────────────
