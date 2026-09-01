@@ -7,6 +7,7 @@ Object.defineProperty(exports, "__esModule", {
 exports["default"] = VibeMotionStudio;
 var _react = require("react");
 var _useTemplateData2 = require("../hooks/useTemplateData");
+var _TemplateBanner = _interopRequireDefault(require("./TemplateBanner"));
 var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
 var _AiAssistantProvider = require("../../../../components/AiAssistantProvider");
 var _muapi = require("../muapi.js");
@@ -831,9 +832,12 @@ function VibeMotionStudio(_ref2) {
               className: "px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed ".concat(editMode ? "bg-[#22d3ee] text-black shadow" : "text-white/40 hover:text-white/70"),
               children: "Edit"
             })]
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "flex-1 flex flex-col gap-1",
-            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_TemplateBanner["default"], {
+              isApplied: isTemplateApplied,
+              onClear: resetTemplate
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
               ref: textareaRef,
               value: prompt,
               onChange: function onChange(e) {
@@ -843,7 +847,7 @@ function VibeMotionStudio(_ref2) {
               placeholder: editMode ? "Describe what to change — 'change background to dark navy, make bars gold, add particles…'" : "Describe the motion graphic — 'Animated sales dashboard with glowing bar charts and rising numbers'",
               rows: 1,
               className: "w-full bg-transparent border-none text-white text-sm placeholder:text-white/10 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar"
-            })
+            })]
           })]
         }), generateError && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
           className: "flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-xs",

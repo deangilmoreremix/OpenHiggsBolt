@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTemplateData } from "../hooks/useTemplateData";
+import TemplateBanner from "./TemplateBanner";
 import { generateAudio, uploadFile } from "../muapi.js";
 import { audioModels, getAudioModelById } from "../models.js";
 import CostEstimator from "./CostEstimator.jsx";
@@ -866,6 +867,7 @@ export default function AudioStudio({
                     <label className="block text-xs font-bold text-zinc-200 uppercase tracking-wider">
                       {schema.title || "Lyrics / Prompt"}
                     </label>
+                    <TemplateBanner isApplied={isTemplateApplied} onClear={resetTemplate} />
                     <textarea
                       value={params[key] || ""}
                       onChange={(e) => setParams(prev => ({ ...prev, [key]: e.target.value }))}

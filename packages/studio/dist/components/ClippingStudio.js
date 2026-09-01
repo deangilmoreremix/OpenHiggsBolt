@@ -7,6 +7,7 @@ Object.defineProperty(exports, "__esModule", {
 exports["default"] = ClippingStudio;
 var _react = require("react");
 var _useTemplateData2 = require("../hooks/useTemplateData");
+var _TemplateBanner = _interopRequireDefault(require("./TemplateBanner"));
 var _muapi = require("../muapi.js");
 var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
 var _skillStore = require("../lib/skillStore");
@@ -1170,16 +1171,19 @@ function ClippingStudio(_ref2) {
                 ry: "2"
               })]
             })]
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "flex-1 flex flex-col gap-1",
-            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_TemplateBanner["default"], {
+              isApplied: isTemplateApplied,
+              onClear: resetTemplate
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
               ref: promptTextareaRef,
               value: prompt,
               onChange: handlePromptInput,
               placeholder: "Describe prompt / highlights to extract",
               rows: 1,
               className: "w-full bg-transparent border-none text-white text-sm placeholder:text-white/20 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] overflow-y-auto custom-scrollbar"
-            })
+            })]
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
           className: "flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-3 border-t border-white/[0.03] relative",

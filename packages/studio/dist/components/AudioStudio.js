@@ -8,6 +8,7 @@ Object.defineProperty(exports, "__esModule", {
 exports["default"] = AudioStudio;
 var _react = require("react");
 var _useTemplateData2 = require("../hooks/useTemplateData");
+var _TemplateBanner = _interopRequireDefault(require("./TemplateBanner"));
 var _muapi = require("../muapi.js");
 var _models = require("../models.js");
 var _CostEstimator = _interopRequireDefault(require("./CostEstimator.jsx"));
@@ -1169,6 +1170,9 @@ function AudioStudio(_ref7) {
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("label", {
                   className: "block text-xs font-bold text-zinc-200 uppercase tracking-wider",
                   children: schema.title || "Lyrics / Prompt"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_TemplateBanner["default"], {
+                  isApplied: isTemplateApplied,
+                  onClear: resetTemplate
                 }), /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
                   value: params[key] || "",
                   onChange: function onChange(e) {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
+import TemplateBanner from "./TemplateBanner";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { processRecast, uploadFile } from "../muapi.js";
@@ -770,6 +771,7 @@ export default function RecastStudio({
 
             {/* Prompt textarea */}
             <div className="flex-1 flex flex-col">
+              <TemplateBanner isApplied={isTemplateApplied} onClear={resetTemplate} />
               <textarea
                 ref={textareaRef}
                 value={prompt}

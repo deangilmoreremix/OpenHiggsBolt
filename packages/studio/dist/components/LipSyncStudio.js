@@ -7,6 +7,7 @@ Object.defineProperty(exports, "__esModule", {
 exports["default"] = LipSyncStudio;
 var _react = require("react");
 var _useTemplateData2 = require("../hooks/useTemplateData");
+var _TemplateBanner = _interopRequireDefault(require("./TemplateBanner"));
 var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
 var _AiAssistantProvider = require("../../../../components/AiAssistantProvider");
 var _muapi = require("../muapi.js");
@@ -1346,16 +1347,19 @@ function LipSyncStudio(_ref7) {
               isVideo: false,
               apiKey: apiKey
             })]
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "flex-1 flex flex-col",
-            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_TemplateBanner["default"], {
+              isApplied: isTemplateApplied,
+              onClear: resetTemplate
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
               ref: textareaRef,
               value: prompt,
               onChange: handlePromptInput,
               placeholder: "Describe speech style...",
               className: "w-full bg-transparent border-none text-white text-sm placeholder:text-white/20 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar disabled:opacity-40",
               rows: 1
-            })
+            })]
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
           className: "flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-3 border-t border-white/[0.03] relative",

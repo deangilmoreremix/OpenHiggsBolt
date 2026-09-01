@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
+import TemplateBanner from "./TemplateBanner";
 import { runClipping, uploadFile } from "../muapi.js";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
@@ -887,6 +888,7 @@ export default function ClippingStudio({
 
             {/* Prompt textarea (supports direct URL pasting too) */}
             <div className="flex-1 flex flex-col gap-1">
+              <TemplateBanner isApplied={isTemplateApplied} onClear={resetTemplate} />
               <textarea
                 ref={promptTextareaRef}
                 value={prompt}

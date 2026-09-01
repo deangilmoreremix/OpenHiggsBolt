@@ -5,6 +5,7 @@ import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { uploadFile, generateMarketingStudioAd } from "../muapi.js";
 import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
+import TemplateBanner from "./TemplateBanner";
 
 const SCROLLBAR_STYLE = `
   .custom-scrollbar-thin::-webkit-scrollbar {
@@ -560,6 +561,7 @@ export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled, 
           )}
           {/* Top Row: Full-width Textarea */}
           <div className="w-full relative">
+            <TemplateBanner isApplied={isTemplateApplied} onClear={resetTemplate} />
             <textarea
               ref={textareaRef}
               value={prompt}

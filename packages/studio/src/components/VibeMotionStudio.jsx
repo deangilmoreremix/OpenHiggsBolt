@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
+import TemplateBanner from "./TemplateBanner";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { runMotionGraphics, runMotionGraphicsEdit } from "../muapi.js";
@@ -573,6 +574,7 @@ export default function VibeMotionStudio({ apiKey, templateData }) {
 
             {/* Prompt textarea */}
             <div className="flex-1 flex flex-col gap-1">
+              <TemplateBanner isApplied={isTemplateApplied} onClear={resetTemplate} />
               <textarea
                 ref={textareaRef}
                 value={prompt}

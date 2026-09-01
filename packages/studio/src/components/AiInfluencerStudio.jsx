@@ -8,6 +8,7 @@ import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
 import registry from "../skills/registry.json";
 import { fillTemplate } from "../lib/promptRecipes";
 import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
+import TemplateBanner from "./TemplateBanner";
 
 const CDN = "https://cdn.muapi.ai/influencer";
 
@@ -747,6 +748,7 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
 
         {/* Custom prompt bar at bottom */}
         <div className="px-6 pb-4 shrink-0">
+          <TemplateBanner isApplied={isTemplateApplied} onClear={resetTemplate} />
           <input
             type="text"
             value={customPrompt}

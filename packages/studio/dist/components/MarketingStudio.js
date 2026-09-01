@@ -10,7 +10,9 @@ var _SocialPublishProvider = require("../../../../components/SocialPublishProvid
 var _AiAssistantProvider = require("../../../../components/AiAssistantProvider");
 var _muapi = require("../muapi.js");
 var _useTemplateData2 = require("../hooks/useTemplateData");
+var _TemplateBanner = _interopRequireDefault(require("./TemplateBanner"));
 var _jsxRuntime = require("react/jsx-runtime");
+function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
 function _regeneratorValues(e) { if (null != e) { var t = e["function" == typeof Symbol && Symbol.iterator || "@@iterator"], r = 0; if (t) return t.call(e); if ("function" == typeof e.next) return e; if (!isNaN(e.length)) return { next: function next() { return e && r >= e.length && (e = void 0), { value: e && e[r++], done: !e }; } }; } throw new TypeError(_typeof(e) + " is not iterable"); }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
@@ -961,9 +963,12 @@ function MarketingStudio(_ref4) {
               })]
             }, idx);
           })
-        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
           className: "w-full relative",
-          children: /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_TemplateBanner["default"], {
+            isApplied: isTemplateApplied,
+            onClear: resetTemplate
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
             ref: textareaRef,
             value: prompt,
             onChange: function onChange(e) {
@@ -973,7 +978,7 @@ function MarketingStudio(_ref4) {
             placeholder: "Describe your ad script... Use @image1 for product, @image2 for avatar.",
             rows: 1,
             className: "w-full bg-transparent border-none text-white text-sm placeholder:text-white/20 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar disabled:opacity-40"
-          })
+          })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
           className: "flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-3 border-t border-white/[0.03] relative",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
