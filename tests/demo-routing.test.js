@@ -25,7 +25,7 @@ describe('Demo routing and URL generation', () => {
   });
 
   it('findDemoById indexes demos by sourceRepo-slug', () => {
-    assert.ok(lookupSource.includes('sourceRepo}-${demo.slug}'), 'Index key should be sourceRepo-slug');
+    assert.ok(lookupSource.includes('sourceRepo}|${demo.slug}'), 'Index key should be sourceRepo|slug');
     assert.ok(lookupSource.includes('DEMO_INDEX.set(key, demo)'), 'DEMO_INDEX should map key to demo');
   });
 
