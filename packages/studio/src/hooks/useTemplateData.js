@@ -37,7 +37,7 @@ export function useTemplateData(templateData, onApply) {
 
     const templateId =
       (templateData.sourceRepo && templateData.slug
-        ? `${templateData.sourceRepo}-${templateData.slug}`
+        ? `${templateData.sourceRepo}|${templateData.slug}`
         : templateData.slug) || null;
 
     if (!templateId || templateApplied.current === templateId) {

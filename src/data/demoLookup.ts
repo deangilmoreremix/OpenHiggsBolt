@@ -13,7 +13,7 @@ const ALL_DEMOS: VideoDemo[] = [
 
 const DEMO_INDEX = new Map<string, VideoDemo>();
 for (const demo of ALL_DEMOS) {
-  const key = `${demo.sourceRepo}-${demo.slug}`;
+  const key = `${demo.sourceRepo}|${demo.slug}`;
   DEMO_INDEX.set(key, demo);
 }
 
@@ -22,7 +22,7 @@ export function findDemoById(templateId: string): VideoDemo | undefined {
 }
 
 export function parseTemplateId(templateId: string): { sourceRepo: string; slug: string } | undefined {
-  const idx = templateId.lastIndexOf('-');
+  const idx = templateId.indexOf('|');
   if (idx === -1) return undefined;
   const sourceRepo = templateId.slice(0, idx);
   const slug = templateId.slice(idx + 1);

@@ -28,6 +28,7 @@ import { buttons, semantic, tabStyle, optionStyle, appWrapper, iconBadge } from 
 import type { PromptRecord, FeedStats } from '@/types/go-ai-viral/prompt'
 import type { SeedancePrompt, SeedanceStats } from '@/types/go-ai-viral/seedance'
 import { createViralHandoff, emitSendTo, TARGET_LABEL, VIRAL_TARGETS_BY_MEDIA, type StudioTarget, type ViralSourceMedia } from '@/shared/crossStudio'
+import { StudioTargetPicker } from './StudioTargetPicker'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -95,64 +96,6 @@ function getModelDisplay(model: string): string {
     alibaba: 'Alibaba',
   }
    return map[model] || model
-}
-
-// ── StudioTargetPicker ─────────────────────────────────────────────────────────
-
-interface StudioTargetPickerProps {
-  mediaType: ViralSourceMedia | null | undefined
-  onClose: () => void
-  onSelectTarget?: (target: StudioTarget, record: Record<string, any>) => void
-  record?: Record<string, any>
-}
-
-function StudioTargetPicker({ mediaType, onClose, onSelectTarget, record }: StudioTargetPickerProps) {
-  const targets = (mediaType && VIRAL_TARGETS_BY_MEDIA[mediaType]) || VIRAL_TARGETS_BY_MEDIA.video
-
-  const handleSelect = (target: StudioTarget) => {
-    if (onSelectTarget && record) {
-      onSelectTarget(target, record)
-    } else {
-      emitSendTo(target)
-    }
-    onClose()
-  }
-
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Open in studio"
-      className="fixed inset-0 z-[60] flex items-center justify-center"
-      style={{ background: 'rgba(0,0,0,0.6)' }}
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-sm rounded-2xl border border-white/10 p-4"
-        style={{ background: 'var(--bg-panel)' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <p className="text-sm font-semibold text-white mb-3">Open in...</p>
-        <div className="flex flex-col gap-2">
-          {targets.map((target) => (
-            <button
-              key={target}
-              onClick={() => handleSelect(target)}
-              className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] transition-colors"
-            >
-              {TARGET_LABEL[target]}
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={onClose}
-          className="mt-3 w-full px-4 py-2 rounded-xl text-xs font-medium text-white/60 hover:text-white transition-colors"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  )
 }
 
 // ── PromptCard ────────────────────────────────────────────────────────────────
@@ -280,6 +223,7 @@ function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
           fullPrompt: record.prompt,
           mediaType: record.mediaType,
           media: record.media,
+          outputUrl: null,
           detailHref: record.source?.url || null,
         }}
         onSelectTarget={(target, recordData) => {
@@ -881,15 +825,16 @@ function PromptDetailModal({ record, onClose }: PromptDetailModalProps) {
       </div>
     {showPicker && (
       <StudioTargetPicker
-        mediaType="video"
+        mediaType={record.mediaType || 'image'}
         onClose={() => setShowPicker(false)}
         record={{
-          title: record.prompt,
+          title: record.title,
           prompt: record.prompt,
-          fullPrompt: record.fullPrompt,
-          mediaType: 'video',
-          outputUrl: record.outputUrl,
-          detailHref: record.detailHref,
+          fullPrompt: record.prompt,
+          mediaType: record.mediaType,
+          media: record.media,
+          outputUrl: null,
+          detailHref: record.source?.url || null,
         }}
         onSelectTarget={(target, recordData) => {
           const handoff = createViralHandoff({

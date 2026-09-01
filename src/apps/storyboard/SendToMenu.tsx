@@ -10,15 +10,19 @@ import {
   writeHandoff,
   emitSendTo,
   TARGET_LABEL,
-  type StoryboardStudioTarget,
+  type StudioTarget,
   type HandoffShot,
 } from '@/shared/crossStudio'
 import { buttons, panels, semantic } from '@/shared/styles/designTokens'
 
-const TARGET_ICON: Record<StoryboardStudioTarget, JSX.Element> = {
+const TARGET_ICON: Record<StudioTarget, JSX.Element> = {
   video: <Video size={14} />,
   cinema: <Film size={14} />,
   'vfx-studio': <Sparkles size={14} />,
+  image: <Video size={14} />,
+  'thumbnail-studio': <Film size={14} />,
+  'ai-influencer': <Sparkles size={14} />,
+  marketing: <Sparkles size={14} />,
 }
 
 /**
@@ -28,7 +32,7 @@ const TARGET_ICON: Record<StoryboardStudioTarget, JSX.Element> = {
  * we emit a `storyboard:send-to` event the shell listens for.)
  */
 function buildAndSend(opts: {
-  target: StoryboardStudioTarget
+  target: StudioTarget
   shots: ReturnType<typeof useStoryboard>['shots']
   characters: ReturnType<typeof useStoryboard>['characters']
   projectName: string
@@ -79,13 +83,13 @@ function buildAndSend(opts: {
 export default function SendToMenu() {
   const { shots, characters, projectName, aspectRatio, episodeDuration, result } = useStoryboard()
   const [open, setOpen] = useState(false)
-  const [sentTo, setSentTo] = useState<StoryboardStudioTarget | null>(null)
+  const [sentTo, setSentTo] = useState<StudioTarget | null>(null)
 
   const disabled = shots.length === 0
 
-  const targets: StoryboardStudioTarget[] = ['video', 'cinema', 'vfx-studio']
+  const targets: StudioTarget[] = ['video', 'cinema', 'vfx-studio']
 
-  const handleSend = (target: StoryboardStudioTarget) => {
+  const handleSend = (target: StudioTarget) => {
     setOpen(false)
     buildAndSend({
       target,
