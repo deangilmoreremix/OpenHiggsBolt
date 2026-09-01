@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useVideoGeneration } from '@/hooks/useVideoGeneration';
 import BottomInputBar from '@/apps/vfx-studio/components/BottomInputBar';
+import { readStoryboardHandoff, clearStoryboardHandoff } from '@/shared/crossStudio';
 import { PublishStep } from '@/components/SocialPublishProvider';
 import { AssistStep } from '@/components/AiAssistantProvider';
 import type { VFXEffect, AspectRatio, Resolution, Quality } from '@/types/vfx';
@@ -199,6 +200,19 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
       setAspectRatio(templateData.aspectRatio as AspectRatio);
     }
   }, [templateData]);
+
+  // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  useEffect(() => {
+    const handoff = readStoryboardHandoff("vfx-studio");
+    if (!handoff) return;
+    if (handoff.combinedPrompt || handoff.projectName) {
+      setPrompt(handoff.combinedPrompt || handoff.projectName);
+    }
+    if (handoff.aspectRatio) {
+      setAspectRatio(handoff.aspectRatio as AspectRatio);
+    }
+    clearStoryboardHandoff();
+  }, []);
   const [copied, setCopied] = useState(false);
   const [search, setSearch] = useState('');
   const [isDragging, setIsDragging] = useState(false);

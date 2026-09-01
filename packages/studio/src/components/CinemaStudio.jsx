@@ -8,6 +8,7 @@ import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
 import registry from "../skills/registry.json";
 import { fillTemplate } from "../lib/promptRecipes";
 import { useTemplateData, isValidAspectRatio, normalizeAspectRatio } from "../hooks/useTemplateData";
+import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
 
 // ─── Constants (inlined from promptUtils) ───────────────────────────────────
 
@@ -572,6 +573,20 @@ export default function CinemaStudio({
       setResolution(data.resolution);
     }
   });
+
+  // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  useEffect(() => {
+    const handoff = readStoryboardHandoff("cinema");
+    if (!handoff) return;
+    if (handoff.combinedPrompt || handoff.projectName) {
+      setSettings((s) => ({ ...s, prompt: handoff.combinedPrompt || handoff.projectName }));
+    }
+    if (handoff.aspectRatio) {
+      const normalized = normalizeAspectRatio(handoff.aspectRatio, "16:9");
+      setSettings((s) => ({ ...s, aspect_ratio: normalized }));
+    }
+    clearStoryboardHandoff();
+  }, []);
 
   // ── Adjust height on load ────────────────────────────────────────────────
   useEffect(() => {

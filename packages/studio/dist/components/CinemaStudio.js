@@ -14,6 +14,7 @@ var _skillStore = require("../lib/skillStore");
 var _registry = _interopRequireDefault(require("../skills/registry.json"));
 var _promptRecipes = require("../lib/promptRecipes");
 var _useTemplateData2 = require("../hooks/useTemplateData");
+var _storyboardHandoff = require("../storyboardHandoff.js");
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
@@ -636,6 +637,28 @@ function CinemaStudio(_ref4) {
     }),
     resetTemplate = _useTemplateData.reset,
     isTemplateApplied = _useTemplateData.isTemplateApplied;
+
+  // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  (0, _react.useEffect)(function () {
+    var handoff = (0, _storyboardHandoff.readStoryboardHandoff)("cinema");
+    if (!handoff) return;
+    if (handoff.combinedPrompt || handoff.projectName) {
+      setSettings(function (s) {
+        return _objectSpread(_objectSpread({}, s), {}, {
+          prompt: handoff.combinedPrompt || handoff.projectName
+        });
+      });
+    }
+    if (handoff.aspectRatio) {
+      var normalized = (0, _useTemplateData2.normalizeAspectRatio)(handoff.aspectRatio, "16:9");
+      setSettings(function (s) {
+        return _objectSpread(_objectSpread({}, s), {}, {
+          aspect_ratio: normalized
+        });
+      });
+    }
+    (0, _storyboardHandoff.clearStoryboardHandoff)();
+  }, []);
 
   // ── Adjust height on load ────────────────────────────────────────────────
   (0, _react.useEffect)(function () {

@@ -6,6 +6,7 @@ import { setCharacterSheet } from "../lib/characterStore";
 import DrawModal from "./DrawModal.jsx";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
+import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
 import {
   t2iModels,
   i2iModels,
@@ -884,6 +885,25 @@ export default function ImageStudio({
     window.addEventListener("click", handler);
     return () => window.removeEventListener("click", handler);
   }, [dropdownOpen]);
+
+  // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  useEffect(() => {
+    const handoff = readStoryboardHandoff("image");
+    if (!handoff) return;
+    if (handoff.combinedPrompt || handoff.projectName) {
+      setPrompt(handoff.combinedPrompt || handoff.projectName);
+    }
+    if (handoff.aspectRatio) {
+      setSelectedAr(handoff.aspectRatio);
+    }
+    const ref = handoff.firstFrameUrl || handoff.referenceImageUrl;
+    if (ref) {
+      setUploadedImageUrls((prev) => (prev.includes(ref) ? prev : [...prev, ref]));
+      setSwapImageUrl(ref);
+      setImageMode(true);
+    }
+    clearStoryboardHandoff();
+  }, []);
 
   // ── Persistence: Load ────────────────────────────────────────────────────
   useEffect(() => {

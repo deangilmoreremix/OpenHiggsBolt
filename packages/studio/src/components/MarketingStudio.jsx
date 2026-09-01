@@ -6,6 +6,7 @@ import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { uploadFile, generateMarketingStudioAd } from "../muapi.js";
 import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
 import TemplateBanner from "./TemplateBanner";
+import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
 
 const SCROLLBAR_STYLE = `
   .custom-scrollbar-thin::-webkit-scrollbar {
@@ -333,6 +334,16 @@ export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled, 
       setParams((p) => ({ ...p, ratio: normalized }));
     }
   });
+
+  // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  useEffect(() => {
+    const handoff = readStoryboardHandoff("marketing");
+    if (!handoff) return;
+    if (handoff.combinedPrompt || handoff.projectName) {
+      setPrompt(handoff.combinedPrompt || handoff.projectName);
+    }
+    clearStoryboardHandoff();
+  }, []);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 

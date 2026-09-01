@@ -18,6 +18,7 @@ import { SEED_THUMBNAILS } from '@/shared/components/ImageGen/seedThumbnails'
 import { DEFAULT_IMAGE_MODEL, getImageClient } from '@/shared/api/muapiImage'
 import { panels, buttons, semantic, tabStyle, optionStyle, appWrapper } from '@/shared/styles/designTokens'
 import { supabase } from '@/shared/api/supabase'
+import { readStoryboardHandoff, clearStoryboardHandoff } from '@/shared/crossStudio'
 import { enhancePrompt } from '@/shared/api/openai'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -275,6 +276,16 @@ export default function ThumbnailStudio({ apiKey, templateData }: { apiKey?: str
       setSelectedStyle(tag)
     }
   }, [templateData])
+
+  // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  useEffect(() => {
+    const handoff = readStoryboardHandoff("thumbnail-studio")
+    if (!handoff) return
+    if (handoff.combinedPrompt || handoff.projectName) {
+      setPrompt(handoff.combinedPrompt || handoff.projectName)
+    }
+    clearStoryboardHandoff()
+  }, [])
   const [selectedSize, setSelectedSize] = useState<SizePreset>(SIZE_PRESETS[0])
   const [selectedModel, setSelectedModel] = useState<ImageModel>('gpt-image-2')
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)

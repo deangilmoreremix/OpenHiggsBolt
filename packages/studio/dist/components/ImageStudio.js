@@ -12,6 +12,7 @@ var _characterStore = require("../lib/characterStore");
 var _DrawModal = _interopRequireDefault(require("./DrawModal.jsx"));
 var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
 var _AiAssistantProvider = require("../../../../components/AiAssistantProvider");
+var _storyboardHandoff = require("../storyboardHandoff.js");
 var _models = require("../models.js");
 var _registry = _interopRequireDefault(require("../skills/registry.json"));
 var _skillStore = require("../lib/skillStore");
@@ -1094,6 +1095,27 @@ function ImageStudio(_ref6) {
       return window.removeEventListener("click", handler);
     };
   }, [dropdownOpen]);
+
+  // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  (0, _react.useEffect)(function () {
+    var handoff = (0, _storyboardHandoff.readStoryboardHandoff)("image");
+    if (!handoff) return;
+    if (handoff.combinedPrompt || handoff.projectName) {
+      setPrompt(handoff.combinedPrompt || handoff.projectName);
+    }
+    if (handoff.aspectRatio) {
+      setSelectedAr(handoff.aspectRatio);
+    }
+    var ref = handoff.firstFrameUrl || handoff.referenceImageUrl;
+    if (ref) {
+      setUploadedImageUrls(function (prev) {
+        return prev.includes(ref) ? prev : [].concat(_toConsumableArray(prev), [ref]);
+      });
+      setSwapImageUrl(ref);
+      setImageMode(true);
+    }
+    (0, _storyboardHandoff.clearStoryboardHandoff)();
+  }, []);
 
   // ── Persistence: Load ────────────────────────────────────────────────────
   (0, _react.useEffect)(function () {

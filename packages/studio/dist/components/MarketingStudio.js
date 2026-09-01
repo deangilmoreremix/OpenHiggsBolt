@@ -11,6 +11,7 @@ var _AiAssistantProvider = require("../../../../components/AiAssistantProvider")
 var _muapi = require("../muapi.js");
 var _useTemplateData2 = require("../hooks/useTemplateData");
 var _TemplateBanner = _interopRequireDefault(require("./TemplateBanner"));
+var _storyboardHandoff = require("../storyboardHandoff.js");
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
 function _regeneratorValues(e) { if (null != e) { var t = e["function" == typeof Symbol && Symbol.iterator || "@@iterator"], r = 0; if (t) return t.call(e); if ("function" == typeof e.next) return e; if (!isNaN(e.length)) return { next: function next() { return e && r >= e.length && (e = void 0), { value: e && e[r++], done: !e }; } }; } throw new TypeError(_typeof(e) + " is not iterable"); }
@@ -543,6 +544,16 @@ function MarketingStudio(_ref4) {
     }),
     resetTemplate = _useTemplateData.reset,
     isTemplateApplied = _useTemplateData.isTemplateApplied;
+
+  // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  (0, _react.useEffect)(function () {
+    var handoff = (0, _storyboardHandoff.readStoryboardHandoff)("marketing");
+    if (!handoff) return;
+    if (handoff.combinedPrompt || handoff.projectName) {
+      setPrompt(handoff.combinedPrompt || handoff.projectName);
+    }
+    (0, _storyboardHandoff.clearStoryboardHandoff)();
+  }, []);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 

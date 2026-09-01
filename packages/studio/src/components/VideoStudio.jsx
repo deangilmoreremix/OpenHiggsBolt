@@ -924,6 +924,22 @@ export default function VideoStudio({
     }
   }, [templateData]);
 
+  // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  useEffect(() => {
+    const handoff = readHandoff();
+    if (!handoff) return;
+    if (handoff.combinedPrompt) {
+      setPrompt(handoff.combinedPrompt);
+    }
+    if (handoff.aspectRatio) {
+      setSelectedAr(handoff.aspectRatio);
+    }
+    if (handoff.videoUrl) {
+      // Could set as source video if the studio supports it
+    }
+    clearHandoff();
+  }, []);
+
   // ── Adjust height on load ────────────────────────────────────────────────
   useEffect(() => {
     const timer = setTimeout(() => {

@@ -9,6 +9,7 @@ import registry from "../skills/registry.json";
 import { fillTemplate } from "../lib/promptRecipes";
 import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
 import TemplateBanner from "./TemplateBanner";
+import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
 
 const CDN = "https://cdn.muapi.ai/influencer";
 
@@ -401,6 +402,16 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
       setAspectRatio(normalized);
     }
   });
+
+  // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  useEffect(() => {
+    const handoff = readStoryboardHandoff("ai-influencer");
+    if (!handoff) return;
+    if (handoff.combinedPrompt || handoff.projectName) {
+      setCustomPrompt(handoff.combinedPrompt || handoff.projectName);
+    }
+    clearStoryboardHandoff();
+  }, []);
 
   // ── Build prompt from selections ──────────────────────────────────────────
   const buildPrompt = useCallback(() => {

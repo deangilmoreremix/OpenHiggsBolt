@@ -1087,6 +1087,22 @@ function VideoStudio(_ref6) {
     }
   }, [templateData]);
 
+  // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  (0, _react.useEffect)(function () {
+    var handoff = readHandoff();
+    if (!handoff) return;
+    if (handoff.combinedPrompt) {
+      setPrompt(handoff.combinedPrompt);
+    }
+    if (handoff.aspectRatio) {
+      setSelectedAr(handoff.aspectRatio);
+    }
+    if (handoff.videoUrl) {
+      // Could set as source video if the studio supports it
+    }
+    clearHandoff();
+  }, []);
+
   // ── Adjust height on load ────────────────────────────────────────────────
   (0, _react.useEffect)(function () {
     var timer = setTimeout(function () {
