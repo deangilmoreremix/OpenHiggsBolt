@@ -278,14 +278,18 @@ export default function ThumbnailStudio({ apiKey, templateData }: { apiKey?: str
   }, [templateData])
 
   // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  const handoffApplied = useRef<string | null>(null);
   useEffect(() => {
-    const handoff = readStoryboardHandoff("thumbnail-studio")
-    if (!handoff) return
-    if (handoff.combinedPrompt || handoff.projectName) {
-      setPrompt(handoff.combinedPrompt || handoff.projectName)
-    }
-    clearStoryboardHandoff()
-  }, [])
+    try {
+      const handoff = readStoryboardHandoff("thumbnail-studio");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+    } catch (error) { /* silent */ }
+  }, []);
   const [selectedSize, setSelectedSize] = useState<SizePreset>(SIZE_PRESETS[0])
   const [selectedModel, setSelectedModel] = useState<ImageModel>('gpt-image-2')
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)

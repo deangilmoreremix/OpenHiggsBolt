@@ -18,10 +18,20 @@ import {
 } from 'lucide-react';
 import { useVideoGeneration } from '@/hooks/useVideoGeneration';
 import BottomInputBar from '@/apps/vfx-studio/components/BottomInputBar';
+import ApiKeyModal from '@/apps/vfx-studio/components/ApiKeyModal';
 import { readStoryboardHandoff, clearStoryboardHandoff } from '@/shared/crossStudio';
 import { PublishStep } from '@/components/SocialPublishProvider';
 import { AssistStep } from '@/components/AiAssistantProvider';
 import type { VFXEffect, AspectRatio, Resolution, Quality } from '@/types/vfx';
+
+// Build the muapi_key cookie string.
+function muapiCookie(value: string) {
+  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+  if (value) {
+    return `muapi_key=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax${secure}`;
+  }
+  return `muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
+}
 
 const STORAGE_KEY_UI = 'vfx_ui_state';
 
@@ -188,7 +198,7 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
   const templateApplied = useRef<string | null>(null);
   useEffect(() => {
     const templateId = templateData?.sourceRepo && templateData?.slug
-      ? `${templateData.sourceRepo}-${templateData.slug}`
+      ? `${templateData.sourceRepo}|${templateData.slug}`
       : templateData?.slug;
     if (!templateData || templateApplied.current === templateId) return;
     templateApplied.current = templateId;
@@ -202,16 +212,20 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
   }, [templateData]);
 
   // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  const handoffApplied = useRef<string | null>(null);
   useEffect(() => {
-    const handoff = readStoryboardHandoff("vfx-studio");
-    if (!handoff) return;
-    if (handoff.combinedPrompt || handoff.projectName) {
-      setPrompt(handoff.combinedPrompt || handoff.projectName);
-    }
-    if (handoff.aspectRatio) {
-      setAspectRatio(handoff.aspectRatio as AspectRatio);
-    }
-    clearStoryboardHandoff();
+    try {
+      const handoff = readStoryboardHandoff("vfx-studio");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+      if (handoff.aspectRatio) {
+        setAspectRatio(handoff.aspectRatio as AspectRatio);
+      }
+    } catch (error) { /* silent */ }
   }, []);
   const [copied, setCopied] = useState(false);
   const [search, setSearch] = useState('');
@@ -222,6 +236,9 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
   const [userApiKey, setUserApiKey] = useState(apiKey || '');
   const [showGenerationModal, setShowGenerationModal] = useState(false);
   const [pendingGenerate, setPendingGenerate] = useState(false);
+  // VFX API key modal state
+  const [showVfxApiKeyModal, setShowVfxApiKeyModal] = useState(false);
+  const [vfxApiKeyInput, setVfxApiKeyInput] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -239,6 +256,17 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
     reset,
     setError,
   } = useVideoGeneration(userApiKey || undefined);
+
+  // Wrap onRequestApiKey to show the VFX API key modal.
+  const handleVfxRequestApiKey = useCallback(() => {
+    setShowVfxApiKeyModal(true);
+    setVfxApiKeyInput('');
+  }, []);
+
+  const handleVfxDismissApiKey = useCallback(() => {
+    setShowVfxApiKeyModal(false);
+    setVfxApiKeyInput('');
+  }, []);
 
   const selectedEffect = useMemo(
     () => ALL_EFFECTS.find((e) => e.id === selectedEffectId) || null,
@@ -360,6 +388,24 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
       quality,
     });
   }, [selectedEffect, imageUrl, prompt, aspectRatio, resolution, duration, quality, generateVideo, setError]);
+
+  const handleVfxApiKeySave = useCallback((key: string) => {
+    const cleaned = key.replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '').replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '').trim();
+    if (!cleaned || cleaned.length < 8) {
+      alert('Please enter a valid API key (at least 8 characters).');
+      return;
+    }
+    localStorage.setItem('muapi_key', cleaned);
+    document.cookie = muapiCookie(cleaned);
+    setUserApiKey(cleaned);
+    setShowVfxApiKeyModal(false);
+    setVfxApiKeyInput('');
+    // If generation was pending, trigger it now.
+    if (pendingGenerate) {
+      setPendingGenerate(false);
+      handleGenerate();
+    }
+  }, [pendingGenerate, handleGenerate]);
 
   const handleDownload = useCallback(async () => {
     if (!videoUrl) return;
@@ -725,7 +771,7 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
         setUserApiKey={setUserApiKey}
         pendingGenerate={pendingGenerate}
         setPendingGenerate={setPendingGenerate}
-        onRequestApiKey={onRequestApiKey}
+        onRequestApiKey={handleVfxRequestApiKey}
       />
 
       {/* Chat bubble button (upstream feature parity) */}
@@ -757,9 +803,20 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
           aria-label="Open Chat"
         >
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
+      )}
+
+      {/* VFX API Key Modal */}
+      {showVfxApiKeyModal && (
+        <ApiKeyModal
+          show={true}
+          apiKeyInput={vfxApiKeyInput}
+          onApiKeyChange={setVfxApiKeyInput}
+          onContinue={() => handleVfxApiKeySave(vfxApiKeyInput)}
+          onCancel={handleVfxDismissApiKey}
+        />
       )}
 
       {/* Video result inline (local repo feature) */}

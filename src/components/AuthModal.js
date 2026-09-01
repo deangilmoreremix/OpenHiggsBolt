@@ -1,6 +1,16 @@
 import { isValidKeyFormat } from '../lib/keys.js';
 import { t } from '../lib/i18n.js';
 
+// Build the muapi_key cookie string. `Secure` is added only over HTTPS
+// so the key still persists on http://localhost dev servers.
+function muapiCookie(value) {
+  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+  if (value) {
+    return `muapi_key=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax${secure}`;
+  }
+  return `muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
+}
+
 export function AuthModal(onSuccess) {
     const overlay = document.createElement('div');
     overlay.className = 'fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-6';
@@ -57,6 +67,8 @@ export function AuthModal(onSuccess) {
                 .replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '')
                 .trim();
             localStorage.setItem('muapi_key', cleanedKey);
+            // Sync cookie so server-side routes and agents pages can read the key.
+            document.cookie = muapiCookie(cleanedKey);
             document.body.removeChild(overlay);
             if (onSuccess) onSuccess();
         } else {

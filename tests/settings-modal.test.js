@@ -98,9 +98,25 @@ Object.defineProperty(globalThis.document, 'cookie', {
 
 const { SettingsModal } = await import('../src/components/SettingsModal.js');
 
+// Reset the DOM shim between tests so element values don't leak across cases.
+function resetDocument() {
+  const fresh = makeDocumentShim();
+  globalThis.document = fresh;
+  globalThis.document.cookie = '';
+  Object.defineProperty(globalThis.document, 'cookie', {
+    get() { return [...cookies.entries()].map(([k, v]) => `${k}=${v}`).join('; '); },
+    set(v) {
+      const [pair] = v.split(';');
+      const idx = pair.indexOf('=');
+      cookies.set(pair.slice(0, idx).trim(), pair.slice(idx + 1).trim());
+    },
+  });
+}
+
 test('SettingsModal saves MuAPI + OpenAI keys and sets the muapi_key cookie', () => {
   store.clear();
   cookies.clear();
+  resetDocument();
 
   SettingsModal();
   // Simulate the user typing both keys and clicking Save.
@@ -122,6 +138,7 @@ test('SettingsModal saves MuAPI + OpenAI keys and sets the muapi_key cookie', ()
 test('SettingsModal clears OpenAI key when left empty', () => {
   store.clear();
   cookies.clear();
+  resetDocument();
   store.set('openai_key', 'old-openai');
 
   SettingsModal();
@@ -139,6 +156,7 @@ test('SettingsModal clears OpenAI key when left empty', () => {
 test('SettingsModal rejects an empty MuAPI key (shows status, does not save)', () => {
   store.clear();
   cookies.clear();
+  resetDocument();
 
   SettingsModal();
   const muapiInput = document.body.querySelector('#settings-api-key');
@@ -157,6 +175,7 @@ test('SettingsModal rejects an empty MuAPI key (shows status, does not save)', (
 test('Keys persist: saved keys are still present after the modal is closed and reopened', () => {
   store.clear();
   cookies.clear();
+  resetDocument();
 
   // First open + save.
   SettingsModal();
@@ -180,6 +199,7 @@ test('Keys persist: saved keys are still present after the modal is closed and r
 test('Keys survive a Cancel: closing without saving does NOT wipe previously saved keys', () => {
   store.clear();
   cookies.clear();
+  resetDocument();
   store.set('muapi_key', 'muapi-keep');
   store.set('openai_key', 'sk-keep');
 
@@ -197,6 +217,7 @@ test('Keys survive a Cancel: closing without saving does NOT wipe previously sav
 test('Keys are removed only on explicit removal (localStorage cleared)', () => {
   store.clear();
   cookies.clear();
+  resetDocument();
   store.set('muapi_key', 'muapi-to-remove');
   store.set('openai_key', 'sk-to-remove');
 

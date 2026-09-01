@@ -3,6 +3,27 @@ import { isLocalAIAvailable } from '../lib/localInferenceClient.js';
 import { isValidKeyFormat } from '../lib/keys.js';
 import { t } from '../lib/i18n.js';
 
+// Build a cookie string for the MuAPI key. `Secure` is added only over HTTPS
+// so the key still persists on http://localhost dev servers.
+function muapiCookie(value) {
+  const isHttps = typeof window !== 'undefined' && window.location && window.location.protocol === 'https:';
+  const secure = isHttps ? '; Secure' : '';
+  if (value) {
+    return `muapi_key=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax${secure}`;
+  }
+  return `muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
+}
+
+// Same shape as muapiCookie but for the user's OpenAI key.
+function openaiCookie(value) {
+  const isHttps = typeof window !== 'undefined' && window.location && window.location.protocol === 'https:';
+  const secure = isHttps ? '; Secure' : '';
+  if (value) {
+    return `openai_key=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax${secure}`;
+  }
+  return `openai_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
+}
+
 export function SettingsModal(onClose) {
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:100;';
@@ -51,6 +72,7 @@ export function SettingsModal(onClose) {
     // ── Tab: API Key ──────────────────────────────────────────────────────────
     const apiPanel = document.createElement('div');
     apiPanel.innerHTML = `
+        <div id="settings-status" style="display:none;padding:0.5rem 0.75rem;border-radius:0.5rem;font-size:0.75rem;font-weight:600;"></div>
         <div style="display:flex;flex-direction:column;gap:0.75rem;">
             <div>
                 <label style="display:block;font-size:0.75rem;color:rgba(255,255,255,0.5);margin-bottom:0.4rem;font-weight:600;">${t('settings.muapiKeyLabel')}</label>
@@ -111,28 +133,49 @@ export function SettingsModal(onClose) {
     apiPanel.querySelector('#settings-save-btn').onclick = () => {
         const muapiKey = apiPanel.querySelector('#settings-api-key').value.trim();
         const openaiKey = apiPanel.querySelector('#settings-openai-key').value.trim();
+        const statusEl = apiPanel.querySelector('#settings-status');
         if (!muapiKey || !isValidKeyFormat(muapiKey)) {
-            alert('Please enter a valid MuAPI key (at least 8 characters, no surrounding quotes).');
+            if (statusEl) {
+                statusEl.style.display = 'block';
+                statusEl.style.background = 'rgba(239,68,68,0.1)';
+                statusEl.style.color = '#fca5a5';
+                statusEl.textContent = 'Please enter a valid MuAPI key (at least 8 characters, no surrounding quotes).';
+            }
             return;
         }
         if (openaiKey && !isValidKeyFormat(openaiKey)) {
-            alert('Please enter a valid OpenAI key (at least 8 characters, no surrounding quotes).');
+            if (statusEl) {
+                statusEl.style.display = 'block';
+                statusEl.style.background = 'rgba(239,68,68,0.1)';
+                statusEl.style.color = '#fca5a5';
+                statusEl.textContent = 'Please enter a valid OpenAI key (at least 8 characters, no surrounding quotes).';
+            }
             return;
+        }
+        if (statusEl) {
+            statusEl.style.display = 'none';
         }
         // Clean keys before saving to remove invisible Unicode characters
         const cleanMuapi = muapiKey
             .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')
-            .replace(/^[\s\x00-\x1F]+|[\s\x00-\x1F]+$/g, '')
+            .replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '')
             .trim();
         const cleanOpenai = openaiKey
             .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')
-            .replace(/^[\s\x00-\x1F]+|[\s\x00-\x1F]+$/g, '')
+            .replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '')
             .trim();
         localStorage.setItem('muapi_key', cleanMuapi);
         if (cleanOpenai) {
             localStorage.setItem('openai_key', cleanOpenai);
         } else {
             localStorage.removeItem('openai_key');
+        }
+        // Sync cookies so server-side routes and agents pages can read the key.
+        document.cookie = muapiCookie(cleanMuapi);
+        if (cleanOpenai) {
+            document.cookie = openaiCookie(cleanOpenai);
+        } else {
+            document.cookie = openaiCookie('');
         }
         // Success feedback: flash the button text
         const saveBtn = apiPanel.querySelector('#settings-save-btn');
