@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import StandaloneShell from '@/components/StandaloneShell';
 import { PRODUCT_NAME, NAV_ITEMS, LOGOS, TESTIMONIALS, PRICING, FAQS } from './landingData';
