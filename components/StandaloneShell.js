@@ -215,6 +215,24 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
     router.push(`/studio/${tabId}`);
   };
 
+  // Cross-studio handoff: listen for studios that request a tab switch via
+  // the shared `storyboard:send-to` event. The source studio writes its
+  // payload to localStorage before emitting, so the target studio can apply
+  // it on mount.
+  useEffect(() => {
+    const handler = (e) => {
+      const { target } = e.detail || {}
+      if (!target) return
+      const tabId =
+        typeof target === 'string' && SLUG_TO_TAB[target]
+          ? SLUG_TO_TAB[target]
+          : target
+      handleTabChange(tabId)
+    }
+    window.addEventListener('storyboard:send-to', handler)
+    return () => window.removeEventListener('storyboard:send-to', handler)
+  }, [embedded, router])
+
   // Auto-hide header when inside a specific workflow view or design agent
   useEffect(() => {
     const isEditingWorkflow = (activeTab === 'workflows' || !!idFromParams) && urlWorkflowId;
@@ -644,11 +662,11 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          {activeTab === 'audio'   && <AudioStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
           {activeTab === 'marketing' && <MarketingStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
           {activeTab === 'recast' && <RecastStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
-          {activeTab === 'workflows' && <WorkflowStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
-         {activeTab === 'agents' && <AgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
-         {activeTab === 'design-agent' && <DesignAgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
-         {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} /></MemoryRouter>}
-         {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} /></MemoryRouter>}
+           {activeTab === 'workflows' && <WorkflowStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}
+          {activeTab === 'agents' && <AgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}
+          {activeTab === 'design-agent' && <DesignAgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}
+          {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} templateData={templateData} /></MemoryRouter>}
+          {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} templateData={templateData} /></MemoryRouter>}
          {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
          {activeTab === 'brand-studio' && (
            <div className="flex items-center justify-center h-full">

@@ -187,7 +187,7 @@ function loadProjects(): Project[] {
 }
 function saveProjects(p: Project[]) { localStorage.setItem(LOCAL_KEY + '_projects', JSON.stringify(p)) }
 
-export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string }) {
+export default function DesignAgent({ apiKey: propApiKey, templateData }: { apiKey?: string; templateData?: { prompt?: string; [key: string]: any } }) {
   // API key — seeded from the global key passed by StandaloneShell, falling
   // back to a previously saved key. The in-studio key modal can still override.
   const [apiKey, setApiKey] = useState(() =>
@@ -217,6 +217,17 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
   // Tracks whether the component is still mounted so long-running polling can
   // bail out if the user navigates away (avoids setState-after-unmount).
   const aliveRef = useRef(true)
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const templateApplied = useRef<string | null>(null)
+  useEffect(() => {
+    if (!templateData || templateApplied.current === templateData.slug) return
+    templateApplied.current = templateData.slug
+
+    if (templateData.prompt) {
+      setInput(templateData.prompt)
+    }
+  }, [templateData])
 
   // Typewriter animation
   useEffect(() => {

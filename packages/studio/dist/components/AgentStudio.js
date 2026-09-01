@@ -197,7 +197,8 @@ function ConversationCard(_ref2) {
 // ─── Main Component ──────────────────────────────────────────────────────────
 var TABS = ["templates", "my-agents", "my-chats"];
 function AgentStudio(_ref3) {
-  var apiKey = _ref3.apiKey;
+  var apiKey = _ref3.apiKey,
+    templateData = _ref3.templateData;
   var router = (0, _navigation.useRouter)();
   var _useState5 = (0, _react.useState)("templates"),
     _useState6 = _slicedToArray(_useState5, 2),
@@ -219,6 +220,15 @@ function AgentStudio(_ref3) {
     _useState12 = _slicedToArray(_useState11, 2),
     error = _useState12[0],
     setError = _useState12[1];
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  var templateApplied = (0, _react.useRef)(null);
+  (0, _react.useEffect)(function () {
+    if (!templateData || templateApplied.current === templateData.slug) return;
+    templateApplied.current = templateData.slug;
+    // AgentStudio is a gallery/launcher; templateData is accepted for routing
+    // but prompt pre-fill is handled by the standalone /agents pages.
+  }, [templateData]);
 
   // Navigate to the standalone /agents page — AiAgent handles its own routing there
   var handleSelectAgent = (0, _react.useCallback)(function (agent) {
