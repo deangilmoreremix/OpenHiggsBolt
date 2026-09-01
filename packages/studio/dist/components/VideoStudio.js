@@ -1068,7 +1068,7 @@ function VideoStudio(_ref6) {
   // ── Apply template data from landing page "Create This Style" ──────────────
   var templateApplied = (0, _react.useRef)(null);
   (0, _react.useEffect)(function () {
-    var templateId = templateData !== null && templateData !== void 0 && templateData.sourceRepo && templateData !== null && templateData !== void 0 && templateData.slug ? "".concat(templateData.sourceRepo, "-").concat(templateData.slug) : templateData === null || templateData === void 0 ? void 0 : templateData.slug;
+    var templateId = templateData !== null && templateData !== void 0 && templateData.sourceRepo && templateData !== null && templateData !== void 0 && templateData.slug ? "".concat(templateData.sourceRepo, "|").concat(templateData.slug) : templateData === null || templateData === void 0 ? void 0 : templateData.slug;
     if (!templateData || templateApplied.current === templateId) return;
     templateApplied.current = templateId;
     if (templateData.prompt) {
@@ -1100,7 +1100,6 @@ function VideoStudio(_ref6) {
     if (handoff.videoUrl) {
       // Could set as source video if the studio supports it
     }
-    (0, _storyboardHandoff.clearStoryboardHandoff)();
   }, []);
 
   // ── Adjust height on load ────────────────────────────────────────────────
@@ -1320,7 +1319,6 @@ function VideoStudio(_ref6) {
 
   // ── textarea auto-resize ──────────────────────────────────────────────────
   var handlePromptInput = function handlePromptInput(e) {
-    (0, _storyboardHandoff.clearStoryboardHandoff)();
     setPrompt(e.target.value);
     var el = e.target;
     el.style.height = "auto";

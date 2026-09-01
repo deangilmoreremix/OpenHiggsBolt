@@ -42,6 +42,7 @@ export interface StoryboardContextValue {
   episodeId: string | null
   projectName: string
   brief: string
+  setBrief: (brief: string) => void
   setProject: (p: { projectId: string; projectName: string; brief: string }) => void
   addCharacter: (id: string) => void
   setEpisode: (id: string) => void
@@ -159,6 +160,7 @@ export function StoryboardProvider({ children }: { children: ReactNode }) {
     episodeId,
     projectName,
     brief,
+    setBrief,
     setProject: ({ projectId, projectName, brief }) =>
       persist({ projectId, projectName, brief }),
     addCharacter: (id) => persist({ characterIds: [...characterIds, id] }),

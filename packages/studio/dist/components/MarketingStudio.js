@@ -546,13 +546,23 @@ function MarketingStudio(_ref4) {
     isTemplateApplied = _useTemplateData.isTemplateApplied;
 
   // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  var handoffApplied = (0, _react.useRef)(null);
   (0, _react.useEffect)(function () {
-    var handoff = (0, _storyboardHandoff.readStoryboardHandoff)("marketing");
-    if (!handoff) return;
-    if (handoff.combinedPrompt || handoff.projectName) {
-      setPrompt(handoff.combinedPrompt || handoff.projectName);
-    }
-    (0, _storyboardHandoff.clearStoryboardHandoff)();
+    try {
+      var handoff = (0, _storyboardHandoff.readStoryboardHandoff)("marketing");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+      if (['9:16', '3:4', '4:3', '16:9', '1:1'].includes(handoff.aspectRatio)) {
+        setParams(function (p) {
+          return _objectSpread(_objectSpread({}, p), {}, {
+            ratio: handoff.aspectRatio
+          });
+        });
+      }
+    } catch (error) {/* silent */}
   }, []);
 
   // ── Handlers ───────────────────────────────────────────────────────────────

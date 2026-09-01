@@ -232,13 +232,8 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
   const [isDragging, setIsDragging] = useState(false);
   const [showInputBar, setShowInputBar] = useState(true);
   const [showChatButton, setShowChatButton] = useState(false);
-  // Seed from the global key passed down by StandaloneShell.
-  const [userApiKey, setUserApiKey] = useState(apiKey || '');
   const [showGenerationModal, setShowGenerationModal] = useState(false);
   const [pendingGenerate, setPendingGenerate] = useState(false);
-  // VFX API key modal state
-  const [showVfxApiKeyModal, setShowVfxApiKeyModal] = useState(false);
-  const [vfxApiKeyInput, setVfxApiKeyInput] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -255,18 +250,30 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
     retryVideo,
     reset,
     setError,
-  } = useVideoGeneration(userApiKey || undefined);
+  } = useVideoGeneration(apiKey || undefined);
 
-  // Wrap onRequestApiKey to show the VFX API key modal.
-  const handleVfxRequestApiKey = useCallback(() => {
-    setShowVfxApiKeyModal(true);
-    setVfxApiKeyInput('');
-  }, []);
+  // If the user requested generation but the key is missing, surface the
+  // global API key modal. Once the shell provides a key via the `apiKey` prop,
+  // generation auto-starts.
+  const handleRequestApiKey = useCallback(() => {
+    setPendingGenerate(true);
+    onRequestApiKey?.();
+  }, [onRequestApiKey]);
 
-  const handleVfxDismissApiKey = useCallback(() => {
-    setShowVfxApiKeyModal(false);
-    setVfxApiKeyInput('');
-  }, []);
+  // Auto-trigger generation once the global key arrives.
+  useEffect(() => {
+    if (pendingGenerate && apiKey) {
+      setPendingGenerate(false);
+      handleGenerate();
+    }
+  }, [pendingGenerate, apiKey, handleGenerate]);
+
+  // Reset pending generate when the key is explicitly dismissed without saving.
+  useEffect(() => {
+    if (!apiKey && pendingGenerate) {
+      setPendingGenerate(false);
+    }
+  }, [apiKey, pendingGenerate]);
 
   const selectedEffect = useMemo(
     () => ALL_EFFECTS.find((e) => e.id === selectedEffectId) || null,
@@ -377,6 +384,11 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
       setError('Upload an image or paste an image URL first');
       return;
     }
+    if (!apiKey) {
+      setPendingGenerate(true);
+      onRequestApiKey?.();
+      return;
+    }
 
     await generateVideo({
       image_url: imageUrl,
@@ -387,7 +399,7 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
       duration,
       quality,
     });
-  }, [selectedEffect, imageUrl, prompt, aspectRatio, resolution, duration, quality, generateVideo, setError]);
+  }, [selectedEffect, imageUrl, prompt, aspectRatio, resolution, duration, quality, generateVideo, setError, apiKey, onRequestApiKey]);
 
   const handleVfxApiKeySave = useCallback((key: string) => {
     const cleaned = key.replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '').replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '').trim();

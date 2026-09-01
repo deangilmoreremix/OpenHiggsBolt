@@ -34,6 +34,8 @@ export const MINIMAX_H3_DEMOS: MinimaxDemo[] = [
     studioTab: "vfx-studio",
     tags: ["action","gameplay","modern","warfare"],
     sourceRepo: "minimax-h3",
+    model: "minimax-image-01",
+    modelName: "MiniMax Image 01",
   },
   {
     id: 2,

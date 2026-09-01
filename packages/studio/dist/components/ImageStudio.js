@@ -1097,24 +1097,27 @@ function ImageStudio(_ref6) {
   }, [dropdownOpen]);
 
   // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  var handoffApplied = (0, _react.useRef)(null);
   (0, _react.useEffect)(function () {
-    var handoff = (0, _storyboardHandoff.readStoryboardHandoff)("image");
-    if (!handoff) return;
-    if (handoff.combinedPrompt || handoff.projectName) {
-      setPrompt(handoff.combinedPrompt || handoff.projectName);
-    }
-    if (handoff.aspectRatio) {
-      setSelectedAr(handoff.aspectRatio);
-    }
-    var ref = handoff.firstFrameUrl || handoff.referenceImageUrl;
-    if (ref) {
-      setUploadedImageUrls(function (prev) {
-        return prev.includes(ref) ? prev : [].concat(_toConsumableArray(prev), [ref]);
-      });
-      setSwapImageUrl(ref);
-      setImageMode(true);
-    }
-    (0, _storyboardHandoff.clearStoryboardHandoff)();
+    try {
+      var handoff = (0, _storyboardHandoff.readStoryboardHandoff)("image");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+      var ref = handoff.firstFrameUrl || handoff.referenceImageUrl;
+      if (ref) {
+        setUploadedImageUrls(function (prev) {
+          return prev.includes(ref) ? prev : [].concat(_toConsumableArray(prev), [ref]);
+        });
+        setSwapImageUrl(ref);
+        setImageMode(true);
+      }
+      if (handoff.aspectRatio) {
+        setSelectedAr(handoff.aspectRatio);
+      }
+    } catch (error) {/* silent */}
   }, []);
 
   // ── Persistence: Load ────────────────────────────────────────────────────

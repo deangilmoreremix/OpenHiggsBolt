@@ -1,7 +1,7 @@
 import { getModelById, getVideoModelById, getI2IModelById, getI2VModelById, getV2VModelById, getLipSyncModelById } from './models.js';
 import axios from 'axios';
 import { getStableUserId } from '../shared/auth/stableUserId';
-import { resolveMuapiKey } from './keys.js';
+import { getApiKey } from './authConfig.ts';
 
 /**
  * Normalize a MuAPI prediction response into a consistent shape.
@@ -60,7 +60,7 @@ export class MuapiClient {
     }
 
     getKey() {
-        const key = resolveMuapiKey();
+        const key = getApiKey();
         if (!key) throw new Error('API Key missing. Please set it in Settings.');
         return key;
     }

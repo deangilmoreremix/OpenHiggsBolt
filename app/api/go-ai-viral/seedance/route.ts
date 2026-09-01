@@ -67,33 +67,6 @@ function detectCategories(prompt: string): string[] {
   return matches
 }
 
-function deriveAuthor(slug: string, prompt: string): string {
-  const cleanSlug = slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-  const words = cleanSlug.split(' ').filter(Boolean)
-  if (words.length >= 2) {
-    return `@${words[0]}${words[1]}`
-  }
-  const firstMeaningful = prompt.split(' ').find((w) => w.length > 4) || 'creator'
-  return `@${firstMeaningful}`
-}
-
-function derivePublishedAt(): string {
-  const d = new Date(Date.now() - Math.floor(Math.random() * 365 * 24 * 60 * 60 * 1000))
-  return d.toISOString()
-}
-
-function deriveEngagement(hasVideo: boolean): { likes: number; reposts: number; replies: number } {
-  if (!hasVideo) {
-    return { likes: 0, reposts: 0, replies: 0 }
-  }
-  const base = Math.floor(Math.random() * 80) + 5
-  return {
-    likes: base,
-    reposts: Math.floor(base * 0.25),
-    replies: Math.floor(base * 0.15),
-  }
-}
-
 function buildThumbnail(outputUrl: string | null): string | null {
   if (!outputUrl) return null
   if (outputUrl.includes('/outputs/')) {
@@ -103,11 +76,7 @@ function buildThumbnail(outputUrl: string | null): string | null {
 }
 
 function enrichRecord(raw: SeedancePrompt): SeedancePrompt {
-  const hasVideo = !!raw.outputUrl
   const categories = detectCategories(raw.prompt || raw.fullPrompt)
-  const author = deriveAuthor(raw.slug, raw.prompt)
-  const publishedAt = derivePublishedAt()
-  const engagement = deriveEngagement(hasVideo)
   const thumbnail = buildThumbnail(raw.outputUrl)
 
   return {
@@ -125,9 +94,6 @@ function enrichRecord(raw: SeedancePrompt): SeedancePrompt {
     sourceModels: ['seedance'],
     language: raw.sourceLanguage || 'en',
     thumbnail,
-    author,
-    publishedAt,
-    engagement,
   }
 }
 
@@ -139,7 +105,12 @@ async function loadSeedance(): Promise<CachedSeedance> {
 
   const { readFile } = await import('node:fs/promises')
   const text = await readFile(DATA_PATH, 'utf-8')
-  const rawRecords: SeedancePrompt[] = JSON.parse(text)
+  let rawRecords: SeedancePrompt[]
+  try {
+    rawRecords = JSON.parse(text) as SeedancePrompt[]
+  } catch {
+    throw new Error('SEEDANCE_FILE_CORRUPTED')
+  }
   const records = rawRecords.map(enrichRecord)
 
   cached = {

@@ -26,6 +26,9 @@ const FEED_STATS = 'https://raw.githubusercontent.com/Hanyuyu/visual-prompt-feed
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 const DEFAULT_PAGE_SIZE = 20
 const MAX_PAGE_SIZE = 100
+const FETCH_TIMEOUT_MS = 15_000
+const MAX_RETRIES = 2
+const BASE_RETRY_DELAY_MS = 500
 
 interface CachedFeed {
   records: PromptRecord[]
@@ -35,6 +38,36 @@ interface CachedFeed {
 
 let cached: CachedFeed | null = null
 
+async function fetchWithRetry(url: string, signal?: AbortSignal): Promise<Response> {
+  let lastError: Error | null = null
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+      const combinedSignal = signal
+        ? AbortSignal.any([signal, controller.signal])
+        : controller.signal
+      const res = await fetch(url, { 
+        next: { revalidate: 300 },
+        signal: combinedSignal,
+      })
+      clearTimeout(timeoutId)
+      if (res.ok) return res
+      if (res.status >= 400 && res.status < 500) {
+        return res
+      }
+      lastError = new Error(`HTTP ${res.status}`)
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error('Network error')
+    }
+    if (attempt < MAX_RETRIES) {
+      const delay = BASE_RETRY_DELAY_MS * 2 ** attempt
+      await new Promise((r) => setTimeout(r, delay))
+    }
+  }
+  throw lastError || new Error('Fetch failed after retries')
+}
+
 /** Fetch + parse the JSONL feed and stats. Cached in-memory for CACHE_TTL_MS. */
 async function loadFeed(): Promise<CachedFeed> {
   const now = Date.now()
@@ -42,10 +75,10 @@ async function loadFeed(): Promise<CachedFeed> {
     return cached
   }
 
-  // Fetch both in parallel
+  // Fetch both in parallel with timeout and retry
   const [jsonlRes, statsRes] = await Promise.all([
-    fetch(FEED_JSONL, { next: { revalidate: 300 } }),
-    fetch(FEED_STATS, { next: { revalidate: 300 } }),
+    fetchWithRetry(FEED_JSONL),
+    fetchWithRetry(FEED_STATS),
   ])
 
   if (!jsonlRes.ok) {
@@ -56,7 +89,12 @@ async function loadFeed(): Promise<CachedFeed> {
   }
 
   const jsonlText = await jsonlRes.text()
-  const statsText = await statsRes.json()
+  let statsText: FeedStats
+  try {
+    statsText = (await statsRes.json()) as FeedStats
+  } catch {
+    throw new Error('FEED_STATS_CORRUPTED')
+  }
 
   const records: PromptRecord[] = []
   for (const line of jsonlText.split('\n')) {
