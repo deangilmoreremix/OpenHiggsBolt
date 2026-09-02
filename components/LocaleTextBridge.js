@@ -23,8 +23,6 @@ import enLipSync from '../packages/studio/src/messages/en/lipSyncStudio.json';
 import zhLipSync from '../packages/studio/src/messages/zh/lipSyncStudio.json';
 import enMarketing from '../packages/studio/src/messages/en/marketingStudio.json';
 import zhMarketing from '../packages/studio/src/messages/zh/marketingStudio.json';
-import enMcp from '../packages/studio/src/messages/en/mcpCliStudio.json';
-import zhMcp from '../packages/studio/src/messages/zh/mcpCliStudio.json';
 import enRecast from '../packages/studio/src/messages/en/recastStudio.json';
 import zhRecast from '../packages/studio/src/messages/zh/recastStudio.json';
 import enVibe from '../packages/studio/src/messages/en/vibeMotionStudio.json';
@@ -44,7 +42,6 @@ const BUNDLES = [
   [enLayers, zhLayers],
   [enLipSync, zhLipSync],
   [enMarketing, zhMarketing],
-  [enMcp, zhMcp],
   [enRecast, zhRecast],
   [enVibe, zhVibe],
   [enVideo, zhVideo],
