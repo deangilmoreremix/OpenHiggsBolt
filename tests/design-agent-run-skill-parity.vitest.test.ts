@@ -11,7 +11,7 @@ afterEach(() => {
 
 describe('POST /api/design-agent/run-skill parity', () => {
   it('resolves the skill primary input and defaults to gpt-5-mini', async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input)
       if (url.endsWith('/agent-skills')) {
         return new Response(
@@ -68,7 +68,7 @@ describe('POST /api/design-agent/run-skill parity', () => {
   })
 
   it('preserves explicit inputs supplied by the client', async () => {
-    const fetchMock = vi.fn(async () => new Response(
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(
       JSON.stringify({ job_id: 'job_2', status: 'pending' }),
       { status: 200, headers: { 'content-type': 'application/json' } },
     ))
