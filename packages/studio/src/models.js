@@ -3352,7 +3352,11 @@ export const getSelectableAspectRatiosForModel = (modelId) => {
 };
 
 export const getModesForModel = (modelId) => {
-  const model = getModelById(modelId);
+  const model =
+    t2iModels.find((m) => m.id === modelId) ||
+    t2vModels.find((m) => m.id === modelId) ||
+    i2vModels.find((m) => m.id === modelId) ||
+    v2vModels.find((m) => m.id === modelId);
   if (!model) return [];
   const modeInput = model.inputs?.mode;
   if (modeInput && Array.isArray(modeInput.enum)) return modeInput.enum;
