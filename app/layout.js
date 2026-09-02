@@ -4,6 +4,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { headers } from 'next/headers';
 import { getLocaleConfig } from '@/lib/locales';
 import GlobalModalDropBridge from '@/components/GlobalModalDropBridge';
+import StudioFeatureVisibility from '@/components/StudioFeatureVisibility';
 
 const inter = Inter({
   variable: "--font-inter",
@@ -32,6 +33,7 @@ export default async function RootLayout({ children }) {
     <html lang={htmlLang}>
       <body className={inter.variable}>
         <GlobalModalDropBridge />
+        <StudioFeatureVisibility />
         {children}
       </body>
     </html>
