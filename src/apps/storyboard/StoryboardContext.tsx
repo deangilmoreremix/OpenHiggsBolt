@@ -48,6 +48,7 @@ export interface StoryboardContextValue {
   setProject: (p: { projectId: string; projectName: string; brief: string }) => void
   addCharacter: (id: string) => void
   setEpisode: (id: string) => void
+  setModel: (id: string) => void
   reset: () => void
   characters: StoryboardCharacter[]
   addCharacterObject: (character: Omit<StoryboardCharacter, 'id'>) => void
@@ -359,6 +360,7 @@ export function StoryboardProvider({ children }: { children: ReactNode }) {
       persist({ projectId, projectName, brief }),
     addCharacter: (id) => persist({ characterIds: [...characterIds, id] }),
     setEpisode: (id) => persist({ episodeId: id }),
+    setModel: (id) => persist({ model: id }),
     reset: () => {
       setProjectId(null)
       setCharacterIds([])

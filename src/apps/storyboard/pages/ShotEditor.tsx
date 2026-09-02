@@ -8,6 +8,7 @@ import {
 import { PublishStep } from '@/components/SocialPublishProvider'
 import { AssistStep } from '@/components/AiAssistantProvider'
 import { useStoryboard } from '../StoryboardContext'
+import ModelSelector from '../ModelSelector'
 
 function SortableShot({
   shot,
