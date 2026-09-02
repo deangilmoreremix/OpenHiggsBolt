@@ -40,6 +40,12 @@ function includeRequiredArrayDefaults(model, payload) {
     return Object.keys(defaults).length > 0 ? { ...defaults, ...payload } : payload;
 }
 
+function fatal(message) {
+    const error = new Error(message);
+    error.isFatal = true;
+    return error;
+}
+
 async function pollForResult(requestId, key, maxAttempts = 900, interval = 2000) {
     return pollForGenerationResult({
         baseUrl: BASE_URL,
@@ -679,14 +685,14 @@ async function pollWorkflowResult(runId, apiKey, maxAttempts = 900, interval = 2
             });
             if (!response.ok) {
                 if (response.status >= 500) continue;
-                throw new Error(`Poll Failed: ${response.status}`);
+                throw fatal(`Poll Failed: ${response.status}`);
             }
             const data = await response.json();
             const status = data.status?.toLowerCase();
             if (status === 'completed' || status === 'succeeded' || status === 'success') return data;
-            if (status === 'failed' || status === 'error') throw new Error(`Workflow failed: ${data.error || 'Unknown error'}`);
+            if (status === 'failed' || status === 'error') throw fatal(`Workflow failed: ${data.error || 'Unknown error'}`);
         } catch (error) {
-            if (attempt === maxAttempts) throw error;
+            if (attempt === maxAttempts || error.isFatal) throw error;
         }
     }
     throw new Error('Workflow timed out after polling.');

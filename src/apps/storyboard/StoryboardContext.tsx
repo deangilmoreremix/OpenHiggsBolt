@@ -1,3 +1,5 @@
+"use client";
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import type { CameraSpec } from './cameraTaxonomy'
 import { DEFAULT_STORYBOARD_MODEL_ID } from './models'

@@ -9,7 +9,7 @@ import {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const BASE = 'https://api.muapi.ai'
-const FLUX_ENDPOINT = `${BASE}/api/v1/flux-dev`
+const FLUX_ENDPOINT = `${BASE}/api/v1/flux-dev-image`
 
 /** A minimal stand-in for a browser File/Blob that satisfies the runtime checks
  * (the source only reads `.type` and `.size`). Cast through unknown to keep the
@@ -164,7 +164,7 @@ describe('MuAPIImageClient.generate — submit + poll happy path', () => {
     expect(poll?.headers['x-api-key']).toBe('k')
   })
 
-  it('sends aspect_ratio and maps the seedream-5.0 alias to bytedance-seedream-v5.0', async () => {
+  it('sends aspect_ratio for seedream-5.0', async () => {
     const fetchMock = makeFetch()
     global.fetch = fetchMock as unknown as typeof fetch
 
@@ -194,7 +194,7 @@ describe('MuAPIImageClient.generate — submit + poll happy path', () => {
 
     const calls = recordedCalls(fetchMock)
     const submit = calls.find((c) => c.method === 'POST')
-    expect(submit?.url).toBe(`${BASE}/api/v1/bytedance-seedream-v5.0`)
+    expect(submit?.url).toBe(`${BASE}/api/v1/seedream-5.0`)
     const body = JSON.parse(submit?.body ?? '{}')
     expect(body.prompt).toBe('neon city')
     expect(body.aspect_ratio).toBe('16:9')
@@ -693,7 +693,7 @@ describe('MuAPIImageClient — proxy baseUrl override', () => {
     expect(res[0].url).toBe('https://cdn/p.png')
     const calls = recordedCalls(fetchMock)
     const submit = calls.find((c) => c.method === 'POST')
-    expect(submit?.url).toBe('/api/v1/flux-dev')
+    expect(submit?.url).toBe('/api/v1/flux-dev-image')
     expect(submit?.headers['x-api-key']).toBe('k')
   })
 
@@ -710,7 +710,7 @@ describe('MuAPIImageClient — proxy baseUrl override', () => {
     expect(res[0].url).toBe('https://cdn/p.png')
     const calls = recordedCalls(fetchMock)
     const submit = calls.find((c) => c.method === 'POST')
-    expect(submit?.url).toBe(`${PROXY}/api/v1/flux-dev`)
+    expect(submit?.url).toBe(`${PROXY}/api/v1/flux-dev-image`)
     expect(submit?.headers['x-api-key']).toBe('k')
   })
 })

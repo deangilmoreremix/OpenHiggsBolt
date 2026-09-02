@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -295,9 +297,9 @@ export default function ShotEditor() {
                         onRemove={removeShot}
                       />
                     ))}
-                  </div>
-                </div>
-                <p className="text-sm text-muted mb-3">{shot.description}</p>
+                   </div>
+                 </SortableContext>
+                 <p className="text-sm text-muted mb-3">{shot.description}</p>
                 {shot.status === 'generating' && (
                   <div className="aspect-video bg-[var(--bg-card)] rounded-xl flex items-center justify-center">
                     <Loader2 size={28} className="animate-spin text-primary" />
@@ -338,8 +340,9 @@ export default function ShotEditor() {
                 {shot.status === 'idle' && (
                   <div className="aspect-video bg-[var(--bg-card)] rounded-xl" />
                 )}
-              </div>
-            ))}
+              </DndContext>
+            </>
+          ))}
           </div>
         )}
       </div>
