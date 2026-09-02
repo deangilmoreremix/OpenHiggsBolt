@@ -1,10 +1,11 @@
 "use strict";
 "use client";
 
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports["default"] = LipSyncStudio;
+exports["default"] = RecastStudio;
 var _react = require("react");
 var _useTemplateData2 = require("../hooks/useTemplateData");
 var _TemplateBanner = _interopRequireDefault(require("./TemplateBanner"));
@@ -13,14 +14,11 @@ var _AiAssistantProvider = require("../../../../components/AiAssistantProvider")
 var _muapi = require("../muapi.js");
 var _models = require("../models.js");
 var _skillStore = require("../lib/skillStore");
-var _characterStore = require("../lib/characterStore");
 var _registry = _interopRequireDefault(require("../skills/registry.json"));
 var _promptRecipes = require("../lib/promptRecipes");
 var _storyboardHandoff = require("../storyboardHandoff.js");
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
-function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
-function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
@@ -57,8 +55,7 @@ function MediaPickerButton(_ref) {
     progress = _ref.progress,
     fileName = _ref.fileName,
     previewUrl = _ref.previewUrl,
-    isVideo = _ref.isVideo,
-    apiKey = _ref.apiKey;
+    isVideo = _ref.isVideo;
   var inputRef = (0, _react.useRef)(null);
   var handleClick = function handleClick(e) {
     var _inputRef$current;
@@ -147,32 +144,7 @@ function MediaPickerButton(_ref) {
         src: previewUrl,
         alt: "",
         className: "w-full h-full object-cover"
-      }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-        className: "flex flex-col items-center justify-center w-full px-1",
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-          width: "16",
-          height: "16",
-          viewBox: "0 0 24 24",
-          fill: "none",
-          stroke: "currentColor",
-          strokeWidth: "2.5",
-          className: "text-primary mb-0.5",
-          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-            d: "M9 18V5l12-2v13"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-            cx: "6",
-            cy: "18",
-            r: "3"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-            cx: "18",
-            cy: "16",
-            r: "3"
-          })]
-        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-          className: "text-[7px] font-black text-primary uppercase truncate w-full text-center",
-          children: (fileName === null || fileName === void 0 ? void 0 : fileName.split('.').pop()) || "AUD"
-        })]
-      })
+      }) : icon
     })]
   });
 }
@@ -258,76 +230,11 @@ function Dropdown(_ref3) {
 }
 
 // ---------------------------------------------------------------------------
-// History sidebar thumbnail
-// ---------------------------------------------------------------------------
-function HistoryThumb(_ref4) {
-  var entry = _ref4.entry,
-    isActive = _ref4.isActive,
-    onSelect = _ref4.onSelect,
-    onDownload = _ref4.onDownload;
-  return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-    onClick: onSelect,
-    className: "relative group/thumb cursor-pointer rounded-lg overflow-hidden border-2 transition-all duration-300 ".concat(isActive ? "border-primary shadow-glow" : "border-white/10 hover:border-white/30"),
-    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("video", {
-      src: entry.url,
-      preload: "metadata",
-      muted: true,
-      className: "w-full aspect-square object-cover"
-    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-      className: "absolute inset-0 bg-black/60 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center",
-      children: /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-        type: "button",
-        onClick: function onClick(e) {
-          e.stopPropagation();
-          onDownload(entry);
-        },
-        className: "p-1.5 bg-primary rounded-lg text-black hover:scale-110 transition-transform",
-        title: "Download",
-        children: /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
-          width: "12",
-          height: "12",
-          viewBox: "0 0 24 24",
-          fill: "none",
-          stroke: "currentColor",
-          strokeWidth: "3",
-          children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-            d: "M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"
-          })
-        })
-      })
-    })]
-  });
-}
-
-// ---------------------------------------------------------------------------
 // SVG icons
 // ---------------------------------------------------------------------------
-var MicIcon = function MicIcon(_ref5) {
-  var _ref5$className = _ref5.className,
-    className = _ref5$className === void 0 ? "text-muted group-hover:text-primary transition-colors" : _ref5$className;
-  return /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-    width: "16",
-    height: "16",
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: "2",
-    className: className,
-    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-      d: "M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"
-    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-      d: "M19 10v2a7 7 0 0 1-14 0v-2"
-    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
-      x1: "12",
-      y1: "19",
-      x2: "12",
-      y2: "23"
-    })]
-  });
-};
-var VideoIcon = function VideoIcon(_ref6) {
-  var _ref6$className = _ref6.className,
-    className = _ref6$className === void 0 ? "text-muted group-hover:text-primary transition-colors" : _ref6$className;
+var VideoIcon = function VideoIcon(_ref4) {
+  var _ref4$className = _ref4.className,
+    className = _ref4$className === void 0 ? "text-white/40 group-hover:text-primary transition-colors" : _ref4$className;
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
     width: "16",
     height: "16",
@@ -348,156 +255,137 @@ var VideoIcon = function VideoIcon(_ref6) {
     })]
   });
 };
+var ImageIcon = function ImageIcon(_ref5) {
+  var _ref5$className = _ref5.className,
+    className = _ref5$className === void 0 ? "text-white/40 group-hover:text-primary transition-colors" : _ref5$className;
+  return /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+    width: "16",
+    height: "16",
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "2",
+    className: className,
+    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("rect", {
+      x: "3",
+      y: "3",
+      width: "18",
+      height: "18",
+      rx: "2",
+      ry: "2"
+    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+      cx: "8.5",
+      cy: "8.5",
+      r: "1.5"
+    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
+      points: "21 15 16 10 5 21"
+    })]
+  });
+};
 
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
-function LipSyncStudio(_ref7) {
-  var _firstModel$id, _firstModel$inputs$re, _firstModel$inputs, _selectedModel$name;
-  var apiKey = _ref7.apiKey,
-    onGenerationComplete = _ref7.onGenerationComplete,
-    historyItems = _ref7.historyItems,
-    droppedFiles = _ref7.droppedFiles,
-    onFilesHandled = _ref7.onFilesHandled,
-    templateData = _ref7.templateData;
-  var PERSIST_KEY = "hg_lipsync_studio_persistent";
+function RecastStudio(_ref6) {
+  var _firstModel$id, _firstModel$inputs$as, _firstModel$inputs, _selectedModel$name;
+  var apiKey = _ref6.apiKey,
+    onGenerationComplete = _ref6.onGenerationComplete,
+    historyItems = _ref6.historyItems,
+    droppedFiles = _ref6.droppedFiles,
+    onFilesHandled = _ref6.onFilesHandled,
+    templateData = _ref6.templateData;
+  var PERSIST_KEY = "hg_recast_studio_persistent";
 
-  // ── Mode & model state ──────────────────────────────────────────────────
-  var _useState3 = (0, _react.useState)("image"),
+  // ── Model state ───────────────────────────────────────────────────────────
+  var firstModel = _models.recastModels[0];
+  var _useState3 = (0, _react.useState)((_firstModel$id = firstModel === null || firstModel === void 0 ? void 0 : firstModel.id) !== null && _firstModel$id !== void 0 ? _firstModel$id : ""),
     _useState4 = _slicedToArray(_useState3, 2),
-    inputMode = _useState4[0],
-    setInputMode = _useState4[1]; // 'image' | 'video'
-
-  var currentModels = inputMode === "image" ? _models.imageLipSyncModels : _models.videoLipSyncModels;
-  var firstModel = currentModels[0];
-  var _useState5 = (0, _react.useState)((_firstModel$id = firstModel === null || firstModel === void 0 ? void 0 : firstModel.id) !== null && _firstModel$id !== void 0 ? _firstModel$id : ""),
+    selectedModelId = _useState4[0],
+    setSelectedModelId = _useState4[1];
+  var _useState5 = (0, _react.useState)((_firstModel$inputs$as = firstModel === null || firstModel === void 0 || (_firstModel$inputs = firstModel.inputs) === null || _firstModel$inputs === void 0 || (_firstModel$inputs = _firstModel$inputs.aspect_ratio) === null || _firstModel$inputs === void 0 ? void 0 : _firstModel$inputs["default"]) !== null && _firstModel$inputs$as !== void 0 ? _firstModel$inputs$as : "16:9"),
     _useState6 = _slicedToArray(_useState5, 2),
-    selectedModelId = _useState6[0],
-    setSelectedModelId = _useState6[1];
-  var _useState7 = (0, _react.useState)((_firstModel$inputs$re = firstModel === null || firstModel === void 0 || (_firstModel$inputs = firstModel.inputs) === null || _firstModel$inputs === void 0 || (_firstModel$inputs = _firstModel$inputs.resolution) === null || _firstModel$inputs === void 0 ? void 0 : _firstModel$inputs["default"]) !== null && _firstModel$inputs$re !== void 0 ? _firstModel$inputs$re : "480p"),
-    _useState8 = _slicedToArray(_useState7, 2),
-    selectedResolution = _useState8[0],
-    setSelectedResolution = _useState8[1];
+    selectedAspectRatio = _useState6[0],
+    setSelectedAspectRatio = _useState6[1];
 
-  // ── Upload state ────────────────────────────────────────────────────────
-  var _useState9 = (0, _react.useState)(UPLOAD_STATE.IDLE),
+  // ── Upload state ──────────────────────────────────────────────────────────
+  var _useState7 = (0, _react.useState)(UPLOAD_STATE.IDLE),
+    _useState8 = _slicedToArray(_useState7, 2),
+    videoState = _useState8[0],
+    setVideoState = _useState8[1];
+  var _useState9 = (0, _react.useState)(""),
     _useState0 = _slicedToArray(_useState9, 2),
-    imageState = _useState0[0],
-    setImageState = _useState0[1];
-  var _useState1 = (0, _react.useState)(""),
+    videoName = _useState0[0],
+    setVideoName = _useState0[1];
+  var _useState1 = (0, _react.useState)(null),
     _useState10 = _slicedToArray(_useState1, 2),
-    imageName = _useState10[0],
-    setImageName = _useState10[1];
-  var _useState11 = (0, _react.useState)(null),
+    videoUrl = _useState10[0],
+    setVideoUrl = _useState10[1];
+  var _useState11 = (0, _react.useState)(0),
     _useState12 = _slicedToArray(_useState11, 2),
-    imageUrl = _useState12[0],
-    setImageUrl = _useState12[1];
+    videoProgress = _useState12[0],
+    setVideoProgress = _useState12[1];
   var _useState13 = (0, _react.useState)(UPLOAD_STATE.IDLE),
     _useState14 = _slicedToArray(_useState13, 2),
-    videoState = _useState14[0],
-    setVideoState = _useState14[1];
+    imageState = _useState14[0],
+    setImageState = _useState14[1];
   var _useState15 = (0, _react.useState)(""),
     _useState16 = _slicedToArray(_useState15, 2),
-    videoName = _useState16[0],
-    setVideoName = _useState16[1];
+    imageName = _useState16[0],
+    setImageName = _useState16[1];
   var _useState17 = (0, _react.useState)(null),
     _useState18 = _slicedToArray(_useState17, 2),
-    videoUrl = _useState18[0],
-    setVideoUrl = _useState18[1];
-  var _useState19 = (0, _react.useState)(UPLOAD_STATE.IDLE),
+    imageUrl = _useState18[0],
+    setImageUrl = _useState18[1];
+  var _useState19 = (0, _react.useState)(0),
     _useState20 = _slicedToArray(_useState19, 2),
-    audioState = _useState20[0],
-    setAudioState = _useState20[1];
+    imageProgress = _useState20[0],
+    setImageProgress = _useState20[1];
+
+  // ── Prompt ────────────────────────────────────────────────────────────────
   var _useState21 = (0, _react.useState)(""),
     _useState22 = _slicedToArray(_useState21, 2),
-    audioName = _useState22[0],
-    setAudioName = _useState22[1];
-  var _useState23 = (0, _react.useState)(null),
+    prompt = _useState22[0],
+    setPrompt = _useState22[1];
+
+  // ── Generation / UI state ─────────────────────────────────────────────────
+  var _useState23 = (0, _react.useState)(false),
     _useState24 = _slicedToArray(_useState23, 2),
-    audioUrl = _useState24[0],
-    setAudioUrl = _useState24[1];
-
-  // ── Individual progress states ──
-  var _useState25 = (0, _react.useState)(0),
+    isGenerating = _useState24[0],
+    setIsGenerating = _useState24[1];
+  var _useState25 = (0, _react.useState)(null),
     _useState26 = _slicedToArray(_useState25, 2),
-    imageProgress = _useState26[0],
-    setImageProgress = _useState26[1];
-  var _useState27 = (0, _react.useState)(0),
+    generateError = _useState26[0],
+    setGenerateError = _useState26[1];
+  var _useState27 = (0, _react.useState)(null),
     _useState28 = _slicedToArray(_useState27, 2),
-    videoProgress = _useState28[0],
-    setVideoProgress = _useState28[1];
-  var _useState29 = (0, _react.useState)(0),
+    fullscreenUrl = _useState28[0],
+    setFullscreenUrl = _useState28[1];
+
+  // ── History ───────────────────────────────────────────────────────────────
+  var _useState29 = (0, _react.useState)([]),
     _useState30 = _slicedToArray(_useState29, 2),
-    audioProgress = _useState30[0],
-    setAudioProgress = _useState30[1];
-
-  // ── Prompt ──────────────────────────────────────────────────────────────
-  var _useState31 = (0, _react.useState)(""),
-    _useState32 = _slicedToArray(_useState31, 2),
-    prompt = _useState32[0],
-    setPrompt = _useState32[1];
-
-  // ── Native audio flag (set by Skills recipe) ───────────────────────────
-  var _useState33 = (0, _react.useState)(false),
-    _useState34 = _slicedToArray(_useState33, 2),
-    nativeAudio = _useState34[0],
-    setNativeAudio = _useState34[1];
-
-  // ── Generation / UI state ───────────────────────────────────────────────
-  var _useState35 = (0, _react.useState)(false),
-    _useState36 = _slicedToArray(_useState35, 2),
-    isGenerating = _useState36[0],
-    setIsGenerating = _useState36[1];
-  var _useState37 = (0, _react.useState)(null),
-    _useState38 = _slicedToArray(_useState37, 2),
-    generateError = _useState38[0],
-    setGenerateError = _useState38[1];
-  var _useState39 = (0, _react.useState)(null),
-    _useState40 = _slicedToArray(_useState39, 2),
-    fullscreenUrl = _useState40[0],
-    setFullscreenUrl = _useState40[1];
-  var _useState41 = (0, _react.useState)("input"),
-    _useState42 = _slicedToArray(_useState41, 2),
-    view = _useState42[0],
-    setView = _useState42[1]; // 'input' | 'result'
-  var _useState43 = (0, _react.useState)(null),
-    _useState44 = _slicedToArray(_useState43, 2),
-    activeResultUrl = _useState44[0],
-    setActiveResultUrl = _useState44[1];
-
-  // ── History ─────────────────────────────────────────────────────────────
-  // If historyItems prop is provided, use it; otherwise use internal state.
-  var _useState45 = (0, _react.useState)([]),
-    _useState46 = _slicedToArray(_useState45, 2),
-    internalHistory = _useState46[0],
-    setInternalHistory = _useState46[1];
+    internalHistory = _useState30[0],
+    setInternalHistory = _useState30[1];
   var history = historyItems !== null && historyItems !== void 0 ? historyItems : internalHistory;
-  var _useState47 = (0, _react.useState)(0),
-    _useState48 = _slicedToArray(_useState47, 2),
-    activeHistoryIdx = _useState48[0],
-    setActiveHistoryIdx = _useState48[1];
 
-  // ── Dropdown state ──────────────────────────────────────────────────────
-  var _useState49 = (0, _react.useState)(null),
-    _useState50 = _slicedToArray(_useState49, 2),
-    openDropdown = _useState50[0],
-    setOpenDropdown = _useState50[1]; // 'model' | 'resolution' | null
+  // ── Dropdown state ────────────────────────────────────────────────────────
+  var _useState31 = (0, _react.useState)(null),
+    _useState32 = _slicedToArray(_useState31, 2),
+    openDropdown = _useState32[0],
+    setOpenDropdown = _useState32[1]; // 'model' | 'aspect' | null
   var modelBtnRef = (0, _react.useRef)(null);
-  var resolutionBtnRef = (0, _react.useRef)(null);
+  var aspectBtnRef = (0, _react.useRef)(null);
   var textareaRef = (0, _react.useRef)(null);
-
-  // ── Video ref for result ────────────────────────────────────────────────
-  var resultVideoRef = (0, _react.useRef)(null);
   var hasRestored = (0, _react.useRef)(false);
 
   // ── Apply pending Skills recipe (set by SkillsBrowser) ────────────────────
   (0, _react.useEffect)(function () {
-    var pending = (0, _skillStore.getPendingRecipe)("lipsync");
+    var pending = (0, _skillStore.getPendingRecipe)("recast");
     if (!pending) return;
     var skill = _registry["default"].skills.find(function (s) {
       return s.slug === pending;
     });
-    (0, _skillStore.clearPendingRecipe)("lipsync");
+    (0, _skillStore.clearPendingRecipe)("recast");
     if (!skill) return;
     applyRecipe(skill);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -507,28 +395,19 @@ function LipSyncStudio(_ref7) {
   var handoffApplied = (0, _react.useRef)(null);
   (0, _react.useEffect)(function () {
     try {
-      var handoff = (0, _storyboardHandoff.readStoryboardHandoff)("lipsync");
+      var handoff = (0, _storyboardHandoff.readStoryboardHandoff)("recast");
       if (!handoff || handoffApplied.current === handoff.createdAt) return;
       handoffApplied.current = handoff.createdAt;
       if (handoff.combinedPrompt || handoff.projectName) {
         setPrompt(handoff.combinedPrompt || handoff.projectName);
       }
-      var ref = handoff.firstFrameUrl || handoff.referenceImageUrl;
-      if (ref) {
-        setImageUrl(ref);
+      if (["1:1", "16:9", "9:16"].includes(handoff.aspectRatio)) {
+        setSelectedAspectRatio(handoff.aspectRatio);
       }
     } catch (err) {
       console.warn("Failed to apply Storyboard hand-off:", err);
     }
   }, []);
-
-  // Resolve a recipe reference url. Returns null for unresolved {{token}}s
-  // so the studio leaves them for the user to supply.
-  function resolveRefUrl(raw) {
-    if (typeof raw !== "string") return null;
-    if (raw.startsWith("{{") && raw.endsWith("}}")) return null;
-    return raw;
-  }
   function applyRecipe(skill) {
     var step0 = skill.steps && skill.steps[0];
     if (!step0) {
@@ -536,60 +415,11 @@ function LipSyncStudio(_ref7) {
       return;
     }
     var modelId = step0.endpoint || step0.model;
-    var allModels = [].concat(_toConsumableArray(_models.lipsyncModels), _toConsumableArray(_models.imageLipSyncModels), _toConsumableArray(_models.videoLipSyncModels));
-    var model = allModels.find(function (m) {
+    var model = _models.recastModels.find(function (m) {
       return m.id === modelId;
     });
-
-    // Native-audio toggle (recipe-driven)
-    if (step0.audio || step0.flags && step0.flags.nativeAudio) {
-      setNativeAudio(true);
-    }
     if (model) setSelectedModelId(model.id);
-
-    // ── References ──
-    var refs = step0.references;
-    if (refs) {
-      var list = Array.isArray(refs) ? refs : [refs];
-      var _iterator = _createForOfIteratorHelper(list),
-        _step;
-      try {
-        for (_iterator.s(); !(_step = _iterator.n()).done;) {
-          var r = _step.value;
-          var isObj = r && _typeof(r) === "object";
-          var rawUrl = isObj ? r.url : r;
-          var role = isObj ? r.role : null;
-          var url = resolveRefUrl(rawUrl);
-          if (!url) continue; // token — leave for user
-
-          if (role === "character_sheet") {
-            (0, _characterStore.setCharacterSheet)("lipsync", url);
-            continue;
-          }
-          var isVideo = role === "video" || typeof role === "string" && role.toLowerCase().includes("video");
-          var name = url.split("/").pop() || "reference";
-          if (isVideo) {
-            switchToVideo();
-            setVideoUrl(url);
-            setVideoState(UPLOAD_STATE.READY);
-            setVideoName(name);
-          } else {
-            switchToImage();
-            setImageUrl(url);
-            setImageState(UPLOAD_STATE.READY);
-            setImageName(name);
-          }
-        }
-      } catch (err) {
-        _iterator.e(err);
-      } finally {
-        _iterator.f();
-      }
-    }
-
-    // Re-assert recipe model/resolution after any mode switch triggered above
-    if (model) setSelectedModelId(model.id);
-    if (step0.resolution) setSelectedResolution(step0.resolution);
+    if (step0.aspectRatio) setSelectedAspectRatio(step0.aspectRatio);
     var vals = {};
     (skill.inputs || []).forEach(function (i) {
       vals[i.name] = "";
@@ -597,133 +427,112 @@ function LipSyncStudio(_ref7) {
     setPrompt((0, _promptRecipes.fillTemplate)(step0.prompt || skill.description || "", vals));
   }
 
-  // ── Persistence: Load ────────────────────────────────────────────────────
+  // ── Persistence: Load ──────────────────────────────────────────────────────
   (0, _react.useEffect)(function () {
     try {
       var stored = localStorage.getItem(PERSIST_KEY);
       if (stored) {
         var data = JSON.parse(stored);
-        if (data.inputMode) setInputMode(data.inputMode);
         if (data.selectedModelId) setSelectedModelId(data.selectedModelId);
-        if (data.selectedResolution) setSelectedResolution(data.selectedResolution);
-        if (data.imageUrl) {
-          setImageUrl(data.imageUrl);
-          setImageState(UPLOAD_STATE.READY);
-        }
+        if (data.selectedAspectRatio) setSelectedAspectRatio(data.selectedAspectRatio);
         if (data.videoUrl) {
           setVideoUrl(data.videoUrl);
           setVideoState(UPLOAD_STATE.READY);
         }
-        if (data.audioUrl) {
-          setAudioUrl(data.audioUrl);
-          setAudioState(UPLOAD_STATE.READY);
+        if (data.imageUrl) {
+          setImageUrl(data.imageUrl);
+          setImageState(UPLOAD_STATE.READY);
         }
-        if (data.imageName) setImageName(data.imageName);
         if (data.videoName) setVideoName(data.videoName);
-        if (data.audioName) setAudioName(data.audioName);
+        if (data.imageName) setImageName(data.imageName);
         if (data.prompt) setPrompt(data.prompt);
-        if (data.nativeAudio !== undefined) setNativeAudio(data.nativeAudio);
         if (data.internalHistory) setInternalHistory(data.internalHistory);
       }
     } catch (err) {
-      console.warn("Failed to load LipSyncStudio persistence:", err);
+      console.warn("Failed to load RecastStudio persistence:", err);
     } finally {
       hasRestored.current = true;
     }
   }, []);
 
-  // ── Persistence: Save ────────────────────────────────────────────────────
+  // ── Persistence: Save ──────────────────────────────────────────────────────
   (0, _react.useEffect)(function () {
     var timer = setTimeout(function () {
       try {
-        var state = {
-          inputMode: inputMode,
+        localStorage.setItem(PERSIST_KEY, JSON.stringify({
           selectedModelId: selectedModelId,
-          selectedResolution: selectedResolution,
-          imageUrl: imageUrl,
-          imageName: imageName,
+          selectedAspectRatio: selectedAspectRatio,
           videoUrl: videoUrl,
           videoName: videoName,
-          audioUrl: audioUrl,
-          audioName: audioName,
+          imageUrl: imageUrl,
+          imageName: imageName,
           prompt: prompt,
-          nativeAudio: nativeAudio,
           internalHistory: internalHistory
-        };
-        localStorage.setItem(PERSIST_KEY, JSON.stringify(state));
+        }));
       } catch (err) {
-        console.warn("Failed to save LipSyncStudio persistence:", err);
+        console.warn("Failed to save RecastStudio persistence:", err);
       }
-    }, 500); // 500ms debounce
+    }, 500);
     return function () {
       return clearTimeout(timer);
     };
-  }, [inputMode, selectedModelId, selectedResolution, imageUrl, imageName, videoUrl, videoName, audioUrl, audioName, prompt, nativeAudio, internalHistory]);
-
-  // ── Derived model info ──────────────────────────────────────────────────
-  var selectedModel = _models.lipsyncModels.find(function (m) {
-    return m.id === selectedModelId;
-  });
-  var resolutionOptions = (0, _models.getResolutionsForLipSyncModel)(selectedModelId);
-  var showResolution = resolutionOptions.length > 0;
-  var showPrompt = !!(selectedModel !== null && selectedModel !== void 0 && selectedModel.hasPrompt);
-
-  // ── Sync model when mode changes ────────────────────────────────────────
-  (0, _react.useEffect)(function () {
-    var _first$inputs$resolut, _first$inputs;
-    if (hasRestored.current) return;
-    var models = inputMode === "image" ? _models.imageLipSyncModels : _models.videoLipSyncModels;
-    var first = models[0];
-    if (!first) return;
-    setSelectedModelId(first.id);
-    setSelectedResolution((_first$inputs$resolut = (_first$inputs = first.inputs) === null || _first$inputs === void 0 || (_first$inputs = _first$inputs.resolution) === null || _first$inputs === void 0 ? void 0 : _first$inputs["default"]) !== null && _first$inputs$resolut !== void 0 ? _first$inputs$resolut : "480p");
-  }, [inputMode]);
+  }, [selectedModelId, selectedAspectRatio, videoUrl, videoName, imageUrl, imageName, prompt, internalHistory]);
 
   // ── Apply template data from landing page "Create This Style" ──────────────
   var _useTemplateData = (0, _useTemplateData2.useTemplateData)(templateData, function (data) {
       if (data.prompt) {
         setPrompt(data.prompt);
       }
+      if (data.aspectRatio) {
+        var normalized = (0, _useTemplateData2.normalizeAspectRatio)(data.aspectRatio, "16:9");
+        setSelectedAspectRatio(normalized);
+      }
     }),
     resetTemplate = _useTemplateData.reset,
     isTemplateApplied = _useTemplateData.isTemplateApplied;
 
-  // ── Upload handlers ─────────────────────────────────────────────────────
-  var handleImageUpload = (0, _react.useCallback)(/*#__PURE__*/function () {
-    var _ref8 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2(file) {
+  // ── Derived model info ──────────────────────────────────────────────────────
+  var selectedModel = (0, _models.getRecastModelById)(selectedModelId);
+  var aspectOptions = (0, _models.getAspectRatiosForRecastModel)(selectedModelId);
+  var showAspect = aspectOptions.length > 0;
+  var showPrompt = !!(selectedModel !== null && selectedModel !== void 0 && selectedModel.hasPrompt);
+
+  // ── Upload handlers ─────────────────────────────────────────────────────────
+  var handleVideoPick = (0, _react.useCallback)(/*#__PURE__*/function () {
+    var _ref7 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2(file) {
       var url, _t;
       return _regenerator().w(function (_context2) {
         while (1) switch (_context2.p = _context2.n) {
           case 0:
-            if (!(file.size > 10 * 1024 * 1024)) {
+            if (!(file.size > 50 * 1024 * 1024)) {
               _context2.n = 1;
               break;
             }
-            alert("Image exceeds 10MB limit.");
+            alert("Video exceeds 50MB limit.");
             return _context2.a(2);
           case 1:
-            setImageState(UPLOAD_STATE.UPLOADING);
-            setImageProgress(0);
+            setVideoState(UPLOAD_STATE.UPLOADING);
+            setVideoProgress(0);
             _context2.p = 2;
             _context2.n = 3;
             return (0, _muapi.uploadFile)(apiKey, file, function (pct) {
-              setImageProgress(pct);
+              return setVideoProgress(pct);
             });
           case 3:
             url = _context2.v;
-            setImageUrl(url);
-            setImageName(file.name);
-            setImageState(UPLOAD_STATE.READY);
+            setVideoUrl(url);
+            setVideoName(file.name);
+            setVideoState(UPLOAD_STATE.READY);
             _context2.n = 5;
             break;
           case 4:
             _context2.p = 4;
             _t = _context2.v;
-            setImageState(UPLOAD_STATE.IDLE);
-            alert("Image upload failed: ".concat(_t.message));
+            setVideoState(UPLOAD_STATE.IDLE);
+            alert("Video upload failed: ".concat(_t.message));
           case 5:
             _context2.p = 5;
-            setImageProgress(0);
+            setVideoProgress(0);
             return _context2.f(5);
           case 6:
             return _context2.a(2);
@@ -731,52 +540,7 @@ function LipSyncStudio(_ref7) {
       }, _callee2, null, [[2, 4, 5, 6]]);
     }));
     return function (_x2) {
-      return _ref8.apply(this, arguments);
-    };
-  }(), [apiKey]);
-  var handleVideoPick = (0, _react.useCallback)(/*#__PURE__*/function () {
-    var _ref9 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3(file) {
-      var url, _t2;
-      return _regenerator().w(function (_context3) {
-        while (1) switch (_context3.p = _context3.n) {
-          case 0:
-            if (!(file.size > 50 * 1024 * 1024)) {
-              _context3.n = 1;
-              break;
-            }
-            alert("Video exceeds 50MB limit.");
-            return _context3.a(2);
-          case 1:
-            setVideoState(UPLOAD_STATE.UPLOADING);
-            setVideoProgress(0);
-            _context3.p = 2;
-            _context3.n = 3;
-            return (0, _muapi.uploadFile)(apiKey, file, function (pct) {
-              setVideoProgress(pct);
-            });
-          case 3:
-            url = _context3.v;
-            setVideoUrl(url);
-            setVideoName(file.name);
-            setVideoState(UPLOAD_STATE.READY);
-            _context3.n = 5;
-            break;
-          case 4:
-            _context3.p = 4;
-            _t2 = _context3.v;
-            setVideoState(UPLOAD_STATE.IDLE);
-            alert("Video upload failed: ".concat(_t2.message));
-          case 5:
-            _context3.p = 5;
-            setVideoProgress(0);
-            return _context3.f(5);
-          case 6:
-            return _context3.a(2);
-        }
-      }, _callee3, null, [[2, 4, 5, 6]]);
-    }));
-    return function (_x3) {
-      return _ref9.apply(this, arguments);
+      return _ref7.apply(this, arguments);
     };
   }(), [apiKey]);
   var handlePromptInput = function handlePromptInput(e) {
@@ -786,136 +550,98 @@ function LipSyncStudio(_ref7) {
     var maxH = window.innerWidth < 768 ? 150 : 250;
     el.style.height = Math.min(el.scrollHeight, maxH) + "px";
   };
-  var handleAudioPick = (0, _react.useCallback)(/*#__PURE__*/function () {
-    var _ref0 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee4(file) {
-      var url, _t3;
-      return _regenerator().w(function (_context4) {
-        while (1) switch (_context4.p = _context4.n) {
+  var handleImageUpload = (0, _react.useCallback)(/*#__PURE__*/function () {
+    var _ref8 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3(file) {
+      var url, _t2;
+      return _regenerator().w(function (_context3) {
+        while (1) switch (_context3.p = _context3.n) {
           case 0:
             if (!(file.size > 10 * 1024 * 1024)) {
-              _context4.n = 1;
+              _context3.n = 1;
               break;
             }
-            alert("Audio file exceeds 10MB limit.");
-            return _context4.a(2);
+            alert("Image exceeds 10MB limit.");
+            return _context3.a(2);
           case 1:
-            setAudioState(UPLOAD_STATE.UPLOADING);
-            setAudioProgress(0);
-            _context4.p = 2;
-            _context4.n = 3;
+            setImageState(UPLOAD_STATE.UPLOADING);
+            setImageProgress(0);
+            _context3.p = 2;
+            _context3.n = 3;
             return (0, _muapi.uploadFile)(apiKey, file, function (pct) {
-              setAudioProgress(pct);
+              return setImageProgress(pct);
             });
           case 3:
-            url = _context4.v;
-            setAudioUrl(url);
-            setAudioName(file.name);
-            setAudioState(UPLOAD_STATE.READY);
-            _context4.n = 5;
+            url = _context3.v;
+            setImageUrl(url);
+            setImageName(file.name);
+            setImageState(UPLOAD_STATE.READY);
+            _context3.n = 5;
             break;
           case 4:
-            _context4.p = 4;
-            _t3 = _context4.v;
-            setAudioState(UPLOAD_STATE.IDLE);
-            alert("Audio upload failed: ".concat(_t3.message));
+            _context3.p = 4;
+            _t2 = _context3.v;
+            setImageState(UPLOAD_STATE.IDLE);
+            alert("Image upload failed: ".concat(_t2.message));
           case 5:
-            _context4.p = 5;
-            setAudioProgress(0);
-            return _context4.f(5);
+            _context3.p = 5;
+            setImageProgress(0);
+            return _context3.f(5);
           case 6:
-            return _context4.a(2);
+            return _context3.a(2);
         }
-      }, _callee4, null, [[2, 4, 5, 6]]);
+      }, _callee3, null, [[2, 4, 5, 6]]);
     }));
-    return function (_x4) {
-      return _ref0.apply(this, arguments);
+    return function (_x3) {
+      return _ref8.apply(this, arguments);
     };
   }(), [apiKey]);
 
-  // ── Handle Dropped Files ────────────────────────────────────────────────
+  // ── Handle Dropped Files ────────────────────────────────────────────────────
   (0, _react.useEffect)(function () {
     if (droppedFiles && droppedFiles.length > 0) {
       var imageFiles = droppedFiles.filter(function (f) {
-        return f.type.startsWith('image/');
+        return f.type.startsWith("image/");
       });
       var videoFiles = droppedFiles.filter(function (f) {
-        return f.type.startsWith('video/');
+        return f.type.startsWith("video/");
       });
-      var audioFiles = droppedFiles.filter(function (f) {
-        return f.type.startsWith('audio/');
-      });
-      if (audioFiles.length > 0) {
-        handleAudioPick(audioFiles[0]);
-      } else if (videoFiles.length > 0) {
-        switchToVideo();
-        handleVideoPick(videoFiles[0]);
-      } else if (imageFiles.length > 0) {
-        switchToImage();
-        handleImageUpload(imageFiles[0]);
-      }
+      if (videoFiles.length > 0) handleVideoPick(videoFiles[0]);
+      if (imageFiles.length > 0) handleImageUpload(imageFiles[0]);
       onFilesHandled === null || onFilesHandled === void 0 || onFilesHandled();
     }
-  }, [droppedFiles, onFilesHandled, handleAudioPick, handleVideoPick, handleImageUpload]);
+  }, [droppedFiles, onFilesHandled, handleVideoPick, handleImageUpload]);
 
-  // ── Mode toggle ─────────────────────────────────────────────────────────
-  var switchToImage = function switchToImage() {
-    if (inputMode === "image") return;
-    setInputMode("image");
-    setVideoUrl(null);
-    setVideoState(UPLOAD_STATE.IDLE);
-    setVideoName("");
-    var first = _models.imageLipSyncModels[0];
-    if (first) {
-      var _first$inputs$resolut2, _first$inputs2;
-      setSelectedModelId(first.id);
-      setSelectedResolution((_first$inputs$resolut2 = (_first$inputs2 = first.inputs) === null || _first$inputs2 === void 0 || (_first$inputs2 = _first$inputs2.resolution) === null || _first$inputs2 === void 0 ? void 0 : _first$inputs2["default"]) !== null && _first$inputs$resolut2 !== void 0 ? _first$inputs$resolut2 : "480p");
-    }
-  };
-  var switchToVideo = function switchToVideo() {
-    if (inputMode === "video") return;
-    setInputMode("video");
-    setImageUrl(null);
-    setImageState(UPLOAD_STATE.IDLE);
-    setImageName("");
-    var first = _models.videoLipSyncModels[0];
-    if (first) {
-      var _first$inputs$resolut3, _first$inputs3;
-      setSelectedModelId(first.id);
-      setSelectedResolution((_first$inputs$resolut3 = (_first$inputs3 = first.inputs) === null || _first$inputs3 === void 0 || (_first$inputs3 = _first$inputs3.resolution) === null || _first$inputs3 === void 0 ? void 0 : _first$inputs3["default"]) !== null && _first$inputs$resolut3 !== void 0 ? _first$inputs$resolut3 : "480p");
-    }
-  };
-
-  // ── Model selection ─────────────────────────────────────────────────────
+  // ── Model selection ─────────────────────────────────────────────────────────
   var handleModelSelect = function handleModelSelect(model) {
     setSelectedModelId(model.id);
-    var resolutions = (0, _models.getResolutionsForLipSyncModel)(model.id);
-    if (resolutions.length > 0) {
-      var _model$inputs$resolut, _model$inputs;
-      setSelectedResolution((_model$inputs$resolut = (_model$inputs = model.inputs) === null || _model$inputs === void 0 || (_model$inputs = _model$inputs.resolution) === null || _model$inputs === void 0 ? void 0 : _model$inputs["default"]) !== null && _model$inputs$resolut !== void 0 ? _model$inputs$resolut : resolutions[0]);
+    var ratios = (0, _models.getAspectRatiosForRecastModel)(model.id);
+    if (ratios.length > 0) {
+      var _model$inputs$aspect_, _model$inputs;
+      setSelectedAspectRatio((_model$inputs$aspect_ = (_model$inputs = model.inputs) === null || _model$inputs === void 0 || (_model$inputs = _model$inputs.aspect_ratio) === null || _model$inputs === void 0 ? void 0 : _model$inputs["default"]) !== null && _model$inputs$aspect_ !== void 0 ? _model$inputs$aspect_ : ratios[0]);
     }
   };
 
-  // ── History helpers ─────────────────────────────────────────────────────
+  // ── History helpers ─────────────────────────────────────────────────────────
   var addToInternalHistory = (0, _react.useCallback)(function (entry) {
     setInternalHistory(function (prev) {
       return [entry].concat(_toConsumableArray(prev)).slice(0, 30);
     });
   }, []);
   var downloadFile = /*#__PURE__*/function () {
-    var _ref1 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee5(url, filename) {
-      var response, blob, blobUrl, a, _t4;
-      return _regenerator().w(function (_context5) {
-        while (1) switch (_context5.p = _context5.n) {
+    var _ref9 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee4(url, filename) {
+      var response, blob, blobUrl, a, _t3;
+      return _regenerator().w(function (_context4) {
+        while (1) switch (_context4.p = _context4.n) {
           case 0:
-            _context5.p = 0;
-            _context5.n = 1;
+            _context4.p = 0;
+            _context4.n = 1;
             return fetch(url);
           case 1:
-            response = _context5.v;
-            _context5.n = 2;
+            response = _context4.v;
+            _context4.n = 2;
             return response.blob();
           case 2:
-            blob = _context5.v;
+            blob = _context4.v;
             blobUrl = URL.createObjectURL(blob);
             a = document.createElement("a");
             a.href = blobUrl;
@@ -924,148 +650,113 @@ function LipSyncStudio(_ref7) {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(blobUrl);
-            _context5.n = 4;
+            _context4.n = 4;
             break;
           case 3:
-            _context5.p = 3;
-            _t4 = _context5.v;
+            _context4.p = 3;
+            _t3 = _context4.v;
             window.open(url, "_blank");
           case 4:
-            return _context5.a(2);
+            return _context4.a(2);
         }
-      }, _callee5, null, [[0, 3]]);
+      }, _callee4, null, [[0, 3]]);
     }));
-    return function downloadFile(_x5, _x6) {
-      return _ref1.apply(this, arguments);
+    return function downloadFile(_x4, _x5) {
+      return _ref9.apply(this, arguments);
     };
   }();
 
-  // ── Generation ──────────────────────────────────────────────────────────
+  // ── Generation ──────────────────────────────────────────────────────────────
   var handleGenerate = /*#__PURE__*/function () {
-    var _ref10 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee6() {
-      var lipsyncParams, res, genId, entry, _e$message$slice, _e$message, _t5;
-      return _regenerator().w(function (_context6) {
-        while (1) switch (_context6.p = _context6.n) {
+    var _ref0 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee5() {
+      var params, res, genId, entry, _e$message$slice, _e$message, _t4;
+      return _regenerator().w(function (_context5) {
+        while (1) switch (_context5.p = _context5.n) {
           case 0:
-            if (audioUrl) {
-              _context6.n = 1;
-              break;
-            }
-            alert("Please upload an audio file first.");
-            return _context6.a(2);
-          case 1:
-            if (!(inputMode === "image" && !imageUrl)) {
-              _context6.n = 2;
-              break;
-            }
-            alert("Please upload a portrait image first.");
-            return _context6.a(2);
-          case 2:
-            if (!(inputMode === "video" && !videoUrl)) {
-              _context6.n = 3;
+            if (videoUrl) {
+              _context5.n = 1;
               break;
             }
             alert("Please upload a source video first.");
-            return _context6.a(2);
-          case 3:
+            return _context5.a(2);
+          case 1:
+            if (imageUrl) {
+              _context5.n = 2;
+              break;
+            }
+            alert("Please upload a character image first.");
+            return _context5.a(2);
+          case 2:
             setIsGenerating(true);
             setGenerateError(null);
-            _context6.p = 4;
-            lipsyncParams = {
+            _context5.p = 3;
+            params = {
               model: selectedModelId,
-              audio_url: audioUrl
+              video_url: videoUrl,
+              image_url: imageUrl
             };
-            if (inputMode === "image") lipsyncParams.image_url = imageUrl;else lipsyncParams.video_url = videoUrl;
-            if (prompt && selectedModel !== null && selectedModel !== void 0 && selectedModel.hasPrompt) lipsyncParams.prompt = prompt;
-            if (showResolution) lipsyncParams.resolution = selectedResolution;
-            if (selectedModel !== null && selectedModel !== void 0 && selectedModel.hasSeed) lipsyncParams.seed = -1;
-            _context6.n = 5;
-            return (0, _muapi.processLipSync)(apiKey, lipsyncParams);
-          case 5:
-            res = _context6.v;
+            if (showAspect) params.aspect_ratio = selectedAspectRatio;
+            if (prompt && selectedModel !== null && selectedModel !== void 0 && selectedModel.hasPrompt) params.prompt = prompt;
+            _context5.n = 4;
+            return (0, _muapi.processRecast)(apiKey, params);
+          case 4:
+            res = _context5.v;
             if (res !== null && res !== void 0 && res.url) {
-              _context6.n = 6;
+              _context5.n = 5;
               break;
             }
             throw new Error("No video URL returned by API");
-          case 6:
+          case 5:
             genId = res.id || Date.now().toString();
             entry = {
               id: genId,
               url: res.url,
               prompt: prompt,
-              model: selectedModelId,
+              model: (selectedModel === null || selectedModel === void 0 ? void 0 : selectedModel.name) || selectedModelId,
               timestamp: new Date().toISOString()
             };
             if (!historyItems) addToInternalHistory(entry);
-            setActiveResultUrl(res.url);
-            setActiveHistoryIdx(0);
-            setView("result");
             if (onGenerationComplete) {
               onGenerationComplete({
                 url: res.url,
                 model: selectedModelId,
                 prompt: prompt,
-                type: "lipsync"
+                type: "recast"
               });
             }
-            _context6.n = 8;
+            _context5.n = 7;
             break;
-          case 7:
-            _context6.p = 7;
-            _t5 = _context6.v;
-            console.error("[LipSyncStudio]", _t5);
-            setGenerateError((_e$message$slice = (_e$message = _t5.message) === null || _e$message === void 0 ? void 0 : _e$message.slice(0, 80)) !== null && _e$message$slice !== void 0 ? _e$message$slice : "Unknown error");
+          case 6:
+            _context5.p = 6;
+            _t4 = _context5.v;
+            console.error("[RecastStudio]", _t4);
+            setGenerateError((_e$message$slice = (_e$message = _t4.message) === null || _e$message === void 0 ? void 0 : _e$message.slice(0, 80)) !== null && _e$message$slice !== void 0 ? _e$message$slice : "Unknown error");
             setTimeout(function () {
               return setGenerateError(null);
             }, 4000);
-          case 8:
-            _context6.p = 8;
+          case 7:
+            _context5.p = 7;
             setIsGenerating(false);
-            return _context6.f(8);
-          case 9:
-            return _context6.a(2);
+            return _context5.f(7);
+          case 8:
+            return _context5.a(2);
         }
-      }, _callee6, null, [[4, 7, 8, 9]]);
+      }, _callee5, null, [[3, 6, 7, 8]]);
     }));
     return function handleGenerate() {
-      return _ref10.apply(this, arguments);
+      return _ref0.apply(this, arguments);
     };
   }();
 
-  // ── Reset to input view ─────────────────────────────────────────────────
-  var handleNew = function handleNew() {
-    setView("input");
-    setActiveResultUrl(null);
-    setPrompt("");
-    setImageUrl(null);
-    setImageState(UPLOAD_STATE.IDLE);
-    setImageName("");
-    setVideoUrl(null);
-    setVideoState(UPLOAD_STATE.IDLE);
-    setVideoName("");
-    setAudioUrl(null);
-    setAudioState(UPLOAD_STATE.IDLE);
-    setAudioName("");
-  };
-
-  // ── Media status labels ─────────────────────────────────────────────────
-  var mediaStatusText = inputMode === "image" ? imageState === UPLOAD_STATE.READY ? "\u2713 ".concat(imageName) : "No image" : videoState === UPLOAD_STATE.READY ? "\u2713 ".concat(videoName) : "No video";
-  var mediaStatusClass = (inputMode === "image" ? imageState : videoState) === UPLOAD_STATE.READY ? "text-primary" : "text-muted";
-  var audioStatusText = audioState === UPLOAD_STATE.READY ? "\u2713 ".concat(audioName) : "No audio";
-  var audioStatusClass = audioState === UPLOAD_STATE.READY ? "text-primary" : "text-muted";
-  var hasHistory = history.length > 0;
-
-  // ── Dropdown item lists ─────────────────────────────────────────────────
-  var modelDropdownItems = currentModels;
-  var resolutionDropdownItems = resolutionOptions.map(function (r) {
+  // ── Dropdown item lists ─────────────────────────────────────────────────────
+  var aspectDropdownItems = aspectOptions.map(function (r) {
     return {
       id: r,
       name: r
     };
   });
 
-  // ── Render ──────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     className: "w-full h-full flex flex-col items-center justify-center bg-app-bg relative overflow-hidden",
     children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
@@ -1073,7 +764,7 @@ function LipSyncStudio(_ref7) {
       children: history.length > 0 ? /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
         className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full pt-4 animate-fade-in-up",
         children: history.map(function (entry, idx) {
-          var _entry$model, _entry$model2;
+          var _entry$prompt, _entry$model;
           return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "relative group rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-xl hover:border-primary/50 transition-all duration-300 flex flex-col",
             children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("video", {
@@ -1131,7 +822,7 @@ function LipSyncStudio(_ref7) {
                 title: "Download",
                 onClick: function onClick(e) {
                   e.stopPropagation();
-                  downloadFile(entry.url, "lipsync-".concat(entry.id || idx, ".mp4"));
+                  downloadFile(entry.url, "bodyswap-".concat(entry.id || idx, ".mp4"));
                 },
                 className: "p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10",
                 children: /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
@@ -1148,7 +839,7 @@ function LipSyncStudio(_ref7) {
               }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_SocialPublishProvider.PublishStep, {
                 mediaUrl: entry.url,
                 mediaType: "video",
-                title: ((_entry$model = entry.model) === null || _entry$model === void 0 ? void 0 : _entry$model.name) || 'Lip sync video',
+                title: ((_entry$prompt = entry.prompt) === null || _entry$prompt === void 0 ? void 0 : _entry$prompt.substring(0, 50)) || 'Body swap video',
                 className: "p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center"
               }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_AiAssistantProvider.AssistStep, {
                 assetUrl: entry.url,
@@ -1208,15 +899,12 @@ function LipSyncStudio(_ref7) {
               })]
             }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
               className: "p-3 bg-black/80 backdrop-blur-sm border-t border-white/5 flex-1 flex flex-col justify-between gap-2",
-              children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+              children: /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
                 className: "flex items-center justify-between flex-wrap gap-1",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                   className: "text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded border border-primary/20 whitespace-nowrap",
-                  children: ((_entry$model2 = entry.model) === null || _entry$model2 === void 0 ? void 0 : _entry$model2.name) || entry.model || "Lip Sync"
-                }), entry.resolution && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                  className: "text-[10px] text-white/40",
-                  children: entry.resolution
-                })]
+                  children: ((_entry$model = entry.model) === null || _entry$model === void 0 ? void 0 : _entry$model.name) || entry.model || "Body Swap"
+                })
               })
             })]
           }, entry.id || idx);
@@ -1261,11 +949,11 @@ function LipSyncStudio(_ref7) {
             children: "START CREATING WITH"
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
             className: "text-[#22d3ee] font-black uppercase text-2xl sm:text-4xl sm:mt-1 tracking-tight",
-            children: "LIP SYNC STUDIO"
+            children: "BODY SWAP STUDIO"
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
           className: "text-white/40 text-xs sm:text-sm font-medium tracking-wide text-center max-w-lg leading-relaxed px-4",
-          children: "Sync any voice with any face video to create premium talking avatars and videos."
+          children: "Swap the character in any video dynamically by choosing a video clip and a target character image."
         })]
       })
     }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
@@ -1276,61 +964,10 @@ function LipSyncStudio(_ref7) {
       children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
         className: "w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]",
         children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "flex items-center gap-2 px-3",
-          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-            type: "button",
-            onClick: switchToImage,
-            className: "px-3 py-1 rounded-md text-xs font-bold transition-all border ".concat(inputMode === "image" ? "border-[#22d3ee]/60 bg-[#22d3ee]/5 text-[#22d3ee]" : "border-white/[0.03] bg-white/[0.03] text-white/40 hover:border-white/20 hover:text-white"),
-            children: "\uD83D\uDDBC Portrait Image"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-            type: "button",
-            onClick: switchToVideo,
-            className: "px-3 py-1 rounded-md text-[10px] font-bold transition-all border ".concat(inputMode === "video" ? "border-[#22d3ee]/60 bg-[#22d3ee]/5 text-[#22d3ee]" : "border-white/[0.03] bg-white/[0.03] text-white/40 hover:border-white/20 hover:text-white"),
-            children: "\uD83C\uDFAC Video"
-          })]
-        }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
           className: "flex items-center gap-2 px-1",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "flex items-center gap-2",
-            children: [inputMode === "image" && /*#__PURE__*/(0, _jsxRuntime.jsx)(MediaPickerButton, {
-              accept: "image/*",
-              label: "Image",
-              icon: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-                width: "16",
-                height: "16",
-                viewBox: "0 0 24 24",
-                fill: "none",
-                stroke: "currentColor",
-                strokeWidth: "2",
-                className: "text-white/40 group-hover:text-[#22d3ee] transition-colors",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("rect", {
-                  x: "3",
-                  y: "3",
-                  width: "18",
-                  height: "18",
-                  rx: "2",
-                  ry: "2"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-                  cx: "8.5",
-                  cy: "8.5",
-                  r: "1.5"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
-                  points: "21 15 16 10 5 21"
-                })]
-              }),
-              onUpload: handleImageUpload,
-              onClear: function onClear() {
-                setImageUrl(null);
-                setImageState(UPLOAD_STATE.IDLE);
-                setImageName("");
-              },
-              uploadState: imageState,
-              progress: imageProgress,
-              fileName: imageName,
-              previewUrl: imageUrl,
-              isVideo: false,
-              apiKey: apiKey
-            }), inputMode === "video" && /*#__PURE__*/(0, _jsxRuntime.jsx)(MediaPickerButton, {
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(MediaPickerButton, {
               accept: "video/*",
               label: "Video",
               icon: /*#__PURE__*/(0, _jsxRuntime.jsx)(VideoIcon, {
@@ -1346,26 +983,24 @@ function LipSyncStudio(_ref7) {
               progress: videoProgress,
               fileName: videoName,
               previewUrl: videoUrl,
-              isVideo: true,
-              apiKey: apiKey
+              isVideo: true
             }), /*#__PURE__*/(0, _jsxRuntime.jsx)(MediaPickerButton, {
-              accept: "audio/*",
-              label: "Audio",
-              icon: /*#__PURE__*/(0, _jsxRuntime.jsx)(MicIcon, {
+              accept: "image/*",
+              label: "Character image",
+              icon: /*#__PURE__*/(0, _jsxRuntime.jsx)(ImageIcon, {
                 className: "text-white/40 group-hover:text-[#22d3ee] transition-colors"
               }),
-              onUpload: handleAudioPick,
+              onUpload: handleImageUpload,
               onClear: function onClear() {
-                setAudioUrl(null);
-                setAudioState(UPLOAD_STATE.IDLE);
-                setAudioName("");
+                setImageUrl(null);
+                setImageState(UPLOAD_STATE.IDLE);
+                setImageName("");
               },
-              uploadState: audioState,
-              progress: audioProgress,
-              fileName: audioName,
-              previewUrl: null,
-              isVideo: false,
-              apiKey: apiKey
+              uploadState: imageState,
+              progress: imageProgress,
+              fileName: imageName,
+              previewUrl: imageUrl,
+              isVideo: false
             })]
           }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "flex-1 flex flex-col",
@@ -1376,8 +1011,8 @@ function LipSyncStudio(_ref7) {
               ref: textareaRef,
               value: prompt,
               onChange: handlePromptInput,
-              placeholder: "Describe speech style...",
-              className: "w-full bg-transparent border-none text-white text-sm placeholder:text-white/20 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar disabled:opacity-40",
+              placeholder: "Optional \u2014 describe the motion or scene...",
+              className: "w-full bg-transparent border-none text-white text-sm placeholder:text-white/10 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar disabled:opacity-40",
               rows: 1
             })]
           })]
@@ -1399,7 +1034,7 @@ function LipSyncStudio(_ref7) {
                   className: "w-3.5 h-3.5 bg-[#22d3ee] rounded-sm flex items-center justify-center",
                   children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                     className: "text-[9px] font-black text-black",
-                    children: "S"
+                    children: "R"
                   })
                 }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                   className: "text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
@@ -1418,7 +1053,7 @@ function LipSyncStudio(_ref7) {
                 })]
               }), /*#__PURE__*/(0, _jsxRuntime.jsx)(Dropdown, {
                 isOpen: openDropdown === "model",
-                items: modelDropdownItems,
+                items: _models.recastModels,
                 selectedId: selectedModelId,
                 onSelect: handleModelSelect,
                 onClose: function onClose() {
@@ -1426,58 +1061,45 @@ function LipSyncStudio(_ref7) {
                 },
                 anchorRef: modelBtnRef
               })]
-            }), showResolution && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            }), showAspect && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
               className: "relative",
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-                ref: resolutionBtnRef,
+                ref: aspectBtnRef,
                 type: "button",
                 onClick: function onClick(e) {
                   e.stopPropagation();
-                  setOpenDropdown(openDropdown === "resolution" ? null : "resolution");
+                  setOpenDropdown(openDropdown === "aspect" ? null : "aspect");
                 },
                 className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
                 children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                   className: "text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
-                  children: selectedResolution
+                  children: selectedAspectRatio
                 })
               }), /*#__PURE__*/(0, _jsxRuntime.jsx)(Dropdown, {
-                isOpen: openDropdown === "resolution",
-                items: resolutionDropdownItems,
-                selectedId: selectedResolution,
+                isOpen: openDropdown === "aspect",
+                items: aspectDropdownItems,
+                selectedId: selectedAspectRatio,
                 onSelect: function onSelect(item) {
-                  return setSelectedResolution(item.id);
+                  return setSelectedAspectRatio(item.id);
                 },
                 onClose: function onClose() {
                   return setOpenDropdown(null);
                 },
-                anchorRef: resolutionBtnRef
-              })]
-            }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-              type: "button",
-              onClick: function onClick() {
-                return setNativeAudio(!nativeAudio);
-              },
-              className: "h-[34px] flex items-center gap-2 px-3.5 rounded-md transition-all border whitespace-nowrap text-[11px] font-semibold shadow-inner ".concat(nativeAudio ? "bg-[#22d3ee]/10 border-[#22d3ee]/20 text-[#22d3ee]" : "bg-[#16161a]/60 border-white/[0.06] text-white/70 hover:bg-[#202026]/80 hover:text-white"),
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(MicIcon, {
-                className: "w-3.5 h-3.5 text-current"
-              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                children: "Native Audio"
+                anchorRef: aspectBtnRef
               })]
             })]
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
             type: "button",
             onClick: handleGenerate,
             disabled: isGenerating,
-            className: "bg-[#22d3ee] text-black px-7 py-3 rounded-full font-black text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10",
+            className: "bg-[#22d3ee] text-black px-7 py-3 rounded-full font-black text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10 disabled:opacity-50 disabled:cursor-not-allowed",
             children: isGenerating ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                 className: "animate-spin inline-block text-black",
                 children: "\u25CC"
-              }), " ", "Generating..."]
-            }) : generateError ? "Error: ".concat(generateError) : /*#__PURE__*/(0, _jsxRuntime.jsx)(_jsxRuntime.Fragment, {
-              children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                children: "Sync Lip"
-              })
+              }), " ", "Swapping..."]
+            }) : generateError ? "Error: ".concat(generateError) : /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+              children: "Swap Body"
             })
           })]
         })]

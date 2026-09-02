@@ -14,6 +14,7 @@ var _muapi = require("../muapi.js");
 var _skillStore = require("../lib/skillStore");
 var _registry = _interopRequireDefault(require("../skills/registry.json"));
 var _promptRecipes = require("../lib/promptRecipes");
+var _storyboardHandoff = require("../storyboardHandoff.js");
 var _jsxRuntime = require("react/jsx-runtime");
 var _excluded = ["canEdit"],
   _excluded2 = ["canEdit"];
@@ -262,6 +263,24 @@ function VibeMotionStudio(_ref2) {
     if (!skill) return;
     applyRecipe(skill);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Cross-studio: import a Storyboard hand-off ────────────────────────────
+  var handoffApplied = (0, _react.useRef)(null);
+  (0, _react.useEffect)(function () {
+    try {
+      var handoff = (0, _storyboardHandoff.readStoryboardHandoff)("vibe-motion");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+      if (["1:1", "16:9", "9:16"].includes(handoff.aspectRatio)) {
+        setAspectRatio(handoff.aspectRatio);
+      }
+    } catch (err) {
+      console.warn("Failed to apply Storyboard hand-off:", err);
+    }
   }, []);
   function applyRecipe(skill) {
     var step0 = skill.steps && skill.steps[0];
