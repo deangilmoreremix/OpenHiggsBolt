@@ -258,6 +258,10 @@ describe('crossStudio', () => {
         'video',
         'cinema',
         'vfx-studio',
+        'clipping',
+        'vibe-motion',
+        'lipsync',
+        'recast',
       ]);
     });
   });

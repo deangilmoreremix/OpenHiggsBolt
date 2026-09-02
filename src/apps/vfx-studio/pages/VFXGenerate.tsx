@@ -252,33 +252,10 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
     setError,
   } = useVideoGeneration(apiKey || undefined);
 
-  // If the user requested generation but the key is missing, surface the
-  // global API key modal. Once the shell provides a key via the `apiKey` prop,
-  // generation auto-starts.
-  const handleRequestApiKey = useCallback(() => {
-    setPendingGenerate(true);
-    onRequestApiKey?.();
-  }, [onRequestApiKey]);
-
-  // Auto-trigger generation once the global key arrives.
-  useEffect(() => {
-    if (pendingGenerate && apiKey) {
-      setPendingGenerate(false);
-      handleGenerate();
-    }
-  }, [pendingGenerate, apiKey, handleGenerate]);
-
-  // Reset pending generate when the key is explicitly dismissed without saving.
-  useEffect(() => {
-    if (!apiKey && pendingGenerate) {
-      setPendingGenerate(false);
-    }
-  }, [apiKey, pendingGenerate]);
-
-  const selectedEffect = useMemo(
-    () => ALL_EFFECTS.find((e) => e.id === selectedEffectId) || null,
-    [selectedEffectId]
-  );
+   const selectedEffect = useMemo(
+     () => ALL_EFFECTS.find((e) => e.id === selectedEffectId) || null,
+     [selectedEffectId]
+   );
 
   const effectsByCategory = useMemo(() => {
     const map = new Map<CategoryId, VFXEffect[]>();
@@ -375,49 +352,54 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
-  const handleGenerate = useCallback(async () => {
-    if (!selectedEffect) {
-      setError('Select an effect first');
-      return;
-    }
-    if (!imageUrl) {
-      setError('Upload an image or paste an image URL first');
-      return;
-    }
-    if (!apiKey) {
-      setPendingGenerate(true);
-      onRequestApiKey?.();
-      return;
-    }
+   const handleGenerate = useCallback(async () => {
+     if (!selectedEffect) {
+       setError('Select an effect first');
+       return;
+     }
+     if (!imageUrl) {
+       setError('Upload an image or paste an image URL first');
+       return;
+     }
+     if (!apiKey) {
+       setPendingGenerate(true);
+       onRequestApiKey?.();
+       return;
+     }
 
-    await generateVideo({
-      image_url: imageUrl,
-      effect: selectedEffect.name,
-      prompt: prompt ? `${selectedEffect.prompt}. ${prompt}` : selectedEffect.prompt,
-      aspect_ratio: aspectRatio,
-      resolution,
-      duration,
-      quality,
-    });
-  }, [selectedEffect, imageUrl, prompt, aspectRatio, resolution, duration, quality, generateVideo, setError, apiKey, onRequestApiKey]);
+     await generateVideo({
+       image_url: imageUrl,
+       effect: selectedEffect.name,
+       prompt: prompt ? `${selectedEffect.prompt}. ${prompt}` : selectedEffect.prompt,
+       aspect_ratio: aspectRatio,
+       resolution,
+       duration,
+       quality,
+     });
+    }, [selectedEffect, imageUrl, prompt, aspectRatio, resolution, duration, quality, generateVideo, setError, apiKey, onRequestApiKey]);
 
-  const handleVfxApiKeySave = useCallback((key: string) => {
-    const cleaned = key.replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '').replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '').trim();
-    if (!cleaned || cleaned.length < 8) {
-      alert('Please enter a valid API key (at least 8 characters).');
-      return;
-    }
-    localStorage.setItem('muapi_key', cleaned);
-    document.cookie = muapiCookie(cleaned);
-    setUserApiKey(cleaned);
-    setShowVfxApiKeyModal(false);
-    setVfxApiKeyInput('');
-    // If generation was pending, trigger it now.
-    if (pendingGenerate) {
+  // If the user requested generation but the key is missing, surface the
+  // global API key modal. Once the shell provides a key via the `apiKey` prop,
+  // generation auto-starts.
+  const handleRequestApiKey = useCallback(() => {
+    setPendingGenerate(true);
+    onRequestApiKey?.();
+  }, [onRequestApiKey]);
+
+  // Auto-trigger generation once the global key arrives.
+  useEffect(() => {
+    if (pendingGenerate && apiKey) {
       setPendingGenerate(false);
       handleGenerate();
     }
-  }, [pendingGenerate, handleGenerate]);
+  }, [pendingGenerate, apiKey, handleGenerate]);
+
+  // Reset pending generate when the key is explicitly dismissed without saving.
+  useEffect(() => {
+    if (!apiKey && pendingGenerate) {
+      setPendingGenerate(false);
+    }
+  }, [apiKey, pendingGenerate]);
 
   const handleDownload = useCallback(async () => {
     if (!videoUrl) return;
@@ -453,22 +435,6 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
     setPrompt('');
     setShowGenerationModal(false);
   }, [reset, clearImage]);
-
-  // If the user requested generation but the key was missing, auto-trigger
-  // generation once the global key is restored.
-  useEffect(() => {
-    if (pendingGenerate && userApiKey) {
-      setPendingGenerate(false);
-      handleGenerate();
-    }
-  }, [pendingGenerate, userApiKey, handleGenerate]);
-
-  // Reset pending generate when the global modal is dismissed without saving.
-  useEffect(() => {
-    if (!apiKey && !userApiKey && pendingGenerate) {
-      setPendingGenerate(false);
-    }
-  }, [apiKey, userApiKey, pendingGenerate]);
 
   const statusLabel = useMemo(() => {
     switch (status) {
@@ -779,11 +745,10 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
         progress={progress}
         error={errorMessage}
         videoUrl={videoUrl}
-        userApiKey={userApiKey}
-        setUserApiKey={setUserApiKey}
+        userApiKey={apiKey || ''}
         pendingGenerate={pendingGenerate}
         setPendingGenerate={setPendingGenerate}
-        onRequestApiKey={handleVfxRequestApiKey}
+        onRequestApiKey={onRequestApiKey}
       />
 
       {/* Chat bubble button (upstream feature parity) */}
@@ -818,17 +783,6 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-      )}
-
-      {/* VFX API Key Modal */}
-      {showVfxApiKeyModal && (
-        <ApiKeyModal
-          show={true}
-          apiKeyInput={vfxApiKeyInput}
-          onApiKeyChange={setVfxApiKeyInput}
-          onContinue={() => handleVfxApiKeySave(vfxApiKeyInput)}
-          onCancel={handleVfxDismissApiKey}
-        />
       )}
 
       {/* Video result inline (local repo feature) */}

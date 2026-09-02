@@ -17,6 +17,7 @@ import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
 import { setCharacterSheet } from "../lib/characterStore";
 import registry from "../skills/registry.json";
 import { fillTemplate } from "../lib/promptRecipes";
+import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
 
 // ---------------------------------------------------------------------------
 // Upload button states
@@ -401,6 +402,26 @@ export default function LipSyncStudio({
     if (!skill) return;
     applyRecipe(skill);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Cross-studio: import a Storyboard hand-off ────────────────────────────
+  const handoffApplied = useRef(null);
+  useEffect(() => {
+    try {
+      const handoff = readStoryboardHandoff("lipsync");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+      const ref = handoff.firstFrameUrl || handoff.referenceImageUrl;
+      if (ref) {
+        setImageUrl(ref);
+      }
+    } catch (err) {
+      console.warn("Failed to apply Storyboard hand-off:", err);
+    }
   }, []);
 
   // Resolve a recipe reference url. Returns null for unresolved {{token}}s

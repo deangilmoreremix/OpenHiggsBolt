@@ -8,6 +8,7 @@ import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
 import registry from "../skills/registry.json";
 import { fillTemplate } from "../lib/promptRecipes";
+import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
 
 // ---------------------------------------------------------------------------
 // Inline SVG Icons
@@ -260,6 +261,25 @@ export default function ClippingStudio({
     if (!skill) return;
     applyRecipe(skill);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Cross-studio: import a Storyboard hand-off ────────────────────────────
+  const handoffApplied = useRef(null);
+  useEffect(() => {
+    try {
+      const handoff = readStoryboardHandoff("clipping");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+      if (["1:1", "16:9", "9:16"].includes(handoff.aspectRatio)) {
+        setAspectRatio(handoff.aspectRatio);
+      }
+    } catch (err) {
+      console.warn("Failed to apply Storyboard hand-off:", err);
+    }
   }, []);
 
   function applyRecipe(skill) {

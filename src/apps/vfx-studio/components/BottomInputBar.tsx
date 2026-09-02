@@ -88,7 +88,6 @@ interface BottomInputBarProps {
   error: string;
   videoUrl: string | null;
   userApiKey: string;
-  setUserApiKey: (key: string) => void;
   pendingGenerate: boolean;
   setPendingGenerate: (pending: boolean) => void;
   onRequestApiKey?: () => void;
@@ -131,7 +130,6 @@ export default function BottomInputBar({
   error,
   videoUrl,
   userApiKey,
-  setUserApiKey,
   pendingGenerate,
   setPendingGenerate,
   onRequestApiKey,

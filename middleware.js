@@ -33,6 +33,23 @@ const CSP = [
 ].join('; ');
 
 export default clerkMiddleware(async (auth, request) => {
+  // ── Production-env guard ──────────────────────────────────────────────
+  // Prevent the app from running in production mode with test/development
+  // Clerk keys. This stops the "development mode" banner from appearing
+  // on production deployments and catches misconfigured env files early.
+  const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  const clerkSecret = process.env.CLERK_SECRET_KEY;
+  if (
+    process.env.NODE_ENV === 'production' &&
+    (clerkKey?.startsWith('pk_test_') || clerkSecret?.startsWith('sk_test_'))
+  ) {
+    const url = request.nextUrl;
+    if (!url.pathname.startsWith('/env-error')) {
+      return NextResponse.redirect(new URL('/env-error', request.url));
+    }
+  }
+  // ── End production-env guard ──────────────────────────────────────────
+
   // Dev-only E2E auth bypass. When the `__e2e_auth_bypass` cookie is present and
   // we are NOT in production, skip Clerk auth so the Playwright suite can run
   // fully offline (no live Clerk session). Never active in production.

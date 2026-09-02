@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Send, ChevronDown, Video, Film, Sparkles, Check } from 'lucide-react'
+import { Send, ChevronDown, Video, Film, Sparkles, Check, Mic, Scissors, Zap, RefreshCw } from 'lucide-react'
 import { useStoryboard } from './StoryboardContext'
 import {
   buildShotPrompt,
@@ -23,6 +23,10 @@ const TARGET_ICON: Record<StudioTarget, JSX.Element> = {
   'thumbnail-studio': <Film size={14} />,
   'ai-influencer': <Sparkles size={14} />,
   marketing: <Sparkles size={14} />,
+  lipsync: <Mic size={14} />,
+  clipping: <Scissors size={14} />,
+  'vibe-motion': <Zap size={14} />,
+  recast: <RefreshCw size={14} />,
 }
 
 /**

@@ -7,21 +7,10 @@
  */
 
 import React from 'react';
+import { resolveMuapiKey as resolveMuapiKeyFromStorage, resolveOpenAIKey as resolveOpenAIKeyFromStorage, isValidKeyFormat, MUAPI_KEY_STORAGE, OPENAI_KEY_STORAGE } from './keys';
 
-// ── Storage / cookie names ──────────────────────────────────────────────────
-export const MUAPI_KEY_STORAGE = 'muapi_key';
-export const OPENAI_KEY_STORAGE = 'openai_key';
 export const MUAPI_KEY_COOKIE = 'muapi_key';
 export const OPENAI_KEY_COOKIE = 'openai_key';
-
-// ── Key sanitization ───────────────────────────────────────────────────────
-function cleanKey(key: string | null | undefined): string {
-  if (!key) return '';
-  return String(key)
-    .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')
-    .replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '')
-    .trim();
-}
 
 // ── Cookie helpers ─────────────────────────────────────────────────────────
 function buildCookie(name: string, value: string): string {
@@ -41,30 +30,13 @@ function setCookie(name: string, value: string | null | undefined): void {
   document.cookie = buildCookie(name, value || '');
 }
 
-// ── Storage helpers ────────────────────────────────────────────────────────
-function readStorage(key: string): string | null {
-  try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      return window.localStorage.getItem(key);
-    }
-  } catch {
-    // localStorage may throw in private mode / sandboxed iframes
-  }
-  return null;
-}
-
-function writeStorage(key: string, value: string | null): void {
-  try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      if (value === null) {
-        window.localStorage.removeItem(key);
-      } else {
-        window.localStorage.setItem(key, value);
-      }
-    }
-  } catch {
-    // ignore
-  }
+// ── Key sanitization ───────────────────────────────────────────────────────
+function cleanKey(key: string | null | undefined): string {
+  if (!key) return '';
+  return String(key)
+    .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')
+    .replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '')
+    .trim();
 }
 
 // ── Listener model for React consumers ─────────────────────────────────────
@@ -86,10 +58,24 @@ let muapiKey = '';
 let openaiKey = '';
 
 if (typeof window !== 'undefined') {
-  const storedMuapi = readStorage(MUAPI_KEY_STORAGE);
-  const storedOpenai = readStorage(OPENAI_KEY_STORAGE);
-  if (storedMuapi) muapiKey = cleanKey(storedMuapi);
-  if (storedOpenai) openaiKey = cleanKey(storedOpenai);
+  muapiKey = cleanKey(resolveMuapiKeyFromStorage());
+  openaiKey = cleanKey(resolveOpenAIKeyFromStorage());
+  // Sync pre-existing keys to cookies so server-side routes can read them.
+  if (muapiKey) setCookie(MUAPI_KEY_COOKIE, muapiKey);
+  if (openaiKey) setCookie(OPENAI_KEY_COOKIE, openaiKey);
+}
+
+// Test-only reset: clears in-memory state and re-reads from localStorage.
+export function __resetAuthConfigForTests(): void {
+  muapiKey = '';
+  openaiKey = '';
+  if (typeof window !== 'undefined') {
+    muapiKey = cleanKey(resolveMuapiKeyFromStorage());
+    openaiKey = cleanKey(resolveOpenAIKeyFromStorage());
+    // Sync pre-existing keys to cookies so tests can verify cookie initialization.
+    if (muapiKey) setCookie(MUAPI_KEY_COOKIE, muapiKey);
+    if (openaiKey) setCookie(OPENAI_KEY_COOKIE, openaiKey);
+  }
 }
 
 // ── Synchronous getters ────────────────────────────────────────────────────
@@ -105,16 +91,36 @@ export function getOpenAiKey(): string {
 export function setApiKey(key: string | null | undefined): void {
   const cleaned = cleanKey(key);
   muapiKey = cleaned;
-  writeStorage(MUAPI_KEY_STORAGE, cleaned || null);
-  setCookie(MUAPI_KEY_COOKIE, cleaned);
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      if (cleaned) {
+        window.localStorage.setItem(MUAPI_KEY_STORAGE, cleaned);
+      } else {
+        window.localStorage.removeItem(MUAPI_KEY_STORAGE);
+      }
+    }
+  } catch {
+    // ignore
+  }
+  setCookie(MUAPI_KEY_COOKIE || 'muapi_key', cleaned);
   notifyListeners();
 }
 
 export function setOpenAiKey(key: string | null | undefined): void {
   const cleaned = cleanKey(key);
   openaiKey = cleaned;
-  writeStorage(OPENAI_KEY_STORAGE, cleaned || null);
-  setCookie(OPENAI_KEY_COOKIE, cleaned);
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      if (cleaned) {
+        window.localStorage.setItem(OPENAI_KEY_STORAGE, cleaned);
+      } else {
+        window.localStorage.removeItem(OPENAI_KEY_STORAGE);
+      }
+    }
+  } catch {
+    // ignore
+  }
+  setCookie(OPENAI_KEY_COOKIE || 'openai_key', cleaned);
   notifyListeners();
 }
 
@@ -160,9 +166,9 @@ export function useAuthConfig() {
 // ── Initialize cookies on module load if keys are already present ───────────
 if (typeof window !== 'undefined') {
   if (muapiKey) {
-    setCookie(MUAPI_KEY_COOKIE, muapiKey);
+    setCookie('muapi_key', muapiKey);
   }
   if (openaiKey) {
-    setCookie(OPENAI_KEY_COOKIE, openaiKey);
+    setCookie('openai_key', openaiKey);
   }
 }

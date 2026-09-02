@@ -38,6 +38,11 @@ def main():
         if source_lang == "JA":
             continue
         
+        # Filter out prompts containing CJK characters (Chinese/Japanese/Korean)
+        if any(ord(c) > 0x4E00 and ord(c) < 0x9FFF for c in prompt) or \
+           any(ord(c) > 0x3400 and ord(c) < 0x4DBF for c in prompt):
+            continue
+        
         # Generate slug from detailHref or title
         if detail_href:
             slug = detail_href.replace("/prompts/", "").strip("/")

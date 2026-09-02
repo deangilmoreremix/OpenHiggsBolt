@@ -582,7 +582,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
           {activeTab === 'recast' && <RecastStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
            {activeTab === 'workflows' && <WorkflowStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}
           {activeTab === 'agents' && <AgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}
-          {activeTab === 'design-agent' && <DesignAgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}
+          {activeTab === 'design-agent' && <DesignAgentStudio apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}
            {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} onDismissApiKey={() => setShowApiKeyPopup(false)} templateData={templateData} /></MemoryRouter>}
           {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} templateData={templateData} /></MemoryRouter>}
          {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}

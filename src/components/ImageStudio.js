@@ -1,4 +1,4 @@
-import { muapi } from '../lib/muapi.js';
+import { muapi, getApiKey } from '../lib/muapi.js';
 import {
     t2iModels, getAspectRatiosForModel, getResolutionsForModel, getQualityFieldForModel,
     i2iModels, getAspectRatiosForI2IModel, getResolutionsForI2IModel, getQualityFieldForI2IModel,
@@ -7,7 +7,6 @@ import {
 import { localAI, isLocalAIAvailable } from '../lib/localInferenceClient.js';
 import { LOCAL_MODEL_CATALOG, getLocalModelById } from '../lib/localModels.js';
 import { ENHANCE_TAGS, QUICK_PROMPTS } from '../lib/promptUtils.js';
-import { AuthModal } from './AuthModal.js';
 import { t } from '../lib/i18n.js';
 import { createUploadPicker } from './UploadPicker.js';
 import { DrawModal } from './DrawModal.js';
@@ -1378,7 +1377,7 @@ export function ImageStudio() {
     };
 
     // Feature 14: Draw modal
-    const drawModal = DrawModal({ apiKey: localStorage.getItem('muapi_key') || '', onAddHistoryItem: addToHistory });
+    const drawModal = DrawModal({ apiKey: getApiKey() || '', onAddHistoryItem: addToHistory });
     document.body.appendChild(drawModal.el);
     drawBtn.onclick = () => { drawModal.open(); };
 
@@ -1396,7 +1395,7 @@ export function ImageStudio() {
         const pending = getPendingJobs('image');
         if (!pending.length) return;
 
-        const apiKey = localStorage.getItem('muapi_key');
+        const apiKey = getApiKey();
         if (!apiKey) return; // can't poll without key; jobs remain for next time
 
         const banner = document.createElement('div');
@@ -1551,9 +1550,9 @@ export function ImageStudio() {
         }
 
         // ── Remote API path ───────────────────────────────────────────────────
-        const apiKey = localStorage.getItem('muapi_key');
+        const apiKey = getApiKey();
         if (!apiKey) {
-            AuthModal(() => generateBtn.click());
+            alert('Please enter your MuAPI key in Settings first.');
             return;
         }
 

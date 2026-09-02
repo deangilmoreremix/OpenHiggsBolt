@@ -70,9 +70,9 @@ describe('StudioTargetPicker', () => {
   it('renders correct number of target buttons for video', () => {
     const { container } = mount(defaultProps);
     const targetButtons = [...container.querySelectorAll('button')].filter((b) =>
-      ['Video Studio', 'Cinema Studio', 'VFX Studio'].includes(b.textContent.trim())
+      ['Video Studio', 'Cinema Studio', 'VFX Studio', 'Clipping Studio', 'Vibe Motion', 'Lip Sync', 'Recast'].includes(b.textContent.trim())
     );
-    expect(targetButtons.length).toBe(3);
+    expect(targetButtons.length).toBe(7);
   });
 
   it('renders correct number of target buttons for image', () => {

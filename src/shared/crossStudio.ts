@@ -17,6 +17,10 @@ export type StudioTarget =
   | 'thumbnail-studio'
   | 'ai-influencer'
   | 'marketing'
+  | 'clipping'
+  | 'vibe-motion'
+  | 'lipsync'
+  | 'recast'
 
 /** A single shot, flattened for downstream consumption. */
 export interface HandoffShot {
@@ -73,6 +77,10 @@ export const TARGET_SLUG: Record<StudioTarget, string> = {
   'thumbnail-studio': 'thumbnail-studio',
   'ai-influencer': 'ai-influencer',
   marketing: 'marketing',
+  'clipping': 'clipping',
+  'vibe-motion': 'vibe-motion',
+  'lipsync': 'lipsync',
+  'recast': 'recast',
 }
 
 export const TARGET_LABEL: Record<StudioTarget, string> = {
@@ -83,6 +91,10 @@ export const TARGET_LABEL: Record<StudioTarget, string> = {
   'thumbnail-studio': 'Thumbnail Studio',
   'ai-influencer': 'AI Influencer Studio',
   marketing: 'Marketing Studio',
+  clipping: 'Clipping Studio',
+  'vibe-motion': 'Vibe Motion',
+  lipsync: 'Lip Sync',
+  recast: 'Recast',
 }
 
 export function writeHandoff(payload: StudioHandoff): void {
@@ -167,7 +179,7 @@ export type ViralSourceMedia = 'image' | 'video'
 /** Which creation studios are relevant for a given source media type. */
 export const VIRAL_TARGETS_BY_MEDIA: Record<ViralSourceMedia, StudioTarget[]> = {
   image: ['image', 'thumbnail-studio', 'ai-influencer', 'marketing'],
-  video: ['video', 'cinema', 'vfx-studio'],
+  video: ['video', 'cinema', 'vfx-studio', 'clipping', 'vibe-motion', 'lipsync', 'recast'],
 }
 
 export interface CreateViralHandoffOptions {
