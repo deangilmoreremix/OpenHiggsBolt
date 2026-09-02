@@ -115,6 +115,11 @@ function includeRequiredArrayDefaults(model, payload) {
   }
   return Object.keys(defaults).length > 0 ? _objectSpread(_objectSpread({}, defaults), payload) : payload;
 }
+function fatal(message) {
+  var error = new Error(message);
+  error.isFatal = true;
+  return error;
+}
 function pollForResult(_x, _x2) {
   return _pollForResult.apply(this, arguments);
 }
@@ -1472,7 +1477,7 @@ function _pollWorkflowResult() {
           }
           return _context30.a(3, 10);
         case 4:
-          throw new Error("Poll Failed: ".concat(response.status));
+          throw fatal("Poll Failed: ".concat(response.status));
         case 5:
           _context30.n = 6;
           return response.json();
@@ -1489,14 +1494,14 @@ function _pollWorkflowResult() {
             _context30.n = 8;
             break;
           }
-          throw new Error("Workflow failed: ".concat(data.error || 'Unknown error'));
+          throw fatal("Workflow failed: ".concat(data.error || 'Unknown error'));
         case 8:
           _context30.n = 10;
           break;
         case 9:
           _context30.p = 9;
           _t2 = _context30.v;
-          if (!(attempt === maxAttempts)) {
+          if (!(attempt === maxAttempts || _t2.isFatal)) {
             _context30.n = 10;
             break;
           }

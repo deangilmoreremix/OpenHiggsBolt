@@ -18,7 +18,6 @@ var _exportNames = {
   AgentStudio: true,
   DesignAgentStudio: true,
   AppsStudio: true,
-  McpCliStudio: true,
   AiInfluencerStudio: true,
   LayersStudio: true
 };
