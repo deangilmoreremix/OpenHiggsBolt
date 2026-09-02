@@ -7,8 +7,6 @@ import enAgent from '../packages/studio/src/messages/en/agentStudio.json';
 import zhAgent from '../packages/studio/src/messages/zh/agentStudio.json';
 import enInfluencer from '../packages/studio/src/messages/en/aiInfluencerStudio.json';
 import zhInfluencer from '../packages/studio/src/messages/zh/aiInfluencerStudio.json';
-import enApps from '../packages/studio/src/messages/en/appsStudio.json';
-import zhApps from '../packages/studio/src/messages/zh/appsStudio.json';
 import enAudio from '../packages/studio/src/messages/en/audioStudio.json';
 import zhAudio from '../packages/studio/src/messages/zh/audioStudio.json';
 import enCinema from '../packages/studio/src/messages/en/cinemaStudio.json';
@@ -34,7 +32,6 @@ const BUNDLES = [
   [enCommon, zhCommon],
   [enAgent, zhAgent],
   [enInfluencer, zhInfluencer],
-  [enApps, zhApps],
   [enAudio, zhAudio],
   [enCinema, zhCinema],
   [enClipping, zhClipping],
@@ -156,7 +153,7 @@ function localizeElement(root, translate) {
         if (!node.hasAttribute(attribute)) continue;
         const current = node.getAttribute(attribute);
         const next = translate(current);
-        if (next !== current) node.setAttribute(attribute, next);
+        if (next !== current) root.setAttribute(attribute, next);
       }
     }
     node = walker.nextNode();
