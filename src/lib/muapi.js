@@ -3,6 +3,13 @@ import axios from 'axios';
 import { getStableUserId } from '../shared/auth/stableUserId';
 import { getApiKey } from './authConfig.ts';
 
+// Marks an error as terminal so the polling loop rethrows instead of retrying.
+function fatal(message) {
+    const error = new Error(message);
+    error.isFatal = true;
+    return error;
+}
+
 /**
  * Normalize a MuAPI prediction response into a consistent shape.
  * MuAPI wraps payloads in `data` and sometimes nests `video`/`output`,
@@ -193,9 +200,10 @@ export class MuapiClient {
                 if (!response.ok) {
                     const errText = await response.text();
                     console.warn(`[Muapi] Poll error (${response.status}):`, errText);
-                    // Continue polling on non-fatal errors
+                    // 5xx is transient — keep polling. Anything else (401, 402,
+                    // 404, 429) will not fix itself, so stop immediately.
                     if (response.status >= 500) continue;
-                    throw new Error(`Poll Failed: ${response.status} - ${errText.slice(0, 100)}`);
+                    throw fatal(`Poll Failed: ${response.status} - ${errText.slice(0, 100)}`);
                 }
 
                 const data = await response.json();
@@ -209,12 +217,12 @@ export class MuapiClient {
                 }
 
                 if (status === 'failed' || status === 'error') {
-                    throw new Error(`Generation failed: ${norm.error || 'Unknown error'}`);
+                    throw fatal(`Generation failed: ${norm.error || 'Unknown error'}`);
                 }
 
                 // Otherwise (processing, pending, etc.) keep polling
             } catch (error) {
-                if (attempt === maxAttempts) throw error;
+                if (error.isFatal || attempt === maxAttempts) throw error;
                 console.warn('[Muapi] Poll attempt failed, retrying...', error.message);
             }
         }
