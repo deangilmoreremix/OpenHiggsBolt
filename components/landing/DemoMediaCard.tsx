@@ -76,6 +76,16 @@ export default function DemoMediaCard({
               View Prompt
             </button>
           )}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              openPersonalize({ source: demo, trigger: e.currentTarget })
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
+          >
+            Personalize
+          </button>
           <a
             href={getCreateUrl(demo)}
             className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-4 py-2.5 text-sm font-bold text-black shadow-glow transition hover:scale-[1.01]"

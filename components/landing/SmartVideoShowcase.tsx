@@ -33,6 +33,10 @@ export default function SmartVideoShowcase() {
         <MadeWithSmartVideo />
         <UGCDemoShowcase />
 
+        {NICHE_CONTENT.map((niche) => (
+          <NicheSection key={niche.id} niche={niche} />
+        ))}
+
         {/* Seedance 2.5 — BeatAPI curated cinematic demos */}
         <AIVideoGallery
           demos={SEEDANCE_25_DEMOS}
