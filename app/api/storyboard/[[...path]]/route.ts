@@ -1,10 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { isValidStoryboardModel, DEFAULT_STORYBOARD_MODEL_ID } from '@/apps/storyboard/models';
 
 const MUAPI_BASE = process.env.MUAPI_BASE_URL || 'https://api.muapi.ai'
 const STORYBOARD_MODEL = process.env.STORYBOARD_MODEL || 'openai-sora-2-pro-storyboard'
 // Image model used to render per-shot storyboard frames (still previews).
 const FRAME_MODEL = process.env.STORYBOARD_FRAME_MODEL || 'flux-dev'
+const DURATIONS = [5, 10]
 
 function getApiKey(request: Request): string | null {
   const headerKey = request.headers.get('x-api-key');
@@ -17,13 +18,21 @@ function authHeaders(key: string): HeadersInit {
   return { 'Content-Type': 'application/json', 'x-api-key': clean }
 }
 
+function parseError(text: string): string {
+  try {
+    const parsed = JSON.parse(text)
+    return parsed.detail || parsed.error || parsed.message || text.slice(0, 200)
+  } catch {
+    return text.slice(0, 200)
+  }
+}
+
 async function proxy(request: Request, path: string): Promise<NextResponse> {
   const { search } = new URL(request.url);
   const targetUrl = `${MUAPI_BASE}/api/storyboard/${path}${search}`;
 
-  const headers = cleanHeaders(request);
   const apiKey = getApiKey(request);
-  if (apiKey) headers.set('x-api-key', apiKey);
+  const headers = authHeaders(apiKey || '');
 
   const init: RequestInit = { method: request.method, headers };
 
@@ -61,10 +70,23 @@ async function proxy(request: Request, path: string): Promise<NextResponse> {
   }
 
   try {
-    const parsed = JSON.parse(text)
-    return parsed.detail || parsed.error || parsed.message || text
-  } catch {
-    return text
+    const upstream = await fetch(targetUrl, {
+      ...init,
+    })
+
+    const text = await upstream.text()
+    const contentType = upstream.headers.get('content-type') || ''
+
+    return new NextResponse(text, {
+      status: upstream.status,
+      headers: {
+        'content-type': contentType,
+        'cache-control': 'no-store',
+      },
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Proxy request failed'
+    return NextResponse.json({ error: message }, { status: 502 })
   }
 }
 
@@ -81,7 +103,7 @@ export async function POST(
       return NextResponse.json({ error: `Unknown storyboard endpoint: ${path.join('/')}` }, { status: 404 })
     }
 
-    const key = resolveKey(req)
+    const key = getApiKey(req)
     if (!key) return NextResponse.json({ error: 'MuAPI key is required' }, { status: 400 })
 
     const body = await req.json().catch(() => ({}))
@@ -146,7 +168,7 @@ export async function POST(
  */
 async function generateFrame(req: NextRequest) {
   try {
-    const key = resolveKey(req)
+    const key = getApiKey(req)
     if (!key) return NextResponse.json({ error: 'MuAPI key is required' }, { status: 400 })
 
     const body = await req.json().catch(() => ({}))
@@ -208,7 +230,7 @@ export async function GET(
     const id = req.nextUrl.searchParams.get('id')
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
 
-    const key = resolveKey(req)
+    const key = getApiKey(req)
     if (!key) return NextResponse.json({ error: 'MuAPI key is required' }, { status: 400 })
 
     const res = await fetch(`${MUAPI_BASE}/api/v1/predictions/${id}/result`, {

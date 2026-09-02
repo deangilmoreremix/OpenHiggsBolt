@@ -181,3 +181,21 @@ export function extractStoryboardAsset(data: any): string | null {
     null
   )
 }
+
+export interface GenerateShotFramePayload {
+  prompt: string
+  aspect_ratio: '16:9' | '9:16'
+  model?: string
+  images_list?: string[]
+}
+
+export async function generateShotFrame(payload: GenerateShotFramePayload): Promise<string> {
+  const res = await axios.post(
+    `${STORYBOARD_BASE}/generate/shot-frame`,
+    payload,
+    withKey({ method: 'POST' })
+  )
+  const url = extractStoryboardAsset(res.data)
+  if (!url) throw new Error('No frame generated')
+  return url
+}

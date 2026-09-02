@@ -13,7 +13,7 @@
     "apps/cutai/frontend"
   ],
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "node scripts/dev-prod.js",
     "build": "next build",
     "typecheck": "tsc --noEmit",
     "test:vfx": "node --test tests/vfx-service.test.js tests/vfx-validation.test.js",

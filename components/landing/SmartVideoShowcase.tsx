@@ -12,6 +12,8 @@ import { SEEDANCE_1_DEMOS } from '@/data/seedance1Demos';
 import { PROMPTFEED_DEMOS } from '@/data/promptFeedDemos';
 import { MINIMAX_H3_DEMOS } from '@/data/minimaxH3Demos';
 import { type VideoDemo } from '@/data/types';
+import { NICHE_CONTENT } from '@/data/nicheContent';
+import NicheSection from './NicheSection';
 
 const COMBINED_DEMOS: VideoDemo[] = [
   ...MINIMAX_H3_DEMOS,
