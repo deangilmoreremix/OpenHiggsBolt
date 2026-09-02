@@ -27,6 +27,7 @@ import {
 import { buttons, semantic, tabStyle, optionStyle, appWrapper, iconBadge } from '@/shared/styles/designTokens'
 import type { PromptRecord, FeedStats } from '@/types/go-ai-viral/prompt'
 import type { SeedancePrompt, SeedanceStats } from '@/types/go-ai-viral/seedance'
+import { useDemoPersonalize } from '@/shared/personalization'
 import { createViralHandoff, emitSendTo, TARGET_LABEL, VIRAL_TARGETS_BY_MEDIA, type StudioTarget, type ViralSourceMedia } from '@/shared/crossStudio'
 import { StudioTargetPicker } from './StudioTargetPicker'
 
@@ -115,6 +116,7 @@ function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
   const handleOpenInStudio = () => {
     setShowPicker(true)
   }
+  const { openPersonalize } = useDemoPersonalize()
 
   return (
     <>
@@ -194,6 +196,26 @@ function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
             type="button"
             onClick={(e) => {
               e.stopPropagation()
+              openPersonalize({ source: record, trigger: e.currentTarget })
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
+          >
+            Personalize
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              openPersonalize({ source: record, trigger: e.currentTarget })
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
+          >
+            Personalize
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
               handleOpenInStudio()
             }}
             className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-4 py-2.5 text-sm font-bold text-black shadow-glow transition hover:scale-[1.01]"
@@ -260,6 +282,7 @@ function VideoPromptCard({ record, onSelect }: VideoPromptCardProps) {
   const handleOpenInStudio = () => {
     setShowPicker(true)
   }
+  const { openPersonalize } = useDemoPersonalize()
 
   return (
     <>
@@ -335,6 +358,26 @@ function VideoPromptCard({ record, onSelect }: VideoPromptCardProps) {
             type="button"
             onClick={(e) => {
               e.stopPropagation()
+              openPersonalize({ source: record, trigger: e.currentTarget })
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
+          >
+            Personalize
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              openPersonalize({ source: record, trigger: e.currentTarget })
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
+          >
+            Personalize
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
               handleOpenInStudio()
             }}
             className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-4 py-2.5 text-sm font-bold text-black shadow-glow transition hover:scale-[1.01]"
@@ -397,6 +440,7 @@ function VideoPromptModal({ record, onClose }: VideoPromptModalProps) {
   const handleOpenInStudio = () => {
     setShowPicker(true)
   }
+  const { openPersonalize } = useDemoPersonalize()
 
   return (
     <>
@@ -545,6 +589,7 @@ function PromptDetailModal({ record, onClose }: PromptDetailModalProps) {
   const handleOpenInStudio = () => {
     setShowPicker(true)
   }
+  const { openPersonalize } = useDemoPersonalize()
 
   useEffect(() => {
     previousFocusRef.current = document.activeElement as HTMLElement | null

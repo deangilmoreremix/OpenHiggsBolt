@@ -130,11 +130,13 @@
   "dependencies": {
     "@clerk/nextjs": "^7.5.13",
     "@netlify/plugin-nextjs": "^5.15.12",
+    "@octokit/rest": "^22.0.1",
     "@supabase/supabase-js": "^2.108.2",
     "ai-agent": "file:./packages/Open-Poe-AI/packages/agents",
     "axios": "^1.7.0",
     "lucide-react": "^1.21.0",
     "next": "^15.0.0",
+    "octokit": "^5.0.5",
     "openai": "^6.44.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

@@ -10,6 +10,7 @@ import ApiKeyModal from './ApiKeyModal';
 import { SocialPublishProvider } from '@/components/SocialPublishProvider';
 import { AiAssistantProvider } from '@/components/AiAssistantProvider';
 import { useAuthConfig } from '@/lib/authConfig';
+import { DemoPersonalizeProvider } from '@/shared/personalization';
 
 // Lazily load the heavy `studio` package so its many studio modules are not
 // part of the initial bundle for /, /studio and /workflow. Each export is only
@@ -575,6 +576,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       {/* Studio Content */}
       <AiAssistantProvider apiKey={apiKey} openaiKey={openaiKey}>
       <SocialPublishProvider apiKey={apiKey}>
+      <DemoPersonalizeProvider apiKey={apiKey}>
       <div className="flex-1 min-h-0 relative overflow-hidden">
          {activeTab === 'image'   && <ImageStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
          {activeTab === 'video'   && <VideoStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
@@ -603,6 +605,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
          {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
       </div>
+      </DemoPersonalizeProvider>
       </SocialPublishProvider>
       </AiAssistantProvider>
 

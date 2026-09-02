@@ -1263,7 +1263,7 @@ export default function PersonalizationModal({
           <div className="flex items-center justify-between border-t border-white/10 p-4">
             <div className="flex items-center gap-2" style={{ color: 'rgba(255,255,255,0.3)' }}>
               <Sparkles size={12} />
-              <span className="text-xs">SMARTVIDEO PERSONALIZATION</span>
+              <span className="text-xs">GO AI PERSONALIZATION</span>
             </div>
             <button onClick={onClose} className="text-xs font-medium text-white/40 hover:text-white transition-colors">
               Close

@@ -2,6 +2,7 @@
 import LazyVideo from './LazyVideo';
 import Reveal from './Reveal';
 import { useDemoPrompt } from './DemoPromptModal';
+import { useDemoPersonalize } from '@/shared/personalization';
 import { getCreateUrl, type VideoDemo } from '@/data/types';
 
 type DemoMediaCardProps = {
@@ -28,6 +29,7 @@ export default function DemoMediaCard({
   index = 0,
 }: DemoMediaCardProps) {
   const { openPrompt } = useDemoPrompt();
+  const { openPersonalize } = useDemoPersonalize();
 
   return (
     <Reveal
