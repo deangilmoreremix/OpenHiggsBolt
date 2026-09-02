@@ -28,7 +28,6 @@ const MarketingStudio = loadStudio('MarketingStudio');
 const RecastStudio = loadStudio('RecastStudio');
 const WorkflowStudio = loadStudio('WorkflowStudio');
 const AgentStudio = loadStudio('AgentStudio');
-const AppsStudio = loadStudio('AppsStudio');
 const AiInfluencerStudio = loadStudio('AiInfluencerStudio');
 const LayersStudio = loadStudio('LayersStudio');
 
@@ -55,7 +54,6 @@ const TABS = [
   { id: 'design-agent', label: 'Design Agent AI' },
   { id: 'vfx-studio', label: 'VFX' },
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
-  { id: 'apps', label: 'Explore Apps' },
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'social-publishing', label: 'Social Publishing' },
   { id: 'go-ai-viral', label: 'GO-Viral' },
@@ -69,7 +67,6 @@ const SLUG_TO_TAB = {
   workflows: 'workflows', agents: 'agents', 'design-agent': 'design-agent',
   'vfx-studio': 'vfx-studio',
   'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio',
-  apps: 'apps',
   'ai-influencer': 'ai-influencer',
   'social-publishing': 'social-publishing',
   'go-ai-viral': 'go-ai-viral',
@@ -597,7 +594,6 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
              <p style={{ color: semantic.textSecondary }}>Loading Brand Studio…</p>
            </div>
          )}
-         {activeTab === 'apps' && <AppsStudio apiKey={apiKey} locale={locale} />}
          {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} templateData={templateData} locale={locale} />}
          {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
          {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
