@@ -10,6 +10,7 @@ import ApiKeyModal from './ApiKeyModal';
 import { SocialPublishProvider } from '@/components/SocialPublishProvider';
 import { AiAssistantProvider } from '@/components/AiAssistantProvider';
 import { useAuthConfig } from '@/lib/authConfig';
+import { isValidKeyFormat } from '@/lib/keys';
 import { DemoPersonalizeProvider } from '@/shared/personalization';
 
 // Lazily load the heavy `studio` package so its many studio modules are not
@@ -591,7 +592,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
          {activeTab === 'brand-studio' && (
            <div className="flex items-center justify-center h-full">
-             <p style={{ color: semantic.textSecondary }}>Loading Brand Studio…</p>
+             <p className="text-white/50">Loading Brand Studio…</p>
            </div>
          )}
          {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} templateData={templateData} locale={locale} />}
