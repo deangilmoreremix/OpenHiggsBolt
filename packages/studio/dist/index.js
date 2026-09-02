@@ -17,8 +17,10 @@ var _exportNames = {
   WorkflowStudio: true,
   AgentStudio: true,
   DesignAgentStudio: true,
+  AppsStudio: true,
   McpCliStudio: true,
-  AiInfluencerStudio: true
+  AiInfluencerStudio: true,
+  LayersStudio: true
 };
 Object.defineProperty(exports, "AgentStudio", {
   enumerable: true,
@@ -30,6 +32,12 @@ Object.defineProperty(exports, "AiInfluencerStudio", {
   enumerable: true,
   get: function get() {
     return _AiInfluencerStudio["default"];
+  }
+});
+Object.defineProperty(exports, "AppsStudio", {
+  enumerable: true,
+  get: function get() {
+    return _AppsStudio["default"];
   }
 });
 Object.defineProperty(exports, "AudioStudio", {
@@ -60,6 +68,12 @@ Object.defineProperty(exports, "ImageStudio", {
   enumerable: true,
   get: function get() {
     return _ImageStudio["default"];
+  }
+});
+Object.defineProperty(exports, "LayersStudio", {
+  enumerable: true,
+  get: function get() {
+    return _LayersStudio["default"];
   }
 });
 Object.defineProperty(exports, "LipSyncStudio", {
@@ -95,7 +109,7 @@ Object.defineProperty(exports, "VibeMotionStudio", {
 Object.defineProperty(exports, "VideoStudio", {
   enumerable: true,
   get: function get() {
-    return _VideoStudio["default"];
+    return _VideoStudioParity["default"];
   }
 });
 Object.defineProperty(exports, "WorkflowStudio", {
@@ -105,7 +119,7 @@ Object.defineProperty(exports, "WorkflowStudio", {
   }
 });
 var _ImageStudio = _interopRequireDefault(require("./components/ImageStudio"));
-var _VideoStudio = _interopRequireDefault(require("./components/VideoStudio"));
+var _VideoStudioParity = _interopRequireDefault(require("./components/VideoStudioParity"));
 var _ClippingStudio = _interopRequireDefault(require("./components/ClippingStudio"));
 var _VibeMotionStudio = _interopRequireDefault(require("./components/VibeMotionStudio"));
 var _LipSyncStudio = _interopRequireDefault(require("./components/LipSyncStudio"));
@@ -116,8 +130,10 @@ var _RecastStudio = _interopRequireDefault(require("./components/RecastStudio"))
 var _WorkflowStudio = _interopRequireDefault(require("./components/WorkflowStudio"));
 var _AgentStudio = _interopRequireDefault(require("./components/AgentStudio"));
 var _DesignAgentStudio = _interopRequireDefault(require("./components/DesignAgentStudio"));
+var _AppsStudio = _interopRequireDefault(require("./components/AppsStudio"));
 var _McpCliStudio = _interopRequireDefault(require("./components/McpCliStudio"));
 var _AiInfluencerStudio = _interopRequireDefault(require("./components/AiInfluencerStudio"));
+var _LayersStudio = _interopRequireDefault(require("./components/LayersStudio"));
 var _muapi = require("./muapi");
 Object.keys(_muapi).forEach(function (key) {
   if (key === "default" || key === "__esModule") return;
