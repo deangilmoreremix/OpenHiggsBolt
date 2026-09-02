@@ -7,7 +7,6 @@
 [submodule "packages/Vibe-Workflow"]
 	path = packages/Vibe-Workflow
 	url = https://github.com/deangilmoreremix/Vibe-Workflow.git
-	branch = main
 [submodule "packages/timeline-studio"]
 	path = packages/timeline-studio
 	url = https://github.com/deangilmoreremix/timeline-studio.git
