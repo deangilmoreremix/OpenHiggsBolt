@@ -191,22 +191,6 @@ export function getStoryboardModel(id: string): StoryboardModel {
   return STORYBOARD_MODELS.find((m) => m.id === id) || STORYBOARD_MODELS[0]
 }
 
-// Flat set of valid model ids — used by the backend to validate the selected
-// model before proxying to MuAPI (single source of truth, mirrors STORYBOARD_MODELS).
-export const STORYBOARD_MODEL_IDS: ReadonlySet<string> = new Set(
-  STORYBOARD_MODELS.map((m) => m.id)
-)
-
-// Resolve the provider id for a given model id (or null if unknown).
-export function getProviderForModel(id: string): string | null {
-  return STORYBOARD_MODELS.find((m) => m.id === id)?.provider ?? null
-}
-
-// True when the id is a known, selectable storyboard image model.
-export function isValidStoryboardModel(id: unknown): id is string {
-  return typeof id === 'string' && STORYBOARD_MODEL_IDS.has(id)
-}
-
 // Dynamically compute the list of providers present in the catalog.
 export function getStoryboardProviders(): { id: string; name: string }[] {
   const seen = new Set<string>()

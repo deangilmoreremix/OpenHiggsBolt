@@ -17,6 +17,12 @@ function createGenerationError(result, requestId) {
   return error;
 }
 
+function fatal(message) {
+  const error = new Error(message);
+  error.isFatal = true;
+  return error;
+}
+
 export function appendGenerationRefundNotice(message, error) {
   const cost = error?.generationResult?.cost;
   if (cost?.refunded !== true) return message;
@@ -48,13 +54,13 @@ export async function pollForGenerationResult({
         headers: { "Content-Type": "application/json", "x-api-key": apiKey },
       });
     } catch (error) {
-      if (attempt === maxAttempts) throw error;
+      if (attempt === maxAttempts || error.isFatal) throw error;
       continue;
     }
 
     if (!response.ok) {
       const detail = await response.text();
-      const error = new Error(`Poll Failed: ${response.status} - ${detail.slice(0, 100)}`);
+      const error = fatal(`Poll Failed: ${response.status} - ${detail.slice(0, 100)}`);
       error.requestId = requestId;
 
       if (response.status >= 500 && attempt < maxAttempts) continue;
@@ -66,13 +72,13 @@ export async function pollForGenerationResult({
     try {
       result = await response.json();
     } catch (error) {
-      if (attempt === maxAttempts) throw error;
+      if (attempt === maxAttempts || error.isFatal) throw error;
       continue;
     }
 
     const status = result.status?.toLowerCase();
     if (SUCCESS_STATUSES.has(status)) return result;
-    if (FAILURE_STATUSES.has(status)) throw createGenerationError(result, requestId);
+    if (FAILURE_STATUSES.has(status)) throw fatal(`Generation failed: ${getGenerationErrorDetail(result)}`);
   }
 
   const error = new Error(`Generation timed out after polling. Request ID: ${requestId}`);

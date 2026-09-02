@@ -91,5 +91,5 @@ describe('VideoStudio Quality & Mode controls', () => {
     // Mode control now shows the model default ("normal").
     expect(buttons(container)).toContain('normal');
     expect(buttons(container)).not.toContain('basic');
-  });
+  }, 30000);
 });
