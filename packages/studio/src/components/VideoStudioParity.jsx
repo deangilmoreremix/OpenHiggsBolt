@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import {
   generateVideo,
@@ -39,6 +39,8 @@ import {
   buildVideoWorkflowMediaParams,
   getVideoWorkflowFamily,
   getVideoWorkflowMediaSlots,
+  resolvePersistedVideoWorkflowSelection,
+  resolveVideoBaseVariant,
   resolveVideoWorkflowVariant,
   validateVideoWorkflowMedia,
 } from "../videoWorkflows.js";
@@ -272,7 +274,7 @@ export default function VideoStudioParity({
 
   const selectWorkflow = (workflowId) => {
     if (!workflowId) {
-      const baseVariant = getFamilyVariant(videoModelCatalog, selectedFamily, mode, selectedModel) || selectedVariant;
+      const baseVariant = resolveVideoBaseVariant(selectedFamily.id, selectedModel) || selectedVariant;
       applyVariant(baseVariant, null);
       return;
     }
@@ -324,11 +326,24 @@ export default function VideoStudioParity({
   useEffect(() => {
     if (initialized.current || typeof window === "undefined") return;
     initialized.current = true;
+    let restoredVariantForHandoff = null;
     try {
       const stored = JSON.parse(window.localStorage.getItem(persistKey) || "null");
       if (stored) {
-        const restoredVariant = videoModelCatalog.variantById.get(stored.selectedModel);
-        if (restoredVariant) applyVariant(restoredVariant, stored.selectedWorkflowId || null);
+        const restored = resolvePersistedVideoWorkflowSelection(
+          stored.selectedModel,
+          stored.selectedWorkflowId || null,
+          {
+            hasEndFrame: Boolean(
+              stored.baseMedia?.endImageUrl ||
+              stored.workflowMedia?.endFrame?.length,
+            ),
+          },
+        );
+        if (restored?.variant) {
+          restoredVariantForHandoff = restored.variant;
+          applyVariant(restored.variant, restored.workflowId || null);
+        }
         if (stored.prompt) setPrompt(stored.prompt);
         if (stored.selectedAr) setSelectedAr(stored.selectedAr);
         if (stored.selectedDuration) setSelectedDuration(stored.selectedDuration);
@@ -352,7 +367,26 @@ export default function VideoStudioParity({
       if (handoff) {
         if (handoff.combinedPrompt || handoff.projectName) setPrompt(handoff.combinedPrompt || handoff.projectName);
         const first = handoff.firstFrameUrl || handoff.referenceImageUrl;
-        if (first) setBaseMedia((media) => ({ ...media, imageUrls: unique([first, ...media.imageUrls]) }));
+        if (first) {
+          const currentVariant = restoredVariantForHandoff || defaultVariant;
+          const family = videoModelCatalog.familyByVariantId.get(currentVariant?.model?.id) || defaultFamily;
+          const animateVariant = family
+            ? resolveVideoWorkflowVariant(family.id, "animate_image", currentVariant?.model?.id)
+            : null;
+          if (animateVariant) {
+            applyVariant(animateVariant, "animate_image");
+            setWorkflowMedia((media) => ({
+              ...media,
+              startFrame: unique([first, ...(media.startFrame || [])]).slice(0, 1),
+            }));
+          } else {
+            const i2vVariant = family
+              ? getFamilyVariant(videoModelCatalog, family, "i2v", currentVariant?.model?.id)
+              : null;
+            if (i2vVariant) applyVariant(i2vVariant, null);
+            setBaseMedia((media) => ({ ...media, imageUrls: unique([first, ...media.imageUrls]) }));
+          }
+        }
         if (handoff.aspectRatio) setSelectedAr(handoff.aspectRatio);
       }
     } catch (error) {
@@ -365,7 +399,7 @@ export default function VideoStudioParity({
       clearPendingRecipe("video");
       if (skill) applyRecipe(skill);
     }
-  }, [applyRecipe, applyVariant, persistKey]);
+  }, [applyRecipe, applyVariant, defaultFamily, defaultVariant, persistKey]);
 
   useEffect(() => {
     if (!initialized.current || typeof window === "undefined") return;
