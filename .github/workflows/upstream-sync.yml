@@ -1,145 +1,233 @@
 name: Upstream Sync
 
 on:
-  schedule:
-    - cron: '0 0 * * 1'  # Every Monday at 00:00 UTC
+  push:
+    branches:
+      - parity/upstream-full-2026-09-02
+    paths:
+      - .github/workflows/upstream-sync.yml
   workflow_dispatch:
-    inputs:
-      force_sync:
-        description: 'Force sync even if no new commits'
-        required: false
-        default: 'false'
-        type: boolean
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
-  sync:
+  parity-merge:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
-      - name: Checkout fork
+      - name: Checkout parity branch
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          submodules: false
+          ref: parity/upstream-full-2026-09-02
 
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Add upstream remote
+      - name: Fetch upstream
         run: |
-          git remote add upstream https://github.com/Anil-matcha/Open-Generative-AI.git || true
-          git fetch upstream
+          git remote remove upstream 2>/dev/null || true
+          git remote add upstream https://github.com/Anil-matcha/Open-Generative-AI.git
+          git fetch upstream main --tags
+          echo "UPSTREAM_SHA=$(git rev-parse upstream/main)" >> "$GITHUB_ENV"
+          echo "PRE_MERGE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
-      - name: Check for new commits
-        id: check
+      - name: Protected three-way merge
+        shell: bash
         run: |
-          SYNC_POINT=$(cat .upstream-sync 2>/dev/null || echo "none")
-          UPSTREAM_HEAD=$(git rev-parse upstream/main)
-          echo "sync_point=$SYNC_POINT" >> $GITHUB_OUTPUT
-          echo "upstream_head=$UPSTREAM_HEAD" >> $GITHUB_OUTPUT
+          set +e
+          git merge --no-ff --no-commit -X ours upstream/main
+          merge_exit=$?
+          set -e
 
-          if [ "$SYNC_POINT" = "$UPSTREAM_HEAD" ] && [ "${{ inputs.force_sync }}" != "true" ]; then
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-            echo "No new upstream commits since $SYNC_POINT"
-          else
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            echo "New commits found: $SYNC_POINT..$UPSTREAM_HEAD"
+          if [ "$merge_exit" -ne 0 ]; then
+            echo "Resolving remaining conflicts conservatively."
+            mapfile -t conflicts < <(git diff --name-only --diff-filter=U)
+            for path in "${conflicts[@]}"; do
+              if git ls-files -u -- "$path" | awk '$3==2 {found=1} END{exit !found}'; then
+                echo "Keeping SmartVideo/local side for conflict: $path"
+                git checkout --ours -- "$path" || true
+              else
+                echo "Accepting upstream-only side for conflict: $path"
+                git checkout --theirs -- "$path" || true
+              fi
+              git add -A -- "$path"
+            done
           fi
 
-      - name: Create sync branch
-        if: steps.check.outputs.has_changes == 'true'
-        run: |
-          DATE=$(date +%Y%m%d)
-          git checkout -b sync-upstream-$DATE
+          # Never let parity work delete a file that existed in OpenHiggsBolt.
+          while IFS=$'\t' read -r status path rest; do
+            if [ "$status" = "D" ]; then
+              echo "Restoring local file deleted by upstream: $path"
+              git checkout "$PRE_MERGE_SHA" -- "$path"
+              git add -- "$path"
+            fi
+          done < <(git diff --name-status "$PRE_MERGE_SHA")
 
-      - name: Merge upstream
-        if: steps.check.outputs.has_changes == 'true'
+      - name: Restore all missing regular upstream files
+        shell: bash
         run: |
-          git merge upstream/main --no-commit --no-ff || true
+          set -e
+          while IFS= read -r path; do
+            mode=$(git ls-tree upstream/main -- "$path" | awk '{print $1}')
+            [ "$mode" = "160000" ] && continue
+            if [ ! -e "$path" ]; then
+              echo "Adding upstream parity file absent locally: $path"
+              git checkout upstream/main -- "$path"
+              git add -- "$path"
+            fi
+          done < <(git ls-tree -r --name-only upstream/main)
 
-      - name: Apply exclusions
-        if: steps.check.outputs.has_changes == 'true'
+      - name: Protect SmartVideo-specific integrations
+        shell: bash
         run: |
-          # Restore fork-only files that upstream may have modified
-          git checkout HEAD -- \
-            middleware.js \
-            clerkAppearance.js \
-            packages/studio/src/persistKey.js \
-            app/sign-in/ \
-            app/sign-up/ \
-            app/forgot-password/ \
-            app/api/webhooks/ \
-            app/api/auth/ \
-            app/api/design-agent/ \
-            app/api/photo-studio/ \
-            app/api/storyboard/ \
-            app/api/thumbnail/ \
-            app/api/vfx/ \
-            app/api/brand/ \
-            app/api/brands/ \
-            app/api/workspace/ \
-            supabase/ \
-            src/apps/ \
-            apps/cutai/ \
-            e2e/ \
-            tests/ \
-            2>/dev/null || true
+          set -e
+          protect_file() {
+            file="$1"; shift
+            if [ ! -f "$file" ]; then
+              echo "Protected file missing; restoring local: $file"
+              git checkout "$PRE_MERGE_SHA" -- "$file"
+              git add "$file"
+              return
+            fi
+            for marker in "$@"; do
+              if ! grep -Fq "$marker" "$file"; then
+                echo "Protected marker '$marker' disappeared from $file; restoring local file"
+                git checkout "$PRE_MERGE_SHA" -- "$file"
+                git add "$file"
+                return
+              fi
+            done
+          }
 
-      - name: Check for conflicts
-        if: steps.check.outputs.has_changes == 'true'
-        id: conflicts
+          protect_file components/StandaloneShell.js \
+            "SocialPublishProvider" "AiAssistantProvider" "GoAiViralStudio" \
+            "Storyboard" "ThumbnailStudio" "VFXStudio" "templateData" "useAuthConfig"
+
+          protect_file packages/studio/src/components/VideoStudio.jsx \
+            "PublishStep" "AssistStep" "readStoryboardHandoff" "templateData"
+
+          protect_file packages/studio/src/components/ImageStudio.jsx \
+            "PublishStep" "AssistStep" "readStoryboardHandoff" "templateData"
+
+          protect_file packages/studio/src/models.js "getModesForModel"
+          protect_file src/lib/authConfig.ts "getApiKey" "setApiKey"
+          protect_file middleware.js "clerkMiddleware"
+
+          for path in \
+            src/apps/go-ai-viral/GoAiViralStudio.tsx \
+            src/apps/storyboard/Storyboard.tsx \
+            src/apps/thumbnail-studio/ThumbnailStudio.tsx \
+            src/apps/vfx-studio/VFXStudio.tsx \
+            components/SocialPublishProvider.tsx \
+            components/AiAssistantProvider.tsx; do
+            test -e "$path" || { echo "Required SmartVideo feature missing: $path"; exit 1; }
+          done
+
+      - name: Verify required upstream parity files
+        shell: bash
         run: |
-          CONFLICTS=$(git diff --name-only --diff-filter=U)
-          if [ -n "$CONFLICTS" ]; then
-            echo "has_conflicts=true" >> $GITHUB_OUTPUT
-            echo "conflicts<<EOF" >> $GITHUB_OUTPUT
-            echo "$CONFLICTS" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+          set -e
+          required=(
+            packages/studio/src/components/AppsStudio.jsx
+            packages/studio/src/components/LayersStudio.jsx
+            packages/studio/src/components/MobileGenerationActions.jsx
+            packages/studio/src/components/ModelParameterControls.jsx
+            packages/studio/src/components/prompt/PromptComposer.jsx
+            packages/studio/src/utils/formatError.js
+            packages/studio/src/utils/downloadImage.js
+            packages/studio/src/i18nUtils.js
+            lib/locales.js
+            messages/en/common.json
+            messages/zh/common.json
+          )
+          for path in "${required[@]}"; do
+            test -f "$path" || { echo "Missing required upstream parity file: $path"; exit 1; }
+          done
+
+      - name: Record upstream sync point and commit merge
+        run: |
+          printf '%s\n' "$UPSTREAM_SHA" > .upstream-sync
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No merge changes to commit."
           else
-            echo "has_conflicts=false" >> $GITHUB_OUTPUT
+            git commit -m "merge(parity): integrate upstream without removing SmartVideo features"
           fi
 
-      - name: Abort on conflicts
-        if: steps.check.outputs.has_changes == 'true' && steps.conflicts.outputs.has_conflicts == 'true'
+      - name: Initialize submodules
+        continue-on-error: true
+        run: git submodule update --init --recursive
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        id: install
+        continue-on-error: true
+        run: npm ci
+
+      - name: Build studio package
+        id: studio_build
+        continue-on-error: true
+        run: npm run build:studio
+
+      - name: Typecheck
+        id: typecheck
+        continue-on-error: true
+        run: npm run typecheck
+
+      - name: Unit tests
+        id: unit_tests
+        continue-on-error: true
+        run: npm run test:unit
+
+      - name: Model parity checker
+        id: model_parity
+        continue-on-error: true
+        run: node scripts/model-diff-checker.mjs
+
+      - name: Write parity validation report
+        shell: bash
         run: |
-          git merge --abort
-          echo "::error::Merge conflicts detected. Manual resolution required."
-          echo "Conflicted files:"
-          echo "${{ steps.conflicts.outputs.conflicts }}"
-          exit 1
+          mkdir -p docs/audits
+          {
+            echo "# Protected Upstream Parity Merge — 2026-09-02"
+            echo
+            echo "- Pre-merge local: \`$PRE_MERGE_SHA\`"
+            echo "- Upstream merged: \`$UPSTREAM_SHA\`"
+            echo "- Branch: \`parity/upstream-full-2026-09-02\`"
+            echo "- Policy: preserve all local files and SmartVideo markers; add every missing regular upstream file; local side wins unresolved shared-file conflicts."
+            echo
+            echo "## Validation"
+            echo
+            echo "| Check | Outcome |"
+            echo "|---|---|"
+            echo "| npm ci | ${{ steps.install.outcome }} |"
+            echo "| Studio build | ${{ steps.studio_build.outcome }} |"
+            echo "| Typecheck | ${{ steps.typecheck.outcome }} |"
+            echo "| Unit tests | ${{ steps.unit_tests.outcome }} |"
+            echo "| Model parity checker | ${{ steps.model_parity.outcome }} |"
+            echo
+            echo "## Remaining differences versus upstream"
+            echo
+            echo '```text'
+            git diff --stat upstream/main HEAD || true
+            echo '```'
+            echo
+            echo "Remaining differences include intentional SmartVideo extensions plus shared files retained locally for surgical parity integration."
+          } > docs/audits/UPSTREAM-PARITY-MERGE-2026-09-02.md
+          git add docs/audits/UPSTREAM-PARITY-MERGE-2026-09-02.md
+          if ! git diff --cached --quiet; then
+            git commit -m "docs(parity): record upstream merge validation"
+          fi
 
-      - name: Record sync point
-        if: steps.check.outputs.has_changes == 'true' && steps.conflicts.outputs.has_conflicts == 'false'
-        run: |
-          NEW_SYNC_POINT=$(git rev-parse upstream/main)
-          echo $NEW_SYNC_POINT > .upstream-sync
-          git add .upstream-sync
-          git commit -m "chore: automated upstream sync to $NEW_SYNC_POINT"
-
-      - name: Push and create PR
-        if: steps.check.outputs.has_changes == 'true' && steps.conflicts.outputs.has_conflicts == 'false'
-        run: |
-          DATE=$(date +%Y%m%d)
-          git push origin sync-upstream-$DATE
-
-          gh pr create \
-            --title "sync: automated upstream $(date +%Y-%m-%d)" \
-            --body "## Automated Upstream Sync
-
-- Sync point: $(cat .upstream-sync)
-- Previous: ${{ steps.check.outputs.sync_point }}
-- Commits: $(git log ${{ steps.check.outputs.sync_point }}..upstream/main --oneline | wc -l)
-
-### Action Required
-- [ ] Review changes
-- [ ] Run tests locally if needed
-- [ ] Merge when ready" \
-            --base main \
-            --head sync-upstream-$DATE
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push parity branch
+        run: git push origin HEAD:parity/upstream-full-2026-09-02
