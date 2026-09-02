@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { ClerkProvider } from '@clerk/nextjs';
 import { headers } from 'next/headers';
 import { getLocaleConfig } from '@/lib/locales';
+import GlobalModalDropBridge from '@/components/GlobalModalDropBridge';
 
 const inter = Inter({
   variable: "--font-inter",
@@ -29,7 +30,10 @@ export default async function RootLayout({ children }) {
 
   const tree = (
     <html lang={htmlLang}>
-      <body className={inter.variable}>{children}</body>
+      <body className={inter.variable}>
+        <GlobalModalDropBridge />
+        {children}
+      </body>
     </html>
   );
 
