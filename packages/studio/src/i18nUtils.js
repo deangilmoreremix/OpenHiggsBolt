@@ -1,18 +1,7 @@
-// Tiny, dependency-free locale-copy resolver shared by every Studio
-// component in this package.
-//
-// Design: each component ships its own English default bundle (source of
-// truth for keys/shape) plus one override bundle per additional locale.
-// `resolveCopy` deep-merges the override over English so a partial
-// translation still renders — missing keys fall back to English rather
-// than showing `undefined`. This mirrors the merge behavior in the host
-// app's `lib/locales.js` (see Open-Higgsfield-ai/lib/locales.js) but is
-// duplicated here (not imported) so this package has no dependency on the
-// consuming app's file layout — it only needs a `locale` string prop.
-//
-// Adding a new locale to a component: add `../messages/<locale>/<name>.json`
-// next to the existing `en`/`zh` bundles, import it, and pass it into
-// `resolveCopy(en, localeBundles[locale], locale)`. No changes needed here.
+// Tiny, dependency-free locale-copy resolver shared by Studio components.
+// A caller may pass an explicit locale. When the customized SmartVideo shell
+// has not forwarded one, the resolver also recognizes additive /zh routes in
+// the browser so localized studios still select their Chinese bundle.
 
 function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -32,10 +21,19 @@ export function mergeCopy(base, override) {
   return merged;
 }
 
+export function resolveRuntimeLocale(locale) {
+  if (locale && locale !== 'en') return locale;
+  if (typeof window !== 'undefined') {
+    const pathname = window.location?.pathname || '';
+    if (pathname === '/zh' || pathname.startsWith('/zh/')) return 'zh';
+  }
+  return locale || 'en';
+}
+
 // `en` is the required default bundle; `localeBundle` is the override for
-// the active `locale` (or undefined/null when only English exists yet, or
-// when locale === 'en'). Always returns a fully-populated copy object.
+// the active locale. Missing translated keys fall back to English.
 export function resolveCopy(en, localeBundle, locale) {
-  if (!locale || locale === 'en') return en;
+  const activeLocale = resolveRuntimeLocale(locale);
+  if (!activeLocale || activeLocale === 'en') return en;
   return mergeCopy(en, localeBundle);
 }
