@@ -1,25 +1,52 @@
 name: Upstream Sync
 
 on:
+  push:
+    branches:
+      - parity/upstream-full-2026-09-02
+    paths:
+      - .github/workflows/upstream-sync.yml
   schedule:
-    - cron: '0 0 * * 1'  # Every Monday at 00:00 UTC
+    - cron: '0 0 * * 1'
   workflow_dispatch:
-    inputs:
-      force_sync:
-        description: 'Force sync even if no new commits'
-        required: false
-        default: 'false'
-        type: boolean
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
-  sync:
+  validate-scope:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout fork
+      - name: Checkout branch
+        uses: actions/checkout@v4
+
+      - name: Verify SmartVideo exclusions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -f packages/studio/src/components/AppsStudio.jsx
+          test ! -f packages/studio/src/components/McpCliStudio.jsx
+          test ! -f packages/studio/src/messages/en/appsStudio.json
+          test ! -f packages/studio/src/messages/zh/appsStudio.json
+          test ! -f packages/studio/src/messages/en/mcpCliStudio.json
+          test ! -f packages/studio/src/messages/zh/mcpCliStudio.json
+          grep -Fq "redirect('/studio/image')" app/studio/apps/page.js
+          grep -Fq "redirect('/studio/image')" app/studio/mcp-cli/page.js
+          grep -Fq "redirect('/zh/studio/image')" app/zh/studio/apps/page.js
+          grep -Fq "redirect('/zh/studio/image')" app/zh/studio/mcp-cli/page.js
+          if git grep -niEi 'white[-_ ]?label|whitelabel' -- components/StandaloneShell.js src/apps/design-agent app/api/design-agent; then
+            echo "::error::White-label logic detected in active SmartVideo product code."
+            exit 1
+          fi
+
+  sync:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout maintained branch
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -28,45 +55,55 @@ jobs:
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Add upstream remote
+      - name: Fetch upstream
         run: |
-          git remote add upstream https://github.com/Anil-matcha/Open-Generative-AI.git || true
-          git fetch upstream
+          git remote remove upstream 2>/dev/null || true
+          git remote add upstream https://github.com/Anil-matcha/Open-Generative-AI.git
+          git fetch upstream main --tags
 
-      - name: Check for new commits
+      - name: Check for upstream changes
         id: check
+        shell: bash
         run: |
-          SYNC_POINT=$(cat .upstream-sync 2>/dev/null || echo "none")
+          set -euo pipefail
+          SYNC_POINT=$(cat .upstream-sync 2>/dev/null || echo none)
           UPSTREAM_HEAD=$(git rev-parse upstream/main)
-          echo "sync_point=$SYNC_POINT" >> $GITHUB_OUTPUT
-          echo "upstream_head=$UPSTREAM_HEAD" >> $GITHUB_OUTPUT
-
-          if [ "$SYNC_POINT" = "$UPSTREAM_HEAD" ] && [ "${{ inputs.force_sync }}" != "true" ]; then
-            echo "has_changes=false" >> $GITHUB_OUTPUT
+          echo "sync_point=$SYNC_POINT" >> "$GITHUB_OUTPUT"
+          echo "upstream_head=$UPSTREAM_HEAD" >> "$GITHUB_OUTPUT"
+          if [ "$SYNC_POINT" = "$UPSTREAM_HEAD" ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
             echo "No new upstream commits since $SYNC_POINT"
           else
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            echo "New commits found: $SYNC_POINT..$UPSTREAM_HEAD"
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            echo "New upstream commits: $SYNC_POINT..$UPSTREAM_HEAD"
           fi
 
       - name: Create sync branch
         if: steps.check.outputs.has_changes == 'true'
+        shell: bash
         run: |
-          DATE=$(date +%Y%m%d)
-          git checkout -b sync-upstream-$DATE
+          set -euo pipefail
+          SYNC_BRANCH="sync-upstream-$(date +%Y%m%d)-${GITHUB_RUN_ID}"
+          echo "SYNC_BRANCH=$SYNC_BRANCH" >> "$GITHUB_ENV"
+          git checkout -b "$SYNC_BRANCH"
 
-      - name: Merge upstream
+      - name: Merge upstream without committing
         if: steps.check.outputs.has_changes == 'true'
+        shell: bash
         run: |
-          git merge upstream/main --no-commit --no-ff || true
+          set +e
+          git merge upstream/main --no-commit --no-ff
+          echo "merge_exit=$?" >> "$GITHUB_ENV"
+          set -e
 
-      - name: Apply exclusions
+      - name: Preserve SmartVideo-owned product surfaces
         if: steps.check.outputs.has_changes == 'true'
+        shell: bash
         run: |
-          # Preserve SmartVideo-owned product surfaces and account behavior.
-          git checkout HEAD -- \
+          set -euo pipefail
+          for path in \
             middleware.js \
             clerkAppearance.js \
             packages/studio/src/persistKey.js \
@@ -75,48 +112,46 @@ jobs:
             messages/en/common.json \
             messages/zh/common.json \
             packages/studio/src/index.js \
-            app/studio/apps/ \
-            app/zh/studio/apps/ \
-            app/studio/mcp-cli/ \
-            app/zh/studio/mcp-cli/ \
-            app/sign-in/ \
-            app/sign-up/ \
-            app/forgot-password/ \
-            app/api/webhooks/ \
-            app/api/auth/ \
-            app/api/design-agent/ \
-            app/api/photo-studio/ \
-            app/api/storyboard/ \
-            app/api/thumbnail/ \
-            app/api/vfx/ \
-            app/api/brand/ \
-            app/api/brands/ \
-            app/api/workspace/ \
-            supabase/ \
-            src/apps/ \
-            apps/cutai/ \
-            e2e/ \
-            tests/ \
-            2>/dev/null || true
+            app/studio/apps \
+            app/zh/studio/apps \
+            app/studio/mcp-cli \
+            app/zh/studio/mcp-cli \
+            app/sign-in \
+            app/sign-up \
+            app/forgot-password \
+            app/api/webhooks \
+            app/api/auth \
+            app/api/design-agent \
+            app/api/photo-studio \
+            app/api/storyboard \
+            app/api/thumbnail \
+            app/api/vfx \
+            app/api/brand \
+            app/api/brands \
+            app/api/workspace \
+            supabase \
+            src/apps \
+            apps/cutai \
+            e2e \
+            tests; do
+            if git cat-file -e "HEAD:$path" 2>/dev/null; then
+              git checkout HEAD -- "$path"
+            fi
+          done
 
-          # Explicit product exclusions: these upstream surfaces are not part of
-          # SmartVideo GO and must never be restored by an automated sync.
-          rm -f \
+          git rm -f --ignore-unmatch \
             packages/studio/src/components/AppsStudio.jsx \
             packages/studio/src/messages/en/appsStudio.json \
             packages/studio/src/messages/zh/appsStudio.json \
             packages/studio/src/components/McpCliStudio.jsx \
             packages/studio/src/messages/en/mcpCliStudio.json \
-            packages/studio/src/messages/zh/mcpCliStudio.json \
-            2>/dev/null || true
+            packages/studio/src/messages/zh/mcpCliStudio.json
 
-          # Do not import upstream white-label / tenant product layers. SmartVideo
-          # keeps its Clerk identity, API-key, balance and branding architecture.
           WHITE_LABEL_PATHS=$(git ls-files | grep -Ei '(^|/)(white[-_]?label|whitelabel)(/|\.|$)' || true)
           if [ -n "$WHITE_LABEL_PATHS" ]; then
-            echo "$WHITE_LABEL_PATHS" | while IFS= read -r path; do
-              git rm -rf --ignore-unmatch "$path"
-            done
+            while IFS= read -r path; do
+              [ -n "$path" ] && git rm -rf --ignore-unmatch "$path"
+            done <<< "$WHITE_LABEL_PATHS"
           fi
 
           if git grep -niEi 'white[-_ ]?label|whitelabel' -- components/StandaloneShell.js src/apps/design-agent app/api/design-agent 2>/dev/null; then
@@ -124,62 +159,62 @@ jobs:
             exit 1
           fi
 
-      - name: Check for conflicts
+      - name: Fail on unresolved conflicts
         if: steps.check.outputs.has_changes == 'true'
-        id: conflicts
+        shell: bash
         run: |
+          set -euo pipefail
           CONFLICTS=$(git diff --name-only --diff-filter=U)
           if [ -n "$CONFLICTS" ]; then
-            echo "has_conflicts=true" >> $GITHUB_OUTPUT
-            echo "conflicts<<EOF" >> $GITHUB_OUTPUT
-            echo "$CONFLICTS" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-          else
-            echo "has_conflicts=false" >> $GITHUB_OUTPUT
+            echo "::error::Manual parity resolution required for these files:"
+            echo "$CONFLICTS"
+            exit 1
           fi
 
-      - name: Abort on conflicts
-        if: steps.check.outputs.has_changes == 'true' && steps.conflicts.outputs.has_conflicts == 'true'
+      - name: Commit protected sync
+        if: steps.check.outputs.has_changes == 'true'
+        shell: bash
         run: |
-          git merge --abort
-          echo "::error::Merge conflicts detected. Manual resolution required."
-          echo "Conflicted files:"
-          echo "${{ steps.conflicts.outputs.conflicts }}"
-          exit 1
-
-      - name: Record sync point
-        if: steps.check.outputs.has_changes == 'true' && steps.conflicts.outputs.has_conflicts == 'false'
-        run: |
+          set -euo pipefail
           NEW_SYNC_POINT=$(git rev-parse upstream/main)
-          echo $NEW_SYNC_POINT > .upstream-sync
-          git add .upstream-sync
-          git commit -m "chore: automated upstream sync to $NEW_SYNC_POINT"
+          printf '%s\n' "$NEW_SYNC_POINT" > .upstream-sync
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No protected sync changes to commit."
+          else
+            git commit -m "chore: protected upstream sync to $NEW_SYNC_POINT"
+          fi
 
-      - name: Push and create PR
-        if: steps.check.outputs.has_changes == 'true' && steps.conflicts.outputs.has_conflicts == 'false'
+      - name: Push sync branch and open review PR
+        if: steps.check.outputs.has_changes == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          DATE=$(date +%Y%m%d)
-          git push origin sync-upstream-$DATE
+          set -euo pipefail
+          BASE_BRANCH="$GITHUB_REF_NAME"
+          git push origin "$SYNC_BRANCH"
+
+          {
+            echo "## Automated Upstream Sync"
+            echo
+            echo "- Sync point: $(cat .upstream-sync)"
+            echo "- Previous: ${{ steps.check.outputs.sync_point }}"
+            echo "- Target branch: $BASE_BRANCH"
+            echo
+            echo "### SmartVideo scope"
+            echo "- Explore Apps remains excluded"
+            echo "- MCP / CLI remains excluded"
+            echo "- White-label product layers remain excluded"
+            echo "- SmartVideo-owned auth, studios, personalization and Design Agent remain authoritative"
+            echo
+            echo "### Review"
+            echo "- Review the diff before merge"
+            echo "- Run release validation before production integration"
+          } > /tmp/upstream-sync-pr.md
 
           gh pr create \
-            --title "sync: automated upstream $(date +%Y-%m-%d)" \
-            --body "## Automated Upstream Sync
-
-- Sync point: $(cat .upstream-sync)
-- Previous: ${{ steps.check.outputs.sync_point }}
-- Commits: $(git log ${{ steps.check.outputs.sync_point }}..upstream/main --oneline | wc -l)
-
-### SmartVideo scope
-- Explore Apps remains excluded
-- MCP / CLI remains excluded
-- White-label product layers remain excluded
-- SmartVideo-owned auth, studios and Design Agent remain authoritative
-
-### Action Required
-- [ ] Review changes
-- [ ] Run tests locally if needed
-- [ ] Merge when ready" \
-            --base main \
-            --head sync-upstream-$DATE
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            --title "sync: protected upstream $(date +%Y-%m-%d)" \
+            --body-file /tmp/upstream-sync-pr.md \
+            --base "$BASE_BRANCH" \
+            --head "$SYNC_BRANCH"
