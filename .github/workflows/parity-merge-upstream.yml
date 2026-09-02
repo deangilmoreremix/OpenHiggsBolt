@@ -59,8 +59,6 @@ jobs:
             done
           fi
 
-          # Hard guarantee: do not allow this parity merge to delete any file
-          # that existed before the merge. Upstream additions are allowed.
           while IFS=$'\t' read -r status path rest; do
             if [ "$status" = "D" ]; then
               echo "Restoring locally-existing file deleted by upstream merge: $path"
@@ -98,13 +96,25 @@ jobs:
           protect_file packages/studio/src/components/VideoStudio.jsx \
             "PublishStep" "AssistStep" "readStoryboardHandoff" "templateData"
 
+          protect_file packages/studio/src/components/VideoStudioParity.jsx \
+            "PublishStep" "AssistStep" "readStoryboardHandoff" "UniversalMediaUploader" \
+            "videoWorkflows.js" "templateData"
+
+          protect_file packages/studio/src/components/UniversalMediaUploader.jsx \
+            "role" "uploadFile" "drag"
+
           protect_file packages/studio/src/components/ImageStudio.jsx \
-            "PublishStep" "AssistStep" "readStoryboardHandoff" "templateData"
+            "PublishStep" "AssistStep" "templateData"
 
           protect_file packages/studio/src/models.js "getModesForModel"
           protect_file src/lib/authConfig.ts "getApiKey" "setApiKey"
 
-          # Local-only product surfaces must still exist.
+          grep -Fq "./components/VideoStudioParity" packages/studio/src/index.js || {
+            echo "Active parity VideoStudio export disappeared; restoring local index"
+            git checkout "$PRE_MERGE_SHA" -- packages/studio/src/index.js
+            git add packages/studio/src/index.js
+          }
+
           for path in \
             src/apps/go-ai-viral/GoAiViralStudio.tsx \
             src/apps/storyboard/Storyboard.tsx \
@@ -124,6 +134,8 @@ jobs:
             packages/studio/src/components/LayersStudio.jsx
             packages/studio/src/components/MobileGenerationActions.jsx
             packages/studio/src/components/ModelParameterControls.jsx
+            packages/studio/src/components/UniversalMediaUploader.jsx
+            packages/studio/src/components/VideoStudioParity.jsx
             packages/studio/src/components/prompt/PromptComposer.jsx
             packages/studio/src/utils/formatError.js
             packages/studio/src/utils/downloadImage.js
@@ -134,6 +146,14 @@ jobs:
           )
           for path in "${required[@]}"; do
             test -f "$path" || { echo "Missing required upstream parity file: $path"; exit 1; }
+          done
+
+          for locale in en zh; do
+            for bundle in agentStudio aiInfluencerStudio appsStudio audioStudio cinemaStudio clippingStudio imageStudio layersStudio lipSyncStudio marketingStudio mcpCliStudio recastStudio vibeMotionStudio videoStudio; do
+              test -f "packages/studio/src/messages/$locale/$bundle.json" || {
+                echo "Missing locale bundle: $locale/$bundle.json"; exit 1;
+              }
+            done
           done
 
       - name: Record upstream sync point
@@ -210,7 +230,7 @@ jobs:
             echo
             echo "## SmartVideo protection assertions"
             echo
-            echo "Protected shell/provider, templateData, storyboard handoff, GO-Viral, VFX, Thumbnail Studio, Storyboard, centralized auth, and local model-helper markers were verified after merge."
+            echo "Protected shell/provider, active parity Video Studio, UniversalMediaUploader, templateData, storyboard handoff, GO-Viral, VFX, Thumbnail Studio, Storyboard, centralized auth, and local model-helper markers were verified after merge."
             echo
             echo "## Remaining content differences vs upstream"
             echo
@@ -218,7 +238,7 @@ jobs:
             git diff --stat upstream/main HEAD || true
             echo '```'
             echo
-            echo "These differences are not automatically defects: many are intentional SmartVideo additions. A follow-up semantic audit is required for shared files that remained local due conflict protection."
+            echo "Differences may be intentional SmartVideo additions. Shared files that remain local require semantic review, not blind replacement."
           } > docs/audits/UPSTREAM-PARITY-MERGE-2026-09-02.md
           git add docs/audits/UPSTREAM-PARITY-MERGE-2026-09-02.md
           if ! git diff --cached --quiet; then
