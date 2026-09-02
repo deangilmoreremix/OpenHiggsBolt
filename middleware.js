@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 
 const isProtectedRoute = createRouteMatcher([
   '/studio(.*)',
+  '/zh/studio(.*)',
   '/vfx(.*)',
   '/account(.*)',
   '/api/vfx(.*)',
@@ -32,6 +33,16 @@ const CSP = [
   "frame-src 'self' https://clerk.go.smartvid.app https://*.clerk.accounts.dev https://challenges.cloudflare.com",
 ].join('; ');
 
+function localeFromPathname(pathname) {
+  return pathname === '/zh' || pathname.startsWith('/zh/') ? 'zh' : 'en';
+}
+
+function applyResponseHeaders(response, locale) {
+  response.headers.set('Content-Security-Policy', CSP);
+  response.headers.set('x-locale', locale);
+  return response;
+}
+
 export default clerkMiddleware(async (auth, request) => {
   // ── Production-env guard ──────────────────────────────────────────────
   // Prevent the app from running in production mode with test/development
@@ -57,11 +68,11 @@ export default clerkMiddleware(async (auth, request) => {
     process.env.NODE_ENV !== 'production' &&
     request.cookies.get('__e2e_auth_bypass')?.value === '1'
   ) {
-    return NextResponse.next()
+    return NextResponse.next();
   }
 
   const url = request.nextUrl;
-
+  const locale = localeFromPathname(url.pathname);
   const { userId } = await auth();
 
   if (isAuthRoute(request) && userId) {
@@ -90,13 +101,17 @@ export default clerkMiddleware(async (auth, request) => {
     if (url.pathname.startsWith('/api/v1') && !isHandledByRoute) {
       const suffix = url.pathname.slice('/api/v1'.length) + url.search;
       const rewritePath = `/api/api/v1${suffix}`;
-      return NextResponse.rewrite(new URL(rewritePath, request.url));
+      return applyResponseHeaders(
+        NextResponse.rewrite(new URL(rewritePath, request.url)),
+        locale,
+      );
     }
   }
 
-  const response = NextResponse.next();
-  response.headers.set('Content-Security-Policy', CSP);
-  return response;
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-locale', locale);
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  return applyResponseHeaders(response, locale);
 });
 
 export const config = {
