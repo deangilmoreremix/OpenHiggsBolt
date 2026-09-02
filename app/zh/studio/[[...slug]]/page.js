@@ -13,7 +13,7 @@ export default function ZhStudioPage() {
   return (
     <>
       <LocaleTextBridge locale="zh" />
-      <StandaloneShell templateData={templateData} />
+      <StandaloneShell templateData={templateData} locale="zh" />
     </>
   );
 }
