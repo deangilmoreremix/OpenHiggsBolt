@@ -65,11 +65,20 @@ jobs:
       - name: Apply exclusions
         if: steps.check.outputs.has_changes == 'true'
         run: |
-          # Restore fork-only files that upstream may have modified
+          # Preserve SmartVideo-owned product surfaces and account behavior.
           git checkout HEAD -- \
             middleware.js \
             clerkAppearance.js \
             packages/studio/src/persistKey.js \
+            components/StandaloneShell.js \
+            components/LocaleTextBridge.js \
+            messages/en/common.json \
+            messages/zh/common.json \
+            packages/studio/src/index.js \
+            app/studio/apps/ \
+            app/zh/studio/apps/ \
+            app/studio/mcp-cli/ \
+            app/zh/studio/mcp-cli/ \
             app/sign-in/ \
             app/sign-up/ \
             app/forgot-password/ \
@@ -89,6 +98,31 @@ jobs:
             e2e/ \
             tests/ \
             2>/dev/null || true
+
+          # Explicit product exclusions: these upstream surfaces are not part of
+          # SmartVideo GO and must never be restored by an automated sync.
+          rm -f \
+            packages/studio/src/components/AppsStudio.jsx \
+            packages/studio/src/messages/en/appsStudio.json \
+            packages/studio/src/messages/zh/appsStudio.json \
+            packages/studio/src/components/McpCliStudio.jsx \
+            packages/studio/src/messages/en/mcpCliStudio.json \
+            packages/studio/src/messages/zh/mcpCliStudio.json \
+            2>/dev/null || true
+
+          # Do not import upstream white-label / tenant product layers. SmartVideo
+          # keeps its Clerk identity, API-key, balance and branding architecture.
+          WHITE_LABEL_PATHS=$(git ls-files | grep -Ei '(^|/)(white[-_]?label|whitelabel)(/|\.|$)' || true)
+          if [ -n "$WHITE_LABEL_PATHS" ]; then
+            echo "$WHITE_LABEL_PATHS" | while IFS= read -r path; do
+              git rm -rf --ignore-unmatch "$path"
+            done
+          fi
+
+          if git grep -niEi 'white[-_ ]?label|whitelabel' -- components/StandaloneShell.js src/apps/design-agent app/api/design-agent 2>/dev/null; then
+            echo "::error::White-label logic detected in active SmartVideo product code."
+            exit 1
+          fi
 
       - name: Check for conflicts
         if: steps.check.outputs.has_changes == 'true'
@@ -134,6 +168,12 @@ jobs:
 - Sync point: $(cat .upstream-sync)
 - Previous: ${{ steps.check.outputs.sync_point }}
 - Commits: $(git log ${{ steps.check.outputs.sync_point }}..upstream/main --oneline | wc -l)
+
+### SmartVideo scope
+- Explore Apps remains excluded
+- MCP / CLI remains excluded
+- White-label product layers remain excluded
+- SmartVideo-owned auth, studios and Design Agent remain authoritative
 
 ### Action Required
 - [ ] Review changes
