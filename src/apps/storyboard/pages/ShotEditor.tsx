@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   generateShot,
@@ -278,7 +278,7 @@ export default function ShotEditor() {
               No scenes yet. Add scenes here or from the Composer to build your storyboard.
             </div>
           ) : (
-            <>
+            <Fragment>
               <p className="text-xs mb-3" style={{ color: semantic.textMuted }}>
                 Drag <GripVertical size={12} className="inline" /> to reorder. Generate a still frame per shot, set camera specs, and tag characters.
               </p>
@@ -341,7 +341,7 @@ export default function ShotEditor() {
                   <div className="aspect-video bg-[var(--bg-card)] rounded-xl" />
                 )}
               </DndContext>
-            </>
+            </Fragment>
           ))}
           </div>
         )}
