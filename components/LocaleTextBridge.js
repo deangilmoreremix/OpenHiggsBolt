@@ -153,7 +153,7 @@ function localizeElement(root, translate) {
         if (!node.hasAttribute(attribute)) continue;
         const current = node.getAttribute(attribute);
         const next = translate(current);
-        if (next !== current) root.setAttribute(attribute, next);
+        if (next !== current) node.setAttribute(attribute, next);
       }
     }
     node = walker.nextNode();
