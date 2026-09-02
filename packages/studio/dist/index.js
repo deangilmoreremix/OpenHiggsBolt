@@ -88,12 +88,6 @@ Object.defineProperty(exports, "MarketingStudio", {
     return _MarketingStudio["default"];
   }
 });
-Object.defineProperty(exports, "McpCliStudio", {
-  enumerable: true,
-  get: function get() {
-    return _McpCliStudio["default"];
-  }
-});
 Object.defineProperty(exports, "RecastStudio", {
   enumerable: true,
   get: function get() {
@@ -131,7 +125,6 @@ var _WorkflowStudio = _interopRequireDefault(require("./components/WorkflowStudi
 var _AgentStudio = _interopRequireDefault(require("./components/AgentStudio"));
 var _DesignAgentStudio = _interopRequireDefault(require("./components/DesignAgentStudio"));
 var _AppsStudio = _interopRequireDefault(require("./components/AppsStudio"));
-var _McpCliStudio = _interopRequireDefault(require("./components/McpCliStudio"));
 var _AiInfluencerStudio = _interopRequireDefault(require("./components/AiInfluencerStudio"));
 var _LayersStudio = _interopRequireDefault(require("./components/LayersStudio"));
 var _muapi = require("./muapi");

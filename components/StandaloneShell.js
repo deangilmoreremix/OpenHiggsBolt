@@ -718,6 +718,18 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                   </a>
                 </p>
               </div>
+              <div>
+                <label className="block text-xs font-bold text-white/30 mb-2">
+                  {openaiKey ? 'New OpenAI Key' : 'OpenAI API Key'}
+                </label>
+                <input
+                  type="password"
+                  value={settingsOpenaiInput}
+                  onChange={(e) => setSettingsOpenaiInput(e.target.value)}
+                  placeholder="Enter your OpenAI key (sk-...) — optional"
+                  className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[13px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
+                />
+              </div>
             </div>
 
             <div className="flex gap-3">

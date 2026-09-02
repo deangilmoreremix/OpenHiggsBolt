@@ -2,6 +2,7 @@ import { LocalModelManager } from './LocalModelManager.js';
 import { isLocalAIAvailable } from '../lib/localInferenceClient.js';
 import { isValidKeyFormat } from '../lib/keys.js';
 import { t } from '../lib/i18n.js';
+import { MUAPI_KEY_STORAGE, OPENAI_KEY_STORAGE, isValidKeyFormat } from '../lib/keys.js';
 
 // Build a cookie string for the MuAPI key. `Secure` is added only over HTTPS
 // so the key still persists on http://localhost dev servers.
@@ -76,10 +77,15 @@ export function SettingsModal(onClose) {
         <div style="display:flex;flex-direction:column;gap:0.75rem;">
             <div>
                 <label style="display:block;font-size:0.75rem;color:rgba(255,255,255,0.5);margin-bottom:0.4rem;font-weight:600;">${t('settings.muapiKeyLabel')}</label>
-                <input id="settings-api-key" type="password"
+                <input id="settings-api-key" type="password" autocomplete="off"
                     style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:0.75rem;padding:0.6rem 0.9rem;color:#fff;font-size:0.875rem;outline:none;"
-                    placeholder="${t('settings.keyPlaceholder')}"
-                    value="${localStorage.getItem('muapi_key') || ''}">
+                    placeholder="${t('settings.keyPlaceholder')}">
+            </div>
+            <div>
+                <label style="display:block;font-size:0.75rem;color:rgba(255,255,255,0.5);margin-bottom:0.4rem;font-weight:600;">${t('settings.openaiKeyLabel')}</label>
+                <input id="settings-openai-key" type="password" autocomplete="off"
+                    style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:0.75rem;padding:0.6rem 0.9rem;color:#fff;font-size:0.875rem;outline:none;"
+                    placeholder="${t('settings.openaiKeyPlaceholder')}">
             </div>
             <div>
                 <label style="display:block;font-size:0.75rem;color:rgba(255,255,255,0.5);margin-bottom:0.4rem;font-weight:600;">${t('settings.openaiKeyLabel')}</label>
@@ -91,6 +97,7 @@ export function SettingsModal(onClose) {
             <p style="font-size:0.7rem;color:rgba(255,255,255,0.3);margin:0;">
                 ${t('settings.keyNote')}
             </p>
+            <p id="settings-status" style="font-size:0.7rem;color:#f87171;margin:0;min-height:0.9rem;"></p>
             <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-top:0.5rem;">
                 <button id="settings-cancel-btn" style="padding:0.5rem 1rem;border-radius:0.5rem;background:none;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:0.75rem;font-weight:700;cursor:pointer;">${t('common.cancel')}</button>
                 <button id="settings-save-btn" style="padding:0.5rem 1rem;border-radius:0.5rem;background:var(--color-primary,#22d3ee);color:#000;font-size:0.75rem;font-weight:700;cursor:pointer;border:none;">${t('common.save')}</button>
@@ -123,10 +130,22 @@ export function SettingsModal(onClose) {
 
     switchTab('api');
 
+    // Seed existing values via .value (not the HTML string) to avoid breaking
+    // the attribute if a stored key contains quotes.
+    apiPanel.querySelector('#settings-api-key').value = localStorage.getItem('muapi_key') || '';
+    apiPanel.querySelector('#settings-openai-key').value = localStorage.getItem('openai_key') || '';
+
     // ── API key save/cancel handlers ──────────────────────────────────────────
     const close = () => {
         if (document.body.contains(overlay)) document.body.removeChild(overlay);
         if (onClose) onClose();
+    };
+
+    const setMuapiCookie = (key) => {
+        // Mirror StandaloneShell: persist the MuAPI key as a cookie so the
+        // server-side /api/* proxy routes (which resolve the key from the
+        // x-api-key header OR the muapi_key cookie) can authenticate requests.
+        document.cookie = `muapi_key=${encodeURIComponent(key)}; path=/; max-age=31536000; SameSite=Lax`;
     };
 
     apiPanel.querySelector('#settings-cancel-btn').onclick = close;

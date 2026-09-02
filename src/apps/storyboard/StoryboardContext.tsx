@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import type { CameraSpec } from './cameraTaxonomy'
+import { DEFAULT_STORYBOARD_MODEL_ID } from './models'
 
 export interface StoryboardCharacter {
   id?: string
@@ -67,7 +69,82 @@ export interface StoryboardContextValue {
   setResult: (result: { url?: string } | null) => void
 }
 
-const STORAGE_KEY = 'storyboard_context'
+export interface StoryboardCharacter {
+  id: string
+  name: string
+  description?: string
+  referenceImageUrl?: string
+}
+
+export interface StoryboardResult {
+  requestId: string
+  url: string | null
+  status: string
+}
+
+/** A single, self-contained storyboard project. */
+export interface StoryboardProject {
+  id: string
+  projectName: string
+  shots: StoryboardShot[]
+  characters: StoryboardCharacter[]
+  aspectRatio: '16:9' | '9:16'
+  episodeDuration: number
+  model: string
+  result: StoryboardResult | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface StoryboardExport {
+  version: 2
+  project: StoryboardProject
+  exportedAt: string
+}
+
+export interface ProjectSummary {
+  id: string
+  projectName: string
+  shotCount: number
+  updatedAt: string
+}
+
+export interface StoryboardContextValue {
+  // Current-project fields (what the composer/editor read & write)
+  projectId: string
+  projectName: string
+  setProjectName: (v: string) => void
+  shots: StoryboardShot[]
+  addShot: (scene: string, duration: number, camera?: CameraSpec, characterIds?: string[]) => void
+  updateShot: (id: string, patch: Partial<StoryboardShot>) => void
+  removeShot: (id: string) => void
+  moveShot: (fromIndex: number, toIndex: number) => void
+  characters: StoryboardCharacter[]
+  addCharacter: (c: Omit<StoryboardCharacter, 'id'>) => StoryboardCharacter
+  updateCharacter: (id: string, patch: Partial<StoryboardCharacter>) => void
+  removeCharacter: (id: string) => void
+  aspectRatio: '16:9' | '9:16'
+  setAspectRatio: (v: '16:9' | '9:16') => void
+  episodeDuration: number
+  setEpisodeDuration: (v: number) => void
+  model: string
+  setModel: (v: string) => void
+  result: StoryboardResult | null
+  setResult: (r: StoryboardResult | null) => void
+  reset: () => void
+  // Multi-project management
+  projects: ProjectSummary[]
+  createProject: (name?: string) => void
+  switchProject: (id: string) => void
+  deleteProject: (id: string) => void
+  // Import / export
+  exportProject: () => StoryboardExport
+  importProject: (data: unknown) => boolean
+}
+
+const PROJECTS_KEY = 'storyboard_projects'
+const ACTIVE_KEY = 'storyboard_active_project'
+const LEGACY_KEY = 'storyboard_context'
 
 const StoryboardContext = createContext<StoryboardContextValue | null>(null)
 
@@ -84,7 +161,122 @@ export function StoryboardProvider({ children }: { children: ReactNode }) {
   const [episodeDuration, setEpisodeDuration] = useState(60)
   const [result, setResult] = useState<{ url?: string } | null>(null)
 
+function newProject(name = ''): StoryboardProject {
+  const now = new Date().toISOString()
+  return {
+    id: uid('proj'),
+    projectName: name,
+    shots: [],
+    characters: [],
+    aspectRatio: '9:16',
+    episodeDuration: 10,
+    model: DEFAULT_STORYBOARD_MODEL_ID,
+    result: null,
+    createdAt: now,
+    updatedAt: now,
+  }
+}
+
+interface RawShot {
+  id?: unknown
+  scene?: unknown
+  duration?: unknown
+  camera?: CameraSpec
+  characterIds?: unknown
+  frameUrl?: unknown
+}
+
+interface RawCharacter {
+  id?: unknown
+  name?: unknown
+  description?: unknown
+  referenceImageUrl?: unknown
+}
+
+interface RawProject {
+  id?: unknown
+  projectName?: unknown
+  shots?: unknown
+  characters?: unknown
+  aspectRatio?: unknown
+  episodeDuration?: unknown
+  model?: unknown
+  result?: unknown
+  createdAt?: unknown
+  updatedAt?: unknown
+}
+
+function asString(value: unknown): string {
+  return typeof value === 'string' ? value : ''
+}
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []
+}
+
+function normalizeProject(raw: RawProject): StoryboardProject {
+  const base = newProject(asString(raw.projectName))
+  const rawShots = Array.isArray(raw.shots) ? (raw.shots as RawShot[]) : []
+  const rawChars = Array.isArray(raw.characters) ? (raw.characters as RawCharacter[]) : []
+  return {
+    ...base,
+    id: asString(raw.id) || base.id,
+    projectName: asString(raw.projectName),
+    shots: rawShots
+      .filter((s) => typeof s.scene === 'string')
+      .map((s) => ({
+        id: asString(s.id) || uid('shot'),
+        scene: String(s.scene),
+        duration: Number(s.duration) || 1,
+        ...(s.camera ? { camera: s.camera } : {}),
+        ...(Array.isArray(s.characterIds) ? { characterIds: asStringArray(s.characterIds) } : {}),
+        ...(typeof s.frameUrl === 'string' ? { frameUrl: s.frameUrl } : {}),
+      })),
+    characters: rawChars
+      .filter((c) => typeof c.name === 'string')
+      .map((c) => ({
+        id: asString(c.id) || uid('char'),
+        name: String(c.name),
+        ...(typeof c.description === 'string' ? { description: c.description } : {}),
+        ...(typeof c.referenceImageUrl === 'string' ? { referenceImageUrl: c.referenceImageUrl } : {}),
+      })),
+    aspectRatio: raw.aspectRatio === '16:9' ? '16:9' : '9:16',
+    episodeDuration: [10, 15, 25].includes(Number(raw.episodeDuration)) ? Number(raw.episodeDuration) : 10,
+    model: typeof raw.model === 'string' && raw.model ? raw.model : DEFAULT_STORYBOARD_MODEL_ID,
+    result: (raw.result as StoryboardResult | null) ?? null,
+    createdAt: asString(raw.createdAt) || base.createdAt,
+    updatedAt: asString(raw.updatedAt) || base.updatedAt,
+  }
+}
+
+function loadProjects(): StoryboardProject[] {
+  try {
+    const raw = localStorage.getItem(PROJECTS_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed.map(normalizeProject)
+    }
+    // One-time migration from the legacy single-project key.
+    const legacy = localStorage.getItem(LEGACY_KEY)
+    if (legacy) {
+      const migrated = normalizeProject(JSON.parse(legacy))
+      return [migrated]
+    }
+  } catch {
+    /* ignore */
+  }
+  return [newProject()]
+}
+
+export function StoryboardProvider({ children }: { children: ReactNode }) {
+  const [projects, setProjects] = useState<StoryboardProject[]>([newProject()])
+  const [activeId, setActiveId] = useState<string>('')
+
+  // Hydrate once on mount.
   useEffect(() => {
+    const loaded = loadProjects()
+    setProjects(loaded)
+    let active = ''
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
       if (raw) {
@@ -104,6 +296,8 @@ export function StoryboardProvider({ children }: { children: ReactNode }) {
     } catch {
       /* ignore */
     }
+    if (!active || !loaded.some((p) => p.id === active)) active = loaded[0].id
+    setActiveId(active)
   }, [])
 
   const persist = (

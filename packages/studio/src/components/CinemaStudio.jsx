@@ -637,6 +637,7 @@ export default function CinemaStudio({
 
   // ── Textarea auto-height ──
   const handleTextareaInput = (e) => {
+    clearStoryboardHandoffCache();
     const el = e.target;
     el.style.height = "auto";
     el.style.height = el.scrollHeight + "px";

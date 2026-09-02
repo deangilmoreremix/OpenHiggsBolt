@@ -1,7 +1,6 @@
 import axios from 'axios'
 
 const STORYBOARD_BASE = '/api/storyboard'
-const PREDICTIONS_BASE = '/api/v1/predictions'
 
 export interface StoryboardCharacter {
   id?: string
@@ -71,7 +70,7 @@ function getApiKey(): string | null {
   return cleaned || null
 }
 
-function withKey(config: any): any {
+function withKey(config: import('axios').AxiosRequestConfig): import('axios').AxiosRequestConfig {
   const key = getApiKey()
   return {
     ...config,
@@ -83,101 +82,90 @@ function withKey(config: any): any {
   }
 }
 
-function extractRequestId(data: any): string | undefined {
-  return data?.request_id || data?.id || data?.data?.request_id || data?.data?.id
+export async function generateStoryboard(
+  payload: GenerateStoryboardPayload
+): Promise<{ request_id: string }> {
+  const res = await axios.post(`${STORYBOARD_BASE}/generate`, payload, withKey({ method: 'POST' }))
+  const data = res.data || {}
+  const requestId = data.request_id || data.id || data.task_id
+  if (!requestId) {
+    throw new Error(data?.error || 'No request id returned from storyboard API')
+  }
+  return { request_id: requestId }
 }
 
-export async function createProject(payload: StoryboardProject): Promise<any> {
-  const res = await axios.post(`${STORYBOARD_BASE}/projects`, payload, withKey({ method: 'POST' }))
-  return res.data
-}
-
-export async function getProjects(): Promise<any> {
-  const res = await axios.get(`${STORYBOARD_BASE}/projects`, withKey({ method: 'GET' }))
-  return res.data
-}
-
-export async function getProject(projectId: string): Promise<any> {
-  const res = await axios.get(`${STORYBOARD_BASE}/projects/${projectId}`, withKey({ method: 'GET' }))
-  return res.data
-}
-
-export async function createCharacter(projectId: string, payload: StoryboardCharacter): Promise<any> {
-  const res = await axios.post(
-    `${STORYBOARD_BASE}/projects/${projectId}/characters`,
-    payload,
-    withKey({ method: 'POST' })
-  )
-  return res.data
-}
-
-export async function createEpisode(projectId: string, payload: StoryboardEpisode): Promise<any> {
-  const res = await axios.post(
-    `${STORYBOARD_BASE}/projects/${projectId}/episodes`,
-    payload,
-    withKey({ method: 'POST' })
-  )
-  return res.data
-}
-
-export async function getEpisode(projectId: string, episodeId: string): Promise<any> {
+export async function getStoryboardResult(requestId: string): Promise<StoryboardResultResponse> {
   const res = await axios.get(
-    `${STORYBOARD_BASE}/projects/${projectId}/episodes/${episodeId}`,
-    withKey({ method: 'GET' })
+    `${STORYBOARD_BASE}/result`,
+    { params: { id: requestId }, ...withKey({ method: 'GET' }) }
   )
   return res.data
-}
-
-export async function generateShot(episodeId: string, payload: StoryboardShot): Promise<StoryboardResult> {
-  const res = await axios.post(
-    `${STORYBOARD_BASE}/episodes/${episodeId}/shots`,
-    payload,
-    withKey({ method: 'POST' })
-  )
-  return { ...res.data, request_id: extractRequestId(res.data) }
 }
 
 export async function pollStoryboardResult(
   requestId: string,
-  maxAttempts = 90,
-  interval = 2000
-): Promise<any> {
+  maxAttempts = 120,
+  interval = 5000
+): Promise<StoryboardResultResponse> {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     await new Promise((resolve) => setTimeout(resolve, interval))
     try {
-      const res = await axios.get(
-        `${PREDICTIONS_BASE}/${requestId}/result`,
-        withKey({ method: 'GET' })
-      )
-      const data = res.data || {}
-      const body = data.data || data
-      const status = String(data.status || body.status || '').toLowerCase()
-      if (status === 'completed' || status === 'succeeded' || status === 'success') {
-        return data
-      }
+      const res = await getStoryboardResult(requestId)
+      const status = String(res?.status || '').toLowerCase()
+      if (status === 'completed') return res
       if (status === 'failed' || status === 'error') {
-        throw new Error(data.error || body.error || 'Storyboard generation failed')
+        throw new Error(res?.error || 'Storyboard generation failed')
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (attempt === maxAttempts) throw err
     }
   }
   throw new Error('Storyboard generation timed out after polling.')
 }
 
-export function extractStoryboardAsset(data: any): string | null {
-  if (!data) return null
-  const body = data.data || data
-  const outputs = data.outputs || data.output?.outputs || body.outputs || body.output?.outputs
-  if (Array.isArray(outputs) && outputs.length > 0) {
-    return typeof outputs[0] === 'string' ? outputs[0] : outputs[0]?.url || null
+export function extractStoryboardAsset(data: unknown): string | null {
+  if (!data || typeof data !== 'object') return null
+  const record = data as Record<string, unknown>
+  const output = record.output
+  if (typeof output === 'string') return output
+  if (output && typeof output === 'object') {
+    const out = output as Record<string, unknown>
+    if (typeof out.url === 'string') return out.url
   }
-  return (
-    data.url ||
-    data.video_url ||
-    body.url ||
-    body.video_url ||
-    (body.output && body.output.url) ||
-    null
-  )
+  if (typeof record.url === 'string') return record.url
+  if (typeof record.video_url === 'string') return record.video_url
+  if (Array.isArray(record.outputs) && typeof record.outputs[0] === 'string') return record.outputs[0]
+  const nested = record.data as Record<string, unknown> | undefined
+  if (nested && Array.isArray(nested.outputs) && typeof nested.outputs[0] === 'string') {
+    return nested.outputs[0]
+  }
+  return null
+}
+
+export interface GenerateFramePayload {
+  prompt: string
+  aspect_ratio?: '16:9' | '9:16'
+  images_list?: string[]
+  image_url?: string
+  model?: string
+}
+
+/**
+ * Generate a single still frame for a shot and poll until the image is ready.
+ * Returns the image URL, or throws on failure/timeout.
+ */
+export async function generateShotFrame(
+  payload: GenerateFramePayload,
+  maxAttempts = 60,
+  interval = 3000
+): Promise<string> {
+  const res = await axios.post(`${STORYBOARD_BASE}/frame`, payload, withKey({ method: 'POST' }))
+  const data = res.data || {}
+  const requestId = data.request_id || data.id || data.task_id
+  if (!requestId) throw new Error(data?.error || 'No request id returned from frame API')
+
+  const final = await pollStoryboardResult(requestId, maxAttempts, interval)
+  const url = extractStoryboardAsset(final) || final.url || null
+  if (!url) throw new Error('Frame completed but no image was returned.')
+  return url
 }
