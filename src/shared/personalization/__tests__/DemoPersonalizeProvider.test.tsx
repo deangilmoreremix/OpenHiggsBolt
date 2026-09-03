@@ -7,6 +7,24 @@ vi.mock('studio/src/muapi', () => ({
   uploadFile: vi.fn(),
 }))
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+}))
+
+vi.mock('@/components/SocialPublishProvider', () => ({
+  SocialPublishContext: { Provider: ({ children }: any) => children, Consumer: ({ children }: any) => children(null) } as any,
+  useSocialPublish: () => {
+    throw new Error('useSocialPublish must be used within a <SocialPublishProvider>')
+  },
+}))
+
 const { DemoPersonalizeProvider, useDemoPersonalize, getGenerationAssetUrl } = await import('../DemoPersonalizeProvider')
 const { uploadFile } = await import('studio/src/muapi')
 
