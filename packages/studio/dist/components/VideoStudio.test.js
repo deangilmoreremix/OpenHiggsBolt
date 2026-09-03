@@ -138,5 +138,5 @@ function mount() {
           return _context2.a(2);
       }
     }, _callee2);
-  })));
+  })), 30000);
 });
