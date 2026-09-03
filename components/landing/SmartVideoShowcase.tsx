@@ -12,6 +12,8 @@ import { SEEDANCE_1_DEMOS } from '@/data/seedance1Demos';
 import { PROMPTFEED_DEMOS } from '@/data/promptFeedDemos';
 import { MINIMAX_H3_DEMOS } from '@/data/minimaxH3Demos';
 import { type VideoDemo } from '@/data/types';
+import { NICHE_CONTENT } from '@/data/nicheContent';
+import NicheSection from './NicheSection';
 
 const COMBINED_DEMOS: VideoDemo[] = [
   ...MINIMAX_H3_DEMOS,
@@ -33,6 +35,10 @@ export default function SmartVideoShowcase() {
         <MadeWithSmartVideo />
         <UGCDemoShowcase />
 
+        {NICHE_CONTENT.map((niche) => (
+          <NicheSection key={niche.id} niche={niche} />
+        ))}
+
         {/* Seedance 2.5 — BeatAPI curated cinematic demos */}
         <AIVideoGallery
           demos={SEEDANCE_25_DEMOS}
@@ -40,6 +46,7 @@ export default function SmartVideoShowcase() {
           heading="Every SmartVideo GO AI Demo, On Demand"
           subtext="Browse the full library. Open any prompt or jump straight into the matching studio."
           sectionId="smartvideo-gallery-25"
+          initialCount={1000}
         />
 
         {/* Seedance 1 — ZeroLu community prompts with proof clips */}
@@ -63,6 +70,7 @@ export default function SmartVideoShowcase() {
           heading="AI Video Demos from the Community"
           subtext="Real prompts, real results. Open any to see the full prompt or create your own."
           sectionId="smartvideo-gallery-pf"
+          initialCount={1000}
         />
 
         {/* Combined gallery — all demos */}
@@ -72,6 +80,7 @@ export default function SmartVideoShowcase() {
           heading="Full Video Demo Library"
           subtext="Browse every AI video demo across all sources. Open any prompt or jump straight into the matching studio."
           sectionId="smartvideo-gallery-all"
+          initialCount={1000}
         />
       </div>
     </DemoPromptProvider>

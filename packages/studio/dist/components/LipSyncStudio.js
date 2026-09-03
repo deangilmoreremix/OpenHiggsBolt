@@ -1,15 +1,26 @@
 "use strict";
 "use client";
 
-function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports["default"] = LipSyncStudio;
 var _react = require("react");
+var _useTemplateData2 = require("../hooks/useTemplateData");
+var _TemplateBanner = _interopRequireDefault(require("./TemplateBanner"));
+var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
+var _AiAssistantProvider = require("../../../../components/AiAssistantProvider");
 var _muapi = require("../muapi.js");
 var _models = require("../models.js");
+var _skillStore = require("../lib/skillStore");
+var _characterStore = require("../lib/characterStore");
+var _registry = _interopRequireDefault(require("../skills/registry.json"));
+var _promptRecipes = require("../lib/promptRecipes");
+var _storyboardHandoff = require("../storyboardHandoff.js");
 var _jsxRuntime = require("react/jsx-runtime");
+function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
@@ -347,7 +358,8 @@ function LipSyncStudio(_ref7) {
     onGenerationComplete = _ref7.onGenerationComplete,
     historyItems = _ref7.historyItems,
     droppedFiles = _ref7.droppedFiles,
-    onFilesHandled = _ref7.onFilesHandled;
+    onFilesHandled = _ref7.onFilesHandled,
+    templateData = _ref7.templateData;
   var PERSIST_KEY = "hg_lipsync_studio_persistent";
 
   // ── Mode & model state ──────────────────────────────────────────────────
@@ -425,51 +437,165 @@ function LipSyncStudio(_ref7) {
     prompt = _useState32[0],
     setPrompt = _useState32[1];
 
-  // ── Generation / UI state ───────────────────────────────────────────────
+  // ── Native audio flag (set by Skills recipe) ───────────────────────────
   var _useState33 = (0, _react.useState)(false),
     _useState34 = _slicedToArray(_useState33, 2),
-    isGenerating = _useState34[0],
-    setIsGenerating = _useState34[1];
-  var _useState35 = (0, _react.useState)(null),
+    nativeAudio = _useState34[0],
+    setNativeAudio = _useState34[1];
+
+  // ── Generation / UI state ───────────────────────────────────────────────
+  var _useState35 = (0, _react.useState)(false),
     _useState36 = _slicedToArray(_useState35, 2),
-    generateError = _useState36[0],
-    setGenerateError = _useState36[1];
+    isGenerating = _useState36[0],
+    setIsGenerating = _useState36[1];
   var _useState37 = (0, _react.useState)(null),
     _useState38 = _slicedToArray(_useState37, 2),
-    fullscreenUrl = _useState38[0],
-    setFullscreenUrl = _useState38[1];
-  var _useState39 = (0, _react.useState)("input"),
+    generateError = _useState38[0],
+    setGenerateError = _useState38[1];
+  var _useState39 = (0, _react.useState)(null),
     _useState40 = _slicedToArray(_useState39, 2),
-    view = _useState40[0],
-    setView = _useState40[1]; // 'input' | 'result'
-  var _useState41 = (0, _react.useState)(null),
+    fullscreenUrl = _useState40[0],
+    setFullscreenUrl = _useState40[1];
+  var _useState41 = (0, _react.useState)("input"),
     _useState42 = _slicedToArray(_useState41, 2),
-    activeResultUrl = _useState42[0],
-    setActiveResultUrl = _useState42[1];
+    view = _useState42[0],
+    setView = _useState42[1]; // 'input' | 'result'
+  var _useState43 = (0, _react.useState)(null),
+    _useState44 = _slicedToArray(_useState43, 2),
+    activeResultUrl = _useState44[0],
+    setActiveResultUrl = _useState44[1];
 
   // ── History ─────────────────────────────────────────────────────────────
   // If historyItems prop is provided, use it; otherwise use internal state.
-  var _useState43 = (0, _react.useState)([]),
-    _useState44 = _slicedToArray(_useState43, 2),
-    internalHistory = _useState44[0],
-    setInternalHistory = _useState44[1];
-  var history = historyItems !== null && historyItems !== void 0 ? historyItems : internalHistory;
-  var _useState45 = (0, _react.useState)(0),
+  var _useState45 = (0, _react.useState)([]),
     _useState46 = _slicedToArray(_useState45, 2),
-    activeHistoryIdx = _useState46[0],
-    setActiveHistoryIdx = _useState46[1];
+    internalHistory = _useState46[0],
+    setInternalHistory = _useState46[1];
+  var history = historyItems !== null && historyItems !== void 0 ? historyItems : internalHistory;
+  var _useState47 = (0, _react.useState)(0),
+    _useState48 = _slicedToArray(_useState47, 2),
+    activeHistoryIdx = _useState48[0],
+    setActiveHistoryIdx = _useState48[1];
 
   // ── Dropdown state ──────────────────────────────────────────────────────
-  var _useState47 = (0, _react.useState)(null),
-    _useState48 = _slicedToArray(_useState47, 2),
-    openDropdown = _useState48[0],
-    setOpenDropdown = _useState48[1]; // 'model' | 'resolution' | null
+  var _useState49 = (0, _react.useState)(null),
+    _useState50 = _slicedToArray(_useState49, 2),
+    openDropdown = _useState50[0],
+    setOpenDropdown = _useState50[1]; // 'model' | 'resolution' | null
   var modelBtnRef = (0, _react.useRef)(null);
   var resolutionBtnRef = (0, _react.useRef)(null);
+  var textareaRef = (0, _react.useRef)(null);
 
   // ── Video ref for result ────────────────────────────────────────────────
   var resultVideoRef = (0, _react.useRef)(null);
   var hasRestored = (0, _react.useRef)(false);
+
+  // ── Apply pending Skills recipe (set by SkillsBrowser) ────────────────────
+  (0, _react.useEffect)(function () {
+    var pending = (0, _skillStore.getPendingRecipe)("lipsync");
+    if (!pending) return;
+    var skill = _registry["default"].skills.find(function (s) {
+      return s.slug === pending;
+    });
+    (0, _skillStore.clearPendingRecipe)("lipsync");
+    if (!skill) return;
+    applyRecipe(skill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Cross-studio: import a Storyboard hand-off ────────────────────────────
+  var handoffApplied = (0, _react.useRef)(null);
+  (0, _react.useEffect)(function () {
+    try {
+      var handoff = (0, _storyboardHandoff.readStoryboardHandoff)("lipsync");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+      var ref = handoff.firstFrameUrl || handoff.referenceImageUrl;
+      if (ref) {
+        setImageUrl(ref);
+      }
+    } catch (err) {
+      console.warn("Failed to apply Storyboard hand-off:", err);
+    }
+  }, []);
+
+  // Resolve a recipe reference url. Returns null for unresolved {{token}}s
+  // so the studio leaves them for the user to supply.
+  function resolveRefUrl(raw) {
+    if (typeof raw !== "string") return null;
+    if (raw.startsWith("{{") && raw.endsWith("}}")) return null;
+    return raw;
+  }
+  function applyRecipe(skill) {
+    var step0 = skill.steps && skill.steps[0];
+    if (!step0) {
+      if (skill.description) setPrompt(skill.description);
+      return;
+    }
+    var modelId = step0.endpoint || step0.model;
+    var allModels = [].concat(_toConsumableArray(_models.lipsyncModels), _toConsumableArray(_models.imageLipSyncModels), _toConsumableArray(_models.videoLipSyncModels));
+    var model = allModels.find(function (m) {
+      return m.id === modelId;
+    });
+
+    // Native-audio toggle (recipe-driven)
+    if (step0.audio || step0.flags && step0.flags.nativeAudio) {
+      setNativeAudio(true);
+    }
+    if (model) setSelectedModelId(model.id);
+
+    // ── References ──
+    var refs = step0.references;
+    if (refs) {
+      var list = Array.isArray(refs) ? refs : [refs];
+      var _iterator = _createForOfIteratorHelper(list),
+        _step;
+      try {
+        for (_iterator.s(); !(_step = _iterator.n()).done;) {
+          var r = _step.value;
+          var isObj = r && _typeof(r) === "object";
+          var rawUrl = isObj ? r.url : r;
+          var role = isObj ? r.role : null;
+          var url = resolveRefUrl(rawUrl);
+          if (!url) continue; // token — leave for user
+
+          if (role === "character_sheet") {
+            (0, _characterStore.setCharacterSheet)("lipsync", url);
+            continue;
+          }
+          var isVideo = role === "video" || typeof role === "string" && role.toLowerCase().includes("video");
+          var name = url.split("/").pop() || "reference";
+          if (isVideo) {
+            switchToVideo();
+            setVideoUrl(url);
+            setVideoState(UPLOAD_STATE.READY);
+            setVideoName(name);
+          } else {
+            switchToImage();
+            setImageUrl(url);
+            setImageState(UPLOAD_STATE.READY);
+            setImageName(name);
+          }
+        }
+      } catch (err) {
+        _iterator.e(err);
+      } finally {
+        _iterator.f();
+      }
+    }
+
+    // Re-assert recipe model/resolution after any mode switch triggered above
+    if (model) setSelectedModelId(model.id);
+    if (step0.resolution) setSelectedResolution(step0.resolution);
+    var vals = {};
+    (skill.inputs || []).forEach(function (i) {
+      vals[i.name] = "";
+    });
+    setPrompt((0, _promptRecipes.fillTemplate)(step0.prompt || skill.description || "", vals));
+  }
 
   // ── Persistence: Load ────────────────────────────────────────────────────
   (0, _react.useEffect)(function () {
@@ -496,6 +622,7 @@ function LipSyncStudio(_ref7) {
         if (data.videoName) setVideoName(data.videoName);
         if (data.audioName) setAudioName(data.audioName);
         if (data.prompt) setPrompt(data.prompt);
+        if (data.nativeAudio !== undefined) setNativeAudio(data.nativeAudio);
         if (data.internalHistory) setInternalHistory(data.internalHistory);
       }
     } catch (err) {
@@ -520,6 +647,7 @@ function LipSyncStudio(_ref7) {
           audioUrl: audioUrl,
           audioName: audioName,
           prompt: prompt,
+          nativeAudio: nativeAudio,
           internalHistory: internalHistory
         };
         localStorage.setItem(PERSIST_KEY, JSON.stringify(state));
@@ -530,7 +658,7 @@ function LipSyncStudio(_ref7) {
     return function () {
       return clearTimeout(timer);
     };
-  }, [inputMode, selectedModelId, selectedResolution, imageUrl, imageName, videoUrl, videoName, audioUrl, audioName, prompt, internalHistory]);
+  }, [inputMode, selectedModelId, selectedResolution, imageUrl, imageName, videoUrl, videoName, audioUrl, audioName, prompt, nativeAudio, internalHistory]);
 
   // ── Derived model info ──────────────────────────────────────────────────
   var selectedModel = _models.lipsyncModels.find(function (m) {
@@ -550,6 +678,15 @@ function LipSyncStudio(_ref7) {
     setSelectedModelId(first.id);
     setSelectedResolution((_first$inputs$resolut = (_first$inputs = first.inputs) === null || _first$inputs === void 0 || (_first$inputs = _first$inputs.resolution) === null || _first$inputs === void 0 ? void 0 : _first$inputs["default"]) !== null && _first$inputs$resolut !== void 0 ? _first$inputs$resolut : "480p");
   }, [inputMode]);
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  var _useTemplateData = (0, _useTemplateData2.useTemplateData)(templateData, function (data) {
+      if (data.prompt) {
+        setPrompt(data.prompt);
+      }
+    }),
+    resetTemplate = _useTemplateData.reset,
+    isTemplateApplied = _useTemplateData.isTemplateApplied;
 
   // ── Upload handlers ─────────────────────────────────────────────────────
   var handleImageUpload = (0, _react.useCallback)(/*#__PURE__*/function () {
@@ -642,6 +779,13 @@ function LipSyncStudio(_ref7) {
       return _ref9.apply(this, arguments);
     };
   }(), [apiKey]);
+  var handlePromptInput = function handlePromptInput(e) {
+    setPrompt(e.target.value);
+    var el = e.target;
+    el.style.height = "auto";
+    var maxH = window.innerWidth < 768 ? 150 : 250;
+    el.style.height = Math.min(el.scrollHeight, maxH) + "px";
+  };
   var handleAudioPick = (0, _react.useCallback)(/*#__PURE__*/function () {
     var _ref0 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee4(file) {
       var url, _t3;
@@ -929,7 +1073,7 @@ function LipSyncStudio(_ref7) {
       children: history.length > 0 ? /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
         className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full pt-4 animate-fade-in-up",
         children: history.map(function (entry, idx) {
-          var _entry$model;
+          var _entry$model, _entry$model2;
           return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "relative group rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-xl hover:border-primary/50 transition-all duration-300 flex flex-col",
             children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("video", {
@@ -1001,6 +1145,66 @@ function LipSyncStudio(_ref7) {
                     d: "M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"
                   })
                 })
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_SocialPublishProvider.PublishStep, {
+                mediaUrl: entry.url,
+                mediaType: "video",
+                title: ((_entry$model = entry.model) === null || _entry$model === void 0 ? void 0 : _entry$model.name) || 'Lip sync video',
+                className: "p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center"
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_AiAssistantProvider.AssistStep, {
+                assetUrl: entry.url,
+                assetType: "video",
+                onApply: function onApply() {},
+                className: "p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center",
+                children: /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
+                  width: "14",
+                  height: "14",
+                  viewBox: "0 0 24 24",
+                  fill: "none",
+                  stroke: "currentColor",
+                  strokeWidth: "2.5",
+                  strokeLinecap: "round",
+                  strokeLinejoin: "round",
+                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                    d: "M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"
+                  })
+                })
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+                type: "button",
+                title: "Delete",
+                onClick: function onClick(e) {
+                  e.stopPropagation();
+                  if (confirm("Are you sure you want to delete this generated item?")) {
+                    setInternalHistory(function (prev) {
+                      return prev.filter(function (_, i) {
+                        return i !== idx;
+                      });
+                    });
+                  }
+                },
+                className: "p-2 bg-black/60 backdrop-blur-md rounded-full text-red-400 hover:bg-red-500 hover:text-white transition-all border border-white/10",
+                children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                  width: "14",
+                  height: "14",
+                  viewBox: "0 0 24 24",
+                  fill: "none",
+                  stroke: "currentColor",
+                  strokeWidth: "2.5",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
+                    points: "3 6 5 6 21 6"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                    d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "10",
+                    y1: "11",
+                    x2: "10",
+                    y2: "17"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                    x1: "14",
+                    y1: "11",
+                    x2: "14",
+                    y2: "17"
+                  })]
+                })
               })]
             }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
               className: "p-3 bg-black/80 backdrop-blur-sm border-t border-white/5 flex-1 flex flex-col justify-between gap-2",
@@ -1008,7 +1212,7 @@ function LipSyncStudio(_ref7) {
                 className: "flex items-center justify-between flex-wrap gap-1",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                   className: "text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded border border-primary/20 whitespace-nowrap",
-                  children: ((_entry$model = entry.model) === null || _entry$model === void 0 ? void 0 : _entry$model.name) || entry.model || "Lip Sync"
+                  children: ((_entry$model2 = entry.model) === null || _entry$model2 === void 0 ? void 0 : _entry$model2.name) || entry.model || "Lip Sync"
                 }), entry.resolution && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                   className: "text-[10px] text-white/40",
                   children: entry.resolution
@@ -1020,54 +1224,48 @@ function LipSyncStudio(_ref7) {
       }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
         className: "flex flex-col items-center justify-center h-full animate-fade-in-up transition-all duration-700 min-h-[50vh]",
         children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "mb-12 relative group",
+          className: "flex items-center justify-center gap-1.5 md:gap-3 mb-10 select-none scale-90 sm:scale-100",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-            className: "absolute inset-0 bg-primary/10 blur-[120px] rounded-full opacity-30 group-hover:opacity-60 transition-opacity duration-1000"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "relative w-24 h-24 md:w-32 md:h-32 bg-white/[0.02] rounded-[2rem] flex items-center justify-center border border-white/[0.05] overflow-hidden backdrop-blur-sm",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-              className: "w-16 h-16 bg-primary/5 rounded-2xl flex items-center justify-center border border-primary/10 relative z-10 transition-transform duration-500 group-hover:scale-110",
-              children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-                width: "32",
-                height: "32",
-                viewBox: "0 0 24 24",
-                fill: "none",
-                stroke: "currentColor",
-                strokeWidth: "1.5",
-                className: "text-primary opacity-80",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-                  d: "M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-                  d: "M19 10v2a7 7 0 0 1-14 0v-2"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
-                  x1: "12",
-                  y1: "19",
-                  x2: "12",
-                  y2: "23"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
-                  x1: "8",
-                  y1: "23",
-                  x2: "16",
-                  y2: "23"
-                })]
-              })
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-              className: "absolute top-4 right-4 text-[10px] text-primary/40 animate-pulse",
-              children: "\uD83C\uDF99"
-            })]
+            className: "w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl -rotate-[12deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/sdxl-image.avif",
+              alt: "Creative asset 1",
+              className: "w-full h-full object-cover"
+            })
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            className: "w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl -rotate-[4deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/chroma-image.avif",
+              alt: "Creative asset 2",
+              className: "w-full h-full object-cover"
+            })
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            className: "w-18 h-18 sm:w-24 sm:h-24 rounded-full border border-white/10 shadow-2xl rotate-[6deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/neta-lumina.avif",
+              alt: "Creative asset 3",
+              className: "w-full h-full object-cover"
+            })
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            className: "w-18 h-22 sm:w-24 sm:h-28 rounded-2xl border border-white/10 shadow-2xl rotate-[12deg] transform hover:rotate-0 hover:scale-110 hover:z-20 transition-all duration-300 overflow-hidden bg-white/[0.01] -ml-3 sm:-ml-4 flex-shrink-0",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: "https://d3adwkbyhxyrtq.cloudfront.net/webassets/videomodels/perfect-pony-xl.avif",
+              alt: "Creative asset 4",
+              className: "w-full h-full object-cover"
+            })
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("h1", {
-          className: "text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-4 text-center px-4",
+          className: "text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-center px-4 flex flex-col items-center",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-            className: "text-white/40 font-medium",
+            className: "text-white font-black uppercase text-xl sm:text-3xl tracking-wide mb-1 opacity-90",
             children: "START CREATING WITH"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("br", {}), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-            className: "text-white",
-            children: "LIP SYNC"
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+            className: "text-[#22d3ee] font-black uppercase text-2xl sm:text-4xl sm:mt-1 tracking-tight",
+            children: "LIP SYNC STUDIO"
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
-          className: "text-white/40 text-sm md:text-base font-medium tracking-wide text-center max-w-lg leading-relaxed",
-          children: "Animate portraits or sync lips to audio with AI"
+          className: "text-white/40 text-xs sm:text-sm font-medium tracking-wide text-center max-w-lg leading-relaxed px-4",
+          children: "Sync any voice with any face video to create premium talking avatars and videos."
         })]
       })
     }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
@@ -1076,18 +1274,18 @@ function LipSyncStudio(_ref7) {
         animationDelay: "0.2s"
       },
       children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-        className: "w-full bg-[#0a0a0a]/80 backdrop-blur-3xl rounded-md border border-white/10 p-4 flex flex-col gap-2 shadow-2xl",
+        className: "w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]",
         children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
           className: "flex items-center gap-2 px-3",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
             type: "button",
             onClick: switchToImage,
-            className: "px-3 py-1 rounded-md text-xs font-bold transition-all border ".concat(inputMode === "image" ? "border-primary/60 bg-primary/5 text-primary" : "border-white/[0.03] bg-white/[0.03] text-white/40 hover:border-white/20 hover:text-white"),
+            className: "px-3 py-1 rounded-md text-xs font-bold transition-all border ".concat(inputMode === "image" ? "border-[#22d3ee]/60 bg-[#22d3ee]/5 text-[#22d3ee]" : "border-white/[0.03] bg-white/[0.03] text-white/40 hover:border-white/20 hover:text-white"),
             children: "\uD83D\uDDBC Portrait Image"
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
             type: "button",
             onClick: switchToVideo,
-            className: "px-3 py-1 rounded-md text-[10px] font-bold transition-all border ".concat(inputMode === "video" ? "border-primary/60 bg-primary/5 text-primary" : "border-white/[0.03] bg-white/[0.03] text-white/40 hover:border-white/20 hover:text-white"),
+            className: "px-3 py-1 rounded-md text-[10px] font-bold transition-all border ".concat(inputMode === "video" ? "border-[#22d3ee]/60 bg-[#22d3ee]/5 text-[#22d3ee]" : "border-white/[0.03] bg-white/[0.03] text-white/40 hover:border-white/20 hover:text-white"),
             children: "\uD83C\uDFAC Video"
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
@@ -1104,7 +1302,7 @@ function LipSyncStudio(_ref7) {
                 fill: "none",
                 stroke: "currentColor",
                 strokeWidth: "2",
-                className: "text-white/40 group-hover:text-primary transition-colors",
+                className: "text-white/40 group-hover:text-[#22d3ee] transition-colors",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("rect", {
                   x: "3",
                   y: "3",
@@ -1136,7 +1334,7 @@ function LipSyncStudio(_ref7) {
               accept: "video/*",
               label: "Video",
               icon: /*#__PURE__*/(0, _jsxRuntime.jsx)(VideoIcon, {
-                className: "text-white/40 group-hover:text-primary transition-colors"
+                className: "text-white/40 group-hover:text-[#22d3ee] transition-colors"
               }),
               onUpload: handleVideoPick,
               onClear: function onClear() {
@@ -1154,7 +1352,7 @@ function LipSyncStudio(_ref7) {
               accept: "audio/*",
               label: "Audio",
               icon: /*#__PURE__*/(0, _jsxRuntime.jsx)(MicIcon, {
-                className: "text-white/40 group-hover:text-primary transition-colors"
+                className: "text-white/40 group-hover:text-[#22d3ee] transition-colors"
               }),
               onUpload: handleAudioPick,
               onClear: function onClear() {
@@ -1169,20 +1367,22 @@ function LipSyncStudio(_ref7) {
               isVideo: false,
               apiKey: apiKey
             })]
-          }), showPrompt && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "flex-1 flex flex-col",
-            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_TemplateBanner["default"], {
+              isApplied: isTemplateApplied,
+              onClear: resetTemplate
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
+              ref: textareaRef,
               value: prompt,
-              onChange: function onChange(e) {
-                return setPrompt(e.target.value);
-              },
+              onChange: handlePromptInput,
               placeholder: "Describe speech style...",
-              className: "w-full bg-transparent border-none text-white text-sm placeholder:text-white/10 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar disabled:opacity-40",
+              className: "w-full bg-transparent border-none text-white text-sm placeholder:text-white/20 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar disabled:opacity-40",
               rows: 1
-            })
+            })]
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-2 border-t border-white/[0.03] relative",
+          className: "flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-3 border-t border-white/[0.03] relative",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "flex items-center gap-2 px-1",
             children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
@@ -1194,7 +1394,7 @@ function LipSyncStudio(_ref7) {
                   e.stopPropagation();
                   setOpenDropdown(openDropdown === "model" ? null : "model");
                 },
-                className: "flex items-center gap-2 px-2 py-1.5 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap",
+                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
                   className: "w-3.5 h-3.5 bg-[#22d3ee] rounded-sm flex items-center justify-center",
                   children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
@@ -1235,7 +1435,7 @@ function LipSyncStudio(_ref7) {
                   e.stopPropagation();
                   setOpenDropdown(openDropdown === "resolution" ? null : "resolution");
                 },
-                className: "flex items-center gap-2 px-2 py-1.5 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap",
+                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
                 children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                   className: "text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
                   children: selectedResolution
@@ -1252,12 +1452,23 @@ function LipSyncStudio(_ref7) {
                 },
                 anchorRef: resolutionBtnRef
               })]
+            }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+              type: "button",
+              onClick: function onClick() {
+                return setNativeAudio(!nativeAudio);
+              },
+              className: "h-[34px] flex items-center gap-2 px-3.5 rounded-md transition-all border whitespace-nowrap text-[11px] font-semibold shadow-inner ".concat(nativeAudio ? "bg-[#22d3ee]/10 border-[#22d3ee]/20 text-[#22d3ee]" : "bg-[#16161a]/60 border-white/[0.06] text-white/70 hover:bg-[#202026]/80 hover:text-white"),
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(MicIcon, {
+                className: "w-3.5 h-3.5 text-current"
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                children: "Native Audio"
+              })]
             })]
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
             type: "button",
             onClick: handleGenerate,
             disabled: isGenerating,
-            className: "bg-[#22d3ee] text-black px-4 py-2 rounded-md font-medium text-sm hover:bg-[#e5ff33] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/10 disabled:opacity-50 disabled:cursor-not-allowed",
+            className: "bg-[#22d3ee] text-black px-7 py-3 rounded-full font-black text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10",
             children: isGenerating ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                 className: "animate-spin inline-block text-black",

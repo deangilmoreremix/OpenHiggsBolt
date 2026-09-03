@@ -10,7 +10,11 @@ var _react = _interopRequireWildcard(require("react"));
 var _fa = require("react-icons/fa");
 var _muapi = require("../muapi.js");
 var _reactHotToast = _interopRequireWildcard(require("react-hot-toast"));
+var _appsStudio = _interopRequireDefault(require("../messages/en/appsStudio.json"));
+var _appsStudio2 = _interopRequireDefault(require("../messages/zh/appsStudio.json"));
+var _i18nUtils = require("../i18nUtils");
 var _jsxRuntime = require("react/jsx-runtime");
+function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
 function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function _interopRequireWildcard(e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, "default": e }; if (null === e || "object" != _typeof(e) && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (var _t2 in e) "default" !== _t2 && {}.hasOwnProperty.call(e, _t2) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, _t2)) && (i.get || i.set) ? o(f, _t2, i) : f[_t2] = e[_t2]); return f; })(e, t); }
 function _regenerator() { /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ var e, t, r = "function" == typeof Symbol ? Symbol : {}, n = r.iterator || "@@iterator", o = r.toStringTag || "@@toStringTag"; function i(r, n, o, i) { var c = n && n.prototype instanceof Generator ? n : Generator, u = Object.create(c.prototype); return _regeneratorDefine2(u, "_invoke", function (r, n, o) { var i, c, u, f = 0, p = o || [], y = !1, G = { p: 0, n: 0, v: e, a: d, f: d.bind(e, 4), d: function d(t, r) { return i = t, c = 0, u = e, G.n = r, a; } }; function d(r, n) { for (c = r, u = n, t = 0; !y && f && !o && t < p.length; t++) { var o, i = p[t], d = G.p, l = i[2]; r > 3 ? (o = l === n) && (u = i[(c = i[4]) ? 5 : (c = 3, 3)], i[4] = i[5] = e) : i[0] <= d && ((o = r < 2 && d < i[1]) ? (c = 0, G.v = n, G.n = i[1]) : d < l && (o = r < 3 || i[0] > n || n > l) && (i[4] = r, i[5] = n, G.n = l, c = 0)); } if (o || r > 1) return a; throw y = !0, n; } return function (o, p, l) { if (f > 1) throw TypeError("Generator is already running"); for (y && 1 === p && d(p, l), c = p, u = l; (t = c < 2 ? e : u) || !y;) { i || (c ? c < 3 ? (c > 1 && (G.n = -1), d(c, u)) : G.n = u : G.v = u); try { if (f = 2, i) { if (c || (o = "next"), t = i[o]) { if (!(t = t.call(i, u))) throw TypeError("iterator result is not an object"); if (!t.done) return t; u = t.value, c < 2 && (c = 0); } else 1 === c && (t = i["return"]) && t.call(i), c < 2 && (u = TypeError("The iterator does not provide a '" + o + "' method"), c = 1); i = e; } else if ((t = (y = G.n < 0) ? u : r.call(n, G)) !== a) break; } catch (t) { i = e, c = 1, u = t; } finally { f = 1; } } return { value: t, done: y }; }; }(r, o, i), !0), u; } var a = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} t = Object.getPrototypeOf; var c = [][n] ? t(t([][n]())) : (_regeneratorDefine2(t = {}, n, function () { return this; }), t), u = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(c); function f(e) { return Object.setPrototypeOf ? Object.setPrototypeOf(e, GeneratorFunctionPrototype) : (e.__proto__ = GeneratorFunctionPrototype, _regeneratorDefine2(e, o, "GeneratorFunction")), e.prototype = Object.create(u), e; } return GeneratorFunction.prototype = GeneratorFunctionPrototype, _regeneratorDefine2(u, "constructor", GeneratorFunctionPrototype), _regeneratorDefine2(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = "GeneratorFunction", _regeneratorDefine2(GeneratorFunctionPrototype, o, "GeneratorFunction"), _regeneratorDefine2(u), _regeneratorDefine2(u, o, "Generator"), _regeneratorDefine2(u, n, function () { return this; }), _regeneratorDefine2(u, "toString", function () { return "[object Generator]"; }), (_regenerator = function _regenerator() { return { w: i, m: f }; })(); }
 function _regeneratorDefine2(e, r, n, t) { var i = Object.defineProperty; try { i({}, "", {}); } catch (e) { i = 0; } _regeneratorDefine2 = function _regeneratorDefine(e, r, n, t) { function o(r, n) { _regeneratorDefine2(e, r, function (e) { return this._invoke(r, n, e); }); } r ? i ? i(e, r, { value: n, enumerable: !t, configurable: !t, writable: !t }) : e[r] = n : (o("next", 0), o("throw", 1), o("return", 2)); }, _regeneratorDefine2(e, r, n, t); }
@@ -452,7 +456,10 @@ var dummyAppsData = [{
   category: "Real Estate"
 }];
 function AppsStudio(_ref) {
-  var apiKey = _ref.apiKey;
+  var apiKey = _ref.apiKey,
+    _ref$locale = _ref.locale,
+    locale = _ref$locale === void 0 ? 'en' : _ref$locale;
+  var copy = (0, _i18nUtils.resolveCopy)(_appsStudio["default"], _appsStudio2["default"], locale);
   var _useState = (0, _react.useState)(null),
     _useState2 = _slicedToArray(_useState, 2),
     selectedApp = _useState2[0],
@@ -492,7 +499,7 @@ function AppsStudio(_ref) {
             setRequestedApps(function (prev) {
               return [].concat(_toConsumableArray(prev), [selectedApp.name]);
             });
-            _reactHotToast["default"].success("Got it! We'll send you the template details shortly.");
+            _reactHotToast["default"].success(copy.toast.requestSuccess);
             setTimeout(function () {
               return setSelectedApp(null);
             }, 1500);
@@ -502,7 +509,7 @@ function AppsStudio(_ref) {
             _context.p = 4;
             _t = _context.v;
             console.error(_t);
-            _reactHotToast["default"].error("Failed to register interest. Please try again later.");
+            _reactHotToast["default"].error(copy.toast.requestError);
           case 5:
             _context.p = 5;
             setIsRequesting(false);
@@ -552,7 +559,7 @@ function AppsStudio(_ref) {
               children: app.name
             }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
               className: "text-[10px] text-white/40 font-bold uppercase tracking-widest",
-              children: app.category || 'Template'
+              children: app.category || copy.card.templateFallback
             })]
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
@@ -568,7 +575,7 @@ function AppsStudio(_ref) {
               className: "flex-1 py-2 bg-white/5 text-white rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/10 transition-all border border-white/5 active:scale-95",
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_fa.FaGithub, {
                 className: "text-xs"
-              }), "Github"]
+              }), copy.card.github]
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
               onClick: function onClick() {
                 return setSelectedApp(app);
@@ -576,7 +583,7 @@ function AppsStudio(_ref) {
               className: "flex-1 py-2 bg-[#22d3ee]/10 text-[#22d3ee] rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[#22d3ee]/20 transition-all border border-[#22d3ee]/20 active:scale-95",
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_fa.FaExternalLinkAlt, {
                 className: "text-[9px]"
-              }), "Demo"]
+              }), copy.card.demo]
             })]
           }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
             children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("a", {
@@ -586,7 +593,7 @@ function AppsStudio(_ref) {
               className: "flex-1 py-2 bg-white/5 text-white rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/10 transition-all border border-white/5 active:scale-95",
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_fa.FaGithub, {
                 className: "text-xs"
-              }), "Github"]
+              }), copy.card.github]
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("a", {
               href: app.hosted || '#',
               target: "_blank",
@@ -594,7 +601,7 @@ function AppsStudio(_ref) {
               className: "flex-1 py-2 bg-[#22d3ee]/10 text-[#22d3ee] rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[#22d3ee]/20 transition-all border border-[#22d3ee]/20 active:scale-95",
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_fa.FaExternalLinkAlt, {
                 className: "text-[9px]"
-              }), "Demo"]
+              }), copy.card.demo]
             })]
           })
         })]
@@ -616,32 +623,32 @@ function AppsStudio(_ref) {
             className: "text-[#22d3ee] text-xs"
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
             className: "text-[10px] font-black text-[#22d3ee] uppercase tracking-widest",
-            children: "Revenue-Ready Templates"
+            children: copy.hero.badge
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("h1", {
           className: "text-5xl font-black text-white tracking-tighter leading-[0.9]",
-          children: ["LAUNCH AN AI APP.", /*#__PURE__*/(0, _jsxRuntime.jsx)("br", {}), "START EARNING TODAY."]
+          children: [copy.hero.titleLine1, /*#__PURE__*/(0, _jsxRuntime.jsx)("br", {}), copy.hero.titleLine2]
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
           className: "text-white/40 text-sm font-medium leading-relaxed max-w-xl mx-auto",
-          children: "Each template is a fully-functional, Stripe-integrated AI SaaS you can deploy in minutes. Charge your users, keep the revenue \u2014 muapi handles the AI infrastructure."
+          children: copy.hero.subtitle
         })]
       }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
         className: "w-full grid grid-cols-1 sm:grid-cols-3 gap-4",
         children: [{
           icon: _fa.FaRocket,
           step: "01",
-          title: "Deploy in Minutes",
-          body: "Fork the open-source template, add your muapi key, and push to Vercel. No backend setup needed."
+          title: copy.steps.deploy.title,
+          body: copy.steps.deploy.body
         }, {
           icon: _fa.FaCreditCard,
           step: "02",
-          title: "Collect Payments",
-          body: "Stripe is pre-wired. Set your own pricing — one-time credits, subscriptions, or pay-per-use."
+          title: copy.steps.collect.title,
+          body: copy.steps.collect.body
         }, {
           icon: _fa.FaDollarSign,
           step: "03",
-          title: "Keep the Revenue",
-          body: "Payments go straight to your Stripe account. You own the product, the brand, and the profits."
+          title: copy.steps.keep.title,
+          body: copy.steps.keep.body
         }].map(function (_ref3) {
           var Icon = _ref3.icon,
             step = _ref3.step,
@@ -657,7 +664,7 @@ function AppsStudio(_ref) {
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
               children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("p", {
                 className: "text-[10px] font-black text-white/30 uppercase tracking-widest mb-1",
-                children: ["Step ", step]
+                children: [copy.steps.stepLabel, " ", step]
               }), /*#__PURE__*/(0, _jsxRuntime.jsx)("h3", {
                 className: "text-sm font-bold text-white mb-1.5",
                 children: title
@@ -683,7 +690,7 @@ function AppsStudio(_ref) {
             className: "block w-1.5 h-1.5 rounded-full bg-[#22d3ee] animate-pulse"
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
             className: "text-[9px] font-black text-white/40 uppercase tracking-widest",
-            children: "Muapi Ecosystem \u2014 More templates coming soon"
+            children: copy.footer.moreComingSoon
           })]
         })
       })]
@@ -701,14 +708,18 @@ function AppsStudio(_ref) {
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
             className: "w-20 h-20 rounded-[28px] bg-[#22d3ee]/10 border border-[#22d3ee]/20 flex items-center justify-center text-4xl text-[#22d3ee] mb-2",
             children: /*#__PURE__*/(0, _jsxRuntime.jsx)(selectedApp.icon, {})
-          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("h2", {
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("h2", {
             className: "text-2xl font-black text-white uppercase tracking-tight",
-            children: ["Deploy ", selectedApp.name]
-          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("p", {
+            children: copy.modal.deployTitle.replace('{appName}', selectedApp.name)
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
             className: "text-sm font-medium text-white/40 leading-relaxed px-4",
-            children: ["Enter your details and we'll send you the ", /*#__PURE__*/(0, _jsxRuntime.jsx)("b", {
-              children: selectedApp.name
-            }), " template along with setup instructions so you can deploy and start earning immediately."]
+            children: copy.modal.body.split('{appName}').map(function (part, i, arr) {
+              return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_react["default"].Fragment, {
+                children: [part, i < arr.length - 1 && /*#__PURE__*/(0, _jsxRuntime.jsx)("b", {
+                  children: selectedApp.name
+                })]
+              }, i);
+            })
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
           className: "space-y-3",
@@ -716,13 +727,13 @@ function AppsStudio(_ref) {
             onClick: handleRequestAccess,
             disabled: isRequesting,
             className: "w-full py-4 bg-[#22d3ee] text-black rounded-md text-sm font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-[#22d3ee]/90 transition-all shadow-lg active:scale-95 disabled:opacity-50",
-            children: isRequesting ? 'Sending Details...' : 'Get Template'
+            children: isRequesting ? copy.modal.sending : copy.modal.getTemplate
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
             onClick: function onClick() {
               return setSelectedApp(null);
             },
             className: "w-full py-4 bg-white/5 border border-white/10 text-white/60 rounded-md text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-white/10 transition-all",
-            children: "Maybe Later"
+            children: copy.modal.maybeLater
           })]
         })]
       })]

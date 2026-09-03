@@ -7,6 +7,8 @@ import { generateImage, uploadFile } from "../muapi.js";
 import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
 import registry from "../skills/registry.json";
 import { fillTemplate } from "../lib/promptRecipes";
+import { useTemplateData, isValidAspectRatio, normalizeAspectRatio } from "../hooks/useTemplateData";
+import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
 
 // ─── Constants (inlined from promptUtils) ───────────────────────────────────
 
@@ -450,6 +452,7 @@ export default function CinemaStudio({
   apiKey,
   onGenerationComplete,
   historyItems,
+  templateData,
 }) {
   const PERSIST_KEY = "hg_cinema_studio_persistent";
 
@@ -557,6 +560,40 @@ export default function CinemaStudio({
     }
   }, []);
 
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const { reset: resetTemplate, isTemplateApplied } = useTemplateData(templateData, (data) => {
+    if (data.prompt) {
+      setSettings((s) => ({ ...s, prompt: data.prompt }));
+    }
+    if (data.aspectRatio) {
+      const normalized = normalizeAspectRatio(data.aspectRatio, "16:9");
+      setSettings((s) => ({ ...s, aspect_ratio: normalized }));
+    }
+    if (data.resolution) {
+      setResolution(data.resolution);
+    }
+  });
+
+  // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  const handoffApplied = useRef(null);
+  useEffect(() => {
+    try {
+      const handoff = readStoryboardHandoff("cinema");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setSettings((s) => ({ ...s, prompt: handoff.combinedPrompt || handoff.projectName }));
+      }
+      if (handoff.firstFrameUrl || handoff.referenceImageUrl) {
+        setUploadedImage(handoff.firstFrameUrl || handoff.referenceImageUrl);
+      }
+      if (['1:1', '16:9', '9:16', '21:9', '4:5'].includes(handoff.aspectRatio)) {
+        setSettings((s) => ({ ...s, aspect_ratio: handoff.aspectRatio }));
+      }
+    } catch (error) { /* silent */ }
+  }, []);
+
   // ── Adjust height on load ────────────────────────────────────────────────
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -600,6 +637,7 @@ export default function CinemaStudio({
 
   // ── Textarea auto-height ──
   const handleTextareaInput = (e) => {
+    clearStoryboardHandoffCache();
     const el = e.target;
     el.style.height = "auto";
     el.style.height = el.scrollHeight + "px";
@@ -910,6 +948,19 @@ export default function CinemaStudio({
       {/* ── BOTTOM PROMPT BAR ── */}
       <div className="absolute bottom-4 left-4 right-4 md:left-0 md:right-0 md:mx-auto md:max-w-[95%] lg:max-w-4xl z-30 transition-all duration-700 animate-fade-in-up">
         <div className="w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]">
+          {/* Template indicator */}
+          {isTemplateApplied && (
+            <div className="flex items-center justify-between rounded-xl bg-[#22d3ee]/10 border border-[#22d3ee]/20 px-3 py-2 text-xs text-[#22d3ee]">
+              <span className="font-semibold">Template loaded</span>
+              <button
+                type="button"
+                onClick={resetTemplate}
+                className="rounded-md bg-white/5 px-2 py-1 text-[11px] font-bold text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                Clear
+              </button>
+            </div>
+          )}
           {/* Upper Row: Image Upload & Textarea */}
           <div className="flex items-start gap-4 w-full px-1">
             {/* Image Upload Button */}

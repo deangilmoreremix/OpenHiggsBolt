@@ -187,15 +187,10 @@ function loadProjects(): Project[] {
 }
 function saveProjects(p: Project[]) { localStorage.setItem(LOCAL_KEY + '_projects', JSON.stringify(p)) }
 
-export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string }) {
-  // API key — seeded from the global key passed by StandaloneShell, falling
-  // back to a previously saved key. The in-studio key modal can still override.
-  const [apiKey, setApiKey] = useState(() =>
-    propApiKey ||
-    (typeof window !== 'undefined' ? localStorage.getItem(API_KEY_STORAGE) || '' : '')
-  )
-  const [showKeyModal, setShowKeyModal] = useState(false)
-  const [keyInput, setKeyInput] = useState('')
+export default function DesignAgent({ apiKey: propApiKey, onRequestApiKey, templateData }: { apiKey?: string; onRequestApiKey?: () => void; templateData?: { prompt?: string; [key: string]: any } }) {
+  // API key is now managed globally by StandaloneShell via the centralized
+  // auth config. This component reads the `apiKey` prop directly.
+  const apiKey = propApiKey || ''
 
   // UI state
   const [projects, setProjects] = useState<Project[]>(loadProjects)
@@ -217,6 +212,17 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
   // Tracks whether the component is still mounted so long-running polling can
   // bail out if the user navigates away (avoids setState-after-unmount).
   const aliveRef = useRef(true)
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const templateApplied = useRef<string | null>(null)
+  useEffect(() => {
+    if (!templateData || templateApplied.current === templateData.slug) return
+    templateApplied.current = templateData.slug
+
+    if (templateData.prompt) {
+      setInput(templateData.prompt)
+    }
+  }, [templateData])
 
   // Typewriter animation
   useEffect(() => {
@@ -250,14 +256,8 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
   // Stop polling if the component unmounts.
   useEffect(() => () => { aliveRef.current = false }, [])
 
-  const saveApiKey = useCallback(() => {
-    localStorage.setItem(API_KEY_STORAGE, keyInput)
-    setApiKey(keyInput)
-    setShowKeyModal(false)
-  }, [keyInput])
-
   const createNewProject = useCallback(async () => {
-    if (!apiKey) { setShowKeyModal(true); return }
+    if (!apiKey) { onRequestApiKey?.(); return }
     try {
       const session = await apiCall('/api/design-agent/sessions', {
         method: 'POST',
@@ -288,7 +288,7 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
 
   const sendMessage = useCallback(async () => {
     if (!input.trim() && !selectedTemplate) return
-    if (!apiKey) { setShowKeyModal(true); return }
+    if (!apiKey) { onRequestApiKey?.(); return }
     if (!activeProject) { await createNewProject(); return }
 
     const userContent = selectedTemplate ? `[${selectedTemplate.label}] ${input}` : input
@@ -508,31 +508,9 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
           </div>
         )}
 
-        {/* API Key modal */}
-        {showKeyModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.8)' }}>
-            <div className="w-96 rounded-2xl p-6 space-y-4" style={{ ...panels.glass, border: '1px solid var(--border-color)' }}>
-              <div className="flex items-center gap-2">
-                <Key size={18} style={{ color: 'var(--color-primary)' }} />
-                <h2 className="text-base font-semibold">Enter your MuAPI Key</h2>
-              </div>
-              <p className="text-sm" style={{ color: semantic.textMuted }}>Your key is stored locally and never sent to our servers. Get your key at muapi.ai</p>
-              <input value={keyInput} onChange={e => setKeyInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && saveApiKey()}
-                placeholder="mua_..."
-                className="w-full p-3 rounded-xl text-sm outline-none"
-                style={{ ...panels.card, color: 'white', fontFamily: 'monospace' }} />
-              <div className="flex gap-2">
-                <button onClick={() => setShowKeyModal(false)} className="flex-1 py-2 rounded-xl text-sm transition-all" style={buttons.ghost}>Cancel</button>
-                <button onClick={saveApiKey} disabled={!keyInput.trim()} className="flex-1 py-2 rounded-xl text-sm font-medium transition-all disabled:opacity-50" style={buttons.primary}>Save Key</button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Header */}
         <div className="flex items-center justify-end px-8 py-4 flex-shrink-0">
-          <button onClick={() => setShowKeyModal(true)}
+          <button onClick={() => onRequestApiKey?.()}
             className="p-2 rounded-full transition-all"
             style={{ color: apiKey ? 'var(--color-primary)' : semantic.textMuted }}
             title={apiKey ? 'API key set' : 'Set API key'}>
@@ -719,7 +697,7 @@ export default function DesignAgent({ apiKey: propApiKey }: { apiKey?: string })
           className="text-xs transition-all hover:text-white" style={{ color: semantic.textMuted }}>← Back</button>
         <span className="text-sm font-medium">{activeProject?.name}</span>
         <div className="flex-1" />
-        <button onClick={() => setShowKeyModal(true)} className="p-1.5 rounded-lg transition-all" style={{ color: apiKey ? 'var(--color-primary)' : semantic.textMuted }} aria-label="API Key settings"><Key size={13} /></button>
+        <button onClick={() => onRequestApiKey?.()} className="p-1.5 rounded-lg transition-all" style={{ color: apiKey ? 'var(--color-primary)' : semantic.textMuted }} aria-label="API Key settings"><Key size={13} /></button>
       </div>
 
       {/* Messages */}

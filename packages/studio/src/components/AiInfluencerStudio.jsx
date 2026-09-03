@@ -7,6 +7,9 @@ import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
 import registry from "../skills/registry.json";
 import { fillTemplate } from "../lib/promptRecipes";
+import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
+import TemplateBanner from "./TemplateBanner";
+import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
 
 const CDN = "https://cdn.muapi.ai/influencer";
 
@@ -335,7 +338,7 @@ function HoverPill({ label, img, onClick }) {
 }
 
 // ─── Main Component ─────────────────────────────────────────────────────────
-export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: externalIsGenerating }) {
+export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: externalIsGenerating, templateData }) {
   const [activeTab, setActiveTab] = useState("face");
 
   const [selectedOptions, setSelectedOptions] = useState(() => {
@@ -388,6 +391,34 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
       fillTemplate(step0.prompt || skill.description || "", vals),
     );
   }
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const { reset: resetTemplate, isTemplateApplied } = useTemplateData(templateData, (data) => {
+    if (data.prompt) {
+      setCustomPrompt(data.prompt);
+    }
+    if (data.aspectRatio) {
+      const normalized = normalizeAspectRatio(data.aspectRatio, "3:4");
+      setAspectRatio(normalized);
+    }
+  });
+
+  // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  const handoffApplied = useRef(null);
+  useEffect(() => {
+    try {
+      const handoff = readStoryboardHandoff("ai-influencer");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setCustomPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+      if (['3:4', '1:1', '9:16', '16:9'].includes(handoff.aspectRatio)) {
+        setAspectRatio(handoff.aspectRatio);
+      }
+    } catch (error) { /* silent */ }
+  }, []);
 
   // ── Build prompt from selections ──────────────────────────────────────────
   const buildPrompt = useCallback(() => {
@@ -735,6 +766,7 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
 
         {/* Custom prompt bar at bottom */}
         <div className="px-6 pb-4 shrink-0">
+          <TemplateBanner isApplied={isTemplateApplied} onClear={resetTemplate} />
           <input
             type="text"
             value={customPrompt}

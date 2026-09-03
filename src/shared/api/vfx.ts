@@ -47,13 +47,17 @@ function extractVideoUrl(data: MuAPIStatusResponse): string | undefined {
 }
 
 function createAuthHeaders(apiKey: string): HeadersInit {
-  const cleanKey = typeof apiKey === 'string' ? apiKey.replace(/[^\u0000-\u00FF]/g, '').trim() : apiKey
+  const cleanKey = typeof apiKey === 'string'
+    ? String(apiKey)
+        .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')  // zero-width chars, BOM, word joiner, soft hyphen
+        .replace(/^[\s\u0000-\u001F]+|[\s\u0000-\u001F]+$/g, '')
+        .trim()
+    : apiKey
   return {
     'Content-Type': 'application/json',
     'x-api-key': cleanKey,
   }
 }
-
 // MuAPI file upload spec constants
 const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
@@ -87,7 +91,7 @@ export class MuAPIVFXClient {
   private abortController: AbortController | null = null
 
   constructor(options: MuAPIVFXClientOptions) {
-    this.apiKey = options.apiKey
+    this.apiKey = createAuthHeaders(options.apiKey)['x-api-key'] as string
     this.baseUrl = options.baseUrl || MUAPI_BASE
     this.pollIntervalMs = options.pollIntervalMs || DEFAULT_POLL_INTERVAL_MS
     this.maxPollAttempts = options.maxPollAttempts || DEFAULT_MAX_POLL_ATTEMPTS

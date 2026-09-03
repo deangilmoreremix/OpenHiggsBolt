@@ -310,6 +310,16 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
         return { text: "LE", bg: "bg-violet-500/10 text-violet-400 border-violet-500/25" };
       case "stability":
         return { text: "SD", bg: "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/25" };
+      case "runway":
+        return { text: "RW", bg: "bg-red-500/10 text-red-400 border-red-500/25" };
+      case "hunyuan":
+        return { text: "HY", bg: "bg-orange-500/10 text-orange-400 border-orange-500/25" };
+      case "pixverse":
+        return { text: "PX", bg: "bg-emerald-500/10 text-emerald-400 border-emerald-500/25" };
+      case "lightricks":
+        return { text: "LT", bg: "bg-pink-500/10 text-pink-400 border-pink-500/25" };
+      case "muapi":
+        return { text: "MU", bg: "bg-primary/10 text-primary border-primary/25" };
       default:
         const name = provider ? provider.toUpperCase() : "AI";
         return { text: name.substring(0, 2), bg: "bg-primary/10 text-primary border-primary/25" };
@@ -402,8 +412,6 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
       {selectedModel === m.id && <CheckSvg />}
     </div>
   );
-
-  const invertLogos = ['openai', 'blackforest', 'runway', 'ideogram', 'lightricks', 'grok'];
 
   return (
     <div className="flex gap-4 h-full max-h-[70vh] min-h-[350px]">
@@ -554,6 +562,7 @@ export default function VideoStudio({
   historyItems,
   droppedFiles,
   onFilesHandled,
+  templateData,
 }) {
   const PERSIST_KEY = "hg_video_studio_persistent";
 
@@ -898,6 +907,46 @@ export default function VideoStudio({
     }
   }, [applyControlsForModel, defaultModel.id]);
 
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const templateApplied = useRef(null);
+  useEffect(() => {
+    const templateId = templateData?.sourceRepo && templateData?.slug
+      ? `${templateData.sourceRepo}|${templateData.slug}`
+      : templateData?.slug;
+    if (!templateData || templateApplied.current === templateId) return;
+    templateApplied.current = templateId;
+
+    if (templateData.prompt) {
+      setPrompt(templateData.prompt);
+    }
+    if (templateData.aspectRatio) {
+      setSelectedAr(templateData.aspectRatio);
+    }
+    if (templateData.duration) {
+      const d = parseInt(String(templateData.duration), 10);
+      if (!isNaN(d)) setSelectedDuration(d);
+    }
+    if (templateData.model) {
+      setSelectedModel(templateData.model);
+      setSelectedModelName(templateData.modelName || templateData.model);
+    }
+  }, [templateData]);
+
+  // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  useEffect(() => {
+    const handoff = readStoryboardHandoff("video");
+    if (!handoff) return;
+    if (handoff.combinedPrompt) {
+      setPrompt(handoff.combinedPrompt);
+    }
+    if (handoff.aspectRatio) {
+      setSelectedAr(handoff.aspectRatio);
+    }
+    if (handoff.videoUrl) {
+      // Could set as source video if the studio supports it
+    }
+  }, []);
+
   // ── Adjust height on load ────────────────────────────────────────────────
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -1076,7 +1125,6 @@ export default function VideoStudio({
 
   // ── textarea auto-resize ──────────────────────────────────────────────────
   const handlePromptInput = (e) => {
-    clearStoryboardHandoff();
     setPrompt(e.target.value);
     const el = e.target;
     el.style.height = "auto";

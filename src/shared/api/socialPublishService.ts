@@ -21,10 +21,13 @@ function withKey(config: any, apiKey: string) {
     ...config,
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': String(apiKey || '').replace(/[^\u0000-\u00FF]/g, '').trim(),
+      'x-api-key': String(apiKey || '')
+        .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')  // zero-width chars, BOM, word joiner, soft hyphen
+        .replace(/^[\s\u0000-\u001F]+|[\s\u0000-\u001F]+$/g, '')
+        .trim(),
       ...(config.headers || {}),
     },
-  }
+  };
 }
 
 export interface SocialPublishServiceOptions {

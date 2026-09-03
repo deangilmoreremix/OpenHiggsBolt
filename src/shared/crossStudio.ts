@@ -9,7 +9,18 @@
  * target studio reads (and clears) that key on mount.
  */
 
-export type StoryboardStudioTarget = 'video' | 'cinema' | 'vfx-studio'
+export type StudioTarget =
+  | 'video'
+  | 'cinema'
+  | 'vfx-studio'
+  | 'image'
+  | 'thumbnail-studio'
+  | 'ai-influencer'
+  | 'marketing'
+  | 'clipping'
+  | 'vibe-motion'
+  | 'lipsync'
+  | 'recast'
 
 /** A single shot, flattened for downstream consumption. */
 export interface HandoffShot {
@@ -21,19 +32,19 @@ export interface HandoffShot {
   characterNames: string[]
 }
 
-export interface StoryboardHandoff {
+export interface StudioHandoff {
   /** Schema version for forward-compat. */
   version: 1
   /** Which studio should receive this payload. */
-  target: StoryboardStudioTarget
+  target: StudioTarget
   /** Source studio identifier, for diagnostics. */
-  from: 'storyboard'
+  from: 'storyboard' | 'go-ai-viral'
   projectName: string
-  aspectRatio: '16:9' | '9:16'
+  aspectRatio: '16:9' | '9:16' | '1:1' | null
   episodeDuration: number
-  /** Generated storyboard video URL (if any). */
+  /** Generated video URL (if any). */
   videoUrl: string | null
-  /** First character reference image, when available. */
+  /** First reference image, when available. */
   referenceImageUrl: string | null
   /** Character names defined in the project. */
   characterNames: string[]
@@ -55,22 +66,38 @@ const HANDOFF_KEY = 'storyboard_to_studio'
  * instances within a page session, so the first effect to run always gets the
  * payload, and a subsequent consume (or a remount) sees `null` and no-ops.
  */
-let pendingHandoff: StoryboardHandoff | null = null
+let pendingHandoff: StudioHandoff | null = null
 
 /** Map a studio target to the URL slug the shell uses to switch tabs. */
-export const TARGET_SLUG: Record<StoryboardStudioTarget, string> = {
+export const TARGET_SLUG: Record<StudioTarget, string> = {
   video: 'video',
   cinema: 'cinema',
   'vfx-studio': 'vfx-studio',
+  image: 'image',
+  'thumbnail-studio': 'thumbnail-studio',
+  'ai-influencer': 'ai-influencer',
+  marketing: 'marketing',
+  'clipping': 'clipping',
+  'vibe-motion': 'vibe-motion',
+  'lipsync': 'lipsync',
+  'recast': 'recast',
 }
 
-export const TARGET_LABEL: Record<StoryboardStudioTarget, string> = {
+export const TARGET_LABEL: Record<StudioTarget, string> = {
   video: 'Video Studio',
   cinema: 'Cinema Studio',
   'vfx-studio': 'VFX Studio',
+  image: 'Image Studio',
+  'thumbnail-studio': 'Thumbnail Studio',
+  'ai-influencer': 'AI Influencer Studio',
+  marketing: 'Marketing Studio',
+  clipping: 'Clipping Studio',
+  'vibe-motion': 'Vibe Motion',
+  lipsync: 'Lip Sync',
+  recast: 'Recast',
 }
 
-export function writeHandoff(payload: StoryboardHandoff): void {
+export function writeHandoff(payload: StudioHandoff): void {
   if (typeof window === 'undefined') return
   pendingHandoff = payload
   try {
@@ -90,14 +117,14 @@ export function writeHandoff(payload: StoryboardHandoff): void {
  * on `createdAt`) and clears only localStorage via `clearHandoff()` once
  * applied, while the in-memory cache survives the session for any remount.
  */
-export function readHandoff(target?: StoryboardStudioTarget): StoryboardHandoff | null {
+export function readHandoff(target?: StudioTarget): StudioHandoff | null {
   if (typeof window === 'undefined') return null
   const candidate = pendingHandoff
   if (!candidate) {
     try {
       const raw = localStorage.getItem(HANDOFF_KEY)
       if (!raw) return null
-      pendingHandoff = JSON.parse(raw) as StoryboardHandoff
+      pendingHandoff = JSON.parse(raw) as StudioHandoff
     } catch {
       return null
     }
@@ -107,6 +134,9 @@ export function readHandoff(target?: StoryboardStudioTarget): StoryboardHandoff 
   }
   return pendingHandoff
 }
+
+/** Backward-compatible alias for older import names. */
+export const readStoryboardHandoff = readHandoff
 
 export function clearHandoff(): void {
   if (typeof window === 'undefined') return
@@ -121,6 +151,9 @@ export function clearHandoff(): void {
   }
 }
 
+/** Backward-compatible alias for older import names. */
+export const clearStoryboardHandoff = clearHandoff
+
 /** Fully drop the in-memory hand-off cache (call when the user edits the prompt). */
 export function clearHandoffCache(): void {
   pendingHandoff = null
@@ -134,7 +167,60 @@ export function clearHandoffCache(): void {
  */
 export const SEND_TO_EVENT = 'storyboard:send-to'
 
-export function emitSendTo(target: StoryboardStudioTarget): void {
+export function emitSendTo(target: StudioTarget): void {
   if (typeof window === 'undefined') return
   window.dispatchEvent(new CustomEvent(SEND_TO_EVENT, { detail: { target } }))
+}
+
+// ── GO-Viral helpers ────────────────────────────────────────────────────────────
+
+export type ViralSourceMedia = 'image' | 'video'
+
+/** Which creation studios are relevant for a given source media type. */
+export const VIRAL_TARGETS_BY_MEDIA: Record<ViralSourceMedia, StudioTarget[]> = {
+  image: ['image', 'thumbnail-studio', 'ai-influencer', 'marketing'],
+  video: ['video', 'cinema', 'vfx-studio', 'clipping', 'vibe-motion', 'lipsync', 'recast'],
+}
+
+export interface CreateViralHandoffOptions {
+  target: StudioTarget
+  record: {
+    title?: string | null
+    prompt?: string | null
+    fullPrompt?: string | null
+    mediaType?: string | null
+    media?: { role?: string; previewUrl?: string | null; altText?: string | null }[]
+    outputUrl?: string | null
+    detailHref?: string | null
+  }
+}
+
+/**
+ * Build a cross-studio handoff payload from a GO-Viral prompt record so the
+ * user can continue creation in the target studio with one click.
+ */
+export function createViralHandoff({ target, record }: CreateViralHandoffOptions): StudioHandoff {
+  const prompt = record.prompt || record.fullPrompt || ''
+  const projectName = record.title || prompt.slice(0, 60)
+  const aspectRatio = record.mediaType === 'video' ? '16:9' : '1:1'
+  const firstFrameUrl =
+    (record.media && record.media.find((m) => m.role === 'result')?.previewUrl) ||
+    record.media?.[0]?.previewUrl ||
+    null
+
+  return {
+    version: 1,
+    target,
+    from: 'go-ai-viral',
+    projectName,
+    aspectRatio,
+    episodeDuration: 0,
+    videoUrl: record.outputUrl || null,
+    referenceImageUrl: firstFrameUrl,
+    characterNames: [],
+    shots: [{ scene: projectName, prompt, duration: 0, characterNames: [] }],
+    combinedPrompt: prompt,
+    firstFrameUrl,
+    createdAt: new Date().toISOString(),
+  }
 }

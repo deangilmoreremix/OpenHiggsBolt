@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
+import TemplateBanner from "./TemplateBanner";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { processRecast, uploadFile } from "../muapi.js";
@@ -12,6 +14,7 @@ import {
 import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
 import registry from "../skills/registry.json";
 import { fillTemplate } from "../lib/promptRecipes";
+import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
 
 // ---------------------------------------------------------------------------
 // Upload button states
@@ -269,6 +272,7 @@ export default function RecastStudio({
   historyItems,
   droppedFiles,
   onFilesHandled,
+  templateData,
 }) {
   const PERSIST_KEY = "hg_recast_studio_persistent";
 
@@ -318,6 +322,25 @@ export default function RecastStudio({
     if (!skill) return;
     applyRecipe(skill);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Cross-studio: import a Storyboard hand-off ────────────────────────────
+  const handoffApplied = useRef(null);
+  useEffect(() => {
+    try {
+      const handoff = readStoryboardHandoff("recast");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+      if (["1:1", "16:9", "9:16"].includes(handoff.aspectRatio)) {
+        setSelectedAspectRatio(handoff.aspectRatio);
+      }
+    } catch (err) {
+      console.warn("Failed to apply Storyboard hand-off:", err);
+    }
   }, []);
 
   function applyRecipe(skill) {
@@ -397,6 +420,17 @@ export default function RecastStudio({
     prompt,
     internalHistory,
   ]);
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const { reset: resetTemplate, isTemplateApplied } = useTemplateData(templateData, (data) => {
+    if (data.prompt) {
+      setPrompt(data.prompt);
+    }
+    if (data.aspectRatio) {
+      const normalized = normalizeAspectRatio(data.aspectRatio, "16:9");
+      setSelectedAspectRatio(normalized);
+    }
+  });
 
   // ── Derived model info ──────────────────────────────────────────────────────
   const selectedModel = getRecastModelById(selectedModelId);
@@ -757,6 +791,7 @@ export default function RecastStudio({
 
             {/* Prompt textarea */}
             <div className="flex-1 flex flex-col">
+              <TemplateBanner isApplied={isTemplateApplied} onClear={resetTemplate} />
               <textarea
                 ref={textareaRef}
                 value={prompt}

@@ -142,7 +142,7 @@ function WorkflowCard({ workflow, onClick, activeTab, onRename, onDelete }) {
   );
 }
 
-export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggleHeader }) {
+export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggleHeader, templateData }) {
   const params = useParams();
   const router = useRouter();
   const slug = params?.slug || [];
@@ -181,6 +181,17 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
   const [isExecuting, setIsExecuting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const templateApplied = useRef(null);
+  useEffect(() => {
+    if (!templateData || templateApplied.current === templateData.slug) return;
+    templateApplied.current = templateData.slug;
+
+    if (templateData.prompt) {
+      setFormData((prev) => ({ ...prev, prompt: templateData.prompt }));
+    }
+  }, [templateData]);
 
   const [webhookUrl, setWebhookUrl] = useState("");
   const [playgroundView, setPlaygroundView] = useState("form"); // 'form' | 'api'

@@ -4,6 +4,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { uploadFile, generateMarketingStudioAd } from "../muapi.js";
+import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
+import TemplateBanner from "./TemplateBanner";
+import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
 
 const SCROLLBAR_STYLE = `
   .custom-scrollbar-thin::-webkit-scrollbar {
@@ -233,7 +236,7 @@ function SimpleDropdown({ isOpen, title, options, selected, onSelect, onClose })
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled }) {
+export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled, templateData }) {
   const PERSIST_KEY = "hg_marketing_studio_persistent";
   
   const [prompt, setPrompt] = useState("");
@@ -320,6 +323,34 @@ export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled }
     }, 500);
     return () => clearTimeout(timer);
   }, [prompt, params, productImage, avatarImage, additionalImages, history]);
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const { reset: resetTemplate, isTemplateApplied } = useTemplateData(templateData, (data) => {
+    if (data.prompt) {
+      setPrompt(data.prompt);
+    }
+    if (data.aspectRatio) {
+      const normalized = normalizeAspectRatio(data.aspectRatio, "9:16");
+      setParams((p) => ({ ...p, ratio: normalized }));
+    }
+  });
+
+  // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  const handoffApplied = useRef(null);
+  useEffect(() => {
+    try {
+      const handoff = readStoryboardHandoff("marketing");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+      if (['9:16', '3:4', '4:3', '16:9', '1:1'].includes(handoff.aspectRatio)) {
+        setParams((p) => ({ ...p, ratio: handoff.aspectRatio }));
+      }
+    } catch (error) { /* silent */ }
+  }, []);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -548,6 +579,7 @@ export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled }
           )}
           {/* Top Row: Full-width Textarea */}
           <div className="w-full relative">
+            <TemplateBanner isApplied={isTemplateApplied} onClear={resetTemplate} />
             <textarea
               ref={textareaRef}
               value={prompt}

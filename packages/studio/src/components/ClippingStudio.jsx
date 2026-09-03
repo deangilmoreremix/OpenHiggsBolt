@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
+import TemplateBanner from "./TemplateBanner";
 import { runClipping, uploadFile } from "../muapi.js";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
 import registry from "../skills/registry.json";
 import { fillTemplate } from "../lib/promptRecipes";
+import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
 
 // ---------------------------------------------------------------------------
 // Inline SVG Icons
@@ -96,6 +99,7 @@ export default function ClippingStudio({
   onGenerationComplete,
   droppedFiles,
   onFilesHandled,
+  templateData,
 }) {
   const PERSIST_KEY = "hg_clipping_studio_persistent";
 
@@ -259,6 +263,25 @@ export default function ClippingStudio({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Cross-studio: import a Storyboard hand-off ────────────────────────────
+  const handoffApplied = useRef(null);
+  useEffect(() => {
+    try {
+      const handoff = readStoryboardHandoff("clipping");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+      if (["1:1", "16:9", "9:16"].includes(handoff.aspectRatio)) {
+        setAspectRatio(handoff.aspectRatio);
+      }
+    } catch (err) {
+      console.warn("Failed to apply Storyboard hand-off:", err);
+    }
+  }, []);
+
   function applyRecipe(skill) {
     const step0 = skill.steps && skill.steps[0];
     if (!step0) {
@@ -272,6 +295,17 @@ export default function ClippingStudio({
     });
     setPrompt(fillTemplate(step0.prompt || skill.description || "", vals));
   }
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const { reset: resetTemplate, isTemplateApplied } = useTemplateData(templateData, (data) => {
+    if (data.prompt) {
+      setPrompt(data.prompt);
+    }
+    if (data.aspectRatio) {
+      const normalized = normalizeAspectRatio(data.aspectRatio, "9:16");
+      setAspectRatio(normalized);
+    }
+  });
 
   // ── Highlight Seeking Helper ─────────────────────────────────────────────
   const seekToHighlight = (startSec) => {
@@ -874,6 +908,7 @@ export default function ClippingStudio({
 
             {/* Prompt textarea (supports direct URL pasting too) */}
             <div className="flex-1 flex flex-col gap-1">
+              <TemplateBanner isApplied={isTemplateApplied} onClear={resetTemplate} />
               <textarea
                 ref={promptTextareaRef}
                 value={prompt}

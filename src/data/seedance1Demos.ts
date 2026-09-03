@@ -27,7 +27,9 @@ export const SEEDANCE_1_DEMOS: VideoDemo[] = [
       "cinematic film styles"
     ],
     "sourceUrl": "",
-    "sourceRepo": "seedance-1"
+    "sourceRepo": "seedance-1",
+    "model": "seedance-v1.5-pro-t2v",
+    "modelName": "Seedance V1.5 Pro"
   },
   {
     "id": 2,

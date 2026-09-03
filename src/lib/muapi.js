@@ -1,6 +1,14 @@
 import { getModelById, getVideoModelById, getI2IModelById, getI2VModelById, getV2VModelById, getLipSyncModelById } from './models.js';
 import axios from 'axios';
 import { getStableUserId } from '../shared/auth/stableUserId';
+import { getApiKey } from './authConfig.ts';
+
+// Marks an error as terminal so the polling loop rethrows instead of retrying.
+function fatal(message) {
+    const error = new Error(message);
+    error.isFatal = true;
+    return error;
+}
 
 /**
  * Normalize a MuAPI prediction response into a consistent shape.
@@ -25,31 +33,30 @@ function normalizeMuapiResult(raw) {
 }
 
 
-// Central, source-of-truth MuAPI endpoint aliases. These guarantee the correct
-// `/api/v1/{endpoint}` is called even if the model catalog (models.js) is
-// regenerated from an older snapshot. Values are verified against the live
-// `GET /api/v1/models` catalog.
+// Central MuAPI endpoint aliases. These map legacy/deprecated model IDs to the
+// correct API endpoints for backward compatibility. Models NOT listed here use
+// their endpoint from the local catalog (packages/studio/src/models.js).
+//
+// IMPORTANT: Do NOT add identity mappings (where key === value) here — they
+// would override the correct endpoint from the local catalog. For example,
+// flux-dev's endpoint is 'flux-dev-image' in the catalog; an identity mapping
+// 'flux-dev': 'flux-dev' would break image generation with a 404.
+//
+// Values verified against the live `GET /api/v1/models` catalog.
 const ENDPOINT_ALIASES = {
-  'flux-dev': 'flux-dev',
-  'flux-schnell': 'flux-schnell',
+  // Legacy image model IDs -> current API endpoints
   'midjourney-v7-text-to-image': 'midjourney-v7',
-  'seedream-5.0': 'bytedance-seedream-v5.0',
-  'minimax-image-01': 'minimax-image-01-subject-reference',
-  'seedance-v2.0-t2v': 'seedance-2-t2v',
-  'seedance-v2.0-extend': 'seedance-2-vip-extend',
-  'ai-image-upscaler': 'ai-image-upscaler',
   'midjourney-v7-image-to-image': 'midjourney-v7',
-  'bytedance-seededit-v3': 'bytedance-seededit-v3',
   'midjourney-v7-style-reference': 'midjourney-v7',
   'midjourney-v7-omni-reference': 'midjourney-v7',
-  'minimax-image-01-subject-reference': 'minimax-image-01-subject-reference',
-  'bytedance-seedream-edit-v4': 'bytedance-seedream-v4-edit',
-  'seedream-5.0-edit': 'bytedance-seedream-v5.0-edit',
   'midjourney-v7-image-to-video': 'midjourney-v7',
-  'seedance-lite-reference-video': 'seedance-lite-reference-video',
+  // Legacy video model IDs -> current API endpoints
+  'seedance-v2.0-t2v': 'seedance-2-t2v',
+  'seedance-v2.0-extend': 'seedance-2-vip-extend',
   'seedance-v2.0-i2v': 'seedance-2-image-to-video',
-  'latent-sync': 'latent-sync',
-  'mmaudio-v2-text-to-audio': 'mmaudio-v2-text-to-audio',
+  // Legacy model name differences
+  'bytedance-seedream-edit-v4': 'bytedance-seedream-v4-edit',
+  'minimax-image-01': 'minimax-image-01-subject-reference',
 };
 
 
@@ -60,7 +67,7 @@ export class MuapiClient {
     }
 
     getKey() {
-        const key = window.__MUAPI_KEY__ || localStorage.getItem('muapi_key');
+        const key = getApiKey();
         if (!key) throw new Error('API Key missing. Please set it in Settings.');
         return key;
     }
@@ -193,9 +200,10 @@ export class MuapiClient {
                 if (!response.ok) {
                     const errText = await response.text();
                     console.warn(`[Muapi] Poll error (${response.status}):`, errText);
-                    // Continue polling on non-fatal errors
+                    // 5xx is transient — keep polling. Anything else (401, 402,
+                    // 404, 429) will not fix itself, so stop immediately.
                     if (response.status >= 500) continue;
-                    throw new Error(`Poll Failed: ${response.status} - ${errText.slice(0, 100)}`);
+                    throw fatal(`Poll Failed: ${response.status} - ${errText.slice(0, 100)}`);
                 }
 
                 const data = await response.json();
@@ -209,12 +217,12 @@ export class MuapiClient {
                 }
 
                 if (status === 'failed' || status === 'error') {
-                    throw new Error(`Generation failed: ${norm.error || 'Unknown error'}`);
+                    throw fatal(`Generation failed: ${norm.error || 'Unknown error'}`);
                 }
 
                 // Otherwise (processing, pending, etc.) keep polling
             } catch (error) {
-                if (attempt === maxAttempts) throw error;
+                if (error.isFatal || attempt === maxAttempts) throw error;
                 console.warn('[Muapi] Poll attempt failed, retrying...', error.message);
             }
         }
@@ -637,7 +645,11 @@ export class MuapiClient {
 export const muapi = new MuapiClient();
 
 function cleanKey(apiKey) {
-  return String(apiKey || '').replace(/[^\u0000-\u00FF]/g, '').trim();
+  if (!apiKey) return '';
+  return String(apiKey)
+    .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')  // zero-width chars, BOM, word joiner, soft hyphen
+    .replace(/^[\s\u0000-\u001F]+|[\s\u0000-\u001F]+$/g, '')
+    .trim();
 }
 
 function withKey(config, apiKey) {

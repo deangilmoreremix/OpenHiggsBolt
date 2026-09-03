@@ -4,7 +4,7 @@ import DemoMediaCard from './DemoMediaCard';
 import { MINIMAX_H3_DEMOS, DEMO_CATEGORIES } from '@/data/minimaxH3Demos';
 import { type VideoDemo } from '@/data/types';
 
-const INITIAL_COUNT = 1000;
+const INITIAL_COUNT = 12;
 const STEP = 12;
 
 type AIVideoGalleryProps = {
@@ -18,6 +18,8 @@ type AIVideoGalleryProps = {
   subtext?: string;
   /** Section id for anchor linking. */
   sectionId?: string;
+  /** Number of cards to render initially. Defaults to 12. Set to a large number to render all cards immediately. */
+  initialCount?: number;
 };
 
 export default function AIVideoGallery({
@@ -26,10 +28,11 @@ export default function AIVideoGallery({
   heading,
   subtext,
   sectionId = 'smartvideo-gallery',
+  initialCount = INITIAL_COUNT,
 }: AIVideoGalleryProps) {
   const allDemos = demos ?? MINIMAX_H3_DEMOS;
   const [category, setCategory] = useState<string>('All');
-  const [visible, setVisible] = useState(INITIAL_COUNT);
+  const [visible, setVisible] = useState(initialCount);
 
   const categories = useMemo(() => ['All', ...DEMO_CATEGORIES], []);
   const filtered = useMemo(
@@ -66,7 +69,7 @@ export default function AIVideoGallery({
                 type="button"
                 onClick={() => {
                   setCategory(cat);
-                  setVisible(INITIAL_COUNT);
+                  setVisible(initialCount);
                 }}
                 aria-pressed={active}
                 className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${

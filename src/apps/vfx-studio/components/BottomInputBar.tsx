@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Image } from 'lucide-react';
-import ApiKeyModal from './ApiKeyModal';
 import ImageUrlModal from './ImageUrlModal';
 import VideoPopup from './VideoPopup';
 
@@ -76,9 +75,9 @@ interface BottomInputBarProps {
   fileInputRef: React.Ref<HTMLInputElement>;
   handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleDragOver: (e: React.DragEvent) => void;
-  handleDragLeave: (e: React.DragEvent) => void;
+  handleDragLeave: () => void;
   handleDrop: (e: React.DragEvent) => void;
-  handleGenerate: (apiKey?: string) => void;
+  handleGenerate: () => void;
   handleCancel: () => void;
   handleReset: () => void;
   selectedEffect: { id: string; name: string; preview?: string } | null;
@@ -89,7 +88,9 @@ interface BottomInputBarProps {
   error: string;
   videoUrl: string | null;
   userApiKey: string;
-  setUserApiKey: (key: string) => void;
+  pendingGenerate: boolean;
+  setPendingGenerate: (pending: boolean) => void;
+  onRequestApiKey?: () => void;
 }
 
 export default function BottomInputBar({
@@ -129,11 +130,10 @@ export default function BottomInputBar({
   error,
   videoUrl,
   userApiKey,
-  setUserApiKey,
+  pendingGenerate,
+  setPendingGenerate,
+  onRequestApiKey,
 }: BottomInputBarProps) {
-  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState('');
-  const [pendingGenerate, setPendingGenerate] = useState(false);
   const [showImageUrlModal, setShowImageUrlModal] = useState(false);
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [showVideoPopup, setShowVideoPopup] = useState(false);
@@ -175,35 +175,15 @@ export default function BottomInputBar({
       alert('Please provide an image or a text prompt before generating.');
       return;
     }
-    // If user has entered their own API key, use it; otherwise prompt for one
+    // If the global key is available, generate immediately.
     if (userApiKey.trim()) {
-      handleGenerate(userApiKey.trim());
+      handleGenerate();
     } else {
-      setShowApiKeyModal(true);
+      // Otherwise request the central API key modal and mark generation pending
+      // so it auto-starts once the key is saved.
       setPendingGenerate(true);
+      onRequestApiKey?.();
     }
-  }
-
-  function handleApiKeyContinue() {
-    const key = apiKeyInput.trim();
-    if (key) {
-      setUserApiKey(key);
-      setImageUrl('');
-    }
-    setShowApiKeyModal(false);
-    setPendingGenerate(false);
-    setApiKeyInput('');
-    // Auto-close input bar and scroll to video section
-    setShowInputBar(false);
-    // Scroll to video section after a short delay
-    setTimeout(() => {
-      const videoSection = document.getElementById('video-generation-status');
-      if (videoSection) {
-        videoSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, 400);
-    // Call the real generate handler with the provided API key
-    handleGenerate(key || undefined);
   }
 
   const InlineDropdown = ({ value, onChange, options = [], placeholder = 'Select' }: {
@@ -739,20 +719,6 @@ export default function BottomInputBar({
           </svg>
         </button>
       )}
-
-      {/* API Key Modal */}
-      <ApiKeyModal
-        show={showApiKeyModal}
-        apiKeyInput={apiKeyInput}
-        onApiKeyChange={setApiKeyInput}
-        onContinue={handleApiKeyContinue}
-        onCancel={() => {
-          setShowApiKeyModal(false);
-          setPendingGenerate(false);
-          setApiKeyInput('');
-        }}
-        disabled={loading}
-      />
 
       {/* Image URL Modal */}
       <ImageUrlModal

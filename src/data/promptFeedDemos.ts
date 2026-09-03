@@ -31,7 +31,9 @@ export const PROMPTFEED_DEMOS: VideoDemo[] = [
       "action camera"
     ],
     "sourceUrl": "https://x.com/abxxai/status/2087189194720657649",
-    "sourceRepo": "promptfeed"
+    "sourceRepo": "promptfeed",
+    "model": "kling-v2.5-turbo-pro-t2v",
+    "modelName": "Kling V2.5 Turbo Pro"
   },
   {
     "id": 2,
@@ -384,33 +386,6 @@ export const PROMPTFEED_DEMOS: VideoDemo[] = [
   },
   {
     "id": 15,
-    "slug": "2216-a-peaceful-winter-night-in-finland",
-    "title": "A Peaceful Winter Night in Finland",
-    "category": "Animation",
-    "rawCategory": "animation",
-    "useCase": "animation",
-    "duration": 60,
-    "durationLabel": "60s",
-    "aspectRatio": "9:16",
-    "videoSrc": "/media/promptfeed/videos/2216_a-peaceful-winter-night-in-finland.mp4",
-    "posterSrc": "/media/promptfeed/previews/2216_a-peaceful-winter-night-in-finland.jpg",
-    "prompt": "# **🎬 Prompt: \"A Peaceful Winter Night in Finland\"** **Style:** Beautiful **Pixar/DreamWorks-quality 3D animation**, cute stylized cartoon characters, soft rounded features, expressive eyes, cozy Nordic aesthetics, magical realism, warm cinematic lighting, volumetric light, fluffy snow simulation, highly detailed stylized environments, ultra-smooth animation, whimsical atmosphere, 9:16 vertical, 60 seconds, no dialogue, no narration, no text. ## **Scene 1 — A Cozy Winter Morning (0:00–0:08)** The camera slowly glides through fluffy snow-covered pine trees toward a tiny colorful Scandinavian wooden cottage with a red roof, glowing warm yellow windows, flower boxes buried beneath snow, tiny lanterns hanging beside the wooden door, and smoke gently curling from the chimney. The entire village is covered in thick sparkling snow that glitters like tiny diamonds under the soft winter sunrise. Inside the cottage, a cute 3D animated girl with big expressive eyes, rosy cheeks, a cream oversized knitted sweater, fuzzy wool socks, and messy brown hair slowly stretches beneath a fluffy white blanket. A tiny orange kitten sleeps curled beside her pillow. Warm golden sunlight pours through the frosted window, creating beautiful god rays filled with floating dust particles. **Ambient Sounds** • Soft winter wind. • Birds chirping gently. • Fireplace crackling. • Cat purring. • Wooden floor softly creaking. • Coffee gently pouring. • Steam quietly rising. --- ## **Scene 2 — Outside the Cottage (0:08–0:16)** She puts on a fluffy white beanie with a pom-pom, wraps a long knitted scarf around her neck, slips into oversized winter boots, and opens the little wooden door. A wave of crisp winter air enters the room. Snowflakes gently swirl around her. She smiles with sparkling eyes. As she steps outside... **CRUNCH...** Her boots sink into soft untouched snow. Every footprint stays behind. Tiny sparkling snow particles float into the air. Nearby... A small red fox watches curiously. Two little birds land on a snowy fence. A squirrel jumps across a pine branch causing powder snow to fall like glitter. The camera follows beside her with smooth floating movement. --- ## **Scene 3 — Magical Finnish Forest (0:16–0:26)** She walks through a magical stylized Finnish pine forest. Everything feels peaceful. Tall rounded pine trees covered in fluffy snow. Tiny mushrooms hidden beneath snow. Frozen berries hanging from branches. A gentle rabbit hops across the path. A family of reindeer slowly walks through the distance. Sunlight filters beautifully through snowy branches. Snowflakes slowly spin as they fall. She reaches out... One snowflake lands on her mitten. She smiles. The camera circles around her slowly. --- ## **Scene 4 — Frozen Lake (0:26–0:38)** She reaches a huge frozen lake. The surface looks like polished crystal. Tiny snowflakes drift across the ice. She carefully walks onto the frozen lake. Every step echoes softly. She sits on a tiny wooden dock covered in snow. She removes her mittens. Wraps both hands around a steaming mug of hot chocolate. The steam dances softly in the cold air. She watches the peaceful sky. Nothing happens... Only silence... Only nature... --- ## **Scene 5 — Aurora Begins (0:38–0:50)** The wind suddenly becomes softer. The stars slowly appear. One tiny green light glows across the horizon. It slowly grows... The Northern Lights gently awaken. Long flowing ribbons of emerald green... Turquoise... Soft purple... Blue... The aurora dances gracefully across the entire sky like glowing silk floating underwater. Its magical light reflects across the frozen lake. Tiny glowing particles gently float around the girl. Her eyes become wide with wonder. She quietly smiles. The soft green light reflects beautifully inside her eyes. A gentle breeze moves her scarf. The camera slowly circles around her while revealing the enormous colorful sky. --- ## **Scene 6 — Ending (0:50–1:00)** The camera slowly rises higher. Higher... Higher... The girl becomes smaller while sitting peacefully beside the frozen lake. The cozy little cabin glows warmly in the distance. Snow continues falling slowly. The magical aurora fills the entire sky. The forest sparkles beneath soft moonlight. Everything feels calm. Everything feels safe. Everything feels like home. The final frame shows endless snowy Finland glowing beneath dancing Northern Lights before slowly fading into darkness. --- # **🌲 Layered Ambient Sounds** * Soft Arctic wind moving through pine trees * Gentle fluffy snow crunch beneath boots * Tiny birds chirping * Distant raven * Fox footsteps in snow * Squirrel jumping between branches * Powder snow falling from trees * Fireplace crackling * Cat purring * Hot chocolate pouring * Mug gently placed on wooden dock * Steam softly escaping * Frozen lake subtle ice creaks * Fabric rustling * Wool scarf fluttering * Calm breathing * Absolute silence during the aurora * Very soft wind while the Northern Lights dance --- **Visual Style Keywords:** Pixar-quality 3D animation, DreamWorks style, Disney-inspired cozy winter aesthetic, stylized Finnish village, fluffy snow physics, cinematic volumetric lighting, magical realism, expressive cartoon character, ultra-detailed environments, warm cozy color palette, emerald aurora borealis, whimsical atmosphere, slow cinematic camera, peaceful storytelling, premium animated short film.",
-    "featured": false,
-    "hero": false,
-    "interactive": false,
-    "studioTab": "ai-influencer",
-    "tags": [
-      "winter",
-      "Finland",
-      "aurora",
-      "3D",
-      "cozy"
-    ],
-    "sourceUrl": "https://x.com/JuliaClarky/status/2084553574089199732",
-    "sourceRepo": "promptfeed"
-  },
-  {
-    "id": 16,
     "slug": "2291-pixar-style-30-second-3d-animated-short-of-a-beggar-and-a-cr",
     "title": "Pixar-style 30-second 3D animated short of a beggar and a crow",
     "category": "Animation",
@@ -435,7 +410,7 @@ export const PROMPTFEED_DEMOS: VideoDemo[] = [
     "sourceRepo": "promptfeed"
   },
   {
-    "id": 17,
+    "id": 16,
     "slug": "3030-surreal-tokyo-dessert-animation",
     "title": "Surreal Tokyo Dessert Animation",
     "category": "Animation",
@@ -462,7 +437,7 @@ export const PROMPTFEED_DEMOS: VideoDemo[] = [
     "sourceRepo": "promptfeed"
   },
   {
-    "id": 18,
+    "id": 17,
     "slug": "3275-glow-up-time",
     "title": "Glow-Up Time",
     "category": "Animation",
@@ -489,7 +464,7 @@ export const PROMPTFEED_DEMOS: VideoDemo[] = [
     "sourceRepo": "promptfeed"
   },
   {
-    "id": 19,
+    "id": 18,
     "slug": "3215-cute-cinematic-14-second-3d-cartoon-of-a-woman-and-boy-chasi",
     "title": "Cute cinematic 14-second 3D cartoon of a woman and boy chasing a butterfly in a ",
     "category": "Animation",
@@ -516,7 +491,7 @@ export const PROMPTFEED_DEMOS: VideoDemo[] = [
     "sourceRepo": "promptfeed"
   },
   {
-    "id": 20,
+    "id": 19,
     "slug": "3320-cozy-crochet-amigurumi-girl-ordering-pizza-seedance-2-5-stop",
     "title": "Cozy Crochet Amigurumi Girl Ordering Pizza - Seedance 2.5 Stop-Motion Video",
     "category": "Animation",
@@ -543,7 +518,7 @@ export const PROMPTFEED_DEMOS: VideoDemo[] = [
     "sourceRepo": "promptfeed"
   },
   {
-    "id": 21,
+    "id": 20,
     "slug": "2082-tresemm-luxury-haircare-commercial",
     "title": "Tresemmé Luxury Haircare Commercial",
     "category": "Commercial",
@@ -570,7 +545,7 @@ export const PROMPTFEED_DEMOS: VideoDemo[] = [
     "sourceRepo": "promptfeed"
   },
   {
-    "id": 22,
+    "id": 21,
     "slug": "3310-handheld-selfie-vlog-eating-oden-in-hotel-room",
     "title": "Handheld selfie vlog eating oden in hotel room",
     "category": "Commercial",
@@ -597,7 +572,7 @@ export const PROMPTFEED_DEMOS: VideoDemo[] = [
     "sourceRepo": "promptfeed"
   },
   {
-    "id": 23,
+    "id": 22,
     "slug": "2984-the-decadent-snap-artisanal-chocolate-bar-video-prompt",
     "title": "The Decadent Snap - Artisanal Chocolate Bar Video Prompt",
     "category": "Commercial",
@@ -624,7 +599,7 @@ export const PROMPTFEED_DEMOS: VideoDemo[] = [
     "sourceRepo": "promptfeed"
   },
   {
-    "id": 24,
+    "id": 23,
     "slug": "3052-kitkat-break-focus-commercial",
     "title": "KitKat Break Focus Commercial",
     "category": "Commercial",
@@ -651,7 +626,7 @@ export const PROMPTFEED_DEMOS: VideoDemo[] = [
     "sourceRepo": "promptfeed"
   },
   {
-    "id": 25,
+    "id": 24,
     "slug": "1949-handheld-coffee-vlog-with-mini-dv-aesthetic",
     "title": "Handheld coffee vlog with mini DV aesthetic",
     "category": "Commercial",
@@ -676,7 +651,7 @@ export const PROMPTFEED_DEMOS: VideoDemo[] = [
     "sourceRepo": "promptfeed"
   },
   {
-    "id": 26,
+    "id": 25,
     "slug": "1521-luxury-diamond-ring-commercial-storyboard",
     "title": "Luxury Diamond Ring Commercial Storyboard",
     "category": "Commercial",
@@ -702,7 +677,7 @@ export const PROMPTFEED_DEMOS: VideoDemo[] = [
     "sourceRepo": "promptfeed"
   },
   {
-    "id": 27,
+    "id": 26,
     "slug": "3155-young-traveler-hikes-through-lush-mountain-forest-to-hidden-",
     "title": "Young traveler hikes through lush mountain forest to hidden waterfall",
     "category": "Social",
@@ -728,7 +703,7 @@ export const PROMPTFEED_DEMOS: VideoDemo[] = [
     "sourceRepo": "promptfeed"
   },
   {
-    "id": 28,
+    "id": 27,
     "slug": "2781-30-second-photorealistic-smartphone-travel-vlog-of-a-japanes",
     "title": "30-second photorealistic smartphone travel vlog of a Japanese woman at a summer ",
     "category": "Social",
@@ -755,7 +730,7 @@ export const PROMPTFEED_DEMOS: VideoDemo[] = [
     "sourceRepo": "promptfeed"
   },
   {
-    "id": 29,
+    "id": 28,
     "slug": "2477-30-second-vertical-ai-ugc-product-commercial-for-premium-cof",
     "title": "30-second vertical AI UGC product commercial for premium coffee machine",
     "category": "UGC",
@@ -782,7 +757,7 @@ export const PROMPTFEED_DEMOS: VideoDemo[] = [
     "sourceRepo": "promptfeed"
   },
   {
-    "id": 30,
+    "id": 29,
     "slug": "3304-ultra-realistic-ugc-luxury-fashion-review-of-cap-and-shoes-i",
     "title": "Ultra-realistic UGC luxury fashion review of cap and shoes in golden hour bedroo",
     "category": "UGC",

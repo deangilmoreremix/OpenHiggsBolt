@@ -9,6 +9,8 @@ import { useClerk, useAuth } from '@clerk/nextjs';
 import ApiKeyModal from './ApiKeyModal';
 import { SocialPublishProvider } from '@/components/SocialPublishProvider';
 import { AiAssistantProvider } from '@/components/AiAssistantProvider';
+import { useAuthConfig } from '@/lib/authConfig';
+import { DemoPersonalizeProvider } from '@/shared/personalization';
 
 // Lazily load the heavy `studio` package so its many studio modules are not
 // part of the initial bundle for /, /studio and /workflow. Each export is only
@@ -26,7 +28,10 @@ const MarketingStudio = loadStudio('MarketingStudio');
 const RecastStudio = loadStudio('RecastStudio');
 const WorkflowStudio = loadStudio('WorkflowStudio');
 const AgentStudio = loadStudio('AgentStudio');
+const AppsStudio = loadStudio('AppsStudio');
+const McpCliStudio = loadStudio('McpCliStudio');
 const AiInfluencerStudio = loadStudio('AiInfluencerStudio');
+const LayersStudio = loadStudio('LayersStudio');
 
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
 const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ssr: false });
@@ -45,78 +50,39 @@ const TABS = [
   { id: 'storyboard', label: 'Storyboard' },
   { id: 'marketing', label: 'Marketing Studio' },
   { id: 'recast', label: 'Body Swap' },
+  { id: 'layers', label: 'Layers Studio' },
   { id: 'workflows', label: 'Workflows' },
   { id: 'agents', label: 'Agents' },
   { id: 'design-agent', label: 'Design Agent AI' },
   { id: 'vfx-studio', label: 'VFX' },
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
   { id: 'apps', label: 'Explore Apps' },
+  { id: 'mcp-cli', label: 'MCP / CLI' },
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'social-publishing', label: 'Social Publishing' },
-  { id: 'go-ai-viral', label: 'GO- AI Viral' },
+  { id: 'go-ai-viral', label: 'GO-Viral' },
 ];
 
 // Maps every landing-page studio slug to the studio tab that renders it.
 const SLUG_TO_TAB = {
   image: 'image', video: 'video', audio: 'audio', clipping: 'clipping',
   'vibe-motion': 'vibe-motion', lipsync: 'lipsync', cinema: 'cinema',
-  storyboard: 'storyboard', marketing: 'marketing', recast: 'recast',
+  storyboard: 'storyboard', marketing: 'marketing', recast: 'recast', layers: 'layers',
   workflows: 'workflows', agents: 'agents', 'design-agent': 'design-agent',
   'vfx-studio': 'vfx-studio',
   'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio',
-  apps: 'apps',
+  apps: 'apps', 'mcp-cli': 'mcp-cli',
   'ai-influencer': 'ai-influencer',
   'social-publishing': 'social-publishing',
   'go-ai-viral': 'go-ai-viral',
 };
 
-const STORAGE_KEY = 'muapi_key';
-const OPENAI_STORAGE_KEY = 'openai_key';
-
-// Build the muapi_key cookie string. `Secure` is added only over HTTPS so the
-// key still persists on http:// localhost dev servers (Secure cookies are dropped
-// on plain HTTP, which would otherwise break local key saving).
-function muapiCookie(value) {
-  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
-  if (value) {
-    return `muapi_key=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax${secure}`;
-  }
-  return `muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
-}
-
-// Same shape as muapiCookie but for the user's OpenAI key, which is sent to the
-// Supabase edge functions (via the x-openai-key header) for text/image features.
-function openaiCookie(value) {
-  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
-  if (value) {
-    return `openai_key=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax${secure}`;
-  }
-  return `openai_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
-}
-
-// Read a cookie value (used as a fallback when localStorage is empty, e.g. a key
-// set in another tab/session). Returns '' if not present.
-function readCookie(name) {
-  if (typeof document === 'undefined') return '';
-  const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
-  return match ? decodeURIComponent(match[1]) : '';
-}
-
-// MuAPI keys are opaque tokens. We only reject values containing whitespace or
-// control characters (almost always a copy/paste artifact) which would otherwise
-// be sent verbatim and fail auth. We deliberately do NOT strip or transform the
-// key beyond trimming, so a valid key with unusual-but-legal characters is
-// never corrupted.
-const API_KEY_SAFE = /^[^\s\x00-\x1F]+$/;
-function isValidApiKey(key) {
-  return typeof key === 'string' && key.length > 0 && API_KEY_SAFE.test(key);
-}
-
-export default function StandaloneShell({ embedded = false, initialTab = null, demoMode = false } = {}) {
+export default function StandaloneShell({ embedded = false, initialTab = null, demoMode = false, templateData = null } = {}) {
   const params = useParams();
   const router = useRouter();
   const { signOut } = useClerk();
   const { isSignedIn } = useAuth();
+  const auth = useAuthConfig();
   const slug = params?.slug || []; 
   const idFromParams = params?.id;
   const tabFromParams = params?.tab;
@@ -145,8 +111,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
     return (firstSegment && SLUG_TO_TAB[firstSegment]) || 'image';
   };
   
-  const [apiKey, setApiKey] = useState(null);
-  const [openaiKey, setOpenaiKey] = useState(null);
+  const { apiKey, openaiKey, setApiKey, setOpenAiKey, clearApiKey, clearOpenAiKey, hasApiKey, hasOpenAiKey } = auth;
   const [activeTab, setActiveTab] = useState(initialTab || getInitialTab());
 
   useEffect(() => {
@@ -203,6 +168,28 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
     router.push(`/studio/${tabId}`);
   };
 
+  // Cross-studio handoff: listen for studios that request a tab switch via
+  // the shared `storyboard:send-to` event. The source studio writes its
+  // payload to localStorage before emitting, so the target studio can apply
+  // it on mount.
+  const handleTabChangeRef = useRef(handleTabChange)
+  useEffect(() => {
+    handleTabChangeRef.current = handleTabChange
+  })
+  useEffect(() => {
+    const handler = (e) => {
+      const { target } = e.detail || {}
+      if (!target) return
+      const tabId =
+        typeof target === 'string' && SLUG_TO_TAB[target]
+          ? SLUG_TO_TAB[target]
+          : target
+      handleTabChangeRef.current(tabId)
+    }
+    window.addEventListener('storyboard:send-to', handler)
+    return () => window.removeEventListener('storyboard:send-to', handler)
+  }, [embedded, router])
+
   // Auto-hide header when inside a specific workflow view or design agent
   useEffect(() => {
     const isEditingWorkflow = (activeTab === 'workflows' || !!idFromParams) && urlWorkflowId;
@@ -248,31 +235,13 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
   useEffect(() => {
     setHasMounted(true);
     if (demoMode) {
-      setApiKey(null);
-      setOpenaiKey(null);
+      clearApiKey();
+      clearOpenAiKey();
       return;
     }
-    // Each key is restored independently — a user may have saved only one
-    // (e.g. MuAPI) in the past. We set whichever are present. localStorage
-    // is the primary store; the cookie is read as a fallback so a key set on
-    // another tab/session still resolves into state (the interceptor reads state).
-    const stored = localStorage.getItem(STORAGE_KEY) || readCookie(STORAGE_KEY);
-    const storedOpenai = localStorage.getItem(OPENAI_STORAGE_KEY) || readCookie(OPENAI_STORAGE_KEY);
-    if (stored) {
-      const cleanKey = stored.trim();
-      setApiKey(cleanKey);
-      fetchBalance(cleanKey);
-      // Sync cookie immediately on mount to establish identity for background
-      // requests. Encode so special characters don't corrupt the cookie string.
-      document.cookie = muapiCookie(cleanKey);
-    }
-    if (storedOpenai) {
-      const cleanOpenai = storedOpenai.trim();
-      setOpenaiKey(cleanOpenai);
-      document.cookie = openaiCookie(cleanOpenai);
-    }
-    // Both keys present locally → fully authenticated, no prompt.
-    if (stored && storedOpenai) return;
+    // The centralized auth config already restored keys from localStorage/cookies
+    // on module load. If both are present, we're done.
+    if (hasApiKey && hasOpenAiKey) return;
 
     // Missing at least one key — try to restore from the signed-in user's
     // account so the keys follow them across browsers, devices and sign-ins.
@@ -292,15 +261,11 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       }
       if (cancelled) return;
       if (restored) {
-        localStorage.setItem(STORAGE_KEY, restored);
         setApiKey(restored);
         fetchBalance(restored);
-        document.cookie = muapiCookie(restored);
       }
       if (restoredOpenai) {
-        localStorage.setItem(OPENAI_STORAGE_KEY, restoredOpenai);
-        setOpenaiKey(restoredOpenai);
-        document.cookie = openaiCookie(restoredOpenai);
+        setOpenAiKey(restoredOpenai);
       }
       // Still missing at least one key after restore → prompt via the
       // dedicated first-login popup (both keys required to proceed).
@@ -310,19 +275,19 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       }
     })();
     return () => { cancelled = true; };
-  }, [fetchBalance, embedded, demoMode]);
+  }, [fetchBalance, embedded, demoMode, hasApiKey, hasOpenAiKey, setApiKey, setOpenAiKey]);
 
   const [isSavingKey, setIsSavingKey] = useState(false);
 
   const handleKeySave = useCallback(async (key, openaiKeyValue) => {
     if (demoMode) return;
-    const trimmed = key.trim();
-    const trimmedOpenai = (openaiKeyValue || '').trim();
-    if (!trimmed) return;
-    if (!isValidApiKey(trimmed)) {
+    if (!key || !isValidKeyFormat(key)) {
       setAuthError('API key looks invalid (contains spaces or control characters). Re-copy it from your MuAPI dashboard.');
       return;
     }
+
+    const trimmed = key.trim();
+    const trimmedOpenai = (openaiKeyValue || '').trim();
 
     // Verify BOTH keys before committing. Previously a format-valid-but-wrong
     // key was silently saved, leaving the user stranded in the studio with a
@@ -360,12 +325,10 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       return; // Do NOT save an unverified key.
     }
 
-    // Both keys verified — persist them locally, as cookies, and to the
-    // user's account.
-    localStorage.setItem(STORAGE_KEY, trimmed);
-    localStorage.setItem(OPENAI_STORAGE_KEY, trimmedOpenai);
+    // Both keys verified — persist them via the centralized auth config.
+    // This syncs to localStorage, cookies, and notifies all React consumers.
     setApiKey(trimmed);
-    setOpenaiKey(trimmedOpenai);
+    setOpenAiKey(trimmedOpenai);
     setSettingsKeyInput('');
     setSettingsOpenaiInput('');
     setAuthError(null);
@@ -373,11 +336,6 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
     setShowApiKeyPopup(false);
     settingsClosedAt.current = Date.now();
     setIsSavingKey(false);
-    // Persist the keys as cookies before any background requests so server-side
-    // proxy routes can resolve them even when the header is not present.
-    // Encode so special characters don't corrupt the cookie string.
-    document.cookie = muapiCookie(trimmed);
-    document.cookie = openaiCookie(trimmedOpenai);
     // Persist the keys against the signed-in user's account so they are restored
     // automatically on future sign-ins and on other browsers/devices.
     fetch('/api/auth/muapi-key', {
@@ -386,23 +344,19 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       credentials: 'same-origin',
       body: JSON.stringify({ key: trimmed, openaiKey: trimmedOpenai }),
     }).catch(() => {});
-  }, [fetchBalance]);
+  }, [fetchBalance, setApiKey, setOpenAiKey]);
 
   const handleKeyChange = useCallback(() => {
     if (demoMode) return;
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(OPENAI_STORAGE_KEY);
-    setApiKey(null);
-    setOpenaiKey(null);
+    clearApiKey();
+    clearOpenAiKey();
     setBalance(null);
     setSettingsKeyInput('');
     setSettingsOpenaiInput('');
     setAuthError(null);
-    document.cookie = muapiCookie(null);
-    document.cookie = openaiCookie(null);
     // Also forget the keys stored against the user's account.
     fetch('/api/auth/muapi-key', { method: 'DELETE', credentials: 'same-origin' }).catch(() => {});
-  }, []);
+  }, [clearApiKey, clearOpenAiKey]);
 
   // Inject API keys into all outgoing Axios requests (prop-based approach).
   // We use an interceptor to be selective and NOT send the keys to external
@@ -622,31 +576,36 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       {/* Studio Content */}
       <AiAssistantProvider apiKey={apiKey} openaiKey={openaiKey}>
       <SocialPublishProvider apiKey={apiKey}>
+      <DemoPersonalizeProvider apiKey={apiKey}>
       <div className="flex-1 min-h-0 relative overflow-hidden">
-        {activeTab === 'image'   && <ImageStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
-        {activeTab === 'video'   && <VideoStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
-        {activeTab === 'clipping' && <ClippingStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
-        {activeTab === 'vibe-motion' && <VibeMotionStudio apiKey={apiKey} />}
-        {activeTab === 'lipsync' && <LipSyncStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
-        {activeTab === 'cinema'  && <CinemaStudio  apiKey={apiKey} />}
-        {activeTab === 'audio'   && <AudioStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
-         {activeTab === 'marketing' && <MarketingStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
-         {activeTab === 'recast' && <RecastStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
-         {activeTab === 'workflows' && <WorkflowStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
-        {activeTab === 'agents' && <AgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
-        {activeTab === 'design-agent' && <DesignAgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} />}
-        {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} /></MemoryRouter>}
-        {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} /></MemoryRouter>}
-        {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
-        {activeTab === 'brand-studio' && (
-          <div className="flex items-center justify-center h-full">
-            <p style={{ color: semantic.textSecondary }}>Loading Brand Studio…</p>
-          </div>
-        )}
-        {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} />}
-        {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
-        {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
+         {activeTab === 'image'   && <ImageStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
+         {activeTab === 'video'   && <VideoStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
+         {activeTab === 'clipping' && <ClippingStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
+         {activeTab === 'vibe-motion' && <VibeMotionStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
+         {activeTab === 'lipsync' && <LipSyncStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
+         {activeTab === 'cinema'  && <CinemaStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
+         {activeTab === 'audio'   && <AudioStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
+         {activeTab === 'marketing' && <MarketingStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
+         {activeTab === 'recast' && <RecastStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
+         {activeTab === 'layers' && <LayersStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} />}
+         {activeTab === 'workflows' && <WorkflowStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}
+         {activeTab === 'agents' && <AgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}
+         {activeTab === 'design-agent' && <DesignAgentStudio apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}
+         {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} onDismissApiKey={() => setShowApiKeyPopup(false)} templateData={templateData} /></MemoryRouter>}
+         {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} templateData={templateData} /></MemoryRouter>}
+         {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
+         {activeTab === 'brand-studio' && (
+           <div className="flex items-center justify-center h-full">
+             <p style={{ color: semantic.textSecondary }}>Loading Brand Studio…</p>
+           </div>
+         )}
+         {activeTab === 'apps' && <AppsStudio apiKey={apiKey} />}
+         {activeTab === 'mcp-cli' && <McpCliStudio apiKey={apiKey} />}
+         {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} templateData={templateData} />}
+         {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
+         {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
       </div>
+      </DemoPersonalizeProvider>
       </SocialPublishProvider>
       </AiAssistantProvider>
 
@@ -758,6 +717,18 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                     Get your key at platform.openai.com
                   </a>
                 </p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-white/30 mb-2">
+                  {openaiKey ? 'New OpenAI Key' : 'OpenAI API Key'}
+                </label>
+                <input
+                  type="password"
+                  value={settingsOpenaiInput}
+                  onChange={(e) => setSettingsOpenaiInput(e.target.value)}
+                  placeholder="Enter your OpenAI key (sk-...) — optional"
+                  className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[13px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
+                />
               </div>
             </div>
 

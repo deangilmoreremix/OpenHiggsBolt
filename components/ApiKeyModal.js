@@ -1,6 +1,18 @@
 'use client';
 
 import { useState } from 'react';
+import { isValidKeyFormat } from '@/lib/keys';
+
+// Strip invisible Unicode characters that commonly corrupt copied API keys.
+// These characters are invisible in browser inputs but cause MuAPI to reject
+// the key with a 401 "Not authorized" error.
+function cleanApiKey(key) {
+  if (!key) return '';
+  return String(key)
+    .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')  // zero-width chars, BOM, word joiner, soft hyphen
+    .replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '')
+    .trim();
+}
 
 export default function ApiKeyModal({
   onSave,
@@ -21,10 +33,17 @@ export default function ApiKeyModal({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const m = muapiKey.trim();
-    if (!m) { setError('Please enter your MuAPI key'); return; }
-    if (!openaiKey.trim()) { setError('Please enter your OpenAI key'); return; }
-    onSave(m, openaiKey);
+    const m = cleanApiKey(muapiKey);
+    const o = cleanApiKey(openaiKey);
+    if (!m || !isValidKeyFormat(m)) {
+      setError('Please enter a valid MuAPI key (at least 8 characters, no surrounding quotes).');
+      return;
+    }
+    if (!o || !isValidKeyFormat(o)) {
+      setError('Please enter a valid OpenAI key (at least 8 characters, no surrounding quotes).');
+      return;
+    }
+    onSave(m, o);
   };
 
   // On short viewports the card can be taller than the screen. Use vertical

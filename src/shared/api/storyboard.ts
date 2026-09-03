@@ -55,11 +55,20 @@ export interface StoryboardResult {
   error?: string
 }
 
+function cleanKey(apiKey: string): string {
+  if (!apiKey) return ''
+  return String(apiKey)
+    .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')
+    .replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '')
+    .trim()
+}
+
 function getApiKey(): string | null {
   if (typeof window === 'undefined') return null
   const w = window as any
   const stored = w.__MUAPI_KEY__ || (w.localStorage && w.localStorage.getItem('muapi_key'))
-  return stored || null
+  const cleaned = stored ? cleanKey(stored) : null
+  return cleaned || null
 }
 
 function withKey(config: any): any {
@@ -171,4 +180,22 @@ export function extractStoryboardAsset(data: any): string | null {
     (body.output && body.output.url) ||
     null
   )
+}
+
+export interface GenerateShotFramePayload {
+  prompt: string
+  aspect_ratio: '16:9' | '9:16'
+  model?: string
+  images_list?: string[]
+}
+
+export async function generateShotFrame(payload: GenerateShotFramePayload): Promise<string> {
+  const res = await axios.post(
+    `${STORYBOARD_BASE}/generate/shot-frame`,
+    payload,
+    withKey({ method: 'POST' })
+  )
+  const url = extractStoryboardAsset(res.data)
+  if (!url) throw new Error('No frame generated')
+  return url
 }

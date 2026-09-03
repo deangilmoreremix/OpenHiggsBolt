@@ -29,7 +29,9 @@ export const SEEDANCE_25_DEMOS: VideoDemo[] = [
       "text prompt"
     ],
     "sourceUrl": "https://x.com/Sweet_Afterlife/status/2086529483075428749",
-    "sourceRepo": "seedance-25"
+    "sourceRepo": "seedance-25",
+    "model": "seedance-v2.0-t2v",
+    "modelName": "Seedance V2.0"
   },
   {
     "id": 2,
