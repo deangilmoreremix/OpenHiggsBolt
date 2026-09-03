@@ -1,7 +1,7 @@
 /**
  * PersonalizationModal
  *
- * The main modal for the personalization workflow.
+ * Context-driven modal for the personalization workflow.
  */
 
 'use client'
@@ -11,12 +11,10 @@ import {
   useRef,
   useCallback,
   useEffect,
-  type ReactNode,
 } from 'react'
 import {
   X,
   Upload,
-  Plus,
   Trash2,
   Copy,
   Download,
@@ -34,63 +32,9 @@ import {
   AlertTriangle,
   Share2,
   Save,
-  type LucideIcon,
 } from 'lucide-react'
-
-// ── Types ────────────────────────────────────────────────────────────────────
-
-type PersonalizationModalProps = {
-  isOpen: boolean
-  source: any
-  onClose: () => void
-  apiKey?: string
-  clients?: any[]
-  selectedClientId?: string
-  clientForm?: any
-  onSaveClient?: () => void
-  onSelectClient?: (id: string) => void
-  onDeleteClient?: (id: string) => void
-  onClientFormChange?: (form: any) => void
-  identities?: any[]
-  onAddIdentities?: (assets: any[]) => void
-  onSetPrimaryIdentity?: (id: string) => void
-  logos?: any[]
-  onAddLogos?: (assets: any[]) => void
-  onSetPrimaryLogo?: (id: string) => void
-  products?: any[]
-  onAddProducts?: (assets: any[]) => void
-  brandRefs?: any[]
-  onAddBrandRefs?: (assets: any[]) => void
-  firstFrame?: any
-  onSetFirstFrame?: (asset: any) => void
-  lastFrame?: any
-  onSetLastFrame?: (asset: any) => void
-  ctaGraphic?: any
-  onSetCtaGraphic?: (asset: any) => void
-  promptState?: { original: string; personalized: string; edited: string }
-  onPromptStateChange?: (state: { original: string; personalized: string; edited: string }) => void
-  onPersonalizePrompt?: () => void
-  outputType?: string
-  onOutputTypeChange?: (type: string) => void
-  mode?: string | null
-  onModeChange?: (mode: string | null) => void
-  genOptions?: any
-  onGenOptionsChange?: (opts: any) => void
-  generation?: any
-  onGenerate?: () => void
-  onRetry?: () => void
-  result?: any
-  resultTab?: string
-  onResultTabChange?: (tab: string) => void
-  onEditInImageStudio?: () => void
-  onEditInVideoStudio?: () => void
-  onPublish?: () => void
-  onDownload?: () => void
-  onGenerateAgain?: () => void
-  sharedMediaEntries?: any[]
-  sourceTypeLabel?: string
-  setMode?: (mode: string | null) => void
-}
+import { useDemoPersonalize } from './DemoPersonalizeProvider'
+import type { PersonalizationSource, PersonalizationAsset } from './types'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -129,134 +73,232 @@ const OUTPUT_OPTIONS_PROMPT = [
   { key: 'prompt', label: 'Prompt', icon: FileText },
 ] as const
 
+// ── Focus trap ───────────────────────────────────────────────────────────────
+
+function useFocusTrap(isActive: boolean, containerRef: React.RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    if (!isActive || !containerRef.current) return
+
+    const container = containerRef.current
+    const focusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    const focusableElements = container.querySelectorAll<HTMLElement>(focusableSelector)
+    const firstFocusable = focusableElements[0]
+    const lastFocusable = focusableElements[focusableElements.length - 1]
+
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return
+      if (focusableElements.length === 0) {
+        e.preventDefault()
+        return
+      }
+      if (e.shiftKey) {
+        if (document.activeElement === firstFocusable) {
+          e.preventDefault()
+          lastFocusable?.focus()
+        }
+      } else {
+        if (document.activeElement === lastFocusable) {
+          e.preventDefault()
+          firstFocusable?.focus()
+        }
+      }
+    }
+
+    container.addEventListener('keydown', handleTab)
+    firstFocusable?.focus()
+
+    return () => container.removeEventListener('keydown', handleTab)
+  }, [isActive, containerRef])
+}
+
+// ── Asset card component ─────────────────────────────────────────────────────
+
+function AssetCard({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="flex flex-col rounded-xl border border-white/10 bg-black/20 p-4">
+      <div className="mb-2">
+        <p className="text-xs font-semibold text-white">{title}</p>
+        {description && <p className="text-[11px] text-white/40">{description}</p>}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function AssetPreview({
+  asset,
+  onRemove,
+  onSetPrimary,
+  onRetry,
+  isPrimary,
+  primaryLabel,
+}: {
+  asset: PersonalizationAsset
+  onRemove?: () => void
+  onSetPrimary?: () => void
+  onRetry?: () => void
+  isPrimary?: boolean
+  primaryLabel?: string
+}) {
+  const status = asset.uploadStatus
+  const isUploading = status === 'uploading'
+  const isError = status === 'error'
+  const displayUrl = asset.url
+
+  return (
+    <div className="relative aspect-square rounded-lg overflow-hidden border border-white/10">
+      {isUploading && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60">
+          <Loader2 size={18} className="animate-spin text-white" />
+        </div>
+      )}
+      {isError && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1 bg-red-900/40 p-1">
+          <AlertTriangle size={14} className="text-red-300" />
+          <span className="text-[9px] text-red-200 text-center leading-tight">Upload failed</span>
+          <div className="flex gap-1">
+            {onRetry && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onRetry() }}
+                className="rounded bg-white/20 px-1.5 py-0.5 text-[9px] text-white hover:bg-white/30"
+              >
+                Retry
+              </button>
+            )}
+            {onRemove && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onRemove() }}
+                className="rounded bg-red-500/80 px-1.5 py-0.5 text-[9px] text-white hover:bg-red-500"
+              >
+                Remove
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      <img src={displayUrl} alt={asset.name} className="w-full h-full object-cover" />
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5">
+        <p className="text-[10px] text-white/80 truncate">{asset.name}</p>
+      </div>
+      {isPrimary && (
+        <div className="absolute top-1.5 right-1.5 rounded-full bg-cyan-400 px-1.5 py-0.5">
+          <span className="text-[10px] font-bold text-black">{primaryLabel || 'PRIMARY'}</span>
+        </div>
+      )}
+      {!isPrimary && !isError && onRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="absolute top-1.5 left-1.5 rounded-full bg-red-500/80 p-0.5 hover:bg-red-500"
+        >
+          <X size={10} className="text-white" />
+        </button>
+      )}
+      {onSetPrimary && !isPrimary && !isUploading && !isError && (
+        <button
+          type="button"
+          onClick={onSetPrimary}
+          className="absolute bottom-1.5 right-1.5 rounded bg-white/20 px-1.5 py-0.5 text-[10px] text-white hover:bg-white/30"
+        >
+          Set Primary
+        </button>
+      )}
+    </div>
+  )
+}
+
+function UploadButton({
+  onClick,
+  disabled,
+  children,
+}: {
+  onClick: () => void
+  disabled?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="inline-flex items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 px-3 py-2 text-xs font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50"
+    >
+      {children}
+    </button>
+  )
+}
+
 // ── Modal ────────────────────────────────────────────────────────────────────
 
-export default function PersonalizationModal({
-  isOpen,
-  source,
-  onClose,
-  apiKey,
-  clients = [],
-  selectedClientId = '',
-  clientForm = {},
-  onSaveClient = () => {},
-  onSelectClient = () => {},
-  onDeleteClient = () => {},
-  onClientFormChange = () => {},
-  identities = [],
-  onAddIdentities = () => {},
-  onSetPrimaryIdentity = () => {},
-  logos = [],
-  onAddLogos = () => {},
-  onSetPrimaryLogo = () => {},
-  products = [],
-  onAddProducts = () => {},
-  brandRefs = [],
-  onAddBrandRefs = () => {},
-  firstFrame = null,
-  onSetFirstFrame = () => {},
-  lastFrame = null,
-  onSetLastFrame = () => {},
-  ctaGraphic = null,
-  onSetCtaGraphic = () => {},
-  promptState = { original: '', personalized: '', edited: '' },
-  onPromptStateChange = () => {},
-  onPersonalizePrompt = () => {},
-  outputType = 'prompt',
-  onOutputTypeChange = () => {},
-  mode = null,
-  onModeChange = () => {},
-  genOptions = {},
-  onGenOptionsChange = () => {},
-  generation = { status: 'idle', progress: 0, progressMessage: '', errorMessage: null },
-  onGenerate = () => {},
-  onRetry = () => {},
-  result = null,
-  resultTab = 'prompt',
-  onResultTabChange = () => {},
-  onEditInImageStudio = () => {},
-  onEditInVideoStudio = () => {},
-  onPublish = () => {},
-  onDownload = () => {},
-  onGenerateAgain = () => {},
-  sharedMediaEntries = [],
-  sourceTypeLabel = undefined,
-  setMode = () => {},
-}: PersonalizationModalProps) {
-  // Type-safe locals derived from props (with safe defaults)
-  const safeClients = clients ?? []
-  const safeSelectedClientId = selectedClientId ?? ''
-  const safeClientForm = clientForm ?? {}
-  const safeIdentities = identities ?? []
-  const safeLogos = logos ?? []
-  const safeProducts = products ?? []
-  const safeBrandRefs = brandRefs ?? []
-  const safeFirstFrame = firstFrame ?? null
-  const safeLastFrame = lastFrame ?? null
-  const safeCtaGraphic = ctaGraphic ?? null
-  const safePromptState = promptState ?? { original: '', personalized: '', edited: '' }
-  const safeOutputType = outputType ?? 'prompt'
-  const safeMode = mode ?? null
-  const safeGenOptions = genOptions ?? {}
-  const safeGeneration = generation ?? { status: 'idle', progress: 0, progressMessage: '', errorMessage: null }
-  const safeResult = result ?? null
-  const safeResultTab = resultTab ?? 'prompt'
-  const safeSharedMediaEntries = sharedMediaEntries ?? []
+export default function PersonalizationModal() {
+  const ctx = useDemoPersonalize()
+  const {
+    isOpen,
+    source,
+    closePersonalize,
+    sourceTypeLabel,
+    apiKey,
+    clients,
+    selectedClientId,
+    clientForm,
+    saveClient,
+    selectClient,
+    deleteClient,
+    updateClientForm,
+    assets,
+    addIdentityFiles,
+    removeIdentity,
+    setPrimaryIdentity,
+    addLogoFiles,
+    removeLogo,
+    setPrimaryLogo,
+    addProductFiles,
+    removeProduct,
+    addBrandReferenceFiles,
+    removeBrandReference,
+    setFirstFrameFile,
+    removeFirstFrame,
+    setLastFrameFile,
+    removeLastFrame,
+    setCtaGraphicFile,
+    removeCtaGraphic,
+    retryAssetUpload,
+    promptState,
+    updatePersonalizedPrompt,
+    resetPrompt,
+    personalizePrompt,
+    outputType,
+    setOutputType,
+    mode,
+    setMode,
+    genOptions,
+    updateGenOptions,
+    generation,
+    generate,
+    retry,
+    generateAgain,
+    result,
+    resultTab,
+    setResultTab,
+    editInImageStudio,
+    editInVideoStudio,
+    publish,
+    download,
+    sharedMediaEntries,
+  }: any = ctx
 
-  // Non-null assertions for callbacks (defaults provided in destructuring)
-  const _onAddIdentities = onAddIdentities!
-  const _onSetPrimaryIdentity = onSetPrimaryIdentity!
-  const _onAddLogos = onAddLogos!
-  const _onSetPrimaryLogo = onSetPrimaryLogo!
-  const _onAddProducts = onAddProducts!
-  const _onAddBrandRefs = onAddBrandRefs!
-  const _onSetFirstFrame = onSetFirstFrame!
-  const _onSetLastFrame = onSetLastFrame!
-  const _onSetCtaGraphic = onSetCtaGraphic!
-  const _onClientFormChange = onClientFormChange!
-  const _onSaveClient = onSaveClient!
-  const _onSelectClient = onSelectClient!
-  const _onDeleteClient = onDeleteClient!
-  const _onPromptStateChange = onPromptStateChange!
-  const _onPersonalizePrompt = onPersonalizePrompt!
-  const _onOutputTypeChange = onOutputTypeChange!
-  const _onModeChange = onModeChange!
-  const _onGenOptionsChange = onGenOptionsChange!
-  const _onGenerate = onGenerate!
-  const _onRetry = onRetry!
-  const _onEditInImageStudio = onEditInImageStudio!
-  const _onEditInVideoStudio = onEditInVideoStudio!
-  const _onPublish = onPublish!
-  const _onDownload = onDownload!
-  const _onGenerateAgain = onGenerateAgain!
-
-  // Expose safe locals under original names for the rest of the component
-  const _clients = safeClients
-  const _selectedClientId = safeSelectedClientId
-  const _clientForm = safeClientForm
-  const _identities = safeIdentities
-  const _logos = safeLogos
-  const _products = safeProducts
-  const _brandRefs = safeBrandRefs
-  const _firstFrame = safeFirstFrame
-  const _lastFrame = safeLastFrame
-  const _ctaGraphic = safeCtaGraphic
-  const _promptState = safePromptState
-  const _outputType = safeOutputType
-  const _mode = safeMode
-  const _genOptions = safeGenOptions
-  const _generation = safeGeneration
-  const _result = safeResult
-  const _resultTab = safeResultTab
-  const _sharedMediaEntries = safeSharedMediaEntries
-
-  const [activeSection, setActiveSection] = useState<string>('client')
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const [isUploading, setIsUploading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const [uploadMessage, setUploadMessage] = useState('')
   const [copiedPrompt, setCopiedPrompt] = useState(false)
-  const [activeAssetTab, setActiveAssetTab] = useState<string>('identities')
   const dialogRef = useRef<HTMLDivElement>(null)
   const identityInputRef = useRef<HTMLInputElement>(null)
   const logoInputRef = useRef<HTMLInputElement>(null)
@@ -265,12 +307,34 @@ export default function PersonalizationModal({
   const firstFrameInputRef = useRef<HTMLInputElement>(null)
   const lastFrameInputRef = useRef<HTMLInputElement>(null)
   const ctaInputRef = useRef<HTMLInputElement>(null)
+  const previousActiveElementRef = useRef<HTMLElement | null>(null)
 
-  // Reset on source change
+  useFocusTrap(isOpen, dialogRef)
+
   useEffect(() => {
-    setActiveSection('client')
-    onModeChange?.(null)
-  }, [source?.id])
+    if (!isOpen) return
+
+    previousActiveElementRef.current = document.activeElement as HTMLElement
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closePersonalize()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = ''
+      previousActiveElementRef.current?.focus()
+    }
+  }, [isOpen, closePersonalize])
+
+  useEffect(() => {
+    setMode(null)
+  }, [source?.id, setMode])
 
   if (!isOpen || !source) return null
 
@@ -285,113 +349,60 @@ export default function PersonalizationModal({
   const handleIdentityUpload = useCallback(
     (files: FileList | null) => {
       if (!files) return
-      const newAssets = Array.from(files).map((file) => ({
-        id: `asset_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        role: 'presenter_identity',
-        name: file.name,
-        url: URL.createObjectURL(file),
-        isPrimary: identities.length === 0,
-        createdAt: new Date().toISOString(),
-      }))
-      _onAddIdentities([...identities, ...newAssets])
+      addIdentityFiles(files)
     },
-    [identities, onAddIdentities],
+    [addIdentityFiles],
   )
 
   const handleLogoUpload = useCallback(
     (files: FileList | null) => {
       if (!files) return
-      const newAssets = Array.from(files).map((file) => ({
-        id: `asset_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        role: 'logo',
-        name: file.name,
-        url: URL.createObjectURL(file),
-        isPrimary: logos.length === 0,
-        createdAt: new Date().toISOString(),
-      }))
-      _onAddLogos([...logos, ...newAssets])
+      addLogoFiles(files)
     },
-    [logos, onAddLogos],
+    [addLogoFiles],
   )
 
   const handleProductUpload = useCallback(
     (files: FileList | null) => {
       if (!files) return
-      const newAssets = Array.from(files).map((file) => ({
-        id: `asset_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        role: 'product_reference',
-        name: file.name,
-        url: URL.createObjectURL(file),
-        isPrimary: false,
-        createdAt: new Date().toISOString(),
-      }))
-      _onAddProducts([...products, ...newAssets])
+      addProductFiles(files)
     },
-    [products, onAddProducts],
+    [addProductFiles],
   )
 
   const handleBrandRefUpload = useCallback(
     (files: FileList | null) => {
       if (!files) return
-      const newAssets = Array.from(files).map((file) => ({
-        id: `asset_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        role: 'brand_reference',
-        name: file.name,
-        url: URL.createObjectURL(file),
-        isPrimary: false,
-        createdAt: new Date().toISOString(),
-      }))
-      _onAddBrandRefs([...brandRefs, ...newAssets])
+      addBrandReferenceFiles(files)
     },
-    [brandRefs, onAddBrandRefs],
+    [addBrandReferenceFiles],
   )
 
   const handleFirstFrameUpload = useCallback(
     (files: FileList | null) => {
       if (!files || files.length === 0) return
       const file = files[0]
-      _onSetFirstFrame({
-        id: `asset_${Date.now()}`,
-        role: 'first_frame',
-        name: file.name,
-        url: URL.createObjectURL(file),
-        isPrimary: true,
-        createdAt: new Date().toISOString(),
-      })
+      setFirstFrameFile(file)
     },
-    [onSetFirstFrame],
+    [setFirstFrameFile],
   )
 
   const handleLastFrameUpload = useCallback(
     (files: FileList | null) => {
       if (!files || files.length === 0) return
       const file = files[0]
-      _onSetLastFrame({
-        id: `asset_${Date.now()}`,
-        role: 'last_frame',
-        name: file.name,
-        url: URL.createObjectURL(file),
-        isPrimary: true,
-        createdAt: new Date().toISOString(),
-      })
+      setLastFrameFile(file)
     },
-    [onSetLastFrame],
+    [setLastFrameFile],
   )
 
   const handleCtaUpload = useCallback(
     (files: FileList | null) => {
       if (!files || files.length === 0) return
       const file = files[0]
-      _onSetCtaGraphic({
-        id: `asset_${Date.now()}`,
-        role: 'cta_graphic',
-        name: file.name,
-        url: URL.createObjectURL(file),
-        isPrimary: true,
-        createdAt: new Date().toISOString(),
-      })
+      setCtaGraphicFile(file)
     },
-    [onSetCtaGraphic],
+    [setCtaGraphicFile],
   )
 
   const handleCopyPrompt = useCallback(async () => {
@@ -406,8 +417,8 @@ export default function PersonalizationModal({
   }, [promptState])
 
   const handleResetPrompt = useCallback(() => {
-    _onPromptStateChange({ ...promptState, personalized: '', edited: '' })
-  }, [promptState, onPromptStateChange])
+    resetPrompt()
+  }, [resetPrompt])
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -416,7 +427,7 @@ export default function PersonalizationModal({
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
       style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
+        if (e.target === e.currentTarget) closePersonalize()
       }}
     >
       <div
@@ -428,7 +439,7 @@ export default function PersonalizationModal({
         className="w-full max-w-6xl overflow-hidden rounded-2xl shadow-2xl animate-fade-in-up"
         style={{
           background: '#111',
-          border: '1px solid rgba(255,255,255,0.08)',
+          border: '1px solid var(--border-color, rgba(255,255,255,0.08))',
           maxHeight: '90vh',
           display: 'flex',
           flexDirection: 'column',
@@ -451,12 +462,12 @@ export default function PersonalizationModal({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={closePersonalize}
             disabled={generation.status === 'generating' || generation.status === 'personalizing-prompt'}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
+            className="p-2 rounded-lg text-white/70 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
             aria-label="Close personalization modal"
           >
-            <X size={16} />
+            <X size={17} />
           </button>
         </div>
 
@@ -477,7 +488,7 @@ export default function PersonalizationModal({
                 {(result.type === 'prompt' ? ['prompt'] : result.type === 'image' ? ['prompt', 'images'] : ['prompt', 'videos']).map((tab: string) => (
                   <button
                     key={tab}
-                    onClick={() => onResultTabChange(tab)}
+                    onClick={() => setResultTab(tab)}
                     className={classNames(
                       'px-4 py-2 text-sm font-medium transition-colors',
                       resultTab === tab ? 'text-cyan-300' : 'text-white/50 hover:text-white/80',
@@ -508,16 +519,16 @@ export default function PersonalizationModal({
                     <pre className="whitespace-pre-wrap break-words text-sm leading-6 text-white/90">{promptState.edited || promptState.personalized || promptState.original}</pre>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button onClick={onGenerateAgain} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: '#22d3ee' }}>
+                    <button onClick={generateAgain} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: '#22d3ee' }}>
                       <RefreshCw size={14} /> Generate Again
                     </button>
                     {result.type !== 'video' && (
-                      <button onClick={() => _onOutputTypeChange('video')} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white' }}>
+                      <button onClick={() => setOutputType('video')} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white' }}>
                         <Video size={14} /> Generate Video
                       </button>
                     )}
                     {result.type !== 'image' && (
-                      <button onClick={() => _onOutputTypeChange('image')} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white' }}>
+                      <button onClick={() => setOutputType('image')} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white' }}>
                         <Image size={14} /> Generate Image
                       </button>
                     )}
@@ -545,16 +556,16 @@ export default function PersonalizationModal({
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button onClick={onDownload} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white' }}>
+                    <button onClick={download} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white' }}>
                       <Download size={14} /> Download
                     </button>
-                    <button onClick={onEditInImageStudio} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white' }}>
+                    <button onClick={editInImageStudio} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white' }}>
                       <Image size={14} /> Edit in Image Studio
                     </button>
-                    <button onClick={onPublish} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: '#22d3ee' }}>
+                    <button onClick={publish} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: '#22d3ee' }}>
                       <Share2 size={14} /> Publish
                     </button>
-                    <button onClick={onGenerateAgain} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white' }}>
+                    <button onClick={generateAgain} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white' }}>
                       <RefreshCw size={14} /> Generate Again
                     </button>
                   </div>
@@ -581,16 +592,16 @@ export default function PersonalizationModal({
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button onClick={onDownload} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white' }}>
+                    <button onClick={download} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white' }}>
                       <Download size={14} /> Download
                     </button>
-                    <button onClick={onEditInVideoStudio} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white' }}>
+                    <button onClick={editInVideoStudio} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white' }}>
                       <Video size={14} /> Edit in Video Studio
                     </button>
-                    <button onClick={onPublish} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: '#22d3ee' }}>
+                    <button onClick={publish} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: '#22d3ee' }}>
                       <Share2 size={14} /> Publish
                     </button>
-                    <button onClick={onGenerateAgain} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white' }}>
+                    <button onClick={generateAgain} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white' }}>
                       <RefreshCw size={14} /> Generate Again
                     </button>
                   </div>
@@ -600,7 +611,7 @@ export default function PersonalizationModal({
                       {VIDEO_MODES.filter((m: any) => m.key !== mode).map((m: any) => (
                         <button
                           key={m.key}
-                          onClick={() => { _onModeChange(m.key); _onGenerateAgain() }}
+                          onClick={() => { setMode(m.key); generateAgain() }}
                           className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors"
                           style={{ border: '1px solid rgba(255,255,255,0.08)' }}
                         >
@@ -630,10 +641,10 @@ export default function PersonalizationModal({
               </p>
               <p className="text-xs text-white/40">Your client, assets, and settings have been preserved.</p>
               <div className="flex flex-wrap items-center justify-center gap-2">
-                <button onClick={onRetry} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: '#22d3ee' }}>
+                <button onClick={retry} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: '#22d3ee' }}>
                   <RefreshCw size={14} /> Retry
                 </button>
-                <button onClick={onGenerate} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ background: 'linear-gradient(to right, #22d3ee, #a855f7)', color: 'black' }}>
+                <button onClick={generate} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ background: 'linear-gradient(to right, #22d3ee, #a855f7)', color: 'black' }}>
                   Try Again
                 </button>
               </div>
@@ -649,65 +660,59 @@ export default function PersonalizationModal({
                 </div>
                 <p className="text-xs text-white/40 mt-1">{generation.progress}%</p>
               </div>
-              {isUploading && (
-                <div className="max-w-xs mx-auto">
-                  <p className="text-xs text-white/60">{uploadMessage}</p>
-                  <div className="h-1.5 rounded-full bg-white/10 overflow-hidden mt-1">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${uploadProgress}%`, background: '#22d3ee' }} />
-                  </div>
-                </div>
-              )}
             </div>
           ) : (
             /* ── Configuration View ───────────────────────────────────────── */
             <div className="flex flex-col lg:flex-row">
-              {/* Left column - Source */}
-              <div className="w-full lg:w-1/2 p-6 border-b lg:border-b-0 lg:border-r border-white/10">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40 mb-4">Source Demo</h3>
-                <div className="rounded-xl border border-white/10 overflow-hidden bg-black/20">
-                  {isVideo && source.sourceMedia && (
-                    <div className="relative aspect-video bg-black">
-                      <video
-                        src={source.sourceMedia}
-                        poster={source.poster || undefined}
-                        controls
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                  )}
-                  {isImage && source.sourceMedia && (
-                    <img src={source.sourceMedia} alt={source.title} className="w-full object-contain" style={{ maxHeight: '40vh' }} />
-                  )}
-                  {!source.sourceMedia && (
-                    <div className="flex aspect-video items-center justify-center bg-white/5">
-                      <FileText size={32} style={{ color: 'rgba(255,255,255,0.2)' }} />
-                    </div>
-                  )}
-                  <div className="p-4 space-y-2">
-                    <h4 className="text-sm font-semibold text-white line-clamp-2">{source.title}</h4>
-                    {sourceTypeLabel && (
-                      <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider" style={{ background: 'rgba(34,211,238,0.15)', color: '#22d3ee' }}>{sourceTypeLabel}</span>
+              {/* Left column - Source + prompt */}
+              <div className="w-full lg:w-1/2 p-6 border-b lg:border-b-0 lg:border-r border-white/10 space-y-6">
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40 mb-4">Source Demo</h3>
+                  <div className="rounded-xl border border-white/10 overflow-hidden bg-black/20">
+                    {isVideo && source.sourceMedia && (
+                      <div className="relative aspect-video bg-black">
+                        <video
+                          src={source.sourceMedia}
+                          poster={source.poster || undefined}
+                          controls
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
                     )}
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      {source.category && <div><span className="text-white/40">Category:</span> <span className="text-white/80">{source.category}</span></div>}
-                      {source.modelName && <div><span className="text-white/40">Model:</span> <span className="text-white/80">{source.modelName}</span></div>}
-                      {source.aspectRatio && <div><span className="text-white/40">Aspect:</span> <span className="text-white/80">{source.aspectRatio}</span></div>}
-                      {source.durationLabel && <div><span className="text-white/40">Duration:</span> <span className="text-white/80">{source.durationLabel}</span></div>}
+                    {isImage && source.sourceMedia && (
+                      <img src={source.sourceMedia} alt={source.title} className="w-full object-contain" style={{ maxHeight: '40vh' }} />
+                    )}
+                    {!source.sourceMedia && (
+                      <div className="flex aspect-video items-center justify-center bg-white/5">
+                        <FileText size={32} style={{ color: 'rgba(255,255,255,0.2)' }} />
+                      </div>
+                    )}
+                    <div className="p-4 space-y-2">
+                      <h4 className="text-sm font-semibold text-white line-clamp-2">{source.title}</h4>
+                      {sourceTypeLabel && (
+                        <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider" style={{ background: 'rgba(34,211,238,0.15)', color: '#22d3ee' }}>{sourceTypeLabel}</span>
+                      )}
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {source.category && <div><span className="text-white/40">Category:</span> <span className="text-white/80">{source.category}</span></div>}
+                        {source.modelName && <div><span className="text-white/40">Model:</span> <span className="text-white/80">{source.modelName}</span></div>}
+                        {source.aspectRatio && <div><span className="text-white/40">Aspect:</span> <span className="text-white/80">{source.aspectRatio}</span></div>}
+                        {source.durationLabel && <div><span className="text-white/40">Duration:</span> <span className="text-white/80">{source.durationLabel}</span></div>}
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Prompt section */}
-                <div className="mt-6 space-y-3">
+                {/* Original prompt */}
+                <div className="space-y-3">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40">Original Prompt</h3>
                   <div className="rounded-xl border border-white/10 bg-black/30 p-4">
                     <pre className="whitespace-pre-wrap break-words text-[13px] leading-6 text-white/70">{source.originalPrompt || source.fullPrompt || source.shortPrompt || ''}</pre>
                   </div>
                 </div>
 
-                {/* Personalized prompt section */}
+                {/* Personalized prompt */}
                 {promptState.personalized && (
-                  <div className="mt-4 space-y-3">
+                  <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-300">Personalized Prompt</h3>
                       <div className="flex gap-2">
@@ -721,7 +726,7 @@ export default function PersonalizationModal({
                     </div>
                     <textarea
                       value={promptState.edited || promptState.personalized}
-                      onChange={(e) => _onPromptStateChange({ ...promptState, edited: e.target.value })}
+                      onChange={(e) => updatePersonalizedPrompt(e.target.value)}
                       rows={6}
                       className="w-full rounded-xl border border-cyan-400/20 bg-black/30 p-4 text-sm leading-6 text-white/90 outline-none resize-y"
                       style={{ caretColor: '#22d3ee' }}
@@ -743,7 +748,7 @@ export default function PersonalizationModal({
                     ].map(({ key, label, icon: Icon }) => (
                       <button
                         key={key}
-                        onClick={() => _onClientFormChange({ ...clientForm, audience: key })}
+                        onClick={() => updateClientForm({ ...clientForm, audience: key })}
                         className={classNames(
                           'flex flex-col items-center gap-1.5 rounded-xl border p-3 transition-all',
                           clientForm.audience === key ? 'border-cyan-400/50 bg-cyan-400/10' : 'border-white/10 bg-white/[0.02] hover:bg-white/5',
@@ -762,7 +767,7 @@ export default function PersonalizationModal({
                   <div className="flex gap-2">
                     <select
                       value={selectedClientId}
-                      onChange={(e) => _onSelectClient(e.target.value)}
+                      onChange={(e) => selectClient(e.target.value)}
                       className="flex-1 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none"
                     >
                       <option value="">Select Existing Client</option>
@@ -770,7 +775,7 @@ export default function PersonalizationModal({
                         <option key={c.id} value={c.id}>{c.businessName || c.name || c.id}</option>
                       ))}
                     </select>
-                    <button onClick={() => { _onSelectClient(''); _onClientFormChange({ ...clientForm, id: '', name: '', businessName: '' }) }} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white/70 hover:bg-white/10 transition-colors">
+                    <button onClick={() => { selectClient(''); updateClientForm({ ...clientForm, id: '', name: '', businessName: '' }) }} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white/70 hover:bg-white/10 transition-colors">
                       New
                     </button>
                   </div>
@@ -792,7 +797,7 @@ export default function PersonalizationModal({
                         <label className="block text-[11px] uppercase tracking-wider text-white/40 mb-1">{label}</label>
                         <input
                           value={(clientForm as any)[key]}
-                          onChange={(e) => _onClientFormChange({ ...clientForm, [key]: e.target.value })}
+                          onChange={(e) => updateClientForm({ ...clientForm, [key]: e.target.value })}
                           placeholder={placeholder}
                           className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none placeholder:text-white/20"
                         />
@@ -802,7 +807,7 @@ export default function PersonalizationModal({
                       <label className="block text-[11px] uppercase tracking-wider text-white/40 mb-1">Brand Description</label>
                       <textarea
                         value={clientForm.brandDescription}
-                        onChange={(e) => _onClientFormChange({ ...clientForm, brandDescription: e.target.value })}
+                        onChange={(e) => updateClientForm({ ...clientForm, brandDescription: e.target.value })}
                         rows={2}
                         placeholder="Describe the brand style, colors, mood..."
                         className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none resize-y placeholder:text-white/20"
@@ -810,272 +815,247 @@ export default function PersonalizationModal({
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={onSaveClient} className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: '#22d3ee' }}>
+                    <button onClick={saveClient} className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold" style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: '#22d3ee' }}>
                       <Save size={14} /> {selectedClientId ? 'Update Client' : 'Save Client'}
                     </button>
                     {selectedClientId && (
-                      <button onClick={() => _onDeleteClient(selectedClientId)} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-400/10 transition-colors" style={{ border: '1px solid rgba(248,113,113,0.2)' }}>
+                      <button onClick={() => deleteClient(selectedClientId)} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-400/10 transition-colors" style={{ border: '1px solid rgba(248,113,113,0.2)' }}>
                         <Trash2 size={14} /> Delete
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* Assets */}
+                {/* Client Assets — SIX visible cards */}
                 <div className="space-y-3">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40">Client Assets</h3>
-                  <p className="text-xs text-white/40">Add people, branding, and visual references for personalization.</p>
-
-                  {/* Asset tabs */}
-                  <div className="flex flex-wrap gap-1 border-b border-white/10 pb-px">
-                    {[
-                      { key: 'identities', label: 'Person' },
-                      { key: 'logos', label: 'Logo' },
-                      { key: 'products', label: 'Products' },
-                      { key: 'brandRefs', label: 'Brand' },
-                      { key: 'frames', label: 'Frames' },
-                      { key: 'cta', label: 'CTA' },
-                    ].map(({ key, label }) => (
-                      <button
-                        key={key}
-                        onClick={() => setActiveAssetTab(key)}
-                        className={classNames(
-                          'px-3 py-1.5 text-xs font-medium transition-colors',
-                          activeAssetTab === key ? 'text-cyan-300' : 'text-white/50 hover:text-white/80',
-                        )}
-                        style={{ borderBottom: activeAssetTab === key ? '2px solid #22d3ee' : '2px solid transparent' }}
-                      >
-                        {label}
-                      </button>
-                    ))}
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40">Client Assets</h3>
+                    <p className="text-xs text-white/40">Add the people, products, branding and visual references SmartVideo should use.</p>
                   </div>
-
-                  {/* Person / Presenter */}
-                  {activeAssetTab === 'identities' && (
-                    <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Person / Presenter */}
+                    <AssetCard title="Person / Presenter" description="Upload one or more photos of the person who should appear in the personalized content.">
                       <div className="flex flex-wrap gap-2">
                         <input type="file" ref={identityInputRef} accept="image/*" multiple className="hidden" onChange={(e) => { handleIdentityUpload(e.target.files); e.target.value = '' }} />
-                        <button onClick={() => identityInputRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors" style={{ border: '1px dashed rgba(255,255,255,0.15)' }}>
-                          <Upload size={12} /> Upload Photos
-                        </button>
+                        <UploadButton onClick={() => identityInputRef.current?.click()}>
+                          <Upload size={12} /> Add Photos
+                        </UploadButton>
                       </div>
-                      {identities.length > 0 && (
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                          {identities.map((asset: any) => (
-                            <div
-                              key={asset.id}
-                              className={classNames(
-                                'relative aspect-square rounded-xl overflow-hidden border-2 cursor-pointer transition-all',
-                                asset.isPrimary ? 'border-cyan-400' : 'border-white/10 hover:border-white/30',
-                              )}
-                              onClick={() => _onSetPrimaryIdentity(asset.id)}
-                            >
-                              <img src={asset.url} alt={asset.name} className="w-full h-full object-cover" />
-                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-1.5">
-                                <p className="text-[10px] text-white/80 truncate">{asset.name}</p>
-                              </div>
-                              {asset.isPrimary && (
-                                <div className="absolute top-1.5 right-1.5 rounded-full bg-cyan-400 p-0.5">
-                                  <Check size={10} className="text-black" />
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                      {assets.identities.length > 0 && (
+                        <div className="grid grid-cols-3 gap-2 mt-2">
+                           {assets.identities.map((asset: any) => (
+                             <AssetPreview
+                               key={asset.id}
+                               asset={asset}
+                               isPrimary={asset.isPrimary}
+                               primaryLabel="PRIMARY"
+                               onSetPrimary={() => setPrimaryIdentity(asset.id)}
+                               onRemove={() => removeIdentity(asset.id)}
+                               onRetry={() => retryAssetUpload(asset.id)}
+                             />
+                           ))}
                         </div>
                       )}
-                      {identities.length > 0 && (
-                        <p className="text-[11px] text-white/40">Click an image to set it as Primary Identity.</p>
-                      )}
-                    </div>
-                  )}
+                    </AssetCard>
 
-                  {/* Logos */}
-                  {activeAssetTab === 'logos' && (
-                    <div className="space-y-3">
+                    {/* Logo */}
+                    <AssetCard title="Logo" description="Upload the exact client logo for precise branding.">
                       <div className="flex flex-wrap gap-2">
                         <input type="file" ref={logoInputRef} accept="image/*" className="hidden" onChange={(e) => { handleLogoUpload(e.target.files); e.target.value = '' }} />
-                        <button onClick={() => logoInputRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors" style={{ border: '1px dashed rgba(255,255,255,0.15)' }}>
+                        <UploadButton onClick={() => logoInputRef.current?.click()}>
                           <Upload size={12} /> Upload Logo
-                        </button>
+                        </UploadButton>
                       </div>
-                      {logos.length > 0 && (
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                          {logos.map((asset: any) => (
-                            <div
-                              key={asset.id}
-                              className={classNames(
-                                'relative aspect-square rounded-xl overflow-hidden border-2 cursor-pointer transition-all',
-                                asset.isPrimary ? 'border-cyan-400' : 'border-white/10 hover:border-white/30',
-                              )}
-                              onClick={() => _onSetPrimaryLogo(asset.id)}
-                            >
-                              <img src={asset.url} alt={asset.name} className="w-full h-full object-contain p-2" style={{ background: 'rgba(255,255,255,0.05)' }} />
-                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-1.5">
-                                <p className="text-[10px] text-white/80 truncate">{asset.name}</p>
-                              </div>
-                              {asset.isPrimary && (
-                                <div className="absolute top-1.5 right-1.5 rounded-full bg-cyan-400 p-0.5">
-                                  <Check size={10} className="text-black" />
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                      {assets.logos.length > 0 && (
+                        <div className="grid grid-cols-3 gap-2 mt-2">
+                           {assets.logos.map((asset: any) => (
+                             <AssetPreview
+                               key={asset.id}
+                               asset={asset}
+                               isPrimary={asset.isPrimary}
+                               primaryLabel="PRIMARY"
+                               onSetPrimary={() => setPrimaryLogo(asset.id)}
+                               onRemove={() => removeLogo(asset.id)}
+                               onRetry={() => retryAssetUpload(asset.id)}
+                             />
+                           ))}
                         </div>
                       )}
-                    </div>
-                  )}
+                    </AssetCard>
 
-                  {/* Products */}
-                  {activeAssetTab === 'products' && (
-                    <div className="space-y-3">
+                    {/* Products / Services */}
+                    <AssetCard title="Products / Services" description="Upload product or service images to include in the personalized output.">
                       <div className="flex flex-wrap gap-2">
                         <input type="file" ref={productInputRef} accept="image/*" multiple className="hidden" onChange={(e) => { handleProductUpload(e.target.files); e.target.value = '' }} />
-                        <button onClick={() => productInputRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors" style={{ border: '1px dashed rgba(255,255,255,0.15)' }}>
-                          <Upload size={12} /> Upload Products
-                        </button>
+                        <UploadButton onClick={() => productInputRef.current?.click()}>
+                          <Upload size={12} /> Add Images
+                        </UploadButton>
                       </div>
-                      {products.length > 0 && (
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                          {products.map((asset: any) => (
-                            <div key={asset.id} className="relative aspect-square rounded-xl overflow-hidden border border-white/10">
-                              <img src={asset.url} alt={asset.name} className="w-full h-full object-cover" />
-                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-1.5">
-                                <p className="text-[10px] text-white/80 truncate">{asset.name}</p>
-                              </div>
-                            </div>
-                          ))}
+                      {assets.products.length > 0 && (
+                        <div className="grid grid-cols-3 gap-2 mt-2">
+                           {assets.products.map((asset: any) => (
+                             <AssetPreview
+                               key={asset.id}
+                               asset={asset}
+                               onRemove={() => removeProduct(asset.id)}
+                               onRetry={() => retryAssetUpload(asset.id)}
+                             />
+                           ))}
                         </div>
                       )}
-                    </div>
-                  )}
+                    </AssetCard>
 
-                  {/* Brand References */}
-                  {activeAssetTab === 'brandRefs' && (
-                    <div className="space-y-3">
+                    {/* Brand References */}
+                    <AssetCard title="Brand References" description="Upload brand imagery such as locations, uniforms, or packaging.">
                       <div className="flex flex-wrap gap-2">
                         <input type="file" ref={brandRefInputRef} accept="image/*" multiple className="hidden" onChange={(e) => { handleBrandRefUpload(e.target.files); e.target.value = '' }} />
-                        <button onClick={() => brandRefInputRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors" style={{ border: '1px dashed rgba(255,255,255,0.15)' }}>
-                          <Upload size={12} /> Upload Brand References
-                        </button>
+                        <UploadButton onClick={() => brandRefInputRef.current?.click()}>
+                          <Upload size={12} /> Add Images
+                        </UploadButton>
                       </div>
-                      {brandRefs.length > 0 && (
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                          {brandRefs.map((asset: any) => (
-                            <div key={asset.id} className="relative aspect-square rounded-xl overflow-hidden border border-white/10">
-                              <img src={asset.url} alt={asset.name} className="w-full h-full object-cover" />
-                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-1.5">
-                                <p className="text-[10px] text-white/80 truncate">{asset.name}</p>
-                              </div>
-                            </div>
-                          ))}
+                      {assets.brandReferences.length > 0 && (
+                        <div className="grid grid-cols-3 gap-2 mt-2">
+                           {assets.brandReferences.map((asset: any) => (
+                             <AssetPreview
+                               key={asset.id}
+                               asset={asset}
+                               onRemove={() => removeBrandReference(asset.id)}
+                               onRetry={() => retryAssetUpload(asset.id)}
+                             />
+                           ))}
                         </div>
                       )}
-                    </div>
-                  )}
+                    </AssetCard>
 
-                  {/* First / Last Frame & CTA */}
-                  {activeAssetTab === 'frames' && (
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-[11px] uppercase tracking-wider text-white/40 mb-2">First Frame</label>
-                        <div className="flex flex-wrap gap-2">
-                          <input type="file" ref={firstFrameInputRef} accept="image/*" className="hidden" onChange={(e) => { handleFirstFrameUpload(e.target.files); e.target.value = '' }} />
-                          <button onClick={() => firstFrameInputRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors" style={{ border: '1px dashed rgba(255,255,255,0.15)' }}>
-                            <Upload size={12} /> Upload First Frame
-                          </button>
-                        </div>
-                        {firstFrame && (
-                          <div className="mt-2 relative inline-block">
-                            <img src={firstFrame.url} alt="First Frame" className="h-20 w-auto rounded-lg border border-cyan-400/30 object-cover" />
-                            <button onClick={() => _onSetFirstFrame(null)} className="absolute -top-1.5 -right-1.5 rounded-full bg-red-500 p-0.5">
-                              <X size={10} className="text-white" />
-                            </button>
-                          </div>
-                        )}
+                    {/* First Frame */}
+                    <AssetCard title="First Frame" description="Control how the video opens.">
+                      <div className="flex flex-wrap gap-2">
+                        <input type="file" ref={firstFrameInputRef} accept="image/*" className="hidden" onChange={(e) => { handleFirstFrameUpload(e.target.files); e.target.value = '' }} />
+                        <UploadButton onClick={() => firstFrameInputRef.current?.click()}>
+                          <Upload size={12} /> Upload Image
+                        </UploadButton>
                       </div>
-                      <div>
-                        <label className="block text-[11px] uppercase tracking-wider text-white/40 mb-2">Last Frame / End Card</label>
-                        <div className="flex flex-wrap gap-2">
-                          <input type="file" ref={lastFrameInputRef} accept="image/*" className="hidden" onChange={(e) => { handleLastFrameUpload(e.target.files); e.target.value = '' }} />
-                          <button onClick={() => lastFrameInputRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors" style={{ border: '1px dashed rgba(255,255,255,0.15)' }}>
-                            <Upload size={12} /> Upload Last Frame
-                          </button>
-                        </div>
-                        {lastFrame && (
-                          <div className="mt-2 relative inline-block">
-                            <img src={lastFrame.url} alt="Last Frame" className="h-20 w-auto rounded-lg border border-cyan-400/30 object-cover" />
-                            <button onClick={() => _onSetLastFrame(null)} className="absolute -top-1.5 -right-1.5 rounded-full bg-red-500 p-0.5">
-                              <X size={10} className="text-white" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                       {assets.firstFrame && (
+                         <div className="mt-2">
+                           <AssetPreview asset={assets.firstFrame} onRemove={removeFirstFrame} onRetry={() => retryAssetUpload(assets.firstFrame!.id)} />
+                         </div>
+                       )}
+                    </AssetCard>
 
-                  {/* CTA */}
-                  {activeAssetTab === 'cta' && (
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-[11px] uppercase tracking-wider text-white/40 mb-1">CTA Headline</label>
-                        <input
-                          value={clientForm.callToAction}
-                          onChange={(e) => _onClientFormChange({ ...clientForm, callToAction: e.target.value })}
-                          placeholder="Free Roof Inspection"
-                          className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none placeholder:text-white/20"
-                        />
+                    {/* Last Frame / CTA */}
+                    <AssetCard title="Last Frame / CTA" description="Control how the video ends.">
+                      <div className="flex flex-wrap gap-2">
+                        <input type="file" ref={lastFrameInputRef} accept="image/*" className="hidden" onChange={(e) => { handleLastFrameUpload(e.target.files); e.target.value = '' }} />
+                        <UploadButton onClick={() => lastFrameInputRef.current?.click()}>
+                          <Upload size={12} /> Upload Image
+                        </UploadButton>
                       </div>
-                      <div>
-                        <label className="block text-[11px] uppercase tracking-wider text-white/40 mb-1">Offer</label>
-                        <input
-                          value={clientForm.offer}
-                          onChange={(e) => _onClientFormChange({ ...clientForm, offer: e.target.value })}
-                          placeholder="Book Your Free Inspection"
-                          className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none placeholder:text-white/20"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-[11px] uppercase tracking-wider text-white/40 mb-1">Phone</label>
-                          <input
-                            value={clientForm.phone}
-                            onChange={(e) => _onClientFormChange({ ...clientForm, phone: e.target.value })}
-                            placeholder="555-555-5555"
-                            className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none placeholder:text-white/20"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] uppercase tracking-wider text-white/40 mb-1">Website</label>
-                          <input
-                            value={clientForm.website}
-                            onChange={(e) => _onClientFormChange({ ...clientForm, website: e.target.value })}
-                            placeholder="abcroofing.com"
-                            className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none placeholder:text-white/20"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-[11px] uppercase tracking-wider text-white/40 mb-1">CTA Graphic (optional)</label>
-                        <div className="flex flex-wrap gap-2">
-                          <input type="file" ref={ctaInputRef} accept="image/*" className="hidden" onChange={(e) => { handleCtaUpload(e.target.files); e.target.value = '' }} />
-                          <button onClick={() => ctaInputRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors" style={{ border: '1px dashed rgba(255,255,255,0.15)' }}>
-                            <Upload size={12} /> Upload CTA Graphic
-                          </button>
-                        </div>
-                        {ctaGraphic && (
-                          <div className="mt-2 relative inline-block">
-                            <img src={ctaGraphic.url} alt="CTA" className="h-16 w-auto rounded-lg border border-cyan-400/30 object-cover" />
-                            <button onClick={() => _onSetCtaGraphic(null)} className="absolute -top-1.5 -right-1.5 rounded-full bg-red-500 p-0.5">
-                              <X size={10} className="text-white" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                       {assets.lastFrame && (
+                         <div className="mt-2">
+                           <AssetPreview asset={assets.lastFrame} onRemove={removeLastFrame} onRetry={() => retryAssetUpload(assets.lastFrame!.id)} />
+                         </div>
+                       )}
+                    </AssetCard>
+                  </div>
+                </div>
+
+                {/* CTA & Business Content */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40">CTA & Business Content</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] uppercase tracking-wider text-white/40 mb-1">Product / Service</label>
+                      <input
+                        value={clientForm.productService}
+                        onChange={(e) => updateClientForm({ ...clientForm, productService: e.target.value })}
+                        placeholder="Roof Replacement"
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none placeholder:text-white/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] uppercase tracking-wider text-white/40 mb-1">Offer</label>
+                      <input
+                        value={clientForm.offer}
+                        onChange={(e) => updateClientForm({ ...clientForm, offer: e.target.value })}
+                        placeholder="Free Roof Inspection"
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none placeholder:text-white/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] uppercase tracking-wider text-white/40 mb-1">CTA Headline</label>
+                      <input
+                        value={clientForm.callToAction}
+                        onChange={(e) => updateClientForm({ ...clientForm, callToAction: e.target.value })}
+                        placeholder="Protect Your Home Today"
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none placeholder:text-white/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] uppercase tracking-wider text-white/40 mb-1">Button / Action</label>
+                      <input
+                        value={clientForm.callToAction}
+                        onChange={(e) => updateClientForm({ ...clientForm, callToAction: e.target.value })}
+                        placeholder="Book Your Inspection"
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none placeholder:text-white/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] uppercase tracking-wider text-white/40 mb-1">Phone</label>
+                      <input
+                        value={clientForm.phone}
+                        onChange={(e) => updateClientForm({ ...clientForm, phone: e.target.value })}
+                        placeholder="555-555-5555"
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none placeholder:text-white/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] uppercase tracking-wider text-white/40 mb-1">Website</label>
+                      <input
+                        value={clientForm.website}
+                        onChange={(e) => updateClientForm({ ...clientForm, website: e.target.value })}
+                        placeholder="abcroofing.com"
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none placeholder:text-white/20"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] uppercase tracking-wider text-white/40 mb-1">CTA Graphic</label>
+                    <div className="flex flex-wrap gap-2">
+                      <input type="file" ref={ctaInputRef} accept="image/*" className="hidden" onChange={(e) => { handleCtaUpload(e.target.files); e.target.value = '' }} />
+                      <UploadButton onClick={() => ctaInputRef.current?.click()}>
+                        <Upload size={12} /> Upload CTA Graphic
+                      </UploadButton>
+                    </div>
+                     {assets.ctaGraphic && (
+                       <div className="mt-2">
+                         <AssetPreview asset={assets.ctaGraphic} onRemove={removeCtaGraphic} onRetry={() => retryAssetUpload(assets.ctaGraphic!.id)} />
+                       </div>
+                     )}
+                  </div>
+                </div>
+
+                {/* Personalize The Prompt */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40">Personalize The Prompt</h3>
+                    <button
+                      onClick={personalizePrompt}
+                      disabled={!clientForm.businessName && !clientForm.name}
+                      className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+                      style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: '#22d3ee' }}
+                    >
+                      <Sparkles size={12} /> Personalize Prompt
+                    </button>
+                  </div>
+                  {promptState.personalized && (
+                    <div className="rounded-xl border border-cyan-400/20 bg-black/30 p-3">
+                      <p className="text-xs text-cyan-300 mb-1 font-medium">Personalized Prompt</p>
+                      <p className="text-xs text-white/70 line-clamp-3">{promptState.personalized}</p>
                     </div>
                   )}
                 </div>
 
-                {/* Output selector */}
+                {/* Output selection */}
                 {!isPromptOnly && (
                   <div className="space-y-3">
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40">What Do You Want To Create?</h3>
@@ -1083,7 +1063,7 @@ export default function PersonalizationModal({
                       {outputOptions.map(({ key, label, icon: Icon }) => (
                         <button
                           key={key}
-                          onClick={() => _onOutputTypeChange(key)}
+                          onClick={() => setOutputType(key)}
                           className={classNames(
                             'flex flex-col items-center gap-1.5 rounded-xl border p-3 transition-all',
                             outputType === key ? 'border-cyan-400/50 bg-cyan-400/10' : 'border-white/10 bg-white/[0.02] hover:bg-white/5',
@@ -1107,7 +1087,7 @@ export default function PersonalizationModal({
                       {eligibleModes.map((m: any) => (
                         <button
                           key={m.key}
-                          onClick={() => _onModeChange(m.key)}
+                          onClick={() => setMode(m.key)}
                           className={classNames(
                             'p-4 rounded-xl text-left transition-all',
                             mode === m.key ? 'border-cyan-400/50 bg-cyan-400/10' : 'border-white/10 bg-white/[0.02] hover:bg-white/5',
@@ -1125,6 +1105,7 @@ export default function PersonalizationModal({
                 {/* Advanced settings */}
                 <div className="space-y-3">
                   <button
+                    type="button"
                     onClick={() => setShowAdvanced(!showAdvanced)}
                     className="flex items-center gap-2 text-xs font-medium text-white/50 hover:text-white transition-colors"
                   >
@@ -1137,7 +1118,7 @@ export default function PersonalizationModal({
                         <label className="block text-[11px] uppercase tracking-wider text-white/40 mb-1">Engine</label>
                         <select
                           value={genOptions.engine}
-                          onChange={(e) => _onGenOptionsChange({ ...genOptions, engine: e.target.value })}
+                          onChange={(e) => updateGenOptions({ ...genOptions, engine: e.target.value })}
                           className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none"
                         >
                           <option value="smartvideo-recommended">SmartVideo Recommended</option>
@@ -1148,7 +1129,7 @@ export default function PersonalizationModal({
                           <input
                             type="checkbox"
                             checked={genOptions.preserveAudio}
-                            onChange={(e) => _onGenOptionsChange({ ...genOptions, preserveAudio: e.target.checked })}
+                            onChange={(e) => updateGenOptions({ ...genOptions, preserveAudio: e.target.checked })}
                             className="rounded border-white/20 bg-black/30"
                           />
                           <span className="text-xs text-white/70">Preserve Audio</span>
@@ -1158,7 +1139,7 @@ export default function PersonalizationModal({
                         <label className="block text-[11px] uppercase tracking-wider text-white/40 mb-1">Logo Handling</label>
                         <select
                           value={genOptions.exactLogoHandling}
-                          onChange={(e) => _onGenOptionsChange({ ...genOptions, exactLogoHandling: e.target.value })}
+                          onChange={(e) => updateGenOptions({ ...genOptions, exactLogoHandling: e.target.value })}
                           className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none"
                         >
                           <option value="final-overlay">Exact Final Overlay</option>
@@ -1169,7 +1150,7 @@ export default function PersonalizationModal({
                         <label className="block text-[11px] uppercase tracking-wider text-white/40 mb-1">CTA Handling</label>
                         <select
                           value={genOptions.exactCtaHandling}
-                          onChange={(e) => _onGenOptionsChange({ ...genOptions, exactCtaHandling: e.target.value })}
+                          onChange={(e) => updateGenOptions({ ...genOptions, exactCtaHandling: e.target.value })}
                           className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none"
                         >
                           <option value="final-end-card">Exact End Card</option>
@@ -1187,7 +1168,7 @@ export default function PersonalizationModal({
                       type="checkbox"
                       id="likeness-consent"
                       checked={genOptions.consentGiven}
-                      onChange={(e) => _onGenOptionsChange({ ...genOptions, consentGiven: e.target.checked })}
+                      onChange={(e) => updateGenOptions({ ...genOptions, consentGiven: e.target.checked })}
                       className="mt-0.5 rounded border-white/20 bg-black/30"
                     />
                     <label htmlFor="likeness-consent" className="text-xs text-white/60 cursor-pointer">
@@ -1196,47 +1177,9 @@ export default function PersonalizationModal({
                   </div>
                 )}
 
-                {/* Prompt personalization */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40">Personalize The Prompt</h3>
-                    <button
-                      onClick={onPersonalizePrompt}
-                      disabled={!clientForm.businessName && !clientForm.name}
-                      className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
-                      style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: '#22d3ee' }}
-                    >
-                      <Sparkles size={12} /> Personalize Prompt
-                    </button>
-                  </div>
-                  {promptState.personalized && (
-                    <div className="rounded-xl border border-cyan-400/20 bg-black/30 p-3">
-                      <p className="text-xs text-cyan-300 mb-1 font-medium">Personalized Prompt</p>
-                      <p className="text-xs text-white/70 line-clamp-3">{promptState.personalized}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Review summary */}
-                <div className="p-4 rounded-xl border border-white/10 bg-black/20 space-y-2">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40">Personalization Summary</h3>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div><span className="text-white/40">Source:</span> <span className="text-white/80">{sourceTypeLabel || 'Landing Demo'}</span></div>
-                    <div><span className="text-white/40">Client:</span> <span className="text-white/80">{clientForm.businessName || clientForm.name || 'None selected'}</span></div>
-                    <div><span className="text-white/40">Mode:</span> <span className="text-white/80">{mode ? (eligibleModes.find((m: any) => m.key === mode)?.label || mode) : 'Not selected'}</span></div>
-                    <div><span className="text-white/40">Identities:</span> <span className="text-white/80">{identities.length}</span></div>
-                    <div><span className="text-white/40">Logos:</span> <span className="text-white/80">{logos.length}</span></div>
-                    <div><span className="text-white/40">Products:</span> <span className="text-white/80">{products.length}</span></div>
-                    <div><span className="text-white/40">Brand Refs:</span> <span className="text-white/80">{brandRefs.length}</span></div>
-                    <div><span className="text-white/40">First Frame:</span> <span className="text-white/80">{firstFrame ? 'Yes' : 'No'}</span></div>
-                    <div><span className="text-white/40">Last Frame:</span> <span className="text-white/80">{lastFrame ? 'Yes' : 'No'}</span></div>
-                    <div><span className="text-white/40">CTA:</span> <span className="text-white/80">{ctaGraphic ? 'Yes' : (clientForm.callToAction ? 'Text only' : 'None')}</span></div>
-                  </div>
-                </div>
-
                 {/* Generate button */}
                 <button
-                  onClick={onGenerate}
+                  onClick={generate}
                   disabled={generation.status === 'generating' || generation.status === 'personalizing-prompt'}
                   className="w-full inline-flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold disabled:opacity-50 transition-all"
                   style={{ background: 'linear-gradient(to right, #22d3ee, #a855f7)', color: 'black' }}
@@ -1260,12 +1203,12 @@ export default function PersonalizationModal({
 
         {/* Footer */}
         {generation.status !== 'generating' && generation.status !== 'personalizing-prompt' && generation.status !== 'complete' && generation.status !== 'error' && (
-          <div className="flex items-center justify-between border-t border-white/10 p-4">
+          <div className="flex items-center justify-between px-5 py-3 border-t border-white/10">
             <div className="flex items-center gap-2" style={{ color: 'rgba(255,255,255,0.3)' }}>
               <Sparkles size={12} />
               <span className="text-xs">GO AI PERSONALIZATION</span>
             </div>
-            <button onClick={onClose} className="text-xs font-medium text-white/40 hover:text-white transition-colors">
+            <button onClick={closePersonalize} className="text-xs font-medium text-white/40 hover:text-white transition-colors">
               Close
             </button>
           </div>
