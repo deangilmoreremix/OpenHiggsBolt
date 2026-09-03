@@ -904,7 +904,7 @@ function PromptDetailModal({ record, onClose }: PromptDetailModalProps) {
 
 export default function GoAiViralStudio({ apiKey, defaultNiche }: { apiKey?: string; defaultNiche?: string }) {
   void apiKey // Reserved for future generation features; feed browsing needs no key.
-  void defaultNiche // Optional pre-selected niche for SEO/URL routing
+  void defaultNiche // Accepted for niche routing; currently unused in feed state.
   // Data
   const [records, setRecords] = useState<PromptRecord[]>([])
   const [stats, setStats] = useState<FeedStats | null>(null)
@@ -933,16 +933,6 @@ export default function GoAiViralStudio({ apiKey, defaultNiche }: { apiKey?: str
 
   // Studio mode: 'feed' or 'video-prompts'
   const [studioMode, setStudioMode] = useState<StudioMode>('feed')
-
-  // Pre-select niche from URL/defaultNiche prop
-  useEffect(() => {
-    if (defaultNiche && availableNiches.length > 0) {
-      const exists = availableNiches.some((n) => n.id === defaultNiche)
-      if (exists) {
-        setSelectedNicheId(defaultNiche)
-      }
-    }
-  }, [defaultNiche, availableNiches])
 
   // Video prompts state
   const [videoRecords, setVideoRecords] = useState<SeedancePrompt[]>([])
@@ -1557,55 +1547,6 @@ export default function GoAiViralStudio({ apiKey, defaultNiche }: { apiKey?: str
                     ))}
                   </div>
                 )
-              ) : studioMode === 'academy' ? (
-                <div className="p-6">
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {academyAssets.map((asset) => (
-                      <button
-                        key={asset.id}
-                        onClick={() => setSelectedRecord(asset)}
-                        className="w-full text-left rounded-xl border border-white/10 bg-white/[0.02] hover:border-white/20 transition-all"
-                      >
-                        <div className="aspect-video rounded-lg overflow-hidden bg-white/5 mb-2">
-                          {asset.thumbnail ? (
-                            <img
-                              src={asset.thumbnail}
-                              alt={asset.title}
-                              loading="lazy"
-                              className="w-full h-full object-cover"
-                            />
-                          ) : asset.videoSrc ? (
-                            <div className="flex h-full w-full items-center justify-center">
-                              <Video size={24} style={{ color: semantic.textMuted }} />
-                            </div>
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center">
-                              <ImageIcon size={24} style={{ color: semantic.textMuted }} />
-                            </div>
-                          )}
-                        </div>
-                        <div className="px-3 pb-3">
-                          <p className="text-sm font-medium text-white line-clamp-1">{asset.title}</p>
-                          <p className="text-xs text-white/40 mt-1 line-clamp-2">{asset.description}</p>
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {asset.tags.slice(0, 3).map((tag) => (
-                              <span
-                                key={tag}
-                                className="text-[10px] px-1.5 py-0.5 rounded-full"
-                                style={{
-                                  background: 'rgba(255,255,255,0.05)',
-                                  color: semantic.textMuted,
-                                }}
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
               ) : (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {videoRecords.map((record) => (

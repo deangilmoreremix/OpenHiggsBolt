@@ -12,7 +12,6 @@ export { default as RecastStudio } from './components/RecastStudio';
 export { default as WorkflowStudio } from './components/WorkflowStudio';
 export { default as AgentStudio } from './components/AgentStudio';
 export { default as DesignAgentStudio } from './components/DesignAgentStudio';
-export { default as AppsStudio } from './components/AppsStudio';
 export { default as AiInfluencerStudio } from './components/AiInfluencerStudio';
 export { default as LayersStudio } from './components/LayersStudio';
 export * from './muapi';

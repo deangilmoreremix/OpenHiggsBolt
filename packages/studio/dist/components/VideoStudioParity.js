@@ -29,7 +29,6 @@ var _PromptComposer = require("./prompt/PromptComposer.jsx");
 var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
 var _AiAssistantProvider = require("../../../../components/AiAssistantProvider");
 var _videoStudio = _interopRequireDefault(require("../messages/en/videoStudio.json"));
-var _videoStudio2 = _interopRequireDefault(require("../messages/zh/videoStudio.json"));
 var _i18nUtils = require("../i18nUtils");
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
@@ -40,11 +39,6 @@ function _regeneratorDefine2(e, r, n, t) { var i = Object.defineProperty; try { 
 function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
 function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
-function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
-function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
-function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
-function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
-function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
 function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
 function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
 function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
@@ -56,7 +50,31 @@ function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) 
 function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
 function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
 function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
+function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
+function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
+function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
+function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
+function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
 var LEGACY_MEDIA_ADVANCED_KEYS = new Set(["first_frame", "last_frame", "images_list", "videos_list", "audios_list", "reference_image_urls", "audio_url", "video_url", "references"]);
+function migrateLegacyVideoFrames(stored, selectedWorkflowId, setWorkflowMedia, setBaseMedia) {
+  var _workflowMedia$startF, _workflowMedia$endFra, _workflowMedia$startF2, _baseMedia$imageUrls, _workflowMedia$endFra2;
+  if (!selectedWorkflowId || !(stored !== null && stored !== void 0 && stored.baseMedia)) return;
+  var workflowMedia = stored.workflowMedia || {};
+  if ((_workflowMedia$startF = workflowMedia.startFrame) !== null && _workflowMedia$startF !== void 0 && _workflowMedia$startF.length || (_workflowMedia$endFra = workflowMedia.endFrame) !== null && _workflowMedia$endFra !== void 0 && _workflowMedia$endFra.length) return;
+  var baseMedia = stored.baseMedia;
+  var updates = {};
+  if (!((_workflowMedia$startF2 = workflowMedia.startFrame) !== null && _workflowMedia$startF2 !== void 0 && _workflowMedia$startF2.length) && (_baseMedia$imageUrls = baseMedia.imageUrls) !== null && _baseMedia$imageUrls !== void 0 && _baseMedia$imageUrls[0]) {
+    updates.startFrame = unique([baseMedia.imageUrls[0]]).slice(0, 1);
+  }
+  if (!((_workflowMedia$endFra2 = workflowMedia.endFrame) !== null && _workflowMedia$endFra2 !== void 0 && _workflowMedia$endFra2.length) && baseMedia.endImageUrl) {
+    updates.endFrame = unique([baseMedia.endImageUrl]).slice(0, 1);
+  }
+  if (Object.keys(updates).length) {
+    setWorkflowMedia(function (media) {
+      return _objectSpread(_objectSpread({}, media), updates);
+    });
+  }
+}
 function unique(items) {
   return _toConsumableArray(new Set((items || []).filter(Boolean)));
 }
@@ -167,7 +185,7 @@ function VideoStudioParity(_ref4) {
     templateData = _ref4.templateData,
     _ref4$locale = _ref4.locale,
     locale = _ref4$locale === void 0 ? "en" : _ref4$locale;
-  var copy = (0, _i18nUtils.resolveCopy)(_videoStudio["default"], _videoStudio2["default"], locale);
+  var copy = (0, _i18nUtils.resolveCopy)(_videoStudio["default"], null, locale);
   var defaultVariant = _modelFamilies.videoModelCatalog.variantById.get((_t2vModels$ = _models.t2vModels[0]) === null || _t2vModels$ === void 0 ? void 0 : _t2vModels$.id);
   var defaultFamily = _modelFamilies.videoModelCatalog.familyByVariantId.get(defaultVariant === null || defaultVariant === void 0 || (_defaultVariant$model = defaultVariant.model) === null || _defaultVariant$model === void 0 ? void 0 : _defaultVariant$model.id);
   var persistKey = (0, _persistKey.scopedPersistKey)("hg_video_studio_persistent", apiKey);
@@ -328,7 +346,7 @@ function VideoStudioParity(_ref4) {
   };
   var selectWorkflow = function selectWorkflow(workflowId) {
     if (!workflowId) {
-      var baseVariant = (0, _modelFamilies.getFamilyVariant)(_modelFamilies.videoModelCatalog, selectedFamily, mode, selectedModel) || selectedVariant;
+      var baseVariant = (0, _videoWorkflows.resolveVideoBaseVariant)(selectedFamily.id, selectedModel) || selectedVariant;
       applyVariant(baseVariant, null);
       return;
     }
@@ -392,38 +410,68 @@ function VideoStudioParity(_ref4) {
   (0, _react.useEffect)(function () {
     if (initialized.current || typeof window === "undefined") return;
     initialized.current = true;
+    var restoredVariantForHandoff = null;
     try {
-      var stored = JSON.parse(window.localStorage.getItem(persistKey) || "null");
-      if (stored) {
-        var restoredVariant = _modelFamilies.videoModelCatalog.variantById.get(stored.selectedModel);
-        if (restoredVariant) applyVariant(restoredVariant, stored.selectedWorkflowId || null);
-        if (stored.prompt) setPrompt(stored.prompt);
-        if (stored.selectedAr) setSelectedAr(stored.selectedAr);
-        if (stored.selectedDuration) setSelectedDuration(stored.selectedDuration);
-        if (stored.selectedResolution) setSelectedResolution(stored.selectedResolution);
-        if (stored.selectedQuality) setSelectedQuality(stored.selectedQuality);
-        if (stored.selectedEffect) setSelectedEffect(stored.selectedEffect);
-        if (stored.selectedModeParam) setSelectedModeParam(stored.selectedModeParam);
-        if (stored.modelParameterValues) setModelParameterValues(stored.modelParameterValues);
-        if (stored.advancedValues) setAdvancedValues(stored.advancedValues);
-        if (stored.baseMedia) setBaseMedia(stored.baseMedia);
-        if (stored.workflowMedia) setWorkflowMedia(stored.workflowMedia);
-        if (stored.localHistory) setLocalHistory(stored.localHistory);
-        if (stored.generationSources) setGenerationSources(stored.generationSources);
+      var _stored = JSON.parse(window.localStorage.getItem(persistKey) || "null");
+      if (_stored) {
+        var _stored$baseMedia, _stored$workflowMedia;
+        var restored = (0, _videoWorkflows.resolvePersistedVideoWorkflowSelection)(_stored.selectedModel, _stored.selectedWorkflowId || null, {
+          hasEndFrame: Boolean(((_stored$baseMedia = _stored.baseMedia) === null || _stored$baseMedia === void 0 ? void 0 : _stored$baseMedia.endImageUrl) || ((_stored$workflowMedia = _stored.workflowMedia) === null || _stored$workflowMedia === void 0 || (_stored$workflowMedia = _stored$workflowMedia.endFrame) === null || _stored$workflowMedia === void 0 ? void 0 : _stored$workflowMedia.length))
+        });
+        if (restored !== null && restored !== void 0 && restored.variant) {
+          restoredVariantForHandoff = restored.variant;
+          applyVariant(restored.variant, restored.workflowId || null);
+        }
+        if (_stored.prompt) setPrompt(_stored.prompt);
+        if (_stored.selectedAr) setSelectedAr(_stored.selectedAr);
+        if (_stored.selectedDuration) setSelectedDuration(_stored.selectedDuration);
+        if (_stored.selectedResolution) setSelectedResolution(_stored.selectedResolution);
+        if (_stored.selectedQuality) setSelectedQuality(_stored.selectedQuality);
+        if (_stored.selectedEffect) setSelectedEffect(_stored.selectedEffect);
+        if (_stored.selectedModeParam) setSelectedModeParam(_stored.selectedModeParam);
+        if (_stored.modelParameterValues) setModelParameterValues(_stored.modelParameterValues);
+        if (_stored.advancedValues) setAdvancedValues(_stored.advancedValues);
+        if (_stored.baseMedia) setBaseMedia(_stored.baseMedia);
+        if (_stored.workflowMedia) setWorkflowMedia(_stored.workflowMedia);
+        if (_stored.localHistory) setLocalHistory(_stored.localHistory);
+        if (_stored.generationSources) setGenerationSources(_stored.generationSources);
       }
     } catch (error) {
       console.warn("Failed to restore SmartVideo Video Studio:", error);
+    }
+    try {
+      migrateLegacyVideoFrames(stored, selectedWorkflowId, setWorkflowMedia, setBaseMedia);
+    } catch (_unused) {
+      // Migration is best-effort; ignore failures.
     }
     try {
       var handoff = (0, _storyboardHandoff.readStoryboardHandoff)("video");
       if (handoff) {
         if (handoff.combinedPrompt || handoff.projectName) setPrompt(handoff.combinedPrompt || handoff.projectName);
         var first = handoff.firstFrameUrl || handoff.referenceImageUrl;
-        if (first) setBaseMedia(function (media) {
-          return _objectSpread(_objectSpread({}, media), {}, {
-            imageUrls: unique([first].concat(_toConsumableArray(media.imageUrls)))
-          });
-        });
+        if (first) {
+          var _currentVariant$model, _currentVariant$model2;
+          var currentVariant = restoredVariantForHandoff || defaultVariant;
+          var family = _modelFamilies.videoModelCatalog.familyByVariantId.get(currentVariant === null || currentVariant === void 0 || (_currentVariant$model = currentVariant.model) === null || _currentVariant$model === void 0 ? void 0 : _currentVariant$model.id) || defaultFamily;
+          var animateVariant = family ? (0, _videoWorkflows.resolveVideoWorkflowVariant)(family.id, "animate_image", currentVariant === null || currentVariant === void 0 || (_currentVariant$model2 = currentVariant.model) === null || _currentVariant$model2 === void 0 ? void 0 : _currentVariant$model2.id) : null;
+          if (animateVariant) {
+            applyVariant(animateVariant, "animate_image");
+            setWorkflowMedia(function (media) {
+              return _objectSpread(_objectSpread({}, media), {}, {
+                startFrame: unique([first].concat(_toConsumableArray(media.startFrame || []))).slice(0, 1)
+              });
+            });
+          } else {
+            var _currentVariant$model3;
+            var i2vVariant = family ? (0, _modelFamilies.getFamilyVariant)(_modelFamilies.videoModelCatalog, family, "i2v", currentVariant === null || currentVariant === void 0 || (_currentVariant$model3 = currentVariant.model) === null || _currentVariant$model3 === void 0 ? void 0 : _currentVariant$model3.id) : null;
+            if (i2vVariant) applyVariant(i2vVariant, null);
+            setBaseMedia(function (media) {
+              return _objectSpread(_objectSpread({}, media), {}, {
+                imageUrls: unique([first].concat(_toConsumableArray(media.imageUrls)))
+              });
+            });
+          }
+        }
         if (handoff.aspectRatio) setSelectedAr(handoff.aspectRatio);
       }
     } catch (error) {
@@ -437,7 +485,7 @@ function VideoStudioParity(_ref4) {
       (0, _skillStore.clearPendingRecipe)("video");
       if (skill) applyRecipe(skill);
     }
-  }, [applyRecipe, applyVariant, persistKey]);
+  }, [applyRecipe, applyVariant, defaultFamily, defaultVariant, persistKey]);
   (0, _react.useEffect)(function () {
     if (!initialized.current || typeof window === "undefined") return;
     var timer = window.setTimeout(function () {
@@ -460,7 +508,7 @@ function VideoStudioParity(_ref4) {
           localHistory: localHistory,
           generationSources: generationSources
         }));
-      } catch (_unused) {
+      } catch (_unused2) {
         // Persistence is non-critical.
       }
     }, 350);

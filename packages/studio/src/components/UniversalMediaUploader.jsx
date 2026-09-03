@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { uploadFile } from "../muapi.js";
 import { formatErrorMessage } from "../utils/formatError.js";
+import { scopedPersistKey } from "../persistKey.js";
 
-const HISTORY_KEY = "smartvideo_media_upload_history_v1";
+const HISTORY_KEY_BASE = "smartvideo_media_upload_history_v1";
+const DRAFT_KEY_BASE = "smartvideo_media_slot_drafts_v1";
 const HISTORY_LIMIT = 40;
 const DEFAULT_MAX_BYTES = {
   image: 20 * 1024 * 1024,
@@ -13,22 +15,44 @@ const DEFAULT_MAX_BYTES = {
   audio: 50 * 1024 * 1024,
 };
 
-function readHistory() {
+function readHistory(historyKey) {
   if (typeof window === "undefined") return [];
   try {
-    const value = JSON.parse(window.localStorage.getItem(HISTORY_KEY) || "[]");
+    const value = JSON.parse(window.localStorage.getItem(historyKey) || "[]");
     return Array.isArray(value) ? value : [];
   } catch {
     return [];
   }
 }
 
-function writeHistory(items) {
+function writeHistory(items, historyKey) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, HISTORY_LIMIT)));
+    window.localStorage.setItem(historyKey, JSON.stringify(items.slice(0, HISTORY_LIMIT)));
   } catch {
     // Storage is a convenience only; upload still succeeds when storage is unavailable.
+  }
+}
+
+function readDrafts(draftKey) {
+  if (typeof window === "undefined") return {};
+  try {
+    const value = JSON.parse(window.localStorage.getItem(draftKey) || "{}");
+    return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeDraft(storageKey, slotKey, urls) {
+  if (typeof window === "undefined" || !storageKey) return;
+  try {
+    const drafts = readDrafts(storageKey);
+    if (urls.length) drafts[slotKey] = urls;
+    else delete drafts[slotKey];
+    window.localStorage.setItem(storageKey, JSON.stringify(drafts));
+  } catch {
+    // Draft persistence is a convenience only.
   }
 }
 
@@ -66,6 +90,9 @@ export default function UniversalMediaUploader({
 }) {
   const inputRef = useRef(null);
   const dragDepth = useRef(0);
+  const intentionalClearRef = useRef(false);
+  const previousValuesRef = useRef(values);
+  const hydratedDraftKeyRef = useRef(null);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -79,15 +106,49 @@ export default function UniversalMediaUploader({
   const remaining = Math.max(limit - values.length, 0);
   const accepted = `${mediaType}/*`;
   const sizeLimit = maxBytes || DEFAULT_MAX_BYTES[mediaType] || DEFAULT_MAX_BYTES.image;
+  const scopedHistoryKey = scopedPersistKey(HISTORY_KEY_BASE, apiKey);
+  const scopedDraftKey = scopedPersistKey(DRAFT_KEY_BASE, apiKey);
+  // Workflow slots carry provider field metadata. Inline/base uploaders do not,
+  // so only workflow-scoped controls automatically restore drafts.
+  const slotDraftKey = slot?.field
+    ? `${mediaType}:${slot.id || role}:${slot.field}:${slot.index ?? "all"}`
+    : null;
   const history = useMemo(
-    () => readHistory().filter((item) => item.type === mediaType),
-    [historyOpen, historyVersion, mediaType],
+    () => readHistory(scopedHistoryKey).filter((item) => item.type === mediaType),
+    [historyOpen, historyVersion, mediaType, scopedHistoryKey],
   );
 
+  useEffect(() => {
+    if (!slotDraftKey || typeof window === "undefined") {
+      previousValuesRef.current = values;
+      return;
+    }
+
+    const previous = previousValuesRef.current || [];
+    const changedSlot = hydratedDraftKeyRef.current !== slotDraftKey;
+    const externallyReset = !changedSlot && previous.length > 0 && values.length === 0 && !intentionalClearRef.current;
+
+    if (changedSlot || externallyReset) {
+      hydratedDraftKeyRef.current = slotDraftKey;
+      const stored = readDrafts(scopedDraftKey)[slotDraftKey];
+      if (values.length === 0 && Array.isArray(stored) && stored.length > 0) {
+        const restored = [...new Set(stored.filter(Boolean))].slice(0, limit);
+        previousValuesRef.current = restored;
+        onChange?.(restored);
+        intentionalClearRef.current = false;
+        return;
+      }
+    }
+
+    writeDraft(scopedDraftKey, slotDraftKey, values);
+    previousValuesRef.current = values;
+    intentionalClearRef.current = false;
+  }, [limit, onChange, slotDraftKey, values, scopedDraftKey]);
+
   const updateHistory = (entries) => {
-    const existing = readHistory();
+    const existing = readHistory(scopedHistoryKey);
     const urls = new Set(entries.map((item) => item.url));
-    writeHistory([...entries, ...existing.filter((item) => !urls.has(item.url))]);
+    writeHistory([...entries, ...existing.filter((item) => !urls.has(item.url))], scopedHistoryKey);
     setHistoryVersion((version) => version + 1);
   };
 
@@ -145,6 +206,7 @@ export default function UniversalMediaUploader({
   };
 
   const removeAt = (index) => {
+    intentionalClearRef.current = true;
     onChange?.(values.filter((_, itemIndex) => itemIndex !== index));
   };
 

@@ -6,22 +6,54 @@ on:
       - parity/upstream-full-2026-09-02
     paths:
       - .github/workflows/upstream-sync.yml
+  schedule:
+    - cron: '0 0 * * 1'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  pull-requests: read
 
 jobs:
-  parity-merge:
+  validate-scope:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Verify SmartVideo exclusions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -f packages/studio/src/components/AppsStudio.jsx
+          test ! -f packages/studio/src/components/McpCliStudio.jsx
+          test ! -f packages/studio/src/messages/en/appsStudio.json
+          test ! -f packages/studio/src/messages/en/mcpCliStudio.json
+          grep -Fq "redirect('/studio/image')" app/studio/apps/page.js
+          grep -Fq "redirect('/studio/image')" app/studio/mcp-cli/page.js
+          if git grep -niEi 'white[-_ ]?label|whitelabel' -- components/StandaloneShell.js src/apps/design-agent app/api/design-agent; then
+            echo "::error::White-label logic detected in active SmartVideo product code."
+            exit 1
+          fi
+
+  sync:
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
-      - name: Checkout parity branch
+      - name: Checkout maintained branch
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          submodules: false
-          ref: parity/upstream-full-2026-09-02
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure Git
         run: |
@@ -33,201 +65,166 @@ jobs:
           git remote remove upstream 2>/dev/null || true
           git remote add upstream https://github.com/Anil-matcha/Open-Generative-AI.git
           git fetch upstream main --tags
-          echo "UPSTREAM_SHA=$(git rev-parse upstream/main)" >> "$GITHUB_ENV"
-          echo "PRE_MERGE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
-      - name: Protected three-way merge
+      - name: Check for upstream changes
+        id: check
+        shell: bash
+        run: |
+          set -euo pipefail
+          SYNC_POINT=$(cat .upstream-sync 2>/dev/null || echo none)
+          UPSTREAM_HEAD=$(git rev-parse upstream/main)
+          echo "sync_point=$SYNC_POINT" >> "$GITHUB_OUTPUT"
+          echo "upstream_head=$UPSTREAM_HEAD" >> "$GITHUB_OUTPUT"
+          if [ "$SYNC_POINT" = "$UPSTREAM_HEAD" ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "No new upstream commits since $SYNC_POINT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            echo "New upstream commits: $SYNC_POINT..$UPSTREAM_HEAD"
+          fi
+
+      - name: Create sync branch
+        if: steps.check.outputs.has_changes == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          SYNC_BRANCH="sync-upstream-$(date +%Y%m%d)-${GITHUB_RUN_ID}"
+          echo "SYNC_BRANCH=$SYNC_BRANCH" >> "$GITHUB_ENV"
+          git checkout -b "$SYNC_BRANCH"
+
+      - name: Merge upstream without committing
+        if: steps.check.outputs.has_changes == 'true'
+        id: merge
         shell: bash
         run: |
           set +e
-          git merge --no-ff --no-commit -X ours upstream/main
+          git merge upstream/main --no-commit --no-ff
           merge_exit=$?
           set -e
+          echo "merge_exit=$merge_exit" >> "$GITHUB_ENV"
 
-          if [ "$merge_exit" -ne 0 ]; then
-            echo "Resolving remaining conflicts conservatively."
-            mapfile -t conflicts < <(git diff --name-only --diff-filter=U)
-            for path in "${conflicts[@]}"; do
-              if git ls-files -u -- "$path" | awk '$3==2 {found=1} END{exit !found}'; then
-                echo "Keeping SmartVideo/local side for conflict: $path"
-                git checkout --ours -- "$path" || true
-              else
-                echo "Accepting upstream-only side for conflict: $path"
-                git checkout --theirs -- "$path" || true
-              fi
-              git add -A -- "$path"
-            done
+      - name: Fail on non-conflict merge errors
+        if: steps.check.outputs.has_changes == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          merge_exit="${{ steps.merge.outputs.merge_exit }}"
+          if [ "$merge_exit" -ne 0 ] && [ -z "$(git diff --name-only --diff-filter=U)" ]; then
+            echo "::error::Upstream merge failed without merge conflicts."
+            exit "$merge_exit"
           fi
 
-          # Never let parity work delete a file that existed in OpenHiggsBolt.
-          while IFS=$'\t' read -r status path rest; do
-            if [ "$status" = "D" ]; then
-              echo "Restoring local file deleted by upstream: $path"
-              git checkout "$PRE_MERGE_SHA" -- "$path"
-              git add -- "$path"
-            fi
-          done < <(git diff --name-status "$PRE_MERGE_SHA")
-
-      - name: Restore all missing regular upstream files
+      - name: Preserve SmartVideo-owned product surfaces
+        if: steps.check.outputs.has_changes == 'true'
         shell: bash
         run: |
-          set -e
-          while IFS= read -r path; do
-            mode=$(git ls-tree upstream/main -- "$path" | awk '{print $1}')
-            [ "$mode" = "160000" ] && continue
-            if [ ! -e "$path" ]; then
-              echo "Adding upstream parity file absent locally: $path"
-              git checkout upstream/main -- "$path"
-              git add -- "$path"
-            fi
-          done < <(git ls-tree -r --name-only upstream/main)
-
-      - name: Protect SmartVideo-specific integrations
-        shell: bash
-        run: |
-          set -e
-          protect_file() {
-            file="$1"; shift
-            if [ ! -f "$file" ]; then
-              echo "Protected file missing; restoring local: $file"
-              git checkout "$PRE_MERGE_SHA" -- "$file"
-              git add "$file"
-              return
-            fi
-            for marker in "$@"; do
-              if ! grep -Fq "$marker" "$file"; then
-                echo "Protected marker '$marker' disappeared from $file; restoring local file"
-                git checkout "$PRE_MERGE_SHA" -- "$file"
-                git add "$file"
-                return
-              fi
-            done
-          }
-
-          protect_file components/StandaloneShell.js \
-            "SocialPublishProvider" "AiAssistantProvider" "GoAiViralStudio" \
-            "Storyboard" "ThumbnailStudio" "VFXStudio" "templateData" "useAuthConfig"
-
-          protect_file packages/studio/src/components/VideoStudio.jsx \
-            "PublishStep" "AssistStep" "readStoryboardHandoff" "templateData"
-
-          protect_file packages/studio/src/components/ImageStudio.jsx \
-            "PublishStep" "AssistStep" "readStoryboardHandoff" "templateData"
-
-          protect_file packages/studio/src/models.js "getModesForModel"
-          protect_file src/lib/authConfig.ts "getApiKey" "setApiKey"
-          protect_file middleware.js "clerkMiddleware"
-
+          set -euo pipefail
           for path in \
-            src/apps/go-ai-viral/GoAiViralStudio.tsx \
-            src/apps/storyboard/Storyboard.tsx \
-            src/apps/thumbnail-studio/ThumbnailStudio.tsx \
-            src/apps/vfx-studio/VFXStudio.tsx \
-            components/SocialPublishProvider.tsx \
-            components/AiAssistantProvider.tsx; do
-            test -e "$path" || { echo "Required SmartVideo feature missing: $path"; exit 1; }
+            middleware.js \
+            clerkAppearance.js \
+            packages/studio/src/persistKey.js \
+            components/StandaloneShell.js \
+            messages/en/common.json \
+            packages/studio/src/index.js \
+            app/studio/apps \
+            app/studio/mcp-cli \
+            app/sign-in \
+            app/sign-up \
+            app/forgot-password \
+            app/api/webhooks \
+            app/api/auth \
+            app/api/design-agent \
+            app/api/photo-studio \
+            app/api/storyboard \
+            app/api/thumbnail \
+            app/api/vfx \
+            app/api/brand \
+            app/api/brands \
+            app/api/workspace \
+            supabase \
+            src/apps \
+            apps/cutai \
+            e2e \
+            tests; do
+            if git cat-file -e "HEAD:$path" 2>/dev/null; then
+              git checkout HEAD -- "$path"
+            fi
           done
 
-      - name: Verify required upstream parity files
+          git rm -f --ignore-unmatch \
+            packages/studio/src/components/AppsStudio.jsx \
+            packages/studio/src/messages/en/appsStudio.json \
+            packages/studio/src/components/McpCliStudio.jsx \
+            packages/studio/src/messages/en/mcpCliStudio.json
+
+          WHITE_LABEL_PATHS=$(git ls-files | grep -Ei '(^|/)(white[-_]?label|whitelabel)(/|\.|$)' || true)
+          if [ -n "$WHITE_LABEL_PATHS" ]; then
+            while IFS= read -r path; do
+              [ -n "$path" ] && git rm -rf --ignore-unmatch "$path"
+            done <<< "$WHITE_LABEL_PATHS"
+          fi
+
+          if git grep -niEi 'white[-_ ]?label|whitelabel' -- components/StandaloneShell.js src/apps/design-agent app/api/design-agent 2>/dev/null; then
+            echo "::error::White-label logic detected in active SmartVideo product code."
+            exit 1
+          fi
+
+      - name: Fail on unresolved conflicts
+        if: steps.check.outputs.has_changes == 'true'
         shell: bash
         run: |
-          set -e
-          required=(
-            packages/studio/src/components/AppsStudio.jsx
-            packages/studio/src/components/LayersStudio.jsx
-            packages/studio/src/components/MobileGenerationActions.jsx
-            packages/studio/src/components/ModelParameterControls.jsx
-            packages/studio/src/components/prompt/PromptComposer.jsx
-            packages/studio/src/utils/formatError.js
-            packages/studio/src/utils/downloadImage.js
-            packages/studio/src/i18nUtils.js
-            lib/locales.js
-            messages/en/common.json
-            messages/zh/common.json
-          )
-          for path in "${required[@]}"; do
-            test -f "$path" || { echo "Missing required upstream parity file: $path"; exit 1; }
-          done
+          set -euo pipefail
+          CONFLICTS=$(git diff --name-only --diff-filter=U)
+          if [ -n "$CONFLICTS" ]; then
+            echo "::error::Manual parity resolution required for these files:"
+            echo "$CONFLICTS"
+            exit 1
+          fi
 
-      - name: Record upstream sync point and commit merge
+      - name: Commit protected sync
+        if: steps.check.outputs.has_changes == 'true'
+        shell: bash
         run: |
-          printf '%s\n' "$UPSTREAM_SHA" > .upstream-sync
+          set -euo pipefail
+          NEW_SYNC_POINT=$(git rev-parse upstream/main)
+          printf '%s\n' "$NEW_SYNC_POINT" > .upstream-sync
           git add -A
           if git diff --cached --quiet; then
-            echo "No merge changes to commit."
+            echo "No protected sync changes to commit."
           else
-            git commit -m "merge(parity): integrate upstream without removing SmartVideo features"
+            git commit -m "chore: protected upstream sync to $NEW_SYNC_POINT"
           fi
 
-      - name: Initialize submodules
-        continue-on-error: true
-        run: git submodule update --init --recursive
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        id: install
-        continue-on-error: true
-        run: npm ci
-
-      - name: Build studio package
-        id: studio_build
-        continue-on-error: true
-        run: npm run build:studio
-
-      - name: Typecheck
-        id: typecheck
-        continue-on-error: true
-        run: npm run typecheck
-
-      - name: Unit tests
-        id: unit_tests
-        continue-on-error: true
-        run: npm run test:unit
-
-      - name: Model parity checker
-        id: model_parity
-        continue-on-error: true
-        run: node scripts/model-diff-checker.mjs
-
-      - name: Write parity validation report
+      - name: Push sync branch and open review PR
+        if: steps.check.outputs.has_changes == 'true'
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir -p docs/audits
-          {
-            echo "# Protected Upstream Parity Merge — 2026-09-02"
-            echo
-            echo "- Pre-merge local: \`$PRE_MERGE_SHA\`"
-            echo "- Upstream merged: \`$UPSTREAM_SHA\`"
-            echo "- Branch: \`parity/upstream-full-2026-09-02\`"
-            echo "- Policy: preserve all local files and SmartVideo markers; add every missing regular upstream file; local side wins unresolved shared-file conflicts."
-            echo
-            echo "## Validation"
-            echo
-            echo "| Check | Outcome |"
-            echo "|---|---|"
-            echo "| npm ci | ${{ steps.install.outcome }} |"
-            echo "| Studio build | ${{ steps.studio_build.outcome }} |"
-            echo "| Typecheck | ${{ steps.typecheck.outcome }} |"
-            echo "| Unit tests | ${{ steps.unit_tests.outcome }} |"
-            echo "| Model parity checker | ${{ steps.model_parity.outcome }} |"
-            echo
-            echo "## Remaining differences versus upstream"
-            echo
-            echo '```text'
-            git diff --stat upstream/main HEAD || true
-            echo '```'
-            echo
-            echo "Remaining differences include intentional SmartVideo extensions plus shared files retained locally for surgical parity integration."
-          } > docs/audits/UPSTREAM-PARITY-MERGE-2026-09-02.md
-          git add docs/audits/UPSTREAM-PARITY-MERGE-2026-09-02.md
-          if ! git diff --cached --quiet; then
-            git commit -m "docs(parity): record upstream merge validation"
-          fi
+          set -euo pipefail
+          BASE_BRANCH="$GITHUB_REF_NAME"
+          git push origin "$SYNC_BRANCH"
 
-      - name: Push parity branch
-        run: git push origin HEAD:parity/upstream-full-2026-09-02
+          {
+            echo "## Automated Upstream Sync"
+            echo
+            echo "- Sync point: $(cat .upstream-sync)"
+            echo "- Previous: ${{ steps.check.outputs.sync_point }}"
+            echo "- Target branch: $BASE_BRANCH"
+            echo
+            echo "### SmartVideo scope"
+            echo "- Explore Apps remains excluded"
+            echo "- MCP / CLI remains excluded"
+            echo "- White-label product layers remain excluded"
+            echo "- SmartVideo-owned auth, studios, personalization and Design Agent remain authoritative"
+            echo
+            echo "### Review"
+            echo "- Review the diff before merge"
+            echo "- Run release validation before production integration"
+          } > /tmp/upstream-sync-pr.md
+
+          gh pr create \
+            --title "sync: protected upstream $(date +%Y-%m-%d)" \
+            --body-file /tmp/upstream-sync-pr.md \
+            --base "$BASE_BRANCH" \
+            --head "$SYNC_BRANCH"
