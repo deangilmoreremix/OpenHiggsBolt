@@ -11,6 +11,7 @@ import type {
   PersonalizationAsset,
   GenerationOptions,
 } from './types'
+import { getGenerationAssetUrl } from './DemoPersonalizeProvider'
 
 export interface ModelCapabilities {
   supportsFaceSwap: boolean
@@ -77,8 +78,9 @@ export function resolveAssetsForModel(
   if (assets.primaryIdentity) {
     promptContext.presenterName = assets.primaryIdentity.name
   }
-  if (assets.primaryLogo) {
-    postProcessing.logo = assets.primaryLogo.url
+  const primaryLogoUrl = getGenerationAssetUrl(assets.primaryLogo)
+  if (primaryLogoUrl) {
+    postProcessing.logo = primaryLogoUrl
   }
   if (assets.products.length > 0) {
     promptContext.productService = assets.products.map((p) => p.name).join(', ')
@@ -86,50 +88,54 @@ export function resolveAssetsForModel(
   if (assets.brandReferences.length > 0) {
     promptContext.brandContext = assets.brandReferences.map((b) => b.name).join(', ')
   }
-  if (assets.ctaGraphic) {
-    postProcessing.ctaGraphic = assets.ctaGraphic.url
+  const ctaUrl = getGenerationAssetUrl(assets.ctaGraphic)
+  if (ctaUrl) {
+    postProcessing.ctaGraphic = ctaUrl
   }
 
   // First frame handling
-  if (assets.firstFrame && capabilities.supportsFirstFrame) {
+  const firstFrameUrl = getGenerationAssetUrl(assets.firstFrame)
+  if (firstFrameUrl && capabilities.supportsFirstFrame) {
     if (source.mediaType === 'video') {
-      directInputs.first_image_url = assets.firstFrame.url
+      directInputs.first_image_url = firstFrameUrl
     } else {
-      directInputs.image_url = assets.firstFrame.url
+      directInputs.image_url = firstFrameUrl
     }
   } else if (assets.firstFrame) {
     promptContext.firstFrameDescription = `Opening with ${assets.firstFrame.name}`
   }
 
   // Last frame / CTA handling
-  if (assets.lastFrame && capabilities.supportsLastFrame) {
-    directInputs.last_image_url = assets.lastFrame.url
+  const lastFrameUrl = getGenerationAssetUrl(assets.lastFrame)
+  if (lastFrameUrl && capabilities.supportsLastFrame) {
+    directInputs.last_image_url = lastFrameUrl
   } else if (assets.lastFrame || assets.ctaGraphic) {
-    const endUrl = assets.lastFrame?.url || assets.ctaGraphic?.url
+    const endUrl = lastFrameUrl || ctaUrl
     if (endUrl) {
       postProcessing.endCard = endUrl
     }
   }
 
   // Identity routing
+  const primaryIdentityUrl = getGenerationAssetUrl(assets.primaryIdentity)
   if (mode === 'face_only' || mode === 'replace_face') {
-    if (capabilities.supportsFaceSwap && assets.primaryIdentity) {
-      directInputs.image_url = assets.primaryIdentity.url
+    if (capabilities.supportsFaceSwap && primaryIdentityUrl) {
+      directInputs.image_url = primaryIdentityUrl
     } else if (assets.primaryIdentity) {
       promptContext.presenterDescription = assets.primaryIdentity.name
     }
   } else if (mode === 'full_body' || mode === 'replace_person') {
-    if ((capabilities.supportsPersonReplacement || capabilities.supportsI2I) && assets.primaryIdentity) {
-      directInputs.image_url = assets.primaryIdentity.url
+    if ((capabilities.supportsPersonReplacement || capabilities.supportsI2I) && primaryIdentityUrl) {
+      directInputs.image_url = primaryIdentityUrl
     } else if (assets.primaryIdentity) {
       promptContext.presenterDescription = assets.primaryIdentity.name
     }
   } else if (mode === 'recreate' || mode === 'complete') {
-    if (assets.primaryIdentity && capabilities.supportsI2I) {
-      directInputs.image_url = assets.primaryIdentity.url
+    if (primaryIdentityUrl && capabilities.supportsI2I) {
+      directInputs.image_url = primaryIdentityUrl
     }
     if (capabilities.maxImages > 1 && assets.identities.length > 1) {
-      const identityUrls = assets.identities.slice(0, capabilities.maxImages).map((i) => i.url)
+      const identityUrls = assets.identities.slice(0, capabilities.maxImages).map((i) => getGenerationAssetUrl(i)).filter(Boolean)
       if (identityUrls.length > 1) {
         directInputs.images_list = identityUrls
       }
@@ -144,8 +150,8 @@ export function resolveAssetsForModel(
   }
 
   // Logo: always post-processing for exactness
-  if (assets.primaryLogo) {
-    postProcessing.logo = assets.primaryLogo.url
+  if (primaryLogoUrl) {
+    postProcessing.logo = primaryLogoUrl
   }
 
   // Source media for video modes
@@ -175,7 +181,8 @@ export function resolveAssetsForModel(
 
   const unused: PersonalizationAsset[] = []
   for (const asset of allAssets) {
-    if (!usedUrls.has(asset.url)) {
+    const genUrl = getGenerationAssetUrl(asset)
+    if (!genUrl || !usedUrls.has(genUrl)) {
       unused.push(asset)
     }
   }

@@ -84,11 +84,15 @@ export interface PersonalizationAsset {
   role: AssetRole
   name: string
   url: string
+  uploadedUrl?: string
   isPrimary: boolean
   mimeType?: string
   width?: number
   height?: number
   createdAt: string
+  uploadStatus?: 'local' | 'uploading' | 'ready' | 'error'
+  uploadError?: string | null
+  file?: File | null
 }
 
 export interface AssetLibrary {
@@ -160,6 +164,20 @@ export const DEFAULT_GENERATION_OPTIONS: GenerationOptions = {
   firstFrameMode: 'none',
   lastFrameMode: 'none',
   consentGiven: false,
+}
+
+export interface GenerationState {
+  status: 'idle' | 'personalizing-prompt' | 'generating' | 'processing' | 'complete' | 'error'
+  progress: number
+  progressMessage: string
+  errorMessage: string | null
+}
+
+export const EMPTY_GENERATION_STATE: GenerationState = {
+  status: 'idle',
+  progress: 0,
+  progressMessage: '',
+  errorMessage: null,
 }
 
 export interface PersonalizationProject {
