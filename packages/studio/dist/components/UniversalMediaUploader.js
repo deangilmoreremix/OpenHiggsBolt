@@ -9,6 +9,7 @@ var _react = require("react");
 var _reactHotToast = _interopRequireDefault(require("react-hot-toast"));
 var _muapi = require("../muapi.js");
 var _formatError = require("../utils/formatError.js");
+var _persistKey = require("../persistKey.js");
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
 function _regenerator() { /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ var e, t, r = "function" == typeof Symbol ? Symbol : {}, n = r.iterator || "@@iterator", o = r.toStringTag || "@@toStringTag"; function i(r, n, o, i) { var c = n && n.prototype instanceof Generator ? n : Generator, u = Object.create(c.prototype); return _regeneratorDefine2(u, "_invoke", function (r, n, o) { var i, c, u, f = 0, p = o || [], y = !1, G = { p: 0, n: 0, v: e, a: d, f: d.bind(e, 4), d: function d(t, r) { return i = t, c = 0, u = e, G.n = r, a; } }; function d(r, n) { for (c = r, u = n, t = 0; !y && f && !o && t < p.length; t++) { var o, i = p[t], d = G.p, l = i[2]; r > 3 ? (o = l === n) && (u = i[(c = i[4]) ? 5 : (c = 3, 3)], i[4] = i[5] = e) : i[0] <= d && ((o = r < 2 && d < i[1]) ? (c = 0, G.v = n, G.n = i[1]) : d < l && (o = r < 3 || i[0] > n || n > l) && (i[4] = r, i[5] = n, G.n = l, c = 0)); } if (o || r > 1) return a; throw y = !0, n; } return function (o, p, l) { if (f > 1) throw TypeError("Generator is already running"); for (y && 1 === p && d(p, l), c = p, u = l; (t = c < 2 ? e : u) || !y;) { i || (c ? c < 3 ? (c > 1 && (G.n = -1), d(c, u)) : G.n = u : G.v = u); try { if (f = 2, i) { if (c || (o = "next"), t = i[o]) { if (!(t = t.call(i, u))) throw TypeError("iterator result is not an object"); if (!t.done) return t; u = t.value, c < 2 && (c = 0); } else 1 === c && (t = i["return"]) && t.call(i), c < 2 && (u = TypeError("The iterator does not provide a '" + o + "' method"), c = 1); i = e; } else if ((t = (y = G.n < 0) ? u : r.call(n, G)) !== a) break; } catch (t) { i = e, c = 1, u = t; } finally { f = 1; } } return { value: t, done: y }; }; }(r, o, i), !0), u; } var a = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} t = Object.getPrototypeOf; var c = [][n] ? t(t([][n]())) : (_regeneratorDefine2(t = {}, n, function () { return this; }), t), u = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(c); function f(e) { return Object.setPrototypeOf ? Object.setPrototypeOf(e, GeneratorFunctionPrototype) : (e.__proto__ = GeneratorFunctionPrototype, _regeneratorDefine2(e, o, "GeneratorFunction")), e.prototype = Object.create(u), e; } return GeneratorFunction.prototype = GeneratorFunctionPrototype, _regeneratorDefine2(u, "constructor", GeneratorFunctionPrototype), _regeneratorDefine2(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = "GeneratorFunction", _regeneratorDefine2(GeneratorFunctionPrototype, o, "GeneratorFunction"), _regeneratorDefine2(u), _regeneratorDefine2(u, o, "Generator"), _regeneratorDefine2(u, n, function () { return this; }), _regeneratorDefine2(u, "toString", function () { return "[object Generator]"; }), (_regenerator = function _regenerator() { return { w: i, m: f }; })(); }
@@ -25,28 +26,49 @@ function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) 
 function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
 function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
 function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
-var HISTORY_KEY = "smartvideo_media_upload_history_v1";
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+var HISTORY_KEY_BASE = "smartvideo_media_upload_history_v1";
+var DRAFT_KEY_BASE = "smartvideo_media_slot_drafts_v1";
 var HISTORY_LIMIT = 40;
 var DEFAULT_MAX_BYTES = {
   image: 20 * 1024 * 1024,
   video: 100 * 1024 * 1024,
   audio: 50 * 1024 * 1024
 };
-function readHistory() {
+function readHistory(historyKey) {
   if (typeof window === "undefined") return [];
   try {
-    var value = JSON.parse(window.localStorage.getItem(HISTORY_KEY) || "[]");
+    var value = JSON.parse(window.localStorage.getItem(historyKey) || "[]");
     return Array.isArray(value) ? value : [];
   } catch (_unused) {
     return [];
   }
 }
-function writeHistory(items) {
+function writeHistory(items, historyKey) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, HISTORY_LIMIT)));
+    window.localStorage.setItem(historyKey, JSON.stringify(items.slice(0, HISTORY_LIMIT)));
   } catch (_unused2) {
     // Storage is a convenience only; upload still succeeds when storage is unavailable.
+  }
+}
+function readDrafts(draftKey) {
+  if (typeof window === "undefined") return {};
+  try {
+    var value = JSON.parse(window.localStorage.getItem(draftKey) || "{}");
+    return value && _typeof(value) === "object" && !Array.isArray(value) ? value : {};
+  } catch (_unused3) {
+    return {};
+  }
+}
+function writeDraft(storageKey, slotKey, urls) {
+  if (typeof window === "undefined" || !storageKey) return;
+  try {
+    var drafts = readDrafts(storageKey);
+    if (urls.length) drafts[slotKey] = urls;else delete drafts[slotKey];
+    window.localStorage.setItem(storageKey, JSON.stringify(drafts));
+  } catch (_unused4) {
+    // Draft persistence is a convenience only.
   }
 }
 function matchesMediaType(file, mediaType) {
@@ -95,6 +117,7 @@ function Preview(_ref) {
   });
 }
 function UniversalMediaUploader(_ref2) {
+  var _slot$index;
   var apiKey = _ref2.apiKey,
     slot = _ref2.slot,
     _ref2$values = _ref2.values,
@@ -109,6 +132,9 @@ function UniversalMediaUploader(_ref2) {
     className = _ref2$className === void 0 ? "" : _ref2$className;
   var inputRef = (0, _react.useRef)(null);
   var dragDepth = (0, _react.useRef)(0);
+  var intentionalClearRef = (0, _react.useRef)(false);
+  var previousValuesRef = (0, _react.useRef)(values);
+  var hydratedDraftKeyRef = (0, _react.useRef)(null);
   var _useState = (0, _react.useState)(false),
     _useState2 = _slicedToArray(_useState, 2),
     dragging = _useState2[0],
@@ -136,19 +162,47 @@ function UniversalMediaUploader(_ref2) {
   var remaining = Math.max(limit - values.length, 0);
   var accepted = "".concat(mediaType, "/*");
   var sizeLimit = maxBytes || DEFAULT_MAX_BYTES[mediaType] || DEFAULT_MAX_BYTES.image;
+  var scopedHistoryKey = (0, _persistKey.scopedPersistKey)(HISTORY_KEY_BASE, apiKey);
+  var scopedDraftKey = (0, _persistKey.scopedPersistKey)(DRAFT_KEY_BASE, apiKey);
+  // Workflow slots carry provider field metadata. Inline/base uploaders do not,
+  // so only workflow-scoped controls automatically restore drafts.
+  var slotDraftKey = slot !== null && slot !== void 0 && slot.field ? "".concat(mediaType, ":").concat(slot.id || role, ":").concat(slot.field, ":").concat((_slot$index = slot.index) !== null && _slot$index !== void 0 ? _slot$index : "all") : null;
   var history = (0, _react.useMemo)(function () {
-    return readHistory().filter(function (item) {
+    return readHistory(scopedHistoryKey).filter(function (item) {
       return item.type === mediaType;
     });
-  }, [historyOpen, historyVersion, mediaType]);
+  }, [historyOpen, historyVersion, mediaType, scopedHistoryKey]);
+  (0, _react.useEffect)(function () {
+    if (!slotDraftKey || typeof window === "undefined") {
+      previousValuesRef.current = values;
+      return;
+    }
+    var previous = previousValuesRef.current || [];
+    var changedSlot = hydratedDraftKeyRef.current !== slotDraftKey;
+    var externallyReset = !changedSlot && previous.length > 0 && values.length === 0 && !intentionalClearRef.current;
+    if (changedSlot || externallyReset) {
+      hydratedDraftKeyRef.current = slotDraftKey;
+      var stored = readDrafts(scopedDraftKey)[slotDraftKey];
+      if (values.length === 0 && Array.isArray(stored) && stored.length > 0) {
+        var restored = _toConsumableArray(new Set(stored.filter(Boolean))).slice(0, limit);
+        previousValuesRef.current = restored;
+        onChange === null || onChange === void 0 || onChange(restored);
+        intentionalClearRef.current = false;
+        return;
+      }
+    }
+    writeDraft(scopedDraftKey, slotDraftKey, values);
+    previousValuesRef.current = values;
+    intentionalClearRef.current = false;
+  }, [limit, onChange, slotDraftKey, values, scopedDraftKey]);
   var updateHistory = function updateHistory(entries) {
-    var existing = readHistory();
+    var existing = readHistory(scopedHistoryKey);
     var urls = new Set(entries.map(function (item) {
       return item.url;
     }));
     writeHistory([].concat(_toConsumableArray(entries), _toConsumableArray(existing.filter(function (item) {
       return !urls.has(item.url);
-    }))));
+    }))), scopedHistoryKey);
     setHistoryVersion(function (version) {
       return version + 1;
     });
@@ -242,6 +296,7 @@ function UniversalMediaUploader(_ref2) {
     };
   }();
   var removeAt = function removeAt(index) {
+    intentionalClearRef.current = true;
     onChange === null || onChange === void 0 || onChange(values.filter(function (_, itemIndex) {
       return itemIndex !== index;
     }));

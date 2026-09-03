@@ -22,12 +22,7 @@ export function mergeCopy(base, override) {
 }
 
 export function resolveRuntimeLocale(locale) {
-  if (locale && locale !== 'en') return locale;
-  if (typeof window !== 'undefined') {
-    const pathname = window.location?.pathname || '';
-    if (pathname === '/zh' || pathname.startsWith('/zh/')) return 'zh';
-  }
-  return locale || 'en';
+  return locale && locale !== 'en' ? locale : 'en';
 }
 
 // `en` is the required default bundle; `localeBundle` is the override for

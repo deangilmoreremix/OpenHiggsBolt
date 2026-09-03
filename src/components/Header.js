@@ -78,20 +78,11 @@ export function Header(navigate) {
         document.body.appendChild(SettingsModal());
     };
 
-    // Language toggle button
-    const langBtn = document.createElement('button');
-    const currentLang = getLang();
-    langBtn.className = 'flex items-center px-3 py-1.5 rounded-md border border-white/10 bg-white/5 text-[13px] font-bold text-white/80 hover:text-white hover:bg-white/10 hover:border-white/20 transition-colors';
-    langBtn.title = currentLang === 'zh' ? 'Switch to English' : '切换为中文';
-    langBtn.textContent = currentLang === 'zh' ? 'EN' : '中文';
-    langBtn.onclick = () => setLang(currentLang === 'zh' ? 'en' : 'zh');
-
     const userBadge = document.createElement('div');
     const _ws = getWorkspaceId();
     userBadge.className = 'flex items-center px-3 py-1.5 rounded-md border border-white/10 bg-white/5 text-[12px] font-bold text-white/60';
     userBadge.textContent = _ws ? `Workspace: ${_ws}` : (getUserId() ? 'Signed in' : 'Guest');
     rightPart.appendChild(userBadge);
-    rightPart.appendChild(langBtn);
     rightPart.appendChild(settingsBtn);
 
     navBar.appendChild(leftPart);

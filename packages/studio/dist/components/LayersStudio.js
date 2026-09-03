@@ -11,7 +11,6 @@ var _reactHotToast = _interopRequireWildcard(require("react-hot-toast"));
 var _muapi = require("../muapi.js");
 var _formatError = require("../utils/formatError.js");
 var _layersStudio = _interopRequireDefault(require("../messages/en/layersStudio.json"));
-var _layersStudio2 = _interopRequireDefault(require("../messages/zh/layersStudio.json"));
 var _i18nUtils = require("../i18nUtils");
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
@@ -122,7 +121,7 @@ function LayersStudio(_ref) {
     onGenerationError = _ref.onGenerationError,
     _ref$locale = _ref.locale,
     locale = _ref$locale === void 0 ? "en" : _ref$locale;
-  var copy = (0, _i18nUtils.resolveCopy)(_layersStudio["default"], _layersStudio2["default"], locale);
+  var copy = (0, _i18nUtils.resolveCopy)(_layersStudio["default"], null, locale);
 
   // Main canvas & image state
   var _useState = (0, _react.useState)(DEFAULT_SAMPLE_IMAGE),

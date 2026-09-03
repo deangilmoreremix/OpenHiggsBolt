@@ -8,6 +8,7 @@ import { academyAssets, type AcademyAsset } from '@/data/academyAssets';
 import { academyTemplates } from '@/data/academyTemplates';
 import type { AcademyTrack } from '@/lib/academyLessons';
 import manifest from '@/data/academyMediaManifest.json';
+import { panels, buttons, semantic, appWrapper, optionStyle, colors } from '@/shared/styles/designTokens';
 
 type Step = 'learn' | 'see' | 'create';
 
