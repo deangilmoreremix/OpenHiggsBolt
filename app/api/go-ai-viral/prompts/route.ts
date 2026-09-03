@@ -41,6 +41,8 @@ interface CachedFeed {
   nicheMap: Map<string, NicheResult>
   /** Aggregated niche counts across all records. */
   availableNiches: { id: string; label: string; count: number }[]
+  /** Sub-niche counts grouped by primary niche. */
+  availableSubNiches: Record<string, { id: string; label: string; count: number }[]>
 }
 
 let cached: CachedFeed | null = null
@@ -123,6 +125,7 @@ async function loadFeed(): Promise<CachedFeed> {
     if (result) {
       record.businessNiches = result.businessNiches
       record.primaryNiche = result.primaryNiche
+      record.subNiches = result.subNiches
     }
   }
 
@@ -142,7 +145,34 @@ async function loadFeed(): Promise<CachedFeed> {
     }))
     .sort((a, b) => b.count - a.count)
 
-  cached = { records, stats: statsText, fetchedAt: now, nicheMap, availableNiches }
+  // Aggregate sub-niche counts per primary niche
+  const subNicheCounts = new Map<string, Map<string, number>>()
+  for (const record of records) {
+    if (!record.primaryNiche || !record.subNiches) continue
+    const primary = record.primaryNiche
+    if (!subNicheCounts.has(primary)) {
+      subNicheCounts.set(primary, new Map())
+    }
+    const subMap = subNicheCounts.get(primary)!
+    for (const sub of record.subNiches) {
+      subMap.set(sub, (subMap.get(sub) || 0) + 1)
+    }
+  }
+
+  const availableSubNiches = Object.fromEntries(
+    Array.from(subNicheCounts.entries()).map(([primary, subMap]) => [
+      primary,
+      Array.from(subMap.entries())
+        .map(([id, count]) => ({
+          id,
+          label: humanizeNiche(id),
+          count,
+        }))
+        .sort((a, b) => b.count - a.count),
+    ])
+  )
+
+  cached = { records, stats: statsText, fetchedAt: now, nicheMap, availableNiches, availableSubNiches }
   return cached
 }
 
@@ -173,7 +203,7 @@ export async function GET(req: NextRequest) {
     const featured = searchParams.get('featured') === 'true'
     const viral = searchParams.get('viral') === 'true'
 
-    const { records, stats, availableNiches } = await loadFeed()
+    const { records, stats, availableNiches, availableSubNiches } = await loadFeed()
 
     // Apply filters
     let filtered = records
@@ -199,7 +229,7 @@ export async function GET(req: NextRequest) {
       filtered = filtered.filter((r) => r.primaryNiche === niche || (Array.isArray(r.businessNiches) && r.businessNiches.includes(niche)))
     }
     if (subNiches.length > 0) {
-      filtered = filtered.filter((r) => (Array.isArray(r.businessNiches) && r.businessNiches.some((n) => subNiches.includes(n))))
+      filtered = filtered.filter((r) => (Array.isArray(r.subNiches) && r.subNiches.some((n) => subNiches.includes(n))))
     }
     if (featured) {
       filtered = filtered.filter((r) => r.isFeatured)
@@ -233,6 +263,7 @@ export async function GET(req: NextRequest) {
           new Set(records.map((r) => r.recommendedModel).filter(Boolean))
         ).sort(),
         availableNiches: (cached!.availableNiches ?? []),
+        availableSubNiches: (cached!.availableSubNiches ?? {}),
         fetchedAt: cached!.fetchedAt,
       },
     })
