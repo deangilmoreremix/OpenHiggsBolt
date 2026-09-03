@@ -736,33 +736,9 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                   </a>
                 </p>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-white/30 mb-2">
-                  {openaiKey ? 'New OpenAI Key' : 'OpenAI API Key'}
-                </label>
-                <input
-                  type="password"
-                  value={settingsOpenaiInput}
-                  onChange={(e) => setSettingsOpenaiInput(e.target.value)}
-                  placeholder="Enter your OpenAI key (sk-...) — optional"
-                  className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[13px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
-                />
-              </div>
             </div>
 
             <div className="flex gap-3">
-              <button
-                onClick={() => handleKeySave(settingsKeyInput, settingsOpenaiInput)}
-                disabled={isSavingKey || (!settingsKeyInput.trim() && !settingsOpenaiInput.trim())}
-                className="flex-1 h-10 rounded-md bg-[#22d3ee]/10 text-[#22d3ee] hover:bg-[#22d3ee]/20 text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {isSavingKey && (
-                  <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                  </svg>
-                )}
-                {isSavingKey ? 'Verifying…' : 'Save Key'}
-              </button>
               {apiKey && (
                 <button
                   onClick={handleKeyChange}
