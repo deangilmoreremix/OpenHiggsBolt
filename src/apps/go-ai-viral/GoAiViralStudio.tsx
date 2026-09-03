@@ -50,6 +50,8 @@ interface FeedResponse {
     stats: FeedStats
     availableCategories: string[]
     availableModels: string[]
+    availableNiches: { id: string; label: string; count: number }[]
+    availableSubNiches: Record<string, { id: string; label: string; count: number }[]>
     fetchedAt: number
   }
 }
@@ -207,16 +209,6 @@ function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
             type="button"
             onClick={(e) => {
               e.stopPropagation()
-              openPersonalize({ source: record, trigger: e.currentTarget })
-            }}
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
-          >
-            Personalize
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
               handleOpenInStudio()
             }}
             className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-4 py-2.5 text-sm font-bold text-black shadow-glow transition hover:scale-[1.01]"
@@ -354,16 +346,6 @@ function VideoPromptCard({ record, onSelect }: VideoPromptCardProps) {
             className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
           >
             View Prompt
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              openPersonalize({ source: record, trigger: e.currentTarget })
-            }}
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
-          >
-            Personalize
           </button>
           <button
             type="button"
@@ -902,9 +884,8 @@ function PromptDetailModal({ record, onClose }: PromptDetailModalProps) {
 
 // ── Main Studio ─────────────────────────────────────────────────────────────────
 
-export default function GoAiViralStudio({ apiKey, defaultNiche }: { apiKey?: string; defaultNiche?: string }) {
+export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
   void apiKey // Reserved for future generation features; feed browsing needs no key.
-  void defaultNiche // Accepted for niche routing; currently unused in feed state.
   // Data
   const [records, setRecords] = useState<PromptRecord[]>([])
   const [stats, setStats] = useState<FeedStats | null>(null)

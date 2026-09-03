@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { SeedancePrompt, SeedanceStats } from '@/types/go-ai-viral/seedance'
+import { classifyPrompt } from '@/lib/nicheClassifier'
 
 const DATA_PATH = '/tmp/seedance_prompts.json'
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
@@ -79,7 +80,7 @@ function enrichRecord(raw: SeedancePrompt): SeedancePrompt {
   const categories = detectCategories(raw.prompt || raw.fullPrompt)
   const thumbnail = buildThumbnail(raw.outputUrl)
 
-  return {
+  const base = {
     ...raw,
     sourceLanguage: raw.sourceLanguage || 'en',
     detailHref: raw.detailHref
@@ -94,6 +95,21 @@ function enrichRecord(raw: SeedancePrompt): SeedancePrompt {
     sourceModels: ['seedance'],
     language: raw.sourceLanguage || 'en',
     thumbnail,
+  }
+
+  const niche = classifyPrompt({
+    id: raw.slug,
+    title: raw.prompt || raw.fullPrompt || '',
+    prompt: raw.prompt || raw.fullPrompt || '',
+    tags: raw.tags || categories,
+    categories: raw.categories || categories,
+  } as never)
+
+  return {
+    ...base,
+    businessNiches: niche.businessNiches,
+    primaryNiche: niche.primaryNiche,
+    subNiches: niche.subNiches,
   }
 }
 
@@ -161,12 +177,33 @@ export async function GET(req: NextRequest) {
     const start = (safePage - 1) * pageSize
     const items = filtered.slice(start, start + pageSize)
 
+    const availableNiches = Array.from(
+      new Set(records.flatMap((r) => r.businessNiches || []))
+    ).map((id) => ({
+      id,
+      label: id.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+      count: records.filter((r) => (r.businessNiches || []).includes(id)).length,
+    }))
+
+    const availableSubNiches = Object.fromEntries(
+      Array.from(new Set(records.flatMap((r) => r.subNiches || []))).map((id) => [
+        id,
+        {
+          id,
+          label: id.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+          count: records.filter((r) => (r.subNiches || []).includes(id)).length,
+        },
+      ])
+    )
+
     return NextResponse.json({
       data: items,
       pagination: { page: safePage, pageSize, total, totalPages },
       meta: {
         stats,
         availableLanguages: Array.from(new Set(records.map((r) => r.sourceLanguage || 'unknown'))).sort(),
+        availableNiches,
+        availableSubNiches,
         fetchedAt: cached?.fetchedAt || Date.now(),
       },
     })

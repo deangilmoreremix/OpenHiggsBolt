@@ -26,6 +26,12 @@ export interface SeedancePrompt {
     reposts: number
     replies: number
   }
+  /** Business-niche classification added server-side by the seedance API route. */
+  businessNiches?: string[]
+  /** Single strongest niche used for deterministic grouping. */
+  primaryNiche?: string
+  /** Optional sub-niches within the primary niche for granular filtering. */
+  subNiches?: string[]
 }
 
 export interface SeedanceStats {
