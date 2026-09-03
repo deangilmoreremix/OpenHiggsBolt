@@ -5,6 +5,57 @@ import StandaloneShell from '@/components/StandaloneShell';
 import { PRODUCT_NAME, NAV_ITEMS, LOGOS, TESTIMONIALS, PRICING, FAQS } from './landingData';
 import SmartVideoShowcase from './SmartVideoShowcase';
 import { DemoPersonalizeProvider } from '@/shared/personalization';
+import { useSmartVideoAccess } from '@/access/SmartVideoAccessProvider';
+
+function PricingBuyButton({ isSignedIn, openUpgradeModal }) {
+  if (isSignedIn) {
+    return (
+      <button
+        type="button"
+        onClick={() => openUpgradeModal('pricing')}
+        className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-400 to-purple-500 px-6 py-4 text-lg font-black text-black shadow-lg shadow-cyan-500/20 transition hover:opacity-90"
+      >
+        Buy Pro — $299
+        <span className="text-sm font-semibold text-black/70">Lifetime access</span>
+      </button>
+    );
+  }
+
+  return (
+    <Link
+      href="/sign-up?intent=pro&redirect_url=/#pricing"
+      className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-400 to-purple-500 px-6 py-4 text-lg font-black text-black shadow-lg shadow-cyan-500/20 transition hover:opacity-90"
+    >
+      Buy Pro — $299
+      <span className="text-sm font-semibold text-black/70">Lifetime access</span>
+    </Link>
+  );
+}
+
+function PricingCard({ plan }) {
+  const { isSignedIn, openUpgradeModal } = useSmartVideoAccess();
+  return (
+    <div className="landing-card mx-auto mt-12 max-w-2xl rounded-3xl p-9 text-center">
+      <div className="flex items-center justify-center gap-3">
+        <h3 className="text-2xl font-bold text-white">{plan.name}</h3>
+        {plan.badge && (
+          <span className="rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 px-3 py-1 text-xs font-bold text-black">{plan.badge}</span>
+        )}
+      </div>
+      <div className="mt-5 text-5xl font-black text-white">{plan.price}</div>
+      <p className="mt-4 text-base leading-7 text-white/55">{plan.description}</p>
+      <ul className="mt-8 grid grid-cols-2 gap-x-6 gap-y-3 text-left text-sm text-white/65 sm:grid-cols-3">
+        {plan.features.map((f) => (
+          <li key={f} className="flex gap-3"><span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-cyan-300" />{f}</li>
+        ))}
+      </ul>
+      <PricingBuyButton isSignedIn={isSignedIn} openUpgradeModal={openUpgradeModal} />
+      <p className="mt-4 text-xs text-white/40">
+        One-time payment. No subscriptions. 30-day money-back guarantee.
+      </p>
+    </div>
+  );
+}
 
 export default function LandingPage({ FullStudio, AuthControls }) {
   return (
@@ -128,21 +179,7 @@ export default function LandingPage({ FullStudio, AuthControls }) {
           <h2 className="mt-4 text-4xl font-black tracking-tight md:text-5xl">One plan. Every studio. Yours for life.</h2>
         </div>
         {PRICING.map((plan) => (
-          <div key={plan.name} className="landing-card mx-auto mt-12 max-w-2xl rounded-3xl p-9 text-center">
-            <div className="flex items-center justify-center gap-3">
-              <h3 className="text-2xl font-bold text-white">{plan.name}</h3>
-              {plan.badge && (
-                <span className="rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 px-3 py-1 text-xs font-bold text-black">{plan.badge}</span>
-              )}
-            </div>
-            <div className="mt-5 text-5xl font-black text-white">{plan.price}</div>
-            <p className="mt-4 text-base leading-7 text-white/55">{plan.description}</p>
-            <ul className="mt-8 grid grid-cols-2 gap-x-6 gap-y-3 text-left text-sm text-white/65 sm:grid-cols-3">
-              {plan.features.map((f) => (
-                <li key={f} className="flex gap-3"><span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-cyan-300" />{f}</li>
-              ))}
-            </ul>
-          </div>
+          <PricingCard key={plan.name} plan={plan} />
         ))}
       </section>
 

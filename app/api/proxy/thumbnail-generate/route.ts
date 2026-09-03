@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getMuApiKeyFromRequest } from '@/app/api/v1/lib/auth';
 import { auth } from '@clerk/nextjs/server';
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
 import { ENTITLEMENTS } from '@/access/entitlements';
+import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const GENERATE_FUNCTION = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/generate-thumbnail` : '/.netlify/functions/generate-thumbnail';
@@ -12,10 +12,8 @@ async function resolveUserAndKey(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) return { userId: null, key: null, status: 401 as const };
 
-  let key: string;
-  try {
-    key = await getMuApiKeyFromRequest(req);
-  } catch {
+  const key = await getOpenAiKeyForUser();
+  if (!key) {
     return { userId: null, key: null, status: 401 as const };
   }
 

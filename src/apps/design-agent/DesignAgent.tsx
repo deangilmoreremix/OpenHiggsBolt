@@ -422,7 +422,7 @@ export default function DesignAgent({ apiKey: propApiKey, onRequestApiKey, templ
   const createNewProject = useCallback(async (): Promise<Project | null> => {
     if (!apiKey) { onRequestApiKey?.(); return null }
     let project: Project | null = null
-    requireEntitlement(
+    await requireEntitlement(
       ENTITLEMENTS.SMARTVIDEO_GO,
       async () => {
         try {
@@ -465,7 +465,7 @@ export default function DesignAgent({ apiKey: propApiKey, onRequestApiKey, templ
 
     setUploading(true)
     setUploadProgress(0)
-    requireEntitlement(
+    await requireEntitlement(
       ENTITLEMENTS.SMARTVIDEO_GO,
       async () => {
         try {
@@ -651,7 +651,7 @@ export default function DesignAgent({ apiKey: propApiKey, onRequestApiKey, templ
     setActivity([{ label: 'Go-AI is planning', status: 'running' }])
     setIsLoading(true)
 
-    requireEntitlement(
+    await requireEntitlement(
       ENTITLEMENTS.SMARTVIDEO_GO,
       async () => {
         try {
@@ -711,7 +711,7 @@ export default function DesignAgent({ apiKey: propApiKey, onRequestApiKey, templ
     if (!pendingPlan) return
     const plan = pendingPlan
     setIsLoading(true)
-    requireEntitlement(
+    await requireEntitlement(
       ENTITLEMENTS.SMARTVIDEO_GO,
       async () => {
         try {

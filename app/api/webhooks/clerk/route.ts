@@ -34,14 +34,6 @@ export async function POST(req: NextRequest) {
         data.last_name ?? null,
         data.image_url ?? null
       );
-
-      if (email) {
-        try {
-          await grantEntitlement(data.id, email, ENTITLEMENTS.SMARTVIDEO_GO, 'manual');
-        } catch (entErr) {
-          console.error('[clerk webhook] entitlement sync failed:', entErr);
-        }
-      }
     } catch (err) {
       console.error('[clerk webhook] sync failed', err);
       return NextResponse.json({ error: 'Sync failed' }, { status: 500 });

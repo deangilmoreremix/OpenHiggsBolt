@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDesignAgentApiKey } from '../lib/auth'
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
 import { ENTITLEMENTS } from '@/access/entitlements'
-import { requireOwnership } from '../lib/ownership'
+import { requireOwnership, recordOwnership } from '../lib/ownership'
 
 const BASE = 'https://api.muapi.ai/api/v1/creative-agent'
 
@@ -36,6 +36,12 @@ export async function POST(req: NextRequest) {
       signal: AbortSignal.timeout(30000),
     })
     const data = await safeApiJson(res)
+
+    // Record job ownership before returning, so the client can poll immediately.
+    if (data && typeof data === 'object' && typeof data.job_id === 'string') {
+      await recordOwnership({ userId: ownershipResult.userId, sessionId, jobId: data.job_id });
+    }
+
     return NextResponse.json(data, { status: res.status })
   } catch (err: any) {
     const status = err instanceof Response ? err.status : 500
