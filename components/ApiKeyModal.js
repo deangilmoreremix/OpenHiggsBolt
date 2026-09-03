@@ -39,10 +39,6 @@ export default function ApiKeyModal({
       setError('Please enter a valid MuAPI key (at least 8 characters, no surrounding quotes).');
       return;
     }
-    if (!o || !isValidKeyFormat(o)) {
-      setError('Please enter a valid OpenAI key (at least 8 characters, no surrounding quotes).');
-      return;
-    }
     onSave(m, o);
   };
 
@@ -85,7 +81,7 @@ export default function ApiKeyModal({
           </h1>
           <p className="text-white/40 text-[13px] leading-relaxed px-4">
             {subtitle || (
-              <>Enter your <a href="https://muapi.ai/access-keys" target="_blank" rel="noreferrer" className="text-[#22d3ee] hover:text-[#e5ff33] transition-colors">Muapi.ai</a> and <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-[#22d3ee] hover:text-[#e5ff33] transition-colors">OpenAI</a> API keys to start creating</>
+              <>Enter your <a href="https://muapi.ai/access-keys" target="_blank" rel="noreferrer" className="text-[#22d3ee] hover:text-[#e5ff33] transition-colors">Muapi.ai</a> API key to start creating. <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-[#22d3ee] hover:text-[#e5ff33] transition-colors">OpenAI</a> is optional.</>
             )}
           </p>
         </div>
@@ -105,7 +101,7 @@ export default function ApiKeyModal({
           </div>
 
           <div className="space-y-2">
-            <label className={labelClass}>OpenAI API Key</label>
+            <label className={labelClass}>OpenAI API Key <span className="text-white/20 font-normal">(optional)</span></label>
             <input
               type="password"
               value={openaiKey}

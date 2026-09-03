@@ -1,10 +1,13 @@
 'use client';
-import { useRef } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import DemoMediaCard from './DemoMediaCard';
 import { getDemosForNiche } from '@/data/nicheDemos';
 import { type NicheConfig } from '@/data/nicheContent';
 import { getCreateUrl } from '@/data/types';
+
+const INITIAL_COUNT = 10;
+const STEP = 10;
 
 type NicheSectionProps = {
   niche: NicheConfig;
@@ -14,11 +17,9 @@ type NicheSectionProps = {
 
 export default function NicheSection({ niche, demos }: NicheSectionProps) {
   const activeDemos = demos ?? getDemosForNiche(niche.id);
-  const reelRef = useRef<HTMLDivElement>(null);
-
-  const scrollBy = (dir: 1 | -1) => {
-    reelRef.current?.scrollBy({ left: dir * 380, behavior: 'smooth' });
-  };
+  const [visible, setVisible] = useState(INITIAL_COUNT);
+  const shown = activeDemos.slice(0, visible);
+  const hasMore = visible < activeDemos.length;
 
   return (
     <section className="border-y border-white/10 bg-[#030303] py-24" id={`niche-${niche.id}`}>
@@ -33,42 +34,30 @@ export default function NicheSection({ niche, demos }: NicheSectionProps) {
             </h2>
             <p className="mt-5 text-lg leading-8 text-white/60">{niche.subtext}</p>
           </div>
-          {/* Reel controls (desktop) */}
-          <div className="hidden gap-2 sm:flex">
-            <button
-              type="button"
-              onClick={() => scrollBy(-1)}
-              aria-label="Scroll reel left"
-              className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-white/[0.04] text-white/80 transition hover:bg-white/[0.08]"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollBy(1)}
-              aria-label="Scroll reel right"
-              className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-white/[0.04] text-white/80 transition hover:bg-white/[0.08]"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          </div>
         </div>
 
-        {/* Demo reel */}
-        <div
-          ref={reelRef}
-          className="scrollbar-none mt-10 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scroll-padding:0_1.5rem]"
-        >
-          {activeDemos.map((demo, i) => (
-            <div key={demo.slug} className="w-[85vw] shrink-0 snap-start sm:w-[45%] lg:w-[31%]">
-              <DemoMediaCard demo={demo} index={i} ctaLabel={niche.ctaButton} />
-            </div>
+        {/* Demo grid */}
+        <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {shown.map((demo, i) => (
+            <DemoMediaCard key={demo.slug} demo={demo} index={i} ctaLabel={niche.ctaButton} />
           ))}
         </div>
+
+        {/* Show more */}
+        {hasMore && (
+          <div className="mt-10 flex justify-center">
+            <button
+              type="button"
+              onClick={() => setVisible((v) => Math.min(v + STEP, activeDemos.length))}
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-7 py-3 text-sm font-bold text-white transition hover:bg-white/[0.08]"
+            >
+              Show More
+              <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold text-white/70">
+                {activeDemos.length - visible} more
+              </span>
+            </button>
+          </div>
+        )}
 
         {/* Personalize CTA */}
         <div className="mt-16 rounded-3xl border border-white/10 bg-white/[0.03] p-8 md:p-12">

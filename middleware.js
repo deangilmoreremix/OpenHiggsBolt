@@ -70,6 +70,16 @@ export default clerkMiddleware(async (auth, request) => {
     return NextResponse.next();
   }
 
+  // Allow the dev-login route itself through without Clerk auth so it can set
+  // the bypass cookie. Without this, the route would 500 because Clerk rejects
+  // the localhost origin before the handler runs.
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    request.nextUrl.pathname === '/api/dev-login'
+  ) {
+    return NextResponse.next();
+  }
+
   const url = request.nextUrl;
   const locale = localeFromPathname(url.pathname);
   const { userId } = await auth();

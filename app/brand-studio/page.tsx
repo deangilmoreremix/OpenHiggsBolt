@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Globe, Palette, BarChart3, Image, Camera, Film, Loader2, Check, ChevronRight } from 'lucide-react';
 import { panels, buttons, semantic, appWrapper, optionStyle } from '@/shared/styles/designTokens';
+import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider';
 
 const STEPS = [
   'Fetching website...',
@@ -21,6 +22,7 @@ const FEATURES = [
 
 export default function BrandStudioLanding() {
   const router = useRouter();
+  const { requireEntitlement } = useSmartVideoAccess();
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(-1);
@@ -37,24 +39,32 @@ export default function BrandStudioLanding() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!url.trim()) return;
-    setLoading(true);
-    setError(null);
-    setStep(0);
-    try {
-      const res = await fetch('/api/brands', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to analyze brand');
-      router.push(`/brand/${data.id}`);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-      setStep(-1);
-    }
+    requireEntitlement(
+      ENTITLEMENTS.SMARTVIDEO_GO,
+      async () => {
+        setLoading(true);
+        setError(null);
+        setStep(0);
+        try {
+          const res = await fetch('/api/brands', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed to analyze brand');
+          router.push(`/brand/${data.id}`);
+        } catch (err: any) {
+          setError(err.message);
+        } finally {
+          setLoading(false);
+          setStep(-1);
+        }
+      },
+      () => {
+        setError('Payment required to analyze brands');
+      }
+    );
   };
 
   useEffect(() => {

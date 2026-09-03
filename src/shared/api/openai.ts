@@ -10,47 +10,20 @@ function getSupabaseUrl(): string | undefined {
   return undefined
 }
 
-const OPENAI_FUNCTION_URL = getSupabaseUrl()
-  ? `${getSupabaseUrl()}/functions/v1/enhance-prompt`
-  : '/.netlify/functions/enhance-prompt'
+// NOTE: OpenAI calls are proxied through /api/proxy/openai-enhance.
+// The client never receives or persists raw API keys.
 
 /**
- * Resolve the user's own OpenAI key (BYOK). Users add their key in Settings;
- * it is persisted to localStorage 'openai_key' (and mirrored to a global for
- * non-browser callers). This function talks to a Supabase Edge Function via
- * plain fetch, so — unlike axios requests — it does not pick up the global
- * `x-openai-key` interceptor and must attach the key itself.
- */
-function getUserOpenAiKey(): string {
-  if (typeof window !== 'undefined') {
-    const w = window as unknown as { __OPENAI_KEY__?: string }
-    const fromGlobal = w.__OPENAI_KEY__
-    if (fromGlobal && fromGlobal.trim()) return fromGlobal.trim()
-    try {
-      const fromStorage = window.localStorage?.getItem('openai_key')
-      if (fromStorage && fromStorage.trim()) return fromStorage.trim()
-    } catch {
-      // localStorage may be unavailable (SSR / privacy mode); ignore.
-    }
-  }
-  return ''
-}
-
-/**
- * Call OpenAI via Supabase Edge Function to generate/enhance text.
- * Forwards the user's own OpenAI key (BYOK) via the `x-openai-key` header.
+ * Call OpenAI via the server-side proxy.
+ * The client never receives or persists raw API keys.
  */
 export async function callOpenAI(
   prompt: string,
   mode: 'enhance' | 'script' | 'campaign' = 'enhance'
 ): Promise<{ text: string; model: string }> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  const userKey = getUserOpenAiKey()
-  if (userKey) headers['x-openai-key'] = userKey
-
-  const response = await fetch(OPENAI_FUNCTION_URL, {
+  const response = await fetch('/api/proxy/openai-enhance', {
     method: 'POST',
-    headers,
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt, mode }),
   })
 
@@ -63,21 +36,15 @@ export async function callOpenAI(
 }
 
 /**
- * Chat completion via the same Supabase Edge Function used by `callOpenAI`,
- * but with an explicit system + user message list (BYOK via `x-openai-key`).
- * Returns the raw assistant text. Used by the AI Assistant modal for the
- * per-operation text tools (rewrite, tone, expand, summarize, translate).
+ * Chat completion via the server-side proxy.
+ * The client never receives or persists raw API keys.
  */
 export async function callOpenAIChat(
   messages: { role: 'system' | 'user' | 'assistant'; content: string }[]
 ): Promise<string> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  const userKey = getUserOpenAiKey()
-  if (userKey) headers['x-openai-key'] = userKey
-
-  const response = await fetch(OPENAI_FUNCTION_URL, {
+  const response = await fetch('/api/proxy/openai-enhance', {
     method: 'POST',
-    headers,
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages, mode: 'chat' }),
   })
 

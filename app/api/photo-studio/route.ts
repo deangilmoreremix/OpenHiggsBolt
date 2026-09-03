@@ -1,28 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ok, apiError } from '@/lib/apiError'
-
-// Photo Studio — MuAPI-backed product photography generation.
-// Pattern: POST submits the job and returns { requestId } immediately (no
-// blocking). The browser then polls GET ?requestId=..., which performs a
-// single non-blocking status check against MuAPI and (on completion) records
-// the result to history. This keeps the HTTP request short so it works on
-// serverless (Netlify/Vercel) function runtimes.
-// https://muapi.ai/docs/introduction  (submit + poll pattern)
-//
-// ⚠️ IN-MEMORY STATE — EPHEMERAL & GLOBAL ⚠️
-// `history` (PhotoRecord[]) and `jobs` (Map) are module-level variables
-// stored in a single Node.js instance's memory. Limitations:
-//   • All data is lost on server restart, redeploy, or cold-start.
-//   • In a scaled/multi-instance deployment each instance has its own
-//     independent store — records created on instance A are invisible to
-//     instance B.
-//   • There is NO per-user isolation. Any caller who knows (or guesses) a
-//     requestId can poll its status via GET ?requestId=... regardless of
-//     who submitted it.
-//   • The `brand_id` field on PhotoRecord supports per-brand filtering on
-//     GET ?brand_id=... but does not enforce access control — any caller
-//     can list another brand's records by supplying its brand_id.
-// Replace with a database (Postgres, Redis, etc.) for production use.
+import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
+import { ENTITLEMENTS } from '@/access/entitlements'
+import { auth } from '@clerk/nextjs/server'
+import { getSupabaseAdmin } from '@/src/lib/supabaseServer'
 
 const MUAPI = 'https://api.muapi.ai/api/v1'
 const STATUS_TIMEOUT_MS = 30000
@@ -33,19 +14,6 @@ const MAX_PAGE_SIZE = 100
 function getKey(req: NextRequest): string {
   return req.headers.get('x-api-key') || ''
 }
-
-type PhotoRecord = {
-  id: string
-  requestId?: string
-  brand_id?: string
-  image_url: string
-  style: string
-  category: string
-  created_at: string
-  status: string
-}
-const history: PhotoRecord[] = []
-const jobs = new Map<string, { brand_id?: string; style: string; category: string }>()
 
 async function submitImage(payload: any, key: string): Promise<string> {
   const submit = await fetch(`${MUAPI}/gpt-image-2`, {
@@ -74,6 +42,19 @@ function statusFrom(data: any): 'pending' | 'completed' | 'failed' {
 }
 
 export async function GET(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+  }
+
+  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
+  if (!entitlementCheck.allowed) {
+    if (entitlementCheck.status === 401) {
+      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+    }
+    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
+  }
+
   const { searchParams } = new URL(req.url)
   const requestId = searchParams.get('requestId')
   const brandId = searchParams.get('brand_id')
@@ -81,7 +62,19 @@ export async function GET(req: NextRequest) {
   if (requestId) {
     const key = getKey(req)
     if (!key) return apiError('bad_request', 'MuAPI key required', 400)
-    const meta = jobs.get(requestId)
+
+    const supabase = getSupabaseAdmin()
+    const { data: record } = await supabase
+      .from('photo_studio_records')
+      .select('*')
+      .eq('request_id', requestId)
+      .eq('clerk_user_id', userId)
+      .maybeSingle()
+
+    if (!record) {
+      return apiError('forbidden', 'You do not own this request', 403)
+    }
+
     try {
       const poll = await fetch(`${MUAPI}/predictions/${requestId}/result`, {
         headers: { 'x-api-key': key },
@@ -97,21 +90,23 @@ export async function GET(req: NextRequest) {
       const status = statusFrom(data)
       if (status === 'completed') {
         const imageUrl = data.outputs?.[0] || data.url || data.output?.url || ''
-        if (meta && imageUrl && !history.some((h) => h.requestId === requestId)) {
-          history.unshift({
-            id: `ph_${Date.now()}`,
-            requestId,
-            brand_id: meta.brand_id,
-            image_url: imageUrl,
-            style: meta.style,
-            category: meta.category,
-            created_at: new Date().toISOString(),
-            status: 'completed',
-          })
+        if (imageUrl && record.status !== 'completed') {
+          await supabase
+            .from('photo_studio_records')
+            .update({
+              status: 'completed',
+              image_url: imageUrl,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', record.id)
         }
         return ok({ status: 'completed', image_url: imageUrl })
       }
       if (status === 'failed') {
+        await supabase
+          .from('photo_studio_records')
+          .update({ status: 'failed', updated_at: new Date().toISOString() })
+          .eq('id', record.id)
         return apiError('generation_failed', data.error || 'Generation failed', 502)
       }
       return ok({ status: 'pending' })
@@ -120,21 +115,47 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // List history
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
   const rawPageSize = parseInt(searchParams.get('pageSize') || String(DEFAULT_PAGE_SIZE), 10) || DEFAULT_PAGE_SIZE
   const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, rawPageSize))
 
-  const filtered = brandId ? history.filter((h) => h.brand_id === brandId) : history
-  const total = filtered.length
+  const supabase = getSupabaseAdmin()
+  let query = supabase
+    .from('photo_studio_records')
+    .select('*', { count: 'exact' })
+    .eq('clerk_user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (brandId) {
+    query = query.eq('brand_id', brandId)
+  }
+
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+  const { data: items, count } = await query.range(from, to)
+
+  const total = count || 0
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   const safePage = Math.min(page, totalPages)
-  const start = (safePage - 1) * pageSize
-  const items = filtered.slice(start, start + pageSize)
 
-  return ok(items, { page: safePage, pageSize, total, totalPages })
+  return ok(items || [], { page: safePage, pageSize, total, totalPages })
 }
 
 export async function POST(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+  }
+
+  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
+  if (!entitlementCheck.allowed) {
+    if (entitlementCheck.status === 401) {
+      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+    }
+    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
+  }
+
   const key = getKey(req)
   if (!key) return apiError('bad_request', 'MuAPI key required', 400)
 
@@ -155,7 +176,17 @@ export async function POST(req: NextRequest) {
 
   try {
     const requestId = await submitImage(payload, key)
-    jobs.set(requestId, { brand_id: brand_id || undefined, style, category: category || '' })
+    const supabase = getSupabaseAdmin()
+    await supabase
+      .from('photo_studio_records')
+      .insert({
+        clerk_user_id: userId,
+        request_id: requestId,
+        brand_id: brand_id || undefined,
+        style,
+        category: category || '',
+        status: 'pending',
+      })
     return ok({ requestId, status: 'pending' })
   } catch (err: any) {
     return apiError('submit_failed', err.message || 'Submission failed', 500)

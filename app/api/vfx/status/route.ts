@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerVFXClient } from '@/api/vfx'
 import { isRequestCancelled } from '../cancel/route'
+import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
+import { ENTITLEMENTS } from '@/access/entitlements'
 
 function cancelledResponse(id: string) {
   return { request_id: id, status: 'cancelled' as const }
 }
 
 export async function GET(req: NextRequest) {
+  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
+  if (!entitlementCheck.allowed) {
+    if (entitlementCheck.status === 401) {
+      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+    }
+    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
+  }
+
   try {
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')

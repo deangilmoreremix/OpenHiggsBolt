@@ -8,6 +8,7 @@ import {
   buildAdvancedParams,
   type AdvancedModelRef,
 } from '@/shared/components/AdvancedControlsPanel'
+import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider'
 
 // Map the modal's friendly model options to real MuAPI t2v model ids so the
 // unified generateVideo hits the correct /api/v1/{endpoint}.
@@ -18,6 +19,7 @@ const MODEL_OPTIONS: Array<{ value: string; label: string } & AdvancedModelRef> 
 ]
 
 export default function CinemaGenerate() {
+  const { requireEntitlement } = useSmartVideoAccess();
   const [prompt, setPrompt] = useState('')
   const [sceneCount, setSceneCount] = useState(5)
   const [model, setModel] = useState('kling-3.0')
@@ -40,23 +42,28 @@ export default function CinemaGenerate() {
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return
-    setIsGenerating(true)
-    try {
-      const apiKey = resolveMuapiKey()
-      const advanced = buildAdvancedParams(controls, advValues)
-      const video = await generateVideo(apiKey, {
-        model: selected.id,
-        prompt,
-        aspect_ratio: '16:9',
-        duration: 5 * sceneCount,
-        ...advanced,
-      })
-      setResult(video)
-    } catch (error) {
-      console.error(error)
-    } finally {
-      setIsGenerating(false)
-    }
+    requireEntitlement(
+      ENTITLEMENTS.SMARTVIDEO_GO,
+      async () => {
+        setIsGenerating(true)
+        try {
+          const apiKey = resolveMuapiKey()
+          const advanced = buildAdvancedParams(controls, advValues)
+          const video = await generateVideo(apiKey, {
+            model: selected.id,
+            prompt,
+            aspect_ratio: '16:9',
+            duration: 5 * sceneCount,
+            ...advanced,
+          })
+          setResult(video)
+        } catch (error) {
+          console.error(error)
+        } finally {
+          setIsGenerating(false)
+        }
+      }
+    )
   }
 
   return (

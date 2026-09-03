@@ -1,4 +1,7 @@
+import { safeApiJson } from '@/lib/safeApiResponse';
 import { NextResponse } from 'next/server';
+import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
+import { ENTITLEMENTS } from '@/access/entitlements';
 
 const MUAPI_BASE = 'https://api.muapi.ai';
 
@@ -53,6 +56,17 @@ function buildTargetUrl(pathSegments, search) {
     return path ? `${base}/${path}${search}` : `${base}${search}`;
 }
 
+async function requireAuthAndEntitlement(request) {
+    const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
+    if (!entitlementCheck.allowed) {
+        if (entitlementCheck.status === 401) {
+            return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+        }
+        return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
+    }
+    return null;
+}
+
 export async function GET(request, { params }) {
     const slug = await params;
     const pathSegments = slug.path || [];
@@ -65,8 +79,8 @@ export async function GET(request, { params }) {
     if (apiKey) headers.set('x-api-key', apiKey);
 
     try {
-        const response = await fetch(targetUrl, { headers, method: 'GET' });
-        const data = await response.json();
+        const response = await fetch(targetUrl, { headers, method: 'GET', signal: AbortSignal.timeout(30000) });
+        const data = await safeApiJson(response);
         return NextResponse.json(withProxiedArtwork(data), { status: response.status });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -74,6 +88,9 @@ export async function GET(request, { params }) {
 }
 
 export async function POST(request, { params }) {
+    const errorResponse = await requireAuthAndEntitlement(request);
+    if (errorResponse) return errorResponse;
+
     const slug = await params;
     const pathSegments = slug.path || [];
     const { search } = new URL(request.url);
@@ -86,8 +103,8 @@ export async function POST(request, { params }) {
 
     try {
         const body = await request.arrayBuffer();
-        const response = await fetch(targetUrl, { method: 'POST', headers, body });
-        const data = await response.json();
+        const response = await fetch(targetUrl, { method: 'POST', headers, body, signal: AbortSignal.timeout(60000) });
+        const data = await safeApiJson(response);
         return NextResponse.json(data, { status: response.status });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -95,6 +112,9 @@ export async function POST(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
+    const errorResponse = await requireAuthAndEntitlement(request);
+    if (errorResponse) return errorResponse;
+
     const slug = await params;
     const pathSegments = slug.path || [];
     const { search } = new URL(request.url);
@@ -105,8 +125,8 @@ export async function DELETE(request, { params }) {
     if (apiKey) headers.set('x-api-key', apiKey);
 
     try {
-        const response = await fetch(targetUrl, { method: 'DELETE', headers });
-        const data = await response.json();
+        const response = await fetch(targetUrl, { method: 'DELETE', headers, signal: AbortSignal.timeout(30000) });
+        const data = await safeApiJson(response);
         return NextResponse.json(data, { status: response.status });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -114,6 +134,9 @@ export async function DELETE(request, { params }) {
 }
 
 export async function PUT(request, { params }) {
+    const errorResponse = await requireAuthAndEntitlement(request);
+    if (errorResponse) return errorResponse;
+
     const slug = await params;
     const pathSegments = slug.path || [];
     const { search } = new URL(request.url);
@@ -125,8 +148,8 @@ export async function PUT(request, { params }) {
 
     try {
         const body = await request.arrayBuffer();
-        const response = await fetch(targetUrl, { method: 'PUT', headers, body });
-        const data = await response.json();
+        const response = await fetch(targetUrl, { method: 'PUT', headers, body, signal: AbortSignal.timeout(60000) });
+        const data = await safeApiJson(response);
         return NextResponse.json(data, { status: response.status });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });

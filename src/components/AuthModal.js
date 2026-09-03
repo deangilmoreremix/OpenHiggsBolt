@@ -66,11 +66,27 @@ export function AuthModal(onSuccess) {
                 .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')
                 .replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '')
                 .trim();
-            localStorage.setItem('muapi_key', cleanedKey);
-            // Sync cookie so server-side routes and agents pages can read the key.
-            document.cookie = muapiCookie(cleanedKey);
-            document.body.removeChild(overlay);
-            if (onSuccess) onSuccess();
+
+            // Persist key server-side via the encrypted key store.
+            fetch('/api/auth/muapi-key', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: cleanedKey }),
+                credentials: 'same-origin',
+            })
+            .then((r) => r.json())
+            .then((data) => {
+                if (!data.ok) {
+                    throw new Error(data.error || 'Failed to save key');
+                }
+                // Sync cookie so server-side routes and agents pages can read the key.
+                document.cookie = muapiCookie(cleanedKey);
+                document.body.removeChild(overlay);
+                if (onSuccess) onSuccess();
+            })
+            .catch((err) => {
+                alert(err.message || 'Failed to save API key');
+            });
         } else {
             input.classList.add('border-red-500/50');
             // Show specific error message for format issues

@@ -11,6 +11,8 @@ export default defineConfig({
       { find: /^@\/types\/(.*)$/, replacement: '/src/types/$1' },
       { find: /^@\/stores\/(.*)$/, replacement: '/src/stores/$1' },
       { find: /^@\/apps\/(.*)$/, replacement: '/src/apps/$1' },
+      { find: /^@\/app\/(.*)$/, replacement: '/app/$1' },
+      { find: /^@\/packages\/studio\/(.*)$/, replacement: '/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/packages/studio/$1' },
       { find: /^@\/(.*)$/, replacement: '/src/$1' },
       { find: /^studio\/(.*)$/, replacement: '/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/packages/studio/$1' },
       { find: /^workflow-builder\/(.*)$/, replacement: '/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/packages/Vibe-Workflow/packages/workflow-builder/$1' },

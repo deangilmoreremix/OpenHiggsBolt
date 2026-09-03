@@ -63,42 +63,25 @@ function cleanKey(apiKey: string): string {
     .trim()
 }
 
-function getApiKey(): string | null {
-  if (typeof window === 'undefined') return null
-  const w = window as any
-  const stored = w.__MUAPI_KEY__ || (w.localStorage && w.localStorage.getItem('muapi_key'))
-  const cleaned = stored ? cleanKey(stored) : null
-  return cleaned || null
-}
-
-function withKey(config: any): any {
-  const key = getApiKey()
-  return {
-    ...config,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(key ? { 'x-api-key': key } : {}),
-      ...(config.headers || {}),
-    },
-  }
-}
+// NOTE: Raw API keys are not read from localStorage.
+// The storyboard API routes handle authentication server-side.
 
 function extractRequestId(data: any): string | undefined {
   return data?.request_id || data?.id || data?.data?.request_id || data?.data?.id
 }
 
 export async function createProject(payload: StoryboardProject): Promise<any> {
-  const res = await axios.post(`${STORYBOARD_BASE}/projects`, payload, withKey({ method: 'POST' }))
+  const res = await axios.post(`${STORYBOARD_BASE}/projects`, payload, { method: 'POST' })
   return res.data
 }
 
 export async function getProjects(): Promise<any> {
-  const res = await axios.get(`${STORYBOARD_BASE}/projects`, withKey({ method: 'GET' }))
+  const res = await axios.get(`${STORYBOARD_BASE}/projects`, { method: 'GET' })
   return res.data
 }
 
 export async function getProject(projectId: string): Promise<any> {
-  const res = await axios.get(`${STORYBOARD_BASE}/projects/${projectId}`, withKey({ method: 'GET' }))
+  const res = await axios.get(`${STORYBOARD_BASE}/projects/${projectId}`, { method: 'GET' })
   return res.data
 }
 
@@ -106,7 +89,7 @@ export async function createCharacter(projectId: string, payload: StoryboardChar
   const res = await axios.post(
     `${STORYBOARD_BASE}/projects/${projectId}/characters`,
     payload,
-    withKey({ method: 'POST' })
+    { method: 'POST' }
   )
   return res.data
 }
@@ -115,7 +98,7 @@ export async function createEpisode(projectId: string, payload: StoryboardEpisod
   const res = await axios.post(
     `${STORYBOARD_BASE}/projects/${projectId}/episodes`,
     payload,
-    withKey({ method: 'POST' })
+    { method: 'POST' }
   )
   return res.data
 }
@@ -123,7 +106,7 @@ export async function createEpisode(projectId: string, payload: StoryboardEpisod
 export async function getEpisode(projectId: string, episodeId: string): Promise<any> {
   const res = await axios.get(
     `${STORYBOARD_BASE}/projects/${projectId}/episodes/${episodeId}`,
-    withKey({ method: 'GET' })
+    { method: 'GET' }
   )
   return res.data
 }
@@ -132,7 +115,7 @@ export async function generateShot(episodeId: string, payload: StoryboardShot): 
   const res = await axios.post(
     `${STORYBOARD_BASE}/episodes/${episodeId}/shots`,
     payload,
-    withKey({ method: 'POST' })
+    { method: 'POST' }
   )
   return { ...res.data, request_id: extractRequestId(res.data) }
 }
@@ -147,7 +130,7 @@ export async function pollStoryboardResult(
     try {
       const res = await axios.get(
         `${PREDICTIONS_BASE}/${requestId}/result`,
-        withKey({ method: 'GET' })
+        { method: 'GET' }
       )
       const data = res.data || {}
       const body = data.data || data
@@ -193,7 +176,7 @@ export async function generateShotFrame(payload: GenerateShotFramePayload): Prom
   const res = await axios.post(
     `${STORYBOARD_BASE}/generate/shot-frame`,
     payload,
-    withKey({ method: 'POST' })
+    { method: 'POST' }
   )
   const url = extractStoryboardAsset(res.data)
   if (!url) throw new Error('No frame generated')

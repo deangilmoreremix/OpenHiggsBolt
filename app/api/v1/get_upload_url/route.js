@@ -35,9 +35,10 @@ export async function GET(request) {
         const response = await fetch(targetUrl, {
             headers,
             method: 'GET',
+            signal: AbortSignal.timeout(30000),
         });
 
-        const data = await response.json();
+        const data = await safeApiJson(response);
 
         return NextResponse.json(data, { status: response.status });
     } catch (error) {

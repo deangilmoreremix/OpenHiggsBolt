@@ -1,3 +1,4 @@
+import { safeApiJson } from '@/lib/safeApiResponse';
 import { NextRequest, NextResponse } from 'next/server'
 import { getDesignAgentApiKey } from '../lib/auth'
 
@@ -7,7 +8,7 @@ export async function GET(req: NextRequest) {
   try {
     const key = await getDesignAgentApiKey(req)
     const res = await fetch(`${BASE}/agent-skills`, { headers: { 'x-api-key': key }, signal: AbortSignal.timeout(30000) })
-    const data = await res.json()
+    const data = await safeApiJson(res)
     return NextResponse.json(data, { status: res.status })
   } catch (err: any) {
     const status = err instanceof Response ? err.status : 500
