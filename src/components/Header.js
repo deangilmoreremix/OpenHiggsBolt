@@ -1,5 +1,5 @@
 import { SettingsModal } from './SettingsModal.js';
-import { t, getLang, setLang } from '../lib/i18n.js';
+import { t } from '../lib/i18n.js';
 import { getWorkspaceId, getUserId } from '../lib/identity.js';
 
 export function Header(navigate) {
