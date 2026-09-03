@@ -5,6 +5,7 @@ import Link from 'next/link';
 import StandaloneShell from '@/components/StandaloneShell';
 import { PRODUCT_NAME, NAV_ITEMS, LOGOS, TESTIMONIALS, PRICING, FAQS } from './landingData';
 import SmartVideoShowcase from './SmartVideoShowcase';
+import PersonalizedHeroHeading from './PersonalizedHeroHeading';
 import { DemoPersonalizeProvider } from '@/shared/personalization';
 
 function PricingBuyButton() {
@@ -114,17 +115,15 @@ export default function LandingPage({ FullStudio, AuthControls }) {
         <div className="landing-orb" style={{right:0,top:'10rem',height:'24rem',width:'24rem',background:'#a855f7'}} aria-hidden="true" />
         <div className="mx-auto max-w-4xl text-center">
           <p className="mb-5 inline-flex rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-cyan-200">
-            Every studio feature is demoable before signup
+            Every output is personalized to your brand and style
           </p>
-          <h1 className="landing-gradient-text text-5xl font-black tracking-tight md:text-7xl lg:text-8xl">
-            Build AI video campaigns at the speed of imagination.
-          </h1>
+          <PersonalizedHeroHeading />
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-white/65 md:text-xl">
-            Generate images, cinematic video, UGC ads, VFX, agents, workflows, music, thumbnails, scripts, and marketing assets from one polished creative operating system.
+            Tell us your brand once — your colors, fonts, tone, audience, and reference work — and every model, preset, and workflow adapts to it. Generate on-brand video, images, UGC ads, scripts, and assets in your voice, not a generic one.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <a href="#studio" className="w-full rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-6 py-3 text-sm font-bold text-black shadow-lg transition hover:scale-[1.02] sm:w-auto">
-              Try the studio
+              Set up your brand
             </a>
             <a href="#studio" className="w-full rounded-full border border-white/10 bg-white/[0.04] px-6 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/[0.08] sm:w-auto">
               Launch full studio
