@@ -13,8 +13,10 @@ import type { PromptRecord } from '@/types/go-ai-viral/prompt';
 export interface NicheResult {
   /** Niches matched by keyword/context. */
   businessNiches: string[];
-  /** Single strongest niche for deterministic grouping. */
+  /** Single strongest niche used for deterministic grouping. */
   primaryNiche: string;
+  /** Optional sub-niches within the primary niche. */
+  subNiches: string[];
 }
 
 const NICHE_KEYWORDS: Record<string, string[]> = {
@@ -107,6 +109,81 @@ const NICHE_KEYWORDS: Record<string, string[]> = {
   ],
 };
 
+const SUB_NICHE_KEYWORDS: Record<string, Record<string, string[]>> = {
+  'ecommerce': {
+    fashion: ['chanel', 'gucci', 'louis vuitton', 'bag', 'purse', 'accessory', 'sunglasses', 'leather', 'fashion', 'style'],
+    luxury: ['luxury', 'premium', 'gold', 'diamond', 'high-end', 'designer'],
+    'tech-products': ['gadget', 'device', 'electronics', 'tech', 'smartphone', 'laptop'],
+    'home-goods': ['furniture', 'home', 'kitchen', 'decor', 'interior'],
+  },
+  'real-estate': {
+    residential: ['home', 'house', 'apartment', 'condo', 'bedroom', 'living room', 'backyard'],
+    commercial: ['commercial', 'office', 'retail', 'business property'],
+    staging: ['staging', 'interior design', 'furniture', 'decor'],
+    rentals: ['rent', 'rental', 'airbnb', 'lease', 'tenant'],
+  },
+  'restaurants-food': {
+    'fine-dining': ['fine dining', 'gourmet', 'cuisine', 'restaurant', 'chef', 'elegant'],
+    casual: ['casual', 'cafe', 'coffee', 'fast', 'quick', 'takeout'],
+    recipes: ['recipe', 'cook', 'bake', 'kitchen', 'ingredient', 'dish'],
+    coffee: ['coffee', 'cafe', 'latte', 'espresso', 'brew'],
+  },
+  'beauty': {
+    skincare: ['skincare', 'serum', 'cream', 'moisturizer', 'facial', 'mask', 'glow'],
+    makeup: ['makeup', 'lipstick', 'eyeliner', 'mascara', 'blush', 'contour', 'foundation'],
+    hair: ['hair', 'salon', 'styling', 'haircut', 'color'],
+    fragrance: ['perfume', 'fragrance', 'scent', 'cologne'],
+  },
+  'wellness-fitness': {
+    yoga: ['yoga', 'pilates', 'stretch', 'meditation', 'mindfulness'],
+    gym: ['gym', 'workout', 'fitness', 'training', 'exercise', 'cardio', 'strength'],
+    nutrition: ['nutrition', 'diet', 'supplement', 'protein', 'health'],
+    'mental-health': ['mental health', 'stress', 'calm', 'relax', 'sleep', 'wellness'],
+  },
+  'education': {
+    courses: ['course', 'class', 'school', 'university', 'academy', 'curriculum'],
+    tutorials: ['tutorial', 'guide', 'walkthrough', 'how to', 'tips', 'tricks'],
+    workshops: ['workshop', 'lecture', 'training', 'session'],
+    'skill-building': ['skill', 'knowledge', 'learn', 'study', 'beginner', 'advanced'],
+  },
+  'technology': {
+    ai: ['ai', 'artificial intelligence', 'machine learning', 'neural', 'deep learning'],
+    gadgets: ['gadget', 'device', 'hardware', 'laptop', 'phone', 'camera', 'drone'],
+    software: ['software', 'app', 'platform', 'saas', 'programming', 'code', 'developer'],
+    gaming: ['game', 'gaming', 'gamer', 'twitch', 'stream'],
+  },
+  'finance': {
+    investing: ['investment', 'stock', 'portfolio', 'asset', 'trading', 'trader'],
+    crypto: ['crypto', 'bitcoin', 'ethereum', 'blockchain', 'web3'],
+    business: ['business', 'entrepreneur', 'startup', 'revenue', 'profit', 'funding'],
+    'personal-finance': ['budget', 'saving', 'income', 'tax', 'loan', 'mortgage', 'bank'],
+  },
+  'entertainment-media': {
+    movies: ['movie', 'film', 'cinema', 'trailer', 'premiere'],
+    music: ['music', 'song', 'audio', 'podcast'],
+    gaming: ['game', 'gaming', 'gamer', 'twitch', 'stream'],
+    viral: ['viral', 'meme', 'trending', 'social media', 'instagram', 'tiktok'],
+  },
+  'automotive': {
+    cars: ['car', 'vehicle', 'sedan', 'suv', 'truck'],
+    motorcycles: ['motorcycle', 'bike', 'motorbike'],
+    ev: ['electric vehicle', 'ev', 'tesla', 'charging', 'battery'],
+    racing: ['racing', 'speed', 'sport', 'track', 'performance'],
+  },
+  'travel-hospitality': {
+    hotels: ['hotel', 'resort', 'hostel', 'airbnb', 'booking', 'accommodation'],
+    adventures: ['adventure', 'backpack', 'camping', 'hiking', 'outdoor', 'explore'],
+    'travel-vlogs': ['travel vlog', 'vlog', 'MiniDV', 'camcorder', 'youtube'],
+    destinations: ['destination', 'landmark', 'beach', 'island', 'city', 'tourist'],
+  },
+  'sports-outdoors': {
+    'team-sports': ['basketball', 'football', 'soccer', 'baseball', 'hockey', 'team'],
+    individual: ['tennis', 'golf', 'boxing', 'mma', 'ufc', 'cycling', 'running'],
+    outdoor: ['hiking', 'camping', 'climbing', 'surfing', 'skiing', 'snowboard'],
+    extreme: ['extreme', 'action', 'stunt', 'parkour', 'skateboard', 'bmx', 'racing'],
+  },
+};
+
 /** Build a word-boundary regex for a keyword phrase. */
 function nicheRegex(keyword: string): RegExp {
   const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -118,6 +195,19 @@ const NICHE_REGEXES: Record<string, RegExp[]> = Object.fromEntries(
   Object.entries(NICHE_KEYWORDS).map(([niche, keywords]) => [
     niche,
     keywords.map(nicheRegex),
+  ])
+);
+
+/** Sub-niche regex map derived from main niche keywords. */
+const SUB_NICHE_REGEXES: Record<string, Record<string, RegExp[]>> = Object.fromEntries(
+  Object.entries(SUB_NICHE_KEYWORDS).map(([niche, subMap]) => [
+    niche,
+    Object.fromEntries(
+      Object.entries(subMap).map(([subNiche, keywords]) => [
+        subNiche,
+        keywords.map(nicheRegex),
+      ])
+    ),
   ])
 );
 
@@ -157,7 +247,34 @@ export function classifyPrompt(record: PromptRecord): NicheResult {
 
   const primaryNiche = businessNiches[0] || 'general-business';
 
-  return { businessNiches, primaryNiche };
+  // Determine sub-niches based on primary niche
+  const subNiches = determineSubNiches(primaryNiche, text);
+
+  return { businessNiches, primaryNiche, subNiches };
+}
+
+/**
+ * Determine sub-niches for a given primary niche based on keyword matches.
+ */
+function determineSubNiches(primaryNiche: string, text: string): string[] {
+  const subNicheMap = SUB_NICHE_REGEXES[primaryNiche];
+  if (!subNicheMap) return [];
+
+  const matches: string[] = [];
+  for (const [subNiche, regexes] of Object.entries(subNicheMap)) {
+    let score = 0;
+    for (const regex of regexes) {
+      const m = text.match(regex);
+      if (m) {
+        score += m[0].length;
+      }
+    }
+    if (score > 0) {
+      matches.push(subNiche);
+    }
+  }
+
+  return matches;
 }
 
 /**

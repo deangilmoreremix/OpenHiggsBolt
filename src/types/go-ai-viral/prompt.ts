@@ -94,6 +94,8 @@ export interface PromptRecord {
   businessNiches?: string[]
   /** Single strongest niche used for deterministic grouping. */
   primaryNiche?: string
+  /** Optional sub-niches within the primary niche for granular filtering. */
+  subNiches?: string[]
   /** Top 5% by quality score; curated for the featured section. */
   isFeatured?: boolean
   /** Viral signal: true when engagement indicates high shareability. */
