@@ -90,6 +90,14 @@ export interface PromptRecord {
   media: PromptMedia[]
   curation: PromptCuration
   provenance: PromptProvenance
+  /** Business-niche classification added server-side by the prompts API route. */
+  businessNiches?: string[]
+  /** Single strongest niche used for deterministic grouping. */
+  primaryNiche?: string
+  /** Top 5% by quality score; curated for the featured section. */
+  isFeatured?: boolean
+  /** Viral signal: true when engagement indicates high shareability. */
+  isViral?: boolean
 }
 
 /** Stats summary returned by the feed. */
