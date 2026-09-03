@@ -15,7 +15,15 @@ import {
   useRef,
   type ReactNode,
 } from 'react'
+import { useRouter } from 'next/navigation'
 import PersonalizationModal from './PersonalizationModal'
+import { writeHandoff } from '@/shared/crossStudio'
+import { SocialPublishContext } from '@/components/SocialPublishProvider'
+
+/** Safe accessor for SocialPublishContext — returns null when not wrapped in a provider. */
+function useOptionalSocialPublish() {
+  return useContext(SocialPublishContext)
+}
 import type {
   PersonalizationSource,
   ClientProfile,
@@ -29,8 +37,6 @@ import type {
   GenerationState,
   GenerationResult,
   SharedMediaEntry,
-  ImageStudioHandoff,
-  VideoStudioHandoff,
   PersonalizationEligibility,
 } from './types'
 import { EMPTY_GENERATION_STATE } from './types'
@@ -48,7 +54,7 @@ import {
   registerSharedMedia,
 } from './sharedMedia'
 import { personalizePrompt, regeneratePrompt } from './promptPersonalizer'
-import { runGeneration, buildImageStudioHandoff, buildVideoStudioHandoff } from './generationRouter'
+import { runGeneration } from './generationRouter'
 import { resolveModelCapabilities, resolveAssetsForModel } from './modelCapabilityResolver'
 import { uploadFile } from 'studio/src/muapi'
 
@@ -249,6 +255,9 @@ function updateAssetInLibrary(library: AssetLibrary, asset: PersonalizationAsset
 // ── Provider ─────────────────────────────────────────────────────────────────
 
 export function DemoPersonalizeProvider({ apiKey, children }: DemoPersonalizeProviderProps) {
+  // Navigation & publish integration
+  const router = useRouter()
+  const socialPublish = useOptionalSocialPublish()
   // Modal
   const [isOpen, setIsOpen] = useState(false)
   const [source, setSource] = useState<PersonalizationSource | null>(null)
@@ -864,36 +873,73 @@ export function DemoPersonalizeProvider({ apiKey, children }: DemoPersonalizePro
 
   const editInImageStudio = useCallback(() => {
     if (!lastResultRef.current || !lastProjectRef.current || lastResultRef.current.type !== 'image') return
-    const handoff: ImageStudioHandoff = buildImageStudioHandoff(lastResultRef.current, {
-      source: lastProjectRef.current.source,
-      client: lastProjectRef.current.client,
-      assets: lastProjectRef.current.assets,
-      mode: lastProjectRef.current.mode,
-      personalizedPrompt: lastProjectRef.current.personalizedPrompt,
+    const result = lastResultRef.current
+    const project = lastProjectRef.current
+    const prompt = result.prompt || project.personalizedPrompt || project.source.originalPrompt || ''
+
+    writeHandoff({
+      version: 1,
+      target: 'image',
+      from: 'storyboard',
+      projectName: project.source.title || 'Personalized Image',
+      aspectRatio: (project.source.aspectRatio as '16:9' | '9:16' | '1:1' | null) || '1:1',
+      episodeDuration: 0,
+      videoUrl: null,
+      referenceImageUrl: result.url || project.source.sourceMedia || null,
+      characterNames: project.assets.identities.map((i) => i.name).filter(Boolean),
+      shots: prompt
+        ? [{ scene: project.source.title || 'Personalized', prompt, duration: 0, characterNames: [] }]
+        : [],
+      combinedPrompt: prompt,
+      firstFrameUrl: result.url || project.source.sourceMedia || null,
+      createdAt: new Date().toISOString(),
     })
-    console.log('Image Studio handoff:', handoff)
-    // TODO: navigate to Image Studio with handoff payload
-  }, [])
+
+    closePersonalize()
+    router.push('/studio/image')
+  }, [closePersonalize, router])
 
   const editInVideoStudio = useCallback(() => {
     if (!lastResultRef.current || !lastProjectRef.current || lastResultRef.current.type !== 'video') return
-    const handoff: VideoStudioHandoff = buildVideoStudioHandoff(lastResultRef.current, {
-      source: lastProjectRef.current.source,
-      client: lastProjectRef.current.client,
-      assets: lastProjectRef.current.assets,
-      mode: lastProjectRef.current.mode,
-      personalizedPrompt: lastProjectRef.current.personalizedPrompt,
+    const result = lastResultRef.current
+    const project = lastProjectRef.current
+    const prompt = result.prompt || project.personalizedPrompt || project.source.originalPrompt || ''
+
+    writeHandoff({
+      version: 1,
+      target: 'video',
+      from: 'storyboard',
+      projectName: project.source.title || 'Personalized Video',
+      aspectRatio: (project.source.aspectRatio as '16:9' | '9:16' | '1:1' | null) || '16:9',
+      episodeDuration: project.source.duration || 0,
+      videoUrl: result.url || null,
+      referenceImageUrl: getGenerationAssetUrl(project.assets.primaryIdentity) || null,
+      characterNames: project.assets.identities.map((i) => i.name).filter(Boolean),
+      shots: prompt
+        ? [{ scene: project.source.title || 'Personalized', prompt, duration: project.source.duration || 0, characterNames: [] }]
+        : [],
+      combinedPrompt: prompt,
+      firstFrameUrl: getGenerationAssetUrl(project.assets.firstFrame) || null,
+      createdAt: new Date().toISOString(),
     })
-    console.log('Video Studio handoff:', handoff)
-    // TODO: navigate to Video Studio with handoff payload
-  }, [])
+
+    closePersonalize()
+    router.push('/studio/video')
+  }, [closePersonalize, router])
 
   const publish = useCallback(() => {
     if (!lastResultRef.current?.url) return
-    // Reuse existing SocialPublishProvider flow if available
-    console.log('Publish:', { result: lastResultRef.current, project: lastProjectRef.current })
-    // TODO: open SocialPublishModal with result URL
-  }, [])
+    if (!socialPublish) return
+    const result = lastResultRef.current
+    const project = lastProjectRef.current
+
+    socialPublish.openPublish({
+      mediaUrl: result.url || '',
+      mediaType: result.type === 'video' ? 'video' : 'image',
+      title: project?.source?.title || 'Personalized content',
+      caption: result.prompt || project?.personalizedPrompt || project?.source?.originalPrompt || '',
+    })
+  }, [socialPublish])
 
   const download = useCallback(() => {
     if (!lastResultRef.current?.url) return

@@ -5,6 +5,24 @@ import { createRoot } from 'react-dom/client';
 import PersonalizationModal from '../PersonalizationModal';
 import { DemoPersonalizeProvider, useDemoPersonalize } from '../DemoPersonalizeProvider';
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+}))
+
+vi.mock('@/components/SocialPublishProvider', () => ({
+  SocialPublishContext: { Provider: ({ children }: any) => children, Consumer: ({ children }: any) => children(null) } as any,
+  useSocialPublish: () => {
+    throw new Error('useSocialPublish must be used within a <SocialPublishProvider>')
+  },
+}))
+
 function TestOpener({ source, onMounted }: { source: any; onMounted: (open: (opts: any) => void) => void }) {
   const { openPersonalize } = useDemoPersonalize();
   onMounted(openPersonalize);

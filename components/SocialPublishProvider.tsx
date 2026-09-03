@@ -61,7 +61,7 @@ const EMPTY_COPY: CopyState = {
 
 const EMPTY_THUMBNAIL: ThumbnailState = {};
 
-const SocialPublishContext = createContext<SocialPublishContextValue | null>(null);
+export const SocialPublishContext = createContext<SocialPublishContextValue | null>(null);
 
 export function SocialPublishProvider({
   apiKey,
