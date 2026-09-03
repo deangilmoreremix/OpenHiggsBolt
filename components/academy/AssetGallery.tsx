@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { AcademyCard, Pill, cx } from './primitives';
 import type { AcademyAsset } from '@/data/academyAssets';
+import { panels, buttons, semantic } from '@/shared/styles/designTokens';
 
 /* ------------------------------------------------------------------ */
 /* Asset gallery — the "SEE" step                                      */
@@ -18,7 +19,8 @@ function AssetTile({ asset }: { asset: AcademyAsset }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="group relative block w-full overflow-hidden rounded-xl border border-white/10 bg-black/40 text-left"
+        className="group relative block w-full overflow-hidden rounded-xl text-left"
+        style={panels.card}
       >
         {asset.type === 'video' && asset.gifSrc ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -44,7 +46,8 @@ function AssetTile({ asset }: { asset: AcademyAsset }) {
           onClick={() => setOpen(false)}
         >
           <div
-            className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-2xl border border-white/10 bg-[#0a0a0a] p-5"
+            className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-2xl p-5"
+            style={panels.card}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -52,7 +55,8 @@ function AssetTile({ asset }: { asset: AcademyAsset }) {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/70 hover:bg-white/10"
+                className="rounded-md px-2 py-1 text-xs hover:bg-white/10"
+                style={buttons.ghost}
               >
                 Close
               </button>
@@ -65,7 +69,7 @@ function AssetTile({ asset }: { asset: AcademyAsset }) {
                 <img src={poster} alt={asset.title} className="max-h-[60vh] rounded-lg" />
               ) : null}
             </div>
-            <p className="mt-3 text-sm leading-relaxed text-white/70">{asset.description}</p>
+            <p className="mt-3 text-sm leading-relaxed" style={{ color: semantic.textPrimary }}>{asset.description}</p>
             <div className="mt-3 flex flex-wrap gap-1.5">
               {asset.tags.map((t) => (
                 <Pill key={t}>#{t}</Pill>
@@ -109,16 +113,16 @@ const mdComponents = {
     <h3 className="mb-2 mt-4 text-base font-bold text-[#22d3ee]" {...p} />
   ),
   p: (p: React.HTMLAttributes<HTMLParagraphElement>) => (
-    <p className="mb-3 text-sm leading-relaxed text-white/75" {...p} />
+    <p className="mb-3 text-sm leading-relaxed" style={{ color: semantic.textPrimary }} {...p} />
   ),
   ul: (p: React.HTMLAttributes<HTMLUListElement>) => (
-    <ul className="mb-3 list-disc space-y-1 pl-5 text-sm text-white/75" {...p} />
+    <ul className="mb-3 list-disc space-y-1 pl-5 text-sm" style={{ color: semantic.textPrimary }} {...p} />
   ),
   ol: (p: React.HTMLAttributes<HTMLOListElement>) => (
-    <ol className="mb-3 list-decimal space-y-1 pl-5 text-sm text-white/75" {...p} />
+    <ol className="mb-3 list-decimal space-y-1 pl-5 text-sm" style={{ color: semantic.textPrimary }} {...p} />
   ),
   blockquote: (p: React.HTMLAttributes<HTMLQuoteElement>) => (
-    <blockquote className="mb-3 border-l-2 border-[#22d3ee]/50 bg-white/5 px-3 py-2 text-sm text-white/70" {...p} />
+    <blockquote className="mb-3 border-l-2 border-[#22d3ee]/50 bg-white/5 px-3 py-2 text-sm" style={{ color: semantic.textPrimary }} {...p} />
   ),
   a: (p: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
     <a className="text-[#22d3ee] underline-offset-2 hover:underline" target="_blank" rel="noreferrer" {...p} />
@@ -129,23 +133,52 @@ const mdComponents = {
     </div>
   ),
   th: (p: React.ThHTMLAttributes<HTMLTableCellElement>) => (
-    <th className="border border-white/10 bg-white/5 px-2 py-1.5 font-semibold text-white/80" {...p} />
+    <th className="border px-2 py-1.5 font-semibold" style={{ borderColor: 'var(--border-color)', background: 'var(--glass-bg)', color: semantic.textPrimary }} {...p} />
   ),
   td: (p: React.TdHTMLAttributes<HTMLTableCellElement>) => (
-    <td className="border border-white/10 px-2 py-1.5 text-white/70" {...p} />
+    <td className="border px-2 py-1.5" style={{ borderColor: 'var(--border-color)', color: semantic.textPrimary }} {...p} />
   ),
   code: (p: React.HTMLAttributes<HTMLElement>) => (
-    <code className="rounded bg-white/10 px-1 py-0.5 font-mono text-[12px] text-[#c4b5fd]" {...p} />
+    <code className="rounded px-1 py-0.5 font-mono text-[12px] text-[#c4b5fd]" {...p} />
   ),
 };
 
-export function LessonViewer({ markdown }: { markdown: string }) {
+export function LessonViewer({ markdown, track }: { markdown: string; track?: string }) {
+  const processed = React.useMemo(() => {
+    const withNav = stripCourseNav(markdown);
+    return track ? resolveMediaPaths(withNav, track) : withNav;
+  }, [markdown, track]);
+
   return (
     <div className={cx('text-white')}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-        {stripCourseNav(markdown)}
+        {processed}
       </ReactMarkdown>
     </div>
+  );
+}
+
+/** Rewrite upstream-relative media paths to absolute public paths. */
+function resolveMediaPaths(md: string, track: string): string {
+  if (track === 'ugc') {
+    // UGC assets live under /academy/ugc/{gifs,videos,images}
+    return md.replace(
+      /(src|href)="templates\/examples\/([^"]+)"/g,
+      (_match, attr, file) => {
+        const ext = file.split('.').pop()?.toLowerCase();
+        let subdir = 'images';
+        if (ext === 'gif') subdir = 'gifs';
+        else if (['mp4', 'webm', 'mov'].includes(ext || '')) subdir = 'videos';
+        else if (['mp3', 'wav', 'ogg'].includes(ext || '')) subdir = 'audio';
+        return `${attr}="/academy/ugc/${subdir}/${file}"`;
+      }
+    );
+  }
+
+  // All other tracks publish media under /academy/<track>/templates/examples/
+  return md.replace(
+    /(src|href)="templates\/examples\/([^"]+)"/g,
+    (_match, attr, file) => `${attr}="/academy/${track}/templates/examples/${file}"`
   );
 }
 
@@ -156,7 +189,10 @@ function stripCourseNav(md: string): string {
     .replace(/\n\s*Next:.*$/gm, '')
     .replace(/\n\s*\[Track overview\].*$/gm, '')
     .replace(/\[`templates\/[^]]*`\]\([^)]*\)/g, '$1')
-    .replace(/\[Module \d+[^\]]*\]\([^)]*\)/g, (_m, _g) => _m.replace(/\[([^\]]*)\]\([^)]*\)/, '$1'));
+    .replace(/\[Module \d+[^\]]*\]\([^)]*\)/g, (_m, _g) => _m.replace(/\[([^\]]*)\]\([^)]*\)/, '$1'))
+    .replace(/\[Track Overview\]\(README\.md\)/g, 'Track Overview')
+    .replace(/\[(\d+[^\]]*)\]\((\d+[^)]+)\)/g, '$1')
+    .replace(/\*\*Prerequisites:\*\*.*$/gm, '');
 }
 
 export { AcademyCard };

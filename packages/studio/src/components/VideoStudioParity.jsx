@@ -79,7 +79,6 @@ import {
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import en from "../messages/en/videoStudio.json";
-import zh from "../messages/zh/videoStudio.json";
 import { resolveCopy } from "../i18nUtils";
 
 const LEGACY_MEDIA_ADVANCED_KEYS = new Set([
@@ -93,6 +92,23 @@ const LEGACY_MEDIA_ADVANCED_KEYS = new Set([
   "video_url",
   "references",
 ]);
+
+function migrateLegacyVideoFrames(stored, selectedWorkflowId, setWorkflowMedia, setBaseMedia) {
+  if (!selectedWorkflowId || !stored?.baseMedia) return;
+  const workflowMedia = stored.workflowMedia || {};
+  if (workflowMedia.startFrame?.length || workflowMedia.endFrame?.length) return;
+  const baseMedia = stored.baseMedia;
+  const updates = {};
+  if (!workflowMedia.startFrame?.length && baseMedia.imageUrls?.[0]) {
+    updates.startFrame = unique([baseMedia.imageUrls[0]]).slice(0, 1);
+  }
+  if (!workflowMedia.endFrame?.length && baseMedia.endImageUrl) {
+    updates.endFrame = unique([baseMedia.endImageUrl]).slice(0, 1);
+  }
+  if (Object.keys(updates).length) {
+    setWorkflowMedia((media) => ({ ...media, ...updates }));
+  }
+}
 
 function unique(items) {
   return [...new Set((items || []).filter(Boolean))];
@@ -172,7 +188,7 @@ export default function VideoStudioParity({
   templateData,
   locale = "en",
 }) {
-  const copy = resolveCopy(en, zh, locale);
+  const copy = resolveCopy(en, null, locale);
   const defaultVariant = videoModelCatalog.variantById.get(t2vModels[0]?.id);
   const defaultFamily = videoModelCatalog.familyByVariantId.get(defaultVariant?.model?.id);
   const persistKey = scopedPersistKey("hg_video_studio_persistent", apiKey);
@@ -360,6 +376,12 @@ export default function VideoStudioParity({
       }
     } catch (error) {
       console.warn("Failed to restore SmartVideo Video Studio:", error);
+    }
+
+    try {
+      migrateLegacyVideoFrames(stored, selectedWorkflowId, setWorkflowMedia, setBaseMedia);
+    } catch {
+      // Migration is best-effort; ignore failures.
     }
 
     try {

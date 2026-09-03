@@ -12,7 +12,6 @@ import {
 } from "../muapi.js";
 import { formatErrorMessage } from "../utils/formatError.js";
 import en from "../messages/en/layersStudio.json";
-import zh from "../messages/zh/layersStudio.json";
 import { resolveCopy } from "../i18nUtils";
 
 // Upscale Models Definition from schema_data.json
@@ -92,7 +91,7 @@ export default function LayersStudio({
   onGenerationError,
   locale = "en",
 }) {
-  const copy = resolveCopy(en, zh, locale);
+  const copy = resolveCopy(en, null, locale);
 
   // Main canvas & image state
   const [currentImageUrl, setCurrentImageUrl] = useState(DEFAULT_SAMPLE_IMAGE);
