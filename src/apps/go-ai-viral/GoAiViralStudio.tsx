@@ -21,8 +21,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   Search, Copy, ExternalLink, Heart,
   Grid, List, ChevronRight,
-  Image as ImageIcon, Video, Calendar, BookOpen,
-  Repeat2, MessageCircle, Flame, Sparkles
+  Image as ImageIcon, Video, BookOpen,
+  Repeat2, MessageCircle, Flame
 } from 'lucide-react'
 import { buttons, semantic, tabStyle, optionStyle, appWrapper, iconBadge } from '@/shared/styles/designTokens'
 import type { PromptRecord, FeedStats } from '@/types/go-ai-viral/prompt'
@@ -30,15 +30,13 @@ import type { SeedancePrompt, SeedanceStats } from '@/types/go-ai-viral/seedance
 import { useDemoPersonalize } from '@/shared/personalization'
 import { createViralHandoff, emitSendTo, TARGET_LABEL, VIRAL_TARGETS_BY_MEDIA, type StudioTarget, type ViralSourceMedia } from '@/shared/crossStudio'
 import { StudioTargetPicker } from './StudioTargetPicker'
-import { NicheNavigation, type NicheItem } from './NicheNavigation'
-import { NicheHeader } from './NicheHeader'
-import { FeaturedSection } from './FeaturedSection'
+import { academyAssets } from '@/data/academyAssets'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type MediaType = 'all' | 'image' | 'video'
 type SortOption = 'newest' | 'oldest'
-type StudioMode = 'feed' | 'video-prompts'
+type StudioMode = 'feed' | 'video-prompts' | 'academy'
 
 interface FeedResponse {
   data: PromptRecord[]
@@ -52,8 +50,6 @@ interface FeedResponse {
     stats: FeedStats
     availableCategories: string[]
     availableModels: string[]
-    availableNiches: { id: string; label: string; count: number }[]
-    availableSubNiches: Record<string, { id: string; label: string; count: number }[]>
     fetchedAt: number
   }
 }
@@ -906,17 +902,14 @@ function PromptDetailModal({ record, onClose }: PromptDetailModalProps) {
 
 // ── Main Studio ─────────────────────────────────────────────────────────────────
 
-const ENABLE_NICHE_UI = process.env.NEXT_PUBLIC_ENABLE_NICHE_UI === 'true'
-
-export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
+export default function GoAiViralStudio({ apiKey, defaultNiche }: { apiKey?: string; defaultNiche?: string }) {
   void apiKey // Reserved for future generation features; feed browsing needs no key.
+  void defaultNiche // Optional pre-selected niche for SEO/URL routing
   // Data
   const [records, setRecords] = useState<PromptRecord[]>([])
   const [stats, setStats] = useState<FeedStats | null>(null)
   const [availableCategories, setAvailableCategories] = useState<string[]>([])
   const [availableModels, setAvailableModels] = useState<string[]>([])
-  const [availableNiches, setAvailableNiches] = useState<{ id: string; label: string; count: number }[]>([])
-  const [availableSubNiches, setAvailableSubNiches] = useState<Record<string, { id: string; label: string; count: number }[]>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -925,12 +918,6 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [selectedModel, setSelectedModel] = useState<string>('')
   const [search, setSearch] = useState<string>('')
-
-  // Niche filters
-  const [selectedNicheId, setSelectedNicheId] = useState<string>('all')
-  const [selectedSubNiches, setSelectedSubNiches] = useState<string[]>([])
-  const [showFeaturedOnly, setShowFeaturedOnly] = useState(false)
-  const [showViralOnly, setShowViralOnly] = useState(false)
 
   // Pagination
   const [page, setPage] = useState(1)
@@ -946,6 +933,16 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
 
   // Studio mode: 'feed' or 'video-prompts'
   const [studioMode, setStudioMode] = useState<StudioMode>('feed')
+
+  // Pre-select niche from URL/defaultNiche prop
+  useEffect(() => {
+    if (defaultNiche && availableNiches.length > 0) {
+      const exists = availableNiches.some((n) => n.id === defaultNiche)
+      if (exists) {
+        setSelectedNicheId(defaultNiche)
+      }
+    }
+  }, [defaultNiche, availableNiches])
 
   // Video prompts state
   const [videoRecords, setVideoRecords] = useState<SeedancePrompt[]>([])
@@ -1004,10 +1001,6 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
         ...(selectedModel && { model: selectedModel }),
         ...(search && { search }),
         sort,
-        ...(selectedNicheId !== 'all' && { niche: selectedNicheId }),
-        ...(selectedSubNiches.length > 0 && { subNiches: selectedSubNiches.join(',') }),
-        ...(showFeaturedOnly && { featured: 'true' }),
-        ...(showViralOnly && { viral: 'true' }),
       })
       const res = await fetch(`/api/go-ai-viral/prompts?${params}`, {
         signal: controller.signal,
@@ -1021,8 +1014,6 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
       setStats(json.meta?.stats || null)
       setAvailableCategories(json.meta?.availableCategories || [])
       setAvailableModels(json.meta?.availableModels || [])
-      setAvailableNiches(json.meta?.availableNiches || [])
-      setAvailableSubNiches(json.meta?.availableSubNiches || {})
     } catch (err: unknown) {
       if ((err as Error)?.name === 'AbortError') return
       const errMsg = err instanceof Error ? err.message : 'Failed to load the prompt feed'
@@ -1122,12 +1113,6 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
     return stats.recommendedModels
   }, [stats?.recommendedModels])
 
-  // ── Niche data ───────────────────────────────────────────────────────────────
-  const selectedNiche = useMemo<NicheItem | null>(() => {
-    if (selectedNicheId === 'all') return null
-    return availableNiches.find((n) => n.id === selectedNicheId) ?? null
-  }, [selectedNicheId, availableNiches])
-
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="flex h-full flex-col" style={appWrapper}>
@@ -1175,6 +1160,15 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
           >
             <Video size={10} />
             Video Prompts
+          </button>
+          <button
+            onClick={() => setStudioMode('academy')}
+            className="relative px-3 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1.5"
+            style={tabStyle(studioMode === 'academy')}
+            aria-pressed={studioMode === 'academy'}
+          >
+            <BookOpen size={10} />
+            Academy
           </button>
         </div>
       </div>
@@ -1266,83 +1260,45 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
               </div>
             </div>
 
-            {ENABLE_NICHE_UI && (
-              <div>
-                <p className="text-xs font-medium mb-2" style={{ color: semantic.textLabel }}>
-                  Business Niches
-                </p>
-                <NicheNavigation
-                  niches={availableNiches}
-                  selectedNiche={selectedNicheId}
-                  onSelectNiche={(nicheId) => {
-                    setSelectedNicheId(nicheId)
-                    setSelectedSubNiches([])
-                    setPage(1)
-                  }}
-                  totalPrompts={stats?.total || 0}
-                />
-              </div>
-            )}
-
-            {ENABLE_NICHE_UI && (
-              <div>
-                <p className="text-xs font-medium mb-2" style={{ color: semantic.textLabel }}>
-                  Quick Filters
-                </p>
-                <div className="flex flex-col gap-1">
-                  <button
-                    onClick={() => {
-                      setShowFeaturedOnly((prev) => !prev)
-                      setShowViralOnly(false)
-                      setPage(1)
-                    }}
-                    className="text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center justify-between"
-                    style={optionStyle(showFeaturedOnly)}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Sparkles size={14} />
-                      Featured
-                    </span>
-                    {showFeaturedOnly && (
+            {/* Categories */}
+            <div>
+              <p className="text-xs font-medium mb-2" style={{ color: semantic.textLabel }}>
+                Categories
+              </p>
+              <div className="flex flex-col gap-1 max-h-80 overflow-y-auto custom-scrollbar">
+                <button
+                  onClick={() => { setSelectedCategory(''); setPage(1) }}
+                  className="text-left px-3 py-2 rounded-lg text-sm transition-all"
+                  style={optionStyle(selectedCategory === '')}
+                >
+                  All categories
+                </button>
+                {availableCategories.map((cat) => {
+                  const count = categoryCounts[cat]?.total || 0
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => { setSelectedCategory(cat); setPage(1) }}
+                      className="flex items-center justify-between text-left px-3 py-2 rounded-lg text-sm transition-all"
+                      style={optionStyle(selectedCategory === cat)}
+                    >
+                      <span className="capitalize">{cat.replace(/-/g, ' ')}</span>
                       <span
-                        className="text-xs px-1.5 py-0.5 rounded-full"
+                        className="text-xs px-1.5 py-0.25 rounded-full"
                         style={{
-                          background: 'rgba(34,211,238,0.2)',
-                          color: 'var(--color-primary)',
+                          background: selectedCategory === cat
+                            ? 'rgba(34,211,238,0.2)'
+                            : 'rgba(255,255,255,0.05)',
+                          color: selectedCategory === cat ? 'var(--color-primary)' : semantic.textMuted,
                         }}
                       >
-                        ON
+                        {count}
                       </span>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowViralOnly((prev) => !prev)
-                      setShowFeaturedOnly(false)
-                      setPage(1)
-                    }}
-                    className="text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center justify-between"
-                    style={optionStyle(showViralOnly)}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Flame size={14} />
-                      Viral
-                    </span>
-                    {showViralOnly && (
-                      <span
-                        className="text-xs px-1.5 py-0.5 rounded-full"
-                        style={{
-                          background: 'rgba(34,211,238,0.2)',
-                          color: 'var(--color-primary)',
-                        }}
-                      >
-                        ON
-                      </span>
-                    )}
-                  </button>
-                </div>
+                    </button>
+                  )
+                })}
               </div>
-            )}
+            </div>
 
             {/* Recommended models */}
             <div>
@@ -1478,10 +1434,6 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
                   setSearchInput('')
                   setSelectedCategory('')
                   setSelectedModel('')
-                  setSelectedNicheId('all')
-                  setSelectedSubNiches([])
-                  setShowFeaturedOnly(false)
-                  setShowViralOnly(false)
                   setMediaType('all')
                   setSort('newest')
                 }}
@@ -1520,247 +1472,140 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
           ) : (
             <div className="p-6">
               {studioMode === 'feed' ? (
-                <>
-                  {ENABLE_NICHE_UI && (
-                    <NicheHeader
-                      selectedNiche={selectedNiche}
-                      promptCount={records.length}
-                      subNiches={selectedNiche ? (availableSubNiches[selectedNiche.id] ?? []) : []}
-                      selectedSubNiches={selectedSubNiches}
-                      onToggleSubNiche={(id) => {
-                        setSelectedSubNiches((prev) =>
-                          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-                        )
-                        setPage(1)
-                      }}
-                      onClearFilters={() => {
-                        setSelectedNicheId('all')
-                        setSelectedSubNiches([])
-                        setShowFeaturedOnly(false)
-                        setShowViralOnly(false)
-                        setSearch('')
-                        setSearchInput('')
-                        setSelectedCategory('')
-                        setSelectedModel('')
-                        setMediaType('all')
-                        setSort('newest')
-                      }}
-                    />
-                  )}
-              {ENABLE_NICHE_UI && selectedNicheId === 'all' && availableNiches.length > 0 && (
-                <div className="mb-6">
-                  <p className="text-xs font-medium mb-2" style={{ color: semantic.textLabel }}>
-                    Browse by niche
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {availableNiches.map((niche) => (
+                viewMode === 'grid' ? (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {records.map((record) => (
+                      <PromptCard
+                        key={record.id}
+                        record={record}
+                        isSelected={selectedRecord?.id === record.id}
+                        onSelect={setSelectedRecord}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {records.map((record) => (
                       <button
-                        key={niche.id}
-                        onClick={() => {
-                          setSelectedNicheId(niche.id)
-                          setSelectedSubNiches([])
-                          setPage(1)
-                        }}
-                        className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
-                        style={{
-                          background: 'rgba(255,255,255,0.05)',
-                          border: '1px solid var(--border-color)',
-                          color: semantic.textSecondary,
-                        }}
+                        key={record.id}
+                        onClick={() => setSelectedRecord(record)}
+                        className={classNames(
+                          'w-full text-left flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-all',
+                          selectedRecord?.id === record.id
+                            ? 'border-cyan-400/50 bg-cyan-400/[0.03]'
+                            : 'border-white/10 bg-white/[0.02] hover:border-white/20'
+                        )}
                       >
-                        {niche.label}
-                        <span
-                          className="ml-1.5 px-1.5 py-0.5 rounded-full"
-                          style={{
-                            background: 'rgba(255,255,255,0.05)',
-                            color: semantic.textMuted,
-                          }}
-                        >
-                          {niche.count}
-                        </span>
+                         <div className="relative h-20 w-32 shrink-0 overflow-hidden rounded-lg">
+                           {(() => {
+                             const primaryMedia =
+                               record.media.find((m) => m.role === 'result') || record.media[0]
+                             return primaryMedia ? (
+                               <img
+                                 src={primaryMedia.previewUrl}
+                                 alt={record.title}
+                                 loading="lazy"
+                                 className="h-full w-full object-cover"
+                               />
+                             ) : (
+                               <div className="flex h-full w-full items-center justify-center">
+                                 <Video size={16} style={{ color: semantic.textMuted }} />
+                               </div>
+                             )
+                           })()}
+                         </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-sm font-semibold text-white line-clamp-1">{record.title}</h3>
+                          <p className="text-xs text-white/40 line-clamp-1">
+                            Prompt: {record.prompt.slice(0, 80)}
+                            {record.prompt.length > 80 && '...'}
+                          </p>
+                           <div className="mt-1 flex items-center gap-3 text-xs" style={{ color: semantic.textMuted }}>
+                              <span>@{record.source?.author?.handle}</span>
+                              <span>•</span>
+                              <span>{formatDate(record.source?.publishedAt)}</span>
+                            </div>
+                            {record.source?.engagement && (
+                              <div className="mt-1 flex items-center gap-3 text-[10px]" style={{ color: semantic.textMuted }}>
+                                <span className="flex items-center gap-1">
+                                  <Heart size={10} className="fill-white/30 text-white" />
+                                  {formatNumber(record.source.engagement.likes)}
+                                </span>
+                                {record.source.engagement.reposts ? (
+                                  <span className="flex items-center gap-1">
+                                    <Repeat2 size={10} />
+                                    {formatNumber(record.source.engagement.reposts)}
+                                  </span>
+                                ) : null}
+                                {record.source.engagement.replies ? (
+                                  <span className="flex items-center gap-1">
+                                    <MessageCircle size={10} />
+                                    {formatNumber(record.source.engagement.replies)}
+                                  </span>
+                                ) : null}
+                                {record.source.engagement.likes != null && record.source.engagement.likes >= 50 && (
+                                  <span className="flex items-center gap-1 text-red-400">
+                                    <Flame size={10} />
+                                    Viral
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                        </div>
+                        <ChevronRight size={14} style={{ color: semantic.textMuted }} />
+                      </button>
+                    ))}
+                  </div>
+                )
+              ) : studioMode === 'academy' ? (
+                <div className="p-6">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {academyAssets.map((asset) => (
+                      <button
+                        key={asset.id}
+                        onClick={() => setSelectedRecord(asset)}
+                        className="w-full text-left rounded-xl border border-white/10 bg-white/[0.02] hover:border-white/20 transition-all"
+                      >
+                        <div className="aspect-video rounded-lg overflow-hidden bg-white/5 mb-2">
+                          {asset.thumbnail ? (
+                            <img
+                              src={asset.thumbnail}
+                              alt={asset.title}
+                              loading="lazy"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : asset.videoSrc ? (
+                            <div className="flex h-full w-full items-center justify-center">
+                              <Video size={24} style={{ color: semantic.textMuted }} />
+                            </div>
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                              <ImageIcon size={24} style={{ color: semantic.textMuted }} />
+                            </div>
+                          )}
+                        </div>
+                        <div className="px-3 pb-3">
+                          <p className="text-sm font-medium text-white line-clamp-1">{asset.title}</p>
+                          <p className="text-xs text-white/40 mt-1 line-clamp-2">{asset.description}</p>
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {asset.tags.slice(0, 3).map((tag) => (
+                              <span
+                                key={tag}
+                                className="text-[10px] px-1.5 py-0.5 rounded-full"
+                                style={{
+                                  background: 'rgba(255,255,255,0.05)',
+                                  color: semantic.textMuted,
+                                }}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       </button>
                     ))}
                   </div>
                 </div>
-              )}
-              {ENABLE_NICHE_UI && (
-                <FeaturedSection
-                  records={records}
-                  onSelect={setSelectedRecord}
-                  selectedId={selectedRecord?.id}
-                  renderCard={(record) => (
-                    <PromptCard
-                      record={record}
-                      isSelected={selectedRecord?.id === record.id}
-                      onSelect={setSelectedRecord}
-                    />
-                  )}
-                />
-              )}
-              {studioMode === 'feed' ? (
-                <>
-                  {ENABLE_NICHE_UI && (
-                    <NicheHeader
-                      selectedNiche={selectedNiche}
-                      promptCount={records.length}
-                      subNiches={selectedNiche ? (availableSubNiches[selectedNiche.id] ?? []) : []}
-                      selectedSubNiches={selectedSubNiches}
-                      onToggleSubNiche={(id) => {
-                        setSelectedSubNiches((prev) =>
-                          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-                        )
-                        setPage(1)
-                      }}
-                      onClearFilters={() => {
-                        setSelectedNicheId('all')
-                        setSelectedSubNiches([])
-                        setShowFeaturedOnly(false)
-                        setShowViralOnly(false)
-                        setSearch('')
-                        setSearchInput('')
-                        setSelectedCategory('')
-                        setSelectedModel('')
-                        setMediaType('all')
-                        setSort('newest')
-                      }}
-                    />
-                  )}
-                  {ENABLE_NICHE_UI && selectedNicheId === 'all' && availableNiches.length > 0 && (
-                    <div className="mb-6">
-                      <p className="text-xs font-medium mb-2" style={{ color: semantic.textLabel }}>
-                        Browse by niche
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {availableNiches.map((niche) => (
-                          <button
-                            key={niche.id}
-                            onClick={() => {
-                              setSelectedNicheId(niche.id)
-                              setSelectedSubNiches([])
-                              setPage(1)
-                            }}
-                            className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
-                            style={{
-                              background: 'rgba(255,255,255,0.05)',
-                              border: '1px solid var(--border-color)',
-                              color: semantic.textSecondary,
-                            }}
-                          >
-                            {niche.label}
-                            <span
-                              className="ml-1.5 px-1.5 py-0.5 rounded-full"
-                              style={{
-                                background: 'rgba(255,255,255,0.05)',
-                                color: semantic.textMuted,
-                              }}
-                            >
-                              {niche.count}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {ENABLE_NICHE_UI && (
-                    <FeaturedSection
-                      records={records}
-                      onSelect={setSelectedRecord}
-                      selectedId={selectedRecord?.id}
-                      renderCard={(record) => (
-                        <PromptCard
-                          record={record}
-                          isSelected={selectedRecord?.id === record.id}
-                          onSelect={setSelectedRecord}
-                        />
-                      )}
-                    />
-                  )}
-                  {viewMode === 'grid' ? (
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                      {records.map((record) => (
-                        <PromptCard
-                          key={record.id}
-                          record={record}
-                          isSelected={selectedRecord?.id === record.id}
-                          onSelect={setSelectedRecord}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {records.map((record) => (
-                        <button
-                          key={record.id}
-                          onClick={() => setSelectedRecord(record)}
-                          className={classNames(
-                            'w-full text-left flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-all',
-                            selectedRecord?.id === record.id
-                              ? 'border-cyan-400/50 bg-cyan-400/[0.03]'
-                              : 'border-white/10 bg-white/[0.02] hover:border-white/20'
-                          )}
-                        >
-                           <div className="relative h-20 w-32 shrink-0 overflow-hidden rounded-lg">
-                              {(() => {
-                                const primaryMedia =
-                                  record.media.find((m) => m.role === 'result') || record.media[0]
-                                return primaryMedia ? (
-                                  <img
-                                    src={primaryMedia.previewUrl}
-                                    alt={record.title}
-                                    loading="lazy"
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center">
-                                    <Video size={16} style={{ color: semantic.textMuted }} />
-                                  </div>
-                                )
-                              })()}
-                            </div>
-                           <div className="min-w-0 flex-1">
-                             <h3 className="text-sm font-semibold text-white line-clamp-1">{record.title}</h3>
-                             <p className="text-xs text-white/40 line-clamp-1">
-                               Prompt: {record.prompt.slice(0, 80)}
-                               {record.prompt.length > 80 && '...'}
-                             </p>
-                              <div className="mt-1 flex items-center gap-3 text-xs" style={{ color: semantic.textMuted }}>
-                                <span>@{record.source?.author?.handle}</span>
-                                <span>•</span>
-                                <span>{formatDate(record.source?.publishedAt)}</span>
-                              </div>
-                              {record.source?.engagement && (
-                                <div className="mt-1 flex items-center gap-3 text-[10px]" style={{ color: semantic.textMuted }}>
-                                  <span className="flex items-center gap-1">
-                                    <Heart size={10} className="fill-white/30 text-white" />
-                                    {formatNumber(record.source.engagement.likes)}
-                                  </span>
-                                  {record.source.engagement.reposts ? (
-                                    <span className="flex items-center gap-1">
-                                      <Repeat2 size={10} />
-                                      {formatNumber(record.source.engagement.reposts)}
-                                    </span>
-                                  ) : null}
-                                  {record.source.engagement.replies ? (
-                                    <span className="flex items-center gap-1">
-                                      <MessageCircle size={10} />
-                                      {formatNumber(record.source.engagement.replies)}
-                                    </span>
-                                  ) : null}
-                                  {record.source.engagement.likes != null && record.source.engagement.likes >= 50 && (
-                                    <span className="flex items-center gap-1 text-red-400">
-                                      <Flame size={10} />
-                                      Viral
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                          </div>
-                          <ChevronRight size={14} style={{ color: semantic.textMuted }} />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </>
               ) : (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {videoRecords.map((record) => (
@@ -1772,6 +1617,43 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
                   ))}
                 </div>
               )}
+
+              {/* Pagination */}
+              {(studioMode === 'feed' ? records.length : videoRecords.length) > 0 && (
+                <div className="mt-6 flex items-center justify-between">
+                  <p className="text-xs" style={{ color: semantic.textMuted }}>
+                    {studioMode === 'feed'
+                      ? `Page ${page} of ${Math.ceil((stats?.total || 0) / pageSize)} · ${stats?.total || 0} total prompts`
+                      : `Page ${videoPage} of ${Math.ceil((videoStats?.total || 0) / videoPageSize)} · ${videoStats?.total || 0} video prompts`}
+                  </p>
+                  <div className="flex gap-2">
+                     <button
+                       onClick={() => (studioMode === 'feed' ? setPage(p => Math.max(1, p - 1)) : setVideoPage(p => Math.max(1, p - 1)))}
+                       disabled={(() => {
+                         if (studioMode === 'feed') return page <= 1 || isLoading || isPageLoading
+                         return videoPage <= 1 || isLoading || isVideoPageLoading
+                       })()}
+                       className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50"
+                       style={buttons.ghost}
+                     >
+                       Previous
+                     </button>
+                     <button
+                       onClick={() => (studioMode === 'feed' ? setPage(p => p + 1) : setVideoPage(p => p + 1))}
+                       disabled={(() => {
+                         if (studioMode === 'feed') return page >= Math.ceil((stats?.total || 0) / pageSize) || isLoading || isPageLoading
+                         return videoPage >= Math.ceil((videoStats?.total || 0) / videoPageSize) || isLoading || isVideoPageLoading
+                       })()}
+                       className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50"
+                       style={buttons.ghost}
+                     >
+                       Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
