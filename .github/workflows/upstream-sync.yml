@@ -101,7 +101,7 @@ jobs:
           git merge upstream/main --no-commit --no-ff
           merge_exit=$?
           set -e
-          echo "merge_exit=$merge_exit" >> "$GITHUB_ENV"
+          echo "merge_exit=$merge_exit" >> "$GITHUB_OUTPUT"
 
       - name: Fail on non-conflict merge errors
         if: steps.check.outputs.has_changes == 'true'
@@ -156,6 +156,11 @@ jobs:
             packages/studio/src/messages/en/appsStudio.json \
             packages/studio/src/components/McpCliStudio.jsx \
             packages/studio/src/messages/en/mcpCliStudio.json
+
+          git rm -rf --ignore-unmatch \
+            app/zh \
+            messages/zh \
+            packages/studio/src/messages/zh
 
           WHITE_LABEL_PATHS=$(git ls-files | grep -Ei '(^|/)(white[-_]?label|whitelabel)(/|\.|$)' || true)
           if [ -n "$WHITE_LABEL_PATHS" ]; then
