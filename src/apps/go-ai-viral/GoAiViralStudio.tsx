@@ -30,12 +30,13 @@ import type { SeedancePrompt, SeedanceStats } from '@/types/go-ai-viral/seedance
 import { useDemoPersonalize } from '@/shared/personalization'
 import { createViralHandoff, emitSendTo, TARGET_LABEL, VIRAL_TARGETS_BY_MEDIA, type StudioTarget, type ViralSourceMedia } from '@/shared/crossStudio'
 import { StudioTargetPicker } from './StudioTargetPicker'
+import { academyAssets } from '@/data/academyAssets'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type MediaType = 'all' | 'image' | 'video'
 type SortOption = 'newest' | 'oldest'
-type StudioMode = 'feed' | 'video-prompts'
+type StudioMode = 'feed' | 'video-prompts' | 'academy'
 
 interface FeedResponse {
   data: PromptRecord[]
@@ -901,8 +902,9 @@ function PromptDetailModal({ record, onClose }: PromptDetailModalProps) {
 
 // ── Main Studio ─────────────────────────────────────────────────────────────────
 
-export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
+export default function GoAiViralStudio({ apiKey, defaultNiche }: { apiKey?: string; defaultNiche?: string }) {
   void apiKey // Reserved for future generation features; feed browsing needs no key.
+  void defaultNiche // Accepted for niche routing; currently unused in feed state.
   // Data
   const [records, setRecords] = useState<PromptRecord[]>([])
   const [stats, setStats] = useState<FeedStats | null>(null)
@@ -1148,6 +1150,15 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
           >
             <Video size={10} />
             Video Prompts
+          </button>
+          <button
+            onClick={() => setStudioMode('academy')}
+            className="relative px-3 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1.5"
+            style={tabStyle(studioMode === 'academy')}
+            aria-pressed={studioMode === 'academy'}
+          >
+            <BookOpen size={10} />
+            Academy
           </button>
         </div>
       </div>
