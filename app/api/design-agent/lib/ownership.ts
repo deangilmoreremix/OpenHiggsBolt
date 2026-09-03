@@ -14,7 +14,9 @@ export async function recordOwnership(params: { userId: string; sessionId?: stri
   const supabase = getSupabaseAdmin();
   const nowIso = new Date().toISOString();
 
-  // Upsert the ownership row. We key on session_id when present; otherwise job_id.
+  // When a job ID is present, key ownership on the job so multiple jobs
+  // under the same session can coexist. Otherwise key on the session.
+  const conflictTarget = params.jobId ? 'job_id' : 'session_id';
   const { error } = await supabase
     .from('design_agent_ownership')
     .upsert(
@@ -25,7 +27,7 @@ export async function recordOwnership(params: { userId: string; sessionId?: stri
         updated_at: nowIso,
       },
       {
-        onConflict: params.sessionId ? 'session_id' : 'job_id',
+        onConflict: conflictTarget,
       }
     );
 

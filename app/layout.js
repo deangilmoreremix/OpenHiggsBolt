@@ -36,7 +36,7 @@ export default async function RootLayout({ children }) {
     </html>
   );
 
-  const accessProvider = isClerkEnabled ? SmartVideoAccessProvider : NoClerkSmartVideoAccessProvider;
+  const AccessProvider = isClerkEnabled ? SmartVideoAccessProvider : NoClerkSmartVideoAccessProvider;
   const content = isClerkEnabled ? (
     <ClerkProvider
       appearance={{
@@ -67,14 +67,14 @@ export default async function RootLayout({ children }) {
         },
       }}
     >
-      <accessProvider>
+      <AccessProvider>
         {tree}
-      </accessProvider>
+      </AccessProvider>
     </ClerkProvider>
   ) : (
-    <accessProvider>
+    <AccessProvider>
       {tree}
-    </accessProvider>
+    </AccessProvider>
   );
 
   return content;

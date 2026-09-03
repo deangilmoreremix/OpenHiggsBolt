@@ -11,13 +11,20 @@ create table if not exists public.design_agent_ownership (
   session_id text not null,
   job_id text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint design_agent_ownership_session_id_key unique (session_id),
-  constraint design_agent_ownership_job_id_key unique (job_id)
+  updated_at timestamptz not null default now()
 );
 
 create index if not exists design_agent_ownership_clerk_user_id_idx
   on public.design_agent_ownership(clerk_user_id);
+
+-- One session row per owner session, plus one row per job.
+create unique index if not exists design_agent_ownership_session_id_unique
+  on public.design_agent_ownership(session_id)
+  where job_id is null;
+
+create unique index if not exists design_agent_ownership_job_id_unique
+  on public.design_agent_ownership(job_id)
+  where job_id is not null;
 
 -- Only the owning user may read/update/delete their rows.
 alter table public.design_agent_ownership enable row level security;

@@ -2,29 +2,6 @@ import { createClient } from '@supabase/supabase-js';
 import { grantEntitlement } from '../src/access/resolveAccess';
 import { ENTITLEMENTS } from '../src/access/entitlements';
 
-type Purchaser = {
-  email: string;
-  stripe_customer_id?: string;
-  stripe_subscription_id?: string;
-  entitlement?: string;
-};
-
-type ReconciliationResult = {
-  total: number;
-  matched: number;
-  granted: number;
-  alreadyEntitled: number;
-  noClerkAccount: number;
-  ambiguous: number;
-  failed: number;
-  details: Array<{
-    email: string;
-    status: 'granted' | 'already_entitled' | 'no_clerk_account' | 'ambiguous' | 'failed';
-    clerkUserId?: string;
-    error?: string;
-  }>;
-};
-
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -37,12 +14,12 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-function normalizeEmail(email: string): string {
+function normalizeEmail(email) {
   return email.toLowerCase().trim();
 }
 
-async function reconcilePurchasers(purchasers: Purchaser[]): Promise<ReconciliationResult> {
-  const result: ReconciliationResult = {
+async function reconcilePurchasers(purchasers) {
+  const result = {
     total: purchasers.length,
     matched: 0,
     granted: 0,
@@ -75,7 +52,7 @@ async function reconcilePurchasers(purchasers: Purchaser[]): Promise<Reconciliat
       }
 
       if (existingEntitlement?.clerk_user_id) {
-        const entitlements = (existingEntitlement.entitlements || {}) as Record<string, boolean>;
+        const entitlements = (existingEntitlement.entitlements || {});
         if (entitlements[entitlementKey]) {
           result.alreadyEntitled += 1;
           result.matched += 1;
@@ -171,7 +148,7 @@ async function main() {
 
   const { readFile } = await import('node:fs/promises');
   const content = await readFile(inputPath, 'utf-8');
-  const purchasers: Purchaser[] = JSON.parse(content);
+  const purchasers = JSON.parse(content);
 
   if (!Array.isArray(purchasers)) {
     console.error('Input must be a JSON array of purchasers');
