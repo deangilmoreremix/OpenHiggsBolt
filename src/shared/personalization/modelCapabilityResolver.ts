@@ -1,5 +1,8 @@
 /**
  * Model Capability Resolver for Personalization
+ *
+ * Uses the live model catalog from packages/studio/src/models.js to determine
+ * capabilities instead of hardcoded regex patterns.
  */
 
 import type {
@@ -12,6 +15,30 @@ import type {
   GenerationOptions,
 } from './types'
 import { getGenerationAssetUrl } from './DemoPersonalizeProvider'
+import {
+  getModelById,
+  getVideoModelById,
+  getI2IModelById,
+  getI2VModelById,
+  getV2VModelById,
+  getRecastModelById,
+  getLipSyncModelById,
+  t2iModels,
+  t2vModels,
+  i2iModels,
+  i2vModels,
+  v2vModels,
+  recastModels,
+  lipsyncModels,
+} from '@/packages/studio/src/models.js'
+
+// ── Model Catalog Constants ──────────────────────────────────────────────────
+// These must match actual IDs in packages/studio/src/models.js.
+
+export const FACE_SWAP_MODEL = 'ai-video-face-swap' // v2vModels entry
+export const FULL_BODY_MODEL = 'kling-v3.0-pro-recast' // recastModels entry
+export const DEFAULT_T2V_MODEL = 'seedance-2-t2v' // t2vModels entry
+export const DEFAULT_I2I_MODEL = 'gpt-image-2' // t2iModels entry
 
 export interface ModelCapabilities {
   supportsFaceSwap: boolean
@@ -29,6 +56,33 @@ export interface ModelCapabilities {
   supportsFirstFrame: boolean
   supportsAudioPreservation: boolean
   hasPrompt: boolean
+  modelId: string
+  endpoint: string | null
+}
+
+/**
+ * Look up a model by ID across all relevant catalogs.
+ * Returns the model definition or null if not found.
+ */
+function findModel(modelId: string): any | null {
+  if (!modelId) return null
+  return (
+    getModelById(modelId) ||
+    getVideoModelById(modelId) ||
+    getI2IModelById(modelId) ||
+    getI2VModelById(modelId) ||
+    getV2VModelById(modelId) ||
+    getRecastModelById(modelId) ||
+    getLipSyncModelById(modelId) ||
+    null
+  )
+}
+
+/**
+ * Determine if a model ID belongs to a specific family.
+ */
+function isInCatalog(modelId: string, catalog: any[]): boolean {
+  return catalog.some((m) => m.id === modelId)
 }
 
 export function resolveModelCapabilities(
@@ -36,29 +90,75 @@ export function resolveModelCapabilities(
   options: GenerationOptions,
 ): ModelCapabilities {
   const modelId = options.advancedModel || options.model || source.model || ''
-  const lower = modelId.toLowerCase()
+  const model = findModel(modelId)
+
+  const imageField = model?.imageField || 'image_url'
+  const videoField = model?.videoField || 'video_url'
+  const hasPrompt = model?.hasPrompt ?? true
+
+  // Determine max images from model inputs
+  let maxImages = 1
+  if (model?.inputs) {
+    const imageInput = model.inputs[imageField] || model.inputs.images_list || model.inputs.image_urls
+    if (imageInput?.type === 'array') {
+      maxImages = imageInput.maxItems || imageInput.max_items || 4
+    } else if (model.maxImages) {
+      maxImages = model.maxImages
+    }
+  }
+  if (maxImages < 1) maxImages = 1
+
+  // Determine max videos
+  let maxVideos = 1
+  if (model?.inputs) {
+    const videoInput = model.inputs[videoField] || model.inputs.videos_list || model.inputs.video_files
+    if (videoInput?.type === 'array') {
+      maxVideos = videoInput.maxItems || videoInput.max_items || 1
+    } else if (model.maxVideos) {
+      maxVideos = model.maxVideos
+    }
+  }
+  if (maxVideos < 1) maxVideos = 1
+
+  // Determine last frame support
+  const supportsLastFrame =
+    Boolean(model?.lastImageField) ||
+    /wan|kling|runway|seedance/.test(modelId.toLowerCase())
+
+  // Determine first frame support
+  const supportsFirstFrame =
+    Boolean(model?.firstImageField) ||
+    /wan|kling|runway|seedance/.test(modelId.toLowerCase())
+
+  // Audio preservation
+  const supportsAudioPreservation =
+    isInCatalog(modelId, v2vModels) ||
+    isInCatalog(modelId, recastModels) ||
+    /v2v|recast/.test(modelId.toLowerCase())
 
   return {
     supportsFaceSwap:
-      /face.?swap|face.?replace|swap|reface|deep.?face/.test(lower) ||
-      lower.includes('wan') ||
-      lower.includes('seedance'),
+      isInCatalog(modelId, v2vModels) && model?.imageField === 'image_url' ||
+      modelId === FACE_SWAP_MODEL ||
+      /face.?swap|face.?replace/.test(modelId.toLowerCase()),
     supportsPersonReplacement:
-      /recast|replace|person|character|swap/.test(lower) ||
-      lower.includes('wan'),
-    supportsI2I: /i2i|image.?to.?image|flux|midjourney|gpt.?image|ideogram|seedream/.test(lower),
-    supportsT2V: !source.sourceMedia && /seedance|kling|runway|veo/.test(lower),
-    supportsV2V: /v2v|video.?to.?video|seedance|kling|runway|veo/.test(lower),
-    supportsRecast: /recast/.test(lower),
-    supportsLipSync: /lipsync|lip.?sync/.test(lower),
-    maxImages: 4,
-    maxVideos: 1,
-    imageField: 'image_url',
-    videoField: 'video_url',
-    supportsLastFrame: /wan|kling|runway|seedance/.test(lower),
-    supportsFirstFrame: /wan|kling|runway|seedance/.test(lower),
-    supportsAudioPreservation: /v2v|recast/.test(lower),
-    hasPrompt: true,
+      isInCatalog(modelId, recastModels) ||
+      /recast|person|character|swap|animate/.test(modelId.toLowerCase()),
+    supportsI2I: isInCatalog(modelId, i2iModels) || /i2i|image.?to.?image|flux|midjourney|gpt.?image|ideogram|seedream/.test(modelId.toLowerCase()),
+    supportsT2V: !source.sourceMedia && isInCatalog(modelId, t2vModels),
+    supportsV2V: isInCatalog(modelId, v2vModels) || isInCatalog(modelId, recastModels) || /v2v|video.?to.?video/.test(modelId.toLowerCase()),
+    supportsRecast: isInCatalog(modelId, recastModels) || /recast/.test(modelId.toLowerCase()),
+    supportsLipSync: isInCatalog(modelId, lipsyncModels) || /lipsync|lip.?sync/.test(modelId.toLowerCase()),
+    maxImages,
+    maxVideos,
+    imageField,
+    videoField,
+    supportsLastFrame,
+    supportsFirstFrame,
+    supportsAudioPreservation,
+    hasPrompt,
+    modelId,
+    endpoint: model?.endpoint || null,
   }
 }
 

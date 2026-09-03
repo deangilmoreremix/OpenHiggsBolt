@@ -56,6 +56,7 @@ import {
 import { personalizePrompt, regeneratePrompt } from './promptPersonalizer'
 import { runGeneration } from './generationRouter'
 import { resolveModelCapabilities, resolveAssetsForModel } from './modelCapabilityResolver'
+import { applyPostProcessing, generateEndCardImage } from './postProcessor'
 import { uploadFile } from 'studio/src/muapi'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -435,7 +436,7 @@ export function DemoPersonalizeProvider({ apiKey, children }: DemoPersonalizePro
     setClients(loadClients())
   }, [])
 
-  const deleteClientRecord = useCallback((id: string) => {
+  const deleteClient = useCallback((id: string) => {
     deleteClientRecord(id)
     setClients(loadClients())
     if (selectedClientId === id) {
@@ -800,9 +801,24 @@ export function DemoPersonalizeProvider({ apiKey, children }: DemoPersonalizePro
 
     try {
       const capabilities = resolveModelCapabilities(source, genOptions)
-      const resolved = resolveAssetsForModel(source, assets, mode, genOptions, capabilities)
+      let resolved = resolveAssetsForModel(source, assets, mode, genOptions, capabilities)
 
       const finalPrompt = promptState.edited || promptState.personalized || promptState.original
+
+      // Pre-generate CTA end card if exact end-card handling is requested
+      if (genOptions.exactCtaHandling === 'final-end-card' && source.mediaType !== 'prompt-only') {
+        setGeneration((prev) => ({ ...prev, progress: 3, progressMessage: 'Preparing branding assets...' }))
+        const endCardUrl = await generateEndCardImage(clientForm as Record<string, unknown> | undefined, assets.primaryLogo?.file || null, apiKey)
+        if (endCardUrl) {
+          resolved = {
+            ...resolved,
+            postProcessing: {
+              ...resolved.postProcessing,
+              endCard: endCardUrl,
+            },
+          }
+        }
+      }
 
       const project = {
         source,
@@ -827,8 +843,29 @@ export function DemoPersonalizeProvider({ apiKey, children }: DemoPersonalizePro
         },
       })
 
-      lastResultRef.current = genResult
-      setResult(genResult)
+      // Apply deterministic post-processing (logo overlay, CTA end card)
+      setGeneration((prev) => ({ ...prev, progress: 90, progressMessage: 'Applying branding...' }))
+      const postResult = await applyPostProcessing({
+        generatedUrl: genResult.url || '',
+        type: genResult.type as 'image' | 'video',
+        postProcessing: resolved.postProcessing,
+        apiKey,
+      })
+
+      const finalUrl = postResult.finalUrl || genResult.url || ''
+      const resultWithPostProcessing: GenerationResult = {
+        ...genResult,
+        url: finalUrl,
+        metadata: {
+          ...genResult.metadata,
+          postProcessing: postResult.applied,
+          postProcessingFailed: postResult.failed,
+          originalUrl: postResult.originalUrl,
+        },
+      }
+
+      lastResultRef.current = resultWithPostProcessing
+      setResult(resultWithPostProcessing)
       setResultTab('prompt')
       setGeneration({ ...EMPTY_GENERATION_STATE, status: 'complete', progress: 100, progressMessage: 'Complete' })
 
@@ -838,7 +875,7 @@ export function DemoPersonalizeProvider({ apiKey, children }: DemoPersonalizePro
         sourceDemoId: source.id,
         sourceMedia: source.sourceMedia,
         personalizationMode: mode || undefined,
-        model: genResult.metadata?.model as string | undefined,
+        model: resultWithPostProcessing.metadata?.model as string | undefined,
         originalPrompt: promptState.original,
         personalizedPrompt: finalPrompt,
         identityAssetIds: assets.identities.map((i) => i.id),
@@ -847,8 +884,8 @@ export function DemoPersonalizeProvider({ apiKey, children }: DemoPersonalizePro
         brandReferenceAssetIds: assets.brandReferences.map((b) => b.id),
         firstFrameAssetId: assets.firstFrame?.id || null,
         lastFrameAssetId: assets.lastFrame?.id || null,
-        outputUrls: genResult.urls || (genResult.url ? [genResult.url] : []),
-        outputType: genResult.type,
+        outputUrls: resultWithPostProcessing.urls || (finalUrl ? [finalUrl] : []),
+        outputType: resultWithPostProcessing.type,
         clientId: selectedClientId || undefined,
       })
       setSharedMediaEntries(getSharedMedia())
@@ -967,7 +1004,7 @@ export function DemoPersonalizeProvider({ apiKey, children }: DemoPersonalizePro
     createClient: createClientRecord,
     saveClient,
     updateClient,
-    deleteClient: deleteClientRecord,
+    deleteClient,
     updateClientForm,
 
     // Assets
