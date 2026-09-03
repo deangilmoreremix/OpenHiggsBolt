@@ -13,7 +13,7 @@
     "apps/cutai/frontend"
   ],
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "node scripts/dev-prod.js",
     "build": "next build",
     "typecheck": "tsc --noEmit",
     "test:vfx": "node --test tests/vfx-service.test.js tests/vfx-validation.test.js",
@@ -21,6 +21,8 @@
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "verify:muapi": "node scripts/verify-muapi-apis.mjs",
+    "validate:env": "node scripts/validate-env.js",
+    "prestart": "node scripts/validate-env.js",
     "start": "next start",
     "lint": "next lint",
     "cutai:frontend": "npm run dev -w @openhiggsbolt/cutai",
@@ -128,11 +130,13 @@
   "dependencies": {
     "@clerk/nextjs": "^7.5.13",
     "@netlify/plugin-nextjs": "^5.15.12",
+    "@octokit/rest": "^22.0.1",
     "@supabase/supabase-js": "^2.108.2",
     "ai-agent": "file:./packages/Open-Poe-AI/packages/agents",
     "axios": "^1.7.0",
     "lucide-react": "^1.21.0",
     "next": "^15.0.0",
+    "octokit": "^5.0.5",
     "openai": "^6.44.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

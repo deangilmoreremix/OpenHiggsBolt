@@ -1,6 +1,16 @@
 'use client';
 
 import React from 'react';
+import { isValidKeyFormat } from '@/lib/keys';
+
+// Strip invisible Unicode characters that commonly corrupt copied API keys.
+function cleanApiKey(key: string): string {
+  if (!key) return '';
+  return String(key)
+    .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')  // zero-width chars, BOM, word joiner, soft hyphen
+    .replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '')
+    .trim();
+}
 
 interface ApiKeyModalProps {
   show: boolean;
@@ -20,6 +30,15 @@ export default function ApiKeyModal({
   disabled = false,
 }: ApiKeyModalProps) {
   if (!show) return null;
+
+  const handleContinue = () => {
+    const key = cleanApiKey(apiKeyInput);
+    if (!key || !isValidKeyFormat(key)) {
+      alert('Please enter a valid API key (at least 8 characters, no surrounding quotes).');
+      return;
+    }
+    onContinue();
+  };
 
   return (
     <div
@@ -67,6 +86,7 @@ export default function ApiKeyModal({
           type="password"
           value={apiKeyInput}
           onChange={(e) => onApiKeyChange(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleContinue(); }}
           placeholder="API Key"
           style={{
             padding: 10,
@@ -98,7 +118,7 @@ export default function ApiKeyModal({
           </button>
           <button
             type="button"
-            onClick={onContinue}
+            onClick={handleContinue}
             style={{
               padding: '8px 18px',
               borderRadius: 8,

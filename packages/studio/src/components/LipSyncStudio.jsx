@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTemplateData } from "../hooks/useTemplateData";
+import TemplateBanner from "./TemplateBanner";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { processLipSync, uploadFile } from "../muapi.js";
@@ -15,6 +17,7 @@ import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
 import { setCharacterSheet } from "../lib/characterStore";
 import registry from "../skills/registry.json";
 import { fillTemplate } from "../lib/promptRecipes";
+import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
 
 // ---------------------------------------------------------------------------
 // Upload button states
@@ -327,6 +330,7 @@ export default function LipSyncStudio({
   historyItems,
   droppedFiles,
   onFilesHandled,
+  templateData,
 }) {
   const PERSIST_KEY = "hg_lipsync_studio_persistent";
 
@@ -398,6 +402,26 @@ export default function LipSyncStudio({
     if (!skill) return;
     applyRecipe(skill);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Cross-studio: import a Storyboard hand-off ────────────────────────────
+  const handoffApplied = useRef(null);
+  useEffect(() => {
+    try {
+      const handoff = readStoryboardHandoff("lipsync");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+      const ref = handoff.firstFrameUrl || handoff.referenceImageUrl;
+      if (ref) {
+        setImageUrl(ref);
+      }
+    } catch (err) {
+      console.warn("Failed to apply Storyboard hand-off:", err);
+    }
   }, []);
 
   // Resolve a recipe reference url. Returns null for unresolved {{token}}s
@@ -564,6 +588,13 @@ export default function LipSyncStudio({
     setSelectedModelId(first.id);
     setSelectedResolution(first.inputs?.resolution?.default ?? "480p");
   }, [inputMode]);
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const { reset: resetTemplate, isTemplateApplied } = useTemplateData(templateData, (data) => {
+    if (data.prompt) {
+      setPrompt(data.prompt);
+    }
+  });
 
   // ── Upload handlers ─────────────────────────────────────────────────────
   const handleImageUpload = useCallback(
@@ -1108,6 +1139,7 @@ export default function LipSyncStudio({
 
             {/* Prompt textarea */}
             <div className="flex-1 flex flex-col">
+              <TemplateBanner isApplied={isTemplateApplied} onClear={resetTemplate} />
               <textarea
                 ref={textareaRef}
                 value={prompt}

@@ -18,6 +18,7 @@ import { SEED_THUMBNAILS } from '@/shared/components/ImageGen/seedThumbnails'
 import { DEFAULT_IMAGE_MODEL, getImageClient } from '@/shared/api/muapiImage'
 import { panels, buttons, semantic, tabStyle, optionStyle, appWrapper } from '@/shared/styles/designTokens'
 import { supabase } from '@/shared/api/supabase'
+import { readStoryboardHandoff, clearStoryboardHandoff } from '@/shared/crossStudio'
 import { enhancePrompt } from '@/shared/api/openai'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -253,13 +254,42 @@ function saveLocal(images: GeneratedImage[]) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function ThumbnailStudio({ apiKey }: { apiKey?: string }) {
+export default function ThumbnailStudio({ apiKey, templateData }: { apiKey?: string; templateData?: { prompt?: string; tags?: string[]; [key: string]: any } }) {
   // Tabs
   const [activeTab, setActiveTab] = useState<'generate' | 'mine' | 'community'>('generate')
 
   // Generate form
   const [prompt, setPrompt] = useState('')
   const [selectedStyle, setSelectedStyle] = useState('cinematic')
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const templateApplied = useRef<string | null>(null)
+  useEffect(() => {
+    if (!templateData || templateApplied.current === templateData.slug) return;
+    templateApplied.current = templateData.slug
+
+    if (templateData.prompt) {
+      setPrompt(templateData.prompt)
+    }
+    const tag = templateData.tags?.[0]
+    if (tag && STYLES.some((s) => s.value === tag)) {
+      setSelectedStyle(tag)
+    }
+  }, [templateData])
+
+  // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  const handoffApplied = useRef<string | null>(null);
+  useEffect(() => {
+    try {
+      const handoff = readStoryboardHandoff("thumbnail-studio");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+    } catch (error) { /* silent */ }
+  }, []);
   const [selectedSize, setSelectedSize] = useState<SizePreset>(SIZE_PRESETS[0])
   const [selectedModel, setSelectedModel] = useState<ImageModel>('gpt-image-2')
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   getTemplateAgents,
@@ -146,7 +146,7 @@ function ConversationCard({ conv, onClick }) {
 // ─── Main Component ──────────────────────────────────────────────────────────
 const TABS = ["templates", "my-agents", "my-chats"];
 
-export default function AgentStudio({ apiKey }) {
+export default function AgentStudio({ apiKey, templateData }) {
   const router = useRouter();
 
   const [activeMainTab, setActiveMainTab] = useState("templates");
@@ -154,6 +154,15 @@ export default function AgentStudio({ apiKey }) {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const templateApplied = useRef(null);
+  useEffect(() => {
+    if (!templateData || templateApplied.current === templateData.slug) return;
+    templateApplied.current = templateData.slug;
+    // AgentStudio is a gallery/launcher; templateData is accepted for routing
+    // but prompt pre-fill is handled by the standalone /agents pages.
+  }, [templateData]);
 
   // Navigate to the standalone /agents page — AiAgent handles its own routing there
   const handleSelectAgent = useCallback(

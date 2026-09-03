@@ -32,7 +32,9 @@
           "description": "Aspect ratio of the output image.",
           "default": "1:1"
         }
-      }
+      },
+      "provider": "google",
+      "provider_name": "Google"
     },
     {
       "id": "flux-dev",
@@ -78,7 +80,8 @@
           "step": 1
         }
       },
-      "endpoint": "flux-dev"
+      "provider": "blackforest",
+      "provider_name": "Black Forest Labs"
     },
     {
       "id": "flux-dev-lora",
@@ -159,7 +162,9 @@
           "step": 1,
           "isEdit": true
         }
-      }
+      },
+      "provider": "blackforest",
+      "provider_name": "Black Forest Labs"
     },
     {
       "id": "flux-kontext-dev-t2i",
@@ -203,7 +208,9 @@
           "step": 1,
           "isEdit": true
         }
-      }
+      },
+      "provider": "blackforest",
+      "provider_name": "Black Forest Labs"
     },
     {
       "id": "hidream-i1-fast",
@@ -248,7 +255,9 @@
           "maxValue": 4,
           "step": 1
         }
-      }
+      },
+      "provider": "hidream",
+      "provider_name": "Runware"
     },
     {
       "id": "hidream-i1-dev",
@@ -293,7 +302,9 @@
           "maxValue": 4,
           "step": 1
         }
-      }
+      },
+      "provider": "hidream",
+      "provider_name": "Runware"
     },
     {
       "id": "hidream-i1-full",
@@ -338,7 +349,9 @@
           "maxValue": 4,
           "step": 1
         }
-      }
+      },
+      "provider": "hidream",
+      "provider_name": "Runware"
     },
     {
       "id": "ai-anime-generator",
@@ -375,7 +388,9 @@
           "step": 1,
           "isEdit": true
         }
-      }
+      },
+      "provider": "muapi",
+      "provider_name": "Wavespeed"
     },
     {
       "id": "wan2.1-text-to-image",
@@ -410,7 +425,9 @@
           "maxValue": 1536,
           "step": 1
         }
-      }
+      },
+      "provider": "alibaba",
+      "provider_name": "Alibaba"
     },
     {
       "id": "flux-kontext-pro-t2i",
@@ -441,7 +458,9 @@
           "description": "Aspect ratio of the output image.",
           "default": "1:1"
         }
-      }
+      },
+      "provider": "blackforest",
+      "provider_name": "Black Forest Labs"
     },
     {
       "id": "flux-kontext-max-t2i",
@@ -472,7 +491,9 @@
           "description": "Aspect ratio of the output image.",
           "default": "1:1"
         }
-      }
+      },
+      "provider": "blackforest",
+      "provider_name": "Black Forest Labs"
     },
     {
       "id": "gpt4o-text-to-image",
@@ -511,85 +532,9 @@
           "description": "Number of images generated in single request. Each number will charge separately",
           "default": 1
         }
-      }
-    },
-    {
-      "id": "midjourney-v7-text-to-image",
-      "name": "Midjourney v7 Text To Image",
-      "inputs": {
-        "prompt": {
-          "examples": [
-            "A sprawling futuristic city at dusk, illuminated with vibrant neon signs, layered skyscrapers, elevated highways with flying cars, warm atmospheric glow, ultra-detailed sci-fi architecture, cinematic composition — digital art, high contrast, 8K"
-          ],
-          "description": "The prompt to generate the image",
-          "type": "string",
-          "title": "Prompt",
-          "name": "prompt"
-        },
-        "speed": {
-          "enum": [
-            "relaxed",
-            "fast",
-            "turbo"
-          ],
-          "title": "Speed",
-          "name": "speed",
-          "type": "string",
-          "description": "The speed of which corresponds to different speed of Midjourney",
-          "default": "relaxed"
-        },
-        "aspect_ratio": {
-          "enum": [
-            "1:1",
-            "16:9",
-            "9:16",
-            "3:4",
-            "4:3",
-            "1:2",
-            "2:1",
-            "2:3",
-            "3:2",
-            "5:6",
-            "6:5"
-          ],
-          "title": "Aspect Ratio",
-          "name": "aspect_ratio",
-          "type": "string",
-          "description": "Aspect ratio of the output image.",
-          "default": "1:1"
-        },
-        "variety": {
-          "title": "Variety",
-          "name": "variety",
-          "type": "int",
-          "description": "Controls the diversity of generated images. Increment by 5 each time. Higher values create more diverse results. Lower values create more consistent results.",
-          "default": 5,
-          "minValue": 0,
-          "maxValue": 100,
-          "step": 5
-        },
-        "stylization": {
-          "title": "Stylization",
-          "name": "stylization",
-          "type": "int",
-          "description": "Controls the artistic style intensity. Higher values create more stylized results. Lower values create more realistic results.",
-          "default": 1,
-          "minValue": 0,
-          "maxValue": 1000,
-          "step": 1
-        },
-        "weirdness": {
-          "title": "Weirdness",
-          "name": "weirdness",
-          "type": "int",
-          "description": "Controls the creativity and uniqueness. Higher values create more unusual results. Lower values create more conventional results.",
-          "default": 1,
-          "minValue": 0,
-          "maxValue": 3000,
-          "step": 1
-        }
       },
-      "endpoint": "midjourney-v7"
+      "provider": "openai",
+      "provider_name": "OpenAI"
     },
     {
       "id": "flux-schnell",
@@ -635,7 +580,8 @@
           "step": 1
         }
       },
-      "endpoint": "flux-schnell"
+      "provider": "blackforest",
+      "provider_name": "Black Forest Labs"
     },
     {
       "id": "bytedance-seedream-v3",
@@ -664,7 +610,9 @@
           "description": "Aspect ratio of the output image.",
           "default": "1:1"
         }
-      }
+      },
+      "provider": "bytedance",
+      "provider_name": "ByteDance"
     },
     {
       "id": "qwen-image",
@@ -707,7 +655,9 @@
           "maxValue": 4,
           "step": 1
         }
-      }
+      },
+      "provider": "alibaba",
+      "provider_name": "Alibaba"
     },
     {
       "id": "flux-pulid",
@@ -746,7 +696,9 @@
           "description": "Aspect ratio of the output image.",
           "default": "1:1"
         }
-      }
+      },
+      "provider": "blackforest",
+      "provider_name": "Black Forest Labs"
     },
     {
       "id": "ideogram-v3-t2i",
@@ -811,7 +763,9 @@
           "step": 1,
           "isEdit": true
         }
-      }
+      },
+      "provider": "ideogram",
+      "provider_name": "Ideogram"
     },
     {
       "id": "google-imagen4",
@@ -851,7 +805,9 @@
           "step": 1,
           "isEdit": true
         }
-      }
+      },
+      "provider": "google",
+      "provider_name": "Google"
     },
     {
       "id": "google-imagen4-fast",
@@ -891,7 +847,9 @@
           "step": 1,
           "isEdit": true
         }
-      }
+      },
+      "provider": "google",
+      "provider_name": "Google"
     },
     {
       "id": "google-imagen4-ultra",
@@ -920,7 +878,9 @@
           "description": "Aspect ratio of the output image.",
           "default": "1:1"
         }
-      }
+      },
+      "provider": "google",
+      "provider_name": "Google"
     },
     {
       "id": "sdxl-image",
@@ -955,7 +915,9 @@
           "maxValue": 1536,
           "step": 1
         }
-      }
+      },
+      "provider": "stability",
+      "provider_name": "Stability AI"
     },
     {
       "id": "bytedance-seedream-v4",
@@ -1009,7 +971,9 @@
           "maxValue": 4,
           "step": 1
         }
-      }
+      },
+      "provider": "bytedance",
+      "provider_name": "ByteDance"
     },
     {
       "id": "hunyuan-image-2.1",
@@ -1044,7 +1008,9 @@
           "maxValue": 1536,
           "step": 1
         }
-      }
+      },
+      "provider": "hunyuan",
+      "provider_name": "Hunyuan"
     },
     {
       "id": "chroma-image",
@@ -1079,7 +1045,9 @@
           "maxValue": 1536,
           "step": 1
         }
-      }
+      },
+      "provider": "stability",
+      "provider_name": "Stability AI"
     },
     {
       "id": "flux-redux",
@@ -1132,7 +1100,9 @@
           "maxValue": 4,
           "step": 1
         }
-      }
+      },
+      "provider": "blackforest",
+      "provider_name": "Black Forest Labs"
     },
     {
       "id": "flux-krea-dev",
@@ -1175,7 +1145,9 @@
           "maxValue": 4,
           "step": 1
         }
-      }
+      },
+      "provider": "blackforest",
+      "provider_name": "Black Forest Labs"
     },
     {
       "id": "perfect-pony-xl",
@@ -1210,7 +1182,9 @@
           "maxValue": 1536,
           "step": 1
         }
-      }
+      },
+      "provider": "stability",
+      "provider_name": "Stability AI"
     },
     {
       "id": "neta-lumina",
@@ -1245,7 +1219,9 @@
           "maxValue": 1536,
           "step": 1
         }
-      }
+      },
+      "provider": "stability",
+      "provider_name": "Stability AI"
     },
     {
       "id": "wan2.5-text-to-image",
@@ -1280,7 +1256,9 @@
           "maxValue": 1440,
           "step": 1
         }
-      }
+      },
+      "provider": "alibaba",
+      "provider_name": "Alibaba"
     },
     {
       "id": "hunyuan-image-3.0",
@@ -1315,7 +1293,9 @@
           "maxValue": 1536,
           "step": 1
         }
-      }
+      },
+      "provider": "hunyuan",
+      "provider_name": "Hunyuan"
     },
     {
       "id": "leonardoai-phoenix-1.0",
@@ -1348,7 +1328,9 @@
           "description": "Aspect ratio of the output image.",
           "default": "1:1"
         }
-      }
+      },
+      "provider": "leonardoai",
+      "provider_name": "Leonardo AI"
     },
     {
       "id": "leonardoai-lucid-origin",
@@ -1381,7 +1363,9 @@
           "description": "Aspect ratio of the output image.",
           "default": "1:1"
         }
-      }
+      },
+      "provider": "leonardoai",
+      "provider_name": "Leonardo AI"
     },
     {
       "id": "reve-text-to-image",
@@ -1412,7 +1396,9 @@
           "description": "Aspect ratio of the output image.",
           "default": "1:1"
         }
-      }
+      },
+      "provider": "reve",
+      "provider_name": "Wavespeed"
     },
     {
       "id": "grok-imagine-text-to-image",
@@ -1441,7 +1427,9 @@
           "description": "Aspect ratio of the output image. Get 6 images each time.",
           "default": "1:1"
         }
-      }
+      },
+      "provider": "grok",
+      "provider_name": "xAI"
     },
     {
       "id": "nano-banana-pro",
@@ -1487,7 +1475,9 @@
           "name": "resolution",
           "default": "1k"
         }
-      }
+      },
+      "provider": "google",
+      "provider_name": "Google"
     },
     {
       "id": "kling-o1-text-to-image",
@@ -1540,7 +1530,9 @@
           "maxValue": 9,
           "step": 1
         }
-      }
+      },
+      "provider": "kling",
+      "provider_name": "Kling AI"
     },
     {
       "id": "z-image-turbo",
@@ -1575,7 +1567,9 @@
           "maxValue": 1536,
           "step": 1
         }
-      }
+      },
+      "provider": "alibaba",
+      "provider_name": "Alibaba"
     },
     {
       "id": "flux-2-dev",
@@ -1610,7 +1604,9 @@
           "maxValue": 1536,
           "step": 1
         }
-      }
+      },
+      "provider": "blackforest",
+      "provider_name": "Black Forest Labs"
     },
     {
       "id": "flux-2-flex",
@@ -1652,7 +1648,9 @@
           "description": "The target resolution of the generated image.",
           "default": "1k"
         }
-      }
+      },
+      "provider": "blackforest",
+      "provider_name": "Black Forest Labs"
     },
     {
       "id": "flux-2-pro",
@@ -1694,7 +1692,9 @@
           "description": "The target resolution of the generated image.",
           "default": "1k"
         }
-      }
+      },
+      "provider": "blackforest",
+      "provider_name": "Black Forest Labs"
     },
     {
       "id": "vidu-q2-text-to-image",
@@ -1738,7 +1738,9 @@
           "description": "The target resolution of the generated image.",
           "default": "1k"
         }
-      }
+      },
+      "provider": "vidu",
+      "provider_name": "Vidu"
     },
     {
       "id": "bytedance-seedream-v4.5",
@@ -1781,7 +1783,9 @@
           "description": "Quality of the output image.",
           "default": "basic"
         }
-      }
+      },
+      "provider": "bytedance",
+      "provider_name": "ByteDance"
     },
     {
       "id": "gpt-image-1.5",
@@ -1820,7 +1824,9 @@
           "description": "The quality of the generated image.",
           "default": "medium"
         }
-      }
+      },
+      "provider": "openai",
+      "provider_name": "OpenAI"
     },
     {
       "id": "gpt-image-2",
@@ -1864,7 +1870,9 @@
           "description": "The target resolution of the generated image.",
           "default": "2K"
         }
-      }
+      },
+      "provider": "openai",
+      "provider_name": "OpenAI"
     },
     {
       "id": "wan2.6-text-to-image",
@@ -1899,7 +1907,9 @@
           "maxValue": 1440,
           "step": 1
         }
-      }
+      },
+      "provider": "alibaba",
+      "provider_name": "Alibaba"
     },
     {
       "id": "qwen-text-to-image-2512",
@@ -1934,7 +1944,9 @@
           "maxValue": 1536,
           "step": 1
         }
-      }
+      },
+      "provider": "alibaba",
+      "provider_name": "Alibaba"
     },
     {
       "id": "flux-2-klein-4b",
@@ -1965,7 +1977,9 @@
           "description": "The aspect ratio of the generated image",
           "default": "1:1"
         }
-      }
+      },
+      "provider": "blackforest",
+      "provider_name": "Black Forest Labs"
     },
     {
       "id": "flux-2-klein-9b",
@@ -1996,7 +2010,9 @@
           "description": "The aspect ratio of the generated image",
           "default": "1:1"
         }
-      }
+      },
+      "provider": "blackforest",
+      "provider_name": "Black Forest Labs"
     },
     {
       "id": "z-image-base",
@@ -2047,7 +2063,9 @@
           "maxValue": 1,
           "step": 0.01
         }
-      }
+      },
+      "provider": "alibaba",
+      "provider_name": "Alibaba"
     },
     {
       "id": "minimax-image-01",
@@ -2090,7 +2108,8 @@
           "step": 1
         }
       },
-      "endpoint": "minimax-image-01-subject-reference"
+      "provider": "minimax",
+      "provider_name": "Minimax"
     }
   ]
 }

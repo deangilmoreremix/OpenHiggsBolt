@@ -1,5 +1,5 @@
 import { muapi } from '../lib/muapi.js';
-import { AuthModal } from './AuthModal.js';
+import { getApiKey } from '../lib/authConfig.ts';
 import { getUploadHistory, saveUpload, removeUpload, generateThumbnail } from '../lib/uploadHistory.js';
 
 /**
@@ -324,9 +324,9 @@ export function createUploadPicker({ anchorContainer, onSelect, onClear, maxImag
         if (!files.length) return;
 
         if (needsKey()) {
-            const apiKey = localStorage.getItem('muapi_key');
+            const apiKey = getApiKey();
             if (!apiKey) {
-                AuthModal(() => fileInput.click());
+                alert('Please enter your MuAPI key in Settings first.');
                 return;
             }
         }
@@ -416,8 +416,8 @@ export function createUploadPicker({ anchorContainer, onSelect, onClear, maxImag
         const fileList = Array.from(files || []);
         if (!fileList.length) return;
         if (needsKey()) {
-            const apiKey = localStorage.getItem('muapi_key');
-            if (!apiKey) { AuthModal(() => addFiles(files)); return; }
+            const apiKey = getApiKey();
+            if (!apiKey) { alert('Please enter your MuAPI key in Settings first.'); return; }
         }
         showSpinner();
         try {

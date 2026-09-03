@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import type { CameraSpec } from './cameraTaxonomy'
 
 export interface StoryboardCharacter {
   id?: string
@@ -10,7 +11,7 @@ export interface StoryboardCharacter {
 export interface StoryboardShot {
   id?: string
   scene: string
-  camera?: Record<string, unknown>
+  camera?: CameraSpec
   duration?: number
   frameUrl?: string
   characterIds?: string[]
@@ -42,6 +43,7 @@ export interface StoryboardContextValue {
   episodeId: string | null
   projectName: string
   brief: string
+  setBrief: (brief: string) => void
   setProject: (p: { projectId: string; projectName: string; brief: string }) => void
   addCharacter: (id: string) => void
   setEpisode: (id: string) => void
@@ -55,15 +57,22 @@ export interface StoryboardContextValue {
   switchProject: (id: string) => void
   deleteProject: (id: string) => void
   shots: StoryboardShot[]
-  addShot: (shot: StoryboardShot) => void
+  addShot: {
+    (shot: StoryboardShot): void
+    (scene: string, duration: number): void
+  }
   updateShot: (id: string, updates: Partial<StoryboardShot>) => void
   removeShot: (id: string) => void
+  moveShot: (fromIndex: number, toIndex: number) => void
   aspectRatio: '16:9' | '9:16'
   setAspectRatio: (ratio: '16:9' | '9:16') => void
   episodeDuration: number
   setEpisodeDuration: (duration: number) => void
+  model: string
+  setModel: (v: string) => void
   result: { url?: string } | null
   setResult: (result: { url?: string } | null) => void
+  setProjectName: (v: string) => void
 }
 
 const STORAGE_KEY = 'storyboard_context'
@@ -81,6 +90,7 @@ export function StoryboardProvider({ children }: { children: ReactNode }) {
   const [shots, setShots] = useState<StoryboardShot[]>([])
   const [aspectRatio, setAspectRatio] = useState<'16:9' | '9:16'>('16:9')
   const [episodeDuration, setEpisodeDuration] = useState(60)
+  const [model, setModel] = useState('flux-dev')
   const [result, setResult] = useState<{ url?: string } | null>(null)
 
   useEffect(() => {
@@ -117,6 +127,7 @@ export function StoryboardProvider({ children }: { children: ReactNode }) {
       shots: StoryboardShot[]
       aspectRatio: '16:9' | '9:16'
       episodeDuration: number
+      model: string
       result: { url?: string } | null
     }>
   ) => {
@@ -130,6 +141,7 @@ export function StoryboardProvider({ children }: { children: ReactNode }) {
     setShots((prev) => next.shots ?? prev)
     setAspectRatio((prev) => next.aspectRatio ?? prev)
     setEpisodeDuration((prev) => next.episodeDuration ?? prev)
+    setModel((prev) => next.model ?? prev)
     setResult((prev) => next.result ?? prev)
     try {
       const current = {
@@ -143,6 +155,7 @@ export function StoryboardProvider({ children }: { children: ReactNode }) {
         shots: next.shots ?? shots,
         aspectRatio: next.aspectRatio ?? aspectRatio,
         episodeDuration: next.episodeDuration ?? episodeDuration,
+        model: next.model ?? model,
         result: next.result ?? result,
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(current))
@@ -159,6 +172,7 @@ export function StoryboardProvider({ children }: { children: ReactNode }) {
     episodeId,
     projectName,
     brief,
+    setBrief,
     setProject: ({ projectId, projectName, brief }) =>
       persist({ projectId, projectName, brief }),
     addCharacter: (id) => persist({ characterIds: [...characterIds, id] }),
@@ -206,18 +220,38 @@ export function StoryboardProvider({ children }: { children: ReactNode }) {
       })
     },
     shots,
-    addShot: (shot) =>
-      persist({ shots: [...shots, { ...shot, id: generateId() }] }),
+    addShot: (sceneOrShot, duration?, camera?, characterIds?) => {
+      const shot: StoryboardShot =
+        typeof sceneOrShot === 'object' && sceneOrShot !== null && 'scene' in sceneOrShot
+          ? { ...sceneOrShot, id: generateId() }
+          : {
+              id: generateId(),
+              scene: sceneOrShot,
+              duration: duration ?? 1,
+              ...(camera ? { camera } : {}),
+              ...(characterIds ? { characterIds } : {}),
+            }
+      persist({ shots: [...shots, shot] })
+    },
     updateShot: (id, updates) =>
       persist({ shots: shots.map((s) => (s.id === id ? { ...s, ...updates } : s)) }),
     removeShot: (id) =>
       persist({ shots: shots.filter((s) => s.id !== id) }),
+    moveShot: (fromIndex, toIndex) => {
+      const next = [...shots]
+      const [moved] = next.splice(fromIndex, 1)
+      next.splice(toIndex, 0, moved)
+      persist({ shots: next })
+    },
     aspectRatio,
     setAspectRatio: (ratio) => persist({ aspectRatio: ratio }),
     episodeDuration,
     setEpisodeDuration: (duration) => persist({ episodeDuration: duration }),
+    model,
+    setModel: (v) => persist({ model: v }),
     result,
     setResult: (next) => persist({ result: next }),
+    setProjectName: (v) => persist({ projectName: v }),
   }
 
   return <StoryboardContext.Provider value={value}>{children}</StoryboardContext.Provider>

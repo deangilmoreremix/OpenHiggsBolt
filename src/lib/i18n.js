@@ -18,7 +18,6 @@ const translations = {
         'nav.cinema': 'Cinema Studio',
         'nav.workflows': 'Workflows',
         'nav.agents': 'Agents',
-        'nav.mcpcli': 'MCP & CLI',
         'nav.settings': 'Settings',
 
         // Sidebar
@@ -210,7 +209,6 @@ const translations = {
         'nav.cinema': '电影工作室',
         'nav.workflows': '工作流',
         'nav.agents': '智能体',
-        'nav.mcpcli': 'MCP & CLI',
         'nav.settings': '设置',
 
         // Sidebar

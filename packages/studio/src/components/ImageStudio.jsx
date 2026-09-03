@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { generateImage, generateI2I, uploadFile, generateImageEditGrok } from "../muapi.js";
+import { generateImage, generateI2I, uploadFile } from "../muapi.js";
 import { setCharacterSheet } from "../lib/characterStore";
 import DrawModal from "./DrawModal.jsx";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
+import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
 import {
   t2iModels,
   i2iModels,
@@ -885,6 +886,29 @@ export default function ImageStudio({
     return () => window.removeEventListener("click", handler);
   }, [dropdownOpen]);
 
+  // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  const handoffApplied = useRef(null);
+  useEffect(() => {
+    try {
+      const handoff = readStoryboardHandoff("image");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+      const ref = handoff.firstFrameUrl || handoff.referenceImageUrl;
+      if (ref) {
+        setUploadedImageUrls((prev) => (prev.includes(ref) ? prev : [...prev, ref]));
+        setSwapImageUrl(ref);
+        setImageMode(true);
+      }
+      if (handoff.aspectRatio) {
+        setSelectedAr(handoff.aspectRatio);
+      }
+    } catch (error) { /* silent */ }
+  }, []);
+
   // ── Persistence: Load ────────────────────────────────────────────────────
   useEffect(() => {
     try {
@@ -1239,7 +1263,7 @@ export default function ImageStudio({
               aspect_ratio: selectedAr,
             };
             if (selectedResolution) genParams.resolution = selectedResolution;
-            return await generateImageEditGrok(apiKey, genParams);
+            return await generateImage(apiKey, genParams);
           }
           if (imageMode) {
             const genParams = {

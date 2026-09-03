@@ -1,0 +1,41 @@
+{
+  "tabs": {
+    "image": "Image Studio",
+    "video": "Video Studio",
+    "audio": "Audio Studio",
+    "clipping": "AI Clipping",
+    "vibe-motion": "Vibe Motion",
+    "lipsync": "Lip Sync",
+    "cinema": "Cinema Studio",
+    "storyboard": "Storyboard",
+    "marketing": "Marketing Studio",
+    "recast": "Body Swap",
+    "layers": "Layers Studio",
+    "workflows": "Workflows",
+    "agents": "Agents",
+    "design-agent": "Design Agent AI",
+    "vfx-studio": "VFX",
+    "thumbnail-studio": "Thumbnail Studio",
+    "apps": "Explore Apps",
+    "mcp-cli": "MCP / CLI",
+    "ai-influencer": "AI Influencer Studio",
+    "social-publishing": "Social Publishing",
+    "go-ai-viral": "GO-Viral"
+  },
+  "shell": {
+    "brand": "SmartVideo GO",
+    "settings": "Settings",
+    "signOut": "Sign out",
+    "dropHere": "Drop your media here",
+    "dropHereHint": "Images, videos, or audio files"
+  },
+  "settingsModal": {
+    "title": "Settings",
+    "addKeys": "Add your API keys",
+    "close": "Close"
+  },
+  "apiKeyModal": {
+    "title": "Welcome to SmartVideo GO",
+    "submit": "Get Started"
+  }
+}

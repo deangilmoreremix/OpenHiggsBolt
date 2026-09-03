@@ -51,7 +51,7 @@ export default function SeedancePromptsHero() {
 
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
             <a
-              href={getCreateUrl(hero ?? ({ slug: 'placeholder', sourceRepo: 'seedance-prompts' } as any))}
+              href={getCreateUrl(hero ?? ({ slug: 'placeholder', sourceRepo: 'seedance2prompt' } as any))}
               className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-7 py-3.5 text-sm font-bold text-black shadow-glow transition hover:scale-[1.02] sm:w-auto"
             >
               Start Creating

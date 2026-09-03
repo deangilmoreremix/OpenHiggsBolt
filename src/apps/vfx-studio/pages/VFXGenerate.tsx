@@ -18,9 +18,20 @@ import {
 } from 'lucide-react';
 import { useVideoGeneration } from '@/hooks/useVideoGeneration';
 import BottomInputBar from '@/apps/vfx-studio/components/BottomInputBar';
+import ApiKeyModal from '@/apps/vfx-studio/components/ApiKeyModal';
+import { readStoryboardHandoff, clearStoryboardHandoff } from '@/shared/crossStudio';
 import { PublishStep } from '@/components/SocialPublishProvider';
 import { AssistStep } from '@/components/AiAssistantProvider';
 import type { VFXEffect, AspectRatio, Resolution, Quality } from '@/types/vfx';
+
+// Build the muapi_key cookie string.
+function muapiCookie(value: string) {
+  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+  if (value) {
+    return `muapi_key=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax${secure}`;
+  }
+  return `muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
+}
 
 const STORAGE_KEY_UI = 'vfx_ui_state';
 
@@ -164,7 +175,12 @@ function saveUIState(state: UIState) {
   }
 }
 
-export default function VFXGenerate({ apiKey }: { apiKey?: string }) {
+export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, templateData }: { 
+  apiKey?: string; 
+  onRequestApiKey?: () => void;
+  onDismissApiKey?: () => void;
+  templateData?: { prompt?: string; aspectRatio?: string; [key: string]: any };
+}) {
   const saved = loadUIState();
 
   const [activeCategory, setActiveCategory] = useState<CategoryId>(saved?.activeCategory || 'ai-effects');
@@ -177,15 +193,47 @@ export default function VFXGenerate({ apiKey }: { apiKey?: string }) {
   const [resolution, setResolution] = useState<Resolution>(saved?.resolution || '480p');
   const [duration, setDuration] = useState(saved?.duration ?? 5);
   const [quality, setQuality] = useState<Quality>(saved?.quality || 'medium');
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const templateApplied = useRef<string | null>(null);
+  useEffect(() => {
+    const templateId = templateData?.sourceRepo && templateData?.slug
+      ? `${templateData.sourceRepo}|${templateData.slug}`
+      : templateData?.slug;
+    if (!templateData || templateApplied.current === templateId) return;
+    templateApplied.current = templateId;
+
+    if (templateData.prompt) {
+      setPrompt(templateData.prompt);
+    }
+    if (templateData.aspectRatio) {
+      setAspectRatio(templateData.aspectRatio as AspectRatio);
+    }
+  }, [templateData]);
+
+  // ── Apply cross-studio handoff from GO-Viral / Storyboard ──────────────────
+  const handoffApplied = useRef<string | null>(null);
+  useEffect(() => {
+    try {
+      const handoff = readStoryboardHandoff("vfx-studio");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+      if (handoff.aspectRatio) {
+        setAspectRatio(handoff.aspectRatio as AspectRatio);
+      }
+    } catch (error) { /* silent */ }
+  }, []);
   const [copied, setCopied] = useState(false);
   const [search, setSearch] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [showInputBar, setShowInputBar] = useState(true);
   const [showChatButton, setShowChatButton] = useState(false);
-  // Seed from the global key passed down by StandaloneShell (fall back to the
-  // studio's own ApiKeyModal entry, which calls setUserApiKey on save).
-  const [userApiKey, setUserApiKey] = useState(apiKey || '');
   const [showGenerationModal, setShowGenerationModal] = useState(false);
+  const [pendingGenerate, setPendingGenerate] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -202,12 +250,12 @@ export default function VFXGenerate({ apiKey }: { apiKey?: string }) {
     retryVideo,
     reset,
     setError,
-  } = useVideoGeneration(userApiKey || undefined);
+  } = useVideoGeneration(apiKey || undefined);
 
-  const selectedEffect = useMemo(
-    () => ALL_EFFECTS.find((e) => e.id === selectedEffectId) || null,
-    [selectedEffectId]
-  );
+   const selectedEffect = useMemo(
+     () => ALL_EFFECTS.find((e) => e.id === selectedEffectId) || null,
+     [selectedEffectId]
+   );
 
   const effectsByCategory = useMemo(() => {
     const map = new Map<CategoryId, VFXEffect[]>();
@@ -304,26 +352,54 @@ export default function VFXGenerate({ apiKey }: { apiKey?: string }) {
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
-  const handleGenerate = useCallback(async () => {
-    if (!selectedEffect) {
-      setError('Select an effect first');
-      return;
-    }
-    if (!imageUrl) {
-      setError('Upload an image or paste an image URL first');
-      return;
-    }
+   const handleGenerate = useCallback(async () => {
+     if (!selectedEffect) {
+       setError('Select an effect first');
+       return;
+     }
+     if (!imageUrl) {
+       setError('Upload an image or paste an image URL first');
+       return;
+     }
+     if (!apiKey) {
+       setPendingGenerate(true);
+       onRequestApiKey?.();
+       return;
+     }
 
-    await generateVideo({
-      image_url: imageUrl,
-      effect: selectedEffect.name,
-      prompt: prompt ? `${selectedEffect.prompt}. ${prompt}` : selectedEffect.prompt,
-      aspect_ratio: aspectRatio,
-      resolution,
-      duration,
-      quality,
-    });
-  }, [selectedEffect, imageUrl, prompt, aspectRatio, resolution, duration, quality, generateVideo, setError]);
+     await generateVideo({
+       image_url: imageUrl,
+       effect: selectedEffect.name,
+       prompt: prompt ? `${selectedEffect.prompt}. ${prompt}` : selectedEffect.prompt,
+       aspect_ratio: aspectRatio,
+       resolution,
+       duration,
+       quality,
+     });
+    }, [selectedEffect, imageUrl, prompt, aspectRatio, resolution, duration, quality, generateVideo, setError, apiKey, onRequestApiKey]);
+
+  // If the user requested generation but the key is missing, surface the
+  // global API key modal. Once the shell provides a key via the `apiKey` prop,
+  // generation auto-starts.
+  const handleRequestApiKey = useCallback(() => {
+    setPendingGenerate(true);
+    onRequestApiKey?.();
+  }, [onRequestApiKey]);
+
+  // Auto-trigger generation once the global key arrives.
+  useEffect(() => {
+    if (pendingGenerate && apiKey) {
+      setPendingGenerate(false);
+      handleGenerate();
+    }
+  }, [pendingGenerate, apiKey, handleGenerate]);
+
+  // Reset pending generate when the key is explicitly dismissed without saving.
+  useEffect(() => {
+    if (!apiKey && pendingGenerate) {
+      setPendingGenerate(false);
+    }
+  }, [apiKey, pendingGenerate]);
 
   const handleDownload = useCallback(async () => {
     if (!videoUrl) return;
@@ -669,8 +745,10 @@ export default function VFXGenerate({ apiKey }: { apiKey?: string }) {
         progress={progress}
         error={errorMessage}
         videoUrl={videoUrl}
-        userApiKey={userApiKey}
-        setUserApiKey={setUserApiKey}
+        userApiKey={apiKey || ''}
+        pendingGenerate={pendingGenerate}
+        setPendingGenerate={setPendingGenerate}
+        onRequestApiKey={onRequestApiKey}
       />
 
       {/* Chat bubble button (upstream feature parity) */}
@@ -702,7 +780,7 @@ export default function VFXGenerate({ apiKey }: { apiKey?: string }) {
           aria-label="Open Chat"
         >
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
       )}

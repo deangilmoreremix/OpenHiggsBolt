@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
+import TemplateBanner from "./TemplateBanner";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { runMotionGraphics, runMotionGraphicsEdit } from "../muapi.js";
 import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
 import registry from "../skills/registry.json";
 import { fillTemplate } from "../lib/promptRecipes";
+import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 async function downloadFile(url, filename) {
@@ -52,7 +55,7 @@ function DropdownItem({ label, selected, onClick }) {
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function VibeMotionStudio({ apiKey }) {
+export default function VibeMotionStudio({ apiKey, templateData }) {
   const PERSIST_KEY = "hg_vibe_motion_studio_persistent";
 
   // ── Params ────────────────────────────────────────────────────────────────
@@ -151,6 +154,25 @@ export default function VibeMotionStudio({ apiKey }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Cross-studio: import a Storyboard hand-off ────────────────────────────
+  const handoffApplied = useRef(null);
+  useEffect(() => {
+    try {
+      const handoff = readStoryboardHandoff("vibe-motion");
+      if (!handoff || handoffApplied.current === handoff.createdAt) return;
+      handoffApplied.current = handoff.createdAt;
+
+      if (handoff.combinedPrompt || handoff.projectName) {
+        setPrompt(handoff.combinedPrompt || handoff.projectName);
+      }
+      if (["1:1", "16:9", "9:16"].includes(handoff.aspectRatio)) {
+        setAspectRatio(handoff.aspectRatio);
+      }
+    } catch (err) {
+      console.warn("Failed to apply Storyboard hand-off:", err);
+    }
+  }, []);
+
   function applyRecipe(skill) {
     const step0 = skill.steps && skill.steps[0];
     if (!step0) {
@@ -168,6 +190,20 @@ export default function VibeMotionStudio({ apiKey }) {
     });
     setPrompt(fillTemplate(step0.prompt || skill.description || "", vals));
   }
+
+  // ── Apply template data from landing page "Create This Style" ──────────────
+  const { reset: resetTemplate, isTemplateApplied } = useTemplateData(templateData, (data) => {
+    if (data.prompt) {
+      setPrompt(data.prompt);
+    }
+    if (data.aspectRatio) {
+      const normalized = normalizeAspectRatio(data.aspectRatio, "16:9");
+      setAspectRatio(normalized);
+    }
+    if (data.duration) {
+      setDuration(data.duration);
+    }
+  });
 
   // ── Generate ──────────────────────────────────────────────────────────────
   const handleGenerate = useCallback(async () => {
@@ -558,6 +594,7 @@ export default function VibeMotionStudio({ apiKey }) {
 
             {/* Prompt textarea */}
             <div className="flex-1 flex flex-col gap-1">
+              <TemplateBanner isApplied={isTemplateApplied} onClear={resetTemplate} />
               <textarea
                 ref={textareaRef}
                 value={prompt}
