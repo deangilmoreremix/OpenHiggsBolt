@@ -39,9 +39,9 @@ describe('SmartVideo parity scope', () => {
     expect(sync).toContain('src/apps/');
   });
 
-  it('forwards Chinese locale through the studio shell', () => {
-    const source = fs.readFileSync(zhRoutePath, 'utf8');
-    expect(source).toContain('<LocaleTextBridge locale="zh" />');
-    expect(source).toContain('<StandaloneShell templateData={templateData} locale="zh" />');
+  it('does not include Chinese localization in SmartVideo GO', () => {
+    expect(fs.existsSync(zhRoutePath)).toBe(false);
+    expect(fs.existsSync(path.resolve(process.cwd(), 'components/LocaleTextBridge.js'))).toBe(false);
+    expect(fs.existsSync(path.resolve(process.cwd(), 'app/zh'))).toBe(false);
   });
 });

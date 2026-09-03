@@ -11,16 +11,20 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
+  pull-requests: read
 
 jobs:
   validate-scope:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout branch
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Verify SmartVideo exclusions
         shell: bash
@@ -29,13 +33,9 @@ jobs:
           test ! -f packages/studio/src/components/AppsStudio.jsx
           test ! -f packages/studio/src/components/McpCliStudio.jsx
           test ! -f packages/studio/src/messages/en/appsStudio.json
-          test ! -f packages/studio/src/messages/zh/appsStudio.json
           test ! -f packages/studio/src/messages/en/mcpCliStudio.json
-          test ! -f packages/studio/src/messages/zh/mcpCliStudio.json
           grep -Fq "redirect('/studio/image')" app/studio/apps/page.js
           grep -Fq "redirect('/studio/image')" app/studio/mcp-cli/page.js
-          grep -Fq "redirect('/zh/studio/image')" app/zh/studio/apps/page.js
-          grep -Fq "redirect('/zh/studio/image')" app/zh/studio/mcp-cli/page.js
           if git grep -niEi 'white[-_ ]?label|whitelabel' -- components/StandaloneShell.js src/apps/design-agent app/api/design-agent; then
             echo "::error::White-label logic detected in active SmartVideo product code."
             exit 1
@@ -45,6 +45,9 @@ jobs:
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Checkout maintained branch
         uses: actions/checkout@v4
@@ -91,12 +94,25 @@ jobs:
 
       - name: Merge upstream without committing
         if: steps.check.outputs.has_changes == 'true'
+        id: merge
         shell: bash
         run: |
           set +e
           git merge upstream/main --no-commit --no-ff
-          echo "merge_exit=$?" >> "$GITHUB_ENV"
+          merge_exit=$?
           set -e
+          echo "merge_exit=$merge_exit" >> "$GITHUB_ENV"
+
+      - name: Fail on non-conflict merge errors
+        if: steps.check.outputs.has_changes == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          merge_exit="${{ steps.merge.outputs.merge_exit }}"
+          if [ "$merge_exit" -ne 0 ] && [ -z "$(git diff --name-only --diff-filter=U)" ]; then
+            echo "::error::Upstream merge failed without merge conflicts."
+            exit "$merge_exit"
+          fi
 
       - name: Preserve SmartVideo-owned product surfaces
         if: steps.check.outputs.has_changes == 'true'
@@ -108,14 +124,10 @@ jobs:
             clerkAppearance.js \
             packages/studio/src/persistKey.js \
             components/StandaloneShell.js \
-            components/LocaleTextBridge.js \
             messages/en/common.json \
-            messages/zh/common.json \
             packages/studio/src/index.js \
             app/studio/apps \
-            app/zh/studio/apps \
             app/studio/mcp-cli \
-            app/zh/studio/mcp-cli \
             app/sign-in \
             app/sign-up \
             app/forgot-password \
@@ -142,10 +154,8 @@ jobs:
           git rm -f --ignore-unmatch \
             packages/studio/src/components/AppsStudio.jsx \
             packages/studio/src/messages/en/appsStudio.json \
-            packages/studio/src/messages/zh/appsStudio.json \
             packages/studio/src/components/McpCliStudio.jsx \
-            packages/studio/src/messages/en/mcpCliStudio.json \
-            packages/studio/src/messages/zh/mcpCliStudio.json
+            packages/studio/src/messages/en/mcpCliStudio.json
 
           WHITE_LABEL_PATHS=$(git ls-files | grep -Ei '(^|/)(white[-_]?label|whitelabel)(/|\.|$)' || true)
           if [ -n "$WHITE_LABEL_PATHS" ]; then

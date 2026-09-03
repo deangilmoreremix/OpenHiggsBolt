@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server';
 
 const isProtectedRoute = createRouteMatcher([
   '/studio(.*)',
-  '/zh/studio(.*)',
   '/vfx(.*)',
   '/account(.*)',
   '/api/vfx(.*)',
@@ -33,8 +32,8 @@ const CSP = [
   "frame-src 'self' https://clerk.go.smartvid.app https://*.clerk.accounts.dev https://challenges.cloudflare.com",
 ].join('; ');
 
-function localeFromPathname(pathname) {
-  return pathname === '/zh' || pathname.startsWith('/zh/') ? 'zh' : 'en';
+function localeFromPathname() {
+  return 'en';
 }
 
 function applyResponseHeaders(response, locale) {

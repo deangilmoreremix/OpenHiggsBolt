@@ -480,7 +480,11 @@ export default function DesignAgent({ apiKey: propApiKey, onRequestApiKey, templ
           },
         })
 
-        const uploadedUrl = `https://cdn.muapi.ai/${fields.key}`
+        const encodedKey = String(fields.key)
+          .split('/')
+          .map(encodeURIComponent)
+          .join('/')
+        const uploadedUrl = `https://cdn.muapi.ai/${encodedKey}`
         const registered = await apiCall('/api/design-agent/session-assets', {
           method: 'POST',
           body: JSON.stringify({ sessionId: project.id, url: uploadedUrl, kind }),

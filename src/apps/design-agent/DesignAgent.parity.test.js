@@ -43,4 +43,10 @@ describe('SmartVideo Design Agent parity', () => {
     expect(source).toContain('AssistStep');
     expect(source).toContain('Download');
   });
+
+  it('safely encodes CDN upload URLs to handle special characters', () => {
+    expect(source).toContain('split');
+    expect(source).toContain('encodeURIComponent');
+    expect(source).toContain('cdn.muapi.ai');
+  });
 });
