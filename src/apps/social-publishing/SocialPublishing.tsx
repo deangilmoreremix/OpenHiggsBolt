@@ -23,6 +23,7 @@ import {
   publishToTikTok,
   pollSocialResult,
 } from '../../lib/muapi';
+import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider';
 
 const EXT_UID_KEY = 'muapi_social_ext_uid';
 const SOCIAL_HISTORY_KEY = 'muapi_social_media_history';
@@ -60,6 +61,7 @@ function pushMediaHistory(url) {
 }
 
 export default function SocialPublishing({ apiKey }) {
+  const { requireEntitlement } = useSmartVideoAccess();
   const [platform, setPlatform] = useState('youtube');
   const [mediaUrl, setMediaUrl] = useState('');
   const [title, setTitle] = useState('');
@@ -170,73 +172,82 @@ export default function SocialPublishing({ apiKey }) {
       return;
     }
 
-    setPublishing(true);
-    setError(null);
-    setResult(null);
-    setPollStatus('Submitting…');
+    requireEntitlement(
+      ENTITLEMENTS.SMARTVIDEO_GO,
+      async () => {
+        setPublishing(true);
+        setError(null);
+        setResult(null);
+        setPollStatus('Submitting…');
 
-    let payload;
-    try {
-      if (platform === 'youtube') {
-        payload = {
-          account_id: effectiveAccountId,
-          media_url: mediaUrl.trim(),
-          title: title.trim() || 'Untitled',
-          description: description.trim() || undefined,
-          tags: tags.trim() ? tags.split(',').map((t) => t.trim()).filter(Boolean) : undefined,
-          privacy: privacy || 'public',
-          category_id: categoryId.trim() || undefined,
-          made_for_kids: madeForKids,
-        };
-      } else if (platform === 'instagram') {
-        payload = {
-          account_id: effectiveAccountId,
-          media_url: mediaUrl.trim(),
-          caption: caption.trim() || undefined,
-          media_type: mediaType,
-          placement: placement,
-          share_to_feed: shareToFeed,
-        };
-      } else {
-        payload = {
-          account_id: effectiveAccountId,
-          media_url: mediaUrl.trim(),
-          title: title.trim() || undefined,
-          privacy_level: privacyLevel,
-          disable_comment: disableComment,
-          disable_duet: disableDuet,
-          disable_stitch: disableStitch,
-        };
+        let payload;
+        try {
+          if (platform === 'youtube') {
+            payload = {
+              account_id: effectiveAccountId,
+              media_url: mediaUrl.trim(),
+              title: title.trim() || 'Untitled',
+              description: description.trim() || undefined,
+              tags: tags.trim() ? tags.split(',').map((t) => t.trim()).filter(Boolean) : undefined,
+              privacy: privacy || 'public',
+              category_id: categoryId.trim() || undefined,
+              made_for_kids: madeForKids,
+            };
+          } else if (platform === 'instagram') {
+            payload = {
+              account_id: effectiveAccountId,
+              media_url: mediaUrl.trim(),
+              caption: caption.trim() || undefined,
+              media_type: mediaType,
+              placement: placement,
+              share_to_feed: shareToFeed,
+            };
+          } else {
+            payload = {
+              account_id: effectiveAccountId,
+              media_url: mediaUrl.trim(),
+              title: title.trim() || undefined,
+              privacy_level: privacyLevel,
+              disable_comment: disableComment,
+              disable_duet: disableDuet,
+              disable_stitch: disableStitch,
+            };
+          }
+
+          let submit;
+          if (platform === 'youtube') submit = await publishToYouTube(apiKey, payload);
+          else if (platform === 'instagram') submit = await publishToInstagram(apiKey, payload);
+          else submit = await publishToTikTok(apiKey, payload);
+
+          const requestId = submit?.request_id || submit?.id;
+          if (!requestId) throw new Error('No request_id returned by publish endpoint.');
+
+          pushMediaHistory(mediaUrl.trim());
+          setMediaHistory(loadMediaHistory());
+
+          setPollStatus('Processing…');
+          const final = await pollSocialResult(apiKey, requestId, 120, 2000);
+
+          const out = final?.output || final?.data?.output || final;
+          const link = out?.url || out?.media_id || out?.publish_id || final?.url;
+          setResult({ platform, status: 'published', url: link || undefined });
+          setPollStatus('');
+        } catch (err) {
+          setError(formatError(err));
+          setPollStatus('');
+        } finally {
+          setPublishing(false);
+        }
+      },
+      () => {
+        setError('Payment required to publish. Upgrade to SmartVideo GO to access publishing.');
       }
-
-      let submit;
-      if (platform === 'youtube') submit = await publishToYouTube(apiKey, payload);
-      else if (platform === 'instagram') submit = await publishToInstagram(apiKey, payload);
-      else submit = await publishToTikTok(apiKey, payload);
-
-      const requestId = submit?.request_id || submit?.id;
-      if (!requestId) throw new Error('No request_id returned by publish endpoint.');
-
-      pushMediaHistory(mediaUrl.trim());
-      setMediaHistory(loadMediaHistory());
-
-      setPollStatus('Processing…');
-      const final = await pollSocialResult(apiKey, requestId, 120, 2000);
-
-      const out = final?.output || final?.data?.output || final;
-      const link = out?.url || out?.media_id || out?.publish_id || final?.url;
-      setResult({ platform, status: 'published', url: link || undefined });
-      setPollStatus('');
-    } catch (err) {
-      setError(formatError(err));
-      setPollStatus('');
-    } finally {
-      setPublishing(false);
-    }
+    );
   }, [
     apiKey,
-    platform,
     mediaUrl,
+    effectiveAccountId,
+    platform,
     title,
     description,
     tags,
@@ -251,7 +262,7 @@ export default function SocialPublishing({ apiKey }) {
     disableComment,
     disableDuet,
     disableStitch,
-    effectiveAccountId,
+    requireEntitlement,
   ]);
 
   const handleCopy = useCallback(() => {
