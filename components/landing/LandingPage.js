@@ -1,39 +1,66 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import StandaloneShell from '@/components/StandaloneShell';
 import { PRODUCT_NAME, NAV_ITEMS, LOGOS, TESTIMONIALS, PRICING, FAQS } from './landingData';
 import SmartVideoShowcase from './SmartVideoShowcase';
 import { DemoPersonalizeProvider } from '@/shared/personalization';
-import { useSmartVideoAccess } from '@/access/SmartVideoAccessProvider';
 
-function PricingBuyButton({ isSignedIn, openUpgradeModal }) {
-  if (isSignedIn) {
-    return (
-      <button
-        type="button"
-        onClick={() => openUpgradeModal('pricing')}
-        className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-400 to-purple-500 px-6 py-4 text-lg font-black text-black shadow-lg shadow-cyan-500/20 transition hover:opacity-90"
-      >
-        Buy Pro — $299
-        <span className="text-sm font-semibold text-black/70">Lifetime access</span>
-      </button>
-    );
-  }
+function PricingBuyButton() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleClick = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: 'pro_lifetime' }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.url) {
+        throw new Error(data?.error || 'Checkout failed');
+      }
+      window.location.href = data.url;
+    } catch (err) {
+      setError(err?.message || 'Something went wrong. Please try again.');
+      setLoading(false);
+    }
+  };
 
   return (
-    <Link
-      href="/sign-up?intent=pro&redirect_url=/#pricing"
-      className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-400 to-purple-500 px-6 py-4 text-lg font-black text-black shadow-lg shadow-cyan-500/20 transition hover:opacity-90"
-    >
-      Buy Pro — $299
-      <span className="text-sm font-semibold text-black/70">Lifetime access</span>
-    </Link>
+    <div className="mt-8">
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={loading}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-400 to-purple-500 px-6 py-4 text-lg font-black text-black shadow-lg shadow-cyan-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+      >
+        {loading ? (
+          <>
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-black/30 border-t-black" />
+            Redirecting to checkout…
+          </>
+        ) : (
+          <>
+            Buy Pro — $299
+            <span className="text-sm font-semibold text-black/70">Lifetime access</span>
+          </>
+        )}
+      </button>
+      {error && (
+        <p role="alert" className="mt-3 text-sm text-red-300">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 
 function PricingCard({ plan }) {
-  const { isSignedIn, openUpgradeModal } = useSmartVideoAccess();
   return (
     <div className="landing-card mx-auto mt-12 max-w-2xl rounded-3xl p-9 text-center">
       <div className="flex items-center justify-center gap-3">
@@ -49,7 +76,7 @@ function PricingCard({ plan }) {
           <li key={f} className="flex gap-3"><span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-cyan-300" />{f}</li>
         ))}
       </ul>
-      <PricingBuyButton isSignedIn={isSignedIn} openUpgradeModal={openUpgradeModal} />
+      <PricingBuyButton />
       <p className="mt-4 text-xs text-white/40">
         One-time payment. No subscriptions. 30-day money-back guarantee.
       </p>
