@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebhook } from '@clerk/nextjs/webhooks';
 import { syncUserFromClerk } from '../../../../src/lib/tenantSync';
 import { getSupabaseAdmin } from '../../../../src/lib/supabaseServer';
+import { grantEntitlement } from '@/access/resolveAccess';
+import { ENTITLEMENTS } from '@/access/entitlements';
 
 export const runtime = 'nodejs';
 
@@ -23,14 +25,23 @@ export async function POST(req: NextRequest) {
     const primary = data.email_addresses.find(
       (e: { id: string }) => e.id === data.primary_email_address_id
     );
+    const email = primary?.email_address ?? data.email_addresses[0]?.email_address ?? null;
     try {
       await syncUserFromClerk(
         data.id,
-        primary?.email_address ?? data.email_addresses[0]?.email_address ?? null,
+        email,
         data.first_name ?? null,
         data.last_name ?? null,
         data.image_url ?? null
       );
+
+      if (email) {
+        try {
+          await grantEntitlement(data.id, email, ENTITLEMENTS.SMARTVIDEO_GO, 'manual');
+        } catch (entErr) {
+          console.error('[clerk webhook] entitlement sync failed:', entErr);
+        }
+      }
     } catch (err) {
       console.error('[clerk webhook] sync failed', err);
       return NextResponse.json({ error: 'Sync failed' }, { status: 500 });
@@ -40,6 +51,7 @@ export async function POST(req: NextRequest) {
   if (type === 'user.deleted' && data.id) {
     const supabase = getSupabaseAdmin();
     await supabase.from('app_users').delete().eq('clerk_user_id', data.id);
+    await supabase.from('user_entitlements').delete().eq('clerk_user_id', data.id);
   }
 
   return NextResponse.json({ ok: true });

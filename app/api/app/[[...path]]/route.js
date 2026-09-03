@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import { safeApiJson } from '@/lib/safeApiResponse';
+import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
+import { ENTITLEMENTS } from '@/access/entitlements';
 
 const MUAPI_BASE = 'https://api.muapi.ai';
 
@@ -19,6 +22,17 @@ function cleanHeaders(request) {
     headers.delete('connection');
     headers.delete('cookie'); // CRITICAL: Stop forwarding browser cookies to MuAPI to avoid auth conflicts
     return headers;
+}
+
+async function requireAuthAndEntitlement(request) {
+    const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
+    if (!entitlementCheck.allowed) {
+        if (entitlementCheck.status === 401) {
+            return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+        }
+        return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
+    }
+    return null;
 }
 
 export async function GET(request, { params }) {
@@ -45,9 +59,10 @@ export async function GET(request, { params }) {
         const response = await fetch(targetUrl, {
             headers,
             method: 'GET',
+            signal: AbortSignal.timeout(30000),
         });
 
-        const data = await response.json();
+        const data = await safeApiJson(response);
 
         // SPECIAL CASE: Intercept upload URL and redirect to local binary proxy
         if (effectivePath === 'get_file_upload_url' && data.url) {
@@ -70,6 +85,9 @@ export async function GET(request, { params }) {
 }
 
 export async function POST(request, { params }) {
+    const errorResponse = await requireAuthAndEntitlement(request);
+    if (errorResponse) return errorResponse;
+
     const slug = await params;
     const pathSegments = slug.path || [];
     const path = pathSegments.join('/');
@@ -87,10 +105,11 @@ export async function POST(request, { params }) {
         const response = await fetch(targetUrl, {
             method: 'POST',
             headers,
-            body
+            body,
+            signal: AbortSignal.timeout(60000),
         });
 
-        const data = await response.json();
+        const data = await safeApiJson(response);
         return NextResponse.json(data, { status: response.status });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -98,6 +117,9 @@ export async function POST(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
+    const errorResponse = await requireAuthAndEntitlement(request);
+    if (errorResponse) return errorResponse;
+
     const slug = await params;
     const pathSegments = slug.path || [];
     const path = pathSegments.join('/');
@@ -113,9 +135,10 @@ export async function DELETE(request, { params }) {
     try {
         const response = await fetch(targetUrl, {
             method: 'DELETE',
-            headers
+            headers,
+            signal: AbortSignal.timeout(30000),
         });
-        const data = await response.json();
+        const data = await safeApiJson(response);
         return NextResponse.json(data, { status: response.status });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -123,6 +146,9 @@ export async function DELETE(request, { params }) {
 }
 
 export async function PUT(request, { params }) {
+    const errorResponse = await requireAuthAndEntitlement(request);
+    if (errorResponse) return errorResponse;
+
     const slug = await params;
     const pathSegments = slug.path || [];
     const path = pathSegments.join('/');
@@ -140,9 +166,10 @@ export async function PUT(request, { params }) {
         const response = await fetch(targetUrl, {
             method: 'PUT',
             headers,
-            body
+            body,
+            signal: AbortSignal.timeout(60000),
         });
-        const data = await response.json();
+        const data = await safeApiJson(response);
         return NextResponse.json(data, { status: response.status });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
