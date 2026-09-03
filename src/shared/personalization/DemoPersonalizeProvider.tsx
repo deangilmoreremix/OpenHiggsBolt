@@ -435,7 +435,7 @@ export function DemoPersonalizeProvider({ apiKey, children }: DemoPersonalizePro
     setClients(loadClients())
   }, [])
 
-  const deleteClientRecord = useCallback((id: string) => {
+  const deleteClient = useCallback((id: string) => {
     deleteClientRecord(id)
     setClients(loadClients())
     if (selectedClientId === id) {
@@ -967,7 +967,7 @@ export function DemoPersonalizeProvider({ apiKey, children }: DemoPersonalizePro
     createClient: createClientRecord,
     saveClient,
     updateClient,
-    deleteClient: deleteClientRecord,
+    deleteClient,
     updateClientForm,
 
     // Assets
