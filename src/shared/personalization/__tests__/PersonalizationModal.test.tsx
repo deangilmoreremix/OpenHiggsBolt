@@ -71,6 +71,24 @@ describe('PersonalizationModal', () => {
       expect(screen.getByText(title)).toBeTruthy();
     });
 
+    // Verify the full-width design sections are present
+    expect(screen.getByText('Source Demo')).toBeTruthy();
+    expect(screen.getByText('Client Assets')).toBeTruthy();
+    expect(screen.getByText('CTA & Business Content')).toBeTruthy();
+    expect(screen.getByText('Personalize The Prompt')).toBeTruthy();
+    expect(screen.getByText('Engine')).toBeTruthy();
+
+    // Verify SmartVideo Recommended is prominently visible
+    expect(screen.getByText(/SmartVideo Recommended/)).toBeTruthy();
+
+    // Verify prompt section has Original and Personalized headings
+    expect(screen.getByText('Original Prompt')).toBeTruthy();
+    expect(screen.getByText('Personalized Prompt')).toBeTruthy();
+
+    // Verify large visual upload zones are present
+    expect(screen.getByText('Add Photos')).toBeTruthy();
+    expect(screen.getByText('Upload Logo')).toBeTruthy();
+
     // Verify no primary tab navigation exists
     const tabButtons = container.querySelectorAll('button');
     const tabLabels = [...tabButtons].map((b) => b.textContent?.trim()).filter(Boolean);
