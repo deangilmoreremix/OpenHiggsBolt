@@ -20,6 +20,7 @@ import type {
   ProposalTemplate,
   TeardownTemplate,
 } from '@/data/academyTemplates';
+import { panels, buttons, semantic, colors } from '@/shared/styles/designTokens';
 
 /* A small "RecipeAction" that renders the connected "Create With AI" /
    "Use Template" button(s) for a template. */
@@ -27,9 +28,9 @@ function RecipeActions({ template }: { template: AnyAcademyTemplate }) {
   const runRecipe = useRecipeExecutor();
   if (!template.recipes.length) return null;
   return (
-    <div className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-4">
+    <div className="flex flex-wrap items-center gap-2 border-t pt-4" style={{ borderColor: 'var(--border-color)' }}>
       <SparkIcon />
-      <span className="text-xs font-semibold uppercase tracking-wide text-white/50">Connected recipe</span>
+      <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Connected recipe</span>
       {template.recipes.map((r) => (
         <ActionButton
           key={r.recipeId}
@@ -69,9 +70,9 @@ function ScriptView({ t }: { t: ScriptTemplate }) {
       </div>
       <div className="mt-3 space-y-3">
         {t.beats.map((b) => (
-          <div key={b.key} className="rounded-xl border border-white/10 bg-black/30 p-3">
+          <div key={b.key} className="rounded-xl p-3" style={panels.card}>
             <div className="mb-1 flex items-center justify-between">
-              <span className="text-sm font-bold text-white">{b.label}</span>
+              <span className="text-sm font-bold" style={{ color: semantic.textPrimary }}>{b.label}</span>
               <Pill tone="primary">{b.timing}</Pill>
             </div>
             <textarea
@@ -79,9 +80,10 @@ function ScriptView({ t }: { t: ScriptTemplate }) {
               onChange={(e) => set(b.key, e.target.value)}
               placeholder={b.placeholder}
               rows={2}
-              className="w-full resize-y rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-[#22d3ee]/50 focus:outline-none"
+              className="w-full resize-y rounded-lg px-3 py-2 text-sm focus:outline-none"
+              style={panels.card}
             />
-            {b.hint && <span className="mt-1 block text-[11px] text-white/40">{b.hint}</span>}
+            {b.hint && <span className="mt-1 block text-[11px]" style={{ color: semantic.textMuted }}>{b.hint}</span>}
           </div>
         ))}
       </div>
@@ -90,7 +92,7 @@ function ScriptView({ t }: { t: ScriptTemplate }) {
         <SectionTitle hint="Pre-flight check">Before recording</SectionTitle>
         <div className="grid gap-2 sm:grid-cols-2">
           {t.checklist.map((c) => (
-            <label key={c.key} className="flex items-start gap-2 text-sm text-white/75">
+            <label key={c.key} className="flex items-start gap-2 text-sm" style={{ color: semantic.textPrimary }}>
               <input
                 type="checkbox"
                 checked={!!vals[`chk_${c.key}`]}
@@ -103,7 +105,7 @@ function ScriptView({ t }: { t: ScriptTemplate }) {
         </div>
       </div>
 
-      <p className="mt-3 text-[11px] text-white/40">
+      <p className="mt-3 text-[11px]" style={{ color: semantic.textMuted }}>
         {filled}/{t.beats.length} beats written · {t.beats.filter((b) => !vals[b.key]?.trim()).length} empty
       </p>
       <RecipeActions template={t} />
@@ -125,7 +127,7 @@ function BriefView({ t }: { t: BriefTemplate }) {
       <div className="space-y-4">
         {Object.entries(groups).map(([g, fs]) => (
           <div key={g}>
-            <span className="mb-2 block text-[11px] font-bold uppercase tracking-wide text-white/40">{g}</span>
+            <span className="mb-2 block text-[11px] font-bold uppercase tracking-wide" style={{ color: semantic.textMuted }}>{g}</span>
             <div className="space-y-3">
               {fs.map((f) => (
                 <TextField key={f.key} field={f} value={vals[f.key] || ''} onChange={(v) => set(f.key, v)} />
@@ -134,7 +136,7 @@ function BriefView({ t }: { t: BriefTemplate }) {
           </div>
         ))}
       </div>
-      <p className="mt-3 text-[11px] text-white/40">{filled}/{t.fields.length} fields filled</p>
+      <p className="mt-3 text-[11px]" style={{ color: semantic.textMuted }}>{filled}/{t.fields.length} fields filled</p>
       <RecipeActions template={t} />
     </AcademyCard>
   );
@@ -152,16 +154,16 @@ function ConsistencyView({ t }: { t: ConsistencyTemplate }) {
       {t.exampleShots && (
         <div className="mb-4 grid grid-cols-3 gap-2">
           {t.exampleShots.map((s) => (
-            <div key={s.shot} className="rounded-lg border border-white/10 bg-black/30 p-2 text-center">
-              <span className="block text-xs font-semibold text-white">{s.shot}</span>
-              <span className="text-[11px] text-emerald-400">{s.exampleVerdict}</span>
+            <div key={s.shot} className="rounded-lg p-2 text-center" style={panels.card}>
+              <span className="block text-xs font-semibold" style={{ color: semantic.textPrimary }}>{s.shot}</span>
+              <span className="text-[11px]" style={{ color: semantic.success }}>{s.exampleVerdict}</span>
             </div>
           ))}
         </div>
       )}
       <div className="space-y-2">
         {t.items.map((it) => (
-          <label key={it.key} className="flex items-start gap-2 rounded-lg border border-white/10 bg-black/30 p-2 text-sm text-white/75">
+          <label key={it.key} className="flex items-start gap-2 rounded-lg p-2 text-sm" style={panels.card}>
             <input
               type="checkbox"
               checked={!!checked[it.key]}
@@ -172,7 +174,7 @@ function ConsistencyView({ t }: { t: ConsistencyTemplate }) {
           </label>
         ))}
       </div>
-      <p className="mt-3 text-[11px] text-white/40">{done}/{t.items.length} checks passed</p>
+      <p className="mt-3 text-[11px]" style={{ color: semantic.textMuted }}>{done}/{t.items.length} checks passed</p>
       <RecipeActions template={t} />
     </AcademyCard>
   );
@@ -209,9 +211,9 @@ function BatchView({ t }: { t: BatchMatrixTemplate }) {
         <table className="w-full border-collapse text-left text-xs">
           <thead>
             <tr>
-              <th className="border border-white/10 bg-white/5 px-2 py-1.5 font-semibold text-white/80">#</th>
+              <th className="border px-2 py-1.5 font-semibold" style={{ borderColor: 'var(--border-color)', background: 'var(--glass-bg)', color: semantic.textPrimary }}>#</th>
               {t.columns.map((c) => (
-                <th key={c.key} className="border border-white/10 bg-white/5 px-2 py-1.5 font-semibold text-white/80">
+                <th key={c.key} className="border px-2 py-1.5 font-semibold" style={{ borderColor: 'var(--border-color)', background: 'var(--glass-bg)', color: semantic.textPrimary }}>
                   {c.label}
                 </th>
               ))}
@@ -220,14 +222,15 @@ function BatchView({ t }: { t: BatchMatrixTemplate }) {
           <tbody>
             {rows.map((r, i) => (
               <tr key={r.ad}>
-                <td className="border border-white/10 px-2 py-1 text-white/60">{r.ad}</td>
+                <td className="border px-2 py-1" style={{ borderColor: 'var(--border-color)', color: semantic.textSecondary }}>{r.ad}</td>
                 {t.columns.map((c) => (
-                  <td key={c.key} className="border border-white/10 p-1">
+                  <td key={c.key} className="border p-1" style={{ borderColor: 'var(--border-color)' }}>
                     <input
                       value={(r as unknown as Record<string, string>)[c.key]}
                       onChange={(e) => update(i, c.key, e.target.value)}
                       placeholder={c.placeholder}
-                      className="w-full rounded bg-black/40 px-2 py-1 text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-[#22d3ee]/50"
+                      className="w-full rounded px-2 py-1 focus:outline-none"
+                      style={panels.card}
                     />
                   </td>
                 ))}
@@ -236,7 +239,7 @@ function BatchView({ t }: { t: BatchMatrixTemplate }) {
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-[11px] text-white/40">
+      <p className="mt-3 text-[11px]" style={{ color: semantic.textMuted }}>
         Vary one or two axes per ad. Hold product + CTA constant so the test result is readable.
       </p>
       <RecipeActions template={t} />
@@ -260,8 +263,8 @@ function OutreachView({ t }: { t: OutreachTemplate }) {
         ))}
       </div>
       <div className="mt-4">
-        <span className="mb-1 block text-xs font-semibold text-white/70">Preview</span>
-        <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-lg border border-white/10 bg-black/40 p-3 text-xs leading-relaxed text-white/80">
+        <span className="mb-1 block text-xs font-semibold" style={{ color: semantic.textPrimary }}>Preview</span>
+        <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-lg p-3 text-xs leading-relaxed" style={panels.card}>
           Subject: {vals.subject || '[A quick ad concept for Brand]'}
 
 {body}
@@ -284,7 +287,7 @@ function ProposalView({ t }: { t: ProposalTemplate }) {
           <TextField key={f.key} field={f} value={vals[f.key] || ''} onChange={(v) => set(f.key, v)} />
         ))}
       </div>
-      <p className="mt-3 text-[11px] text-white/40">
+      <p className="mt-3 text-[11px]" style={{ color: semantic.textMuted }}>
         Anchor to real ranges: gigs $10–$55/ad · batches $150–$300 · retainers $1,500–$3,000/mo.
       </p>
       <RecipeActions template={t} />
@@ -307,13 +310,14 @@ function TeardownView({ t }: { t: TeardownTemplate }) {
       <div className="mt-3 space-y-3">
         {t.layers.map((l) => (
           <div key={l.key}>
-            <span className="mb-1 block text-xs font-semibold text-white/70">{l.layer}</span>
+            <span className="mb-1 block text-xs font-semibold" style={{ color: semantic.textPrimary }}>{l.layer}</span>
             <textarea
               value={vals[l.key] || ''}
               onChange={(e) => set(l.key, e.target.value)}
               placeholder="What was done, and why it might work"
               rows={2}
-              className="w-full resize-y rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-[#22d3ee]/50 focus:outline-none"
+              className="w-full resize-y rounded-lg px-3 py-2 text-sm focus:outline-none"
+              style={panels.card}
             />
           </div>
         ))}
