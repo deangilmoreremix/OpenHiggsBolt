@@ -4,6 +4,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { headers } from 'next/headers';
 import { getLocaleConfig } from '@/lib/locales';
 import GlobalModalDropBridge from '@/components/GlobalModalDropBridge';
+import { SmartVideoAccessProvider } from '@/access/SmartVideoAccessProvider';
 
 const inter = Inter({
   variable: "--font-inter",
@@ -20,8 +21,6 @@ export const metadata = {
   },
 };
 
-// Clerk is optional. If the publishable key is missing we still render the app
-// (landing page + studios) instead of white-screening everything.
 const isClerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
 export default async function RootLayout({ children }) {
@@ -37,7 +36,7 @@ export default async function RootLayout({ children }) {
     </html>
   );
 
-  return isClerkEnabled ? <ClerkProvider
+  const clerkTree = isClerkEnabled ? <ClerkProvider
     appearance={{
       variables: {
         colorPrimary: '#22d3ee',
@@ -66,4 +65,10 @@ export default async function RootLayout({ children }) {
       },
     }}
   >{tree}</ClerkProvider> : tree;
+
+  return (
+    <SmartVideoAccessProvider>
+      {clerkTree}
+    </SmartVideoAccessProvider>
+  );
 }

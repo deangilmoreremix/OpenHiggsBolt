@@ -39,10 +39,6 @@ export default function ApiKeyModal({
       setError('Please enter a valid MuAPI key (at least 8 characters, no surrounding quotes).');
       return;
     }
-    if (!o || !isValidKeyFormat(o)) {
-      setError('Please enter a valid OpenAI key (at least 8 characters, no surrounding quotes).');
-      return;
-    }
     onSave(m, o);
   };
 

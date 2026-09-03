@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import { Upload, Download, Loader2, ChevronRight } from 'lucide-react';
 import { panels, buttons, semantic, appWrapper, optionStyle } from '@/shared/styles/designTokens';
+import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider';
 
 const CATEGORIES = [
   'E-commerce', 'Lifestyle', 'Food & Beverage', 'Tech & Electronics', 'Beauty & Fashion', 'Health & Wellness'
 ];
 
 export default function PhotoStudioPage() {
+  const { requireEntitlement } = useSmartVideoAccess();
   const [brands, setBrands] = useState<any[]>([]);
   const [brandId, setBrandId] = useState('');
   const [category, setCategory] = useState(CATEGORIES[0]);
@@ -47,24 +49,29 @@ export default function PhotoStudioPage() {
 
   const generate = async () => {
     if (!style) return;
-    setLoading(true);
-    setResult(null);
-    try {
-      const res = await fetch('/api/photo-studio', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brand_id: brandId || undefined, product_url: productUrl || undefined, category, style }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Submission failed');
-      if (!data.requestId) throw new Error('No request id returned');
-      const imageUrl = await pollUntilDone(data.requestId);
-      setResult({ image_url: imageUrl });
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setLoading(false);
-    }
+    requireEntitlement(
+      ENTITLEMENTS.SMARTVIDEO_GO,
+      async () => {
+        setLoading(true);
+        setResult(null);
+        try {
+          const res = await fetch('/api/photo-studio', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ brand_id: brandId || undefined, product_url: productUrl || undefined, category, style }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Submission failed');
+          if (!data.requestId) throw new Error('No request id returned');
+          const imageUrl = await pollUntilDone(data.requestId);
+          setResult({ image_url: imageUrl });
+        } catch (err: any) {
+          alert(err.message);
+        } finally {
+          setLoading(false);
+        }
+      }
+    );
   };
 
   const styles = [

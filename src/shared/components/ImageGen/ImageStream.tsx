@@ -106,10 +106,9 @@ export default function ImageStream({ request, onComplete, onError }: Props) {
         }
       } else {
         // Generate / refine flow
-        const OPENAI_KEY =
-          (typeof window !== 'undefined' && window.localStorage?.getItem('openai_key')?.trim()) ||
-          process.env.NEXT_PUBLIC_OPENAI_API_KEY ||
-          ''
+        // NOTE: Raw API keys are not read from localStorage.
+        // The request is proxied through /api/proxy/openai-image,
+        // which resolves the key server-side from the authenticated user's record.
         const body: Record<string, any> = {
           model: request.model,
           prompt: request.prompt,
@@ -124,13 +123,10 @@ export default function ImageStream({ request, onComplete, onError }: Props) {
           body.output_compression = request.compression
         }
 
-        const res = await fetch('https://api.openai.com/v1/images/generations', {
+        const res = await fetch('/api/proxy/openai-image', {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${OPENAI_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(body),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...body, _endpoint: 'images/generations' }),
         })
 
         if (!res.ok || !res.body) {

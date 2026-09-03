@@ -6,18 +6,9 @@
 
 const BASE = 'https://api.openai.com/v1'
 
-// The OpenAI key is supplied by the user via the Settings popup and stored in
-// localStorage['openai_key']. It previously came ONLY from a build-time env var
-// (empty for end users), which is why OpenAI generation failed with an auth
-// error. Resolve it lazily on every call so updates to the stored key take
-// effect immediately.
-function resolveOpenAIKey(): string {
-  if (typeof window !== 'undefined') {
-    const stored = window.localStorage?.getItem('openai_key')
-    if (stored && stored.trim()) return stored.trim()
-  }
-  return process.env.NEXT_PUBLIC_OPENAI_API_KEY || ''
-}
+// NOTE: Raw API keys must not be persisted in localStorage.
+// Generation calls are proxied through /api/proxy/openai-image,
+// which resolves the key server-side from the authenticated user's record.
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -58,8 +49,10 @@ export interface ImageResult {
 }
 
 // ── Helper: headers ───────────────────────────────────────────────────────────
+// Client-side calls go through the server-side proxy, so no Authorization
+// header is needed here.
 function authHeaders() {
-  return { 'Authorization': `Bearer ${resolveOpenAIKey()}` }
+  return { 'Content-Type': 'application/json' }
 }
 
 // ── Helper: convert b64 to object URL for display ────────────────────────────
@@ -86,9 +79,9 @@ export async function generateImages(params: GenerateImageParams): Promise<Image
   if (params.moderation) body.moderation = params.moderation
   if (params.background) body.background = params.background
 
-  const res = await fetch(`${BASE}/images/generations`, {
+  const res = await fetch('/api/proxy/openai-image', {
     method: 'POST',
-    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    headers: authHeaders(),
     body: JSON.stringify(body),
   })
 
@@ -130,7 +123,7 @@ export async function editImage(params: EditImageParams): Promise<ImageResult[]>
     formData.append('mask', params.mask, 'mask.png')
   }
 
-  const res = await fetch(`${BASE}/images/edits`, {
+  const res = await fetch('/api/proxy/openai-image', {
     method: 'POST',
     headers: authHeaders(),
     body: formData,
@@ -160,10 +153,10 @@ export async function* generateImageStream(
   }
   if (params.output_format) body.output_format = params.output_format
 
-  const res = await fetch(`${BASE}/images/generations`, {
+  const res = await fetch('/api/proxy/openai-image', {
     method: 'POST',
-    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    headers: authHeaders(),
+    body: JSON.stringify({ ...body, _endpoint: 'images/generations' }),
   })
 
   if (!res.ok || !res.body) {
@@ -226,7 +219,7 @@ export async function* editImageStream(
     formData.append('mask', params.mask, 'mask.png')
   }
 
-  const res = await fetch(`${BASE}/images/edits`, {
+  const res = await fetch('/api/proxy/openai-image', {
     method: 'POST',
     headers: authHeaders(),
     body: formData,
@@ -287,10 +280,10 @@ export async function generateWithResponses(params: {
   }
   if (params.previousResponseId) body.previous_response_id = params.previousResponseId
 
-  const res = await fetch(`${BASE}/responses`, {
+  const res = await fetch('/api/proxy/openai-image', {
     method: 'POST',
     headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ ...body, _endpoint: 'responses' }),
   })
 
   if (!res.ok) {

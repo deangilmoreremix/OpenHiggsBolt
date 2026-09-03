@@ -10,6 +10,7 @@ import {
 } from '@/shared/components/AdvancedControlsPanel'
 import { PublishStep } from '@/components/SocialPublishProvider'
 import { AssistStep } from '@/components/AiAssistantProvider'
+import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider'
 
 // Map the modal's friendly model options to real MuAPI t2v model ids so the
 // unified generateVideo hits the correct /api/v1/{endpoint}.
@@ -21,6 +22,7 @@ const MODEL_OPTIONS: Array<{ value: string; label: string } & AdvancedModelRef> 
 ]
 
 export default function VideoGenerate() {
+  const { requireEntitlement } = useSmartVideoAccess();
   const [prompt, setPrompt] = useState('')
   const [duration, setDuration] = useState(5)
   const [aspectRatio, setAspectRatio] = useState<'16:9' | '9:16' | '1:1'>('16:9')
@@ -44,23 +46,28 @@ export default function VideoGenerate() {
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return
-    setIsGenerating(true)
-    try {
-      const apiKey = resolveMuapiKey()
-      const advanced = buildAdvancedParams(controls, advValues)
-      const video = await generateVideo(apiKey, {
-        model: selected.id,
-        prompt,
-        aspect_ratio: aspectRatio,
-        duration,
-        ...advanced,
-      })
-      setResult(video)
-    } catch (error) {
-      console.error(error)
-    } finally {
-      setIsGenerating(false)
-    }
+    requireEntitlement(
+      ENTITLEMENTS.SMARTVIDEO_GO,
+      async () => {
+        setIsGenerating(true)
+        try {
+          const apiKey = resolveMuapiKey()
+          const advanced = buildAdvancedParams(controls, advValues)
+          const video = await generateVideo(apiKey, {
+            model: selected.id,
+            prompt,
+            aspect_ratio: aspectRatio,
+            duration,
+            ...advanced,
+          })
+          setResult(video)
+        } catch (error) {
+          console.error(error)
+        } finally {
+          setIsGenerating(false)
+        }
+      }
+    )
   }
 
   return (

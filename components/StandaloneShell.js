@@ -12,6 +12,7 @@ import { AiAssistantProvider } from '@/components/AiAssistantProvider';
 import { useAuthConfig } from '@/lib/authConfig';
 import { isValidKeyFormat } from '@/lib/keys';
 import { DemoPersonalizeProvider } from '@/shared/personalization';
+import UpgradeModal from '@/access/UpgradeModal';
 
 // Lazily load the heavy `studio` package so its many studio modules are not
 // part of the initial bundle for /, /studio and /workflow. Each export is only
@@ -277,54 +278,61 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
 
   const handleKeySave = useCallback(async (key, openaiKeyValue) => {
     if (demoMode) return;
-    if (!key || !isValidKeyFormat(key)) {
-      setAuthError('API key looks invalid (contains spaces or control characters). Re-copy it from your MuAPI dashboard.');
+
+    const trimmed = (key || '').trim();
+    const trimmedOpenai = (openaiKeyValue || '').trim();
+
+    let muapiError = null;
+    let openaiError = null;
+
+    if (trimmed && !isValidKeyFormat(trimmed)) {
+      muapiError = 'API key looks invalid (contains spaces or control characters). Re-copy it from your MuAPI dashboard.';
+    } else if (trimmed) {
+      try {
+        await fetchBalance(trimmed);
+      } catch (err) {
+        const isAuthError =
+          err?.message?.includes?.('401') ||
+          err?.message?.includes?.('403') ||
+          err?.message?.includes?.('Not authorized');
+        muapiError = isAuthError
+          ? 'That MuAPI key is invalid or unauthorized. Double-check it on your MuAPI dashboard and try again.'
+          : 'Could not verify the MuAPI key. Check your connection and try again.';
+      }
+    }
+
+    if (trimmedOpenai) {
+      try {
+        const { verifyOpenAIKey } = await import('@/shared/api/verifyOpenAIKey');
+        await verifyOpenAIKey(trimmedOpenai);
+      } catch (err) {
+        const kind = err?.message;
+        openaiError =
+          kind === 'unauthorized'
+            ? 'That OpenAI key is invalid or unauthorized. Double-check it on your OpenAI dashboard and try again.'
+            : 'Could not verify the OpenAI key. Check your connection and try again.';
+      }
+    }
+
+    if (muapiError && openaiError) {
+      setAuthError(`${muapiError} ${openaiError}`);
+      setIsSavingKey(false);
+      return;
+    }
+    if (muapiError) {
+      setAuthError(muapiError);
+      setIsSavingKey(false);
+      return;
+    }
+    if (openaiError) {
+      setAuthError(openaiError);
+      setIsSavingKey(false);
       return;
     }
 
-    const trimmed = key.trim();
-    const trimmedOpenai = (openaiKeyValue || '').trim();
+    if (trimmed) setApiKey(trimmed);
+    if (trimmedOpenai) setOpenAiKey(trimmedOpenai);
 
-    // Verify BOTH keys before committing. Previously a format-valid-but-wrong
-    // key was silently saved, leaving the user stranded in the studio with a
-    // stale invalid key and no clean way to replace it. OpenAI is required for
-    // prompt enhancement, script generation and several image paths, so an
-    // invalid OpenAI key would silently break those features.
-    setIsSavingKey(true);
-    try {
-      await fetchBalance(trimmed);
-    } catch (err) {
-      const isAuthError =
-        err?.message?.includes?.('401') ||
-        err?.message?.includes?.('403') ||
-        err?.message?.includes?.('Not authorized');
-      setIsSavingKey(false);
-      setAuthError(
-        isAuthError
-          ? 'That MuAPI key is invalid or unauthorized. Double-check it on your MuAPI dashboard and try again.'
-          : 'Could not verify the MuAPI key. Check your connection and try again.'
-      );
-      return; // Do NOT save an unverified key.
-    }
-
-    try {
-      const { verifyOpenAIKey } = await import('@/shared/api/verifyOpenAIKey');
-      await verifyOpenAIKey(trimmedOpenai);
-    } catch (err) {
-      setIsSavingKey(false);
-      const kind = err?.message;
-      setAuthError(
-        kind === 'unauthorized'
-          ? 'That OpenAI key is invalid or unauthorized. Double-check it on your OpenAI dashboard and try again.'
-          : 'Could not verify the OpenAI key. Check your connection and try again.'
-      );
-      return; // Do NOT save an unverified key.
-    }
-
-    // Both keys verified — persist them via the centralized auth config.
-    // This syncs to localStorage, cookies, and notifies all React consumers.
-    setApiKey(trimmed);
-    setOpenAiKey(trimmedOpenai);
     setSettingsKeyInput('');
     setSettingsOpenaiInput('');
     setAuthError(null);
@@ -332,13 +340,11 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
     setShowApiKeyPopup(false);
     settingsClosedAt.current = Date.now();
     setIsSavingKey(false);
-    // Persist the keys against the signed-in user's account so they are restored
-    // automatically on future sign-ins and on other browsers/devices.
     fetch('/api/auth/muapi-key', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ key: trimmed, openaiKey: trimmedOpenai }),
+      body: JSON.stringify({ key: trimmed || getApiKey(), openaiKey: trimmedOpenai || getOpenAiKey() }),
     }).catch(() => {});
   }, [fetchBalance, setApiKey, setOpenAiKey]);
 
@@ -672,6 +678,15 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                   disabled={isSavingKey}
                   className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[13px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 disabled:opacity-60"
                 />
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() => handleKeySave(settingsKeyInput, '')}
+                    disabled={isSavingKey || !settingsKeyInput.trim()}
+                    className="flex-1 h-8 rounded-md bg-[#22d3ee]/10 text-[#22d3ee] hover:bg-[#22d3ee]/20 text-[11px] font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {isSavingKey ? 'Saving…' : 'Save MuAPI Key'}
+                  </button>
+                </div>
                 <p className="mt-2 text-[11px] leading-relaxed text-white/40">
                   {apiKey
                     ? 'Your key is stored securely to your account and restored automatically when you sign in.'
@@ -698,6 +713,15 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                   disabled={isSavingKey}
                   className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-[13px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 disabled:opacity-60"
                 />
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() => handleKeySave('', settingsOpenaiInput)}
+                    disabled={isSavingKey || !settingsOpenaiInput.trim()}
+                    className="flex-1 h-8 rounded-md bg-[#22d3ee]/10 text-[#22d3ee] hover:bg-[#22d3ee]/20 text-[11px] font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {isSavingKey ? 'Saving…' : 'Save OpenAI Key'}
+                  </button>
+                </div>
                 <p className="mt-2 text-[11px] leading-relaxed text-white/40">
                   {openaiKey
                     ? 'Used for prompt enhancement, script generation and some image paths. Stored securely to your account.'
@@ -759,6 +783,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
           </div>
         </div>
       )}
+      <UpgradeModal />
     </div>
   );
 }

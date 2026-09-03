@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { FeedStats } from '@/types/go-ai-viral/prompt'
+import { safeApiJson } from '@/lib/safeApiResponse'
 
 /**
  * GO- AI Viral — Stats API
@@ -24,7 +25,7 @@ export async function GET() {
     if (!res.ok) {
       throw new Error(`Failed to fetch stats: ${res.status}`)
     }
-    const json: FeedStats = await res.json()
+    const json: FeedStats = await safeApiJson(res)
     cachedStats = { data: json, fetchedAt: now }
     return NextResponse.json({ data: json })
   } catch (err: unknown) {

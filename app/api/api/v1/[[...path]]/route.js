@@ -1,15 +1,11 @@
 import { NextResponse } from 'next/server';
+import { safeApiJson } from '@/lib/safeApiResponse';
 
 const MUAPI_BASE = 'https://api.muapi.ai';
 
 function getApiKey(request) {
     const headerKey = request.headers.get('x-api-key');
     if (headerKey) return headerKey;
-    
-    // Demo mode fallback: use server-side sandbox key when no user key is provided
-    if (typeof process !== 'undefined' && process.env.MUAPI_DEMO_KEY) {
-        return process.env.MUAPI_DEMO_KEY;
-    }
     
     // Cookie-based auth removed for security (CWE-522)
     return null;
@@ -39,11 +35,15 @@ export async function GET(request, { params }) {
     const targetUrl = `${MUAPI_BASE}/api/v1/${path}${search}`;
 
     const apiKey = getApiKey(request);
+    if (!apiKey) {
+        return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 });
+    }
+
     const headers = buildUpstreamHeaders(request, apiKey);
 
     try {
         const response = await fetch(targetUrl, { headers, method: 'GET', signal: AbortSignal.timeout(60000) });
-        const data = await response.json();
+        const data = await safeApiJson(response);
         return NextResponse.json(data, { status: response.status });
     } catch (error) {
         // Never echo the upstream error body to the client; surface a generic
@@ -65,12 +65,16 @@ export async function POST(request, { params }) {
     const targetUrl = `${MUAPI_BASE}/api/v1/${path}${search}`;
 
     const apiKey = getApiKey(request);
+    if (!apiKey) {
+        return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 });
+    }
+
     const headers = buildUpstreamHeaders(request, apiKey);
 
     try {
         const body = await request.arrayBuffer();
         const response = await fetch(targetUrl, { method: 'POST', headers, body, signal: AbortSignal.timeout(60000) });
-        const data = await response.json();
+        const data = await safeApiJson(response);
         return NextResponse.json(data, { status: response.status });
     } catch (error) {
         const isAbort = error?.name === 'AbortError' || error?.name === 'TimeoutError';
