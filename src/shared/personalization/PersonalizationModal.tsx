@@ -40,6 +40,12 @@ import {
 import { useDemoPersonalize } from './DemoPersonalizeProvider'
 import type { PersonalizationAsset } from './types'
 
+// Niche-specific CTA copy lives in components/landing/landingData.js. The
+// modal reads the active niche id from source.sourceMetadata.nicheId and
+// renders the matching heading/body so each niche section can open the
+// personalization flow with on-brand copy.
+import { NICHE_CTA_BY_ID } from '@/components/landing/landingData'
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function classNames(...classes: (string | boolean | undefined | null | false)[]) {
@@ -399,6 +405,18 @@ export default function PersonalizationModal() {
 
   if (!isOpen || !source) return null
 
+  // Resolve niche-specific CTA copy if the source was opened from a niche
+  // section. Falls back to the generic modal header so existing entry
+  // points (e.g. demo cards) keep their current copy.
+  const nicheId =
+    typeof (source as any)?.sourceMetadata?.nicheId === 'string'
+      ? ((source as any).sourceMetadata.nicheId as string)
+      : null
+  const nicheCta = nicheId ? NICHE_CTA_BY_ID[nicheId] : null
+  const headerTitle = nicheCta?.ctaHeading ?? 'Personalize This Demo'
+  const headerBody = nicheCta?.ctaBody ??
+    'Turn this demo into a custom version for yourself, your business, or a customer. Personalize the person, branding, products, prompt, offer and CTA.'
+
   const isVideo = source.mediaType === 'video'
   const isImage = source.mediaType === 'image'
   const isPromptOnly = source.mediaType === 'prompt-only'
@@ -502,7 +520,7 @@ export default function PersonalizationModal() {
             </div>
             <div>
               <h2 id="personalize-title" className="text-base font-semibold text-white flex items-center gap-2">
-                Personalize This Demo
+                {headerTitle}
                 {sourceTypeLabel && (
                   <span
                     className="rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider"
@@ -512,10 +530,10 @@ export default function PersonalizationModal() {
                   </span>
                 )}
               </h2>
-              <p className="text-xs mt-1 text-white/50 max-w-2xl">
-                Turn this demo into a custom version for yourself, your business, or a customer.
-                Personalize the person, branding, products, prompt, offer and CTA.
-              </p>
+              <p
+                className="text-xs mt-1 text-white/50 max-w-2xl"
+                dangerouslySetInnerHTML={{ __html: headerBody }}
+              />
             </div>
           </div>
           <button
