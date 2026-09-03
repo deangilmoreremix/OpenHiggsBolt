@@ -1,11 +1,12 @@
 'use client';
-import LazyVideo from './LazyVideo';
+import { useRef } from 'react';
+import LazyVideo, { type LazyVideoHandle } from './LazyVideo';
 import Reveal from './Reveal';
 import { useDemoPrompt } from './DemoPromptModal';
-import { getCreateUrl, type VideoDemo } from '@/data/types';
+import { getCreateUrl, type MinimaxDemo } from '@/data/minimaxH3Demos';
 
 type DemoMediaCardProps = {
-   demo: VideoDemo;
+  demo: MinimaxDemo;
   ctaLabel?: string;
   showUseCase?: boolean;
   showViewPrompt?: boolean;
@@ -28,6 +29,7 @@ export default function DemoMediaCard({
   index = 0,
 }: DemoMediaCardProps) {
   const { openPrompt } = useDemoPrompt();
+  const videoRef = useRef<LazyVideoHandle>(null);
 
   return (
     <Reveal
@@ -37,26 +39,46 @@ export default function DemoMediaCard({
     >
       {/* Media */}
       <div className="relative">
+        {/* Image fallback guarantees the poster renders immediately even if
+            the video element suppresses the poster attribute under preload=none
+            or other browser quirks. The <video> sits on top and covers it once
+            it loads. */}
+        <img
+          src={demo.posterSrc}
+          alt=""
+          aria-hidden="true"
+          className={`absolute inset-0 ${aspectClassName} w-full ${objectFit === 'contain' ? 'object-contain' : 'object-cover'}`}
+        />
         <LazyVideo
+          ref={videoRef}
           src={demo.videoSrc}
           poster={demo.posterSrc}
           label={`${demo.title} — video preview`}
           hoverPlay
           toggleOnClick
+          preload="metadata"
           className={`${aspectClassName} w-full`}
           objectFit={objectFit}
         />
         <span className="glass-panel absolute left-3 top-3 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white/90">
           {badge ?? demo.category}
         </span>
-        {/* Play affordance on hover (decorative) */}
-        <div className="pointer-events-none absolute inset-0 grid place-items-center opacity-0 transition group-hover:opacity-100">
-          <span className="grid h-12 w-12 place-items-center rounded-full bg-white/15 backdrop-blur">
+        {/* Real, deterministic play control (clickable, not pointer-events-none) */}
+        <button
+          type="button"
+          aria-label={`Play ${demo.title} preview`}
+          onClick={(e) => {
+            e.stopPropagation();
+            videoRef.current?.toggle();
+          }}
+          className="absolute inset-0 grid place-items-center opacity-0 transition group-hover:opacity-100 focus-visible:opacity-100 focus:outline-none"
+        >
+          <span className="grid h-12 w-12 place-items-center rounded-full bg-white/15 backdrop-blur transition group-hover:scale-105">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="white" aria-hidden="true">
               <path d="M8 5v14l11-7z" />
             </svg>
           </span>
-        </div>
+        </button>
       </div>
 
       {/* Body */}

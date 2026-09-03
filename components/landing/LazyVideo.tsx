@@ -1,28 +1,47 @@
 'use client';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { useReducedMotion } from './useReducedMotion';
 
 /* ── Global playback limiter ────────────────────────────────────────────────
  * Caps how many demo videos play at once so a 30-clip gallery doesn't try to
- * decode everything simultaneously. When the cap is hit, the oldest playing
- * video is paused. Keeps the page light and the network calm on mobile.
+ * decode everything simultaneously. When the cap is hit, the oldest non-pinned
+ * (autoplay-only) video is paused first; if they're all pinned, the oldest
+ * entry is evicted anyway. Keeps the page light and the network calm on mobile.
  */
-const MAX_ACTIVE = 2;
-const registry = new Set<() => void>();
+const MAX_ACTIVE = 6;
+type RegistryEntry = { stop: () => void; pinned: boolean };
+const registry = new Map<() => void, RegistryEntry>();
 
-function requestPlay(stop: () => void) {
+function requestPlay(stop: () => void, pinned: boolean) {
   if (registry.size >= MAX_ACTIVE) {
-    const oldest = registry.values().next().value as (() => void) | undefined;
-    if (oldest) {
-      oldest();
-      registry.delete(oldest);
+    // Prefer evicting the oldest non-pinned entry so user-initiated
+    // (pinned) videos win over autoplay-only ones.
+    let victim: (() => void) | undefined;
+    for (const [s, entry] of registry) {
+      if (!entry.pinned) {
+        victim = s;
+        break;
+      }
+    }
+    if (!victim) {
+      victim = registry.keys().next().value as (() => void) | undefined;
+    }
+    if (victim) {
+      victim();
+      registry.delete(victim);
     }
   }
-  registry.add(stop);
+  registry.set(stop, { stop, pinned });
 }
 function releasePlay(stop: () => void) {
   registry.delete(stop);
 }
+
+export type LazyVideoHandle = {
+  play: () => void;
+  pause: () => void;
+  toggle: () => void;
+};
 
 export type LazyVideoProps = {
   src: string;
@@ -44,149 +63,190 @@ export type LazyVideoProps = {
   toggleOnClick?: boolean;
 };
 
-export default function LazyVideo({
-  src,
-  poster,
-  label,
-  className = '',
-  videoClassName = '',
-  hoverPlay = false,
-  autoPlayInView = true,
-  decorative = false,
-  preload = 'none',
-  objectFit = 'cover',
-  toggleOnClick = false,
-}: LazyVideoProps) {
-  const ref = useRef<HTMLVideoElement>(null);
-  const stopRef = useRef<() => void>(() => {});
+/**
+ * A performance-conscious <video> that:
+ *  - never loads the file until it nears the viewport (poster first),
+ *  - plays muted/inline only when visible + not reduced-motion,
+ *  - pauses when scrolled away,
+ *  - respects a global cap on simultaneously playing videos,
+ *  - falls back to the poster under prefers-reduced-motion.
+ */
+const LazyVideo = forwardRef<LazyVideoHandle, LazyVideoProps>(function LazyVideo(
+  {
+    src,
+    poster,
+    label,
+    className = '',
+    videoClassName = '',
+    hoverPlay = false,
+    autoPlayInView = true,
+    decorative = false,
+    preload = 'metadata',
+    objectFit = 'cover',
+    toggleOnClick = false,
+  },
+  handleRef,
+) {
+  const videoRef = useRef<HTMLVideoElement>(null);
   const activeRef = useRef(false);
-  const [errored, setErrored] = useState(false);
   const reduced = useReducedMotion();
   const [inView, setInView] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [pinned, setPinned] = useState(false);
+  const [srcSet, setSrcSet] = useState(false);
 
-  stopRef.current = () => {
-    ref.current?.pause();
-  };
+  // Stable stop function — must NOT be recreated per render, otherwise the
+  // playback registry keys become inconsistent and the cap leaks/behaves wrong.
+  const stop = useCallback(() => {
+    videoRef.current?.pause();
+  }, []);
 
-  // Mark the video as errored when the source fails to load (e.g. 404).
-  // The browser will continue showing the poster attribute; we just stop
-  // trying to replay a missing file and release the global playback slot.
+  // Ensure the muted property is set imperatively — React does not reliably set
+  // the `muted` DOM *property* from the JSX attribute, and autoplay policies
+  // check the property, not the attribute.
   useEffect(() => {
-    const el = ref.current;
+    const el = videoRef.current;
     if (!el) return;
-    const onError = () => {
-      setErrored(true);
-      if (activeRef.current) {
-        releasePlay(stopRef.current);
-        activeRef.current = false;
-      }
-      el.pause();
-    };
-    el.addEventListener('error', onError);
-    return () => el.removeEventListener('error', onError);
+    el.muted = true;
+    el.defaultMuted = true;
   }, []);
 
   // Reveal (attach observer) when near viewport.
   useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof IntersectionObserver === 'undefined') {
+    const el = videoRef.current;
+    if (!el) return;
+
+    if (typeof IntersectionObserver === 'undefined') {
       setInView(true);
       return;
     }
 
-    // Check if already in view on mount (handles SSR + hydration).
-    const rect = el.getBoundingClientRect();
-    const alreadyInView =
-      rect.top < window.innerHeight + 300 && rect.bottom > -300;
-    if (alreadyInView) {
-      setInView(true);
-    }
-
     const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setInView(true);
-        }
-      },
-      { rootMargin: '2000px 0px', threshold: 0 },
+      ([entry]) => setInView(entry.isIntersecting),
+      { rootMargin: '300px 0px', threshold: 0.01 },
     );
     io.observe(el);
 
-    // Fallback: re-check after a short delay in case the observer missed it.
-    const timer = setTimeout(() => {
-      const r = el.getBoundingClientRect();
-      if (r.top < window.innerHeight + 300 && r.bottom > -300) {
+    // IntersectionObserver may not fire for elements already in view at
+    // mount time. Check after paint so layout is complete.
+    const raf = requestAnimationFrame(() => {
+      const rect = el.getBoundingClientRect();
+      if (rect.bottom > 0 && rect.top < window.innerHeight) {
         setInView(true);
       }
-    }, 200);
+    });
 
     return () => {
       io.disconnect();
-      clearTimeout(timer);
+      cancelAnimationFrame(raf);
     };
   }, []);
 
-  // Immediate check: if element is already in view on mount, set src right away.
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    if (rect.top < window.innerHeight + 300 && rect.bottom > -300) {
-      if (!el.getAttribute('src')) el.setAttribute('src', src);
+  // Assign the video source once the element is near the viewport OR when the
+  // video has been user-pinned (so click-to-play works even for cards that
+  // haven't scrolled into view yet).
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !src || srcSet) return;
+    if (inView || pinned) {
+      el.muted = true;
+      el.defaultMuted = true;
+      el.src = src;
+      setSrcSet(true);
     }
-  }, [src]);
+  }, [inView, pinned, src, srcSet]);
 
-  const shouldPlay = !reduced && !errored && (pinned || (inView && autoPlayInView) || (hovered && hoverPlay));
+  const logPlayBlock = (p: Promise<void> | undefined) => {
+    if (p && typeof p.catch === 'function') {
+      p.catch((e) => console.warn('[LazyVideo] play blocked:', (e as { name?: string })?.name));
+    }
+  };
+
+  // Auto / hover / pinned playback driven by reactive state.
+  const shouldPlay = !reduced && (pinned || (inView && autoPlayInView) || (hovered && hoverPlay));
 
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+    const el = videoRef.current;
+    if (!el || !srcSet) return;
     if (shouldPlay) {
-      // Attach the source lazily — never at page load.
-      if (!el.getAttribute('src')) el.setAttribute('src', src);
-      if (!activeRef.current) {
-        requestPlay(stopRef.current);
+      el.muted = true;
+      el.defaultMuted = true;
+      if (activeRef.current) {
+        // Already active: just keep the pinned flag in the registry accurate.
+        const entry = registry.get(stop);
+        if (entry) entry.pinned = pinned;
+      } else {
+        requestPlay(stop, pinned);
         activeRef.current = true;
       }
-      const p = el.play();
-      if (p && typeof p.catch === 'function') p.catch(() => {});
+      logPlayBlock(el.play());
     } else {
       if (activeRef.current) {
-        releasePlay(stopRef.current);
+        releasePlay(stop);
         activeRef.current = false;
       }
       el.pause();
     }
-  }, [shouldPlay, src]);
+  }, [shouldPlay, srcSet, pinned, stop]);
+
+  // ── Imperative handle (runs inside the user gesture) ──────────────────────
+  const play = useCallback(() => {
+    const el = videoRef.current;
+    if (!el || !src) return;
+    if (!el.src) {
+      el.muted = true;
+      el.defaultMuted = true;
+      el.src = src;
+      setSrcSet(true);
+    }
+    el.muted = true;
+    el.defaultMuted = true;
+    if (activeRef.current) {
+      const entry = registry.get(stop);
+      if (entry) entry.pinned = true;
+    } else {
+      requestPlay(stop, true);
+      activeRef.current = true;
+    }
+    setPinned(true);
+    logPlayBlock(el.play());
+  }, [src, stop]);
+
+  const pause = useCallback(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    el.pause();
+    if (activeRef.current) {
+      releasePlay(stop);
+      activeRef.current = false;
+    }
+    setPinned(false);
+  }, [stop]);
+
+  const toggle = useCallback(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    if (el.paused) {
+      play();
+    } else {
+      el.pause();
+      if (activeRef.current) {
+        releasePlay(stop);
+        activeRef.current = false;
+      }
+      setPinned(false);
+    }
+  }, [play, stop]);
+
+  useImperativeHandle(
+    handleRef,
+    () => ({ play, pause, toggle }),
+    [play, pause, toggle],
+  );
 
   const handleClick = useCallback(() => {
-    if (!toggleOnClick) return;
-    const el = ref.current;
-    const willPin = !pinned;
-    setPinned(willPin);
-    if (!el) return;
-    if (willPin) {
-      // Ensure the source is attached, then play directly. The global playback
-      // limiter may have paused this element outside of React's state flow, so
-      // calling play() here guarantees click-to-play works even when the React
-      // effect won't re-run (shouldPlay was already true).
-      if (!el.getAttribute('src')) el.setAttribute('src', src);
-      if (!activeRef.current) {
-        requestPlay(stopRef.current);
-        activeRef.current = true;
-      }
-      const p = el.play();
-      if (p && typeof p.catch === 'function') p.catch(() => {});
-    } else {
-      if (activeRef.current) {
-        releasePlay(stopRef.current);
-        activeRef.current = false;
-      }
-      el.pause();
-    }
-  }, [toggleOnClick, pinned, src]);
+    if (toggleOnClick) toggle();
+  }, [toggleOnClick, toggle]);
 
   return (
     <div
@@ -197,7 +257,7 @@ export default function LazyVideo({
     >
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <video
-        ref={ref}
+        ref={videoRef}
         poster={poster}
         muted
         playsInline
@@ -208,16 +268,8 @@ export default function LazyVideo({
         tabIndex={-1}
         className={`h-full w-full ${objectFit === 'contain' ? 'object-contain' : 'object-cover'} ${videoClassName}`}
       />
-      {errored && (
-        <div
-          className="pointer-events-none absolute inset-0 flex items-center justify-center"
-          aria-hidden="true"
-        >
-          <div className="rounded-full bg-black/60 px-3 py-1 text-xs font-medium text-white/70">
-            Preview unavailable
-          </div>
-        </div>
-      )}
     </div>
   );
-}
+});
+
+export default LazyVideo;

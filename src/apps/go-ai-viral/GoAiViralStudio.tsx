@@ -22,10 +22,13 @@ import {
   Search, Copy, ExternalLink, User, Heart,
   Grid, List, ChevronRight,
   Image as ImageIcon, Video, Calendar, BookOpen,
-  Repeat2, MessageCircle, Flame
+  Repeat2, MessageCircle, Flame, Sparkles
 } from 'lucide-react'
 import { buttons, semantic, tabStyle, optionStyle, appWrapper, iconBadge } from '@/shared/styles/designTokens'
 import type { PromptRecord, FeedStats } from '@/types/go-ai-viral/prompt'
+import { NicheNavigation, type NicheItem } from './NicheNavigation'
+import { NicheHeader } from './NicheHeader'
+import { FeaturedSection } from './FeaturedSection'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -44,6 +47,7 @@ interface FeedResponse {
     stats: FeedStats
     availableCategories: string[]
     availableModels: string[]
+    availableNiches: { id: string; label: string; count: number }[]
     fetchedAt: number
   }
 }
@@ -517,6 +521,8 @@ function PromptDetailModal({ record, onClose }: PromptDetailModalProps) {
 
 // ── Main Studio ─────────────────────────────────────────────────────────────────
 
+const ENABLE_NICHE_UI = process.env.NEXT_PUBLIC_ENABLE_NICHE_UI === 'true'
+
 export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
   void apiKey // Reserved for future generation features; feed browsing needs no key.
   // Data
@@ -524,6 +530,7 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
   const [stats, setStats] = useState<FeedStats | null>(null)
   const [availableCategories, setAvailableCategories] = useState<string[]>([])
   const [availableModels, setAvailableModels] = useState<string[]>([])
+  const [availableNiches, setAvailableNiches] = useState<{ id: string; label: string; count: number }[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -532,6 +539,12 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [selectedModel, setSelectedModel] = useState<string>('')
   const [search, setSearch] = useState<string>('')
+
+  // Niche filters
+  const [selectedNicheId, setSelectedNicheId] = useState<string>('all')
+  const [selectedSubNiches, setSelectedSubNiches] = useState<string[]>([])
+  const [showFeaturedOnly, setShowFeaturedOnly] = useState(false)
+  const [showViralOnly, setShowViralOnly] = useState(false)
 
   // Pagination
   const [page, setPage] = useState(1)
@@ -579,6 +592,10 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
         ...(selectedModel && { model: selectedModel }),
         ...(search && { search }),
         sort,
+        ...(selectedNicheId !== 'all' && { niche: selectedNicheId }),
+        ...(selectedSubNiches.length > 0 && { subNiches: selectedSubNiches.join(',') }),
+        ...(showFeaturedOnly && { featured: 'true' }),
+        ...(showViralOnly && { viral: 'true' }),
       })
       const res = await fetch(`/api/go-ai-viral/prompts?${params}`, {
         signal: controller.signal,
@@ -592,6 +609,7 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
       setStats(json.meta?.stats || null)
       setAvailableCategories(json.meta?.availableCategories || [])
       setAvailableModels(json.meta?.availableModels || [])
+      setAvailableNiches(json.meta?.availableNiches || [])
     } catch (err: unknown) {
       if ((err as Error)?.name === 'AbortError') return
       const errMsg = err instanceof Error ? err.message : 'Failed to load the prompt feed'
@@ -628,6 +646,12 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
     if (!stats?.recommendedModels) return {}
     return stats.recommendedModels
   }, [stats?.recommendedModels])
+
+  // ── Niche data ───────────────────────────────────────────────────────────────
+  const selectedNiche = useMemo<NicheItem | null>(() => {
+    if (selectedNicheId === 'all') return null
+    return availableNiches.find((n) => n.id === selectedNicheId) ?? null
+  }, [selectedNicheId, availableNiches])
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -726,45 +750,83 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
               </div>
             </div>
 
-            {/* Categories */}
-            <div>
-              <p className="text-xs font-medium mb-2" style={{ color: semantic.textLabel }}>
-                Categories
-              </p>
-              <div className="flex flex-col gap-1 max-h-80 overflow-y-auto custom-scrollbar">
-                <button
-                  onClick={() => { setSelectedCategory(''); setPage(1) }}
-                  className="text-left px-3 py-2 rounded-lg text-sm transition-all"
-                  style={optionStyle(selectedCategory === '')}
-                >
-                  All categories
-                </button>
-                {availableCategories.map((cat) => {
-                  const count = categoryCounts[cat]?.total || 0
-                  return (
-                    <button
-                      key={cat}
-                      onClick={() => { setSelectedCategory(cat); setPage(1) }}
-                      className="flex items-center justify-between text-left px-3 py-2 rounded-lg text-sm transition-all"
-                      style={optionStyle(selectedCategory === cat)}
-                    >
-                      <span className="capitalize">{cat.replace(/-/g, ' ')}</span>
+            {ENABLE_NICHE_UI && (
+              <div>
+                <p className="text-xs font-medium mb-2" style={{ color: semantic.textLabel }}>
+                  Business Niches
+                </p>
+                <NicheNavigation
+                  niches={availableNiches}
+                  selectedNiche={selectedNicheId}
+                  onSelectNiche={(nicheId) => {
+                    setSelectedNicheId(nicheId)
+                    setSelectedSubNiches([])
+                    setPage(1)
+                  }}
+                  totalPrompts={stats?.total || 0}
+                />
+              </div>
+            )}
+
+            {ENABLE_NICHE_UI && (
+              <div>
+                <p className="text-xs font-medium mb-2" style={{ color: semantic.textLabel }}>
+                  Quick Filters
+                </p>
+                <div className="flex flex-col gap-1">
+                  <button
+                    onClick={() => {
+                      setShowFeaturedOnly((prev) => !prev)
+                      setShowViralOnly(false)
+                      setPage(1)
+                    }}
+                    className="text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center justify-between"
+                    style={optionStyle(showFeaturedOnly)}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Sparkles size={14} />
+                      Featured
+                    </span>
+                    {showFeaturedOnly && (
                       <span
-                        className="text-xs px-1.5 py-0.25 rounded-full"
+                        className="text-xs px-1.5 py-0.5 rounded-full"
                         style={{
-                          background: selectedCategory === cat
-                            ? 'rgba(34,211,238,0.2)'
-                            : 'rgba(255,255,255,0.05)',
-                          color: selectedCategory === cat ? 'var(--color-primary)' : semantic.textMuted,
+                          background: 'rgba(34,211,238,0.2)',
+                          color: 'var(--color-primary)',
                         }}
                       >
-                        {count}
+                        ON
                       </span>
-                    </button>
-                  )
-                })}
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowViralOnly((prev) => !prev)
+                      setShowFeaturedOnly(false)
+                      setPage(1)
+                    }}
+                    className="text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center justify-between"
+                    style={optionStyle(showViralOnly)}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Flame size={14} />
+                      Viral
+                    </span>
+                    {showViralOnly && (
+                      <span
+                        className="text-xs px-1.5 py-0.5 rounded-full"
+                        style={{
+                          background: 'rgba(34,211,238,0.2)',
+                          color: 'var(--color-primary)',
+                        }}
+                      >
+                        ON
+                      </span>
+                    )}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Recommended models */}
             <div>
@@ -873,6 +935,10 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
                   setSearchInput('')
                   setSelectedCategory('')
                   setSelectedModel('')
+                  setSelectedNicheId('all')
+                  setSelectedSubNiches([])
+                  setShowFeaturedOnly(false)
+                  setShowViralOnly(false)
                   setMediaType('all')
                   setSort('newest')
                 }}
@@ -884,6 +950,82 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
             </div>
           ) : (
             <div className="p-6">
+              {ENABLE_NICHE_UI && (
+                <NicheHeader
+                  selectedNiche={selectedNiche}
+                  promptCount={records.length}
+                  subNiches={[]}
+                  selectedSubNiches={selectedSubNiches}
+                  onToggleSubNiche={(id) => {
+                    setSelectedSubNiches((prev) =>
+                      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+                    )
+                    setPage(1)
+                  }}
+                  onClearFilters={() => {
+                    setSelectedNicheId('all')
+                    setSelectedSubNiches([])
+                    setShowFeaturedOnly(false)
+                    setShowViralOnly(false)
+                    setSearch('')
+                    setSearchInput('')
+                    setSelectedCategory('')
+                    setSelectedModel('')
+                    setMediaType('all')
+                    setSort('newest')
+                  }}
+                />
+              )}
+              {ENABLE_NICHE_UI && selectedNicheId === 'all' && availableNiches.length > 0 && (
+                <div className="mb-6">
+                  <p className="text-xs font-medium mb-2" style={{ color: semantic.textLabel }}>
+                    Browse by niche
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {availableNiches.map((niche) => (
+                      <button
+                        key={niche.id}
+                        onClick={() => {
+                          setSelectedNicheId(niche.id)
+                          setSelectedSubNiches([])
+                          setPage(1)
+                        }}
+                        className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+                        style={{
+                          background: 'rgba(255,255,255,0.05)',
+                          border: '1px solid var(--border-color)',
+                          color: semantic.textSecondary,
+                        }}
+                      >
+                        {niche.label}
+                        <span
+                          className="ml-1.5 px-1.5 py-0.5 rounded-full"
+                          style={{
+                            background: 'rgba(255,255,255,0.05)',
+                            color: semantic.textMuted,
+                          }}
+                        >
+                          {niche.count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {ENABLE_NICHE_UI && (
+                <FeaturedSection
+                  records={records}
+                  onSelect={setSelectedRecord}
+                  selectedId={selectedRecord?.id}
+                  renderCard={(record) => (
+                    <PromptCard
+                      record={record}
+                      isSelected={selectedRecord?.id === record.id}
+                      onSelect={setSelectedRecord}
+                    />
+                  )}
+                />
+              )}
               {viewMode === 'grid' ? (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {records.map((record) => (
@@ -974,7 +1116,7 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
               {records.length > 0 && (
                 <div className="mt-6 flex items-center justify-between">
                   <p className="text-xs" style={{ color: semantic.textMuted }}>
-                    Page {page} of {Math.ceil((stats?.total || 0) / pageSize)} · {stats?.total || 0} total prompts
+                    Page {page} of {Math.ceil((records.length || 0) / pageSize)} · {records.length || 0} prompts
                   </p>
                   <div className="flex gap-2">
                      <button
@@ -985,12 +1127,12 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
                      >
                        Previous
                      </button>
-                     <button
-                       onClick={() => setPage(p => p + 1)}
-                       disabled={page >= Math.ceil((stats?.total || 0) / pageSize) || isLoading || isPageLoading}
-                       className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50"
-                       style={buttons.ghost}
-                     >
+                      <button
+                        onClick={() => setPage(p => p + 1)}
+                        disabled={page >= Math.ceil((records.length || 0) / pageSize) || isLoading || isPageLoading}
+                        className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50"
+                        style={buttons.ghost}
+                      >
                        Next
                     </button>
                   </div>

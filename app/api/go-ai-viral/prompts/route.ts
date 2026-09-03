@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { PromptRecord, FeedStats } from '@/types/go-ai-viral/prompt'
+import { classifyBatch, type NicheResult } from '@/lib/nicheClassifier'
 
 /**
  * GO- AI Viral — Prompts API
@@ -18,6 +19,8 @@ import type { PromptRecord, FeedStats } from '@/types/go-ai-viral/prompt'
  *   model          recommendedModel value          (default none = all)
  *   search         free-text search in title/prompt (default none)
  *   sort           "newest" | "oldest"             (default "newest")
+ *   niche          business niche id               (default none = all)
+ *   subNiches      comma-separated niche ids       (default none)
  */
 
 const FEED_JSONL = 'https://raw.githubusercontent.com/Hanyuyu/visual-prompt-feed/main/data/prompts.jsonl'
@@ -31,6 +34,10 @@ interface CachedFeed {
   records: PromptRecord[]
   stats: FeedStats
   fetchedAt: number
+  /** Precomputed niche classification results keyed by record id. */
+  nicheMap: Map<string, NicheResult>
+  /** Aggregated niche counts across all records. */
+  availableNiches: { id: string; label: string; count: number }[]
 }
 
 let cached: CachedFeed | null = null
@@ -69,8 +76,43 @@ async function loadFeed(): Promise<CachedFeed> {
     }
   }
 
-  cached = { records, stats: statsText, fetchedAt: now }
+  // Classify records into business niches
+  const nicheMap = classifyBatch(records)
+
+  // Attach niche metadata to each record
+  for (const record of records) {
+    const result = nicheMap.get(record.id)
+    if (result) {
+      record.businessNiches = result.businessNiches
+      record.primaryNiche = result.primaryNiche
+    }
+  }
+
+  // Aggregate niche counts for sidebar/filter UI
+  const nicheCounts = new Map<string, number>()
+  for (const result of nicheMap.values()) {
+    for (const niche of result.businessNiches) {
+      nicheCounts.set(niche, (nicheCounts.get(niche) || 0) + 1)
+    }
+  }
+
+  const availableNiches = Array.from(nicheCounts.entries())
+    .map(([id, count]) => ({
+      id,
+      label: humanizeNiche(id),
+      count,
+    }))
+    .sort((a, b) => b.count - a.count)
+
+  cached = { records, stats: statsText, fetchedAt: now, nicheMap, availableNiches }
   return cached
+}
+
+/** Convert machine-readable niche id to a human label. */
+function humanizeNiche(id: string): string {
+  return id
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 export async function GET(req: NextRequest) {
@@ -84,8 +126,16 @@ export async function GET(req: NextRequest) {
     const model = searchParams.get('model') || ''
     const search = searchParams.get('search') || ''
     const sort = searchParams.get('sort') || 'newest'
+    const niche = searchParams.get('niche') || ''
+    const subNichesParam = searchParams.get('subNiches') || ''
+    const subNiches = subNichesParam
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+    const featured = searchParams.get('featured') === 'true'
+    const viral = searchParams.get('viral') === 'true'
 
-    const { records, stats } = await loadFeed()
+    const { records, stats, availableNiches } = await loadFeed()
 
     // Apply filters
     let filtered = records
@@ -106,6 +156,18 @@ export async function GET(req: NextRequest) {
           (r.prompt || '').toLowerCase().includes(term) ||
           (r.tags || []).some((t: string) => t.toLowerCase().includes(term))
       )
+    }
+    if (niche) {
+      filtered = filtered.filter((r) => r.primaryNiche === niche || (Array.isArray(r.businessNiches) && r.businessNiches.includes(niche)))
+    }
+    if (subNiches.length > 0) {
+      filtered = filtered.filter((r) => (Array.isArray(r.businessNiches) && r.businessNiches.some((n) => subNiches.includes(n))))
+    }
+    if (featured) {
+      filtered = filtered.filter((r) => r.isFeatured)
+    }
+    if (viral) {
+      filtered = filtered.filter((r) => (r.source?.engagement?.likes ?? 0) >= 50)
     }
 
     // Sort by publishedAt (newest first by default)
@@ -132,6 +194,7 @@ export async function GET(req: NextRequest) {
         availableModels: Array.from(
           new Set(records.map((r) => r.recommendedModel).filter(Boolean))
         ).sort(),
+        availableNiches: (cached!.availableNiches ?? []),
         fetchedAt: cached!.fetchedAt,
       },
     })
