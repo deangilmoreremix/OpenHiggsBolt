@@ -50,8 +50,12 @@ export interface ImageResult {
 
 // ── Helper: headers ───────────────────────────────────────────────────────────
 // Client-side calls go through the server-side proxy, so no Authorization
-// header is needed here.
-function authHeaders() {
+// header is needed here. For FormData uploads, DO NOT set Content-Type so
+// the runtime can inject the multipart boundary automatically.
+function authHeaders(isFormData = false) {
+  if (isFormData) {
+    return {} as Record<string, string>;
+  }
   return { 'Content-Type': 'application/json' }
 }
 
@@ -125,7 +129,7 @@ export async function editImage(params: EditImageParams): Promise<ImageResult[]>
 
   const res = await fetch('/api/proxy/openai-image', {
     method: 'POST',
-    headers: authHeaders(),
+    headers: authHeaders(true),
     body: formData,
   })
 
@@ -221,7 +225,7 @@ export async function* editImageStream(
 
   const res = await fetch('/api/proxy/openai-image', {
     method: 'POST',
-    headers: authHeaders(),
+    headers: authHeaders(true),
     body: formData,
   })
 

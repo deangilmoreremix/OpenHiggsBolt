@@ -9,11 +9,14 @@ export const runtime = 'nodejs';
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
 
-const stripe = new Stripe(STRIPE_SECRET_KEY, {
-  apiVersion: '2026-08-26.dahlia',
-});
+let stripe: Stripe | null = null;
+if (STRIPE_SECRET_KEY) {
+  stripe = new Stripe(STRIPE_SECRET_KEY, {
+    apiVersion: '2026-08-26.dahlia',
+  });
+}
 
-function getStripeProductMap(): Record<string, string> {
+export function getStripeProductMap(): Record<string, string> {
   const envMap = (process.env.NEXT_PUBLIC_STRIPE_PRODUCT_MAP ||
     process.env.STRIPE_PRODUCT_MAP ||
     '{}').trim();
@@ -25,7 +28,7 @@ function getStripeProductMap(): Record<string, string> {
   };
 }
 
-function resolveEntitlementFromSession(session: Stripe.Checkout.Session): string {
+export function resolveEntitlementFromSession(session: Stripe.Checkout.Session): string {
   const lineItems = session.line_items?.data || [];
   const priceId = lineItems[0]?.price?.id || '';
 
@@ -38,6 +41,23 @@ function resolveEntitlementFromSession(session: Stripe.Checkout.Session): string
   if (mapped) return mapped;
 
   return '';
+}
+
+async function resolveEntitlementFromSessionId(sessionId: string): Promise<string> {
+  if (!stripe) {
+    return '';
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['line_items'],
+    });
+
+    return resolveEntitlementFromSession(session);
+  } catch (err) {
+    console.error('[stripe webhook] failed to retrieve session line items:', err);
+    return '';
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -56,7 +76,7 @@ export async function POST(req: NextRequest) {
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(body, signature, STRIPE_WEBHOOK_SECRET);
+    event = stripe!.webhooks.constructEvent(body, signature, STRIPE_WEBHOOK_SECRET);
   } catch (err: any) {
     console.error('[stripe webhook] signature verification failed:', err.message);
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
@@ -81,7 +101,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No customer email' }, { status: 400 });
   }
 
-  const entitlementKey = resolveEntitlementFromSession(session);
+  let entitlementKey = resolveEntitlementFromSession(session);
+  if (!entitlementKey) {
+    entitlementKey = await resolveEntitlementFromSessionId(session.id);
+  }
+
   if (!entitlementKey) {
     console.warn('[stripe webhook] unmapped price for session:', session.id);
     return NextResponse.json({ received: true });

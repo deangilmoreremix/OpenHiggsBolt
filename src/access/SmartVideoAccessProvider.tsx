@@ -14,7 +14,11 @@ interface SmartVideoAccessContextValue {
   isAuthenticatedUnpaid: boolean;
   isSignedOut: boolean;
   isSignedIn: boolean | undefined;
-  requireEntitlement: (entitlement: string, onAllowed: () => void, onDenied?: () => void) => void;
+  requireEntitlement: <T>(
+    entitlement: string,
+    onAllowed: () => T | Promise<T>,
+    onDenied?: () => void
+  ) => Promise<T | undefined>;
   openUpgradeModal: (source?: string) => void;
   restoreAccess: (email: string) => Promise<{ status: string; message?: string }>;
   upgradeModal: { isOpen: boolean; source: string };
@@ -22,6 +26,8 @@ interface SmartVideoAccessContextValue {
 }
 
 const SmartVideoAccessContext = createContext<SmartVideoAccessContextValue | null>(null);
+
+export { SmartVideoAccessContext };
 
 export function SmartVideoAccessProvider({ children }: { children: React.ReactNode }) {
   const { isSignedIn, isLoaded } = useAuth();
@@ -86,12 +92,17 @@ export function SmartVideoAccessProvider({ children }: { children: React.ReactNo
   const isSignedInBoolean = Boolean(isSignedIn);
 
   const requireEntitlement = useCallback(
-    (entitlement: string, onAllowed: () => void, onDenied?: () => void) => {
+    async function requireEntitlement<T>(
+      entitlement: string,
+      onAllowed: () => T | Promise<T>,
+      onDenied?: () => void
+    ): Promise<T | undefined> {
       if (isPaid) {
-        onAllowed();
+        return await onAllowed();
       } else {
         onDenied?.();
         setUpgradeModal({ isOpen: true, source: entitlement });
+        return undefined;
       }
     },
     [isPaid, setUpgradeModal]
@@ -139,6 +150,31 @@ export function SmartVideoAccessProvider({ children }: { children: React.ReactNo
         setUpgradeModal,
       }}
     >
+      {children}
+    </SmartVideoAccessContext.Provider>
+  );
+}
+
+export function NoClerkSmartVideoAccessProvider({ children }: { children: React.ReactNode }) {
+  const emptyContext: SmartVideoAccessContextValue = {
+    accessResult: { state: 'signed_out' },
+    accessState: null,
+    isLoading: false,
+    isPaid: false,
+    isAuthenticatedUnpaid: false,
+    isSignedOut: true,
+    isSignedIn: false,
+    requireEntitlement: async (_entitlement, onAllowed) => {
+      return await onAllowed();
+    },
+    openUpgradeModal: () => {},
+    restoreAccess: async () => ({ status: 'error', message: 'Clerk is not configured.' }),
+    upgradeModal: { isOpen: false, source: 'default' },
+    setUpgradeModal: () => {},
+  };
+
+  return (
+    <SmartVideoAccessContext.Provider value={emptyContext}>
       {children}
     </SmartVideoAccessContext.Provider>
   );

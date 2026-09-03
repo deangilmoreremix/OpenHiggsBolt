@@ -4,7 +4,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { headers } from 'next/headers';
 import { getLocaleConfig } from '@/lib/locales';
 import GlobalModalDropBridge from '@/components/GlobalModalDropBridge';
-import { SmartVideoAccessProvider } from '@/access/SmartVideoAccessProvider';
+import { SmartVideoAccessProvider, NoClerkSmartVideoAccessProvider } from '@/access/SmartVideoAccessProvider';
 
 const inter = Inter({
   variable: "--font-inter",
@@ -36,39 +36,46 @@ export default async function RootLayout({ children }) {
     </html>
   );
 
-  const clerkTree = isClerkEnabled ? <ClerkProvider
-    appearance={{
-      variables: {
-        colorPrimary: '#22d3ee',
-        colorBackground: '#050505',
-        colorInputBackground: 'rgba(255,255,255,0.04)',
-        colorInputText: '#ffffff',
-        colorText: '#ffffff',
-        colorTextSecondary: 'rgba(255,255,255,0.65)',
-        colorNeutral: 'rgba(255,255,255,0.1)',
-        borderRadius: '0.75rem',
-        fontFamily: 'Inter, sans-serif',
-      },
-      elements: {
-        card: 'landing-card',
-        formButtonPrimary:
-          'bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold hover:opacity-90',
-        formFieldInput:
-          'bg-white/5 border border-white/10 text-white placeholder:text-white/40',
-        formFieldLabel: 'text-white/80',
-        formFieldInputShowPasswordButton:
-          'text-white/70 hover:text-white hover:bg-white/10 rounded-md',
-        formFieldInputShowPasswordIcon: 'text-white/70 hover:text-white',
-        footerActionLink: 'text-cyan-300 hover:text-cyan-200',
-        identityPreviewText: 'text-white',
-        identityPreviewEditButton: 'text-cyan-300',
-      },
-    }}
-  >{tree}</ClerkProvider> : tree;
-
-  return (
-    <SmartVideoAccessProvider>
-      {clerkTree}
-    </SmartVideoAccessProvider>
+  const accessProvider = isClerkEnabled ? SmartVideoAccessProvider : NoClerkSmartVideoAccessProvider;
+  const content = isClerkEnabled ? (
+    <ClerkProvider
+      appearance={{
+        variables: {
+          colorPrimary: '#22d3ee',
+          colorBackground: '#050505',
+          colorInputBackground: 'rgba(255,255,255,0.04)',
+          colorInputText: '#ffffff',
+          colorText: '#ffffff',
+          colorTextSecondary: 'rgba(255,255,255,0.65)',
+          colorNeutral: 'rgba(255,255,255,0.1)',
+          borderRadius: '0.75rem',
+          fontFamily: 'Inter, sans-serif',
+        },
+        elements: {
+          card: 'landing-card',
+          formButtonPrimary:
+            'bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold hover:opacity-90',
+          formFieldInput:
+            'bg-white/5 border border-white/10 text-white placeholder:text-white/40',
+          formFieldLabel: 'text-white/80',
+          formFieldInputShowPasswordButton:
+            'text-white/70 hover:text-white hover:bg-white/70 rounded-md',
+          formFieldInputShowPasswordIcon: 'text-white/70 hover:text-white',
+          footerActionLink: 'text-cyan-300 hover:text-cyan-200',
+          identityPreviewText: 'text-white',
+          identityPreviewEditButton: 'text-cyan-300',
+        },
+      }}
+    >
+      <accessProvider>
+        {tree}
+      </accessProvider>
+    </ClerkProvider>
+  ) : (
+    <accessProvider>
+      {tree}
+    </accessProvider>
   );
+
+  return content;
 }
