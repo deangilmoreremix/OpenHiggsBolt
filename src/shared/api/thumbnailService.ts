@@ -9,43 +9,11 @@ function getSupabaseUrl(): string | undefined {
 }
 
 const SUPABASE_URL = getSupabaseUrl()
-const GENERATE_FUNCTION = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/generate-thumbnail` : '/.netlify/functions/generate-thumbnail'
-const REFINE_FUNCTION = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/refine-thumbnail` : '/.netlify/functions/refine-thumbnail'
-
-function getUserOpenAiKey(): string {
-  if (typeof window !== 'undefined') {
-    const w = window as unknown as { __OPENAI_KEY__?: string }
-    const fromGlobal = w.__OPENAI_KEY__
-    if (fromGlobal && fromGlobal.trim()) return fromGlobal.trim()
-    try {
-      const fromStorage = window.localStorage?.getItem('openai_key')
-      if (fromStorage && fromStorage.trim()) return fromStorage.trim()
-    } catch {
-      // localStorage may be unavailable
-    }
-  }
-  return ''
-}
-
-function getMuapiKey(): string {
-  if (typeof window !== 'undefined') {
-    try {
-      return window.localStorage?.getItem('muapi_key') || ''
-    } catch {
-      return ''
-    }
-  }
-  return ''
-}
 
 async function postToEdgeFunction(url: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  const userKey = getUserOpenAiKey()
-  if (userKey) headers['x-openai-key'] = userKey
-
   const response = await fetch(url, {
     method: 'POST',
-    headers,
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
 
@@ -97,13 +65,12 @@ export interface ThumbnailRefineResult {
 }
 
 /**
- * Generate thumbnail(s) via the Supabase Edge Function proxy.
- * The Edge Function holds the OpenAI API key server-side; the user's BYOK
- * key is forwarded via x-openai-key header. No key is exposed to the browser.
+ * Generate thumbnail(s) via the server-side proxy.
+ * The client never receives or persists raw API keys.
  */
 export async function generateThumbnail(params: ThumbnailGenerateParams): Promise<ThumbnailGenerateResult[]> {
-  const muapiKey = getMuapiKey()
   const body: Record<string, unknown> = {
+    action: 'generate',
     prompt: params.prompt,
     model: params.model || 'gpt-image-2',
     aspect_ratio: params.aspectRatio || '16:9',
@@ -114,7 +81,6 @@ export async function generateThumbnail(params: ThumbnailGenerateParams): Promis
     quality: params.quality || 'medium',
     ...(params.templateId ? { template_id: params.templateId, template_values: params.templateValues || {} } : {}),
     ...(params.referenceUrls?.length ? { reference_urls: params.referenceUrls } : {}),
-    ...(muapiKey ? { muapi_key: muapiKey } : {}),
   }
 
   if (params.imageUrl) {
@@ -122,7 +88,7 @@ export async function generateThumbnail(params: ThumbnailGenerateParams): Promis
     body.strength = params.strength ?? 0.6
   }
 
-  const data = await postToEdgeFunction(GENERATE_FUNCTION, body)
+  const data = await postToEdgeFunction('/api/proxy/thumbnail-generate', body)
 
   const results: ThumbnailGenerateResult[] = []
   const urls = data.urls || data.images || data.outputs || []
@@ -152,21 +118,20 @@ export async function generateThumbnail(params: ThumbnailGenerateParams): Promis
 }
 
 /**
- * Refine an existing thumbnail image via the Supabase Edge Function proxy.
+ * Refine an existing thumbnail image via the server-side proxy.
  */
 export async function refineThumbnail(params: ThumbnailRefineParams): Promise<ThumbnailRefineResult[]> {
-  const muapiKey = getMuapiKey()
   const body: Record<string, unknown> = {
+    action: 'refine',
     image_url: params.imageUrl,
     prompt: params.prompt,
     model: params.model || 'gpt-image-2',
     aspect_ratio: params.aspectRatio || '16:9',
     n: Math.min(Math.max(params.n || 1, 1), 4),
     strength: params.strength ?? 0.5,
-    ...(muapiKey ? { muapi_key: muapiKey } : {}),
   }
 
-  const data = await postToEdgeFunction(REFINE_FUNCTION, body)
+  const data = await postToEdgeFunction('/api/proxy/thumbnail-generate', body)
 
   const results: ThumbnailRefineResult[] = []
   const urls = data.urls || data.images || data.outputs || []
@@ -193,7 +158,7 @@ export async function refineThumbnail(params: ThumbnailRefineParams): Promise<Th
 
 /**
  * AI-suggested thumbnail templates for the current post context.
- * Calls the Edge Function which uses the user's OpenAI key to generate suggestions.
+ * Calls the server-side proxy which forwards the request with the user's key.
  */
 export async function suggestThumbnails(
   title: string,
@@ -209,18 +174,9 @@ export async function suggestThumbnails(
     referenceLabel: string
   }[]
 > {
-  const SUPABASE_URL = getSupabaseUrl()
-  const SUGGEST_FUNCTION = SUPABASE_URL
-    ? `${SUPABASE_URL}/functions/v1/suggest-thumbnails`
-    : '/.netlify/functions/suggest-thumbnails'
-
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  const userKey = getUserOpenAiKey()
-  if (userKey) headers['x-openai-key'] = userKey
-
-  const response = await fetch(SUGGEST_FUNCTION, {
+  const response = await fetch('/api/proxy/openai-enhance', {
     method: 'POST',
-    headers,
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ title, description, platform }),
   })
 

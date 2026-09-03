@@ -1,6 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getDesignAgentApiKey } from '../../../design-agent/lib/auth';
 import { getMuApiKeyFromRequest } from '../../lib/auth';
+import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
+import { ENTITLEMENTS } from '@/access/entitlements';
+import { safeApiJson } from '@/lib/safeApiResponse';
 
 const BASE = 'https://api.muapi.ai/api/v1/creative-agent';
 
@@ -25,11 +28,25 @@ async function resolveKey(request) {
         return await getMuApiKeyFromRequest(request);
     } catch {
         // Fall back to Clerk session (Next.js app)
-        return await getDesignAgentApiKey();
+        return await getDesignAgentApiKey(request);
     }
 }
 
+async function requireAuthAndEntitlement(request) {
+    const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
+    if (!entitlementCheck.allowed) {
+        if (entitlementCheck.status === 401) {
+            return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+        }
+        return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
+    }
+    return null;
+}
+
 export async function GET(request, { params }) {
+    const errorResponse = await requireAuthAndEntitlement(request);
+    if (errorResponse) return errorResponse;
+
     const slug = await params;
     const pathSegments = slug.path || [];
     const path = pathSegments.join('/');
@@ -53,15 +70,22 @@ export async function GET(request, { params }) {
             method: 'GET',
             signal: AbortSignal.timeout(30000),
         });
-        const data = await response.json();
+        const data = await safeApiJson(response);
         return NextResponse.json(data, { status: response.status });
     } catch (error) {
-        console.error(`[creative-agent proxy GET ERROR] ${targetUrl}:`, error.message);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
 
 export async function POST(request, { params }) {
+    const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
+    if (!entitlementCheck.allowed) {
+        if (entitlementCheck.status === 401) {
+            return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+        }
+        return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
+    }
+
     const slug = await params;
     const pathSegments = slug.path || [];
     const path = pathSegments.join('/');
@@ -95,15 +119,22 @@ export async function POST(request, { params }) {
             body,
             signal: AbortSignal.timeout(120000),
         });
-        const data = await response.json();
+        const data = await safeApiJson(response);
         return NextResponse.json(data, { status: response.status });
     } catch (error) {
-        console.error(`[creative-agent proxy POST ERROR] ${targetUrl}:`, error.message);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
 
 export async function PATCH(request, { params }) {
+    const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
+    if (!entitlementCheck.allowed) {
+        if (entitlementCheck.status === 401) {
+            return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+        }
+        return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
+    }
+
     const slug = await params;
     const pathSegments = slug.path || [];
     const path = pathSegments.join('/');
@@ -129,15 +160,22 @@ export async function PATCH(request, { params }) {
             body: JSON.stringify(body),
             signal: AbortSignal.timeout(30000),
         });
-        const data = await response.json();
+        const data = await safeApiJson(response);
         return NextResponse.json(data, { status: response.status });
     } catch (error) {
-        console.error(`[creative-agent proxy PATCH ERROR] ${targetUrl}:`, error.message);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
 
 export async function DELETE(request, { params }) {
+    const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
+    if (!entitlementCheck.allowed) {
+        if (entitlementCheck.status === 401) {
+            return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+        }
+        return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
+    }
+
     const slug = await params;
     const pathSegments = slug.path || [];
     const path = pathSegments.join('/');
@@ -156,11 +194,10 @@ export async function DELETE(request, { params }) {
     }
 
     try {
-        const response = await fetch(targetUrl, { method: 'DELETE', headers });
-        const data = await response.json();
+        const response = await fetch(targetUrl, { method: 'DELETE', headers, signal: AbortSignal.timeout(30000) });
+        const data = await safeApiJson(response);
         return NextResponse.json(data, { status: response.status });
     } catch (error) {
-        console.error(`[creative-agent proxy DELETE ERROR] ${targetUrl}:`, error.message);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

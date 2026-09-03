@@ -1,5 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { isValidStoryboardModel, DEFAULT_STORYBOARD_MODEL_ID } from '@/apps/storyboard/models';
+import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
+import { ENTITLEMENTS } from '@/access/entitlements';
 
 const MUAPI_BASE = process.env.MUAPI_BASE_URL || 'https://api.muapi.ai'
 const STORYBOARD_MODEL = process.env.STORYBOARD_MODEL || 'openai-sora-2-pro-storyboard'
@@ -72,6 +74,7 @@ async function proxy(request: Request, path: string): Promise<NextResponse> {
   try {
     const upstream = await fetch(targetUrl, {
       ...init,
+      signal: AbortSignal.timeout(60000),
     })
 
     const text = await upstream.text()
@@ -94,6 +97,14 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ path?: string[] }> }
 ) {
+  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
+  if (!entitlementCheck.allowed) {
+    if (entitlementCheck.status === 401) {
+      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+    }
+    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
+  }
+
   try {
     const { path = [] } = await params
     if (path.length > 0 && path[0] === 'frame') {
@@ -140,6 +151,7 @@ export async function POST(
       method: 'POST',
       headers: authHeaders(key),
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(120000),
     })
 
     const text = await res.text()
@@ -193,6 +205,7 @@ async function generateFrame(req: NextRequest) {
       method: 'POST',
       headers: authHeaders(key),
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(120000),
     })
 
     const text = await res.text()
@@ -236,6 +249,7 @@ export async function GET(
     const res = await fetch(`${MUAPI_BASE}/api/v1/predictions/${id}/result`, {
       method: 'GET',
       headers: authHeaders(key),
+      signal: AbortSignal.timeout(30000),
     })
 
     const text = await res.text()

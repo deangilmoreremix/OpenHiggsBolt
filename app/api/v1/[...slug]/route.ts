@@ -1,23 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getMuApiKeyFromRequest } from '../lib/auth'
+import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
+import { ENTITLEMENTS } from '@/access/entitlements'
+import { safeApiJson } from '@/lib/safeApiResponse'
+
+const GENERATION_GET_PATTERNS = [
+  /\/gpt-image-2$/,
+  /\/text-to-video$/,
+  /\/image-generation$/,
+  /\/video-generation$/,
+  /\/predictions\/[^/]+\/result$/,
+]
+
+function isGenerationGet(path: string): boolean {
+  return GENERATION_GET_PATTERNS.some((re) => re.test(path))
+}
 
 const BASE = 'https://api.muapi.ai/api/v1'
 
-function getDemoKey(): string | null {
-  if (typeof process !== 'undefined') {
-    return process.env.MUAPI_DEMO_KEY || null
-  }
-  return null
-}
-
 export async function GET(req: NextRequest, { params }: { params: { slug: string[] } }) {
   const path = '/' + (params.slug || []).join('/')
+
+  if (isGenerationGet(path)) {
+    const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
+    if (!entitlementCheck.allowed) {
+      if (entitlementCheck.status === 401) {
+        return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+      }
+      return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
+    }
+  }
+
   try {
     let key: string
     try {
       key = await getMuApiKeyFromRequest(req)
     } catch {
-      key = getDemoKey() || ''
+      return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 })
     }
     if (!key) {
       return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 })
@@ -29,7 +48,7 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
       headers: { 'x-api-key': key },
       signal: AbortSignal.timeout(60000),
     })
-    const data = await res.json()
+    const data = await safeApiJson(res)
     return NextResponse.json(data, { status: res.status })
   } catch (err: any) {
     const status = err instanceof Response ? err.status : 500
@@ -40,12 +59,21 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
 
 export async function POST(req: NextRequest, { params }: { params: { slug: string[] } }) {
   const path = '/' + (params.slug || []).join('/')
+
+  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
+  if (!entitlementCheck.allowed) {
+    if (entitlementCheck.status === 401) {
+      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+    }
+    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
+  }
+
   try {
     let key: string
     try {
       key = await getMuApiKeyFromRequest(req)
     } catch {
-      key = getDemoKey() || ''
+      return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 })
     }
     if (!key) {
       return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 })
@@ -63,7 +91,7 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
       body,
       signal: AbortSignal.timeout(120000),
     })
-    const data = await res.json()
+    const data = await safeApiJson(res)
     return NextResponse.json(data, { status: res.status })
   } catch (err: any) {
     const status = err instanceof Response ? err.status : 500

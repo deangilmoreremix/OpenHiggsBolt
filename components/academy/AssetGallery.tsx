@@ -185,13 +185,17 @@ function resolveMediaPaths(md: string, track: string): string {
 /** Remove intra-repo navigation links so the imported lesson reads standalone. */
 function stripCourseNav(md: string): string {
   return md
-    .replace(/\[←[^\]]*\]\([^)]*\)/g, '')
-    .replace(/\n\s*Next:.*$/gm, '')
-    .replace(/\n\s*\[Track overview\].*$/gm, '')
-    .replace(/\[`templates\/[^]]*`\]\([^)]*\)/g, '$1')
-    .replace(/\[Module \d+[^\]]*\]\([^)]*\)/g, (_m, _g) => _m.replace(/\[([^\]]*)\]\([^)]*\)/, '$1'))
-    .replace(/\[Track Overview\]\(README\.md\)/g, 'Track Overview')
-    .replace(/\[(\d+[^\]]*)\]\((\d+[^)]+)\)/g, '$1')
+    // Remove entire navigation lines (← prev, Next:, Track overview/Overview)
+    .replace(/^.*?(?:←|Next:|Track\s+overview|Track\s+Overview).*$/gm, '')
+    // Replace [`file.md`](file.md) with just the filename
+    .replace(/\[`([^`]+)`\]\([^)]*\)/g, '$1')
+    // Replace [ROADMAP.md](../../ROADMAP.md) with plain text
+    .replace(/\[ROADMAP\.md\]\(\.\.\/\.\/ROADMAP\.md\)/g, 'ROADMAP.md')
+    // Replace [Module N: ...](...) with just the text
+    .replace(/\[Module \d+[^\]]*\]\([^)]*\)/g, (_m) => _m.replace(/\[([^\]]*)\]\([^)]*\)/, '$1'))
+    // Replace any remaining [text](N-slug.md) or [text](../N-slug.md) with just text
+    .replace(/\[([^\]]+)\]\([^)]*\.md\)/g, '$1')
+    // Remove Prerequisites lines
     .replace(/\*\*Prerequisites:\*\*.*$/gm, '');
 }
 

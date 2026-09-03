@@ -1,15 +1,25 @@
 import { NextResponse } from 'next/server';
+import { safeApiJson } from '@/lib/safeApiResponse';
+import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
+import { ENTITLEMENTS } from '@/access/entitlements';
 
 const MUAPI_BASE = 'https://api.muapi.ai';
+
+const GENERATION_GET_PATTERNS = [
+  /\/gpt-image-2$/,
+  /\/text-to-video$/,
+  /\/image-generation$/,
+  /\/video-generation$/,
+  /\/predictions\/[^/]+\/result$/,
+];
+
+function isGenerationGet(path) {
+  return GENERATION_GET_PATTERNS.some((re) => re.test(path));
+}
 
 function getApiKey(request) {
     const headerKey = request.headers.get('x-api-key');
     if (headerKey) return headerKey;
-    
-    // Demo mode fallback: use server-side sandbox key when no user key is provided
-    if (typeof process !== 'undefined' && process.env.MUAPI_DEMO_KEY) {
-        return process.env.MUAPI_DEMO_KEY;
-    }
     
     // Cookie-based auth removed for security (CWE-522)
     return null;
@@ -35,15 +45,29 @@ export async function GET(request, { params }) {
     const pathSegments = slug.path || [];
     const path = pathSegments.join('/');
 
+    if (isGenerationGet(path)) {
+      const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
+      if (!entitlementCheck.allowed) {
+        if (entitlementCheck.status === 401) {
+          return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+        }
+        return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
+      }
+    }
+
     const { search } = new URL(request.url);
     const targetUrl = `${MUAPI_BASE}/api/v1/${path}${search}`;
 
     const apiKey = getApiKey(request);
+    if (!apiKey) {
+        return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 });
+    }
+
     const headers = buildUpstreamHeaders(request, apiKey);
 
     try {
         const response = await fetch(targetUrl, { headers, method: 'GET', signal: AbortSignal.timeout(60000) });
-        const data = await response.json();
+        const data = await safeApiJson(response);
         return NextResponse.json(data, { status: response.status });
     } catch (error) {
         // Never echo the upstream error body to the client; surface a generic
@@ -61,16 +85,28 @@ export async function POST(request, { params }) {
     const pathSegments = slug.path || [];
     const path = pathSegments.join('/');
 
+    const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
+    if (!entitlementCheck.allowed) {
+      if (entitlementCheck.status === 401) {
+        return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+      }
+      return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
+    }
+
     const { search } = new URL(request.url);
     const targetUrl = `${MUAPI_BASE}/api/v1/${path}${search}`;
 
     const apiKey = getApiKey(request);
+    if (!apiKey) {
+        return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 });
+    }
+
     const headers = buildUpstreamHeaders(request, apiKey);
 
     try {
         const body = await request.arrayBuffer();
         const response = await fetch(targetUrl, { method: 'POST', headers, body, signal: AbortSignal.timeout(60000) });
-        const data = await response.json();
+        const data = await safeApiJson(response);
         return NextResponse.json(data, { status: response.status });
     } catch (error) {
         const isAbort = error?.name === 'AbortError' || error?.name === 'TimeoutError';

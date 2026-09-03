@@ -63,7 +63,8 @@ function TemplateModal({
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-2xl border border-white/10 bg-[#0a0a0a] p-5"
+        className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-2xl p-5"
+        style={panels.card}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between gap-3">
@@ -71,22 +72,24 @@ function TemplateModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/70 hover:bg-white/10"
+            className="rounded-md px-2 py-1 text-xs hover:bg-white/10"
+            style={buttons.ghost}
           >
             Close
           </button>
         </div>
         {loading ? (
-          <div className="py-10 text-center text-sm text-white/40">Loading template…</div>
+          <div className="py-10 text-center text-sm" style={{ color: semantic.textSecondary }}>Loading template…</div>
         ) : (
           <div className="text-white">
-            <LessonViewer markdown={md ?? ''} />
+            <LessonViewer markdown={md ?? ''} track={track} />
           </div>
         )}
         <div className="mt-4 border-t border-white/10 pt-4">
           <a
             href="/studio/video"
-            className="inline-flex items-center gap-2 rounded-lg border border-[#22d3ee]/30 bg-[#22d3ee]/15 px-4 py-2 text-sm font-semibold text-[#22d3ee] hover:bg-[#22d3ee]/25"
+            className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold hover:bg-[#22d3ee]/25"
+            style={{ ...buttons.primary, background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: '#22d3ee' }}
           >
             <SparkIcon /> Use this template in SmartVideo GO AI
           </a>
@@ -134,170 +137,184 @@ export default function AcademyCourse({ tracks }: { tracks: AcademyTrack[] }) {
   const ugcTemplates = isUgc ? academyTemplates : [];
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#050505]/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
+    <div className="min-h-screen" style={appWrapper}>
+      <header className="sticky top-0 z-30 border-b backdrop-blur-md" style={panels.subHeader}>
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white">
               <SparkIcon />
             </div>
             <div>
               <h1 className="text-sm font-extrabold leading-tight">SmartVideo GO AI Academy</h1>
-              <p className="text-[11px] text-white/40">{tracks.length} course tracks · rebranded for SmartVideo GO AI</p>
+              <p className="text-[11px]" style={{ color: semantic.textSecondary }}>
+                {tracks.length} course tracks · rebranded for SmartVideo GO AI
+              </p>
             </div>
           </div>
           <a
             href="/studio/video"
-            className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/70 hover:bg-white/10"
+            className="rounded-lg px-3 py-1.5 text-xs font-semibold hover:bg-white/10 hover:text-white"
+            style={buttons.ghost}
           >
             Open Studio →
           </a>
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-0 md:grid-cols-[240px_1fr]">
-        {/* Sidebar */}
-        <aside className="border-b border-white/10 md:max-h-[calc(100vh-57px)] md:overflow-y-auto md:border-b-0 md:border-r">
-          <div className="p-3">
-            <span className="px-2 text-[11px] font-bold uppercase tracking-wide text-white/40">Tracks</span>
-            <nav className="mt-2 space-y-1">
-              {tracks.map((t) => (
-                <div key={t.slug}>
-                  <button
-                    onClick={() => selectTrack(t.slug)}
-                    className={cx(
-                      'w-full rounded-lg px-3 py-2 text-left text-sm transition-colors',
-                      t.slug === activeTrackSlug
-                        ? 'bg-[#22d3ee]/15 text-[#22d3ee]'
-                        : 'text-white/60 hover:bg-white/5 hover:text-white',
-                    )}
-                  >
-                    {t.title}
-                    <span className="ml-1 text-[10px] text-white/30">{t.lessons.length}L · {t.templates.length}T</span>
-                  </button>
-                  {t.slug === activeTrackSlug && (
-                    <div className="ml-2 mt-1 space-y-0.5 border-l border-white/10 pl-2">
-                      {t.lessons.map((l, i) => (
-                        <button
-                          key={l.slug}
-                          onClick={() => {
-                            setActiveLessonSlug(l.slug);
-                            setStep('learn');
-                          }}
-                          className={cx(
-                            'block w-full rounded px-2 py-1 text-left text-[12px] transition-colors',
-                            l.slug === activeLessonSlug
-                              ? 'text-[#22d3ee]'
-                              : 'text-white/50 hover:text-white',
-                          )}
-                        >
-                          {i === 0 ? '★ ' : `${i} `}
-                          {l.title}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </nav>
-          </div>
-        </aside>
-
-        {/* Main */}
-        <main className="p-4 md:p-6">
-          <div className="mb-4">
-            <p className="text-[11px] uppercase tracking-wide text-white/40">{activeTrack.title}</p>
-            <h2 className="text-xl font-extrabold">
-              {activeTrack.lessons.find((l) => l.slug === activeLessonSlug)?.title ?? 'Lesson'}
-            </h2>
-          </div>
-
-          {/* Step switcher */}
-          <div className="mb-5 flex flex-wrap gap-2">
-            {STEP_META.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => setStep(s.id)}
-                className={cx(
-                  'group flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition-colors',
-                  step === s.id
-                    ? 'border-[#22d3ee]/40 bg-[#22d3ee]/10'
-                    : 'border-white/10 bg-white/[0.02] hover:bg-white/5',
-                )}
-              >
-                <span
-                  className={cx(
-                    'flex h-6 w-6 items-center justify-center rounded-md text-[11px] font-bold',
-                    step === s.id ? 'bg-[#22d3ee] text-black' : 'bg-white/10 text-white/60',
-                  )}
-                >
-                  {s.id === 'learn' ? 'L' : s.id === 'see' ? 'S' : 'C'}
-                </span>
-                <span>
-                  <span className="block text-xs font-bold text-white">{s.label}</span>
-                  <span className="block text-[10px] text-white/40">{s.blurb}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-
-          {step === 'learn' && (
-            <AcademyCard>
-              {lessonLoading ? (
-                <div className="py-10 text-center text-sm text-white/40">Loading lesson…</div>
-              ) : (
-                <LessonViewer markdown={lessonMd ?? ''} />
-              )}
-            </AcademyCard>
-          )}
-
-          {step === 'see' && (
-            <div>
-              {ugcAssets.length ? (
-                <AssetGallery assets={ugcAssets} />
-              ) : (
-                <EmptyState text="No example media bundled for this track yet." />
-              )}
-            </div>
-          )}
-
-          {step === 'create' && (
-            <div className="space-y-5">
-              {isUgc ? (
-                ugcTemplates.map((tpl) => (
-                  <div key={tpl.id} className="space-y-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-bold text-white">{tpl.title}</span>
-                      {tpl.tags.slice(0, 4).map((tag) => (
-                        <Pill key={tag}>#{tag}</Pill>
-                      ))}
-                    </div>
-                    <TemplateView template={tpl} />
-                  </div>
-                ))
-              ) : activeTrack.templates.length ? (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {activeTrack.templates.map((tpl) => (
+      <div className="mx-auto max-w-7xl px-6 py-8">
+        <div className="grid grid-cols-1 gap-0 md:grid-cols-[240px_1fr]">
+          {/* Sidebar */}
+          <aside className="border-b border-white/10 md:max-h-[calc(100vh-57px)] md:overflow-y-auto md:border-b-0 md:border-r">
+            <div className="p-3">
+              <span className="px-2 text-[11px] font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Tracks</span>
+              <nav className="mt-2 space-y-1">
+                {tracks.map((t) => (
+                  <div key={t.slug}>
                     <button
-                      key={tpl.slug}
-                      onClick={() => setModalTemplate({ slug: tpl.slug, title: tpl.title })}
-                      className="rounded-2xl border border-white/10 bg-[#0a0a0a] p-4 text-left transition-colors hover:border-[#22d3ee]/40"
+                      onClick={() => selectTrack(t.slug)}
+                      className={cx(
+                        'w-full rounded-lg px-3 py-2 text-left text-sm transition-colors',
+                      )}
+                      style={
+                        t.slug === activeTrackSlug
+                          ? { background: semantic.activeAccent, color: colors.primary }
+                          : { color: semantic.textSecondary }
+                      }
                     >
-                      <span className="flex items-center gap-2 text-sm font-bold text-white">
-                        <SparkIcon /> {tpl.title}
-                      </span>
-                      <span className="mt-1 block text-[11px] text-white/40">
-                        Reusable SmartVideo GO AI template — click to open
-                      </span>
+                      {t.title}
+                      <span className="ml-1 text-[10px]" style={{ color: semantic.textMuted }}>{t.lessons.length}L · {t.templates.length}T</span>
                     </button>
-                  ))}
-                </div>
-              ) : (
-                <EmptyState text="No interactive template for this track." />
-              )}
+                    {t.slug === activeTrackSlug && (
+                      <div className="ml-2 mt-1 space-y-0.5 border-l border-white/10 pl-2">
+                        {t.lessons.map((l, i) => (
+                          <button
+                            key={l.slug}
+                            onClick={() => {
+                              setActiveLessonSlug(l.slug);
+                              setStep('learn');
+                            }}
+                            className={cx(
+                              'block w-full rounded px-2 py-1 text-left text-[12px] transition-colors',
+                            )}
+                            style={{
+                              color: l.slug === activeLessonSlug ? colors.primary : semantic.textMuted,
+                            }}
+                          >
+                            {i === 0 ? '★ ' : `${i} `}
+                            {l.title}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </nav>
             </div>
-          )}
-        </main>
+          </aside>
+
+          {/* Main */}
+          <main className="p-4 md:p-6">
+            <div className="mb-4">
+              <p className="text-[11px] uppercase tracking-wide" style={{ color: semantic.textSecondary }}>{activeTrack.title}</p>
+              <h2 className="text-xl font-extrabold">
+                {activeTrack.lessons.find((l) => l.slug === activeLessonSlug)?.title ?? 'Lesson'}
+              </h2>
+            </div>
+
+            {/* Step switcher */}
+            <div className="mb-5 flex flex-wrap gap-2">
+              {STEP_META.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setStep(s.id)}
+                  className={cx(
+                    'group flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition-colors',
+                  )}
+                  style={
+                    step === s.id
+                      ? { borderColor: colors.primary, background: semantic.activeAccent }
+                      : panels.card
+                  }
+                >
+                  <span
+                    className={cx(
+                      'flex h-6 w-6 items-center justify-center rounded-md text-[11px] font-bold',
+                    )}
+                    style={
+                      step === s.id
+                        ? { background: colors.primary, color: 'black' }
+                        : { background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }
+                    }
+                  >
+                    {s.id === 'learn' ? 'L' : s.id === 'see' ? 'S' : 'C'}
+                  </span>
+                  <span>
+                    <span className="block text-xs font-bold text-white">{s.label}</span>
+                    <span className="block text-[10px]" style={{ color: semantic.textSecondary }}>{s.blurb}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {step === 'learn' && (
+              <AcademyCard>
+                {lessonLoading ? (
+                  <div className="py-10 text-center text-sm" style={{ color: semantic.textSecondary }}>Loading lesson…</div>
+                ) : (
+                  <LessonViewer markdown={lessonMd ?? ''} track={activeTrack.slug} />
+                )}
+              </AcademyCard>
+            )}
+
+            {step === 'see' && (
+              <div>
+                {ugcAssets.length ? (
+                  <AssetGallery assets={ugcAssets} />
+                ) : (
+                  <EmptyState text="No example media bundled for this track yet." />
+                )}
+              </div>
+            )}
+
+            {step === 'create' && (
+              <div className="space-y-5">
+                {isUgc ? (
+                  ugcTemplates.map((tpl) => (
+                    <div key={tpl.id} className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-bold text-white">{tpl.title}</span>
+                        {tpl.tags.slice(0, 4).map((tag) => (
+                          <Pill key={tag}>#{tag}</Pill>
+                        ))}
+                      </div>
+                      <TemplateView template={tpl} />
+                    </div>
+                  ))
+                ) : activeTrack.templates.length ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {activeTrack.templates.map((tpl) => (
+                      <button
+                        key={tpl.slug}
+                        onClick={() => setModalTemplate({ slug: tpl.slug, title: tpl.title })}
+                        className="rounded-2xl p-4 text-left transition-colors hover:border-[#22d3ee]/40"
+                        style={panels.card}
+                      >
+                        <span className="flex items-center gap-2 text-sm font-bold text-white">
+                          <SparkIcon /> {tpl.title}
+                        </span>
+                        <span className="mt-1 block text-[11px]" style={{ color: semantic.textSecondary }}>
+                          Reusable SmartVideo GO AI template — click to open
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState text="No interactive template for this track." />
+                )}
+              </div>
+            )}
+          </main>
+        </div>
       </div>
 
       {modalTemplate && (
@@ -314,7 +331,7 @@ export default function AcademyCourse({ tracks }: { tracks: AcademyTrack[] }) {
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center text-sm text-white/40">
+    <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center text-sm" style={{ color: semantic.textSecondary }}>
       {text}
     </div>
   );

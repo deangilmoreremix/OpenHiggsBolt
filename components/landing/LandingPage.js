@@ -1,10 +1,88 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import StandaloneShell from '@/components/StandaloneShell';
 import { PRODUCT_NAME, NAV_ITEMS, LOGOS, TESTIMONIALS, PRICING, FAQS } from './landingData';
 import SmartVideoShowcase from './SmartVideoShowcase';
 import { DemoPersonalizeProvider } from '@/shared/personalization';
+
+function PricingBuyButton() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleClick = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: 'pro_lifetime' }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.url) {
+        throw new Error(data?.error || 'Checkout failed');
+      }
+      window.location.href = data.url;
+    } catch (err) {
+      setError(err?.message || 'Something went wrong. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="mt-8">
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={loading}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-400 to-purple-500 px-6 py-4 text-lg font-black text-black shadow-lg shadow-cyan-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+      >
+        {loading ? (
+          <>
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-black/30 border-t-black" />
+            Redirecting to checkout…
+          </>
+        ) : (
+          <>
+            Buy Pro — $299
+            <span className="text-sm font-semibold text-black/70">Lifetime access</span>
+          </>
+        )}
+      </button>
+      {error && (
+        <p role="alert" className="mt-3 text-sm text-red-300">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function PricingCard({ plan }) {
+  return (
+    <div className="landing-card mx-auto mt-12 max-w-2xl rounded-3xl p-9 text-center">
+      <div className="flex items-center justify-center gap-3">
+        <h3 className="text-2xl font-bold text-white">{plan.name}</h3>
+        {plan.badge && (
+          <span className="rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 px-3 py-1 text-xs font-bold text-black">{plan.badge}</span>
+        )}
+      </div>
+      <div className="mt-5 text-5xl font-black text-white">{plan.price}</div>
+      <p className="mt-4 text-base leading-7 text-white/55">{plan.description}</p>
+      <ul className="mt-8 grid grid-cols-2 gap-x-6 gap-y-3 text-left text-sm text-white/65 sm:grid-cols-3">
+        {plan.features.map((f) => (
+          <li key={f} className="flex gap-3"><span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-cyan-300" />{f}</li>
+        ))}
+      </ul>
+      <PricingBuyButton />
+      <p className="mt-4 text-xs text-white/40">
+        One-time payment. No subscriptions. 30-day money-back guarantee.
+      </p>
+    </div>
+  );
+}
 
 export default function LandingPage({ FullStudio, AuthControls }) {
   return (
@@ -128,21 +206,7 @@ export default function LandingPage({ FullStudio, AuthControls }) {
           <h2 className="mt-4 text-4xl font-black tracking-tight md:text-5xl">One plan. Every studio. Yours for life.</h2>
         </div>
         {PRICING.map((plan) => (
-          <div key={plan.name} className="landing-card mx-auto mt-12 max-w-2xl rounded-3xl p-9 text-center">
-            <div className="flex items-center justify-center gap-3">
-              <h3 className="text-2xl font-bold text-white">{plan.name}</h3>
-              {plan.badge && (
-                <span className="rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 px-3 py-1 text-xs font-bold text-black">{plan.badge}</span>
-              )}
-            </div>
-            <div className="mt-5 text-5xl font-black text-white">{plan.price}</div>
-            <p className="mt-4 text-base leading-7 text-white/55">{plan.description}</p>
-            <ul className="mt-8 grid grid-cols-2 gap-x-6 gap-y-3 text-left text-sm text-white/65 sm:grid-cols-3">
-              {plan.features.map((f) => (
-                <li key={f} className="flex gap-3"><span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-cyan-300" />{f}</li>
-              ))}
-            </ul>
-          </div>
+          <PricingCard key={plan.name} plan={plan} />
         ))}
       </section>
 

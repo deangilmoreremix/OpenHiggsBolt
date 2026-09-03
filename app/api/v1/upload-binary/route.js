@@ -56,6 +56,7 @@ export async function POST(request) {
         const s3Response = await fetch(validatedTarget.url, {
             method: 'POST',
             body: s3FormData,
+            signal: AbortSignal.timeout(120000),
         });
 
         if (s3Response.ok || s3Response.status === 204) {

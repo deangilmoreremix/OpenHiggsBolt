@@ -1,0 +1,57 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
+import { ENTITLEMENTS } from '@/access/entitlements';
+import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer';
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+const GENERATE_FUNCTION = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/generate-thumbnail` : '/.netlify/functions/generate-thumbnail';
+const REFINE_FUNCTION = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/refine-thumbnail` : '/.netlify/functions/refine-thumbnail';
+
+async function resolveUserAndKey(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) return { userId: null, key: null, status: 401 as const };
+
+  const key = await getOpenAiKeyForUser();
+  if (!key) {
+    return { userId: null, key: null, status: 401 as const };
+  }
+
+  return { userId, key, status: 200 as const };
+}
+
+export async function POST(req: NextRequest) {
+  const { userId, key, status } = await resolveUserAndKey(req);
+  if (!userId) {
+    return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status });
+  }
+
+  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
+  if (!entitlementCheck.allowed) {
+    if (entitlementCheck.status === 401) {
+      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+    }
+    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
+  }
+
+  try {
+    const body = await req.json();
+    const action = body.action || 'generate';
+    const targetUrl = action === 'refine' ? REFINE_FUNCTION : GENERATE_FUNCTION;
+
+    const upstream = await fetch(targetUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-openai-key': key,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(120000),
+    });
+
+    const data = await upstream.json();
+    return NextResponse.json(data, { status: upstream.status });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 });
+  }
+}
