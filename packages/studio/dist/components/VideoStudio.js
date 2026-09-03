@@ -390,6 +390,31 @@ function ModelDropdown(_ref4) {
           text: "SD",
           bg: "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/25"
         };
+      case "runway":
+        return {
+          text: "RW",
+          bg: "bg-red-500/10 text-red-400 border-red-500/25"
+        };
+      case "hunyuan":
+        return {
+          text: "HY",
+          bg: "bg-orange-500/10 text-orange-400 border-orange-500/25"
+        };
+      case "pixverse":
+        return {
+          text: "PX",
+          bg: "bg-emerald-500/10 text-emerald-400 border-emerald-500/25"
+        };
+      case "lightricks":
+        return {
+          text: "LT",
+          bg: "bg-pink-500/10 text-pink-400 border-pink-500/25"
+        };
+      case "muapi":
+        return {
+          text: "MU",
+          bg: "bg-primary/10 text-primary border-primary/25"
+        };
       default:
         var name = provider ? provider.toUpperCase() : "AI";
         return {
@@ -470,7 +495,6 @@ function ModelDropdown(_ref4) {
       }), selectedModel === m.id && /*#__PURE__*/(0, _jsxRuntime.jsx)(CheckSvg, {})]
     }, m.id);
   };
-  var invertLogos = ['openai', 'blackforest', 'runway', 'ideogram', 'lightricks', 'grok'];
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     className: "flex gap-4 h-full max-h-[70vh] min-h-[350px]",
     children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {

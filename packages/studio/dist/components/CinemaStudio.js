@@ -712,6 +712,7 @@ function CinemaStudio(_ref4) {
 
   // ── Textarea auto-height ──
   var handleTextareaInput = function handleTextareaInput(e) {
+    clearStoryboardHandoffCache();
     var el = e.target;
     el.style.height = "auto";
     el.style.height = el.scrollHeight + "px";
