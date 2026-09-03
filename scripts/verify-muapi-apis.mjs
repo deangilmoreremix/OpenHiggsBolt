@@ -129,9 +129,7 @@ function reportDiff(localModels, localById, liveById) {
 }
 
 async function loadModels() {
-  const tmp = join(tmpdir(), 'muapi_models_verify.mjs')
-  copyFileSync(MODELS_SRC, tmp)
-  const mod = await import(pathToFileURL(tmp).href)
+  const mod = await import(pathToFileURL(MODELS_SRC).href)
   return mod
 }
 
