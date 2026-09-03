@@ -123,7 +123,7 @@ export default function UpgradeModal() {
         </div>
 
         <a
-          href="/#pricing"
+          href={process.env.NEXT_PUBLIC_SMARTVIDEO_GO_CHECKOUT_URL || '/#pricing'}
           className="block w-full py-3 rounded-xl bg-gradient-to-r from-cyan-400 to-purple-500 text-black font-bold text-center hover:opacity-90 transition-opacity mb-3"
         >
           Unlock SmartVideo GO

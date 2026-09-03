@@ -1,7 +1,21 @@
 import { NextResponse } from 'next/server';
 import { safeApiJson } from '@/lib/safeApiResponse';
+import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
+import { ENTITLEMENTS } from '@/access/entitlements';
 
 const MUAPI_BASE = 'https://api.muapi.ai';
+
+const GENERATION_GET_PATTERNS = [
+  /\/gpt-image-2$/,
+  /\/text-to-video$/,
+  /\/image-generation$/,
+  /\/video-generation$/,
+  /\/predictions\/[^/]+\/result$/,
+];
+
+function isGenerationGet(path) {
+  return GENERATION_GET_PATTERNS.some((re) => re.test(path));
+}
 
 function getApiKey(request) {
     const headerKey = request.headers.get('x-api-key');
@@ -30,6 +44,16 @@ export async function GET(request, { params }) {
     const slug = await params;
     const pathSegments = slug.path || [];
     const path = pathSegments.join('/');
+
+    if (isGenerationGet(path)) {
+      const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
+      if (!entitlementCheck.allowed) {
+        if (entitlementCheck.status === 401) {
+          return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+        }
+        return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
+      }
+    }
 
     const { search } = new URL(request.url);
     const targetUrl = `${MUAPI_BASE}/api/v1/${path}${search}`;
@@ -60,6 +84,14 @@ export async function POST(request, { params }) {
     const slug = await params;
     const pathSegments = slug.path || [];
     const path = pathSegments.join('/');
+
+    const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
+    if (!entitlementCheck.allowed) {
+      if (entitlementCheck.status === 401) {
+        return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+      }
+      return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
+    }
 
     const { search } = new URL(request.url);
     const targetUrl = `${MUAPI_BASE}/api/v1/${path}${search}`;

@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     const data = await safeApiJson(res)
 
     if (res.ok && data?.id) {
-      recordOwnership({ userId, sessionId: data.id });
+      await recordOwnership({ userId, sessionId: data.id });
     }
 
     return NextResponse.json(data, { status: res.status })

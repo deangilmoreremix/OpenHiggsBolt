@@ -14,17 +14,23 @@ vi.mock('@/access/resolveAccess', () => ({
 }));
 
 // Mock supabase server to avoid module resolution issues in tests
-vi.mock('@/src/lib/supabaseServer', () => ({
-  getSupabaseAdmin: vi.fn(() => ({
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          maybeSingle: vi.fn(() => Promise.resolve({ data: { muapi_key: 'encrypted-key' }, error: null })),
-        })),
+vi.mock('@/src/lib/supabaseServer', () => {
+  const upsertMock = vi.fn(() => Promise.resolve({ data: null, error: null }));
+  const selectMock = vi.fn(() => ({
+    eq: vi.fn(() => ({
+      maybeSingle: vi.fn(() => Promise.resolve({ data: { muapi_key: 'encrypted-key' }, error: null })),
+    })),
+  }));
+
+  return {
+    getSupabaseAdmin: vi.fn(() => ({
+      from: vi.fn(() => ({
+        select: selectMock,
+        upsert: upsertMock,
       })),
     })),
-  })),
-}));
+  };
+});
 
 // Mock muapi key crypto
 vi.mock('@/src/lib/muapiKeyCrypto', () => ({

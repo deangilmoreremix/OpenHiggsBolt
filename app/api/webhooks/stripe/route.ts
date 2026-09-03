@@ -21,11 +21,13 @@ export function getStripeProductMap(): Record<string, string> {
     process.env.STRIPE_PRODUCT_MAP ||
     '{}').trim();
 
-  const parsed = JSON.parse(envMap) as Record<string, string>;
-
-  return {
-    ...parsed,
-  };
+  try {
+    const parsed = JSON.parse(envMap) as Record<string, string>;
+    return { ...parsed };
+  } catch {
+    console.error('[stripe webhook] invalid STRIPE_PRODUCT_MAP JSON');
+    return {};
+  }
 }
 
 export function resolveEntitlementFromSession(session: Stripe.Checkout.Session): string {
@@ -88,6 +90,12 @@ export async function POST(req: NextRequest) {
   ];
 
   if (!relevantEvents.includes(event.type)) {
+    return NextResponse.json({ received: true });
+  }
+
+  // Payment intents are acknowledged but not processed here; entitlement
+  // provisioning is driven by checkout.session.completed.
+  if (event.type === 'payment_intent.succeeded') {
     return NextResponse.json({ received: true });
   }
 

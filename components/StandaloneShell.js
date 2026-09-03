@@ -344,9 +344,9 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ key: trimmed || getApiKey(), openaiKey: trimmedOpenai || getOpenAiKey() }),
+      body: JSON.stringify({ key: trimmed || apiKey, openaiKey: trimmedOpenai || openaiKey }),
     }).catch(() => {});
-  }, [fetchBalance, setApiKey, setOpenAiKey]);
+  }, [fetchBalance, setApiKey, setOpenAiKey, apiKey, openaiKey]);
 
   const handleKeyChange = useCallback(() => {
     if (demoMode) return;

@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     const contentType = req.headers.get('content-type') || '';
     const isMultipart = contentType.startsWith('multipart/');
 
-    let endpoint = 'images/generations';
+    let endpoint = isMultipart ? 'images/edits' : 'images/generations';
     let upstreamBody: BodyInit | undefined;
     let upstreamHeaders: Record<string, string> = {
       Authorization: `Bearer ${key}`,
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     } else {
       const body = await req.json();
       const { _endpoint, ...upstreamPayload } = body;
-      endpoint = _endpoint || 'images/generations';
+      endpoint = _endpoint || endpoint;
       upstreamBody = JSON.stringify(upstreamPayload);
       upstreamHeaders['content-type'] = 'application/json';
     }

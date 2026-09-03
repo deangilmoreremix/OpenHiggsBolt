@@ -1,9 +1,24 @@
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { getSupabaseAdmin } from '@/lib/supabaseServer';
 import { ENTITLEMENTS, type AccessState, type AccessResult, type UserEntitlements } from './entitlements';
 
-function hasSmartVideoGo(entitlements: UserEntitlements): boolean {
-  return entitlements.smartvideo_go === true || entitlements.founders === true;
+function hasSmartVideoGo(entitlements: UserEntitlements, status?: string): boolean {
+  const isActive = status === 'active' || status === undefined || status === '';
+  return isActive && (entitlements.smartvideo_go === true || entitlements.founders === true);
+}
+
+async function getVerifiedEmailsForUser(userId: string): Promise<string[]> {
+  try {
+    const clerkUser = await currentUser();
+    if (!clerkUser || clerkUser.id !== userId) {
+      return [];
+    }
+    return (clerkUser.emailAddresses || [])
+      .map((entry) => entry?.emailAddress)
+      .filter((email): email is string => Boolean(email && email.trim()));
+  } catch {
+    return [];
+  }
 }
 
 export async function resolveSmartVideoAccess(): Promise<AccessResult> {
@@ -35,7 +50,7 @@ export async function resolveSmartVideoAccess(): Promise<AccessResult> {
   }
 
   const entitlements = (data.entitlements || {}) as UserEntitlements;
-  const hasAccess = hasSmartVideoGo(entitlements);
+  const hasAccess = hasSmartVideoGo(entitlements, data.status);
 
   return {
     state: hasAccess ? 'paid' : 'authenticated_unpaid',
@@ -76,7 +91,7 @@ export async function resolveSmartVideoAccessForUser(clerkUserId: string): Promi
     entitlements,
     status: data.status || 'inactive',
     source: data.source || 'manual',
-    hasSmartVideoGo: hasSmartVideoGo(entitlements),
+    hasSmartVideoGo: hasSmartVideoGo(entitlements, data.status),
   };
 }
 
@@ -143,18 +158,10 @@ export async function restoreAccessByEmail(clerkUserId: string, email: string): 
     return { status: 'error', message: 'Unauthorized.' };
   }
 
-  // Verify the restore email belongs to the authenticated user
-  // In a production environment, you would fetch the user's verified emails from Clerk
-  // For now, we'll check if the email matches the user's primary email in Supabase
-  const { data: userEntitlement } = await supabase
-    .from('user_entitlements')
-    .select('email')
-    .eq('clerk_user_id', clerkUserId)
-    .maybeSingle();
-
-  const userEmail = userEntitlement?.email?.toLowerCase().trim();
-  if (!userEmail || userEmail !== normalizedEmail) {
-    return { status: 'error', message: 'You can only restore access for your own verified email.' };
+  const verifiedEmails = await getVerifiedEmailsForUser(clerkUserId);
+  const normalizedVerified = verifiedEmails.map((e) => e.toLowerCase().trim());
+  if (!normalizedVerified.includes(normalizedEmail)) {
+    return { status: 'error', message: 'You can only restore access for one of your own verified emails.' };
   }
 
   const { data: purchaser } = await supabase

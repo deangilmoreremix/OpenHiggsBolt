@@ -180,10 +180,25 @@ export function NoClerkSmartVideoAccessProvider({ children }: { children: React.
   );
 }
 
-export function useSmartVideoAccess() {
+export function useSmartVideoAccess(): SmartVideoAccessContextValue {
   const context = useContext(SmartVideoAccessContext);
-  if (!context) {
-    throw new Error('useSmartVideoAccess must be used within SmartVideoAccessProvider');
-  }
-  return context;
+  if (context) return context;
+  // Provider missing (e.g. dev environment with Clerk bypass, or a
+  // component rendered outside the layout's provider). Return a safe
+  // no-op default instead of crashing the page so the rest of the
+  // app — including the API key input and studio generation — still works.
+  return {
+    accessResult: { state: 'signed_out' },
+    accessState: null,
+    isLoading: false,
+    isPaid: false,
+    isAuthenticatedUnpaid: false,
+    isSignedOut: true,
+    isSignedIn: false,
+    requireEntitlement: async (_entitlement, onAllowed) => onAllowed(),
+    openUpgradeModal: () => {},
+    restoreAccess: async () => ({ status: 'error', message: 'Access provider unavailable.' }),
+    upgradeModal: { isOpen: false, source: 'default' },
+    setUpgradeModal: () => {},
+  };
 }
