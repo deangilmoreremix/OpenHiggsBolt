@@ -39,6 +39,7 @@ function AutoOpener() {
 export default function PersonalizationDemoPage() {
   const { apiKey, hasApiKey } = useAuthConfig()
   const [mounted, setMounted] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -58,10 +59,26 @@ export default function PersonalizationDemoPage() {
       <div style={{ minHeight: '100vh', background: '#0a0a0b', color: 'white', padding: 20 }}>
         <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Personalization Modal — Design Preview</h1>
         <div style={{ marginTop: 20, padding: 16, borderRadius: 12, background: 'rgba(239,91,103,0.1)', border: '1px solid rgba(239,91,103,0.3)' }}>
-          <p style={{ fontSize: 14, color: '#ef5b67', marginBottom: 8 }}>Missing MuAPI Key</p>
-          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
-            Set your MuAPI key in Settings before testing the personalization demo. The modal will open automatically once a valid key is configured.
+          <p style={{ fontSize: 14, color: '#ef5b67', marginBottom: 8 }}>MuAPI Key Required</p>
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 12 }}>
+            Open Settings and add your MuAPI key to use the personalization demo. The modal uses the same key as the rest of the app.
           </p>
+          <button
+            onClick={() => setShowSettings(true)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 8,
+              background: '#ef5b67',
+              color: 'white',
+              border: 'none',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Open Settings
+          </button>
+          {showSettings && <SettingsPrompt onClose={() => setShowSettings(false)} />}
         </div>
       </div>
     )
@@ -87,4 +104,35 @@ export default function PersonalizationDemoPage() {
       </div>
     </DemoPersonalizeProvider>
   )
+}
+
+function SettingsPrompt({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    let destroyed = false
+
+    // Use dynamic import to load the vanilla JS SettingsModal.
+    // @ts-ignore - SettingsModal is a vanilla JS component without TS declarations
+    import('@/components/SettingsModal')
+      .then(({ SettingsModal }) => {
+        if (destroyed) return
+        const modal = SettingsModal(() => {
+          // SettingsModal handles its own close; re-check key state.
+          if (typeof window !== 'undefined') {
+            const key = window.localStorage.getItem('muapi_key')
+            if (key) onClose()
+          }
+        })
+        document.body.appendChild(modal)
+        return modal
+      })
+      .catch(() => {
+        // SettingsModal may not be available in all environments
+      })
+
+    return () => {
+      destroyed = true
+    }
+  }, [onClose])
+
+  return null
 }
