@@ -354,6 +354,7 @@ export default function PersonalizationModal() {
     generate,
     retry,
     generateAgain,
+    retryBranding,
     result,
     resultTab,
     setResultTab,
@@ -548,6 +549,7 @@ export default function PersonalizationModal() {
               source={source}
               promptState={promptState}
               generateAgain={generateAgain}
+              retryBranding={retryBranding}
               outputType={outputType}
               setOutputType={setOutputType}
               download={download}
@@ -723,7 +725,7 @@ function ErrorView({ errorMessage, retry, generate }: { errorMessage: string | n
 function ResultView(props: any) {
   const {
     result, resultTab, setResultTab, source, promptState,
-    generateAgain, outputType, setOutputType, download,
+    generateAgain, retryBranding, outputType, setOutputType, download,
     editInImageStudio, editInVideoStudio, publish,
     sharedMediaCount, isVideo, eligibleModes, mode, setMode,
   } = props
@@ -838,6 +840,35 @@ function ResultView(props: any) {
           <span className="text-xs text-white/60">✓ Saved to Shared Media ({sharedMediaCount} total entries)</span>
         </div>
       </div>
+
+      {result.metadata?.postProcessingFailed && retryBranding && (
+        <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle size={16} className="text-yellow-400" />
+            <span className="text-sm font-bold text-yellow-300">Branding Could Not Be Applied</span>
+          </div>
+          <p className="text-xs text-white/60 mb-3">
+            Your media was generated, but the exact logo or CTA overlay failed. Your original generation is preserved.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={retryBranding}
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold"
+              style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: C.cyan }}
+            >
+              <RefreshCw size={14} /> Retry Branding
+            </button>
+            {result.metadata?.originalUrl && (
+              <button
+                onClick={() => { window.open(result.metadata.originalUrl, '_blank') }}
+                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold border border-white/10 text-white hover:bg-white/5"
+              >
+                <Download size={14} /> Download Unbranded Version
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
