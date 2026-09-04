@@ -1,8 +1,7 @@
 import { LocalModelManager } from './LocalModelManager.js';
 import { isLocalAIAvailable } from '../lib/localInferenceClient.js';
-import { isValidKeyFormat } from '../lib/keys.js';
-import { t } from '../lib/i18n.js';
 import { MUAPI_KEY_STORAGE, OPENAI_KEY_STORAGE, isValidKeyFormat } from '../lib/keys.js';
+import { t } from '../lib/i18n.js';
 
 // Build a cookie string for the MuAPI key. `Secure` is added only over HTTPS
 // so the key still persists on http://localhost dev servers.
@@ -216,10 +215,11 @@ export function SettingsModal(onClose) {
             saveBtn.textContent = '✓ Saved';
             saveBtn.style.background = '#22c55e';
             setTimeout(() => {
-            saveBtn.textContent = originalText;
-            saveBtn.style.background = 'var(--color-primary,#22d3ee)';
-            close();
-        }, 600);
+                saveBtn.textContent = originalText;
+                saveBtn.style.background = 'var(--color-primary,#22d3ee)';
+                close();
+            }, 600);
+        });
     };
 
     header.querySelector('#settings-close-btn').onclick = close;
