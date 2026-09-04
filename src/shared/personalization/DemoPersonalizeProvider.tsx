@@ -175,6 +175,7 @@ type DemoPersonalizeContextValue = {
   generate: () => Promise<void>
   retry: () => Promise<void>
   generateAgain: () => Promise<void>
+  retryBranding: () => Promise<void>
   generation: GenerationState
 
   // Result
@@ -861,6 +862,7 @@ export function DemoPersonalizeProvider({ apiKey, children }: DemoPersonalizePro
           postProcessing: postResult.applied,
           postProcessingFailed: postResult.failed,
           originalUrl: postResult.originalUrl,
+          postProcessingInput: resolved.postProcessing,
         },
       }
 
@@ -905,6 +907,51 @@ export function DemoPersonalizeProvider({ apiKey, children }: DemoPersonalizePro
   const generateAgain = useCallback(async () => {
     await generate()
   }, [generate])
+
+  const retryBranding = useCallback(async () => {
+    const lastResult = lastResultRef.current
+    const lastProject = lastProjectRef.current
+    if (!lastResult || !lastProject || !apiKey) return
+
+    const originalUrl = lastResult.metadata?.originalUrl as string | undefined
+    const postProcessingInput = (lastResult.metadata?.postProcessingInput || null) as Record<string, unknown> | null
+    if (!originalUrl || !postProcessingInput) return
+
+    setGeneration({ ...EMPTY_GENERATION_STATE, status: 'generating', progress: 85, progressMessage: 'Retrying branding...' })
+
+    try {
+      const postResult = await applyPostProcessing({
+        generatedUrl: originalUrl,
+        type: lastResult.type as 'image' | 'video',
+        postProcessing: postProcessingInput,
+        apiKey,
+      })
+
+      const finalUrl = postResult.finalUrl || originalUrl
+      const metadata: Record<string, unknown> = {
+        ...(lastResult.metadata || {}),
+        postProcessing: postResult.applied,
+        postProcessingFailed: postResult.failed,
+        originalUrl: postResult.originalUrl,
+        postProcessingInput,
+      }
+      const updatedResult: GenerationResult = {
+        ...lastResult,
+        url: finalUrl,
+        metadata,
+      }
+
+      lastResultRef.current = updatedResult
+      setResult(updatedResult)
+      setGeneration({ ...EMPTY_GENERATION_STATE, status: 'complete', progress: 100, progressMessage: 'Branding updated' })
+    } catch (error) {
+      setGeneration({
+        ...EMPTY_GENERATION_STATE,
+        status: 'error',
+        errorMessage: error instanceof Error ? error.message : 'Branding retry failed',
+      })
+    }
+  }, [apiKey])
 
   // ── Result actions ─────────────────────────────────────────────────────────
 
@@ -1047,6 +1094,7 @@ export function DemoPersonalizeProvider({ apiKey, children }: DemoPersonalizePro
     generate,
     retry,
     generateAgain,
+    retryBranding,
     generation,
 
     // Result

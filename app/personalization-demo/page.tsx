@@ -1,19 +1,20 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { DemoPersonalizeProvider, useDemoPersonalize } from '@/shared/personalization'
+import { useAuthConfig } from '@/lib/authConfig'
 
 const SAMPLE_SOURCE = {
   id: 'demo-roofing-1',
-  title: 'Viral Roofing Demo',
+  title: 'Viral Roofing Demo — Storm Damage',
   mediaType: 'video' as const,
   sourceMedia: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
   poster: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg',
   shortPrompt: 'Dramatic storm clouds over a suburban home, cinematic lighting.',
   fullPrompt:
-    'Create a viral style roofing video ad that hooks in the first 3 seconds, shows dramatic before and after shots, builds trust with social proof, highlights the transformation, and ends with a strong call to action.',
+    'A dramatic cinematic shot of storm clouds rolling over a suburban home. Lightning flashes in the background. The camera slowly pushes in toward a damaged roof. Rain pours. Wind howls. The mood is tense and urgent.',
   originalPrompt:
-    'Create a viral style roofing video ad that hooks in the first 3 seconds, shows dramatic before and after shots, builds trust with social proof, highlights the transformation, and ends with a strong call to action.',
+    'A dramatic cinematic shot of storm clouds rolling over a suburban home. Lightning flashes in the background. The camera slowly pushes in toward a damaged roof. Rain pours. Wind howls. The mood is tense and urgent.',
   category: 'Roofing',
   aspectRatio: '9:16',
   durationLabel: '15s',
@@ -28,7 +29,7 @@ function AutoOpener() {
   useEffect(() => {
     const t = setTimeout(() => {
       openPersonalize({ source: SAMPLE_SOURCE })
-    }, 300)
+    }, 500)
     return () => clearTimeout(t)
   }, [openPersonalize])
 
@@ -85,7 +86,20 @@ export default function PersonalizationDemoPage() {
 
   return (
     <DemoPersonalizeProvider apiKey={apiKey || undefined}>
-      <div style={{ minHeight: '100vh', background: '#0a0a0b', color: 'white' }}>
+      <div
+        style={{
+          minHeight: '100vh',
+          background: '#0a0a0b',
+          color: 'white',
+          padding: 20,
+        }}
+      >
+        <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>
+          Personalization Modal — Design Preview
+        </h1>
+        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
+          The modal will open automatically with the sample &quot;Viral Roofing Demo&quot; source.
+        </p>
         <AutoOpener />
       </div>
     </DemoPersonalizeProvider>
