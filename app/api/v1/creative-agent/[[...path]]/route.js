@@ -68,7 +68,7 @@ export async function GET(request, { params }) {
         const response = await fetch(targetUrl, {
             headers,
             method: 'GET',
-            signal: AbortSignal.timeout(30000),
+            signal: AbortSignal.timeout(60000),
         });
         const data = await safeApiJson(response);
         return NextResponse.json(data, { status: response.status });
@@ -158,7 +158,7 @@ export async function PATCH(request, { params }) {
             method: 'PATCH',
             headers,
             body: JSON.stringify(body),
-            signal: AbortSignal.timeout(30000),
+            signal: AbortSignal.timeout(60000),
         });
         const data = await safeApiJson(response);
         return NextResponse.json(data, { status: response.status });
@@ -194,7 +194,7 @@ export async function DELETE(request, { params }) {
     }
 
     try {
-        const response = await fetch(targetUrl, { method: 'DELETE', headers, signal: AbortSignal.timeout(30000) });
+        const response = await fetch(targetUrl, { method: 'DELETE', headers, signal: AbortSignal.timeout(60000) });
         const data = await safeApiJson(response);
         return NextResponse.json(data, { status: response.status });
     } catch (error) {
