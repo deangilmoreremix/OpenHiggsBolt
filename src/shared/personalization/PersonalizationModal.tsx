@@ -519,9 +519,10 @@ export default function PersonalizationModal() {
               <p
                 className="mt-1.5 max-w-[760px] text-[13px] leading-[1.55]"
                 style={{ color: C.muted }}
-              >
-                {headerSubtitle}
-              </p>
+                {...(nicheCta
+                  ? { dangerouslySetInnerHTML: { __html: headerSubtitle } }
+                  : { children: headerSubtitle })}
+              />
             </div>
           </div>
           <button
