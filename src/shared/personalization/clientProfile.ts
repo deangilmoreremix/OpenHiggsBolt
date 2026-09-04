@@ -53,6 +53,7 @@ export function createClient(partial: Partial<ClientProfile>): ClientProfile {
     location: partial.location || '',
     productService: partial.productService || '',
     offer: partial.offer || '',
+    ctaHeadline: partial.ctaHeadline || '',
     callToAction: partial.callToAction || '',
     phone: partial.phone || '',
     website: partial.website || '',

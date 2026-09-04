@@ -40,6 +40,7 @@ export interface ClientProfile {
   location: string
   productService: string
   offer: string
+  ctaHeadline: string
   callToAction: string
   phone: string
   website: string
@@ -57,6 +58,7 @@ export const EMPTY_CLIENT: ClientProfile = {
   location: '',
   productService: '',
   offer: '',
+  ctaHeadline: '',
   callToAction: '',
   phone: '',
   website: '',

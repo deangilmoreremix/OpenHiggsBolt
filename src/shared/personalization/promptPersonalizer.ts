@@ -47,7 +47,8 @@ ${client.industry ? `Industry: ${client.industry}` : ''}
 ${client.location ? `Location: ${client.location}` : ''}
 ${client.productService ? `Product/Service: ${client.productService}` : ''}
 ${client.offer ? `Offer: ${client.offer}` : ''}
-${client.callToAction ? `Call To Action: ${client.callToAction}` : ''}
+${client.ctaHeadline ? `CTA Headline: ${client.ctaHeadline}` : ''}
+${client.callToAction ? `Button / Action: ${client.callToAction}` : ''}
 ${client.phone ? `Phone: ${client.phone}` : ''}
 ${client.website ? `Website: ${client.website}` : ''}
 ${client.brandDescription ? `Brand Description: ${client.brandDescription}` : ''}
@@ -79,7 +80,8 @@ Replace generic references with the client's actual details. Keep the entire cre
     if (client.productService) personalized = personalized.replace(/\{product\}/gi, client.productService)
     if (client.location) personalized = personalized.replace(/\{location\}/gi, client.location)
     if (client.offer) personalized = personalized.replace(/\{offer\}/gi, client.offer)
-    if (client.callToAction) personalized = personalized.replace(/\{cta\}/gi, client.callToAction)
+    if (client.ctaHeadline) personalized = personalized.replace(/\{cta_headline\}/gi, client.ctaHeadline)
+    if (client.callToAction) personalized = personalized.replace(/\{cta_button\}/gi, client.callToAction)
     if (client.website) personalized = personalized.replace(/\{website\}/gi, client.website)
     if (client.phone) personalized = personalized.replace(/\{phone\}/gi, client.phone)
     return personalized
