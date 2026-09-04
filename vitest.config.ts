@@ -26,6 +26,7 @@ export default defineConfig({
       'components/**/*.test.{js,jsx,ts,tsx}',
       'packages/**/*.test.{js,jsx,ts,tsx}',
       'src/apps/**/__tests__/*.{js,jsx,ts,tsx}',
+      'tests/**/*.vitest.test.{js,jsx,ts,tsx}',
     ],
     exclude: [
       '**/node_modules/**',
@@ -34,9 +35,9 @@ export default defineConfig({
       '.kilo/**',
       'packages/*/dist/**',
       'tests/*.test.js',
-      'tests/*.test.ts',
       'tests/*.test.jsx',
       'tests/*.test.tsx',
+      'tests/authConfig.test.ts',
     ],
   },
 });
