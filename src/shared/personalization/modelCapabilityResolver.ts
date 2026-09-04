@@ -38,7 +38,7 @@ import {
 export const FACE_SWAP_MODEL = 'ai-video-face-swap' // v2vModels entry
 export const FULL_BODY_MODEL = 'kling-v3.0-pro-recast' // recastModels entry
 export const DEFAULT_T2V_MODEL = 'seedance-2-t2v' // t2vModels entry
-export const DEFAULT_I2I_MODEL = 'gpt-image-2' // t2iModels entry
+export const DEFAULT_I2I_MODEL = 'gpt-image-2-edit' // i2iModels entry
 
 export interface ModelCapabilities {
   supportsFaceSwap: boolean
