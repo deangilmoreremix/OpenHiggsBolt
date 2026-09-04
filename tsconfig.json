@@ -49,10 +49,12 @@
       ],
       "@/components/*": [
         "./components/*",
+        "./src/components/*",
         "./src/shared/components/*"
       ],
       "@/components": [
         "./components",
+        "./src/components",
         "./src/shared/components"
       ],
       "ai-agent": [

@@ -164,7 +164,8 @@ describe('generateEndCardImage', () => {
     const result = await generateEndCardImage(
       {
         businessName: 'ABC Roofing',
-        callToAction: 'Protect Your Home Today',
+        ctaHeadline: 'Limited Time Offer',
+        callToAction: 'Book Now',
         offer: 'Free Roof Inspection',
         phone: '555-555-5555',
         website: 'abcroofing.com',

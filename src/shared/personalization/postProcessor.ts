@@ -101,7 +101,7 @@ export async function generateEndCardImage(
   }
 
   // CTA Headline
-  const ctaHeadline = (client?.callToAction as string) || ''
+  const ctaHeadline = (client?.ctaHeadline as string) || ''
   if (ctaHeadline) {
     ctx.fillStyle = '#29d3f2'
     ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
