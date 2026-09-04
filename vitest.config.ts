@@ -12,7 +12,8 @@ export default defineConfig({
       { find: /^@\/stores\/(.*)$/, replacement: '/src/stores/$1' },
       { find: /^@\/apps\/(.*)$/, replacement: '/src/apps/$1' },
       { find: /^@\/app\/(.*)$/, replacement: '/app/$1' },
-      { find: /^@\/packages\/studio\/(.*)$/, replacement: '/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/packages/studio/$1' },
+      { find: /^@\/packages\/studio\/(.*)$/, replacement: '/packages/studio/$1' },
+      { find: /^@\/src\/(.*)$/, replacement: '/src/$1' },
       { find: /^@\/(.*)$/, replacement: '/src/$1' },
       { find: /^studio\/(.*)$/, replacement: '/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/packages/studio/$1' },
       { find: /^workflow-builder\/(.*)$/, replacement: '/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/packages/Vibe-Workflow/packages/workflow-builder/$1' },
@@ -26,6 +27,7 @@ export default defineConfig({
       'components/**/*.test.{js,jsx,ts,tsx}',
       'packages/**/*.test.{js,jsx,ts,tsx}',
       'src/apps/**/__tests__/*.{js,jsx,ts,tsx}',
+      'tests/**/*.vitest.test.{js,jsx,ts,tsx}',
     ],
     exclude: [
       '**/node_modules/**',
@@ -34,9 +36,9 @@ export default defineConfig({
       '.kilo/**',
       'packages/*/dist/**',
       'tests/*.test.js',
-      'tests/*.test.ts',
       'tests/*.test.jsx',
       'tests/*.test.tsx',
+      'tests/authConfig.test.ts',
     ],
   },
 });

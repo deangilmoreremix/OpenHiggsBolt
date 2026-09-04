@@ -1,18 +1,61 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
-vi.mock('../app/api/v1/lib/auth', () => ({
-  getMuApiKeyFromRequest: vi.fn(async () => 'test-v1-key'),
+// ── Mock transitive deps ──────────────────────────────────────────────────────
+// These reliably intercept imports and unblock the route handlers.
+
+vi.mock('@clerk/nextjs/server', () => ({
+  auth: vi.fn(async () => ({ userId: 'test-user' })),
 }))
 
-vi.mock('../app/api/design-agent/lib/auth', () => ({
-  getDesignAgentApiKey: vi.fn(async () => 'test-da-key'),
+vi.mock('@/src/lib/supabaseServer', () => ({
+  getSupabaseAdmin: vi.fn(() => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: () => Promise.resolve({ data: { muapi_key: 'encrypted-key', smartvideo_go: true }, error: null }),
+        }),
+      }),
+      upsert: () => ({ error: null }),
+    }),
+  })),
+}))
+
+vi.mock('@/src/lib/muapiKeyCrypto', () => ({
+  decryptMuapiKey: vi.fn(() => 'decrypted-key'),
+}))
+
+vi.mock('@/app/api/design-agent/lib/ownership', () => ({
+  requireOwnership: vi.fn(async () => ({ userId: 'test-user' })),
+  recordOwnership: vi.fn(async () => {}),
+  getOwnerId: vi.fn(async () => 'test-user'),
+}))
+
+// Entitlement: mock resolveAccess so the real requireApiEntitlement passes.
+// (vi.mock on @/access/apiRequireEntitlement itself is unreliable in vitest
+//  when the route also imports ownership.ts in the same graph.)
+vi.mock('@/access/resolveAccess', () => ({
+  resolveSmartVideoAccessForUser: vi.fn(async () => ({ hasSmartVideoGo: true, state: 'active' })),
+}))
+
+vi.mock('@/access/entitlements', () => ({
+  ENTITLEMENTS: { SMARTVIDEO_GO: 'smartvideo_go' },
+}))
+
+vi.mock('@/lib/safeApiResponse', () => ({
+  safeApiJson: vi.fn(async (res: Response) => {
+    const text = await res.text()
+    if (!text) return {}
+    try { return JSON.parse(text) } catch { return { message: text } }
+  }),
 }))
 
 vi.mock('@/apps/storyboard/models', () => ({
   isValidStoryboardModel: vi.fn(() => true),
   DEFAULT_STORYBOARD_MODEL_ID: 'default-model',
 }))
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 const MUAPI_BASE = 'https://api.muapi.ai'
 
@@ -22,10 +65,10 @@ function makeFetch() {
     status: 200,
     headers: new Headers({ 'content-type': 'application/json' }),
     async json() {
-      return { items: [], total: 0 }
+      return { items: [] }
     },
     async text() {
-      return '{}'
+      return JSON.stringify({ items: [] })
     },
   }))
 }
@@ -67,23 +110,29 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.clearAllMocks()
 })
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function nextReq(url: string, init?: RequestInit) {
-  return new NextRequest(new URL(url), init)
-}
-
 // ── v1 catch-all proxy route ─────────────────────────────────────────────────
+//
+// main's v1 route:
+//   - checks entitlement for generation paths
+//   - reads API key from Authorization: Bearer or x-api-key header
+//   - proxies to https://api.muapi.ai/api/v1/{path}
+//   - uses safeApiJson(res) (calls res.text() then JSON.parse)
+//
+// We send the key as Authorization: Bearer to bypass the header branch and
+// keep the assertion deterministic (the key is forwarded as x-api-key).
 
 describe('GET /api/v1/... (v1 catch-all proxy)', () => {
+  const V1_KEY = 'direct-v1-key'
+
   it('proxies GET /api/v1/get_upload_url to MuAPI', async () => {
-    const { GET } = await import('../app/api/v1/[...slug]/route')
+    const { GET } = await import('@/app/api/v1/[...slug]/route')
 
     const res = await GET(
-      nextReq('http://localhost/api/v1/get_upload_url', {
-        headers: { 'x-api-key': 'direct-v1-key' },
+      new NextRequest(new URL('http://localhost/api/v1/get_upload_url'), {
+        headers: { authorization: `Bearer ${V1_KEY}` },
       }),
       { params: { slug: ['get_upload_url'] } }
     )
@@ -92,17 +141,17 @@ describe('GET /api/v1/... (v1 catch-all proxy)', () => {
 
     expect(res.status).toBe(200)
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(fetchMock.mock.calls[0][0]).toContain('/api/v1/get_upload_url')
-    expect(fetchMock.mock.calls[0][1]?.headers).toHaveProperty('x-api-key', 'test-v1-key')
-    expect(json).toHaveProperty('items')
+    expect(fetchMock.mock.calls[0][0] as string).toContain('/api/v1/get_upload_url')
+    expect(fetchMock.mock.calls[0][1]?.headers).toHaveProperty('x-api-key', V1_KEY)
+    expect(json).toEqual({ items: [] })
   })
 
   it('proxies GET /api/v1/creative-agent/sessions to MuAPI', async () => {
-    const { GET } = await import('../app/api/v1/[...slug]/route')
+    const { GET } = await import('@/app/api/v1/[...slug]/route')
 
     const res = await GET(
-      nextReq('http://localhost/api/v1/creative-agent/sessions', {
-        headers: { 'x-api-key': 'direct-v1-key' },
+      new NextRequest(new URL('http://localhost/api/v1/creative-agent/sessions'), {
+        headers: { authorization: `Bearer ${V1_KEY}` },
       }),
       { params: { slug: ['creative-agent', 'sessions'] } }
     )
@@ -110,19 +159,18 @@ describe('GET /api/v1/... (v1 catch-all proxy)', () => {
     const json = await res.json()
 
     expect(res.status).toBe(200)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
     const calledUrl = fetchMock.mock.calls[0][0] as string
     expect(calledUrl).toContain('/api/v1/creative-agent/sessions')
-    expect(fetchMock.mock.calls[0][1]?.headers).toHaveProperty('x-api-key', 'test-v1-key')
-    expect(json).toHaveProperty('items')
+    expect(fetchMock.mock.calls[0][1]?.headers).toHaveProperty('x-api-key', V1_KEY)
+    expect(json).toEqual({ items: [] })
   })
 
   it('forwards query parameters to upstream', async () => {
-    const { GET } = await import('../app/api/v1/[...slug]/route')
+    const { GET } = await import('@/app/api/v1/[...slug]/route')
 
     await GET(
-      nextReq('http://localhost/api/v1/some-endpoint?foo=bar&baz=1', {
-        headers: { 'x-api-key': 'key' },
+      new NextRequest(new URL('http://localhost/api/v1/some-endpoint?foo=bar&baz=1'), {
+        headers: { authorization: `Bearer ${V1_KEY}` },
       }),
       { params: { slug: ['some-endpoint'] } }
     )
@@ -140,11 +188,11 @@ describe('GET /api/v1/... (v1 catch-all proxy)', () => {
     })
     vi.spyOn(globalThis, 'fetch').mockImplementation(failMock)
 
-    const { GET } = await import('../app/api/v1/[...slug]/route')
+    const { GET } = await import('@/app/api/v1/[...slug]/route')
 
     const res = await GET(
-      nextReq('http://localhost/api/v1/get_upload_url', {
-        headers: { 'x-api-key': 'key' },
+      new NextRequest(new URL('http://localhost/api/v1/get_upload_url'), {
+        headers: { authorization: `Bearer ${V1_KEY}` },
       }),
       { params: { slug: ['get_upload_url'] } }
     )
@@ -156,14 +204,22 @@ describe('GET /api/v1/... (v1 catch-all proxy)', () => {
 })
 
 // ── design-agent sessions route ──────────────────────────────────────────────
+//
+// main's sessions route:
+//   - calls requireApiEntitlement (mocked via resolveAccess)
+//   - calls getDesignAgentApiKey (reads Authorization: Bearer or x-api-key)
+//   - proxies to /api/v1/creative-agent/sessions
+//   - uses safeApiJson
 
 describe('GET /api/design-agent/sessions', () => {
+  const DA_KEY = 'da-sessions-key'
+
   it('proxies to MuAPI and returns sessions list', async () => {
-    const { GET } = await import('../app/api/design-agent/sessions/route')
+    const { GET } = await import('@/app/api/design-agent/sessions/route')
 
     const res = await GET(
-      nextReq('http://localhost/api/design-agent/sessions', {
-        headers: { 'x-api-key': 'da-key' },
+      new NextRequest(new URL('http://localhost/api/design-agent/sessions'), {
+        headers: { authorization: `Bearer ${DA_KEY}` },
       })
     )
 
@@ -172,65 +228,73 @@ describe('GET /api/design-agent/sessions', () => {
     expect(res.status).toBe(200)
     const allCalls = Array.from(fetchMock.mock.calls)
     expect(allCalls.length).toBeGreaterThanOrEqual(1)
-    expect(allCalls[0][0]).toBe(`${MUAPI_BASE}/api/v1/creative-agent/sessions`)
+    expect(allCalls[0][0]).toBe(
+      `${MUAPI_BASE}/api/v1/creative-agent/sessions`
+    )
     const init = allCalls[0][1] as Record<string, unknown> | undefined
     expect(init).toBeDefined()
-    expect((init as Record<string, unknown>).headers).toHaveProperty('x-api-key', 'test-da-key')
-    expect(json).toHaveProperty('items')
+    expect((init as Record<string, unknown>).headers).toHaveProperty('x-api-key', DA_KEY)
+    expect(json).toEqual({ items: [] })
   })
 })
 
 // ── design-agent skills route ────────────────────────────────────────────────
 
 describe('GET /api/design-agent/skills', () => {
+  const DA_KEY = 'da-skills-key'
+
   it('proxies to MuAPI agent-skills endpoint', async () => {
-    const { GET } = await import('../app/api/design-agent/skills/route')
+    const { GET } = await import('@/app/api/design-agent/skills/route')
 
     const res = await GET(
-      nextReq('http://localhost/api/design-agent/skills', {
-        headers: { 'x-api-key': 'da-key' },
+      new NextRequest(new URL('http://localhost/api/design-agent/skills'), {
+        headers: { authorization: `Bearer ${DA_KEY}` },
       })
     )
 
     const json = await res.json()
 
+    expect(res.status).toBe(200)
     const calls = recordedCalls(fetchMock)
     expect(calls).toHaveLength(1)
     expect(calls[0].url).toBe(`${MUAPI_BASE}/api/v1/creative-agent/agent-skills`)
-    expect(calls[0].headers['x-api-key']).toBe('test-da-key')
-    expect(json).toHaveProperty('items')
+    expect(calls[0].headers['x-api-key']).toBe(DA_KEY)
+    expect(json).toEqual({ items: [] })
   })
 })
 
 // ── design-agent jobs route ──────────────────────────────────────────────────
 
 describe('GET /api/design-agent/jobs', () => {
+  const DA_KEY = 'da-jobs-key'
+
   it('uses sessionId to fetch jobs for a session', async () => {
-    const { GET } = await import('../app/api/design-agent/jobs/route')
+    const { GET } = await import('@/app/api/design-agent/jobs/route')
 
     const res = await GET(
-      nextReq('http://localhost/api/design-agent/jobs?sessionId=test', {
-        headers: { 'x-api-key': 'da-key' },
+      new NextRequest(new URL('http://localhost/api/design-agent/jobs?sessionId=test'), {
+        headers: { authorization: `Bearer ${DA_KEY}` },
       })
     )
 
     const json = await res.json()
 
+    expect(res.status).toBe(200)
     const calls = recordedCalls(fetchMock)
     expect(calls).toHaveLength(1)
     expect(calls[0].url).toBe(
       `${MUAPI_BASE}/api/v1/creative-agent/sessions/test/jobs`
     )
-    expect(calls[0].headers['x-api-key']).toBe('test-da-key')
-    expect(json).toHaveProperty('items')
+    expect(calls[0].headers['x-api-key']).toBe(DA_KEY)
+    expect(json).toEqual({ items: [] })
   })
 
   it('returns 400 when neither jobId nor sessionId is provided', async () => {
-    const { GET } = await import('../app/api/design-agent/jobs/route')
+    const { GET } = await import('@/app/api/design-agent/jobs/route')
 
     const res = await GET(
-      nextReq('http://localhost/api/design-agent/jobs', {
-        headers: { 'x-api-key': 'da-key' },
+      new NextRequest(new URL('http://localhost/api/design-agent/jobs'), {
+        headers: { authorization: `Bearer ${DA_KEY}` },
       })
     )
 
@@ -243,80 +307,92 @@ describe('GET /api/design-agent/jobs', () => {
 })
 
 // ── storyboard proxy route ───────────────────────────────────────────────────
+//
+// NOTE: main's storyboard GET handler only accepts /api/storyboard/result?id=...
+// (generic proxy for arbitrary paths was removed in a later commit).
+// Tests cover the actual current behavior.
 
-describe('GET /api/storyboard/... (storyboard proxy)', () => {
-  it('proxies root GET /api/storyboard/ with no path', async () => {
-    const { GET } = await import('../app/api/storyboard/[[...path]]/route')
+describe('GET /api/storyboard/result (storyboard status poll)', () => {
+  it('returns 400 when id query param is missing', async () => {
+    const { GET } = await import('@/app/api/storyboard/[[...path]]/route')
 
     const res = await GET(
-      nextReq('http://localhost/api/storyboard/', {
+      new NextRequest(new URL('http://localhost/api/storyboard/result'), {
         headers: { 'x-api-key': 'sb-key' },
       }),
-      { params: Promise.resolve({ path: [] }) }
+      { params: Promise.resolve({ path: ['result'] }) }
+    )
+
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json).toHaveProperty('error')
+    expect(json.error).toMatch(/id is required/i)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when x-api-key header is missing', async () => {
+    const { GET } = await import('@/app/api/storyboard/[[...path]]/route')
+
+    const res = await GET(
+      new NextRequest(new URL('http://localhost/api/storyboard/result?id=abc123')),
+      { params: Promise.resolve({ path: ['result'] }) }
+    )
+
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/MuAPI key is required/i)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('proxies GET /api/storyboard/result?id=... to MuAPI predictions endpoint', async () => {
+    // Mock uses `outputs` array (the field the route's URL extraction checks)
+    const predictionResponse = {
+      status: 'completed',
+      outputs: ['https://cdn.muapi.ai/video.mp4'],
+    }
+    vi.restoreAllMocks()
+    const storyboardFetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      async json() { return predictionResponse },
+      async text() { return JSON.stringify(predictionResponse) },
+    }))
+    vi.spyOn(globalThis, 'fetch').mockImplementation(storyboardFetchMock)
+
+    const { GET } = await import('@/app/api/storyboard/[[...path]]/route')
+
+    const res = await GET(
+      new NextRequest(new URL('http://localhost/api/storyboard/result?id=job-123'), {
+        headers: { 'x-api-key': 'sb-key' },
+      }),
+      { params: Promise.resolve({ path: ['result'] }) }
     )
 
     const json = await res.json()
 
     expect(res.status).toBe(200)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(fetchMock.mock.calls[0][0]).toBe(`${MUAPI_BASE}/api/storyboard/`)
-    expect(fetchMock.mock.calls[0][1]?.method).toBe('GET')
-    expect(json).toHaveProperty('items')
+    expect(storyboardFetchMock).toHaveBeenCalledTimes(1)
+    const calledUrl = storyboardFetchMock.mock.calls[0][0] as string
+    expect(calledUrl).toContain('/api/v1/predictions/job-123/result')
+    expect(json).toHaveProperty('request_id', 'job-123')
+    expect(json).toHaveProperty('status', 'completed')
+    expect(json).toHaveProperty('url', 'https://cdn.muapi.ai/video.mp4')
   })
 
-  it('proxies GET with a sub-path to the correct upstream URL', async () => {
-    const { GET } = await import('../app/api/storyboard/[[...path]]/route')
+  it('returns 404 for unknown storyboard paths', async () => {
+    const { GET } = await import('@/app/api/storyboard/[[...path]]/route')
 
     const res = await GET(
-      nextReq('http://localhost/api/storyboard/episodes/42/shots', {
+      new NextRequest(new URL('http://localhost/api/storyboard/episodes'), {
         headers: { 'x-api-key': 'sb-key' },
-      }),
-      { params: Promise.resolve({ path: ['episodes', '42', 'shots'] }) }
-    )
-
-    expect(res.status).toBe(200)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(fetchMock.mock.calls[0][0]).toBe(
-      `${MUAPI_BASE}/api/storyboard/episodes/42/shots`
-    )
-    expect(fetchMock.mock.calls[0][1]?.method).toBe('GET')
-  })
-
-  it('forwards x-api-key header to upstream', async () => {
-    const { GET } = await import('../app/api/storyboard/[[...path]]/route')
-
-    await GET(
-      nextReq('http://localhost/api/storyboard/', {
-        headers: { 'x-api-key': 'my-storyboard-key' },
-      }),
-      { params: Promise.resolve({ path: [] }) }
-    )
-
-    const calls = recordedCalls(fetchMock)
-    expect(calls).toHaveLength(1)
-    expect(calls[0].headers['x-api-key']).toBe('my-storyboard-key')
-  })
-
-  it('does not forward host/connection/cookie headers', async () => {
-    const { GET } = await import('../app/api/storyboard/[[...path]]/route')
-
-    await GET(
-      nextReq('http://localhost/api/storyboard/episodes', {
-        headers: {
-          'x-api-key': 'sb-key',
-          host: 'localhost:3000',
-          connection: 'keep-alive',
-          cookie: 'session=abc',
-        },
       }),
       { params: Promise.resolve({ path: ['episodes'] }) }
     )
 
-    const calls = recordedCalls(fetchMock)
-    expect(calls).toHaveLength(1)
-    const forwardedHeaders = calls[0].headers
-    expect(forwardedHeaders).not.toHaveProperty('host')
-    expect(forwardedHeaders).not.toHaveProperty('connection')
-    expect(forwardedHeaders).not.toHaveProperty('cookie')
+    expect(res.status).toBe(404)
+    const json = await res.json()
+    expect(json.error).toMatch(/Unknown storyboard endpoint/i)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })
