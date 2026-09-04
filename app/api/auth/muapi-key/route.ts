@@ -89,6 +89,13 @@ export function buildHandlers(deps: {
         return NextResponse.json({ ok: false, error: 'Missing key' }, { status: 400 });
       }
 
+      if (key.length < 8 || /^[\s\x00-\x1F]|[\s\x00-\x1F]$/.test(key)) {
+        return NextResponse.json(
+          { ok: false, error: 'Invalid key format. Keys must be at least 8 characters and cannot contain surrounding whitespace or control characters.' },
+          { status: 400 }
+        );
+      }
+
       try {
         const sb = getSupabaseAdmin();
         const enc = encryptMuapiKey(key);

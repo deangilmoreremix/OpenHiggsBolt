@@ -222,7 +222,8 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       const data = await getUserBalance(key);
       setBalance(data.balance);
     } catch (err) {
-      const isAuthError = err?.message?.includes('401') || err?.message?.includes('403') || err?.message?.includes('Not authorized');
+      const status = err?.status || err?.response?.status;
+      const isAuthError = status === 401 || status === 403 || /401|403|unauthorized|forbidden|not authorized/i.test(err?.message || '');
       if (!isAuthError) {
         console.error('Balance fetch failed:', err);
       }
@@ -291,10 +292,8 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       try {
         await fetchBalance(trimmed);
       } catch (err) {
-        const isAuthError =
-          err?.message?.includes?.('401') ||
-          err?.message?.includes?.('403') ||
-          err?.message?.includes?.('Not authorized');
+        const status = err?.status || err?.response?.status;
+        const isAuthError = status === 401 || status === 403 || /401|403|unauthorized|forbidden|not authorized/i.test(err?.message || '');
         muapiError = isAuthError
           ? 'That MuAPI key is invalid or unauthorized. Double-check it on your MuAPI dashboard and try again.'
           : 'Could not verify the MuAPI key. Check your connection and try again.';
@@ -340,12 +339,15 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
     setShowApiKeyPopup(false);
     settingsClosedAt.current = Date.now();
     setIsSavingKey(false);
+
     fetch('/api/auth/muapi-key', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
       body: JSON.stringify({ key: trimmed || apiKey, openaiKey: trimmedOpenai || openaiKey }),
     }).catch(() => {});
+
+    fetchBalance(trimmed).catch(() => {});
   }, [fetchBalance, setApiKey, setOpenAiKey, apiKey, openaiKey]);
 
   const handleKeyChange = useCallback(() => {
@@ -401,21 +403,29 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
   // to inspect/update the key manually via the "Change Key" button.
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    let lastOpenAt = 0;
+    const DEDUPE_WINDOW = 1000;
     const onAuthRequired = (e) => {
       // Ignore auth-required events for 3 seconds after the user manually
       // closed the settings modal. This prevents background balance polls
       // or redundant verify requests from immediately reopening it.
       if (Date.now() - settingsClosedAt.current < 3000) return;
+      const now = Date.now();
+      if (now - lastOpenAt < DEDUPE_WINDOW) return;
+      lastOpenAt = now;
+
       let message = 'Your API key is missing or invalid. Please enter a valid key.';
       const raw = e?.detail?.message;
       if (raw) {
         try {
-          const parsed = JSON.parse(raw);
-          if (parsed.detail) message = parsed.detail;
+          const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          const detail = parsed?.detail || parsed?.message;
+          if (detail) message = detail;
         } catch {
-          message = raw;
+          if (typeof raw === 'string') message = raw;
         }
       }
+
       setAuthError(message);
       setShowSettings(true);
     };
@@ -553,7 +563,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="3" />
-                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0-2.83l-.06-.06a1.65 1.65 0 0 0-.33-1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
                 </svg>
                 <span>Settings</span>
               </button>
