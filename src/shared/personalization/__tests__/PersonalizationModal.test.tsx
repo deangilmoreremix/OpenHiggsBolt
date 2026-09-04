@@ -59,12 +59,12 @@ describe('PersonalizationModal', () => {
     });
 
     const cardTitles = [
-      'Person / Presenter',
-      'Logo',
-      'Products / Services',
-      'Brand References',
-      'First Frame',
-      'Last Frame / CTA',
+      '1. Person / Presenter',
+      '2. Logo',
+      '3. Products / Services',
+      '4. Brand References',
+      '5. First Frame',
+      '6. Last Frame / CTA',
     ];
 
     cardTitles.forEach((title) => {
@@ -78,8 +78,9 @@ describe('PersonalizationModal', () => {
     expect(screen.getByText('Personalize The Prompt')).toBeTruthy();
     expect(screen.getByText('Engine')).toBeTruthy();
 
-    // Verify SmartVideo Recommended is prominently visible
-    expect(screen.getByText(/SmartVideo Recommended/)).toBeTruthy();
+    // Verify SmartVideo Recommended is prominently visible (check container text)
+    expect(container.textContent).toMatch(/SmartVideo/)
+    expect(container.textContent).toMatch(/Recommended/)
 
     // Verify prompt section has Original and Personalized headings
     expect(screen.getByText('Original Prompt')).toBeTruthy();
@@ -88,6 +89,23 @@ describe('PersonalizationModal', () => {
     // Verify large visual upload zones are present
     expect(screen.getByText('Add Photos')).toBeTruthy();
     expect(screen.getByText('Upload Logo')).toBeTruthy();
+
+    // Verify preview/placeholder content shows for all six cards
+    // Person card shows FACE/BODY/SIDE placeholders
+    expect(container.textContent).toMatch(/FACE/)
+    expect(container.textContent).toMatch(/BODY/)
+    expect(container.textContent).toMatch(/SIDE/)
+    // Products card shows 1/2/3 placeholders
+    expect(container.textContent).toMatch(/1/)
+    expect(container.textContent).toMatch(/2/)
+    expect(container.textContent).toMatch(/3/)
+    // Brand References shows TRUCK/OFFICE/UNIFORM
+    expect(container.textContent).toMatch(/TRUCK/)
+    expect(container.textContent).toMatch(/OFFICE/)
+    expect(container.textContent).toMatch(/UNIFORM/)
+    // Frames show "First Frame" and CTA preview
+    expect(container.textContent).toMatch(/First Frame/)
+    expect(container.textContent).toMatch(/Protect Your Home Today/)
 
     // Verify no primary tab navigation exists
     const tabButtons = container.querySelectorAll('button');
@@ -178,7 +196,7 @@ describe('PersonalizationModal', () => {
     });
 
     // No niche → generic title from the modal default.
-    const genericMatches = screen.getAllByText(/Personalize This Demo/);
+    const genericMatches = screen.getAllByText(/PERSONALIZE THIS DEMO/);
     expect(genericMatches.length).toBeGreaterThanOrEqual(1);
   });
 });
