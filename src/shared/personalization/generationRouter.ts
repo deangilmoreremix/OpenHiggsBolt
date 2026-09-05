@@ -75,10 +75,8 @@ function pickImageModel(source: PersonalizationSource, options: GenerationOption
 
 // ── Logging ──────────────────────────────────────────────────────────────────
 
-function logPersonalizationApi(phase: string, data: Record<string, unknown>) {
-  if (typeof console !== 'undefined') {
-    console.log(`[Personalization API] ${phase}`, data)
-  }
+function logPersonalizationApi(_phase: string, _data: Record<string, unknown>) {
+  // Debug logging removed for production
 }
 
 // ── Main Entry ───────────────────────────────────────────────────────────────
