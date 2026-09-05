@@ -59,6 +59,9 @@ vi.mock('@/apps/storyboard/models', () => ({
 
 const MUAPI_BASE = 'https://api.muapi.ai'
 
+const V1_KEY = 'direct-v1-key'
+const DA_KEY = 'da-sessions-key'
+
 function makeFetch() {
   return vi.fn(async () => ({
     ok: true,
@@ -125,8 +128,6 @@ afterEach(() => {
 // keep the assertion deterministic (the key is forwarded as x-api-key).
 
 describe('GET /api/v1/... (v1 catch-all proxy)', () => {
-  const V1_KEY = 'direct-v1-key'
-
   it('proxies GET /api/v1/get_upload_url to MuAPI', async () => {
     const { GET } = await import('@/app/api/v1/[...slug]/route')
 
@@ -203,6 +204,36 @@ describe('GET /api/v1/... (v1 catch-all proxy)', () => {
   })
 })
 
+// ── POST /api/v1/... (v1 catch-all proxy) ────────────────────────────────────
+//
+// Verifies the production fix: JSON bodies must be stringified before being
+// passed to fetch(), otherwise the runtime throws a TypeError.
+
+describe('POST /api/v1/... (v1 catch-all proxy)', () => {
+  it('stringifies JSON body and forwards content-type', async () => {
+    const { POST } = await import('@/app/api/v1/[...slug]/route')
+
+    const res = await POST(
+      new NextRequest(new URL('http://localhost/api/v1/gpt-image-2'), {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${V1_KEY}`,
+        },
+        body: JSON.stringify({ prompt: 'a cat' }),
+      }),
+      { params: { slug: ['gpt-image-2'] } }
+    )
+
+    expect(res.status).toBe(200)
+    const calls = recordedCalls(fetchMock)
+    expect(calls).toHaveLength(1)
+    expect(calls[0].method).toBe('POST')
+    expect(calls[0].headers['content-type']).toBe('application/json')
+    expect(calls[0].body).toBe(JSON.stringify({ prompt: 'a cat' }))
+  })
+})
+
 // ── design-agent sessions route ──────────────────────────────────────────────
 //
 // main's sessions route:
@@ -212,8 +243,6 @@ describe('GET /api/v1/... (v1 catch-all proxy)', () => {
 //   - uses safeApiJson
 
 describe('GET /api/design-agent/sessions', () => {
-  const DA_KEY = 'da-sessions-key'
-
   it('proxies to MuAPI and returns sessions list', async () => {
     const { GET } = await import('@/app/api/design-agent/sessions/route')
 
