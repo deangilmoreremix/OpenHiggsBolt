@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import axios from 'axios';
 import { MemoryRouter } from 'react-router-dom';
@@ -77,6 +77,7 @@ const SLUG_TO_TAB = {
 export default function StandaloneShell({ embedded = false, initialTab = null, demoMode = false, templateData = null, locale = 'en' } = {}) {
   const params = useParams();
   const router = useRouter();
+  const pathname = usePathname();
   const { signOut } = useClerk();
   const { isSignedIn } = useAuth();
   const auth = useAuthConfig();
@@ -511,24 +512,37 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
             {/* Fade Left Overlay */}
             <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#030303] to-transparent pointer-events-none z-10 block lg:hidden" />
             
-            <nav className="flex items-center gap-4 overflow-x-auto scrollbar-none w-full lg:w-auto h-full px-4 lg:px-0">
-              {TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => handleTabChange(tab.id)}
-                  className={`relative text-[13px] font-medium transition-all duration-300 whitespace-nowrap px-1 flex-shrink-0 flex items-center h-full ${
-                    activeTab === tab.id
+             <nav className="flex items-center gap-4 overflow-x-auto scrollbar-none w-full lg:w-auto h-full px-4 lg:px-0">
+               {TABS.map((tab) => (
+                 <button
+                   key={tab.id}
+                   onClick={() => handleTabChange(tab.id)}
+                   className={`relative text-[13px] font-medium transition-all duration-300 whitespace-nowrap px-1 flex-shrink-0 flex items-center h-full ${
+                     activeTab === tab.id
+                       ? 'text-[#22d3ee]'
+                       : 'text-white/50 hover:text-white'
+                   }`}
+                 >
+                   <span className="relative z-10">{tab.label}</span>
+                   {activeTab === tab.id && (
+                     <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#22d3ee] to-[#a855f7] rounded-full shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
+                   )}
+                 </button>
+               ))}
+                <a
+                  href="/academy"
+                  className={`relative inline-flex text-[13px] font-medium transition-all duration-300 whitespace-nowrap px-1 flex-shrink-0 items-center h-full ${
+                    pathname === '/academy'
                       ? 'text-[#22d3ee]'
                       : 'text-white/50 hover:text-white'
                   }`}
                 >
-                  <span className="relative z-10">{tab.label}</span>
-                  {activeTab === tab.id && (
-                    <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#22d3ee] to-[#a855f7] rounded-full shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
-                  )}
-                </button>
-              ))}
-            </nav>
+                 <span className="relative z-10">Academy</span>
+                 {pathname === '/academy' && (
+                   <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#22d3ee] to-[#a855f7] rounded-full shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
+                 )}
+               </a>
+             </nav>
             
             {/* Fade Right Overlay */}
             <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#030303] to-transparent pointer-events-none z-10 block lg:hidden" />
