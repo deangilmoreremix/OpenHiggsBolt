@@ -156,6 +156,8 @@ export interface GenerationOptions {
   lastFrameMode: 'none' | 'uploaded' | 'generated'
   advancedModel?: string
   consentGiven: boolean
+  aspectRatio?: string
+  duration?: number
 }
 
 export const DEFAULT_GENERATION_OPTIONS: GenerationOptions = {

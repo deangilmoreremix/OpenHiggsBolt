@@ -42,6 +42,7 @@ import {
 } from 'lucide-react'
 import { useDemoPersonalize } from './DemoPersonalizeProvider'
 import type { PersonalizationAsset } from './types'
+import { resolveModelCapabilities, FACE_SWAP_MODEL, FULL_BODY_MODEL, DEFAULT_T2V_MODEL, DEFAULT_I2I_MODEL } from './modelCapabilityResolver'
 
 // Niche-specific CTA copy
 import { NICHE_CTA_BY_ID } from '@/components/landing/landingData'
@@ -369,6 +370,7 @@ export default function PersonalizationModal() {
   const [copiedPrompt, setCopiedPrompt] = useState(false)
   const [isPersonalizing, setIsPersonalizing] = useState(false)
   const [isRegenerating, setIsRegenerating] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   const dialogRef = useRef<HTMLDivElement>(null)
   const previousActiveElementRef = useRef<HTMLElement | null>(null)
@@ -403,6 +405,20 @@ export default function PersonalizationModal() {
   const outputOptions = isVideo ? OUTPUT_OPTIONS_VIDEO : isImage ? OUTPUT_OPTIONS_IMAGE : OUTPUT_OPTIONS_PROMPT
   const showModes = outputType !== 'prompt' && eligibleModes.length > 0
 
+  const effectiveModelId =
+    genOptions.advancedModel ||
+    genOptions.model ||
+    source.model ||
+    (isVideo
+      ? mode === 'face_only'
+        ? FACE_SWAP_MODEL
+        : mode === 'full_body'
+          ? FULL_BODY_MODEL
+          : DEFAULT_T2V_MODEL
+      : DEFAULT_I2I_MODEL)
+
+  const capabilities = resolveModelCapabilities(source, { ...genOptions, model: effectiveModelId })
+
   // Niche CTA copy
   const nicheId = typeof (source as any)?.sourceMetadata?.nicheId === 'string'
     ? ((source as any).sourceMetadata.nicheId as string)
@@ -413,9 +429,25 @@ export default function PersonalizationModal() {
 
   // ── Upload handlers ────────────────────────────────────────────────────────
 
-  const handleIdentityUpload = useCallback((files: FileList | null) => {
-    if (files) addIdentityFiles(files)
-  }, [addIdentityFiles])
+  const handleIdentityUpload = (files: FileList | null) => {
+    if (!files) return
+    setUploadError(null)
+    const currentCount = assets.identities.length
+    const remaining = capabilities.maxImages - currentCount
+    if (remaining <= 0) {
+      setUploadError(`Maximum ${capabilities.maxImages} identity image(s) allowed for the selected model.`)
+      return
+    }
+    const filesToAdd = Array.from(files).slice(0, remaining)
+    if (filesToAdd.length < files.length) {
+      setUploadError(`Maximum ${capabilities.maxImages} identity image(s) allowed. Adding ${filesToAdd.length} of ${files.length} selected.`)
+    }
+    if (filesToAdd.length > 0) {
+      const dt = new DataTransfer()
+      filesToAdd.forEach(f => dt.items.add(f))
+      addIdentityFiles(dt.files)
+    }
+  }
   const handleLogoUpload = useCallback((files: FileList | null) => {
     if (files) addLogoFiles(files)
   }, [addLogoFiles])
@@ -614,6 +646,8 @@ export default function PersonalizationModal() {
               handleCopyPrompt={handleCopyPrompt}
               copiedPrompt={copiedPrompt}
               canPersonalize={Boolean(clientForm.businessName || clientForm.name)}
+              capabilities={capabilities}
+              uploadError={uploadError}
               outputOptions={outputOptions as any}
               outputType={outputType}
               setOutputType={setOutputType}
@@ -893,6 +927,8 @@ function ConfigurationView(props: any) {
     isPersonalizing, isRegenerating,
     handlePersonalize, handleRegenerate, handleCopyPrompt, copiedPrompt,
     canPersonalize,
+    capabilities,
+    uploadError,
     outputOptions, outputType, setOutputType, isPromptOnly,
     showModes, eligibleModes, mode, setMode,
     showAdvanced, setShowAdvanced, genOptions, updateGenOptions,
@@ -1036,7 +1072,13 @@ function ConfigurationView(props: any) {
                 <p style={{ margin: '5px 0 0', color: C.muted, fontSize: 11, lineHeight: 1.4 }}>Upload one or more photos of the person who should appear in the content.</p>
               </div>
             </div>
-            <UploadZone primary="Add Photos" secondary="Drag & drop or browse" onFiles={addIdentityFiles} multiple />
+            <UploadZone primary="Add Photos" secondary="Drag & drop or browse" onFiles={addIdentityFiles} multiple disabled={assets.identities.length >= capabilities.maxImages && capabilities.maxImages > 0} />
+            {capabilities.maxImages > 1 && (
+              <div style={{ marginTop: 8, fontSize: 10, color: C.muted }}>{assets.identities.length} / {capabilities.maxImages} images uploaded</div>
+            )}
+            {uploadError && (
+              <div style={{ marginTop: 6, fontSize: 10, color: C.danger }}>{uploadError}</div>
+            )}
             <div className="asset-label" style={{ marginTop: 13, marginBottom: 8, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: C.muted }}>Your Photos</div>
             <div className="flex flex-wrap gap-2">
               {assets.identities.length > 0 ? (
@@ -1440,6 +1482,73 @@ function ConfigurationView(props: any) {
         </div>
         {showAdvanced && (
           <div className="grid grid-cols-2 gap-3 p-4 mt-2 rounded-xl border" style={{ borderColor: C.border, background: '#0c1014' }}>
+            {capabilities.aspectRatioOptions.length > 0 ? (
+              <div>
+                <label style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Aspect Ratio</label>
+                <select
+                  value={genOptions?.aspectRatio || source.aspectRatio || capabilities.aspectRatioOptions[0] || ''}
+                  onChange={(e) => updateGenOptions({ ...genOptions, aspectRatio: e.target.value })}
+                  className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+                  style={{ borderColor: C.border, background: C.field, color: C.text }}
+                >
+                  {capabilities.aspectRatioOptions.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+            ) : source.aspectRatio ? (
+              <div>
+                <label style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Aspect Ratio</label>
+                <div style={{ padding: '8px 0', color: C.muted, fontSize: 13 }}>{source.aspectRatio}</div>
+              </div>
+            ) : null}
+            {capabilities.resolutionOptions.length > 0 && (
+              <div>
+                <label style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Resolution</label>
+                <select
+                  value={genOptions?.resolution || ''}
+                  onChange={(e) => updateGenOptions({ ...genOptions, resolution: e.target.value })}
+                  className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+                  style={{ borderColor: C.border, background: C.field, color: C.text }}
+                >
+                  <option value="">Default</option>
+                  {capabilities.resolutionOptions.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {capabilities.qualityOptions.length > 0 && (
+              <div>
+                <label style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Quality</label>
+                <select
+                  value={genOptions?.quality || ''}
+                  onChange={(e) => updateGenOptions({ ...genOptions, quality: e.target.value })}
+                  className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+                  style={{ borderColor: C.border, background: C.field, color: C.text }}
+                >
+                  <option value="">Default</option>
+                  {capabilities.qualityOptions.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {capabilities.durationOptions.length > 0 && (
+              <div>
+                <label style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Duration</label>
+                <select
+                  value={genOptions?.duration || source.duration || ''}
+                  onChange={(e) => updateGenOptions({ ...genOptions, duration: e.target.value ? parseInt(e.target.value) : undefined })}
+                  className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
+                  style={{ borderColor: C.border, background: C.field, color: C.text }}
+                >
+                  {capabilities.durationOptions.map(opt => (
+                    <option key={opt} value={opt}>{opt}s</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label style={{ display: 'block', fontSize: 11, textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Engine</label>
               <select
