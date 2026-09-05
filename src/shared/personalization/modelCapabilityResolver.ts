@@ -37,7 +37,7 @@ import {
 
 export const FACE_SWAP_MODEL = 'ai-video-face-swap' // v2vModels entry
 export const FULL_BODY_MODEL = 'kling-v3.0-pro-recast' // recastModels entry
-export const DEFAULT_T2V_MODEL = 'ltx-2-fast-text-to-video' // t2vModels entry — longest duration available
+export const DEFAULT_T2V_MODEL = 'veo-4-text-to-video' // t2vModels entry — longest duration with aspect ratio support
 export const DEFAULT_I2I_MODEL = 'gpt-image-2-edit' // i2iModels entry
 
 export interface ModelCapabilities {
