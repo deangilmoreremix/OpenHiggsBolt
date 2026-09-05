@@ -787,7 +787,6 @@ export function DemoPersonalizeProvider({ apiKey, children }: DemoPersonalizePro
     }
 
     const blobAssets = allAssets.filter((a) => a.url.startsWith('blob:'))
-    console.log('blobAssets:', blobAssets.length, blobAssets.map(a => ({ url: a.url })));
     if (blobAssets.length > 0) {
       setGeneration({
         ...EMPTY_GENERATION_STATE,
