@@ -85,10 +85,14 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
     } else {
       body = await req.json().catch(() => ({}))
     }
+    const isJson = !contentType.includes('multipart/form-data')
     const res = await fetch(`${BASE}${path}`, {
       method: 'POST',
-      headers: { 'x-api-key': key },
-      body,
+      headers: {
+        'x-api-key': key,
+        ...(isJson ? { 'content-type': 'application/json' } : {}),
+      },
+      body: isJson ? JSON.stringify(body) : body,
       signal: AbortSignal.timeout(120000),
     })
     const data = await safeApiJson(res)

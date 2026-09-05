@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { safeApiJson } from '@/lib/safeApiResponse';
 
 const MUAPI_BASE = 'https://api.muapi.ai';
 
