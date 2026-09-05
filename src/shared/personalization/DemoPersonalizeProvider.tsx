@@ -53,6 +53,7 @@ import {
   getSharedMedia,
   registerSharedMedia,
 } from './sharedMedia'
+import { registerSupabaseSharedMedia } from './supabaseSharedMedia'
 import { personalizePrompt, regeneratePrompt } from './promptPersonalizer'
 import { runGeneration } from './generationRouter'
 import { resolveModelCapabilities, resolveAssetsForModel } from './modelCapabilityResolver'
@@ -890,6 +891,32 @@ export function DemoPersonalizeProvider({ apiKey, children }: DemoPersonalizePro
         clientId: selectedClientId || undefined,
       })
       setSharedMediaEntries(getSharedMedia())
+
+      // Also persist to Supabase server-side so history survives
+      // across devices and browser clears. Best-effort: do not block UI.
+      registerSupabaseSharedMedia({
+        originStudio: 'demo-personalization',
+        sourceType: source.sourceType,
+        sourceDemoId: source.id,
+        sourceDemoSlug: (source as any).sourceDemoSlug || (source as any).slug || null,
+        sourceMedia: source.sourceMedia,
+        sourceUrl: source.sourceUrl,
+        personalizationMode: mode || null,
+        model: resultWithPostProcessing.metadata?.model as string | undefined,
+        originalPrompt: promptState.original,
+        personalizedPrompt: finalPrompt,
+        identityAssetIds: assets.identities.map((i) => i.id),
+        logoAssetIds: assets.logos.map((l) => l.id),
+        productAssetIds: assets.products.map((p) => p.id),
+        brandReferenceAssetIds: assets.brandReferences.map((b) => b.id),
+        firstFrameAssetId: assets.firstFrame?.id || null,
+        lastFrameAssetId: assets.lastFrame?.id || null,
+        outputUrls: resultWithPostProcessing.urls || (finalUrl ? [finalUrl] : []),
+        outputType: resultWithPostProcessing.type,
+        clientId: selectedClientId || undefined,
+      }).catch(() => {
+        // Supabase persistence is best-effort; localStorage remains the source of truth
+      })
     } catch (error) {
       setGeneration({
         ...EMPTY_GENERATION_STATE,
