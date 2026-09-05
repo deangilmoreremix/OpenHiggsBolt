@@ -191,3 +191,13 @@ const translations = {
         'localModels.deleteConfirm': (name) => `Delete "${name}"? You'll need to re-download it to use it again.`,
     },
 };
+
+export function t(key) {
+    return translations.en[key] ?? key;
+}
+
+export function tf(key, ...args) {
+    const value = translations.en[key];
+    if (typeof value === 'function') return value(...args);
+    return value ?? key;
+}

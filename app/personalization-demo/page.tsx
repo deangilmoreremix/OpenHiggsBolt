@@ -112,7 +112,7 @@ function SettingsPrompt({ onClose }: { onClose: () => void }) {
 
     // Use dynamic import to load the vanilla JS SettingsModal.
     // @ts-ignore - SettingsModal is a vanilla JS component without TS declarations
-    import('@/components/SettingsModal')
+    import('../../src/components/SettingsModal')
       .then(({ SettingsModal }) => {
         if (destroyed) return
         const modal = SettingsModal(() => {
