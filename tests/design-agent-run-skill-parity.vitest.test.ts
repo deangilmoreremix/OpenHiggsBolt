@@ -1,9 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
-vi.mock('../app/api/design-agent/lib/auth', () => ({
-  getDesignAgentApiKey: vi.fn(async () => 'test-da-key'),
-}))
+const SANDBOX_KEY = '5c0dc3a2146315592368336e8ee102087853022254158331a48cd0cd8528cec9'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -11,7 +9,41 @@ afterEach(() => {
 
 describe('POST /api/design-agent/run-skill parity', () => {
   it('resolves the skill primary input and defaults to gpt-5-mini', async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+    vi.resetModules()
+
+    vi.doMock('../app/api/design-agent/lib/auth', () => ({
+      getDesignAgentApiKey: vi.fn(async () => SANDBOX_KEY),
+    }))
+
+    vi.doMock('@clerk/nextjs/server', () => ({
+      auth: vi.fn(async () => ({ userId: 'test-user' })),
+    }))
+
+    vi.doMock('../app/api/design-agent/lib/ownership', () => ({
+      requireOwnership: vi.fn(async () => ({ userId: 'test-user' })),
+      recordOwnership: vi.fn(async () => {}),
+      getOwnerId: vi.fn(async () => 'test-user'),
+    }))
+
+    vi.doMock('@/access/apiRequireEntitlement', () => ({
+      requireApiEntitlement: vi.fn(async () => ({ allowed: true })),
+      entitlementForbiddenResponse: vi.fn(() => new Response('Forbidden', { status: 403 })),
+    }))
+
+    vi.doMock('@/src/lib/supabaseServer', () => ({
+      getSupabaseAdmin: vi.fn(() => ({
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: null, error: null }),
+            }),
+          }),
+          upsert: () => ({ error: null }),
+        }),
+      })),
+    }))
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
       if (url.endsWith('/agent-skills')) {
         return new Response(
@@ -34,7 +66,7 @@ describe('POST /api/design-agent/run-skill parity', () => {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-api-key': 'test-da-key',
+        'x-api-key': SANDBOX_KEY,
       },
       body: JSON.stringify({
         sessionId: 'sess/1',
@@ -57,7 +89,7 @@ describe('POST /api/design-agent/run-skill parity', () => {
 
     const [skillsUrl, skillsInit] = fetchMock.mock.calls[0]
     expect(String(skillsUrl)).toBe('https://api.muapi.ai/api/v1/creative-agent/agent-skills')
-    expect((skillsInit as RequestInit).headers).toHaveProperty('x-api-key', 'test-da-key')
+    expect((skillsInit as RequestInit).headers).toHaveProperty('x-api-key', SANDBOX_KEY)
 
     const [runSkillUrl, runSkillInit] = fetchMock.mock.calls[1]
     expect(String(runSkillUrl)).toBe('https://api.muapi.ai/api/v1/creative-agent/sessions/sess%2F1/run-skill')
@@ -68,7 +100,41 @@ describe('POST /api/design-agent/run-skill parity', () => {
   })
 
   it('preserves explicit inputs supplied by the client', async () => {
-    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(
+    vi.resetModules()
+
+    vi.doMock('../app/api/design-agent/lib/auth', () => ({
+      getDesignAgentApiKey: vi.fn(async () => SANDBOX_KEY),
+    }))
+
+    vi.doMock('@clerk/nextjs/server', () => ({
+      auth: vi.fn(async () => ({ userId: 'test-user' })),
+    }))
+
+    vi.doMock('../app/api/design-agent/lib/ownership', () => ({
+      requireOwnership: vi.fn(async () => ({ userId: 'test-user' })),
+      recordOwnership: vi.fn(async () => {}),
+      getOwnerId: vi.fn(async () => 'test-user'),
+    }))
+
+    vi.doMock('@/access/apiRequireEntitlement', () => ({
+      requireApiEntitlement: vi.fn(async () => ({ allowed: true })),
+      entitlementForbiddenResponse: vi.fn(() => new Response('Forbidden', { status: 403 })),
+    }))
+
+    vi.doMock('@/src/lib/supabaseServer', () => ({
+      getSupabaseAdmin: vi.fn(() => ({
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: null, error: null }),
+            }),
+          }),
+          upsert: () => ({ error: null }),
+        }),
+      })),
+    }))
+
+    const fetchMock = vi.fn(async () => new Response(
       JSON.stringify({ job_id: 'job_2', status: 'pending' }),
       { status: 200, headers: { 'content-type': 'application/json' } },
     ))
@@ -77,7 +143,7 @@ describe('POST /api/design-agent/run-skill parity', () => {
     const { POST } = await import('../app/api/design-agent/run-skill/route')
     const req = new NextRequest('http://localhost/api/design-agent/run-skill', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-api-key': SANDBOX_KEY },
       body: JSON.stringify({
         sessionId: 'sess_2',
         skill_name: 'fashion-try-on',
