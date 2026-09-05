@@ -43,9 +43,6 @@ import {
 import { useDemoPersonalize } from './DemoPersonalizeProvider'
 import type { PersonalizationAsset } from './types'
 
-// Niche-specific CTA copy
-import { NICHE_CTA_BY_ID } from '@/components/landing/landingData'
-
 // ── Design tokens (mirror the approved HTML CSS variables) ──────────────────
 
 const C = {
@@ -403,14 +400,6 @@ export default function PersonalizationModal() {
   const outputOptions = isVideo ? OUTPUT_OPTIONS_VIDEO : isImage ? OUTPUT_OPTIONS_IMAGE : OUTPUT_OPTIONS_PROMPT
   const showModes = outputType !== 'prompt' && eligibleModes.length > 0
 
-  // Niche CTA copy
-  const nicheId = typeof (source as any)?.sourceMetadata?.nicheId === 'string'
-    ? ((source as any).sourceMetadata.nicheId as string)
-    : null
-  const nicheCta = nicheId ? NICHE_CTA_BY_ID[nicheId] : null
-  const headerTitle = nicheCta?.ctaHeading ?? 'PERSONALIZE THIS DEMO'
-  const headerSubtitle = nicheCta?.ctaBody ?? 'Turn this demo into a custom version for yourself, your business, or a customer. Personalize the person, branding, products, prompt, offer and CTA.'
-
   // ── Upload handlers ────────────────────────────────────────────────────────
 
   const handleIdentityUpload = useCallback((files: FileList | null) => {
@@ -514,15 +503,14 @@ export default function PersonalizationModal() {
                 className="text-[19px] leading-[1.1] tracking-tight font-bold m-0"
                 style={{ color: C.text }}
               >
-                {headerTitle}
+                Personalize this demo
               </h1>
               <p
                 className="mt-1.5 max-w-[760px] text-[13px] leading-[1.55]"
                 style={{ color: C.muted }}
-                {...(nicheCta
-                  ? { dangerouslySetInnerHTML: { __html: headerSubtitle } }
-                  : { children: headerSubtitle })}
-              />
+              >
+                Turn this demo into a custom version for yourself, your business, or a customer. Personalize the person, branding, products, prompt, offer and CTA.
+              </p>
             </div>
           </div>
           <button
