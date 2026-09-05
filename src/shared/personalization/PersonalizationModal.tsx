@@ -949,8 +949,6 @@ function ConfigurationView(props: any) {
               overflow: 'hidden',
               background: 'linear-gradient(rgba(0,0,0,.24), rgba(0,0,0,.38)), linear-gradient(135deg, #303944, #12171c 70%)',
               border: `1px solid ${C.border}`,
-              display: 'grid',
-              placeItems: 'center',
             }}
           >
             {source.aspectRatio && (
@@ -958,13 +956,32 @@ function ConfigurationView(props: any) {
                 {source.aspectRatio}
               </div>
             )}
-            <button
-              className="w-[62px] h-[62px] rounded-full flex items-center justify-center text-2xl"
-              style={{ border: '1px solid rgba(255,255,255,.3)', background: 'rgba(255,255,255,.18)', color: 'white', backdropFilter: 'blur(8px)' }}
-              aria-label="Play source preview"
-            >
-              ▶
-            </button>
+            {source.mediaType === 'video' && source.sourceMedia ? (
+              <video
+                src={source.sourceMedia}
+                poster={source.poster || undefined}
+                controls
+                className="w-full h-full"
+                style={{ maxHeight: '50vh', objectFit: 'contain' }}
+              />
+            ) : source.mediaType === 'image' && source.sourceMedia ? (
+              <img
+                src={source.sourceMedia}
+                alt={source.title}
+                className="w-full h-full"
+                style={{ maxHeight: '50vh', objectFit: 'contain' }}
+              />
+            ) : (
+              <div className="flex items-center justify-center w-full h-full">
+                <button
+                  className="w-[62px] h-[62px] rounded-full flex items-center justify-center text-2xl"
+                  style={{ border: '1px solid rgba(255,255,255,.3)', background: 'rgba(255,255,255,.18)', color: 'white', backdropFilter: 'blur(8px)' }}
+                  aria-label="Play source preview"
+                >
+                  ▶
+                </button>
+              </div>
+            )}
           </div>
           <div className="mt-3 text-base font-bold">{source.title}</div>
           <div className="mt-1 text-[11px] uppercase" style={{ color: C.muted }}>
