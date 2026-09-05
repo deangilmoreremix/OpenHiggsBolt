@@ -85,7 +85,7 @@ export default function PersonalizationDemoPage() {
   }
 
   return (
-    <DemoPersonalizeProvider apiKey={apiKey || undefined}>
+    <DemoPersonalizeProvider>
       <div
         style={{
           minHeight: '100vh',
