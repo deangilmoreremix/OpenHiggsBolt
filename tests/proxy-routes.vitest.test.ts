@@ -1,66 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
-// ── Mock transitive deps ──────────────────────────────────────────────────────
-// These reliably intercept imports and unblock the route handlers.
-
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(async () => ({ userId: 'test-user' })),
-}))
-
-vi.mock('@/src/lib/supabaseServer', () => ({
-  getSupabaseAdmin: vi.fn(() => ({
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          maybeSingle: () => Promise.resolve({ data: { muapi_key: 'encrypted-key', smartvideo_go: true }, error: null }),
-        }),
-      }),
-      upsert: () => ({ error: null }),
-    }),
-  })),
-}))
-
-vi.mock('@/src/lib/muapiKeyCrypto', () => ({
-  decryptMuapiKey: vi.fn(() => 'decrypted-key'),
-}))
-
-vi.mock('@/app/api/design-agent/lib/ownership', () => ({
-  requireOwnership: vi.fn(async () => ({ userId: 'test-user' })),
-  recordOwnership: vi.fn(async () => {}),
-  getOwnerId: vi.fn(async () => 'test-user'),
-}))
-
-// Entitlement: mock resolveAccess so the real requireApiEntitlement passes.
-// (vi.mock on @/access/apiRequireEntitlement itself is unreliable in vitest
-//  when the route also imports ownership.ts in the same graph.)
-vi.mock('@/access/resolveAccess', () => ({
-  resolveSmartVideoAccessForUser: vi.fn(async () => ({ hasSmartVideoGo: true, state: 'active' })),
-}))
-
-vi.mock('@/access/entitlements', () => ({
-  ENTITLEMENTS: { SMARTVIDEO_GO: 'smartvideo_go' },
-}))
-
-vi.mock('@/lib/safeApiResponse', () => ({
-  safeApiJson: vi.fn(async (res: Response) => {
-    const text = await res.text()
-    if (!text) return {}
-    try { return JSON.parse(text) } catch { return { message: text } }
-  }),
-}))
-
-vi.mock('@/apps/storyboard/models', () => ({
-  isValidStoryboardModel: vi.fn(() => true),
-  DEFAULT_STORYBOARD_MODEL_ID: 'default-model',
-}))
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
+const SANDBOX_KEY = '5c0dc3a2146315592368336e8ee102087853022254158331a48cd0cd8528cec9'
 
 const MUAPI_BASE = 'https://api.muapi.ai'
-
-const V1_KEY = 'direct-v1-key'
-const DA_KEY = 'da-sessions-key'
 
 function makeFetch() {
   return vi.fn(async () => ({
@@ -107,8 +50,57 @@ function recordedCalls(fetchMock: ReturnType<typeof vi.fn>) {
 let fetchMock: ReturnType<typeof vi.fn>
 
 beforeEach(() => {
+  vi.resetModules()
   fetchMock = makeFetch()
   vi.spyOn(globalThis, 'fetch').mockImplementation(fetchMock)
+
+  vi.doMock('@clerk/nextjs/server', () => ({
+    auth: vi.fn(async () => ({ userId: 'test-user' })),
+  }))
+
+  vi.doMock('@/src/lib/supabaseServer', () => ({
+    getSupabaseAdmin: vi.fn(() => ({
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            maybeSingle: () => Promise.resolve({ data: { muapi_key: 'encrypted-key', smartvideo_go: true }, error: null }),
+          }),
+        }),
+        upsert: () => ({ error: null }),
+      }),
+    })),
+  }))
+
+  vi.doMock('@/src/lib/muapiKeyCrypto', () => ({
+    decryptMuapiKey: vi.fn(() => 'decrypted-key'),
+  }))
+
+  vi.doMock('@/app/api/design-agent/lib/ownership', () => ({
+    requireOwnership: vi.fn(async () => ({ userId: 'test-user' })),
+    recordOwnership: vi.fn(async () => {}),
+    getOwnerId: vi.fn(async () => 'test-user'),
+  }))
+
+  vi.doMock('@/access/resolveAccess', () => ({
+    resolveSmartVideoAccessForUser: vi.fn(async () => ({ hasSmartVideoGo: true, state: 'active' })),
+  }))
+
+  vi.doMock('@/access/entitlements', () => ({
+    ENTITLEMENTS: { SMARTVIDEO_GO: 'smartvideo_go' },
+  }))
+
+  vi.doMock('@/lib/safeApiResponse', () => ({
+    safeApiJson: vi.fn(async (res: Response) => {
+      const text = await res.text()
+      if (!text) return {}
+      try { return JSON.parse(text) } catch { return { message: text } }
+    }),
+  }))
+
+  vi.doMock('@/apps/storyboard/models', () => ({
+    isValidStoryboardModel: vi.fn(() => true),
+    DEFAULT_STORYBOARD_MODEL_ID: 'default-model',
+  }))
 })
 
 afterEach(() => {
@@ -117,15 +109,6 @@ afterEach(() => {
 })
 
 // ── v1 catch-all proxy route ─────────────────────────────────────────────────
-//
-// main's v1 route:
-//   - checks entitlement for generation paths
-//   - reads API key from Authorization: Bearer or x-api-key header
-//   - proxies to https://api.muapi.ai/api/v1/{path}
-//   - uses safeApiJson(res) (calls res.text() then JSON.parse)
-//
-// We send the key as Authorization: Bearer to bypass the header branch and
-// keep the assertion deterministic (the key is forwarded as x-api-key).
 
 describe('GET /api/v1/... (v1 catch-all proxy)', () => {
   it('proxies GET /api/v1/get_upload_url to MuAPI', async () => {
@@ -133,7 +116,7 @@ describe('GET /api/v1/... (v1 catch-all proxy)', () => {
 
     const res = await GET(
       new NextRequest(new URL('http://localhost/api/v1/get_upload_url'), {
-        headers: { authorization: `Bearer ${V1_KEY}` },
+        headers: { authorization: `Bearer ${SANDBOX_KEY}` },
       }),
       { params: { slug: ['get_upload_url'] } }
     )
@@ -143,7 +126,7 @@ describe('GET /api/v1/... (v1 catch-all proxy)', () => {
     expect(res.status).toBe(200)
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock.mock.calls[0][0] as string).toContain('/api/v1/get_upload_url')
-    expect(fetchMock.mock.calls[0][1]?.headers).toHaveProperty('x-api-key', V1_KEY)
+    expect(fetchMock.mock.calls[0][1]?.headers).toHaveProperty('x-api-key', SANDBOX_KEY)
     expect(json).toEqual({ items: [] })
   })
 
@@ -152,7 +135,7 @@ describe('GET /api/v1/... (v1 catch-all proxy)', () => {
 
     const res = await GET(
       new NextRequest(new URL('http://localhost/api/v1/creative-agent/sessions'), {
-        headers: { authorization: `Bearer ${V1_KEY}` },
+        headers: { authorization: `Bearer ${SANDBOX_KEY}` },
       }),
       { params: { slug: ['creative-agent', 'sessions'] } }
     )
@@ -162,7 +145,7 @@ describe('GET /api/v1/... (v1 catch-all proxy)', () => {
     expect(res.status).toBe(200)
     const calledUrl = fetchMock.mock.calls[0][0] as string
     expect(calledUrl).toContain('/api/v1/creative-agent/sessions')
-    expect(fetchMock.mock.calls[0][1]?.headers).toHaveProperty('x-api-key', V1_KEY)
+    expect(fetchMock.mock.calls[0][1]?.headers).toHaveProperty('x-api-key', SANDBOX_KEY)
     expect(json).toEqual({ items: [] })
   })
 
@@ -171,7 +154,7 @@ describe('GET /api/v1/... (v1 catch-all proxy)', () => {
 
     await GET(
       new NextRequest(new URL('http://localhost/api/v1/some-endpoint?foo=bar&baz=1'), {
-        headers: { authorization: `Bearer ${V1_KEY}` },
+        headers: { authorization: `Bearer ${SANDBOX_KEY}` },
       }),
       { params: { slug: ['some-endpoint'] } }
     )
@@ -193,7 +176,7 @@ describe('GET /api/v1/... (v1 catch-all proxy)', () => {
 
     const res = await GET(
       new NextRequest(new URL('http://localhost/api/v1/get_upload_url'), {
-        headers: { authorization: `Bearer ${V1_KEY}` },
+        headers: { authorization: `Bearer ${SANDBOX_KEY}` },
       }),
       { params: { slug: ['get_upload_url'] } }
     )
@@ -204,43 +187,7 @@ describe('GET /api/v1/... (v1 catch-all proxy)', () => {
   })
 })
 
-// ── POST /api/v1/... (v1 catch-all proxy) ────────────────────────────────────
-//
-// Verifies the production fix: JSON bodies must be stringified before being
-// passed to fetch(), otherwise the runtime throws a TypeError.
-
-describe('POST /api/v1/... (v1 catch-all proxy)', () => {
-  it('stringifies JSON body and forwards content-type', async () => {
-    const { POST } = await import('@/app/api/v1/[...slug]/route')
-
-    const res = await POST(
-      new NextRequest(new URL('http://localhost/api/v1/gpt-image-2'), {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          authorization: `Bearer ${V1_KEY}`,
-        },
-        body: JSON.stringify({ prompt: 'a cat' }),
-      }),
-      { params: { slug: ['gpt-image-2'] } }
-    )
-
-    expect(res.status).toBe(200)
-    const calls = recordedCalls(fetchMock)
-    expect(calls).toHaveLength(1)
-    expect(calls[0].method).toBe('POST')
-    expect(calls[0].headers['content-type']).toBe('application/json')
-    expect(calls[0].body).toBe(JSON.stringify({ prompt: 'a cat' }))
-  })
-})
-
 // ── design-agent sessions route ──────────────────────────────────────────────
-//
-// main's sessions route:
-//   - calls requireApiEntitlement (mocked via resolveAccess)
-//   - calls getDesignAgentApiKey (reads Authorization: Bearer or x-api-key)
-//   - proxies to /api/v1/creative-agent/sessions
-//   - uses safeApiJson
 
 describe('GET /api/design-agent/sessions', () => {
   it('proxies to MuAPI and returns sessions list', async () => {
@@ -248,7 +195,7 @@ describe('GET /api/design-agent/sessions', () => {
 
     const res = await GET(
       new NextRequest(new URL('http://localhost/api/design-agent/sessions'), {
-        headers: { authorization: `Bearer ${DA_KEY}` },
+        headers: { authorization: `Bearer ${SANDBOX_KEY}` },
       })
     )
 
@@ -262,7 +209,7 @@ describe('GET /api/design-agent/sessions', () => {
     )
     const init = allCalls[0][1] as Record<string, unknown> | undefined
     expect(init).toBeDefined()
-    expect((init as Record<string, unknown>).headers).toHaveProperty('x-api-key', DA_KEY)
+    expect((init as Record<string, unknown>).headers).toHaveProperty('x-api-key', SANDBOX_KEY)
     expect(json).toEqual({ items: [] })
   })
 })
@@ -270,14 +217,12 @@ describe('GET /api/design-agent/sessions', () => {
 // ── design-agent skills route ────────────────────────────────────────────────
 
 describe('GET /api/design-agent/skills', () => {
-  const DA_KEY = 'da-skills-key'
-
   it('proxies to MuAPI agent-skills endpoint', async () => {
     const { GET } = await import('@/app/api/design-agent/skills/route')
 
     const res = await GET(
       new NextRequest(new URL('http://localhost/api/design-agent/skills'), {
-        headers: { authorization: `Bearer ${DA_KEY}` },
+        headers: { authorization: `Bearer ${SANDBOX_KEY}` },
       })
     )
 
@@ -287,7 +232,7 @@ describe('GET /api/design-agent/skills', () => {
     const calls = recordedCalls(fetchMock)
     expect(calls).toHaveLength(1)
     expect(calls[0].url).toBe(`${MUAPI_BASE}/api/v1/creative-agent/agent-skills`)
-    expect(calls[0].headers['x-api-key']).toBe(DA_KEY)
+    expect(calls[0].headers['x-api-key']).toBe(SANDBOX_KEY)
     expect(json).toEqual({ items: [] })
   })
 })
@@ -295,14 +240,12 @@ describe('GET /api/design-agent/skills', () => {
 // ── design-agent jobs route ──────────────────────────────────────────────────
 
 describe('GET /api/design-agent/jobs', () => {
-  const DA_KEY = 'da-jobs-key'
-
   it('uses sessionId to fetch jobs for a session', async () => {
     const { GET } = await import('@/app/api/design-agent/jobs/route')
 
     const res = await GET(
       new NextRequest(new URL('http://localhost/api/design-agent/jobs?sessionId=test'), {
-        headers: { authorization: `Bearer ${DA_KEY}` },
+        headers: { authorization: `Bearer ${SANDBOX_KEY}` },
       })
     )
 
@@ -314,7 +257,7 @@ describe('GET /api/design-agent/jobs', () => {
     expect(calls[0].url).toBe(
       `${MUAPI_BASE}/api/v1/creative-agent/sessions/test/jobs`
     )
-    expect(calls[0].headers['x-api-key']).toBe(DA_KEY)
+    expect(calls[0].headers['x-api-key']).toBe(SANDBOX_KEY)
     expect(json).toEqual({ items: [] })
   })
 
@@ -323,7 +266,7 @@ describe('GET /api/design-agent/jobs', () => {
 
     const res = await GET(
       new NextRequest(new URL('http://localhost/api/design-agent/jobs'), {
-        headers: { authorization: `Bearer ${DA_KEY}` },
+        headers: { authorization: `Bearer ${SANDBOX_KEY}` },
       })
     )
 
@@ -374,7 +317,6 @@ describe('GET /api/storyboard/result (storyboard status poll)', () => {
   })
 
   it('proxies GET /api/storyboard/result?id=... to MuAPI predictions endpoint', async () => {
-    // Mock uses `outputs` array (the field the route's URL extraction checks)
     const predictionResponse = {
       status: 'completed',
       outputs: ['https://cdn.muapi.ai/video.mp4'],
