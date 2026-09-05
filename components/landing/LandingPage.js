@@ -2,11 +2,21 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import StandaloneShell from '@/components/StandaloneShell';
 import { PRODUCT_NAME, NAV_ITEMS, LOGOS, TESTIMONIALS, PRICING, FAQS } from './landingData';
-import SmartVideoShowcase from './SmartVideoShowcase';
 import PersonalizedHeroHeading from './PersonalizedHeroHeading';
 import { DemoPersonalizeProvider } from '@/shared/personalization';
+
+const SmartVideoShowcase = dynamic(() => import('./SmartVideoShowcase'), {
+  loading: () => (
+    <div className="mx-auto max-w-7xl px-6 py-20 text-center">
+      <div className="inline-flex h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-cyan-400" />
+      <p className="mt-4 text-sm text-white/50">Loading studio showcase…</p>
+    </div>
+  ),
+  ssr: false,
+});
 
 function PricingBuyButton() {
   const [loading, setLoading] = useState(false);
