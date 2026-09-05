@@ -64,6 +64,10 @@ describe('resolveModelCapabilities', () => {
     expect(caps.supportsV2V).toBe(true)
     expect(caps.imageField).toBe('image_url')
     expect(caps.videoField).toBe('video_url')
+    expect(caps.aspectRatioOptions).toEqual([])
+    expect(caps.resolutionOptions).toEqual([])
+    expect(caps.qualityOptions).toEqual([])
+    expect(caps.durationOptions).toEqual([])
   })
 
   it('resolves recast capabilities for kling-v3.0-pro-recast', () => {
@@ -71,6 +75,7 @@ describe('resolveModelCapabilities', () => {
     expect(caps.supportsPersonReplacement).toBe(true)
     expect(caps.supportsRecast).toBe(true)
     expect(caps.supportsV2V).toBe(true)
+    expect(caps.aspectRatioOptions).toEqual([])
   })
 
   it('resolves V2V capabilities for runway-aleph-v2v', () => {
@@ -78,12 +83,22 @@ describe('resolveModelCapabilities', () => {
     expect(caps.supportsV2V).toBe(true)
     expect(caps.supportsFaceSwap).toBe(false)
     expect(caps.supportsPersonReplacement).toBe(false)
+    expect(caps.aspectRatioOptions).toEqual([])
   })
 
   it('resolves V2V capabilities for kling-o1-video-edit', () => {
     const caps = resolveModelCapabilities(EMPTY_SOURCE, { ...baseOptions, model: 'kling-o1-video-edit' })
     expect(caps.supportsV2V).toBe(true)
     expect(caps.maxImages).toBe(4)
+    expect(caps.aspectRatioOptions).toEqual([])
+  })
+
+  it('resolves aspect ratio and duration options for seedance-2-t2v', () => {
+    const caps = resolveModelCapabilities(EMPTY_SOURCE, { ...baseOptions, model: 'seedance-2-t2v' })
+    expect(caps.aspectRatioOptions).toEqual(['16:9', '9:16', '4:3', '3:4'])
+    expect(caps.durationOptions).toEqual([5, 10, 15])
+    expect(caps.qualityOptions).toEqual(['high', 'basic'])
+    expect(caps.resolutionOptions).toEqual([])
   })
 
   it('does not falsely assign face swap to non-face models', () => {

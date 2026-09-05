@@ -58,6 +58,10 @@ export interface ModelCapabilities {
   hasPrompt: boolean
   modelId: string
   endpoint: string | null
+  aspectRatioOptions: string[]
+  resolutionOptions: string[]
+  qualityOptions: string[]
+  durationOptions: number[]
 }
 
 /**
@@ -136,6 +140,19 @@ export function resolveModelCapabilities(
     isInCatalog(modelId, recastModels) ||
     /v2v|recast/.test(modelId.toLowerCase())
 
+  const aspectRatioOptions = Array.isArray(model?.inputs?.aspect_ratio?.enum)
+    ? model.inputs.aspect_ratio.enum
+    : []
+  const resolutionOptions = Array.isArray(model?.inputs?.resolution?.enum)
+    ? model.inputs.resolution.enum
+    : []
+  const qualityOptions = Array.isArray(model?.inputs?.quality?.enum)
+    ? model.inputs.quality.enum
+    : []
+  const durationOptions = Array.isArray(model?.inputs?.duration?.enum)
+    ? model.inputs.duration.enum
+    : []
+
   return {
     supportsFaceSwap:
       isInCatalog(modelId, v2vModels) && model?.imageField === 'image_url' ||
@@ -159,6 +176,10 @@ export function resolveModelCapabilities(
     hasPrompt,
     modelId,
     endpoint: model?.endpoint || null,
+    aspectRatioOptions,
+    resolutionOptions,
+    qualityOptions,
+    durationOptions,
   }
 }
 

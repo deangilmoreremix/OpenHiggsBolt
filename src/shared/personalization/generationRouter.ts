@@ -167,7 +167,7 @@ async function handleImageGeneration({
       prompt,
       image_url: imageUrl,
       images_list: resolved.directInputs.images_list as string[] | undefined,
-      aspect_ratio: source.aspectRatio || '1:1',
+      aspect_ratio: options.aspectRatio || source.aspectRatio || '1:1',
       quality: options.quality,
       resolution: options.resolution,
     })
@@ -195,7 +195,7 @@ async function handleImageGeneration({
   const result = await generateImage(apiKey, {
     model: imageModel,
     prompt,
-    aspect_ratio: source.aspectRatio || '1:1',
+    aspect_ratio: options.aspectRatio || source.aspectRatio || '1:1',
     quality: options.quality,
     resolution: options.resolution,
     image_url: resolved.directInputs.image_url as string | undefined,
@@ -254,7 +254,7 @@ async function handleVideoGeneration({
       video_url: videoUrl,
       image_url: identityUrl,
       prompt: options.preserveAudio ? undefined : prompt,
-      aspect_ratio: source.aspectRatio,
+      aspect_ratio: options.aspectRatio || source.aspectRatio,
     })
 
     onProgress?.(85, 'Processing face swap...')
@@ -287,7 +287,7 @@ async function handleVideoGeneration({
       video_url: videoUrl,
       image_url: identityUrl,
       prompt: options.preserveAudio ? undefined : prompt,
-      aspect_ratio: source.aspectRatio,
+      aspect_ratio: options.aspectRatio || source.aspectRatio,
     })
 
     onProgress?.(85, 'Processing...')
@@ -322,8 +322,8 @@ async function handleVideoGeneration({
     const i2vResult = await generateI2V(apiKey, {
       model: videoModel,
       prompt,
-      aspect_ratio: source.aspectRatio || '16:9',
-      duration: source.duration,
+      aspect_ratio: options.aspectRatio || source.aspectRatio || '16:9',
+      duration: options.duration || source.duration,
       resolution: options.resolution,
       quality: options.quality,
       image_url: imageUrl,
@@ -345,8 +345,8 @@ async function handleVideoGeneration({
   const result = await generateVideo(apiKey, {
     model: videoModel,
     prompt,
-    aspect_ratio: source.aspectRatio || '16:9',
-    duration: source.duration,
+    aspect_ratio: options.aspectRatio || source.aspectRatio || '16:9',
+    duration: options.duration || source.duration,
     resolution: options.resolution,
     quality: options.quality,
     mode: 'v2v',
