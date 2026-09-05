@@ -98,24 +98,9 @@ export default clerkMiddleware(async (auth, request) => {
     await auth.protect();
   }
 
-  const isMuApi = url.pathname.startsWith('/api/workflow') ||
-                  url.pathname.startsWith('/api/app') ||
-                  url.pathname.startsWith('/api/v1');
-
-  if (isMuApi) {
-    const isHandledByRoute = url.pathname.startsWith('/api/v1/creative-agent') ||
-                             url.pathname.startsWith('/api/v1/get_upload_url') ||
-                             url.pathname.startsWith('/api/v1/upload-binary');
-
-    if (url.pathname.startsWith('/api/v1') && !isHandledByRoute) {
-      const suffix = url.pathname.slice('/api/v1'.length) + url.search;
-      const rewritePath = `/api/api/v1${suffix}`;
-      return applyResponseHeaders(
-        NextResponse.rewrite(new URL(rewritePath, request.url)),
-        locale,
-      );
-    }
-  }
+  // All /api/v1/* requests are handled by dedicated route handlers.
+  // Removed legacy middleware rewrite to /api/api/v1/* so the centralized
+  // catch-all route can apply explicit timeouts and JSON error responses.
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-locale', locale);
