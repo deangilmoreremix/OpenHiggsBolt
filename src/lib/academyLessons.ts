@@ -97,11 +97,57 @@ export function getAllTracks(): AcademyTrack[] {
   return cache;
 }
 
+/**
+ * Rewrite inline Academy media references to absolute, web-served URLs.
+ *
+ * - Converts inline HTML `<img src="templates/examples/X" alt="Y" ...>` into native
+ *   Markdown image syntax `![Y](...)` so react-markdown (without rehype-raw) renders it.
+ * - Resolves the absolute path per track: non-UGC tracks publish media under
+ *   `/academy/<track>/templates/examples/`, while the `ugc` track uses extension-based
+ *   subdirs (`/academy/ugc/{images,gifs,videos,audio}/`) to match the existing
+ *   `resolveMediaPaths` behavior in AssetGallery.tsx.
+ * - Rewrites any remaining relative `templates/examples/...` references found in
+ *   Markdown link/image form `](templates/examples/...)` to absolute paths.
+ */
+function absolutizeAcademyMedia(md: string, trackSlug: string): string {
+  function mediaUrl(file: string): string {
+    if (trackSlug === 'ugc') {
+      const ext = file.split('.').pop()?.toLowerCase();
+      let subdir = 'images';
+      if (ext === 'gif') subdir = 'gifs';
+      else if (['mp4', 'webm', 'mov'].includes(ext || '')) subdir = 'videos';
+      else if (['mp3', 'wav', 'ogg'].includes(ext || '')) subdir = 'audio';
+      return `/academy/ugc/${subdir}/${file}`;
+    }
+    return `/academy/${trackSlug}/templates/examples/${file}`;
+  }
+
+  const MEDIA = 'templates/examples';
+
+  // 1. Inline HTML <img ...> -> Markdown image (only media inside templates/examples)
+  md = md.replace(/<img\b([^>]*)>/gi, (whole, attrs: string) => {
+    const srcMatch = attrs.match(/\bsrc=["'](templates\/examples\/[^"']*)["']/i);
+    if (!srcMatch) return whole;
+    const altMatch = attrs.match(/\balt=["']([^"']*)["']/i);
+    const alt = altMatch ? altMatch[1] : '';
+    const file = srcMatch[1].replace(new RegExp(`^${MEDIA}/`), '');
+    return `![${alt}](${mediaUrl(file)})`;
+  });
+
+  // 2. Remaining relative Markdown link/image references
+  md = md.replace(/\]\((templates\/examples\/[^)]+)\)/g, (_match, rel) => {
+    const file = rel.replace(new RegExp(`^${MEDIA}/`), '');
+    return `](${mediaUrl(file)})`;
+  });
+
+  return md;
+}
+
 /** Read a single lesson's markdown from disk (server-side only). */
 export function getLessonMarkdown(trackSlug: string, lessonSlug: string): string {
   const file = path.join(ACADEMY_DIR, trackSlug, 'lessons', `${lessonSlug}.md`);
   try {
-    return fs.readFileSync(file, 'utf8');
+    return absolutizeAcademyMedia(fs.readFileSync(file, 'utf8'), trackSlug);
   } catch {
     return `# ${lessonSlug}\n\nLesson content unavailable.`;
   }
@@ -111,7 +157,7 @@ export function getLessonMarkdown(trackSlug: string, lessonSlug: string): string
 export function getTemplateMarkdown(trackSlug: string, templateSlug: string): string {
   const file = path.join(ACADEMY_DIR, trackSlug, 'templates', `${templateSlug}.md`);
   try {
-    return fs.readFileSync(file, 'utf8');
+    return absolutizeAcademyMedia(fs.readFileSync(file, 'utf8'), trackSlug);
   } catch {
     return `# ${templateSlug}\n\nTemplate content unavailable.`;
   }
