@@ -25,6 +25,21 @@ vi.mock('@/components/SocialPublishProvider', () => ({
   },
 }))
 
+vi.mock('@/lib/authConfig', () => ({
+  useAuthConfig: () => ({
+    apiKey: 'test-key',
+    openaiKey: '',
+    setApiKey: vi.fn(),
+    setOpenAiKey: vi.fn(),
+    clearApiKey: vi.fn(),
+    clearOpenAiKey: vi.fn(),
+    clearAllKeys: vi.fn(),
+    hasApiKey: true,
+    hasOpenAiKey: false,
+    isAuthenticated: true,
+  }),
+}))
+
 const { DemoPersonalizeProvider, useDemoPersonalize, getGenerationAssetUrl } = await import('../DemoPersonalizeProvider')
 const { uploadFile } = await import('studio/src/muapi')
 
@@ -90,7 +105,7 @@ describe('DemoPersonalizeProvider durable uploads', () => {
 
     await act(async () => {
       root.render(
-        <DemoPersonalizeProvider apiKey="test-key">
+        <DemoPersonalizeProvider>
           <TestOpener />
         </DemoPersonalizeProvider>,
       )

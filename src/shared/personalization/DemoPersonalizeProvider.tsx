@@ -19,6 +19,7 @@ import { useRouter } from 'next/navigation'
 import PersonalizationModal from './PersonalizationModal'
 import { writeHandoff } from '@/shared/crossStudio'
 import { SocialPublishContext } from '@/components/SocialPublishProvider'
+import { useAuthConfig } from '@/lib/authConfig'
 
 /** Safe accessor for SocialPublishContext — returns null when not wrapped in a provider. */
 function useOptionalSocialPublish() {
@@ -202,7 +203,6 @@ export function useDemoPersonalize(): DemoPersonalizeContextValue {
 }
 
 interface DemoPersonalizeProviderProps {
-  apiKey?: string
   children: ReactNode
 }
 
@@ -257,10 +257,11 @@ function updateAssetInLibrary(library: AssetLibrary, asset: PersonalizationAsset
 
 // ── Provider ─────────────────────────────────────────────────────────────────
 
-export function DemoPersonalizeProvider({ apiKey, children }: DemoPersonalizeProviderProps) {
+export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderProps) {
   // Navigation & publish integration
   const router = useRouter()
   const socialPublish = useOptionalSocialPublish()
+  const { apiKey } = useAuthConfig()
   // Modal
   const [isOpen, setIsOpen] = useState(false)
   const [source, setSource] = useState<PersonalizationSource | null>(null)
