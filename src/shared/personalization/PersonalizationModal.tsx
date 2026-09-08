@@ -372,13 +372,16 @@ export default function PersonalizationModal() {
   const dialogRef = useRef<HTMLDivElement>(null)
   const previousActiveElementRef = useRef<HTMLElement | null>(null)
 
+  const personalizationInProgress =
+    generation.status === 'generating' || generation.status === 'personalizing-prompt'
+
   // ── Focus trap & Escape ──────────────────────────────────────────────────
 
   useEffect(() => {
     if (!isOpen) return
     previousActiveElementRef.current = document.activeElement as HTMLElement
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closePersonalize()
+      if (e.key === 'Escape' && !personalizationInProgress) closePersonalize()
     }
     document.addEventListener('keydown', handleKeyDown)
     document.body.style.overflow = 'hidden'
@@ -387,7 +390,7 @@ export default function PersonalizationModal() {
       document.body.style.overflow = ''
       previousActiveElementRef.current?.focus()
     }
-  }, [isOpen, closePersonalize])
+  }, [isOpen, closePersonalize, personalizationInProgress])
 
   useEffect(() => {
     setMode(null)
@@ -416,7 +419,6 @@ export default function PersonalizationModal() {
 
   const capabilities = resolveModelCapabilities(source, { ...genOptions, model: effectiveModelId })
 
-  // ── Upload handlers ────────────────────────────────────────────────────────
   // ── Upload handlers ────────────────────────────────────────────────────────
 
   const handleIdentityUpload = (files: FileList | null) => {
@@ -480,9 +482,6 @@ export default function PersonalizationModal() {
     setIsRegenerating(true)
     try { await personalizePrompt() } finally { setIsRegenerating(false) }
   }, [personalizePrompt])
-
-  const personalizationInProgress =
-    generation.status === 'generating' || generation.status === 'personalizing-prompt'
 
   const generateLabel = outputType === 'prompt'
     ? '✦ Personalize Prompt'
@@ -680,8 +679,8 @@ export default function PersonalizationModal() {
               Cancel
             </button>
             <button
-              onClick={generate}
-              disabled={!Boolean((clientForm.businessName || clientForm.name) && (outputType === 'prompt' || mode))}
+              onClick={outputType === 'prompt' ? handlePersonalize : generate}
+              disabled={!Boolean((clientForm.businessName || clientForm.name) && (outputType === 'prompt' || mode)) || personalizationInProgress}
               className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
               style={{
                 minWidth: 190,
