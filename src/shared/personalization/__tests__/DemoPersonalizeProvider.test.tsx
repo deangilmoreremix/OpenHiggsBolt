@@ -40,8 +40,25 @@ vi.mock('@/lib/authConfig', () => ({
   }),
 }))
 
+vi.mock('../promptPersonalizer', () => ({
+  personalizePrompt: vi.fn(),
+  regeneratePrompt: vi.fn(),
+}))
+
+vi.mock('../generationRouter', () => ({
+  runGeneration: vi.fn(),
+}))
+
+vi.mock('../postProcessor', () => ({
+  applyPostProcessing: vi.fn(),
+  generateEndCardImage: vi.fn(),
+}))
+
 const { DemoPersonalizeProvider, useDemoPersonalize, getGenerationAssetUrl } = await import('../DemoPersonalizeProvider')
 const { uploadFile } = await import('studio/src/muapi')
+const { personalizePrompt, regeneratePrompt } = await import('../promptPersonalizer')
+const { runGeneration } = await import('../generationRouter')
+const { applyPostProcessing, generateEndCardImage } = await import('../postProcessor')
 
 const generationPromiseResolvers: ((status: string) => void)[] = []
 
@@ -678,5 +695,182 @@ describe('DemoPersonalizeProvider durable uploads', () => {
       expect(cta.file).toBeNull()
       expect(cta.isPrimary).toBe(true)
     })
+  })
+})
+
+describe('DemoPersonalizeProvider generation flows', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.resetModules()
+    URL.createObjectURL = vi.fn(() => 'blob:http://localhost/test')
+    URL.revokeObjectURL = vi.fn()
+    generationPromiseResolvers.length = 0
+  })
+
+  const renderProvider = async () => {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+
+    await act(async () => {
+      root.render(
+        <DemoPersonalizeProvider>
+          <TestOpener />
+        </DemoPersonalizeProvider>,
+      )
+    })
+
+    return container
+  }
+
+  const openSource = async () => {
+    await act(async () => {
+      ;(window as any).__personalizationCtx.openPersonalize({
+        source: { id: 'demo-1', title: 'Test', mediaType: 'video', originalPrompt: 'test', sourceMedia: null, poster: null, fullPrompt: 'test', shortPrompt: 'test', sourceType: 'landing-demo', sourceMetadata: {} },
+      })
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+  }
+
+  it('personalizes prompt and updates prompt state', async () => {
+    ;(personalizePrompt as any).mockResolvedValue('personalized prompt text')
+
+    await renderProvider()
+    await openSource()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.updateClientForm({ businessName: 'Test Co' })
+    })
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.personalizePrompt()
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 200))
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    expect(ctx.promptState.personalized).toBe('personalized prompt text')
+    expect(ctx.generation.status).toBe('idle')
+  })
+
+  it('falls back when prompt personalization fails', async () => {
+    ;(personalizePrompt as any).mockRejectedValue(new Error('OpenAI error'))
+
+    await renderProvider()
+    await openSource()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.updateClientForm({ businessName: 'Test Co' })
+    })
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.personalizePrompt()
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 200))
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    expect(ctx.generation.status).toBe('error')
+    expect(ctx.generation.errorMessage).toContain('OpenAI error')
+  })
+
+  it('blocks generation when assets are still uploading', async () => {
+    const mockUploadFile = uploadFile as any
+    mockUploadFile.mockImplementation(() => new Promise(() => {}))
+
+    await renderProvider()
+    await openSource()
+
+    const files = createFileList([createFile('logo.png')])
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.addLogoFiles(files)
+    })
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.updateClientForm({ businessName: 'Test Co' })
+      ;(window as any).__personalizationCtx.setOutputType('image')
+      ;(window as any).__personalizationCtx.setMode('recreate')
+    })
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.generate()
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 100))
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    expect(ctx.generation.status).toBe('error')
+    expect(ctx.generation.errorMessage).toContain('still uploading')
+  })
+
+  it('blocks generation when assets have blob URLs', async () => {
+    await renderProvider()
+    await openSource()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.updateClientForm({ businessName: 'Test Co' })
+      ;(window as any).__personalizationCtx.setOutputType('image')
+      ;(window as any).__personalizationCtx.setMode('recreate')
+    })
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.addIdentityUrl('blob:http://localhost/test')
+    })
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.generate()
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 100))
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    expect(ctx.generation.status).toBe('error')
+    expect(ctx.generation.errorMessage).toContain('not uploaded yet')
+  })
+
+  it('shows progress view during generation', async () => {
+    ;(runGeneration as any).mockImplementation(async (input) => {
+      input.onProgress?.(50, 'Generating...')
+      await new Promise((r) => setTimeout(r, 100))
+      return { type: 'video', url: 'https://example.com/video.mp4', metadata: { model: 'test-model' } }
+    })
+
+    ;(applyPostProcessing as any).mockResolvedValue({
+      finalUrl: 'https://example.com/video-final.mp4',
+      originalUrl: 'https://example.com/video.mp4',
+      applied: [],
+    })
+
+    await renderProvider()
+    await openSource()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.updateClientForm({ businessName: 'Test Co' })
+      ;(window as any).__personalizationCtx.setOutputType('video')
+      ;(window as any).__personalizationCtx.setMode('recreate')
+    })
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.generate()
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 500))
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    expect(ctx.generation.status).toBe('complete')
+    expect(ctx.result.url).toBe('https://example.com/video-final.mp4')
   })
 })
