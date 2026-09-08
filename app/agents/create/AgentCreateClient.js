@@ -16,7 +16,12 @@ export default function AgentCreateClient({ userData }) {
       const fromStorage = localStorage.getItem(STORAGE_KEY);
       if (fromStorage) return fromStorage;
       const match = document.cookie.match(/muapi_key=([^;]+)/);
-      return match ? match[1] : null;
+      if (!match) return null;
+      try {
+        return decodeURIComponent(match[1]);
+      } catch {
+        return match[1];
+      }
     };
 
     const apiKey = getKey();

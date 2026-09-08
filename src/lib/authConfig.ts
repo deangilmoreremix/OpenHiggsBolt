@@ -30,6 +30,17 @@ function setCookie(name: string, value: string | null | undefined): void {
   document.cookie = buildCookie(name, value || '');
 }
 
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()\[\]\\\/+^])/g, '\\$1') + '=([^;]*)'));
+  const value = match ? match[1] : null;
+  try {
+    return value ? decodeURIComponent(value) : null;
+  } catch {
+    return value;
+  }
+}
+
 // ── Key sanitization ───────────────────────────────────────────────────────
 function cleanKey(key: string | null | undefined): string {
   if (!key) return '';
@@ -60,6 +71,16 @@ let openaiKey = '';
 if (typeof window !== 'undefined') {
   muapiKey = cleanKey(resolveMuapiKeyFromStorage());
   openaiKey = cleanKey(resolveOpenAIKeyFromStorage());
+  // If localStorage is empty, fall back to the cookie so the key survives
+  // page reloads even when raw localStorage persistence is disabled.
+  if (!muapiKey) {
+    const cookieKey = getCookie(MUAPI_KEY_COOKIE);
+    if (cookieKey) muapiKey = cleanKey(cookieKey);
+  }
+  if (!openaiKey) {
+    const cookieKey = getCookie(OPENAI_KEY_COOKIE);
+    if (cookieKey) openaiKey = cleanKey(cookieKey);
+  }
   // Sync pre-existing keys to cookies so server-side routes can read them.
   if (muapiKey) setCookie(MUAPI_KEY_COOKIE, muapiKey);
   if (openaiKey) setCookie(OPENAI_KEY_COOKIE, openaiKey);
