@@ -134,15 +134,24 @@ function UploadZone({
   onFiles,
   multiple = false,
   disabled,
+  accept = 'image/*',
+  urlLabel,
+  urlPlaceholder,
+  onUrl,
 }: {
   primary: string
   secondary?: string
   onFiles: (files: FileList | null) => void
   multiple?: boolean
   disabled?: boolean
+  accept?: string
+  urlLabel?: string
+  urlPlaceholder?: string
+  onUrl?: (url: string) => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragOver, setIsDragOver] = useState(false)
+  const [urlValue, setUrlValue] = useState('')
 
   const handleDragOver = useCallback((e: DragEvent) => {
     e.preventDefault()
@@ -166,42 +175,95 @@ function UploadZone({
     e.target.value = ''
   }, [onFiles])
 
+  const handleUrlSubmit = useCallback(() => {
+    const trimmed = urlValue.trim()
+    if (!trimmed || !onUrl) return
+    onUrl(trimmed)
+    setUrlValue('')
+  }, [urlValue, onUrl])
+
+  const handleUrlKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleUrlSubmit()
+    }
+  }, [handleUrlSubmit])
+
   return (
-    <div
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      onClick={() => !disabled && inputRef.current?.click()}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
-          e.preventDefault()
-          inputRef.current?.click()
-        }
-      }}
-      className={classNames(
-        'grid place-items-center text-center rounded-[12px] border border-dashed transition-colors cursor-pointer min-h-[106px] px-3 py-3',
-        isDragOver
-          ? 'border-[var(--cyan-border)] bg-[rgba(41,211,242,.04)]'
-          : 'border-[rgba(255,255,255,.22)] bg-[rgba(0,0,0,.16)] hover:border-[var(--cyan-border)] hover:bg-[rgba(41,211,242,.04)]',
-        disabled && 'opacity-50 cursor-not-allowed',
+    <div>
+      {onUrl && (
+        <div style={{ marginBottom: 8 }}>
+          <input
+            type="text"
+            value={urlValue}
+            onChange={(e) => setUrlValue(e.target.value)}
+            onKeyDown={handleUrlKeyDown}
+            placeholder={urlPlaceholder || 'Paste URL and press Enter'}
+            className="w-full outline-none"
+            style={{
+              minHeight: 38,
+              padding: '0 11px',
+              border: `1px solid ${C.border}`,
+              borderRadius: 8,
+              background: C.field,
+              color: C.text,
+              fontSize: 12,
+            }}
+          />
+          {urlValue.trim() && (
+            <button
+              type="button"
+              onClick={handleUrlSubmit}
+              className="mt-1.5 rounded-[8px] text-[10px] font-extrabold uppercase tracking-wide"
+              style={{
+                minHeight: 32,
+                padding: '0 12px',
+                border: `1px solid ${C.cyanBorder}`,
+                background: C.cyanSoft,
+                color: C.cyan,
+              }}
+            >
+              {urlLabel || 'Add from URL'}
+            </button>
+          )}
+        </div>
       )}
-      style={{ ['--cyan-border' as any]: C.cyanBorder }}
-    >
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        multiple={multiple}
-        className="hidden"
-        onChange={handleChange}
-        disabled={disabled}
-      />
-      <div>
-        <div style={{ fontSize: 24, marginBottom: 4, color: 'rgba(255,255,255,.72)' }}>⇧</div>
-        <div className="text-[11px] font-extrabold uppercase tracking-wide text-white">{primary}</div>
-        {secondary && <div className="text-[10px] text-[rgba(255,255,255,.36)] mt-0.5">{secondary}</div>}
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onClick={() => !disabled && inputRef.current?.click()}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault()
+            inputRef.current?.click()
+          }
+        }}
+        className={classNames(
+          'grid place-items-center text-center rounded-[12px] border border-dashed transition-colors cursor-pointer min-h-[106px] px-3 py-3',
+          isDragOver
+            ? 'border-[var(--cyan-border)] bg-[rgba(41,211,242,.04)]'
+            : 'border-[rgba(255,255,255,.22)] bg-[rgba(0,0,0,.16)] hover:border-[var(--cyan-border)] hover:bg-[rgba(41,211,242,.04)]',
+          disabled && 'opacity-50 cursor-not-allowed',
+        )}
+        style={{ ['--cyan-border' as any]: C.cyanBorder }}
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          accept={accept}
+          multiple={multiple}
+          className="hidden"
+          onChange={handleChange}
+          disabled={disabled}
+        />
+        <div>
+          <div style={{ fontSize: 24, marginBottom: 4, color: 'rgba(255,255,255,.72)' }}>⇧</div>
+          <div className="text-[11px] font-extrabold uppercase tracking-wide text-white">{primary}</div>
+          {secondary && <div className="text-[10px] text-[rgba(255,255,255,.36)] mt-0.5">{secondary}</div>}
+        </div>
       </div>
     </div>
   )
@@ -322,20 +384,27 @@ export default function PersonalizationModal() {
     updateClientForm,
     assets,
     addIdentityFiles,
+    addIdentityUrl,
     removeIdentity,
     setPrimaryIdentity,
     addLogoFiles,
+    addLogoUrl,
     removeLogo,
     setPrimaryLogo,
     addProductFiles,
+    addProductUrl,
     removeProduct,
     addBrandReferenceFiles,
+    addBrandReferenceUrl,
     removeBrandReference,
     setFirstFrameFile,
+    setFirstFrameUrl,
     removeFirstFrame,
     setLastFrameFile,
+    setLastFrameUrl,
     removeLastFrame,
     setCtaGraphicFile,
+    setCtaGraphicUrl,
     removeCtaGraphic,
     retryAssetUpload,
     promptState,
@@ -461,6 +530,29 @@ export default function PersonalizationModal() {
     if (!files || files.length === 0) return
     setCtaGraphicFile(files[0])
   }, [setCtaGraphicFile])
+
+  const handleIdentityUrl = useCallback((url: string) => {
+    setUploadError(null)
+    addIdentityUrl(url)
+  }, [addIdentityUrl])
+  const handleLogoUrl = useCallback((url: string) => {
+    addLogoUrl(url)
+  }, [addLogoUrl])
+  const handleProductUrl = useCallback((url: string) => {
+    addProductUrl(url)
+  }, [addProductUrl])
+  const handleBrandRefUrl = useCallback((url: string) => {
+    addBrandReferenceUrl(url)
+  }, [addBrandReferenceUrl])
+  const handleFirstFrameUrl = useCallback((url: string) => {
+    setFirstFrameUrl(url)
+  }, [setFirstFrameUrl])
+  const handleLastFrameUrl = useCallback((url: string) => {
+    setLastFrameUrl(url)
+  }, [setLastFrameUrl])
+  const handleCtaUrl = useCallback((url: string) => {
+    setCtaGraphicUrl(url)
+  }, [setCtaGraphicUrl])
 
   // ── Prompt actions ───────────────────────────────────────────────────────
 
@@ -607,21 +699,28 @@ export default function PersonalizationModal() {
               deleteClient={deleteClient}
               updateClientForm={updateClientForm}
               assets={assets}
-              addIdentityFiles={handleIdentityUpload}
+              handleIdentityUpload={handleIdentityUpload}
+              handleIdentityUrl={handleIdentityUrl}
               removeIdentity={removeIdentity}
               setPrimaryIdentity={setPrimaryIdentity}
-              addLogoFiles={handleLogoUpload}
+              handleLogoUpload={handleLogoUpload}
+              handleLogoUrl={handleLogoUrl}
               removeLogo={removeLogo}
               setPrimaryLogo={setPrimaryLogo}
-              addProductFiles={handleProductUpload}
+              handleProductUpload={handleProductUpload}
+              handleProductUrl={handleProductUrl}
               removeProduct={removeProduct}
-              addBrandReferenceFiles={handleBrandRefUpload}
+              handleBrandRefUpload={handleBrandRefUpload}
+              handleBrandRefUrl={handleBrandRefUrl}
               removeBrandReference={removeBrandReference}
-              setFirstFrameFile={handleFirstFrameUpload}
+              handleFirstFrameUpload={handleFirstFrameUpload}
+              handleFirstFrameUrl={handleFirstFrameUrl}
               removeFirstFrame={removeFirstFrame}
-              setLastFrameFile={handleLastFrameUpload}
+              handleLastFrameUpload={handleLastFrameUpload}
+              handleLastFrameUrl={handleLastFrameUrl}
               removeLastFrame={removeLastFrame}
-              setCtaGraphicFile={handleCtaUpload}
+              handleCtaUpload={handleCtaUpload}
+              handleCtaUrl={handleCtaUrl}
               removeCtaGraphic={removeCtaGraphic}
               retryAssetUpload={retryAssetUpload}
               promptState={promptState}
@@ -903,13 +1002,13 @@ function ConfigurationView(props: any) {
     source, clients, selectedClientId, clientForm,
     selectClient, saveClient, deleteClient, updateClientForm,
     assets,
-    addIdentityFiles, removeIdentity, setPrimaryIdentity,
-    addLogoFiles, removeLogo, setPrimaryLogo,
-    addProductFiles, removeProduct,
-    addBrandReferenceFiles, removeBrandReference,
-    setFirstFrameFile, removeFirstFrame,
-    setLastFrameFile, removeLastFrame,
-    setCtaGraphicFile, removeCtaGraphic,
+    handleIdentityUpload, handleIdentityUrl, removeIdentity, setPrimaryIdentity,
+    handleLogoUpload, handleLogoUrl, removeLogo, setPrimaryLogo,
+    handleProductUpload, handleProductUrl, removeProduct,
+    handleBrandRefUpload, handleBrandRefUrl, removeBrandReference,
+    handleFirstFrameUpload, handleFirstFrameUrl, removeFirstFrame,
+    handleLastFrameUpload, handleLastFrameUrl, removeLastFrame,
+    handleCtaUpload, handleCtaUrl, removeCtaGraphic,
     retryAssetUpload,
     promptState, updatePersonalizedPrompt, resetPrompt,
     isPersonalizing, isRegenerating,
@@ -1077,7 +1176,7 @@ function ConfigurationView(props: any) {
                 <p style={{ margin: '5px 0 0', color: C.muted, fontSize: 11, lineHeight: 1.4 }}>Upload one or more photos of the person who should appear in the content.</p>
               </div>
             </div>
-            <UploadZone primary="Add Photos" secondary="Drag & drop or browse" onFiles={addIdentityFiles} multiple disabled={assets.identities.length >= capabilities.maxImages && capabilities.maxImages > 0} />
+            <UploadZone primary="Add Photos" secondary="Drag & drop or browse" onFiles={handleIdentityUpload} multiple disabled={assets.identities.length >= capabilities.maxImages && capabilities.maxImages > 0} onUrl={handleIdentityUrl} urlLabel="Add Photo URL" urlPlaceholder="Paste image URL and press Enter" />
             {capabilities.maxImages > 1 && (
               <div style={{ marginTop: 8, fontSize: 10, color: C.muted }}>{assets.identities.length} / {capabilities.maxImages} images uploaded</div>
             )}
@@ -1120,7 +1219,7 @@ function ConfigurationView(props: any) {
                 <p style={{ margin: '5px 0 0', color: C.muted, fontSize: 11, lineHeight: 1.4 }}>Upload the client&apos;s exact logo for exact branding.</p>
               </div>
             </div>
-            <UploadZone primary="Upload Logo" secondary="Drag & drop or browse" onFiles={addLogoFiles} />
+            <UploadZone primary="Upload Logo" secondary="Drag & drop or browse" onFiles={handleLogoUpload} onUrl={handleLogoUrl} urlLabel="Add Logo URL" urlPlaceholder="Paste logo URL and press Enter" />
             <div
               className="logo-preview"
               style={{
@@ -1166,7 +1265,7 @@ function ConfigurationView(props: any) {
                 <p style={{ margin: '5px 0 0', color: C.muted, fontSize: 11, lineHeight: 1.4 }}>Add products, finished work, locations or service images.</p>
               </div>
             </div>
-            <UploadZone primary="Add Images" secondary="Drag & drop or browse" onFiles={addProductFiles} multiple />
+            <UploadZone primary="Add Images" secondary="Drag & drop or browse" onFiles={handleProductUpload} multiple onUrl={handleProductUrl} urlLabel="Add Image/Video URL" urlPlaceholder="Paste image or video URL and press Enter" accept="image/*,video/*" />
             <div className="asset-label" style={{ marginTop: 13, marginBottom: 8, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: C.muted }}>Uploaded Images</div>
             <div className="flex flex-wrap gap-2">
               {assets.products.length > 0 ? (
@@ -1199,7 +1298,7 @@ function ConfigurationView(props: any) {
                 <p style={{ margin: '5px 0 0', color: C.muted, fontSize: 11, lineHeight: 1.4 }}>Show SmartVideo what the client&apos;s business and brand look like.</p>
               </div>
             </div>
-            <UploadZone primary="Add Images" secondary="Drag & drop or browse" onFiles={addBrandReferenceFiles} multiple />
+            <UploadZone primary="Add Images" secondary="Drag & drop or browse" onFiles={handleBrandRefUpload} multiple onUrl={handleBrandRefUrl} urlLabel="Add Image/Video URL" urlPlaceholder="Paste image or video URL and press Enter" accept="image/*,video/*" />
             <div className="asset-label" style={{ marginTop: 13, marginBottom: 8, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: C.muted }}>Brand Images</div>
             <div className="flex flex-wrap gap-2">
               {assets.brandReferences.length > 0 ? (
@@ -1232,7 +1331,7 @@ function ConfigurationView(props: any) {
                 <p style={{ margin: '5px 0 0', color: C.muted, fontSize: 11, lineHeight: 1.4 }}>Control how the personalized video begins.</p>
               </div>
             </div>
-            <UploadZone primary="Upload Image" onFiles={setFirstFrameFile} />
+            <UploadZone primary="Upload Image" onFiles={handleFirstFrameUpload} onUrl={handleFirstFrameUrl} urlLabel="Add Image URL" urlPlaceholder="Paste image URL and press Enter" accept="image/*,video/*" />
             <div
               className="frame-preview"
               style={{
@@ -1269,7 +1368,7 @@ function ConfigurationView(props: any) {
                 <p style={{ margin: '5px 0 0', color: C.muted, fontSize: 11, lineHeight: 1.4 }}>Control how the personalized video ends.</p>
               </div>
             </div>
-            <UploadZone primary="Upload Image" onFiles={setLastFrameFile} />
+            <UploadZone primary="Upload Image" onFiles={handleLastFrameUpload} onUrl={handleLastFrameUrl} urlLabel="Add Image URL" urlPlaceholder="Paste image URL and press Enter" accept="image/*,video/*" />
             <div
               className="frame-preview"
               style={{
@@ -1317,7 +1416,7 @@ function ConfigurationView(props: any) {
         </div>
         <div style={{ marginTop: 14 }}>
           <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>CTA Graphic</div>
-          <UploadZone primary="Upload CTA Graphic" secondary="Drag & drop or browse" onFiles={setCtaGraphicFile} />
+          <UploadZone primary="Upload CTA Graphic" secondary="Drag & drop or browse" onFiles={handleCtaUpload} onUrl={handleCtaUrl} urlLabel="Add CTA URL" urlPlaceholder="Paste image URL and press Enter" accept="image/*,video/*" />
           {assets.ctaGraphic?.url && (
             <div className="mt-3" style={{ maxWidth: 200 }}>
               <ThumbUploaded

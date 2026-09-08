@@ -562,4 +562,121 @@ describe('DemoPersonalizeProvider durable uploads', () => {
     }
     expect(getGenerationAssetUrl(asset)).toBeUndefined()
   })
+
+  describe('URL-based asset creation', () => {
+    it('adds identity via URL', async () => {
+      await renderProvider()
+      await openSource()
+
+      await act(async () => {
+        ;(window as any).__personalizationCtx.addIdentityUrl('https://example.com/person.jpg')
+      })
+
+      const ctx = (window as any).__personalizationCtx
+      const identity = ctx.assets.identities[0]
+      expect(identity).toBeTruthy()
+      expect(identity.url).toBe('https://example.com/person.jpg')
+      expect(identity.uploadStatus).toBe('ready')
+      expect(identity.file).toBeNull()
+    })
+
+    it('adds logo via URL', async () => {
+      await renderProvider()
+      await openSource()
+
+      await act(async () => {
+        ;(window as any).__personalizationCtx.addLogoUrl('https://example.com/logo.png')
+      })
+
+      const ctx = (window as any).__personalizationCtx
+      const logo = ctx.assets.logos[0]
+      expect(logo).toBeTruthy()
+      expect(logo.url).toBe('https://example.com/logo.png')
+      expect(logo.uploadStatus).toBe('ready')
+      expect(logo.file).toBeNull()
+    })
+
+    it('adds product via URL', async () => {
+      await renderProvider()
+      await openSource()
+
+      await act(async () => {
+        ;(window as any).__personalizationCtx.addProductUrl('https://example.com/product.jpg')
+      })
+
+      const ctx = (window as any).__personalizationCtx
+      const product = ctx.assets.products[0]
+      expect(product).toBeTruthy()
+      expect(product.url).toBe('https://example.com/product.jpg')
+      expect(product.uploadStatus).toBe('ready')
+      expect(product.file).toBeNull()
+    })
+
+    it('adds brand reference via URL', async () => {
+      await renderProvider()
+      await openSource()
+
+      await act(async () => {
+        ;(window as any).__personalizationCtx.addBrandReferenceUrl('https://example.com/brand.jpg')
+      })
+
+      const ctx = (window as any).__personalizationCtx
+      const brand = ctx.assets.brandReferences[0]
+      expect(brand).toBeTruthy()
+      expect(brand.url).toBe('https://example.com/brand.jpg')
+      expect(brand.uploadStatus).toBe('ready')
+      expect(brand.file).toBeNull()
+    })
+
+    it('sets first frame via URL', async () => {
+      await renderProvider()
+      await openSource()
+
+      await act(async () => {
+        ;(window as any).__personalizationCtx.setFirstFrameUrl('https://example.com/first-frame.jpg')
+      })
+
+      const ctx = (window as any).__personalizationCtx
+      const frame = ctx.assets.firstFrame
+      expect(frame).toBeTruthy()
+      expect(frame.url).toBe('https://example.com/first-frame.jpg')
+      expect(frame.uploadStatus).toBe('ready')
+      expect(frame.file).toBeNull()
+      expect(frame.isPrimary).toBe(true)
+    })
+
+    it('sets last frame via URL', async () => {
+      await renderProvider()
+      await openSource()
+
+      await act(async () => {
+        ;(window as any).__personalizationCtx.setLastFrameUrl('https://example.com/last-frame.jpg')
+      })
+
+      const ctx = (window as any).__personalizationCtx
+      const frame = ctx.assets.lastFrame
+      expect(frame).toBeTruthy()
+      expect(frame.url).toBe('https://example.com/last-frame.jpg')
+      expect(frame.uploadStatus).toBe('ready')
+      expect(frame.file).toBeNull()
+      expect(frame.isPrimary).toBe(true)
+    })
+
+    it('sets CTA graphic via URL', async () => {
+      await renderProvider()
+      await openSource()
+
+      await act(async () => {
+        ;(window as any).__personalizationCtx.setCtaGraphicUrl('https://example.com/cta.png')
+      })
+
+      const ctx = (window as any).__personalizationCtx
+      const cta = ctx.assets.ctaGraphic
+      expect(cta).toBeTruthy()
+      expect(cta.url).toBe('https://example.com/cta.png')
+      expect(cta.uploadStatus).toBe('ready')
+      expect(cta.file).toBeNull()
+      expect(cta.isPrimary).toBe(true)
+    })
+  })
 })

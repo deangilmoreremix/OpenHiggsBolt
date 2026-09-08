@@ -7,6 +7,9 @@ import { uploadFile, generateMarketingStudioAd } from "../muapi.js";
 import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
 import TemplateBanner from "./TemplateBanner";
 import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
+import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
+import registry from "../skills/registry.json";
+import { fillTemplate } from "../lib/promptRecipes";
 
 const SCROLLBAR_STYLE = `
   .custom-scrollbar-thin::-webkit-scrollbar {

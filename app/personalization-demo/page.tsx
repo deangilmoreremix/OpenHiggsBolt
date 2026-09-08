@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { DemoPersonalizeProvider, useDemoPersonalize } from '@/shared/personalization'
 import { useAuthConfig } from '@/lib/authConfig'
 
@@ -37,13 +38,22 @@ function AutoOpener() {
 }
 
 export default function PersonalizationDemoPage() {
-  const { apiKey, hasApiKey } = useAuthConfig()
+  const { apiKey, hasApiKey, setApiKey } = useAuthConfig()
   const [mounted, setMounted] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Test mode: ?test=true bypasses API key requirement for UI testing
+  const isTestMode = searchParams.get('test') === 'true'
+  useEffect(() => {
+    if (isTestMode && !apiKey) {
+      setApiKey('test-mode-key')
+    }
+  }, [isTestMode, apiKey, setApiKey])
 
   if (!mounted) {
     return (
@@ -54,10 +64,18 @@ export default function PersonalizationDemoPage() {
     )
   }
 
-  if (!hasApiKey) {
+  if (!hasApiKey && !isTestMode) {
     return (
       <div style={{ minHeight: '100vh', background: '#0a0a0b', color: 'white', padding: 20 }}>
         <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Personalization Modal — Design Preview</h1>
+        {isTestMode && (
+          <div style={{ marginTop: 20, padding: 16, borderRadius: 12, background: 'rgba(41,211,242,0.1)', border: '1px solid rgba(41,211,242,0.3)' }}>
+            <p style={{ fontSize: 14, color: '#29d3f2', marginBottom: 8 }}>Test Mode Active</p>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 12 }}>
+              API calls will fail without a real key, but you can test the full UI flow. Add a real key in Settings for full functionality.
+            </p>
+          </div>
+        )}
         <div style={{ marginTop: 20, padding: 16, borderRadius: 12, background: 'rgba(239,91,103,0.1)', border: '1px solid rgba(239,91,103,0.3)' }}>
           <p style={{ fontSize: 14, color: '#ef5b67', marginBottom: 8 }}>MuAPI Key Required</p>
           <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 12 }}>
@@ -97,6 +115,11 @@ export default function PersonalizationDemoPage() {
         <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>
           Personalization Modal — Design Preview
         </h1>
+        {isTestMode && (
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>
+            Test mode active — UI is fully interactive. API calls will fail without a real key.
+          </p>
+        )}
         <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
           The modal will open automatically with the sample &quot;Viral Roofing Demo&quot; source.
         </p>

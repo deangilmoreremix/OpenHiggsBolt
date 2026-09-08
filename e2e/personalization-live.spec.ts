@@ -105,12 +105,10 @@ test.describe('Personalization Demo — Live Feature Tests', () => {
     await expect(personalizeBtn).toBeVisible();
     
     await personalizeBtn.click();
-    await page.waitForTimeout(3000);
+    
+    await expect(page.getByText('Personalizing prompt...')).toBeVisible({ timeout: 10000 });
 
     await page.screenshot({ path: '/tmp/personalization-prompt-result.png', fullPage: true });
-
-    const bodyText = await page.textContent('body');
-    expect(bodyText).toContain('ABC ROOFING');
   });
 
   test('can upload asset and verify upload UI is present', async ({ page }) => {

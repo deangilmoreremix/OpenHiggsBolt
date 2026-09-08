@@ -11,7 +11,17 @@ import { useUser } from '@clerk/nextjs';
  * signed-out visitors so the SSR HTML and pre-hydration state still read
  * cleanly.
  */
+const isClerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+
 export default function PersonalizedHeroHeading() {
+  if (!isClerkEnabled) {
+    return (
+      <h1 className="landing-gradient-text text-5xl font-black tracking-tight md:text-7xl lg:text-8xl">
+        A creative studio that learns the way you create.
+      </h1>
+    );
+  }
+
   const { isSignedIn, isLoaded, user } = useUser();
 
   // Static headline shown to signed-out visitors (and during SSR / before
