@@ -140,20 +140,27 @@ type DemoPersonalizeContextValue = {
   // Assets
   assets: AssetLibrary
   addIdentityFiles: (files: FileList | null) => void
+  addIdentityUrl: (url: string) => void
   removeIdentity: (id: string) => void
   setPrimaryIdentity: (id: string) => void
   addLogoFiles: (files: FileList | null) => void
+  addLogoUrl: (url: string) => void
   removeLogo: (id: string) => void
   setPrimaryLogo: (id: string) => void
   addProductFiles: (files: FileList | null) => void
+  addProductUrl: (url: string) => void
   removeProduct: (id: string) => void
   addBrandReferenceFiles: (files: FileList | null) => void
+  addBrandReferenceUrl: (url: string) => void
   removeBrandReference: (id: string) => void
   setFirstFrameFile: (file: File | null) => void
+  setFirstFrameUrl: (url: string) => void
   removeFirstFrame: () => void
   setLastFrameFile: (file: File | null) => void
+  setLastFrameUrl: (url: string) => void
   removeLastFrame: () => void
   setCtaGraphicFile: (file: File | null) => void
+  setCtaGraphicUrl: (url: string) => void
   removeCtaGraphic: () => void
   retryAssetUpload: (id: string) => Promise<void>
 
@@ -220,6 +227,23 @@ function createAsset(file: File, role: PersonalizationAsset['role'], opts: Parti
     uploadStatus: 'local',
     uploadError: null,
     file,
+    ...opts,
+  }
+}
+
+function createAssetFromUrl(url: string, role: PersonalizationAsset['role'], opts: Partial<PersonalizationAsset> = {}): PersonalizationAsset {
+  return {
+    id: `asset_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    role,
+    name: url.split('/').pop() || url,
+    url,
+    uploadedUrl: url,
+    isPrimary: false,
+    mimeType: '',
+    createdAt: new Date().toISOString(),
+    uploadStatus: 'ready',
+    uploadError: null,
+    file: null,
     ...opts,
   }
 }
@@ -579,6 +603,13 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
     })
   }, [assets.identities.length, uploadAsset])
 
+  const addIdentityUrl = useCallback((url: string) => {
+    const asset = createAssetFromUrl(url, 'presenter_identity', {
+      isPrimary: assets.identities.length === 0,
+    })
+    setAssets((prev) => updateAssetInLibrary(prev, asset))
+  }, [assets.identities.length])
+
   const removeIdentity = useCallback((id: string) => {
     setAssets((prev) => {
       const asset = prev.identities.find((a) => a.id === id) || prev.primaryIdentity
@@ -610,6 +641,13 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
     })
   }, [assets.logos.length, uploadAsset])
 
+  const addLogoUrl = useCallback((url: string) => {
+    const asset = createAssetFromUrl(url, 'logo', {
+      isPrimary: assets.logos.length === 0,
+    })
+    setAssets((prev) => updateAssetInLibrary(prev, asset))
+  }, [assets.logos.length])
+
   const removeLogo = useCallback((id: string) => {
     setAssets((prev) => {
       const asset = prev.logos.find((a) => a.id === id) || prev.primaryLogo
@@ -639,6 +677,11 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
     })
   }, [uploadAsset])
 
+  const addProductUrl = useCallback((url: string) => {
+    const asset = createAssetFromUrl(url, 'product_reference')
+    setAssets((prev) => updateAssetInLibrary(prev, asset))
+  }, [])
+
   const removeProduct = useCallback((id: string) => {
     setAssets((prev) => {
       const asset = prev.products.find((a) => a.id === id)
@@ -658,6 +701,11 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
       uploadAsset(asset).catch(() => {/* upload status handled in state */})
     })
   }, [uploadAsset])
+
+  const addBrandReferenceUrl = useCallback((url: string) => {
+    const asset = createAssetFromUrl(url, 'brand_reference')
+    setAssets((prev) => updateAssetInLibrary(prev, asset))
+  }, [])
 
   const removeBrandReference = useCallback((id: string) => {
     setAssets((prev) => {
@@ -680,6 +728,11 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
     uploadAsset(asset).catch(() => {/* upload status handled in state */})
   }, [uploadAsset])
 
+  const setFirstFrameUrl = useCallback((url: string) => {
+    const asset = createAssetFromUrl(url, 'first_frame', { isPrimary: true })
+    setAssets((prev) => ({ ...prev, firstFrame: asset }))
+  }, [])
+
   const removeFirstFrame = useCallback(() => {
     setAssets((prev) => {
       revokeAssetUrl(prev.firstFrame)
@@ -697,6 +750,11 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
     uploadAsset(asset).catch(() => {/* upload status handled in state */})
   }, [uploadAsset])
 
+  const setLastFrameUrl = useCallback((url: string) => {
+    const asset = createAssetFromUrl(url, 'last_frame', { isPrimary: true })
+    setAssets((prev) => ({ ...prev, lastFrame: asset }))
+  }, [])
+
   const removeLastFrame = useCallback(() => {
     setAssets((prev) => {
       revokeAssetUrl(prev.lastFrame)
@@ -713,6 +771,11 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
     setAssets((prev) => ({ ...prev, ctaGraphic: asset }))
     uploadAsset(asset).catch(() => {/* upload status handled in state */})
   }, [uploadAsset])
+
+  const setCtaGraphicUrl = useCallback((url: string) => {
+    const asset = createAssetFromUrl(url, 'cta_graphic', { isPrimary: true })
+    setAssets((prev) => ({ ...prev, ctaGraphic: asset }))
+  }, [])
 
   const removeCtaGraphic = useCallback(() => {
     setAssets((prev) => {
@@ -1084,20 +1147,27 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
     // Assets
     assets,
     addIdentityFiles,
+    addIdentityUrl,
     removeIdentity,
     setPrimaryIdentity,
     addLogoFiles,
+    addLogoUrl,
     removeLogo,
     setPrimaryLogo,
     addProductFiles,
+    addProductUrl,
     removeProduct,
     addBrandReferenceFiles,
+    addBrandReferenceUrl,
     removeBrandReference,
     setFirstFrameFile,
+    setFirstFrameUrl,
     removeFirstFrame,
     setLastFrameFile,
+    setLastFrameUrl,
     removeLastFrame,
     setCtaGraphicFile,
+    setCtaGraphicUrl,
     removeCtaGraphic,
     retryAssetUpload,
 
