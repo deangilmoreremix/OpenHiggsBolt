@@ -1,4 +1,9 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
+
+// Resolve aliases from this config file's location so the suite runs on any
+// machine/CI checkout (previously hardcoded to a contributor's home path).
+const repoRoot = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
   esbuild: { jsx: 'automatic' },
@@ -15,10 +20,10 @@ export default defineConfig({
       { find: /^@\/packages\/studio\/(.*)$/, replacement: '/packages/studio/$1' },
       { find: /^@\/src\/(.*)$/, replacement: '/src/$1' },
       { find: /^@\/(.*)$/, replacement: '/src/$1' },
-      { find: /^studio\/(.*)$/, replacement: '/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/packages/studio/$1' },
-      { find: /^workflow-builder\/(.*)$/, replacement: '/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/packages/Vibe-Workflow/packages/workflow-builder/$1' },
-      { find: /^design-agent\/(.*)$/, replacement: '/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/packages/Open-AI-Design-Agent/packages/design-agent/$1' },
-      { find: /^ai-agent\/(.*)$/, replacement: '/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/packages/Open-Poe-AI/packages/agents/$1' },
+      { find: /^studio\/(.*)$/, replacement: `${repoRoot}packages/studio/$1` },
+      { find: /^workflow-builder\/(.*)$/, replacement: `${repoRoot}packages/Vibe-Workflow/packages/workflow-builder/$1` },
+      { find: /^design-agent\/(.*)$/, replacement: `${repoRoot}packages/Open-AI-Design-Agent/packages/design-agent/$1` },
+      { find: /^ai-agent\/(.*)$/, replacement: `${repoRoot}packages/Open-Poe-AI/packages/agents/$1` },
     ],
   },
   test: {
