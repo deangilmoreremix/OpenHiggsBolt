@@ -165,7 +165,10 @@ Keep the body under ${platform.wordCap} words. Do not include markdown fences.`
   const temporaryImageUrl = imageResult.data?.[0]?.url
   if (!temporaryImageUrl) throw new Error('OpenAI did not return an image URL')
 
-  const imageBlob = await fetch(temporaryImageUrl).then((r) => r.blob())
+  const imageBlob = await fetch(temporaryImageUrl).then((r) => {
+    if (!r.ok) throw new Error(`Failed to fetch generated image: ${r.status}`)
+    return r.blob()
+  })
   const filePath = `asset-${campaignId}-${platform.id}-${conceptIndex}-${Date.now()}.png`
   const { error: uploadError } = await supabase.storage.from('brand-assets').upload(filePath, imageBlob)
   if (uploadError) throw uploadError

@@ -82,15 +82,6 @@ function SignOutButton() {
   );
 }
 
-function useIsSignedIn() {
-  try {
-    const { isSignedIn } = useAuth();
-    return isSignedIn;
-  } catch {
-    return false;
-  }
-}
-
 // Maps every landing-page studio slug to the studio tab that renders it.
 const SLUG_TO_TAB = {
   image: 'image', 'brand-studio': 'brand-studio', video: 'video', audio: 'audio', clipping: 'clipping',
