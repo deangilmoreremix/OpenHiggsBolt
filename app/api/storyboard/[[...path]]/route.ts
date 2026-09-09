@@ -8,7 +8,6 @@ export const dynamic = "force-dynamic";
 
 const MUAPI_BASE = process.env.MUAPI_BASE_URL || 'https://api.muapi.ai'
 const STORYBOARD_MODEL = process.env.STORYBOARD_MODEL || 'openai-sora-2-pro-storyboard'
-// Image model used to render per-shot storyboard frames (still previews).
 const FRAME_MODEL = process.env.STORYBOARD_FRAME_MODEL || 'flux-dev'
 const DURATIONS = [5, 10]
 
@@ -95,32 +94,16 @@ async function proxy(request: Request, path: string): Promise<NextResponse> {
   }
 }
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ path?: string[] }> }
-) {
-  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
-  if (!entitlementCheck.allowed) {
-    if (entitlementCheck.status === 401) {
-      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-    }
-    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
-  }
-
+/**
+ * Generate a cohesive multi-scene storyboard video from an array of shots.
+ * This calls the configured storyboard model endpoint with the full shots payload.
+ */
+async function generateStoryboard(req: NextRequest) {
   try {
-    const { path = [] } = await params
-    if (path.length > 0 && path[0] === 'frame') {
-      return generateFrame(req)
-    }
-    if (path.length > 0 && path[0] !== 'generate') {
-      return NextResponse.json({ error: `Unknown storyboard endpoint: ${path.join('/')}` }, { status: 404 })
-    }
-
     const key = getApiKey(req)
     if (!key) return NextResponse.json({ error: 'MuAPI key is required' }, { status: 400 })
 
     const body = await req.json().catch(() => ({}))
-
     const rawShots = Array.isArray(body.shots) ? body.shots : []
     const shots = rawShots
       .map((s: any) => ({
@@ -140,8 +123,6 @@ export async function POST(
       aspect_ratio: body.aspect_ratio === '16:9' ? '16:9' : '9:16',
     }
 
-    // Honor a client-selected storyboard-capable model, falling back to the
-    // configured default when none (or an empty value) is provided.
     const bodyModel =
       typeof body?.model === 'string' && body.model.trim() ? body.model.trim() : STORYBOARD_MODEL
 
@@ -232,58 +213,99 @@ async function generateFrame(req: NextRequest) {
   }
 }
 
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ path?: string[] }> }
+) {
+  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
+  if (!entitlementCheck.allowed) {
+    if (entitlementCheck.status === 401) {
+      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+    }
+    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
+  }
+
+  try {
+    const { path = [] } = await params
+    if (path.length > 0 && path[0] === 'frame') {
+      return generateFrame(req)
+    }
+    if (path.length > 0 && path[0] === 'generate') {
+      return generateStoryboard(req)
+    }
+
+    // Fallback: proxy all other storyboard CRUD paths to muapi.ai
+    // (projects, characters, episodes, shots, etc.)
+    const pathStr = path.join('/')
+    if (pathStr) {
+      return proxy(req, pathStr)
+    }
+
+    return NextResponse.json({ error: 'Unknown storyboard endpoint' }, { status: 404 })
+  } catch (err: any) {
+    console.error('[storyboard]', err)
+    return NextResponse.json({ error: err?.message || 'Storyboard error' }, { status: 500 })
+  }
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ path?: string[] }> }
 ) {
   try {
     const { path = [] } = await params
-    if (path.length > 0 && path[0] !== 'result') {
-      return NextResponse.json({ error: `Unknown storyboard endpoint: ${path.join('/')}` }, { status: 404 })
+    if (path.length > 0 && path[0] === 'result') {
+      const id = req.nextUrl.searchParams.get('id')
+      if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+
+      const key = getApiKey(req)
+      if (!key) return NextResponse.json({ error: 'MuAPI key is required' }, { status: 400 })
+
+      const res = await fetch(`${MUAPI_BASE}/api/v1/predictions/${id}/result`, {
+        method: 'GET',
+        headers: authHeaders(key),
+        signal: AbortSignal.timeout(30000),
+      })
+
+      const text = await res.text()
+      if (!res.ok) {
+        const detail = parseError(text)
+        return NextResponse.json({ error: `Status check failed: ${res.status} - ${String(detail).slice(0, 300)}` }, { status: 500 })
+      }
+
+      const data = JSON.parse(text)
+      const rawStatus = String(data?.data?.status || data?.status || '').toLowerCase()
+      const status =
+        rawStatus === 'completed' || rawStatus === 'succeeded' || rawStatus === 'success'
+          ? 'completed'
+          : rawStatus === 'failed' || rawStatus === 'error'
+            ? 'failed'
+            : 'processing'
+
+      const output = data?.output
+      const url =
+        (typeof output === 'string' ? output : output?.url) ||
+        data?.url ||
+        data?.video_url ||
+        (Array.isArray(data?.outputs) ? data.outputs[0] : undefined) ||
+        (Array.isArray(data?.data?.outputs) ? data.data.outputs[0] : undefined) ||
+        null
+
+      return NextResponse.json({
+        request_id: id,
+        status,
+        url,
+        error: data?.error || data?.data?.error || null,
+      })
     }
 
-    const id = req.nextUrl.searchParams.get('id')
-    if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
-
-    const key = getApiKey(req)
-    if (!key) return NextResponse.json({ error: 'MuAPI key is required' }, { status: 400 })
-
-    const res = await fetch(`${MUAPI_BASE}/api/v1/predictions/${id}/result`, {
-      method: 'GET',
-      headers: authHeaders(key),
-      signal: AbortSignal.timeout(30000),
-    })
-
-    const text = await res.text()
-    if (!res.ok) {
-      const detail = parseError(text)
-      return NextResponse.json({ error: `Status check failed: ${res.status} - ${String(detail).slice(0, 300)}` }, { status: 500 })
+    // Fallback: proxy all other GET storyboard paths to muapi.ai
+    const pathStr = path.join('/')
+    if (pathStr) {
+      return proxy(req, pathStr)
     }
 
-    const data = JSON.parse(text)
-    const rawStatus = String(data?.data?.status || data?.status || '').toLowerCase()
-    const status =
-      rawStatus === 'completed' || rawStatus === 'succeeded' || rawStatus === 'success'
-        ? 'completed'
-        : rawStatus === 'failed' || rawStatus === 'error'
-          ? 'failed'
-          : 'processing'
-
-    const output = data?.output
-    const url =
-      (typeof output === 'string' ? output : output?.url) ||
-      data?.url ||
-      data?.video_url ||
-      (Array.isArray(data?.outputs) ? data.outputs[0] : undefined) ||
-      (Array.isArray(data?.data?.outputs) ? data.data.outputs[0] : undefined) ||
-      null
-
-    return NextResponse.json({
-      request_id: id,
-      status,
-      url,
-      error: data?.error || data?.data?.error || null,
-    })
+    return NextResponse.json({ error: 'id is required' }, { status: 400 })
   } catch (err: any) {
     console.error('[storyboard result]', err)
     return NextResponse.json({ error: err?.message || 'Storyboard result error' }, { status: 500 })

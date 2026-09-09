@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '@/src/lib/supabaseServer'
+import { callOpenAIResponses } from '@/src/shared/api/openai'
 
 const OPENAI_MODEL = 'gpt-4o'
 const IMAGE_MODEL = 'dall-e-3'
@@ -10,6 +11,20 @@ interface Platform {
   height: number
   dalleSize: '1024x1024' | '1792x1024' | '1024x1792'
   wordCap: number
+}
+
+interface Asset {
+  id?: string
+  campaign_id: string
+  brand_id: string
+  platform: string
+  concept_index: number
+  headline: string
+  body: string
+  cta: string
+  image_url: string
+  canvas_data: Record<string, any>
+  created_at?: string
 }
 
 const PLATFORMS: Platform[] = [
@@ -29,7 +44,42 @@ function csvToArray(value: unknown): string[] {
   return []
 }
 
-export async function generateAsset(campaignId: string, platformId: string, conceptIndex: number): Promise<any> {
+function extractFirstJson(text: string): any {
+  const trimmed = text.trim()
+  try {
+    return JSON.parse(trimmed)
+  } catch {
+    // not pure JSON, extract first object or array
+  }
+
+  const starts = ['{', '[']
+  const ends = ['}', ']']
+
+  for (let i = 0; i < trimmed.length; i++) {
+    const startIdx = starts.indexOf(trimmed[i])
+    if (startIdx === -1) continue
+
+    const open = trimmed[i]
+    const close = ends[startIdx]
+    let depth = 1
+    let j = i + 1
+    while (j < trimmed.length && depth > 0) {
+      if (trimmed[j] === open) depth++
+      else if (trimmed[j] === close) depth--
+      j++
+    }
+    if (depth === 0) {
+      try {
+        return JSON.parse(trimmed.slice(i, j))
+      } catch {
+        // continue searching
+      }
+    }
+  }
+  return {}
+}
+
+export async function generateAsset(campaignId: string, platformId: string, conceptIndex: number): Promise<Asset> {
   const supabase = getSupabaseAdmin()
   const platform = PLATFORMS.find((p) => p.id === platformId) || PLATFORMS[0]
 
@@ -85,23 +135,8 @@ Copy angle: ${concept.copyAngle || ''}
 
 Keep the body under ${platform.wordCap} words. Do not include markdown fences.`
 
-  const copyResponse = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: OPENAI_MODEL,
-      input: copyPrompt,
-      max_output_tokens: 500,
-    }),
-  })
-
-  const copyResult = await copyResponse.json()
-  const copyText = copyResult.output?.[0]?.content?.[0]?.text || copyResult.output_text || '{}'
-  const copyJsonMatch = copyText.match(/\{[\s\S]*\}/)?.[0] || '{}'
-  const copy = JSON.parse(copyJsonMatch)
+  const copyText = await callOpenAIResponses([copyPrompt])
+  const copy = extractFirstJson(copyText)
 
   const imagePrompt = `${concept.visualTheme || concept.copyAngle || concept.title || 'Brand-aligned marketing visual'}. Brand colors: ${colors}. Use ${fonts} inspired composition. NO text or typography.`
 
@@ -120,6 +155,11 @@ Keep the body under ${platform.wordCap} words. Do not include markdown fences.`
       response_format: 'url',
     }),
   })
+
+  if (!imageResponse.ok) {
+    const errorData = await imageResponse.json().catch(() => ({ error: 'Unknown error' }))
+    throw new Error(errorData.error || `OpenAI image generation error: ${imageResponse.status}`)
+  }
 
   const imageResult = await imageResponse.json()
   const temporaryImageUrl = imageResult.data?.[0]?.url

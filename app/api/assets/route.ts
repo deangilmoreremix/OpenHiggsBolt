@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { getSupabaseAdmin } from '@/src/lib/supabaseServer'
 import { generateAsset } from '@/src/lib/assetGenerator'
 import { ok, apiError } from '@/src/lib/apiError'
