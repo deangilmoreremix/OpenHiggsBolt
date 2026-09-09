@@ -6,7 +6,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import axios from 'axios';
 import { MemoryRouter } from 'react-router-dom';
-import { useClerk, useAuth } from '@clerk/nextjs';
+import { useAuth } from '@clerk/nextjs';
 import ApiKeyModal from './ApiKeyModal';
 import { SocialPublishProvider } from '@/components/SocialPublishProvider';
 import { AiAssistantProvider } from '@/components/AiAssistantProvider';
@@ -82,15 +82,6 @@ function SignOutButton() {
   );
 }
 
-function useIsSignedIn() {
-  try {
-    const { isSignedIn } = useAuth();
-    return isSignedIn;
-  } catch {
-    return false;
-  }
-}
-
 // Maps every landing-page studio slug to the studio tab that renders it.
 const SLUG_TO_TAB = {
   image: 'image', 'brand-studio': 'brand-studio', video: 'video', audio: 'audio', clipping: 'clipping',
@@ -109,7 +100,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
   const params = useParams();
   const router = useRouter();
   const pathname = usePathname();
-  const isSignedIn = useIsSignedIn();
+  const { isSignedIn } = useAuth();
   const auth = useAuthConfig();
   const slug = params?.slug || []; 
   const idFromParams = params?.id;

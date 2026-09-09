@@ -10,7 +10,7 @@ function toCsv(value: unknown): string {
   return ''
 }
 
-export async function analyzeBrand(url: string, _openaiKey?: string): Promise<any> {
+export async function analyzeBrand(url: string): Promise<any> {
   const scraped = await scrapeUrl(url)
   const supabase = getSupabaseAdmin()
 

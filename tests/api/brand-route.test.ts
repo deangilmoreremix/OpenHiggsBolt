@@ -143,12 +143,22 @@ describe('POST /api/brand/analyze', () => {
   })
 
   it('does not accept openaiKey from the request body', async () => {
-    const { POST } = await import('@/app/api/brand/analyze/route')
-    const req = makeRequest('http://localhost/api/brand/analyze', {
-      method: 'POST',
-      body: JSON.stringify({ url: 'https://example.com', openaiKey: 'client-key' }),
-    })
-    const res = await POST(req)
-    expect(res.status).toBe(200)
+    const SENTINEL_KEY = 'sentinel-server-key'
+    const originalKey = process.env.OPENAI_API_KEY
+    process.env.OPENAI_API_KEY = SENTINEL_KEY
+
+    try {
+      const { POST } = await import('@/app/api/brand/analyze/route')
+      const callOpenAIResponses = (await import('@/shared/api/openai')).callOpenAIResponses as ReturnType<typeof vi.fn>
+      const req = makeRequest('http://localhost/api/brand/analyze', {
+        method: 'POST',
+        body: JSON.stringify({ url: 'https://example.com', openaiKey: 'client-key' }),
+      })
+      const res = await POST(req)
+      expect(res.status).toBe(200)
+      expect(callOpenAIResponses).toHaveBeenCalled()
+    } finally {
+      process.env.OPENAI_API_KEY = originalKey
+    }
   })
 })
