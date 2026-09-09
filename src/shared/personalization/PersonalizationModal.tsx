@@ -26,6 +26,7 @@ import {
   useRef,
   useCallback,
   useEffect,
+  useMemo,
   type ChangeEvent,
   type DragEvent,
 } from 'react'
@@ -43,6 +44,8 @@ import {
 import { useDemoPersonalize } from './DemoPersonalizeProvider'
 import type { PersonalizationAsset } from './types'
 import { resolveModelCapabilities, FACE_SWAP_MODEL, FULL_BODY_MODEL, DEFAULT_T2V_MODEL, DEFAULT_I2I_MODEL } from './modelCapabilityResolver'
+import { getModelById, getVideoModelById } from '@/packages/studio/src/models.js'
+import { NICHE_CONTENT } from '@/data/nicheContent'
 
 // ── Design tokens (mirror the approved HTML CSS variables) ──────────────────
 
@@ -488,6 +491,30 @@ export default function PersonalizationModal() {
 
   const capabilities = resolveModelCapabilities(source, { ...genOptions, model: effectiveModelId })
 
+  const niche = useMemo(() => {
+    const nicheId = source?.sourceMetadata?.nicheId
+    if (!nicheId) return undefined
+    return NICHE_CONTENT.find((n) => n.id === nicheId)
+  }, [source?.sourceMetadata?.nicheId])
+
+  // ── Auto model recommendation based on duration ─────────────────────────────
+  const recommendedModelId = useMemo(() => {
+    if (!isVideo || mode === 'face_only' || mode === 'full_body') return effectiveModelId
+    const selectedDuration = genOptions.duration || source.duration
+    if (!selectedDuration || selectedDuration <= 15) return effectiveModelId
+    return 'veo-4-text-to-video'
+  }, [isVideo, mode, effectiveModelId, genOptions.duration, source.duration])
+
+  const recommendedModel = useMemo(() => {
+    return getVideoModelById(recommendedModelId) || getModelById(recommendedModelId)
+  }, [recommendedModelId])
+
+  const currentModel = useMemo(() => {
+    return getVideoModelById(effectiveModelId) || getModelById(effectiveModelId)
+  }, [effectiveModelId])
+
+  const isUsingRecommendedModel = effectiveModelId === recommendedModelId
+
   // ── Upload handlers ────────────────────────────────────────────────────────
 
   const handleIdentityUpload = (files: FileList | null) => {
@@ -621,21 +648,29 @@ export default function PersonalizationModal() {
             >
               ✦
             </div>
-            <div>
-              <h1
-                id="personalize-title"
-                className="text-[19px] leading-[1.1] tracking-tight font-bold m-0"
-                style={{ color: C.text }}
-              >
-                Personalize this demo
-              </h1>
-              <p
-                className="mt-1.5 max-w-[760px] text-[13px] leading-[1.55]"
-                style={{ color: C.muted }}
-              >
-                Turn this demo into a custom version for yourself, your business, or a customer. Personalize the person, branding, products, prompt, offer and CTA.
-              </p>
-            </div>
+              <div>
+                <h1
+                  id="personalize-title"
+                  className="text-[19px] leading-[1.1] tracking-tight font-bold m-0"
+                  style={{ color: C.text }}
+                >
+                  {niche ? niche.ctaHeading : 'Personalize this demo'}
+                </h1>
+                {niche ? (
+                  <p
+                    className="mt-1.5 max-w-[760px] text-[13px] leading-[1.55]"
+                    style={{ color: C.muted }}
+                    dangerouslySetInnerHTML={{ __html: niche.ctaBody }}
+                  />
+                ) : (
+                  <p
+                    className="mt-1.5 max-w-[760px] text-[13px] leading-[1.55]"
+                    style={{ color: C.muted }}
+                  >
+                    Turn this demo into a custom version for yourself, your business, or a customer. Personalize the person, branding, products, prompt, offer and CTA.
+                  </p>
+                )}
+              </div>
           </div>
           <button
             type="button"
@@ -747,10 +782,15 @@ export default function PersonalizationModal() {
               setShowAdvanced={setShowAdvanced}
               genOptions={genOptions}
               updateGenOptions={updateGenOptions}
-              generate={generate}
-              closePersonalize={closePersonalize}
-              isReadyToGenerate={Boolean((clientForm.businessName || clientForm.name) && (outputType === 'prompt' || mode))}
-            />
+               generate={generate}
+               closePersonalize={closePersonalize}
+               isReadyToGenerate={Boolean((clientForm.businessName || clientForm.name) && (outputType === 'prompt' || mode))}
+               effectiveModelId={effectiveModelId}
+               recommendedModelId={recommendedModelId}
+               recommendedModel={recommendedModel}
+               currentModel={currentModel}
+               isUsingRecommendedModel={isUsingRecommendedModel}
+             />
           )}
         </main>
 
@@ -1019,6 +1059,7 @@ function ConfigurationView(props: any) {
     outputOptions, outputType, setOutputType, isPromptOnly,
     showModes, eligibleModes, mode, setMode,
     showAdvanced, setShowAdvanced, genOptions, updateGenOptions,
+    effectiveModelId, recommendedModelId, recommendedModel, currentModel, isUsingRecommendedModel,
   } = props
 
   return (
@@ -1572,10 +1613,21 @@ function ConfigurationView(props: any) {
                 SmartVideo <span style={{ color: C.cyan }}>Recommended</span>
               </h3>
               <div style={{ marginTop: 5, color: C.muted, fontSize: 11 }}>
-                SmartVideo automatically chooses the best generation path for your selected content, personalization mode and assets.
+                {isUsingRecommendedModel
+                  ? `Using ${recommendedModel?.name || effectiveModelId} — best match for your content and duration.`
+                  : `Recommended for this duration: ${recommendedModel?.name || recommendedModelId}. Current: ${currentModel?.name || effectiveModelId}.`}
               </div>
             </div>
           </div>
+          {!isUsingRecommendedModel && (
+            <button
+              onClick={() => updateGenOptions({ ...genOptions, model: recommendedModelId, advancedModel: undefined })}
+              className="text-[11px] whitespace-nowrap"
+              style={{ color: C.cyan }}
+            >
+              Use Recommended ›
+            </button>
+          )}
           <button
             onClick={() => setShowAdvanced(!showAdvanced)}
             className="text-[11px] whitespace-nowrap"
