@@ -7,7 +7,7 @@ import { useReducedMotion } from './useReducedMotion';
  * decode everything simultaneously. When the cap is hit, the oldest playing
  * video is paused. Keeps the page light and the network calm on mobile.
  */
-const MAX_ACTIVE = 2;
+const MAX_ACTIVE = 6;
 const registry = new Set<() => void>();
 
 function requestPlay(stop: () => void) {
@@ -62,6 +62,7 @@ export default function LazyVideo({
   const activeRef = useRef(false);
   const [errored, setErrored] = useState(false);
   const reduced = useReducedMotion();
+  const [inView, setInView] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [pinned, setPinned] = useState(false);
 
@@ -87,12 +88,28 @@ export default function LazyVideo({
     return () => el.removeEventListener('error', onError);
   }, []);
 
-  const shouldPlay = !reduced && !errored;
+  // Reveal (attach observer) when near viewport.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setInView(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      ([entry]) => setInView(entry.isIntersecting),
+      { rootMargin: '300px 0px', threshold: 0.01 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  const shouldPlay = !reduced && !errored && (pinned || (inView && autoPlayInView) || (hovered && hoverPlay));
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     if (shouldPlay) {
+      // Attach the source lazily — never at page load.
       if (!el.getAttribute('src')) el.setAttribute('src', src);
       if (!activeRef.current) {
         requestPlay(stopRef.current);
@@ -146,7 +163,6 @@ export default function LazyVideo({
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <video
         ref={ref}
-        src={shouldPlay ? src : undefined}
         poster={poster}
         muted
         playsInline

@@ -51,14 +51,6 @@ export default function DemoMediaCard({
         <span className="glass-panel absolute left-3 top-3 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white/90">
           {badge ?? demo.category}
         </span>
-        {/* Play affordance on hover (decorative) */}
-        <div className="pointer-events-none absolute inset-0 grid place-items-center opacity-0 transition group-hover:opacity-100">
-          <span className="grid h-12 w-12 place-items-center rounded-full bg-white/15 backdrop-blur">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="white" aria-hidden="true">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </span>
-        </div>
       </div>
 
       {/* Body */}
