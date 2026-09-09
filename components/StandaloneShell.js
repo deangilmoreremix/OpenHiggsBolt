@@ -6,7 +6,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import axios from 'axios';
 import { MemoryRouter } from 'react-router-dom';
-import { useAuth } from '@clerk/nextjs';
+import { useClerk, useAuth } from '@clerk/nextjs';
 import ApiKeyModal from './ApiKeyModal';
 import { SocialPublishProvider } from '@/components/SocialPublishProvider';
 import { AiAssistantProvider } from '@/components/AiAssistantProvider';
@@ -100,7 +100,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
   const params = useParams();
   const router = useRouter();
   const pathname = usePathname();
-  const { isSignedIn } = useAuth();
+  const isSignedIn = useIsSignedIn();
   const auth = useAuthConfig();
   const slug = params?.slug || []; 
   const idFromParams = params?.id;

@@ -150,13 +150,26 @@ describe('POST /api/brand/analyze', () => {
     try {
       const { POST } = await import('@/app/api/brand/analyze/route')
       const callOpenAIResponses = (await import('@/shared/api/openai')).callOpenAIResponses as ReturnType<typeof vi.fn>
+
+      let capturedInput: any[] | undefined
+      vi.mocked(callOpenAIResponses).mockImplementation(async (input: any[]) => {
+        capturedInput = input
+        return '{"brand_name":"Analyzed"}'
+      })
+
       const req = makeRequest('http://localhost/api/brand/analyze', {
         method: 'POST',
         body: JSON.stringify({ url: 'https://example.com', openaiKey: 'client-key' }),
       })
       const res = await POST(req)
       expect(res.status).toBe(200)
-      expect(callOpenAIResponses).toHaveBeenCalled()
+      expect(callOpenAIResponses).toHaveBeenCalledTimes(1)
+      expect(capturedInput).toBeDefined()
+      expect(capturedInput).toEqual(expect.arrayContaining([
+        expect.objectContaining({ role: 'system' }),
+        expect.objectContaining({ role: 'user' }),
+      ]))
+      expect(JSON.stringify(capturedInput)).not.toContain('client-key')
     } finally {
       process.env.OPENAI_API_KEY = originalKey
     }
