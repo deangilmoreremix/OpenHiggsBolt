@@ -1,5 +1,6 @@
 import { scrapeUrl } from './scraper'
 import { getSupabaseAdmin } from '@/src/lib/supabaseServer'
+import { callOpenAIResponses } from '@/shared/api/openai'
 
 const OPENAI_MODEL = 'gpt-4o'
 
@@ -9,7 +10,7 @@ function toCsv(value: unknown): string {
   return ''
 }
 
-export async function analyzeBrand(url: string, openaiKey: string): Promise<any> {
+export async function analyzeBrand(url: string, _openaiKey?: string): Promise<any> {
   const scraped = await scrapeUrl(url)
   const supabase = getSupabaseAdmin()
 
@@ -55,33 +56,20 @@ Fonts found: ${scraped.fonts.join(', ')}
 Mirrored og:image for vision: ${screenshotUrl || 'none'}
 HTML text excerpt: ${scraped.bodyText}`
 
-  const response = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${openaiKey}`,
+  const text = await callOpenAIResponses([
+    {
+      role: 'system',
+      content: 'Extract structured brand DNA from the provided website evidence. Return only JSON.',
     },
-    body: JSON.stringify({
-      model: OPENAI_MODEL,
-      input: [
-        {
-          role: 'system',
-          content: 'Extract structured brand DNA from the provided website evidence. Return only JSON.',
-        },
-        {
-          role: 'user',
-          content: [
-            { type: 'input_text', text: prompt },
-            ...(screenshotUrl ? [{ type: 'input_image', image_url: screenshotUrl }] : []),
-          ],
-        },
+    {
+      role: 'user',
+      content: [
+        { type: 'input_text', text: prompt },
+        ...(screenshotUrl ? [{ type: 'input_image', image_url: screenshotUrl }] : []),
       ],
-      max_output_tokens: 3000,
-    }),
-  })
+    },
+  ])
 
-  const result = await response.json()
-  const text = result.output?.[0]?.content?.[0]?.text || result.output_text || '{}'
   const jsonMatch = text.match(/\{[\s\S]*\}/)?.[0] || '{}'
   const parsed = JSON.parse(jsonMatch)
 

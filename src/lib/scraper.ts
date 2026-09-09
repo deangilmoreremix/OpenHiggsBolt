@@ -1,5 +1,3 @@
-import dns from 'node:dns/promises'
-
 export type ScrapeResult = {
   html: string
   title: string

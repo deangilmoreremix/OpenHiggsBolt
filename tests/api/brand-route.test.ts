@@ -1,10 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
-import { GET, PATCH, POST } from '@/app/api/brand/route'
 
 function makeRequest(url: string, init?: RequestInit): NextRequest {
   return new NextRequest(url, init)
 }
+
+describe('route module exports', () => {
+  it('app/api/brand/route.ts exports GET, PATCH, and not POST', async () => {
+    const mod = await import('@/app/api/brand/route')
+    expect(typeof mod.GET).toBe('function')
+    expect(typeof mod.PATCH).toBe('function')
+    expect(mod.POST).toBeUndefined()
+  })
+
+  it('app/api/brand/analyze/route.ts exports POST', async () => {
+    const mod = await import('@/app/api/brand/analyze/route')
+    expect(typeof mod.POST).toBe('function')
+  })
+})
 
 describe('GET /api/brand', () => {
   beforeEach(() => {
@@ -27,6 +40,7 @@ describe('GET /api/brand', () => {
   })
 
   it('returns 400 without id', async () => {
+    const { GET } = await import('@/app/api/brand/route')
     const req = makeRequest('http://localhost/api/brand')
     const res = await GET(req)
     expect(res.status).toBe(400)
@@ -65,6 +79,7 @@ describe('PATCH /api/brand', () => {
   })
 
   it('returns 400 without id', async () => {
+    const { PATCH } = await import('@/app/api/brand/route')
     const req = makeRequest('http://localhost/api/brand', {
       method: 'PATCH',
       body: JSON.stringify({ brand_name: 'New' }),
@@ -112,17 +127,28 @@ describe('POST /api/brand/analyze', () => {
       }),
     }))
 
-    vi.doMock('@/lib/brandAnalyzer', () => ({
-      analyzeBrand: vi.fn().mockResolvedValue({ id: 'brand-1', brand_name: 'Analyzed' }),
+    vi.doMock('@/shared/api/openai', () => ({
+      callOpenAIResponses: vi.fn().mockResolvedValue('{"brand_name":"Analyzed"}'),
     }))
   })
 
   it('returns 400 without url', async () => {
+    const { POST } = await import('@/app/api/brand/analyze/route')
     const req = makeRequest('http://localhost/api/brand/analyze', {
       method: 'POST',
       body: JSON.stringify({}),
     })
     const res = await POST(req)
     expect(res.status).toBe(400)
+  })
+
+  it('does not accept openaiKey from the request body', async () => {
+    const { POST } = await import('@/app/api/brand/analyze/route')
+    const req = makeRequest('http://localhost/api/brand/analyze', {
+      method: 'POST',
+      body: JSON.stringify({ url: 'https://example.com', openaiKey: 'client-key' }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(200)
   })
 })
