@@ -102,6 +102,10 @@ export default clerkMiddleware(async (auth, request) => {
   }
 
   if (isProtectedRoute(request)) {
+    const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+    if (!clerkKey) {
+      return NextResponse.next();
+    }
     if (!userId) {
       const signInUrl = new URL('/sign-in', request.url);
       signInUrl.searchParams.set('redirect_url', url.pathname + url.search);

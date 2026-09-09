@@ -6,7 +6,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import axios from 'axios';
 import { MemoryRouter } from 'react-router-dom';
-import { useClerk, useAuth } from '@clerk/nextjs';
+import { useAuth } from '@clerk/nextjs';
 import ApiKeyModal from './ApiKeyModal';
 import { SocialPublishProvider } from '@/components/SocialPublishProvider';
 import { AiAssistantProvider } from '@/components/AiAssistantProvider';
@@ -66,6 +66,22 @@ const TABS = [
   { id: 'apps', label: 'SmartVideo GO AI Apps' },
 ];
 
+function SignOutButton() {
+  const { signOut } = useClerk();
+  return (
+    <button
+      onClick={() => signOut({ redirectUrl: '/' })}
+      title="Sign out of your account"
+      className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-white/10 bg-white/5 text-[13px] font-bold text-white/80 hover:text-white hover:bg-white/10 hover:border-white/20 transition-colors"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+      </svg>
+      <span>Sign out</span>
+    </button>
+  );
+}
+
 // Maps every landing-page studio slug to the studio tab that renders it.
 const SLUG_TO_TAB = {
   image: 'image', 'brand-studio': 'brand-studio', video: 'video', audio: 'audio', clipping: 'clipping',
@@ -84,7 +100,6 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
   const params = useParams();
   const router = useRouter();
   const pathname = usePathname();
-  const { signOut } = useClerk();
   const { isSignedIn } = useAuth();
   const auth = useAuthConfig();
   const slug = params?.slug || []; 
@@ -601,18 +616,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
               </button>
             )}
 
-            {!demoMode && isSignedIn && (
-              <button
-                onClick={() => signOut({ redirectUrl: '/' })}
-                title="Sign out of your account"
-                className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-white/10 bg-white/5 text-[13px] font-bold text-white/80 hover:text-white hover:bg-white/10 hover:border-white/20 transition-colors"
-              >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
-              </svg>
-              <span>Sign out</span>
-            </button>
-            )}
+            {!demoMode && isSignedIn && <SignOutButton />}
           </div>
         </header>
       )}
