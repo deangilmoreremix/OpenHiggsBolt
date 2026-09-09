@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act, within } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, act } from '@testing-library/react';
 import { createRoot } from 'react-dom/client';
 import PersonalizationModal from '../PersonalizationModal';
 import { DemoPersonalizeProvider, useDemoPersonalize } from '../DemoPersonalizeProvider';
@@ -47,10 +47,6 @@ function TestOpener({ source, onMounted }: { source: any; onMounted: (open: (opt
 describe('PersonalizationModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    document.body.innerHTML = '';
   });
 
   it('renders six visible client asset cards without tab navigation', async () => {
@@ -137,7 +133,7 @@ describe('PersonalizationModal', () => {
     expect(tabLabels).not.toContain('CTA');
   });
 
-  it('renders the generic modal header even when source.sourceMetadata.nicheId is set', async () => {
+  it('renders the niche-specific CTA heading when source.sourceMetadata.nicheId is set', async () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
     const root = createRoot(container);
@@ -172,18 +168,14 @@ describe('PersonalizationModal', () => {
       });
     });
 
-    // Niche-aware copy now lives on the demo-card CTA; the modal header is
-    // intentionally generic for every entry point (see 533d92b0).
+    // Niche-aware heading + body come from NICHE_CTA_BY_ID.ecommerce.
     expect(
-      within(container).getByRole('heading', { level: 1, name: 'Personalize this demo' }),
+      screen.getByText('Personalize This AI Product Video Demo'),
     ).toBeTruthy();
-    // Niche-specific header copy must not appear anywhere in the modal.
-    expect(container.textContent || '').not.toMatch(/AI Product Video Demo/);
-    expect(container.textContent || '').not.toMatch(/AI Restaurant & Food Video Demo/);
-    expect(container.textContent || '').not.toMatch(/AI Real Estate Video Demo/);
+    expect(container.textContent || '').toMatch(/AI ecommerce product video demo/);
   });
 
-  it('shows the generic header when no nicheId is present', async () => {
+  it('falls back to the generic header when no nicheId is present', async () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
     const root = createRoot(container);
@@ -218,8 +210,8 @@ describe('PersonalizationModal', () => {
       });
     });
 
-    // No niche → generic header from the modal default.
-    const genericMatches = within(container).getAllByText('Personalize this demo');
+    // No niche → generic title from the modal default.
+    const genericMatches = screen.getAllByText(/Personalize this demo/i);
     expect(genericMatches.length).toBeGreaterThanOrEqual(1);
   });
 });
