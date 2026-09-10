@@ -180,7 +180,7 @@ function AudioFileUploader({ label, value, onChange, apiKey, copy = en }) {
         )}
       </div>
 
-      <div 
+      <div
         onClick={() => uploadState === UPLOAD_STATE.IDLE && fileInputRef.current?.click()}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
@@ -190,16 +190,16 @@ function AudioFileUploader({ label, value, onChange, apiKey, copy = en }) {
           isDragging
             ? "border-primary bg-primary/15 shadow-[0_0_15px_rgba(34,211,238,0.15)]"
             : uploadState === UPLOAD_STATE.READY
-            ? "border-primary/60 bg-primary/10 shadow-[0_0_15px_rgba(34,211,238,0.05)]" 
+            ? "border-primary/60 bg-primary/10 shadow-[0_0_15px_rgba(34,211,238,0.05)]"
             : "border-zinc-700 bg-zinc-900 hover:bg-zinc-850 hover:border-primary/50"
         }`}
       >
-        <input 
-          ref={fileInputRef} 
-          type="file" 
-          accept="audio/*" 
-          className="hidden" 
-          onChange={handleInputChange} 
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="audio/*"
+          className="hidden"
+          onChange={handleInputChange}
         />
 
         {uploadState === UPLOAD_STATE.IDLE && (
@@ -454,17 +454,17 @@ function PremiumAudioPlayer({ url, title }) {
           <span className="text-xs font-bold text-zinc-200 w-10 text-right">
             {formatTime(currentTime)}
           </span>
-          
+
           <div
             ref={progressBarRef}
             onClick={handleScrub}
             className="flex-1 h-2 bg-zinc-700 hover:bg-zinc-650 rounded-full cursor-pointer relative group transition-colors"
           >
-            <div 
+            <div
               className="absolute left-0 top-0 bottom-0 bg-primary rounded-full group-hover:bg-primary/95 transition-all"
               style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
             />
-            <div 
+            <div
               className="absolute w-3.5 h-3.5 bg-white rounded-full -top-[3px] shadow-glow opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
               style={{ left: `calc(${(currentTime / (duration || 1)) * 100}% - 7px)` }}
             />
@@ -742,11 +742,11 @@ export default function AudioStudio({
 
   return (
     <div className="w-full h-full flex bg-app-bg text-white overflow-hidden relative">
-      
+
       {/* ─── LEFT CONFIGURATION SIDEBAR ─── */}
       <div className="w-full lg:w-[400px] border-r border-zinc-900 flex flex-col bg-zinc-950/40 backdrop-blur-lg flex-shrink-0 z-30">
         <div className="p-6 overflow-y-auto flex-1 custom-scrollbar space-y-6 pb-24">
-          
+
           {/* Model Selector */}
           <div className="space-y-2 relative">
             <label className="text-xs font-bold text-zinc-300 uppercase tracking-wider block">
@@ -1007,12 +1007,12 @@ export default function AudioStudio({
       </div>
       {/* ─── RIGHT CONTENT AREA ─── */}
       <div className="flex-1 flex flex-col min-w-0 h-full relative z-20">
-        
+
         {/* Main Display panel */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-10 flex flex-col justify-between">
-          
+
           <div className="flex-1 flex items-center justify-center min-h-[400px] mb-8">
-            
+
             {/* 1. Error Display */}
             {generateError && (
               <div className="w-full max-w-md p-6 bg-red-500/10 border border-red-500/20 rounded flex flex-col items-center gap-4 animate-shake">
