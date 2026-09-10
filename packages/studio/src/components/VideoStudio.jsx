@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import toast, { Toaster } from "react-hot-toast";
 import { generateVideo, generateI2V, processV2V, uploadFile } from "../muapi.js";
 import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
 import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
@@ -25,6 +26,25 @@ import {
 import { getAdvancedControlsForModel, buildAdvancedPayload } from "../videoAdvancedControls.js";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
+
+import {
+  PROMPT_MEDIA_PREVIEW_CLASS,
+  PromptAction,
+  PromptChevronIcon,
+  PromptComposer,
+  PromptControls,
+  PromptFooter,
+  PromptMenuItem,
+  PromptMenuList,
+  PromptPopover,
+  PromptPopoverHeader,
+  PromptTextarea,
+  promptControlClassName,
+  promptMediaButtonClassName,
+} from "./prompt/PromptComposer.jsx";
+import en from "../messages/en/videoStudio.json";
+import zh from "../messages/zh/videoStudio.json";
+import { resolveCopy } from "../i18nUtils";
 
 // ── tiny helpers ──────────────────────────────────────────────────────────────
 
@@ -71,6 +91,226 @@ function buildAdvChips(adv) {
 }
 
 // ── SVG icons (kept inline to avoid extra deps) ───────────────────────────────
+
+function ReferenceMediaLabel({ label, required = false }) {
+  if (!label) return null;
+  return (
+    <span
+      className={`flex min-h-6 max-w-[88px] items-start justify-center text-balance text-center text-[10px] font-semibold leading-3 ${
+        required ? "text-white/60" : "text-white/45"
+      }`}
+    >
+      {label}
+      {required && (
+        <span className="ml-0.5 text-[#22d3ee]" aria-hidden="true">
+          *
+        </span>
+      )}
+    </span>
+  );
+}
+
+function ReferencePreview({
+  type,
+  url,
+  index,
+  onRemove,
+  label = null,
+  description = null,
+  copy = en,
+}) {
+  const mediaLabel = label || (type === "image" ? copy.media.image : type === "video" ? copy.media.video : copy.media.audio);
+  const actionLabel = description || mediaLabel;
+  return (
+    <div className="flex min-w-[60px] flex-col items-center gap-1.5">
+      <div className={PROMPT_MEDIA_PREVIEW_CLASS}>
+        {type === "image" ? (
+          <img src={url} alt="" className="w-full h-full object-cover" />
+        ) : type === "video" ? (
+          <video src={url} className="w-full h-full object-cover" muted />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-white/5 text-primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M9 18V5l10-2v13" />
+              <circle cx="6" cy="18" r="3" />
+              <circle cx="16" cy="16" r="3" />
+            </svg>
+          </div>
+        )}
+        <button
+          type="button"
+          aria-label={`${copy.media.removePrefix} ${actionLabel}`}
+          title={`${copy.media.removePrefix} ${actionLabel}`}
+          onClick={() => onRemove(index)}
+          className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 hover:bg-black rounded-full flex items-center justify-center text-white/85 hover:text-white text-[8px] border border-white/5"
+        >
+          ×
+        </button>
+      </div>
+      <ReferenceMediaLabel label={mediaLabel} />
+    </div>
+  );
+}
+
+function ReferenceUploadButton({
+  inputRef,
+  accept,
+  multiple,
+  onChange,
+  onClick,
+  title,
+  uploading,
+  progress,
+  type,
+  label = null,
+  required = false,
+  disabled = false,
+  copy = en,
+}) {
+  const localInputRef = useRef(null);
+  const resolvedInputRef = inputRef || localInputRef;
+  const announcedProgress = Math.min(
+    100,
+    Math.max(0, Math.floor(progress / 10) * 10),
+  );
+  const [isUploadDragging, setIsUploadDragging] = useState(false);
+  const uploadDragCounterRef = useRef(0);
+
+  const acceptPrefixes = (accept || "")
+    .split(",")
+    .map((token) => token.trim())
+    .filter(Boolean);
+  const fileMatchesAccept = (file) => {
+    if (acceptPrefixes.length === 0) return true;
+    return acceptPrefixes.some((token) => {
+      if (token.endsWith("/*")) {
+        return file.type?.startsWith(token.slice(0, -1));
+      }
+      if (token.startsWith(".")) {
+        return file.name?.toLowerCase().endsWith(token.toLowerCase());
+      }
+      return file.type === token;
+    });
+  };
+
+  const handleUploadDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (disabled || uploading) return;
+    uploadDragCounterRef.current += 1;
+    if (e.dataTransfer?.items && e.dataTransfer.items.length > 0) {
+      setIsUploadDragging(true);
+    }
+  };
+
+  const handleUploadDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    uploadDragCounterRef.current -= 1;
+    if (uploadDragCounterRef.current <= 0) {
+      uploadDragCounterRef.current = 0;
+      setIsUploadDragging(false);
+    }
+  };
+
+  const handleUploadDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleUploadDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    uploadDragCounterRef.current = 0;
+    setIsUploadDragging(false);
+    if (disabled || uploading) return;
+    const droppedFiles = Array.from(e.dataTransfer?.files || []).filter(
+      fileMatchesAccept,
+    );
+    if (droppedFiles.length === 0) return;
+    const filesToUse = multiple ? droppedFiles : [droppedFiles[0]];
+    onChange?.({ target: { files: filesToUse, value: "" } });
+  };
+
+  return (
+    <div
+      className={
+        label
+          ? "relative flex min-w-[60px] flex-col items-center gap-1.5"
+          : "relative"
+      }
+    >
+      <input
+        ref={resolvedInputRef}
+        type="file"
+        accept={accept}
+        multiple={multiple}
+        className="hidden"
+        onChange={onChange}
+      />
+      <button
+        type="button"
+        title={title}
+        aria-label={title}
+        aria-busy={uploading || undefined}
+        disabled={disabled}
+        onClick={onClick || (() => resolvedInputRef.current?.click())}
+        onDragEnter={handleUploadDragEnter}
+        onDragLeave={handleUploadDragLeave}
+        onDragOver={handleUploadDragOver}
+        onDrop={handleUploadDrop}
+        className={`${promptMediaButtonClassName()} disabled:cursor-not-allowed disabled:opacity-50${
+          isUploadDragging ? " ring-2 ring-primary border-primary bg-primary/10" : ""
+        }`}
+      >
+        {uploading ? (
+          <div className="flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]">
+            <svg className="w-8 h-8 -rotate-90">
+              <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2" fill="transparent" className="text-white/10" />
+              <circle
+                cx="16"
+                cy="16"
+                r="14"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="transparent"
+                strokeDasharray={88}
+                strokeDashoffset={88 - (88 * progress) / 100}
+                className="text-[#22d3ee] transition-all duration-300"
+              />
+            </svg>
+            <span className="absolute text-[9px] font-black text-[#22d3ee] leading-none">{progress}%</span>
+          </div>
+        ) : type === "video" ? (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-white/40 group-hover:text-[#22d3ee] transition-colors">
+            <polygon points="23 7 16 12 23 17 23 7" />
+            <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+          </svg>
+        ) : type === "audio" ? (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-white/40 group-hover:text-[#22d3ee] transition-colors">
+            <path d="M9 18V5l10-2v13" />
+            <circle cx="6" cy="18" r="3" />
+            <circle cx="16" cy="16" r="3" />
+          </svg>
+        ) : (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-white/40 group-hover:text-[#22d3ee] transition-colors">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        )}
+      </button>
+      <span
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {uploading ? copy.upload.uploadingProgress.replace('{title}', title).replace('{progress}', announcedProgress) : ""}
+      </span>
+      <ReferenceMediaLabel label={label} required={required} />
+    </div>
+  );
+}
 
 const CheckSvg = () => (
   <svg
@@ -563,12 +803,15 @@ export default function VideoStudio({
   droppedFiles,
   onFilesHandled,
   templateData,
+  locale = "en",
 }) {
   const PERSIST_KEY = "hg_video_studio_persistent";
 
   // ── mode state ──
   const [imageMode, setImageMode] = useState(false); // i2v
   const [v2vMode, setV2vMode] = useState(false);
+
+  const copy = resolveCopy(en, zh, locale);
 
   // ── model / params ──
   const defaultModel = t2vModels[0];
@@ -1867,7 +2110,8 @@ export default function VideoStudio({
       </div>
 
       {/* ── BOTTOM PROMPT BAR ── */}
-      <div className="absolute bottom-4 w-full max-w-[95%] lg:max-w-4xl z-40 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
+      <PromptComposer>
+        <div className="absolute bottom-4 w-full max-w-[95%] lg:max-w-4xl z-40 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
         <div className="w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]">
           <div className="flex flex-col gap-3">
             {/* Inline list of uploaded media files */}
@@ -2136,14 +2380,12 @@ export default function VideoStudio({
 
             {/* Prompt textarea */}
             <div className="flex-1 flex flex-col gap-1">
-              <textarea
+              <PromptTextarea
                 ref={textareaRef}
                 value={prompt}
                 onChange={handlePromptInput}
                 placeholder={promptPlaceholder}
                 disabled={promptDisabled}
-                rows={1}
-                className="w-full bg-transparent border-none text-white text-sm placeholder:text-white/10 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar disabled:opacity-40"
               />
             </div>
           </div>
@@ -2645,8 +2887,9 @@ export default function VideoStudio({
               )}
             </button>
           </div>
-        </div>
+         </div>
       </div>
+      </PromptComposer>
 
       {/* ── FULLSCREEN VIDEO MODAL ── */}
       {fullscreenUrl && (
@@ -2675,8 +2918,9 @@ export default function VideoStudio({
             className="max-w-[95vw] max-h-[95vh] rounded-2xl shadow-2xl object-contain animate-scale-up" 
             onClick={(e) => e.stopPropagation()}
           />
-        </div>
-      )}
+         </div>
+       )}
+       <Toaster position="top-right" containerStyle={{ zIndex: 99999 }} toastOptions={{ duration: 5000, style: { background: '#18181b', color: '#ffffff', border: '1px solid rgba(255,255,255,0.15)', fontSize: '13px', borderRadius: '12px', boxShadow: '0 10px 30px rgba(0,0,0,0.6)', maxWidth: '440px', wordBreak: 'break-word', whiteSpace: 'pre-wrap', padding: '12px 16px' } }} />
     </div>
   );
 }

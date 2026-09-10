@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import toast, { Toaster } from "react-hot-toast";
 import { generateImage } from "../muapi.js";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
@@ -10,6 +11,9 @@ import { fillTemplate } from "../lib/promptRecipes";
 import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
 import TemplateBanner from "./TemplateBanner";
 import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
+import en from "../messages/en/aiInfluencerStudio.json";
+import zh from "../messages/zh/aiInfluencerStudio.json";
+import { resolveCopy } from "../i18nUtils";
 
 const CDN = "https://cdn.muapi.ai/influencer";
 
@@ -338,7 +342,8 @@ function HoverPill({ label, img, onClick }) {
 }
 
 // ─── Main Component ─────────────────────────────────────────────────────────
-export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: externalIsGenerating, templateData }) {
+export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: externalIsGenerating, templateData, locale = "en" }) {
+  const copy = resolveCopy(en, zh, locale);
   const [activeTab, setActiveTab] = useState("face");
 
   const [selectedOptions, setSelectedOptions] = useState(() => {
@@ -484,7 +489,9 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
     } catch (err) {
       // Ignore aborts (unmount / superseded) — not a user-facing failure.
       if (ac.signal.aborted) return;
-      setErrorMsg(err?.message || "Generation failed. Please try again.");
+      const message = err?.message || "Generation failed. Please try again.";
+      setErrorMsg(message);
+      toast.error(message);
     } finally {
       setIsGeneratingInternal(false);
     }
@@ -528,6 +535,7 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
 
   return (
     <div className="flex h-full bg-[#0a0a0a] text-white overflow-hidden select-none font-sans">
+      <Toaster position="top-right" containerStyle={{ zIndex: 99999 }} />
 
       {/* ════════════════════════════════════════════════════════════
           LEFT — Builder / Options Panel

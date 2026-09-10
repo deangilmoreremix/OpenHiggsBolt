@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import toast, { Toaster } from "react-hot-toast";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { uploadFile, generateMarketingStudioAd } from "../muapi.js";
@@ -10,6 +11,9 @@ import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHand
 import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
 import registry from "../skills/registry.json";
 import { fillTemplate } from "../lib/promptRecipes";
+import en from "../messages/en/marketingStudio.json";
+import zh from "../messages/zh/marketingStudio.json";
+import { resolveCopy } from "../i18nUtils";
 
 const SCROLLBAR_STYLE = `
   .custom-scrollbar-thin::-webkit-scrollbar {
@@ -239,7 +243,8 @@ function SimpleDropdown({ isOpen, title, options, selected, onSelect, onClose })
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled, templateData }) {
+export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled, templateData, locale = "en" }) {
+  const copy = resolveCopy(en, zh, locale);
   const PERSIST_KEY = "hg_marketing_studio_persistent";
   
   const [prompt, setPrompt] = useState("");
@@ -385,7 +390,7 @@ export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled, 
         try {
           const url = await uploadFile(apiKey, file, (pct) => setUploadProgress(p => ({ ...p, additional: pct })));
           setAdditionalImages(prev => [...prev, url].slice(0, 6));
-        } catch (err) { alert(err.message); }
+         } catch (err) { toast.error(err.message); }
       }
     } else {
       const file = files[0];
@@ -399,7 +404,7 @@ export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled, 
   };
 
   const handleGenerate = async () => {
-    if (!prompt.trim()) return alert("Please enter an ad script.");
+    if (!prompt.trim()) return toast.error("Please enter an ad script.");
     if (!productImage) return alert("Please upload a product image.");
 
     setIsGenerating(true);
@@ -425,7 +430,7 @@ export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled, 
         setFullscreenUrl(result.url);
       }
     } catch (err) {
-      alert("Generation failed: " + err.message);
+      toast.error("Generation failed: " + err.message);
     } finally {
       setIsGenerating(false);
     }
@@ -441,6 +446,7 @@ export default function MarketingStudio({ apiKey, droppedFiles, onFilesHandled, 
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-app-bg relative p-4 md:p-6 overflow-hidden">
+      <Toaster position="top-right" containerStyle={{ zIndex: 99999 }} />
       <style>{SCROLLBAR_STYLE}</style>
       
       {/* ── MAIN CONTENT AREA ── */}

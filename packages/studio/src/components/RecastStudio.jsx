@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import toast, { Toaster } from "react-hot-toast";
 import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
 import TemplateBanner from "./TemplateBanner";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
@@ -15,6 +16,9 @@ import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
 import registry from "../skills/registry.json";
 import { fillTemplate } from "../lib/promptRecipes";
 import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
+import en from "../messages/en/recastStudio.json";
+import zh from "../messages/zh/recastStudio.json";
+import { resolveCopy } from "../i18nUtils";
 
 // ---------------------------------------------------------------------------
 // Upload button states
@@ -273,7 +277,9 @@ export default function RecastStudio({
   droppedFiles,
   onFilesHandled,
   templateData,
+  locale = "en",
 }) {
+  const copy = resolveCopy(en, zh, locale);
   const PERSIST_KEY = "hg_recast_studio_persistent";
 
   // ── Model state ───────────────────────────────────────────────────────────
@@ -583,7 +589,9 @@ export default function RecastStudio({
       }
     } catch (e) {
       console.error("[RecastStudio]", e);
-      setGenerateError(e.message?.slice(0, 80) ?? "Unknown error");
+      const message = e.message?.slice(0, 80) ?? "Unknown error";
+      setGenerateError(message);
+      toast.error(message);
       setTimeout(() => setGenerateError(null), 4000);
     } finally {
       setIsGenerating(false);
@@ -596,6 +604,7 @@ export default function RecastStudio({
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-app-bg relative overflow-hidden">
+      <Toaster position="top-right" containerStyle={{ zIndex: 99999 }} />
 
       {/* ── CENTRAL GALLERY AREA ── */}
       <div className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto custom-scrollbar pb-40 lg:pb-32 px-2">

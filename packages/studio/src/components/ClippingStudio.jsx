@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import toast, { Toaster } from "react-hot-toast";
 import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
 import TemplateBanner from "./TemplateBanner";
 import { runClipping, uploadFile } from "../muapi.js";
@@ -9,6 +10,9 @@ import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
 import registry from "../skills/registry.json";
 import { fillTemplate } from "../lib/promptRecipes";
 import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
+import en from "../messages/en/clippingStudio.json";
+import zh from "../messages/zh/clippingStudio.json";
+import { resolveCopy } from "../i18nUtils";
 
 // ---------------------------------------------------------------------------
 // Inline SVG Icons
@@ -100,7 +104,9 @@ export default function ClippingStudio({
   droppedFiles,
   onFilesHandled,
   templateData,
+  locale = "en",
 }) {
+  const copy = resolveCopy(en, zh, locale);
   const PERSIST_KEY = "hg_clipping_studio_persistent";
 
   // ── Clipping Parameters State ───────────────────────────────────────────
@@ -459,7 +465,9 @@ export default function ClippingStudio({
       }
     } catch (err) {
       console.error("[ClippingStudio] Error generating clips:", err);
-      setGenerateError(err.message || "Failed to process AI clipping.");
+      const message = err.message || "Failed to process AI clipping.";
+      setGenerateError(message);
+      toast.error(message);
     } finally {
       setIsGenerating(false);
     }
@@ -476,6 +484,7 @@ export default function ClippingStudio({
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-app-bg text-white relative overflow-hidden">
+      <Toaster position="top-right" containerStyle={{ zIndex: 99999 }} />
       
       {/* ─── CENTRAL AREA ─── */}
       <div className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto custom-scrollbar pb-40 lg:pb-32 px-2">

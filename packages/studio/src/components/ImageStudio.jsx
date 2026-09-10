@@ -1,5 +1,12 @@
 "use client";
 
+import {
+  promptMediaButtonClassName,
+  PromptPopover,
+} from "./prompt/PromptComposer.jsx";
+import en from "../messages/en/imageStudio.json";
+import zh from "../messages/zh/imageStudio.json";
+import { resolveCopy } from "../i18nUtils";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { generateImage, generateI2I, uploadFile } from "../muapi.js";
 import { setCharacterSheet } from "../lib/characterStore";
@@ -24,6 +31,8 @@ import {
 import registry from "../skills/registry.json";
 import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
 import { fillTemplate } from "../lib/promptRecipes";
+import { useTemplateData } from "../hooks/useTemplateData";
+import TemplateBanner from "./TemplateBanner";
 import { useRouter } from "next/navigation";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -47,15 +56,36 @@ async function downloadImage(url, filename) {
 
 // ─── UploadButton (inline picker) ───────────────────────────────────────────
 
-function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], label = null }) {
+function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], label = null, persistedHistory = null, onHistoryChange = null, copy }) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedEntries, setSelectedEntries] = useState([]); // [{url, thumbnail}]
-  const [uploadHistory, setUploadHistory] = useState([]); // [{id, name, url, thumbnail}]
   const [lastUploadProgress, setLastUploadProgress] = useState(0);
   const fileInputRef = useRef(null);
   const panelRef = useRef(null);
   const triggerRef = useRef(null);
+
+  const t = copy?.uploadButton || {};
+  const [uploadHistory, setUploadHistory] = useState(persistedHistory || []);
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
+  const onHistoryChangeRef = useRef(onHistoryChange);
+  onHistoryChangeRef.current = onHistoryChange;
+  useEffect(() => {
+    onHistoryChangeRef.current?.(uploadHistory);
+  }, [uploadHistory]);
+  useEffect(() => {
+    if (persistedHistory && persistedHistory.length > 0) {
+      setUploadHistory((prev) => {
+        const existingUrls = new Set(prev.map((h) => h.url));
+        const missing = persistedHistory.filter((h) => h.url && !existingUrls.has(h.url));
+        return missing.length > 0 ? [...prev, ...missing] : prev;
+      });
+    }
+  }, [persistedHistory]);
+
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounterRef = useRef(0);
 
   // Close on outside click
   useEffect(() => {
@@ -216,6 +246,100 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], 
     }
   };
 
+  const handleTriggerDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current += 1;
+    if (e.dataTransfer?.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleTriggerDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsDragging(false);
+    }
+  };
+
+  const handleTriggerDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleTriggerDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer?.files || []).filter((f) =>
+      f.type.startsWith("image/"),
+    );
+    if (files.length > 0) {
+      processFiles(files);
+    }
+  };
+
+  const processFiles = async (files) => {
+    if (!files.length) return;
+    const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+    const tooLarge = files.filter((f) => f.size > MAX_IMAGE_SIZE);
+    if (tooLarge.length > 0) {
+      alert(t.tooLargeAlert.replace("{names}", tooLarge.map((f) => f.name).join(", ")));
+      return;
+    }
+    setUploading(true);
+    try {
+      const toUpload =
+        maxImages === 1
+          ? files.slice(0, 1)
+          : files.slice(0, maxImages - selectedEntries.length || 1);
+      await Promise.all(
+        toUpload.map(async (file) => {
+          const id = Date.now().toString() + Math.random();
+          const placeholder = { id, name: file.name, url: null, progress: 0 };
+          setUploadHistory((prev) => [placeholder, ...prev]);
+          try {
+            const uploadedUrl = await uploadFile(apiKey, file, (pct) => {
+              setLastUploadProgress(pct);
+              setUploadHistory((prev) =>
+                prev.map((h) => (h.id === id ? { ...h, progress: pct } : h)),
+              );
+            });
+            setUploadHistory((prev) =>
+              prev.map((h) => {
+                if (h.id === id) {
+                  return { ...h, url: uploadedUrl, progress: 100 };
+                }
+                return h;
+              }),
+            );
+            if (selectedEntries.length < maxImages) {
+              const newEntry = { url: uploadedUrl };
+              setSelectedEntries((prev) => [...prev, newEntry]);
+              if (maxImages === 1) {
+                fireOnSelect([newEntry]);
+                setPanelOpen(false);
+              }
+            }
+          } catch (err) {
+            console.error("[UploadButton] Upload failed for", file.name, err);
+            setUploadHistory((prev) => prev.filter((h) => h.id !== id));
+            throw err;
+          }
+        }),
+      );
+    } catch (err) {
+      alert(t.uploadFailedAlert.replace("{message}", err.message));
+    } finally {
+      setUploading(false);
+      setLastUploadProgress(0);
+    }
+  };
+
   const handleRemoveFromHistory = (e, entry) => {
     e.stopPropagation();
     if (entry.localUrl) URL.revokeObjectURL(entry.localUrl);
@@ -326,32 +450,34 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], 
           e.stopPropagation();
           setPanelOpen((o) => !o);
         }}
-        className={`w-12 h-12 shrink-0 rounded-xl border border-dashed transition-all flex items-center justify-center relative overflow-hidden bg-white/[0.02] hover:bg-white/5 group ${
-          hasSelection
-            ? "border-[#22d3ee]/40 hover:border-[#22d3ee]/60"
-            : "border-white/10 hover:border-[#22d3ee]/40"
-        }`}
+        onDragEnter={handleTriggerDragEnter}
+        onDragLeave={handleTriggerDragLeave}
+        onDragOver={handleTriggerDragOver}
+        onDrop={handleTriggerDrop}
+        className={`${promptMediaButtonClassName({
+          active: hasSelection,
+        })}${isDragging ? " ring-2 ring-primary border-primary bg-primary/10" : ""}`}
       >
         {triggerContent}
       </button>
 
       {/* Panel */}
       {panelOpen && (
-        <div
+        <PromptPopover
           ref={panelRef}
           onClick={(e) => e.stopPropagation()}
-          className="absolute z-50 bottom-[calc(100%+8px)] left-0 bg-[#111] rounded-xl p-3 shadow-4xl border border-white/10 w-96"
+          className="w-96 max-w-[calc(100vw-2rem)]"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-1 pb-3 mb-2 border-b border-white/5">
             <div className="flex flex-col gap-0.5">
-              <span className="text-xs font-bold text-secondary">
-                Reference Images
-              </span>
-              {isMulti && (
-                <span className="text-[9px] text-muted">
-                  Select up to {maxImages} images
+                 <span className="text-xs font-bold text-secondary">
+                  {t.headerTitle}
                 </span>
+              {isMulti && (
+                 <span className="text-[9px] text-muted">
+                   {t.selectUpTo.replace("{max}", maxImages)}
+                 </span>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -361,7 +487,7 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], 
                   onClick={handleDone}
                   className="flex items-center gap-1 px-3 py-1.5 bg-primary text-black rounded-xl text-xs font-black transition-all hover:scale-105"
                 >
-                  ✓ Done ({count})
+                   {t.doneButton.replace("{count}", count)}
                 </button>
               )}
               <button
@@ -385,7 +511,7 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], 
                   <polyline points="17 8 12 3 7 8" />
                   <line x1="12" y1="3" x2="12" y2="15" />
                 </svg>
-                {isMulti ? "Upload files" : "Upload new"}
+                 {isMulti ? t.uploadFilesButton : t.uploadNewButton}
               </button>
             </div>
           </div>
@@ -406,7 +532,7 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], 
                 <polyline points="17 8 12 3 7 8" />
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
-              <span className="text-xs text-secondary">No uploads yet</span>
+               <span className="text-xs text-secondary">{t.emptyState}</span>
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-2 max-h-56 overflow-y-auto custom-scrollbar pr-0.5">
@@ -499,18 +625,18 @@ function UploadButton({ apiKey, maxImages, onSelect, onClear, initialUrls = [], 
           {isMulti && hasSelection && (
             <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between">
               <span className="text-xs text-secondary">
-                {count} of {maxImages} selected
+                 {t.selectedCount.replace("{count}", count).replace("{max}", maxImages)}
               </span>
               <button
                 type="button"
                 onClick={handleDone}
                 className="px-4 py-1.5 bg-primary text-black rounded-xl text-xs font-black transition-all hover:scale-105"
               >
-                Use Selected
+                 {t.useSelected}
               </button>
             </div>
           )}
-        </div>
+        </PromptPopover>
       )}
     </div>
   );
@@ -548,9 +674,29 @@ const PROVIDER_LOGOS = {
 
 const invertLogos = ['openai', 'blackforest', 'runway', 'ideogram', 'lightricks', 'grok'];
 
-function ModelDropdown({ models, selectedModel, onSelect, onClose }) {
+function ModelDropdown({ models, selectedModel, onSelect, onClose, copy }) {
   const [search, setSearch] = useState("");
   const [selectedProvider, setSelectedProvider] = useState("all");
+  const t = copy?.modelDropdown || {};
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const modelCategories = [
+    {
+      id: "all",
+      label: t.categoryAll || "All",
+      entries: models,
+    },
+    {
+      id: "t2i",
+      label: t.categoryT2I || "Text to Image",
+      entries: models.filter((m) => !m.id.startsWith("i2i")),
+    },
+    {
+      id: "i2i",
+      label: t.categoryI2I || "Image to Image",
+      entries: models.filter((m) => m.id.startsWith("i2i")),
+    },
+  ];
+  const activeCategory = modelCategories.find((category) => category.id === selectedCategory) || modelCategories[0];
 
   const getProviderStyle = (provider) => {
     switch (provider) {
@@ -601,7 +747,7 @@ function ModelDropdown({ models, selectedModel, onSelect, onClose }) {
     }
   });
 
-  const filtered = models.filter((m) => {
+  const filtered = activeCategory.entries.filter((m) => {
     // 1. Filter by provider tab
     if (selectedProvider !== "all") {
       const pId = m.provider || 'muapi';
@@ -621,6 +767,27 @@ function ModelDropdown({ models, selectedModel, onSelect, onClose }) {
     <div className="flex gap-4 h-full max-h-[60vh] min-h-[350px] overflow-x-hidden">
       {/* Left Sidebar: Provider tabs */}
       <div className="flex flex-col gap-2.5 items-center pr-3 border-r border-white/5 shrink-0 select-none overflow-y-auto custom-scrollbar w-12 pt-0.5">
+        {/* Category tabs */}
+        <div className="flex flex-col gap-1.5 overflow-x-auto custom-scrollbar mb-1">
+          {modelCategories.map((category) => (
+            <button
+              key={category.id}
+              type="button"
+              onClick={() => {
+                setSelectedCategory(category.id);
+                setSelectedProvider("all");
+              }}
+              className={`shrink-0 rounded-lg px-2 py-1 text-[10px] font-bold transition-colors border ${
+                selectedCategory === category.id
+                  ? "bg-[#22d3ee]/15 text-[#22d3ee] border-[#22d3ee]/30"
+                  : "bg-white/[0.02] text-white/50 border-white/[0.04] hover:bg-white/5 hover:text-white"
+              }`}
+            >
+              {category.label}
+            </button>
+          ))}
+        </div>
+
         <button
           type="button"
           onClick={() => setSelectedProvider("all")}
@@ -693,7 +860,7 @@ function ModelDropdown({ models, selectedModel, onSelect, onClose }) {
         </div>
         
         <div className="text-xs font-semibold text-secondary py-1 shrink-0 flex items-center justify-between">
-          <span>Available models</span>
+          <span>{activeCategory.label} {t.modelsSuffix}</span>
           {selectedProvider !== "all" && (
             <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded text-white/60">
               {availableProviders.find(p => p.id === selectedProvider)?.name || selectedProvider}
@@ -704,7 +871,7 @@ function ModelDropdown({ models, selectedModel, onSelect, onClose }) {
         <div className="flex flex-col gap-1.5 overflow-y-auto custom-scrollbar pr-1 pb-2 flex-1">
           {filtered.length === 0 ? (
             <div className="text-xs text-white/30 text-center py-6">
-              No models found
+               {t.noModelsFound}
             </div>
           ) : (
             filtered.map((m) => (
@@ -823,7 +990,10 @@ export default function ImageStudio({
   historyItems,
   droppedFiles,
   onFilesHandled,
+  templateData,
+  locale = "en",
 }) {
+  const copy = resolveCopy(en, zh, locale);
   const PERSIST_KEY = "hg_image_studio_persistent";
   const router = useRouter();
 
@@ -931,6 +1101,21 @@ export default function ImageStudio({
       console.warn("Failed to load ImageStudio persistence:", err);
     }
   }, []);
+
+  const { reset: resetTemplate, isTemplateApplied } = useTemplateData(
+    templateData,
+    (data) => {
+      if (data.prompt) setPrompt(data.prompt);
+      if (data.aspectRatio) setSelectedAr(data.aspectRatio);
+      if (data.model) {
+        const target = getI2IModelById(data.model) || t2iModels.find((m) => m.id === data.model);
+        if (target) {
+          setSelectedModelId(target.id);
+          setSelectedModelName(target.name);
+        }
+      }
+    },
+  );
 
   // ── Adjust height on load ────────────────────────────────────────────────
   useEffect(() => {
@@ -1515,6 +1700,7 @@ export default function ImageStudio({
                   onSelect={handleUploadSelect}
                   onClear={handleUploadClear}
                   initialUrls={uploadedImageUrls}
+                  copy={copy}
                 />
               )}
 
@@ -1526,13 +1712,14 @@ export default function ImageStudio({
                   onSelect={({ urls }) => setSwapImageUrl(urls[0] || null)}
                   onClear={() => setSwapImageUrl(null)}
                   initialUrls={swapImageUrl ? [swapImageUrl] : []}
-                  label="Swap Face"
+                  label={copy?.promptBar?.swapFaceLabel || "Swap Face"}
                 />
               )}
             </div>
 
-            {/* Input prompt text area */}
-            <textarea
+             {/* Input prompt text area */}
+             <TemplateBanner isApplied={isTemplateApplied} onClear={resetTemplate} />
+             <textarea
               ref={textareaRef}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
@@ -1619,6 +1806,7 @@ export default function ImageStudio({
                       selectedModel={selectedModelId}
                       onSelect={handleModelSelect}
                       onClose={() => setDropdownOpen(null)}
+                      copy={copy}
                     />
                   </div>
                 )}

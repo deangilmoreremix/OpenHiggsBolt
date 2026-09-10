@@ -615,6 +615,34 @@ function mediaSlot(
   });
 }
 
+export function getVideoWorkflowMediaAdjustments(currentModel, nextModel, workflowId, media) {
+  const current = projectVideoWorkflowMedia(currentModel, workflowId, media);
+  const next = projectVideoWorkflowMedia(nextModel, workflowId, media);
+  const counts = {};
+  for (const slot of getVideoWorkflowMediaSlots(currentModel, workflowId)) {
+    const count = counts[slot.mediaType] ||= { from: 0, to: 0 };
+    count.from += current[slot.id]?.length || 0;
+    count.to += next[slot.id]?.length || 0;
+  }
+  return Object.entries(counts)
+    .filter(([, { from, to }]) => from > to)
+    .map(([type, { from, to }]) => ({
+      key: `${type}${to === 0 ? "Unused" : "Count"}`, from, to,
+    }));
+}
+
+export function migrateVideoWorkflowMediaDrafts(drafts) {
+  const migrated = { ...drafts };
+  for (const [from, to] of [
+    ["kling-v3:references", "kling-v3-omni:references"],
+    ["grok-imagine-video:animate_image", "grok-imagine-video-1.5:animate_image"],
+  ]) {
+    if (drafts[from] && !Object.hasOwn(migrated, to)) migrated[to] = drafts[from];
+    delete migrated[from];
+  }
+  return migrated;
+}
+
 const VISUAL_REFERENCE_SLOT_IDS = Object.freeze([
   "referenceImages",
   "referenceVideos",
@@ -635,6 +663,14 @@ const MINIMAX_H3_REFERENCE_CONSTRAINT = Object.freeze({
   combinedLimit: 12,
   requiredSlotIds: VISUAL_REFERENCE_SLOT_IDS,
   combinedLimitMessage: "MiniMax H3 supports up to 12 references in total.",
+});
+
+const KLING_O1_REFERENCE_CONSTRAINT = Object.freeze({
+  combinedSlotIds: VISUAL_REFERENCE_SLOT_IDS,
+  combinedLimit: 7,
+  slotWeights: Object.freeze({ referenceVideos: 3 }),
+  requiredSlotIds: VISUAL_REFERENCE_SLOT_IDS,
+  combinedLimitMessage: "Kling O1 supports up to 4 reference images when a video is included.",
 });
 
 export function getVideoWorkflowMediaSlots(model, workflowId) {
@@ -704,7 +740,7 @@ export function getVideoWorkflowMediaSlots(model, workflowId) {
       ),
     ].filter((slot) => slot?.field);
   }
-  if (workflowId === "references") {
+   if (workflowId === "references") {
     if (familyId === "wan-2.7") {
       return [
         createMediaSlot(
@@ -736,6 +772,10 @@ export function getVideoWorkflowMediaSlots(model, workflowId) {
         ),
       ];
     }
+    const minimaxReferenceConstraint = familyId === "minimax-h3" ? {
+      ...MINIMAX_H3_REFERENCE_CONSTRAINT,
+      requiredSlotIds: VISUAL_REFERENCE_SLOT_IDS,
+    } : {};
     return [
       imageField && createMediaSlot(
         "referenceImages",
@@ -746,8 +786,12 @@ export function getVideoWorkflowMediaSlots(model, workflowId) {
         Math.max(capabilities.image.maxItems, 1),
         {
           isArray: capabilities.image.isArray,
-          ...(familyId === "minimax-h3"
-            ? MINIMAX_H3_REFERENCE_CONSTRAINT
+          ...(model.inputs?.[capabilities.image.field]?.minItems > 0
+            ? { required: true, minItems: model.inputs?.[capabilities.image.field]?.minItems || 1, requiredMessage: "Please add a reference image." }
+            : {}),
+          ...minimaxReferenceConstraint,
+          ...(familyId === "kling-o1" && videoField
+            ? KLING_O1_REFERENCE_CONSTRAINT
             : {}),
         },
       ),
@@ -760,8 +804,9 @@ export function getVideoWorkflowMediaSlots(model, workflowId) {
         Math.max(capabilities.video.maxItems, 1),
         {
           isArray: capabilities.video.isArray,
-          ...(familyId === "minimax-h3"
-            ? MINIMAX_H3_REFERENCE_CONSTRAINT
+          ...minimaxReferenceConstraint,
+          ...(familyId === "kling-o1"
+            ? KLING_O1_REFERENCE_CONSTRAINT
             : {}),
         },
       ),
@@ -774,9 +819,7 @@ export function getVideoWorkflowMediaSlots(model, workflowId) {
         Math.max(capabilities.audio.maxItems, 1),
         {
           isArray: capabilities.audio.isArray,
-          ...(familyId === "minimax-h3"
-            ? MINIMAX_H3_REFERENCE_CONSTRAINT
-            : {}),
+          ...minimaxReferenceConstraint,
         },
       ),
     ].filter(Boolean);
