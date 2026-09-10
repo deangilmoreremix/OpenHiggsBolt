@@ -18,6 +18,21 @@ import { setCharacterSheet } from "../lib/characterStore";
 import registry from "../skills/registry.json";
 import { fillTemplate } from "../lib/promptRecipes";
 import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
+import {
+  PromptComposer,
+  PromptControls,
+  PromptFooter,
+  PromptMenuItem,
+  PromptMenuList,
+  PromptPopover,
+  PromptPopoverHeader,
+  PromptTextarea,
+  promptControlClassName,
+  promptMediaButtonClassName,
+} from "./prompt/PromptComposer.jsx";
+import en from "../messages/en/lipSyncStudio.json";
+import zh from "../messages/zh/lipSyncStudio.json";
+import { resolveCopy } from "../i18nUtils";
 
 // ---------------------------------------------------------------------------
 // Upload button states
@@ -40,8 +55,12 @@ function MediaPickerButton({
   previewUrl,
   isVideo,
   apiKey,
+  mediaCopy = en.media,
 }) {
   const inputRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounterRef = useRef(0);
+  const acceptPrefix = accept ? accept.split(",")[0].trim().replace("/*", "") : "";
 
   const handleClick = (e) => {
     e.stopPropagation();
@@ -53,10 +72,49 @@ function MediaPickerButton({
   };
 
   const handleChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
     e.target.value = "";
-    await onUpload(file);
+    await onUpload(Array.from(files));
+  };
+
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current += 1;
+    if (e.dataTransfer?.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDragging(false);
+    if (uploadState === UPLOAD_STATE.UPLOADING) return;
+    const files = e.dataTransfer?.files;
+    if (!files || files.length === 0) return;
+    const matched = acceptPrefix
+      ? Array.from(files).filter((f) => f.type.startsWith(`${acceptPrefix}/`))
+      : Array.from(files);
+    if (matched.length === 0) return;
+    await onUpload(matched);
   };
 
   const borderClass =
@@ -69,11 +127,20 @@ function MediaPickerButton({
       type="button"
       title={
         uploadState === UPLOAD_STATE.READY
-          ? `${fileName} — click to clear`
-          : `Upload ${label.toLowerCase()} file`
+          ? `${fileName} — ${mediaCopy.clickToClear}`
+          : `${mediaCopy.uploadFilePrefix} ${label} ${mediaCopy.uploadFileSuffix}`
       }
       onClick={handleClick}
-      className={`flex-shrink-0 w-10 h-10 rounded-full border transition-all flex items-center justify-center relative overflow-hidden group ${borderClass}`}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      className={promptMediaButtonClassName({
+        active: uploadState === UPLOAD_STATE.READY,
+        className: isDragging
+          ? "ring-2 ring-[#22d3ee] ring-offset-1 ring-offset-black scale-105"
+          : "",
+      })}
     >
       <input
         ref={inputRef}
@@ -159,31 +226,17 @@ function MediaPickerButton({
 // ---------------------------------------------------------------------------
 // Inline dropdown
 // ---------------------------------------------------------------------------
-function Dropdown({ isOpen, items, selectedId, onSelect, onClose, anchorRef }) {
+function Dropdown({
+  isOpen,
+  title,
+  items,
+  selectedId,
+  onSelect,
+  onClose,
+  anchorRef,
+  className = "",
+}) {
   const dropRef = useRef(null);
-  const [style, setStyle] = useState({});
-
-  useEffect(() => {
-    if (!isOpen || !anchorRef?.current || !dropRef.current) return;
-
-    const rect = anchorRef.current.getBoundingClientRect();
-    const ddHeight = dropRef.current.offsetHeight;
-    const spaceBelow = window.innerHeight - rect.bottom - 8;
-    const spaceAbove = rect.top - 8;
-
-    let top, bottom, maxHeight;
-    if (spaceBelow >= ddHeight || spaceBelow >= spaceAbove) {
-      top = rect.bottom + 8;
-      bottom = "auto";
-      maxHeight = Math.max(150, spaceBelow - 8);
-    } else {
-      top = "auto";
-      bottom = window.innerHeight - rect.top + 8;
-      maxHeight = Math.max(150, spaceAbove - 8);
-    }
-    const left = Math.min(rect.left, window.innerWidth - 220);
-    setStyle({ top, bottom, left, maxHeight });
-  }, [isOpen, anchorRef]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -202,39 +255,34 @@ function Dropdown({ isOpen, items, selectedId, onSelect, onClose, anchorRef }) {
   if (!isOpen) return null;
 
   return (
-    <div
+    <PromptPopover
       ref={dropRef}
-      style={{
-        position: "fixed",
-        zIndex: 100,
-        overflowY: "auto",
-        ...style,
-      }}
-      className="bg-[#111] border border-white/10 rounded-lg shadow-3xl p-2 custom-scrollbar w-[calc(100vw-3rem)] max-w-xs"
+      className={className}
+      onClick={(e) => e.stopPropagation()}
     >
-      {items.map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          onClick={() => {
-            onSelect(item);
-            onClose();
-          }}
-          className={`w-full text-left px-4 py-2 rounded text-sm transition-all hover:bg-white/10 ${
-            item.id === selectedId
-              ? "text-primary font-bold bg-primary/5"
-              : "text-white font-medium"
-          }`}
-        >
-          <div>{item.name}</div>
-          {item.description && (
-            <div className="text-xs text-muted mt-0.5">
-              {item.description.slice(0, 60)}...
-            </div>
-          )}
-        </button>
-      ))}
-    </div>
+      <PromptPopoverHeader>{title}</PromptPopoverHeader>
+      <PromptMenuList>
+        {items.map((item) => (
+          <PromptMenuItem
+            key={item.id}
+            selected={item.id === selectedId}
+            description={
+              item.description
+                ? `${item.description.slice(0, 60)}${
+                    item.description.length > 60 ? "..." : ""
+                  }`
+                : undefined
+            }
+            onClick={() => {
+              onSelect(item);
+              onClose();
+            }}
+          >
+            {item.name}
+          </PromptMenuItem>
+        ))}
+      </PromptMenuList>
+    </PromptPopover>
   );
 }
 
@@ -331,7 +379,9 @@ export default function LipSyncStudio({
   droppedFiles,
   onFilesHandled,
   templateData,
+  locale = "en",
 }) {
+  const copy = resolveCopy(en, zh, locale);
   const PERSIST_KEY = "hg_lipsync_studio_persistent";
 
   // ── Mode & model state ──────────────────────────────────────────────────
@@ -598,7 +648,9 @@ export default function LipSyncStudio({
 
   // ── Upload handlers ─────────────────────────────────────────────────────
   const handleImageUpload = useCallback(
-    async (file) => {
+    async (files) => {
+      const file = Array.isArray(files) ? files[0] : files;
+      if (!file) return;
       if (file.size > 10 * 1024 * 1024) {
         alert("Image exceeds 10MB limit.");
         return;
@@ -623,7 +675,9 @@ export default function LipSyncStudio({
   );
 
   const handleVideoPick = useCallback(
-    async (file) => {
+    async (files) => {
+      const file = Array.isArray(files) ? files[0] : files;
+      if (!file) return;
       if (file.size > 50 * 1024 * 1024) {
         alert("Video exceeds 50MB limit.");
         return;
@@ -649,14 +703,12 @@ export default function LipSyncStudio({
 
   const handlePromptInput = (e) => {
     setPrompt(e.target.value);
-    const el = e.target;
-    el.style.height = "auto";
-    const maxH = window.innerWidth < 768 ? 150 : 250;
-    el.style.height = Math.min(el.scrollHeight, maxH) + "px";
   };
 
   const handleAudioPick = useCallback(
-    async (file) => {
+    async (files) => {
+      const file = Array.isArray(files) ? files[0] : files;
+      if (!file) return;
       if (file.size > 10 * 1024 * 1024) {
         alert("Audio file exceeds 10MB limit.");
         return;
@@ -1026,8 +1078,7 @@ export default function LipSyncStudio({
       </div>
 
       {/* ── BOTTOM PROMPT BAR ── */}
-      <div className="absolute bottom-4 w-full max-w-[95%] lg:max-w-4xl z-40 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
-        <div className="w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]">
+      <PromptComposer>
           {/* Mode toggle row */}
           <div className="flex items-center gap-2 px-3">
             <button
@@ -1061,7 +1112,8 @@ export default function LipSyncStudio({
               {inputMode === "image" && (
                 <MediaPickerButton
                   accept="image/*"
-                  label="Image"
+                  label={copy.media.imageLabel}
+                  mediaCopy={copy.media}
                   icon={
                     <svg
                       width="16"
@@ -1096,7 +1148,8 @@ export default function LipSyncStudio({
               {inputMode === "video" && (
                 <MediaPickerButton
                   accept="video/*"
-                  label="Video"
+                  label={copy.media.videoLabel}
+                  mediaCopy={copy.media}
                   icon={
                     <VideoIcon className="text-white/40 group-hover:text-[#22d3ee] transition-colors" />
                   }
@@ -1118,7 +1171,8 @@ export default function LipSyncStudio({
               {/* Audio picker — always visible */}
               <MediaPickerButton
                 accept="audio/*"
-                label="Audio"
+                label={copy.media.audioLabel}
+                mediaCopy={copy.media}
                 icon={
                   <MicIcon className="text-white/40 group-hover:text-[#22d3ee] transition-colors" />
                 }
@@ -1140,13 +1194,11 @@ export default function LipSyncStudio({
             {/* Prompt textarea */}
             <div className="flex-1 flex flex-col">
               <TemplateBanner isApplied={isTemplateApplied} onClear={resetTemplate} />
-              <textarea
+              <PromptTextarea
                 ref={textareaRef}
                 value={prompt}
                 onChange={handlePromptInput}
-                placeholder="Describe speech style..."
-                className="w-full bg-transparent border-none text-white text-sm placeholder:text-white/20 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar disabled:opacity-40"
-                rows={1}
+                placeholder={copy.prompt.placeholder}
               />
             </div>
           </div>
@@ -1189,11 +1241,13 @@ export default function LipSyncStudio({
                 </button>
                 <Dropdown
                   isOpen={openDropdown === "model"}
+                  title={copy.model.dropdownTitle}
                   items={modelDropdownItems}
                   selectedId={selectedModelId}
                   onSelect={handleModelSelect}
                   onClose={() => setOpenDropdown(null)}
                   anchorRef={modelBtnRef}
+                  className="w-80 max-w-[calc(100vw-3rem)]"
                 />
               </div>
 
@@ -1217,6 +1271,7 @@ export default function LipSyncStudio({
                   </button>
                   <Dropdown
                     isOpen={openDropdown === "resolution"}
+                    title={copy.model.resolutionDropdownTitle}
                     items={resolutionDropdownItems}
                     selectedId={selectedResolution}
                     onSelect={(item) => setSelectedResolution(item.id)}
@@ -1264,8 +1319,7 @@ export default function LipSyncStudio({
               )}
             </button>
           </div>
-        </div>
-      </div>
+      </PromptComposer>
 
       {/* ── FULLSCREEN MEDIA MODAL ── */}
       {fullscreenUrl && (
