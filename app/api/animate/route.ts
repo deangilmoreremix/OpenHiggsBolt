@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
 
   let body: any = {}
-  try { body = await req.json() } catch {}
+  try { body = await req.json() } catch { return apiError('bad_request', 'Invalid JSON', 400) }
   const { source_url, brand_id, resolution, duration } = body
 
   if (!source_url) {
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
-  const requestId = searchParams.get('requestId')
+  const requestId = searchParams.get('request_id')
   const brandId = searchParams.get('brand_id')
 
   if (requestId) {
