@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import toast, { Toaster } from "react-hot-toast";
 import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
 import TemplateBanner from "./TemplateBanner";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
@@ -10,6 +11,9 @@ import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
 import registry from "../skills/registry.json";
 import { fillTemplate } from "../lib/promptRecipes";
 import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
+import en from "../messages/en/vibeMotionStudio.json";
+import zh from "../messages/zh/vibeMotionStudio.json";
+import { resolveCopy } from "../i18nUtils";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 async function downloadFile(url, filename) {
@@ -55,7 +59,8 @@ function DropdownItem({ label, selected, onClick }) {
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function VibeMotionStudio({ apiKey, templateData }) {
+export default function VibeMotionStudio({ apiKey, templateData, locale = "en" }) {
+  const copy = resolveCopy(en, zh, locale);
   const PERSIST_KEY = "hg_vibe_motion_studio_persistent";
 
   // ── Params ────────────────────────────────────────────────────────────────
@@ -269,7 +274,9 @@ export default function VibeMotionStudio({ apiKey, templateData }) {
         setEditSourceId(null);
       } else {
         console.error("[VibeMotionStudio]", err);
-        setGenerateError(raw.slice(0, 120) || "Generation failed");
+        const message = raw.slice(0, 120) || "Generation failed";
+        setGenerateError(message);
+        toast.error(message);
       }
       setTimeout(() => setGenerateError(null), 10000);
     } finally {
@@ -301,6 +308,7 @@ export default function VibeMotionStudio({ apiKey, templateData }) {
       ref={containerRef}
       className="w-full h-full flex flex-col items-center justify-center bg-app-bg relative overflow-hidden"
     >
+      <Toaster position="top-right" containerStyle={{ zIndex: 99999 }} />
       {/* ── Fullscreen overlay ── */}
       {fullscreenUrl && (
         <div

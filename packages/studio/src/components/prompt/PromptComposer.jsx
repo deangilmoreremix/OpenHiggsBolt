@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useRef,
 } from "react";
 
@@ -165,17 +166,57 @@ export const PromptPopover = forwardRef(function PromptPopover(
     children,
     className = "",
     positionClassName = DEFAULT_POPOVER_POSITION_CLASS,
+    fitViewport = false,
+    solid = false,
     ...props
   },
   ref,
 ) {
+  const popoverRef = useRef(null);
+  useImperativeHandle(ref, () => popoverRef.current);
+  useLayoutEffect(() => {
+    if (!fitViewport) return;
+    const position = () => {
+      const popover = popoverRef.current;
+      popover.style.translate = "";
+      popover.style.height = "";
+      let left = 16;
+      let right = window.innerWidth - 16;
+      let top = 16;
+      for (let parent = popover.parentElement; parent; parent = parent.parentElement) {
+        const style = getComputedStyle(parent);
+        const clipsX = /auto|scroll|hidden|clip/.test(style.overflowX);
+        const clipsY = /auto|scroll|hidden|clip/.test(style.overflowY);
+        if (!clipsX && !clipsY) continue;
+        const bounds = parent.getBoundingClientRect();
+        if (clipsX) {
+          left = Math.max(left, bounds.left + 16);
+          right = Math.min(right, bounds.right - 16);
+        }
+        if (clipsY) top = Math.max(top, bounds.top + 16);
+      }
+      const bounds = popover.getBoundingClientRect();
+      const shift = Math.max(left - bounds.left, Math.min(0, right - bounds.right));
+      popover.style.translate = `${shift}px 0`;
+      if (bounds.top < top) popover.style.height = `${Math.max(0, bounds.bottom - top)}px`;
+    };
+    position();
+    const popover = popoverRef.current;
+    popover.addEventListener("toggle", position, true);
+    window.addEventListener("resize", position);
+    return () => {
+      popover.removeEventListener("toggle", position, true);
+      window.removeEventListener("resize", position);
+    };
+  }, [fitViewport, children]);
   return (
     <div
       {...props}
-      ref={ref}
+      ref={popoverRef}
       className={joinClasses(
         positionClassName,
         DEFAULT_POPOVER_CLASS,
+        solid ? "bg-[#0c0c0f]" : "bg-[#0c0c0f]/95",
         className,
       )}
     >
@@ -208,6 +249,7 @@ export function PromptMenuList({ children, className = "" }) {
 export function PromptMenuItem({
   children,
   description,
+  wrapDescription = false,
   selected = false,
   className = "",
   type = "button",
@@ -228,7 +270,12 @@ export function PromptMenuItem({
       <span className="min-w-0">
         <span className="block truncate">{children}</span>
         {description && (
-          <span className="block text-[9px] font-medium text-white/35 mt-0.5 truncate group-hover/menu-item:text-white/50">
+          <span className={joinClasses(
+            "block font-medium mt-0.5",
+            wrapDescription
+              ? "text-[10px] leading-relaxed whitespace-normal text-white/55 group-hover/menu-item:text-white/70"
+              : "text-[9px] text-white/35 truncate group-hover/menu-item:text-white/50",
+          )}>
             {description}
           </span>
         )}
