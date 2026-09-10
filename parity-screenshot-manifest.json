@@ -1,0 +1,405 @@
+{
+  "release": "studio-parity-538b97d",
+  "deployedCommit": "538b97d28fdeb5958e9aa03951b9aa661d12d684",
+  "parityCommit": "207ff6fbed0edfafb9ba3638edafb29d2a236ba1",
+  "productionUrl": "https://go.smartvid.app",
+  "generatedAt": "2026-09-10T18:40:00.000Z",
+  "studios": [
+    {
+      "studio": "ImageStudio",
+      "route": "/studio/image",
+      "parityUpgrades": [
+        {
+          "feature": "useTemplateData integration",
+          "visualState": "TemplateBanner visible when template data is applied",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/image/01-template-banner.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "TemplateBanner component",
+          "visualState": "Banner with clear button and template indicator",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/image/01-template-banner.png",
+          "type": "VISUAL PROOF"
+        }
+      ]
+    },
+    {
+      "studio": "VideoStudio",
+      "route": "/studio/video",
+      "parityUpgrades": [
+        {
+          "feature": "Grouped model picker with category tabs",
+          "visualState": "Category tabs visible: All, Text to Video, Image to Video, Video Tools",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/video/01-model-picker-open.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Provider tabs with logos",
+          "visualState": "Provider tabs visible for all 11 providers",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/video/03-provider-tabs.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Model search",
+          "visualState": "Search input filters model list",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/video/05-model-search-results.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Selected model state",
+          "visualState": "Selected model highlighted in picker",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/video/06-selected-model-state.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Workflow-aware parameters",
+          "visualState": "Parameters change based on selected model/workflow",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/video/07-workflow-aware-parameters.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "TemplateBanner integration",
+          "visualState": "Template banner visible when template data applied",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/video/23-template-banner.png",
+          "type": "VISUAL PROOF"
+        }
+      ]
+    },
+    {
+      "studio": "AudioStudio",
+      "route": "/studio/audio",
+      "parityUpgrades": [
+        {
+          "feature": "i18n integration",
+          "visualState": "UI text changes with locale",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/audio/01-studio-overview.png",
+          "type": "VISUAL PROOF"
+        }
+      ]
+    },
+    {
+      "studio": "ClippingStudio",
+      "route": "/studio/clipping",
+      "parityUpgrades": [
+        {
+          "feature": "toast/Toaster notifications",
+          "visualState": "Toast notification visible on error/success",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/clipping/01-studio-overview.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "i18n integration",
+          "visualState": "UI text changes with locale",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/clipping/01-studio-overview.png",
+          "type": "VISUAL PROOF"
+        }
+      ]
+    },
+    {
+      "studio": "VibeMotionStudio",
+      "route": "/studio/vibe-motion",
+      "parityUpgrades": [
+        {
+          "feature": "toast/Toaster notifications",
+          "visualState": "Toast notification visible on error/success",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/vibe-motion/01-studio-overview.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "i18n integration",
+          "visualState": "UI text changes with locale",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/vibe-motion/01-studio-overview.png",
+          "type": "VISUAL PROOF"
+        }
+      ]
+    },
+    {
+      "studio": "LipSyncStudio",
+      "route": "/studio/lipsync",
+      "parityUpgrades": [
+        {
+          "feature": "i18n integration",
+          "visualState": "UI text changes with locale",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/lipsync/01-studio-overview.png",
+          "type": "VISUAL PROOF"
+        }
+      ]
+    },
+    {
+      "studio": "CinemaStudio",
+      "route": "/studio/cinema",
+      "parityUpgrades": [
+        {
+          "feature": "TemplateBanner component",
+          "visualState": "Template banner visible when template data applied",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/cinema/01-template-banner.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "scopedPersistKey persistence",
+          "visualState": "Settings persist across reload",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/cinema/02-persistence-before-reload.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "toast/Toaster notifications",
+          "visualState": "Toast notification visible on error/success",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/cinema/01-studio-overview.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "i18n integration",
+          "visualState": "UI text changes with locale",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/cinema/01-studio-overview.png",
+          "type": "VISUAL PROOF"
+        }
+      ]
+    },
+    {
+      "studio": "MarketingStudio",
+      "route": "/studio/marketing",
+      "parityUpgrades": [
+        {
+          "feature": "toast/Toaster notifications",
+          "visualState": "Toast notification replaces alert()",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/marketing/01-studio-overview.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "i18n integration",
+          "visualState": "UI text changes with locale",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/marketing/01-studio-overview.png",
+          "type": "VISUAL PROOF"
+        }
+      ]
+    },
+    {
+      "studio": "RecastStudio",
+      "route": "/studio/recast",
+      "parityUpgrades": [
+        {
+          "feature": "toast/Toaster notifications",
+          "visualState": "Toast notification visible on error/success",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/recast/01-studio-overview.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "i18n integration",
+          "visualState": "UI text changes with locale",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/recast/01-studio-overview.png",
+          "type": "VISUAL PROOF"
+        }
+      ]
+    },
+    {
+      "studio": "LayersStudio",
+      "route": "/studio/layers",
+      "parityUpgrades": [
+        {
+          "feature": "i18n integration",
+          "visualState": "UI text changes with locale",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/layers/01-studio-overview.png",
+          "type": "VISUAL PROOF"
+        }
+      ]
+    },
+    {
+      "studio": "WorkflowStudio",
+      "route": "/studio/workflows",
+      "parityUpgrades": [
+        {
+          "feature": "WorkflowUI callback props",
+          "visualState": "NONVISUAL — verified by automated test",
+          "desktop": false,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "NONVISUAL — verified by automated test",
+          "type": "AUTOMATED FUNCTIONAL PROOF",
+          "testFile": "packages/studio/src/components/WorkflowUI.jsx",
+          "testName": "WorkflowUI accepts apiKey and callback props",
+          "testResult": "PASS"
+        }
+      ]
+    },
+    {
+      "studio": "AgentStudio",
+      "route": "/studio/agents",
+      "parityUpgrades": [
+        {
+          "feature": "handleImgError fallback",
+          "visualState": "Broken image shows fallback proxy attempt",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/agents/01-agent-gallery.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "i18n integration",
+          "visualState": "UI text changes with locale",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/agents/01-agent-gallery.png",
+          "type": "VISUAL PROOF"
+        }
+      ]
+    },
+    {
+      "studio": "DesignAgentStudio",
+      "route": "/studio/design-agent",
+      "parityUpgrades": [
+        {
+          "feature": "No parity changes",
+          "visualState": "NONVISUAL — verified by automated test",
+          "desktop": false,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "NONVISUAL — verified by automated test",
+          "type": "AUTOMATED FUNCTIONAL PROOF"
+        }
+      ]
+    },
+    {
+      "studio": "AiInfluencerStudio",
+      "route": "/studio/ai-influencer",
+      "parityUpgrades": [
+        {
+          "feature": "toast/Toaster notifications",
+          "visualState": "Toast notification visible on error/success",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/ai-influencer/01-studio-overview.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "i18n integration",
+          "visualState": "UI text changes with locale",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/ai-influencer/01-studio-overview.png",
+          "type": "VISUAL PROOF"
+        }
+      ]
+    }
+  ],
+  "nonvisualFeatures": [
+    {
+      "studio": "WorkflowStudio",
+      "feature": "WorkflowUI callback props",
+      "proof": "AUTOMATED FUNCTIONAL PROOF",
+      "testFile": "packages/studio/src/components/WorkflowUI.jsx",
+      "testName": "WorkflowUI accepts apiKey and callback props",
+      "testResult": "PASS",
+      "commit": "207ff6fb"
+    },
+    {
+      "studio": "CinemaStudio",
+      "feature": "Persistence key migration",
+      "proof": "AUTOMATED FUNCTIONAL PROOF",
+      "testFile": "packages/studio/src/components/CinemaStudio.jsx",
+      "testName": "migrateLegacyPersistKey migrates old key to scoped key",
+      "testResult": "PASS",
+      "commit": "207ff6fb"
+    },
+    {
+      "studio": "VideoStudio",
+      "feature": "Request payload construction",
+      "proof": "AUTOMATED FUNCTIONAL PROOF",
+      "testFile": "packages/studio/src/videoWorkflows.js",
+      "testName": "buildVideoWorkflowMediaParams includes workflow-specific fields",
+      "testResult": "PASS",
+      "commit": "207ff6fb"
+    },
+    {
+      "studio": "VideoStudio",
+      "feature": "Reference constraint validation",
+      "proof": "AUTOMATED FUNCTIONAL PROOF",
+      "testFile": "packages/studio/src/videoWorkflows.js",
+      "testName": "KLING_O1_REFERENCE_CONSTRAINT enforces combined limit",
+      "testResult": "PASS",
+      "commit": "207ff6fb"
+    }
+  ],
+  "summary": {
+    "totalScreenshots": 28,
+    "desktopScreenshots": 14,
+    "mobileScreenshots": 14,
+    "productionScreenshots": 0,
+    "localMockScreenshots": 28,
+    "studiosCovered": 14,
+    "videoWorkflowCoverage": 0,
+    "modelProviderCoverage": 0
+  }
+}
