@@ -7,6 +7,9 @@ import {
   getUserAgents,
   getUserConversations,
 } from "../muapi.js";
+import en from "../messages/en/agentStudio.json";
+import zh from "../messages/zh/agentStudio.json";
+import { resolveCopy } from "../i18nUtils";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 // The API client (muapi.js) already rewrites upstream artwork URLs (thumbnail /
@@ -17,6 +20,16 @@ function toProxiedIcon(rawUrl) {
   if (!rawUrl) return null;
   if (rawUrl.startsWith("/")) return rawUrl;
   return `/api/thumbnail?url=${encodeURIComponent(rawUrl)}`;
+}
+
+function handleImgError(e, fallbackUrl) {
+  const src = e.currentTarget.src;
+  if (src.includes("/api/thumbnail")) {
+    e.currentTarget.onerror = null;
+    return;
+  }
+  const viaProxy = `/api/thumbnail?url=${encodeURIComponent(fallbackUrl || src)}`;
+  e.currentTarget.src = viaProxy;
 }
 
 function timeAgo(dateStr) {
@@ -49,7 +62,7 @@ function AgentCard({ agent, onClick, onEdit }) {
           <img
             src={proxiedIcon}
             alt={agent.name}
-            onError={() => setImgError(true)}
+            onError={(e) => handleImgError(e, agent.icon_url)}
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
           />
         ) : hasIcon ? (
@@ -115,7 +128,7 @@ function ConversationCard({ conv, onClick }) {
       <div className="flex items-center gap-3">
         <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-white/5 border border-white/5 shrink-0">
           {showIcon ? (
-            <img src={proxiedIcon} alt={conv.agent_name || "Agent"} onError={() => setImgError(true)} className="w-full h-full object-cover" />
+            <img src={proxiedIcon} alt={conv.agent_name || "Agent"} onError={(e) => handleImgError(e, conv.agent_icon_url)} className="w-full h-full object-cover" />
           ) : hasIcon ? (
             <img src={conv.agent_icon_url} alt={conv.agent_name || "Agent"} className="w-full h-full object-cover" />
           ) : (
@@ -146,7 +159,8 @@ function ConversationCard({ conv, onClick }) {
 // ─── Main Component ──────────────────────────────────────────────────────────
 const TABS = ["templates", "my-agents", "my-chats"];
 
-export default function AgentStudio({ apiKey, templateData }) {
+export default function AgentStudio({ apiKey, templateData, locale = "en" }) {
+  const copy = resolveCopy(en, zh, locale);
   const router = useRouter();
 
   const [activeMainTab, setActiveMainTab] = useState("templates");
@@ -231,21 +245,21 @@ export default function AgentStudio({ apiKey, templateData }) {
       <div className="flex-shrink-0 h-16 border-b border-white/5 flex items-center justify-between px-8 bg-black/40">
         <div className="flex items-center gap-8 h-full">
           <h2 className="text-sm font-black uppercase tracking-[0.2em] text-[#22d3ee]">
-            Agents
+            {copy.headings.agents}
           </h2>
           <div className="flex gap-1 bg-white/5 p-1 rounded-xl">
             {TABS.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveMainTab(tab)}
-                className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
-                  activeMainTab === tab
-                    ? "bg-white text-black shadow-xl"
-                    : "text-white/40 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                {tab.replace(/-/g, " ")}
-              </button>
+              className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
+                activeMainTab === tab
+                  ? "bg-white text-black shadow-xl"
+                  : "text-white/40 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              {copy.tabs[tab.replace("-", "")] || tab.replace("-", " ")}
+            </button>
             ))}
           </div>
         </div>
@@ -255,7 +269,7 @@ export default function AgentStudio({ apiKey, templateData }) {
           className="px-6 py-2 bg-[#22d3ee] text-black text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-[#ebff66] transition-all active:scale-95 flex items-center gap-2"
         >
           <span className="text-sm">+</span>
-          Create
+          {copy.buttons.create}
         </button>
       </div>
 
@@ -272,12 +286,12 @@ export default function AgentStudio({ apiKey, templateData }) {
               <line x1="12" y1="8" x2="12" y2="12" />
               <line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
-            <p className="text-xs font-bold uppercase tracking-widest">{error}</p>
+            <p className="text-xs font-bold uppercase tracking-widest">{copy.errors.loadFailed}</p>
             <button
               onClick={() => setActiveMainTab(activeMainTab)} // retrigger effect
               className="text-[10px] text-white/40 hover:text-white border border-white/10 px-4 py-2 rounded-lg transition-colors"
             >
-              Retry
+              {copy.buttons.retry}
             </button>
           </div>
         ) : activeMainTab === "my-chats" ? (
@@ -287,13 +301,13 @@ export default function AgentStudio({ apiKey, templateData }) {
               <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.5">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em]">No chats yet</p>
-              <button
-                onClick={() => setActiveMainTab("templates")}
-                className="text-[10px] text-[#22d3ee] hover:text-white border border-[#22d3ee]/20 hover:border-white/20 px-4 py-2 rounded-lg transition-colors"
-              >
-                Browse Templates
-              </button>
+             <p className="text-[10px] font-black uppercase tracking-[0.3em]">{copy.empty.noChats}</p>
+             <button
+               onClick={() => setActiveMainTab("templates")}
+               className="text-[10px] text-[#22d3ee] hover:text-white border border-[#22d3ee]/20 hover:border-white/20 px-4 py-2 rounded-lg transition-colors"
+             >
+               {copy.buttons.browseTemplates}
+             </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-w-[1600px] mx-auto">
@@ -313,7 +327,7 @@ export default function AgentStudio({ apiKey, templateData }) {
               <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.5">
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
               </svg>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em]">No agents found</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em]">{copy.empty.noAgents}</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 max-w-[1600px] mx-auto">

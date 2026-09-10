@@ -6,6 +6,9 @@ import TemplateBanner from "./TemplateBanner";
 import { generateAudio, uploadFile } from "../muapi.js";
 import { audioModels, getAudioModelById } from "../models.js";
 import CostEstimator from "./CostEstimator.jsx";
+import en from "../messages/en/audioStudio.json";
+import zh from "../messages/zh/audioStudio.json";
+import { resolveCopy } from "../i18nUtils";
 
 // ---------------------------------------------------------------------------
 // Upload button states
@@ -67,11 +70,13 @@ const TrashIcon = () => (
 // ---------------------------------------------------------------------------
 // Single File Uploader Component
 // ---------------------------------------------------------------------------
-function AudioFileUploader({ label, value, onChange, apiKey }) {
+function AudioFileUploader({ label, value, onChange, apiKey, copy = en }) {
   const [uploadState, setUploadState] = useState(value ? UPLOAD_STATE.READY : UPLOAD_STATE.IDLE);
   const [progress, setProgress] = useState(0);
   const [fileName, setFileName] = useState(value ? value.split('/').pop().slice(-30) : "");
   const fileInputRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounterRef = useRef(0);
 
   useEffect(() => {
     if (!value) {
@@ -84,12 +89,12 @@ function AudioFileUploader({ label, value, onChange, apiKey }) {
     }
   }, [value]);
 
-  const handleUpload = async (e) => {
-    const file = e.target.files?.[0];
+  const handleUpload = async (files) => {
+    const file = files?.[0];
     if (!file) return;
 
     if (file.size > 20 * 1024 * 1024) {
-      alert("Audio file exceeds 20MB limit.");
+      alert(copy.uploader.sizeLimitError);
       return;
     }
 
@@ -105,9 +110,51 @@ function AudioFileUploader({ label, value, onChange, apiKey }) {
       onChange(url);
     } catch (err) {
       setUploadState(UPLOAD_STATE.IDLE);
-      alert(`Upload failed: ${err.message}`);
+      alert(copy.uploader.uploadFailedError.replace('{message}', err.message));
     } finally {
       setProgress(0);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    handleUpload(Array.from(e.target.files || []));
+  };
+
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (uploadState !== UPLOAD_STATE.IDLE) return;
+    dragCounterRef.current += 1;
+    if (e.dataTransfer?.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (uploadState !== UPLOAD_STATE.IDLE) return;
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDragging(false);
+    if (uploadState !== UPLOAD_STATE.IDLE) return;
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      handleUpload(Array.from(files));
     }
   };
 
@@ -128,25 +175,31 @@ function AudioFileUploader({ label, value, onChange, apiKey }) {
             onClick={clearFile}
             className="text-xs font-bold text-red-400 hover:text-red-300 transition-colors uppercase tracking-wider flex items-center gap-1.5"
           >
-            <TrashIcon /> Clear
+            <TrashIcon /> {copy.uploader.clear}
           </button>
         )}
       </div>
 
-      <div 
+      <div
         onClick={() => uploadState === UPLOAD_STATE.IDLE && fileInputRef.current?.click()}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
         className={`relative border rounded p-4 transition-all duration-300 flex items-center gap-3.5 cursor-pointer ${
-          uploadState === UPLOAD_STATE.READY 
-            ? "border-primary/60 bg-primary/10 shadow-[0_0_15px_rgba(34,211,238,0.05)]" 
+          isDragging
+            ? "border-primary bg-primary/15 shadow-[0_0_15px_rgba(34,211,238,0.15)]"
+            : uploadState === UPLOAD_STATE.READY
+            ? "border-primary/60 bg-primary/10 shadow-[0_0_15px_rgba(34,211,238,0.05)]"
             : "border-zinc-700 bg-zinc-900 hover:bg-zinc-850 hover:border-primary/50"
         }`}
       >
-        <input 
-          ref={fileInputRef} 
-          type="file" 
-          accept="audio/*" 
-          className="hidden" 
-          onChange={handleUpload} 
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="audio/*"
+          className="hidden"
+          onChange={handleInputChange}
         />
 
         {uploadState === UPLOAD_STATE.IDLE && (
@@ -157,8 +210,8 @@ function AudioFileUploader({ label, value, onChange, apiKey }) {
               </svg>
             </div>
             <div className="text-left">
-              <div className="text-xs font-bold text-white">Upload audio track</div>
-              <div className="text-[11px] text-zinc-300 font-medium mt-0.5">MP3, WAV, M4A up to 20MB</div>
+               <div className="text-xs font-bold text-white">{copy.uploader.uploadPrompt}</div>
+               <div className="text-[11px] text-zinc-300 font-medium mt-0.5">{copy.uploader.uploadHint}</div>
             </div>
           </>
         )}
@@ -167,7 +220,7 @@ function AudioFileUploader({ label, value, onChange, apiKey }) {
           <div className="w-full flex items-center gap-4">
             <div className="flex-1">
               <div className="flex justify-between text-xs text-white/95 mb-1.5 font-bold">
-                <span>Uploading...</span>
+                 <span>{copy.uploader.uploading}</span>
                 <span>{progress}%</span>
               </div>
               <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
@@ -184,7 +237,7 @@ function AudioFileUploader({ label, value, onChange, apiKey }) {
             </div>
             <div className="text-left flex-1 min-w-0">
               <div className="text-xs font-bold text-white truncate">{fileName}</div>
-              <div className="text-[11px] text-primary font-bold mt-0.5">Ready to generate</div>
+               <div className="text-[11px] text-primary font-bold mt-0.5">{copy.uploader.ready}</div>
             </div>
           </>
         )}
@@ -196,7 +249,7 @@ function AudioFileUploader({ label, value, onChange, apiKey }) {
 // ---------------------------------------------------------------------------
 // Multiple File Uploader Component (for array fields like audios_list)
 // ---------------------------------------------------------------------------
-function AudioListUploader({ label, value = [], onChange, apiKey, maxItems = 2 }) {
+function AudioListUploader({ label, value = [], onChange, apiKey, maxItems = 2, copy = en }) {
   const handleItemChange = (index, url) => {
     const newItems = [...value];
     if (url) {
@@ -210,16 +263,17 @@ function AudioListUploader({ label, value = [], onChange, apiKey, maxItems = 2 }
   return (
     <div className="space-y-4">
       <label className="block text-xs font-bold text-zinc-200 uppercase tracking-wider">
-        {label} (Max {maxItems})
+         {label} {copy.uploader.maxSuffix.replace('{max}', maxItems)}
       </label>
       <div className="space-y-3">
         {Array.from({ length: maxItems }).map((_, i) => (
           <AudioFileUploader
             key={i}
-            label={`Track #${i + 1}`}
+            label={copy.uploader.trackLabel.replace('{index}', i + 1)}
             value={value[i] || null}
             onChange={(url) => handleItemChange(i, url)}
             apiKey={apiKey}
+            copy={copy}
           />
         ))}
       </div>
@@ -400,17 +454,17 @@ function PremiumAudioPlayer({ url, title }) {
           <span className="text-xs font-bold text-zinc-200 w-10 text-right">
             {formatTime(currentTime)}
           </span>
-          
+
           <div
             ref={progressBarRef}
             onClick={handleScrub}
             className="flex-1 h-2 bg-zinc-700 hover:bg-zinc-650 rounded-full cursor-pointer relative group transition-colors"
           >
-            <div 
+            <div
               className="absolute left-0 top-0 bottom-0 bg-primary rounded-full group-hover:bg-primary/95 transition-all"
               style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
             />
-            <div 
+            <div
               className="absolute w-3.5 h-3.5 bg-white rounded-full -top-[3px] shadow-glow opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
               style={{ left: `calc(${(currentTime / (duration || 1)) * 100}% - 7px)` }}
             />
@@ -482,8 +536,10 @@ export default function AudioStudio({
   droppedFiles,
   onFilesHandled,
   templateData,
+  locale = "en",
 }) {
   const PERSIST_KEY = "hg_audio_studio_persistent";
+  const copy = resolveCopy(en, zh, locale);
 
   // ── Mode & model state ──────────────────────────────────────────────────
   const [selectedModelId, setSelectedModelId] = useState(audioModels[0]?.id ?? "");
@@ -686,11 +742,11 @@ export default function AudioStudio({
 
   return (
     <div className="w-full h-full flex bg-app-bg text-white overflow-hidden relative">
-      
+
       {/* ─── LEFT CONFIGURATION SIDEBAR ─── */}
       <div className="w-full lg:w-[400px] border-r border-zinc-900 flex flex-col bg-zinc-950/40 backdrop-blur-lg flex-shrink-0 z-30">
         <div className="p-6 overflow-y-auto flex-1 custom-scrollbar space-y-6 pb-24">
-          
+
           {/* Model Selector */}
           <div className="space-y-2 relative">
             <label className="text-xs font-bold text-zinc-300 uppercase tracking-wider block">
@@ -756,6 +812,7 @@ export default function AudioStudio({
                     value={params[key] || ""}
                     onChange={(url) => setParams(prev => ({ ...prev, [key]: url }))}
                     apiKey={apiKey}
+                    copy={copy}
                   />
                 );
               }
@@ -769,6 +826,7 @@ export default function AudioStudio({
                     onChange={(urls) => setParams(prev => ({ ...prev, [key]: urls }))}
                     apiKey={apiKey}
                     maxItems={schema.maxItems || 2}
+                    copy={copy}
                   />
                 );
               }
@@ -949,12 +1007,12 @@ export default function AudioStudio({
       </div>
       {/* ─── RIGHT CONTENT AREA ─── */}
       <div className="flex-1 flex flex-col min-w-0 h-full relative z-20">
-        
+
         {/* Main Display panel */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-10 flex flex-col justify-between">
-          
+
           <div className="flex-1 flex items-center justify-center min-h-[400px] mb-8">
-            
+
             {/* 1. Error Display */}
             {generateError && (
               <div className="w-full max-w-md p-6 bg-red-500/10 border border-red-500/20 rounded flex flex-col items-center gap-4 animate-shake">

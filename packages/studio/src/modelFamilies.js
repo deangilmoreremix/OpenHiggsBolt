@@ -6,6 +6,11 @@ import {
   v2vModels,
 } from "./models.js";
 import { getModelMediaCapabilities } from "./modelCapabilities.js";
+import {
+  getGroupedVideoConfiguration,
+  resolveGroupedVideoVariant,
+  GROUPED_VIDEO_FAMILY_NAMES,
+} from "./groupedVideoModels.js";
 
 const IMAGE_FAMILY_ALIASES = {
   "bytedance-seededit-v3": "bytedance-seedream-v3",
@@ -143,6 +148,33 @@ const PREFERRED_VIDEO_VARIANTS = {
     t2v: "kling-v3.0-standard-text-to-video",
     i2v: "kling-v3.0-standard-image-to-video",
     v2v: "kling-v3.0-std-motion-control",
+  },
+  "seedance-2.5": {
+    t2v: "seedance-2.5-text-to-video",
+    i2v: "seedance-2.5-image-to-video",
+    v2v: "seedance-2.5-video-edit",
+  },
+  "wan-3": {
+    t2v: "wan3.0-text-to-video",
+    i2v: "wan3.0-image-to-video",
+  },
+  "flux-3": {
+    t2v: "flux-3-text-to-video",
+    i2v: "flux-3-image-to-video",
+    v2v: "flux-3-video-extend",
+  },
+  "gemini-omni": {
+    t2v: "gemini-omni-flash-1-1-text-to-video",
+    i2v: "gemini-omni-flash-1-1-image-to-video",
+    v2v: "gemini-omni-flash-1-1-edit",
+  },
+  "ltx-2.5": {
+    t2v: "ltx-2.5-text-to-video",
+    i2v: "ltx-2.5-image-to-video",
+  },
+  "minimax-h3": {
+    t2v: "minimax-h3-text-to-video",
+    i2v: "minimax-h3-image-to-video",
   },
 };
 
@@ -742,5 +774,67 @@ export const imageModelPickerEntryByVariantId = indexModelPickerEntries(
 
 export const videoModelPickerEntryByVariantId = indexModelPickerEntries(
   videoModelPickerEntries,
+  videoModelCatalog,
+);
+
+function buildVideoModelMenuEntries() {
+  const entries = [];
+  const groupedFamilies = new Set();
+  const variantIdsByFamily = new Map();
+  for (const variantId of videoModelCatalog.variantById.keys()) {
+    const config = getGroupedVideoConfiguration(variantId);
+    if (!config) continue;
+    let variantIds = variantIdsByFamily.get(config.familyId);
+    if (!variantIds) {
+      variantIds = new Set();
+      variantIdsByFamily.set(config.familyId, variantIds);
+    }
+    variantIds.add(variantId);
+  }
+  for (const entry of videoModelPickerEntries) {
+    const config = getGroupedVideoConfiguration(entry.defaultVariant?.model.id);
+    if (!config) {
+      entries.push(entry);
+      continue;
+    }
+    if (groupedFamilies.has(config.familyId)) continue;
+    groupedFamilies.add(config.familyId);
+    const family = entry.family;
+    const variantIds = variantIdsByFamily.get(config.familyId);
+    const variantsByMode = {};
+    for (const [mode, workflowIds] of Object.entries({
+      t2v: [null],
+      i2v: ["animate_image", "keyframes", "references"],
+      v2v: ["edit_video", "extend_uploaded_video", "motion_transfer"],
+    })) {
+      for (const workflowId of workflowIds) {
+        const variantId = resolveGroupedVideoVariant({ familyId: config.familyId, workflowId });
+        const variant = videoModelCatalog.variantById.get(variantId);
+        if (variant?.mode === mode) {
+          variantsByMode[mode] = variant;
+          break;
+        }
+      }
+    }
+    const name = GROUPED_VIDEO_FAMILY_NAMES[config.familyId];
+    entries.push(Object.freeze({
+      id: `${config.familyId}:grouped`,
+      family,
+      name,
+      groupedVideo: true,
+      variantIds,
+      variantsByMode,
+      defaultVariant: variantsByMode.t2v || variantsByMode.i2v || variantsByMode.v2v,
+      searchText: `${family.searchText} ${name}`.toLowerCase(),
+    }));
+  }
+  return Object.freeze(entries);
+}
+
+// Menu grouping is presentation-only. The original picker entries still
+// describe compatible technical variants for existing workflow resolution.
+export const videoModelMenuEntries = buildVideoModelMenuEntries();
+export const videoModelMenuEntryByVariantId = indexModelPickerEntries(
+  videoModelMenuEntries,
   videoModelCatalog,
 );
