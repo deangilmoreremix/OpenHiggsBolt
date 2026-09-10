@@ -1,7 +1,7 @@
 # Studio Parity Matrix
 
-**Reference:** upstream `main` @ `b9894e12ad392ab19b7628658a3f6b364b13b1ba`  
-**Target:** OpenHiggsBolt `main` @ `38deb1a2be0b1dcd79ab6615867a0c816847c223`  
+**Reference:** upstream `main` @ `b9894e12ad392ab19b7628658a3f6b364b13b1ba`
+**Target:** OpenHiggsBolt `main` @ `38deb1a2be0b1dcd79ab6615867a0c816847c223`
 **Date:** 2026-09-10
 
 ## Summary
@@ -9,33 +9,34 @@
 | Metric | Value |
 |--------|-------|
 | Studios in scope | 14 |
-| Complete | 12 |
-| Partially complete | 2 |
-| Total remaining items | 11 (all not applicable) |
+| Complete for upstream parity | 14 |
+| Actual incomplete studios | 0 |
+| Not-applicable requests | 11 |
+| Blocked features | 0 |
 
 ## Parity Matrix
 
-| # | Studio | Status | Remaining Items |
-|---|--------|--------|------------------|
-| 1 | ImageStudio.jsx | ⚠️ PARTIALLY COMPLETE | AdvancedField, buildAdvChips, getQualitiesForModel, DropdownItem (not applicable — not in upstream ImageStudio) |
-| 2 | VideoStudio.jsx | ✅ COMPLETE | — |
-| 3 | AudioStudio.jsx | ✅ COMPLETE | — |
-| 4 | LipSyncStudio.jsx | ✅ COMPLETE | — |
-| 5 | AgentStudio.jsx | ⚠️ PARTIALLY COMPLETE | PublishStep, AssistStep, useTemplateData, TemplateBanner, readStoryboardHandoff, getPendingRecipe, fillTemplate (not applicable — not in upstream AgentStudio) |
-| 6 | AiInfluencerStudio.jsx | ✅ COMPLETE | — |
-| 7 | CinemaStudio.jsx | ✅ COMPLETE | — |
-| 8 | ClippingStudio.jsx | ✅ COMPLETE | — |
-| 9 | DesignAgentStudio.jsx | ✅ COMPLETE | — |
-| 10 | LayersStudio.jsx | ✅ COMPLETE | — |
-| 11 | MarketingStudio.jsx | ✅ COMPLETE | — |
-| 12 | RecastStudio.jsx | ✅ COMPLETE | — |
-| 13 | VibeMotionStudio.jsx | ✅ COMPLETE | — |
-| 14 | WorkflowStudio.jsx | ✅ COMPLETE | — |
+| # | Studio | Status | Notes |
+|---|--------|--------|-------|
+| 1 | ImageStudio.jsx | ✅ COMPLETE FOR UPSTREAM PARITY | Remaining items are not in upstream ImageStudio |
+| 2 | VideoStudio.jsx | ✅ COMPLETE FOR UPSTREAM PARITY | — |
+| 3 | AudioStudio.jsx | ✅ COMPLETE FOR UPSTREAM PARITY | — |
+| 4 | LipSyncStudio.jsx | ✅ COMPLETE FOR UPSTREAM PARITY | — |
+| 5 | AgentStudio.jsx | ✅ COMPLETE FOR UPSTREAM PARITY | Remaining items are not in upstream AgentStudio |
+| 6 | AiInfluencerStudio.jsx | ✅ COMPLETE FOR UPSTREAM PARITY | — |
+| 7 | CinemaStudio.jsx | ✅ COMPLETE FOR UPSTREAM PARITY | — |
+| 8 | ClippingStudio.jsx | ✅ COMPLETE FOR UPSTREAM PARITY | — |
+| 9 | DesignAgentStudio.jsx | ✅ COMPLETE FOR UPSTREAM PARITY | — |
+| 10 | LayersStudio.jsx | ✅ COMPLETE FOR UPSTREAM PARITY | — |
+| 11 | MarketingStudio.jsx | ✅ COMPLETE FOR UPSTREAM PARITY | — |
+| 12 | RecastStudio.jsx | ✅ COMPLETE FOR UPSTREAM PARITY | — |
+| 13 | VibeMotionStudio.jsx | ✅ COMPLETE FOR UPSTREAM PARITY | — |
+| 14 | WorkflowStudio.jsx | ✅ COMPLETE FOR UPSTREAM PARITY | — |
 
 ## Shared Components (Non-Studio)
 
-| Component | Status | Missing Features |
-|-----------|--------|------------------|
+| Component | Status | Notes |
+|-----------|--------|-------|
 | PromptComposer.jsx | ✅ COMPLETE | — |
 | DrawModal.jsx | ✅ COMPLETE | — |
 | WorkflowUI.jsx | ✅ COMPLETE | — |
@@ -58,12 +59,23 @@
 ### Remaining for VideoStudio
 - None
 
-## Remaining Work
+## Not Applicable / Not Upstream Parity Requirements
 
-All 32 original missing features have been resolved. The remaining items in ImageStudio and AgentStudio are marked **not applicable** because they do not exist in the upstream reference implementations.
+These items were identified in the original 32-feature audit but are not required for upstream parity because they do not exist in the upstream reference implementations. They are not blockers for deployment.
 
-1. **ImageStudio.jsx** — 4 features marked not applicable (not in upstream: AdvancedField, buildAdvChips, getQualitiesForModel, DropdownItem)
-2. **AgentStudio.jsx** — 7 features marked not applicable (not in upstream: PublishStep, AssistStep, useTemplateData, TemplateBanner, readStoryboardHandoff, getPendingRecipe, fillTemplate)
+| Studio | Feature | Evidence |
+|--------|---------|----------|
+| ImageStudio.jsx | AdvancedField | Not present in upstream `main`: `git show upstream/main:packages/studio/src/components/ImageStudio.jsx | grep -n "AdvancedField"` returns no matches |
+| ImageStudio.jsx | buildAdvChips | Not present in upstream `main`: `git show upstream/main:packages/studio/src/components/ImageStudio.jsx | grep -n "buildAdvChips"` returns no matches |
+| ImageStudio.jsx | getQualitiesForModel | Not present in upstream `main`: `git show upstream/main:packages/studio/src/components/ImageStudio.jsx | grep -n "getQualitiesForModel"` returns no matches |
+| ImageStudio.jsx | DropdownItem | Not present in upstream `main`: `git show upstream/main:packages/studio/src/components/ImageStudio.jsx | grep -n "DropdownItem"` returns no matches |
+| AgentStudio.jsx | PublishStep | Not present in upstream `main`: `git show upstream/main:packages/studio/src/components/AgentStudio.jsx | grep -n "PublishStep"` returns no matches |
+| AgentStudio.jsx | AssistStep | Not present in upstream `main`: `git show upstream/main:packages/studio/src/components/AgentStudio.jsx | grep -n "AssistStep"` returns no matches |
+| AgentStudio.jsx | useTemplateData | Not present in upstream `main`: `git show upstream/main:packages/studio/src/components/AgentStudio.jsx | grep -n "useTemplateData"` returns no matches |
+| AgentStudio.jsx | TemplateBanner | Not present in upstream `main`: `git show upstream/main:packages/studio/src/components/AgentStudio.jsx | grep -n "TemplateBanner"` returns no matches |
+| AgentStudio.jsx | readStoryboardHandoff | Not present in upstream `main`: `git show upstream/main:packages/studio/src/components/AgentStudio.jsx | grep -n "readStoryboardHandoff"` returns no matches |
+| AgentStudio.jsx | getPendingRecipe | Not present in upstream `main`: `git show upstream/main:packages/studio/src/components/AgentStudio.jsx | grep -n "getPendingRecipe"` returns no matches |
+| AgentStudio.jsx | fillTemplate | Not present in upstream `main`: `git show upstream/main:packages/studio/src/components/AgentStudio.jsx | grep -n "fillTemplate"` returns no matches |
 
 ## Completed in this session
 
