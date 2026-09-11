@@ -13,7 +13,7 @@ export const MUAPI_KEY_COOKIE = 'muapi_key';
 export const OPENAI_KEY_COOKIE = 'openai_key';
 
 // ── Cookie helpers ─────────────────────────────────────────────────────────
-function buildCookie(name: string, value: string): string {
+export function buildCookie(name: string, value: string): string {
   const isHttps =
     typeof window !== 'undefined' &&
     window.location &&
@@ -25,12 +25,12 @@ function buildCookie(name: string, value: string): string {
   return `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
 }
 
-function setCookie(name: string, value: string | null | undefined): void {
+export function setCookie(name: string, value: string | null | undefined): void {
   if (typeof window === 'undefined') return;
   document.cookie = buildCookie(name, value || '');
 }
 
-function getCookie(name: string): string | null {
+export function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null;
   const match = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()\[\]\\\/+^])/g, '\\$1') + '=([^;]*)'));
   const value = match ? match[1] : null;
@@ -123,7 +123,7 @@ export function setApiKey(key: string | null | undefined): void {
   } catch {
     // ignore
   }
-  setCookie(MUAPI_KEY_COOKIE || 'muapi_key', cleaned);
+  setCookie(MUAPI_KEY_COOKIE, cleaned);
   notifyListeners();
 }
 
@@ -141,7 +141,7 @@ export function setOpenAiKey(key: string | null | undefined): void {
   } catch {
     // ignore
   }
-  setCookie(OPENAI_KEY_COOKIE || 'openai_key', cleaned);
+  setCookie(OPENAI_KEY_COOKIE, cleaned);
   notifyListeners();
 }
 
@@ -187,9 +187,9 @@ export function useAuthConfig() {
 // ── Initialize cookies on module load if keys are already present ───────────
 if (typeof window !== 'undefined') {
   if (muapiKey) {
-    setCookie('muapi_key', muapiKey);
+    setCookie(MUAPI_KEY_COOKIE, muapiKey);
   }
   if (openaiKey) {
-    setCookie('openai_key', openaiKey);
+    setCookie(OPENAI_KEY_COOKIE, openaiKey);
   }
 }

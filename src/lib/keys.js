@@ -12,6 +12,9 @@
 
 export const MUAPI_KEY_STORAGE = 'muapi_key';
 export const OPENAI_KEY_STORAGE = 'openai_key';
+export const MUAPI_KEY_API_ENDPOINT = '/api/auth/muapi-key';
+export const MUAPI_KEY_COOKIE = 'muapi_key';
+export const OPENAI_KEY_COOKIE = 'openai_key';
 
 // Safely read a localStorage value in any environment (SSR / Node tests).
 function readStorage(key) {
