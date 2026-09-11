@@ -38,12 +38,5 @@ export default defineConfig({
       },
     },
   ],
-  webServer: isProduction
-    ? undefined
-    : {
-        command: 'npx next dev --port 3111 --turbopack',
-        url: 'http://localhost:3111',
-        reuseExistingServer: true,
-        timeout: 180_000,
-      },
+  webServer: undefined,
 });
