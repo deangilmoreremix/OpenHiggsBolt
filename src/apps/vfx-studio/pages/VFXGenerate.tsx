@@ -24,15 +24,6 @@ import { PublishStep } from '@/components/SocialPublishProvider';
 import { AssistStep } from '@/components/AiAssistantProvider';
 import type { VFXEffect, AspectRatio, Resolution, Quality } from '@/types/vfx';
 
-// Build the muapi_key cookie string.
-function muapiCookie(value: string) {
-  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
-  if (value) {
-    return `muapi_key=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax${secure}`;
-  }
-  return `muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
-}
-
 const STORAGE_KEY_UI = 'vfx_ui_state';
 
 const CDN = 'https://d3adwkbyhxyrtq.cloudfront.net';

@@ -1,15 +1,6 @@
-import { isValidKeyFormat } from '../lib/keys.js';
+import { isValidKeyFormat, MUAPI_KEY_API_ENDPOINT } from '../lib/keys.js';
+import { buildCookie, MUAPI_KEY_COOKIE } from '../lib/authConfig.ts';
 import { t } from '../lib/i18n.js';
-
-// Build the muapi_key cookie string. `Secure` is added only over HTTPS
-// so the key still persists on http://localhost dev servers.
-function muapiCookie(value) {
-  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
-  if (value) {
-    return `muapi_key=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax${secure}`;
-  }
-  return `muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
-}
 
 export function AuthModal(onSuccess) {
     const overlay = document.createElement('div');
@@ -68,7 +59,7 @@ export function AuthModal(onSuccess) {
                 .trim();
 
             // Persist key server-side via the encrypted key store.
-            fetch('/api/auth/muapi-key', {
+            fetch(MUAPI_KEY_API_ENDPOINT, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ key: cleanedKey }),
@@ -80,7 +71,7 @@ export function AuthModal(onSuccess) {
                     throw new Error(data.error || 'Failed to save key');
                 }
                 // Sync cookie so server-side routes and agents pages can read the key.
-                document.cookie = muapiCookie(cleanedKey);
+                document.cookie = buildCookie(MUAPI_KEY_COOKIE, cleanedKey);
                 document.body.removeChild(overlay);
                 if (onSuccess) onSuccess();
             })

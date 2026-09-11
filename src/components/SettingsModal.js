@@ -1,6 +1,6 @@
 import { LocalModelManager } from './LocalModelManager.js';
 import { isLocalAIAvailable } from '../lib/localInferenceClient.js';
-import { MUAPI_KEY_STORAGE, OPENAI_KEY_STORAGE, isValidKeyFormat } from '../lib/keys.js';
+import { MUAPI_KEY_STORAGE, OPENAI_KEY_STORAGE, isValidKeyFormat, MUAPI_KEY_API_ENDPOINT, MUAPI_KEY_COOKIE, OPENAI_KEY_COOKIE } from '../lib/keys.js';
 import { t } from '../lib/i18n.js';
 
 // Build a cookie string for the MuAPI key. `Secure` is added only over HTTPS
@@ -9,9 +9,9 @@ function muapiCookie(value) {
   const isHttps = typeof window !== 'undefined' && window.location && window.location.protocol === 'https:';
   const secure = isHttps ? '; Secure' : '';
   if (value) {
-    return `muapi_key=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax${secure}`;
+    return `${MUAPI_KEY_COOKIE}=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax${secure}`;
   }
-  return `muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
+  return `${MUAPI_KEY_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
 }
 
 // Same shape as muapiCookie but for the user's OpenAI key.
@@ -19,9 +19,9 @@ function openaiCookie(value) {
   const isHttps = typeof window !== 'undefined' && window.location && window.location.protocol === 'https:';
   const secure = isHttps ? '; Secure' : '';
   if (value) {
-    return `openai_key=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax${secure}`;
+    return `${OPENAI_KEY_COOKIE}=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax${secure}`;
   }
-  return `openai_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
+  return `${OPENAI_KEY_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
 }
 
 export function SettingsModal(onClose) {
@@ -86,17 +86,9 @@ export function SettingsModal(onClose) {
                     style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:0.75rem;padding:0.6rem 0.9rem;color:#fff;font-size:0.875rem;outline:none;"
                     placeholder="${t('settings.openaiKeyPlaceholder')}">
             </div>
-             <div>
-                 <label style="display:block;font-size:0.75rem;color:rgba(255,255,255,0.5);margin-bottom:0.4rem;font-weight:600;">${t('settings.openaiKeyLabel')}</label>
-                 <input id="settings-openai-key" type="password"
-                     style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:0.75rem;padding:0.6rem 0.9rem;color:#fff;font-size:0.875rem;outline:none;"
-                     placeholder="${t('settings.openaiKeyPlaceholder')}"
-                     value="">
-             </div>
             <p style="font-size:0.7rem;color:rgba(255,255,255,0.3);margin:0;">
                 ${t('settings.keyNote')}
             </p>
-            <p id="settings-status" style="font-size:0.7rem;color:#f87171;margin:0;min-height:0.9rem;"></p>
             <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-top:0.5rem;">
                 <button id="settings-cancel-btn" style="padding:0.5rem 1rem;border-radius:0.5rem;background:none;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:0.75rem;font-weight:700;cursor:pointer;">${t('common.cancel')}</button>
                 <button id="settings-save-btn" style="padding:0.5rem 1rem;border-radius:0.5rem;background:var(--color-primary,#22d3ee);color:#000;font-size:0.75rem;font-weight:700;cursor:pointer;border:none;">${t('common.save')}</button>
@@ -130,7 +122,7 @@ export function SettingsModal(onClose) {
     switchTab('api');
 
     // Load existing values from the server-side key store.
-    fetch('/api/auth/muapi-key', { credentials: 'same-origin' })
+    fetch(MUAPI_KEY_API_ENDPOINT, { credentials: 'same-origin' })
       .then((r) => r.json())
       .then((data) => {
         apiPanel.querySelector('#settings-api-key').value = data.key || '';
@@ -151,7 +143,7 @@ export function SettingsModal(onClose) {
         // Mirror StandaloneShell: persist the MuAPI key as a cookie so the
         // server-side /api/* proxy routes (which resolve the key from the
         // x-api-key header OR the muapi_key cookie) can authenticate requests.
-        document.cookie = `muapi_key=${encodeURIComponent(key)}; path=/; max-age=31536000; SameSite=Lax`;
+        document.cookie = buildCookie(MUAPI_KEY_COOKIE, key);
     };
 
     apiPanel.querySelector('#settings-cancel-btn').onclick = close;
@@ -190,8 +182,29 @@ export function SettingsModal(onClose) {
             .replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '')
             .trim();
 
+        // Persist to localStorage and cookies immediately so client-side and
+        // server-side readers see the new value even before the server responds.
+        try {
+            if (typeof window !== 'undefined' && window.localStorage) {
+                window.localStorage.setItem(MUAPI_KEY_STORAGE, cleanMuapi);
+                if (cleanOpenai) {
+                    window.localStorage.setItem(OPENAI_KEY_STORAGE, cleanOpenai);
+                } else {
+                    window.localStorage.removeItem(OPENAI_KEY_STORAGE);
+                }
+            }
+        } catch {
+            // ignore localStorage write errors (private mode, etc.)
+        }
+        document.cookie = muapiCookie(cleanMuapi);
+        if (cleanOpenai) {
+            document.cookie = openaiCookie(cleanOpenai);
+        } else {
+            document.cookie = openaiCookie('');
+        }
+
         // Persist keys server-side via the encrypted key store.
-        fetch('/api/auth/muapi-key', {
+        fetch(MUAPI_KEY_API_ENDPOINT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ key: cleanMuapi, openaiKey: cleanOpenai || undefined }),
@@ -201,13 +214,6 @@ export function SettingsModal(onClose) {
         .then((data) => {
             if (!data.ok) {
                 throw new Error(data.error || 'Failed to save key');
-            }
-            // Sync cookies so server-side routes and agents pages can read the key.
-            document.cookie = muapiCookie(cleanMuapi);
-            if (cleanOpenai) {
-                document.cookie = openaiCookie(cleanOpenai);
-            } else {
-                document.cookie = openaiCookie('');
             }
             // Success feedback: flash the button text
             const saveBtn = apiPanel.querySelector('#settings-save-btn');
@@ -219,6 +225,14 @@ export function SettingsModal(onClose) {
                 saveBtn.style.background = 'var(--color-primary,#22d3ee)';
                 close();
             }, 600);
+        })
+        .catch((err) => {
+            if (statusEl) {
+                statusEl.style.display = 'block';
+                statusEl.style.background = 'rgba(239,68,68,0.1)';
+                statusEl.style.color = '#fca5a5';
+                statusEl.textContent = err?.message || 'Failed to save key. Please try again.';
+            }
         });
     };
 
