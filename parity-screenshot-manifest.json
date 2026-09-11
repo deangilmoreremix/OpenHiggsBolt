@@ -3,7 +3,7 @@
   "deployedCommit": "538b97d28fdeb5958e9aa03951b9aa661d12d684",
   "parityCommit": "207ff6fbed0edfafb9ba3638edafb29d2a236ba1",
   "productionUrl": "https://go.smartvid.app",
-  "generatedAt": "2026-09-10T18:40:00.000Z",
+  "generatedAt": "2026-09-11T18:30:00.000Z",
   "studios": [
     {
       "studio": "ImageStudio",
@@ -15,7 +15,7 @@
           "desktop": true,
           "mobile": true,
           "productionVerified": false,
-          "screenshot": "desktop/image/01-template-banner.png",
+          "screenshot": "desktop/image/template-banner.png",
           "type": "VISUAL PROOF"
         },
         {
@@ -24,7 +24,43 @@
           "desktop": true,
           "mobile": true,
           "productionVerified": false,
-          "screenshot": "desktop/image/01-template-banner.png",
+          "screenshot": "desktop/image/template-banner.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Template populated prompt",
+          "visualState": "Prompt field pre-filled with template values",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/image/template-populated-prompt.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Model picker",
+          "visualState": "Model selection dropdown with options",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/image/model-picker.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Generation controls",
+          "visualState": "Parameter controls for image generation",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/image/generation-controls.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Template media inputs",
+          "visualState": "Media upload areas with template placeholders",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/image/template-media-inputs.png",
           "type": "VISUAL PROOF"
         }
       ]
@@ -39,7 +75,7 @@
           "desktop": true,
           "mobile": true,
           "productionVerified": false,
-          "screenshot": "desktop/video/01-model-picker-open.png",
+          "screenshot": "desktop/video/03-category-tabs.png",
           "type": "VISUAL PROOF"
         },
         {
@@ -48,7 +84,7 @@
           "desktop": true,
           "mobile": true,
           "productionVerified": false,
-          "screenshot": "desktop/video/03-provider-tabs.png",
+          "screenshot": "desktop/video/04-provider-tabs.png",
           "type": "VISUAL PROOF"
         },
         {
@@ -70,21 +106,237 @@
           "type": "VISUAL PROOF"
         },
         {
-          "feature": "Workflow-aware parameters",
-          "visualState": "Parameters change based on selected model/workflow",
+          "feature": "Model-specific controls",
+          "visualState": "Parameter controls change based on selected model",
           "desktop": true,
-          "mobile": true,
+          "mobile": false,
           "productionVerified": false,
-          "screenshot": "desktop/video/07-workflow-aware-parameters.png",
+          "screenshot": "desktop/video/07-model-specific-controls.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Text-to-video workflow",
+          "visualState": "Default T2V workflow with prompt input",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/10-text-to-video.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Image-to-video workflow",
+          "visualState": "I2V workflow with image upload input",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/11-image-to-video.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "First frame input",
+          "visualState": "First frame upload slot for I2V",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/12-first-frame-input.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "First and last frame input",
+          "visualState": "Both first and last frame upload slots",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/13-first-and-last-frame-input.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Multiple image references",
+          "visualState": "Multiple image reference slots",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/14-multiple-image-references.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Multiple video references",
+          "visualState": "Multiple video reference slots",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/15-multiple-video-references.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Multiple audio references",
+          "visualState": "Multiple audio reference slots",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/16-multiple-audio-references.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Motion transfer slots",
+          "visualState": "Motion transfer upload slots",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/17-motion-transfer-slots.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Edit workflow",
+          "visualState": "Edit workflow mode with video upload",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/18-edit-workflow.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Extend workflow",
+          "visualState": "Extend workflow mode",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/19-extend-workflow.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Omni-reference workflow",
+          "visualState": "Omni-reference mode with mixed inputs",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/20-omni-reference-workflow.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Model-specific validation",
+          "visualState": "Validation rules shown for selected model",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/21-model-specific-validation.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Workflow-aware parameters",
+          "visualState": "Parameters adapt to selected workflow",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/22-workflow-aware-parameters.png",
           "type": "VISUAL PROOF"
         },
         {
           "feature": "TemplateBanner integration",
           "visualState": "Template banner visible when template data applied",
           "desktop": true,
-          "mobile": true,
+          "mobile": false,
           "productionVerified": false,
           "screenshot": "desktop/video/23-template-banner.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Provider: Alibaba",
+          "visualState": "Alibaba provider models visible",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/provider-alibaba.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Provider: Happy Horse",
+          "visualState": "Happy Horse provider models visible",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/provider-happy-horse.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Provider: Kling",
+          "visualState": "Kling provider models visible",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/provider-kling.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Provider: LTX",
+          "visualState": "LTX provider models visible",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/provider-ltx.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Provider: Minimax",
+          "visualState": "Minimax provider models visible",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/provider-minimax.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Provider: Pixverse",
+          "visualState": "Pixverse provider models visible",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/provider-pixverse.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Provider: Seedance",
+          "visualState": "Seedance provider models visible",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/provider-seedance.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Provider: Sora",
+          "visualState": "Sora provider models visible",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/provider-sora.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Provider: Veo",
+          "visualState": "Veo provider models visible",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/provider-veo.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Provider: Vidu",
+          "visualState": "Vidu provider models visible",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/provider-vidu.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Provider: XAI",
+          "visualState": "XAI provider models visible",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/video/provider-xai.png",
           "type": "VISUAL PROOF"
         }
       ]
@@ -114,7 +366,7 @@
           "desktop": true,
           "mobile": true,
           "productionVerified": false,
-          "screenshot": "desktop/clipping/01-studio-overview.png",
+          "screenshot": "desktop/clipping/toast-validation-error.png",
           "type": "VISUAL PROOF"
         },
         {
@@ -138,7 +390,7 @@
           "desktop": true,
           "mobile": true,
           "productionVerified": false,
-          "screenshot": "desktop/vibe-motion/01-studio-overview.png",
+          "screenshot": "desktop/vibe-motion/toast-validation-error.png",
           "type": "VISUAL PROOF"
         },
         {
@@ -177,7 +429,7 @@
           "desktop": true,
           "mobile": true,
           "productionVerified": false,
-          "screenshot": "desktop/cinema/01-template-banner.png",
+          "screenshot": "desktop/cinema/template-banner.png",
           "type": "VISUAL PROOF"
         },
         {
@@ -186,7 +438,16 @@
           "desktop": true,
           "mobile": true,
           "productionVerified": false,
-          "screenshot": "desktop/cinema/02-persistence-before-reload.png",
+          "screenshot": "desktop/cinema/persistence-before-reload.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Persistence after reload",
+          "visualState": "Settings retained after page reload",
+          "desktop": true,
+          "mobile": true,
+          "productionVerified": false,
+          "screenshot": "desktop/cinema/persistence-after-reload.png",
           "type": "VISUAL PROOF"
         },
         {
@@ -195,7 +456,16 @@
           "desktop": true,
           "mobile": true,
           "productionVerified": false,
-          "screenshot": "desktop/cinema/01-studio-overview.png",
+          "screenshot": "desktop/cinema/toast-validation-error.png",
+          "type": "VISUAL PROOF"
+        },
+        {
+          "feature": "Language state",
+          "visualState": "Language switcher visible in UI",
+          "desktop": true,
+          "mobile": false,
+          "productionVerified": false,
+          "screenshot": "desktop/cinema/language-state.png",
           "type": "VISUAL PROOF"
         },
         {
@@ -219,7 +489,7 @@
           "desktop": true,
           "mobile": true,
           "productionVerified": false,
-          "screenshot": "desktop/marketing/01-studio-overview.png",
+          "screenshot": "desktop/marketing/toast-validation-error.png",
           "type": "VISUAL PROOF"
         },
         {
@@ -243,7 +513,7 @@
           "desktop": true,
           "mobile": true,
           "productionVerified": false,
-          "screenshot": "desktop/recast/01-studio-overview.png",
+          "screenshot": "desktop/recast/toast-validation-error.png",
           "type": "VISUAL PROOF"
         },
         {
@@ -300,7 +570,7 @@
           "desktop": true,
           "mobile": true,
           "productionVerified": false,
-          "screenshot": "desktop/agents/01-agent-gallery.png",
+          "screenshot": "desktop/agents/image-fallback.png",
           "type": "VISUAL PROOF"
         },
         {
@@ -309,7 +579,7 @@
           "desktop": true,
           "mobile": true,
           "productionVerified": false,
-          "screenshot": "desktop/agents/01-agent-gallery.png",
+          "screenshot": "desktop/agents/01-studio-overview.png",
           "type": "VISUAL PROOF"
         }
       ]
@@ -339,7 +609,7 @@
           "desktop": true,
           "mobile": true,
           "productionVerified": false,
-          "screenshot": "desktop/ai-influencer/01-studio-overview.png",
+          "screenshot": "desktop/ai-influencer/toast-validation-error.png",
           "type": "VISUAL PROOF"
         },
         {
@@ -393,13 +663,13 @@
     }
   ],
   "summary": {
-    "totalScreenshots": 28,
-    "desktopScreenshots": 14,
-    "mobileScreenshots": 14,
+    "totalScreenshots": 117,
+    "desktopScreenshots": 85,
+    "mobileScreenshots": 32,
     "productionScreenshots": 0,
-    "localMockScreenshots": 28,
+    "localMockScreenshots": 117,
     "studiosCovered": 14,
-    "videoWorkflowCoverage": 0,
-    "modelProviderCoverage": 0
+    "videoWorkflowCoverage": 14,
+    "modelProviderCoverage": 11
   }
 }
