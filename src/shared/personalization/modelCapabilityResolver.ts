@@ -149,9 +149,20 @@ export function resolveModelCapabilities(
   const qualityOptions = Array.isArray(model?.inputs?.quality?.enum)
     ? model.inputs.quality.enum
     : []
-  const durationOptions = Array.isArray(model?.inputs?.duration?.enum)
-    ? model.inputs.duration.enum
-    : []
+  const durationOptions = (() => {
+    const dur = model?.inputs?.duration
+    if (!dur) return []
+    if (Array.isArray(dur.enum)) return dur.enum
+    if (typeof dur.minValue === 'number' && typeof dur.maxValue === 'number') {
+      const step = typeof dur.step === 'number' ? dur.step : 1
+      const options: number[] = []
+      for (let v = dur.minValue; v <= dur.maxValue; v += step) {
+        options.push(v)
+      }
+      return options
+    }
+    return []
+  })()
 
   return {
     supportsFaceSwap:
