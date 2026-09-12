@@ -49,7 +49,8 @@
     "render:validate": "render blueprints validate",
     "render:deploy": "render blueprints apply --confirm",
     "source:status": "node scripts/verify-source-of-truth.mjs",
-    "source:verify": "node scripts/verify-source-of-truth.mjs"
+    "source:verify": "node scripts/verify-source-of-truth.mjs",
+    "build:metadata": "node scripts/generate-build-info.mjs"
   },
   "build": {
     "appId": "ai.generative.open",
