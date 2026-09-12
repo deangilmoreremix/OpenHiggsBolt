@@ -47,7 +47,9 @@
     "package:linux:deb:x64": "node scripts/package-linux-deb.js --arch x64",
     "electron:build:all": "vite build && electron-builder --mac --win --linux",
     "render:validate": "render blueprints validate",
-    "render:deploy": "render blueprints apply --confirm"
+    "render:deploy": "render blueprints apply --confirm",
+    "source:status": "node scripts/verify-source-of-truth.mjs",
+    "source:verify": "node scripts/verify-source-of-truth.mjs"
   },
   "build": {
     "appId": "ai.generative.open",
