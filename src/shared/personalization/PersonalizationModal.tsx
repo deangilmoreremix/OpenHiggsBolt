@@ -1265,34 +1265,32 @@ function ConfigurationView(props: any) {
             ))}
           </div>
 
-          <h2 style={{ margin: '0 0 13px', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>Find Business Assets</h2>
-          <div style={{ marginBottom: 18 }}>
-            <Field label="Website" value={clientForm.website} placeholder="https://joesroofing.com" onChange={(v) => updateClientForm({ ...clientForm, website: v })} full />
-            <button
-              type="button"
-              onClick={() => discoverAssets(clientForm.website)}
-              disabled={!clientForm.website || discoveryStatus === 'discovering'}
-              className="mt-2 rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
-              style={{
-                minHeight: 42,
-                padding: '0 19px',
-                border: `1px solid ${C.cyan}`,
-                background: C.cyan,
-                color: '#041014',
-              }}
-            >
-              {discoveryStatus === 'discovering' ? 'Discovering...' : 'Find Business Assets'}
-            </button>
-            <p style={{ marginTop: 6, color: C.muted, fontSize: 10, lineHeight: 1.5 }}>
-              Find useful people, logos, products, services and brand images from this website.
-            </p>
-            {discoveryError && (
-              <p style={{ marginTop: 6, color: C.danger, fontSize: 10 }}>{discoveryError}</p>
-            )}
-          </div>
-
           <h2 style={{ margin: '0 0 13px', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>Client Profile</h2>
           <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 12 }}>
+            <div className="col-span-full">
+              <Field label="Website" value={clientForm.website} placeholder="https://joesroofing.com" onChange={(v) => updateClientForm({ ...clientForm, website: v })} full />
+              <button
+                type="button"
+                onClick={() => discoverAssets(clientForm.website)}
+                disabled={!clientForm.website || discoveryStatus === 'discovering'}
+                className="mt-2 rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
+                style={{
+                  minHeight: 42,
+                  padding: '0 19px',
+                  border: `1px solid ${C.cyan}`,
+                  background: C.cyan,
+                  color: '#041014',
+                }}
+              >
+                {discoveryStatus === 'discovering' ? 'Discovering...' : 'Find Business Assets'}
+              </button>
+              <p style={{ marginTop: 6, color: C.muted, fontSize: 10, lineHeight: 1.5 }}>
+                Find useful people, logos, products, services and brand images from this website.
+              </p>
+              {discoveryError && (
+                <p style={{ marginTop: 6, color: C.danger, fontSize: 10 }}>{discoveryError}</p>
+              )}
+            </div>
             <div className="col-span-full">
               <label style={{ display: 'block', marginBottom: 6, color: C.muted, fontSize: 10 }}>Select Existing Client</label>
               <div className="flex gap-2">
