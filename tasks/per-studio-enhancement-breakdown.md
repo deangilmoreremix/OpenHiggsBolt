@@ -932,8 +932,8 @@ For each studio, verify:
 - `packages/studio/src/lib/skillStore.js`
 - `packages/studio/src/skills/registry.json`
 - `packages/studio/src/storyboardHandoff.js`
-- `packages/studio/src/thumbnail-map.js`
-- `packages/studio/src/thumbnail-map.json`
+- `packages/studio/src/thumbnail-map.js` (removed — dead code, never imported)
+- `packages/studio/src/thumbnail-map.json` (removed — unused, inconsistent with active rewrite)
 - `packages/studio/src/videoAdvancedControls.js`
 - `packages/studio/src/videoAdvancedControls.test.js`
 - `packages/studio/src/videoWorkflows.test.js`
