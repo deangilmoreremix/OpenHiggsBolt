@@ -273,3 +273,33 @@ export interface SharedMediaEntry {
   clientId?: string
   createdAt: string
 }
+
+// ── Discovered Assets ──────────────────────────────────────────────────────────
+// Temporary review state for website-scraped assets. These are NOT part of the
+// permanent AssetLibrary until the user explicitly clicks "Use Selected Assets".
+
+export type DiscoveredAssetCategory =
+  | 'person'
+  | 'logo'
+  | 'product'
+  | 'service'
+  | 'completed_work'
+  | 'storefront'
+  | 'office'
+  | 'branded_vehicle'
+  | 'team'
+  | 'brand'
+  | 'irrelevant'
+
+export interface DiscoveredAsset {
+  id: string
+  sourceUrl: string
+  previewUrl: string
+  category: DiscoveredAssetCategory
+  confidence?: number
+  qualityScore?: number
+  relevanceScore?: number
+  selected: boolean
+  recommended: boolean
+  rejected: boolean
+}

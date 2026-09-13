@@ -39,6 +39,8 @@ import type {
   GenerationResult,
   SharedMediaEntry,
   PersonalizationEligibility,
+  DiscoveredAsset,
+  DiscoveredAssetCategory,
 } from './types'
 import { EMPTY_GENERATION_STATE } from './types'
 import { normalizePersonalizationSource, getEligibility } from './sourceNormalizer'
@@ -163,6 +165,20 @@ type DemoPersonalizeContextValue = {
   setCtaGraphicUrl: (url: string) => void
   removeCtaGraphic: () => void
   retryAssetUpload: (id: string) => Promise<void>
+
+  // Discovered assets
+  discoveredAssets: DiscoveredAsset[]
+  discoveryStatus: 'idle' | 'discovering' | 'reviewing' | 'importing'
+  discoveryError: string | null
+  setDiscoveredAssets: (assets: DiscoveredAsset[]) => void
+  toggleDiscoveredAssetSelection: (id: string) => void
+  rejectDiscoveredAsset: (id: string) => void
+  restoreDiscoveredAsset: (id: string) => void
+  updateDiscoveredAssetCategory: (id: string, category: DiscoveredAssetCategory) => void
+  selectRecommendedDiscoveredAssets: () => void
+  importDiscoveredAssets: () => void
+  cancelDiscovery: () => void
+  discoverAssets: (websiteUrl: string) => Promise<void>
 
   // Prompt
   promptState: PromptState
@@ -299,6 +315,11 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
 
   // Assets
   const [assets, setAssets] = useState<AssetLibrary>({ ...EMPTY_ASSET_LIBRARY })
+
+  // Discovered assets (temporary review state — NOT part of permanent AssetLibrary)
+  const [discoveredAssets, setDiscoveredAssetsState] = useState<DiscoveredAsset[]>([])
+  const [discoveryStatus, setDiscoveryStatus] = useState<'idle' | 'discovering' | 'reviewing' | 'importing'>('idle')
+  const [discoveryError, setDiscoveryError] = useState<string | null>(null)
 
   // Prompt
   const [promptState, setPromptState] = useState<PromptState>({ ...EMPTY_PROMPT_STATE })
@@ -784,6 +805,125 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
     })
   }, [])
 
+  // ── Discovered assets actions ───────────────────────────────────────────────
+
+  const setDiscoveredAssets = useCallback((assets: DiscoveredAsset[]) => {
+    setDiscoveredAssetsState(assets)
+    setDiscoveryStatus('reviewing')
+    setDiscoveryError(null)
+  }, [])
+
+  const toggleDiscoveredAssetSelection = useCallback((id: string) => {
+    setDiscoveredAssetsState((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, selected: !a.selected } : a)),
+    )
+  }, [])
+
+  const rejectDiscoveredAsset = useCallback((id: string) => {
+    setDiscoveredAssetsState((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, rejected: true, selected: false } : a)),
+    )
+  }, [])
+
+  const restoreDiscoveredAsset = useCallback((id: string) => {
+    setDiscoveredAssetsState((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, rejected: false } : a)),
+    )
+  }, [])
+
+  const updateDiscoveredAssetCategory = useCallback((id: string, category: DiscoveredAssetCategory) => {
+    setDiscoveredAssetsState((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, category } : a)),
+    )
+  }, [])
+
+  const selectRecommendedDiscoveredAssets = useCallback(() => {
+    setDiscoveredAssetsState((prev) =>
+      prev.map((a) => ({ ...a, selected: a.recommended })),
+    )
+  }, [])
+
+  const importDiscoveredAssets = useCallback(() => {
+    setDiscoveryStatus('importing')
+    setDiscoveryError(null)
+
+    const toImport = discoveredAssets.filter((a) => a.selected && !a.rejected)
+    if (toImport.length === 0) {
+      setDiscoveryStatus('reviewing')
+      return
+    }
+
+    const roleMap: Record<string, PersonalizationAsset['role']> = {
+      person: 'presenter_identity',
+      logo: 'logo',
+      product: 'product_reference',
+      service: 'product_reference',
+      completed_work: 'product_reference',
+      storefront: 'brand_reference',
+      office: 'brand_reference',
+      branded_vehicle: 'brand_reference',
+      team: 'brand_reference',
+      brand: 'brand_reference',
+    }
+
+    setAssets((prev) => {
+      let next = { ...prev }
+
+      for (const item of toImport) {
+        const role = roleMap[item.category]
+        if (!role) continue
+
+        const isFirstOfRole =
+          role === 'presenter_identity' ? next.identities.length === 0 :
+          role === 'logo' ? next.logos.length === 0 :
+          false
+
+        const newAsset: PersonalizationAsset = {
+          id: `discovered_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          role,
+          name: item.previewUrl.split('/').pop() || 'discovered',
+          url: item.previewUrl,
+          uploadedUrl: item.previewUrl,
+          isPrimary: isFirstOfRole,
+          mimeType: '',
+          createdAt: new Date().toISOString(),
+          uploadStatus: 'ready',
+          uploadError: null,
+          file: null,
+        }
+
+        next = updateAssetInLibrary(next, newAsset)
+      }
+
+      return next
+    })
+
+    setDiscoveredAssetsState([])
+    setDiscoveryStatus('idle')
+  }, [discoveredAssets, setAssets])
+
+  const cancelDiscovery = useCallback(() => {
+    setDiscoveredAssetsState([])
+    setDiscoveryStatus('idle')
+    setDiscoveryError(null)
+  }, [])
+
+  const discoverAssets = useCallback(async (websiteUrl: string) => {
+    setDiscoveryError(null)
+    setDiscoveryStatus('discovering')
+
+    try {
+      // TODO: Replace with actual discovery API call when backend exists.
+      // The UI/state architecture is ready for the real implementation.
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      setDiscoveryStatus('idle')
+      setDiscoveryError('Asset discovery is not yet connected to a backend. The UI and state architecture are ready.')
+    } catch (error) {
+      setDiscoveryError(error instanceof Error ? error.message : 'Discovery failed')
+      setDiscoveryStatus('idle')
+    }
+  }, [])
+
   // ── Prompt actions ─────────────────────────────────────────────────────────
 
   const personalizePromptFn = useCallback(async () => {
@@ -1170,6 +1310,20 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
     setCtaGraphicUrl,
     removeCtaGraphic,
     retryAssetUpload,
+
+    // Discovered assets
+    discoveredAssets,
+    discoveryStatus,
+    discoveryError,
+    setDiscoveredAssets,
+    toggleDiscoveredAssetSelection,
+    rejectDiscoveredAsset,
+    restoreDiscoveredAsset,
+    updateDiscoveredAssetCategory,
+    selectRecommendedDiscoveredAssets,
+    importDiscoveredAssets,
+    cancelDiscovery,
+    discoverAssets,
 
     // Prompt
     promptState,

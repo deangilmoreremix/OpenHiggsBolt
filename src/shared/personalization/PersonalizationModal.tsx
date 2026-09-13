@@ -42,7 +42,7 @@ import {
   Share2,
 } from 'lucide-react'
 import { useDemoPersonalize } from './DemoPersonalizeProvider'
-import type { PersonalizationAsset } from './types'
+import type { PersonalizationAsset, DiscoveredAsset, DiscoveredAssetCategory } from './types'
 import { resolveModelCapabilities, FACE_SWAP_MODEL, FULL_BODY_MODEL, DEFAULT_T2V_MODEL, DEFAULT_I2I_MODEL } from './modelCapabilityResolver'
 import { getModelById, getVideoModelById } from '@/packages/studio/src/models.js'
 import { NICHE_CONTENT } from '@/data/nicheContent'
@@ -368,6 +368,90 @@ function ThumbUploaded({
   )
 }
 
+/** Thumbnail for a discovered asset in the review area. */
+function DiscoveredAssetThumb({
+  asset,
+  onToggle,
+  onRemove,
+  onCategoryChange,
+}: {
+  asset: DiscoveredAsset
+  onToggle: () => void
+  onRemove: () => void
+  onCategoryChange: (cat: DiscoveredAssetCategory) => void
+}) {
+  const categories: DiscoveredAssetCategory[] = [
+    'person',
+    'logo',
+    'product',
+    'service',
+    'completed_work',
+    'storefront',
+    'office',
+    'branded_vehicle',
+    'team',
+    'brand',
+    'irrelevant',
+  ]
+
+  return (
+    <div
+      className="relative w-[82px] min-h-[86px] rounded-[9px] border overflow-hidden"
+      style={{
+        borderColor: asset.selected ? C.cyanBorder : asset.rejected ? 'rgba(239,91,103,.4)' : C.border,
+        background: asset.rejected ? 'rgba(239,91,103,.08)' : 'linear-gradient(145deg, #3b4652, #151a20)',
+        opacity: asset.rejected ? 0.5 : 1,
+      }}
+    >
+      {asset.previewUrl ? (
+        <img src={asset.previewUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+      ) : null}
+      <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,.7), transparent 60%)' }} />
+      {/* Select checkbox */}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onToggle() }}
+        className="absolute top-1 left-1 z-10 rounded-full w-4 h-4 flex items-center justify-center"
+        style={{
+          border: `2px solid ${asset.selected ? C.cyan : 'rgba(255,255,255,.5)'}`,
+          background: asset.selected ? C.cyan : 'transparent',
+        }}
+        aria-label={asset.selected ? 'Deselect' : 'Select'}
+      >
+        {asset.selected && <span style={{ fontSize: 8, color: '#041014', fontWeight: 900 }}>✓</span>}
+      </button>
+      {/* Remove button */}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onRemove() }}
+        className="absolute top-1 right-1 z-10 rounded-full p-0.5"
+        style={{ background: 'rgba(239,91,103,.85)' }}
+        aria-label="Remove"
+      >
+        <X size={8} className="text-white" />
+      </button>
+      {/* Category selector */}
+      <select
+        value={asset.category}
+        onChange={(e) => onCategoryChange(e.target.value as DiscoveredAssetCategory)}
+        onClick={(e) => e.stopPropagation()}
+        className="absolute bottom-1 left-1 right-1 z-10 text-[7px] font-bold rounded px-0.5 py-0.5"
+        style={{
+          background: 'rgba(0,0,0,.6)',
+          color: 'white',
+          border: '1px solid rgba(255,255,255,.2)',
+          fontSize: 7,
+        }}
+        aria-label="Change category"
+      >
+        {categories.map((c) => (
+          <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
 // ── Modal ────────────────────────────────────────────────────────────────────
 
 export default function PersonalizationModal() {
@@ -410,6 +494,18 @@ export default function PersonalizationModal() {
     setCtaGraphicUrl,
     removeCtaGraphic,
     retryAssetUpload,
+    discoveredAssets,
+    discoveryStatus,
+    discoveryError,
+    setDiscoveredAssets,
+    toggleDiscoveredAssetSelection,
+    rejectDiscoveredAsset,
+    restoreDiscoveredAsset,
+    updateDiscoveredAssetCategory,
+    selectRecommendedDiscoveredAssets,
+    importDiscoveredAssets,
+    cancelDiscovery,
+    discoverAssets,
     promptState,
     updatePersonalizedPrompt,
     resetPrompt,
@@ -580,6 +676,8 @@ export default function PersonalizationModal() {
   const handleCtaUrl = useCallback((url: string) => {
     setCtaGraphicUrl(url)
   }, [setCtaGraphicUrl])
+
+  // ── Discovery actions ──────────────────────────────────────────────────────
 
   // ── Prompt actions ───────────────────────────────────────────────────────
 
@@ -789,8 +887,20 @@ export default function PersonalizationModal() {
                recommendedModelId={recommendedModelId}
                recommendedModel={recommendedModel}
                currentModel={currentModel}
-               isUsingRecommendedModel={isUsingRecommendedModel}
-             />
+                isUsingRecommendedModel={isUsingRecommendedModel}
+                discoveredAssets={discoveredAssets}
+                discoveryStatus={discoveryStatus}
+                discoveryError={discoveryError}
+                setDiscoveredAssets={setDiscoveredAssets}
+                toggleDiscoveredAssetSelection={toggleDiscoveredAssetSelection}
+                rejectDiscoveredAsset={rejectDiscoveredAsset}
+                restoreDiscoveredAsset={restoreDiscoveredAsset}
+                updateDiscoveredAssetCategory={updateDiscoveredAssetCategory}
+                selectRecommendedDiscoveredAssets={selectRecommendedDiscoveredAssets}
+              importDiscoveredAssets={importDiscoveredAssets}
+              cancelDiscovery={cancelDiscovery}
+              discoverAssets={discoverAssets}
+            />
           )}
         </main>
 
@@ -1060,6 +1170,19 @@ function ConfigurationView(props: any) {
     showModes, eligibleModes, mode, setMode,
     showAdvanced, setShowAdvanced, genOptions, updateGenOptions,
     effectiveModelId, recommendedModelId, recommendedModel, currentModel, isUsingRecommendedModel,
+    // Discovered assets
+    discoveredAssets,
+    discoveryStatus,
+    discoveryError,
+    setDiscoveredAssets,
+    toggleDiscoveredAssetSelection,
+    rejectDiscoveredAsset,
+    restoreDiscoveredAsset,
+    updateDiscoveredAssetCategory,
+    selectRecommendedDiscoveredAssets,
+    importDiscoveredAssets,
+    cancelDiscovery,
+    discoverAssets,
   } = props
 
   return (
@@ -1142,6 +1265,32 @@ function ConfigurationView(props: any) {
             ))}
           </div>
 
+          <h2 style={{ margin: '0 0 13px', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>Find Business Assets</h2>
+          <div style={{ marginBottom: 18 }}>
+            <Field label="Website" value={clientForm.website} placeholder="https://joesroofing.com" onChange={(v) => updateClientForm({ ...clientForm, website: v })} full />
+            <button
+              type="button"
+              onClick={() => discoverAssets(clientForm.website)}
+              disabled={!clientForm.website || discoveryStatus === 'discovering'}
+              className="mt-2 rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
+              style={{
+                minHeight: 42,
+                padding: '0 19px',
+                border: `1px solid ${C.cyan}`,
+                background: C.cyan,
+                color: '#041014',
+              }}
+            >
+              {discoveryStatus === 'discovering' ? 'Discovering...' : 'Find Business Assets'}
+            </button>
+            <p style={{ marginTop: 6, color: C.muted, fontSize: 10, lineHeight: 1.5 }}>
+              Find useful people, logos, products, services and brand images from this website.
+            </p>
+            {discoveryError && (
+              <p style={{ marginTop: 6, color: C.danger, fontSize: 10 }}>{discoveryError}</p>
+            )}
+          </div>
+
           <h2 style={{ margin: '0 0 13px', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>Client Profile</h2>
           <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 12 }}>
             <div className="col-span-full">
@@ -1177,7 +1326,6 @@ function ConfigurationView(props: any) {
             <Field label="Industry" value={clientForm.industry} placeholder="Roofing" onChange={(v) => updateClientForm({ ...clientForm, industry: v })} />
             <Field label="Location" value={clientForm.location} placeholder="Tampa, Florida" onChange={(v) => updateClientForm({ ...clientForm, location: v })} />
             <Field label="Phone" value={clientForm.phone} placeholder="555-555-5555" onChange={(v) => updateClientForm({ ...clientForm, phone: v })} />
-            <Field label="Website" value={clientForm.website} placeholder="abcroofing.com" onChange={(v) => updateClientForm({ ...clientForm, website: v })} full />
             <div className="col-span-full flex gap-2">
               <button
                 onClick={saveClient}
@@ -1199,6 +1347,84 @@ function ConfigurationView(props: any) {
           </div>
         </div>
       </section>
+
+      {/* ── DISCOVERED ASSETS REVIEW ────────────────────────────────── */}
+      {discoveryStatus === 'reviewing' && discoveredAssets.length > 0 && (
+        <section style={{ padding: '26px 0', borderBottom: `1px solid ${C.border}` }}>
+          <div className="flex items-center justify-between flex-wrap gap-3" style={{ marginBottom: 16 }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>Discovered Assets</h2>
+              <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 11 }}>
+                Found {discoveredAssets.filter((a) => !a.rejected).length} potential assets — {discoveredAssets.filter((a) => a.selected && !a.rejected).length} selected
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={selectRecommendedDiscoveredAssets}
+                className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide"
+                style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.border}`, background: C.panel, color: 'white' }}
+              >
+                Select Recommended
+              </button>
+              <button
+                type="button"
+                onClick={importDiscoveredAssets}
+                disabled={discoveredAssets.filter((a) => a.selected && !a.rejected).length === 0}
+                className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
+                style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.cyan}`, background: C.cyan, color: '#041014' }}
+              >
+                Use Selected Assets
+              </button>
+              <button
+                type="button"
+                onClick={cancelDiscovery}
+                className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide"
+                style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.border}`, background: C.panel, color: 'white' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+
+          {(['person', 'logo', 'product', 'service', 'completed_work', 'storefront', 'office', 'branded_vehicle', 'team', 'brand', 'irrelevant'] as const).map((cat) => {
+            const items = discoveredAssets.filter((a) => a.category === cat && !a.rejected)
+            if (items.length === 0) return null
+            const catLabel = cat.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
+            return (
+              <div key={cat} style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>
+                  {catLabel} ({items.length})
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {items.map((asset) => (
+                    <DiscoveredAssetThumb
+                      key={asset.id}
+                      asset={asset}
+                      onToggle={() => toggleDiscoveredAssetSelection(asset.id)}
+                      onRemove={() => rejectDiscoveredAsset(asset.id)}
+                      onCategoryChange={(newCat) => updateDiscoveredAssetCategory(asset.id, newCat)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+
+          {discoveredAssets.some((a) => a.rejected) && (
+            <div style={{ marginTop: 12, fontSize: 10, color: C.muted2 }}>
+              {discoveredAssets.filter((a) => a.rejected).length} removed —{' '}
+              <button
+                type="button"
+                onClick={() => setDiscoveredAssets((prev) => prev.map((a) => ({ ...a, rejected: false })))}
+                style={{ color: C.cyan, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 10 }}
+              >
+                Restore all removed
+              </button>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* ── CLIENT ASSETS (full width, 6 numbered cards) ──────────── */}
       <section style={{ padding: '26px 0', borderBottom: `1px solid ${C.border}` }}>
@@ -1453,7 +1679,6 @@ function ConfigurationView(props: any) {
           <Field label="CTA Headline" value={clientForm.ctaHeadline} placeholder="Protect Your Home Today" onChange={(v) => updateClientForm({ ...clientForm, ctaHeadline: v })} />
           <Field label="Button / Action" value={clientForm.callToAction} placeholder="Book Your Inspection" onChange={(v) => updateClientForm({ ...clientForm, callToAction: v })} />
           <Field label="Phone" value={clientForm.phone} placeholder="555-555-5555" onChange={(v) => updateClientForm({ ...clientForm, phone: v })} />
-          <Field label="Website" value={clientForm.website} placeholder="abcroofing.com" onChange={(v) => updateClientForm({ ...clientForm, website: v })} />
         </div>
         <div style={{ marginTop: 14 }}>
           <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>CTA Graphic</div>
