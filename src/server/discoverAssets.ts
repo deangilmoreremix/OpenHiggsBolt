@@ -51,6 +51,7 @@ interface DiscoveryOptions {
   maxPages?: number
   maxImages?: number
   maxImageBytes?: number
+  openAiKey?: string
 }
 
 interface ImageCandidate {
@@ -284,7 +285,7 @@ function extractImages(baseUrl: string, html: string, pageUrl: string): ImageCan
 // Image validation
 // ---------------------------------------------------------------------------
 
-async function validateImage(url: string): Promise<{ valid: boolean; mime?: string; width?: number; height?: number }> {
+async function validateImage(url: string): Promise<{ valid: boolean; mime?: string }> {
   try {
     const response = await axios.head(url, {
       timeout: REQUEST_TIMEOUT,
@@ -293,22 +294,62 @@ async function validateImage(url: string): Promise<{ valid: boolean; mime?: stri
       validateStatus: (s) => s >= 200 && s < 300,
     })
     const contentType = String(response.headers['content-type'] || '')
+    console.log(`[validateImage] ${url} -> status=${response.status} type=${contentType}`)
     if (!contentType.startsWith('image/')) {
       return { valid: false }
     }
     return { valid: true, mime: contentType }
-  } catch {
+  } catch (err) {
+    console.log(`[validateImage] ${url} -> error: ${err instanceof Error ? err.message : err}`)
     return { valid: false }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Heuristic fallback classification (no OpenAI required)
+// ---------------------------------------------------------------------------
+
+function heuristicFallback(url: string): { category: DiscoveredAssetCategory; confidence: number; recommended: boolean } {
+  const lower = url.toLowerCase()
+
+  const rules: Array<{ keywords: string[]; category: DiscoveredAssetCategory; confidence: number }> = [
+    { keywords: ['/logo', '/logos', '-logo.', '_logo.', '/brand/'], category: 'logo', confidence: 70 },
+    { keywords: ['/team', '/staff', '/people', '/about-us', '/our-team'], category: 'team', confidence: 65 },
+    { keywords: ['/product', '/products', '/shop', '/menu', '/catalog'], category: 'product', confidence: 65 },
+    { keywords: ['/store', '/location', '/locations', '/find-us'], category: 'storefront', confidence: 60 },
+    { keywords: ['/office', '/interior', '/showroom'], category: 'office', confidence: 60 },
+    { keywords: ['/vehicle', '/truck', '/van', '/fleet'], category: 'branded_vehicle', confidence: 60 },
+    { keywords: ['/project', '/projects', '/gallery', '/portfolio', '/completed'], category: 'completed_work', confidence: 60 },
+    { keywords: ['/service', '/services', '/what-we-do'], category: 'service', confidence: 55 },
+    { keywords: ['headshot', 'portrait', 'face', 'avatar'], category: 'person', confidence: 60 },
+    { keywords: ['favicon', 'icon', 'sprite', 'pixel', '1x1', 'tracking', 'beacon'], category: 'irrelevant', confidence: 80 },
+  ]
+
+  for (const rule of rules) {
+    if (rule.keywords.some((kw) => lower.includes(kw))) {
+      return { category: rule.category, confidence: rule.confidence, recommended: rule.category !== 'irrelevant' }
+    }
+  }
+
+  return { category: 'brand', confidence: 40, recommended: true }
 }
 
 // ---------------------------------------------------------------------------
 // OpenAI classification
 // ---------------------------------------------------------------------------
 
-async function classifyImage(url: string): Promise<{ category: DiscoveredAssetCategory; confidence: number; recommended: boolean } | null> {
+async function classifyImage(
+  url: string,
+  openAiKey?: string,
+): Promise<{ category: DiscoveredAssetCategory; confidence: number; recommended: boolean } | null> {
   try {
-    const openai = new OpenAI()
+    const hasKey = Boolean(openAiKey || process.env.OPENAI_API_KEY)
+
+    if (!hasKey) {
+      return heuristicFallback(url)
+    }
+
+    const openai = new OpenAI({ apiKey: openAiKey || undefined })
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
@@ -347,8 +388,12 @@ Categories:
     })
 
     const text = response.choices[0]?.message?.content?.trim() || ''
+    console.log(`[classify] ${url} -> response: ${text.substring(0, 200)}`)
     const jsonMatch = text.match(/\{.*\}/)
-    if (!jsonMatch) return null
+    if (!jsonMatch) {
+      console.log(`[classify] ${url} -> no JSON found`)
+      return null
+    }
 
     const parsed = JSON.parse(jsonMatch[0])
     const category = parsed.category as DiscoveredAssetCategory
@@ -361,11 +406,14 @@ Categories:
         'storefront', 'office', 'branded_vehicle', 'team', 'brand', 'irrelevant',
       ].includes(category)
     ) {
+      console.log(`[classify] ${url} -> invalid category: ${category}`)
       return null
     }
 
+    console.log(`[classify] ${url} -> ${category} (${confidence}%) recommended=${recommended}`)
     return { category, confidence, recommended }
-  } catch {
+  } catch (err) {
+    console.log(`[classify] ${url} -> error: ${err instanceof Error ? err.message : err}`)
     return null
   }
 }
@@ -375,7 +423,7 @@ Categories:
 // ---------------------------------------------------------------------------
 
 export async function discoverBusinessAssets(options: DiscoveryOptions): Promise<DiscoveredAsset[]> {
-  const { websiteUrl, maxPages = MAX_PAGES, maxImages = MAX_IMAGES, maxImageBytes = MAX_IMAGE_BYTES } = options
+  const { websiteUrl, maxPages = MAX_PAGES, maxImages = MAX_IMAGES, maxImageBytes = MAX_IMAGE_BYTES, openAiKey } = options
 
   const baseUrl = sanitizeUrl(websiteUrl)
   const base = new URL(baseUrl)
@@ -407,21 +455,31 @@ export async function discoverBusinessAssets(options: DiscoveryOptions): Promise
 
   // 4. Deduplicate by URL
   const uniqueCandidates = Array.from(new Map(allCandidates.map((c) => [c.url, c])).values())
+  console.log(`[discovery] unique candidates: ${uniqueCandidates.length}`)
 
   // 5. Filter out junk and validate images
   const validCandidates: ImageCandidate[] = []
   for (const candidate of uniqueCandidates) {
-    if (allCandidates.length >= maxImages) break
+    if (validCandidates.length >= maxImages) break
     const validation = await validateImage(candidate.url)
-    if (!validation.valid) continue
+    if (!validation.valid) {
+      console.log(`[validateImage] ${candidate.url} -> rejected`)
+      continue
+    }
+    console.log(`[validateImage] ${candidate.url} -> valid (${validation.mime})`)
     validCandidates.push(candidate)
   }
+  console.log(`[discovery] valid candidates: ${validCandidates.length}`)
 
   // 6. Classify each image
   const results: DiscoveredAsset[] = []
   for (const candidate of validCandidates) {
-    const classification = await classifyImage(candidate.url)
-    if (!classification) continue
+    const classification = await classifyImage(candidate.url, openAiKey)
+    if (!classification) {
+      console.log(`[discovery] rejected by classifier: ${candidate.url}`)
+      continue
+    }
+    console.log(`[discovery] classified: ${candidate.url} -> ${classification.category} (${classification.confidence}%)`)
 
     results.push({
       id: `disc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -437,5 +495,6 @@ export async function discoverBusinessAssets(options: DiscoveryOptions): Promise
     })
   }
 
+  console.log(`[discovery] final results: ${results.length}`)
   return results
 }
