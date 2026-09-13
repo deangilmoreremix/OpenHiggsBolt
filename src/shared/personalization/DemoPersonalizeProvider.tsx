@@ -989,16 +989,31 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
       }
 
       const data = await res.json()
-      const assets = Array.isArray(data?.discoveredAssets) ? data.discoveredAssets : []
+      const candidates = Array.isArray(data?.candidates) ? data.candidates : []
+      const providerUsed = typeof data?.providerUsed === 'string' ? data.providerUsed : 'UNKNOWN'
 
-      if (assets.length === 0) {
+      if (candidates.length === 0) {
         setDiscoveryError('No useful assets were found on that website.')
         setDiscoveryStatus('idle')
         return
       }
 
-      setDiscoveredAssetsState(assets)
+      const discoveredAssets: DiscoveredAsset[] = candidates.map((candidate: any, index: number) => ({
+        id: `disc_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 6)}`,
+        sourceUrl: candidate.url || candidate.sourceUrl,
+        previewUrl: candidate.url || candidate.previewUrl,
+        category: candidate.category || 'brand',
+        confidence: candidate.confidence ?? 50,
+        qualityScore: candidate.qualityScore ?? candidate.confidence ?? 50,
+        relevanceScore: candidate.relevanceScore ?? candidate.confidence ?? 50,
+        selected: candidate.recommended ?? false,
+        recommended: candidate.recommended ?? false,
+        rejected: false,
+      }))
+
+      setDiscoveredAssetsState(discoveredAssets)
       setDiscoveryStatus('reviewing')
+      console.log(`[discovery] completed via ${providerUsed}: ${discoveredAssets.length} assets`)
     } catch (error) {
       setDiscoveryError(error instanceof Error ? error.message : 'Discovery failed')
       setDiscoveryStatus('idle')

@@ -15,6 +15,7 @@
 import axios from 'axios'
 import { JSDOM } from 'jsdom'
 import OpenAI from 'openai'
+import { getBusinessAssetClassificationModel } from './discoveryClassificationConfig'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,6 +53,8 @@ interface DiscoveryOptions {
   maxImages?: number
   maxImageBytes?: number
   openAiKey?: string
+  openAiModel?: string
+  enableBrowserFallback?: boolean
 }
 
 interface ImageCandidate {
@@ -82,10 +85,6 @@ const JUNK_PATH_FRAGMENTS = [
   '1x1', 'spacer', 'loader', 'spinner', 'placeholder', 'blank',
 ]
 
-const JUNK_EXTENSIONS = [
-  '.svg', '.gif', '.webp', // often icons/UI
-]
-
 const SOCIAL_DOMAINS = [
   'facebook.com', 'twitter.com', 'x.com', 'instagram.com', 'linkedin.com',
   'youtube.com', 'tiktok.com', 'pinterest.com', 'yelp.com', 'google.com',
@@ -108,6 +107,12 @@ function isPrivateIp(hostname: string): boolean {
 
 function sanitizeUrl(input: string): string {
   let trimmed = input.trim()
+
+  // Reject non-HTTP/HTTPS protocols before URL parsing
+  if (/^[a-z][a-z0-9+.-]*:\//i.test(trimmed) && !/^https?:\/\//i.test(trimmed)) {
+    throw new Error('Only http/https protocols are allowed')
+  }
+
   if (!/^https?:\/\//i.test(trimmed)) {
     trimmed = 'https://' + trimmed
   }
@@ -124,6 +129,8 @@ function sanitizeUrl(input: string): string {
 
   return url.toString()
 }
+
+export { sanitizeUrl }
 
 // ---------------------------------------------------------------------------
 // Page fetching
@@ -178,8 +185,7 @@ function extractInternalLinks(baseUrl: string, html: string): string[] {
   return Array.from(links)
 }
 
-function selectPriorityPages(baseUrl: string, links: string[]): string[] {
-  const base = new URL(baseUrl)
+function selectPriorityPages(_baseUrl: string, links: string[]): string[] {
   const scored = links.map((link) => {
     const url = new URL(link)
     const path = url.pathname.toLowerCase()
@@ -229,12 +235,12 @@ function extractImages(baseUrl: string, html: string, pageUrl: string): ImageCan
 
   const add = (rawUrl: string, altText?: string, ogContext?: string) => {
     if (!rawUrl || rawUrl.startsWith('data:')) return
+    let absolute: string
     try {
-      const absolute = new URL(rawUrl, baseUrl).toString()
+      absolute = new URL(rawUrl, baseUrl).toString()
     } catch {
       return
     }
-    const absolute = new URL(rawUrl, baseUrl).toString()
     if (seen.has(absolute)) return
     if (isLikelyJunk(absolute)) return
     seen.add(absolute)
@@ -285,14 +291,19 @@ function extractImages(baseUrl: string, html: string, pageUrl: string): ImageCan
 // Image validation
 // ---------------------------------------------------------------------------
 
-async function validateImage(url: string): Promise<{ valid: boolean; mime?: string }> {
+export async function validateImage(url: string): Promise<{ valid: boolean; mime?: string }> {
   try {
     const response = await axios.head(url, {
       timeout: REQUEST_TIMEOUT,
       maxRedirects: REDIRECT_LIMIT,
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AssetDiscovery/1.0)' },
-      validateStatus: (s) => s >= 200 && s < 300,
+      validateStatus: (s) => s >= 200 && s < 500,
     })
+
+    if (response.status < 200 || response.status >= 300) {
+      return fallbackBoundedGetValidation(url)
+    }
+
     const contentType = String(response.headers['content-type'] || '')
     console.log(`[validateImage] ${url} -> status=${response.status} type=${contentType}`)
     if (!contentType.startsWith('image/')) {
@@ -300,7 +311,35 @@ async function validateImage(url: string): Promise<{ valid: boolean; mime?: stri
     }
     return { valid: true, mime: contentType }
   } catch (err) {
+    const axiosError = err as unknown as { response?: { status?: number } }
+    if (axiosError?.response?.status) {
+      console.log(`[validateImage] ${url} -> error status=${axiosError.response.status}`)
+      return fallbackBoundedGetValidation(url)
+    }
     console.log(`[validateImage] ${url} -> error: ${err instanceof Error ? err.message : err}`)
+    return { valid: false }
+  }
+}
+
+async function fallbackBoundedGetValidation(url: string): Promise<{ valid: boolean; mime?: string }> {
+  try {
+    const response = await axios.get(url, {
+      timeout: REQUEST_TIMEOUT,
+      maxRedirects: REDIRECT_LIMIT,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AssetDiscovery/1.0)' },
+      responseType: 'arraybuffer',
+      maxContentLength: MAX_IMAGE_BYTES,
+      validateStatus: (s) => s >= 200 && s < 300,
+    })
+
+    const contentType = String(response.headers['content-type'] || '')
+    console.log(`[validateImage:fallback] ${url} -> status=${response.status} type=${contentType}`)
+    if (!contentType.startsWith('image/')) {
+      return { valid: false }
+    }
+    return { valid: true, mime: contentType }
+  } catch (err) {
+    console.log(`[validateImage:fallback] ${url} -> error: ${err instanceof Error ? err.message : err}`)
     return { valid: false }
   }
 }
@@ -341,6 +380,7 @@ function heuristicFallback(url: string): { category: DiscoveredAssetCategory; co
 async function classifyImage(
   url: string,
   openAiKey?: string,
+  model = getBusinessAssetClassificationModel(),
 ): Promise<{ category: DiscoveredAssetCategory; confidence: number; recommended: boolean } | null> {
   try {
     const hasKey = Boolean(openAiKey || process.env.OPENAI_API_KEY)
@@ -351,7 +391,7 @@ async function classifyImage(
 
     const openai = new OpenAI({ apiKey: openAiKey || undefined })
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model,
       messages: [
         {
           role: 'user',
@@ -423,10 +463,15 @@ Categories:
 // ---------------------------------------------------------------------------
 
 export async function discoverBusinessAssets(options: DiscoveryOptions): Promise<DiscoveredAsset[]> {
-  const { websiteUrl, maxPages = MAX_PAGES, maxImages = MAX_IMAGES, maxImageBytes = MAX_IMAGE_BYTES, openAiKey } = options
+  const {
+    websiteUrl,
+    maxPages = MAX_PAGES,
+    maxImages = MAX_IMAGES,
+    openAiKey,
+    openAiModel = 'gpt-4o-mini',
+  } = options
 
   const baseUrl = sanitizeUrl(websiteUrl)
-  const base = new URL(baseUrl)
 
   // 1. Fetch homepage
   const homeHtml = await fetchPage(baseUrl)
@@ -471,10 +516,10 @@ export async function discoverBusinessAssets(options: DiscoveryOptions): Promise
   }
   console.log(`[discovery] valid candidates: ${validCandidates.length}`)
 
-  // 6. Classify each image
+  // 8. Classify each image
   const results: DiscoveredAsset[] = []
   for (const candidate of validCandidates) {
-    const classification = await classifyImage(candidate.url, openAiKey)
+    const classification = await classifyImage(candidate.url, openAiKey, openAiModel)
     if (!classification) {
       console.log(`[discovery] rejected by classifier: ${candidate.url}`)
       continue
@@ -495,6 +540,8 @@ export async function discoverBusinessAssets(options: DiscoveryOptions): Promise
     })
   }
 
-  console.log(`[discovery] final results: ${results.length}`)
+  const discoveryMode = 'STATIC_ONLY'
+  console.log(`[discovery] mode=${discoveryMode} staticCandidates=${uniqueCandidates.length} validated=${validCandidates.length} classified=${results.length} final=${results.length}`)
+
   return results
 }

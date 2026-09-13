@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { screen } from '@testing-library/react'
@@ -65,17 +65,20 @@ function TestOpener({ source, onMounted }: { source: any; onMounted: (open: (opt
 
 describe('Discovered Assets Integration', () => {
   let mockUploadFile: any
+  let originalFetch: typeof globalThis.fetch
+  let originalCreateObjectURL: typeof URL.createObjectURL
+  let originalRevokeObjectURL: typeof URL.revokeObjectURL
 
   beforeEach(async () => {
     vi.clearAllMocks()
-    // NOTE: intentionally omit vi.resetModules() so the top-level vi.mock('studio/src/muapi')
-    // factory and its configured mock state remain available across renders.
+    originalFetch = globalThis.fetch
+    originalCreateObjectURL = URL.createObjectURL
+    originalRevokeObjectURL = URL.revokeObjectURL
     URL.createObjectURL = vi.fn(() => 'blob:http://localhost/test')
     URL.revokeObjectURL = vi.fn()
     document.body.innerHTML = ''
 
     // Mock the download-image endpoint used by importDiscoveredAssets
-    const originalFetch = globalThis.fetch
     ;(globalThis as any).fetch = vi.fn(async (url: string, options?: any) => {
       if (typeof url === 'string' && url.includes('/api/personalization/download-image')) {
         const body = typeof options?.body === 'string' ? JSON.parse(options.body) : {}
@@ -104,13 +107,19 @@ describe('Discovered Assets Integration', () => {
     // Configure uploadFile mock to return a durable URL
     try {
       const mod = await import('studio/src/muapi')
-      const mockUploadFile = (mod as any)?.uploadFile
+      mockUploadFile = (mod as any)?.uploadFile
       if (mockUploadFile) {
         mockUploadFile.mockResolvedValue('https://uploaded.example.com/discovered.png')
       }
     } catch {
       // ignore if module cannot be imported in test env
     }
+  })
+
+  afterEach(() => {
+    ;(globalThis as any).fetch = originalFetch
+    URL.createObjectURL = originalCreateObjectURL
+    URL.revokeObjectURL = originalRevokeObjectURL
   })
 
   const renderProvider = async () => {
