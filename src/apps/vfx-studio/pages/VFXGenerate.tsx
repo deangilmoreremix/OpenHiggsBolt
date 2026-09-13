@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { useVideoGeneration } from '@/hooks/useVideoGeneration';
 import BottomInputBar from '@/apps/vfx-studio/components/BottomInputBar';
-import ApiKeyModal from '@/apps/vfx-studio/components/ApiKeyModal';
 import { readStoryboardHandoff, clearStoryboardHandoff } from '@/shared/crossStudio';
 import { PublishStep } from '@/components/SocialPublishProvider';
 import { AssistStep } from '@/components/AiAssistantProvider';
