@@ -176,7 +176,7 @@ type DemoPersonalizeContextValue = {
   restoreDiscoveredAsset: (id: string) => void
   updateDiscoveredAssetCategory: (id: string, category: DiscoveredAssetCategory) => void
   selectRecommendedDiscoveredAssets: () => void
-  importDiscoveredAssets: () => void
+  importDiscoveredAssets: () => Promise<void>
   cancelDiscovery: () => void
   discoverAssets: (websiteUrl: string) => Promise<void>
 
@@ -231,18 +231,35 @@ interface DemoPersonalizeProviderProps {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function createAsset(file: File, role: PersonalizationAsset['role'], opts: Partial<PersonalizationAsset> = {}): PersonalizationAsset {
+function dataUrlToBlob(dataUrl: string): Blob | null {
+  try {
+    const [header, base64] = dataUrl.split(',')
+    const mimeMatch = header.match(/:(.*?);/)
+    const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream'
+    const binary = atob(base64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i)
+    }
+    return new Blob([bytes], { type: mime })
+  } catch {
+    return null
+  }
+}
+
+function createAsset(file: File | Blob, role: PersonalizationAsset['role'], opts: Partial<PersonalizationAsset> = {}): PersonalizationAsset {
+  const fileObj = file as File
   return {
     id: `asset_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     role,
-    name: file.name,
+    name: fileObj.name || 'discovered',
     url: URL.createObjectURL(file),
     isPrimary: false,
-    mimeType: file.type,
+    mimeType: fileObj.type || '',
     createdAt: new Date().toISOString(),
     uploadStatus: 'local',
     uploadError: null,
-    file,
+    file: fileObj as File,
     ...opts,
   }
 }
@@ -843,7 +860,7 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
     )
   }, [])
 
-  const importDiscoveredAssets = useCallback(() => {
+  const importDiscoveredAssets = useCallback(async () => {
     setDiscoveryStatus('importing')
     setDiscoveryError(null)
 
@@ -866,41 +883,87 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
       brand: 'brand_reference',
     }
 
+    // 1. Download selected images server-side (SSRF-safe)
+    let downloadRes: Response
+    try {
+      downloadRes = await fetch('/api/personalization/download-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ urls: toImport.map((a) => a.previewUrl) }),
+        credentials: 'same-origin',
+      })
+    } catch (err) {
+      setDiscoveryError(err instanceof Error ? err.message : 'Failed to reach download service')
+      setDiscoveryStatus('reviewing')
+      return
+    }
+
+    if (!downloadRes.ok) {
+      const data = await downloadRes.json().catch(() => ({}))
+      setDiscoveryError(data?.error || `Download failed (HTTP ${downloadRes.status})`)
+      setDiscoveryStatus('reviewing')
+      return
+    }
+
+    const downloadData = await downloadRes.json()
+    const results = Array.isArray(downloadData?.results) ? downloadData.results : []
+
+    // 2. Build assets from downloaded blobs
+    const assetsToCreate: { item: DiscoveredAsset; blob: Blob; role: PersonalizationAsset['role']; isPrimary: boolean }[] = []
+
+    for (let i = 0; i < toImport.length; i++) {
+      const item = toImport[i]
+      const result = results[i]
+      if (!result?.ok || !result.dataUrl) continue
+
+      const role = roleMap[item.category]
+      if (!role) continue
+
+      const blob = dataUrlToBlob(result.dataUrl)
+      if (!blob) continue
+
+      const isPrimary =
+        role === 'presenter_identity' ? true :
+        role === 'logo' ? true :
+        false
+
+      assetsToCreate.push({ item, blob, role, isPrimary })
+    }
+
+    if (assetsToCreate.length === 0) {
+      setDiscoveryError('No valid images could be downloaded.')
+      setDiscoveryStatus('reviewing')
+      return
+    }
+
+    // 3. Add assets to library and upload each one
+    const createdAssets: PersonalizationAsset[] = []
+
     setAssets((prev) => {
       let next = { ...prev }
-
-      for (const item of toImport) {
-        const role = roleMap[item.category]
-        if (!role) continue
-
-        const isFirstOfRole =
-          role === 'presenter_identity' ? next.identities.length === 0 :
-          role === 'logo' ? next.logos.length === 0 :
-          false
-
-        const newAsset: PersonalizationAsset = {
-          id: `discovered_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-          role,
-          name: item.previewUrl.split('/').pop() || 'discovered',
-          url: item.previewUrl,
-          uploadedUrl: item.previewUrl,
-          isPrimary: isFirstOfRole,
-          mimeType: '',
-          createdAt: new Date().toISOString(),
-          uploadStatus: 'ready',
-          uploadError: null,
-          file: null,
-        }
-
-        next = updateAssetInLibrary(next, newAsset)
+      for (const { blob, role, isPrimary } of assetsToCreate) {
+        const asset = createAsset(blob, role, {
+          isPrimary,
+          name: `discovered_${Date.now()}`,
+        })
+        createdAssets.push(asset)
+        next = updateAssetInLibrary(next, asset)
       }
-
       return next
     })
 
+    // 4. Upload each asset to get durable URLs
+    for (const asset of createdAssets) {
+      try {
+        await uploadAsset(asset)
+      } catch (e) {
+        console.error('Discovered asset upload failed', asset.id, e)
+      }
+    }
+
     setDiscoveredAssetsState([])
     setDiscoveryStatus('idle')
-  }, [discoveredAssets, setAssets])
+  }, [discoveredAssets, setAssets, uploadAsset])
 
   const cancelDiscovery = useCallback(() => {
     setDiscoveredAssetsState([])
@@ -913,16 +976,34 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
     setDiscoveryStatus('discovering')
 
     try {
-      // TODO: Replace with actual discovery API call when backend exists.
-      // The UI/state architecture is ready for the real implementation.
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      setDiscoveryStatus('idle')
-      setDiscoveryError('Asset discovery is not yet connected to a backend. The UI and state architecture are ready.')
+      const res = await fetch('/api/personalization/discover-assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ websiteUrl }),
+        credentials: 'same-origin',
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error || `Discovery failed (HTTP ${res.status})`)
+      }
+
+      const data = await res.json()
+      const assets = Array.isArray(data?.discoveredAssets) ? data.discoveredAssets : []
+
+      if (assets.length === 0) {
+        setDiscoveryError('No useful assets were found on that website.')
+        setDiscoveryStatus('idle')
+        return
+      }
+
+      setDiscoveredAssetsState(assets)
+      setDiscoveryStatus('reviewing')
     } catch (error) {
       setDiscoveryError(error instanceof Error ? error.message : 'Discovery failed')
       setDiscoveryStatus('idle')
     }
-  }, [])
+  }, [setDiscoveredAssetsState, setDiscoveryError, setDiscoveryStatus])
 
   // ── Prompt actions ─────────────────────────────────────────────────────────
 
