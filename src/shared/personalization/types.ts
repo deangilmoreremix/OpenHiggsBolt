@@ -278,6 +278,18 @@ export interface SharedMediaEntry {
 // Temporary review state for website-scraped assets. These are NOT part of the
 // permanent AssetLibrary until the user explicitly clicks "Use Selected Assets".
 
+export type SourceType =
+  | 'WEBSITE'
+  | 'INSTAGRAM'
+  | 'FACEBOOK'
+  | 'LINKEDIN'
+  | 'TIKTOK'
+  | 'YOUTUBE'
+  | 'X'
+  | 'PINTEREST'
+  | 'PUBLIC_SEARCH'
+  | 'MANUAL_UPLOAD'
+
 export type DiscoveredAssetCategory =
   | 'person'
   | 'logo'
@@ -291,10 +303,22 @@ export type DiscoveredAssetCategory =
   | 'brand'
   | 'irrelevant'
 
+export type AssignedSection =
+  | 'person'
+  | 'logo'
+  | 'products'
+  | 'brand'
+  | 'firstFrame'
+  | 'lastFrame'
+  | 'ctaGraphic'
+  | null
+
 export interface DiscoveredAsset {
   id: string
   sourceUrl: string
   previewUrl: string
+  sourceType: SourceType
+  socialProfileUrl?: string
   category: DiscoveredAssetCategory
   confidence?: number
   qualityScore?: number
@@ -302,4 +326,6 @@ export interface DiscoveredAsset {
   selected: boolean
   recommended: boolean
   rejected: boolean
+  assignedSection: AssignedSection
+  autoAssigned: boolean
 }

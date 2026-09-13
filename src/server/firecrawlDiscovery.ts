@@ -6,12 +6,22 @@
  * download/upload/classification remain in the existing pipeline.
  */
 
-import type { ImageCandidate, DiscoveryResult } from './discoveryProvider'
+import type { ImageCandidate, DiscoveryResult, SocialProfileSource, SourceType } from './discoveryProvider'
 import { JSDOM } from 'jsdom'
 
 const FIRECRAWL_BASE_URL = 'https://api.firecrawl.dev/v2'
 const FIRECRAWL_CRAWL_LIMIT = 8
-const FIRECRAWL_CRAWL_MAX_DEPTH = 2
+
+const SOCIAL_DOMAINS: Record<string, SourceType> = {
+  'instagram.com': 'INSTAGRAM',
+  'facebook.com': 'FACEBOOK',
+  'linkedin.com': 'LINKEDIN',
+  'tiktok.com': 'TIKTOK',
+  'youtube.com': 'YOUTUBE',
+  'x.com': 'X',
+  'twitter.com': 'X',
+  'pinterest.com': 'PINTEREST',
+}
 
 export class FirecrawlDiscoveryProvider {
   readonly name = 'FIRECRAWL'
@@ -32,30 +42,41 @@ export class FirecrawlDiscoveryProvider {
     const { websiteUrl, maxPages, maxImages } = options
     const baseUrl = new URL(websiteUrl)
 
-    const crawlResponse = await this.requestWithRetry('/crawl', {
+    const crawlResponse = (await this.requestWithRetry('/crawl', {
       url: baseUrl.toString(),
       limit: Math.min(maxPages, FIRECRAWL_CRAWL_LIMIT),
       scrapeOptions: {
         formats: ['markdown', 'html'],
         onlyMainContent: false,
       },
-    })
+    })) as { data?: unknown[] } | null
 
     const pages = Array.isArray(crawlResponse?.data) ? crawlResponse.data : []
     const candidates: ImageCandidate[] = []
     const seen = new Set<string>()
+    const socialProfiles: SocialProfileSource[] = []
+    const socialSeen = new Set<string>()
 
     for (const page of pages) {
       if (candidates.length >= maxImages) break
       const html = extractHtmlFromFirecrawlPage(page)
       if (!html) continue
 
-      const pageUrl = typeof page.url === 'string' ? page.url : baseUrl.toString()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pageUrl = typeof (page as any).url === 'string' ? (page as any).url : baseUrl.toString()
       const pageCandidates = extractImageCandidatesFromHtml(html, pageUrl, maxImages - candidates.length)
       for (const candidate of pageCandidates) {
         if (seen.has(candidate.url)) continue
         seen.add(candidate.url)
         candidates.push(candidate)
+      }
+
+      const pageSocialProfiles = extractSocialProfiles(html, pageUrl)
+      for (const profile of pageSocialProfiles) {
+        const key = `${profile.socialProfileUrl}`
+        if (socialSeen.has(key)) continue
+        socialSeen.add(key)
+        socialProfiles.push(profile)
       }
     }
 
@@ -64,6 +85,7 @@ export class FirecrawlDiscoveryProvider {
       provider: this.name,
       pagesCrawled: pages.length,
       rawCandidates: candidates.length,
+      socialProfiles,
     }
   }
 
@@ -98,6 +120,7 @@ export class FirecrawlDiscoveryProvider {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractHtmlFromFirecrawlPage(page: any): string | null {
   const html = typeof page?.html === 'string' ? page.html : null
@@ -157,6 +180,76 @@ function extractImageCandidatesFromHtml(html: string, pageUrl: string, maxImages
   return candidates
 }
 
+function extractSocialProfiles(html: string, pageUrl: string): SocialProfileSource[] {
+  const dom = new JSDOM(html, { url: pageUrl })
+  const doc = dom.window.document
+  const profiles: SocialProfileSource[] = []
+  const seen = new Set<string>()
+
+  const add = (href: string, sourceType: SourceType) => {
+    if (!href) return
+    let absolute: string
+    try {
+      absolute = new URL(href, pageUrl).toString()
+    } catch {
+      return
+    }
+    const normalized = normalizeSocialUrl(absolute, sourceType)
+    if (!normalized || seen.has(normalized)) return
+    seen.add(normalized)
+    profiles.push({
+      sourceType,
+      sourcePageUrl: pageUrl,
+      socialProfileUrl: normalized,
+    })
+  }
+
+  try {
+    for (const a of doc.querySelectorAll('a[href]')) {
+      const href = (a as HTMLAnchorElement).getAttribute('href') || ''
+      const lower = href.toLowerCase()
+      for (const [domain, sourceType] of Object.entries(SOCIAL_DOMAINS)) {
+        if (lower.includes(domain)) {
+          add(href, sourceType)
+          break
+        }
+      }
+    }
+  } catch {
+    // ignore extraction errors
+  }
+
+  return profiles
+}
+
+function normalizeSocialUrl(url: string, sourceType: SourceType): string | null {
+  try {
+    const parsed = new URL(url)
+    const hostname = parsed.hostname.toLowerCase()
+
+    switch (sourceType) {
+      case 'INSTAGRAM':
+        return hostname.includes('instagram.com') ? url : null
+      case 'FACEBOOK':
+        return hostname.includes('facebook.com') ? url : null
+      case 'LINKEDIN':
+        return hostname.includes('linkedin.com') ? url : null
+      case 'TIKTOK':
+        return hostname.includes('tiktok.com') ? url : null
+      case 'YOUTUBE':
+        return hostname.includes('youtube.com') || hostname.includes('youtu.be') ? url : null
+      case 'X':
+        return hostname.includes('x.com') || hostname.includes('twitter.com') ? url.replace('twitter.com', 'x.com') : null
+      case 'PINTEREST':
+        return hostname.includes('pinterest.com') ? url : null
+      default:
+        return url
+    }
+  } catch {
+    return null
+  }
+}
+
 function isLikelyJunk(url: string): boolean {
   const lower = url.toLowerCase()
   const path = new URL(url).pathname.toLowerCase()
@@ -176,3 +269,4 @@ function isLikelyJunk(url: string): boolean {
 
   return false
 }
+

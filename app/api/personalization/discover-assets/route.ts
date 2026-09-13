@@ -29,12 +29,13 @@ export async function POST(req: NextRequest) {
       ok: true,
       providerUsed: result.providerUsed,
       providerAttempted: result.providerAttempted,
-      discoveredAssets: [],
+      discoveredAssets: result.discoveredAssets,
       candidates: result.candidates,
-      count: result.candidates.length,
+      count: result.discoveredAssets.length,
       pagesCrawled: result.pagesCrawled,
       rawCandidates: result.rawCandidates,
       duration: result.duration,
+      socialProfiles: result.socialProfiles,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'

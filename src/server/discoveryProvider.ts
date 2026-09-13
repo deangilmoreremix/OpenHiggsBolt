@@ -9,11 +9,31 @@
  * Shared validation, dedupe, and classification live in the orchestrator.
  */
 
+export type SourceType =
+  | 'WEBSITE'
+  | 'INSTAGRAM'
+  | 'FACEBOOK'
+  | 'LINKEDIN'
+  | 'TIKTOK'
+  | 'YOUTUBE'
+  | 'X'
+  | 'PINTEREST'
+  | 'PUBLIC_SEARCH'
+  | 'MANUAL_UPLOAD'
+
+export interface SocialProfileSource {
+  sourceType: SourceType
+  sourcePageUrl: string
+  socialProfileUrl: string
+}
+
 export interface ImageCandidate {
   url: string
   sourcePage: string
   altText?: string
   ogContext?: string
+  sourceType?: SourceType
+  socialProfileUrl?: string
 }
 
 export interface DiscoveryResult {
@@ -21,6 +41,7 @@ export interface DiscoveryResult {
   provider: string
   pagesCrawled: number
   rawCandidates: number
+  socialProfiles: SocialProfileSource[]
 }
 
 export interface BusinessAssetDiscoveryProvider {

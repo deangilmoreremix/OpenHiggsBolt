@@ -41,6 +41,8 @@ import type {
   PersonalizationEligibility,
   DiscoveredAsset,
   DiscoveredAssetCategory,
+  AssignedSection,
+  SourceType,
 } from './types'
 import { EMPTY_GENERATION_STATE } from './types'
 import { normalizePersonalizationSource, getEligibility } from './sourceNormalizer'
@@ -860,6 +862,18 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
     )
   }, [])
 
+  const removeDiscoveredAssetFromSection = useCallback((id: string) => {
+    setDiscoveredAssetsState((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, assignedSection: null, autoAssigned: false } : a)),
+    )
+  }, [])
+
+  const moveDiscoveredAssetToSection = useCallback((id: string, section: AssignedSection) => {
+    setDiscoveredAssetsState((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, assignedSection: section, autoAssigned: false } : a)),
+    )
+  }, [])
+
   const importDiscoveredAssets = useCallback(async () => {
     setDiscoveryStatus('importing')
     setDiscoveryError(null)
@@ -870,7 +884,14 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
       return
     }
 
-    const roleMap: Record<string, PersonalizationAsset['role']> = {
+    const sectionRoleMap: Record<string, PersonalizationAsset['role']> = {
+      person: 'presenter_identity',
+      logo: 'logo',
+      products: 'product_reference',
+      brand: 'brand_reference',
+    }
+
+    const categoryRoleMap: Record<string, PersonalizationAsset['role']> = {
       person: 'presenter_identity',
       logo: 'logo',
       product: 'product_reference',
@@ -916,7 +937,7 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
       const result = results[i]
       if (!result?.ok || !result.dataUrl) continue
 
-      const role = roleMap[item.category]
+      const role = sectionRoleMap[item.assignedSection || ''] || categoryRoleMap[item.category] || 'brand_reference'
       if (!role) continue
 
       const blob = dataUrlToBlob(result.dataUrl)
@@ -989,27 +1010,14 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
       }
 
       const data = await res.json()
-      const candidates = Array.isArray(data?.candidates) ? data.candidates : []
+      const discoveredAssets: DiscoveredAsset[] = Array.isArray(data?.discoveredAssets) ? data.discoveredAssets : []
       const providerUsed = typeof data?.providerUsed === 'string' ? data.providerUsed : 'UNKNOWN'
 
-      if (candidates.length === 0) {
+      if (discoveredAssets.length === 0) {
         setDiscoveryError('No useful assets were found on that website.')
         setDiscoveryStatus('idle')
         return
       }
-
-      const discoveredAssets: DiscoveredAsset[] = candidates.map((candidate: any, index: number) => ({
-        id: `disc_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 6)}`,
-        sourceUrl: candidate.url || candidate.sourceUrl,
-        previewUrl: candidate.url || candidate.previewUrl,
-        category: candidate.category || 'brand',
-        confidence: candidate.confidence ?? 50,
-        qualityScore: candidate.qualityScore ?? candidate.confidence ?? 50,
-        relevanceScore: candidate.relevanceScore ?? candidate.confidence ?? 50,
-        selected: candidate.recommended ?? false,
-        recommended: candidate.recommended ?? false,
-        rejected: false,
-      }))
 
       setDiscoveredAssetsState(discoveredAssets)
       setDiscoveryStatus('reviewing')

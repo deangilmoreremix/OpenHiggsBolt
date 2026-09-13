@@ -3,16 +3,17 @@
  * then runs the shared normalize/filter/classify pipeline.
  */
 
-import type { ImageCandidate, DiscoveryResult } from './discoveryProvider'
+import type { ImageCandidate, DiscoveryResult, SocialProfileSource } from './discoveryProvider'
 import { FirecrawlDiscoveryProvider } from './firecrawlDiscovery'
 import { StaticDiscoveryProvider } from './staticDiscovery'
-import { sanitizeUrl } from './discoverAssets'
+import { sanitizeUrl, classifyImage, heuristicFallback } from './discoverAssets'
+import { getBusinessAssetClassificationModel } from './discoveryClassificationConfig'
+import type { DiscoveredAsset, DiscoveredAssetCategory } from '../shared/personalization/types'
 
 export interface OrchestratedDiscoveryOptions {
   websiteUrl: string
   maxPages: number
   maxImages: number
-  maxImageBytes: number
   openAiKey?: string
   openAiModel?: string
   firecrawlApiKey?: string
@@ -25,6 +26,8 @@ export interface OrchestratedDiscoveryResult {
   pagesCrawled: number
   rawCandidates: number
   duration: number
+  socialProfiles: SocialProfileSource[]
+  discoveredAssets: DiscoveredAsset[]
 }
 
 export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions): Promise<OrchestratedDiscoveryResult> {
@@ -70,6 +73,45 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
 
   const duration = Date.now() - startTime
 
+  const model = openAiModel || getBusinessAssetClassificationModel()
+  const discoveredAssets: DiscoveredAsset[] = []
+  const seenUrls = new Set<string>()
+
+  for (const candidate of result?.candidates || []) {
+    if (discoveredAssets.length >= maxImages) break
+    if (seenUrls.has(candidate.url)) continue
+    seenUrls.add(candidate.url)
+
+    let classification: { category: DiscoveredAssetCategory; confidence: number; recommended: boolean } | null = null
+    try {
+      const result = await classifyImage(candidate.url, openAiKey, model)
+      classification = result
+    } catch {
+      classification = null
+    }
+
+    if (!classification) {
+      classification = heuristicFallback(candidate.url)
+    }
+
+    discoveredAssets.push({
+      id: `disc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      sourceUrl: candidate.url,
+      previewUrl: candidate.url,
+      sourceType: candidate.sourceType || 'WEBSITE',
+      socialProfileUrl: candidate.socialProfileUrl,
+      category: classification!.category,
+      confidence: classification!.confidence,
+      qualityScore: classification!.confidence,
+      relevanceScore: classification!.confidence,
+      selected: classification!.recommended,
+      recommended: classification!.recommended,
+      rejected: false,
+      assignedSection: null,
+      autoAssigned: false,
+    })
+  }
+
   return {
     providerUsed,
     providerAttempted,
@@ -77,5 +119,7 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
     pagesCrawled: result?.pagesCrawled || 0,
     rawCandidates: result?.rawCandidates || 0,
     duration,
+    socialProfiles: result?.socialProfiles || [],
+    discoveredAssets,
   }
 }
