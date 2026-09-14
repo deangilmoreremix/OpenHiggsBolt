@@ -49,9 +49,38 @@ export class FirecrawlDiscoveryProvider {
         formats: ['markdown', 'html'],
         onlyMainContent: false,
       },
-    })) as { data?: unknown[] } | null
+    })) as { success?: boolean; id?: string; url?: string; data?: unknown[] } | null
 
-    const pages = Array.isArray(crawlResponse?.data) ? crawlResponse.data : []
+    const pages: unknown[] = []
+
+    if (crawlResponse?.success && typeof crawlResponse.id === 'string') {
+      const jobId = crawlResponse.id
+      console.log('[firecrawl] crawl job started:', jobId)
+
+      for (let attempt = 1; attempt <= 20; attempt++) {
+        const statusResponse = (await this.requestWithRetry(`/crawl/${jobId}`, {}, 'GET')) as {
+          success?: boolean
+          status?: string
+          completed?: number
+          total?: number
+          data?: unknown[]
+        } | null
+
+        if (statusResponse?.success && Array.isArray(statusResponse.data)) {
+          pages.push(...statusResponse.data)
+          if (pages.length > 0) break
+        }
+
+        if (statusResponse?.status === 'completed' || statusResponse?.status === 'failed') {
+          break
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+    } else if (Array.isArray(crawlResponse?.data)) {
+      pages.push(...crawlResponse.data)
+    }
+
     const candidates: ImageCandidate[] = []
     const seen = new Set<string>()
     const socialProfiles: SocialProfileSource[] = []
@@ -68,7 +97,7 @@ export class FirecrawlDiscoveryProvider {
       for (const candidate of pageCandidates) {
         if (seen.has(candidate.url)) continue
         seen.add(candidate.url)
-        candidates.push(candidate)
+        candidates.push({ ...candidate, sourceType: 'FIRECRAWL' })
       }
 
       const pageSocialProfiles = extractSocialProfiles(html, pageUrl)
@@ -89,19 +118,19 @@ export class FirecrawlDiscoveryProvider {
     }
   }
 
-  private async requestWithRetry(path: string, body: Record<string, unknown>, attempts = 2): Promise<unknown> {
+  private async requestWithRetry(path: string, body: Record<string, unknown>, method = 'POST', attempts = 2): Promise<unknown> {
     const url = `${FIRECRAWL_BASE_URL}${path}`
     const lastError = new Error('Firecrawl request failed')
 
     for (let attempt = 1; attempt <= attempts; attempt++) {
       try {
         const response = await fetch(url, {
-          method: 'POST',
+          method,
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${this.apiKey}`,
           },
-          body: JSON.stringify(body),
+          body: method === 'POST' ? JSON.stringify(body) : undefined,
         })
 
         if (!response.ok) {

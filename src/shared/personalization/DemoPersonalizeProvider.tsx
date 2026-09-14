@@ -177,6 +177,8 @@ type DemoPersonalizeContextValue = {
   rejectDiscoveredAsset: (id: string) => void
   restoreDiscoveredAsset: (id: string) => void
   updateDiscoveredAssetCategory: (id: string, category: DiscoveredAssetCategory) => void
+  removeDiscoveredAssetFromSection: (id: string) => void
+  moveDiscoveredAssetToSection: (id: string, section: AssignedSection) => void
   selectRecommendedDiscoveredAssets: () => void
   importDiscoveredAssets: () => Promise<void>
   cancelDiscovery: () => void
@@ -1424,6 +1426,8 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
     rejectDiscoveredAsset,
     restoreDiscoveredAsset,
     updateDiscoveredAssetCategory,
+    removeDiscoveredAssetFromSection,
+    moveDiscoveredAssetToSection,
     selectRecommendedDiscoveredAssets,
     importDiscoveredAssets,
     cancelDiscovery,

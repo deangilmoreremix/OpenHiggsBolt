@@ -20,6 +20,7 @@ export type SourceType =
   | 'PINTEREST'
   | 'PUBLIC_SEARCH'
   | 'MANUAL_UPLOAD'
+  | 'FIRECRAWL'
 
 export interface SocialProfileSource {
   sourceType: SourceType

@@ -289,6 +289,7 @@ export type SourceType =
   | 'PINTEREST'
   | 'PUBLIC_SEARCH'
   | 'MANUAL_UPLOAD'
+  | 'FIRECRAWL'
 
 export type DiscoveredAssetCategory =
   | 'person'

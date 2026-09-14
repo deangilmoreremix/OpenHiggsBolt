@@ -42,6 +42,7 @@ export class StaticDiscoveryProvider {
       provider: this.name,
       pagesCrawled: Math.min(maxPages, 8),
       rawCandidates: candidates.length,
+      socialProfiles: [],
     }
   }
 }

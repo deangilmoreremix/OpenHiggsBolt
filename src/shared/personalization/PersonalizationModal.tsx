@@ -42,7 +42,7 @@ import {
   Share2,
 } from 'lucide-react'
 import { useDemoPersonalize } from './DemoPersonalizeProvider'
-import type { PersonalizationAsset, DiscoveredAsset, DiscoveredAssetCategory } from './types'
+import type { PersonalizationAsset, DiscoveredAsset, DiscoveredAssetCategory, AssignedSection } from './types'
 import { resolveModelCapabilities, FACE_SWAP_MODEL, FULL_BODY_MODEL, DEFAULT_T2V_MODEL, DEFAULT_I2I_MODEL } from './modelCapabilityResolver'
 import { getModelById, getVideoModelById } from '@/packages/studio/src/models.js'
 import { NICHE_CONTENT } from '@/data/nicheContent'
@@ -374,11 +374,15 @@ function DiscoveredAssetThumb({
   onToggle,
   onRemove,
   onCategoryChange,
+  onRemoveFromSection,
+  onMoveToSection,
 }: {
   asset: DiscoveredAsset
   onToggle: () => void
   onRemove: () => void
   onCategoryChange: (cat: DiscoveredAssetCategory) => void
+  onRemoveFromSection?: () => void
+  onMoveToSection?: (section: AssignedSection) => void
 }) {
   const categories: DiscoveredAssetCategory[] = [
     'person',
@@ -420,6 +424,22 @@ function DiscoveredAssetThumb({
       >
         {asset.selected && <span style={{ fontSize: 8, color: '#041014', fontWeight: 900 }}>✓</span>}
       </button>
+      {/* Auto-assigned badge */}
+      {asset.autoAssigned && (
+        <div
+          className="absolute top-1 left-6 z-10 rounded-full px-1.5 py-0.5"
+          style={{
+            background: 'rgba(16,185,129,.9)',
+            color: 'white',
+            fontSize: 7,
+            fontWeight: 800,
+            textTransform: 'uppercase',
+            lineHeight: 1,
+          }}
+        >
+          AUTO
+        </div>
+      )}
       {/* Remove button */}
       <button
         type="button"
@@ -430,6 +450,33 @@ function DiscoveredAssetThumb({
       >
         <X size={8} className="text-white" />
       </button>
+      {/* Remove from section / move buttons */}
+      {asset.assignedSection && onRemoveFromSection && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onRemoveFromSection() }}
+          className="absolute bottom-8 right-1 z-10 rounded-full p-0.5"
+          style={{ background: 'rgba(255,255,255,.2)' }}
+          aria-label="Remove from section"
+          title="Remove from section"
+        >
+          <span style={{ fontSize: 7, color: 'white', fontWeight: 800 }}>✕</span>
+        </button>
+      )}
+      {/* Source type badge */}
+      <div
+        className="absolute bottom-8 left-1 right-1 z-10 rounded px-1 py-0.5 text-center"
+        style={{
+          background: 'rgba(0,0,0,.6)',
+          color: 'white',
+          fontSize: 7,
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          lineHeight: 1,
+        }}
+      >
+        {asset.sourceType.replace('_', ' ')}
+      </div>
       {/* Category selector */}
       <select
         value={asset.category}
@@ -461,7 +508,6 @@ export default function PersonalizationModal() {
     source,
     closePersonalize,
     sourceTypeLabel,
-    apiKey,
     clients,
     selectedClientId,
     clientForm,
@@ -502,6 +548,8 @@ export default function PersonalizationModal() {
     rejectDiscoveredAsset,
     restoreDiscoveredAsset,
     updateDiscoveredAssetCategory,
+    removeDiscoveredAssetFromSection,
+    moveDiscoveredAssetToSection,
     selectRecommendedDiscoveredAssets,
     importDiscoveredAssets,
     cancelDiscovery,
@@ -529,7 +577,7 @@ export default function PersonalizationModal() {
     publish,
     download,
     sharedMediaEntries,
-  }: any = ctx
+  } = ctx
 
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [copiedPrompt, setCopiedPrompt] = useState(false)
@@ -896,6 +944,8 @@ export default function PersonalizationModal() {
                 rejectDiscoveredAsset={rejectDiscoveredAsset}
                 restoreDiscoveredAsset={restoreDiscoveredAsset}
                 updateDiscoveredAssetCategory={updateDiscoveredAssetCategory}
+                removeDiscoveredAssetFromSection={removeDiscoveredAssetFromSection}
+                moveDiscoveredAssetToSection={moveDiscoveredAssetToSection}
                 selectRecommendedDiscoveredAssets={selectRecommendedDiscoveredAssets}
               importDiscoveredAssets={importDiscoveredAssets}
               cancelDiscovery={cancelDiscovery}
@@ -1179,6 +1229,8 @@ function ConfigurationView(props: any) {
     rejectDiscoveredAsset,
     restoreDiscoveredAsset,
     updateDiscoveredAssetCategory,
+    removeDiscoveredAssetFromSection,
+    moveDiscoveredAssetToSection,
     selectRecommendedDiscoveredAssets,
     importDiscoveredAssets,
     cancelDiscovery,
@@ -1402,6 +1454,8 @@ function ConfigurationView(props: any) {
                       onToggle={() => toggleDiscoveredAssetSelection(asset.id)}
                       onRemove={() => rejectDiscoveredAsset(asset.id)}
                       onCategoryChange={(newCat) => updateDiscoveredAssetCategory(asset.id, newCat)}
+                      onRemoveFromSection={() => removeDiscoveredAssetFromSection(asset.id)}
+                      onMoveToSection={(section) => moveDiscoveredAssetToSection(asset.id, section)}
                     />
                   ))}
                 </div>

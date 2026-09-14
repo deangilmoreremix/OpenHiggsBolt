@@ -152,7 +152,6 @@ describe('orchestrateDiscovery', () => {
       websiteUrl: 'https://example.com',
       maxPages: 5,
       maxImages: 20,
-      maxImageBytes: 5 * 1024 * 1024,
       firecrawlApiKey: 'fc-test',
     })
 
@@ -172,7 +171,6 @@ describe('orchestrateDiscovery', () => {
       websiteUrl: 'https://example.com',
       maxPages: 5,
       maxImages: 20,
-      maxImageBytes: 5 * 1024 * 1024,
       firecrawlApiKey: undefined,
     })
 
@@ -187,7 +185,6 @@ describe('orchestrateDiscovery', () => {
       websiteUrl: 'https://example.com',
       maxPages: 5,
       maxImages: 20,
-      maxImageBytes: 5 * 1024 * 1024,
       firecrawlApiKey: 'fc-test',
     })
 
@@ -201,7 +198,6 @@ describe('orchestrateDiscovery', () => {
         websiteUrl: 'http://localhost:3000',
         maxPages: 5,
         maxImages: 20,
-        maxImageBytes: 5 * 1024 * 1024,
         firecrawlApiKey: 'fc-test',
       }),
     ).rejects.toThrow('Private network addresses are not allowed')

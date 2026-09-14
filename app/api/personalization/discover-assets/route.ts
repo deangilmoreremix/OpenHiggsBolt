@@ -20,7 +20,6 @@ export async function POST(req: NextRequest) {
       websiteUrl,
       maxPages: 8,
       maxImages: 60,
-      maxImageBytes: 5 * 1024 * 1024,
       openAiKey: openAiKey || undefined,
       firecrawlApiKey: firecrawlApiKey || undefined,
     })

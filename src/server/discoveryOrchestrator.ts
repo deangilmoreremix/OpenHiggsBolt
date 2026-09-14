@@ -8,6 +8,7 @@ import { FirecrawlDiscoveryProvider } from './firecrawlDiscovery'
 import { StaticDiscoveryProvider } from './staticDiscovery'
 import { sanitizeUrl, classifyImage, heuristicFallback } from './discoverAssets'
 import { getBusinessAssetClassificationModel } from './discoveryClassificationConfig'
+import { autoPlaceAssets, DEFAULT_AUTO_PLACEMENT_CONFIG } from './autoPlacementEngine'
 import type { DiscoveredAsset, DiscoveredAssetCategory } from '../shared/personalization/types'
 
 export interface OrchestratedDiscoveryOptions {
@@ -112,6 +113,8 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
     })
   }
 
+  const autoPlaced = autoPlaceAssets(discoveredAssets, DEFAULT_AUTO_PLACEMENT_CONFIG)
+
   return {
     providerUsed,
     providerAttempted,
@@ -120,6 +123,6 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
     rawCandidates: result?.rawCandidates || 0,
     duration,
     socialProfiles: result?.socialProfiles || [],
-    discoveredAssets,
+    discoveredAssets: autoPlaced,
   }
 }

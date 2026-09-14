@@ -348,7 +348,7 @@ async function fallbackBoundedGetValidation(url: string): Promise<{ valid: boole
 // Heuristic fallback classification (no OpenAI required)
 // ---------------------------------------------------------------------------
 
-function heuristicFallback(url: string): { category: DiscoveredAssetCategory; confidence: number; recommended: boolean } {
+export function heuristicFallback(url: string): { category: DiscoveredAssetCategory; confidence: number; recommended: boolean } {
   const lower = url.toLowerCase()
 
   const rules: Array<{ keywords: string[]; category: DiscoveredAssetCategory; confidence: number }> = [
@@ -377,7 +377,7 @@ function heuristicFallback(url: string): { category: DiscoveredAssetCategory; co
 // OpenAI classification
 // ---------------------------------------------------------------------------
 
-async function classifyImage(
+export async function classifyImage(
   url: string,
   openAiKey?: string,
   model = getBusinessAssetClassificationModel(),
@@ -468,7 +468,7 @@ export async function discoverBusinessAssets(options: DiscoveryOptions): Promise
     maxPages = MAX_PAGES,
     maxImages = MAX_IMAGES,
     openAiKey,
-    openAiModel = 'gpt-4o-mini',
+    openAiModel = getBusinessAssetClassificationModel(),
   } = options
 
   const baseUrl = sanitizeUrl(websiteUrl)

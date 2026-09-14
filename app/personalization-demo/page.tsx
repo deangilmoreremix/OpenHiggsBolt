@@ -64,44 +64,6 @@ export default function PersonalizationDemoPage() {
     )
   }
 
-  if (!hasApiKey && !isTestMode) {
-    return (
-      <div style={{ minHeight: '100vh', background: '#0a0a0b', color: 'white', padding: 20 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Personalization Modal — Design Preview</h1>
-        {isTestMode && (
-          <div style={{ marginTop: 20, padding: 16, borderRadius: 12, background: 'rgba(41,211,242,0.1)', border: '1px solid rgba(41,211,242,0.3)' }}>
-            <p style={{ fontSize: 14, color: '#29d3f2', marginBottom: 8 }}>Test Mode Active</p>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 12 }}>
-              API calls will fail without a real key, but you can test the full UI flow. Add a real key in Settings for full functionality.
-            </p>
-          </div>
-        )}
-        <div style={{ marginTop: 20, padding: 16, borderRadius: 12, background: 'rgba(239,91,103,0.1)', border: '1px solid rgba(239,91,103,0.3)' }}>
-          <p style={{ fontSize: 14, color: '#ef5b67', marginBottom: 8 }}>MuAPI Key Required</p>
-          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 12 }}>
-            Open Settings and add your MuAPI key to use the personalization demo. The modal uses the same key as the rest of the app.
-          </p>
-          <button
-            onClick={() => setShowSettings(true)}
-            style={{
-              padding: '8px 16px',
-              borderRadius: 8,
-              background: '#ef5b67',
-              color: 'white',
-              border: 'none',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            Open Settings
-          </button>
-          {showSettings && <SettingsPrompt onClose={() => setShowSettings(false)} />}
-        </div>
-      </div>
-    )
-  }
-
   return (
     <DemoPersonalizeProvider>
       <div
