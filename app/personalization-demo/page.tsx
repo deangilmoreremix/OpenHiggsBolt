@@ -65,7 +65,7 @@ export default function PersonalizationDemoPage() {
   }
 
   return (
-    <DemoPersonalizeProvider>
+    <DemoPersonalizeProvider testMode={isTestMode}>
       <div
         style={{
           minHeight: '100vh',

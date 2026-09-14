@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { orchestrateDiscovery } from '@/server/discoveryOrchestrator'
+import { orchestrateDiscovery, buildDiscoveredAssetsFromCandidates } from '@/server/discoveryOrchestrator'
 import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer'
+import { getFixture } from '@/src/server/fixtures/discoveryFixtures'
 
-type DiscoveryCacheEntry = {
-  result: Awaited<ReturnType<typeof orchestrateDiscovery>>
-  expiresAt: number
-}
+type RawDiscoveryResult = Awaited<ReturnType<typeof orchestrateDiscovery>>
 
-const discoveryCache = new Map<string, DiscoveryCacheEntry>()
+const discoveryCache = new Map<string, { result: RawDiscoveryResult; expiresAt: number }>()
 const CACHE_TTL_MS = 5 * 60 * 1000
 
 export async function POST(req: NextRequest) {
@@ -23,38 +21,64 @@ export async function POST(req: NextRequest) {
     }
 
     const cacheKey = `${websiteUrl}:${testMode ? 'test' : 'live'}:${userId || 'anon'}`
-    const cached = discoveryCache.get(cacheKey)
-    if (cached && cached.expiresAt > Date.now()) {
-      return NextResponse.json({
-        ok: true,
-        cached: true,
-        providerUsed: cached.result.providerUsed,
-        providerAttempted: cached.result.providerAttempted,
-        discoveredAssets: cached.result.discoveredAssets,
-        candidates: cached.result.candidates,
-        count: cached.result.discoveredAssets.length,
-        pagesCrawled: cached.result.pagesCrawled,
-        rawCandidates: cached.result.rawCandidates,
-        duration: cached.result.duration,
-        socialProfiles: cached.result.socialProfiles,
-      })
+
+    if (!testMode) {
+      const cached = discoveryCache.get(cacheKey)
+      if (cached && cached.expiresAt > Date.now()) {
+        return NextResponse.json({
+          ok: true,
+          cached: true,
+          providerUsed: cached.result.providerUsed,
+          providerAttempted: cached.result.providerAttempted,
+          discoveredAssets: cached.result.discoveredAssets,
+          candidates: cached.result.candidates,
+          count: cached.result.discoveredAssets.length,
+          pagesCrawled: cached.result.pagesCrawled,
+          rawCandidates: cached.result.rawCandidates,
+          duration: cached.result.duration,
+          socialProfiles: cached.result.socialProfiles,
+        })
+      }
     }
 
     const openAiKey = userId ? await getOpenAiKeyForUser() : null
     const firecrawlApiKey = testMode ? null : (process.env.FIRECRAWL_API_KEY || null)
 
-    const result = await orchestrateDiscovery({
-      websiteUrl,
-      maxPages: 8,
-      maxImages: 60,
-      openAiKey: openAiKey || undefined,
-      firecrawlApiKey: firecrawlApiKey || undefined,
-    })
+    const fixture = testMode ? getFixture(websiteUrl) : null
 
-    discoveryCache.set(cacheKey, {
-      result,
-      expiresAt: Date.now() + CACHE_TTL_MS,
-    })
+    let result: RawDiscoveryResult
+    if (fixture) {
+      const discoveredAssets = await buildDiscoveredAssetsFromCandidates(
+        fixture.candidates,
+        60,
+        openAiKey || undefined,
+      )
+      result = {
+        providerUsed: 'FIXTURE',
+        providerAttempted: 'FIXTURE',
+        candidates: fixture.candidates,
+        pagesCrawled: fixture.pagesCrawled,
+        rawCandidates: fixture.rawCandidates,
+        duration: 0,
+        socialProfiles: fixture.socialProfiles,
+        discoveredAssets,
+      }
+    } else {
+      result = await orchestrateDiscovery({
+        websiteUrl,
+        maxPages: 8,
+        maxImages: 60,
+        openAiKey: openAiKey || undefined,
+        firecrawlApiKey: firecrawlApiKey || undefined,
+      })
+    }
+
+    if (!testMode) {
+      discoveryCache.set(cacheKey, {
+        result,
+        expiresAt: Date.now() + CACHE_TTL_MS,
+      })
+    }
 
     return NextResponse.json({
       ok: true,

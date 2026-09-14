@@ -73,20 +73,39 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
   }
 
   const duration = Date.now() - startTime
+  const discoveredAssets = await buildDiscoveredAssetsFromCandidates(result?.candidates || [], maxImages, openAiKey, openAiModel)
 
+  return {
+    providerUsed,
+    providerAttempted,
+    candidates: result?.candidates || [],
+    pagesCrawled: result?.pagesCrawled || 0,
+    rawCandidates: result?.rawCandidates || 0,
+    duration,
+    socialProfiles: result?.socialProfiles || [],
+    discoveredAssets,
+  }
+}
+
+export async function buildDiscoveredAssetsFromCandidates(
+  candidates: ImageCandidate[],
+  maxImages: number,
+  openAiKey?: string,
+  openAiModel?: string,
+): Promise<DiscoveredAsset[]> {
   const model = openAiModel || getBusinessAssetClassificationModel()
   const discoveredAssets: DiscoveredAsset[] = []
   const seenUrls = new Set<string>()
 
-  for (const candidate of result?.candidates || []) {
+  for (const candidate of candidates) {
     if (discoveredAssets.length >= maxImages) break
     if (seenUrls.has(candidate.url)) continue
     seenUrls.add(candidate.url)
 
     let classification: { category: DiscoveredAssetCategory; confidence: number; recommended: boolean } | null = null
     try {
-      const result = await classifyImage(candidate.url, openAiKey, model)
-      classification = result
+      const classificationResult = await classifyImage(candidate.url, openAiKey, model)
+      classification = classificationResult
     } catch {
       classification = null
     }
@@ -113,16 +132,5 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
     })
   }
 
-  const autoPlaced = autoPlaceAssets(discoveredAssets, DEFAULT_AUTO_PLACEMENT_CONFIG)
-
-  return {
-    providerUsed,
-    providerAttempted,
-    candidates: result?.candidates || [],
-    pagesCrawled: result?.pagesCrawled || 0,
-    rawCandidates: result?.rawCandidates || 0,
-    duration,
-    socialProfiles: result?.socialProfiles || [],
-    discoveredAssets: autoPlaced,
-  }
+  return autoPlaceAssets(discoveredAssets, DEFAULT_AUTO_PLACEMENT_CONFIG)
 }

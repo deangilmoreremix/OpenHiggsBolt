@@ -231,6 +231,7 @@ export function useDemoPersonalize(): DemoPersonalizeContextValue {
 
 interface DemoPersonalizeProviderProps {
   children: ReactNode
+  testMode?: boolean
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -318,7 +319,7 @@ function updateAssetInLibrary(library: AssetLibrary, asset: PersonalizationAsset
 
 // ── Provider ─────────────────────────────────────────────────────────────────
 
-export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderProps) {
+export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeProviderProps) {
   // Navigation & publish integration
   const router = useRouter()
   const socialPublish = useOptionalSocialPublish()
@@ -1002,7 +1003,7 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
       const res = await fetch('/api/personalization/discover-assets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ websiteUrl }),
+        body: JSON.stringify({ websiteUrl, testMode }),
         credentials: 'same-origin',
       })
 
@@ -1028,7 +1029,7 @@ export function DemoPersonalizeProvider({ children }: DemoPersonalizeProviderPro
       setDiscoveryError(error instanceof Error ? error.message : 'Discovery failed')
       setDiscoveryStatus('idle')
     }
-  }, [setDiscoveredAssetsState, setDiscoveryError, setDiscoveryStatus])
+  }, [setDiscoveredAssetsState, setDiscoveryError, setDiscoveryStatus, testMode])
 
   // ── Prompt actions ─────────────────────────────────────────────────────────
 
