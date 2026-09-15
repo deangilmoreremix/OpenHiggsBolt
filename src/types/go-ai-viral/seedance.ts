@@ -1,9 +1,8 @@
 /**
  * Type definitions for Seedance video prompt data.
  *
- * These mirror the extracted dataset prepared for the GO- AI Viral video prompts
- * tab. The source file is `/tmp/seedance_prompts.json`, with 2,517 records
- * and 2,005 records containing `outputUrl` video links.
+ * The source file is the committed repository dataset at
+ * `src/data/seedance_prompts.json`, with 2,419 records.
  */
 
 export interface SeedancePrompt {
