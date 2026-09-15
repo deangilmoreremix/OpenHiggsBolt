@@ -1,0 +1,18 @@
+[project]
+name = "smartvideo-voice-modal"
+version = "0.1.0"
+description = "SmartVideo GO Voice Studio Modal health/test service"
+requires-python = ">=3.10"
+
+dependencies = [
+  "fastapi>=0.111.0",
+  "uvicorn[standard]>=0.30.0",
+  "modal>=0.64.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]

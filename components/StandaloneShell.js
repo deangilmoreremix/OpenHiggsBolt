@@ -32,7 +32,7 @@ const WorkflowStudio = loadStudio('WorkflowStudio');
 const AgentStudio = loadStudio('AgentStudio');
 const AiInfluencerStudio = loadStudio('AiInfluencerStudio');
 const LayersStudio = loadStudio('LayersStudio');
-
+const VoiceStudio = loadStudio('VoiceStudio');
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
 const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ssr: false });
 const GoAiViralStudio = dynamic(() => import('../src/apps/go-ai-viral/GoAiViralStudio'), { ssr: false });
@@ -56,6 +56,7 @@ const TABS = [
   { id: 'vfx-studio', label: 'VFX' },
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
+  { id: 'voice', label: 'Voice Studio' },
   { id: 'go-ai-viral', label: 'GO-Viral' },
 ];
 
@@ -68,6 +69,7 @@ const SLUG_TO_TAB = {
   'vfx-studio': 'vfx-studio',
   'music-studio': 'audio',   'thumbnail-studio': 'thumbnail-studio',
   'ai-influencer': 'ai-influencer',
+  'voice': 'voice',
   'go-ai-viral': 'go-ai-viral',
 };
 
@@ -623,7 +625,8 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
            </div>
          )}
           {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} templateData={templateData} locale={locale} />}
-          {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
+           {activeTab === 'voice' && <VoiceStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
+           {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
       </div>
       </DemoPersonalizeProvider>
       </SocialPublishProvider>
