@@ -128,6 +128,26 @@ function Field({ label, value, placeholder, onChange, full = false }: { label: s
   )
 }
 
+function isModeUnavailable(modeKey: string, assets: any, capabilities: any): boolean {
+  if (modeKey === 'face_only' || modeKey === 'replace_face') {
+    return !assets.primaryIdentity && !assets.identities?.length
+  }
+  if (modeKey === 'full_body' || modeKey === 'replace_person') {
+    return !assets.primaryIdentity && !assets.identities?.length
+  }
+  return false
+}
+
+function getModeUnavailableReason(modeKey: string, assets: any): string {
+  if (modeKey === 'face_only' || modeKey === 'replace_face') {
+    return 'Requires a person/identity photo.'
+  }
+  if (modeKey === 'full_body' || modeKey === 'replace_person') {
+    return 'Requires a person/identity photo.'
+  }
+  return 'Not available for the current source/model.'
+}
+
 // ── Reusable sub-components ──────────────────────────────────────────────────
 
 /** Upload drop zone matching the approved HTML design. */
@@ -551,6 +571,7 @@ export default function PersonalizationModal() {
     discoveredAssets,
     discoveryStatus,
     discoveryError,
+    importConfirmation,
     setDiscoveredAssets,
     toggleDiscoveredAssetSelection,
     rejectDiscoveredAsset,
@@ -954,11 +975,12 @@ export default function PersonalizationModal() {
                recommendedModelId={recommendedModelId}
                recommendedModel={recommendedModel}
                currentModel={currentModel}
-                isUsingRecommendedModel={isUsingRecommendedModel}
-                discoveredAssets={discoveredAssets}
-                discoveryStatus={discoveryStatus}
-                discoveryError={discoveryError}
-                setDiscoveredAssets={setDiscoveredAssets}
+                 isUsingRecommendedModel={isUsingRecommendedModel}
+                 discoveredAssets={discoveredAssets}
+                 discoveryStatus={discoveryStatus}
+                 discoveryError={discoveryError}
+                 importConfirmation={importConfirmation}
+                 setDiscoveredAssets={setDiscoveredAssets}
                 toggleDiscoveredAssetSelection={toggleDiscoveredAssetSelection}
                 rejectDiscoveredAsset={rejectDiscoveredAsset}
                 restoreDiscoveredAsset={restoreDiscoveredAsset}
@@ -1216,6 +1238,21 @@ function ResultView(props: any) {
 
 // ── Configuration view (main editing UI) ─────────────────────────────────────
 
+function isAssetInCurrentJob(asset: any, assets: any): boolean {
+  if (!asset) return false
+  const all = [
+    ...assets.identities,
+    ...assets.logos,
+    ...assets.products,
+    ...assets.brandReferences,
+    assets.firstFrame,
+    assets.lastFrame,
+    assets.ctaGraphic,
+    ...assets.savedReferences,
+  ].filter(Boolean)
+  return all.some((a: any) => a.id === asset.id || a.url === asset.url || a.uploadedUrl === asset.uploadedUrl)
+}
+
 function ConfigurationView(props: any) {
   const {
     source, clients, selectedClientId, clientForm,
@@ -1252,6 +1289,7 @@ function ConfigurationView(props: any) {
     discoveredAssets,
     discoveryStatus,
     discoveryError,
+    importConfirmation,
     setDiscoveredAssets,
     toggleDiscoveredAssetSelection,
     rejectDiscoveredAsset,
@@ -1322,7 +1360,7 @@ function ConfigurationView(props: any) {
 
         {/* Client Profile */}
         <div className="panel" style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18 }}>
-          <h2 style={{ margin: '0 0 13px', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>Who Is This For?</h2>
+          <h2 style={{ margin: '0 0 13px', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>STEP 1 — WHO IS THIS FOR?</h2>
           <div className="grid grid-cols-3" style={{ gap: 8, marginBottom: 18 }}>
             {[
               { key: 'me', label: 'Me' },
@@ -1403,6 +1441,7 @@ function ConfigurationView(props: any) {
                 type="button"
                 onClick={() => discoverAssets(clientForm.website)}
                 disabled={!clientForm.website || discoveryStatus === 'discovering'}
+                aria-busy={discoveryStatus === 'discovering'}
                 className="mt-2 rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
                 style={{
                   minHeight: 42,
@@ -1414,11 +1453,31 @@ function ConfigurationView(props: any) {
               >
                 {discoveryStatus === 'discovering' ? 'Discovering...' : 'Find Business Assets'}
               </button>
+              <div aria-live="polite" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
+                {discoveryStatus === 'discovering' && 'Finding business assets'}
+                {discoveryStatus === 'reviewing' && `Discovery complete. ${discoveredAssets.filter((a) => !a.rejected).length} assets found.`}
+                {importConfirmation && `${importConfirmation.count} assets imported`}
+                {discoveryError && `Discovery error: ${discoveryError}`}
+              </div>
               <p style={{ marginTop: 6, color: C.muted, fontSize: 10, lineHeight: 1.5 }}>
-                Find useful people, logos, products, services and brand images from this website.
+                Optional — use your website to find business assets automatically, or add them manually below.
               </p>
               {discoveryError && (
-                <p style={{ marginTop: 6, color: C.danger, fontSize: 10 }}>{discoveryError}</p>
+                <div style={{ marginTop: 10, padding: 12, border: `1px solid ${C.danger}`, borderRadius: 10, background: 'rgba(239,91,103,.08)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <span style={{ color: C.danger, fontSize: 14 }}>⚠</span>
+                    <span style={{ color: C.danger, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>We couldn&apos;t find business assets</span>
+                  </div>
+                  <p style={{ margin: '0 0 10px', color: 'rgba(255,255,255,.72)', fontSize: 11, lineHeight: 1.5 }}>{discoveryError}</p>
+                  <button
+                    type="button"
+                    onClick={() => discoverAssets(clientForm.website)}
+                    className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide"
+                    style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.danger}`, background: C.danger, color: '#fff' }}
+                  >
+                    Retry
+                  </button>
+                </div>
               )}
             </div>
             <div className="col-span-full">
@@ -1475,6 +1534,23 @@ function ConfigurationView(props: any) {
           </div>
         </div>
       </section>
+
+      {/* ── IMPORT CONFIRMATION ───────────────────────────────────── */}
+      {importConfirmation && (
+        <div style={{ padding: '14px 18px', border: `1px solid ${C.cyan}`, borderRadius: 12, background: 'rgba(41,211,242,.08)', marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ color: C.cyan, fontSize: 18 }}>✓</span>
+            <div>
+              <div style={{ color: C.text, fontSize: 12, fontWeight: 700 }}>
+                {importConfirmation.count} asset{importConfirmation.count === 1 ? '' : 's'} added{importConfirmation.clientName ? ` to ${importConfirmation.clientName}` : ''}
+              </div>
+              <div style={{ color: C.muted, fontSize: 10, marginTop: 2 }}>
+                Assets are now available in Client Assets below.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── DISCOVERED ASSETS REVIEW ────────────────────────────────── */}
       {discoveryStatus === 'reviewing' && discoveredAssets.length > 0 && (
@@ -1558,7 +1634,7 @@ function ConfigurationView(props: any) {
 
       {/* ── CLIENT ASSETS (full width, 6 numbered cards) ──────────── */}
       <section style={{ padding: '26px 0', borderBottom: `1px solid ${C.border}` }}>
-        <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>Client Assets</h2>
+        <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>STEP 2 — CLIENT ASSETS</h2>
         <p style={{ margin: '6px 0 18px', color: C.muted, fontSize: 12, lineHeight: 1.5 }}>
           Add the people, products, branding and visual references SmartVideo should use when personalizing this demo.
         </p>
@@ -1710,13 +1786,13 @@ function ConfigurationView(props: any) {
                 ))
               ) : (
                 <>
-                  <ThumbPlaceholder label="TRUCK" />
-                  <ThumbPlaceholder label="OFFICE" />
-                  <ThumbPlaceholder label="UNIFORM" />
+                  <ThumbPlaceholder label="STORE" />
+                  <ThumbPlaceholder label="TEAM" />
+                  <ThumbPlaceholder label="VEHICLE" />
                 </>
               )}
             </div>
-            <div style={{ marginTop: 9, color: C.muted2, fontSize: 10 }}>Store • Office • Truck • Uniform • Packaging • Brand Photography</div>
+            <div style={{ marginTop: 9, color: C.muted2, fontSize: 10 }}>Storefront • Team • Vehicle • Packaging • Brand Photography</div>
           </article>
 
           {/* 5. First Frame */}
@@ -1805,7 +1881,7 @@ function ConfigurationView(props: any) {
         <section style={{ padding: '26px 0', borderBottom: `1px solid ${C.border}` }}>
           <div className="flex items-center justify-between flex-wrap gap-3" style={{ marginBottom: 14 }}>
             <div>
-              <h2 style={{ margin: 0, fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>Saved Client Assets</h2>
+              <h2 style={{ margin: 0, fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>SAVED CLIENT ASSETS</h2>
               <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 11 }}>
                 Reuse previously saved assets for this client. Click to add them to the current personalization.
               </p>
@@ -1872,9 +1948,12 @@ function ConfigurationView(props: any) {
                     <img src={asset.uploadedUrl || asset.url} alt={asset.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
                   <div style={{ fontSize: 10, fontWeight: 700, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{asset.name?.split('.')?.[0]?.toUpperCase()?.slice(0, 10) || 'ASSET'}</div>
-                  <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                  <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
                     {asset.isPrimary && (
                       <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', color: C.cyan }}>★ Primary</span>
+                    )}
+                    {isAssetInCurrentJob(asset, assets) && (
+                      <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', color: C.green }}>✓ In Job</span>
                     )}
                     <button
                       type="button"
@@ -1909,7 +1988,7 @@ function ConfigurationView(props: any) {
 
       {/* ── CTA & BUSINESS CONTENT ────────────────────────────── */}
       <section style={{ padding: '26px 0', borderBottom: `1px solid ${C.border}` }}>
-        <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>CTA &amp; Business Content</h2>
+        <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>CTA & BUSINESS CONTENT</h2>
         <div className="grid grid-cols-1 md:grid-cols-2" style={{ marginTop: 18, gap: 12 }}>
           <Field label="Product / Service" value={clientForm.productService} placeholder="Residential Roof Replacement" onChange={(v) => updateClientForm({ ...clientForm, productService: v })} />
           <Field label="Offer" value={clientForm.offer} placeholder="Free Roof Inspection" onChange={(v) => updateClientForm({ ...clientForm, offer: v })} />
@@ -1934,7 +2013,7 @@ function ConfigurationView(props: any) {
 
       {/* ── PERSONALIZE THE PROMPT ──────────────────────────── */}
       <section style={{ padding: '26px 0', borderBottom: `1px solid ${C.border}` }}>
-        <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>Personalize The Prompt</h2>
+        <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>STEP 3 — PERSONALIZE THE PROMPT</h2>
         <div className="grid grid-cols-1 md:grid-cols-2" style={{ marginTop: 18, gap: 14 }}>
           <div className="prompt-box" style={{ minHeight: 150, border: `1px solid ${C.border}`, borderRadius: 12, background: C.field, padding: 14 }}>
             <h4 style={{ margin: '0 0 9px', fontSize: 11, textTransform: 'uppercase' }}>Original Prompt</h4>
@@ -1993,7 +2072,7 @@ function ConfigurationView(props: any) {
       {/* ── OUTPUT ────────────────────────────────────────── */}
       {!isPromptOnly && (
         <section style={{ padding: '26px 0', borderBottom: `1px solid ${C.border}` }}>
-          <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>What Do You Want To Create?</h2>
+          <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>STEP 4 — CREATE</h2>
           <div className="grid grid-cols-1 md:grid-cols-3" style={{ marginTop: 18, gap: 12 }}>
             {outputOptions.map(({ key, label, description }: any) => {
               const active = outputType === key
@@ -2025,20 +2104,23 @@ function ConfigurationView(props: any) {
       {/* ── PERSONALIZATION MODE ────────────────────────────── */}
       {showModes && (
         <section style={{ padding: '26px 0', borderBottom: `1px solid ${C.border}` }}>
-          <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>Personalization Mode</h2>
+          <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>HOW SHOULD THIS BE PERSONALIZED?</h2>
           <div className="grid grid-cols-1 md:grid-cols-2" style={{ marginTop: 18, gap: 12 }}>
             {eligibleModes.map((m: any) => {
               const active = mode === m.key
+              const isUnavailable = !active && isModeUnavailable(m.key, assets, capabilities)
               return (
                 <button
                   key={m.key}
                   onClick={() => setMode(m.key)}
-                  className="text-left p-4 rounded-[12px] border relative"
+                  disabled={isUnavailable}
+                  aria-pressed={active}
+                  className="text-left p-4 rounded-[12px] border relative disabled:opacity-60"
                   style={{
                     minHeight: 95,
                     padding: 16,
-                    borderColor: active ? C.cyan : C.border,
-                    background: active ? 'rgba(41,211,242,.045)' : C.panelSoft,
+                    borderColor: active ? C.cyan : isUnavailable ? C.border : C.borderStrong,
+                    background: active ? 'rgba(41,211,242,.045)' : isUnavailable ? C.panel : C.panelSoft,
                     boxShadow: active ? 'inset 0 0 0 1px rgba(41,211,242,.25)' : 'none',
                   }}
                 >
@@ -2047,6 +2129,11 @@ function ConfigurationView(props: any) {
                   )}
                   <h4 style={{ margin: '0 0 6px', fontSize: 12, textTransform: 'uppercase' }}>{m.label}</h4>
                   <p style={{ margin: 0, color: C.muted, fontSize: 10, lineHeight: 1.45 }}>{m.description}</p>
+                  {isUnavailable && (
+                    <p style={{ margin: '6px 0 0', color: C.muted2, fontSize: 9, lineHeight: 1.4 }}>
+                      {getModeUnavailableReason(m.key, assets)}
+                    </p>
+                  )}
                 </button>
               )
             })}
@@ -2056,7 +2143,7 @@ function ConfigurationView(props: any) {
 
       {/* ── ENGINE: SmartVideo Recommended ────────────────────── */}
       <section style={{ padding: '26px 0', borderBottom: `1px solid ${C.border}` }}>
-        <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>Engine</h2>
+        <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>SMARTVIDEO ENGINE</h2>
         <div
           className="flex items-center justify-between gap-5"
           style={{
