@@ -182,6 +182,7 @@ type DemoPersonalizeContextValue = {
   discoveredAssets: DiscoveredAsset[]
   discoveryStatus: 'idle' | 'discovering' | 'reviewing' | 'importing'
   discoveryError: string | null
+  importConfirmation: { count: number; clientName?: string } | null
   setDiscoveredAssets: (assets: DiscoveredAsset[]) => void
   toggleDiscoveredAssetSelection: (id: string) => void
   rejectDiscoveredAsset: (id: string) => void
@@ -368,6 +369,13 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   const [discoveredAssets, setDiscoveredAssetsState] = useState<DiscoveredAsset[]>([])
   const [discoveryStatus, setDiscoveryStatus] = useState<'idle' | 'discovering' | 'reviewing' | 'importing'>('idle')
   const [discoveryError, setDiscoveryError] = useState<string | null>(null)
+  const [importConfirmation, setImportConfirmation] = useState<{ count: number; clientName?: string } | null>(null)
+
+  useEffect(() => {
+    if (!importConfirmation) return
+    const timer = setTimeout(() => setImportConfirmation(null), 5000)
+    return () => clearTimeout(timer)
+  }, [importConfirmation])
 
   // Prompt
   const [promptState, setPromptState] = useState<PromptState>({ ...EMPTY_PROMPT_STATE })
@@ -1101,7 +1109,8 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
     setDiscoveredAssetsState([])
     setDiscoveryStatus('idle')
-  }, [discoveredAssets, setAssets, uploadAsset])
+    setImportConfirmation({ count: assetsToCreate.length, clientName: clientForm.businessName || clientForm.name || undefined })
+  }, [discoveredAssets, setAssets, uploadAsset, clientForm])
 
   const cancelDiscovery = useCallback(() => {
     setDiscoveredAssetsState([])
@@ -1546,6 +1555,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     discoveredAssets,
     discoveryStatus,
     discoveryError,
+    importConfirmation,
     setDiscoveredAssets,
     toggleDiscoveredAssetSelection,
     rejectDiscoveredAsset,

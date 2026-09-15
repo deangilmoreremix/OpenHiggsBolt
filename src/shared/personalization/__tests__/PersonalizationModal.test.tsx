@@ -88,10 +88,10 @@ describe('PersonalizationModal', () => {
 
     // Verify the full-width design sections are present
     expect(screen.getByText('Source Demo')).toBeTruthy();
-    expect(screen.getByText('Client Assets')).toBeTruthy();
-    expect(screen.getByText('CTA & Business Content')).toBeTruthy();
-    expect(screen.getByText('Personalize The Prompt')).toBeTruthy();
-    expect(screen.getByText('Engine')).toBeTruthy();
+    expect(screen.getByText(/Client Assets/i)).toBeTruthy();
+    expect(screen.getByText(/CTA & Business Content/i)).toBeTruthy();
+    expect(screen.getByText(/Personalize The Prompt/i)).toBeTruthy();
+    expect(screen.getByText(/SmartVideo Engine/i)).toBeTruthy();
 
     // Verify SmartVideo Recommended is prominently visible (check container text)
     expect(container.textContent).toMatch(/SmartVideo/)
@@ -114,10 +114,10 @@ describe('PersonalizationModal', () => {
     expect(container.textContent).toMatch(/1/)
     expect(container.textContent).toMatch(/2/)
     expect(container.textContent).toMatch(/3/)
-    // Brand References shows TRUCK/OFFICE/UNIFORM
-    expect(container.textContent).toMatch(/TRUCK/)
-    expect(container.textContent).toMatch(/OFFICE/)
-    expect(container.textContent).toMatch(/UNIFORM/)
+    // Brand References shows STORE/TEAM/VEHICLE
+    expect(container.textContent).toMatch(/STORE/)
+    expect(container.textContent).toMatch(/TEAM/)
+    expect(container.textContent).toMatch(/VEHICLE/)
     // Frames show "First Frame" and CTA preview
     expect(container.textContent).toMatch(/First Frame/)
     expect(container.textContent).toMatch(/Protect Your Home Today/)
@@ -137,7 +137,7 @@ describe('PersonalizationModal', () => {
     expect(websiteLabels.length).toBe(1)
     const findButtons = screen.getAllByText('Find Business Assets')
     expect(findButtons.length).toBeGreaterThanOrEqual(1)
-    expect(container.textContent).toMatch(/Find useful people, logos, products, services and brand images from this website/)
+    expect(container.textContent).toMatch(/Optional — use your website to find business assets automatically/)
 
     // Verify Website appears before Business Name in DOM order
     const websiteLabel = websiteLabels[0]
