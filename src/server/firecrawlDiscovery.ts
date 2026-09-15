@@ -10,7 +10,21 @@ import type { ImageCandidate, DiscoveryResult, SocialProfileSource, SourceType }
 import { JSDOM } from 'jsdom'
 
 const FIRECRAWL_BASE_URL = 'https://api.firecrawl.dev/v2'
-const FIRECRAWL_CRAWL_LIMIT = 8
+const FIRECRAWL_SCRAPE_LIMIT = 5
+
+const HIGH_VALUE_PATH_PRIORITY: Array<{ patterns: RegExp[]; score: number; label: string }> = [
+  { patterns: [/\/about-us?$/i, /\/our-story$/i, /\/team$/i, /\/our-team$/i, /\/staff$/i, /\/leadership$/i, /\/meet-the-team$/i], score: 90, label: 'ABOUT' },
+  { patterns: [/\/services$/i, /\/our-services$/i, /\/products$/i, /\/menu$/i, /\/treatments$/i, /\/solutions$/i, /\/what-we-do$/i], score: 90, label: 'SERVICES' },
+  { patterns: [/\/gallery$/i, /\/portfolio$/i, /\/projects$/i, /\/our-work$/i, /\/before-after$/i, /\/case-studies$/i], score: 95, label: 'PORTFOLIO' },
+  { patterns: [/\/contact$/i, /\/locations$/i, /\/showroom$/i, /\/office$/i], score: 70, label: 'LOCATION' },
+  { patterns: [/\/about/i, /\/team/i, /\/staff/i], score: 80, label: 'ABOUT' },
+  { patterns: [/\/service/i, /\/product/i, /\/menu/i], score: 80, label: 'SERVICES' },
+  { patterns: [/\/gallery/i, /\/portfolio/i, /\/project/i, /\/work/i], score: 85, label: 'PORTFOLIO' },
+]
+
+const LOW_VALUE_PATH_FRAGMENTS = [
+  '/cart', '/checkout', '/login', '/signin', '/sign-up', '/register', '/blog', '/privacy', '/terms', '/legal', '/wp-admin', '/admin',
+]
 
 const SOCIAL_DOMAINS: Record<string, SourceType> = {
   'instagram.com': 'INSTAGRAM',
@@ -42,71 +56,58 @@ export class FirecrawlDiscoveryProvider {
     const { websiteUrl, maxPages, maxImages } = options
     const baseUrl = new URL(websiteUrl)
 
-    const crawlResponse = (await this.requestWithRetry('/crawl', {
-      url: baseUrl.toString(),
-      limit: Math.min(maxPages, FIRECRAWL_CRAWL_LIMIT),
-      scrapeOptions: {
-        formats: ['markdown', 'html'],
-        onlyMainContent: false,
-      },
-    })) as { success?: boolean; id?: string; url?: string; data?: unknown[] } | null
-
-    const pages: unknown[] = []
-
-    if (crawlResponse?.success && typeof crawlResponse.id === 'string') {
-      const jobId = crawlResponse.id
-      console.log('[firecrawl] crawl job started:', jobId)
-
-      for (let attempt = 1; attempt <= 20; attempt++) {
-        const statusResponse = (await this.requestWithRetry(`/crawl/${jobId}`, {}, 'GET')) as {
-          success?: boolean
-          status?: string
-          completed?: number
-          total?: number
-          data?: unknown[]
-        } | null
-
-        if (statusResponse?.success && Array.isArray(statusResponse.data)) {
-          pages.push(...statusResponse.data)
-          if (pages.length > 0) break
-        }
-
-        if (statusResponse?.status === 'completed' || statusResponse?.status === 'failed') {
-          break
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      }
-    } else if (Array.isArray(crawlResponse?.data)) {
-      pages.push(...crawlResponse.data)
+    let homeHtml: string | null = null
+    try {
+      homeHtml = await this.scrapePage(baseUrl.toString())
+    } catch (homeError) {
+      throw new Error(`Firecrawl could not scrape the homepage: ${homeError instanceof Error ? homeError.message : 'unknown error'}`)
+    }
+    if (!homeHtml) {
+      throw new Error('Firecrawl could not scrape the homepage: no content returned')
     }
 
+    const internalUrls = extractInternalLinks(homeHtml, baseUrl.toString())
+    const selectedPages = selectHighValuePages(baseUrl.toString(), internalUrls, Math.min(maxPages, FIRECRAWL_SCRAPE_LIMIT))
+
+    const pagesToScrape = [baseUrl.toString(), ...selectedPages.map(url => url.url)]
+    const pages: Array<{ url: string; html: string }> = []
     const candidates: ImageCandidate[] = []
     const seen = new Set<string>()
     const socialProfiles: SocialProfileSource[] = []
     const socialSeen = new Set<string>()
 
-    for (const page of pages) {
-      if (candidates.length >= maxImages) break
-      const html = extractHtmlFromFirecrawlPage(page)
-      if (!html) continue
+    for (const pageUrl of pagesToScrape) {
+      try {
+        const html = await this.scrapePage(pageUrl)
+        if (!html) continue
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pageUrl = typeof (page as any).url === 'string' ? (page as any).url : baseUrl.toString()
-      const pageCandidates = extractImageCandidatesFromHtml(html, pageUrl, maxImages - candidates.length)
-      for (const candidate of pageCandidates) {
-        if (seen.has(candidate.url)) continue
-        seen.add(candidate.url)
-        candidates.push({ ...candidate, sourceType: 'FIRECRAWL' })
-      }
+        pages.push({ url: pageUrl, html })
+        const pageCandidates = extractImageCandidatesFromHtml(html, pageUrl, maxImages - candidates.length)
+        for (const candidate of pageCandidates) {
+          if (seen.has(candidate.url)) continue
+          seen.add(candidate.url)
+          candidates.push({
+            ...candidate,
+            sourceType: 'FIRECRAWL',
+            sourcePageType: candidate.sourcePageType || guessPageType(pageUrl),
+          })
+        }
 
-      const pageSocialProfiles = extractSocialProfiles(html, pageUrl)
-      for (const profile of pageSocialProfiles) {
-        const key = `${profile.socialProfileUrl}`
-        if (socialSeen.has(key)) continue
-        socialSeen.add(key)
-        socialProfiles.push(profile)
+        const pageSocialProfiles = extractSocialProfiles(html, pageUrl)
+        for (const profile of pageSocialProfiles) {
+          const key = `${profile.socialProfileUrl}`
+          if (socialSeen.has(key)) continue
+          socialSeen.add(key)
+          socialProfiles.push(profile)
+        }
+      } catch (pageError) {
+        console.log(`[firecrawl] failed to scrape ${pageUrl}: ${pageError instanceof Error ? pageError.message : 'unknown error'}`)
+        continue
       }
+    }
+
+    if (pages.length === 0) {
+      throw new Error('Firecrawl returned no usable pages')
     }
 
     return {
@@ -115,6 +116,22 @@ export class FirecrawlDiscoveryProvider {
       pagesCrawled: pages.length,
       rawCandidates: candidates.length,
       socialProfiles,
+    }
+  }
+
+  private async scrapePage(pageUrl: string): Promise<string | null> {
+    const canonicalUrl = canonicalizePageUrl(pageUrl)
+    try {
+      const response = await this.requestWithRetry('/scrape', {
+        url: canonicalUrl,
+        formats: ['html', 'markdown'],
+        onlyMainContent: false,
+      }) as { html?: string; markdown?: string; data?: Array<{ html?: string; markdown?: string }> } | null
+
+      const html = response?.html || response?.markdown || (Array.isArray(response?.data) && response.data[0]?.html) || null
+      return html as string | null
+    } catch (error) {
+      throw new Error(`Firecrawl could not scrape ${canonicalUrl}: ${error instanceof Error ? error.message : 'unknown error'}`)
     }
   }
 
@@ -164,7 +181,7 @@ function extractImageCandidatesFromHtml(html: string, pageUrl: string, maxImages
   const candidates: ImageCandidate[] = []
   const seen = new Set<string>()
 
-  const add = (rawUrl: string) => {
+  const add = (rawUrl: string, extra?: Partial<ImageCandidate>) => {
     if (!rawUrl || rawUrl.startsWith('data:')) return
     let absolute: string
     try {
@@ -172,10 +189,15 @@ function extractImageCandidatesFromHtml(html: string, pageUrl: string, maxImages
     } catch {
       return
     }
-    if (seen.has(absolute)) return
-    if (isLikelyJunk(absolute)) return
-    seen.add(absolute)
-    candidates.push({ url: absolute, sourcePage: pageUrl })
+    const canonical = canonicalizePageUrl(absolute)
+    if (seen.has(canonical)) return
+    if (isLikelyJunk(canonical)) return
+    seen.add(canonical)
+    candidates.push({
+      url: canonical,
+      sourcePage: pageUrl,
+      ...extra,
+    })
     if (candidates.length >= maxImages) throw new Error('MAX_IMAGES_REACHED')
   }
 
@@ -183,10 +205,27 @@ function extractImageCandidatesFromHtml(html: string, pageUrl: string, maxImages
     for (const img of doc.querySelectorAll('img')) {
       const src = (img as HTMLImageElement).getAttribute('src') || ''
       const srcset = (img as HTMLImageElement).getAttribute('srcset') || ''
-      if (src) add(src)
+      const alt = (img as HTMLImageElement).getAttribute('alt') || undefined
+      const parentAnchor = img.closest('a[href]')
+      const linkTarget = parentAnchor ? (parentAnchor as HTMLAnchorElement).getAttribute('href') || undefined : undefined
+      const nearbyText = getNearbyText(img)
+
+      const extra: Partial<ImageCandidate> = {
+        altText: alt,
+        ogContext: nearbyText || undefined,
+      }
+      if (linkTarget) {
+        try {
+          extra.linkTarget = new URL(linkTarget, pageUrl).toString()
+        } catch {
+          // ignore
+        }
+      }
+
+      if (src) add(src, extra)
       if (srcset) {
         for (const entry of srcset.split(',').map((s: string) => s.trim().split(/\s+/)[0]).filter(Boolean)) {
-          add(entry)
+          add(entry, extra)
         }
       }
     }
@@ -207,6 +246,15 @@ function extractImageCandidatesFromHtml(html: string, pageUrl: string, maxImages
   }
 
   return candidates
+}
+
+function getNearbyText(el: Element): string | null {
+  const maxLength = 120
+  const text = el.textContent || ''
+  const trimmed = text.trim().replace(/\s+/g, ' ')
+  if (trimmed.length === 0) return null
+  if (trimmed.length <= maxLength) return trimmed
+  return trimmed.slice(0, maxLength)
 }
 
 function extractSocialProfiles(html: string, pageUrl: string): SocialProfileSource[] {
@@ -297,5 +345,83 @@ function isLikelyJunk(url: string): boolean {
   if (socialDomains.some((d) => lower.includes(d))) return true
 
   return false
+}
+
+function canonicalizePageUrl(raw: string): string {
+  try {
+    const url = new URL(raw)
+    url.hash = ''
+    if (url.pathname.endsWith('/')) url.pathname = url.pathname.slice(0, -1)
+    return url.toString().toLowerCase()
+  } catch {
+    return raw
+  }
+}
+
+function extractInternalLinks(html: string, baseUrl: string): string[] {
+  const dom = new JSDOM(html, { url: baseUrl })
+  const doc = dom.window.document
+  const links = Array.from(doc.querySelectorAll('a[href]'))
+  const seen = new Set<string>()
+  const results: string[] = []
+
+  for (const link of links) {
+    const href = (link as HTMLAnchorElement).getAttribute('href') || ''
+    let absolute: string
+    try {
+      absolute = new URL(href, baseUrl).toString()
+    } catch {
+      continue
+    }
+
+    const canonical = canonicalizePageUrl(absolute)
+    if (seen.has(canonical)) continue
+    seen.add(canonical)
+
+    const host = new URL(canonical).host
+    if (host !== new URL(baseUrl).host) continue
+    if (LOW_VALUE_PATH_FRAGMENTS.some((frag) => canonical.toLowerCase().includes(frag))) continue
+
+    results.push(canonical)
+  }
+
+  return results
+}
+
+function scorePageUrl(url: string): { score: number; label: string } {
+  const path = new URL(url).pathname.toLowerCase()
+  const exactMatch = HIGH_VALUE_PATH_PRIORITY.find((group) => group.patterns.some((pattern) => pattern.test(path)))
+  if (exactMatch) return { score: exactMatch.score, label: exactMatch.label }
+
+  const partialMatch = HIGH_VALUE_PATH_PRIORITY.find((group) => group.patterns.some((pattern) => pattern.test(path)))
+  if (partialMatch) return { score: partialMatch.score - 10, label: partialMatch.label }
+
+  if (path === '/' || path === '') return { score: 100, label: 'HOME' }
+  return { score: 20, label: 'OTHER' }
+}
+
+function selectHighValuePages(baseUrl: string, urls: string[], maxPages: number): Array<{ url: string; score: number; label: string }> {
+  const scored = urls
+    .map((url) => ({ url, ...scorePageUrl(url) }))
+    .filter((item) => item.score >= 70)
+    .sort((a, b) => b.score - a.score || a.url.localeCompare(b.url))
+
+  const seen = new Set<string>()
+  const selected: Array<{ url: string; score: number; label: string }> = []
+
+  for (const item of scored) {
+    if (selected.length >= maxPages) break
+    const canonical = canonicalizePageUrl(item.url)
+    if (seen.has(canonical)) continue
+    seen.add(canonical)
+    selected.push({ ...item, url: canonical })
+  }
+
+  return selected
+}
+
+function guessPageType(url: string): string {
+  const { score, label } = scorePageUrl(url)
+  return label
 }
 

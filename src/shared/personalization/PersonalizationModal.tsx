@@ -757,15 +757,18 @@ export default function PersonalizationModal() {
     : '✦ Generate Everything'
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5"
-      style={{
-        background: 'radial-gradient(circle at top, rgba(41,211,242,.07), transparent 30%), #07090d',
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !personalizationInProgress) closePersonalize()
-      }}
-    >
+      <div
+        className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5"
+        style={{
+          background: 'radial-gradient(circle at top, rgba(41,211,242,.07), transparent 30%), #07090d',
+        }}
+        onClick={(e) => {
+          if (e.target !== e.currentTarget) return
+          if (personalizationInProgress) return
+          if (discoveryStatus === 'discovering' || discoveryStatus === 'reviewing' || discoveryStatus === 'importing') return
+          closePersonalize()
+        }}
+      >
       <div
         ref={dialogRef}
         role="dialog"

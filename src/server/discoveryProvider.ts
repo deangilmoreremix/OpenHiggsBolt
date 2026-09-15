@@ -35,6 +35,8 @@ export interface ImageCandidate {
   ogContext?: string
   sourceType?: SourceType
   socialProfileUrl?: string
+  sourcePageType?: string
+  linkTarget?: string
 }
 
 export interface DiscoveryResult {

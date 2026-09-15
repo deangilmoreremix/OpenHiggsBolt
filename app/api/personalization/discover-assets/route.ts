@@ -7,14 +7,17 @@ import { getFixture } from '@/src/server/fixtures/discoveryFixtures'
 type RawDiscoveryResult = Awaited<ReturnType<typeof orchestrateDiscovery>>
 
 const discoveryCache = new Map<string, { result: RawDiscoveryResult; expiresAt: number }>()
-const CACHE_TTL_MS = 5 * 60 * 1000
+const CACHE_TTL_MS = (process.env.FIRECRAWL_DISCOVERY_CACHE_TTL_MS || '86400000') as string
+const cacheTtlMs = Number.isNaN(Number(CACHE_TTL_MS)) ? 86400000 : Number(CACHE_TTL_MS)
+const isTestModeAllowed = process.env.NODE_ENV !== 'production'
 
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth()
     const body = await req.json().catch(() => ({}))
     const websiteUrl = typeof body?.websiteUrl === 'string' ? body.websiteUrl : ''
-    const testMode = typeof body?.testMode === 'boolean' ? body.testMode : false
+    const requestedTestMode = typeof body?.testMode === 'boolean' ? body.testMode : false
+    const testMode = isTestModeAllowed ? requestedTestMode : false
 
     if (!websiteUrl) {
       return NextResponse.json({ error: 'websiteUrl is required' }, { status: 400 })
@@ -76,7 +79,7 @@ export async function POST(req: NextRequest) {
     if (!testMode) {
       discoveryCache.set(cacheKey, {
         result,
-        expiresAt: Date.now() + CACHE_TTL_MS,
+        expiresAt: Date.now() + cacheTtlMs,
       })
     }
 
