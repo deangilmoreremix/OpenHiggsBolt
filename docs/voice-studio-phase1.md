@@ -218,7 +218,7 @@ This satisfies the Phase 1 requirement that unsupported methods are not called b
 | Projects / Batch Queue | ADAPT | Placeholder only |
 | Model Catalogue | BACKEND ONLY | Model selection UI deferred to Phase 2 |
 | Settings | KEEP | Uses SmartVideo GO shell settings |
-| Waveform / Timeline | DESKTOP EXCLUDE | Not applicable to web-only Phase 1 |
+| Waveform / Timeline | ADAPT FOR WEB | Waveform visualization, transcript segment editor, and timeline interaction are web-compatible; only native file picker/local filesystem reveal are desktop-only |
 | Global player | ADAPT | Existing Audio Studio player is separate |
 | Voice profiles | ADAPT | Placeholder only |
 | History | BACKEND ONLY | History schema reserved for Phase 2 |
@@ -239,7 +239,11 @@ SmartVideo GO is web-only. The following are explicitly excluded from this integ
 - Native window management
 - Local user GPU selection
 - Customer-side model installation
-- Waveform/timeline desktop-specific UI
+
+Web-adaptive VoiceStudio UI patterns retained for future phases:
+- Waveform visualization
+- Transcript segment editor
+- Timeline interaction
 
 All Voice Studio UI runs in the browser via Next.js. Inference runs server-side on Modal.
 
@@ -247,28 +251,70 @@ All Voice Studio UI runs in the browser via Next.js. Inference runs server-side 
 
 ## 10. Existing GO Dubbing Audit
 
-### 10.1 Current GO Dubbing Implementation
+### 10.1 Discovery: `heygen-video-translate` Model Catalog Entry
 
-**No production dubbing implementation exists in SmartVideo GO.**
+The repository contains a `heygen-video-translate` model entry in the MuAPI model catalog:
 
-The repository contains:
-- `LipSyncStudio` — existing GO feature that performs lip sync (image/video + audio → video with synchronized mouth movements). This is **not** dubbing.
-- `RecastStudio` — existing GO feature for body swap / face replacement. Not dubbing.
-- `VoiceStudio.jsx` placeholder tabs — "Dub" is listed as a future tab with no implementation
+- **File:** `packages/studio/src/models.js` line ~19736
+- **ID:** `heygen-video-translate`
+- **Name:** HeyGen Video Translate
+- **Endpoint:** `heygen-video-translate`
+- **Family:** `tools`
+- **Provider:** `muapi`
+- **Description:** "Convert any video into 175+ languages with synchronized voice translation, AI-voice cloning, and accurate lip sync."
 
-### 10.2 Dubbing Audit Matrix
+Tool capabilities are defined in `packages/studio/src/videoToolCapabilities.js`:
+- `operation: "translate"`
+- `summary:` "Source language is automatic and cannot be configured in this integration. Choose a target language. Voice translation and lip sync are automatic; separate audio and subtitle settings are not available."
+- Inputs: `language` (target language enum with 175+ options)
 
-| Feature | Current GO Location | VoiceStudio Equivalent | Keep Existing? | Future Enhancement | Phase |
-|---------|-------------------|----------------------|---------------|-------------------|-------|
-| Lip Sync | `packages/studio/src/components/LipSyncStudio.jsx` | N/A | YES | Add voice-driven lip sync | Phase 3+ |
-| Body Swap | `packages/studio/src/components/RecastStudio.jsx` | N/A | YES | N/A | Existing |
-| Audio Generation | `packages/studio/src/components/AudioStudio.jsx` | Voice / TTS | YES | Add TTS voice selection | Phase 2 |
-| Dubbing | None | Dub tab placeholder | N/A | Full dubbing pipeline | Future phase |
-| Translation | None | N/A | N/A | ASR + translate + TTS | Future phase |
+### 10.2 Current GO Dubbing Implementation Status
 
-### 10.3 Conclusion
+**No dedicated dubbing UI exists in this branch.**
 
-SmartVideo GO does not currently have a dubbing feature. The VoiceStudio "Dub" tab is a placeholder. Any dubbing implementation would be new work in a future phase and must not be conflated with the existing Lip Sync or Audio Studio features.
+The `heygen-video-translate` model is:
+1. Registered in the model catalog (`models.js`)
+2. Has tool capabilities defined (`videoToolCapabilities.js`)
+3. Is callable through the generic `generateVideo()` path in `muapi.js` via `buildVideoToolPayload()` and `serializeVideoToolOptions()`
+4. Has **no dedicated studio component, tab, or route** in the current branch
+
+The `VoiceStudio.jsx` "Dub" tab is a placeholder only. There is no `DubbingStudio` component.
+
+### 10.3 Possible Explanation for Product Owner's Observation
+
+The product owner may be seeing dubbing in GO production because:
+
+| Scenario | Likelihood | Notes |
+|----------|-----------|-------|
+| Production deployment runs a different SHA/branch | HIGH | Production may include commits not present on `integration/voice-studio-modal` |
+| Feature dynamically loaded from model configuration | MEDIUM | The model is in the catalog and could be exposed through a generic selector |
+| Feature on another branch | MEDIUM | Other branches may contain dubbing UI work |
+| Embedded within Video Studio as a tool option | LOW | No Video Studio component references `heygen-video-translate` in this branch |
+| Supplied by MuAPI model metadata | MEDIUM | MuAPI may surface this model dynamically |
+
+### 10.4 Dubbing Audit Matrix
+
+| Capability              | Current GO Branch | VoiceStudio | Future Action |
+| ----------------------- | ----------------- | ----------- | ------------- |
+| Upload video            | N/A               | N/A         | Needed for dubbing UI |
+| Source language         | Auto (per tool capability) | N/A | Expose in UI if backend supports it |
+| Target language         | Yes (175+ languages in catalog) | N/A | Wire to `heygen-video-translate` inputs |
+| Translation             | Backend-only (MuAPI) | N/A | Expose through dubbing UI |
+| Voice preservation      | Backend-only | N/A | Backend handles automatically |
+| Speaker detection       | Backend-only | N/A | Backend handles automatically |
+| Voice assignment        | Backend-only | N/A | Backend handles automatically |
+| Transcript editing      | No | N/A | Future enhancement |
+| Timeline/waveform       | No | N/A | Future enhancement |
+| Segment preview         | No | N/A | Future enhancement |
+| Segment regeneration    | No | N/A | Future enhancement |
+| Multi-language          | Yes (175+ languages) | N/A | Wire to UI |
+| Background preservation | Backend-only | N/A | Backend handles automatically |
+| Subtitles               | No (per tool capability: "separate audio and subtitle settings are not available") | N/A | Future enhancement if backend adds support |
+| Export                  | N/A               | N/A         | Needed for dubbing UI |
+
+### 10.5 Conclusion
+
+SmartVideo GO has a **backend-only** dubbing capability via the `heygen-video-translate` MuAPI model. The model catalog and API client support calling it, but there is **no user-facing dubbing interface** in the current branch. Any production dubbing UI would require additional commits not present on this branch.
 
 ---
 
@@ -294,16 +340,22 @@ SmartVideo GO does not currently have a dubbing feature. The VoiceStudio "Dub" t
 
 ### 11.3 Candidate TTS Engines (Phase 2)
 
-| Engine | Code License | Weights License | Commercial SaaS | Status |
-|--------|-------------|----------------|----------------|--------|
-| Coqui TTS | MPL-2.0 | Varies by model | Check per model | REVIEW |
-| Piper | MIT | MIT / Apache | YES | APPROVED |
-| Bark | MIT | Non-commercial | NO | RESTRICTED |
-| VITS | MIT | Varies | Check per model | REVIEW |
-| StyleTTS 2 | MIT | Non-commercial | NO | RESTRICTED |
-| OpenVoice | MIT | Non-commercial | NO | RESTRICTED |
+**Important:** The table below classifies inference engine code/licenses separately from model/voice asset licenses. An APPROVED engine code license does NOT automatically approve the model weights or voice assets for commercial SaaS.
 
-**Note:** This matrix is preliminary. Phase 2 must verify BOTH code license AND model-weight license before deploying any model.
+| Engine | Code License | Weights/Voice License | Commercial SaaS Code | Commercial SaaS Weights | Status |
+|--------|-------------|----------------------|---------------------|------------------------|--------|
+| Piper | MIT | Varies by voice pack | YES | Check per voice | REVIEW |
+| Coqui TTS | MPL-2.0 | Varies by model | YES | Check per model | REVIEW |
+| VITS | MIT | Varies by model | YES | Check per model | REVIEW |
+| Bark | MIT | Non-commercial | YES | NO | RESTRICTED |
+| StyleTTS 2 | MIT | Non-commercial | YES | NO | RESTRICTED |
+| OpenVoice | MIT | Non-commercial | YES | NO | RESTRICTED |
+
+**Phase 2 requirement:** Before deploying any TTS model, verify BOTH:
+1. The inference engine code license permits commercial SaaS
+2. The EXACT selected model weights AND voice/audio asset licenses permit commercial SaaS use
+
+No model should be labeled APPROVED solely because its inference engine code is permissively licensed.
 
 ### 11.4 Candidate ASR Engines (Future)
 
@@ -440,18 +492,51 @@ modal deploy services/voice-modal/app.py
 - Health endpoint includes 10-second timeout
 - Warm requests are fast
 
+### 15.5 Local Health Failure Test Results
+
+Tested against local Next.js dev server with mock Modal backend:
+
+| Scenario | Env Config | HTTP Status | Response `status` | `detail` |
+|----------|-----------|-------------|-------------------|----------|
+| Missing URL | `VOICE_MODAL_SERVICE_URL` unset | 500 | `error` | `VOICE_MODAL_SERVICE_URL is not configured` |
+| Reachable service | `http://127.0.0.1:29999` | 200 | `ok` | *(none)* |
+| Unreachable URL | `http://127.0.0.1:29998` | 502 | `error` | `fetch failed` |
+| Timeout (10s) | `http://127.0.0.1:29997` (accepts but never responds) | 502 | `error` | `The operation was aborted due to timeout` |
+
+**Conclusion:** SmartVideo returns safe structured errors in all failure modes without exposing internal credentials.
+
+### 15.6 Production Deployment Note
+
+Modal CLI was installed but not authenticated during this acceptance pass. To complete production deployment:
+
+1. Run `modal token set` with valid Modal credentials
+2. Run `modal deploy services/voice-modal/app.py`
+3. Record the resulting Modal service URL
+4. Set `VOICE_MODAL_SERVICE_URL` in SmartVideo production environment
+
 ---
 
 ## 16. Known Limitations
 
 1. `/api/voice/health` returns 500 if `VOICE_MODAL_SERVICE_URL` is not set
-2. Modal service is not deployed; deployment requires Modal account and credentials
+2. Modal service deployment requires Modal account credentials (not completed in this pass)
 3. `VoiceStudio.jsx` backend status shows "Checking voice backend" → "ready"/"error" based on health endpoint
 4. VoiceStudio tabs for Voice, Dub, Stories, Audiobook, etc. are placeholders
 5. No actual TTS generation yet (Phase 2)
 6. No voice cloning (Phase 3)
-7. No dubbing (future phase)
+7. Dubbing exists only as backend model catalog entry (`heygen-video-translate`), no UI
 8. No history persistence (Phase 2+)
+
+---
+
+## 17. Screenshots
+
+Screenshots captured during acceptance pass:
+
+1. `/studio/voice` desktop — `visual-assets/studio-routes/voice/desktop-voice-studio.png`
+2. `/studio/voice` mobile — `visual-assets/studio-routes/voice/mobile-voice-studio.png`
+3. `/studio/audio` desktop — `visual-assets/studio-routes/audio/desktop-audio-studio.png`
+4. `/studio/video` desktop — `visual-assets/studio-routes/video/desktop-video-studio.png`
 
 ---
 
