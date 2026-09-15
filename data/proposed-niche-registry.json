@@ -1,0 +1,1732 @@
+{
+  "generatedAt": "2026-09-11",
+  "note": "Generated from 2457 English templates. 4 NON_ENGLISH templates excluded. 80 duplicate records skipped.",
+  "description": "Visibility: 1+=searchable, 3+=dedicated browse, 8+=featured.",
+  "industries": {
+    "Automotive": {
+      "niches": {
+        "Luxury & Supercars": {
+          "templateSlugs": [
+            "3227-neo-seoul-overdrive-30-second-mecha-transformation",
+            "luxury-car-brand-teaser-video-prompt",
+            "luxury-car-commercial-transition",
+            "luxury-electric-suv-commercial",
+            "red-supercar-replica-camera-motion",
+            "seedance-2-0-supercar-showcase-video-prompt",
+            "supercar-spec-ad-speed-is-easy-control-is-everything",
+            "unveiling-pure-luxury-the-ultimate-red-ferrari-e-698838"
+          ],
+          "templateCount": 8,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Racing & Motorsport",
+            "Dealership & Sales",
+            "EV & Future Tech",
+            "Motorcycles"
+          ]
+        },
+        "Racing & Motorsport": {
+          "templateSlugs": [
+            "a-beautiful-woman-wearing-a-white-lace-mini",
+            "a-surreal-battlefield-in-the-sky-floating-rock",
+            "a-wuxia-hero-cat-battling-assassins-on-a",
+            "bridge-collapse-action-sequence",
+            "cadillac-formula-one-racing-car-2026-video",
+            "car-transformation-sequence-prompt",
+            "cinematic-car-to-robot-transformation",
+            "cinematic-street-racing-night",
+            "cinematic-vfx-racing-sequence-with-bullet-time-rain-effect",
+            "city-collapse-fpv-sprint",
+            "early-2000s-europe-snowy-rally-race-scene",
+            "enchanted-ice-skating-battle-prompt",
+            "female-warrior-in-tactical-suit-at-high-speed",
+            "formula-race-warzone-sequence",
+            "fpv-drone-racing-chase-in-apocalyptic-city",
+            "futuristic-buggy-destruction-chase",
+            "futuristic-hypercar-racing-sports-broadcast",
+            "glacier-collapse-disaster-scene",
+            "handheld-astronaut-footage-prompt",
+            "high-octane-f1-car-chase-drift-explosion",
+            "kitten-racing-motogp-track-video",
+            "market-kidnapping-action-drama-script",
+            "neon-circuit-board-sequence",
+            "post-apocalyptic-war-car-racing-desert",
+            "rally-car-race-mountain-road",
+            "rally-car-volcano-ejection-stunt",
+            "sleek-bull-racing-car-transforming-robot",
+            "underground-crystal-cavern-mag-lev-racing",
+            "underwater-coral-mech-chase",
+            "urban-streetwear-dance-performance",
+            "volcanic-web-escape-action-sequence",
+            "youmind-0b8289ba9f1c",
+            "youmind-3f927ef41bc1",
+            "youmind-440a7f1c5228",
+            "youmind-5d00f1955558",
+            "youmind-69927e2ef4cb",
+            "youmind-70104a8caac1",
+            "youmind-737f135fb4c6",
+            "youmind-769216535b90",
+            "youmind-931f364afcc8",
+            "youmind-a433f1564f9a",
+            "youmind-ae6da0af0fc0",
+            "youmind-bf44f3d30ed1",
+            "youmind-d5636be282f1",
+            "youmind-d8262a0d4ead",
+            "zero-g-astronaut-run-on-damaged-orbital-station",
+            "zero-gravity-warrior-fight-video-prompt"
+          ],
+          "templateCount": 47,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Luxury & Supercars",
+            "Dealership & Sales",
+            "EV & Future Tech",
+            "Motorcycles"
+          ]
+        },
+        "Dealership & Sales": {
+          "templateSlugs": [
+            "seedance-2-0-prompt-for-affordable-transportation-ad"
+          ],
+          "templateCount": 1,
+          "visibility": "searchable",
+          "relatedNiches": [
+            "Luxury & Supercars",
+            "Racing & Motorsport",
+            "EV & Future Tech",
+            "Motorcycles"
+          ]
+        },
+        "EV & Future Tech": {
+          "templateSlugs": [
+            "80s-randy-savage-tv-commercial",
+            "a-city-street-during-a-red-light-everyone",
+            "action-thriller-leviathan-chase",
+            "ape-to-human-evolution-transition",
+            "apocalyptic-reaper-landing-barren-planet",
+            "autonomous-high-speed-chase",
+            "basketball-dribbling-social-media-video-prompt",
+            "camera-focal-length-test-comparison",
+            "cat-elevator-fight-comedy",
+            "catastrophic-ocean-event-prompt",
+            "ceiling-puzzle-shatter-transition-seedance-font",
+            "celebrity-arrival-red-carpet-documentary",
+            "celestial-invasion-prologue-to-the-alien-war-seedance2",
+            "cinematic-hyper-realism-silver-bmw-i8",
+            "commercial-visual-blockbuster-prompt-for-seedance-2-0",
+            "coral-reef-and-hammerhead-shark-scene-prompt",
+            "deep-sea-leviathan-transformation",
+            "desert-leviathan-and-shamanic-belly-dancer",
+            "earthquake-city-collapse-video-prompt",
+            "elevator-hitchcock-zoom-surround-shots",
+            "epic-dragon-ride-with-soundstage-reveal",
+            "epstein-files-fight-tom-cruise-brad-pitt",
+            "fast-paced-global-cityscape-video-montage",
+            "female-fight-scene-dialogue-epstein-files",
+            "female-martial-arts-fight-sequence-tavern",
+            "forest-traveler-lost-memories-sunrise",
+            "fpv-drone-humpback-whale-jump",
+            "fried-chicken-boss-serving-customers-mandarin-queue",
+            "government-interrogation-room-barnaby-scene",
+            "greenery-and-environmental-evolution-video-prompt",
+            "grounded-action-sequence-in-a-gothic-cathedral",
+            "heroine-walking-19th-century-london-wind-skirt",
+            "human-evolution-hyper-lapse",
+            "impossible-frozen-tsunami-shot",
+            "indonesian-man-fighting-machete-enemies",
+            "interstellar-rebirth-dragon-conflict-video",
+            "introduction-0-4-seconds-background-development-4-8",
+            "levitating-monk-controlling-cosmic-dust-vortex",
+            "majestic-giant-in-deep-sea-trench",
+            "massive-mechanical-transformation-scene",
+            "medieval-battlefield-clash-burning-fortress",
+            "minimalist-bauhaus-motion-graphics-evolution",
+            "modern-warfare-fps-gameplay",
+            "nebula-cosmic-horror-machine-unfolding",
+            "opening-silent-dawn-using-combined-camera-movement-3",
+            "parallel-self-encounter",
+            "put-this-image-on-a-huge-billboard-where",
+            "rapid-scene-transitions-global-landmarks-video",
+            "seedance-2-0-video-prompt-obsidian-dragon-ambushing-hamster",
+            "shot-1-the-devil-talking-while-turning-his",
+            "snowboarder-avalanche-escape-prompt",
+            "stop-motion-animation-stylized-aesthetic",
+            "strangers-meeting-surreal-dream-islands",
+            "street-dance-performance-introduction-video",
+            "tense-woman-confronts-man-in-shadows-demands-revenge",
+            "time-glitch-walking-transition",
+            "tiny-agent-casino-heist-action",
+            "tom-cruise-brad-pitt-fight-epstein-files-dialogue",
+            "traditional-chinese-dance-over-dark-still-water",
+            "ultra-fast-live-action-scenery-montage"
+          ],
+          "templateCount": 68,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Luxury & Supercars",
+            "Racing & Motorsport",
+            "Dealership & Sales",
+            "Motorcycles"
+          ]
+        },
+        "Motorcycles": {
+          "templateSlugs": [
+            "alpine-avalanche-escape-stunt-storyboard",
+            "high-speed-motorcycle-action",
+            "shanghai-crane-motorcycle-stunt-jump",
+            "stormy-bridge-motorcycle-escape",
+            "superbike-racing-sunset-circuit-cinematography"
+          ],
+          "templateCount": 5,
+          "visibility": "dedicated-browse",
+          "relatedNiches": [
+            "Luxury & Supercars",
+            "Racing & Motorsport",
+            "Dealership & Sales",
+            "EV & Future Tech"
+          ]
+        }
+      },
+      "totalTemplates": 159
+    },
+    "Beauty & Fashion": {
+      "niches": {
+        "Makeup & Cosmetics": {
+          "templateSlugs": [
+            "3275-glow-up-time",
+            "cinematic-mascara-beauty-advertisement",
+            "comedic-adhd-cat-teacher-short-film",
+            "living-painting-fantasy-fashion-video",
+            "morning-makeup-routine-beauty-ad",
+            "seedance-2-0-ancient-style-transformation-video-prompt",
+            "skincare-ugc-reel-advertisement",
+            "subject-female-lead-with-dark-purple-hair-gradient",
+            "woman-applying-makeup-invaded-by-mud-like-liquid"
+          ],
+          "templateCount": 9,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Skincare Routines",
+            "Hair & Styling",
+            "Fashion Editorial",
+            "GRWM & Vlogs",
+            "Influencer Content"
+          ]
+        },
+        "Skincare Routines": {
+          "templateSlugs": [
+            "3285-morning-rush-cinematic-sequence-prompt",
+            "clavicular-morning-routine-video",
+            "gen-z-morning-routine-aesthetic",
+            "luxury-beauty-morning-routine",
+            "ugc-influencer-morning-routine-video"
+          ],
+          "templateCount": 5,
+          "visibility": "dedicated-browse",
+          "relatedNiches": [
+            "Makeup & Cosmetics",
+            "Hair & Styling",
+            "Fashion Editorial",
+            "GRWM & Vlogs",
+            "Influencer Content"
+          ]
+        },
+        "Hair & Styling": {
+          "templateSlugs": [
+            "0-3-seconds-first-encounter-scene-cold-white",
+            "10-second-smooth-video-ultra-high-definition-cinematic",
+            "1530-cinematic-vertical-beauty-vlog-for-skincare-product",
+            "1980s-vampire-interview-retro-talk-show",
+            "3215-cute-cinematic-14-second-3d-cartoon-of-a-woman-and-boy-chasi",
+            "a-chinese-mythological-boy-with-two-bun-hairstyles",
+            "a-decade-of-refinement-glow-up",
+            "a-man-in-his-early-30s-tan-skin",
+            "a-young-girl-walking-slowly-in-the-woods",
+            "acoustic-serenade-and-emotional-reaction-storyboard",
+            "action-chase-blonde-woman-lion-tropical-jungle",
+            "an-ethereal-dark-fantasy-female-figure-with-long",
+            "anime-witch-transformation-with-bat-wings",
+            "aquatic-warrior-orca-ride",
+            "astronaut-resting-in-white-roses",
+            "baseball-stadium-glamour-shot",
+            "basketball-freestyle-poster-animation",
+            "basketball-player-action-sequence",
+            "beat-synced-fitness-journey-arc",
+            "bmx-rider-in-a-favela",
+            "character-description-for-a-kung-fu-chef",
+            "character-fall-sequence-segment-1",
+            "character-settings-male-around-20-years-old-neat",
+            "character-transformation-with-bruised-face-and-armor-reference",
+            "charity-gala-imposter-exposed-wheelchair-woman",
+            "chibi-phoebe-close-up-portrait-with-baby-talk",
+            "cinematic-action-fight-sequence-for-seedance-2-0",
+            "cinematic-anime-fight-two-girls-futuristic-city",
+            "cinematic-forest-walk-ai-video-sample",
+            "cinematic-japanese-courtyard-battle",
+            "city-skateboard-trick-sequence",
+            "create-a-30-second-ultra-realistic-documentary-home-video-of-620321",
+            "dance-studio-narrative-progress-sequence",
+            "desert-courier-sandstorm-chase-cinematic",
+            "emotional-charity-gala-revelation-drama",
+            "emotional-multi-shot-character-interaction-sequence",
+            "epic-wuxiamodern-fantasy-video-prompt-for-seedance-2-0",
+            "ethereal-dark-fantasy-woman-metal-transform",
+            "fashion-showcase-with-dynamic-styling-effects",
+            "fast-paced-fpv-drone-tracking-shot-from-behind",
+            "fast-paced-fpv-drone-tracking-shot-from-behind-2",
+            "futuristic-military-briefing-in-anime-style",
+            "ghibli-style-elderly-woman-kitchen",
+            "global-fashion-world-tour",
+            "gothic-church-battle-valkyrie-transformation",
+            "gugu-gaga-chibi-animation-by-the-lake",
+            "high-speed-boat-chase-in-hong-kong-harbor",
+            "high-speed-follow-up-from-a-first-person",
+            "horror-scene-prompt-moving-chair",
+            "humorous-pet-makeover-video-prompt",
+            "intense-fpv-urban-survival-tracking-shot",
+            "jrpg-style-anime-battle-scene",
+            "k-pop-dance-routine-video-prompt",
+            "k-pop-plaza-dance-battle",
+            "korean-city-day-vlog-993075",
+            "korean-fantasy-mage-warrior-romance",
+            "lacoste-surreal-tennis-match",
+            "long-red-hair-woman-and-great-white-shark-emergence",
+            "low-angle-fashion-tracking-film",
+            "luxury-skincare-storyboard-commercial"
+          ],
+          "templateCount": 93,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Makeup & Cosmetics",
+            "Skincare Routines",
+            "Fashion Editorial",
+            "GRWM & Vlogs",
+            "Influencer Content"
+          ]
+        },
+        "Fashion Editorial": {
+          "templateSlugs": [
+            "2783-premium-photorealistic-fashion-commercial-and-behind-the-sce",
+            "chaotic-luxury-streetwear-fashion-film",
+            "demolition-couture-avant-garde-fashion-prompt",
+            "high-end-fashion-commercial-vertical-ad",
+            "high-fashion-editorial-glow-up",
+            "luxury-spa-storyboard-animation",
+            "style-hollywood-haute-couture-fantasy-blockbuster-8k-ultra"
+          ],
+          "templateCount": 7,
+          "visibility": "dedicated-browse",
+          "relatedNiches": [
+            "Makeup & Cosmetics",
+            "Skincare Routines",
+            "Hair & Styling",
+            "GRWM & Vlogs",
+            "Influencer Content"
+          ]
+        },
+        "GRWM & Vlogs": {
+          "templateSlugs": [
+            "3d",
+            "cinematic-grwm-fashion-editorial",
+            "grwm-gym-storyboard-sequence",
+            "minimalist-menswear-editorial-grwm",
+            "seedance-2-0",
+            "seedance-2-0-video-generation-prompt-routine-with-multiple-scenes-and-outfits",
+            "synthetic-human-stealth-infiltration-routine",
+            "tokyo-woman-lifestyle-documentary-routine",
+            "ugc-influencer-grwm-video"
+          ],
+          "templateCount": 9,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Makeup & Cosmetics",
+            "Skincare Routines",
+            "Hair & Styling",
+            "Fashion Editorial",
+            "Influencer Content"
+          ]
+        },
+        "Influencer Content": {
+          "templateSlugs": [
+            "beauty-influencer-morning-routine",
+            "beauty-influencer-vlog-prompt",
+            "influencer-style-mars-spaceport-video",
+            "kelloggs-cornflakes-ugc-ad"
+          ],
+          "templateCount": 4,
+          "visibility": "dedicated-browse",
+          "relatedNiches": [
+            "Makeup & Cosmetics",
+            "Skincare Routines",
+            "Hair & Styling",
+            "Fashion Editorial",
+            "GRWM & Vlogs"
+          ]
+        }
+      },
+      "totalTemplates": 354
+    },
+    "Ecommerce & Products": {
+      "niches": {
+        "Skincare & Beauty Products": {
+          "templateSlugs": [
+            "0-2-seconds-shot-1-visuals-the-bridge",
+            "2904-30-second-ultra-realistic-cinematic-horror-comedy-ad-for-phi",
+            "alien-screams-hasta-la-vista-while-the-t",
+            "bentley-s2-continental-asmr-video-prompt",
+            "berry-village-drone-ad",
+            "citrus-glow-skincare-product-video",
+            "collapsing-colosseum-gladiatorial-action",
+            "emerald-bio-serum-product-film",
+            "emotional-woman-collapsing-screaming-mirror-scene",
+            "enchanted-faberg-easter-egg-video-prompt",
+            "gourmet-burger-ugc-taste-test",
+            "kraken-vs-speedboat-ocean-battle",
+            "laundromat-rave-phone-camera-aesthetic",
+            "luxury-skincare-lotion-commercial",
+            "luxury-skincare-storyboard-motion-prompt",
+            "magical-girl-anime-cat-parody",
+            "replace-the-perfume-in-the-gift-box-shown",
+            "spy-action-fight-sequence-green-vs-black-suit",
+            "warrior-battle-tracking-shot",
+            "woman-mirror-breakdown-scream-scene"
+          ],
+          "templateCount": 20,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Fashion & Apparel",
+            "Jewelry & Watches",
+            "Perfume & Fragrance",
+            "Consumer Electronics"
+          ]
+        },
+        "Fashion & Apparel": {
+          "templateSlugs": [
+            "3304-ultra-realistic-ugc-luxury-fashion-review-of-cap-and-shoes-i",
+            "90s-street-dance-vhs-style",
+            "commercial-bag-photography-detailed-display-magnificent-audio",
+            "handheld-gold-runner-diving-underwater",
+            "luxury-fashion-bag-unboxing",
+            "scrolling-kitten-storyboard",
+            "seedance-2-0-cinematic-wuxia-combat-prompt",
+            "subject-in-image-1-maintain-high-facial-feature",
+            "surreal-skater-dachshund",
+            "youmind-1a4eec030715",
+            "youmind-793815dcc9d8",
+            "youmind-d4d796363cb0"
+          ],
+          "templateCount": 12,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Skincare & Beauty Products",
+            "Jewelry & Watches",
+            "Perfume & Fragrance",
+            "Consumer Electronics"
+          ]
+        },
+        "Jewelry & Watches": {
+          "templateSlugs": [
+            "0-2-seconds-a-dunhuang-flying-apsara-beauty",
+            "0-2s-a-low-angle-shot-shows-a",
+            "15-second-multi-scene-video-prompt-for-a-sacred-eastern-realm",
+            "1507-15-second-hyper-realistic-cinematic-luxury-jewelry-commercia",
+            "1521-luxury-diamond-ring-commercial-storyboard",
+            "16-9-horizontal-screen-ancient-chinese-mythology-epic",
+            "3d-animation-monkey-warrior-battle",
+            "a-cinematic-video-sequence-opening-with-a-tranquil",
+            "a-lone-woman-stands-on-the-roof-of",
+            "a-woman-in-her-late-20s-wearing-a",
+            "an-ancient-stone-mandala-carved-into-the-floor",
+            "ancient-alexandria-fpv-flight-sequence",
+            "ancient-battlefield-to-microscopic-civilization",
+            "ancient-tree-narrative-sequence",
+            "anime-world-transformation-video",
+            "astronaut-spacewalk-sci-fi-drama",
+            "black-and-gold-perfume-commercial",
+            "bullet-time-effect-in-a-college-canteen",
+            "cat-masters-tokyo-tower-descent-and-rescue",
+            "chinese-xianxia-3d-cg-high-energy-duel-sequence",
+            "cinematic-birthday-celebration-sequence",
+            "cinematic-evening-park-walk-ad",
+            "cinematic-golden-eagle-flight-sequence",
+            "cinematic-mech-cat-transformation-sequence",
+            "cinematic-minimalist-urban-morning",
+            "cinematic-skateboarder-kickflip",
+            "cinematic-street-dance-sequence",
+            "cinematic-warrior-and-dragon-spirit-prompt",
+            "cinematic-wingsuit-flight-snowy-mountain-dawn",
+            "creative-cinematic-scene-where-golden-sand-particles-swirl",
+            "dark-isekai-wolf-overpass-opening",
+            "desert-hoverboard-ruin-run",
+            "desert-scavenger-watches-buried-city-emerge",
+            "documentary-realism-car-crash-scene",
+            "dramatic-character-gacha-reveal-sequence",
+            "earth-to-st-petersburg-fpv-hyper-zoom",
+            "elderly-woman-opening-envelope-video-prompt",
+            "elf-mage-dragon-summoning-ritual",
+            "elven-queen-portrait-prompt-image-focused",
+            "epic-chinese-mythology-cinematic-prompt",
+            "espionage-thriller-fight-scene-prompt-with-image-references",
+            "father-son-sunset-reunion",
+            "fluffy-cat-watchmaker-scene-prompt",
+            "girl-flying-meadow-lake-golden",
+            "golden-gravel-particles-screen-text-animation",
+            "golden-hour-desert-suv-adventure",
+            "golden-nunchaku-action-sequence-prompt-for-seedance-2-0",
+            "graceful-elven-queen-at-twilight",
+            "gta-san-andreas-intro-modern-cinematic-remake",
+            "hamster-gym-bro-a-pixar-quality-animated-short",
+            "hero-entrance-effect-multi-shot-prompt",
+            "hidden-amazon-civilization-discovery",
+            "high-end-commercial-ad-aurora-fizz",
+            "high-energy-xianxia-battle-scene-15s",
+            "hydraulic-tidal-flow-battle",
+            "hyperreal-space-cinematography-video-prompt",
+            "impossible-fantasy-war-shot-video-prompt",
+            "in-a-vast-battlefield-of-clouds-suspended-above",
+            "jan-thirty-second-delivery-run-271585",
+            "jewelry-shop-smash-and-grab-sequence"
+          ],
+          "templateCount": 125,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Skincare & Beauty Products",
+            "Fashion & Apparel",
+            "Perfume & Fragrance",
+            "Consumer Electronics"
+          ]
+        },
+        "Perfume & Fragrance": {
+          "templateSlugs": [
+            "16-9-wide-aspect-ratio-surrealist-cinematic-quality",
+            "five-senses-perfume-brand-transformation-video-prompt",
+            "luxury-perfume-advertisement-content-creation",
+            "luxury-perfume-commercial",
+            "perfume-advertising-content-natural-light",
+            "perfume-mg-animation-style"
+          ],
+          "templateCount": 6,
+          "visibility": "dedicated-browse",
+          "relatedNiches": [
+            "Skincare & Beauty Products",
+            "Fashion & Apparel",
+            "Jewelry & Watches",
+            "Consumer Electronics"
+          ]
+        },
+        "Consumer Electronics": {
+          "templateSlugs": [
+            "ramen-bowl-ugc-taste-test",
+            "ugc-aesthetic-grocery-shopping-lifestyle"
+          ],
+          "templateCount": 2,
+          "visibility": "searchable",
+          "relatedNiches": [
+            "Skincare & Beauty Products",
+            "Fashion & Apparel",
+            "Jewelry & Watches",
+            "Perfume & Fragrance"
+          ]
+        }
+      },
+      "totalTemplates": 185
+    },
+    "Education & Training": {
+      "niches": {
+        "Online Courses": {
+          "templateSlugs": [
+            "real-world-action-is-getting-easier-to-direct-304904",
+            "sum-up-the-ai-discourse-in-a-meme"
+          ],
+          "templateCount": 2,
+          "visibility": "searchable",
+          "relatedNiches": [
+            "Documentary",
+            "STEM & Science"
+          ]
+        },
+        "Documentary": {
+          "templateSlugs": [
+            "basketball-player-monster-armor-battle",
+            "cross-era-dance-history-evolution",
+            "high-energy-japan-travel-documentary-montage",
+            "nature-documentary-otter-piloting-airplane",
+            "ultra-realistic-wildlife-documentary-footage",
+            "wildlife-documentary-lion-elephant-rescue",
+            "wildlife-documentary-wolf-deer-chase",
+            "youmind-82a7c5b1914c"
+          ],
+          "templateCount": 8,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Online Courses",
+            "STEM & Science"
+          ]
+        },
+        "STEM & Science": {
+          "templateSlugs": [
+            "ai-virtual-glasses-subjective-perspective",
+            "man-is-working-in-the-lab-cut-multiple",
+            "rampaging-android-girl-in-lab",
+            "shot-1-0-00-0-02-2s-wide"
+          ],
+          "templateCount": 4,
+          "visibility": "dedicated-browse",
+          "relatedNiches": [
+            "Online Courses",
+            "Documentary"
+          ]
+        }
+      },
+      "totalTemplates": 18
+    },
+    "Entertainment & Media": {
+      "niches": {
+        "Short Films": {
+          "templateSlugs": [
+            "15-second-beautiful-pure-love-narrative-shot-cinematic",
+            "a-15-second-cinematic-cg-short-film-the",
+            "action-comedy-old-master-in-hotel-lobby",
+            "cinematic-evolution-of-the-qipao-short-film",
+            "cinematic-gaming-short-with-seamless-transitions",
+            "cinematic-schoolgirl-action-short",
+            "cinematic-time-freeze-sports-bar-prompt",
+            "cinematic-time-freeze-thriller",
+            "cinematic-time-travel-short-film-chinese-style",
+            "cinematic-times-square-confidence-walk",
+            "cinematic-urban-womens-portrait-short-film",
+            "costume-comedy-short-film-storyboard",
+            "create-a-cinematic-short-film-with-multiple-shots",
+            "desert-martial-arts-cat-short-film",
+            "elemental-battle-short-film-prompt-fire-vs-ice",
+            "emotional-hospital-emergency-short-film",
+            "english-cinematic-whale-in-the-clouds-video-prompt",
+            "futuristic-action-short-film-prompt",
+            "ghibli-inspired-animated-short-film",
+            "girl-cat-heartwarming-cinematic-narrative",
+            "hanuman-supernatural-hospital-fight",
+            "horror-short-film-concept",
+            "hot-blooded-duel-anime-short-film-prompt-for-seedance-2-0",
+            "immersive-high-speed-office-melee",
+            "japanese-dark-fantasy-action-short-film-prompt-for-seedance-2-0",
+            "miniature-fantasy-action-short-film-prompt",
+            "modern-rural-healing-short-film-guide",
+            "original-dark-fantasy-action-short-film",
+            "original-ocean-fantasy-fashion-short-film-prompt-for-seedance-2-0",
+            "photorealistic-sandworm-hunt-short-film",
+            "realistic-nightclub-short-video-with-face-consistency",
+            "satirical-short-film-the-nothing-hero-journey",
+            "sci-fi-dark-comedy-chase-scene",
+            "secret-nighttime-pets-cinematic-short-film",
+            "seedance-2-5-is-live-on-toapis-api-232790",
+            "studio-ghibli-style-animation-scene",
+            "supernatural-mirror-glitch-horror-short-film",
+            "surrealist-short-film-creative-camera-shots",
+            "the-paper-boat-429699",
+            "theme-based-on-the-user-provided-new-year"
+          ],
+          "templateCount": 40,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Music Videos",
+            "Animation & Anime",
+            "Viral & Social Content",
+            "Character & Story"
+          ]
+        },
+        "Music Videos": {
+          "templateSlugs": [
+            "cinematic-k-pop-music-video-with-lip-sync",
+            "dramatic-anime-mv-falling-tiger-and-unimpressed-cat",
+            "is-an-official-platform-for-it-brings-cinema-gra-031982",
+            "music-video-male-lead-imitation-no-cuts",
+            "nostalgic-indie-pop-music-video-montage",
+            "reluctant-dancing-woman-in-kimono-mv",
+            "surreal-middle-eastern-ritual-video"
+          ],
+          "templateCount": 7,
+          "visibility": "dedicated-browse",
+          "relatedNiches": [
+            "Short Films",
+            "Animation & Anime",
+            "Viral & Social Content",
+            "Character & Story"
+          ]
+        },
+        "Animation & Anime": {
+          "templateSlugs": [
+            "1-male-a-male-peacock-spirit-long-bob",
+            "15-second-cinematic-anime-duel",
+            "2291-pixar-style-30-second-3d-animated-short-of-a-beggar-and-a-cr",
+            "2d-anime-action-sequence-wind-knight-vs-shadow-beast",
+            "3d-animation-kung-fu-soccer-cinematic-sequence",
+            "3d-cartoon-dragon-baking-animation",
+            "3d-cg-animation-of-a-monk-riding-a-white-horse",
+            "3d-chibi-character-interaction",
+            "3d-fantasy-animation-prompt",
+            "3d-fast-motion-lego-construction-animation",
+            "ancient-egypt-pylon-gate-animation",
+            "animated-biology-cellular-mechanisms-ecosystem-visuals",
+            "animation-transfer-and-camera-tracking-prompt",
+            "anime-combat-storyboard-video",
+            "anime-fighter-battle-giant-octopus-alien",
+            "anime-game-cinematic-animation",
+            "anime-girl-motion-capture-stage-video",
+            "anime-girl-talking-about-pudding",
+            "anime-grim-reaper-cinematic-timeline",
+            "anime-high-energy-battle-scene",
+            "anime-meteor-apocalypse-and-rebirth",
+            "another-experiment-with-a-30-second-cinematic-in-256736",
+            "arctic-dark-comedy-animation",
+            "baby-plush-anime-opening",
+            "bharatanatyam-dance-animation-prompt",
+            "black-white-ink-tai-chi-kung-fu-animation",
+            "brazilian-phonk-edit-with-famous-anime-characters",
+            "cartoon-bulldog-versus-live-boxer-029228",
+            "cat-making-pancakes-cinematic-prompt",
+            "cat-monk-ronin-fight-animation",
+            "cat-thief-heist-retro-animation",
+            "character-facial-performance-animation",
+            "chibi-anime-fast-paced-battle-neon-desert-outpost",
+            "chibi-anime-girl-ice-cream-tragedy-prompt",
+            "chibi-anime-girl-in-penguin-onesie-dancing-in-snow",
+            "chibi-character-phoebe-pizza-scene",
+            "chibi-moe-anime-penguin-girl",
+            "chinese-style-wuxia-battle-animation-prompt",
+            "cinematic-2d-anime-scene-prompt",
+            "cinematic-anime-action-sequence-prompt-with-dialogue",
+            "cinematic-anime-battle-sequence",
+            "cinematic-anime-scene-stormy-seaside-promenade",
+            "cinematic-butterfly-fairy-animation",
+            "cinematic-emotional-confrontation-prompt",
+            "cinematic-fantasy-overgrown-ruins-animation",
+            "cinematic-hbo-fight-scene-ninja",
+            "cinematic-long-take-action-sequence",
+            "cinematic-street-magic-video-prompt-for-seedance-2-0",
+            "classic-90s-retro-anime-realism",
+            "comedic-character-transformation-into-bear-animation",
+            "cosmic-fluid-evolution-motion-graphics",
+            "created-with-seedance-2-5-141060",
+            "created-with-seedance-2-5-on-822971",
+            "dark-comedy-cat-street-rescue",
+            "emotional-robot-and-boy-animation",
+            "epic-cat-kung-fu-animation-trailer",
+            "epic-fantasy-battle-scene-prompt-for-seedance-2-0",
+            "fantasy-animation-ghibli-storyboard-reference",
+            "fantasy-anime-forest-adventure-sequence",
+            "figure-1-vs-figure-2-martial-arts-tournament"
+          ],
+          "templateCount": 140,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Short Films",
+            "Music Videos",
+            "Viral & Social Content",
+            "Character & Story"
+          ]
+        },
+        "Viral & Social Content": {
+          "templateSlugs": [
+            "10-second-douyin-tiktok-viral-ancient-style-costume",
+            "cinematic-tractor-tire-comedy-prank",
+            "epic-chinese-ceo-emotional-drama-reveal",
+            "funny-car-wash-sketch-comedy",
+            "funny-rural-vlog-selfie",
+            "gen-z-girl-joker-transformation",
+            "girl-penguin-ice-cream-chaos",
+            "highly-dynamic-cinematic-dance-video-based-on-image1",
+            "hollywood-celebrities-ai-controversy-meme",
+            "k-pop-dance-challenge-studio",
+            "melodramatic-rainy-night-heartbreak-scene",
+            "melodramatic-rainy-night-neon-short-drama",
+            "satirical-viral-media-parody-creation",
+            "secret-agent-vfx-story",
+            "viral-ceo-drama-humiliated-groom-mean-motherinlaw",
+            "viral-sketch-comedy-luxury-car-office-drama"
+          ],
+          "templateCount": 16,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Short Films",
+            "Music Videos",
+            "Animation & Anime",
+            "Character & Story"
+          ]
+        },
+        "Character & Story": {
+          "templateSlugs": [
+            "15-second-cinematic-luxury-perfume-commercial",
+            "2673-15-second-live-action-video-prompt-alex-time-warp-disaster",
+            "3312-curious-fox-mountain-stream-vlog",
+            "3320-cozy-crochet-amigurumi-girl-ordering-pizza-seedance-2-5-stop",
+            "a-30-second-cinematic-parkour-commercial-about-focus-movement-and-513060",
+            "abstract-instant-noodles-eating-movements-expression",
+            "action-movie-fight-storyboard",
+            "ancient-costume-power-struggle-drama",
+            "animated-khiphop-rap-performance-neon-rooftop",
+            "barbershop-haircut-cinematic-storyboard",
+            "battle-of-salamis-surrealist-sequence",
+            "blue-haired-hero-and-spirit-fox-escape",
+            "blueberry-pie-baking-storyboard",
+            "boxing-vs-jeet-kune-do-junkyard-fight",
+            "breakdance-battle-cinematic-video",
+            "brutalist-dystopian-suv-escape",
+            "bullet-time-selfie-survival-warrior",
+            "celestial-wuxia-flight-and-dragon-ride",
+            "character-roaring-excited-comedic-scene-intro",
+            "characters-female-lead-lin-wan-24-years-old",
+            "chinese-motivational-success-seminar-video",
+            "cinematic-automotive-commercial-prompt",
+            "cinematic-battle-prompt-for-female-operative",
+            "cinematic-battle-prompt-wolf-vs-rooster",
+            "cinematic-cave-multi-shot-sequence",
+            "cinematic-celestial-battle-storyboard-prompt",
+            "cinematic-character-introduction-video",
+            "cinematic-dark-fantasy-animation-prompt",
+            "cinematic-dragon-bond-fantasy-story",
+            "cinematic-dramatic-combat-with-fluid-motion",
+            "cinematic-evolution-sakura-gaiden-storytelling",
+            "cinematic-female-warrior-martial-arts-sequence",
+            "cinematic-food-and-character-rendering-prompt",
+            "cinematic-food-asmr-with-aria",
+            "cinematic-football-freestyle-sequence",
+            "cinematic-hollywood-video",
+            "cinematic-ink-dive-storyboard",
+            "cinematic-mage-battle-storyboard",
+            "cinematic-minotaur-storyboard-sequence",
+            "cinematic-rainy-city-sidewalk-meeting",
+            "cinematic-romantic-drama-scene",
+            "cinematic-rugby-match-storyboard",
+            "cinematic-slice-of-life-comedy-dropping-a-coffee-mug",
+            "cinematic-story-study-501840",
+            "cinematic-storyboard-video-extension",
+            "cinematic-tavern-fight-scene-sequence",
+            "cinematic-trailer-style-video-generation",
+            "cinematic-vehicle-tracking-and-text-overlay",
+            "classic-slasher-horror-storyboard",
+            "coherent-multi-scene-film-video-prompt",
+            "comic-strip-to-video-journey-to-west",
+            "comic-style-humorous-visual-storytelling",
+            "consistent-character-storyboard-cinematic",
+            "corridor-video-continuation",
+            "cowboy-showdown-storyboard-conversion",
+            "create-video-from-storyboard-images",
+            "daily-routine-split-screen-comparison",
+            "dance-choreography-storyboard-translation",
+            "dark-fairytale-chase-battle-cinematic-storyboard",
+            "dark-fantasy-duel-shadow-monarch-vs-knight"
+          ],
+          "templateCount": 167,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Short Films",
+            "Music Videos",
+            "Animation & Anime",
+            "Viral & Social Content"
+          ]
+        }
+      },
+      "totalTemplates": 620
+    },
+    "Finance & Professional Services": {
+      "niches": {
+        "Financial Services": {
+          "templateSlugs": [
+            "youmind-9b921cc19c64"
+          ],
+          "templateCount": 1,
+          "visibility": "searchable",
+          "relatedNiches": [
+            "Business & Corporate"
+          ]
+        },
+        "Business & Corporate": {
+          "templateSlugs": [
+            "a-15-second-inspirational-business-speech-short-video",
+            "anthropomorphic-romantic-story-elite-executive",
+            "epic-faceoff-michael-jackson-vs-hitler",
+            "executive-assistant-collage-grid",
+            "high-speed-transition-video-prompt-for-seedance-2-0-omni",
+            "hyperrealistic-miniature-diorama-stop-motion-animation-handcrafted-tactile",
+            "intense-swat-hostage-standoff-tactical-shots",
+            "modern-internet-slang-office-discussion",
+            "modern-romance-conflict-short-drama-scripts",
+            "motivational-speech-studio-video-script",
+            "police-station-narrative-sequence-prompt",
+            "seedance-anime-funny-chinese-officer-video",
+            "solar-valkyrie-superhero-transformation-prompt",
+            "youmind-8c856e42eca7"
+          ],
+          "templateCount": 14,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Financial Services"
+          ]
+        }
+      },
+      "totalTemplates": 23
+    },
+    "Fitness & Wellness": {
+      "niches": {
+        "Gym & Training": {
+          "templateSlugs": [
+            "boxing-training-montage",
+            "elite-combat-forces-training-cinematic",
+            "female-boxing-training-montage",
+            "fitness-aesthetic-gym-montage",
+            "fitness-athlete-calisthenics-cinematic",
+            "fitness-transformation-commercial",
+            "handheld-circular-shot-boxers-sparring-gym",
+            "industrial-gym-fitness-montage",
+            "inspirational-athlete-comeback-narrative",
+            "parkour-expert-pov-video",
+            "photorealistic-olympics-womens-beam-final-gymnastics",
+            "realistic-gym-bench-press-workout-scene",
+            "wrestling-sports-documentary-montage"
+          ],
+          "templateCount": 13,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Yoga & Mindfulness",
+            "Sports Performance"
+          ]
+        },
+        "Yoga & Mindfulness": {
+          "templateSlugs": [
+            "cinematic-wellness-yoga-flow-video",
+            "the-silent-retreat-uproar-disaster-scene",
+            "woman-juggling-on-moving-car"
+          ],
+          "templateCount": 3,
+          "visibility": "dedicated-browse",
+          "relatedNiches": [
+            "Gym & Training",
+            "Sports Performance"
+          ]
+        },
+        "Sports Performance": {
+          "templateSlugs": [
+            "italian-coast-wakeboarding-splash-433442"
+          ],
+          "templateCount": 1,
+          "visibility": "searchable",
+          "relatedNiches": [
+            "Gym & Training",
+            "Yoga & Mindfulness"
+          ]
+        }
+      },
+      "totalTemplates": 67
+    },
+    "Food & Beverage": {
+      "niches": {
+        "Restaurants & Cafes": {
+          "templateSlugs": [
+            "1949-handheld-coffee-vlog-with-mini-dv-aesthetic",
+            "2477-30-second-vertical-ai-ugc-product-commercial-for-premium-cof",
+            "2984-the-decadent-snap-artisanal-chocolate-bar-video-prompt",
+            "3052-kitkat-break-focus-commercial",
+            "3310-handheld-selfie-vlog-eating-oden-in-hotel-room",
+            "a-chaotic-food-fight-erupting-inside-a-crowded",
+            "a-steampunk-robot-becomes-a-michelin-three-star",
+            "anime-style-matcha-roll-cake-baking-process",
+            "blackberry-vanilla-soda-ugc-vlog",
+            "cartoon-kitchen-snack-chaos",
+            "cat-ramen-chef-asmr-video-prompt-for-seedance-2-0",
+            "chef-ant-kitchen-chase-pixar",
+            "chef-kitchen-culinary-choreography-animation",
+            "chef-spicy-food-prank-pov",
+            "chocolate-cake-baking-ad",
+            "cinematic-kitchen-close-up-video",
+            "cinematic-luxury-pizza-commercial",
+            "cinematic-morning-ritual-video",
+            "cinematic-superhuman-speed-cooking",
+            "claymation-miniature-chef-prompt",
+            "commercial-kitchen-impossible-camera-move-prompt",
+            "cozy-cafe-lifestyle-commercial-vlog",
+            "elegant-red-dress-lipstick-date",
+            "fast-food-restaurant-cinematic",
+            "food-delivery-rush-cinematic-prompt",
+            "food-delivery-rush-storyboard",
+            "heartwarming-kitchen-baking-scene",
+            "hungry-mouse-finds-food-and-is-chased",
+            "instant-noodle-cooking-commercial",
+            "japanese-high-school-girl-cinematic-sequence",
+            "kitchen-scene-realistic-lifestyle-footage",
+            "livestream-selling-video-prompt-mala-tang",
+            "midnight-kitchen-cinematic-cooking",
+            "peaceful-daily-routine-narrative-prompt",
+            "penguin-dancer-in-cat-hotpot-restaurant",
+            "pixar-inspired-animated-short-of-anthropomorphic-breakfast-items",
+            "restaurant-menu-review-video-creation",
+            "romantic-proposal-scene-video-prompt-for-seedance-2-0",
+            "samurai-sushi-chef-comedy-hook-prompt",
+            "seedance-2-0-k-pop-retro-mv-prompt",
+            "seedance-2-0-prompt-for-beautiful-chef-cooking-sour-fish-soup",
+            "serious-chef-cat-cooking-video",
+            "sneaky-cat-pet-vlog-action-sequence",
+            "super-speed-kitchen-action-comedy-prompt",
+            "suspenseful-alleyway-scene",
+            "the-great-fish-heist-cat-burglar-kitchen-raid-video",
+            "toaster-rocket-jumpscare",
+            "try-it-now-on-656068",
+            "turkish-eggs-mini-dv-recipe-vlog-107610",
+            "ugc-and-social-media-video-scenarios",
+            "ugc-lifestyle-morning-smoothie",
+            "youmind-714e8ab60957"
+          ],
+          "templateCount": 52,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Coffee Shops",
+            "Bakeries",
+            "Food Brands",
+            "Beverage Brands"
+          ]
+        },
+        "Coffee Shops": {
+          "templateSlugs": [
+            "90s-anime-cafe-action-surprise-intrusion",
+            "bullet-time-falling-businessman",
+            "cinematic-office-scene-video-prompt",
+            "cinematic-rainy-day-coffee-mug",
+            "coffee-bean-light-shadow-warm-morning",
+            "cozy-rainy-coffee-shop",
+            "dapper-penguin-morning-coffee-park",
+            "indonesian-coffee-ugc-video-script",
+            "luxury-editorial-book-flip",
+            "office-coffee-break-gone-wrong-horror-video-prompt",
+            "pixar-barista-coffee-sequence",
+            "prompt-for-young-man-in-caf",
+            "seedance-2-0-storyboard-prompt-structure",
+            "youmind-2240e274313a",
+            "youmind-98cf5ee342dd",
+            "youmind-aef94bd341a5"
+          ],
+          "templateCount": 16,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Restaurants & Cafes",
+            "Bakeries",
+            "Food Brands",
+            "Beverage Brands"
+          ]
+        },
+        "Bakeries": {
+          "templateSlugs": [
+            "3030-surreal-tokyo-dessert-animation",
+            "360-panoramic-selfie-inside-gourmet-bakery",
+            "dragon-fire-boxing-desert-combat",
+            "fantasy-dessert-world-transformation",
+            "miniature-cake-bakery-world",
+            "premium-chocolate-dessert-ad",
+            "premium-commercial-photograph-of-a-tall-ice-cream"
+          ],
+          "templateCount": 7,
+          "visibility": "dedicated-browse",
+          "relatedNiches": [
+            "Restaurants & Cafes",
+            "Coffee Shops",
+            "Food Brands",
+            "Beverage Brands"
+          ]
+        },
+        "Food Brands": {
+          "templateSlugs": [
+            "business-bar-whisper-snack-gift-reveal",
+            "first-person-perspective-a-relaxed-party-has-just"
+          ],
+          "templateCount": 2,
+          "visibility": "searchable",
+          "relatedNiches": [
+            "Restaurants & Cafes",
+            "Coffee Shops",
+            "Bakeries",
+            "Beverage Brands"
+          ]
+        },
+        "Beverage Brands": {
+          "templateSlugs": [
+            "1950-animated-forest-riverside-picnic",
+            "actor-tasting-champions-drink-satisfaction",
+            "alien-apartment-floor-collapse",
+            "laboratory-beverage-commercial-cinematic-shots",
+            "lone-martial-artist-ancient-village-battle",
+            "miniature-sprite-can-house",
+            "mirinda-blueberry-soda-commercial",
+            "rainbow-hair-concert-video",
+            "soda-commercial-cinematic-scene",
+            "vibrant-orange-soda-commercial-shot",
+            "wooden-house-tea-chat-deer-sheep-scene",
+            "wuxia-comedy-short-cat-assassin-vs-single-man"
+          ],
+          "templateCount": 12,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Restaurants & Cafes",
+            "Coffee Shops",
+            "Bakeries",
+            "Food Brands"
+          ]
+        }
+      },
+      "totalTemplates": 190
+    },
+    "General Business": {
+      "niches": {
+        "Brand Promotions": {
+          "templateSlugs": [
+            "1-open-with-an-establishing-fly-over-shot",
+            "1970s-shaw-brothers-kung-fu-cinema-scene",
+            "35mm-handheld-tracking-shot-prompt",
+            "a-futuristic-promotional-video-for-kiri-engine-a",
+            "a-man-counts-out-loud-from-1-to",
+            "a-man-sitting-in-his-prison-cell-cut",
+            "a-massive-ancient-sea-dragon-emerging-from-the",
+            "a-tired-astronaut-walking-through-a-dark-corridor",
+            "a-ugc-video-for-a-skincare-brand-the",
+            "a-woman-in-her-mid-30s-wearing-a",
+            "absurd-napoleon-charging-waterloo-scene",
+            "actress-rhythmic-push-pull-pan-dance",
+            "aliens-playing-chess",
+            "all-four-girls-do-a-synchronized-tiktok-dance",
+            "apocalyptic-naval-disaster-video-prompt-for-seedance-2-0",
+            "asteroid-city-impact-scene",
+            "automatic-colored-video-from-reference-text",
+            "bamboo-forest-moonlight-swordsman",
+            "basic-start-end-image-prompt",
+            "biomechanical-creature-city-destruction",
+            "black-and-white-alley-scene-prompt",
+            "black-cat-warrior-martial-arts-video-prompt",
+            "bowling-alley-horror-creature-sequence",
+            "building-blocks-spontaneous-formation",
+            "cat-spinning-singing-feel-good-inc-floating-island",
+            "colossal-gargoyle-paris-aerial-chase",
+            "colossal-katamari-sphere-emerging-from-ocean",
+            "comedic-clip-martin-episode-2026",
+            "couple-argument-before-rocket-launch",
+            "day-in-the-life-of-a-salaryman-but",
+            "deep-sea-explorer-in-a-bio-luminescent-coral-city",
+            "dinosaur-war-military-jets",
+            "dunhuang-mural-to-life-an-apsara-goddess-peels",
+            "dynamic-corridor-chase-camera-follow",
+            "elegant-girl-drying-and-shaking-clothes",
+            "elemental-chaos-battle-on-a-coastal-battlefield",
+            "elven-archer-vs-towering-brute-battle-scene-prompt",
+            "emotional-video-inspired-by-figure-series",
+            "epic-battle-monkey-king-vs-superhero-scenes",
+            "epic-cathedral-warriors-duel-dark-dragon",
+            "epic-dragon-battle-video-prompt-for-seedance-2-0",
+            "epic-tollywood-action-cinema-scene",
+            "exploded-view-spaceship-video-prompt",
+            "extreme-close-up-shot-begins-a-cloaked-soldier",
+            "family-love-celebration-diverse-children-dancing",
+            "female-general-battlefield-video-prompt",
+            "fight-scene-prompt-impact-and-recovery",
+            "fisheye-lens-horse-peek-through-hole",
+            "floral-movement-forming-final-silhouette",
+            "fpv-drone-shot-through-tikal",
+            "friends-chaos-group-selfie-video-prompt",
+            "funny-morphing-action-man-black-clothes",
+            "furious-giant-dragon-emerging-from-ocean",
+            "giant-panda-exploring-chengdu-streets",
+            "giant-preserved-marine-life-in-tanks",
+            "gintoki-sakata-announces-cosmic-battle-arena",
+            "grand-award-show-environment",
+            "harry-potter-voldemort-action-fight-scene",
+            "hong-kong-cinema-icon-vs-demon-slayer-crossover",
+            "hyperrealistic-physics-inertia-momentum-effect"
+          ],
+          "templateCount": 139,
+          "visibility": "featured",
+          "relatedNiches": []
+        }
+      },
+      "totalTemplates": 139
+    },
+    "Real Estate": {
+      "niches": {
+        "Residential Listings": {
+          "templateSlugs": [
+            "1990s-vhs-home-video-style",
+            "a-girl-bare-faced-fiddling-with-a-flute",
+            "a-man-walks-out-of-his-house-towards",
+            "a-young-person-figure-1-character-stands-in",
+            "animated-cartoon-multi-shot-storyboard",
+            "anime-victorian-house-dance",
+            "beat-synced-interview-day-storyboard",
+            "bullet-time-360-orbit-prompt",
+            "celestial-goddess-manifestation-at-the-white-house-video-prompt",
+            "character-girl-in-a-pure-and-innocent-style",
+            "chinese-new-year-gala-timeless-talk-show",
+            "cinematic-action-sequence-in-a-suburban-living-room",
+            "cinematic-ballerina-in-flooded-opera-house",
+            "cinematic-commercial-sequence-part-1",
+            "cinematic-live-action-woman-closing-curtains-scene",
+            "comedic-cat-vtuber-parody-prompt",
+            "daily-routine-multi-shot-sequence",
+            "detailed-blueprint-to-house-timelapse-prompt",
+            "emotional-drama-scene-prompt",
+            "empress-consort-chinese-new-year-comedy",
+            "fast-paced-fpv-cinematic-flying-through-a-hyper",
+            "father-daughter-street-fighter-fight",
+            "firefighter-rescue-cinematic-sequence",
+            "first-person-male-perspective-on-the-living-room",
+            "flooded-village-survival-thriller",
+            "fpv-ancient-indian-kingdom",
+            "fpv-cinematic-flight-through-a-hyper-realistic-treehouse",
+            "funny-cat-breakfast-wake-up-call",
+            "girl-s-image-references-character-in-image-1",
+            "help-me-create-a-video-in-a-cozy",
+            "high-octane-izakaya-jet-entrance",
+            "home-horror-mutated-creature-sequence",
+            "hyperrealistic-miniature-diorama-stop-motion-clay-animation-handcrafted",
+            "modern-house-construction-time-lapse",
+            "multi-shot-cinematic-scene-fbi-agent-and-alien-at-a-party",
+            "natural-grwm-aesthetic-video",
+            "one-take-cinematic-horror-scene",
+            "origami-house-paper-animation",
+            "pixel-art-horror-rpg-gameplay-scene",
+            "rainbow-lorikeet-home-video-prompt-for-seedance-2-0",
+            "realistic-bedroom-video-recording-prompt",
+            "realistic-style-vertical-screen-warm-cinematic-lighting-0",
+            "realistic-style-vertical-screen-warm-cinematic-lighting-0-2",
+            "rider-galloping-white-horse-vancouver-mansion",
+            "scene-description-indoor-home-environment-suspected-modern-style",
+            "secret-cat-economy-underground-base-prompt",
+            "seedance-2-0-horror-video-generation-prompt",
+            "slapstick-spy-cat-firecracker-scene-prompt",
+            "summer-pool-party-montage-video-prompt",
+            "the-dragon-turns-over-ex-can-t-reach",
+            "tired-man-coming-home-finding-key-emotion-shift",
+            "two-realistic-domestic-cats-standing-upright-in-a",
+            "urban-warehouse-street-fight",
+            "using-image-1-as-a-reference-generate-a",
+            "whip-pan-heated-couple-argument-sequence",
+            "youmind-1324498f9494",
+            "youmind-3bde748fef3b",
+            "youmind-48dade1a7760",
+            "youmind-bb355d74885c"
+          ],
+          "templateCount": 59,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Luxury Properties"
+          ]
+        },
+        "Luxury Properties": {
+          "templateSlugs": [
+            "armored-baboon-rampage-burning-maasai-village",
+            "aspect-ratio-16-9-guangzhou-city-group-portrait",
+            "boxing-champion-rise-story",
+            "evolution-of-an-empire-timeline",
+            "hyper-realistic-cinematic-scene-of-mythological-intervention",
+            "luxury-mansion-sunset-retreat-ad",
+            "samurai-vs-fire-yokai-storyboard",
+            "scene-1-cinematic-medium-shot-exterior-of-a",
+            "scene-1-galloping-out-from-the-mansion-gate",
+            "subject-guangzhou-city-portrait-including-ancient-xiguan-mansions",
+            "white-horse-gallop-mansion-gate-winter",
+            "white-horse-galloping-elite-vancouver-winter",
+            "youmind-3af6f0d8ffb4"
+          ],
+          "templateCount": 13,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Residential Listings"
+          ]
+        }
+      },
+      "totalTemplates": 81
+    },
+    "Sports & Outdoors": {
+      "niches": {
+        "Team Sports": {
+          "templateSlugs": [
+            "15-seconds-cinematic-realistic-style-golden-hour-warm",
+            "cinematic-soccer-stadium-intimate-whisper-scene",
+            "consistent-character-swap-and-integration",
+            "female-street-basketball-freestyle-video",
+            "football-stadium-broadcast-fan-portrait",
+            "football-stadium-fan-reaction-broadcast",
+            "glamorous-woman-soccer-stadium",
+            "hong-kong-stadium-liverpool-fans-conspiracy",
+            "hyper-realistic-football-strike-sequence",
+            "kbo-baseball-fan-stadium-reaction",
+            "korean-baseball-stadium-spectator-candid",
+            "korean-woman-baseball-stadium",
+            "live-football-broadcast-video-prompt",
+            "manchester-united-fan-video",
+            "parrot-street-performance-basketball",
+            "pro-soccer-goal-action-sequence"
+          ],
+          "templateCount": 16,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Combat Sports",
+            "Action & Extreme",
+            "Olympics & Competition"
+          ]
+        },
+        "Combat Sports": {
+          "templateSlugs": [
+            "aew-wrestling-championship-cinematic-video",
+            "cinematic-wwe-wrestling-match-with-shocking-twist",
+            "fiery-battle-magma-commander-vs-flame-warrior",
+            "njpw-womens-wrestling-match-sequence"
+          ],
+          "templateCount": 4,
+          "visibility": "dedicated-browse",
+          "relatedNiches": [
+            "Team Sports",
+            "Action & Extreme",
+            "Olympics & Competition"
+          ]
+        },
+        "Action & Extreme": {
+          "templateSlugs": [
+            "colossal-scale-surprise-interaction",
+            "the-rhythm-of-the-background-music-perfectly-matches",
+            "third-person-skateboard-rear-low-angle-view-ultra",
+            "urban-graffiti-skateboarders-tracking-shot",
+            "youmind-e1798a0946f1"
+          ],
+          "templateCount": 5,
+          "visibility": "dedicated-browse",
+          "relatedNiches": [
+            "Team Sports",
+            "Combat Sports",
+            "Olympics & Competition"
+          ]
+        },
+        "Olympics & Competition": {
+          "templateSlugs": [
+            "maltese-dog-winter-olympics-highlights",
+            "olympic-hammer-throw-broadcast-simulation",
+            "photorealistic-olympics-womens-snowboard-big-air"
+          ],
+          "templateCount": 3,
+          "visibility": "dedicated-browse",
+          "relatedNiches": [
+            "Team Sports",
+            "Combat Sports",
+            "Action & Extreme"
+          ]
+        }
+      },
+      "totalTemplates": 47
+    },
+    "Technology": {
+      "niches": {
+        "SaaS & Software": {
+          "templateSlugs": [
+            "0-3-seconds-the-screen-is-filled-with",
+            "2d-carving-morphing-into-human-woman",
+            "3185-colossal-kaiju-vs-fighter-jet-in-coastal-city",
+            "a-flag-waves-atop-the-rooftop-tower-of",
+            "a-high-quality-ultra-high-speed-japanese-battle",
+            "abandoned-train-station-rebuilding-prompt",
+            "adventurer-on-dragon-approaching-pirate-ship",
+            "ai-content-creator-400-followers-celebration-video",
+            "ancient-costume-time-travel-drama-trailer",
+            "anime-style-guofeng-2d-style-art-style-similar",
+            "anime-style-guofeng-2d-style-similar-to-the",
+            "apocalyptic-penguin-breakup-animation",
+            "awkward-palace-scene-mistaken-identity",
+            "chaotic-kung-fu-fight-scene-prompt-for-seedance-2-0",
+            "character-consistency-video-prompt",
+            "chibi-penguin-girl-dance-video-prompt",
+            "cinematic-black-and-white-portrait-of-a-young-woman-with-a-tear",
+            "cinematic-bullet-train-speed-racing-through-countryside",
+            "cinematic-casino-suspense-sequence",
+            "cinematic-desert-escape-woman-car-video",
+            "cinematic-japanese-slice-of-life-scene-with-lip-synced-dialogue",
+            "cinematic-marine-biologist-exploration",
+            "cinematic-reality-collapse-one-take",
+            "claymation-western-action-sequence",
+            "cyberpunk-game-character-rotation-video",
+            "cyberpunk-sky-runner-floating-city",
+            "desert-warrior-sandstorm-sequence",
+            "dimensional-entity-megacity-collision-prompt-dreamina",
+            "emotional-kitten-rescue-scene",
+            "eternal-night-sci-fi-sunrise",
+            "fairy-fpv-flight-macro-world",
+            "fantasy-fighting-game-storyboard",
+            "fast-paced-anime-battle-opening-sequence",
+            "frozen-cathedral-archivist-action-sequence",
+            "girl-and-cat-transformation-video-prompt-seedance-2-0",
+            "glowing-portal-in-paris-prompt",
+            "gothic-city-detective",
+            "hand-kneading-dough-cooking-process",
+            "hindu-myth-ocean-churning-elixir-life",
+            "historical-siege-scene-prompt-part-1",
+            "hyper-realistic-nyc-action-sequence",
+            "j-horror-subway-scene",
+            "knight-vs-dragon-dark-fantasy-battle",
+            "kpop-dance-choreography-video",
+            "master-prompts-on-vadoo-ai",
+            "miniature-girl-skateboard-chase-video-prompt-for-seedance-2-0",
+            "modern-software-distribution-podcast-discussion",
+            "morning-wake-up-short-film-emotional-interaction",
+            "ocean-colossus-vs-storm-cinematic-simulation",
+            "one-take-ugc-video-of-a-woman-cutting-a-cake-and-a-cat-screaming",
+            "outdoor-adventure-backpack-commercial-storyboard",
+            "overgrown-megacity-jungle",
+            "painter-trapping-living-paint-blob",
+            "porto-francesinha-comedy-recipe",
+            "pov-paper-airplane-flight",
+            "raw-iphone-bystander-footage-template",
+            "reactor-chamber-core-shutdown",
+            "sailor-scouts-bedroom-conversation-moment",
+            "scene-1-galloping-horse-enthusiastic-crowd-approaching-0",
+            "seedance-2-0-prompt-for-a-wuxia-fantasy-battle-scene"
+          ],
+          "templateCount": 73,
+          "visibility": "featured",
+          "relatedNiches": [
+            "AI & Machine Learning",
+            "Consumer Tech",
+            "Gaming",
+            "Cyberpunk & Sci-Fi"
+          ]
+        },
+        "AI & Machine Learning": {
+          "templateSlugs": [
+            "0-3-seconds-chaos-begins-jade-essence-surges",
+            "0-4s-a-hacker-wearing-a-damaged-trench",
+            "00-00-00-05-a-bustling-taipei-street",
+            "1-2-live-action-video-perfectly-recreating-a",
+            "10-second-one-take-paris-shanghai-transforming-fighter",
+            "15-second-microdrama-alien-cat-twist",
+            "15-second-vertical-screen-9-16-film-grain",
+            "15-seconds-vertical-screen-9-16-mobile-phone",
+            "15-seconds-vertical-screen-9-16-overcast-diffused",
+            "18th-century-naval-battle-fpv",
+            "1975-ladakh-engineers-anti-gravity-minerals",
+            "1980s-sci-fi-captain-evacuation",
+            "2d-animated-fight-scene",
+            "9-16-vertical-screen-cinematic-warm-tone-scene",
+            "a-detailed-cinematic-prompt-for-generating-a-short",
+            "a-tokusatsu-video-where-a-giant-image1-and",
+            "a-vibrant-modern-cityscape-of-zibo-interwoven-with",
+            "aaa-game-trailer-style-futuristic-neon-city-video-prompt",
+            "absurd-cute-dog-video-prompt",
+            "action-game-combat-sequence",
+            "action-game-concept-trailer-prompt-for-seedance-2-0",
+            "action-man-airplane-flyover",
+            "action-thriller-ninja-fight-scene-i2v",
+            "ai-dance-battle-trump-vs-michael-jackson",
+            "ai-girlfriend-lobster-request-video-prompt-for-seedance-2-0",
+            "ai-influencer-podcast-studio",
+            "ai-saving-animals-cinematic-montage",
+            "alito-vandalito-the-chain-of-the-baby-dove",
+            "an-oil-painting-of-a-driver-s-hand",
+            "ancient-castle-siege-by-dragon",
+            "ancient-egyptian-warrior-vs-nile-mud-beast",
+            "ancient-indian-kingdom-fpv-shot",
+            "animated-mission-of-barnaby-the-robot-ant",
+            "animated-sukuna-vs-gojo-battle-scene",
+            "anime-genshin-impact-lumine-temple-courtyard-battle",
+            "anime-girls-cyberpunk-scene-prompt-for-seedance-2-0",
+            "anime-girls-flying-mumbai-ghibli",
+            "anime-otter-mech-battle-marble-octopus",
+            "anime-sakuga-fight-scene-prompt-1",
+            "arknights-endfield-gugu-gaga-shopping-scene",
+            "armored-battle-scarred-sabertooth-shipyard-rain",
+            "astronaut-lying-on-a-damaged-space-station-deck",
+            "astronaut-transforms-on-frozen-alien-planet",
+            "badass-berserker-viking-charge",
+            "battle-damaged-megacity-mech",
+            "behold-the-antarctic-leviathan-awakening-prehistoric-kaiju-rises",
+            "biotech-alien-suit-metamorphosis",
+            "brad-pitt-tom-cruise-unite-against-robot-enemy",
+            "bullet-time-selfie-primitive-caveman",
+            "burj-khalifa-sunset-to-night-tour",
+            "cat-dog-complaint-room-talking-show-dialogue",
+            "cat-in-high-heels-security-footage",
+            "cat-scooter-japanese-city",
+            "celebrity-arrival-identity-lock-cinematic",
+            "celestial-star-battle-animation",
+            "chai-glass-to-futuristic-racing-pod-transformation",
+            "chai-morning-ritual-stop-motion",
+            "chaos-begins-intent-surges-the-scene-starts-from",
+            "character-setting-eastern-flower-fairy-maiden-oval-face",
+            "cherry-blossom-invasion-vfx-video-prompt"
+          ],
+          "templateCount": 303,
+          "visibility": "featured",
+          "relatedNiches": [
+            "SaaS & Software",
+            "Consumer Tech",
+            "Gaming",
+            "Cyberpunk & Sci-Fi"
+          ]
+        },
+        "Consumer Tech": {
+          "templateSlugs": [
+            "anthropomorphic-tech-gadgets-fighting",
+            "handheld-ufo-attack-vlog",
+            "multishot-laptop-workspace-cinematic",
+            "nostalgic-2007-style-breakup-video-prompt-for-seedance-2-0",
+            "two-legged-dachshund-instagram-transition"
+          ],
+          "templateCount": 5,
+          "visibility": "dedicated-browse",
+          "relatedNiches": [
+            "SaaS & Software",
+            "AI & Machine Learning",
+            "Gaming",
+            "Cyberpunk & Sci-Fi"
+          ]
+        },
+        "Gaming": {
+          "templateSlugs": [
+            "cgi-cyberpunk-assassin-city-fight",
+            "game-ui-skill-selection-animation",
+            "open-world-rpg-grocery-store-quest-prompt",
+            "sci-fi-vehicle-ui-cinematic"
+          ],
+          "templateCount": 4,
+          "visibility": "dedicated-browse",
+          "relatedNiches": [
+            "SaaS & Software",
+            "AI & Machine Learning",
+            "Consumer Tech",
+            "Cyberpunk & Sci-Fi"
+          ]
+        },
+        "Cyberpunk & Sci-Fi": {
+          "templateSlugs": [
+            "a-compact-yellow-electric-creature-generating-lightning-attacks",
+            "alien-infestation-sci-fi-scene",
+            "cat-and-robot-vacuum-narrative-script",
+            "cinematic-alien-marketplace",
+            "cinematic-mech-battle-los-angeles",
+            "cinematic-sci-fi-evolution-ancient-deity-to-cyberpunk",
+            "cinematic-spacetime-folding-neon-warrior",
+            "cyber-ronin-nanotech-transformation-video",
+            "cyber-warrior-vs-primordial-fighter",
+            "cybernetic-titan-cyberpunk-city-rain",
+            "cyberpunk-anime-cinematic-fight-scene-prompt-for-seedance-2-0",
+            "cyberpunk-cybernetic-fighter-combat",
+            "cyberpunk-f1-cinematic-sequence",
+            "cyberpunk-futuristic-female-agent-action-scene",
+            "cyberpunk-futuristic-female-warrior",
+            "cyberpunk-futuristic-portrait-young-woman",
+            "cyberpunk-high-speed-chase-hollywood-sci-fi",
+            "cyberpunk-k-pop-animation",
+            "cyberpunk-magical-girl-anime-video-prompt",
+            "cyberpunk-memory-hunter-hacker-neon-digital-space",
+            "cyberpunk-monitor-screen-breach-pov",
+            "cyberpunk-motorcycle-pov-video-prompt",
+            "cyberpunk-neon-cage-freedom-story",
+            "cyberpunk-neon-destiny-storyboard",
+            "cyberpunk-rooftop-chase-cinematic-prompt",
+            "cyberpunk-technician-neon-city-escape",
+            "cyberpunk-wuxia-warrior-on-a-fishing-boat-in-the-desert",
+            "earth-zoom-futuristic-robotics-workshop",
+            "epic-sci-fi-huntress-sequence-prompt",
+            "epic-sci-fi-robot-mountain-peak-scene",
+            "futuristic-creature-high-speed-race-multi-angles",
+            "futuristic-cyberpunk-megacity-rain",
+            "futuristic-hovercraft-on-savanna-hardpack-with-dust-devils",
+            "futuristic-k-pop-concert-spectacle",
+            "futuristic-lamborghini-assembly-commercial",
+            "futuristic-lamborghini-assembly-commercial-prompt",
+            "futuristic-lunar-colony-with-meson-lights",
+            "futuristic-motorcycle-courier-action",
+            "generate-a-cyberpunk-like-mechanical-body-female-image",
+            "hologram-to-sports-car-transformation",
+            "humanoid-android-consciousness-awakening",
+            "humanoid-robot-lab-startup-cinematic",
+            "image-prompt-a-cyber-artisan-who-is-a",
+            "intergalactic-space-battle",
+            "japanese-city-street-photography-video-prompt",
+            "muscle-car-to-robot-transformation-sequence",
+            "nano-capsule-sci-fi-fpv",
+            "neotokyo-cyberpunk-survival-pacman-chase",
+            "noir-sci-fi-city-single-shot",
+            "photorealistic-cyberpunk-motorcycle-robot-chase-in-heavy-rain",
+            "post-apocalyptic-futuristic-megacity-video-prompt",
+            "robotic-dinosaur-cyberpunk-city-attack",
+            "rogue-data-courier-on-a-hoverboard-in-a-cyberpunk-megacity",
+            "sci-fi-android-on-deserted-mountain-peak",
+            "sci-fi-car-chase-robot-transformation",
+            "sci-fi-horror-lab-monster",
+            "sci-fi-lab-communication",
+            "sci-fi-soldier-combat-action",
+            "seedance-2-cyberpunk-bar-dialogue-prompt",
+            "sentient-robot-neon-city-awakening"
+          ],
+          "templateCount": 65,
+          "visibility": "featured",
+          "relatedNiches": [
+            "SaaS & Software",
+            "AI & Machine Learning",
+            "Consumer Tech",
+            "Gaming"
+          ]
+        }
+      },
+      "totalTemplates": 472
+    },
+    "Travel & Hospitality": {
+      "niches": {
+        "Hotels & Resorts": {
+          "templateSlugs": [
+            "15-shot-cinematic-travel-sequence"
+          ],
+          "templateCount": 1,
+          "visibility": "searchable",
+          "relatedNiches": [
+            "Destinations & Tourism",
+            "Adventure & Outdoor",
+            "Airlines & Transport"
+          ]
+        },
+        "Destinations & Tourism": {
+          "templateSlugs": [
+            "2781-30-second-photorealistic-smartphone-travel-vlog-of-a-japanes",
+            "3155-young-traveler-hikes-through-lush-mountain-forest-to-hidden-",
+            "a-rugged-mountain-traveller-crosses-a-snow-covered",
+            "core-concept-overlooking-earth-from-space-the-camera",
+            "handheld-phone-selfie-slight-camera-shake-authentic-travel",
+            "high-energy-paris-travel-vlog",
+            "interstellar-star-cruiser-chase-and-zero-gravity-interior-scene",
+            "lone-traveler-on-a-glass-ocean-under-twilight",
+            "rome-travel-vlog-japanese-dialogue",
+            "seedance-2-0-travel-vlog-prompt-venice",
+            "time-travel-harry-potter-final-battle-report"
+          ],
+          "templateCount": 11,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Hotels & Resorts",
+            "Adventure & Outdoor",
+            "Airlines & Transport"
+          ]
+        },
+        "Adventure & Outdoor": {
+          "templateSlugs": [
+            "adventure-energy-columbus-looks-at-his-phone-s",
+            "frozen-canyon-dragon-flight",
+            "ghibli-style-magical-adventure-journey",
+            "rocket-powered-mountain-bike-race"
+          ],
+          "templateCount": 4,
+          "visibility": "dedicated-browse",
+          "relatedNiches": [
+            "Hotels & Resorts",
+            "Destinations & Tourism",
+            "Airlines & Transport"
+          ]
+        },
+        "Airlines & Transport": {
+          "templateSlugs": [
+            "continuous-single-take-video-prompt-for-seedance-2-0"
+          ],
+          "templateCount": 1,
+          "visibility": "searchable",
+          "relatedNiches": [
+            "Hotels & Resorts",
+            "Destinations & Tourism",
+            "Adventure & Outdoor"
+          ]
+        }
+      },
+      "totalTemplates": 20
+    },
+    "Viral & Trending": {
+      "niches": {
+        "POV & Trending": {
+          "templateSlugs": [
+            "15-second-vertical-video-9-16-aspect-ratio",
+            "1523-handheld-16mm-gym-vlog-pov-of-chase-in-an-evening-gym",
+            "2690-cinematic-korean-convenience-store-snack-challenge-vlog",
+            "alien-jellyfish-bodycam-attack",
+            "amateur-pov-ferrari-yoga-session",
+            "boyfriend-pov-travel-vlog-prompt-for-seedance-2-0",
+            "chibi-phoebe-anime-description",
+            "continuous-shot-downhill-longboard-run",
+            "created-with-seedance-2-5-721493",
+            "downhill-pov-cycling-chaos-prompt",
+            "dragonflight-trials-pov",
+            "dust-devil-playground-viral-video",
+            "first-person-horseback-charge-on-medieval-battlefield",
+            "first-person-parkour-chase-video-prompt",
+            "first-person-perspective-pov-cinematic-lighting-and-shadows",
+            "first-person-pov-camera-looking-down-at-two",
+            "first-person-pov-from-inside-a-starfighter-cockpit",
+            "first-person-pov-hangzhou-dining-prank",
+            "first-person-pov-kitchen-scene-with-dialogue",
+            "first-person-pov-sword-flying",
+            "first-person-pov-white-crane-flight",
+            "first-person-shooter-pov-scene",
+            "fisheye-pov-glide-sequence",
+            "fishing-boat-crowd-pov-video-prompt",
+            "gen-z-ugc-chocolate-ad",
+            "giant-koi-park-incident",
+            "giant-orange-cat-meme-style",
+            "golden-eagle-escape-from-volcanic-new-york",
+            "golden-hour-road-trip-cinematic-scene",
+            "gritty-cine-verit-35mm-handheld-shot-prompt",
+            "hyper-realistic-cyberpunk-pov-action-sequence",
+            "hyper-realistic-parkour-pov-sequence-prompt",
+            "knight-pov-battlefield-combat-intense-scene",
+            "low-quality-smartphone-vlog-footage-shaky-handheld-camera",
+            "macro-pov-of-ice-cube-in-soda",
+            "micro-scale-ant-pov-construction-site",
+            "mrbeast-style-viral-warehouse-game-arena",
+            "nba-courtside-influencer-pov",
+            "pov-cinematic-metro-station-scene",
+            "pov-dragon-rider-cinematic-image",
+            "pov-eagle-rescue-from-ice",
+            "pov-exploring-8th-century-mont-saint-michel",
+            "pov-horror-abandoned-hallway-rocking-horse",
+            "pov-rooftop-chase-prompt",
+            "pov-skateboard-half-pipe-action",
+            "pov-time-freeze-json-prompt-for-seedance-2",
+            "psychological-horror-vhs-jump-scare-loop",
+            "rucker-park-slam-dunk-viral-video",
+            "social-media-ugc-content-prompts",
+            "style-first-person-pov-ink-wash-wuxia-chinese",
+            "taipei-sunset-date-girlfriend-pov-vlog",
+            "the-camera-maintains-a-point-of-view-pov",
+            "three-a-m-french-nightlife-pov-399523",
+            "ultimate-girlfriend-pov-taiwan-vlog-selfie",
+            "vr-wingsuit-pilot-fantasy-world",
+            "warehouse-breach-to-rooftop-inferno-cinematic-script",
+            "youmind-36fdb5d892b1",
+            "youmind-657f531ea2d6",
+            "youmind-7a12acb7fba4",
+            "youmind-8a72e5f39c10"
+          ],
+          "templateCount": 60,
+          "visibility": "featured",
+          "relatedNiches": [
+            "Transformation"
+          ]
+        },
+        "Transformation": {
+          "templateSlugs": [
+            "continuous-shot-magical-bird-transformation-flying",
+            "contrast-transformation-video-prompt-office-worker-to-gothic-queen",
+            "gopro-logo-transformation-video-prompt",
+            "ice-beast-vfx-transformation",
+            "seedance-2-0-transformation-prompt-10-world-female-armors",
+            "teen-boy-mystical-cave-energy-transformation",
+            "transformation-sequence-tentacles-and-alien-hiss",
+            "transforming-jet-mech-action-sequence",
+            "ultra-refined-motion-design-sequence"
+          ],
+          "templateCount": 9,
+          "visibility": "featured",
+          "relatedNiches": [
+            "POV & Trending"
+          ]
+        }
+      },
+      "totalTemplates": 80
+    }
+  }
+}

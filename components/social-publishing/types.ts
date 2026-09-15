@@ -20,6 +20,10 @@ export interface ThumbnailState {
   imageUrl?: string;
   responseId?: string;
   aspectRatio?: string;
+  quality?: 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'auto';
+  background?: 'transparent' | 'opaque' | 'auto';
+  outputFormat?: 'png' | 'jpeg' | 'webp';
+  customSize?: string;
 }
 
 export interface CopyState {

@@ -26,6 +26,14 @@ import {
 import { getAdvancedControlsForModel, buildAdvancedPayload } from "../videoAdvancedControls.js";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
+import MobileGenerationActions, {
+  GenerationCopyButtons,
+} from "./MobileGenerationActions.jsx";
+import {
+  PromptAspectRatioIcon,
+  PromptDurationIcon,
+  PromptQualityIcon,
+} from "./prompt/PromptComposer.jsx";
 
 import {
   PROMPT_MEDIA_PREVIEW_CLASS,
@@ -514,11 +522,22 @@ const PROVIDER_LOGOS = {
 
 const invertLogos = ['openai', 'blackforest', 'runway', 'ideogram', 'lightricks', 'grok'];
 
-function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
+function ModelDropdown({ imageMode, selectedModel, onSelect, onClose, copy = en }) {
   const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedProvider, setSelectedProvider] = useState("all");
 
   const generationModels = imageMode ? i2vModels : t2vModels;
+
+  const modelCategories = [
+    { id: "all", label: copy.categories.all, models: generationModels },
+    { id: "t2v", label: copy.categories.t2v, models: generationModels.filter((m) => !m.id.includes("i2v") && !m.id.includes("v2v")) },
+    { id: "i2v", label: copy.categories.i2v, models: generationModels.filter((m) => m.id.includes("i2v")) },
+    { id: "v2v", label: copy.categories.v2v, models: v2vModels },
+  ];
+
+  const activeCategory = modelCategories.find((c) => c.id === selectedCategory) || modelCategories[0];
+  const categoryModels = activeCategory.models;
 
   const getProviderStyle = (provider) => {
     switch (provider) {
@@ -569,9 +588,8 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
   // Dynamically compute list of providers from the input models lists
   const availableProviders = [];
   const seenProviders = new Set();
-  const allCurrentModels = [...generationModels, ...v2vModels];
   
-  allCurrentModels.forEach(m => {
+  categoryModels.forEach((m) => {
     const pId = m.provider || 'muapi';
     const pName = m.provider_name || 'Muapi';
     if (!seenProviders.has(pId)) {
@@ -595,8 +613,8 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
     );
   };
 
-  const filteredMain = generationModels.filter(filterFn);
-  const filteredV2V = v2vModels.filter(filterFn);
+  const filteredModels = categoryModels.filter(filterFn);
+  const filteredV2V = selectedCategory === "v2v" ? filteredModels : v2vModels.filter(filterFn);
 
   const getIconColor = (m, isV2V) => {
     if (isV2V) return "bg-orange-500/10 text-orange-400 border-orange-500/10";
@@ -607,9 +625,11 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
   };
 
   const renderItem = (m, isV2V = false) => (
-    <div
+    <button
+      type="button"
       key={m.id}
-      className={`flex items-center justify-between p-3.5 hover:bg-white/5 rounded-2xl cursor-pointer transition-all border border-transparent hover:border-white/5 ${selectedModel === m.id ? "bg-white/5 border-white/5" : ""}`}
+      aria-pressed={selectedModel === m.id}
+      className={`flex w-full text-left items-center justify-between p-3.5 hover:bg-white/5 rounded-2xl cursor-pointer transition-all border border-transparent hover:border-white/5 ${selectedModel === m.id ? "bg-white/5 border-white/5" : ""}`}
       onClick={(e) => {
         e.stopPropagation();
         onSelect(m, isV2V);
@@ -650,7 +670,7 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
         </div>
       </div>
       {selectedModel === m.id && <CheckSvg />}
-    </div>
+    </button>
   );
 
   return (
@@ -703,7 +723,26 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
 
       {/* Right Pane: Search + Lists */}
       <div className="flex-1 flex flex-col gap-2 min-w-0">
-        <div className="px-1 pb-2 border-b border-white/5 shrink-0">
+        <div className="px-1 pb-2 border-b border-white/5 shrink-0 space-y-2">
+          <div className="flex gap-1.5 overflow-x-auto custom-scrollbar pb-0.5">
+            {modelCategories.map((category) => (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() => {
+                  setSelectedCategory(category.id);
+                  setSelectedProvider("all");
+                }}
+                className={`shrink-0 rounded-lg px-2.5 py-1.5 text-[10px] font-bold transition-colors border ${
+                  selectedCategory === category.id
+                    ? "bg-primary/15 text-primary border-primary/30"
+                    : "bg-white/[0.02] text-white/50 border-white/[0.04] hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                {category.label}
+              </button>
+            ))}
+          </div>
           <div className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-2 border border-white/5 focus-within:border-primary/50 transition-colors">
             <svg
               width="14"
@@ -719,9 +758,13 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
             </svg>
             <input
               type="text"
-              placeholder="Search models..."
+              placeholder={copy.search.placeholder}
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSearch(value);
+                if (value.trim()) setSelectedProvider("all");
+              }}
               onClick={(e) => e.stopPropagation()}
               className="bg-transparent border-none text-xs text-white focus:ring-0 w-full p-0 outline-none"
             />
@@ -729,7 +772,7 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
         </div>
         
         <div className="text-xs font-bold text-secondary px-2 py-1 shrink-0 flex items-center justify-between">
-          <span>Video models</span>
+          <span>{activeCategory.label} models</span>
           {selectedProvider !== "all" && (
             <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded text-white/60">
               {availableProviders.find(p => p.id === selectedProvider)?.name || selectedProvider}
@@ -738,14 +781,14 @@ function ModelDropdown({ imageMode, selectedModel, onSelect, onClose }) {
         </div>
         
         <div className="flex flex-col gap-1.5 overflow-y-auto custom-scrollbar pr-1 pb-2 flex-1">
-          {filteredMain.length === 0 && filteredV2V.length === 0 ? (
+          {filteredModels.length === 0 && filteredV2V.length === 0 ? (
             <div className="text-xs text-white/30 text-center py-6">
               No models found
             </div>
           ) : (
             <>
-              {filteredMain.map((m) => renderItem(m, false))}
-              {filteredV2V.length > 0 && (
+              {filteredModels.map((m) => renderItem(m, selectedCategory === "v2v"))}
+              {selectedCategory !== "v2v" && filteredV2V.length > 0 && (
                 <>
                   <div className="text-xs font-bold text-orange-400/70 px-3 py-2 mt-1 border-t border-white/5">
                     Video Tools
@@ -2448,20 +2491,22 @@ export default function VideoStudio({
                     <path d="M6 9l6 6 6-6" />
                   </svg>
                 </button>
-                {openDropdown === "model" && (
-                  <div
-                    ref={dropdownRef}
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-[1.5rem] p-3.5 shadow-2xl border border-white/[0.05] w-[calc(100vw-2rem)] md:w-[480px] max-w-md md:max-w-none"
-                  >
-                    <ModelDropdown
-                      imageMode={imageMode}
-                      selectedModel={selectedModel}
-                      onSelect={handleModelSelect}
-                      onClose={() => setOpenDropdown(null)}
-                    />
-                  </div>
-                )}
+                 {openDropdown === "model" && (
+                   <div
+                     ref={dropdownRef}
+                     onClick={(e) => e.stopPropagation()}
+                     className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-[1.5rem] p-3.5 shadow-2xl border border-white/[0.05] w-[calc(100vw-2rem)] md:w-[480px] max-w-md md:max-w-none"
+                   >
+                     <PromptPopoverHeader>{copy.dropdowns.model}</PromptPopoverHeader>
+                      <ModelDropdown
+                        imageMode={imageMode}
+                        selectedModel={selectedModel}
+                        onSelect={handleModelSelect}
+                        onClose={() => setOpenDropdown(null)}
+                        copy={copy}
+                      />
+                   </div>
+                 )}
               </div>
 
               {/* Aspect ratio btn */}
@@ -2500,9 +2545,7 @@ export default function VideoStudio({
                       onClick={(e) => e.stopPropagation()}
                       className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 max-h-80 overflow-y-auto custom-scrollbar shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[160px]"
                     >
-                      <div className="text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-2 px-1">
-                        Aspect Ratio
-                      </div>
+                      <PromptPopoverHeader>{copy.dropdowns.aspectRatio}</PromptPopoverHeader>
                       <div className="flex flex-col gap-1">
                         {getCurrentAspectRatios(selectedModel).map((r) => (
                           <div
@@ -2555,9 +2598,7 @@ export default function VideoStudio({
                       onClick={(e) => e.stopPropagation()}
                       className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 max-h-80 overflow-y-auto custom-scrollbar shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[200px]"
                     >
-                      <div className="text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-2 px-1">
-                        Effect Type
-                      </div>
+                      <PromptPopoverHeader>{copy.dropdowns.effectType}</PromptPopoverHeader>
                       <div className="flex flex-col gap-1">
                         {getEffectsForI2VModel(selectedModel).map((eff) => (
                           <div
@@ -2611,9 +2652,7 @@ export default function VideoStudio({
                       onClick={(e) => e.stopPropagation()}
                       className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[140px]"
                     >
-                      <div className="text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-2 px-1">
-                        Duration
-                      </div>
+                      <PromptPopoverHeader>{copy.dropdowns.duration}</PromptPopoverHeader>
                       <div className="flex flex-col gap-1">
                         {getCurrentDurations(selectedModel).map((d) => (
                           <div
@@ -2665,32 +2704,30 @@ export default function VideoStudio({
                       ref={dropdownRef}
                       onClick={(e) => e.stopPropagation()}
                       className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[140px]"
-                    >
-                      <div className="text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-2 px-1">
-                        Resolution
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        {getCurrentResolutions(selectedModel).map((r) => (
-                          <div
-                            key={r}
-                            className="flex items-center justify-between p-2.5 px-3 hover:bg-[#22d3ee]/10 hover:text-white rounded-xl cursor-pointer transition-all group/opt"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedResolution(r);
-                              setOpenDropdown(null);
-                            }}
-                          >
-                            <span className="text-xs font-semibold text-white/70 group-hover/opt:text-[#22d3ee] transition-colors">
-                              {r}
-                            </span>
-                            {selectedResolution === r && <CheckSvg />}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+                     >
+                       <PromptPopoverHeader>{copy.dropdowns.resolution}</PromptPopoverHeader>
+                       <div className="flex flex-col gap-1">
+                         {getCurrentResolutions(selectedModel).map((r) => (
+                           <div
+                             key={r}
+                             className="flex items-center justify-between p-2.5 px-3 hover:bg-[#22d3ee]/10 hover:text-white rounded-xl cursor-pointer transition-all group/opt"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               setSelectedResolution(r);
+                               setOpenDropdown(null);
+                             }}
+                           >
+                             <span className="text-xs font-semibold text-white/70 group-hover/opt:text-[#22d3ee] transition-colors">
+                               {r}
+                             </span>
+                             {selectedResolution === r && <CheckSvg />}
+                           </div>
+                         ))}
+                       </div>
+                     </div>
+                   )}
+                 </div>
+               )}
 
               {/* Quality btn */}
               {showQuality && (
@@ -2721,9 +2758,7 @@ export default function VideoStudio({
                       onClick={(e) => e.stopPropagation()}
                       className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[140px]"
                     >
-                      <div className="text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-2 px-1">
-                        Quality
-                      </div>
+                      <PromptPopoverHeader>{copy.dropdowns.quality}</PromptPopoverHeader>
                       <div className="flex flex-col gap-1">
                         {getQualitiesForModel(imageMode ? i2vModels : t2vModels, selectedModel).map((q) => (
                           <div
@@ -2776,9 +2811,7 @@ export default function VideoStudio({
                       onClick={(e) => e.stopPropagation()}
                       className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl min-w-[140px]"
                     >
-                      <div className="text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-2 px-1">
-                        Mode
-                      </div>
+                      <PromptPopoverHeader>Mode</PromptPopoverHeader>
                       <div className="flex flex-col gap-1">
                         {getModesForModel(selectedModel).map((m) => (
                           <div
@@ -2839,9 +2872,7 @@ export default function VideoStudio({
                       onClick={(e) => e.stopPropagation()}
                       className="absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0c0c0f]/95 rounded-xl p-4 shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/[0.08] backdrop-blur-2xl w-[320px] max-h-[70vh] overflow-y-auto custom-scrollbar"
                     >
-                      <div className="text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-3 px-1">
-                        Advanced Controls
-                      </div>
+                      <PromptPopoverHeader>Advanced Controls</PromptPopoverHeader>
                       <div className="flex flex-col gap-3">
                         {advancedControls.map((c) => (
                           <AdvancedField

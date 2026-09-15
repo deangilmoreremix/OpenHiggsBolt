@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { generateVideo } from './muapi.js';
+import { generateVideo, executeWorkflow, buildWorkflowApiSnippets } from './muapi.js';
 import { buildSupplementalInputPayload } from './modelParameters.js';
 import { getVideoModelById } from './models.js';
 
@@ -91,5 +91,73 @@ describe('generateVideo supplemental input pass-through', () => {
     // undefined/null values fall back to schema defaults
     expect(payload.generate_audio).toBe(true);   // default
     expect(payload.camera_fixed).toBe(false);   // default
+  });
+});
+
+describe('executeWorkflow webhook payload', () => {
+  it('sends webhook_url when provided', async () => {
+    let capturedBody = null;
+    global.fetch = vi.fn(async (url, opts) => {
+      const method = opts?.method || 'GET';
+      if (method === 'POST') {
+        capturedBody = JSON.parse(opts.body);
+        return { ok: true, json: async () => ({ run_id: 'run-123' }) };
+      }
+      return {
+        ok: true,
+        json: async () => ({ status: 'completed', outputs: ['https://example.com/out.png'] }),
+      };
+    });
+
+    await executeWorkflow('fake-key', 'wf-1', { prompt: 'hello' }, 'https://example.com/webhook');
+
+    expect(capturedBody).toEqual({
+      inputs: { prompt: 'hello' },
+      webhook_url: 'https://example.com/webhook',
+    });
+  });
+
+  it('omits webhook_url when not provided', async () => {
+    let capturedBody = null;
+    global.fetch = vi.fn(async (url, opts) => {
+      const method = opts?.method || 'GET';
+      if (method === 'POST') {
+        capturedBody = JSON.parse(opts.body);
+        return { ok: true, json: async () => ({ run_id: 'run-123' }) };
+      }
+      return {
+        ok: true,
+        json: async () => ({ status: 'completed', outputs: ['https://example.com/out.png'] }),
+      };
+    });
+
+    await executeWorkflow('fake-key', 'wf-1', { prompt: 'hello' });
+
+    expect(capturedBody).toEqual({
+      inputs: { prompt: 'hello' },
+    });
+    expect(capturedBody).not.toHaveProperty('webhook_url');
+  });
+});
+
+describe('buildWorkflowApiSnippets', () => {
+  it('includes webhook_url in snippets when provided', () => {
+    const snippets = buildWorkflowApiSnippets('wf-1', { prompt: 'hello' }, { webhookUrl: 'https://example.com/webhook' });
+
+    const parsed = JSON.parse(snippets.json);
+    expect(parsed).toEqual({
+      inputs: { prompt: 'hello' },
+      webhook_url: 'https://example.com/webhook',
+    });
+  });
+
+  it('omits webhook_url from snippets when not provided', () => {
+    const snippets = buildWorkflowApiSnippets('wf-1', { prompt: 'hello' }, {});
+
+    const parsed = JSON.parse(snippets.json);
+    expect(parsed).toEqual({
+      inputs: { prompt: 'hello' },
+    });
+    expect(parsed).not.toHaveProperty('webhook_url');
   });
 });

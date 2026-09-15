@@ -38,7 +38,6 @@ const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ss
 const GoAiViralStudio = dynamic(() => import('../src/apps/go-ai-viral/GoAiViralStudio'), { ssr: false });
 const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
 const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
-const SocialPublishing = dynamic(() => import('../src/apps/social-publishing/SocialPublishing'), { ssr: false });
 const TABS = [
   { id: 'image',   label: 'Image Studio' },
   { id: 'video',   label: 'Video Studio' },
@@ -57,7 +56,6 @@ const TABS = [
   { id: 'vfx-studio', label: 'VFX' },
   { id: 'thumbnail-studio', label: 'Thumbnail Studio' },
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
-  { id: 'social-publishing', label: 'Social Publishing' },
   { id: 'go-ai-viral', label: 'GO-Viral' },
 ];
 
@@ -68,9 +66,8 @@ const SLUG_TO_TAB = {
   storyboard: 'storyboard', marketing: 'marketing', recast: 'recast', layers: 'layers',
   workflows: 'workflows', agents: 'agents', 'design-agent': 'design-agent',
   'vfx-studio': 'vfx-studio',
-  'music-studio': 'audio', 'thumbnail-studio': 'thumbnail-studio',
+  'music-studio': 'audio',   'thumbnail-studio': 'thumbnail-studio',
   'ai-influencer': 'ai-influencer',
-  'social-publishing': 'social-publishing',
   'go-ai-viral': 'go-ai-viral',
 };
 
@@ -625,9 +622,8 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
              <p className="text-white/50">Loading Brand Studio…</p>
            </div>
          )}
-         {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} templateData={templateData} locale={locale} />}
-         {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
-         {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
+          {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} templateData={templateData} locale={locale} />}
+          {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
       </div>
       </DemoPersonalizeProvider>
       </SocialPublishProvider>

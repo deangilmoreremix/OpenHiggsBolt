@@ -43,7 +43,8 @@
     "effect": "Effect",
     "effectType": "Effect Type",
     "duration": "Duration",
-    "resolution": "Resolution"
+    "resolution": "Resolution",
+    "quality": "Quality"
   },
   "controls": {
     "draw": "Draw",

@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import { RefreshCw, Wand2, Loader2 } from 'lucide-react';
+import React, { useState, useCallback, useRef } from 'react';
+import { RefreshCw, Wand2, Loader2, Upload, X, Image as ImageIcon } from 'lucide-react';
 import { refineThumbnail, type ThumbnailRefineResult } from '@/shared/api/thumbnailService';
 
 const QUICK_CHIPS = [
@@ -35,6 +35,10 @@ export interface ThumbnailRefinementProps {
   onResults: (results: ThumbnailRefineResult[]) => void
   onError?: (error: string) => void
   muapiKey?: string
+  quality?: string
+  background?: string
+  outputFormat?: string
+  customSize?: string
 }
 
 export default function ThumbnailRefinement({
@@ -43,11 +47,33 @@ export default function ThumbnailRefinement({
   disabled = false,
   onResults,
   onError,
+  quality = 'auto',
+  background = 'auto',
+  outputFormat = 'png',
+  customSize,
 }: ThumbnailRefinementProps) {
   const [refinementPrompt, setRefinementPrompt] = useState('')
   const [selectedChip, setSelectedChip] = useState<string | null>(null)
   const [refining, setRefining] = useState(false)
   const [refineError, setRefineError] = useState<string | null>(null)
+  const [maskDataUrl, setMaskDataUrl] = useState<string | undefined>(undefined)
+  const maskInputRef = useRef<HTMLInputElement>(null)
+
+  const handleMaskUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const url = ev.target?.result as string
+      setMaskDataUrl(url)
+    }
+    reader.readAsDataURL(file)
+  }, [])
+
+  const handleRemoveMask = useCallback(() => {
+    setMaskDataUrl(undefined)
+    if (maskInputRef.current) maskInputRef.current.value = ''
+  }, [])
 
   const handleChipClick = useCallback((chipId: string) => {
     setSelectedChip(prev => prev === chipId ? null : chipId)
@@ -69,6 +95,11 @@ export default function ThumbnailRefinement({
         aspectRatio,
         n: 1,
         strength: selectedChip === 'similar' ? 0.3 : 0.5,
+        quality: quality as any,
+        background: background as any,
+        outputFormat: outputFormat as any,
+        customSize: customSize || undefined,
+        maskDataUrl,
       })
       onResults(results)
       setSelectedChip(null)
@@ -79,7 +110,7 @@ export default function ThumbnailRefinement({
     } finally {
       setRefining(false)
     }
-  }, [sourceImageUrl, refinementPrompt, aspectRatio, refining, selectedChip, onResults, onError])
+  }, [sourceImageUrl, refinementPrompt, aspectRatio, refining, selectedChip, onResults, onError, quality, background, outputFormat, customSize, maskDataUrl])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -128,6 +159,44 @@ export default function ThumbnailRefinement({
             </button>
           )
         })}
+      </div>
+
+      {/* Mask upload */}
+      <div className="space-y-2">
+        <p className="text-[10px] font-medium text-white/40">Mask (optional)</p>
+        {maskDataUrl ? (
+          <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-white/10">
+            <img src={maskDataUrl} alt="Mask preview" className="w-full h-full object-cover" />
+            <button
+              type="button"
+              onClick={handleRemoveMask}
+              disabled={refining}
+              className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/70 hover:bg-red-500 rounded-full flex items-center justify-center"
+              aria-label="Remove mask"
+            >
+              <X size={10} className="text-white" />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => maskInputRef.current?.click()}
+            disabled={disabled || refining}
+            className="flex items-center gap-2 w-full p-3 rounded-xl border border-dashed border-white/10 bg-white/[0.02] text-white/40 hover:border-[#22d3ee]/40 hover:text-[#22d3ee] transition-all disabled:opacity-40"
+          >
+            <Upload size={14} />
+            <span className="text-[10px] font-medium">Upload mask PNG</span>
+          </button>
+        )}
+        <input
+          ref={maskInputRef}
+          type="file"
+          accept="image/png"
+          onChange={handleMaskUpload}
+          className="hidden"
+          aria-hidden="true"
+        />
+        <p className="text-[9px] text-white/25">Mask must be same size as source image and contain an alpha channel.</p>
       </div>
 
       {/* Freeform refinement input */}

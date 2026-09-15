@@ -21,6 +21,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { generateShotFrame } from '@/api/storyboard'
 import { useStoryboard, type StoryboardShot, type StoryboardCharacter } from '../StoryboardContext'
+import { PublishStep } from '@/components/SocialPublishProvider'
 import CameraControls from '../CameraControls'
 import { buildShotPrompt, withCharacters } from '../cameraTaxonomy'
 import ModelSelector from '../ModelSelector'
@@ -183,6 +184,15 @@ function SortableShot({
             {genning ? <Loader2 size={13} className="animate-spin" /> : <ImageIcon size={13} />}
             {shot.frameUrl ? 'Regenerate' : 'Frame'}
           </button>
+
+          {shot.frameUrl && (
+            <PublishStep
+              mediaUrl={shot.frameUrl}
+              mediaType="image"
+              title={shot.scene?.substring(0, 50) || 'Storyboard frame'}
+              className="flex items-center justify-center rounded-lg border border-white/10 bg-black/60 p-1.5 text-white hover:bg-[#22d3ee] hover:text-black transition-all"
+            />
+          )}
 
           <button
             onClick={() => setShowCamera((v) => !v)}

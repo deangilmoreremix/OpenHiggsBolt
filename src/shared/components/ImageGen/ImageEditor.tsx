@@ -1,7 +1,7 @@
 'use client'
 /**
  * ImageEditor — reference image upload + mask-based inpainting
- * Uses OpenAI /v1/images/edits endpoint (gpt-image-2)
+ * Uses OpenAI /v1/images/edits endpoint (gpt-image-2.5)
  */
 import { useState, useRef, useCallback } from 'react'
 import { Upload, X, Brush, Eraser, RotateCcw } from 'lucide-react'

@@ -86,6 +86,9 @@ export function normalizeGoAiViralVideo(
     originalPrompt: record.fullPrompt || record.prompt,
     model: record.recommendedModel || undefined,
     modelName: record.recommendedModel || undefined,
+    aspectRatio: record.aspectRatio,
+    duration: record.duration,
+    durationLabel: record.durationLabel,
     category: record.categories?.[0],
     sourceUrl: record.detailHref || undefined,
     sourceMetadata: {

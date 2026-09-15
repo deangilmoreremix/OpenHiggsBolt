@@ -19,7 +19,9 @@ const ASPECT_PRESETS = [
 ] as const;
 
 const MODEL_OPTIONS = [
-  { value: 'gpt-image-2', label: 'GPT Image 2', description: 'Best quality, recommended' },
+  { value: 'gpt-image-2.5-flare', label: 'GPT Image 2.5', description: 'Best quality, recommended' },
+  { value: 'gpt-image-2.5-sunburst', label: 'GPT Image 2.5 Sunburst', description: 'Maximum precision' },
+  { value: 'gpt-image-2', label: 'GPT Image 2', description: 'Previous generation' },
   { value: 'gpt-image-1', label: 'GPT Image 1', description: 'Faster, good quality' },
   { value: 'dall-e-3', label: 'DALL·E 3', description: 'Classic prompt-following' },
   { value: 'flux-dev', label: 'Flux Dev', description: 'MuAPI model' },
@@ -40,9 +42,13 @@ export default function ThumbnailStep({
   const [enhancedPrompt, setEnhancedPrompt] = useState('')
   const [selectedModel, setSelectedModel] = useState<string>(MODEL_OPTIONS[0].value)
   const [aspectRatio, setAspectRatio] = useState<string>(thumbnail.aspectRatio || '16:9')
+  const [customSize, setCustomSize] = useState<string>(thumbnail.customSize || '')
   const [generationCount, setGenerationCount] = useState<GenerationCount>(1)
   const [isEnhancing, setIsEnhancing] = useState(false)
   const [style, setStyle] = useState('vibrant')
+  const [quality, setQuality] = useState<'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'auto'>(thumbnail.quality || 'auto')
+  const [background, setBackground] = useState<'transparent' | 'opaque' | 'auto'>(thumbnail.background || 'auto')
+  const [outputFormat, setOutputFormat] = useState<'png' | 'jpeg' | 'webp'>(thumbnail.outputFormat || 'png')
 
   const [results, setResults] = useState<ThumbnailGenerateResult[]>([])
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
@@ -72,6 +78,18 @@ export default function ThumbnailStep({
     }
     if (thumbnail.aspectRatio && thumbnail.aspectRatio !== aspectRatio) {
       setAspectRatio(thumbnail.aspectRatio)
+    }
+    if (thumbnail.customSize !== undefined && thumbnail.customSize !== customSize) {
+      setCustomSize(thumbnail.customSize || '')
+    }
+    if (thumbnail.quality && thumbnail.quality !== quality) {
+      setQuality(thumbnail.quality)
+    }
+    if (thumbnail.background && thumbnail.background !== background) {
+      setBackground(thumbnail.background)
+    }
+    if (thumbnail.outputFormat && thumbnail.outputFormat !== outputFormat) {
+      setOutputFormat(thumbnail.outputFormat)
     }
   }, [thumbnail])
 
@@ -152,14 +170,17 @@ export default function ThumbnailStep({
       const genResults = await generateThumbnail({
         prompt: fullPrompt,
         model: selectedModel,
-        aspectRatio,
+        aspectRatio: customSize ? undefined : aspectRatio,
+        customSize: customSize || undefined,
         n: generationCount,
         headline,
         subheadline,
         templateId: selectedTemplateId,
         referenceUrls: references.length > 0 ? references : undefined,
         style,
-        quality: 'medium',
+        quality,
+        background,
+        outputFormat,
       })
 
       if (ac.signal.aborted) return
@@ -171,6 +192,10 @@ export default function ThumbnailStep({
           responseId: genResults[0].responseId,
           templateId: selectedTemplateId,
           aspectRatio,
+          customSize,
+          quality,
+          background,
+          outputFormat,
           references: references.length > 0 ? references : undefined,
         })
       }
@@ -184,7 +209,7 @@ export default function ThumbnailStep({
         setGeneratingCount(0)
       }
     }
-  }, [buildFullPrompt, selectedTemplateId, selectedModel, aspectRatio, generationCount, headline, subheadline, references, style, onUpdateThumbnail])
+  }, [buildFullPrompt, selectedTemplateId, selectedModel, aspectRatio, customSize, generationCount, headline, subheadline, references, style, quality, background, outputFormat, onUpdateThumbnail])
 
   const handleSelectResult = useCallback((index: number) => {
     setSelectedIndex(index)
@@ -353,6 +378,35 @@ export default function ThumbnailStep({
             </div>
           </div>
           <div className="space-y-2 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <p className="text-[11px] font-medium text-white/40">Output</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[10px] text-white/30 mb-1">Quality</label>
+                <select value={quality} onChange={(e) => setQuality(e.target.value as typeof quality)} disabled={generating} className="w-full px-2 py-1.5 rounded-lg text-[10px] disabled:opacity-50 outline-none" style={{ background: 'rgba(0,0,0,0.3)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }} aria-label="Output quality">
+                  {(['auto','low','medium','high','xhigh','max'] as const).map(q => <option key={q} value={q}>{q}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] text-white/30 mb-1">Format</label>
+                <select value={outputFormat} onChange={(e) => setOutputFormat(e.target.value as typeof outputFormat)} disabled={generating} className="w-full px-2 py-1.5 rounded-lg text-[10px] disabled:opacity-50 outline-none" style={{ background: 'rgba(0,0,0,0.3)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }} aria-label="Output format">
+                  {(['png','jpeg','webp'] as const).map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[10px] text-white/30 mb-1">Background</label>
+                <select value={background} onChange={(e) => setBackground(e.target.value as typeof background)} disabled={generating} className="w-full px-2 py-1.5 rounded-lg text-[10px] disabled:opacity-50 outline-none" style={{ background: 'rgba(0,0,0,0.3)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }} aria-label="Background">
+                  {(['auto','opaque','transparent'] as const).map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] text-white/30 mb-1">Custom size (WxH)</label>
+                <input type="text" value={customSize} onChange={(e) => setCustomSize(e.target.value)} placeholder="e.g. 2048x1152" disabled={generating} className="w-full px-2.5 py-1.5 rounded-lg text-[10px] disabled:opacity-50 outline-none" style={{ background: 'rgba(0,0,0,0.3)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }} aria-label="Custom size" />
+              </div>
+            </div>
+          </div>
+          <div className="space-y-2 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <p className="text-[11px] font-medium text-white/40">Text Overlay</p>
             <div className="grid grid-cols-2 gap-2">
               <div>
@@ -420,7 +474,7 @@ export default function ThumbnailStep({
 
       <ThumbnailGenerationResults results={results} selectedIndex={selectedIndex} onSelect={handleSelectResult} generating={generating} error={error} generatingCount={generatingCount} onRetry={generating ? undefined : handleGenerate} onDownload={handleDownloadResult} thumbnail={thumbnail} onUpdateThumbnail={onUpdateThumbnail} />
 
-      <ThumbnailRefinement sourceImageUrl={selectedIndex !== null && results[selectedIndex] ? results[selectedIndex].url : null} aspectRatio={aspectRatio} disabled={generating} onResults={handleRefineResults} />
+      <ThumbnailRefinement sourceImageUrl={selectedIndex !== null && results[selectedIndex] ? results[selectedIndex].url : null} aspectRatio={customSize ? undefined : aspectRatio} disabled={generating} onResults={handleRefineResults} quality={quality} background={background} outputFormat={outputFormat} customSize={customSize} />
 
       {selectedTemplateId && (
         <div className="flex items-center justify-between p-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>

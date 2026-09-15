@@ -11,6 +11,7 @@ import {
   expandImage,
 } from "../muapi.js";
 import { formatErrorMessage } from "../utils/formatError.js";
+import { PublishStep } from "../../../../components/SocialPublishProvider";
 import en from "../messages/en/layersStudio.json";
 import { resolveCopy } from "../i18nUtils";
 
@@ -1358,6 +1359,15 @@ export default function LayersStudio({
           >
             Clear ({markedRegions.length})
           </button>
+        )}
+
+        {currentImageUrl && (
+          <PublishStep
+            mediaUrl={currentImageUrl}
+            mediaType="image"
+            title={copy.tools.uploadOrChangeImage || 'Edited image'}
+            className="px-2 py-1.5 bg-white/10 hover:bg-[#22d3ee] hover:text-black text-white text-[10px] font-black rounded-lg border border-white/10 shadow-sm transition-all"
+          />
         )}
       </div>
 

@@ -40,12 +40,6 @@ function includeRequiredArrayDefaults(model, payload) {
     return Object.keys(defaults).length > 0 ? { ...defaults, ...payload } : payload;
 }
 
-function fatal(message) {
-    const error = new Error(message);
-    error.isFatal = true;
-    return error;
-}
-
 async function pollForResult(requestId, key, maxAttempts = 900, interval = 2000) {
     return pollForGenerationResult({
         baseUrl: BASE_URL,
@@ -656,14 +650,21 @@ export async function getWorkflowInputs(apiKey, workflowId) {
     return await response.json();
 };
 
-export async function executeWorkflow(apiKey, workflowId, inputs) {
+// Single source of truth for the workflow execute request body. Keeping this in
+// one place ensures the copy-paste snippets (buildWorkflowApiSnippets) stay in
+// sync with what executeWorkflow actually sends over the wire.
+export function buildWorkflowBody(inputs = {}, webhookUrl) {
+    return { inputs, ...(webhookUrl ? { webhook_url: webhookUrl } : {}) };
+}
+
+export async function executeWorkflow(apiKey, workflowId, inputs, webhookUrl) {
     const response = await fetch(`${BASE_URL}/workflow/${workflowId}/api-execute`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'x-api-key': apiKey
         },
-        body: JSON.stringify({ inputs })
+        body: JSON.stringify(buildWorkflowBody(inputs, webhookUrl))
     });
     if (!response.ok) {
         const errText = await response.text();
@@ -679,22 +680,24 @@ export async function executeWorkflow(apiKey, workflowId, inputs) {
 
 async function pollWorkflowResult(runId, apiKey, maxAttempts = 900, interval = 2000) {
     const pollUrl = `${BASE_URL}/workflow/run/${runId}/api-outputs`;
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['x-api-key'] = apiKey;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         await new Promise(resolve => setTimeout(resolve, interval));
         try {
             const response = await fetch(pollUrl, {
-                headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey }
+                headers
             });
             if (!response.ok) {
                 if (response.status >= 500) continue;
-                throw fatal(`Poll Failed: ${response.status}`);
+                throw new Error(`Poll Failed: ${response.status}`);
             }
             const data = await response.json();
             const status = data.status?.toLowerCase();
             if (status === 'completed' || status === 'succeeded' || status === 'success') return data;
-            if (status === 'failed' || status === 'error') throw fatal(`Workflow failed: ${data.error || 'Unknown error'}`);
+            if (status === 'failed' || status === 'error') throw new Error(`Workflow failed: ${data.error || 'Unknown error'}`);
         } catch (error) {
-            if (attempt === maxAttempts || error.isFatal) throw error;
+            if (attempt === maxAttempts) throw error;
         }
     }
     throw new Error('Workflow timed out after polling.');
@@ -994,8 +997,73 @@ export async function expandImage(apiKey, { image_url, onRequestId }) {
     return submitAndPoll(endpoint, payload, apiKey, onRequestId, 90);
 }
 
-export function buildWorkflowApiSnippets(workflowId, inputs, options) {
-  return "";
+export function buildWorkflowApiSnippets(workflowId, inputs = {}, options = {}) {
+  const id = workflowId || '<workflow_id>';
+  const webhookUrl = options.webhookUrl || '';
+  const publicBase = 'https://api.muapi.ai';
+  const endpoint = `${publicBase}/workflow/${id}/api-execute`;
+  const pollUrl = `${publicBase}/workflow/run/{run_id}/api-outputs`;
+
+  const bodyObj = buildWorkflowBody(inputs, webhookUrl);
+  const json = JSON.stringify(bodyObj, null, 2);
+
+  // Escape single quotes so the body survives bash single-quoted strings
+  // (JSON.stringify does not escape "'"; a prompt like "don't" would break it).
+  const curlBody = JSON.stringify(bodyObj).replace(/'/g, `'\\''`);
+
+  const curl = [
+      `curl -X POST '${endpoint}' \\`,
+      `  -H 'Content-Type: application/json' \\`,
+      `  -H 'x-api-key: YOUR_API_KEY' \\`,
+      `  -d '${curlBody}'`,
+  ].join('\n');
+
+  const node = [
+      `const res = await fetch('${endpoint}', {`,
+      `  method: 'POST',`,
+      `  headers: {`,
+      `    'Content-Type': 'application/json',`,
+      `    'x-api-key': process.env.MUAPI_API_KEY,`,
+      `  },`,
+      `  body: JSON.stringify(${JSON.stringify(bodyObj)}),`,
+      `});`,
+      `const data = await res.json();`,
+      `const runId = data.run_id || data.id;`,
+      ``,
+      `// Poll for completion`,
+      `const poll = await fetch('${pollUrl.replace('{run_id}', '${runId}')}', {`,
+      `  headers: { 'x-api-key': process.env.MUAPI_API_KEY },`,
+      `});`,
+      `const result = await poll.json();`,
+  ].join('\n');
+
+  const python = [
+      `import requests`,
+      ``,
+      `res = requests.post('${endpoint}', json=${JSON.stringify(bodyObj)}, headers={'x-api-key': 'YOUR_API_KEY'})`,
+      `data = res.json()`,
+      `run_id = data.get('run_id') or data.get('id')`,
+      ``,
+      `# Poll for completion`,
+      `poll = requests.get('${pollUrl.replace('{run_id}', '{run_id}')}', headers={'x-api-key': 'YOUR_API_KEY'})`,
+      `result = poll.json()`,
+  ].join('\n');
+
+  const cliDiscover = `# Discover workflow inputs first`;
+  const cliGet = `curl -s '${publicBase}/workflow/${id}/api-inputs' -H 'x-api-key: YOUR_API_KEY'`;
+  const cliRun = curl;
+
+  return {
+      endpoint,
+      pollUrl,
+      curl,
+      json,
+      node,
+      python,
+      cliDiscover,
+      cliGet,
+      cliRun,
+  };
 }
 
 export function generateCharacterVideo() {

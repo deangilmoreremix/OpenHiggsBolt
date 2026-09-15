@@ -169,13 +169,36 @@ function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
           </span>
         </div>
 
-        {/* Engagement overlay - bottom left */}
+        {/* Engagement overlay - top right */}
         {record.source?.engagement && (
-          <div className="absolute bottom-2 left-2 flex gap-1">
+          <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
             <div className="flex gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
               <Heart size={10} className="fill-white/30 text-white" />
               <span>{formatNumber(record.source.engagement.likes)}</span>
             </div>
+            {(record.source.engagement.reposts || 0) > 0 && (
+              <div className="flex gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                <Repeat2 size={10} className="text-white" />
+                <span>{formatNumber(record.source.engagement.reposts)}</span>
+              </div>
+            )}
+            {(record.source.engagement.replies || 0) > 0 && (
+              <div className="flex gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                <MessageCircle size={10} className="text-white" />
+                <span>{formatNumber(record.source.engagement.replies)}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Viral badge */}
+        {record.source?.engagement?.likes && record.source.engagement.likes >= 50 && (
+          <div
+            className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+            style={{ background: 'rgba(239,68,68,0.2)', color: '#fca5a5' }}
+          >
+            <Flame size={10} className="text-red-400" />
+            Viral
           </div>
         )}
       </div>
@@ -321,13 +344,36 @@ function VideoPromptCard({ record, onSelect }: VideoPromptCardProps) {
           </span>
         </div>
 
-        {/* Engagement overlay - bottom left */}
+        {/* Engagement overlay - top right */}
         {record.engagement && record.engagement.likes > 0 && (
-          <div className="absolute bottom-2 left-2 flex gap-1">
+          <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
             <div className="flex gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
               <Heart size={10} className="fill-white/30 text-white" />
               <span>{formatNumber(record.engagement.likes)}</span>
             </div>
+            {(record.engagement.reposts || 0) > 0 && (
+              <div className="flex gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                <Repeat2 size={10} className="text-white" />
+                <span>{formatNumber(record.engagement.reposts)}</span>
+              </div>
+            )}
+            {(record.engagement.replies || 0) > 0 && (
+              <div className="flex gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                <MessageCircle size={10} className="text-white" />
+                <span>{formatNumber(record.engagement.replies)}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Viral badge */}
+        {record.engagement?.likes && record.engagement.likes >= 50 && (
+          <div
+            className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+            style={{ background: 'rgba(239,68,68,0.2)', color: '#fca5a5' }}
+          >
+            <Flame size={10} className="text-red-400" />
+            Viral
           </div>
         )}
       </div>
@@ -480,6 +526,34 @@ function VideoPromptModal({ record, onClose }: VideoPromptModalProps) {
             <span>Slug: {record.slug}</span>
           </div>
 
+          {/* Engagement */}
+          {record.engagement && (
+            <div className="flex flex-wrap items-center gap-3 text-xs" style={{ color: semantic.textMuted }}>
+              <span className="flex items-center gap-1">
+                <Heart size={10} className="fill-white/30 text-white" />
+                {formatNumber(record.engagement.likes)}
+              </span>
+              {record.engagement.reposts ? (
+                <span className="flex items-center gap-1">
+                  <Repeat2 size={10} />
+                  {formatNumber(record.engagement.reposts)}
+                </span>
+              ) : null}
+              {record.engagement.replies ? (
+                <span className="flex items-center gap-1">
+                  <MessageCircle size={10} />
+                  {formatNumber(record.engagement.replies)}
+                </span>
+              ) : null}
+              {record.engagement.likes != null && record.engagement.likes >= 50 && (
+                <span className="flex items-center gap-1 text-red-400">
+                  <Flame size={10} />
+                  Viral
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="flex gap-2">
             <button
               type="button"
@@ -488,6 +562,17 @@ function VideoPromptModal({ record, onClose }: VideoPromptModalProps) {
               style={buttons.primary}
             >
               Open in Studio
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                openPersonalize({ source: record, trigger: e.currentTarget })
+              }}
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold"
+              style={buttons.primary}
+            >
+              Personalize
             </button>
             {record.detailHref && (
               <a
@@ -832,6 +917,17 @@ function PromptDetailModal({ record, onClose }: PromptDetailModalProps) {
             style={buttons.primary}
           >
             Open in Studio
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              openPersonalize({ source: record, trigger: e.currentTarget })
+            }}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+            style={buttons.primary}
+          >
+            Personalize
           </button>
           <button
             onClick={handleCopy}

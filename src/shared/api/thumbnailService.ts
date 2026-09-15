@@ -38,7 +38,11 @@ export interface ThumbnailGenerateParams {
   templateValues?: Record<string, any>
   referenceUrls?: string[]
   style?: string
-  quality?: 'low' | 'medium' | 'high'
+  quality?: 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'auto'
+  background?: 'transparent' | 'opaque' | 'auto'
+  outputFormat?: 'png' | 'jpeg' | 'webp'
+  customSize?: string
+  maskDataUrl?: string
 }
 
 export interface ThumbnailGenerateResult {
@@ -56,6 +60,11 @@ export interface ThumbnailRefineParams {
   aspectRatio?: string
   n?: number
   strength?: number
+  quality?: 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'auto'
+  background?: 'transparent' | 'opaque' | 'auto'
+  outputFormat?: 'png' | 'jpeg' | 'webp'
+  customSize?: string
+  maskDataUrl?: string
 }
 
 export interface ThumbnailRefineResult {
@@ -72,15 +81,19 @@ export async function generateThumbnail(params: ThumbnailGenerateParams): Promis
   const body: Record<string, unknown> = {
     action: 'generate',
     prompt: params.prompt,
-    model: params.model || 'gpt-image-2',
+    model: params.model || 'gpt-image-2.5-flare',
     aspect_ratio: params.aspectRatio || '16:9',
     n: Math.min(Math.max(params.n || 1, 1), 4),
     headline: params.headline || '',
     subheadline: params.subheadline || '',
     style: params.style || 'vibrant',
-    quality: params.quality || 'medium',
+    quality: params.quality || 'auto',
+    background: params.background || 'auto',
+    output_format: params.outputFormat || 'png',
+    ...(params.customSize ? { size: params.customSize } : {}),
     ...(params.templateId ? { template_id: params.templateId, template_values: params.templateValues || {} } : {}),
     ...(params.referenceUrls?.length ? { reference_urls: params.referenceUrls } : {}),
+    ...(params.maskDataUrl ? { mask_data_url: params.maskDataUrl } : {}),
   }
 
   if (params.imageUrl) {
@@ -125,10 +138,14 @@ export async function refineThumbnail(params: ThumbnailRefineParams): Promise<Th
     action: 'refine',
     image_url: params.imageUrl,
     prompt: params.prompt,
-    model: params.model || 'gpt-image-2',
+    model: params.model || 'gpt-image-2.5-flare',
     aspect_ratio: params.aspectRatio || '16:9',
     n: Math.min(Math.max(params.n || 1, 1), 4),
     strength: params.strength ?? 0.5,
+    background: params.background || 'auto',
+    output_format: params.outputFormat || 'png',
+    ...(params.customSize ? { size: params.customSize } : {}),
+    ...(params.maskDataUrl ? { mask_data_url: params.maskDataUrl } : {}),
   }
 
   const data = await postToEdgeFunction('/api/proxy/thumbnail-generate', body)

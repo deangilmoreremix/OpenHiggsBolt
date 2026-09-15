@@ -1,0 +1,1140 @@
+{
+  "generatedAt": "2026-09-11",
+  "description": "Curated landing page niche map. Each niche lists 6-12 highest-scoring unique templates.",
+  "note": "Scored by weighted keyword relevance. Excluded off-topic content. Min score varies by niche.",
+  "niches": {
+    "ecommerce": {
+      "templateSlugs": [
+        "morning-lip-oil-ugc-testimonial",
+        "2477-30-second-vertical-ai-ugc-product-commercial-for-premium-cof",
+        "blackberry-vanilla-soda-ugc-vlog",
+        "emerald-bio-serum-product-film",
+        "ramen-bowl-ugc-taste-test",
+        "yellow-sunglasses-in-a-black-studio",
+        "black-and-gold-perfume-commercial",
+        "luxury-skincare-storyboard-commercial",
+        "luxury-perfume-commercial",
+        "bamboo-forest-wuxia-mystery",
+        "3052-kitkat-break-focus-commercial",
+        "product-commercial-study-309837"
+      ],
+      "templateCount": 12,
+      "proposedTemplates": [
+        {
+          "slug": "morning-lip-oil-ugc-testimonial",
+          "title": "Morning Lip Oil UGC Testimonial",
+          "category": "UGC",
+          "studioTab": "video",
+          "sourceRepo": "minimax_h3",
+          "score": 16
+        },
+        {
+          "slug": "2477-30-second-vertical-ai-ugc-product-commercial-for-premium-cof",
+          "title": "30-second vertical AI UGC product commercial for premium coffee machine",
+          "category": "UGC",
+          "studioTab": "video",
+          "sourceRepo": "promptfeed",
+          "score": 14
+        },
+        {
+          "slug": "blackberry-vanilla-soda-ugc-vlog",
+          "title": "Blackberry Vanilla Soda UGC Vlog",
+          "category": "UGC",
+          "studioTab": "video",
+          "sourceRepo": "minimax_h3",
+          "score": 14
+        },
+        {
+          "slug": "emerald-bio-serum-product-film",
+          "title": "Emerald Bio-Serum Product Film",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "minimax_h3",
+          "score": 14
+        },
+        {
+          "slug": "ramen-bowl-ugc-taste-test",
+          "title": "Ramen Bowl UGC Taste Test",
+          "category": "UGC",
+          "studioTab": "video",
+          "sourceRepo": "minimax_h3",
+          "score": 14
+        },
+        {
+          "slug": "yellow-sunglasses-in-a-black-studio",
+          "title": "Yellow Sunglasses in a Black Studio",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "minimax_h3",
+          "score": 14
+        },
+        {
+          "slug": "black-and-gold-perfume-commercial",
+          "title": "Black-and-Gold Perfume Commercial",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "minimax_h3",
+          "score": 10
+        },
+        {
+          "slug": "luxury-skincare-storyboard-commercial",
+          "title": "Luxury Skincare Storyboard Commercial",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "minimax_h3",
+          "score": 10
+        },
+        {
+          "slug": "luxury-perfume-commercial",
+          "title": "Luxury perfume commercial",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "minimax_h3",
+          "score": 10
+        },
+        {
+          "slug": "bamboo-forest-wuxia-mystery",
+          "title": "Bamboo Forest Wuxia Mystery",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "minimax_h3",
+          "score": 8
+        },
+        {
+          "slug": "3052-kitkat-break-focus-commercial",
+          "title": "KitKat Break Focus Commercial",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "promptfeed",
+          "score": 8
+        },
+        {
+          "slug": "product-commercial-study-309837",
+          "title": "Product Commercial Study 309837",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_25",
+          "score": 8
+        }
+      ]
+    },
+    "restaurants-food": {
+      "templateSlugs": [
+        "cinematic-luxury-pizza-commercial",
+        "fast-food-restaurant-cinematic",
+        "chef-spicy-food-prank-pov",
+        "3310-handheld-selfie-vlog-eating-oden-in-hotel-room",
+        "2984-the-decadent-snap-artisanal-chocolate-bar-video-prompt",
+        "serious-chef-cat-cooking-video",
+        "claymation-miniature-chef-prompt",
+        "youmind-714e8ab60957"
+      ],
+      "templateCount": 8,
+      "proposedTemplates": [
+        {
+          "slug": "cinematic-luxury-pizza-commercial",
+          "title": "cinematic luxury pizza commercial",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 10
+        },
+        {
+          "slug": "fast-food-restaurant-cinematic",
+          "title": "fast food restaurant cinematic",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 10
+        },
+        {
+          "slug": "chef-spicy-food-prank-pov",
+          "title": "chef spicy food prank pov",
+          "category": "Action",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_2prompt",
+          "score": 9
+        },
+        {
+          "slug": "3310-handheld-selfie-vlog-eating-oden-in-hotel-room",
+          "title": "Handheld selfie vlog eating oden in hotel room",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "promptfeed",
+          "score": 8
+        },
+        {
+          "slug": "2984-the-decadent-snap-artisanal-chocolate-bar-video-prompt",
+          "title": "The Decadent Snap - Artisanal Chocolate Bar Video Prompt",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "promptfeed",
+          "score": 8
+        },
+        {
+          "slug": "serious-chef-cat-cooking-video",
+          "title": "serious chef cat cooking video",
+          "category": "UGC",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 8
+        },
+        {
+          "slug": "claymation-miniature-chef-prompt",
+          "title": "claymation miniature chef prompt",
+          "category": "Action",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_2prompt",
+          "score": 7
+        },
+        {
+          "slug": "youmind-714e8ab60957",
+          "title": "youmind 714e8ab60957",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 7
+        }
+      ]
+    },
+    "real-estate": {
+      "templateSlugs": [
+        "rider-galloping-white-horse-vancouver-mansion"
+      ],
+      "templateCount": 1,
+      "proposedTemplates": [
+        {
+          "slug": "rider-galloping-white-horse-vancouver-mansion",
+          "title": "rider galloping white horse vancouver mansion",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 5
+        }
+      ]
+    },
+    "beauty": {
+      "templateSlugs": [
+        "cinematic-grwm-fashion-editorial",
+        "high-fashion-editorial-glow-up",
+        "1530-cinematic-vertical-beauty-vlog-for-skincare-product",
+        "2783-premium-photorealistic-fashion-commercial-and-behind-the-sce",
+        "yellow-sunglasses-in-a-black-studio",
+        "low-angle-fashion-tracking-film",
+        "demolition-couture-avant-garde-fashion-prompt",
+        "luxury-streetwear-runway-fashion-film",
+        "style-hollywood-haute-couture-fantasy-blockbuster-8k-ultra"
+      ],
+      "templateCount": 9,
+      "proposedTemplates": [
+        {
+          "slug": "cinematic-grwm-fashion-editorial",
+          "title": "cinematic grwm fashion editorial",
+          "category": "Fashion",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 12
+        },
+        {
+          "slug": "high-fashion-editorial-glow-up",
+          "title": "high fashion editorial glow up",
+          "category": "Fashion",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 12
+        },
+        {
+          "slug": "1530-cinematic-vertical-beauty-vlog-for-skincare-product",
+          "title": "Cinematic vertical beauty vlog for skincare product",
+          "category": "Cinema",
+          "studioTab": "cinema",
+          "sourceRepo": "promptfeed",
+          "score": 10
+        },
+        {
+          "slug": "2783-premium-photorealistic-fashion-commercial-and-behind-the-sce",
+          "title": "Premium photorealistic fashion commercial and behind-the-scenes lookbook",
+          "category": "Cinema",
+          "studioTab": "cinema",
+          "sourceRepo": "promptfeed",
+          "score": 10
+        },
+        {
+          "slug": "yellow-sunglasses-in-a-black-studio",
+          "title": "Yellow Sunglasses in a Black Studio",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "minimax_h3",
+          "score": 10
+        },
+        {
+          "slug": "low-angle-fashion-tracking-film",
+          "title": "Low-Angle Fashion Tracking Film",
+          "category": "Fashion",
+          "studioTab": "ai-influencer",
+          "sourceRepo": "minimax_h3",
+          "score": 8
+        },
+        {
+          "slug": "demolition-couture-avant-garde-fashion-prompt",
+          "title": "demolition couture avant garde fashion prompt",
+          "category": "Fashion",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 8
+        },
+        {
+          "slug": "luxury-streetwear-runway-fashion-film",
+          "title": "luxury streetwear runway fashion film",
+          "category": "Animation",
+          "studioTab": "ai-influencer",
+          "sourceRepo": "seedance_2prompt",
+          "score": 8
+        },
+        {
+          "slug": "style-hollywood-haute-couture-fantasy-blockbuster-8k-ultra",
+          "title": "style hollywood haute couture fantasy blockbuster 8k ultra",
+          "category": "Fashion",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 8
+        }
+      ]
+    },
+    "wellness-fitness": {
+      "templateSlugs": [
+        "fitness-aesthetic-gym-montage",
+        "industrial-gym-fitness-montage",
+        "boxing-training-montage",
+        "female-boxing-training-montage",
+        "fitness-athlete-calisthenics-cinematic"
+      ],
+      "templateCount": 5,
+      "proposedTemplates": [
+        {
+          "slug": "fitness-aesthetic-gym-montage",
+          "title": "fitness aesthetic gym montage",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 11
+        },
+        {
+          "slug": "industrial-gym-fitness-montage",
+          "title": "industrial gym fitness montage",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 11
+        },
+        {
+          "slug": "boxing-training-montage",
+          "title": "boxing training montage",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 9
+        },
+        {
+          "slug": "female-boxing-training-montage",
+          "title": "female boxing training montage",
+          "category": "Cinema",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_2prompt",
+          "score": 9
+        },
+        {
+          "slug": "fitness-athlete-calisthenics-cinematic",
+          "title": "fitness athlete calisthenics cinematic",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        }
+      ]
+    },
+    "education": {
+      "templateSlugs": [
+        "macaw-scream-in-extreme-slow-motion",
+        "ultra-realistic-wildlife-documentary-footage",
+        "wildlife-documentary-lion-elephant-rescue",
+        "wildlife-documentary-wolf-deer-chase",
+        "youmind-82a7c5b1914c",
+        "nature-documentary-otter-piloting-airplane"
+      ],
+      "templateCount": 6,
+      "proposedTemplates": [
+        {
+          "slug": "macaw-scream-in-extreme-slow-motion",
+          "title": "Macaw Scream in Extreme Slow Motion",
+          "category": "Cinema",
+          "studioTab": "cinema",
+          "sourceRepo": "minimax_h3",
+          "score": 11
+        },
+        {
+          "slug": "ultra-realistic-wildlife-documentary-footage",
+          "title": "ultra realistic wildlife documentary footage",
+          "category": "UGC",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 11
+        },
+        {
+          "slug": "wildlife-documentary-lion-elephant-rescue",
+          "title": "wildlife documentary lion elephant rescue",
+          "category": "UGC",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 11
+        },
+        {
+          "slug": "wildlife-documentary-wolf-deer-chase",
+          "title": "wildlife documentary wolf deer chase",
+          "category": "UGC",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 11
+        },
+        {
+          "slug": "youmind-82a7c5b1914c",
+          "title": "youmind 82a7c5b1914c",
+          "category": "UGC",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 11
+        },
+        {
+          "slug": "nature-documentary-otter-piloting-airplane",
+          "title": "nature documentary otter piloting airplane",
+          "category": "UGC",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 7
+        }
+      ]
+    },
+    "technology": {
+      "templateSlugs": [
+        "robotic-dinosaur-cyberpunk-city-attack",
+        "cyberpunk-digital-ruins-ai-captivity-visualization",
+        "cyber-ronin-nanotech-transformation-video",
+        "cyberpunk-futuristic-female-warrior",
+        "cyberpunk-futuristic-portrait-young-woman",
+        "cyberpunk-monitor-screen-breach-pov",
+        "cyberpunk-samurai-duel",
+        "cyberpunk-samurai-tokyo-neon-battle",
+        "hollywood-style-shanghai-city-montage-video-prompt-for-seedance-2-0",
+        "seedance-2-0-ai-wedding-video-prompt-cinematic-night-scene",
+        "cybernetic-titan-cyberpunk-city-rain",
+        "cyberpunk-anime-cinematic-fight-scene-prompt-for-seedance-2-0"
+      ],
+      "templateCount": 12,
+      "proposedTemplates": [
+        {
+          "slug": "robotic-dinosaur-cyberpunk-city-attack",
+          "title": "robotic dinosaur cyberpunk city attack",
+          "category": "Action",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_2prompt",
+          "score": 15
+        },
+        {
+          "slug": "cyberpunk-digital-ruins-ai-captivity-visualization",
+          "title": "cyberpunk digital ruins ai captivity visualization",
+          "category": "Animation",
+          "studioTab": "ai-influencer",
+          "sourceRepo": "seedance_2prompt",
+          "score": 13
+        },
+        {
+          "slug": "cyber-ronin-nanotech-transformation-video",
+          "title": "cyber ronin nanotech transformation video",
+          "category": "Action",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_2prompt",
+          "score": 12
+        },
+        {
+          "slug": "cyberpunk-futuristic-female-warrior",
+          "title": "cyberpunk futuristic female warrior",
+          "category": "Action",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_2prompt",
+          "score": 12
+        },
+        {
+          "slug": "cyberpunk-futuristic-portrait-young-woman",
+          "title": "cyberpunk futuristic portrait young woman",
+          "category": "Fashion",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 12
+        },
+        {
+          "slug": "cyberpunk-monitor-screen-breach-pov",
+          "title": "cyberpunk monitor screen breach pov",
+          "category": "Fashion",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 11
+        },
+        {
+          "slug": "cyberpunk-samurai-duel",
+          "title": "cyberpunk samurai duel",
+          "category": "Action",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_2prompt",
+          "score": 10
+        },
+        {
+          "slug": "cyberpunk-samurai-tokyo-neon-battle",
+          "title": "cyberpunk samurai tokyo neon battle",
+          "category": "Action",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_2prompt",
+          "score": 10
+        },
+        {
+          "slug": "hollywood-style-shanghai-city-montage-video-prompt-for-seedance-2-0",
+          "title": "hollywood style shanghai city montage video prompt for seedance 2 0",
+          "category": "Animation",
+          "studioTab": "ai-influencer",
+          "sourceRepo": "seedance_2prompt",
+          "score": 10
+        },
+        {
+          "slug": "seedance-2-0-ai-wedding-video-prompt-cinematic-night-scene",
+          "title": "seedance 2 0 ai wedding video prompt cinematic night scene",
+          "category": "Animation",
+          "studioTab": "ai-influencer",
+          "sourceRepo": "seedance_2prompt",
+          "score": 10
+        },
+        {
+          "slug": "cybernetic-titan-cyberpunk-city-rain",
+          "title": "cybernetic titan cyberpunk city rain",
+          "category": "Animation",
+          "studioTab": "ai-influencer",
+          "sourceRepo": "seedance_2prompt",
+          "score": 9
+        },
+        {
+          "slug": "cyberpunk-anime-cinematic-fight-scene-prompt-for-seedance-2-0",
+          "title": "cyberpunk anime cinematic fight scene prompt for seedance 2 0",
+          "category": "Action",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_2prompt",
+          "score": 9
+        }
+      ]
+    },
+    "finance": {
+      "templateSlugs": [
+        "a-15-second-inspirational-business-speech-short-video",
+        "professional-woman-workspace-success-scene",
+        "cinematic-office-scene-video-prompt",
+        "high-speed-transition-video-prompt-for-seedance-2-0-omni"
+      ],
+      "templateCount": 4,
+      "proposedTemplates": [
+        {
+          "slug": "a-15-second-inspirational-business-speech-short-video",
+          "title": "a 15 second inspirational business speech short video",
+          "category": "Social",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 7
+        },
+        {
+          "slug": "professional-woman-workspace-success-scene",
+          "title": "professional woman workspace success scene",
+          "category": "Animation",
+          "studioTab": "ai-influencer",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        },
+        {
+          "slug": "cinematic-office-scene-video-prompt",
+          "title": "cinematic office scene video prompt",
+          "category": "Social",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 5
+        },
+        {
+          "slug": "high-speed-transition-video-prompt-for-seedance-2-0-omni",
+          "title": "high speed transition video prompt for seedance 2 0 omni",
+          "category": "Action",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_2prompt",
+          "score": 5
+        }
+      ]
+    },
+    "entertainment-media": {
+      "templateSlugs": [
+        "napoleon-historical-biopic-animation",
+        "3d-fantasy-animation-prompt",
+        "2291-pixar-style-30-second-3d-animated-short-of-a-beggar-and-a-cr",
+        "1-male-a-male-peacock-spirit-long-bob",
+        "blue-haired-hero-and-spirit-fox-escape",
+        "male-peacock-spirit-anime-character-design",
+        "male-peacock-spirit-anime-style-video",
+        "studio-ghibli-style-animation-scene",
+        "anime-game-cinematic-animation",
+        "cinematic-schoolgirl-action-short",
+        "cinematic-time-freeze-sports-bar-prompt",
+        "cinematic-time-freeze-thriller"
+      ],
+      "templateCount": 12,
+      "proposedTemplates": [
+        {
+          "slug": "napoleon-historical-biopic-animation",
+          "title": "napoleon historical biopic animation",
+          "category": "Animation",
+          "studioTab": "ai-influencer",
+          "sourceRepo": "seedance_2prompt",
+          "score": 14
+        },
+        {
+          "slug": "3d-fantasy-animation-prompt",
+          "title": "3d fantasy animation prompt",
+          "category": "Animation",
+          "studioTab": "ai-influencer",
+          "sourceRepo": "seedance_2prompt",
+          "score": 13
+        },
+        {
+          "slug": "2291-pixar-style-30-second-3d-animated-short-of-a-beggar-and-a-cr",
+          "title": "Pixar-style 30-second 3D animated short of a beggar and a crow",
+          "category": "Animation",
+          "studioTab": "ai-influencer",
+          "sourceRepo": "promptfeed",
+          "score": 13
+        },
+        {
+          "slug": "1-male-a-male-peacock-spirit-long-bob",
+          "title": "1 male a male peacock spirit long bob",
+          "category": "Animation",
+          "studioTab": "ai-influencer",
+          "sourceRepo": "seedance_2prompt",
+          "score": 11
+        },
+        {
+          "slug": "blue-haired-hero-and-spirit-fox-escape",
+          "title": "Blue-Haired Hero and Spirit Fox Escape",
+          "category": "Cinema",
+          "studioTab": "cinema",
+          "sourceRepo": "minimax_h3",
+          "score": 11
+        },
+        {
+          "slug": "male-peacock-spirit-anime-character-design",
+          "title": "male peacock spirit anime character design",
+          "category": "Animation",
+          "studioTab": "ai-influencer",
+          "sourceRepo": "seedance_2prompt",
+          "score": 11
+        },
+        {
+          "slug": "male-peacock-spirit-anime-style-video",
+          "title": "male peacock spirit anime style video",
+          "category": "Fashion",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 11
+        },
+        {
+          "slug": "studio-ghibli-style-animation-scene",
+          "title": "studio ghibli style animation scene",
+          "category": "Animation",
+          "studioTab": "ai-influencer",
+          "sourceRepo": "seedance_2prompt",
+          "score": 11
+        },
+        {
+          "slug": "anime-game-cinematic-animation",
+          "title": "anime game cinematic animation",
+          "category": "Animation",
+          "studioTab": "ai-influencer",
+          "sourceRepo": "seedance_2prompt",
+          "score": 10
+        },
+        {
+          "slug": "cinematic-schoolgirl-action-short",
+          "title": "cinematic schoolgirl action short",
+          "category": "Action",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_2prompt",
+          "score": 10
+        },
+        {
+          "slug": "cinematic-time-freeze-sports-bar-prompt",
+          "title": "cinematic time freeze sports bar prompt",
+          "category": "Social",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 10
+        },
+        {
+          "slug": "cinematic-time-freeze-thriller",
+          "title": "cinematic time freeze thriller",
+          "category": "Action",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_2prompt",
+          "score": 10
+        }
+      ]
+    },
+    "automotive": {
+      "templateSlugs": [
+        "seedance-2-0-supercar-showcase-video-prompt",
+        "unveiling-pure-luxury-the-ultimate-red-ferrari-e-698838",
+        "commercial-sports-car-photography-video-prompt",
+        "high-octane-f1-car-chase-drift-explosion",
+        "luxury-car-commercial-transition",
+        "luxury-electric-suv-commercial",
+        "alpine-avalanche-escape-stunt-storyboard",
+        "cadillac-formula-one-racing-car-2026-video",
+        "cinematic-sports-car-dark-void",
+        "formula-race-warzone-sequence",
+        "multi-shot-high-speed-car-chase",
+        "post-apocalyptic-war-car-racing-desert"
+      ],
+      "templateCount": 12,
+      "proposedTemplates": [
+        {
+          "slug": "seedance-2-0-supercar-showcase-video-prompt",
+          "title": "seedance 2 0 supercar showcase video prompt",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 10
+        },
+        {
+          "slug": "unveiling-pure-luxury-the-ultimate-red-ferrari-e-698838",
+          "title": "Unveiling Pure Luxury: The Ultimate Red Ferrari Experience",
+          "category": "Cinema",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_25",
+          "score": 8
+        },
+        {
+          "slug": "commercial-sports-car-photography-video-prompt",
+          "title": "commercial sports car photography video prompt",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 8
+        },
+        {
+          "slug": "high-octane-f1-car-chase-drift-explosion",
+          "title": "high octane f1 car chase drift explosion",
+          "category": "Action",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_2prompt",
+          "score": 8
+        },
+        {
+          "slug": "luxury-car-commercial-transition",
+          "title": "luxury car commercial transition",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 8
+        },
+        {
+          "slug": "luxury-electric-suv-commercial",
+          "title": "luxury electric suv commercial",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 8
+        },
+        {
+          "slug": "alpine-avalanche-escape-stunt-storyboard",
+          "title": "alpine avalanche escape stunt storyboard",
+          "category": "Action",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        },
+        {
+          "slug": "cadillac-formula-one-racing-car-2026-video",
+          "title": "cadillac formula one racing car 2026 video",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        },
+        {
+          "slug": "cinematic-sports-car-dark-void",
+          "title": "cinematic sports car dark void",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        },
+        {
+          "slug": "formula-race-warzone-sequence",
+          "title": "formula race warzone sequence",
+          "category": "Action",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        },
+        {
+          "slug": "multi-shot-high-speed-car-chase",
+          "title": "multi shot high speed car chase",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        },
+        {
+          "slug": "post-apocalyptic-war-car-racing-desert",
+          "title": "post apocalyptic war car racing desert",
+          "category": "Action",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        }
+      ]
+    },
+    "travel-hospitality": {
+      "templateSlugs": [
+        "2781-30-second-photorealistic-smartphone-travel-vlog-of-a-japanes",
+        "boyfriend-pov-travel-vlog-prompt-for-seedance-2-0",
+        "cinematic-tokyo-travel-film-intro",
+        "handheld-phone-selfie-slight-camera-shake-authentic-travel",
+        "high-energy-paris-travel-vlog",
+        "rome-travel-vlog-japanese-dialogue",
+        "seedance-2-0-travel-vlog-prompt-venice"
+      ],
+      "templateCount": 7,
+      "proposedTemplates": [
+        {
+          "slug": "2781-30-second-photorealistic-smartphone-travel-vlog-of-a-japanes",
+          "title": "30-second photorealistic smartphone travel vlog of a Japanese woman at a summer ",
+          "category": "Social",
+          "studioTab": "video",
+          "sourceRepo": "promptfeed",
+          "score": 6
+        },
+        {
+          "slug": "boyfriend-pov-travel-vlog-prompt-for-seedance-2-0",
+          "title": "boyfriend pov travel vlog prompt for seedance 2 0",
+          "category": "UGC",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        },
+        {
+          "slug": "cinematic-tokyo-travel-film-intro",
+          "title": "cinematic tokyo travel film intro",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        },
+        {
+          "slug": "handheld-phone-selfie-slight-camera-shake-authentic-travel",
+          "title": "handheld phone selfie slight camera shake authentic travel",
+          "category": "Social",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        },
+        {
+          "slug": "high-energy-paris-travel-vlog",
+          "title": "high energy paris travel vlog",
+          "category": "Social",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        },
+        {
+          "slug": "rome-travel-vlog-japanese-dialogue",
+          "title": "rome travel vlog japanese dialogue",
+          "category": "Social",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        },
+        {
+          "slug": "seedance-2-0-travel-vlog-prompt-venice",
+          "title": "seedance 2 0 travel vlog prompt venice",
+          "category": "Social",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        }
+      ]
+    },
+    "sports-outdoors": {
+      "templateSlugs": [
+        "olympic-hammer-throw-broadcast-simulation",
+        "glamorous-woman-soccer-stadium",
+        "pro-soccer-goal-action-sequence",
+        "hyperrealistic-rugby-match-humans-vs-gorillas",
+        "cinematic-wwe-wrestling-match-with-shocking-twist",
+        "live-football-broadcast-video-prompt",
+        "manchester-united-fan-video",
+        "photorealistic-sports-broadcast-stadium",
+        "cinematic-soccer-stadium-intimate-whisper-scene",
+        "hyper-realistic-football-strike-sequence",
+        "maltese-dog-winter-olympics-highlights",
+        "njpw-womens-wrestling-match-sequence"
+      ],
+      "templateCount": 12,
+      "proposedTemplates": [
+        {
+          "slug": "olympic-hammer-throw-broadcast-simulation",
+          "title": "olympic hammer throw broadcast simulation",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 14
+        },
+        {
+          "slug": "glamorous-woman-soccer-stadium",
+          "title": "glamorous woman soccer stadium",
+          "category": "Social",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 12
+        },
+        {
+          "slug": "pro-soccer-goal-action-sequence",
+          "title": "pro soccer goal action sequence",
+          "category": "Action",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_2prompt",
+          "score": 10
+        },
+        {
+          "slug": "hyperrealistic-rugby-match-humans-vs-gorillas",
+          "title": "hyperrealistic rugby match humans vs gorillas",
+          "category": "Action",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_2prompt",
+          "score": 9
+        },
+        {
+          "slug": "cinematic-wwe-wrestling-match-with-shocking-twist",
+          "title": "cinematic wwe wrestling match with shocking twist",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 8
+        },
+        {
+          "slug": "live-football-broadcast-video-prompt",
+          "title": "live football broadcast video prompt",
+          "category": "Social",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 8
+        },
+        {
+          "slug": "manchester-united-fan-video",
+          "title": "manchester united fan video",
+          "category": "Social",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 8
+        },
+        {
+          "slug": "photorealistic-sports-broadcast-stadium",
+          "title": "photorealistic sports broadcast stadium",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 8
+        },
+        {
+          "slug": "cinematic-soccer-stadium-intimate-whisper-scene",
+          "title": "cinematic soccer stadium intimate whisper scene",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        },
+        {
+          "slug": "hyper-realistic-football-strike-sequence",
+          "title": "hyper realistic football strike sequence",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        },
+        {
+          "slug": "maltese-dog-winter-olympics-highlights",
+          "title": "maltese dog winter olympics highlights",
+          "category": "Social",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        },
+        {
+          "slug": "njpw-womens-wrestling-match-sequence",
+          "title": "njpw womens wrestling match sequence",
+          "category": "UGC",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        }
+      ]
+    },
+    "general-business": {
+      "templateSlugs": [
+        "muji-brand-promotional-video",
+        "a-futuristic-promotional-video-for-kiri-engine-a",
+        "iphone-promotional-video-prompt-seedance-2-0",
+        "new-chinese-style-cinematic-quality-promotional-video-the"
+      ],
+      "templateCount": 4,
+      "proposedTemplates": [
+        {
+          "slug": "muji-brand-promotional-video",
+          "title": "MUJI Brand Promotional Video",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_1",
+          "score": 16
+        },
+        {
+          "slug": "a-futuristic-promotional-video-for-kiri-engine-a",
+          "title": "a futuristic promotional video for kiri engine a",
+          "category": "Animation",
+          "studioTab": "ai-influencer",
+          "sourceRepo": "seedance_2prompt",
+          "score": 8
+        },
+        {
+          "slug": "iphone-promotional-video-prompt-seedance-2-0",
+          "title": "iphone promotional video prompt seedance 2 0",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 8
+        },
+        {
+          "slug": "new-chinese-style-cinematic-quality-promotional-video-the",
+          "title": "new chinese style cinematic quality promotional video the",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 8
+        }
+      ]
+    },
+    "viral-trending": {
+      "templateSlugs": [
+        "2690-cinematic-korean-convenience-store-snack-challenge-vlog",
+        "giant-orange-cat-meme-style",
+        "giant-koi-park-incident",
+        "boyfriend-pov-travel-vlog-prompt-for-seedance-2-0",
+        "continuous-shot-downhill-longboard-run",
+        "contrast-transformation-video-prompt-office-worker-to-gothic-queen",
+        "downhill-pov-cycling-chaos-prompt",
+        "dust-devil-playground-viral-video",
+        "melodramatic-rainy-night-heartbreak-scene",
+        "melodramatic-rainy-night-neon-short-drama",
+        "rucker-park-slam-dunk-viral-video"
+      ],
+      "templateCount": 11,
+      "proposedTemplates": [
+        {
+          "slug": "2690-cinematic-korean-convenience-store-snack-challenge-vlog",
+          "title": "Cinematic Korean Convenience Store Snack Challenge Vlog",
+          "category": "Cinema",
+          "studioTab": "cinema",
+          "sourceRepo": "promptfeed",
+          "score": 8
+        },
+        {
+          "slug": "giant-orange-cat-meme-style",
+          "title": "Giant Orange Cat Meme Style",
+          "category": "Social",
+          "studioTab": "video",
+          "sourceRepo": "seedance_1",
+          "score": 6
+        },
+        {
+          "slug": "giant-koi-park-incident",
+          "title": "Giant koi park incident",
+          "category": "Social",
+          "studioTab": "video",
+          "sourceRepo": "minimax_h3",
+          "score": 6
+        },
+        {
+          "slug": "boyfriend-pov-travel-vlog-prompt-for-seedance-2-0",
+          "title": "boyfriend pov travel vlog prompt for seedance 2 0",
+          "category": "UGC",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        },
+        {
+          "slug": "continuous-shot-downhill-longboard-run",
+          "title": "continuous shot downhill longboard run",
+          "category": "Action",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        },
+        {
+          "slug": "contrast-transformation-video-prompt-office-worker-to-gothic-queen",
+          "title": "contrast transformation video prompt office worker to gothic queen",
+          "category": "UGC",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        },
+        {
+          "slug": "downhill-pov-cycling-chaos-prompt",
+          "title": "downhill pov cycling chaos prompt",
+          "category": "Action",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        },
+        {
+          "slug": "dust-devil-playground-viral-video",
+          "title": "dust devil playground viral video",
+          "category": "Action",
+          "studioTab": "cinema",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        },
+        {
+          "slug": "melodramatic-rainy-night-heartbreak-scene",
+          "title": "melodramatic rainy night heartbreak scene",
+          "category": "Fashion",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        },
+        {
+          "slug": "melodramatic-rainy-night-neon-short-drama",
+          "title": "melodramatic rainy night neon short drama",
+          "category": "Fashion",
+          "studioTab": "video",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        },
+        {
+          "slug": "rucker-park-slam-dunk-viral-video",
+          "title": "rucker park slam dunk viral video",
+          "category": "Commercial",
+          "studioTab": "marketing",
+          "sourceRepo": "seedance_2prompt",
+          "score": 6
+        }
+      ]
+    }
+  }
+}

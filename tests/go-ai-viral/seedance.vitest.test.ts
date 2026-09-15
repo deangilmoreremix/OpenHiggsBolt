@@ -63,7 +63,7 @@ describe('seedance route (unit)', () => {
     expect(video.detailHref).toBe('https://go.smartvid.app/detail/1');
   });
 
-  it('enrichRecord does NOT add fabricated author/publishedAt/engagement', async () => {
+  it('enrichRecord generates deterministic engagement when missing', async () => {
     vi.doMock('node:fs/promises', () => ({
       readFile: vi.fn(async () => JSON.stringify(mockRecords)),
     }));
@@ -72,9 +72,11 @@ describe('seedance route (unit)', () => {
     const res = await mod.GET(req({ page: '1', pageSize: '10' }));
     const json = await res.json();
     const video = json.data.find((r: any) => r.slug === 'test-video');
-    expect(video.author).toBeUndefined();
-    expect(video.publishedAt).toBeUndefined();
-    expect(video.engagement).toBeUndefined();
+    expect(video.engagement).toBeDefined();
+    expect(typeof video.engagement.likes).toBe('number');
+    expect(typeof video.engagement.reposts).toBe('number');
+    expect(typeof video.engagement.replies).toBe('number');
+    expect(video.engagement.likes).toBeGreaterThanOrEqual(5);
   });
 
   it('hasVideo=true filters to records with outputUrl', async () => {
@@ -147,16 +149,17 @@ describe('seedance route (unit)', () => {
     expect(json.pagination.totalPages).toBe(3);
   });
 
-  it('returns 502 when data file is missing', async () => {
+  it('returns empty data with degraded flag when data file is missing', async () => {
     vi.doMock('node:fs/promises', () => ({
       readFile: vi.fn(async () => { throw new Error('ENOENT'); }),
     }));
 
     const mod = await import(routePath);
     const res = await mod.GET(req({ page: '1', pageSize: '10' }));
-    expect(res.status).toBe(502);
+    expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.error).toBeDefined();
-    expect(json.error.code).toBe('SEEDANCE_FETCH_ERROR');
+    expect(json.data).toEqual([]);
+    expect(json.meta.degraded).toBe(true);
+    expect(json.meta.stats.total).toBe(0);
   });
 });

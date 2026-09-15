@@ -4,6 +4,7 @@ import React, { useEffect } from "react";
 import { WorkflowBuilder } from "workflow-builder";
 import "reactflow/dist/style.css";
 import "react-toastify/dist/ReactToastify.css";
+import { Toaster } from "react-hot-toast";
 
 
 const WorkflowUI = ({
@@ -33,6 +34,7 @@ const WorkflowUI = ({
         onGenerationComplete={onGenerationComplete}
         onGenerationError={onGenerationError}
       />
+      <Toaster position="top-right" containerStyle={{ zIndex: 99999 }} />
     </div>
   );
 };

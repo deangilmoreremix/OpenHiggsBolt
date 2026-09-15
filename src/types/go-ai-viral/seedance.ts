@@ -32,6 +32,9 @@ export interface SeedancePrompt {
   primaryNiche?: string
   /** Optional sub-niches within the primary niche for granular filtering. */
   subNiches?: string[]
+  aspectRatio?: string
+  duration?: number
+  durationLabel?: string
 }
 
 export interface SeedanceStats {
@@ -40,4 +43,8 @@ export interface SeedanceStats {
   withPrompt: number
   withDetailHref: number
   sourceLanguages: Record<string, number>
+  totalLikes: number
+  totalReposts: number
+  totalReplies: number
+  viralCount: number
 }

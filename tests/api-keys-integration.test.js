@@ -187,7 +187,7 @@ test('OpenAI image generation request carries the user-entered Bearer token', as
   await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
     headers: { Authorization: `Bearer ${resolveOpenAIKey()}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'gpt-image-2', prompt: 'hi', n: 1 }),
+    body: JSON.stringify({ model: 'gpt-image-2.5-flare', prompt: 'hi', n: 1 }),
   });
 
   assert.ok(lastFetch);
