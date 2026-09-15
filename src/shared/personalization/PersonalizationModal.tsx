@@ -515,6 +515,14 @@ export default function PersonalizationModal() {
     selectClient,
     deleteClient,
     updateClientForm,
+    savedClientAssets,
+    savedAssetLibraryTab,
+    setSavedAssetLibraryTab,
+    useSavedClient,
+    deleteSavedClient,
+    selectSavedAsset,
+    setPrimarySavedAsset,
+    removeSavedAsset,
     assets,
     addIdentityFiles,
     addIdentityUrl,
@@ -882,6 +890,14 @@ export default function PersonalizationModal() {
               saveClient={saveClient}
               deleteClient={deleteClient}
               updateClientForm={updateClientForm}
+              savedClientAssets={savedClientAssets}
+              savedAssetLibraryTab={savedAssetLibraryTab}
+              setSavedAssetLibraryTab={setSavedAssetLibraryTab}
+              useSavedClient={useSavedClient}
+              deleteSavedClient={deleteSavedClient}
+              selectSavedAsset={selectSavedAsset}
+              setPrimarySavedAsset={setPrimarySavedAsset}
+              removeSavedAsset={removeSavedAsset}
               assets={assets}
               handleIdentityUpload={handleIdentityUpload}
               handleIdentityUrl={handleIdentityUrl}
@@ -1204,6 +1220,15 @@ function ConfigurationView(props: any) {
   const {
     source, clients, selectedClientId, clientForm,
     selectClient, saveClient, deleteClient, updateClientForm,
+    // Saved client assets
+    savedClientAssets,
+    savedAssetLibraryTab,
+    setSavedAssetLibraryTab,
+    useSavedClient,
+    deleteSavedClient,
+    selectSavedAsset,
+    setPrimarySavedAsset,
+    removeSavedAsset,
     assets,
     handleIdentityUpload, handleIdentityUrl, removeIdentity, setPrimaryIdentity,
     handleLogoUpload, handleLogoUrl, removeLogo, setPrimaryLogo,
@@ -1319,6 +1344,56 @@ function ConfigurationView(props: any) {
               </button>
             ))}
           </div>
+
+          {/* Saved Clients */}
+          {clientForm.audience === 'customer' && clients.length > 0 && (
+            <div style={{ marginBottom: 18 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Saved Clients</div>
+              <div className="flex flex-wrap gap-2">
+                {clients.map((c: any) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => useSavedClient(c.id)}
+                    className="text-left"
+                    style={{
+                      minWidth: 160,
+                      padding: '10px 12px',
+                      border: `1px solid ${selectedClientId === c.id ? C.cyan : C.border}`,
+                      borderRadius: 10,
+                      background: selectedClientId === c.id ? 'rgba(34,211,242,.08)' : C.panelSoft,
+                      color: C.text,
+                    }}
+                  >
+                    <div style={{ fontSize: 12, fontWeight: 700 }}>{c.businessName || c.name || 'Untitled'}</div>
+                    <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>
+                      {[c.industry, c.location].filter(Boolean).join(' • ') || 'No details'}
+                    </div>
+                    {selectedClientId === c.id && (
+                      <div style={{ marginTop: 6, display: 'flex', gap: 6 }}>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); updateClientForm({ ...clientForm, ...c }) }}
+                          className="text-[10px] font-extrabold uppercase"
+                          style={{ color: C.cyan, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); if (window.confirm('Delete this client and their saved assets?')) deleteSavedClient(c.id) }}
+                          className="text-[10px] font-extrabold uppercase"
+                          style={{ color: C.danger, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <h2 style={{ margin: '0 0 13px', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>Client Profile</h2>
           <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 12 }}>
@@ -1724,6 +1799,113 @@ function ConfigurationView(props: any) {
           </article>
         </div>
       </section>
+
+      {/* ── SAVED CLIENT ASSETS ───────────────────────────────────── */}
+      {selectedClientId && (
+        <section style={{ padding: '26px 0', borderBottom: `1px solid ${C.border}` }}>
+          <div className="flex items-center justify-between flex-wrap gap-3" style={{ marginBottom: 14 }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>Saved Client Assets</h2>
+              <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 11 }}>
+                Reuse previously saved assets for this client. Click to add them to the current personalization.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2" style={{ marginBottom: 14 }}>
+            {([
+              { key: 'identities', label: 'People' },
+              { key: 'logos', label: 'Logos' },
+              { key: 'products', label: 'Products' },
+              { key: 'brandReferences', label: 'Brand' },
+            ] as const).map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setSavedAssetLibraryTab(key)}
+                className="rounded-lg text-[11px] font-extrabold uppercase tracking-wide"
+                style={{
+                  minHeight: 34,
+                  padding: '0 14px',
+                  border: `1px solid ${savedAssetLibraryTab === key ? C.cyan : C.border}`,
+                  background: savedAssetLibraryTab === key ? C.cyan : '#11161b',
+                  color: savedAssetLibraryTab === key ? '#051014' : C.text,
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(savedAssetLibraryTab === 'identities' ? savedClientAssets.identities :
+              savedAssetLibraryTab === 'logos' ? savedClientAssets.logos :
+              savedAssetLibraryTab === 'products' ? savedClientAssets.products :
+              savedClientAssets.brandReferences).length > 0 ? (
+              (savedAssetLibraryTab === 'identities' ? savedClientAssets.identities :
+                savedAssetLibraryTab === 'logos' ? savedClientAssets.logos :
+                savedAssetLibraryTab === 'products' ? savedClientAssets.products :
+                savedClientAssets.brandReferences
+              ).map((asset) => (
+                <div
+                  key={asset.id}
+                  className="text-left"
+                  style={{
+                    width: 110,
+                    padding: 8,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 10,
+                    background: C.panelSoft,
+                    position: 'relative',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '100%',
+                      height: 80,
+                      borderRadius: 8,
+                      overflow: 'hidden',
+                      background: '#000',
+                      marginBottom: 6,
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => selectSavedAsset(asset)}
+                  >
+                    <img src={asset.uploadedUrl || asset.url} alt={asset.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{asset.name?.split('.')?.[0]?.toUpperCase()?.slice(0, 10) || 'ASSET'}</div>
+                  <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                    {asset.isPrimary && (
+                      <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', color: C.cyan }}>★ Primary</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (savedAssetLibraryTab === 'identities') setPrimarySavedAsset('identity', asset.id)
+                        else if (savedAssetLibraryTab === 'logos') setPrimarySavedAsset('logo', asset.id)
+                      }}
+                      className="text-[9px] font-extrabold uppercase"
+                      style={{ color: C.cyan, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                    >
+                      Set Primary
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { if (window.confirm('Remove this asset from the saved client library?')) removeSavedAsset(asset.id) }}
+                      className="text-[9px] font-extrabold uppercase"
+                      style={{ color: C.danger, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div style={{ padding: 18, border: `1px dashed ${C.border}`, borderRadius: 10, color: C.muted, fontSize: 11 }}>
+                No saved assets yet. Upload assets in the sections above and they will be saved automatically for this client.
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* ── CTA & BUSINESS CONTENT ────────────────────────────── */}
       <section style={{ padding: '26px 0', borderBottom: `1px solid ${C.border}` }}>
