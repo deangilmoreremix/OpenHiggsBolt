@@ -149,7 +149,123 @@ No AI/ML dependencies included in Phase 1.
 
 ---
 
-## 6. Security Verification
+## 6. UX Direction Correction — Canonical Upstream Reference
+
+### 6.1 Current Scaffold Status
+
+The current `packages/studio/src/components/VoiceStudio.jsx` is a **scaffold only**. It is **not** the intended final Voice Studio user interface.
+
+### 6.2 Canonical UX Source
+
+The upstream VoiceStudio frontend is the **canonical product reference** for SmartVideo GO Voice Studio:
+- Repository: https://github.com/debpalash/VoiceStudio
+- License: AGPL-3.0
+- Platform: Desktop + web-capable UI patterns
+
+### 6.3 Integration Principle
+
+The intended product is:
+```
+UPSTREAM VOICESTUDIO UX
++
+SMARTVIDEO GO VISUAL DESIGN
++
+SMARTVIDEO GO OUTER NAVIGATION
++
+CLERK AUTHENTICATION
++
+SMARTVIDEO BILLING/CREDITS
++
+SMARTVIDEO STORAGE
++
+MODAL CLOUD INFERENCE
+```
+
+NOT a newly invented Voice Studio.
+
+### 6.4 What Must Be Preserved
+
+- Launchpad structure
+- Voice workspace: From Audio, By Design, Convert
+- Dub workspace: upload/URL, transcript editor, timeline, waveform, speaker controls, translation, export
+- Stories UX
+- Audiobook UX
+- Voice Gallery UX
+- Transcriptions UX
+- Projects UX
+- Waveform/timeline interaction
+- Segment editing
+- Multi-language controls
+- Subtitle controls
+- Playback UX
+- Responsive behavior
+- Keyboard/accessibility behavior where web-compatible
+
+### 6.5 Re-Skin, Do Not Redesign
+
+Preserve upstream:
+- layout
+- workflow
+- hierarchy
+- interaction patterns
+- control grouping
+- editing experience
+- navigation logic
+- responsive behavior
+
+Adapt to SmartVideo GO:
+- colors
+- typography
+- logos
+- product naming
+- button styling
+- borders
+- card styling
+- hover/focus styling
+- SmartVideo design tokens
+
+### 6.6 Desktop Exclusions
+
+These upstream features depend on native/desktop APIs and are excluded:
+- Tauri desktop shell
+- Native updater
+- Native file dialogs / filesystem reveal
+- Local model installation
+- Local process spawning
+- System-wide dictation widget
+- Local MCP server transport
+- CUDA/MPS/ROCm GPU auto-detect on client
+- Apple Silicon / Windows / Linux native packaging
+- Docker local-only deployment
+
+### 6.7 Web-Compatible Features
+
+These map cleanly to web components:
+- Waveform visualization and interaction
+- Timeline editor
+- Transcript editor with editable segments
+- Segment editing
+- Multi-language controls
+- Subtitle controls
+- Voice cards and gallery
+- Project cards and batch queue
+- Form-based generation workflows
+- Audio playback and download
+
+### 6.8 Backend Adaptation
+
+Replace VoiceStudio frontend dependencies on:
+- local FastAPI → SmartVideo `/api/voice/*`
+- desktop/Tauri → SmartVideo GO shell
+- local model management → Modal cloud inference
+- local filesystem → SmartVideo/Supabase storage
+- local process spawning → Modal workers
+
+React components must NOT call Modal directly.
+
+---
+
+## 7. Security Verification
 
 ### 6.1 Client-side exposure
 
@@ -206,21 +322,21 @@ This satisfies the Phase 1 requirement that unsupported methods are not called b
 
 | Feature | Phase 1 Status | Notes |
 |---------|---------------|-------|
-| Launchpad / Overview | KEEP | Rendered as Overview tab with feature cards |
-| Voice / From Audio | ADAPT | Placeholder only; reserved for Phase 2+ |
-| Voice / By Design | ADAPT | Placeholder only; reserved for Phase 2+ |
-| Voice / Convert | ADAPT | Placeholder only; reserved for Phase 2+ |
-| Dub | ADAPT | Placeholder only; existing GO Lip Sync is separate |
-| Stories | ADAPT | Placeholder only |
-| Audiobook | ADAPT | Placeholder only |
-| Voice Gallery | ADAPT | Placeholder only |
-| Transcriptions | ADAPT | Placeholder only |
-| Projects / Batch Queue | ADAPT | Placeholder only |
-| Model Catalogue | BACKEND ONLY | Model selection UI deferred to Phase 2 |
+| Launchpad / Overview | Pending upstream parity | Replicate upstream LaunchpadDeck with SmartVideo styling |
+| Voice / From Audio | Pending upstream parity | Replicate upstream AudioMethodPanel with SmartVideo styling |
+| Voice / By Design | Pending upstream parity | Replicate upstream DesignMethodPanel with SmartVideo styling |
+| Voice / Convert | Pending upstream parity | Replicate upstream ConvertMethodPanel with SmartVideo styling |
+| Dub | Pending upstream parity | Replicate upstream DubTab, DubLeftColumn, DubRightColumn, DubSegmentRow with SmartVideo styling |
+| Stories | Pending upstream parity | Replicate upstream Stories UX with SmartVideo styling |
+| Audiobook | Pending upstream parity | Replicate upstream AudiobookTab, AudiobookScriptPanel, CastPanel with SmartVideo styling |
+| Voice Gallery | Pending upstream parity | Replicate upstream VoiceGallery, ArchetypeCard with SmartVideo styling |
+| Transcriptions | Pending upstream parity | Replicate upstream Transcriptions history with SmartVideo styling |
+| Projects | Pending upstream parity | Replicate upstream Projects/OmniDrive with SmartVideo styling |
+| Model Catalogue | BACKEND ONLY | Backend model registry; UI deferred |
 | Settings | KEEP | Uses SmartVideo GO shell settings |
-| Waveform / Timeline | ADAPT FOR WEB | Waveform visualization, transcript segment editor, and timeline interaction are web-compatible; only native file picker/local filesystem reveal are desktop-only |
+| Waveform / Timeline | ADAPT FOR WEB | Preserve upstream waveform/timeline/transcript/segment editors for web |
 | Global player | ADAPT | Existing Audio Studio player is separate |
-| Voice profiles | ADAPT | Placeholder only |
+| Voice profiles | Pending upstream parity | Replicate upstream profile UX with SmartVideo styling |
 | History | BACKEND ONLY | History schema reserved for Phase 2 |
 | Responsive behavior | KEEP | Uses SmartVideo GO responsive shell |
 
@@ -228,7 +344,7 @@ This satisfies the Phase 1 requirement that unsupported methods are not called b
 
 ## 9. Desktop Exclusions
 
-SmartVideo GO is web-only. The following are explicitly excluded from this integration:
+SmartVideo GO is web-only. The following upstream VoiceStudio features depend on native/desktop APIs and are explicitly excluded from this integration:
 
 - Electron
 - Tauri
@@ -239,19 +355,29 @@ SmartVideo GO is web-only. The following are explicitly excluded from this integ
 - Native window management
 - Local user GPU selection
 - Customer-side model installation
+- System-wide dictation widget
+- Local MCP server transport
+- Native filesystem reveal
+- CUDA/MPS/ROCm GPU auto-detect on client
+- Apple Silicon / Windows / Linux native packaging
+- Docker local-only deployment
 
-Web-adaptive VoiceStudio UI patterns retained for future phases:
+Web-adaptive VoiceStudio UI patterns retained for future implementation:
 - Waveform visualization
 - Transcript segment editor
 - Timeline interaction
+- Waveform/timeline editing
+- Segment editing
+- Multi-language controls
+- Subtitle controls
 
 All Voice Studio UI runs in the browser via Next.js. Inference runs server-side on Modal.
 
 ---
 
-## 10. Existing GO Dubbing Audit
+## 12. Existing GO Dubbing Audit
 
-### 10.1 Discovery: `heygen-video-translate` Model Catalog Entry
+### 12.1 Discovery: `heygen-video-translate` Model Catalog Entry
 
 The repository contains a `heygen-video-translate` model entry in the MuAPI model catalog:
 
@@ -268,7 +394,7 @@ Tool capabilities are defined in `packages/studio/src/videoToolCapabilities.js`:
 - `summary:` "Source language is automatic and cannot be configured in this integration. Choose a target language. Voice translation and lip sync are automatic; separate audio and subtitle settings are not available."
 - Inputs: `language` (target language enum with 175+ options)
 
-### 10.2 Current GO Dubbing Implementation Status
+### 12.2 Current GO Dubbing Implementation Status
 
 **No dedicated dubbing UI exists in this branch.**
 
@@ -280,7 +406,7 @@ The `heygen-video-translate` model is:
 
 The `VoiceStudio.jsx` "Dub" tab is a placeholder only. There is no `DubbingStudio` component.
 
-### 10.3 Possible Explanation for Product Owner's Observation
+### 12.3 Possible Explanation for Product Owner's Observation
 
 The product owner may be seeing dubbing in GO production because:
 
@@ -292,7 +418,7 @@ The product owner may be seeing dubbing in GO production because:
 | Embedded within Video Studio as a tool option | LOW | No Video Studio component references `heygen-video-translate` in this branch |
 | Supplied by MuAPI model metadata | MEDIUM | MuAPI may surface this model dynamically |
 
-### 10.4 Dubbing Audit Matrix
+### 12.4 Dubbing Audit Matrix
 
 | Capability              | Current GO Branch | VoiceStudio | Future Action |
 | ----------------------- | ----------------- | ----------- | ------------- |
@@ -312,7 +438,7 @@ The product owner may be seeing dubbing in GO production because:
 | Subtitles               | No (per tool capability: "separate audio and subtitle settings are not available") | N/A | Future enhancement if backend adds support |
 | Export                  | N/A               | N/A         | Needed for dubbing UI |
 
-### 10.5 Conclusion
+### 12.5 Conclusion
 
 SmartVideo GO has a **backend-only** dubbing capability via the `heygen-video-translate` MuAPI model. The model catalog and API client support calling it, but there is **no user-facing dubbing interface** in the current branch. Any production dubbing UI would require additional commits not present on this branch.
 
