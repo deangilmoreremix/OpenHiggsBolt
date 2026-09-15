@@ -2,8 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import type { SeedancePrompt, SeedanceStats } from '@/types/go-ai-viral/seedance'
 import { classifyPrompt } from '@/lib/nicheClassifier'
 
-const DATA_PATH = '/tmp/seedance_prompts.json'
-const FALLBACK_DATA_PATH = process.cwd() + '/src/data/seedance_prompts.json'
+/**
+ * Production-safe data source.
+ *
+ * The canonical dataset is the committed repository file
+ * `src/data/seedance_prompts.json` (2,419 records). A legacy
+ * `/tmp/seedance_prompts.json` path is no longer used in production.
+ * The conversion scripts in `scripts/` may still write there for
+ * development imports, but the API reads the committed file directly.
+ */
+const DATA_PATH = process.cwd() + '/src/data/seedance_prompts.json'
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 const DEFAULT_PAGE_SIZE = 20
 const MAX_PAGE_SIZE = 100
@@ -157,21 +165,13 @@ async function loadSeedance(): Promise<CachedSeedance> {
   }
 
   const { readFile } = await import('node:fs/promises')
-  const paths = [DATA_PATH, FALLBACK_DATA_PATH]
   let text: string | null = null
   let source = ''
 
-  for (const p of paths) {
-    try {
-      text = await readFile(p, 'utf-8')
-      source = p
-      break
-    } catch {
-      // try next path
-    }
-  }
-
-  if (!text) {
+  try {
+    text = await readFile(DATA_PATH, 'utf-8')
+    source = DATA_PATH
+  } catch {
     const empty: CachedSeedance = {
       records: [],
       stats: { total: 0, withVideo: 0, withPrompt: 0, withDetailHref: 0, sourceLanguages: {}, totalLikes: 0, totalReposts: 0, totalReplies: 0, viralCount: 0 },
