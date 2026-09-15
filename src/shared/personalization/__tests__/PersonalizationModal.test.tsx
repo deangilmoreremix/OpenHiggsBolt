@@ -131,6 +131,19 @@ describe('PersonalizationModal', () => {
     expect(tabLabels).not.toContain('Brand');
     expect(tabLabels).not.toContain('Frames');
     expect(tabLabels).not.toContain('CTA');
+
+    // Verify Website field exists exactly once and Find Business Assets button is present
+    const websiteLabels = screen.getAllByText('Website')
+    expect(websiteLabels.length).toBe(1)
+    const findButtons = screen.getAllByText('Find Business Assets')
+    expect(findButtons.length).toBeGreaterThanOrEqual(1)
+    expect(container.textContent).toMatch(/Find useful people, logos, products, services and brand images from this website/)
+
+    // Verify Website appears before Business Name in DOM order
+    const websiteLabel = websiteLabels[0]
+    const businessNameLabel = screen.getByText('Business Name')
+    const allLabels = Array.from(container.querySelectorAll('label'))
+    expect(allLabels.indexOf(websiteLabel as any)).toBeLessThan(allLabels.indexOf(businessNameLabel as any))
   });
 
   it('renders the niche-specific CTA heading when source.sourceMetadata.nicheId is set', async () => {
