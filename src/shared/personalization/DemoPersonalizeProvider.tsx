@@ -55,6 +55,16 @@ import {
   setCurrentClientId,
 } from './clientProfile'
 import {
+  loadClientAssets,
+  saveClientAssets,
+  deleteClientAssets,
+  addAssetToClientLibrary,
+  removeAssetFromClientLibrary,
+  setPrimaryInClientLibrary,
+  type ClientAssetLibrary,
+  EMPTY_CLIENT_ASSET_LIBRARY,
+} from './clientAssets'
+import {
   getSharedMedia,
   registerSharedMedia,
 } from './sharedMedia'
@@ -219,6 +229,16 @@ type DemoPersonalizeContextValue = {
   // Shared media
   sharedMediaEntries: SharedMediaEntry[]
   eligibility: PersonalizationEligibility
+
+  // Saved client assets
+  savedClientAssets: ClientAssetLibrary
+  savedAssetLibraryTab: 'identities' | 'logos' | 'products' | 'brandReferences'
+  setSavedAssetLibraryTab: (tab: 'identities' | 'logos' | 'products' | 'brandReferences') => void
+  useSavedClient: (id: string) => void
+  deleteSavedClient: (id: string) => void
+  selectSavedAsset: (asset: PersonalizationAsset) => void
+  setPrimarySavedAsset: (role: 'identity' | 'logo', assetId: string) => void
+  removeSavedAsset: (assetId: string) => void
 }
 
 const PersonalizationContext = createContext<DemoPersonalizeContextValue | null>(null)
@@ -335,6 +355,12 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   const [selectedClientId, setSelectedClientId] = useState<string>(() => getCurrentClientId() || '')
   const [clientForm, setClientForm] = useState<Partial<ClientProfile>>({})
 
+  // Saved client assets (persisted per-client library)
+  const [savedClientAssets, setSavedClientAssets] = useState<ClientAssetLibrary>(() =>
+    loadClientAssets(getCurrentClientId() || ''),
+  )
+  const [savedAssetLibraryTab, setSavedAssetLibraryTab] = useState<'identities' | 'logos' | 'products' | 'brandReferences'>('identities')
+
   // Assets
   const [assets, setAssets] = useState<AssetLibrary>({ ...EMPTY_ASSET_LIBRARY })
 
@@ -420,6 +446,40 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     setClientForm({})
     setEligibility(getEligibility(source))
   }, [source?.id])
+
+  // ── Saved client assets sync ────────────────────────────────────────────────
+
+  useEffect(() => {
+    const library = loadClientAssets(selectedClientId)
+    setSavedClientAssets(library)
+  }, [selectedClientId])
+
+  useEffect(() => {
+    if (!selectedClientId) return
+    saveClientAssets(selectedClientId, savedClientAssets)
+  }, [savedClientAssets, selectedClientId])
+
+  // Persist current reusable assets to saved client library whenever they change
+  useEffect(() => {
+    if (!selectedClientId) return
+    const library: ClientAssetLibrary = {
+      identities: assets.identities,
+      primaryIdentity: assets.primaryIdentity,
+      logos: assets.logos,
+      primaryLogo: assets.primaryLogo,
+      products: assets.products,
+      brandReferences: assets.brandReferences,
+    }
+    setSavedClientAssets(library)
+  }, [
+    assets.identities,
+    assets.primaryIdentity,
+    assets.logos,
+    assets.primaryLogo,
+    assets.products,
+    assets.brandReferences,
+    selectedClientId,
+  ])
 
   // ── Modal actions ──────────────────────────────────────────────────────────
 
@@ -519,6 +579,60 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   const updateClientForm = useCallback((patch: Partial<ClientProfile>) => {
     setClientForm((prev) => ({ ...prev, ...patch }))
   }, [])
+
+  // ── Saved client assets actions ─────────────────────────────────────────────
+
+  const useSavedClient = useCallback((id: string) => {
+    selectClient(id)
+    const library = loadClientAssets(id)
+    setSavedClientAssets(library)
+  }, [selectClient])
+
+  const deleteSavedClient = useCallback((id: string) => {
+    deleteClientAssets(id)
+    setSavedClientAssets({ ...EMPTY_CLIENT_ASSET_LIBRARY })
+    if (selectedClientId === id) {
+      deleteClientRecord(id)
+      setClients(loadClients())
+      setSelectedClientId('')
+      setCurrentClientId(null)
+      setClientForm({})
+    }
+  }, [selectedClientId, deleteClientRecord])
+
+  const selectSavedAsset = useCallback((asset: PersonalizationAsset) => {
+    setAssets((prev) => updateAssetInLibrary(prev, asset))
+  }, [])
+
+  const setPrimarySavedAsset = useCallback((role: 'identity' | 'logo', assetId: string) => {
+    if (!selectedClientId) return
+    const next = setPrimaryInClientLibrary(selectedClientId, role, assetId)
+    setSavedClientAssets(next)
+  }, [selectedClientId])
+
+  const removeSavedAsset = useCallback((assetId: string) => {
+    if (!selectedClientId) return
+    const next = removeAssetFromClientLibrary(selectedClientId, assetId)
+    setSavedClientAssets(next)
+    // Also remove from current job if present
+    setAssets((prev) => {
+      const all = [
+        ...prev.identities,
+        ...prev.logos,
+        ...prev.products,
+        ...prev.brandReferences,
+      ].filter(Boolean) as PersonalizationAsset[]
+      const exists = all.some((a) => a.id === assetId)
+      if (!exists) return prev
+      const filtered = all.filter((a) => a.id !== assetId)
+      const rebuilt: AssetLibrary = { ...EMPTY_ASSET_LIBRARY }
+      for (const a of filtered) {
+        rebuilt.identities = [...rebuilt.identities, a]
+        if (rebuilt.primaryIdentity?.id === a.id) rebuilt.primaryIdentity = a
+      }
+      return rebuilt
+    })
+  }, [selectedClientId])
 
   // ── Asset upload helpers ───────────────────────────────────────────────────
 
@@ -1390,6 +1504,16 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     updateClient,
     deleteClient,
     updateClientForm,
+
+    // Saved client assets
+    savedClientAssets,
+    savedAssetLibraryTab,
+    setSavedAssetLibraryTab,
+    useSavedClient,
+    deleteSavedClient,
+    selectSavedAsset,
+    setPrimarySavedAsset,
+    removeSavedAsset,
 
     // Assets
     assets,
