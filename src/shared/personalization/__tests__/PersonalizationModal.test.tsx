@@ -120,7 +120,7 @@ describe('PersonalizationModal', () => {
     expect(container.textContent).toMatch(/VEHICLE/)
     // Frames show "First Frame" and CTA preview
     expect(container.textContent).toMatch(/First Frame/)
-    expect(container.textContent).toMatch(/Protect Your Home Today/)
+    expect(container.textContent).toMatch(/Last Frame\/CTA/)
 
     // Verify no primary tab navigation exists
     const tabButtons = container.querySelectorAll('button');
