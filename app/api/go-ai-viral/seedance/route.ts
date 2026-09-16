@@ -20,6 +20,7 @@ interface CachedSeedance {
   records: SeedancePrompt[]
   stats: SeedanceStats
   fetchedAt: number
+  degraded?: boolean
 }
 
 let cached: CachedSeedance | null = null
@@ -138,6 +139,7 @@ async function loadSeedance(): Promise<CachedSeedance> {
       records: [],
       stats: { total: 0, withVideo: 0, withPrompt: 0, withDetailHref: 0, sourceLanguages: {} },
       fetchedAt: now,
+      degraded: true,
     }
     cached = empty
     return empty
@@ -152,6 +154,7 @@ async function loadSeedance(): Promise<CachedSeedance> {
       records: [],
       stats: { total: 0, withVideo: 0, withPrompt: 0, withDetailHref: 0, sourceLanguages: {} },
       fetchedAt: now,
+      degraded: true,
     }
     cached = empty
     return empty
@@ -177,7 +180,14 @@ export async function GET(req: NextRequest) {
     const hasVideo = searchParams.get('hasVideo')
     const hasPrompt = searchParams.get('hasPrompt')
 
-    const { records, stats } = await loadSeedance()
+    const { records, stats, degraded } = await loadSeedance()
+
+    if (degraded) {
+      return NextResponse.json(
+        { error: { code: 'SEEDANCE_DATASET_UNAVAILABLE', message: 'Seedance dataset is currently unavailable. Please try again later.' } },
+        { status: 502 }
+      )
+    }
 
     let filtered = records
     if (hasVideo === 'true') {

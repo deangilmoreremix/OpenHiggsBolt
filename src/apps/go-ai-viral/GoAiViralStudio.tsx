@@ -922,6 +922,42 @@ function PromptDetailModal({ record, onClose }: PromptDetailModalProps) {
 
 // ── Main Studio ─────────────────────────────────────────────────────────────────
 
+function ListRowThumbnail({ record }: { record: PromptRecord }) {
+  const [failedImageUrls, setFailedImageUrls] = useState<Set<string>>(new Set())
+  const resolvedImage = resolvePromptRecordImage(record)
+
+  const activeImageUrl = useMemo(() => {
+    if (!resolvedImage.imageUrl) return null
+    if (!failedImageUrls.has(resolvedImage.imageUrl)) return resolvedImage.imageUrl
+    const next = resolvedImage.candidates.find((url) => !failedImageUrls.has(url)) || null
+    return next
+  }, [resolvedImage, failedImageUrls])
+
+  if (activeImageUrl) {
+    return (
+      <img
+        src={activeImageUrl}
+        alt={record.title}
+        loading="lazy"
+        className="h-full w-full object-cover"
+        onError={() => {
+          setFailedImageUrls((prev) => {
+            const next = new Set(prev)
+            next.add(activeImageUrl)
+            return next
+          })
+        }}
+      />
+    )
+  }
+
+  return (
+    <div className="flex h-full w-full items-center justify-center">
+      <Video size={16} style={{ color: semantic.textMuted }} />
+    </div>
+  )
+}
+
 export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
   void apiKey // Reserved for future generation features; feed browsing needs no key.
   // Data
@@ -1506,24 +1542,7 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
                         )}
                       >
                          <div className="relative h-20 w-32 shrink-0 overflow-hidden rounded-lg">
-                           {(() => {
-                             const resolvedImage = resolvePromptRecordImage(record)
-                             return resolvedImage.imageUrl ? (
-                               <img
-                                 src={resolvedImage.imageUrl}
-                                 alt={record.title}
-                                 loading="lazy"
-                                 className="h-full w-full object-cover"
-                                 onError={(e) => {
-                                   ;(e.target as HTMLImageElement).style.display = 'none'
-                                 }}
-                               />
-                             ) : (
-                               <div className="flex h-full w-full items-center justify-center">
-                                 <Video size={16} style={{ color: semantic.textMuted }} />
-                               </div>
-                             )
-                           })()}
+                           <ListRowThumbnail record={record} />
                          </div>
                         <div className="min-w-0 flex-1">
                           <h3 className="text-sm font-semibold text-white line-clamp-1">{record.title}</h3>
