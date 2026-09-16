@@ -7,6 +7,7 @@ const STUDIO_ROUTES: { route: string; label: string }[] = [
   { route: '/studio/image', label: 'Image' },
   { route: '/studio/video', label: 'Video' },
   { route: '/studio/audio', label: 'Audio' },
+  { route: '/studio/voice', label: 'Voice' },
   { route: '/studio/clipping', label: 'Clipping' },
   { route: '/studio/vibe-motion', label: 'Vibe Motion' },
   { route: '/studio/lipsync', label: 'Lip Sync' },
