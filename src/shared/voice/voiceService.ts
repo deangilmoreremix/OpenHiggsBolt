@@ -79,3 +79,41 @@ export function createVoiceService(provider: VoiceProvider, _config: Record<stri
     cancelJob: async () => { throw new Error('Voice provider not implemented'); },
   };
 }
+
+export interface VoiceModel {
+  id: string;
+  name: string;
+  endpoint: string;
+  provider: string;
+  provider_name: string;
+  family: string;
+  description: string;
+  required?: string[];
+  inputs: Record<string, any>;
+}
+
+export interface VoiceGenerationParams {
+  model: string;
+  text?: string;
+  voice_id?: string;
+  audio_url?: string;
+  [key: string]: any;
+}
+
+export interface VoiceResult {
+  url: string;
+  request_id?: string;
+  id?: string;
+  model?: string;
+  prompt?: string;
+  timestamp?: string;
+  [key: string]: any;
+}
+
+export interface Voice {
+  id: string;
+  name: string;
+  provider: string;
+  created_at: string;
+  [key: string]: any;
+}
