@@ -293,11 +293,13 @@ function UploadZone({
 }
 
 /** Thumb pill for placeholder slots in the asset cards. */
-function ThumbPlaceholder({ label, add = false }: { label: string; add?: boolean }) {
+function ThumbPlaceholder({ label, add = false, onClick }: { label: string; add?: boolean; onClick?: () => void }) {
   return (
     <div
+      onClick={onClick}
       className={classNames(
         'w-[82px] min-h-[86px] rounded-[9px] border overflow-hidden flex items-end justify-center p-1.5 text-[9px] font-extrabold',
+        add && onClick && 'cursor-pointer',
       )}
       style={{
         borderColor: add ? 'rgba(255,255,255,.22)' : C.border,
@@ -1303,8 +1305,32 @@ function ConfigurationView(props: any) {
     discoverAssets,
   } = props
 
+  const identityInputRef = useRef<HTMLInputElement>(null)
+  const logoInputRef = useRef<HTMLInputElement>(null)
+  const productInputRef = useRef<HTMLInputElement>(null)
+  const brandRefInputRef = useRef<HTMLInputElement>(null)
+
+  const handleIdentityAddClick = useCallback(() => {
+    identityInputRef.current?.click()
+  }, [])
+  const handleLogoAddClick = useCallback(() => {
+    logoInputRef.current?.click()
+  }, [])
+  const handleProductAddClick = useCallback(() => {
+    productInputRef.current?.click()
+  }, [])
+  const handleBrandRefAddClick = useCallback(() => {
+    brandRefInputRef.current?.click()
+  }, [])
+
   return (
     <div>
+      {/* Hidden file inputs for add-more placeholders */}
+      <input ref={identityInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { handleIdentityUpload(e.target.files); e.target.value = '' }} />
+      <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { handleLogoUpload(e.target.files); e.target.value = '' }} />
+      <input ref={productInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={(e) => { handleProductUpload(e.target.files); e.target.value = '' }} />
+      <input ref={brandRefInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={(e) => { handleBrandRefUpload(e.target.files); e.target.value = '' }} />
+
       {/* ── TOP OVERVIEW: Source Demo | Client Profile ────────────── */}
       <section className="grid grid-cols-1 lg:grid-cols-2" style={{ padding: '26px 0', gap: 18, borderBottom: `1px solid ${C.border}` }}>
         {/* Source Demo */}
@@ -1675,7 +1701,7 @@ function ConfigurationView(props: any) {
                   <ThumbPlaceholder label="SIDE" />
                 </>
               )}
-              <ThumbPlaceholder label="+" add />
+              <ThumbPlaceholder label="+" add onClick={handleIdentityAddClick} />
             </div>
             {assets.primaryIdentity && (
               <span className="badge" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px 8px', borderRadius: 7, marginTop: 8, marginRight: 4, background: C.cyan, color: '#071014', fontSize: 9, fontWeight: 800, textTransform: 'uppercase' }}>★ Primary</span>
@@ -1694,7 +1720,7 @@ function ConfigurationView(props: any) {
             </div>
             <UploadZone primary="Upload Logo" secondary="Drag & drop or browse" onFiles={handleLogoUpload} onUrl={handleLogoUrl} urlLabel="Add Logo URL" urlPlaceholder="Paste logo URL and press Enter" />
             <div
-              className="logo-preview"
+              className="logo-preview frame-preview"
               style={{
                 marginTop: 12,
                 height: 105,
@@ -1702,24 +1728,23 @@ function ConfigurationView(props: any) {
                 placeItems: 'center',
                 border: `1px solid ${C.border}`,
                 borderRadius: 10,
-                background: assets.primaryLogo?.url ? '#fff' : '#f6f7f9',
-                color: '#101820',
+                background: assets.primaryLogo?.url ? '#000' : 'linear-gradient(145deg, #2d3740, #10151a)',
                 fontSize: 12,
                 fontWeight: 800,
                 textAlign: 'center',
-                padding: 8,
                 position: 'relative',
                 overflow: 'hidden',
+                color: 'white',
               }}
             >
               {assets.primaryLogo?.url ? (
-                <img src={assets.primaryLogo.uploadedUrl || assets.primaryLogo.url} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                <img src={assets.primaryLogo.uploadedUrl || assets.primaryLogo.url} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
               ) : (
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 900 }}>{clientForm.businessName?.toUpperCase() || 'LOGO PREVIEW'}</div>
-                  {clientForm.businessName && <small style={{ fontSize: 10, fontWeight: 600, color: '#444' }}>Built on Trust</small>}
-                </div>
+                'Logo'
               )}
+            </div>
+            <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <ThumbPlaceholder label="+" add onClick={handleLogoAddClick} />
             </div>
             {assets.primaryLogo && (
               <>
@@ -1758,7 +1783,7 @@ function ConfigurationView(props: any) {
                   <ThumbPlaceholder label="3" />
                 </>
               )}
-              <ThumbPlaceholder label="+" add />
+              <ThumbPlaceholder label="+" add onClick={handleProductAddClick} />
             </div>
           </article>
 
@@ -1864,11 +1889,7 @@ function ConfigurationView(props: any) {
               {assets.lastFrame?.url ? (
                 <img src={assets.lastFrame.uploadedUrl || assets.lastFrame.url} alt="Last Frame" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
-                <div>
-                  {clientForm.ctaHeadline || 'Protect Your Home Today'}
-                  <br /><br />
-                  <span style={{ color: C.cyan }}>{clientForm.callToAction || 'Book Your Inspection'}</span>
-                </div>
+                'Last Frame/CTA'
               )}
             </div>
             <span className="badge" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px 8px', borderRadius: 7, marginTop: 8, marginRight: 4, background: C.cyan, color: '#071014', fontSize: 9, fontWeight: 800, textTransform: 'uppercase' }}>Last Frame</span>
