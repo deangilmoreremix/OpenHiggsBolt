@@ -10,6 +10,9 @@ import { classifyPrompt } from '@/lib/nicheClassifier'
  * path is no longer used in production. The conversion scripts in
  * `scripts/` may still write there for development imports, but the API
  * reads the committed file directly.
+ *
+ * Records are normalized to the proven Remix media shape so the client
+ * resolver can treat feed and Seedance records uniformly.
  */
 const DATA_PATH = process.cwd() + '/src/data/seedance_prompts.json'
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
@@ -89,9 +92,11 @@ function buildThumbnail(outputUrl: string | null): string | null {
 function enrichRecord(raw: SeedancePrompt): SeedancePrompt {
   const categories = detectCategories(raw.prompt || raw.fullPrompt)
   const thumbnail = buildThumbnail(raw.outputUrl)
+  const media = normalizeSeedanceMedia(raw)
 
   const base = {
     ...raw,
+    media,
     sourceLanguage: raw.sourceLanguage || 'en',
     detailHref: raw.detailHref
       ? raw.detailHref.startsWith('http')
@@ -121,6 +126,31 @@ function enrichRecord(raw: SeedancePrompt): SeedancePrompt {
     primaryNiche: niche.primaryNiche,
     subNiches: niche.subNiches,
   }
+}
+
+function normalizeSeedanceMedia(raw: SeedancePrompt): SeedancePrompt['media'] {
+  const existing = Array.isArray(raw.media) ? raw.media : []
+  const hasNormalizedVideo = existing.some((m) => m.type === 'video' && (m.sourceUrl || '').trim())
+  if (hasNormalizedVideo) return existing
+
+  const outputUrl = (raw.outputUrl || '').trim()
+  const thumbnail = (raw.thumbnail || '').trim()
+  const poster = thumbnail || outputUrl.replace('/outputs/', '/thumbnails/').replace(/\.mp4$/, '.jpg') || ''
+  const video: SeedancePrompt['media'][number] = {
+    type: 'video',
+    role: 'result',
+    previewUrl: poster || null,
+    sourceUrl: outputUrl || null,
+    posterUrl: poster || null,
+  }
+  const image: SeedancePrompt['media'][number] = {
+    type: 'image',
+    role: 'preview',
+    previewUrl: poster || null,
+    sourceUrl: poster || null,
+    posterUrl: poster || null,
+  }
+  return outputUrl ? [image, video] : existing
 }
 
 async function loadSeedance(): Promise<CachedSeedance> {

@@ -1,12 +1,15 @@
 /**
  * Central media resolver for GO-Viral Studio.
  *
- * Determines the best usable URL for images, videos, and posters
- * from the various fields present in PromptRecord and SeedancePrompt.
+ * Matches the proven media-selection behavior from the working
+ * `remix-new-editor` SmartVideoViral implementation.
  *
- * Fallback priority is determined from the actual data shape after
- * inspecting real records. Do not hard-code assumptions without
- * testing representative records.
+ * Key rules:
+ * - Image selection: filter `media.type === 'image'` first, then `role === 'result'`, then first image media
+ * - Video source selection: filter `media.type === 'video'` first, then use `sourceUrl`
+ * - Poster selection: image media poster → video media poster → any media poster
+ * - Build ALL valid image candidates up front so runtime fallback works even when primary exists but fails
+ * - Never pass an image URL to `<video src>`
  */
 
 import type { PromptMedia, PromptRecord } from '@/types/go-ai-viral/prompt'
@@ -41,44 +44,96 @@ export interface ResolvedVideoMedia {
 }
 
 /**
+ * Match Remix `getPreviewMedia` behavior for PromptRecord:
+ * 1. Filter media to image type only
+ * 2. Prefer `role === 'result'`
+ * 3. Fall back to first image media
+ * 4. Final fallback: any media with `role === 'result'` or first media
+ */
+// Note: inline in resolvePromptRecordImage to avoid union-type issues with SeedancePrompt
+
+/**
+ * Match Remix `getVideoSource` behavior for PromptRecord:
+ * 1. Filter media to video type with a truthy sourceUrl
+ * 2. Fallback: any media with sourceUrl
+ * 3. Never use an image previewUrl as video src
+ */
+// Note: inline in resolvePromptRecordVideo to avoid union-type issues with SeedancePrompt
+
+/**
+ * Match Remix `getPosterForItem` behavior for PromptRecord:
+ * 1. Image media with posterUrl
+ * 2. Video media with posterUrl
+ * 3. Any media with posterUrl
+ */
+// Note: inline in resolvePromptRecordVideo to avoid union-type issues with SeedancePrompt
+
+/**
+ * Match Remix dev proxy behavior for video URLs:
+ * only rewrites known video host URLs in development.
+ */
+export function proxyVideoUrl(url: string | null | undefined): string {
+  if (!url) return ''
+  try {
+    const u = new URL(url)
+    if (u.hostname.includes('video.twimg.com') && import.meta?.env?.DEV) {
+      return `/proxy/video${u.pathname}${u.search}`
+    }
+  } catch {
+    // not a valid URL, return as-is
+  }
+  return url || ''
+}
+
+/**
  * Resolve the best image URL from a PromptRecord's media assets.
  *
- * Priority for images:
- *   1. Valid previewUrl from the 'result' role media
- *   2. Valid previewUrl from the first media asset
- *   3. Valid sourceUrl from the 'result' role media
- *   4. Valid sourceUrl from the first media asset
- *   5. null (caller should show fallback UI)
+ * Builds the full candidate list up front so runtime fallback works
+ * even when the primary URL exists but fails in the browser.
+ *
+ * Candidate order:
+ * 1. result image previewUrl
+ * 2. other image previewUrl
+ * 3. result image sourceUrl
+ * 4. other image sourceUrl
+ * 5. result image posterUrl
+ * 6. other image posterUrl
  */
 export function resolvePromptRecordImage(record: PromptRecord): ResolvedImageMedia {
-  const primaryMedia: PromptMedia | undefined =
-    record.media.find((m) => m.role === 'result') || record.media[0]
+  const media = record.media
+  const imageMedia = media.filter((m) => m.type === 'image')
+  const resultImage = imageMedia.find((m) => m.role === 'result')
+  const otherImage = imageMedia.find((m) => m !== resultImage) || imageMedia[0]
+  const fallbackImage = media.find((m) => m.role === 'result') || media[0]
 
+  const seen = new Set<string>()
   const candidates: string[] = []
-  let imageUrl: string | null = null
-  let isFallback = false
-
-  if (primaryMedia) {
-    // 1. previewUrl first
-    if (primaryMedia.previewUrl) {
-      candidates.push(primaryMedia.previewUrl)
-      imageUrl = primaryMedia.previewUrl
-    }
-
-    // 2. sourceUrl as fallback if previewUrl is missing
-    if (!imageUrl && primaryMedia.sourceUrl) {
-      candidates.push(primaryMedia.sourceUrl)
-      imageUrl = primaryMedia.sourceUrl
-      isFallback = true
-    }
-
-    // 3. posterUrl as last resort for images
-    if (!imageUrl && primaryMedia.posterUrl) {
-      candidates.push(primaryMedia.posterUrl)
-      imageUrl = primaryMedia.posterUrl
-      isFallback = true
-    }
+  const add = (url: string | null | undefined) => {
+    if (!url) return
+    const trimmed = url.trim()
+    if (!trimmed || seen.has(trimmed)) return
+    seen.add(trimmed)
+    candidates.push(trimmed)
   }
+
+  const pushField = (fn: (m: PromptMedia) => string | null | undefined) => {
+    if (resultImage) add(fn(resultImage))
+    if (otherImage && otherImage !== resultImage) add(fn(otherImage))
+  }
+
+  pushField((m) => m.previewUrl)
+  pushField((m) => m.sourceUrl)
+  pushField((m) => m.posterUrl)
+
+  // Fallback: any media result/first, preserving order
+  if (candidates.length === 0 && fallbackImage) {
+    add(fallbackImage.previewUrl)
+    add(fallbackImage.sourceUrl)
+    add(fallbackImage.posterUrl)
+  }
+
+  const imageUrl = candidates[0] || null
+  const isFallback = !resultImage && !!fallbackImage
 
   return { imageUrl, isFallback, candidates }
 }
@@ -86,13 +141,14 @@ export function resolvePromptRecordImage(record: PromptRecord): ResolvedImageMed
 /**
  * Resolve video source and poster from a PromptRecord's media assets.
  *
- * For video-type records in the prompt feed:
- *   - video src: sourceUrl (actual playable video) > previewUrl (might be image)
- *   - poster: posterUrl > previewUrl
+ * Matches the proven Remix behavior:
+ * - Video source: only from `media.type === 'video'` with truthy `sourceUrl`
+ * - Poster: image media poster → video media poster → any media poster
+ * - Never pass an image URL to a video source.
  */
 export function resolvePromptRecordVideo(record: PromptRecord): ResolvedVideoMedia {
-  const primaryMedia: PromptMedia | undefined =
-    record.media.find((m) => m.role === 'result') || record.media[0]
+  const media = record.media
+  const videoMedia = media.find((m) => m.type === 'video' && (m.sourceUrl || '').trim())
 
   const candidates: string[] = []
   let videoUrl: string | null = null
@@ -100,25 +156,39 @@ export function resolvePromptRecordVideo(record: PromptRecord): ResolvedVideoMed
   let isVideoFallback = false
   let isPosterFallback = false
 
-  if (primaryMedia) {
-    // Video src: prefer sourceUrl (actual playable video), fallback to previewUrl
-    if (primaryMedia.sourceUrl) {
-      candidates.push(primaryMedia.sourceUrl)
-      videoUrl = primaryMedia.sourceUrl
-    } else if (primaryMedia.previewUrl) {
-      candidates.push(primaryMedia.previewUrl)
-      videoUrl = primaryMedia.previewUrl
-      isVideoFallback = true
+  if (videoMedia) {
+    const src = videoMedia.sourceUrl?.trim()
+    if (src) {
+      candidates.push(src)
+      videoUrl = proxyVideoUrl(src)
     }
+  }
 
-    // Poster: prefer posterUrl, fallback to previewUrl
-    if (primaryMedia.posterUrl) {
-      candidates.push(primaryMedia.posterUrl)
-      posterUrl = primaryMedia.posterUrl
-    } else if (primaryMedia.previewUrl) {
-      candidates.push(primaryMedia.previewUrl)
-      posterUrl = primaryMedia.previewUrl
-      isPosterFallback = true
+  const imagePoster = media.find((m) => m.type === 'image' && (m.posterUrl || '').trim())
+  if (imagePoster) {
+    const poster = imagePoster.posterUrl?.trim()
+    if (poster) {
+      candidates.push(poster)
+      posterUrl = poster
+    }
+  } else {
+    const videoPoster = media.find((m) => m.type === 'video' && (m.posterUrl || '').trim())
+    if (videoPoster) {
+      const poster = videoPoster.posterUrl?.trim()
+      if (poster) {
+        candidates.push(poster)
+        posterUrl = poster
+      }
+    } else {
+      const anyPoster = media.find((m) => (m.posterUrl || '').trim())
+      if (anyPoster) {
+        const poster = anyPoster.posterUrl?.trim()
+        if (poster) {
+          candidates.push(poster)
+          posterUrl = poster
+          isPosterFallback = true
+        }
+      }
     }
   }
 
@@ -128,28 +198,55 @@ export function resolvePromptRecordVideo(record: PromptRecord): ResolvedVideoMed
 /**
  * Resolve video source and poster from a SeedancePrompt record.
  *
- * For Seedance:
- *   - video src: outputUrl (the playable MP4)
- *   - poster: thumbnail > outputUrl-derived thumbnail
+ * Uses the normalized `media` array when available, falling back to
+ * the legacy `outputUrl`/`thumbnail` fields.
  */
 export function resolveSeedanceVideo(record: SeedancePrompt): ResolvedVideoMedia {
   const candidates: string[] = []
   let videoUrl: string | null = null
   let posterUrl: string | null = null
-  const isVideoFallback = false
+  let isVideoFallback = false
   let isPosterFallback = false
 
-  // Video src: outputUrl is the playable video
-  if (record.outputUrl) {
-    candidates.push(record.outputUrl)
-    videoUrl = record.outputUrl
+  // Preferred: use normalized media array (matches Remix shape)
+  if (record.media && record.media.length > 0) {
+    const videoMedia = record.media.find((m) => m.type === 'video')
+    if (videoMedia) {
+      if (videoMedia.sourceUrl) {
+        candidates.push(videoMedia.sourceUrl)
+        videoUrl = videoMedia.sourceUrl
+      }
+      if (videoMedia.posterUrl) {
+        candidates.push(videoMedia.posterUrl)
+        posterUrl = videoMedia.posterUrl
+      } else if (videoMedia.previewUrl) {
+        candidates.push(videoMedia.previewUrl)
+        posterUrl = videoMedia.previewUrl
+        isPosterFallback = true
+      }
+    }
+
+    if (!posterUrl) {
+      const imageMedia = record.media.find((m) => m.type === 'image' && (m.posterUrl || '').trim())
+      if (imageMedia && imageMedia.posterUrl) {
+        candidates.push(imageMedia.posterUrl)
+        posterUrl = imageMedia.posterUrl
+      }
+    }
   }
 
-  // Poster: thumbnail first, then derive from outputUrl
-  if (record.thumbnail) {
+  // Fallback: legacy outputUrl/thumbnail fields
+  if (!videoUrl && record.outputUrl) {
+    candidates.push(record.outputUrl)
+    videoUrl = record.outputUrl
+    isVideoFallback = true
+  }
+
+  if (!posterUrl && record.thumbnail) {
     candidates.push(record.thumbnail)
     posterUrl = record.thumbnail
-  } else if (record.outputUrl && record.outputUrl.includes('/outputs/')) {
+    isPosterFallback = true
+  } else if (!posterUrl && record.outputUrl && record.outputUrl.includes('/outputs/')) {
     const derived = record.outputUrl.replace('/outputs/', '/thumbnails/').replace(/\.mp4$/, '.jpg')
     candidates.push(derived)
     posterUrl = derived

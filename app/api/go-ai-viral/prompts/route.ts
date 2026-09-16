@@ -56,8 +56,9 @@ async function fetchWithRetry(url: string, signal?: AbortSignal): Promise<Respon
       const combinedSignal = signal
         ? AbortSignal.any([signal, controller.signal])
         : controller.signal
-      const res = await fetch(url, { 
-        next: { revalidate: 300 },
+      const bustedUrl = url.includes('?') ? `${url}&t=${Date.now()}` : `${url}?t=${Date.now()}`
+      const res = await fetch(bustedUrl, { 
+        cache: 'no-store',
         signal: combinedSignal,
       })
       clearTimeout(timeoutId)
