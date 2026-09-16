@@ -1,0 +1,1 @@
+import{n as e,r as t,t as n}from"./Transcriptions-Ba1qv3g7.js";export{e as addTranscription,n as default,t as segTimeRange};
