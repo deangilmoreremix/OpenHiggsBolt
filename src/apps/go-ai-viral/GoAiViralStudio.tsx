@@ -31,6 +31,12 @@ import { useDemoPersonalize } from '@/shared/personalization'
 import { createViralHandoff, emitSendTo, TARGET_LABEL, VIRAL_TARGETS_BY_MEDIA, type StudioTarget, type ViralSourceMedia } from '@/shared/crossStudio'
 import { StudioTargetPicker } from './StudioTargetPicker'
 import { academyAssets } from '@/data/academyAssets'
+import {
+  resolvePromptRecordImage,
+  resolvePromptRecordVideo,
+  resolveSeedanceVideo,
+  isPlaceholderDataUri,
+} from '@/libs/viralMediaResolver'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -112,9 +118,17 @@ interface PromptCardProps {
 
 function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
   const [showPicker, setShowPicker] = useState(false)
+  const [failedImageUrls, setFailedImageUrls] = useState<Set<string>>(new Set())
   const MediaIcon = getMediaTypeIcon(record.mediaType)
-  const primaryMedia =
-    record.media.find((m) => m.role === 'result') || record.media[0]
+  const resolvedImage = resolvePromptRecordImage(record)
+
+  const activeImageUrl = useMemo(() => {
+    if (!resolvedImage.imageUrl) return null
+    if (!failedImageUrls.has(resolvedImage.imageUrl)) return resolvedImage.imageUrl
+    // Try next candidate after primary failed
+    const next = resolvedImage.candidates.find((url) => !failedImageUrls.has(url)) || null
+    return next
+  }, [resolvedImage, failedImageUrls])
 
   const handleOpenInStudio = () => {
     setShowPicker(true)
@@ -134,15 +148,19 @@ function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
       >
       {/* Media preview */}
       <div className="relative">
-        {primaryMedia ? (
+        {activeImageUrl ? (
           <div className="relative aspect-video overflow-hidden">
             <img
-              src={primaryMedia.previewUrl}
-              alt={primaryMedia.altText || record.title}
+              src={activeImageUrl}
+              alt={record.title}
               loading="lazy"
               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-              onError={(e) => {
-                ;(e.target as HTMLImageElement).style.display = 'none'
+              onError={() => {
+                setFailedImageUrls((prev) => {
+                  const next = new Set(prev)
+                  next.add(activeImageUrl)
+                  return next
+                })
               }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -268,9 +286,7 @@ interface VideoPromptCardProps {
 
 function VideoPromptCard({ record, onSelect }: VideoPromptCardProps) {
   const [showPicker, setShowPicker] = useState(false)
-  const primaryMedia = record.outputUrl
-    ? { previewUrl: record.outputUrl, altText: record.prompt }
-    : null
+  const resolved = resolveSeedanceVideo(record)
 
   const handleOpenInStudio = () => {
     setShowPicker(true)
@@ -288,10 +304,11 @@ function VideoPromptCard({ record, onSelect }: VideoPromptCardProps) {
       >
       {/* Video preview */}
       <div className="relative">
-        {primaryMedia ? (
+        {resolved.videoUrl ? (
           <div className="relative aspect-video overflow-hidden bg-black">
             <video
-              src={primaryMedia.previewUrl}
+              src={resolved.videoUrl}
+              poster={resolved.posterUrl || undefined}
               className="h-full w-full object-cover"
               preload="metadata"
               playsInline
@@ -419,6 +436,7 @@ interface VideoPromptModalProps {
 
 function VideoPromptModal({ record, onClose }: VideoPromptModalProps) {
   const [showPicker, setShowPicker] = useState(false)
+  const resolved = resolveSeedanceVideo(record)
 
   const handleOpenInStudio = () => {
     setShowPicker(true)
@@ -458,16 +476,17 @@ function VideoPromptModal({ record, onClose }: VideoPromptModalProps) {
         </div>
 
         <div className="p-4 space-y-4">
-          {record.outputUrl && (
+          {resolved.videoUrl ? (
             <div className="aspect-video w-full overflow-hidden rounded-xl bg-black">
               <video
-                src={record.outputUrl}
+                src={resolved.videoUrl}
+                poster={resolved.posterUrl || undefined}
                 controls
                 className="h-full w-full"
                 preload="metadata"
               />
             </div>
-          )}
+          ) : null}
 
           <div>
             <h1 id="video-prompt-title" className="text-xl font-bold text-white">{record.prompt}</h1>
@@ -637,6 +656,14 @@ function PromptDetailModal({ record, onClose }: PromptDetailModalProps) {
   }
 
   const primaryMedia = record.media.find((m) => m.role === 'result') || record.media[0]
+  const resolvedImage = resolvePromptRecordImage(record)
+  const [failedImageUrls, setFailedImageUrls] = useState<Set<string>>(new Set())
+  const activeImageUrl = useMemo(() => {
+    if (!resolvedImage.imageUrl) return null
+    if (!failedImageUrls.has(resolvedImage.imageUrl)) return resolvedImage.imageUrl
+    const next = resolvedImage.candidates.find((url) => !failedImageUrls.has(url)) || null
+    return next
+  }, [resolvedImage, failedImageUrls])
 
   return (
     <div
@@ -676,16 +703,27 @@ function PromptDetailModal({ record, onClose }: PromptDetailModalProps) {
              {/* Title */}
              <h1 id="prompt-detail-title" className="text-xl font-bold text-white">{record.title}</h1>
 
-            {/* Media preview */}
-            {primaryMedia && (
-              <div className="rounded-xl overflow-hidden border border-white/10">
-                <img
-                  src={primaryMedia.previewUrl}
-                  alt={primaryMedia.altText || record.title}
-                  className="w-full object-contain"
-                />
-              </div>
-            )}
+             {/* Media preview */}
+             {activeImageUrl ? (
+               <div className="rounded-xl overflow-hidden border border-white/10">
+                 <img
+                   src={activeImageUrl}
+                   alt={primaryMedia?.altText || record.title}
+                   className="w-full object-contain"
+                   onError={() => {
+                     setFailedImageUrls((prev) => {
+                       const next = new Set(prev)
+                       next.add(activeImageUrl)
+                       return next
+                     })
+                   }}
+                 />
+               </div>
+             ) : (
+               <div className="flex aspect-video w-full items-center justify-center bg-white/5">
+                 <BookOpen size={32} style={{ color: semantic.textMuted }} />
+               </div>
+             )}
 
             {/* All media assets */}
             {record.media.length > 1 && (
@@ -883,6 +921,42 @@ function PromptDetailModal({ record, onClose }: PromptDetailModalProps) {
 }
 
 // ── Main Studio ─────────────────────────────────────────────────────────────────
+
+export function ListRowThumbnail({ record }: { record: PromptRecord }) {
+  const [failedImageUrls, setFailedImageUrls] = useState<Set<string>>(new Set())
+  const resolvedImage = resolvePromptRecordImage(record)
+
+  const activeImageUrl = useMemo(() => {
+    if (!resolvedImage.imageUrl) return null
+    if (!failedImageUrls.has(resolvedImage.imageUrl)) return resolvedImage.imageUrl
+    const next = resolvedImage.candidates.find((url) => !failedImageUrls.has(url)) || null
+    return next
+  }, [resolvedImage, failedImageUrls])
+
+  if (activeImageUrl) {
+    return (
+      <img
+        src={activeImageUrl}
+        alt={record.title}
+        loading="lazy"
+        className="h-full w-full object-cover"
+        onError={() => {
+          setFailedImageUrls((prev) => {
+            const next = new Set(prev)
+            next.add(activeImageUrl)
+            return next
+          })
+        }}
+      />
+    )
+  }
+
+  return (
+    <div className="flex h-full w-full items-center justify-center">
+      <Video size={16} style={{ color: semantic.textMuted }} />
+    </div>
+  )
+}
 
 export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
   void apiKey // Reserved for future generation features; feed browsing needs no key.
@@ -1468,22 +1542,7 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
                         )}
                       >
                          <div className="relative h-20 w-32 shrink-0 overflow-hidden rounded-lg">
-                           {(() => {
-                             const primaryMedia =
-                               record.media.find((m) => m.role === 'result') || record.media[0]
-                             return primaryMedia ? (
-                               <img
-                                 src={primaryMedia.previewUrl}
-                                 alt={record.title}
-                                 loading="lazy"
-                                 className="h-full w-full object-cover"
-                               />
-                             ) : (
-                               <div className="flex h-full w-full items-center justify-center">
-                                 <Video size={16} style={{ color: semantic.textMuted }} />
-                               </div>
-                             )
-                           })()}
+                           <ListRowThumbnail record={record} />
                          </div>
                         <div className="min-w-0 flex-1">
                           <h3 className="text-sm font-semibold text-white line-clamp-1">{record.title}</h3>

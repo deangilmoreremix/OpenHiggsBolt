@@ -2,7 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import type { SeedancePrompt, SeedanceStats } from '@/types/go-ai-viral/seedance'
 import { classifyPrompt } from '@/lib/nicheClassifier'
 
-const DATA_PATH = '/tmp/seedance_prompts.json'
+/**
+ * Production-safe data source.
+ *
+ * The canonical dataset is the committed repository file
+ * `src/data/seedance_prompts.json`. A legacy `/tmp/seedance_prompts.json`
+ * path is no longer used in production. The conversion scripts in
+ * `scripts/` may still write there for development imports, but the API
+ * reads the committed file directly.
+ */
+const DATA_PATH = process.cwd() + '/src/data/seedance_prompts.json'
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 const DEFAULT_PAGE_SIZE = 20
 const MAX_PAGE_SIZE = 100
@@ -11,6 +20,7 @@ interface CachedSeedance {
   records: SeedancePrompt[]
   stats: SeedanceStats
   fetchedAt: number
+  degraded?: boolean
 }
 
 let cached: CachedSeedance | null = null
@@ -120,12 +130,34 @@ async function loadSeedance(): Promise<CachedSeedance> {
   }
 
   const { readFile } = await import('node:fs/promises')
-  const text = await readFile(DATA_PATH, 'utf-8')
+  let text: string | null = null
+
+  try {
+    text = await readFile(DATA_PATH, 'utf-8')
+  } catch {
+    const empty: CachedSeedance = {
+      records: [],
+      stats: { total: 0, withVideo: 0, withPrompt: 0, withDetailHref: 0, sourceLanguages: {} },
+      fetchedAt: now,
+      degraded: true,
+    }
+    cached = empty
+    return empty
+  }
+
   let rawRecords: SeedancePrompt[]
   try {
     rawRecords = JSON.parse(text) as SeedancePrompt[]
   } catch {
-    throw new Error('SEEDANCE_FILE_CORRUPTED')
+    console.error('[go-ai-viral] seedance data corrupted at ' + DATA_PATH)
+    const empty: CachedSeedance = {
+      records: [],
+      stats: { total: 0, withVideo: 0, withPrompt: 0, withDetailHref: 0, sourceLanguages: {} },
+      fetchedAt: now,
+      degraded: true,
+    }
+    cached = empty
+    return empty
   }
   const records = rawRecords.map(enrichRecord)
 
@@ -148,7 +180,14 @@ export async function GET(req: NextRequest) {
     const hasVideo = searchParams.get('hasVideo')
     const hasPrompt = searchParams.get('hasPrompt')
 
-    const { records, stats } = await loadSeedance()
+    const { records, stats, degraded } = await loadSeedance()
+
+    if (degraded) {
+      return NextResponse.json(
+        { error: { code: 'SEEDANCE_DATASET_UNAVAILABLE', message: 'Seedance dataset is currently unavailable. Please try again later.' } },
+        { status: 502 }
+      )
+    }
 
     let filtered = records
     if (hasVideo === 'true') {
