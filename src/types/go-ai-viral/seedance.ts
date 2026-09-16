@@ -31,6 +31,19 @@ export interface SeedancePrompt {
   primaryNiche?: string
   /** Optional sub-niches within the primary niche for granular filtering. */
   subNiches?: string[]
+  /** Normalized media array matching the working Remix Viral Studio shape. */
+  media: Array<{
+    type: 'image' | 'video'
+    role: string
+    previewUrl: string | null
+    sourceUrl: string | null
+    posterUrl: string | null
+    altText?: string | null
+    width?: number | null
+    height?: number | null
+    license?: string | null
+    rightsHolder?: string | null
+  }>
 }
 
 export interface SeedanceStats {
