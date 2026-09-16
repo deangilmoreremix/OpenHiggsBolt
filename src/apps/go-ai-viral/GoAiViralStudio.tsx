@@ -922,7 +922,7 @@ function PromptDetailModal({ record, onClose }: PromptDetailModalProps) {
 
 // ── Main Studio ─────────────────────────────────────────────────────────────────
 
-function ListRowThumbnail({ record }: { record: PromptRecord }) {
+export function ListRowThumbnail({ record }: { record: PromptRecord }) {
   const [failedImageUrls, setFailedImageUrls] = useState<Set<string>>(new Set())
   const resolvedImage = resolvePromptRecordImage(record)
 
