@@ -1161,6 +1161,78 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
     fetchVideoFeed(1)
   }, [studioMode, videoSearchInput, videoLanguage, videoOnly, fetchVideoFeed])
 
+  const loadMore = useCallback(() => {
+    if (studioMode === 'feed') {
+      if (isLoadingMore || !hasMore) return
+      const nextPage = page + 1
+      setPage(nextPage)
+      fetchFeed(nextPage)
+    } else if (studioMode === 'video-prompts') {
+      if (isVideoLoadingMore || !videoHasMore) return
+      const nextPage = videoPage + 1
+      setVideoPage(nextPage)
+      fetchVideoFeed(nextPage)
+    }
+  }, [studioMode, isLoadingMore, hasMore, page, fetchFeed, isVideoLoadingMore, videoHasMore, videoPage, fetchVideoFeed])
+
+  // Setup infinite scroll observer
+  useEffect(() => {
+    if (!sentinelRef.current && !videoSentinelRef.current) return
+
+    // Clean up existing observers
+    if (infiniteObserverRef.current) {
+      infiniteObserverRef.current.disconnect()
+      infiniteObserverRef.current = null
+    }
+    if (videoInfiniteObserverRef.current) {
+      videoInfiniteObserverRef.current.disconnect()
+      videoInfiniteObserverRef.current = null
+    }
+
+    const createObserver = (sentinel: HTMLDivElement | null, enabled: boolean) => {
+      if (!sentinel || !enabled) return null
+      return new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && !isLoadingMore && !isVideoLoadingMore) {
+            loadMore()
+          }
+        },
+        { rootMargin: '400px' }
+      )
+    }
+
+    const feedObserver = createObserver(sentinelRef.current, studioMode === 'feed')
+    const videoObserver = createObserver(videoSentinelRef.current, studioMode === 'video-prompts')
+
+    if (feedObserver && sentinelRef.current) {
+      feedObserver.observe(sentinelRef.current)
+      infiniteObserverRef.current = feedObserver
+    }
+    if (videoObserver && videoSentinelRef.current) {
+      videoObserver.observe(videoSentinelRef.current)
+      videoInfiniteObserverRef.current = videoObserver
+    }
+
+    return () => {
+      if (infiniteObserverRef.current) {
+        infiniteObserverRef.current.disconnect()
+        infiniteObserverRef.current = null
+      }
+      if (videoInfiniteObserverRef.current) {
+        videoInfiniteObserverRef.current.disconnect()
+        videoInfiniteObserverRef.current = null
+      }
+    }
+  }, [studioMode, loadMore, isLoadingMore, isVideoLoadingMore])
+
+  // Reset pagination when mode changes
+  useEffect(() => {
+    setHasMore(false)
+    setIsLoadingMore(false)
+    setVideoHasMore(false)
+    setIsVideoLoadingMore(false)
+  }, [studioMode])
+
   // ── Sidebar category data ────────────────────────────────────────────────────
   const categoryCounts = useMemo(() => {
     if (!stats?.categories) return {}
