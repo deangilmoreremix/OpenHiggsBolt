@@ -50,12 +50,17 @@ export function DemoPromptProvider({ children }: { children: ReactNode }) {
   const [showCreatePicker, setShowCreatePicker] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
+  const createStyleButtonRef = useRef<HTMLElement | null>(null);
 
   const openPrompt = useCallback((d: VideoDemo, trig?: HTMLElement | null) => {
     previouslyFocused.current = (trig as HTMLElement) || document.activeElement;
     setTrigger(trig || null);
     setCopied(false);
     setDemo(d);
+  }, []);
+
+  const closeCreatePicker = useCallback(() => {
+    setShowCreatePicker(false);
   }, []);
 
   const close = useCallback(() => {
@@ -225,6 +230,7 @@ export function DemoPromptProvider({ children }: { children: ReactNode }) {
                 )}
               </button>
               <button
+                ref={createStyleButtonRef as any}
                 type="button"
                 onClick={() => setShowCreatePicker(true)}
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-5 py-3 text-sm font-bold text-black shadow-lg transition hover:scale-[1.01]"
@@ -234,7 +240,8 @@ export function DemoPromptProvider({ children }: { children: ReactNode }) {
               {showCreatePicker && demo && (
                 <VideoCreateTargetPicker
                   demo={demo}
-                  onClose={() => setShowCreatePicker(false)}
+                  triggerElement={createStyleButtonRef.current}
+                  onClose={closeCreatePicker}
                 />
               )}
             </div>
