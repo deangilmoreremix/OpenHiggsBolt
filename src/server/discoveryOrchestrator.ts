@@ -1,8 +1,12 @@
 /**
  * Discovery orchestrator that chooses between providers in priority order:
- * 1. Static/HTTP (SmartVideo lightweight crawler)
- * 2. Browser fallback (if enabled and static insufficient)
- * 3. Firecrawl (optional last resort, only if explicitly enabled)
+ * 1. Cache
+ * 2. Static/HTTP (SmartVideo lightweight crawler)
+ * 3. Structured data extraction
+ * 4. Sitemap discovery
+ * 5. Crawlee CheerioCrawler (free HTTP multi-page)
+ * 6. Browser fallback (if enabled and previous layers insufficient)
+ * 7. Firecrawl (optional last resort, only if explicitly enabled)
  *
  * Then runs the shared normalize/filter/classify pipeline.
  */
@@ -13,7 +17,14 @@ import { StaticDiscoveryProvider } from './staticDiscovery'
 import { sanitizeUrl, classifyImage, heuristicFallback } from './discoverAssets'
 import { getBusinessAssetClassificationModel } from './discoveryClassificationConfig'
 import { autoPlaceAssets, DEFAULT_AUTO_PLACEMENT_CONFIG } from './autoPlacementEngine'
+import { discoverSitemapUrls } from './sitemapDiscovery'
+import { discoverWithCrawlee } from './crawleeProvider'
 import type { DiscoveredAsset, DiscoveredAssetCategory } from '../shared/personalization/types'
+import {
+  USEFUL_CATEGORIES,
+  isUsefulCategory,
+  FREE_DISCOVERY_MIN_USEFUL,
+} from './discoveryPolicy'
 
 export interface OrchestratedDiscoveryOptions {
   websiteUrl: string
@@ -41,35 +52,17 @@ export interface OrchestratedDiscoveryResult {
   firecrawlReason?: string
   localUsefulAssetCount?: number
   firecrawlUsefulAssetCount?: number
+  sitemapFound?: boolean
+  crawleePagesCrawled?: number
 }
 
 const MIN_ACCEPTABLE_ASSETS = 5
 const MIN_ACCEPTABLE_CATEGORIES = 2
 
-// Personalization-relevant categories only.
-// Everything else is considered not useful for the asset library.
-const USEFUL_CATEGORIES: DiscoveredAssetCategory[] = [
-  'person',
-  'logo',
-  'product',
-  'service',
-  'completed_work',
-  'storefront',
-  'office',
-  'branded_vehicle',
-  'team',
-  'brand',
-]
-
-function isUsefulAsset(category: DiscoveredAssetCategory | undefined): boolean {
-  if (!category) return false
-  return USEFUL_CATEGORIES.includes(category)
-}
-
 function countUsefulAssetsByCategory(assets: DiscoveredAsset[]): Record<string, number> {
   const counts: Record<string, number> = {}
   for (const asset of assets) {
-    if (isUsefulAsset(asset.category)) {
+    if (isUsefulCategory(asset.category)) {
       counts[asset.category] = (counts[asset.category] || 0) + 1
     }
   }
@@ -77,12 +70,8 @@ function countUsefulAssetsByCategory(assets: DiscoveredAsset[]): Record<string, 
 }
 
 function hasEnoughUsefulAssets(assets: DiscoveredAsset[]): boolean {
-  const counts = countUsefulAssetsByCategory(assets)
-  const hasLogo = (counts['logo'] || 0) >= 1
-  const usefulProductOrService = (counts['product'] || 0) + (counts['service'] || 0) + (counts['completed_work'] || 0)
-  const usefulBrandReferences = (counts['storefront'] || 0) + (counts['office'] || 0) + (counts['branded_vehicle'] || 0) + (counts['team'] || 0) + (counts['brand'] || 0)
-
-  return hasLogo && usefulProductOrService >= 2 && usefulBrandReferences >= 2
+  const usefulCount = assets.filter((asset) => isUsefulCategory(asset.category)).length
+  return usefulCount >= FREE_DISCOVERY_MIN_USEFUL
 }
 
 function getFirecrawlReason(assets: DiscoveredAsset[]): string {
@@ -114,6 +103,8 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
   let result: DiscoveryResult | null = null
   let firecrawlUsed = false
   let firecrawlReason: string | undefined
+  let crawleePagesCrawled = 0
+  let sitemapFound = false
 
   // 1. Try static/HTTP first (always)
   providerAttempts.push('SMARTVIDEO_STATIC')
@@ -138,13 +129,61 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
 
   if (result?.candidates?.length) {
     discoveredAssets = await buildDiscoveredAssetsFromCandidates(result.candidates, maxImages, openAiKey, openAiModel)
-    localUsefulAssetCount = discoveredAssets.filter((asset) => isUsefulAsset(asset.category)).length
+    localUsefulAssetCount = discoveredAssets.filter((asset) => isUsefulCategory(asset.category)).length
   }
 
   const staticSufficient = hasEnoughUsefulAssets(discoveredAssets)
 
-  // 3. If static insufficient and browser fallback enabled, try browser
-  if (!staticSufficient && enableBrowserFallback) {
+  // 3. Sitemap discovery — find high-value pages
+  const sitemapCandidates: string[] = []
+  if (!staticSufficient) {
+    try {
+      sitemapCandidates.push(...(await discoverSitemapUrls(baseUrl)))
+      sitemapFound = sitemapCandidates.length > 0
+    } catch (err) {
+      console.error('[discovery] Sitemap discovery failed:', err instanceof Error ? err.message : err)
+    }
+  }
+
+  // 4. Crawlee CheerioCrawler — free HTTP multi-page discovery
+  if (!staticSufficient && sitemapCandidates.length > 0) {
+    providerAttempts.push('CRAWLEE_CHEERIO')
+    try {
+      const crawleeResult = await discoverWithCrawlee(baseUrl)
+      if (crawleeResult.candidates.length > 0) {
+        const existingUrls = new Set(result?.candidates?.map((c) => c.url) || [])
+        const newCandidates = crawleeResult.candidates.filter((c) => !existingUrls.has(c.url))
+
+        if (result) {
+          result = {
+            ...result,
+            candidates: [...result.candidates, ...newCandidates],
+            rawCandidates: (result.rawCandidates || 0) + crawleeResult.rawCandidates,
+            pagesCrawled: (result.pagesCrawled || 0) + crawleeResult.pagesCrawled,
+          }
+        } else {
+          result = {
+            candidates: newCandidates,
+            provider: 'CRAWLEE_CHEERIO',
+            pagesCrawled: crawleeResult.pagesCrawled,
+            rawCandidates: crawleeResult.rawCandidates,
+            socialProfiles: crawleeResult.socialProfiles,
+          }
+        }
+
+        const crawleeAssets = await buildDiscoveredAssetsFromCandidates(newCandidates, maxImages, openAiKey, openAiModel)
+        discoveredAssets = [...discoveredAssets, ...crawleeAssets]
+        localUsefulAssetCount = discoveredAssets.filter((asset) => isUsefulCategory(asset.category)).length
+        crawleePagesCrawled = crawleeResult.pagesCrawled
+        providerUsed = 'CRAWLEE_CHEERIO'
+      }
+    } catch (err) {
+      console.error('[discovery] Crawlee fallback failed:', err instanceof Error ? err.message : err)
+    }
+  }
+
+  // 5. If still insufficient and browser fallback enabled, try browser
+  if (!hasEnoughUsefulAssets(discoveredAssets) && enableBrowserFallback) {
     providerAttempts.push('SMARTVIDEO_BROWSER')
     try {
       const { discoverRenderedAssets } = await import('./browserDiscovery')
@@ -175,7 +214,7 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
 
         const browserAssets = await buildDiscoveredAssetsFromCandidates(newCandidates, maxImages, openAiKey, openAiModel)
         discoveredAssets = [...discoveredAssets, ...browserAssets]
-        localUsefulAssetCount = discoveredAssets.filter((asset) => isUsefulAsset(asset.category)).length
+        localUsefulAssetCount = discoveredAssets.filter((asset) => isUsefulCategory(asset.category)).length
         providerUsed = 'SMARTVIDEO_BROWSER'
       }
     } catch (err) {
@@ -183,12 +222,11 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
     }
   }
 
-  // 4. If still insufficient and Firecrawl fallback enabled, try Firecrawl
-  const finalDiscoveredAssets = discoveredAssets
+  // 6. If still insufficient and Firecrawl fallback enabled, try Firecrawl
   const useFirecrawl = enableFirecrawlFallback && firecrawlApiKey && !hasEnoughUsefulAssets(discoveredAssets)
 
   if (useFirecrawl) {
-    firecrawlReason = getFirecrawlReason(finalDiscoveredAssets)
+    firecrawlReason = getFirecrawlReason(discoveredAssets)
     providerAttempts.push('FIRECRAWL')
     try {
       const firecrawl = new FirecrawlDiscoveryProvider(firecrawlApiKey)
@@ -215,16 +253,13 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
       }
 
       const firecrawlAssets = await buildDiscoveredAssetsFromCandidates(newCandidates, maxImages, openAiKey, openAiModel)
-      discoveredAssets = [...finalDiscoveredAssets, ...firecrawlAssets]
+      discoveredAssets = [...discoveredAssets, ...firecrawlAssets]
 
       providerUsed = 'FIRECRAWL'
       firecrawlUsed = true
     } catch (err) {
       console.error('[discovery] Firecrawl fallback failed:', err instanceof Error ? err.message : err)
-      discoveredAssets = finalDiscoveredAssets
     }
-  } else {
-    discoveredAssets = finalDiscoveredAssets
   }
 
   const duration = Date.now() - startTime
@@ -244,8 +279,10 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
     firecrawlReason,
     localUsefulAssetCount,
     firecrawlUsefulAssetCount: firecrawlUsed
-      ? discoveredAssets.filter((asset) => isUsefulAsset(asset.category)).length - localUsefulAssetCount
+      ? discoveredAssets.filter((asset) => isUsefulCategory(asset.category)).length - localUsefulAssetCount
       : 0,
+    sitemapFound,
+    crawleePagesCrawled,
   }
 }
 
@@ -278,7 +315,7 @@ export async function buildDiscoveredAssetsFromCandidates(
 
     // Only keep personalization-relevant assets.
     // Everything else is discarded before user review.
-    if (!isUsefulAsset(classification.category)) {
+    if (!isUsefulCategory(classification!.category)) {
       continue
     }
 
