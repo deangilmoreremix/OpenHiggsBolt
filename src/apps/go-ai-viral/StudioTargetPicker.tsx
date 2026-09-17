@@ -2,14 +2,16 @@
 import { emitSendTo, TARGET_LABEL, VIRAL_TARGETS_BY_MEDIA, type StudioTarget, type ViralSourceMedia, type CreateViralHandoffOptions } from '../../shared/crossStudio'
 
 export interface StudioTargetPickerProps {
-  mediaType: ViralSourceMedia | null | undefined
+  mediaType?: ViralSourceMedia | null | undefined
+  /** Override the default per-media target list. When provided, `mediaType` is ignored for target resolution. */
+  targets?: readonly StudioTarget[]
   onClose: () => void
   onSelectTarget?: (target: StudioTarget, record: CreateViralHandoffOptions['record']) => void
   record?: CreateViralHandoffOptions['record']
 }
 
-export function StudioTargetPicker({ mediaType, onClose, onSelectTarget, record }: StudioTargetPickerProps) {
-  const targets = (mediaType && VIRAL_TARGETS_BY_MEDIA[mediaType]) || VIRAL_TARGETS_BY_MEDIA.video
+export function StudioTargetPicker({ mediaType, targets: customTargets, onClose, onSelectTarget, record }: StudioTargetPickerProps) {
+  const targets = customTargets || (mediaType && VIRAL_TARGETS_BY_MEDIA[mediaType]) || VIRAL_TARGETS_BY_MEDIA.video
 
   const handleSelect = (target: StudioTarget) => {
     if (onSelectTarget && record) {

@@ -182,6 +182,16 @@ export const VIRAL_TARGETS_BY_MEDIA: Record<ViralSourceMedia, StudioTarget[]> = 
   video: ['video', 'cinema', 'vfx-studio', 'clipping', 'vibe-motion', 'lipsync', 'recast'],
 }
 
+/**
+ * Narrow creation targets for the canonical demo-card / detail-page
+ * `Create This Style` workflow. Only `video` and `cinema` are offered here,
+ * regardless of the demo's original `studioTab`.
+ */
+export const VIDEO_DEMO_CREATE_TARGETS: readonly StudioTarget[] = [
+  'video',
+  'cinema',
+] as const
+
 export interface CreateViralHandoffOptions {
   target: StudioTarget
   record: {

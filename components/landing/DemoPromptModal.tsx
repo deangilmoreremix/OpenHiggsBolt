@@ -9,7 +9,8 @@ import {
   type ReactNode,
 } from 'react';
 import { MINIMAX_H3_DEMOS } from '@/data/minimaxH3Demos';
-import { getCreateUrl, type VideoDemo } from '@/data/types';
+import type { VideoDemo } from '@/data/types';
+import { VideoCreateTargetPicker } from './VideoCreateTargetPicker';
 
 type PromptContextValue = {
   openPrompt: (demo: VideoDemo, trigger?: HTMLElement | null) => void;
@@ -46,6 +47,7 @@ export function DemoPromptProvider({ children }: { children: ReactNode }) {
   const [demo, setDemo] = useState<VideoDemo | null>(null);
   const [trigger, setTrigger] = useState<HTMLElement | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showCreatePicker, setShowCreatePicker] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
@@ -59,6 +61,7 @@ export function DemoPromptProvider({ children }: { children: ReactNode }) {
   const close = useCallback(() => {
     setDemo(null);
     setTrigger(null);
+    setShowCreatePicker(false);
     previouslyFocused.current?.focus?.();
   }, []);
 
@@ -221,12 +224,19 @@ export function DemoPromptProvider({ children }: { children: ReactNode }) {
                   </>
                 )}
               </button>
-              <a
-                href={getCreateUrl(demo)}
+              <button
+                type="button"
+                onClick={() => setShowCreatePicker(true)}
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-5 py-3 text-sm font-bold text-black shadow-lg transition hover:scale-[1.01]"
               >
                 Create This Style
-              </a>
+              </button>
+              {showCreatePicker && demo && (
+                <VideoCreateTargetPicker
+                  demo={demo}
+                  onClose={() => setShowCreatePicker(false)}
+                />
+              )}
             </div>
           </div>
         </div>
