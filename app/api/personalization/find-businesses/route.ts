@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
 
     // Discover businesses
     const rawBusinesses = await discoverBusinesses({
-      niche: mapping.label,
+      niche,
       latitude: geocodeResult.latitude,
       longitude: geocodeResult.longitude,
       radiusMiles: boundedRadius,

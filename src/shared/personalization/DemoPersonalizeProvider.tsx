@@ -20,7 +20,7 @@ import PersonalizationModal from './PersonalizationModal'
 import { writeHandoff } from '@/shared/crossStudio'
 import { SocialPublishContext } from '@/components/SocialPublishProvider'
 import { useAuthConfig } from '@/lib/authConfig'
-import type { BusinessDiscoveryRecord } from '@/server/businessDiscovery'
+import type { BusinessDiscoveryRecord } from '@/server/businessDiscovery/types'
 
 /** Safe accessor for SocialPublishContext — returns null when not wrapped in a provider. */
 function useOptionalSocialPublish() {
@@ -76,8 +76,11 @@ import { runGeneration } from './generationRouter'
 import { resolveModelCapabilities, resolveAssetsForModel } from './modelCapabilityResolver'
 import { applyPostProcessing, generateEndCardImage } from './postProcessor'
 import { uploadFile } from 'studio/src/muapi'
-import { geocodeLocation, discoverBusinesses, deduplicateBusinesses, enrichBusinessRecord, scoreAndSort } from '@/server/businessDiscovery'
-import { getNicheMapping, getSupportedNiches } from '@/server/businessDiscovery'
+import { geocodeLocation } from '@/server/businessDiscovery/nominatimProvider'
+import { discoverBusinesses } from '@/server/businessDiscovery/overpassProvider'
+import { deduplicateBusinesses, enrichBusinessRecord } from '@/server/businessDiscovery/businessNormalizer'
+import { scoreAndSort } from '@/server/businessDiscovery/businessScoring'
+import { getNicheMapping, getSupportedNiches } from '@/server/businessDiscovery/nicheMappings'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -205,8 +208,22 @@ type DemoPersonalizeContextValue = {
   businessSearchError: string | null
   businessSearchQuery: { niche: string; location: string; radiusMiles: number } | null
   selectedBusiness: BusinessDiscoveryRecord | null
+  businessResearch: {
+    status: 'idle' | 'researching' | 'done' | 'error'
+    result?: {
+      canonicalUrl?: string
+      reachable: boolean
+      title?: string
+      description?: string
+      logoUrl?: string
+      socialLinks?: Record<string, string>
+      contactInfo?: { phones: string[]; emails: string[] }
+    }
+    error?: string
+  }
   findBusinesses: (niche: string, location: string, radiusMiles: number) => Promise<void>
   selectBusiness: (business: BusinessDiscoveryRecord) => void
+  researchBusiness: () => Promise<void>
   clearBusinessSearch: () => void
   setBusinessSearchMode: (mode: 'idle' | 'searching' | 'results' | 'selected' | 'error') => void
 
@@ -398,6 +415,19 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   const [businessSearchError, setBusinessSearchError] = useState<string | null>(null)
   const [businessSearchQuery, setBusinessSearchQuery] = useState<{ niche: string; location: string; radiusMiles: number } | null>(null)
   const [selectedBusiness, setSelectedBusiness] = useState<BusinessDiscoveryRecord | null>(null)
+  const [businessResearch, setBusinessResearch] = useState<{
+    status: 'idle' | 'researching' | 'done' | 'error'
+    result?: {
+      canonicalUrl?: string
+      reachable: boolean
+      title?: string
+      description?: string
+      logoUrl?: string
+      socialLinks?: Record<string, string>
+      contactInfo?: { phones: string[]; emails: string[] }
+    }
+    error?: string
+  }>({ status: 'idle' })
 
   // Prompt
   const [promptState, setPromptState] = useState<PromptState>({ ...EMPTY_PROMPT_STATE })
@@ -1195,7 +1225,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
       // Discover businesses
       const rawBusinesses = await discoverBusinesses({
-        niche: mapping.label,
+        niche,
         latitude: geocodeResult.latitude,
         longitude: geocodeResult.longitude,
         radiusMiles,
@@ -1226,6 +1256,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   const selectBusiness = useCallback((business: BusinessDiscoveryRecord) => {
     setSelectedBusiness(business)
     setBusinessSearchMode('selected')
+    setBusinessResearch({ status: 'idle' })
 
     // Populate client form from business
     const clientFormPatch: Partial<ClientProfile> = {
@@ -1238,11 +1269,62 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
     updateClientForm(clientFormPatch)
 
-    // If there's a website, trigger asset discovery
-    if (business.website) {
-      discoverAssets(business.website)
+    // Do NOT auto-trigger asset discovery here.
+    // User must explicitly click "Research Business" then "Find Business Assets".
+  }, [updateClientForm])
+
+  const researchBusiness = useCallback(async () => {
+    const website = clientForm.website || selectedBusiness?.website
+    if (!website) {
+      setBusinessResearch({ status: 'error', error: 'No website available to research.' })
+      return
     }
-  }, [updateClientForm, discoverAssets])
+
+    setBusinessResearch({ status: 'researching' })
+
+    try {
+      const res = await fetch('/api/personalization/research-business', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ websiteUrl: website }),
+        credentials: 'same-origin',
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error || `Research failed (HTTP ${res.status})`)
+      }
+
+      const data = await res.json()
+      const research = data?.research as any | undefined
+
+      if (!research) {
+        throw new Error('No research data returned')
+      }
+
+      // Update business research state
+      setBusinessResearch({
+        status: 'done',
+        result: {
+          canonicalUrl: research.canonicalUrl,
+          reachable: research.reachable,
+          title: research.title,
+          description: research.description,
+          logoUrl: research.logoUrl,
+          socialLinks: research.socialLinks,
+          contactInfo: research.contactInfo,
+        },
+      })
+
+      // Update website field with canonical URL if different
+      if (research.canonicalUrl && research.canonicalUrl !== clientForm.website) {
+        updateClientForm({ website: research.canonicalUrl })
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Research failed'
+      setBusinessResearch({ status: 'error', error: message })
+    }
+  }, [clientForm.website, selectedBusiness, updateClientForm])
 
   const clearBusinessSearch = useCallback(() => {
     setBusinessSearchMode('idle')
@@ -1250,6 +1332,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     setBusinessSearchError(null)
     setBusinessSearchQuery(null)
     setSelectedBusiness(null)
+    setBusinessResearch({ status: 'idle' })
   }, [])
 
   // ── Prompt actions ─────────────────────────────────────────────────────────
@@ -1672,8 +1755,10 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     businessSearchError,
     businessSearchQuery,
     selectedBusiness,
+    businessResearch,
     findBusinesses,
     selectBusiness,
+    researchBusiness,
     clearBusinessSearch,
     setBusinessSearchMode,
 

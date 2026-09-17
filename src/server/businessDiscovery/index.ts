@@ -31,6 +31,11 @@ export {
 } from './businessCache'
 
 export {
+  researchBusiness,
+  enrichClientProfileFromResearch,
+} from './researchProvider'
+
+export {
   NICHE_MAPPINGS,
   getSupportedNiches,
   getNicheMapping,

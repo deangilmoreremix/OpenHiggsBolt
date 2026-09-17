@@ -5,12 +5,14 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import axios from 'axios'
 import { geocodeLocation } from '../nominatimProvider'
 import { discoverBusinesses } from '../overpassProvider'
 import { deduplicateBusinesses, enrichBusinessRecord } from '../businessNormalizer'
 import { computeLeadScore, computeActivityScore, scoreAndSort } from '../businessScoring'
 import { businessDiscoveryCache, createCacheKey } from '../businessCache'
 import { getNicheMapping, getSupportedNiches, normalizeNiche, NICHE_MAPPINGS } from '../nicheMappings'
+import { researchBusiness, enrichClientProfileFromResearch } from '../researchProvider'
 import type { BusinessDiscoveryRecord } from '../types'
 
 // ---------------------------------------------------------------------------
@@ -40,20 +42,20 @@ describe('Niche mappings', () => {
   it('returns supported niches', () => {
     const niches = getSupportedNiches()
     expect(niches.length).toBeGreaterThan(0)
-    expect(niches).toContain('Roofing Contractor')
-    expect(niches).toContain('Restaurant')
-    expect(niches).toContain('General Business')
+    expect(niches).toContain('restaurants-food')
+    expect(niches).toContain('technology')
+    expect(niches).toContain('general-business')
   })
 
   it('maps known niche to OSM tags', () => {
-    const mapping = getNicheMapping('Roofing Contractor')
+    const mapping = getNicheMapping('restaurants-food')
     expect(mapping).toBeDefined()
-    expect(mapping!.tags).toContainEqual(['craft', 'roofer'])
+    expect(mapping!.tags).toContainEqual(['amenity', 'restaurant'])
   })
 
   it('normalizes niche case-insensitively', () => {
-    expect(normalizeNiche('roofing contractor')).toBe('Roofing Contractor')
-    expect(normalizeNiche('RESTAURANT')).toBe('Restaurant')
+    expect(normalizeNiche('restaurants-food')).toBe('Restaurants / Food')
+    expect(normalizeNiche('TECHNOLOGY')).toBe('Technology / SaaS')
   })
 
   it('returns undefined for unsupported niche', () => {
@@ -240,8 +242,8 @@ describe('Overpass discovery', () => {
           lat: 26.1,
           lon: -80.1,
           tags: {
-            name: 'Joe\'s Roofing',
-            craft: 'roofer',
+            name: 'Joe\'s Pizza',
+            amenity: 'restaurant',
             phone: '555-1234',
             'addr:city': 'Hollywood',
             'addr:state': 'FL',
@@ -253,10 +255,10 @@ describe('Overpass discovery', () => {
           lat: 26.2,
           lon: -80.2,
           tags: {
-            name: 'ABC Roofing',
-            craft: 'roofer',
+            name: 'ABC Cafe',
+            amenity: 'cafe',
             phone: '555-5678',
-            website: 'https://abcroofing.com',
+            website: 'https://abccafe.com',
             'addr:city': 'Hollywood',
             'addr:state': 'FL',
           },
@@ -271,7 +273,7 @@ describe('Overpass discovery', () => {
     } as Response)
 
     const results = await discoverBusinesses({
-      niche: 'Roofing Contractor',
+      niche: 'restaurants-food',
       latitude: 26.1,
       longitude: -80.1,
       radiusMiles: 10,
@@ -293,7 +295,7 @@ describe('Overpass discovery', () => {
           lon: -80.1,
           tags: {
             name: 'Closed Business',
-            craft: 'roofer',
+            amenity: 'restaurant',
             closed: 'yes',
           },
         },
@@ -307,7 +309,7 @@ describe('Overpass discovery', () => {
     } as Response)
 
     const results = await discoverBusinesses({
-      niche: 'Roofing Contractor',
+      niche: 'restaurants-food',
       latitude: 26.1,
       longitude: -80.1,
       radiusMiles: 10,
@@ -319,7 +321,7 @@ describe('Overpass discovery', () => {
   it('throws for unsupported niche', async () => {
     await expect(
       discoverBusinesses({
-        niche: 'Unicorn Stable',
+        niche: 'unicorn-stable',
         latitude: 26.1,
         longitude: -80.1,
         radiusMiles: 10,
@@ -336,8 +338,8 @@ describe('Overpass discovery', () => {
           lat: 26.1,
           lon: -80.1,
           tags: {
-            name: 'Joe\'s Roofing',
-            craft: 'roofer',
+            name: 'Joe\'s Pizza',
+            amenity: 'restaurant',
             'addr:city': 'Hollywood',
             'addr:state': 'FL',
           },
@@ -346,8 +348,8 @@ describe('Overpass discovery', () => {
           type: 'way',
           id: 2,
           tags: {
-            name: 'Joe\'s Roofing',
-            craft: 'roofer',
+            name: 'Joe\'s Pizza',
+            amenity: 'restaurant',
             'addr:city': 'Hollywood',
             'addr:state': 'FL',
           },
@@ -362,7 +364,7 @@ describe('Overpass discovery', () => {
     } as Response)
 
     const results = await discoverBusinesses({
-      niche: 'Roofing Contractor',
+      niche: 'restaurants-food',
       latitude: 26.1,
       longitude: -80.1,
       radiusMiles: 10,
@@ -391,5 +393,142 @@ describe('Website status handling', () => {
     const business = makeBusiness({ website: undefined })
     expect(business.website).toBeUndefined()
     expect(business.websiteStatus).toBe('unknown')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Research provider
+// ---------------------------------------------------------------------------
+
+describe('Research provider', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('returns reachable=false when website is unreachable', async () => {
+    vi.spyOn(axios, 'get').mockRejectedValue(new Error('Network error'))
+
+    const result = await researchBusiness('https://doesnotexist.example')
+    expect(result.reachable).toBe(false)
+    expect(result.canonicalUrl).toBe('https://doesnotexist.example/') // sanitizeUrl normalizes
+  })
+
+  it('extracts structured data from reachable website', async () => {
+    const html = `
+      <html>
+        <head>
+          <title>Test Business</title>
+          <meta name="description" content="A test business" />
+          <meta property="og:title" content="Test Business OG" />
+          <meta property="og:image" content="https://example.com/logo.png" />
+          <meta name="twitter:card" content="summary" />
+          <script type="application/ld+json">
+            {
+              "@context": "https://schema.org",
+              "@type": "LocalBusiness",
+              "name": "Test Business",
+              "telephone": "555-1234",
+              "email": "info@example.com",
+              "address": {
+                "streetAddress": "123 Main St",
+                "addressLocality": "Hollywood",
+                "addressRegion": "FL"
+              },
+              "logo": "https://example.com/logo.svg"
+            }
+          </script>
+        </head>
+        <body>
+          <a href="https://facebook.com/testbusiness">Facebook</a>
+          <a href="https://instagram.com/testbusiness">Instagram</a>
+          <a href="https://linkedin.com/company/testbusiness">LinkedIn</a>
+        </body>
+      </html>
+    `
+
+    vi.spyOn(axios, 'get').mockResolvedValue({
+      status: 200,
+      headers: { 'content-type': 'text/html' },
+      data: html,
+      request: { res: { responseUrl: 'https://example.com' } },
+    } as any)
+
+    const result = await researchBusiness('https://example.com')
+    expect(result.reachable).toBe(true)
+    expect(result.title).toBe('Test Business')
+    expect(result.description).toBe('A test business')
+    expect(result.logoUrl).toBe('https://example.com/logo.png') // OG image takes priority
+    expect(result.socialLinks.facebook).toBe('https://facebook.com/testbusiness')
+    expect(result.socialLinks.instagram).toBe('https://instagram.com/testbusiness')
+    expect(result.socialLinks.linkedin).toBe('https://linkedin.com/company/testbusiness')
+    expect(result.contactInfo.phones).toContain('555-1234')
+    expect(result.contactInfo.emails).toContain('info@example.com')
+  })
+
+  it('enriches client profile from research data', () => {
+    const profile: Partial<BusinessDiscoveryRecord> = {
+      website: 'https://example.com',
+      phone: '',
+    }
+    const research = {
+      canonicalUrl: 'https://example.com',
+      reachable: true,
+      contactInfo: {
+        phones: ['555-1234'],
+        emails: ['info@example.com'],
+      },
+      socialLinks: {
+        facebook: 'https://facebook.com/test',
+      },
+    }
+
+    const enriched = enrichClientProfileFromResearch(profile, research as any)
+    expect(enriched.phone).toBe('555-1234')
+    expect(enriched.facebook).toBe('https://facebook.com/test')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Failure handling
+// ---------------------------------------------------------------------------
+
+describe('Failure handling', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    businessDiscoveryCache.clear()
+  })
+
+  it('throws when Nominatim returns empty results', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => [],
+    } as Response)
+
+    await expect(geocodeLocation('Nonexistent Place XYZ')).rejects.toThrow('Location not found')
+  })
+
+  it('handles Overpass endpoint failure gracefully', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Overpass down'))
+
+    await expect(
+      discoverBusinesses({
+        niche: 'restaurants-food',
+        latitude: 26.1,
+        longitude: -80.1,
+        radiusMiles: 10,
+      }),
+    ).rejects.toThrow('All Overpass providers failed')
+  })
+
+  it('handles unsupported niche with clear error', async () => {
+    await expect(
+      discoverBusinesses({
+        niche: 'unsupported-niche',
+        latitude: 26.1,
+        longitude: -80.1,
+        radiusMiles: 10,
+      }),
+    ).rejects.toThrow('Unsupported niche')
   })
 })

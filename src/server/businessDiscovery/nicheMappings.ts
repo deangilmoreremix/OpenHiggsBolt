@@ -4,6 +4,7 @@
  * Each user-facing niche maps to one or more OSM tag tuples.
  * These tuples are used to build Overpass QL queries.
  *
+ * Mappings are aligned with the SmartVideo niche taxonomy from nicheClassifier.ts.
  * Only supported niches should be exposed to the client.
  */
 
@@ -13,28 +14,102 @@ export interface NicheMapping {
 }
 
 export const NICHE_MAPPINGS: Record<string, NicheMapping> = {
-  'Roofing Contractor': {
-    label: 'Roofing Contractor',
-    tags: [['craft', 'roofer']],
+  'ecommerce': {
+    label: 'E-Commerce / Retail',
+    tags: [
+      ['shop', 'yes'],
+      ['shop', 'clothes'],
+      ['shop', 'fashion'],
+      ['shop', 'electronics'],
+      ['shop', 'jewelry'],
+      ['shop', 'shoes'],
+      ['shop', 'supermarket'],
+      ['office', 'company'],
+    ],
   },
-  'Restaurant': {
-    label: 'Restaurant',
+  'real-estate': {
+    label: 'Real Estate',
+    tags: [
+      ['office', 'estate_agent'],
+      ['shop', 'real_estate'],
+      ['office', 'insurance'],
+    ],
+  },
+  'restaurants-food': {
+    label: 'Restaurants / Food',
     tags: [
       ['amenity', 'restaurant'],
       ['amenity', 'cafe'],
       ['amenity', 'fast_food'],
       ['amenity', 'bar'],
       ['shop', 'bakery'],
+      ['amenity', 'ice_cream'],
     ],
   },
-  'Real Estate': {
-    label: 'Real Estate',
+  'beauty': {
+    label: 'Beauty / Salon',
     tags: [
-      ['office', 'estate_agent'],
-      ['shop', 'real_estate'],
+      ['shop', 'beauty'],
+      ['shop', 'hairdresser'],
+      ['shop', 'cosmetics'],
+      ['amenity', 'spa'],
+      ['shop', 'perfumery'],
     ],
   },
-  'Automotive': {
+  'wellness-fitness': {
+    label: 'Wellness / Fitness',
+    tags: [
+      ['amenity', 'gym'],
+      ['amenity', 'fitness_centre'],
+      ['leisure', 'fitness_centre'],
+      ['amenity', 'spa'],
+      ['leisure', 'swimming_pool'],
+      ['shop', 'nutrition_supplements'],
+    ],
+  },
+  'education': {
+    label: 'Education',
+    tags: [
+      ['amenity', 'school'],
+      ['amenity', 'university'],
+      ['amenity', 'college'],
+      ['amenity', 'language_school'],
+      ['office', 'educational_institution'],
+      ['amenity', 'library'],
+    ],
+  },
+  'technology': {
+    label: 'Technology / SaaS',
+    tags: [
+      ['office', 'company'],
+      ['office', 'coworking'],
+      ['shop', 'electronics'],
+      ['shop', 'computer'],
+      ['amenity', 'internet_cafe'],
+    ],
+  },
+  'finance': {
+    label: 'Finance',
+    tags: [
+      ['amenity', 'bank'],
+      ['amenity', 'atm'],
+      ['office', 'financial'],
+      ['office', 'insurance'],
+      ['office', 'accountant'],
+    ],
+  },
+  'entertainment-media': {
+    label: 'Entertainment / Media',
+    tags: [
+      ['amenity', 'cinema'],
+      ['leisure', 'bowling_alley'],
+      ['leisure', 'amusement_arcade'],
+      ['amenity', 'nightclub'],
+      ['amenity', 'bar'],
+      ['leisure', 'sports_centre'],
+    ],
+  },
+  'automotive': {
     label: 'Automotive',
     tags: [
       ['shop', 'car'],
@@ -42,91 +117,33 @@ export const NICHE_MAPPINGS: Record<string, NicheMapping> = {
       ['amenity', 'car_wash'],
       ['amenity', 'fuel'],
       ['shop', 'motorcycle'],
+      ['shop', 'tyres'],
     ],
   },
-  'Beauty / Salon': {
-    label: 'Beauty / Salon',
-    tags: [
-      ['shop', 'beauty'],
-      ['shop', 'hairdresser'],
-      ['shop', 'cosmetics'],
-      ['amenity', 'spa'],
-    ],
-  },
-  'Fitness / Gym': {
-    label: 'Fitness / Gym',
-    tags: [
-      ['amenity', 'gym'],
-      ['amenity', 'fitness_centre'],
-    ],
-  },
-  'Healthcare': {
-    label: 'Healthcare',
-    tags: [
-      ['amenity', 'clinic'],
-      ['amenity', 'doctors'],
-      ['amenity', 'dentist'],
-      ['amenity', 'hospital'],
-      ['amenity', 'pharmacy'],
-    ],
-  },
-  'Education': {
-    label: 'Education',
-    tags: [
-      ['amenity', 'school'],
-      ['amenity', 'university'],
-      ['amenity', 'college'],
-      ['office', 'educational_institution'],
-    ],
-  },
-  'Technology / SaaS': {
-    label: 'Technology / SaaS',
-    tags: [
-      ['office', 'company'],
-      ['office', 'coworking'],
-    ],
-  },
-  'Finance': {
-    label: 'Finance',
-    tags: [
-      ['amenity', 'bank'],
-      ['office', 'financial'],
-      ['office', 'insurance'],
-    ],
-  },
-  'Travel / Hotel': {
-    label: 'Travel / Hotel',
+  'travel-hospitality': {
+    label: 'Travel / Hospitality',
     tags: [
       ['tourism', 'hotel'],
       ['tourism', 'motel'],
       ['tourism', 'hostel'],
       ['tourism', 'guest_house'],
+      ['tourism', 'camp_site'],
+      ['tourism', 'caravan_site'],
     ],
   },
-  'Legal': {
-    label: 'Legal',
+  'sports-outdoors': {
+    label: 'Sports / Outdoors',
     tags: [
-      ['office', 'lawyer'],
+      ['leisure', 'sports_centre'],
+      ['leisure', 'fitness_centre'],
+      ['leisure', 'swimming_pool'],
+      ['leisure', 'pitch'],
+      ['leisure', 'track'],
+      ['shop', 'sports'],
+      ['shop', 'bicycle'],
     ],
   },
-  'Construction': {
-    label: 'Construction',
-    tags: [
-      ['craft', 'builder'],
-      ['craft', 'plumber'],
-      ['craft', 'electrician'],
-      ['craft', 'painter'],
-      ['craft', 'carpenter'],
-      ['craft', 'roofer'],
-      ['craft', 'hvac'],
-      ['craft', 'metal_construction'],
-      ['craft', 'welder'],
-      ['craft', 'insulation'],
-      ['craft', 'cleaner'],
-      ['craft', 'pest_control'],
-    ],
-  },
-  'General Business': {
+  'general-business': {
     label: 'General Business',
     tags: [
       ['office', 'company'],

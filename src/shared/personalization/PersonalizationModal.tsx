@@ -591,8 +591,10 @@ export default function PersonalizationModal() {
     businessSearchError,
     businessSearchQuery,
     selectedBusiness,
+    businessResearch,
     findBusinesses,
     selectBusiness,
+    researchBusiness,
     clearBusinessSearch,
     setBusinessSearchMode,
     promptState,
@@ -1009,8 +1011,10 @@ export default function PersonalizationModal() {
               businessSearchError={businessSearchError}
               businessSearchQuery={businessSearchQuery}
               selectedBusiness={selectedBusiness}
+              businessResearch={businessResearch}
               findBusinesses={findBusinesses}
               selectBusiness={selectBusiness}
+              researchBusiness={researchBusiness}
               clearBusinessSearch={clearBusinessSearch}
               setBusinessSearchMode={setBusinessSearchMode}
             />
@@ -1329,8 +1333,10 @@ function ConfigurationView(props: any) {
     businessSearchError,
     businessSearchQuery,
     selectedBusiness,
+    businessResearch,
     findBusinesses,
     selectBusiness,
+    researchBusiness,
     clearBusinessSearch,
     setBusinessSearchMode,
   } = props
@@ -1502,22 +1508,21 @@ function ConfigurationView(props: any) {
                     }}
                   >
                     <option value="">Select a niche...</option>
-                    {[
-                      'Roofing Contractor',
-                      'Restaurant',
-                      'Real Estate',
-                      'Automotive',
-                      'Beauty / Salon',
-                      'Fitness / Gym',
-                      'Healthcare',
-                      'Education',
-                      'Technology / SaaS',
-                      'Finance',
-                      'Travel / Hotel',
-                      'Legal',
-                      'Construction',
-                      'General Business',
-                    ].map((niche) => (
+                    {Object.keys({
+                      'ecommerce': 'E-Commerce / Retail',
+                      'real-estate': 'Real Estate',
+                      'restaurants-food': 'Restaurants / Food',
+                      'beauty': 'Beauty / Salon',
+                      'wellness-fitness': 'Wellness / Fitness',
+                      'education': 'Education',
+                      'technology': 'Technology / SaaS',
+                      'finance': 'Finance',
+                      'entertainment-media': 'Entertainment / Media',
+                      'automotive': 'Automotive',
+                      'travel-hospitality': 'Travel / Hospitality',
+                      'sports-outdoors': 'Sports / Outdoors',
+                      'general-business': 'General Business',
+                    }).map((niche) => (
                       <option key={niche} value={niche}>{niche}</option>
                     ))}
                   </select>
@@ -1736,20 +1741,92 @@ function ConfigurationView(props: any) {
                   <div style={{ color: C.muted2 }}>Website: Not listed in OpenStreetMap</div>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => clearBusinessSearch()}
-                className="mt-2 rounded-lg text-[10px] font-extrabold uppercase tracking-wide"
-                style={{
-                  minHeight: 30,
-                  padding: '0 10px',
-                  border: `1px solid ${C.border}`,
-                  background: 'transparent',
-                  color: C.muted,
-                }}
-              >
-                Choose Different Business
-              </button>
+              <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => researchBusiness()}
+                  disabled={businessResearch.status === 'researching'}
+                  className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
+                  style={{
+                    minHeight: 38,
+                    padding: '0 16px',
+                    border: `1px solid ${C.cyan}`,
+                    background: businessResearch.status === 'done' ? '#041014' : C.cyan,
+                    color: businessResearch.status === 'done' ? C.cyan : '#041014',
+                  }}
+                >
+                  {businessResearch.status === 'researching' ? 'Researching...' : businessResearch.status === 'done' ? 'Research Complete' : 'Research Business'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => clearBusinessSearch()}
+                  className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide"
+                  style={{
+                    minHeight: 38,
+                    padding: '0 16px',
+                    border: `1px solid ${C.border}`,
+                    background: 'transparent',
+                    color: C.muted,
+                  }}
+                >
+                  Choose Different Business
+                </button>
+              </div>
+              {businessResearch.status === 'researching' && (
+                <div style={{ marginTop: 8, fontSize: 10, color: C.muted }}>
+                  SmartVideo GO AI is verifying this business and finding available brand assets...
+                </div>
+              )}
+              {businessResearch.status === 'done' && businessResearch.result && (
+                <div style={{ marginTop: 8, padding: 10, border: `1px solid ${C.border}`, borderRadius: 8, background: '#11161b' }}>
+                  {businessResearch.result.title && (
+                    <div style={{ fontSize: 10, color: C.text, marginBottom: 2 }}>
+                      <strong>Title:</strong> {businessResearch.result.title}
+                    </div>
+                  )}
+                  {businessResearch.result.description && (
+                    <div style={{ fontSize: 10, color: C.muted, marginBottom: 2 }}>
+                      <strong>Description:</strong> {businessResearch.result.description}
+                    </div>
+                  )}
+                  {businessResearch.result.logoUrl && (
+                    <div style={{ fontSize: 10, color: C.cyan, marginBottom: 2 }}>
+                      <strong>Logo:</strong> <a href={businessResearch.result.logoUrl} target="_blank" rel="noopener noreferrer">Found</a>
+                    </div>
+                  )}
+                  {businessResearch.result.socialLinks && Object.keys(businessResearch.result.socialLinks).length > 0 && (
+                    <div style={{ fontSize: 10, color: C.muted, marginBottom: 2 }}>
+                      <strong>Social:</strong> {Object.keys(businessResearch.result.socialLinks).join(', ')}
+                    </div>
+                  )}
+                  {businessResearch.result.contactInfo?.phones?.length > 0 && (
+                    <div style={{ fontSize: 10, color: C.muted, marginBottom: 2 }}>
+                      <strong>Phones:</strong> {businessResearch.result.contactInfo.phones.join(', ')}
+                    </div>
+                  )}
+                  {businessResearch.result.contactInfo?.emails?.length > 0 && (
+                    <div style={{ fontSize: 10, color: C.muted, marginBottom: 2 }}>
+                      <strong>Emails:</strong> {businessResearch.result.contactInfo.emails.join(', ')}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 9, color: C.muted2, marginTop: 4 }}>
+                    Website reachable: {businessResearch.result.reachable ? '✓ Yes' : '✗ No'}
+                  </div>
+                </div>
+              )}
+              {businessResearch.status === 'error' && businessResearch.error && (
+                <div style={{ marginTop: 8, padding: 10, border: `1px solid ${C.danger}`, borderRadius: 8, background: 'rgba(239,91,103,.08)' }}>
+                  <div style={{ fontSize: 10, color: C.danger }}>Research failed: {businessResearch.error}</div>
+                  <button
+                    type="button"
+                    onClick={() => researchBusiness()}
+                    className="mt-2 rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide"
+                    style={{ minHeight: 30, padding: '0 10px', border: `1px solid ${C.danger}`, background: C.danger, color: '#fff' }}
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
