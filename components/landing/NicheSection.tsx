@@ -37,7 +37,7 @@ export default function NicheSection({ niche, demos }: NicheSectionProps) {
         {/* Demo grid — personalization is attached to each demo card */}
         <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {shown.map((demo, i) => (
-            <DemoMediaCard key={demo.slug} demo={demo} index={i} ctaLabel={niche.ctaButton} />
+            <DemoMediaCard key={demo.slug} demo={demo} index={i} />
           ))}
         </div>
 

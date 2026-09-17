@@ -28,8 +28,9 @@ import { buttons, semantic, tabStyle, optionStyle, appWrapper, iconBadge } from 
 import type { PromptRecord, FeedStats } from '@/types/go-ai-viral/prompt'
 import type { SeedancePrompt, SeedanceStats } from '@/types/go-ai-viral/seedance'
 import { useDemoPersonalize } from '@/shared/personalization'
-import { createViralHandoff, emitSendTo, TARGET_LABEL, VIRAL_TARGETS_BY_MEDIA, type StudioTarget, type ViralSourceMedia } from '@/shared/crossStudio'
+import { createViralHandoff, emitSendTo, VIDEO_DEMO_CREATE_TARGETS, TARGET_LABEL, VIRAL_TARGETS_BY_MEDIA, type StudioTarget, type ViralSourceMedia } from '@/shared/crossStudio'
 import { StudioTargetPicker } from './StudioTargetPicker'
+import { DemoTemplateActions, type DemoActionHandlers } from '@/shared/demo-actions'
 import { academyAssets } from '@/data/academyAssets'
 import {
   resolvePromptRecordImage,
@@ -116,7 +117,7 @@ interface PromptCardProps {
   onSelect: (record: PromptRecord) => void
 }
 
-function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
+export function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
   const [showPicker, setShowPicker] = useState(false)
   const [failedImageUrls, setFailedImageUrls] = useState<Set<string>>(new Set())
   const MediaIcon = getMediaTypeIcon(record.mediaType)
@@ -134,6 +135,21 @@ function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
     setShowPicker(true)
   }
   const { openPersonalize } = useDemoPersonalize()
+
+  const actionHandlers: DemoActionHandlers = {
+    onViewPrompt: (event) => {
+      event.stopPropagation()
+      onSelect(record)
+    },
+    onPersonalize: (event) => {
+      event.stopPropagation()
+      openPersonalize({ source: record, trigger: event.currentTarget })
+    },
+    onCreateStyle: (event) => {
+      event.stopPropagation()
+      handleOpenInStudio()
+    },
+  }
 
   return (
     <>
@@ -204,51 +220,28 @@ function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
         <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-white/55">
           {record.prompt}
         </p>
-
-        <div className="mt-auto flex flex-col gap-2 pt-5">
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onSelect(record); }}
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
-          >
-            View Prompt
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              openPersonalize({ source: record, trigger: e.currentTarget })
-            }}
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
-          >
-            Personalize
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              handleOpenInStudio()
-            }}
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-4 py-2.5 text-sm font-bold text-black shadow-glow transition hover:scale-[1.01]"
-          >
-            Open in Studio
-          </button>
-          {record.source?.url && (
+        {record.source?.url && (
+          <div className="mt-2">
             <a
               href={record.source.url}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
+              className="text-xs text-white/50 transition hover:text-white"
             >
               Open Source
             </a>
-          )}
+          </div>
+        )}
+
+        <div className="mt-auto pt-5">
+          <DemoTemplateActions {...actionHandlers} />
         </div>
       </div>
     </button>
     {showPicker && (
       <StudioTargetPicker
         mediaType={record.mediaType || 'image'}
+        targets={record.mediaType === 'video' ? VIDEO_DEMO_CREATE_TARGETS : undefined}
         onClose={() => setShowPicker(false)}
         record={{
           title: record.title,
@@ -284,7 +277,7 @@ interface VideoPromptCardProps {
   onSelect: (record: SeedancePrompt) => void
 }
 
-function VideoPromptCard({ record, onSelect }: VideoPromptCardProps) {
+export function VideoPromptCard({ record, onSelect }: VideoPromptCardProps) {
   const [showPicker, setShowPicker] = useState(false)
   const resolved = resolveSeedanceVideo(record)
 
@@ -292,6 +285,21 @@ function VideoPromptCard({ record, onSelect }: VideoPromptCardProps) {
     setShowPicker(true)
   }
   const { openPersonalize } = useDemoPersonalize()
+
+  const actionHandlers: DemoActionHandlers = {
+    onViewPrompt: (event) => {
+      event.stopPropagation()
+      onSelect(record)
+    },
+    onPersonalize: (event) => {
+      event.stopPropagation()
+      openPersonalize({ source: record, trigger: event.currentTarget })
+    },
+    onCreateStyle: (event) => {
+      event.stopPropagation()
+      handleOpenInStudio()
+    },
+  }
 
   return (
     <>
@@ -355,51 +363,28 @@ function VideoPromptCard({ record, onSelect }: VideoPromptCardProps) {
         <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-white/55">
           {record.fullPrompt}
         </p>
-
-        <div className="mt-auto flex flex-col gap-2 pt-5">
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onSelect(record); }}
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
-          >
-            View Prompt
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              openPersonalize({ source: record, trigger: e.currentTarget })
-            }}
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
-          >
-            Personalize
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              handleOpenInStudio()
-            }}
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-4 py-2.5 text-sm font-bold text-black shadow-glow transition hover:scale-[1.01]"
-          >
-            Open in Studio
-          </button>
-          {record.outputUrl && (
+        {record.outputUrl && (
+          <div className="mt-2">
             <a
               href={record.outputUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
+              className="text-xs text-white/50 transition hover:text-white"
             >
               Play Video
             </a>
-          )}
+          </div>
+        )}
+
+        <div className="mt-auto pt-5">
+          <DemoTemplateActions {...actionHandlers} />
         </div>
       </div>
     </button>
     {showPicker && (
       <StudioTargetPicker
         mediaType="video"
+        targets={VIDEO_DEMO_CREATE_TARGETS}
         onClose={() => setShowPicker(false)}
         record={{
           title: record.prompt,
@@ -548,6 +533,7 @@ function VideoPromptModal({ record, onClose }: VideoPromptModalProps) {
     {showPicker && (
       <StudioTargetPicker
         mediaType="video"
+        targets={VIDEO_DEMO_CREATE_TARGETS}
         onClose={() => setShowPicker(false)}
         record={{
           title: record.prompt,
@@ -892,6 +878,7 @@ function PromptDetailModal({ record, onClose }: PromptDetailModalProps) {
     {showPicker && (
       <StudioTargetPicker
         mediaType={record.mediaType || 'image'}
+        targets={record.mediaType === 'video' ? VIDEO_DEMO_CREATE_TARGETS : undefined}
         onClose={() => setShowPicker(false)}
         record={{
           title: record.title,
