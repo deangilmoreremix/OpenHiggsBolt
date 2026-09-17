@@ -16,7 +16,10 @@ function getApiKey(request: Request): string | null {
 }
 
 function authHeaders(key: string): HeadersInit {
-  const clean = key.replace(/[^\u0000-\u00FF]/g, '').trim()
+  const clean = String(key)
+    .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')
+    .replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '')
+    .trim()
   return { 'Content-Type': 'application/json', 'x-api-key': clean }
 }
 
