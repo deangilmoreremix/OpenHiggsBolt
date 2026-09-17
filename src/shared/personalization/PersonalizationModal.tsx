@@ -585,6 +585,16 @@ export default function PersonalizationModal() {
     importDiscoveredAssets,
     cancelDiscovery,
     discoverAssets,
+    // Business search
+    businessSearchMode,
+    businessSearchResults,
+    businessSearchError,
+    businessSearchQuery,
+    selectedBusiness,
+    findBusinesses,
+    selectBusiness,
+    clearBusinessSearch,
+    setBusinessSearchMode,
     promptState,
     updatePersonalizedPrompt,
     resetPrompt,
@@ -993,6 +1003,16 @@ export default function PersonalizationModal() {
               importDiscoveredAssets={importDiscoveredAssets}
               cancelDiscovery={cancelDiscovery}
               discoverAssets={discoverAssets}
+              // Business search
+              businessSearchMode={businessSearchMode}
+              businessSearchResults={businessSearchResults}
+              businessSearchError={businessSearchError}
+              businessSearchQuery={businessSearchQuery}
+              selectedBusiness={selectedBusiness}
+              findBusinesses={findBusinesses}
+              selectBusiness={selectBusiness}
+              clearBusinessSearch={clearBusinessSearch}
+              setBusinessSearchMode={setBusinessSearchMode}
             />
           )}
         </main>
@@ -1303,6 +1323,16 @@ function ConfigurationView(props: any) {
     importDiscoveredAssets,
     cancelDiscovery,
     discoverAssets,
+    // Business search
+    businessSearchMode,
+    businessSearchResults,
+    businessSearchError,
+    businessSearchQuery,
+    selectedBusiness,
+    findBusinesses,
+    selectBusiness,
+    clearBusinessSearch,
+    setBusinessSearchMode,
   } = props
 
   const identityInputRef = useRef<HTMLInputElement>(null)
@@ -1408,6 +1438,320 @@ function ConfigurationView(props: any) {
               </button>
             ))}
           </div>
+
+          {/* Find Local Business */}
+          {clientForm.audience === 'customer' && businessSearchMode === 'idle' && (
+            <div style={{ marginBottom: 18, padding: 14, border: `1px dashed ${C.border}`, borderRadius: 10, background: 'rgba(41,211,242,.03)' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>How would you like to add this client?</div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBusinessSearchMode && setBusinessSearchMode('searching')}
+                  className="rounded-lg text-[11px] font-extrabold uppercase tracking-wide"
+                  style={{
+                    minHeight: 38,
+                    padding: '0 16px',
+                    border: `1px solid ${C.cyan}`,
+                    background: C.cyanSoft,
+                    color: C.cyan,
+                  }}
+                >
+                  Find Local Business
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {}}
+                  className="rounded-lg text-[11px] font-extrabold uppercase tracking-wide"
+                  style={{
+                    minHeight: 38,
+                    padding: '0 16px',
+                    border: `1px solid ${C.border}`,
+                    background: '#11161b',
+                    color: C.text,
+                  }}
+                >
+                  Enter Business Manually
+                </button>
+              </div>
+              <p style={{ marginTop: 8, color: C.muted2, fontSize: 10, lineHeight: 1.5 }}>
+                Find businesses by niche and location, then personalize this creative for a selected business.
+              </p>
+            </div>
+          )}
+
+          {/* Business Search Form */}
+          {clientForm.audience === 'customer' && businessSearchMode === 'searching' && (
+            <div style={{ marginBottom: 18, padding: 16, border: `1px solid ${C.border}`, borderRadius: 10, background: C.panelSoft }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: C.muted, marginBottom: 10 }}>Find Local Business</div>
+              <p style={{ margin: '0 0 12px', color: C.muted, fontSize: 11, lineHeight: 1.5 }}>
+                Find businesses by niche and location, then personalize this creative for a selected business.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 10, marginBottom: 12 }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: 4, color: C.muted, fontSize: 10 }}>Business Type / Niche</label>
+                  <select
+                    id="business-niche"
+                    className="w-full outline-none"
+                    style={{
+                      minHeight: 40,
+                      padding: '0 11px',
+                      border: `1px solid ${C.border}`,
+                      borderRadius: 8,
+                      background: C.field,
+                      color: C.text,
+                    }}
+                  >
+                    <option value="">Select a niche...</option>
+                    {[
+                      'Roofing Contractor',
+                      'Restaurant',
+                      'Real Estate',
+                      'Automotive',
+                      'Beauty / Salon',
+                      'Fitness / Gym',
+                      'Healthcare',
+                      'Education',
+                      'Technology / SaaS',
+                      'Finance',
+                      'Travel / Hotel',
+                      'Legal',
+                      'Construction',
+                      'General Business',
+                    ].map((niche) => (
+                      <option key={niche} value={niche}>{niche}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: 4, color: C.muted, fontSize: 10 }}>Location</label>
+                  <input
+                    id="business-location"
+                    type="text"
+                    placeholder="Hollywood, Florida"
+                    className="w-full outline-none"
+                    style={{
+                      minHeight: 40,
+                      padding: '0 11px',
+                      border: `1px solid ${C.border}`,
+                      borderRadius: 8,
+                      background: C.field,
+                      color: C.text,
+                    }}
+                  />
+                </div>
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', marginBottom: 4, color: C.muted, fontSize: 10 }}>Search Radius</label>
+                <div className="flex flex-wrap gap-2">
+                  {[5, 10, 15, 25, 50].map((miles) => (
+                    <button
+                      key={miles}
+                      type="button"
+                      onClick={() => {
+                        const niche = (document.getElementById('business-niche') as HTMLSelectElement)?.value
+                        const location = (document.getElementById('business-location') as HTMLInputElement)?.value
+                        if (niche && location) {
+                          findBusinesses(niche, location, miles)
+                        }
+                      }}
+                      className="rounded-lg text-[10px] font-extrabold uppercase tracking-wide"
+                      style={{
+                        minHeight: 34,
+                        padding: '0 12px',
+                        border: `1px solid ${C.border}`,
+                        background: '#11161b',
+                        color: C.text,
+                      }}
+                    >
+                      {miles} mi
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const niche = (document.getElementById('business-niche') as HTMLSelectElement)?.value
+                  const location = (document.getElementById('business-location') as HTMLInputElement)?.value
+                  const radius = 15 // default
+                  if (niche && location) {
+                    findBusinesses(niche, location, radius)
+                  }
+                }}
+                className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide"
+                style={{
+                  minHeight: 42,
+                  padding: '0 19px',
+                  border: `1px solid ${C.cyan}`,
+                  background: C.cyan,
+                  color: '#041014',
+                }}
+              >
+                Find Businesses
+              </button>
+              <button
+                type="button"
+                onClick={() => clearBusinessSearch()}
+                className="ml-2 rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide"
+                style={{
+                  minHeight: 42,
+                  padding: '0 19px',
+                  border: `1px solid ${C.border}`,
+                  background: C.panel,
+                  color: 'white',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {/* Business Search Error */}
+          {clientForm.audience === 'customer' && businessSearchMode === 'error' && businessSearchError && (
+            <div style={{ marginBottom: 18, padding: 14, border: `1px solid ${C.danger}`, borderRadius: 10, background: 'rgba(239,91,103,.08)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span style={{ color: C.danger, fontSize: 14 }}>⚠</span>
+                <span style={{ color: C.danger, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>Business Search Failed</span>
+              </div>
+              <p style={{ margin: '0 0 10px', color: 'rgba(255,255,255,.72)', fontSize: 11, lineHeight: 1.5 }}>{businessSearchError}</p>
+              <button
+                type="button"
+                onClick={() => setBusinessSearchMode && setBusinessSearchMode('searching')}
+                className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide"
+                style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.danger}`, background: C.danger, color: '#fff' }}
+              >
+                Try Again
+              </button>
+            </div>
+          )}
+
+          {/* Business Search Results */}
+          {clientForm.audience === 'customer' && businessSearchMode === 'results' && businessSearchResults.length > 0 && (
+            <div style={{ marginBottom: 18, padding: 16, border: `1px solid ${C.border}`, borderRadius: 10, background: C.panelSoft }}>
+               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>Search Results</div>
+                  <div style={{ fontSize: 11, color: C.text }}>
+                    {businessSearchResults.length} businesses found for {businessSearchQuery?.niche} near {businessSearchQuery?.location}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => clearBusinessSearch()}
+                  className="rounded-lg text-[10px] font-extrabold uppercase tracking-wide"
+                  style={{
+                    minHeight: 32,
+                    padding: '0 12px',
+                    border: `1px solid ${C.border}`,
+                    background: C.panel,
+                    color: 'white',
+                  }}
+                >
+                  New Search
+                </button>
+              </div>
+              <div className="flex flex-col gap-2">
+                {businessSearchResults.map((business) => (
+                  <div
+                    key={business.id}
+                    style={{
+                      padding: 12,
+                      border: `1px solid ${selectedBusiness?.id === business.id ? C.cyanBorder : C.border}`,
+                      borderRadius: 10,
+                      background: selectedBusiness?.id === business.id ? 'rgba(41,211,242,.06)' : '#11161b',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => selectBusiness(business)}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginBottom: 4 }}>
+                          {business.name}
+                        </div>
+                        <div style={{ fontSize: 10, color: C.muted, marginBottom: 2 }}>
+                          {business.category}
+                        </div>
+                        <div style={{ fontSize: 10, color: C.muted, marginBottom: 2 }}>
+                          {[business.address, business.city, business.region].filter(Boolean).join(', ')}
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+                          {business.phone && (
+                            <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.green }}>✓ Phone</span>
+                          )}
+                          {business.website ? (
+                            <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.green }}>✓ Website</span>
+                          ) : (
+                            <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.muted2 }}>Not listed in OpenStreetMap</span>
+                          )}
+                          {business.instagram && (
+                            <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.cyan }}>✓ Instagram</span>
+                          )}
+                          {business.facebook && (
+                            <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: C.cyan }}>✓ Facebook</span>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                        <div style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', color: C.cyan }}>
+                          {Math.round(business.leadScore || 0)}% match
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); selectBusiness(business) }}
+                          className="rounded-lg text-[10px] font-extrabold uppercase tracking-wide"
+                          style={{
+                            minHeight: 32,
+                            padding: '0 12px',
+                            border: `1px solid ${C.cyan}`,
+                            background: C.cyan,
+                            color: '#041014',
+                          }}
+                        >
+                          Use This Business
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p style={{ marginTop: 10, color: C.muted2, fontSize: 9, lineHeight: 1.4 }}>
+                © OpenStreetMap contributors. Website absence in OpenStreetMap does not mean the business has no website.
+              </p>
+            </div>
+          )}
+
+          {/* Selected Business Summary */}
+          {clientForm.audience === 'customer' && businessSearchMode === 'selected' && selectedBusiness && (
+            <div style={{ marginBottom: 18, padding: 14, border: `1px solid ${C.cyan}`, borderRadius: 10, background: 'rgba(41,211,242,.06)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span style={{ color: C.cyan, fontSize: 14 }}>✓</span>
+                <span style={{ color: C.text, fontSize: 12, fontWeight: 700 }}>Selected: {selectedBusiness.name}</span>
+              </div>
+              <div style={{ fontSize: 10, color: C.muted, lineHeight: 1.5 }}>
+                {[selectedBusiness.category, selectedBusiness.address, selectedBusiness.city, selectedBusiness.region].filter(Boolean).join(' • ')}
+                {selectedBusiness.phone && <div>Phone: {selectedBusiness.phone}</div>}
+                {selectedBusiness.website ? (
+                  <div>Website: <a href={selectedBusiness.website} target="_blank" rel="noopener noreferrer" style={{ color: C.cyan }}>{selectedBusiness.website}</a></div>
+                ) : (
+                  <div style={{ color: C.muted2 }}>Website: Not listed in OpenStreetMap</div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => clearBusinessSearch()}
+                className="mt-2 rounded-lg text-[10px] font-extrabold uppercase tracking-wide"
+                style={{
+                  minHeight: 30,
+                  padding: '0 10px',
+                  border: `1px solid ${C.border}`,
+                  background: 'transparent',
+                  color: C.muted,
+                }}
+              >
+                Choose Different Business
+              </button>
+            </div>
+          )}
 
           {/* Saved Clients */}
           {clientForm.audience === 'customer' && clients.length > 0 && (

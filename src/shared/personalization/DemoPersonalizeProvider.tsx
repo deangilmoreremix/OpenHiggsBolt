@@ -20,6 +20,7 @@ import PersonalizationModal from './PersonalizationModal'
 import { writeHandoff } from '@/shared/crossStudio'
 import { SocialPublishContext } from '@/components/SocialPublishProvider'
 import { useAuthConfig } from '@/lib/authConfig'
+import type { BusinessDiscoveryRecord } from '@/server/businessDiscovery'
 
 /** Safe accessor for SocialPublishContext — returns null when not wrapped in a provider. */
 function useOptionalSocialPublish() {
@@ -43,6 +44,7 @@ import type {
   DiscoveredAssetCategory,
   AssignedSection,
   SourceType,
+  BusinessSearchState,
 } from './types'
 import { EMPTY_GENERATION_STATE } from './types'
 import { normalizePersonalizationSource, getEligibility } from './sourceNormalizer'
@@ -74,6 +76,8 @@ import { runGeneration } from './generationRouter'
 import { resolveModelCapabilities, resolveAssetsForModel } from './modelCapabilityResolver'
 import { applyPostProcessing, generateEndCardImage } from './postProcessor'
 import { uploadFile } from 'studio/src/muapi'
+import { geocodeLocation, discoverBusinesses, deduplicateBusinesses, enrichBusinessRecord, scoreAndSort } from '@/server/businessDiscovery'
+import { getNicheMapping, getSupportedNiches } from '@/server/businessDiscovery'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -194,6 +198,17 @@ type DemoPersonalizeContextValue = {
   importDiscoveredAssets: () => Promise<void>
   cancelDiscovery: () => void
   discoverAssets: (websiteUrl: string) => Promise<void>
+
+  // Business search
+  businessSearchMode: 'idle' | 'searching' | 'results' | 'selected' | 'error'
+  businessSearchResults: BusinessDiscoveryRecord[]
+  businessSearchError: string | null
+  businessSearchQuery: { niche: string; location: string; radiusMiles: number } | null
+  selectedBusiness: BusinessDiscoveryRecord | null
+  findBusinesses: (niche: string, location: string, radiusMiles: number) => Promise<void>
+  selectBusiness: (business: BusinessDiscoveryRecord) => void
+  clearBusinessSearch: () => void
+  setBusinessSearchMode: (mode: 'idle' | 'searching' | 'results' | 'selected' | 'error') => void
 
   // Prompt
   promptState: PromptState
@@ -376,6 +391,13 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     const timer = setTimeout(() => setImportConfirmation(null), 5000)
     return () => clearTimeout(timer)
   }, [importConfirmation])
+
+  // Business search state
+  const [businessSearchMode, setBusinessSearchMode] = useState<'idle' | 'searching' | 'results' | 'selected' | 'error'>('idle')
+  const [businessSearchResults, setBusinessSearchResults] = useState<BusinessDiscoveryRecord[]>([])
+  const [businessSearchError, setBusinessSearchError] = useState<string | null>(null)
+  const [businessSearchQuery, setBusinessSearchQuery] = useState<{ niche: string; location: string; radiusMiles: number } | null>(null)
+  const [selectedBusiness, setSelectedBusiness] = useState<BusinessDiscoveryRecord | null>(null)
 
   // Prompt
   const [promptState, setPromptState] = useState<PromptState>({ ...EMPTY_PROMPT_STATE })
@@ -1154,6 +1176,82 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     }
   }, [setDiscoveredAssetsState, setDiscoveryError, setDiscoveryStatus, testMode])
 
+  // ── Business search actions ────────────────────────────────────────────────
+
+  const findBusinesses = useCallback(async (niche: string, location: string, radiusMiles: number) => {
+    setBusinessSearchError(null)
+    setBusinessSearchMode('searching')
+    setBusinessSearchQuery({ niche, location, radiusMiles })
+    setSelectedBusiness(null)
+
+    try {
+      const mapping = getNicheMapping(niche)
+      if (!mapping) {
+        throw new Error(`Unsupported niche: "${niche}". Supported: ${getSupportedNiches().join(', ')}`)
+      }
+
+      // Geocode location
+      const geocodeResult = await geocodeLocation(location)
+
+      // Discover businesses
+      const rawBusinesses = await discoverBusinesses({
+        niche: mapping.label,
+        latitude: geocodeResult.latitude,
+        longitude: geocodeResult.longitude,
+        radiusMiles,
+        limit: 30,
+      })
+
+      // Deduplicate
+      const deduplicated = deduplicateBusinesses(rawBusinesses)
+
+      // Score and sort
+      const scored = scoreAndSort(deduplicated)
+
+      // Enrich
+      const enriched = scored.map(enrichBusinessRecord)
+
+      setBusinessSearchResults(enriched)
+      setBusinessSearchMode(enriched.length > 0 ? 'results' : 'error')
+      if (enriched.length === 0) {
+        setBusinessSearchError('No businesses found for this niche and location. Try a wider radius or different niche.')
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Business search failed'
+      setBusinessSearchError(message)
+      setBusinessSearchMode('error')
+    }
+  }, [])
+
+  const selectBusiness = useCallback((business: BusinessDiscoveryRecord) => {
+    setSelectedBusiness(business)
+    setBusinessSearchMode('selected')
+
+    // Populate client form from business
+    const clientFormPatch: Partial<ClientProfile> = {
+      businessName: business.name,
+      industry: business.category,
+      location: [business.city, business.region].filter(Boolean).join(', ') || undefined,
+      phone: business.phone,
+      website: business.website,
+    }
+
+    updateClientForm(clientFormPatch)
+
+    // If there's a website, trigger asset discovery
+    if (business.website) {
+      discoverAssets(business.website)
+    }
+  }, [updateClientForm, discoverAssets])
+
+  const clearBusinessSearch = useCallback(() => {
+    setBusinessSearchMode('idle')
+    setBusinessSearchResults([])
+    setBusinessSearchError(null)
+    setBusinessSearchQuery(null)
+    setSelectedBusiness(null)
+  }, [])
+
   // ── Prompt actions ─────────────────────────────────────────────────────────
 
   const personalizePromptFn = useCallback(async () => {
@@ -1567,6 +1665,17 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     importDiscoveredAssets,
     cancelDiscovery,
     discoverAssets,
+
+    // Business search
+    businessSearchMode,
+    businessSearchResults,
+    businessSearchError,
+    businessSearchQuery,
+    selectedBusiness,
+    findBusinesses,
+    selectBusiness,
+    clearBusinessSearch,
+    setBusinessSearchMode,
 
     // Prompt
     promptState,
