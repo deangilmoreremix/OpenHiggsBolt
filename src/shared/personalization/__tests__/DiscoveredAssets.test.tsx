@@ -68,6 +68,23 @@ describe('Discovered Assets Integration', () => {
   let originalFetch: typeof globalThis.fetch
   let originalCreateObjectURL: typeof URL.createObjectURL
   let originalRevokeObjectURL: typeof URL.revokeObjectURL
+  const roots: { root: ReturnType<typeof createRoot>; container: HTMLDivElement }[] = []
+
+  const unmountAll = async () => {
+    for (const { root, container } of roots) {
+      try {
+        await act(async () => {
+          root.unmount()
+        })
+      } catch {
+        // ignore unmount errors
+      }
+      if (container.parentNode) {
+        container.parentNode.removeChild(container)
+      }
+    }
+    roots.length = 0
+  }
 
   beforeEach(async () => {
     vi.clearAllMocks()
@@ -77,6 +94,14 @@ describe('Discovered Assets Integration', () => {
     URL.createObjectURL = vi.fn(() => 'blob:http://localhost/test')
     URL.revokeObjectURL = vi.fn()
     document.body.innerHTML = ''
+    await unmountAll()
+    ;(window as any).__personalizationCtx = null
+    if (typeof localStorage !== 'undefined') {
+      localStorage.clear()
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.clear()
+    }
 
     // Mock the download-image endpoint used by importDiscoveredAssets
     ;(globalThis as any).fetch = vi.fn(async (url: string, options?: any) => {
@@ -120,6 +145,7 @@ describe('Discovered Assets Integration', () => {
     ;(globalThis as any).fetch = originalFetch
     URL.createObjectURL = originalCreateObjectURL
     URL.revokeObjectURL = originalRevokeObjectURL
+    unmountAll()
   })
 
   const renderProvider = async () => {
@@ -138,6 +164,7 @@ describe('Discovered Assets Integration', () => {
       )
     })
 
+    roots.push({ root, container })
     return container
   }
 
