@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import LazyVideo from './LazyVideo';
 import Reveal from './Reveal';
 import { useDemoPrompt } from './DemoPromptModal';
@@ -27,6 +27,10 @@ export default function DemoMediaCard({
   const { openPrompt } = useDemoPrompt();
   const { openPersonalize } = useDemoPersonalize();
   const [showCreatePicker, setShowCreatePicker] = useState(false)
+  const createStyleTriggerRef = useRef<HTMLElement | null>(null)
+  const handleCreatePickerClose = useCallback(() => {
+    setShowCreatePicker(false)
+  }, [])
 
   return (
     <Reveal
@@ -64,13 +68,15 @@ export default function DemoMediaCard({
             }}
             onCreateStyle={(event) => {
               event.preventDefault();
+              createStyleTriggerRef.current = event.currentTarget
               setShowCreatePicker(true);
             }}
           />
           {showCreatePicker && (
             <VideoCreateTargetPicker
               demo={demo}
-              onClose={() => setShowCreatePicker(false)}
+              triggerElement={createStyleTriggerRef.current}
+              onClose={handleCreatePickerClose}
             />
           )}
         </div>

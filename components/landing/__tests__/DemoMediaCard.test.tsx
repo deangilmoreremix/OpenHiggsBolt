@@ -112,4 +112,96 @@ describe('DemoMediaCard', () => {
     expect(screen.queryByText('VFX Studio')).toBeNull();
     expect(screen.queryByText('Marketing Studio')).toBeNull();
   });
+
+  it('moves focus into the picker when Create This Style is clicked', async () => {
+    render(
+      <Wrapper>
+        <DemoMediaCard demo={demo} />
+      </Wrapper>,
+    );
+
+    const createButtons = screen.getAllByText('Create This Style');
+    await act(async () => {
+      createButtons[0].click();
+    });
+
+    const videoStudioButton = screen.getByText('Video Studio');
+    expect(document.activeElement).toBe(videoStudioButton);
+  });
+
+  it('restores focus to Create This Style when Cancel is clicked', async () => {
+    render(
+      <Wrapper>
+        <DemoMediaCard demo={demo} />
+      </Wrapper>,
+    );
+
+    const createButtons = screen.getAllByText('Create This Style');
+    const trigger = createButtons[0] as HTMLElement;
+
+    await act(async () => {
+      trigger.click();
+    });
+
+    expect(screen.getByText('Video Studio')).toBeDefined();
+
+    const cancelButton = screen.getByText('Cancel');
+    await act(async () => {
+      cancelButton.click();
+    });
+
+    expect(screen.queryByText('Video Studio')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('restores focus to Create This Style when Escape is pressed', async () => {
+    render(
+      <Wrapper>
+        <DemoMediaCard demo={demo} />
+      </Wrapper>,
+    );
+
+    const createButtons = screen.getAllByText('Create This Style');
+    const trigger = createButtons[0] as HTMLElement;
+
+    await act(async () => {
+      trigger.click();
+    });
+
+    expect(screen.getByText('Video Studio')).toBeDefined();
+
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+
+    expect(screen.queryByText('Video Studio')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('restores focus to Create This Style when backdrop is clicked', async () => {
+    render(
+      <Wrapper>
+        <DemoMediaCard demo={demo} />
+      </Wrapper>,
+    );
+
+    const createButtons = screen.getAllByText('Create This Style');
+    const trigger = createButtons[0] as HTMLElement;
+
+    await act(async () => {
+      trigger.click();
+    });
+
+    expect(screen.getByText('Video Studio')).toBeDefined();
+
+    const backdrop = document.querySelector('[aria-label="Open in studio"]');
+    if (backdrop instanceof HTMLElement) {
+      await act(async () => {
+        backdrop.click();
+      });
+    }
+
+    expect(screen.queryByText('Video Studio')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
 });

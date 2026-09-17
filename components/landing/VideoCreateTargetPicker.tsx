@@ -12,9 +12,10 @@ type TargetId = typeof VIDEO_DEMO_CREATE_TARGETS[number]['id']
 export interface VideoCreateTargetPickerProps {
   demo: VideoDemo
   onClose: () => void
+  triggerElement?: HTMLElement | null
 }
 
-export function VideoCreateTargetPicker({ demo, onClose }: VideoCreateTargetPickerProps) {
+export function VideoCreateTargetPicker({ demo, onClose, triggerElement }: VideoCreateTargetPickerProps) {
   const handleSelect = useCallback(
     (target: TargetId) => {
       if (!demo.sourceRepo) {
@@ -27,17 +28,29 @@ export function VideoCreateTargetPicker({ demo, onClose }: VideoCreateTargetPick
     [demo],
   )
 
+  const handleClose = useCallback(() => {
+    triggerElement?.focus()
+    onClose()
+  }, [onClose, triggerElement])
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault()
         event.stopPropagation()
-        onClose()
+        handleClose()
       }
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [onClose])
+  }, [handleClose])
+
+  useEffect(() => {
+    const firstButton = document.querySelector('[data-video-create-target="video"]')
+    if (firstButton instanceof HTMLElement) {
+      firstButton.focus()
+    }
+  }, [])
 
   return (
     <div
@@ -46,7 +59,7 @@ export function VideoCreateTargetPicker({ demo, onClose }: VideoCreateTargetPick
       aria-label="Open in studio"
       className="fixed inset-0 z-[110] flex items-center justify-center"
       style={{ background: 'rgba(0,0,0,0.6)' }}
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div
         className="w-full max-w-sm rounded-2xl border border-white/10 p-4"
@@ -58,6 +71,7 @@ export function VideoCreateTargetPicker({ demo, onClose }: VideoCreateTargetPick
           {VIDEO_DEMO_CREATE_TARGETS.map((target) => (
             <button
               key={target.id}
+              data-video-create-target={target.id}
               onClick={() => handleSelect(target.id)}
               className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] transition-colors"
             >
@@ -66,7 +80,7 @@ export function VideoCreateTargetPicker({ demo, onClose }: VideoCreateTargetPick
           ))}
         </div>
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="mt-3 w-full px-4 py-2 rounded-xl text-xs font-medium text-white/60 hover:text-white transition-colors"
         >
           Cancel
