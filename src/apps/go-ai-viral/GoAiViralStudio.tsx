@@ -976,8 +976,11 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
 
   // Pagination
   const [page, setPage] = useState(1)
-  const pageSize = 24
-  const [isPageLoading, setIsPageLoading] = useState(false)
+  const pageSize = 30
+  const [hasMore, setHasMore] = useState(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+  const infiniteObserverRef = useRef<IntersectionObserver | null>(null)
 
   // View / selection
   const [selectedRecord, setSelectedRecord] = useState<PromptRecord | null>(null)
@@ -994,12 +997,15 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
   const [videoStats, setVideoStats] = useState<SeedanceStats | null>(null)
   const [availableLanguages, setAvailableLanguages] = useState<string[]>([])
   const [videoPage, setVideoPage] = useState(1)
-  const videoPageSize = 24
-  const [isVideoPageLoading, setIsVideoPageLoading] = useState(false)
+  const videoPageSize = 30
+  const [videoHasMore, setVideoHasMore] = useState(false)
+  const [isVideoLoadingMore, setIsVideoLoadingMore] = useState(false)
   const [videoError, setVideoError] = useState<string | null>(null)
   const [selectedVideoRecord, setSelectedVideoRecord] = useState<SeedancePrompt | null>(null)
   const [videoLanguage, setVideoLanguage] = useState('')
   const [videoOnly, setVideoOnly] = useState<'video-only' | 'video-and-prompt' | 'all'>('video-and-prompt')
+  const videoSentinelRef = useRef<HTMLDivElement | null>(null)
+  const videoInfiniteObserverRef = useRef<IntersectionObserver | null>(null)
 
   // Abort/race-protection refs for fetchFeed
   const fetchIdRef = useRef(0)
@@ -1026,7 +1032,7 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
   const fetchFeed = useCallback(async (pageNum = 1) => {
     const isInitial = pageNum === 1
     if (isInitial) setIsLoading(true)
-    else setIsPageLoading(true)
+    else setIsLoadingMore(true)
     setError(null)
 
     // Abort any in-flight request before starting a new one
@@ -1055,10 +1061,19 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
       if (controllerRef.current !== controller) return
       if (currentId !== fetchIdRef.current) return
       const json: FeedResponse = await res.json()
-      setRecords(json.data)
+      if (isInitial) {
+        setRecords(json.data)
+      } else {
+        setRecords((prev) => {
+          const seen = new Set(prev.map((r) => r.id))
+          const deduped = json.data.filter((r) => !seen.has(r.id))
+          return [...prev, ...deduped]
+        })
+      }
       setStats(json.meta?.stats || null)
       setAvailableCategories(json.meta?.availableCategories || [])
       setAvailableModels(json.meta?.availableModels || [])
+      setHasMore(pageNum < (json.pagination?.totalPages || 1))
     } catch (err: unknown) {
       if ((err as Error)?.name === 'AbortError') return
       const errMsg = err instanceof Error ? err.message : 'Failed to load the prompt feed'
@@ -1069,7 +1084,7 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
       }
       if (currentId === fetchIdRef.current) {
         if (isInitial) setIsLoading(false)
-        else setIsPageLoading(false)
+        else setIsLoadingMore(false)
       }
     }
   }, [mediaType, selectedCategory, selectedModel, search, sort])
@@ -1080,15 +1095,10 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
     fetchFeed(1)
   }, [mediaType, selectedCategory, selectedModel, search, sort, fetchFeed])
 
-  // Fetch when page changes
-  useEffect(() => {
-    if (page !== 1) fetchFeed(page)
-  }, [page, fetchFeed])
-
   const fetchVideoFeed = useCallback(async (pageNum = 1) => {
     const isInitial = pageNum === 1
     if (isInitial) setIsLoading(true)
-    else setIsVideoPageLoading(true)
+    else setIsVideoLoadingMore(true)
     setVideoError(null)
 
     if (videoControllerRef.current) {
@@ -1118,9 +1128,18 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
         pagination: { page: number; pageSize: number; total: number; totalPages: number }
         meta: { stats: SeedanceStats; availableLanguages: string[]; fetchedAt: number }
       } = await res.json()
-      setVideoRecords(json.data)
+      if (isInitial) {
+        setVideoRecords(json.data)
+      } else {
+        setVideoRecords((prev) => {
+          const seen = new Set(prev.map((r) => r.slug))
+          const deduped = json.data.filter((r) => !seen.has(r.slug))
+          return [...prev, ...deduped]
+        })
+      }
       setVideoStats(json.meta?.stats || null)
       setAvailableLanguages(json.meta?.availableLanguages || [])
+      setVideoHasMore(pageNum < (json.pagination?.totalPages || 1))
     } catch (err: unknown) {
       if ((err as Error)?.name === 'AbortError') return
       const errMsg = err instanceof Error ? err.message : 'Failed to load video prompts'
@@ -1131,7 +1150,7 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
       }
       if (currentId === videoFetchIdRef.current) {
         if (isInitial) setIsLoading(false)
-        else setIsVideoPageLoading(false)
+        else setIsVideoLoadingMore(false)
       }
     }
   }, [videoSearchInput, videoLanguage, videoOnly])
@@ -1142,10 +1161,77 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
     fetchVideoFeed(1)
   }, [studioMode, videoSearchInput, videoLanguage, videoOnly, fetchVideoFeed])
 
+  const loadMore = useCallback(() => {
+    if (studioMode === 'feed') {
+      if (isLoadingMore || !hasMore) return
+      const nextPage = page + 1
+      setPage(nextPage)
+      fetchFeed(nextPage)
+    } else if (studioMode === 'video-prompts') {
+      if (isVideoLoadingMore || !videoHasMore) return
+      const nextPage = videoPage + 1
+      setVideoPage(nextPage)
+      fetchVideoFeed(nextPage)
+    }
+  }, [studioMode, isLoadingMore, hasMore, page, fetchFeed, isVideoLoadingMore, videoHasMore, videoPage, fetchVideoFeed])
+
+  // Setup infinite scroll observer
   useEffect(() => {
-    if (studioMode !== 'video-prompts' || videoPage === 1) return
-    fetchVideoFeed(videoPage)
-  }, [studioMode, videoPage, fetchVideoFeed])
+    if (!sentinelRef.current && !videoSentinelRef.current) return
+
+    // Clean up existing observers
+    if (infiniteObserverRef.current) {
+      infiniteObserverRef.current.disconnect()
+      infiniteObserverRef.current = null
+    }
+    if (videoInfiniteObserverRef.current) {
+      videoInfiniteObserverRef.current.disconnect()
+      videoInfiniteObserverRef.current = null
+    }
+
+    const createObserver = (sentinel: HTMLDivElement | null, enabled: boolean) => {
+      if (!sentinel || !enabled) return null
+      return new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && !isLoadingMore && !isVideoLoadingMore) {
+            loadMore()
+          }
+        },
+        { rootMargin: '400px' }
+      )
+    }
+
+    const feedObserver = createObserver(sentinelRef.current, studioMode === 'feed')
+    const videoObserver = createObserver(videoSentinelRef.current, studioMode === 'video-prompts')
+
+    if (feedObserver && sentinelRef.current) {
+      feedObserver.observe(sentinelRef.current)
+      infiniteObserverRef.current = feedObserver
+    }
+    if (videoObserver && videoSentinelRef.current) {
+      videoObserver.observe(videoSentinelRef.current)
+      videoInfiniteObserverRef.current = videoObserver
+    }
+
+    return () => {
+      if (infiniteObserverRef.current) {
+        infiniteObserverRef.current.disconnect()
+        infiniteObserverRef.current = null
+      }
+      if (videoInfiniteObserverRef.current) {
+        videoInfiniteObserverRef.current.disconnect()
+        videoInfiniteObserverRef.current = null
+      }
+    }
+  }, [studioMode, loadMore, isLoadingMore, isVideoLoadingMore])
+
+  // Reset pagination when mode changes
+  useEffect(() => {
+    setHasMore(false)
+    setIsLoadingMore(false)
+    setVideoHasMore(false)
+    setIsVideoLoadingMore(false)
+  }, [studioMode])
 
   // ── Sidebar category data ────────────────────────────────────────────────────
   const categoryCounts = useMemo(() => {
@@ -1443,9 +1529,9 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
 
         {/* ── Main Feed ── */}
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar relative">
-          {(studioMode === 'feed' ? isPageLoading : isVideoPageLoading) && (studioMode === 'feed' ? page : videoPage) > 1 && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 backdrop-blur-sm">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
+          {(studioMode === 'feed' ? isLoadingMore : isVideoLoadingMore) && (studioMode === 'feed' ? page : videoPage) > 1 && (
+            <div className="absolute inset-0 z-10 flex items-start justify-center pt-4 pointer-events-none">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
             </div>
           )}
           {isLoading && (studioMode === 'feed' ? page : videoPage) === 1 ? (
@@ -1599,38 +1685,31 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
                 </div>
               )}
 
-              {/* Pagination */}
-              {(studioMode === 'feed' ? records.length : videoRecords.length) > 0 && (
-                <div className="mt-6 flex items-center justify-between">
-                  <p className="text-xs" style={{ color: semantic.textMuted }}>
-                    {studioMode === 'feed'
-                      ? `Page ${page} of ${Math.ceil((stats?.total || 0) / pageSize)} · ${stats?.total || 0} total prompts`
-                      : `Page ${videoPage} of ${Math.ceil((videoStats?.total || 0) / videoPageSize)} · ${videoStats?.total || 0} video prompts`}
-                  </p>
-                  <div className="flex gap-2">
-                     <button
-                       onClick={() => (studioMode === 'feed' ? setPage(p => Math.max(1, p - 1)) : setVideoPage(p => Math.max(1, p - 1)))}
-                       disabled={(() => {
-                         if (studioMode === 'feed') return page <= 1 || isLoading || isPageLoading
-                         return videoPage <= 1 || isLoading || isVideoPageLoading
-                       })()}
-                       className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50"
-                       style={buttons.ghost}
-                     >
-                       Previous
-                     </button>
-                     <button
-                       onClick={() => (studioMode === 'feed' ? setPage(p => p + 1) : setVideoPage(p => p + 1))}
-                       disabled={(() => {
-                         if (studioMode === 'feed') return page >= Math.ceil((stats?.total || 0) / pageSize) || isLoading || isPageLoading
-                         return videoPage >= Math.ceil((videoStats?.total || 0) / videoPageSize) || isLoading || isVideoPageLoading
-                       })()}
-                       className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50"
-                       style={buttons.ghost}
-                     >
-                       Next
-                    </button>
-                  </div>
+              {/* Infinite scroll sentinel */}
+              {studioMode === 'feed' && hasMore && (
+                <div ref={sentinelRef} className="h-8 w-full" aria-hidden="true" />
+              )}
+              {studioMode === 'video-prompts' && videoHasMore && (
+                <div ref={videoSentinelRef} className="h-8 w-full" aria-hidden="true" />
+              )}
+
+              {/* Loading indicator */}
+              {(studioMode === 'feed' ? isLoadingMore : isVideoLoadingMore) && (
+                <div className="mt-4 flex items-center justify-center gap-2 text-xs text-white/50">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
+                  <span>Loading more...</span>
+                </div>
+              )}
+
+              {/* End of results */}
+              {studioMode === 'feed' && !hasMore && records.length > 0 && (
+                <div className="mt-6 text-center text-xs text-white/30">
+                  — End of feed —
+                </div>
+              )}
+              {studioMode === 'video-prompts' && !videoHasMore && videoRecords.length > 0 && (
+                <div className="mt-6 text-center text-xs text-white/30">
+                  — End of video prompts —
                 </div>
               )}
             </div>
