@@ -132,7 +132,7 @@ describe('StaticDiscoveryProvider', () => {
 
 describe('orchestrateDiscovery', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.restoreAllMocks()
   })
 
   it('uses static first when API key is provided', async () => {
@@ -202,5 +202,125 @@ describe('orchestrateDiscovery', () => {
         firecrawlApiKey: 'fc-test',
       }),
     ).rejects.toThrow('Private network addresses are not allowed')
+  })
+
+  it('does not call Firecrawl when static returns enough useful assets', async () => {
+    const staticResult = {
+      candidates: [
+        { url: 'https://example.com/logo.png', sourcePage: 'https://example.com', ogContext: 'logo' },
+        { url: 'https://example.com/product1.png', sourcePage: 'https://example.com', ogContext: 'product' },
+        { url: 'https://example.com/product2.png', sourcePage: 'https://example.com', ogContext: 'product' },
+        { url: 'https://example.com/storefront.png', sourcePage: 'https://example.com', ogContext: 'storefront' },
+        { url: 'https://example.com/office.png', sourcePage: 'https://example.com', ogContext: 'office' },
+      ],
+      provider: 'STATIC_FALLBACK',
+      pagesCrawled: 1,
+      rawCandidates: 5,
+      socialProfiles: [],
+    }
+
+    vi.spyOn(StaticDiscoveryProvider.prototype, 'discover').mockResolvedValue(staticResult)
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: [] }),
+    } as Response)
+
+    const result = await orchestrateDiscovery({
+      websiteUrl: 'https://example.com',
+      maxPages: 5,
+      maxImages: 20,
+      firecrawlApiKey: 'fc-test',
+      enableFirecrawlFallback: true,
+    })
+
+    expect(result.providerAttempted).toBe('SMARTVIDEO_STATIC')
+    expect(result.providerUsed).toBe('SMARTVIDEO_STATIC')
+    expect(result.providerAttempts).not.toContain('FIRECRAWL')
+    expect(result.firecrawlUsed).toBe(false)
+  })
+
+  it('does not call Firecrawl when fallback is disabled even if static is weak', async () => {
+    vi.spyOn(axios, 'get').mockRejectedValue(new Error('Static down'))
+
+    const result = await orchestrateDiscovery({
+      websiteUrl: 'https://example.com',
+      maxPages: 5,
+      maxImages: 20,
+      firecrawlApiKey: 'fc-test',
+      enableFirecrawlFallback: false,
+    })
+
+    expect(result.providerAttempted).toBe('SMARTVIDEO_STATIC')
+    expect(result.providerUsed).toBe('SMARTVIDEO_STATIC')
+    expect(result.providerAttempts).not.toContain('FIRECRAWL')
+    expect(result.firecrawlUsed).toBe(false)
+  })
+
+  it('calls Firecrawl only when useful assets are insufficient and fallback is enabled', async () => {
+    // Static returns only 1 image, which is insufficient for personalization
+    const staticResult = {
+      candidates: [
+        { url: 'https://example.com/one.png', sourcePage: 'https://example.com', ogContext: 'brand' },
+      ],
+      provider: 'STATIC_FALLBACK',
+      pagesCrawled: 1,
+      rawCandidates: 1,
+      socialProfiles: [],
+    }
+
+    vi.spyOn(StaticDiscoveryProvider.prototype, 'discover').mockResolvedValue(staticResult)
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: [
+          {
+            url: 'https://example.com/page1',
+            html: '<html><body><img src="https://example.com/firecrawl-logo.png" /></body></html>',
+          },
+        ],
+      }),
+    } as Response)
+
+    const result = await orchestrateDiscovery({
+      websiteUrl: 'https://example.com',
+      maxPages: 5,
+      maxImages: 20,
+      firecrawlApiKey: 'fc-test',
+      enableFirecrawlFallback: true,
+    })
+
+    expect(result.providerAttempts).toContain('SMARTVIDEO_STATIC')
+    expect(result.providerAttempts).toContain('FIRECRAWL')
+    expect(result.firecrawlReason).toBeTruthy()
+    expect(result.firecrawlReason).toContain('insufficient_logo')
+  })
+
+  it('records useful asset counts in telemetry', async () => {
+    const staticResult = {
+      candidates: [
+        { url: 'https://example.com/logo.png', sourcePage: 'https://example.com', ogContext: 'logo' },
+        { url: 'https://example.com/storefront.png', sourcePage: 'https://example.com', ogContext: 'storefront' },
+      ],
+      provider: 'STATIC_FALLBACK',
+      pagesCrawled: 1,
+      rawCandidates: 2,
+      socialProfiles: [],
+    }
+
+    vi.spyOn(StaticDiscoveryProvider.prototype, 'discover').mockResolvedValue(staticResult)
+
+    const result = await orchestrateDiscovery({
+      websiteUrl: 'https://example.com',
+      maxPages: 5,
+      maxImages: 20,
+      firecrawlApiKey: 'fc-test',
+      enableFirecrawlFallback: false,
+    })
+
+    expect(result.localUsefulAssetCount).toBeGreaterThanOrEqual(0)
+    expect(result.firecrawlUsefulAssetCount).toBe(0)
+    expect(result.firecrawlUsed).toBe(false)
   })
 })
