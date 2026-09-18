@@ -1,9 +1,13 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { screen } from '@testing-library/react'
 import { DemoPersonalizeProvider, useDemoPersonalize } from '../DemoPersonalizeProvider'
+
+beforeAll(() => {
+  globalThis.IS_REACT_ACT_ENVIRONMENT = true
+})
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
