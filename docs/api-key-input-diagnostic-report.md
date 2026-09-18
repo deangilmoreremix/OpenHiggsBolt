@@ -173,7 +173,6 @@ export function isValidKeyFormat(key) {
 | Component | Validation performed |
 |-----------|---------------------|
 | `SettingsModal.js` | `.value.trim()` non-empty check only |
-| `AuthModal.js` | `.value.trim()` non-empty check only |
 | `ApiKeyModal.tsx` (VFX) | `.trim()` non-empty check only |
 | `DesignAgent.tsx` | `.trim()` non-empty check only |
 | `BottomInputBar.tsx` | `.trim()` non-empty check only |
@@ -208,7 +207,7 @@ Keys are saved without any verification against the MuAPI API. Compare to `Stand
 
 | Field | Value |
 |-------|-------|
-| **Location** | `src/components/SettingsModal.js`, `src/components/AuthModal.js` |
+| **Location** | `src/components/SettingsModal.js` |
 
 API keys are stored in plaintext in `localStorage`. The `src/lib/muapiKeyCrypto.ts` module provides encryption helpers but is used server-side only. For a client-side-only app this is a known tradeoff, but worth noting.
 
@@ -222,7 +221,7 @@ API keys are stored in plaintext in `localStorage`. The `src/lib/muapiKeyCrypto.
 │                              │                                   │
 │                              ▼                                   │
 │  ┌───────────────────────────────────────────────────────────┐   │
-│  │  Input layer (SettingsModal / AuthModal / ApiKeyModal /   │   │
+│  │  Input layer (SettingsModal / ApiKeyModal /                 │   │
 │  │  DesignAgent / BottomInputBar)                             │   │
 │  │                                                            │   │
 │  │  ❌ No format validation (2.5)                             │   │

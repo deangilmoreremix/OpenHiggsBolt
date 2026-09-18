@@ -23,7 +23,6 @@ src/
 ├── components/
 │   ├── ImageStudio.js    # Core logic: Prompts, model picking, canvas, history.
 │   ├── Header.js         # Navigation, user settings, auth status.
-│   ├── AuthModal.js      # Modal for capturing and validating the API key.
 │   ├── SettingsModal.js   # Panel for managing settings (clearing API key).
 │   └── Sidebar.js        # (Currently unused/placeholder) Navigation sidebar.
 ├── lib/
@@ -47,7 +46,7 @@ This is the most complex component. It handles:
     - **Model Picker:** Lists models from `models.js`.
     - **Quality/Resolution:** Only appears for models with explicit resolution support (like `nano-banana-pro`). Hidden for others (like `flux-schnell`).
 - **Generation Flow:**
-    1. Checks for API key in `localStorage`. If missing, opens `AuthModal`.
+    1. Checks for API key in `localStorage`. If missing, opens the API key modal.
     2. Calls `muapi.generateImage()`.
     3. Polling loop waits for result.
     4. On success, adds result to `generationHistory` and displays it.

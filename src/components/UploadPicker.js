@@ -15,7 +15,7 @@ import { getUploadHistory, saveUpload, removeUpload, generateThumbnail } from '.
  */
 export function createUploadPicker({ anchorContainer, onSelect, onClear, maxImages: initialMaxImages = 1, uploadFn, requireApiKey }) {
     // uploadFn(file) → Promise<string url>. Defaults to Muapi-hosted upload.
-    // requireApiKey() → boolean. Lets the caller suppress the AuthModal when
+    // requireApiKey() → boolean. Lets the caller suppress the API key prompt when
     // the active provider doesn't need a Muapi key (e.g. local Wan2GP).
     const doUpload = uploadFn || ((file) => muapi.uploadFile(file));
     const needsKey = typeof requireApiKey === 'function' ? requireApiKey : () => true;
