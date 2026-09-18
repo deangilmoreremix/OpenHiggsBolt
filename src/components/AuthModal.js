@@ -1,4 +1,4 @@
-import { isValidKeyFormat, MUAPI_KEY_API_ENDPOINT } from '../lib/keys.js';
+import { isValidKeyFormat, MUAPI_KEY_API_ENDPOINT, cleanApiKey } from '../lib/keys.js';
 import { buildCookie, MUAPI_KEY_COOKIE } from '../lib/authConfig.ts';
 import { t } from '../lib/i18n.js';
 
@@ -52,11 +52,7 @@ export function AuthModal(onSuccess) {
     btn.onclick = () => {
         const key = input.value.trim();
         if (key && isValidKeyFormat(key)) {
-            // Clean key before saving to remove invisible Unicode characters
-            const cleanedKey = key
-                .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')
-                .replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '')
-                .trim();
+            const cleanedKey = cleanApiKey(key);
 
             // Persist key server-side via the encrypted key store.
             fetch(MUAPI_KEY_API_ENDPOINT, {

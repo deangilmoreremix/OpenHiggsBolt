@@ -2,6 +2,7 @@ import { getModelById, getVideoModelById, getI2IModelById, getI2VModelById, getV
 import axios from 'axios';
 import { getStableUserId } from '../shared/auth/stableUserId';
 import { getApiKey } from './authConfig.ts';
+import { cleanApiKey } from './keys.js';
 
 // Marks an error as terminal so the polling loop rethrows instead of retrying.
 function fatal(message) {
@@ -644,20 +645,12 @@ export class MuapiClient {
 
 export const muapi = new MuapiClient();
 
-function cleanKey(apiKey) {
-  if (!apiKey) return '';
-  return String(apiKey)
-    .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')  // zero-width chars, BOM, word joiner, soft hyphen
-    .replace(/^[\s\u0000-\u001F]+|[\s\u0000-\u001F]+$/g, '')
-    .trim();
-}
-
 function withKey(config, apiKey) {
   return {
     ...config,
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': cleanKey(apiKey),
+      'x-api-key': cleanApiKey(apiKey),
       ...(config.headers || {}),
     },
   };

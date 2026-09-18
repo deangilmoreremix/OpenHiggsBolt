@@ -1,18 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { isValidKeyFormat } from '@/lib/keys';
-
-// Strip invisible Unicode characters that commonly corrupt copied API keys.
-// These characters are invisible in browser inputs but cause MuAPI to reject
-// the key with a 401 "Not authorized" error.
-function cleanApiKey(key) {
-  if (!key) return '';
-  return String(key)
-    .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')  // zero-width chars, BOM, word joiner, soft hyphen
-    .replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '')
-    .trim();
-}
+import { isValidKeyFormat, cleanApiKey } from '@/lib/keys';
 
 export default function ApiKeyModal({
   onSave,
