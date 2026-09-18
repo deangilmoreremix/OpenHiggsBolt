@@ -160,8 +160,16 @@ export function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
 
   return (
     <>
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => onSelect(record)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            onSelect(record)
+          }
+        }}
         className={classNames(
           'group relative flex flex-col rounded-3xl border text-left transition-all duration-300 overflow-hidden',
           isSelected
@@ -253,7 +261,7 @@ export function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
           <DemoTemplateActions {...actionHandlers} />
         </div>
       </div>
-    </button>
+      </div>
     {showPicker && (
       <StudioTargetPicker
         mediaType={record.mediaType || 'image'}
@@ -325,8 +333,16 @@ export function VideoPromptCard({ record, onSelect }: VideoPromptCardProps) {
 
   return (
     <>
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => onSelect(record)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            onSelect(record)
+          }
+        }}
         className={classNames(
           'group relative flex flex-col rounded-3xl border text-left transition-all duration-300 overflow-hidden',
           'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
@@ -411,7 +427,7 @@ export function VideoPromptCard({ record, onSelect }: VideoPromptCardProps) {
           <DemoTemplateActions {...actionHandlers} />
         </div>
       </div>
-    </button>
+      </div>
     {showPicker && (
       <StudioTargetPicker
         mediaType="video"
