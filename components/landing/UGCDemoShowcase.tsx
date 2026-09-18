@@ -46,8 +46,6 @@ export default function UGCDemoShowcase({ demos }: UGCDemoShowcaseProps) {
               demo={item.demo}
               index={i}
               badge={item.badge}
-              ctaLabel="Create This Type of Video"
-              showViewPrompt={false}
             />
           ))}
         </div>

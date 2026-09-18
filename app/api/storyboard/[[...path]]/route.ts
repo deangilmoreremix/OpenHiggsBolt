@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import { isValidStoryboardModel, DEFAULT_STORYBOARD_MODEL_ID } from '@/apps/storyboard/models';
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
 import { ENTITLEMENTS } from '@/access/entitlements';
+import { cleanApiKey } from '@/lib/keys';
 
 const MUAPI_BASE = process.env.MUAPI_BASE_URL || 'https://api.muapi.ai'
 const STORYBOARD_MODEL = process.env.STORYBOARD_MODEL || 'openai-sora-2-pro-storyboard'
@@ -16,8 +17,7 @@ function getApiKey(request: Request): string | null {
 }
 
 function authHeaders(key: string): HeadersInit {
-  const clean = key.replace(/[^\u0000-\u00FF]/g, '').trim()
-  return { 'Content-Type': 'application/json', 'x-api-key': clean }
+  return { 'Content-Type': 'application/json', 'x-api-key': cleanApiKey(key) }
 }
 
 function parseError(text: string): string {

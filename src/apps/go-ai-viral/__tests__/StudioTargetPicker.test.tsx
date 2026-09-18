@@ -82,4 +82,13 @@ describe('StudioTargetPicker', () => {
     );
     expect(targetButtons.length).toBe(4);
   });
+
+  it('renders custom targets when provided', () => {
+    const { container } = mount({ ...defaultProps, targets: ['video', 'cinema'] });
+    const buttons = [...container.querySelectorAll('button')].map((b) => b.textContent.trim());
+    expect(buttons).toContain('Video Studio');
+    expect(buttons).toContain('Cinema Studio');
+    expect(buttons).not.toContain('VFX Studio');
+    expect(buttons).not.toContain('Clipping Studio');
+  });
 });

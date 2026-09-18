@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import { resolveMuapiKey as resolveMuapiKeyFromStorage, resolveOpenAIKey as resolveOpenAIKeyFromStorage, isValidKeyFormat, MUAPI_KEY_STORAGE, OPENAI_KEY_STORAGE } from './keys';
+import { resolveMuapiKey as resolveMuapiKeyFromStorage, resolveOpenAIKey as resolveOpenAIKeyFromStorage, isValidKeyFormat, MUAPI_KEY_STORAGE, OPENAI_KEY_STORAGE, cleanApiKey } from './keys';
 
 export const MUAPI_KEY_COOKIE = 'muapi_key';
 export const OPENAI_KEY_COOKIE = 'openai_key';
@@ -42,13 +42,7 @@ export function getCookie(name: string): string | null {
 }
 
 // ── Key sanitization ───────────────────────────────────────────────────────
-function cleanKey(key: string | null | undefined): string {
-  if (!key) return '';
-  return String(key)
-    .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')
-    .replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '')
-    .trim();
-}
+// cleanApiKey is imported from ./keys as the single source of truth.
 
 // ── Listener model for React consumers ─────────────────────────────────────
 type AuthListener = () => void;
@@ -69,17 +63,17 @@ let muapiKey = '';
 let openaiKey = '';
 
 if (typeof window !== 'undefined') {
-  muapiKey = cleanKey(resolveMuapiKeyFromStorage());
-  openaiKey = cleanKey(resolveOpenAIKeyFromStorage());
+  muapiKey = cleanApiKey(resolveMuapiKeyFromStorage());
+  openaiKey = cleanApiKey(resolveOpenAIKeyFromStorage());
   // If localStorage is empty, fall back to the cookie so the key survives
   // page reloads even when raw localStorage persistence is disabled.
   if (!muapiKey) {
     const cookieKey = getCookie(MUAPI_KEY_COOKIE);
-    if (cookieKey) muapiKey = cleanKey(cookieKey);
+    if (cookieKey) muapiKey = cleanApiKey(cookieKey);
   }
   if (!openaiKey) {
     const cookieKey = getCookie(OPENAI_KEY_COOKIE);
-    if (cookieKey) openaiKey = cleanKey(cookieKey);
+    if (cookieKey) openaiKey = cleanApiKey(cookieKey);
   }
   // Sync pre-existing keys to cookies so server-side routes can read them.
   if (muapiKey) setCookie(MUAPI_KEY_COOKIE, muapiKey);
@@ -91,8 +85,8 @@ export function __resetAuthConfigForTests(): void {
   muapiKey = '';
   openaiKey = '';
   if (typeof window !== 'undefined') {
-    muapiKey = cleanKey(resolveMuapiKeyFromStorage());
-    openaiKey = cleanKey(resolveOpenAIKeyFromStorage());
+    muapiKey = cleanApiKey(resolveMuapiKeyFromStorage());
+    openaiKey = cleanApiKey(resolveOpenAIKeyFromStorage());
     // Sync pre-existing keys to cookies so tests can verify cookie initialization.
     if (muapiKey) setCookie(MUAPI_KEY_COOKIE, muapiKey);
     if (openaiKey) setCookie(OPENAI_KEY_COOKIE, openaiKey);
@@ -110,7 +104,7 @@ export function getOpenAiKey(): string {
 
 // ── Setters (sync to localStorage + cookies + notify React) ────────────────
 export function setApiKey(key: string | null | undefined): void {
-  const cleaned = cleanKey(key);
+  const cleaned = cleanApiKey(key);
   muapiKey = cleaned;
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -128,7 +122,7 @@ export function setApiKey(key: string | null | undefined): void {
 }
 
 export function setOpenAiKey(key: string | null | undefined): void {
-  const cleaned = cleanKey(key);
+  const cleaned = cleanApiKey(key);
   openaiKey = cleaned;
   try {
     if (typeof window !== 'undefined' && window.localStorage) {

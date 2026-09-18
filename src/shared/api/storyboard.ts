@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { cleanApiKey } from '@/lib/keys'
 
 const STORYBOARD_BASE = '/api/storyboard'
 const PREDICTIONS_BASE = '/api/v1/predictions'
@@ -55,16 +56,9 @@ export interface StoryboardResult {
   error?: string
 }
 
-function cleanKey(apiKey: string): string {
-  if (!apiKey) return ''
-  return String(apiKey)
-    .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')
-    .replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '')
-    .trim()
-}
-
 // NOTE: Raw API keys are not read from localStorage.
 // The storyboard API routes handle authentication server-side.
+// Use cleanApiKey from @/lib/keys when sanitizing keys in this module.
 
 function extractRequestId(data: any): string | undefined {
   return data?.request_id || data?.id || data?.data?.request_id || data?.data?.id

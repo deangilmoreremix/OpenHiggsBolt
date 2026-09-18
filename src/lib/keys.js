@@ -72,3 +72,15 @@ export function isValidKeyFormat(key) {
   }
   return true;
 }
+
+// Strip only known-problematic invisible characters that commonly corrupt
+// copied API keys, while preserving all printable ASCII and valid key content.
+// This is the single source of truth for key sanitization — import it instead
+// of duplicating this logic in every file that handles API keys.
+export function cleanApiKey(apiKey) {
+  if (!apiKey) return '';
+  return String(apiKey)
+    .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')
+    .replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '')
+    .trim();
+}

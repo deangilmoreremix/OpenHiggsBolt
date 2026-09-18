@@ -1,6 +1,6 @@
 import { LocalModelManager } from './LocalModelManager.js';
 import { isLocalAIAvailable } from '../lib/localInferenceClient.js';
-import { MUAPI_KEY_STORAGE, OPENAI_KEY_STORAGE, isValidKeyFormat, MUAPI_KEY_API_ENDPOINT, MUAPI_KEY_COOKIE, OPENAI_KEY_COOKIE } from '../lib/keys.js';
+import { MUAPI_KEY_STORAGE, OPENAI_KEY_STORAGE, isValidKeyFormat, MUAPI_KEY_API_ENDPOINT, MUAPI_KEY_COOKIE, OPENAI_KEY_COOKIE, cleanApiKey } from '../lib/keys.js';
 import { t } from '../lib/i18n.js';
 
 // Build a cookie string for the MuAPI key. `Secure` is added only over HTTPS
@@ -173,14 +173,8 @@ export function SettingsModal(onClose) {
             statusEl.style.display = 'none';
         }
         // Clean keys before saving to remove invisible Unicode characters
-        const cleanMuapi = muapiKey
-            .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')
-            .replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '')
-            .trim();
-        const cleanOpenai = openaiKey
-            .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')
-            .replace(/^[\s\u0000-\x1F]+|[\s\u0000-\x1F]+$/g, '')
-            .trim();
+        const cleanMuapi = cleanApiKey(muapiKey);
+        const cleanOpenai = cleanApiKey(openaiKey);
 
         // Persist to localStorage and cookies immediately so client-side and
         // server-side readers see the new value even before the server responds.

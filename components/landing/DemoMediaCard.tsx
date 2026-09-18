@@ -1,16 +1,15 @@
 'use client';
+import { useCallback, useRef, useState } from 'react'
 import LazyVideo from './LazyVideo';
 import Reveal from './Reveal';
 import { useDemoPrompt } from './DemoPromptModal';
 import { useDemoPersonalize } from '@/shared/personalization';
-import { getCreateUrl, type VideoDemo } from '@/data/types';
+import type { VideoDemo } from '@/data/types';
+import { DemoTemplateActions } from '@/shared/demo-actions';
+import { VideoCreateTargetPicker } from './VideoCreateTargetPicker';
 
 type DemoMediaCardProps = {
-   demo: VideoDemo;
-  ctaLabel?: string;
-  showUseCase?: boolean;
-  showViewPrompt?: boolean;
-  /** Badge text shown top-left (defaults to the demo category). */
+  demo: VideoDemo;
   badge?: string;
   aspectClassName?: string;
   objectFit?: 'cover' | 'contain';
@@ -20,9 +19,6 @@ type DemoMediaCardProps = {
 
 export default function DemoMediaCard({
   demo,
-  ctaLabel = 'Create This Style',
-  showUseCase = true,
-  showViewPrompt = true,
   badge,
   aspectClassName = 'aspect-video',
   objectFit = 'cover',
@@ -30,6 +26,11 @@ export default function DemoMediaCard({
 }: DemoMediaCardProps) {
   const { openPrompt } = useDemoPrompt();
   const { openPersonalize } = useDemoPersonalize();
+  const [showCreatePicker, setShowCreatePicker] = useState(false)
+  const createStyleTriggerRef = useRef<HTMLElement | null>(null)
+  const handleCreatePickerClose = useCallback(() => {
+    setShowCreatePicker(false)
+  }, [])
 
   return (
     <Reveal
@@ -56,34 +57,28 @@ export default function DemoMediaCard({
       {/* Body */}
       <div className="flex flex-1 flex-col p-5">
         <h3 className="text-lg font-bold leading-snug text-white">{demo.title}</h3>
-        {showUseCase && <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-white/55">{demo.useCase}</p>}
+        <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-white/55">{demo.useCase}</p>
 
-        <div className="mt-auto flex flex-col gap-2 pt-5">
-          {showViewPrompt && (
-            <button
-              type="button"
-              onClick={(e) => openPrompt(demo, e.currentTarget)}
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
-            >
-              View Prompt
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault()
-              openPersonalize({ source: demo, trigger: e.currentTarget })
+        <div className="mt-auto pt-5">
+          <DemoTemplateActions
+            onViewPrompt={(event) => openPrompt(demo, event.currentTarget)}
+            onPersonalize={(event) => {
+              event.preventDefault();
+              openPersonalize({ source: demo, trigger: event.currentTarget });
             }}
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
-          >
-            Personalize
-          </button>
-          <a
-            href={getCreateUrl(demo)}
-            className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-4 py-2.5 text-sm font-bold text-black shadow-glow transition hover:scale-[1.01]"
-          >
-            {ctaLabel}
-          </a>
+            onCreateStyle={(event) => {
+              event.preventDefault();
+              createStyleTriggerRef.current = event.currentTarget
+              setShowCreatePicker(true);
+            }}
+          />
+          {showCreatePicker && (
+            <VideoCreateTargetPicker
+              demo={demo}
+              triggerElement={createStyleTriggerRef.current}
+              onClose={handleCreatePickerClose}
+            />
+          )}
         </div>
       </div>
     </Reveal>

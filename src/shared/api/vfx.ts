@@ -11,6 +11,7 @@ import type {
   VideoResult,
   GenerationState,
 } from '@/types/vfx'
+import { cleanApiKey } from '@/lib/keys'
 
 const MUAPI_BASE = process.env.MUAPI_BASE_URL || 'https://api.muapi.ai'
 const DEFAULT_POLL_INTERVAL_MS = 5000
@@ -47,15 +48,9 @@ function extractVideoUrl(data: MuAPIStatusResponse): string | undefined {
 }
 
 function createAuthHeaders(apiKey: string): HeadersInit {
-  const cleanKey = typeof apiKey === 'string'
-    ? String(apiKey)
-        .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')  // zero-width chars, BOM, word joiner, soft hyphen
-        .replace(/^[\s\u0000-\u001F]+|[\s\u0000-\u001F]+$/g, '')
-        .trim()
-    : apiKey
   return {
     'Content-Type': 'application/json',
-    'x-api-key': cleanKey,
+    'x-api-key': cleanApiKey(apiKey),
   }
 }
 // MuAPI file upload spec constants

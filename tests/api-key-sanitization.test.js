@@ -213,3 +213,72 @@ test('IMAGE_ENDPOINT_ALIASES: expected image aliases are present', () => {
   assert.ok('flux-schnell' in aliases, 'missing flux-schnell alias');
   assert.strictEqual(aliases['flux-schnell'], 'flux-schnell-image');
 });
+
+// ── Codebase-wide regression guard ──────────────────────────────────────────
+// The old aggressive regex /[^\u0000-\u00FF]/g silently stripped all non-Latin1
+// characters, corrupting valid API keys that contained invisible Unicode chars
+// copied from dashboards. This test scans the entire source tree for any
+// reintroduction of that pattern and fails CI if found.
+import { readdirSync, statSync } from 'node:fs';
+import { join, extname } from 'node:path';
+
+const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
+const SCAN_ROOTS = [
+  join(process.cwd(), 'src'),
+  join(process.cwd(), 'app'),
+  join(process.cwd(), 'components'),
+  join(process.cwd(), 'lib'),
+  join(process.cwd(), 'packages'),
+];
+const EXCLUDED_DIRS = new Set(['node_modules', 'dist', '.next', 'coverage', '.git', 'tests', 'docs']);
+const EXCLUDED_FILES = new Set([
+  'tests/api-key-sanitization.test.js',
+  'docs/api-key-input-diagnostic-report.md',
+]);
+
+function findSourceFiles(dir, files = []) {
+  let entries;
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return files;
+  }
+  for (const entry of entries) {
+    if (EXCLUDED_DIRS.has(entry)) continue;
+    const fullPath = join(dir, entry);
+    const stat = statSync(fullPath);
+    if (stat.isDirectory()) {
+      findSourceFiles(fullPath, files);
+    } else if (SOURCE_EXTENSIONS.has(extname(entry))) {
+      files.push(fullPath);
+    }
+  }
+  return files;
+}
+
+test('no source file uses the aggressive /[^\\u0000-\\u00FF]/g regex for key sanitization', () => {
+  const files = [];
+  for (const root of SCAN_ROOTS) {
+    try {
+      findSourceFiles(root, files);
+    } catch {
+      // ignore missing scan roots
+    }
+  }
+  const offenders = [];
+  const BAD_PATTERN = '/[^\\u0000-\\u00FF]';
+  for (const file of files) {
+    const relative = file.replace(process.cwd() + '/', '');
+    try {
+      const content = readFileSync(file, 'utf8');
+      if (content.includes(BAD_PATTERN)) {
+        offenders.push(relative);
+      }
+    } catch {
+      // ignore unreadable files
+    }
+  }
+  assert.strictEqual(offenders.length, 0,
+    `Found aggressive Latin1-stripping regex in source files: ${offenders.join(', ')}. ` +
+    `Use cleanApiKey() from src/lib/keys.js instead.`);
+});

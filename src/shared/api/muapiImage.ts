@@ -177,18 +177,12 @@ function isImageUrl(s: string): boolean {
   return s.startsWith('http://') || s.startsWith('https://') || s.startsWith('data:image/')
 }
 
-function cleanKey(apiKey: string): string {
-  if (!apiKey) return '';
-  return String(apiKey)
-    .replace(/[\u200B-\u200D\uFEFF\u2060\u00AD]/g, '')  // zero-width chars, BOM, word joiner, soft hyphen
-    .replace(/^[\s\u0000-\u001F]+|[\s\u0000-\u001F]+$/g, '')
-    .trim();
-}
+import { cleanApiKey } from '@/lib/keys'
 
 function createAuthHeaders(apiKey: string): HeadersInit {
   return {
     'Content-Type': 'application/json',
-    'x-api-key': cleanKey(apiKey),
+    'x-api-key': cleanApiKey(apiKey),
   }
 }
 
@@ -210,7 +204,7 @@ export class MuAPIImageClient {
   private activeControllers: AbortController[] = []
 
   constructor(options: MuAPIImageClientOptions) {
-    this.apiKey = cleanKey(options.apiKey)
+    this.apiKey = cleanApiKey(options.apiKey)
     this.baseUrl = options.baseUrl ?? MUAPI_BASE
     this.pollIntervalMs = options.pollIntervalMs || DEFAULT_POLL_INTERVAL_MS
     this.maxPollAttempts = options.maxPollAttempts || DEFAULT_MAX_POLL_ATTEMPTS
@@ -527,7 +521,7 @@ export class MuAPIImageClient {
  * Convenience factory used by the studio components.
  */
 export function getImageClient(apiKey?: string): MuAPIImageClient {
-  const key = cleanKey(apiKey || '')
+  const key = cleanApiKey(apiKey || '')
   if (!key) {
     throw new Error('MuAPI key is required. Add your key in Settings.')
   }
