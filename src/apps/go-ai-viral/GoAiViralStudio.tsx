@@ -18,6 +18,7 @@
  *  - Filter by recommended model (gptimage, nanobanana, seedance, etc.)
  */
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Search, Copy, ExternalLink, Heart,
   Grid, List, ChevronRight,
@@ -134,6 +135,12 @@ export function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
   const handleOpenInStudio = () => {
     setShowPicker(true)
   }
+  const router = useRouter()
+
+  const openDetail = () => {
+    router.push(`/demo/${record.slug}`)
+  }
+
   const { openPersonalize } = useDemoPersonalize()
 
   const actionHandlers: DemoActionHandlers = {
@@ -193,6 +200,15 @@ export function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
         >
           {(record.categories || []).slice(0, 1).join(', ') || record.mediaType}
         </span>
+
+        {/* Detail page link */}
+        <button
+          type="button"
+          onClick={openDetail}
+          className="absolute right-3 top-3 rounded-full bg-black/60 px-3 py-1 text-[11px] font-semibold text-white/90 backdrop-blur transition hover:bg-black/80"
+        >
+          View details
+        </button>
 
         {/* Play affordance on hover */}
         <div className="pointer-events-none absolute inset-0 grid place-items-center opacity-0 transition group-hover:opacity-100">
@@ -284,6 +300,12 @@ export function VideoPromptCard({ record, onSelect }: VideoPromptCardProps) {
   const handleOpenInStudio = () => {
     setShowPicker(true)
   }
+  const router = useRouter()
+
+  const openDetail = () => {
+    router.push(`/demo/${record.slug}`)
+  }
+
   const { openPersonalize } = useDemoPersonalize()
 
   const actionHandlers: DemoActionHandlers = {
@@ -336,6 +358,15 @@ export function VideoPromptCard({ record, onSelect }: VideoPromptCardProps) {
         >
           {(record.categories || []).slice(0, 1).join(', ') || record.sourceLanguage?.toUpperCase() || 'VIDEO'}
         </span>
+
+        {/* Detail page link */}
+        <button
+          type="button"
+          onClick={openDetail}
+          className="absolute right-3 top-3 rounded-full bg-black/60 px-3 py-1 text-[11px] font-semibold text-white/90 backdrop-blur transition hover:bg-black/80"
+        >
+          View details
+        </button>
 
         {/* Play affordance on hover */}
         <div className="pointer-events-none absolute inset-0 grid place-items-center opacity-0 transition group-hover:opacity-100">

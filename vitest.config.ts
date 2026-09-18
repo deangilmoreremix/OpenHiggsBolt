@@ -42,7 +42,6 @@ export default defineConfig({
       'packages/*/dist/**',
       'tests/*.test.js',
       'tests/*.test.jsx',
-      'tests/*.test.tsx',
       'tests/authConfig.test.ts',
     ],
   },
