@@ -1,0 +1,1 @@
+import{t as e}from"./external-CZo4z-gP.js";export{e as openExternal};

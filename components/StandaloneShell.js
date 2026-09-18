@@ -59,6 +59,7 @@ const TABS = [
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'social-publishing', label: 'Social Publishing' },
   { id: 'go-ai-viral', label: 'GO-Viral' },
+  { id: 'voice', label: 'Voice Studio' },
 ];
 
 // Maps every landing-page studio slug to the studio tab that renders it.
@@ -72,6 +73,7 @@ const SLUG_TO_TAB = {
   'ai-influencer': 'ai-influencer',
   'social-publishing': 'social-publishing',
   'go-ai-viral': 'go-ai-viral',
+  'voice': 'voice',
 };
 
 export default function StandaloneShell({ embedded = false, initialTab = null, demoMode = false, templateData = null, locale = 'en' } = {}) {
@@ -625,9 +627,20 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
              <p className="text-white/50">Loading Brand Studio…</p>
            </div>
          )}
-         {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} templateData={templateData} locale={locale} />}
-         {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
-         {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
+          {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} templateData={templateData} locale={locale} />}
+          {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
+          {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
+          {activeTab === 'voice' && (
+            <div className="flex h-full w-full flex-col overflow-hidden">
+              <iframe
+                src="/voice-studio/"
+                title="VoiceStudio"
+                className="h-full w-full border-0"
+                allow="microphone; camera"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+              />
+            </div>
+          )}
       </div>
       </DemoPersonalizeProvider>
       </SocialPublishProvider>

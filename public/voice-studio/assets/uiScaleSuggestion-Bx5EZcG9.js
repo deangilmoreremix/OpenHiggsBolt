@@ -1,0 +1,1 @@
+var e=[.8,.9,1,1.1,1.2,1.3],t=e[0],n=e[e.length-1];function r({width:r,height:i}){let a=Number(r)||1440,o=Number(i)||900,s=Math.min(a/1440,o/900),c=Math.min(n,Math.max(t,s));return e.reduce((e,t)=>Math.abs(t-c)<Math.abs(e-c)?t:e)}function i({configured:e,previewed:t,selected:n,suggested:r}){return!e&&!t?r:n}export{i as n,r,e as t};
