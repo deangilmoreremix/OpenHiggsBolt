@@ -50,6 +50,7 @@ export interface OrchestratedDiscoveryResult {
   firecrawlUsed: boolean
   providerAttempts: string[]
   firecrawlReason?: string
+  firecrawlSkippedReason?: string
   localUsefulAssetCount?: number
   firecrawlUsefulAssetCount?: number
   sitemapFound?: boolean
@@ -72,6 +73,38 @@ function countUsefulAssetsByCategory(assets: DiscoveredAsset[]): Record<string, 
 function hasEnoughUsefulAssets(assets: DiscoveredAsset[]): boolean {
   const usefulCount = assets.filter((asset) => isUsefulCategory(asset.category)).length
   return usefulCount >= FREE_DISCOVERY_MIN_USEFUL
+}
+
+function getFirecrawlSkipReason(
+  enableFirecrawlFallback: boolean,
+  firecrawlApiKey: string | undefined,
+  discoveredAssets: DiscoveredAsset[],
+): string | undefined {
+  if (!enableFirecrawlFallback) return 'FIRECRAWL_DISABLED'
+  if (!firecrawlApiKey) return 'NO_FIRECRAWL_API_KEY'
+
+  const counts = countUsefulAssetsByCategory(discoveredAssets)
+  const hasLogo = (counts['logo'] || 0) >= 1
+  const usefulProductOrService = (counts['product'] || 0) + (counts['service'] || 0) + (counts['completed_work'] || 0)
+  const usefulBrandReferences = (counts['storefront'] || 0) + (counts['office'] || 0) + (counts['branded_vehicle'] || 0) + (counts['team'] || 0) + (counts['brand'] || 0)
+
+  if (hasLogo && usefulProductOrService >= 2 && usefulBrandReferences >= 2) {
+    return 'USEFUL_RESULTS_ALREADY_FOUND'
+  }
+
+  if (!hasLogo && usefulProductOrService >= 2 && usefulBrandReferences >= 2) {
+    return 'ONLY_LOGO_MISSING'
+  }
+
+  if (hasLogo && usefulProductOrService < 2 && usefulBrandReferences >= 2) {
+    return 'PRESENTER_ONLY_MISSING'
+  }
+
+  if (hasEnoughUsefulAssets(discoveredAssets)) {
+    return 'USEFUL_RESULTS_ALREADY_FOUND'
+  }
+
+  return 'FREE_RESULTS_INSUFFICIENT'
 }
 
 function getFirecrawlReason(assets: DiscoveredAsset[]): string {
@@ -222,6 +255,8 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
     }
   }
 
+  const firecrawlSkippedReason = getFirecrawlSkipReason(enableFirecrawlFallback, firecrawlApiKey, discoveredAssets)
+
   // 6. If still insufficient and Firecrawl fallback enabled, try Firecrawl
   const useFirecrawl = enableFirecrawlFallback && firecrawlApiKey && !hasEnoughUsefulAssets(discoveredAssets)
 
@@ -277,6 +312,7 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
     firecrawlUsed,
     providerAttempts,
     firecrawlReason,
+    firecrawlSkippedReason,
     localUsefulAssetCount,
     firecrawlUsefulAssetCount: firecrawlUsed
       ? discoveredAssets.filter((asset) => isUsefulCategory(asset.category)).length - localUsefulAssetCount
