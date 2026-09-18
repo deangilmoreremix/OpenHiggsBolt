@@ -1,14 +1,14 @@
 import { createServerClient } from "../_shared/supabase.ts";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { corsHeadersFor, handleCors } from "../_shared/cors.ts";
 import { MissingOpenAiKeyError, openAiFromRequest } from "../_shared/openai.ts";
 
 const OPENAI_MODEL = "gpt-4o";
 
-function jsonResponse(data: unknown, status = 200): Response {
+function jsonResponse(req: Request, data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      ...corsHeaders,
+      ...corsHeadersFor(req),
       "Content-Type": "application/json",
     },
   });
@@ -55,16 +55,17 @@ function csvToArray(value: unknown): string[] {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return handleCors();
+  if (req.method === "OPTIONS") return handleCors(req);
 
   try {
     const body = await readJson(req);
     const brandId = String(body.brand_id || body.brandId || "");
     const goal = String(body.goal || "");
     const direction = body.direction ? String(body.direction) : null;
+    const workspaceId = String(body.workspace_id || "");
 
     if (!brandId || !goal) {
-      return jsonResponse({ error: "Missing brand_id or goal" }, 400);
+      return jsonResponse(req, { error: "Missing brand_id or goal" }, 400);
     }
 
     const supabase = createServerClient();
@@ -73,7 +74,7 @@ Deno.serve(async (req) => {
     const { data: brand, error: brandError } = await supabase.from("brand_dna")
       .select("*").eq("id", brandId).single();
     if (brandError) throw brandError;
-    if (!brand) return jsonResponse({ error: "Brand not found" }, 404);
+    if (!brand) return jsonResponse(req, { error: "Brand not found" }, 404);
 
     const prompt =
       `You are a senior campaign strategist. Use every brand field below to generate exactly 4 distinct campaign concepts.
@@ -122,6 +123,7 @@ Make the concepts distinct, specific to this brand, and ready for visual executi
 
     if (!concepts.length) {
       return jsonResponse(
+        req,
         { error: "OpenAI did not return campaign concepts" },
         502,
       );
@@ -131,6 +133,7 @@ Make the concepts distinct, specific to this brand, and ready for visual executi
       .from("brand_campaigns")
       .insert({
         brand_id: brandId,
+        workspace_id: workspaceId || null,
         goal,
         direction,
         concepts,
@@ -140,12 +143,12 @@ Make the concepts distinct, specific to this brand, and ready for visual executi
 
     if (campaignError) throw campaignError;
 
-    return jsonResponse(campaign);
+    return jsonResponse(req, campaign);
   } catch (error) {
     if (error instanceof MissingOpenAiKeyError) {
-      return jsonResponse({ error: error.message }, 400);
+      return jsonResponse(req, { error: error.message }, 400);
     }
-    return jsonResponse({
+    return jsonResponse(req, {
       error: error instanceof Error ? error.message : "Unknown error",
     }, 500);
   }

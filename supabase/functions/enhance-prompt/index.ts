@@ -1,4 +1,4 @@
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { corsHeadersFor, handleCors } from "../_shared/cors.ts";
 import { MissingOpenAiKeyError, openAiFromRequest } from "../_shared/openai.ts";
 
 // enhance-prompt — text helper used by the frontend (`src/shared/api/openai.ts`).
@@ -16,11 +16,11 @@ const OPENAI_MODEL = "gpt-4o";
 
 type Mode = "enhance" | "script" | "campaign";
 
-function jsonResponse(data: unknown, status = 200): Response {
+function jsonResponse(req: Request, data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      ...corsHeaders,
+      ...corsHeadersFor(req),
       "Content-Type": "application/json",
     },
   });
@@ -70,10 +70,10 @@ function normalizeMode(value: unknown): Mode {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return handleCors();
+  if (req.method === "OPTIONS") return handleCors(req);
 
   if (req.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed" }, 405);
+    return jsonResponse(req, { error: "Method not allowed" }, 405);
   }
 
   try {
@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
     const mode = normalizeMode(body.mode);
 
     if (!prompt) {
-      return jsonResponse({ error: "Missing prompt" }, 400);
+      return jsonResponse(req, { error: "Missing prompt" }, 400);
     }
 
     const openai = openAiFromRequest(req);
@@ -98,15 +98,16 @@ Deno.serve(async (req) => {
 
     const text = responseText(response).trim();
     if (!text) {
-      return jsonResponse({ error: "OpenAI returned an empty response" }, 502);
+      return jsonResponse(req, { error: "OpenAI returned an empty response" }, 502);
     }
 
-    return jsonResponse({ text, model: OPENAI_MODEL });
+    return jsonResponse(req, { text, model: OPENAI_MODEL });
   } catch (error) {
     if (error instanceof MissingOpenAiKeyError) {
-      return jsonResponse({ error: error.message }, 400);
+      return jsonResponse(req, { error: error.message }, 400);
     }
     return jsonResponse(
+      req,
       { error: error instanceof Error ? error.message : "Unknown error" },
       500,
     );

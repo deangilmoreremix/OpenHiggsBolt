@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { corsHeadersFor, handleCors } from "../_shared/cors.ts";
 import { mirrorUrlToStorage } from "../_shared/supabase.ts";
 import { MissingOpenAiKeyError, openAiFromRequest } from "../_shared/openai.ts";
 
@@ -78,11 +78,11 @@ const PHOTO_CATEGORIES: PhotoCategory[] = [
   },
 ];
 
-function jsonResponse(data: unknown, status = 200): Response {
+function jsonResponse(req: Request, data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      ...corsHeaders,
+      ...corsHeadersFor(req),
       "Content-Type": "application/json",
     },
   });
@@ -123,7 +123,7 @@ function csvToArray(value: unknown): string[] {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return handleCors();
+  if (req.method === "OPTIONS") return handleCors(req);
 
   try {
     const body = await readJson(req);
@@ -135,9 +135,10 @@ Deno.serve(async (req) => {
       : null;
     const category = String(body.category || "");
     const style = String(body.style || "");
+    const workspaceId = String(body.workspace_id || "");
 
     if (!category || !style) {
-      return jsonResponse({ error: "Missing category or style" }, 400);
+      return jsonResponse(req, { error: "Missing category or style" }, 400);
     }
 
     const supabase = createServerClient();
@@ -202,6 +203,7 @@ Deno.serve(async (req) => {
       .from("brand_photoshoots")
       .insert({
         brand_id: brandId,
+        workspace_id: workspaceId || null,
         style,
         category,
         product_url: productUrl,
@@ -212,12 +214,12 @@ Deno.serve(async (req) => {
 
     if (photoshootError) throw photoshootError;
 
-    return jsonResponse(photoshoot);
+    return jsonResponse(req, photoshoot);
   } catch (error) {
     if (error instanceof MissingOpenAiKeyError) {
-      return jsonResponse({ error: error.message }, 400);
+      return jsonResponse(req, { error: error.message }, 400);
     }
-    return jsonResponse({
+    return jsonResponse(req, {
       error: error instanceof Error ? error.message : "Unknown error",
     }, 500);
   }

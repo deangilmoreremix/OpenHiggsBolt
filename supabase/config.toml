@@ -19,3 +19,6 @@ verify_jwt = false
 
 [functions.photo-studio]
 verify_jwt = false
+
+[functions.animate-generate]
+verify_jwt = false

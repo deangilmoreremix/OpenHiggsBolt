@@ -36,6 +36,7 @@ export function Header(navigate) {
         { label: t('nav.cinema'),  page: 'cinema' },
         { label: t('nav.workflows'), page: 'workflows' },
         { label: t('nav.agents'),  page: 'agents' },
+        { label: t('nav.brand-studio'), page: 'brand-studio' },
     ];
 
     items.forEach(({ label, page }, idx) => {
