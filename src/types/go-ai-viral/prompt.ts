@@ -75,6 +75,7 @@ export interface PromptRecommended {
  */
 export interface PromptRecord {
   id: string
+  slug: string
   imglumeId: number
   revision: string
   title: string

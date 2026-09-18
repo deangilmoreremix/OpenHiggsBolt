@@ -124,8 +124,8 @@ function DemoDetailPageInner() {
                 <LazyVideo
                   src={demo.videoSrc}
                   poster={demo.posterSrc}
+                  label={`${demo.title} preview`}
                   className="h-full w-full object-cover"
-                  aria-label={`${demo.title} preview`}
                 />
               </div>
               <div className="p-5 sm:p-6">

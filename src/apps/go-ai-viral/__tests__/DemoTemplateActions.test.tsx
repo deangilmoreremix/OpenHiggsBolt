@@ -45,6 +45,7 @@ import type { SeedancePrompt } from '@/types/go-ai-viral/seedance';
 function makePromptRecord(overrides: Partial<PromptRecord> = {}): PromptRecord {
   return {
     id: '1',
+    slug: 'test-slug',
     imglumeId: 1,
     revision: '1',
     title: 'Test Image',
