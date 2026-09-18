@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import type { VideoDemo } from '@/data/types'
 
 const VIDEO_DEMO_CREATE_TARGETS = [
@@ -46,6 +46,39 @@ export function VideoCreateTargetPicker({ demo, onClose, triggerElement }: Video
   }, [handleClose])
 
   useEffect(() => {
+    const container = document.querySelector('[data-video-picker-container]')
+    if (!container) return
+
+    const focusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    const getFocusable = () => Array.from(container.querySelectorAll<HTMLElement>(focusableSelector))
+
+    const onTab = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return
+      const focusable = getFocusable()
+      if (!focusable.length) return
+
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      const active = document.activeElement as HTMLElement | null
+
+      if (event.shiftKey) {
+        if (active === first || !container.contains(active)) {
+          event.preventDefault()
+          last.focus()
+        }
+      } else {
+        if (active === last || !container.contains(active)) {
+          event.preventDefault()
+          first.focus()
+        }
+      }
+    }
+
+    container.addEventListener('keydown', onTab)
+    return () => container.removeEventListener('keydown', onTab)
+  }, [])
+
+  useEffect(() => {
     const firstButton = document.querySelector('[data-video-create-target="video"]')
     if (firstButton instanceof HTMLElement) {
       firstButton.focus()
@@ -62,6 +95,7 @@ export function VideoCreateTargetPicker({ demo, onClose, triggerElement }: Video
       onClick={handleClose}
     >
       <div
+        data-video-picker-container
         className="w-full max-w-sm rounded-2xl border border-white/10 p-4"
         style={{ background: 'var(--bg-panel)' }}
         onClick={(e) => e.stopPropagation()}

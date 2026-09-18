@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { findDemoBySlug } from '@/data/demoLookup';
 import type { VideoDemo } from '@/data/types';
 import { VideoCreateTargetPicker } from '@/components/landing/VideoCreateTargetPicker';
-import { useDemoPersonalize } from '@/shared/personalization';
+import { DemoPersonalizeProvider, useDemoPersonalize } from '@/shared/personalization';
 import LazyVideo from '@/components/landing/LazyVideo';
 import { MINIMAX_H3_DEMOS } from '@/data/minimaxH3Demos';
 import { SEEDANCE_25_DEMOS } from '@/data/seedance25Demos';
@@ -18,7 +18,7 @@ const ALL_DEMOS: VideoDemo[] = [
   ...PROMPTFEED_DEMOS,
 ];
 
-export default function DemoDetailPage() {
+function DemoDetailPageInner() {
   const params = useParams();
   const router = useRouter();
   const slug = Array.isArray(params.slug) ? params.slug[0] : params.slug;
@@ -101,7 +101,22 @@ export default function DemoDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <a
+        href="#demo-main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-white/90 focus:px-4 focus:py-2 focus:text-sm focus:text-black"
+      >
+        Skip to content
+      </a>
+      <main id="demo-main" className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-6">
+          <button
+            type="button"
+            onClick={() => router.push('/')}
+            className="inline-flex items-center gap-2 text-sm font-medium text-white/70 transition hover:text-white"
+          >
+            ← Back to all demos
+          </button>
+        </div>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           <div className="lg:col-span-8">
             <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02]">
@@ -191,6 +206,7 @@ export default function DemoDetailPage() {
                     type="button"
                     onClick={() => router.push(`/demo/${item.slug}`)}
                     className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-left transition hover:border-white/20 hover:bg-white/[0.06]"
+                    aria-label={`View related demo: ${item.title}`}
                   >
                     <div className="aspect-video w-full overflow-hidden rounded-xl bg-black/40">
                       {item.posterSrc ? (
@@ -207,7 +223,7 @@ export default function DemoDetailPage() {
             </div>
           </div>
         </div>
-      </div>
+      </main>
 
       {showCreatePicker && demo && (
         <VideoCreateTargetPicker
@@ -217,5 +233,13 @@ export default function DemoDetailPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function DemoDetailPage() {
+  return (
+    <DemoPersonalizeProvider>
+      <DemoDetailPageInner />
+    </DemoPersonalizeProvider>
   );
 }
