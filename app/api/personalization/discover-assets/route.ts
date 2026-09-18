@@ -11,6 +11,10 @@ const CACHE_TTL_MS = (process.env.FIRECRAWL_DISCOVERY_CACHE_TTL_MS || '86400000'
 const cacheTtlMs = Number.isNaN(Number(CACHE_TTL_MS)) ? 86400000 : Number(CACHE_TTL_MS)
 const isTestModeAllowed = process.env.NODE_ENV !== 'production'
 
+// Firecrawl is optional; only use as fallback if explicitly enabled
+const ENABLE_FIRECRAWL_FALLBACK = process.env.ENABLE_FIRECRAWL_FALLBACK === 'true'
+const ENABLE_BROWSER_FALLBACK = process.env.ENABLE_BROWSER_DISCOVERY === 'true'
+
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth()
@@ -65,6 +69,8 @@ export async function POST(req: NextRequest) {
         duration: 0,
         socialProfiles: fixture.socialProfiles,
         discoveredAssets,
+        firecrawlUsed: false,
+        providerAttempts: ['FIXTURE'],
       }
     } else {
       result = await orchestrateDiscovery({
@@ -73,6 +79,9 @@ export async function POST(req: NextRequest) {
         maxImages: 60,
         openAiKey: openAiKey || undefined,
         firecrawlApiKey: firecrawlApiKey || undefined,
+        enableFirecrawlFallback: ENABLE_FIRECRAWL_FALLBACK,
+        enableBrowserFallback: ENABLE_BROWSER_FALLBACK,
+        minAcceptableAssets: 5,
       })
     }
 
