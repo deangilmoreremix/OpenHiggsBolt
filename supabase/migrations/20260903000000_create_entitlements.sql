@@ -17,6 +17,16 @@ create unique index if not exists user_entitlements_clerk_user_id_unique on publ
 
 alter table public.user_entitlements enable row level security;
 
-create policy "Users can view own entitlements"
-  on public.user_entitlements for select
-  using (clerk_user_id = current_setting('app.clerk_user_id', true));
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'user_entitlements'
+      and policyname = 'Users can view own entitlements'
+  ) then
+    create policy "Users can view own entitlements"
+      on public.user_entitlements for select
+      using (clerk_user_id = current_setting('app.clerk_user_id', true));
+  end if;
+end $$;
