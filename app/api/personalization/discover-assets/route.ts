@@ -65,6 +65,8 @@ export async function POST(req: NextRequest) {
         duration: 0,
         socialProfiles: fixture.socialProfiles,
         discoveredAssets,
+        firecrawlUsed: false,
+        providerAttempts: ['FIXTURE'],
       }
     } else {
       result = await orchestrateDiscovery({

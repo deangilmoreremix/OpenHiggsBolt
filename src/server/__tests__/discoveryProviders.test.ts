@@ -134,7 +134,45 @@ describe('orchestrateDiscovery', () => {
     vi.clearAllMocks()
   })
 
-  it('uses Firecrawl when API key is provided', async () => {
+  it('does not call Firecrawl when static is sufficient', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: [] }),
+    } as Response)
+
+    const result = await orchestrateDiscovery({
+      websiteUrl: 'https://example.com',
+      maxPages: 5,
+      maxImages: 20,
+      firecrawlApiKey: 'fc-test',
+    })
+
+    expect(result.providerAttempted).toBe('SMARTVIDEO_STATIC')
+    expect(result.providerUsed).toBe('SMARTVIDEO_STATIC')
+    expect(result.firecrawlUsed).toBe(false)
+  })
+
+  it('records static attempt when no Firecrawl key is provided', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: [] }),
+    } as Response)
+
+    const result = await orchestrateDiscovery({
+      websiteUrl: 'https://example.com',
+      maxPages: 5,
+      maxImages: 20,
+      firecrawlApiKey: undefined,
+    })
+
+    expect(result.providerAttempted).toBe('SMARTVIDEO_STATIC')
+    expect(result.providerUsed).toBe('SMARTVIDEO_STATIC')
+    expect(result.firecrawlUsed).toBe(false)
+  })
+
+  it('uses Firecrawl when free layers are insufficient and fallback is enabled', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       status: 200,
@@ -153,43 +191,12 @@ describe('orchestrateDiscovery', () => {
       maxPages: 5,
       maxImages: 20,
       firecrawlApiKey: 'fc-test',
+      enableFirecrawlFallback: true,
     })
 
-    expect(result.providerAttempted).toBe('FIRECRAWL')
-    expect(result.providerUsed).toBe('FIRECRAWL')
-    expect(result.candidates.length).toBeGreaterThan(0)
-  })
-
-  it('falls back to static when Firecrawl key is missing', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ ok: true, discoveredAssets: [], count: 0 }),
-    } as Response)
-
-    const result = await orchestrateDiscovery({
-      websiteUrl: 'https://example.com',
-      maxPages: 5,
-      maxImages: 20,
-      firecrawlApiKey: undefined,
-    })
-
-    expect(result.providerAttempted).toBe('STATIC_FALLBACK')
-    expect(result.providerUsed).toBe('STATIC_FALLBACK')
-  })
-
-  it('falls back to static when Firecrawl fails', async () => {
-    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Firecrawl down'))
-
-    const result = await orchestrateDiscovery({
-      websiteUrl: 'https://example.com',
-      maxPages: 5,
-      maxImages: 20,
-      firecrawlApiKey: 'fc-test',
-    })
-
-    expect(result.providerAttempted).toBe('FIRECRAWL')
-    expect(result.providerUsed).toBe('STATIC_FALLBACK')
+    expect(result.providerAttempts).toContain('SMARTVIDEO_STATIC')
+    expect(result.providerAttempts).toContain('FIRECRAWL')
+    expect(result.firecrawlUsed).toBe(true)
   })
 
   it('rejects unsafe URLs before provider call', async () => {
