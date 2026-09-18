@@ -166,6 +166,26 @@ describe('Sitemap discovery', () => {
     expect(urls).not.toContain('https://example.com/blog/post')
     expect(urls).toContain('https://example.com/about')
   })
+
+  it('discovers sitemap URLs from robots.txt when direct sitemap paths are missing', async () => {
+    vi.spyOn(axios, 'get')
+      .mockRejectedValueOnce(new Error('404'))
+      .mockRejectedValueOnce(new Error('404'))
+      .mockRejectedValueOnce(new Error('404'))
+      .mockResolvedValueOnce({
+        status: 200,
+        headers: { 'content-type': 'text/plain' },
+        data: 'User-agent: *\nDisallow: /admin\nSitemap: https://example.com/sitemap.xml\n',
+      } as any)
+      .mockResolvedValueOnce({
+        status: 200,
+        headers: { 'content-type': 'text/xml' },
+        data: '<?xml version="1.0"?><urlset><url><loc>https://example.com/about</loc></url></urlset>',
+      } as any)
+
+    const urls = await discoverSitemapUrls('https://example.com')
+    expect(urls).toContain('https://example.com/about')
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -396,6 +416,93 @@ describe('Firecrawl cost control', () => {
     })
 
     expect(result.firecrawlReason).toBeTruthy()
+  })
+
+  it('records firecrawlSkippedReason when fallback is disabled', async () => {
+    vi.spyOn(axios, 'get').mockRejectedValue(new Error('Static down'))
+
+    const result = await orchestrateDiscovery({
+      websiteUrl: 'https://example.com',
+      maxPages: 5,
+      maxImages: 20,
+      firecrawlApiKey: 'fc-test',
+      enableFirecrawlFallback: false,
+    })
+
+    expect(result.firecrawlSkippedReason).toBe('FIRECRAWL_DISABLED')
+    expect(result.firecrawlUsed).toBe(false)
+  })
+
+  it('records firecrawlSkippedReason when API key is missing', async () => {
+    vi.spyOn(axios, 'get').mockRejectedValue(new Error('Static down'))
+
+    const result = await orchestrateDiscovery({
+      websiteUrl: 'https://example.com',
+      maxPages: 5,
+      maxImages: 20,
+      firecrawlApiKey: undefined,
+      enableFirecrawlFallback: true,
+    })
+
+    expect(result.firecrawlSkippedReason).toBe('NO_FIRECRAWL_API_KEY')
+    expect(result.firecrawlUsed).toBe(false)
+  })
+
+  it('records firecrawlSkippedReason when only logo is missing but other assets are sufficient', async () => {
+    mockStaticResult([
+      { url: 'https://example.com/product1.png', ogContext: 'product' },
+      { url: 'https://example.com/product2.png', ogContext: 'product' },
+      { url: 'https://example.com/product3.png', ogContext: 'product' },
+      { url: 'https://example.com/product4.png', ogContext: 'product' },
+      { url: 'https://example.com/storefront.png', ogContext: 'storefront' },
+      { url: 'https://example.com/office.png', ogContext: 'office' },
+    ])
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: [] }),
+    } as Response)
+
+    const result = await orchestrateDiscovery({
+      websiteUrl: 'https://example.com',
+      maxPages: 5,
+      maxImages: 20,
+      firecrawlApiKey: 'fc-test',
+      enableFirecrawlFallback: true,
+    })
+
+    expect(result.firecrawlSkippedReason).toBe('ONLY_LOGO_MISSING')
+    expect(result.firecrawlUsed).toBe(false)
+  })
+
+  it('records firecrawlSkippedReason when only presenter is missing but other assets are sufficient', async () => {
+    // 1 logo + 4 products + 2 brand references = 7 useful assets, no presenter
+    mockStaticResult([
+      { url: 'https://example.com/logo.png', ogContext: 'logo' },
+      { url: 'https://example.com/product1.png', ogContext: 'product' },
+      { url: 'https://example.com/product2.png', ogContext: 'product' },
+      { url: 'https://example.com/product3.png', ogContext: 'product' },
+      { url: 'https://example.com/product4.png', ogContext: 'product' },
+      { url: 'https://example.com/storefront.png', ogContext: 'storefront' },
+      { url: 'https://example.com/office.png', ogContext: 'office' },
+    ])
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: [] }),
+    } as Response)
+
+    const result = await orchestrateDiscovery({
+      websiteUrl: 'https://example.com',
+      maxPages: 5,
+      maxImages: 20,
+      firecrawlApiKey: 'fc-test',
+      enableFirecrawlFallback: true,
+    })
+
+    // Presenter is optional; enough other useful assets means Firecrawl is skipped.
+    expect(result.firecrawlSkippedReason).toBe('USEFUL_RESULTS_ALREADY_FOUND')
+    expect(result.firecrawlUsed).toBe(false)
   })
 })
 

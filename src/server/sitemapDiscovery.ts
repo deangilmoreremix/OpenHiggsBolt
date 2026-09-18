@@ -4,6 +4,7 @@
  * Discovers high-value personalization pages from:
  * - /sitemap.xml
  * - /sitemap_index.xml
+ * - /sitemap-index.xml
  * - robots.txt sitemap declarations
  */
 
@@ -118,6 +119,29 @@ async function fetchSitemap(url: string): Promise<string | null> {
   }
 }
 
+async function fetchRobotsTxt(origin: string): Promise<string[]> {
+  const url = `${origin}/robots.txt`
+  const text = await fetchSitemap(url)
+  if (!text) return []
+
+  const sitemapUrls: string[] = []
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+    const lower = trimmed.toLowerCase()
+    if (!lower.startsWith('sitemap:')) continue
+    const candidate = trimmed.slice('sitemap:'.length).trim()
+    if (!candidate) continue
+    try {
+      const absolute = new URL(candidate, origin).toString()
+      sitemapUrls.push(absolute)
+    } catch {
+      // skip invalid sitemap URLs in robots.txt
+    }
+  }
+  return sitemapUrls
+}
+
 export async function discoverSitemapUrls(baseUrl: string): Promise<string[]> {
   const sanitized = sanitizeUrl(baseUrl)
   const parsed = new URL(sanitized)
@@ -138,6 +162,17 @@ export async function discoverSitemapUrls(baseUrl: string): Promise<string[]> {
     if (sitemapXml) {
       sitemapUrl = url
       break
+    }
+  }
+
+  if (!sitemapXml) {
+    // Try robots.txt sitemap declarations before giving up.
+    const robotsSitemapUrls = await fetchRobotsTxt(origin)
+    for (const sitemapUrl of robotsSitemapUrls) {
+      sitemapXml = await fetchSitemap(sitemapUrl)
+      if (sitemapXml) {
+        break
+      }
     }
   }
 
