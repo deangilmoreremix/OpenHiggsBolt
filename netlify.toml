@@ -4,6 +4,13 @@
   command = "npm run build:metadata && npm run build:agent && npm run build"
   publish = ".next"
 
+  [build.environment]
+    # Ensure build-time dependencies (tailwindcss, autoprefixer, jsdom, babel, etc.)
+    # are installed even if the build image sets NODE_ENV=production.
+    NPM_CONFIG_PRODUCTION = "false"
+    # Skip Playwright browser downloads during install to avoid network/timeouts.
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
+
 [[headers]]
   for = "/*"
   [headers.values]
