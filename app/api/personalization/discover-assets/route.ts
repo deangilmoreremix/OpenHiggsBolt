@@ -104,6 +104,9 @@ export async function POST(req: NextRequest) {
       rawCandidates: result.rawCandidates,
       duration: result.duration,
       socialProfiles: result.socialProfiles,
+      websiteIntelligence: result.websiteIntelligence,
+      completenessScore: result.completenessScore,
+      playwrightPagesCrawled: result.playwrightPagesCrawled,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'

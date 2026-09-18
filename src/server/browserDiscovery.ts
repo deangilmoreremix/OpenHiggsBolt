@@ -7,6 +7,7 @@
  */
 
 import { chromium } from 'playwright'
+import { extractWebsiteIntelligence, type WebsiteIntelligence } from './websiteIntelligence'
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -55,6 +56,8 @@ export interface BrowserDiscoveryResult {
   browserCandidates: number
   pagesCrawled: number
   fallbackUsed: boolean
+  websiteIntelligence?: WebsiteIntelligence
+  screenshot?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -197,6 +200,8 @@ async function collectBrowserCandidates(baseUrl: string, pages: string[]): Promi
   let browser: any = null
   let pagesCrawled = 0
   const allCandidates: BrowserImageCandidate[] = []
+  let websiteIntelligence: WebsiteIntelligence = {}
+  let screenshotBuffer: Buffer | undefined
 
   try {
     browser = await chromium.launch({
@@ -245,6 +250,19 @@ async function collectBrowserCandidates(baseUrl: string, pages: string[]): Promi
         const pageCandidates = extractRenderedImages(page, pageUrl)
         allCandidates.push(...pageCandidates)
         pagesCrawled++
+
+        // Capture screenshot from first successful page
+        if (!screenshotBuffer) {
+          try {
+            screenshotBuffer = await page.screenshot({ type: 'png', fullPage: false })
+          } catch {
+            // screenshot capture is best-effort
+          }
+        }
+
+        // Extract website intelligence
+        const pageIntelligence = extractWebsiteIntelligence(page, pageUrl)
+        mergeIntelligence(websiteIntelligence, pageIntelligence)
       } catch (err) {
         console.error(`[browser-discovery] page failed: ${pageUrl}`, err instanceof Error ? err.message : err)
       } finally {
@@ -266,6 +284,64 @@ async function collectBrowserCandidates(baseUrl: string, pages: string[]): Promi
     browserCandidates: browserCount,
     pagesCrawled,
     fallbackUsed: true,
+    websiteIntelligence,
+    screenshot: screenshotBuffer?.toString('base64'),
+  }
+}
+
+function mergeIntelligence(target: WebsiteIntelligence, source: WebsiteIntelligence): void {
+  if (source.businessName && !target.businessName) target.businessName = source.businessName
+  if (source.industry && !target.industry) target.industry = source.industry
+  if (source.location && !target.location) target.location = source.location
+  if (source.phones && source.phones.length > 0) {
+    target.phones = [...(target.phones || []), ...source.phones]
+    target.phones = [...new Set(target.phones)]
+  }
+  if (source.emails && source.emails.length > 0) {
+    target.emails = [...(target.emails || []), ...source.emails]
+    target.emails = [...new Set(target.emails)]
+  }
+  if (source.services && source.services.length > 0) {
+    target.services = [...(target.services || []), ...source.services]
+  }
+  if (source.products && source.products.length > 0) {
+    target.products = [...(target.products || []), ...source.products]
+  }
+  if (source.offers && source.offers.length > 0) {
+    target.offers = [...(target.offers || []), ...source.offers]
+  }
+  if (source.callsToAction && source.callsToAction.length > 0) {
+    target.callsToAction = [...(target.callsToAction || []), ...source.callsToAction]
+  }
+  if (source.keyMessages && source.keyMessages.length > 0) {
+    target.keyMessages = [...(target.keyMessages || []), ...source.keyMessages]
+  }
+  if (source.brand) {
+    target.brand = target.brand || {}
+    if (source.brand.colors && source.brand.colors.length > 0) {
+      target.brand.colors = [...(target.brand.colors || []), ...source.brand.colors]
+      target.brand.colors = [...new Set(target.brand.colors)]
+    }
+    if (source.brand.fonts && source.brand.fonts.length > 0) {
+      target.brand.fonts = [...(target.brand.fonts || []), ...source.brand.fonts]
+      target.brand.fonts = [...new Set(target.brand.fonts)]
+    }
+    if (source.brand.tone && source.brand.tone.length > 0) {
+      target.brand.tone = [...(target.brand.tone || []), ...source.brand.tone]
+      target.brand.tone = [...new Set(target.brand.tone)]
+    }
+  }
+  if (source.socialProfiles && source.socialProfiles.length > 0) {
+    target.socialProfiles = [...(target.socialProfiles || []), ...source.socialProfiles]
+    const seen = new Set(target.socialProfiles.map((p) => p.url))
+    target.socialProfiles = target.socialProfiles.filter((p) => {
+      if (seen.has(p.url)) return false
+      seen.add(p.url)
+      return true
+    })
+  }
+  if (source.completenessScore !== undefined) {
+    target.completenessScore = Math.max(target.completenessScore || 0, source.completenessScore)
   }
 }
 

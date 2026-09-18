@@ -5,13 +5,13 @@
  * 3. Structured data extraction
  * 4. Sitemap discovery
  * 5. Crawlee CheerioCrawler (free HTTP multi-page)
- * 6. Browser fallback (if enabled and previous layers insufficient)
+ * 6. Playwright/Chromium rendered discovery (free browser-based)
  * 7. Firecrawl (optional last resort, only if explicitly enabled)
  *
  * Then runs the shared normalize/filter/classify pipeline.
  */
 
-import type { ImageCandidate, DiscoveryResult, SocialProfileSource } from './discoveryProvider'
+import type { ImageCandidate, DiscoveryResult, SocialProfileSource, SourceType } from './discoveryProvider'
 import { FirecrawlDiscoveryProvider } from './firecrawlDiscovery'
 import { StaticDiscoveryProvider } from './staticDiscovery'
 import { sanitizeUrl, classifyImage, heuristicFallback } from './discoverAssets'
@@ -19,7 +19,9 @@ import { getBusinessAssetClassificationModel } from './discoveryClassificationCo
 import { autoPlaceAssets, DEFAULT_AUTO_PLACEMENT_CONFIG } from './autoPlacementEngine'
 import { discoverSitemapUrls } from './sitemapDiscovery'
 import { discoverWithCrawlee } from './crawleeProvider'
+import { discoverRenderedAssets, type BrowserDiscoveryResult } from './browserDiscovery'
 import type { DiscoveredAsset, DiscoveredAssetCategory } from '../shared/personalization/types'
+import type { WebsiteIntelligence } from './websiteIntelligence'
 import {
   USEFUL_CATEGORIES,
   isUsefulCategory,
@@ -55,6 +57,9 @@ export interface OrchestratedDiscoveryResult {
   firecrawlUsefulAssetCount?: number
   sitemapFound?: boolean
   crawleePagesCrawled?: number
+  playwrightPagesCrawled?: number
+  completenessScore?: number
+  websiteIntelligence?: WebsiteIntelligence
 }
 
 const MIN_ACCEPTABLE_ASSETS = 5
@@ -79,6 +84,7 @@ function getFirecrawlSkipReason(
   enableFirecrawlFallback: boolean,
   firecrawlApiKey: string | undefined,
   discoveredAssets: DiscoveredAsset[],
+  completenessScore = 0,
 ): string | undefined {
   if (!enableFirecrawlFallback) return 'FIRECRAWL_DISABLED'
   if (!firecrawlApiKey) return 'NO_FIRECRAWL_API_KEY'
@@ -104,7 +110,38 @@ function getFirecrawlSkipReason(
     return 'USEFUL_RESULTS_ALREADY_FOUND'
   }
 
+  if (completenessScore >= 70) {
+    return 'COMPLETENESS_SUFFICIENT'
+  }
+
   return 'FREE_RESULTS_INSUFFICIENT'
+}
+
+function calculateCompletenessScore(
+  discoveredAssets: DiscoveredAsset[],
+  websiteIntelligence?: WebsiteIntelligence,
+): number {
+  let score = 0
+
+  const counts = countUsefulAssetsByCategory(discoveredAssets)
+  if (counts['logo'] >= 1) score += 10
+  if (counts['person'] >= 1) score += 8
+  if ((counts['product'] || 0) + (counts['service'] || 0) + (counts['completed_work'] || 0) >= 2) score += 10
+  if ((counts['storefront'] || 0) + (counts['office'] || 0) + (counts['branded_vehicle'] || 0) + (counts['team'] || 0) + (counts['brand'] || 0) >= 2) score += 5
+
+  if (websiteIntelligence) {
+    if (websiteIntelligence.businessName) score += 10
+    if (websiteIntelligence.industry) score += 8
+    if (websiteIntelligence.location) score += 8
+    if (websiteIntelligence.phones && websiteIntelligence.phones.length > 0) score += 5
+    if (websiteIntelligence.services && websiteIntelligence.services.length > 0) score += 10
+    if (websiteIntelligence.offers && websiteIntelligence.offers.length > 0) score += 8
+    if (websiteIntelligence.callsToAction && websiteIntelligence.callsToAction.length > 0) score += 8
+    if (websiteIntelligence.brand?.colors && websiteIntelligence.brand.colors.length > 0) score += 3
+    if (websiteIntelligence.brand?.fonts && websiteIntelligence.brand.fonts.length > 0) score += 2
+  }
+
+  return Math.min(score, 100)
 }
 
 function getFirecrawlReason(assets: DiscoveredAsset[]): string {
@@ -215,15 +252,18 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
     }
   }
 
-  // 5. If still insufficient and browser fallback enabled, try browser
-  if (!hasEnoughUsefulAssets(discoveredAssets) && enableBrowserFallback) {
-    providerAttempts.push('SMARTVIDEO_BROWSER')
+  // 5. Playwright rendered discovery — free browser-based multi-page discovery
+  let browserIntelligence: WebsiteIntelligence | undefined
+  let playwrightPagesCrawled = 0
+  const freeProvidersInsufficient = !hasEnoughUsefulAssets(discoveredAssets)
+
+  if (freeProvidersInsufficient) {
+    providerAttempts.push('SMARTVIDEO_PLAYWRIGHT')
     try {
-      const { discoverRenderedAssets } = await import('./browserDiscovery')
       const priorityPages = result?.candidates?.map((c) => c.sourcePage) || [baseUrl]
       const uniquePages = Array.from(new Set(priorityPages)).slice(0, 4)
 
-      const browserResult = await discoverRenderedAssets(baseUrl, uniquePages)
+      const browserResult: BrowserDiscoveryResult = await discoverRenderedAssets(baseUrl, uniquePages)
       if (browserResult.candidates.length > 0) {
         const existingUrls = new Set(result?.candidates?.map((c) => c.url) || [])
         const newCandidates = browserResult.candidates.filter((c) => !existingUrls.has(c.url))
@@ -232,33 +272,49 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
           result = {
             ...result,
             candidates: [...result.candidates, ...newCandidates],
-            rawCandidates: (result.rawCandidates || 0) + browserResult.candidates.length,
+            rawCandidates: (result.rawCandidates || 0) + browserResult.browserCandidates,
             pagesCrawled: (result.pagesCrawled || 0) + browserResult.pagesCrawled,
+            socialProfiles: [
+              ...(result.socialProfiles || []),
+              ...(browserResult.websiteIntelligence?.socialProfiles || []).map((p) => ({
+                sourceType: 'WEBSITE' as SourceType,
+                sourcePageUrl: baseUrl,
+                socialProfileUrl: p.url,
+              })),
+            ],
           }
         } else {
           result = {
             candidates: newCandidates,
-            provider: 'SMARTVIDEO_BROWSER',
+            provider: 'SMARTVIDEO_PLAYWRIGHT',
             pagesCrawled: browserResult.pagesCrawled,
-            rawCandidates: browserResult.candidates.length,
-            socialProfiles: [],
+            rawCandidates: browserResult.browserCandidates,
+            socialProfiles: (browserResult.websiteIntelligence?.socialProfiles || []).map((p) => ({
+              sourceType: 'WEBSITE' as SourceType,
+              sourcePageUrl: baseUrl,
+              socialProfileUrl: p.url,
+            })),
           }
         }
 
         const browserAssets = await buildDiscoveredAssetsFromCandidates(newCandidates, maxImages, openAiKey, openAiModel)
         discoveredAssets = [...discoveredAssets, ...browserAssets]
         localUsefulAssetCount = discoveredAssets.filter((asset) => isUsefulCategory(asset.category)).length
-        providerUsed = 'SMARTVIDEO_BROWSER'
+        providerUsed = 'SMARTVIDEO_PLAYWRIGHT'
+        playwrightPagesCrawled = browserResult.pagesCrawled
+        browserIntelligence = browserResult.websiteIntelligence
       }
     } catch (err) {
-      console.error('[discovery] Browser fallback failed:', err instanceof Error ? err.message : err)
+      console.error('[discovery] Playwright discovery failed:', err instanceof Error ? err.message : err)
     }
   }
 
-  const firecrawlSkippedReason = getFirecrawlSkipReason(enableFirecrawlFallback, firecrawlApiKey, discoveredAssets)
+  const completenessScore = calculateCompletenessScore(discoveredAssets, browserIntelligence)
+
+  const firecrawlSkippedReason = getFirecrawlSkipReason(enableFirecrawlFallback, firecrawlApiKey, discoveredAssets, completenessScore)
 
   // 6. If still insufficient and Firecrawl fallback enabled, try Firecrawl
-  const useFirecrawl = enableFirecrawlFallback && firecrawlApiKey && !hasEnoughUsefulAssets(discoveredAssets)
+  const useFirecrawl = enableFirecrawlFallback && firecrawlApiKey && !hasEnoughUsefulAssets(discoveredAssets) && completenessScore < 70
 
   if (useFirecrawl) {
     firecrawlReason = getFirecrawlReason(discoveredAssets)
@@ -319,6 +375,9 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
       : 0,
     sitemapFound,
     crawleePagesCrawled,
+    playwrightPagesCrawled,
+    completenessScore,
+    websiteIntelligence: browserIntelligence,
   }
 }
 

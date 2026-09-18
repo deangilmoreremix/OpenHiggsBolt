@@ -8,10 +8,15 @@ vi.mock('studio/src/muapi', () => ({
   uploadFile: vi.fn(),
 }))
 
+vi.mock('../browserDiscovery', () => ({
+  discoverRenderedAssets: vi.fn(),
+}))
+
 import { FirecrawlDiscoveryProvider } from '../firecrawlDiscovery'
 import { StaticDiscoveryProvider } from '../staticDiscovery'
 import { orchestrateDiscovery } from '../discoveryOrchestrator'
 import { getBusinessAssetClassificationModel } from '../discoveryClassificationConfig'
+import { discoverRenderedAssets } from '../browserDiscovery'
 
 // ---------------------------------------------------------------------------
 // Classification model config
@@ -148,8 +153,10 @@ describe('orchestrateDiscovery', () => {
       firecrawlApiKey: 'fc-test',
     })
 
-    expect(result.providerAttempted).toBe('SMARTVIDEO_STATIC')
-    expect(result.providerUsed).toBe('SMARTVIDEO_STATIC')
+    // With the new free-first architecture, Playwright may run after static
+    // when free providers are insufficient. The key requirement is that
+    // Firecrawl does NOT run when enough useful assets are found.
+    expect(result.providerAttempts).toContain('SMARTVIDEO_STATIC')
     expect(result.firecrawlUsed).toBe(false)
   })
 
@@ -167,8 +174,9 @@ describe('orchestrateDiscovery', () => {
       firecrawlApiKey: undefined,
     })
 
-    expect(result.providerAttempted).toBe('SMARTVIDEO_STATIC')
-    expect(result.providerUsed).toBe('SMARTVIDEO_STATIC')
+    // Playwright runs as a free provider when static is insufficient,
+    // but Firecrawl is still skipped because it is disabled or has no key.
+    expect(result.providerAttempts).toContain('SMARTVIDEO_STATIC')
     expect(result.firecrawlUsed).toBe(false)
   })
 
