@@ -59,6 +59,7 @@ const TABS = [
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'social-publishing', label: 'Social Publishing' },
   { id: 'go-ai-viral', label: 'GO-Viral' },
+  { id: 'brand-studio', label: 'Brand Studio' },
 ];
 
 // Maps every landing-page studio slug to the studio tab that renders it.
@@ -72,6 +73,7 @@ const SLUG_TO_TAB = {
   'ai-influencer': 'ai-influencer',
   'social-publishing': 'social-publishing',
   'go-ai-viral': 'go-ai-viral',
+  'brand-studio': 'brand-studio',
 };
 
 export default function StandaloneShell({ embedded = false, initialTab = null, demoMode = false, templateData = null, locale = 'en' } = {}) {

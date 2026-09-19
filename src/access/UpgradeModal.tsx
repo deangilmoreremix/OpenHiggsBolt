@@ -16,6 +16,7 @@ const STUDIO_NAMES: Record<string, string> = {
   'design-agent': 'Design Agent',
   'storyboard': 'Storyboard',
   'go-ai-viral': 'GO-Viral',
+  'brand-studio': 'Brand Studio',
   'cinema-studio': 'Cinema Studio',
   'thumbnail-studio': 'Thumbnail Studio',
   'social-publishing': 'Social Publishing',

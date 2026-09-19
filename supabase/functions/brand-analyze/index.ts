@@ -1,15 +1,15 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { corsHeadersFor, handleCors } from "../_shared/cors.ts";
 import { mirrorUrlToStorage } from "../_shared/supabase.ts";
 import { MissingOpenAiKeyError, openAiFromRequest, resolveOpenAiKey } from "../_shared/openai.ts";
 
 const OPENAI_MODEL = "gpt-4o";
 
-function jsonResponse(data: unknown, status = 200): Response {
+function jsonResponse(req: Request, data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      ...corsHeaders,
+      ...corsHeadersFor(req),
       "Content-Type": "application/json",
     },
   });
@@ -152,12 +152,13 @@ function extensionFromUrl(url: string): string {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return handleCors();
+  if (req.method === "OPTIONS") return handleCors(req);
 
   try {
-    const { url: websiteUrl } = await readJson(req);
+    const body = await readJson(req);
+    const { url: websiteUrl, workspace_id } = body;
     if (typeof websiteUrl !== "string" || !websiteUrl.trim()) {
-      return jsonResponse({ error: "Missing website URL" }, 400);
+      return jsonResponse(req, { error: "Missing website URL" }, 400);
     }
 
     // Fail fast before any network/storage work if the caller has no key.
@@ -301,18 +302,19 @@ HTML text excerpt: ${bodyText}`;
         body_text_excerpt: bodyText,
         ai: parsed,
       },
+      workspace_id: workspace_id || null,
     };
 
     const { data, error } = await supabase.from("brand_dna").insert(row)
       .select().single();
     if (error) throw error;
 
-    return jsonResponse(data);
+    return jsonResponse(req, data);
   } catch (error) {
     if (error instanceof MissingOpenAiKeyError) {
-      return jsonResponse({ error: error.message }, 400);
+      return jsonResponse(req, { error: error.message }, 400);
     }
-    return jsonResponse({
+    return jsonResponse(req, {
       error: error instanceof Error ? error.message : "Unknown error",
     }, 500);
   }

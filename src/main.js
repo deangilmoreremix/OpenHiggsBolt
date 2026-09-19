@@ -33,6 +33,10 @@ function navigate(page) {
     import('./components/AgentStudio.js').then(({ AgentStudio }) => {
       contentArea.appendChild(AgentStudio());
     });
+  } else if (page === 'brand-studio') {
+    import('./components/BrandStudio.js').then(({ BrandStudio }) => {
+      contentArea.appendChild(BrandStudio());
+    });
   }
 }
 

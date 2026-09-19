@@ -32,7 +32,10 @@ export default function BrandStudioLanding() {
   useEffect(() => {
     fetch('/api/brands')
       .then((r) => r.json())
-      .then(setBrands)
+      .then((body) => {
+        const items = Array.isArray(body?.data) ? body.data : []
+        setBrands(items)
+      })
       .catch(() => {});
   }, []);
 
