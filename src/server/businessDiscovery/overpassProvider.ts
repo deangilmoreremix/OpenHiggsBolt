@@ -82,7 +82,26 @@ interface OverpassResult {
 function buildOverpassQuery(options: OverpassQueryOptions): string {
   const { south, west, north, east, tags, limit = RESULT_LIMIT } = options
 
-  const tagFilters = tags.map(([k, v]) => `["${k}"="${v}"]`).join('')
+  // Group tags by key so we can use a single regex filter per key.
+  // Overpass chained filters are AND, but we need OR for alternative values.
+  const grouped = new Map<string, string[]>()
+  for (const [k, v] of tags) {
+    const arr = grouped.get(k) || []
+    arr.push(v)
+    grouped.set(k, arr)
+  }
+
+  const tagFilters = Array.from(grouped.entries())
+    .map(([k, values]) => {
+      const unique = Array.from(new Set(values))
+      if (unique.length === 1) {
+        return `["${k}"="${unique[0]}"]`
+      }
+      const escaped = unique.map((v) => v.replace(/"/g, '\\"'))
+      return `["${k}"~"^(${escaped.join('|')})$"]`
+    })
+    .join('')
+
   const bbox = `(${south},${west},${north},${east})`
 
   // Query for nodes, ways, and relations.
