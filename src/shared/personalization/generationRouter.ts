@@ -73,10 +73,75 @@ function pickImageModel(source: PersonalizationSource, options: GenerationOption
   return resolveModelId(source, options, DEFAULT_I2I_MODEL)
 }
 
-// ── Logging ──────────────────────────────────────────────────────────────────
+// ── Error Handling ───────────────────────────────────────────────────────────
 
-function logPersonalizationApi(_phase: string, _data: Record<string, unknown>) {
-  // Debug logging removed for production
+function classifyMuApiError(error: unknown): string {
+  if (!error || typeof error !== 'object') {
+    return 'Generation service unavailable'
+  }
+
+  const err = error as Record<string, unknown>
+  const message = typeof err.message === 'string' ? err.message : String(error)
+  const lowerMessage = message.toLowerCase()
+
+  if (lowerMessage.includes('quota') || lowerMessage.includes('limit exceeded')) {
+    return 'API quota exceeded. Please try again later.'
+  }
+  if (lowerMessage.includes('invalid api key') || lowerMessage.includes('unauthorized')) {
+    return 'Invalid API key. Please check your configuration.'
+  }
+  if (lowerMessage.includes('timeout') || lowerMessage.includes('timed out')) {
+    return 'Generation timed out. Please try again.'
+  }
+  if (lowerMessage.includes('content policy') || lowerMessage.includes('safety')) {
+    return 'Content was blocked by safety filters. Please try a different prompt.'
+  }
+  if (lowerMessage.includes('model not found') || lowerMessage.includes('unsupported model')) {
+    return 'Selected model is not available. Please try a different model.'
+  }
+  if (lowerMessage.includes('validation') || lowerMessage.includes('invalid')) {
+    return 'Invalid request parameters. Please check your inputs.'
+  }
+  if (lowerMessage.includes('network') || lowerMessage.includes('econnreset') || lowerMessage.includes('enotfound')) {
+    return 'Network error. Please check your connection and try again.'
+  }
+  if (lowerMessage.includes('payment') || lowerMessage.includes('billing')) {
+    return 'Payment issue. Please check your billing settings.'
+  }
+  if (lowerMessage.includes('rate limit') || lowerMessage.includes('too many requests')) {
+    return 'Too many requests. Please wait a moment and try again.'
+  }
+  if (lowerMessage.includes('500') || lowerMessage.includes('internal server error')) {
+    return 'Generation service encountered an error. Please try again.'
+  }
+  if (lowerMessage.includes('503') || lowerMessage.includes('service unavailable')) {
+    return 'Generation service is temporarily unavailable. Please try again later.'
+  }
+  if (lowerMessage.includes('504') || lowerMessage.includes('gateway timeout')) {
+    return 'Generation timed out. Please try again with a shorter video.'
+  }
+
+  return message.slice(0, 200)
+}
+
+function wrapGenerationError(error: unknown, context: string): Error {
+  const userMessage = classifyMuApiError(error)
+  const originalMessage = error instanceof Error ? error.message : String(error)
+  const wrapped = new Error(`${context}: ${userMessage}`)
+  wrapped.cause = error
+  ;(wrapped as any).originalMessage = originalMessage
+  return wrapped
+}
+
+// ── Fallback Helpers ─────────────────────────────────────────────────────────
+
+function getFallbackModel(source: PersonalizationSource, mode: VideoPersonalizationMode | ImagePersonalizationMode | null): string {
+  if (source.mediaType === 'image') {
+    return DEFAULT_I2I_MODEL
+  }
+  if (mode === 'face_only') return FACE_SWAP_MODEL
+  if (mode === 'full_body') return FULL_BODY_MODEL
+  return DEFAULT_T2V_MODEL
 }
 
 // ── Main Entry ───────────────────────────────────────────────────────────────
@@ -84,17 +149,9 @@ function logPersonalizationApi(_phase: string, _data: Record<string, unknown>) {
 export async function runGeneration(input: GenerationInput): Promise<GenerationResult> {
   const { source, resolved, prompt, mode, options, apiKey, onProgress } = input
 
-  logPersonalizationApi('Generation start', {
-    sourceType: source.sourceType,
-    mediaType: source.mediaType,
-    mode,
-    outputType: source.mediaType === 'image' ? 'image' : 'video',
-  })
-
   onProgress?.(5, 'Preparing assets...')
 
   if (source.mediaType === 'prompt-only') {
-    logPersonalizationApi('Prompt-only result', { prompt })
     return { type: 'prompt', prompt }
   }
 
@@ -135,78 +192,58 @@ async function handleImageGeneration({
   source: PersonalizationSource
   resolved: ResolvedAssets
   prompt: string
-  mode: any
+  mode: ImagePersonalizationMode | null
   options: GenerationOptions
   apiKey: string
   onProgress?: (percent: number, message: string) => void
 }): Promise<GenerationResult> {
   const imageModel = pickImageModel(source, options, mode || 'recreate')
 
-  logPersonalizationApi('Image generation model', {
-    model: imageModel,
-    mode,
-    imageUrl: resolved.directInputs.image_url,
-    imagesList: resolved.directInputs.images_list,
-  })
+  try {
+    if (mode === 'keep_design' || mode === 'replace_face' || mode === 'replace_person') {
+      onProgress?.(15, 'Uploading reference image...')
+      const imageUrl = (resolved.directInputs.image_url as string) || source.sourceMedia || ''
+      if (!imageUrl) throw new Error('No source image available for image personalization.')
 
-  if (mode === 'keep_design' || mode === 'replace_face' || mode === 'replace_person') {
-    onProgress?.(15, 'Uploading reference image...')
-    const imageUrl = (resolved.directInputs.image_url as string) || source.sourceMedia || ''
-    if (!imageUrl) throw new Error('No source image available for image personalization.')
+      const result = await generateI2I(apiKey, {
+        model: imageModel,
+        prompt,
+        image_url: imageUrl,
+        images_list: resolved.directInputs.images_list as string[] | undefined,
+        aspect_ratio: options.aspectRatio || source.aspectRatio || '1:1',
+        quality: options.quality,
+        resolution: options.resolution,
+      })
 
-    logPersonalizationApi('I2I submit', {
-      model: imageModel,
-      imageUrl,
-      aspectRatio: source.aspectRatio,
-    })
+      onProgress?.(90, 'Finalizing image...')
+      const outputUrl = (result as any).url || (result as any).output?.url || (result as any).outputs?.[0]
+      return {
+        type: 'image',
+        url: outputUrl,
+        metadata: { model: imageModel, mode, postProcessing: resolved.postProcessing },
+      }
+    }
 
-    const result = await generateI2I(apiKey, {
+    onProgress?.(15, 'Generating personalized image...')
+    const result = await generateImage(apiKey, {
       model: imageModel,
       prompt,
-      image_url: imageUrl,
-      images_list: resolved.directInputs.images_list as string[] | undefined,
       aspect_ratio: options.aspectRatio || source.aspectRatio || '1:1',
       quality: options.quality,
       resolution: options.resolution,
+      image_url: resolved.directInputs.image_url as string | undefined,
+      images_list: resolved.directInputs.images_list as string[] | undefined,
     })
 
     onProgress?.(90, 'Finalizing image...')
     const outputUrl = (result as any).url || (result as any).output?.url || (result as any).outputs?.[0]
-    logPersonalizationApi('I2I result', { outputUrl, model: imageModel })
     return {
       type: 'image',
       url: outputUrl,
       metadata: { model: imageModel, mode, postProcessing: resolved.postProcessing },
     }
-  }
-
-  // recreate or complete
-  onProgress?.(15, 'Generating personalized image...')
-  logPersonalizationApi('T2I submit', {
-    model: imageModel,
-    prompt: prompt.slice(0, 100),
-    aspectRatio: source.aspectRatio,
-    imageUrl: resolved.directInputs.image_url,
-    imagesList: resolved.directInputs.images_list,
-  })
-
-  const result = await generateImage(apiKey, {
-    model: imageModel,
-    prompt,
-    aspect_ratio: options.aspectRatio || source.aspectRatio || '1:1',
-    quality: options.quality,
-    resolution: options.resolution,
-    image_url: resolved.directInputs.image_url as string | undefined,
-    images_list: resolved.directInputs.images_list as string[] | undefined,
-  })
-
-  onProgress?.(90, 'Finalizing image...')
-  const outputUrl = (result as any).url || (result as any).output?.url || (result as any).outputs?.[0]
-  logPersonalizationApi('T2I result', { outputUrl, model: imageModel })
-  return {
-    type: 'image',
-    url: outputUrl,
-    metadata: { model: imageModel, mode, postProcessing: resolved.postProcessing },
+  } catch (error) {
+    throw wrapGenerationError(error, `Image generation failed (${imageModel})`)
   }
 }
 
@@ -224,140 +261,136 @@ async function handleVideoGeneration({
   source: PersonalizationSource
   resolved: ResolvedAssets
   prompt: string
-  mode: any
+  mode: VideoPersonalizationMode | null
   options: GenerationOptions
   apiKey: string
   onProgress?: (percent: number, message: string) => void
 }): Promise<GenerationResult> {
   const videoModel = pickVideoModel(source, options, mode || 'recreate')
 
-  // Face-only: use V2V face swap model (ai-video-face-swap)
-  if (mode === 'face_only') {
-    onProgress?.(20, 'Preparing face swap...')
-    const videoUrl = (resolved.directInputs.video_url as string) || source.sourceMedia || ''
-    if (!videoUrl) throw new Error('No source video available for face swap.')
+  try {
+    if (mode === 'face_only') {
+      onProgress?.(20, 'Preparing face swap...')
+      const videoUrl = (resolved.directInputs.video_url as string) || source.sourceMedia || ''
+      if (!videoUrl) throw new Error('No source video available for face swap.')
 
-    const identityUrl = resolved.directInputs.image_url as string | undefined
-    if (!identityUrl) throw new Error('No identity image provided for face swap.')
+      const identityUrl = resolved.directInputs.image_url as string | undefined
+      if (!identityUrl) throw new Error('No identity image provided for face swap.')
 
-    logPersonalizationApi('V2V face-swap submit', {
-      model: videoModel,
-      videoUrl,
-      imageUrl: identityUrl,
-    })
+      const result = await processV2V(apiKey, {
+        model: videoModel,
+        video_url: videoUrl,
+        image_url: identityUrl,
+        prompt: options.preserveAudio ? undefined : prompt,
+        aspect_ratio: options.aspectRatio || source.aspectRatio,
+      })
 
-    // ai-video-face-swap lives in v2vModels, so use processV2V
-    const result = await processV2V(apiKey, {
-      model: videoModel,
-      video_url: videoUrl,
-      image_url: identityUrl,
-      prompt: options.preserveAudio ? undefined : prompt,
-      aspect_ratio: options.aspectRatio || source.aspectRatio,
-    })
-
-    onProgress?.(85, 'Processing face swap...')
-    const outputUrl = (result as any).url || (result as any).output?.url || (result as any).outputs?.[0]
-    logPersonalizationApi('V2V face-swap result', { outputUrl, model: videoModel })
-    return {
-      type: 'video',
-      url: outputUrl,
-      metadata: { model: videoModel, mode: mode || 'face_only', postProcessing: resolved.postProcessing },
+      onProgress?.(85, 'Processing face swap...')
+      const outputUrl = (result as any).url || (result as any).output?.url || (result as any).outputs?.[0]
+      return {
+        type: 'video',
+        url: outputUrl,
+        metadata: { model: videoModel, mode: mode || 'face_only', postProcessing: resolved.postProcessing },
+      }
     }
-  }
 
-  // Full presenter / body replacement: use recast model
-  if (mode === 'full_body') {
-    onProgress?.(20, 'Preparing full presenter replacement...')
-    const videoUrl = (resolved.directInputs.video_url as string) || source.sourceMedia || ''
-    if (!videoUrl) throw new Error('No source video available.')
+    if (mode === 'full_body') {
+      onProgress?.(20, 'Preparing full presenter replacement...')
+      const videoUrl = (resolved.directInputs.video_url as string) || source.sourceMedia || ''
+      if (!videoUrl) throw new Error('No source video available.')
 
-    const identityUrl = resolved.directInputs.image_url as string | undefined
-    if (!identityUrl) throw new Error('No identity image provided for full presenter replacement.')
+      const identityUrl = resolved.directInputs.image_url as string | undefined
+      if (!identityUrl) throw new Error('No identity image provided for full presenter replacement.')
 
-    logPersonalizationApi('Recast submit', {
-      model: videoModel,
-      videoUrl,
-      imageUrl: identityUrl,
-    })
+      const result = await processRecast(apiKey, {
+        model: videoModel,
+        video_url: videoUrl,
+        image_url: identityUrl,
+        prompt: options.preserveAudio ? undefined : prompt,
+        aspect_ratio: options.aspectRatio || source.aspectRatio,
+      })
 
-    const result = await processRecast(apiKey, {
-      model: videoModel,
-      video_url: videoUrl,
-      image_url: identityUrl,
-      prompt: options.preserveAudio ? undefined : prompt,
-      aspect_ratio: options.aspectRatio || source.aspectRatio,
-    })
-
-    onProgress?.(85, 'Processing...')
-    const outputUrl = (result as any).url || (result as any).output?.url || (result as any).outputs?.[0]
-    logPersonalizationApi('Recast result', { outputUrl, model: videoModel })
-    return {
-      type: 'video',
-      url: outputUrl,
-      metadata: { model: videoModel, mode: mode || 'full_body', postProcessing: resolved.postProcessing },
+      onProgress?.(85, 'Processing...')
+      const outputUrl = (result as any).url || (result as any).output?.url || (result as any).outputs?.[0]
+      return {
+        type: 'video',
+        url: outputUrl,
+        metadata: { model: videoModel, mode: mode || 'full_body', postProcessing: resolved.postProcessing },
+      }
     }
-  }
 
-  // Recreate or complete: use video generation (T2V or I2V)
-  onProgress?.(20, 'Submitting video generation...')
-  const directInputs = resolved.directInputs
-  const imageUrl = directInputs.image_url as string | undefined
-  const videoUrl = directInputs.video_url as string | undefined
+    onProgress?.(20, 'Submitting video generation...')
+    const directInputs = resolved.directInputs
+    const imageUrl = directInputs.image_url as string | undefined
+    const videoUrl = directInputs.video_url as string | undefined
 
-  logPersonalizationApi('Video generation submit', {
-    model: videoModel,
-    prompt: prompt.slice(0, 100),
-    aspectRatio: source.aspectRatio,
-    duration: source.duration,
-    hasImage: Boolean(imageUrl),
-    hasVideo: Boolean(videoUrl),
-    firstFrame: directInputs.first_image_url || directInputs.image_url,
-    lastFrame: directInputs.last_image_url,
-  })
+    if (imageUrl && !videoUrl) {
+      try {
+        const i2vResult = await generateI2V(apiKey, {
+          model: videoModel,
+          prompt,
+          aspect_ratio: options.aspectRatio || source.aspectRatio || '16:9',
+          duration: options.duration || source.duration,
+          resolution: options.resolution,
+          quality: options.quality,
+          image_url: imageUrl,
+          images_list: directInputs.images_list as string[] | undefined,
+          last_image: directInputs.last_image_url as string | undefined,
+        })
 
-  // If we have an image but no video, use I2V
-  if (imageUrl && !videoUrl) {
-    const i2vResult = await generateI2V(apiKey, {
+        onProgress?.(85, 'Processing video...')
+        const outputUrl = (i2vResult as any).url || (i2vResult as any).output?.url || (i2vResult as any).outputs?.[0]
+        return {
+          type: 'video',
+          url: outputUrl,
+          metadata: { model: videoModel, mode: mode || 'recreate', postProcessing: resolved.postProcessing },
+        }
+      } catch (error) {
+        const fallbackModel = getFallbackModel(source, mode)
+        if (fallbackModel === videoModel) {
+          throw wrapGenerationError(error, `Video generation failed (${videoModel})`)
+        }
+        onProgress?.(50, `Primary model unavailable, trying fallback...`)
+        const fallbackResult = await generateI2V(apiKey, {
+          model: fallbackModel,
+          prompt,
+          aspect_ratio: options.aspectRatio || source.aspectRatio || '16:9',
+          duration: options.duration || source.duration,
+          resolution: options.resolution,
+          quality: options.quality,
+          image_url: imageUrl,
+          images_list: directInputs.images_list as string[] | undefined,
+          last_image: directInputs.last_image_url as string | undefined,
+        })
+        const outputUrl = (fallbackResult as any).url || (fallbackResult as any).output?.url || (fallbackResult as any).outputs?.[0]
+        return {
+          type: 'video',
+          url: outputUrl,
+          metadata: { model: fallbackModel, mode: mode || 'recreate', postProcessing: resolved.postProcessing },
+        }
+      }
+    }
+
+    const result = await generateVideo(apiKey, {
       model: videoModel,
       prompt,
       aspect_ratio: options.aspectRatio || source.aspectRatio || '16:9',
       duration: options.duration || source.duration,
       resolution: options.resolution,
       quality: options.quality,
-      image_url: imageUrl,
-      images_list: directInputs.images_list as string[] | undefined,
-      last_image: directInputs.last_image_url as string | undefined,
-    })
+      mode: 'v2v',
+      ...directInputs,
+    } as any)
 
     onProgress?.(85, 'Processing video...')
-    const outputUrl = (i2vResult as any).url || (i2vResult as any).output?.url || (i2vResult as any).outputs?.[0]
-    logPersonalizationApi('I2V result', { outputUrl, model: videoModel })
+    const outputUrl = (result as any).url || (result as any).output?.url || (result as any).outputs?.[0]
     return {
       type: 'video',
       url: outputUrl,
       metadata: { model: videoModel, mode: mode || 'recreate', postProcessing: resolved.postProcessing },
     }
-  }
-
-  // Otherwise use generateVideo (supports video-to-video)
-  const result = await generateVideo(apiKey, {
-    model: videoModel,
-    prompt,
-    aspect_ratio: options.aspectRatio || source.aspectRatio || '16:9',
-    duration: options.duration || source.duration,
-    resolution: options.resolution,
-    quality: options.quality,
-    mode: 'v2v',
-    ...directInputs,
-  } as any)
-
-  onProgress?.(85, 'Processing video...')
-  const outputUrl = (result as any).url || (result as any).output?.url || (result as any).outputs?.[0]
-  logPersonalizationApi('Video generation result', { outputUrl, model: videoModel })
-  return {
-    type: 'video',
-    url: outputUrl,
-    metadata: { model: videoModel, mode: mode || 'recreate', postProcessing: resolved.postProcessing },
+  } catch (error) {
+    throw wrapGenerationError(error, `Video generation failed (${videoModel})`)
   }
 }
 

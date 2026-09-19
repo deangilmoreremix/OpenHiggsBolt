@@ -18,7 +18,6 @@ import { sanitizeUrl, classifyImage, heuristicFallback } from './discoverAssets'
 import { getBusinessAssetClassificationModel } from './discoveryClassificationConfig'
 import { autoPlaceAssets, DEFAULT_AUTO_PLACEMENT_CONFIG } from './autoPlacementEngine'
 import { discoverSitemapUrls } from './sitemapDiscovery'
-import { discoverWithCrawlee } from './crawleeProvider'
 import type { DiscoveredAsset, DiscoveredAssetCategory } from '../shared/personalization/types'
 import {
   USEFUL_CATEGORIES,
@@ -182,6 +181,7 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
   if (!staticSufficient && sitemapCandidates.length > 0) {
     providerAttempts.push('CRAWLEE_CHEERIO')
     try {
+      const { discoverWithCrawlee } = await import('./crawleeProvider')
       const crawleeResult = await discoverWithCrawlee(baseUrl)
       if (crawleeResult.candidates.length > 0) {
         const existingUrls = new Set(result?.candidates?.map((c) => c.url) || [])

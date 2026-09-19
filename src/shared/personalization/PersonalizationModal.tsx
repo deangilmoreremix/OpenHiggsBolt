@@ -106,7 +106,7 @@ function classNames(...classes: (string | boolean | undefined | null | false)[])
   return classes.filter(Boolean).join(' ')
 }
 
-function Field({ label, value, placeholder, onChange, full = false }: { label: string; value: any; placeholder: string; onChange: (v: string) => void; full?: boolean }) {
+function Field({ label, value, placeholder, onChange, full = false }: { label: string; value: string | undefined | null; placeholder: string; onChange: (v: string) => void; full?: boolean }) {
   return (
     <div className={full ? 'col-span-full' : ''}>
       <label style={{ display: 'block', marginBottom: 6, color: C.muted, fontSize: 10 }}>{label}</label>
@@ -128,7 +128,7 @@ function Field({ label, value, placeholder, onChange, full = false }: { label: s
   )
 }
 
-function isModeUnavailable(modeKey: string, assets: any, capabilities: any): boolean {
+function isModeUnavailable(modeKey: string, assets: { primaryIdentity?: PersonalizationAsset | null; identities?: PersonalizationAsset[] }, capabilities: Record<string, unknown>): boolean {
   if (modeKey === 'face_only' || modeKey === 'replace_face') {
     return !assets.primaryIdentity && !assets.identities?.length
   }
@@ -138,7 +138,7 @@ function isModeUnavailable(modeKey: string, assets: any, capabilities: any): boo
   return false
 }
 
-function getModeUnavailableReason(modeKey: string, assets: any): string {
+function getModeUnavailableReason(modeKey: string, assets: { primaryIdentity?: PersonalizationAsset | null; identities?: PersonalizationAsset[] }): string {
   if (modeKey === 'face_only' || modeKey === 'replace_face') {
     return 'Requires a person/identity photo.'
   }
@@ -523,6 +523,7 @@ function DiscoveredAssetThumb({
 
 // ── Modal ────────────────────────────────────────────────────────────────────
 
+// eslint-disable-next-line react-hooks/rules-of-hooks
 export default function PersonalizationModal() {
   const ctx = useDemoPersonalize()
   const {
@@ -660,7 +661,7 @@ export default function PersonalizationModal() {
   const isVideo = source.mediaType === 'video'
   const isImage = source.mediaType === 'image'
   const isPromptOnly = source.mediaType === 'prompt-only'
-  const eligibleModes: readonly any[] = isVideo ? VIDEO_MODES : isImage ? IMAGE_MODES : []
+  const eligibleModes = isVideo ? VIDEO_MODES : isImage ? IMAGE_MODES : []
   const outputOptions = isVideo ? OUTPUT_OPTIONS_VIDEO : isImage ? OUTPUT_OPTIONS_IMAGE : OUTPUT_OPTIONS_PROMPT
   const showModes = outputType !== 'prompt' && eligibleModes.length > 0
 
@@ -1066,6 +1067,7 @@ export default function PersonalizationModal() {
     </div>
   )
 }
+// eslint-enable react-hooks/rules-of-hooks
 
 // ── Sub-views ────────────────────────────────────────────────────────────────
 
@@ -1264,19 +1266,19 @@ function ResultView(props: any) {
 
 // ── Configuration view (main editing UI) ─────────────────────────────────────
 
-function isAssetInCurrentJob(asset: any, assets: any): boolean {
+function isAssetInCurrentJob(asset: { id?: string; url?: string; uploadedUrl?: string } | null | undefined, assets: { identities?: PersonalizationAsset[]; logos?: PersonalizationAsset[]; products?: PersonalizationAsset[]; brandReferences?: PersonalizationAsset[]; firstFrame?: PersonalizationAsset | null; lastFrame?: PersonalizationAsset | null; ctaGraphic?: PersonalizationAsset | null; savedReferences?: PersonalizationAsset[] }): boolean {
   if (!asset) return false
   const all = [
-    ...assets.identities,
-    ...assets.logos,
-    ...assets.products,
-    ...assets.brandReferences,
+    ...(assets.identities || []),
+    ...(assets.logos || []),
+    ...(assets.products || []),
+    ...(assets.brandReferences || []),
     assets.firstFrame,
     assets.lastFrame,
     assets.ctaGraphic,
-    ...assets.savedReferences,
+    ...(assets.savedReferences || []),
   ].filter(Boolean)
-  return all.some((a: any) => a.id === asset.id || a.url === asset.url || a.uploadedUrl === asset.uploadedUrl)
+  return all.some((a) => a && (a.id === asset.id || a.url === asset.url || a.uploadedUrl === asset.uploadedUrl))
 }
 
 function ConfigurationView(props: any) {

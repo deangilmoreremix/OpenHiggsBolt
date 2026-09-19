@@ -43,8 +43,6 @@ import type {
   DiscoveredAsset,
   DiscoveredAssetCategory,
   AssignedSection,
-  SourceType,
-  BusinessSearchState,
 } from './types'
 import { EMPTY_GENERATION_STATE } from './types'
 import { normalizePersonalizationSource, getEligibility } from './sourceNormalizer'
@@ -60,7 +58,6 @@ import {
   loadClientAssets,
   saveClientAssets,
   deleteClientAssets,
-  addAssetToClientLibrary,
   removeAssetFromClientLibrary,
   setPrimaryInClientLibrary,
   type ClientAssetLibrary,
@@ -71,7 +68,7 @@ import {
   registerSharedMedia,
 } from './sharedMedia'
 import { registerSupabaseSharedMedia } from './supabaseSharedMedia'
-import { personalizePrompt, regeneratePrompt } from './promptPersonalizer'
+import { personalizePrompt } from './promptPersonalizer'
 import { runGeneration } from './generationRouter'
 import { resolveModelCapabilities, resolveAssetsForModel } from './modelCapabilityResolver'
 import { applyPostProcessing, generateEndCardImage } from './postProcessor'
@@ -469,7 +466,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
-  const currentClient = clients.find((c) => c.id === selectedClientId) || null
+  const _currentClient = clients.find((c) => c.id === selectedClientId) || null
 
   // ── Reset on source change ─────────────────────────────────────────────────
 
@@ -505,7 +502,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     setResultTab('prompt')
     setClientForm({})
     setEligibility(getEligibility(source))
-  }, [source?.id])
+  }, [source?.id, source])
 
   // ── Saved client assets sync ────────────────────────────────────────────────
 
@@ -658,7 +655,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       setCurrentClientId(null)
       setClientForm({})
     }
-  }, [selectedClientId, deleteClientRecord])
+  }, [selectedClientId])
 
   const selectSavedAsset = useCallback((asset: PersonalizationAsset) => {
     setAssets((prev) => updateAssetInLibrary(prev, asset))
@@ -696,7 +693,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
   // ── Asset upload helpers ───────────────────────────────────────────────────
 
-  const updateAsset = useCallback((asset: PersonalizationAsset) => {
+  const _updateAsset = useCallback((asset: PersonalizationAsset) => {
     setAssets((prev) => updateAssetInLibrary(prev, asset))
   }, [])
 
@@ -756,7 +753,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
     setAssetUploadStatus(asset.id, 'uploading')
     try {
-      const url = await uploadFile(apiKey, asset.file, (percent) => {
+      const url = await uploadFile(apiKey, asset.file, (_percent) => {
         // optional progress hook
       })
       setAssetUploadStatus(asset.id, 'ready', null)
@@ -1295,8 +1292,8 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         throw new Error(data?.error || `Research failed (HTTP ${res.status})`)
       }
 
-      const data = await res.json()
-      const research = data?.research as any | undefined
+      const data = (await res.json()) as { research?: { canonicalUrl?: string; reachable?: boolean; title?: string; description?: string; logoUrl?: string; socialLinks?: Record<string, string>; contactInfo?: { phones?: string[]; emails?: string[] } } }
+      const research = data?.research
 
       if (!research) {
         throw new Error('No research data returned')
@@ -1307,12 +1304,17 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         status: 'done',
         result: {
           canonicalUrl: research.canonicalUrl,
-          reachable: research.reachable,
+          reachable: research.reachable ?? false,
           title: research.title,
           description: research.description,
           logoUrl: research.logoUrl,
           socialLinks: research.socialLinks,
-          contactInfo: research.contactInfo,
+          contactInfo: research.contactInfo
+            ? {
+                phones: research.contactInfo.phones ?? [],
+                emails: research.contactInfo.emails ?? [],
+              }
+            : undefined,
         },
       })
 
@@ -1451,7 +1453,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         assets,
         resolved,
         prompt: finalPrompt,
-        mode: mode as any,
+        mode,
         options: genOptions,
         apiKey,
         onProgress: (percent, message) => {
@@ -1513,7 +1515,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         originStudio: 'demo-personalization',
         sourceType: source.sourceType,
         sourceDemoId: source.id,
-        sourceDemoSlug: (source as any).sourceDemoSlug || (source as any).slug || null,
+         sourceDemoSlug: (source as { slug?: string }).slug ?? null,
         sourceMedia: source.sourceMedia,
         sourceUrl: source.sourceUrl,
         personalizationMode: mode || null,
@@ -1539,7 +1541,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         errorMessage: error instanceof Error ? error.message : 'Generation failed',
       })
     }
-  }, [source, apiKey, assets, mode, genOptions, promptState, clientForm, selectedClientId, uploadAsset])
+  }, [source, apiKey, assets, mode, genOptions, promptState, clientForm, selectedClientId])
 
   const retry = useCallback(async () => {
     await generate()
