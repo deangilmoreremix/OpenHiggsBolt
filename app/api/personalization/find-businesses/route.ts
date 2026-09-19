@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { geocodeLocation, discoverBusinesses, deduplicateBusinesses, enrichBusinessRecord, scoreAndSort, createCacheKey, businessDiscoveryCache } from '@/server/businessDiscovery'
 import { getNicheMapping, getSupportedNiches } from '@/server/businessDiscovery'
+import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
+import { validatePersonalizationEnv } from '@/server/envValidation'
+
+export const runtime = 'nodejs'
 
 const CACHE_TTL_MS = 1000 * 60 * 60 // 1 hour
 const MAX_RADIUS_MILES = 50
@@ -8,7 +12,23 @@ const MAX_LIMIT = 50
 const DEFAULT_LIMIT = 30
 
 export async function POST(req: NextRequest) {
+  const correlationId = createCorrelationId(req)
+  const startTime = Date.now()
+
   try {
+    const envCheck = validatePersonalizationEnv()
+    if (!envCheck.valid) {
+      logPersonalization({
+        route: '/api/personalization/find-businesses',
+        stage: 'env-validation',
+        httpStatus: 500,
+        safeErrorCode: 'ENV_MISSING',
+        safeMessage: `Missing required env vars: ${envCheck.missingRequired.join(', ')}`,
+        correlationId,
+      })
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+    }
+
     const body = await req.json().catch(() => ({}))
     const niche = typeof body?.niche === 'string' ? body.niche.trim() : ''
     const location = typeof body?.location === 'string' ? body.location.trim() : ''
@@ -17,15 +37,40 @@ export async function POST(req: NextRequest) {
 
     // Validate input
     if (!niche) {
+      logPersonalization({
+        route: '/api/personalization/find-businesses',
+        stage: 'validation',
+        httpStatus: 400,
+        safeErrorCode: 'MISSING_NICHE',
+        safeMessage: 'niche is required',
+        correlationId,
+      })
       return NextResponse.json({ error: 'niche is required' }, { status: 400 })
     }
     if (!location) {
+      logPersonalization({
+        route: '/api/personalization/find-businesses',
+        stage: 'validation',
+        httpStatus: 400,
+        safeErrorCode: 'MISSING_LOCATION',
+        safeMessage: 'location is required',
+        correlationId,
+      })
       return NextResponse.json({ error: 'location is required' }, { status: 400 })
     }
 
     // Validate niche is supported
     const mapping = getNicheMapping(niche)
     if (!mapping) {
+      logPersonalization({
+        route: '/api/personalization/find-businesses',
+        stage: 'validation',
+        provider: 'OPENSTREETMAP',
+        httpStatus: 400,
+        safeErrorCode: 'UNSUPPORTED_NICHE',
+        safeMessage: `Unsupported niche: "${niche}". Supported: ${getSupportedNiches().join(', ')}`,
+        correlationId,
+      })
       return NextResponse.json({
         error: `Unsupported niche: "${niche}". Supported: ${getSupportedNiches().join(', ')}`,
       }, { status: 400 })
@@ -38,6 +83,14 @@ export async function POST(req: NextRequest) {
     const cacheKey = createCacheKey(niche, location, boundedRadius)
     const cached = businessDiscoveryCache.get(cacheKey)
     if (cached) {
+      logPersonalization({
+        route: '/api/personalization/find-businesses',
+        stage: 'cache',
+        provider: 'OPENSTREETMAP',
+        httpStatus: 200,
+        correlationId,
+        durationMs: Date.now() - startTime,
+      })
       return NextResponse.json({
         ok: true,
         query: { niche: mapping.label, location, radiusMiles: boundedRadius },
@@ -49,15 +102,24 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    const startTime = Date.now()
-
     // Geocode the location
     let geocodeResult
     try {
       geocodeResult = await geocodeLocation(location)
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Geocoding failed'
+      logPersonalization({
+        route: '/api/personalization/find-businesses',
+        stage: 'geocode',
+        provider: 'NOMINATIM',
+        httpStatus: 400,
+        safeErrorCode: 'GEOCODE_FAILED',
+        safeMessage: message,
+        correlationId,
+        durationMs: Date.now() - startTime,
+      })
       return NextResponse.json({
-        error: err instanceof Error ? err.message : 'Geocoding failed',
+        error: message,
       }, { status: 400 })
     }
 
@@ -87,6 +149,15 @@ export async function POST(req: NextRequest) {
     // Cache results
     businessDiscoveryCache.set(cacheKey, limited, CACHE_TTL_MS)
 
+    logPersonalization({
+      route: '/api/personalization/find-businesses',
+      stage: 'discover',
+      provider: 'OPENSTREETMAP',
+      httpStatus: 200,
+      correlationId,
+      durationMs,
+    })
+
     return NextResponse.json({
       ok: true,
       query: { niche: mapping.label, location, radiusMiles: boundedRadius },
@@ -98,6 +169,16 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     const status = message.includes('not allowed') || message.includes('Private') ? 400 : 500
+    logPersonalization({
+      route: '/api/personalization/find-businesses',
+      stage: 'unhandled',
+      provider: 'OPENSTREETMAP',
+      httpStatus: status,
+      safeErrorCode: status >= 500 ? 'UNEXPECTED_ERROR' : 'VALIDATION_ERROR',
+      safeMessage: message,
+      correlationId,
+      durationMs: Date.now() - startTime,
+    })
     return NextResponse.json({ error: message }, { status })
   }
 }

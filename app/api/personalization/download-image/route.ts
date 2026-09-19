@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { downloadImageAsDataUrl } from '@/server/downloadImage'
+import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
+import { validatePersonalizationEnv } from '@/server/envValidation'
+
+export const runtime = 'nodejs'
 
 const RATE_LIMIT_WINDOW_MS = 60_000
 const RATE_LIMIT_MAX_REQUESTS = 30
@@ -42,11 +46,35 @@ function sanitizeUrl(url: string): string {
 export async function POST(req: NextRequest) {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 30_000)
+  const correlationId = createCorrelationId(req)
+  const startTime = Date.now()
 
   try {
+    const envCheck = validatePersonalizationEnv()
+    if (!envCheck.valid) {
+      clearTimeout(timeoutId)
+      logPersonalization({
+        route: '/api/personalization/download-image',
+        stage: 'env-validation',
+        httpStatus: 500,
+        safeErrorCode: 'ENV_MISSING',
+        safeMessage: `Missing required env vars: ${envCheck.missingRequired.join(', ')}`,
+        correlationId,
+      })
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+    }
+
     const { userId } = await auth()
     if (!userId) {
       clearTimeout(timeoutId)
+      logPersonalization({
+        route: '/api/personalization/download-image',
+        stage: 'auth',
+        httpStatus: 401,
+        safeErrorCode: 'UNAUTHENTICATED',
+        safeMessage: 'No authenticated user',
+        correlationId,
+      })
       return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
     }
 
@@ -55,6 +83,14 @@ export async function POST(req: NextRequest) {
     const rateLimit = checkRateLimit(rateLimitKey)
     if (!rateLimit.allowed) {
       clearTimeout(timeoutId)
+      logPersonalization({
+        route: '/api/personalization/download-image',
+        stage: 'rate-limit',
+        httpStatus: 429,
+        safeErrorCode: 'RATE_LIMIT_EXCEEDED',
+        safeMessage: 'Rate limit exceeded. Please try again later.',
+        correlationId,
+      })
       return NextResponse.json(
         { error: 'Rate limit exceeded. Please try again later.' },
         { status: 429, headers: { 'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)) } },
@@ -66,6 +102,14 @@ export async function POST(req: NextRequest) {
       body = await req.json()
     } catch {
       clearTimeout(timeoutId)
+      logPersonalization({
+        route: '/api/personalization/download-image',
+        stage: 'parse-body',
+        httpStatus: 400,
+        safeErrorCode: 'INVALID_JSON',
+        safeMessage: 'Invalid JSON body',
+        correlationId,
+      })
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
@@ -74,11 +118,27 @@ export async function POST(req: NextRequest) {
       : []
     if (urls.length === 0) {
       clearTimeout(timeoutId)
+      logPersonalization({
+        route: '/api/personalization/download-image',
+        stage: 'validation',
+        httpStatus: 400,
+        safeErrorCode: 'MISSING_URLS',
+        safeMessage: 'urls array is required',
+        correlationId,
+      })
       return NextResponse.json({ error: 'urls array is required' }, { status: 400 })
     }
 
     if (urls.length > MAX_URLS_PER_REQUEST) {
       clearTimeout(timeoutId)
+      logPersonalization({
+        route: '/api/personalization/download-image',
+        stage: 'validation',
+        httpStatus: 400,
+        safeErrorCode: 'TOO_MANY_URLS',
+        safeMessage: `Maximum ${MAX_URLS_PER_REQUEST} URLs allowed per request`,
+        correlationId,
+      })
       return NextResponse.json({ error: `Maximum ${MAX_URLS_PER_REQUEST} URLs allowed per request` }, { status: 400 })
     }
 
@@ -86,12 +146,28 @@ export async function POST(req: NextRequest) {
     for (const url of urls) {
       if (typeof url !== 'string') {
         clearTimeout(timeoutId)
+        logPersonalization({
+          route: '/api/personalization/download-image',
+          stage: 'validation',
+          httpStatus: 400,
+          safeErrorCode: 'INVALID_URL_TYPE',
+          safeMessage: 'All URLs must be strings',
+          correlationId,
+        })
         return NextResponse.json({ error: 'All URLs must be strings' }, { status: 400 })
       }
       try {
         sanitizedUrls.push(sanitizeUrl(url))
       } catch {
         clearTimeout(timeoutId)
+        logPersonalization({
+          route: '/api/personalization/download-image',
+          stage: 'validation',
+          httpStatus: 400,
+          safeErrorCode: 'INVALID_URL',
+          safeMessage: `Invalid URL: ${url.slice(0, 100)}`,
+          correlationId,
+        })
         return NextResponse.json({ error: `Invalid URL: ${url.slice(0, 100)}` }, { status: 400 })
       }
     }
@@ -109,6 +185,15 @@ export async function POST(req: NextRequest) {
     )
 
     clearTimeout(timeoutId)
+    logPersonalization({
+      route: '/api/personalization/download-image',
+      stage: 'download',
+      httpStatus: 200,
+      provider: 'AXIOS',
+      correlationId,
+      durationMs: Date.now() - startTime,
+    })
+
     return NextResponse.json({ ok: true, results }, {
       headers: {
         'X-RateLimit-Remaining': String(rateLimit.remaining),
@@ -118,10 +203,28 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     clearTimeout(timeoutId)
     if (err instanceof Error && err.name === 'AbortError') {
+      logPersonalization({
+        route: '/api/personalization/download-image',
+        stage: 'request',
+        httpStatus: 504,
+        safeErrorCode: 'TIMEOUT',
+        safeMessage: 'Request timed out',
+        correlationId,
+        durationMs: Date.now() - startTime,
+      })
       return NextResponse.json({ error: 'Request timed out' }, { status: 504 })
     }
     const message = err instanceof Error ? err.message : 'Unknown error'
     const safeMessage = message.replace(/sk-[a-zA-Z0-9]{20,}/g, '[REDACTED]')
+    logPersonalization({
+      route: '/api/personalization/download-image',
+      stage: 'unhandled',
+      httpStatus: 500,
+      safeErrorCode: 'UNEXPECTED_ERROR',
+      safeMessage: safeMessage,
+      correlationId,
+      durationMs: Date.now() - startTime,
+    })
     return NextResponse.json({ error: safeMessage }, { status: 500 })
   }
 }

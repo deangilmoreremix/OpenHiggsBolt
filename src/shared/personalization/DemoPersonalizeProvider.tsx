@@ -20,7 +20,6 @@ import PersonalizationModal from './PersonalizationModal'
 import { writeHandoff } from '@/shared/crossStudio'
 import { SocialPublishContext } from '@/components/SocialPublishProvider'
 import { useAuthConfig } from '@/lib/authConfig'
-import type { BusinessDiscoveryRecord } from '@/server/businessDiscovery/types'
 
 /** Safe accessor for SocialPublishContext — returns null when not wrapped in a provider. */
 function useOptionalSocialPublish() {
@@ -73,11 +72,7 @@ import { runGeneration } from './generationRouter'
 import { resolveModelCapabilities, resolveAssetsForModel } from './modelCapabilityResolver'
 import { applyPostProcessing, generateEndCardImage } from './postProcessor'
 import { uploadFile } from 'studio/src/muapi'
-import { geocodeLocation } from '@/server/businessDiscovery/nominatimProvider'
-import { discoverBusinesses } from '@/server/businessDiscovery/overpassProvider'
-import { deduplicateBusinesses, enrichBusinessRecord } from '@/server/businessDiscovery/businessNormalizer'
-import { scoreAndSort } from '@/server/businessDiscovery/businessScoring'
-import { getNicheMapping, getSupportedNiches } from '@/server/businessDiscovery/nicheMappings'
+import type { BusinessDiscoveryRecord } from './types'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -1212,35 +1207,26 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     setSelectedBusiness(null)
 
     try {
-      const mapping = getNicheMapping(niche)
-      if (!mapping) {
-        throw new Error(`Unsupported niche: "${niche}". Supported: ${getSupportedNiches().join(', ')}`)
-      }
-
-      // Geocode location
-      const geocodeResult = await geocodeLocation(location)
-
-      // Discover businesses
-      const rawBusinesses = await discoverBusinesses({
-        niche,
-        latitude: geocodeResult.latitude,
-        longitude: geocodeResult.longitude,
-        radiusMiles,
-        limit: 30,
+      const res = await fetch('/api/personalization/find-businesses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ niche, location, radiusMiles }),
+        credentials: 'same-origin',
       })
 
-      // Deduplicate
-      const deduplicated = deduplicateBusinesses(rawBusinesses)
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error || `Business search failed (HTTP ${res.status})`)
+      }
 
-      // Score and sort
-      const scored = scoreAndSort(deduplicated)
+      const data = await res.json()
+      const businesses = Array.isArray(data?.businesses) ? data.businesses : []
+      const query = data?.query || { niche, location, radiusMiles }
 
-      // Enrich
-      const enriched = scored.map(enrichBusinessRecord)
-
-      setBusinessSearchResults(enriched)
-      setBusinessSearchMode(enriched.length > 0 ? 'results' : 'error')
-      if (enriched.length === 0) {
+      setBusinessSearchQuery(query)
+      setBusinessSearchResults(businesses)
+      setBusinessSearchMode(businesses.length > 0 ? 'results' : 'error')
+      if (businesses.length === 0) {
         setBusinessSearchError('No businesses found for this niche and location. Try a wider radius or different niche.')
       }
     } catch (err) {

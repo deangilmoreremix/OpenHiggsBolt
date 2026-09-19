@@ -3,6 +3,10 @@ import { auth } from '@clerk/nextjs/server'
 import { orchestrateDiscovery, buildDiscoveredAssetsFromCandidates } from '@/server/discoveryOrchestrator'
 import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer'
 import { getFixture } from '@/src/server/fixtures/discoveryFixtures'
+import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
+import { validatePersonalizationEnv } from '@/server/envValidation'
+
+export const runtime = 'nodejs'
 
 type RawDiscoveryResult = Awaited<ReturnType<typeof orchestrateDiscovery>>
 
@@ -64,8 +68,24 @@ function sanitizeErrorMessage(message: string): string {
 export async function POST(req: NextRequest) {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 120_000)
+  const correlationId = createCorrelationId(req)
+  const startTime = Date.now()
 
   try {
+    const envCheck = validatePersonalizationEnv()
+    if (!envCheck.valid) {
+      clearTimeout(timeoutId)
+      logPersonalization({
+        route: '/api/personalization/discover-assets',
+        stage: 'env-validation',
+        httpStatus: 500,
+        safeErrorCode: 'ENV_MISSING',
+        safeMessage: `Missing required env vars: ${envCheck.missingRequired.join(', ')}`,
+        correlationId,
+      })
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+    }
+
     const { userId } = await auth()
     const body = await req.json().catch(() => ({}))
     const rawWebsiteUrl = typeof body?.websiteUrl === 'string' ? body.websiteUrl : ''
@@ -74,6 +94,14 @@ export async function POST(req: NextRequest) {
 
     if (!rawWebsiteUrl) {
       clearTimeout(timeoutId)
+      logPersonalization({
+        route: '/api/personalization/discover-assets',
+        stage: 'validation',
+        httpStatus: 400,
+        safeErrorCode: 'MISSING_WEBSITE_URL',
+        safeMessage: 'websiteUrl is required',
+        correlationId,
+      })
       return NextResponse.json({ error: 'websiteUrl is required' }, { status: 400 })
     }
 
@@ -82,6 +110,14 @@ export async function POST(req: NextRequest) {
       websiteUrl = sanitizeWebsiteUrl(rawWebsiteUrl)
     } catch {
       clearTimeout(timeoutId)
+      logPersonalization({
+        route: '/api/personalization/discover-assets',
+        stage: 'validation',
+        httpStatus: 400,
+        safeErrorCode: 'INVALID_WEBSITE_URL',
+        safeMessage: 'Invalid website URL format',
+        correlationId,
+      })
       return NextResponse.json({ error: 'Invalid website URL format' }, { status: 400 })
     }
 
@@ -90,6 +126,14 @@ export async function POST(req: NextRequest) {
     const rateLimit = checkRateLimit(rateLimitKey)
     if (!rateLimit.allowed) {
       clearTimeout(timeoutId)
+      logPersonalization({
+        route: '/api/personalization/discover-assets',
+        stage: 'rate-limit',
+        httpStatus: 429,
+        safeErrorCode: 'RATE_LIMIT_EXCEEDED',
+        safeMessage: 'Rate limit exceeded. Please try again later.',
+        correlationId,
+      })
       return NextResponse.json(
         { error: 'Rate limit exceeded. Please try again later.' },
         { status: 429, headers: { 'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)) } },
@@ -102,6 +146,13 @@ export async function POST(req: NextRequest) {
       const cached = discoveryCache.get(cacheKey)
       if (cached && cached.expiresAt > Date.now()) {
         clearTimeout(timeoutId)
+        logPersonalization({
+          route: '/api/personalization/discover-assets',
+          stage: 'cache',
+          httpStatus: 200,
+          correlationId,
+          durationMs: Date.now() - startTime,
+        })
         return NextResponse.json({
           ok: true,
           cached: true,
@@ -163,6 +214,15 @@ export async function POST(req: NextRequest) {
     }
 
     clearTimeout(timeoutId)
+    logPersonalization({
+      route: '/api/personalization/discover-assets',
+      stage: 'discovery',
+      provider: result.providerUsed,
+      httpStatus: 200,
+      correlationId,
+      durationMs: Date.now() - startTime,
+    })
+
     return NextResponse.json({
       ok: true,
       cached: false,
@@ -179,10 +239,29 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     clearTimeout(timeoutId)
     if (err instanceof Error && err.name === 'AbortError') {
+      logPersonalization({
+        route: '/api/personalization/discover-assets',
+        stage: 'request',
+        httpStatus: 504,
+        safeErrorCode: 'TIMEOUT',
+        safeMessage: 'Request timed out',
+        correlationId,
+        durationMs: Date.now() - startTime,
+      })
       return NextResponse.json({ error: 'Request timed out' }, { status: 504 })
     }
     const message = err instanceof Error ? err.message : 'Unknown error'
     const status = message.includes('not allowed') || message.includes('Private') || message.includes('Invalid') ? 400 : 500
+    logPersonalization({
+      route: '/api/personalization/discover-assets',
+      stage: 'unhandled',
+      provider: 'ORCHESTRATOR',
+      httpStatus: status,
+      safeErrorCode: status >= 500 ? 'UNEXPECTED_ERROR' : 'VALIDATION_ERROR',
+      safeMessage: sanitizeErrorMessage(message),
+      correlationId,
+      durationMs: Date.now() - startTime,
+    })
     return NextResponse.json({ error: sanitizeErrorMessage(message) }, { status })
   }
 }

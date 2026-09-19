@@ -1,6 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { createServerClient } from '@/lib/supabase';
+import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
+import { createServerClient } from '@/lib/supabase'
+import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
+import { requirePersonalizationEnv } from '@/server/envValidation'
+
+export const runtime = 'nodejs'
 
 const MAX_PAYLOAD_SIZE = 1_000_000
 const MAX_STRING_LENGTH = 100_000
@@ -33,18 +37,50 @@ function sanitizeValue(value: unknown, maxLength = MAX_STRING_LENGTH): unknown {
 export async function POST(req: NextRequest) {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 30_000)
+  const correlationId = createCorrelationId(req)
+  const startTime = Date.now()
 
   try {
-    const { userId } = await auth();
+    const envCheck = requirePersonalizationEnv()
+    if (!envCheck.valid) {
+      clearTimeout(timeoutId)
+      logPersonalization({
+        route: '/api/personalization/record',
+        stage: 'env-validation',
+        httpStatus: 500,
+        safeErrorCode: 'ENV_MISSING',
+        safeMessage: `Missing required env vars: ${envCheck.missingRequired.join(', ')}`,
+        correlationId,
+      })
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+    }
+
+    const { userId } = await auth()
     if (!userId) {
       clearTimeout(timeoutId)
-      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+      logPersonalization({
+        route: '/api/personalization/record',
+        stage: 'auth',
+        httpStatus: 401,
+        safeErrorCode: 'UNAUTHENTICATED',
+        safeMessage: 'No authenticated user',
+        correlationId,
+      })
+      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
     }
 
     const contentLength = req.headers.get('content-length')
     if (contentLength && Number(contentLength) > MAX_PAYLOAD_SIZE) {
       clearTimeout(timeoutId)
-      return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+      logPersonalization({
+        route: '/api/personalization/record',
+        stage: 'validation',
+        httpStatus: 413,
+        safeErrorCode: 'PAYLOAD_TOO_LARGE',
+        safeMessage: 'Payload exceeds maximum size',
+        correlationId,
+      })
+      return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
     }
 
     let body: unknown
@@ -52,7 +88,15 @@ export async function POST(req: NextRequest) {
       body = await req.json()
     } catch {
       clearTimeout(timeoutId)
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+      logPersonalization({
+        route: '/api/personalization/record',
+        stage: 'parse-body',
+        httpStatus: 400,
+        safeErrorCode: 'INVALID_JSON',
+        safeMessage: 'Invalid JSON body',
+        correlationId,
+      })
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
     const rawEntry =
@@ -62,7 +106,15 @@ export async function POST(req: NextRequest) {
         : (body as unknown)
     if (!rawEntry || typeof rawEntry !== 'object') {
       clearTimeout(timeoutId)
-      return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+      logPersonalization({
+        route: '/api/personalization/record',
+        stage: 'validation',
+        httpStatus: 400,
+        safeErrorCode: 'INVALID_PAYLOAD',
+        safeMessage: 'Missing entry object',
+        correlationId,
+      })
+      return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
     }
 
     const entry = sanitizeValue(rawEntry) as Record<string, unknown>
@@ -96,16 +148,16 @@ export async function POST(req: NextRequest) {
     sanitizedEntry.last_frame_asset_id = typeof entry.lastFrameAssetId === 'string' ? entry.lastFrameAssetId.slice(0, 100) : null
     sanitizedEntry.client_id = typeof entry.clientId === 'string' ? entry.clientId.slice(0, 100) : null
 
-    const supabase = createServerClient();
+    const supabase = createServerClient()
 
     await supabase.rpc('set_config', {
       setting: 'app.clerk_user_id',
       value: userId,
       is_local: true,
-    });
+    })
 
     const { data, error } = await supabase
-      .from('personalization_outputs')
+      .from('smartvideo_go_personalization_outputs')
       .insert({
         clerk_user_id: userId,
         origin_studio: sanitizedEntry.originStudio || 'demo-personalization',
@@ -130,25 +182,62 @@ export async function POST(req: NextRequest) {
         client_id: sanitizedEntry.client_id,
       })
       .select('id, created_at')
-      .single();
+      .single()
 
     clearTimeout(timeoutId)
 
     if (error) {
       const safeMessage = sanitizeErrorMessage(error.message)
-      return NextResponse.json({ error: safeMessage }, { status: 500 });
+      logPersonalization({
+        route: '/api/personalization/record',
+        stage: 'db-insert',
+        provider: 'supabase',
+        httpStatus: 500,
+        safeErrorCode: 'DB_INSERT_FAILED',
+        safeMessage,
+        correlationId,
+        durationMs: Date.now() - startTime,
+      })
+      return NextResponse.json({ error: safeMessage }, { status: 500 })
     }
 
-    return NextResponse.json({ ok: true, data });
+    logPersonalization({
+      route: '/api/personalization/record',
+      stage: 'db-insert',
+      provider: 'supabase',
+      httpStatus: 200,
+      correlationId,
+      durationMs: Date.now() - startTime,
+    })
+
+    return NextResponse.json({ ok: true, data })
   } catch (err) {
     clearTimeout(timeoutId)
     if (err instanceof Error && err.name === 'AbortError') {
+      logPersonalization({
+        route: '/api/personalization/record',
+        stage: 'request',
+        httpStatus: 504,
+        safeErrorCode: 'TIMEOUT',
+        safeMessage: 'Request timed out',
+        correlationId,
+        durationMs: Date.now() - startTime,
+      })
       return NextResponse.json({ error: 'Request timed out' }, { status: 504 })
     }
     const message = err instanceof Error ? err.message : 'Unknown error'
+    logPersonalization({
+      route: '/api/personalization/record',
+      stage: 'unhandled',
+      httpStatus: 500,
+      safeErrorCode: 'UNEXPECTED_ERROR',
+      safeMessage: sanitizeErrorMessage(message),
+      correlationId,
+      durationMs: Date.now() - startTime,
+    })
     return NextResponse.json(
       { error: sanitizeErrorMessage(message) },
       { status: 500 }
-    );
+    )
   }
 }
