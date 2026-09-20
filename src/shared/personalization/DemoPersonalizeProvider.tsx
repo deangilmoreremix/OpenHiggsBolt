@@ -42,7 +42,6 @@ import type {
   DiscoveredAsset,
   DiscoveredAssetCategory,
   AssignedSection,
-  SourceType,
 } from './types'
 import { EMPTY_GENERATION_STATE } from './types'
 import { normalizePersonalizationSource, getEligibility } from './sourceNormalizer'
@@ -58,7 +57,6 @@ import {
   loadClientAssets,
   saveClientAssets,
   deleteClientAssets,
-  addAssetToClientLibrary,
   removeAssetFromClientLibrary,
   setPrimaryInClientLibrary,
   type ClientAssetLibrary,
@@ -69,11 +67,12 @@ import {
   registerSharedMedia,
 } from './sharedMedia'
 import { registerSupabaseSharedMedia } from './supabaseSharedMedia'
-import { personalizePrompt, regeneratePrompt } from './promptPersonalizer'
+import { personalizePrompt } from './promptPersonalizer'
 import { runGeneration } from './generationRouter'
 import { resolveModelCapabilities, resolveAssetsForModel } from './modelCapabilityResolver'
 import { applyPostProcessing, generateEndCardImage } from './postProcessor'
 import { uploadFile } from 'studio/src/muapi'
+import type { BusinessDiscoveryRecord } from './types'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -194,6 +193,31 @@ type DemoPersonalizeContextValue = {
   importDiscoveredAssets: () => Promise<void>
   cancelDiscovery: () => void
   discoverAssets: (websiteUrl: string) => Promise<void>
+
+  // Business search
+  businessSearchMode: 'idle' | 'searching' | 'results' | 'selected' | 'error'
+  businessSearchResults: BusinessDiscoveryRecord[]
+  businessSearchError: string | null
+  businessSearchQuery: { niche: string; location: string; radiusMiles: number } | null
+  selectedBusiness: BusinessDiscoveryRecord | null
+  businessResearch: {
+    status: 'idle' | 'researching' | 'done' | 'error'
+    result?: {
+      canonicalUrl?: string
+      reachable: boolean
+      title?: string
+      description?: string
+      logoUrl?: string
+      socialLinks?: Record<string, string>
+      contactInfo?: { phones: string[]; emails: string[] }
+    }
+    error?: string
+  }
+  findBusinesses: (niche: string, location: string, radiusMiles: number) => Promise<void>
+  selectBusiness: (business: BusinessDiscoveryRecord) => void
+  researchBusiness: () => Promise<void>
+  clearBusinessSearch: () => void
+  setBusinessSearchMode: (mode: 'idle' | 'searching' | 'results' | 'selected' | 'error') => void
 
   // Prompt
   promptState: PromptState
@@ -377,6 +401,26 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     return () => clearTimeout(timer)
   }, [importConfirmation])
 
+  // Business search state
+  const [businessSearchMode, setBusinessSearchMode] = useState<'idle' | 'searching' | 'results' | 'selected' | 'error'>('idle')
+  const [businessSearchResults, setBusinessSearchResults] = useState<BusinessDiscoveryRecord[]>([])
+  const [businessSearchError, setBusinessSearchError] = useState<string | null>(null)
+  const [businessSearchQuery, setBusinessSearchQuery] = useState<{ niche: string; location: string; radiusMiles: number } | null>(null)
+  const [selectedBusiness, setSelectedBusiness] = useState<BusinessDiscoveryRecord | null>(null)
+  const [businessResearch, setBusinessResearch] = useState<{
+    status: 'idle' | 'researching' | 'done' | 'error'
+    result?: {
+      canonicalUrl?: string
+      reachable: boolean
+      title?: string
+      description?: string
+      logoUrl?: string
+      socialLinks?: Record<string, string>
+      contactInfo?: { phones: string[]; emails: string[] }
+    }
+    error?: string
+  }>({ status: 'idle' })
+
   // Prompt
   const [promptState, setPromptState] = useState<PromptState>({ ...EMPTY_PROMPT_STATE })
 
@@ -417,7 +461,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
-  const currentClient = clients.find((c) => c.id === selectedClientId) || null
+  const _currentClient = clients.find((c) => c.id === selectedClientId) || null
 
   // ── Reset on source change ─────────────────────────────────────────────────
 
@@ -453,7 +497,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     setResultTab('prompt')
     setClientForm({})
     setEligibility(getEligibility(source))
-  }, [source?.id])
+  }, [source?.id, source])
 
   // ── Saved client assets sync ────────────────────────────────────────────────
 
@@ -606,7 +650,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       setCurrentClientId(null)
       setClientForm({})
     }
-  }, [selectedClientId, deleteClientRecord])
+  }, [selectedClientId])
 
   const selectSavedAsset = useCallback((asset: PersonalizationAsset) => {
     setAssets((prev) => updateAssetInLibrary(prev, asset))
@@ -644,7 +688,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
   // ── Asset upload helpers ───────────────────────────────────────────────────
 
-  const updateAsset = useCallback((asset: PersonalizationAsset) => {
+  const _updateAsset = useCallback((asset: PersonalizationAsset) => {
     setAssets((prev) => updateAssetInLibrary(prev, asset))
   }, [])
 
@@ -704,7 +748,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
     setAssetUploadStatus(asset.id, 'uploading')
     try {
-      const url = await uploadFile(apiKey, asset.file, (percent) => {
+      const url = await uploadFile(apiKey, asset.file, (_percent) => {
         // optional progress hook
       })
       setAssetUploadStatus(asset.id, 'ready', null)
@@ -1154,6 +1198,131 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     }
   }, [setDiscoveredAssetsState, setDiscoveryError, setDiscoveryStatus, testMode])
 
+  // ── Business search actions ────────────────────────────────────────────────
+
+  const findBusinesses = useCallback(async (niche: string, location: string, radiusMiles: number) => {
+    setBusinessSearchError(null)
+    setBusinessSearchMode('searching')
+    setBusinessSearchQuery({ niche, location, radiusMiles })
+    setSelectedBusiness(null)
+
+    try {
+      const res = await fetch('/api/personalization/find-businesses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ niche, location, radiusMiles }),
+        credentials: 'same-origin',
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error || `Business search failed (HTTP ${res.status})`)
+      }
+
+      const data = await res.json()
+      const businesses = Array.isArray(data?.businesses) ? data.businesses : []
+      const query = data?.query || { niche, location, radiusMiles }
+
+      setBusinessSearchQuery(query)
+      setBusinessSearchResults(businesses)
+      setBusinessSearchMode(businesses.length > 0 ? 'results' : 'error')
+      if (businesses.length === 0) {
+        setBusinessSearchError('No businesses found for this niche and location. Try a wider radius or different niche.')
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Business search failed'
+      setBusinessSearchError(message)
+      setBusinessSearchMode('error')
+    }
+  }, [])
+
+  const selectBusiness = useCallback((business: BusinessDiscoveryRecord) => {
+    setSelectedBusiness(business)
+    setBusinessSearchMode('selected')
+    setBusinessResearch({ status: 'idle' })
+
+    // Populate client form from business
+    const clientFormPatch: Partial<ClientProfile> = {
+      businessName: business.name,
+      industry: business.category,
+      location: [business.city, business.region].filter(Boolean).join(', ') || undefined,
+      phone: business.phone,
+      website: business.website,
+    }
+
+    updateClientForm(clientFormPatch)
+
+    // Do NOT auto-trigger asset discovery here.
+    // User must explicitly click "Research Business" then "Find Business Assets".
+  }, [updateClientForm])
+
+  const researchBusiness = useCallback(async () => {
+    const website = clientForm.website || selectedBusiness?.website
+    if (!website) {
+      setBusinessResearch({ status: 'error', error: 'No website available to research.' })
+      return
+    }
+
+    setBusinessResearch({ status: 'researching' })
+
+    try {
+      const res = await fetch('/api/personalization/research-business', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ websiteUrl: website }),
+        credentials: 'same-origin',
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error || `Research failed (HTTP ${res.status})`)
+      }
+
+      const data = (await res.json()) as { research?: { canonicalUrl?: string; reachable?: boolean; title?: string; description?: string; logoUrl?: string; socialLinks?: Record<string, string>; contactInfo?: { phones?: string[]; emails?: string[] } } }
+      const research = data?.research
+
+      if (!research) {
+        throw new Error('No research data returned')
+      }
+
+      // Update business research state
+      setBusinessResearch({
+        status: 'done',
+        result: {
+          canonicalUrl: research.canonicalUrl,
+          reachable: research.reachable ?? false,
+          title: research.title,
+          description: research.description,
+          logoUrl: research.logoUrl,
+          socialLinks: research.socialLinks,
+          contactInfo: research.contactInfo
+            ? {
+                phones: research.contactInfo.phones ?? [],
+                emails: research.contactInfo.emails ?? [],
+              }
+            : undefined,
+        },
+      })
+
+      // Update website field with canonical URL if different
+      if (research.canonicalUrl && research.canonicalUrl !== clientForm.website) {
+        updateClientForm({ website: research.canonicalUrl })
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Research failed'
+      setBusinessResearch({ status: 'error', error: message })
+    }
+  }, [clientForm.website, selectedBusiness, updateClientForm])
+
+  const clearBusinessSearch = useCallback(() => {
+    setBusinessSearchMode('idle')
+    setBusinessSearchResults([])
+    setBusinessSearchError(null)
+    setBusinessSearchQuery(null)
+    setSelectedBusiness(null)
+    setBusinessResearch({ status: 'idle' })
+  }, [])
+
   // ── Prompt actions ─────────────────────────────────────────────────────────
 
   const personalizePromptFn = useCallback(async () => {
@@ -1270,7 +1439,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         assets,
         resolved,
         prompt: finalPrompt,
-        mode: mode as any,
+        mode,
         options: genOptions,
         apiKey,
         onProgress: (percent, message) => {
@@ -1332,7 +1501,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         originStudio: 'demo-personalization',
         sourceType: source.sourceType,
         sourceDemoId: source.id,
-        sourceDemoSlug: (source as any).sourceDemoSlug || (source as any).slug || null,
+         sourceDemoSlug: (source as { slug?: string }).slug ?? null,
         sourceMedia: source.sourceMedia,
         sourceUrl: source.sourceUrl,
         personalizationMode: mode || null,
@@ -1358,7 +1527,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         errorMessage: error instanceof Error ? error.message : 'Generation failed',
       })
     }
-  }, [source, apiKey, assets, mode, genOptions, promptState, clientForm, selectedClientId, uploadAsset])
+  }, [source, apiKey, assets, mode, genOptions, promptState, clientForm, selectedClientId])
 
   const retry = useCallback(async () => {
     await generate()
@@ -1567,6 +1736,19 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     importDiscoveredAssets,
     cancelDiscovery,
     discoverAssets,
+
+    // Business search
+    businessSearchMode,
+    businessSearchResults,
+    businessSearchError,
+    businessSearchQuery,
+    selectedBusiness,
+    businessResearch,
+    findBusinesses,
+    selectBusiness,
+    researchBusiness,
+    clearBusinessSearch,
+    setBusinessSearchMode,
 
     // Prompt
     promptState,

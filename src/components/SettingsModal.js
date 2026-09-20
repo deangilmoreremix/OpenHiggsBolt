@@ -198,10 +198,14 @@ export function SettingsModal(onClose) {
         }
 
         // Persist keys server-side via the encrypted key store.
+        const payload = {
+          key: cleanMuapi,
+          openaiKey: typeof cleanOpenai === 'string' ? cleanOpenai : '',
+        };
         fetch(MUAPI_KEY_API_ENDPOINT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key: cleanMuapi, openaiKey: cleanOpenai || undefined }),
+            body: JSON.stringify(payload),
             credentials: 'same-origin',
         })
         .then((r) => r.json())
@@ -221,6 +225,7 @@ export function SettingsModal(onClose) {
             }, 600);
         })
         .catch((err) => {
+            console.error('Settings save failed:', err);
             if (statusEl) {
                 statusEl.style.display = 'block';
                 statusEl.style.background = 'rgba(239,68,68,0.1)';

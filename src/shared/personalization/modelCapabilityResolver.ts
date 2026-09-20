@@ -35,10 +35,10 @@ import {
 // ── Model Catalog Constants ──────────────────────────────────────────────────
 // These must match actual IDs in packages/studio/src/models.js.
 
-export const FACE_SWAP_MODEL = 'ai-video-face-swap' // v2vModels entry
-export const FULL_BODY_MODEL = 'kling-v3.0-pro-recast' // recastModels entry
-export const DEFAULT_T2V_MODEL = 'veo-4-text-to-video' // t2vModels entry — longest duration with aspect ratio support
-export const DEFAULT_I2I_MODEL = 'gpt-image-2-edit' // i2iModels entry
+export const FACE_SWAP_MODEL = 'ai-video-face-swap'
+export const FULL_BODY_MODEL = 'kling-v3.0-pro-recast'
+export const DEFAULT_T2V_MODEL = 'veo-4-text-to-video'
+export const DEFAULT_I2I_MODEL = 'gpt-image-2-edit'
 
 export interface ModelCapabilities {
   supportsFaceSwap: boolean
@@ -62,12 +62,40 @@ export interface ModelCapabilities {
   resolutionOptions: string[]
   qualityOptions: string[]
   durationOptions: number[]
+  fallbackModelId?: string
 }
 
-/**
- * Look up a model by ID across all relevant catalogs.
- * Returns the model definition or null if not found.
- */
+// ── Validation ───────────────────────────────────────────────────────────────
+
+export function validateDuration(value: unknown, options: number[]): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null
+  if (options.length === 0) return Math.max(1, Math.min(60, Math.round(value)))
+  const closest = options.reduce((prev, curr) =>
+    Math.abs(curr - value) < Math.abs(prev - value) ? curr : prev
+  )
+  return closest
+}
+
+export function validateQuality(value: unknown, options: string[]): string | null {
+  if (typeof value !== 'string') return null
+  if (options.length === 0) return value
+  return options.find((opt) => opt.toLowerCase() === value.toLowerCase()) ?? options[0]
+}
+
+export function validateResolution(value: unknown, options: string[]): string | null {
+  if (typeof value !== 'string') return null
+  if (options.length === 0) return value
+  return options.find((opt) => opt.toLowerCase() === value.toLowerCase()) ?? options[0]
+}
+
+export function validateAspectRatio(value: unknown, options: string[]): string | null {
+  if (typeof value !== 'string') return null
+  if (options.length === 0) return value
+  return options.find((opt) => opt.toLowerCase() === value.toLowerCase()) ?? options[0]
+}
+
+// ── Model Lookup ─────────────────────────────────────────────────────────────
+
 function findModel(modelId: string): any | null {
   if (!modelId) return null
   return (
@@ -82,12 +110,20 @@ function findModel(modelId: string): any | null {
   )
 }
 
-/**
- * Determine if a model ID belongs to a specific family.
- */
 function isInCatalog(modelId: string, catalog: any[]): boolean {
   return catalog.some((m) => m.id === modelId)
 }
+
+function getFallbackModel(modelId: string, sourceMediaType: string): string {
+  if (sourceMediaType === 'image') return DEFAULT_I2I_MODEL
+  const model = findModel(modelId)
+  if (!model) return DEFAULT_T2V_MODEL
+  if (isInCatalog(modelId, v2vModels)) return FACE_SWAP_MODEL
+  if (isInCatalog(modelId, recastModels)) return FULL_BODY_MODEL
+  return DEFAULT_T2V_MODEL
+}
+
+// ── Capabilities Resolution ──────────────────────────────────────────────────
 
 export function resolveModelCapabilities(
   source: PersonalizationSource,
@@ -100,7 +136,6 @@ export function resolveModelCapabilities(
   const videoField = model?.videoField || 'video_url'
   const hasPrompt = model?.hasPrompt ?? true
 
-  // Determine max images from model inputs
   let maxImages = 1
   if (model?.inputs) {
     const imageInput = model.inputs[imageField] || model.inputs.images_list || model.inputs.image_urls
@@ -112,7 +147,6 @@ export function resolveModelCapabilities(
   }
   if (maxImages < 1) maxImages = 1
 
-  // Determine max videos
   let maxVideos = 1
   if (model?.inputs) {
     const videoInput = model.inputs[videoField] || model.inputs.videos_list || model.inputs.video_files
@@ -124,17 +158,14 @@ export function resolveModelCapabilities(
   }
   if (maxVideos < 1) maxVideos = 1
 
-  // Determine last frame support
   const supportsLastFrame =
     Boolean(model?.lastImageField) ||
     /wan|kling|runway|seedance/.test(modelId.toLowerCase())
 
-  // Determine first frame support
   const supportsFirstFrame =
     Boolean(model?.firstImageField) ||
     /wan|kling|runway|seedance/.test(modelId.toLowerCase())
 
-  // Audio preservation
   const supportsAudioPreservation =
     isInCatalog(modelId, v2vModels) ||
     isInCatalog(modelId, recastModels) ||
@@ -191,6 +222,7 @@ export function resolveModelCapabilities(
     resolutionOptions,
     qualityOptions,
     durationOptions,
+    fallbackModelId: model ? undefined : getFallbackModel(modelId, source.mediaType),
   }
 }
 
@@ -206,7 +238,6 @@ export function resolveAssetsForModel(
   const preProcessing: Record<string, unknown> = {}
   const postProcessing: Record<string, unknown> = {}
 
-  // Client context
   if (assets.primaryIdentity) {
     promptContext.presenterName = assets.primaryIdentity.name
   }
@@ -225,7 +256,6 @@ export function resolveAssetsForModel(
     postProcessing.ctaGraphic = ctaUrl
   }
 
-  // First frame handling
   const firstFrameUrl = getGenerationAssetUrl(assets.firstFrame)
   if (firstFrameUrl && capabilities.supportsFirstFrame) {
     if (source.mediaType === 'video') {
@@ -237,7 +267,6 @@ export function resolveAssetsForModel(
     promptContext.firstFrameDescription = `Opening with ${assets.firstFrame.name}`
   }
 
-  // Last frame / CTA handling
   const lastFrameUrl = getGenerationAssetUrl(assets.lastFrame)
   if (lastFrameUrl && capabilities.supportsLastFrame) {
     directInputs.last_image_url = lastFrameUrl
@@ -248,7 +277,6 @@ export function resolveAssetsForModel(
     }
   }
 
-  // Identity routing
   const primaryIdentityUrl = getGenerationAssetUrl(assets.primaryIdentity)
   if (mode === 'face_only' || mode === 'replace_face') {
     if (capabilities.supportsFaceSwap && primaryIdentityUrl) {
@@ -281,19 +309,16 @@ export function resolveAssetsForModel(
     }
   }
 
-  // Logo: always post-processing for exactness
   if (primaryLogoUrl) {
     postProcessing.logo = primaryLogoUrl
   }
 
-  // Source media for video modes
   if (source.mediaType === 'video' && source.sourceMedia && !directInputs.video_url) {
     if (mode !== 'keep_design') {
       directInputs.video_url = source.sourceMedia
     }
   }
 
-  // Unused assets
   const usedUrls = new Set(
     Object.values(directInputs)
       .filter(Boolean)

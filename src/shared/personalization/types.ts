@@ -31,6 +31,51 @@ export interface PersonalizationSource {
 
 export type AudienceType = 'me' | 'my-business' | 'customer'
 
+export interface BusinessDiscoveryRecord {
+  id: string
+  source: 'OPENSTREETMAP'
+  osmType?: 'node' | 'way' | 'relation'
+  osmId?: string
+  name: string
+  category: string
+  address?: string
+  city?: string
+  region?: string
+  postalCode?: string
+  country?: string
+  latitude?: number
+  longitude?: number
+  phone?: string
+  email?: string
+  website?: string
+  facebook?: string
+  instagram?: string
+  whatsapp?: string
+  youtube?: string
+  linkedin?: string
+  openingHours?: string
+  operator?: string
+  activityScore?: number
+  leadScore?: number
+  websiteStatus: 'confirmed' | 'unknown' | 'not_found_after_research'
+  verificationStatus: 'unverified' | 'researching' | 'verified'
+  rawSource?: Record<string, unknown>
+}
+
+export type BusinessSearchMode = 'idle' | 'searching' | 'results' | 'selected' | 'error'
+
+export interface BusinessSearchState {
+  mode: BusinessSearchMode
+  results: BusinessDiscoveryRecord[]
+  error: string | null
+  query: {
+    niche: string
+    location: string
+    radiusMiles: number
+  } | null
+  selectedBusiness: BusinessDiscoveryRecord | null
+}
+
 export interface ClientProfile {
   id: string
   audience: AudienceType
