@@ -26,8 +26,21 @@ export default defineConfig({
   },
   projects: [
     {
+      name: 'global setup',
+      testMatch: /global\.setup\.ts/,
+    },
+    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'marketing-demos',
+      testMatch: /marketing-demos\/.*\.spec\.ts/,
+      dependencies: ['global setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.clerk/smartvideo-demo.json',
+      },
     },
   ],
   webServer: {

@@ -1,7 +1,7 @@
 [build]
   # Build all workspace packages whose dist/ is gitignored and must be
   # generated before the root Next.js build can resolve them.
-  command = "npm run build:metadata && npm run build:packages && npm run build"
+  command = "set -x && npm run build:metadata && npm run build:packages && npm run build"
   publish = ".next"
 
   [build.environment]

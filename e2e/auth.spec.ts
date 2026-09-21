@@ -1,24 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { clerkSetup, clerk, setupClerkTestingToken } from '@clerk/testing/playwright';
+import { completeOrgTaskIfPresent } from './helpers/clerk';
 
 const email = process.env.E2E_TEST_EMAIL;
 const password = process.env.E2E_TEST_PASSWORD;
-
-// The dev instance may require choosing/creating an organization on first sign-in
-// (a Clerk session task shown at #/tasks/choose-organization). Complete it if present
-// so downstream assertions can reach the protected app.
-async function completeOrgTaskIfPresent(page) {
-  if (!page.url().includes('choose-organization')) return;
-  const create = page.getByRole('button', { name: /create organization/i });
-  if (await create.count()) {
-    await create.first().click();
-    const name = page.getByLabel(/organization name/i);
-    if (await name.count()) await name.fill('E2E Test Org');
-    const submit = page.getByRole('button', { name: /create|continue|finish/i });
-    if (await submit.count()) await submit.first().click();
-  }
-  await page.waitForTimeout(2000);
-}
 
 // clerkSetup() must run inside the worker process (beforeAll) so its env vars
 // are visible to setupClerkTestingToken, which runs in beforeEach.
