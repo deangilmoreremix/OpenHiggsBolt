@@ -11,6 +11,7 @@ import { SocialPublishProvider } from '@/components/SocialPublishProvider';
 import { AiAssistantProvider } from '@/components/AiAssistantProvider';
 import { useAuthConfig } from '@/lib/authConfig';
 import { isValidKeyFormat } from '@/lib/keys';
+import { saveOpenAIKey, deleteOpenAIKey } from '@/shared/api/openaiKey';
 import { DemoPersonalizeProvider } from '@/shared/personalization';
 import UpgradeModal from '@/access/UpgradeModal';
 
@@ -287,6 +288,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
     let muapiError = null;
     let openaiError = null;
 
+    // ── MuAPI validation ─────────────────────────────────────────────────────
     if (trimmed && !isValidKeyFormat(trimmed)) {
       muapiError = 'API key looks invalid (contains spaces or control characters). Re-copy it from your MuAPI dashboard.';
     } else if (trimmed) {
@@ -294,31 +296,21 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
         await fetchBalance(trimmed);
       } catch (err) {
         const status = err?.status || err?.response?.status;
-        const isAuthError = status === 401 || status === 403 || /401|403|unauthorized|forbidden|not authorized/i.test(err?.message || '');
+        const isAuthError =
+          status === 401 ||
+          status === 403 ||
+          /401|403|unauthorized|forbidden|not authorized/i.test(err?.message || '');
         muapiError = isAuthError
           ? 'That MuAPI key is invalid or unauthorized. Double-check it on your MuAPI dashboard and try again.'
           : 'Could not verify the MuAPI key. Check your connection and try again.';
       }
     }
 
-    if (trimmedOpenai) {
-      try {
-        const { verifyOpenAIKey } = await import('@/shared/api/verifyOpenAIKey');
-        await verifyOpenAIKey(trimmedOpenai);
-      } catch (err) {
-        const kind = err?.message;
-        openaiError =
-          kind === 'unauthorized'
-            ? 'That OpenAI key is invalid or unauthorized. Double-check it on your OpenAI dashboard and try again.'
-            : 'Could not verify the OpenAI key. Check your connection and try again.';
-      }
+    // ── OpenAI validation (format-only; server does the actual verification) ─
+    if (trimmedOpenai && !isValidKeyFormat(trimmedOpenai)) {
+      openaiError = 'OpenAI key looks invalid (contains spaces or control characters). Re-copy it from your OpenAI dashboard.';
     }
 
-    if (muapiError && openaiError) {
-      setAuthError(`${muapiError} ${openaiError}`);
-      setIsSavingKey(false);
-      return;
-    }
     if (muapiError) {
       setAuthError(muapiError);
       setIsSavingKey(false);
@@ -330,6 +322,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       return;
     }
 
+    // ── Optimistic local update ──────────────────────────────────────────────
     if (trimmed) setApiKey(trimmed);
     if (trimmedOpenai) setOpenAiKey(trimmedOpenai);
 
@@ -341,15 +334,33 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
     settingsClosedAt.current = Date.now();
     setIsSavingKey(false);
 
-    fetch('/api/auth/muapi-key', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify({ key: trimmed || apiKey, openaiKey: trimmedOpenai || openaiKey }),
-    }).catch(() => {});
+    // ── Persist MuAPI (only when a new value is provided) ───────────────────
+    if (trimmed) {
+      fetch('/api/auth/muapi-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ key: trimmed }),
+      }).catch(() => {
+        // Server failure — surface a clear message.
+        setAuthError('We couldn\'t securely save your MuAPI key. Please try again.');
+      });
+    }
 
-    fetchBalance(trimmed).catch(() => {});
-  }, [fetchBalance, setApiKey, setOpenAiKey, apiKey, openaiKey]);
+    // ── Persist OpenAI (only when a new value is provided) ──────────────────
+    if (trimmedOpenai) {
+      try {
+        const result = await saveOpenAIKey(trimmedOpenai);
+        if (result.warning) {
+          setAuthError(result.warning);
+        }
+      } catch (err) {
+        setAuthError(err.message || 'We couldn\'t securely save your OpenAI key. Please try again.');
+      }
+    }
+
+    if (trimmed) fetchBalance(trimmed).catch(() => {});
+  }, [fetchBalance, setApiKey, setOpenAiKey, demoMode]);
 
   const handleKeyChange = useCallback(() => {
     if (demoMode) return;
@@ -645,7 +656,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
           loading={isSavingKey}
           title="Welcome to SmartVideo GO"
           subtitle={
-            <>Enter your <a href="https://muapi.ai/access-keys" target="_blank" rel="noreferrer" className="text-[#22d3ee] hover:text-[#e5ff33] transition-colors">Muapi.ai</a> and <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-[#22d3ee] hover:text-[#e5ff33] transition-colors">OpenAI</a> API keys to start creating</>
+            <>Enter your <a href="https://muapi.ai/access-keys" target="_blank" rel="noreferrer" className="text-[#22d3ee] hover:text-[#e5ff33] transition-colors">Muapi.ai</a> key to start creating. Add an <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-[#22d3ee] hover:text-[#e5ff33] transition-colors">OpenAI</a> key for AI-assisted features.</>
           }
         />
       )}
@@ -704,7 +715,33 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                 />
                 <div className="flex gap-2 mt-2">
                   <button
-                    onClick={() => handleKeySave(settingsKeyInput, '')}
+                    onClick={async () => {
+                      const trimmed = settingsKeyInput.trim();
+                      if (!trimmed || !isValidKeyFormat(trimmed)) {
+                        setAuthError('API key looks invalid (contains spaces or control characters). Re-copy it from your MuAPI dashboard.');
+                        return;
+                      }
+                      setIsSavingKey(true);
+                      setAuthError(null);
+                      try {
+                        await fetchBalance(trimmed);
+                        setApiKey(trimmed);
+                        setSettingsKeyInput('');
+                        const res = await fetch('/api/auth/muapi-key', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          credentials: 'same-origin',
+                          body: JSON.stringify({ key: trimmed }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok || !data.ok) {
+                          throw new Error(data.error || 'Failed to save MuAPI key');
+                        }
+                      } catch (err) {
+                        setAuthError(err.message || 'We couldn\'t securely save your MuAPI key. Please try again.');
+                      }
+                      setIsSavingKey(false);
+                    }}
                     disabled={isSavingKey || !settingsKeyInput.trim()}
                     className="flex-1 h-8 rounded-md bg-[#22d3ee]/10 text-[#22d3ee] hover:bg-[#22d3ee]/20 text-[11px] font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                   >
@@ -739,12 +776,48 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                 />
                 <div className="flex gap-2 mt-2">
                   <button
-                    onClick={() => handleKeySave('', settingsOpenaiInput)}
+                    onClick={async () => {
+                      const trimmed = settingsOpenaiInput.trim();
+                      if (!trimmed) return;
+                      setIsSavingKey(true);
+                      setAuthError(null);
+                      try {
+                        const result = await saveOpenAIKey(trimmed);
+                        setOpenAiKey(trimmed);
+                        setSettingsOpenaiInput('');
+                        if (result.warning) {
+                          setAuthError(result.warning);
+                        }
+                      } catch (err) {
+                        setAuthError(err.message || 'We couldn\'t securely save your OpenAI key. Please try again.');
+                      }
+                      setIsSavingKey(false);
+                    }}
                     disabled={isSavingKey || !settingsOpenaiInput.trim()}
                     className="flex-1 h-8 rounded-md bg-[#22d3ee]/10 text-[#22d3ee] hover:bg-[#22d3ee]/20 text-[11px] font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {isSavingKey ? 'Saving…' : 'Save OpenAI Key'}
                   </button>
+                  {openaiKey && (
+                    <button
+                      onClick={async () => {
+                        setIsSavingKey(true);
+                        setAuthError(null);
+                        try {
+                          await deleteOpenAIKey();
+                          clearOpenAiKey();
+                          setSettingsOpenaiInput('');
+                        } catch (err) {
+                          setAuthError(err.message || 'We couldn\'t remove your OpenAI key. Please try again.');
+                        }
+                        setIsSavingKey(false);
+                      }}
+                      disabled={isSavingKey}
+                      className="h-8 px-3 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 text-[11px] font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Remove
+                    </button>
+                  )}
                 </div>
                 <p className="mt-2 text-[11px] leading-relaxed text-white/40">
                   {openaiKey

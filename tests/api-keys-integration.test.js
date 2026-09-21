@@ -119,6 +119,10 @@ const { resolveMuapiKey, resolveOpenAIKey } =
 const studio = await import('../packages/studio/dist/muapi.js');
 const { generateImage, generateVideo } = studio;
 
+// Canonical OpenAI key client service.
+const { saveOpenAIKey, getOpenAIKeyStatus, deleteOpenAIKey } =
+  await import('../src/shared/api/openaiKey.ts');
+
 before(() => installFetch());
 after(() => { delete globalThis.fetch; });
 
@@ -226,4 +230,96 @@ test('Without entering a key, nothing is persisted and no key resolves (proves t
   assert.equal(resolveMuapiKey(), '', 'no MuAPI key resolves when none entered');
   assert.equal(resolveOpenAIKey(), '', 'no OpenAI key resolves when none entered');
   assert.ok(!cookies.has('muapi_key'), 'no muapi_key cookie set');
+});
+
+// ── Canonical OpenAI key service ─────────────────────────────────────────────
+
+test('saveOpenAIKey calls the canonical /api/auth/openai-key endpoint', async () => {
+  let capturedUrl = null;
+  let capturedBody = null;
+  globalThis.fetch = async (url, options) => {
+    capturedUrl = String(url);
+    capturedBody = options?.body;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: true, configured: true, verification: 'verified', warning: null }),
+    };
+  };
+
+  const result = await saveOpenAIKey(' sk-proj-canoni-cal ');
+  assert.equal(capturedUrl, '/api/auth/openai-key');
+  assert.equal(JSON.parse(capturedBody).openaiKey, 'sk-proj-canoni-cal');
+  assert.equal(result.verification, 'verified');
+});
+
+test('saveOpenAIKey throws on server failure', async () => {
+  globalThis.fetch = async () => ({
+    ok: false,
+    status: 500,
+    json: async () => ({ ok: false, error: 'Server error' }),
+  });
+
+  await assert.rejects(() => saveOpenAIKey('sk-proj-test'), /Server error/);
+});
+
+test('getOpenAIKeyStatus returns masked metadata', async () => {
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ configured: true, masked: 'sk-proj-••••••••1234', updatedAt: '2026-01-01T00:00:00Z' }),
+  });
+
+  const status = await getOpenAIKeyStatus();
+  assert.equal(status.configured, true);
+  assert.equal(status.masked, 'sk-proj-••••••••1234');
+});
+
+test('deleteOpenAIKey calls DELETE on the canonical endpoint', async () => {
+  let capturedMethod = null;
+  globalThis.fetch = async (url, options) => {
+    capturedMethod = options?.method;
+    return { ok: true, status: 200, json: async () => ({ ok: true }) };
+  };
+
+  await deleteOpenAIKey();
+  assert.equal(capturedMethod, 'DELETE');
+});
+
+test('SettingsModal saves OpenAI key via the canonical endpoint', async () => {
+  store.clear();
+  cookies.clear();
+  resetDocument();
+
+  let lastFetchUrl = null;
+  let lastFetchBody = null;
+  globalThis.fetch = async (url, options) => {
+    lastFetchUrl = String(url);
+    lastFetchBody = options?.body ? JSON.parse(options.body) : null;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => {
+        if (lastFetchUrl.includes('/api/auth/muapi-key')) {
+          return { ok: true };
+        }
+        if (lastFetchUrl.includes('/api/auth/openai-key')) {
+          return { ok: true, configured: true, verification: 'verified', warning: null };
+        }
+        return {};
+      },
+    };
+  };
+
+  SettingsModal();
+  document.body.querySelector('#settings-api-key').value = 'muapi-modal-test';
+  document.body.querySelector('#settings-openai-key').value = 'sk-openai-modal-test';
+  document.body.querySelector('#settings-save-btn').onclick();
+
+  // The OpenAI key should be sent to the canonical endpoint.
+  assert.ok(
+    lastFetchUrl?.includes('/api/auth/openai-key'),
+    'OpenAI key should be saved via /api/auth/openai-key'
+  );
+  assert.equal(lastFetchBody?.openaiKey, 'sk-openai-modal-test');
 });
