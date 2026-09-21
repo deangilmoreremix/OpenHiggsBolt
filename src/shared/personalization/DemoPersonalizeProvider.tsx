@@ -43,6 +43,7 @@ import type {
   DiscoveredAssetCategory,
   AssignedSection,
   PersonalizationVisionAnalysis,
+  PersonalizationVisionValidation,
 } from './types'
 import { EMPTY_GENERATION_STATE } from './types'
 import { normalizePersonalizationSource, getEligibility } from './sourceNormalizer'
@@ -187,6 +188,11 @@ type DemoPersonalizeContextValue = {
       quality: string
       transparent: boolean
       videoReady: boolean
+      responseId?: string | null
+      imageGenerationCallId?: string | null
+      revisedPrompt?: string | null
+      visionAnalysis?: PersonalizationVisionAnalysis
+      visionValidation?: PersonalizationVisionValidation
     },
   ) => Promise<void>
 
@@ -859,6 +865,11 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       quality: string
       transparent: boolean
       videoReady: boolean
+      responseId?: string | null
+      imageGenerationCallId?: string | null
+      revisedPrompt?: string | null
+      visionAnalysis?: PersonalizationVisionAnalysis
+      visionValidation?: PersonalizationVisionValidation
     },
   ) => {
     const all = [
@@ -900,7 +911,12 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         prompt: meta.prompt,
         model: meta.model,
         quality: meta.quality,
+        responseId: meta.responseId,
+        imageGenerationCallId: meta.imageGenerationCallId,
+        revisedPrompt: meta.revisedPrompt,
       },
+      visionAnalysis: meta.visionAnalysis || target.visionAnalysis,
+      visionValidation: meta.visionValidation,
     }
 
     setAssets((prev) => replaceAssetInLibrary(prev, editedAsset))
@@ -1259,6 +1275,8 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
           videoReady: item.videoReady || false,
           hasTransparency: item.hasTransparency || false,
           editMetadata: item.editMetadata,
+          visionAnalysis: item.visionAnalysis,
+          visionValidation: item.visionValidation,
           sourceCategory: item.category,
           sourceType: item.sourceType,
           sourceDiscoveredAssetId: item.id,
