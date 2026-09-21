@@ -5,6 +5,8 @@ on:
     paths:
       - 'src/shared/personalization/**'
       - 'src/shared/api/openaiImage.ts'
+      - 'app/api/personalization/image-edit/**'
+      - 'tests/personalization-image-edit.vitest.test.ts'
       - '.github/workflows/personalization-image-editor-ci.yml'
   workflow_dispatch:
 
@@ -33,7 +35,7 @@ jobs:
         run: npm run typecheck
 
       - name: Run image editor unit tests
-        run: npx vitest run src/shared/personalization/__tests__/ImageEditorModal.test.tsx src/shared/personalization/__tests__/imageEditRegistry.test.ts
+        run: npx vitest run src/shared/personalization/__tests__/ImageEditorModal.test.tsx src/shared/personalization/__tests__/imageEditRegistry.test.ts tests/personalization-image-edit.vitest.test.ts
 
       - name: Build
         run: npm run build
