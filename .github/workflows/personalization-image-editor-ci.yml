@@ -1,0 +1,39 @@
+name: SmartVideo GO Image Editor CI
+
+on:
+  pull_request:
+    paths:
+      - 'src/shared/personalization/**'
+      - 'src/shared/api/openaiImage.ts'
+      - '.github/workflows/personalization-image-editor-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  image-editor:
+    name: Image Editor Typecheck, Tests and Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run image editor unit tests
+        run: npx vitest run src/shared/personalization/__tests__/ImageEditorModal.test.tsx src/shared/personalization/__tests__/imageEditRegistry.test.ts
+
+      - name: Build
+        run: npm run build
