@@ -315,7 +315,6 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
               : 'Could not verify the OpenAI key. Check your connection and try again.';
       }
     }
-    }
 
     if (muapiError && openaiError) {
       setAuthError(`${muapiError} ${openaiError}`);
