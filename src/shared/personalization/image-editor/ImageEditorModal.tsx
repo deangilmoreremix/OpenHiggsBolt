@@ -69,6 +69,29 @@ type AspectRatio = 'original' | '9:16' | '16:9' | '1:1' | '4:5'
 type EditorMode = 'simple' | 'advanced'
 type FitMode = 'contain' | 'cover'
 type TextPosition = 'top' | 'center' | 'bottom'
+type ProtectionKey = 'subject' | 'face' | 'product' | 'logo' | 'text' | 'brandColors'
+
+type Protections = Record<ProtectionKey, boolean>
+
+const PROTECTION_LABELS: Record<ProtectionKey, string> = {
+  subject: 'Subject',
+  face: 'Face / Identity',
+  product: 'Product',
+  logo: 'Logo',
+  text: 'Text',
+  brandColors: 'Brand Colors',
+}
+
+function defaultProtections(kind: ReturnType<typeof resolveEditorAssetKind>): Protections {
+  return {
+    subject: true,
+    face: kind === 'person' || kind === 'team',
+    product: kind === 'product',
+    logo: kind === 'logo' || kind === 'brand' || kind === 'storefront' || kind === 'branded_vehicle' || kind === 'cta_graphic',
+    text: kind === 'logo' || kind === 'product' || kind === 'brand' || kind === 'storefront' || kind === 'branded_vehicle' || kind === 'cta_graphic' || kind === 'last_frame',
+    brandColors: kind !== 'general' && kind !== 'background_reference',
+  }
+}
 
 type Version = {
   id: string
@@ -163,6 +186,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
   const [maskMode, setMaskMode] = useState(false)
   const [maskBlob, setMaskBlob] = useState<Blob | null>(null)
   const [safeArea, setSafeArea] = useState(false)
+  const [protections, setProtections] = useState<Protections>(() => defaultProtections('general'))
 
   const [rotation, setRotation] = useState(0)
   const [flipX, setFlipX] = useState(false)
@@ -215,8 +239,9 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     setMaskMode(false)
     setMaskBlob(null)
     setSafeArea(false)
+    setProtections(defaultProtections(kind))
     resetLocalControls()
-  }, [open, asset?.id])
+  }, [open, asset?.id, kind])
 
   useEffect(() => {
     if (!open) return
@@ -288,12 +313,18 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     const operation = getOperation(operationId)
     const businessContext = [asset?.businessName, asset?.industry].filter(Boolean).join(' - ')
     const preserve = recipe.preserve.length ? ' Preserve: ' + recipe.preserve.join(', ') + '.' : ''
+    const explicitProtections = (Object.entries(protections) as [ProtectionKey, boolean][])
+      .filter(([, enabled]) => enabled)
+      .map(([key]) => PROTECTION_LABELS[key])
+    const protectionInstruction = explicitProtections.length
+      ? ' Do not alter these protected elements unless the requested operation explicitly requires it: ' + explicitProtections.join(', ') + '.'
+      : ''
     const context = businessContext ? ' Business context: ' + businessContext + '.' : ''
     const ratio = aspectRatio === 'original' ? '' : ' Target composition: ' + aspectRatio + '.'
     const maskInstruction = maskBlob ? ' Apply the requested change primarily to the masked region and preserve unmasked content as closely as possible.' : ''
     const userInstruction = operationId === 'custom' ? custom.trim() : operation.prompt
-    return 'Edit this image for SmartVideo GO. ' + userInstruction + preserve + context + ratio + maskInstruction
-  }, [asset?.businessName, asset?.industry, aspectRatio, maskBlob, recipe.preserve])
+    return 'Edit this image for SmartVideo GO. ' + userInstruction + preserve + protectionInstruction + context + ratio + maskInstruction
+  }, [asset?.businessName, asset?.industry, aspectRatio, maskBlob, protections, recipe.preserve])
 
   const appendVersion = useCallback((version: Omit<Version, 'id'>) => {
     const next: Version = {
@@ -846,7 +877,20 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
 
               <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.02] p-3">
                 <div className="flex items-center gap-2 text-xs font-semibold text-white"><ShieldCheck size={14} className="text-cyan-300" /> SmartVideo GO Asset Protection</div>
-                <p className="mt-2 text-[10px] leading-4 text-white/40">AI prompts preserve {recipe.preserve.join(', ')} unless the selected edit explicitly requires a change.</p>
+                <p className="mt-2 text-[10px] leading-4 text-white/40">Choose what SmartVideo GO AI should explicitly protect. The asset recipe also preserves {recipe.preserve.join(', ')}.</p>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {(Object.keys(PROTECTION_LABELS) as ProtectionKey[]).map((key) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setProtections((previous) => ({ ...previous, [key]: !previous[key] }))}
+                      className="rounded-lg px-2.5 py-1.5 text-[9px] font-semibold"
+                      style={protections[key] ? buttons.activePill : buttons.inactivePill}
+                    >
+                      {protections[key] ? '✓ ' : ''}{PROTECTION_LABELS[key]}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="mt-4 flex gap-2">
