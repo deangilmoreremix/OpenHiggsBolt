@@ -70,7 +70,7 @@ export default function ApiKeyModal({
           </h1>
           <p className="text-white/40 text-[13px] leading-relaxed px-4">
             {subtitle || (
-              <>Enter your <a href="https://muapi.ai/access-keys" target="_blank" rel="noreferrer" className="text-[#22d3ee] hover:text-[#e5ff33] transition-colors">Muapi.ai</a> key to start creating. OpenAI is optional and can be added for AI-assisted features.</>
+              <>Enter your <a href="https://muapi.ai/access-keys" target="_blank" rel="noreferrer" className="text-[#22d3ee] hover:text-[#e5ff33] transition-colors">Muapi.ai</a> key to start creating. OpenAI is optional and can be added later for AI-assisted features.</>
             )}
           </p>
         </div>
