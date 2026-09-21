@@ -23,6 +23,9 @@ type SmartEditBody = {
   quality?: 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'auto'
   size?: string
   background?: 'transparent' | 'opaque' | 'auto'
+  inputFidelity?: 'high' | 'low'
+  outputFormat?: 'png' | 'jpeg' | 'webp'
+  outputCompression?: number
   businessContext?: {
     businessName?: string
     industry?: string
@@ -123,13 +126,28 @@ export async function POST(req: NextRequest) {
       body.imageModel === 'gpt-image-2.5-flare'
         ? 'gpt-image-2.5-flare'
         : 'gpt-image-2.5-sunburst'
+    const outputFormat =
+      body.outputFormat === 'jpeg' || body.outputFormat === 'webp' ? body.outputFormat : 'png'
+    const outputCompression =
+      typeof body.outputCompression === 'number' && Number.isFinite(body.outputCompression)
+        ? Math.max(0, Math.min(100, Math.round(body.outputCompression)))
+        : undefined
+    const background = body.background || 'auto'
+    if (background === 'transparent' && outputFormat === 'jpeg') {
+      return NextResponse.json({ error: 'Transparent Smart Edit output requires PNG or WebP.' }, { status: 400 })
+    }
 
     const tool: Record<string, unknown> = {
       type: 'image_generation',
       model: imageModel,
       action: body.action || 'edit',
       quality: body.quality || 'auto',
-      background: body.background || 'auto',
+      background,
+      input_fidelity: body.inputFidelity || 'high',
+      output_format: outputFormat,
+    }
+    if (outputCompression !== undefined && outputFormat !== 'png') {
+      tool.output_compression = outputCompression
     }
     if (body.size && body.size !== 'original') tool.size = body.size
 
@@ -171,7 +189,9 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      imageDataUrl: `data:image/png;base64,${result}`,
+      imageDataUrl: `data:image/${outputFormat};base64,${result}`,
+      outputFormat,
+      outputCompression: outputCompression ?? null,
       responseId: payload.id || null,
       imageGenerationCallId: call?.id || null,
       revisedPrompt: call?.revised_prompt || null,
