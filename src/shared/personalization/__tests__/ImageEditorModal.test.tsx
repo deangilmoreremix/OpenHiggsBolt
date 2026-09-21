@@ -28,10 +28,10 @@ describe('ImageEditorModal', () => {
 
     expect(screen.getByText('SmartVideo GO Image Editor')).toBeTruthy()
     expect(screen.getAllByText('Make Video Ready').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Remove Background').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Transparent Logo').length).toBeGreaterThan(0)
     expect(screen.getByText('Ask SmartVideo GO AI')).toBeTruthy()
     expect(screen.getByText('Advanced Edit')).toBeTruthy()
-    expect(screen.getByText('SmartVideo GO Asset Protection')).toBeTruthy()
+    expect(screen.getByText('SmartVideo GO recommends')).toBeTruthy()
     expect(screen.getByText('Use Edited Asset')).toBeTruthy()
   })
 
