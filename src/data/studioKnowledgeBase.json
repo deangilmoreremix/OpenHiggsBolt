@@ -1,0 +1,1652 @@
+{
+  "studios": [
+    {
+      "id": "image",
+      "name": "Image Studio",
+      "route": "/studio/image",
+      "description": "Text-to-image and image-to-image generation with 72 T2I models and 74 I2I models, supporting multi-image reference input and inpainting.",
+      "keyFeatures": [
+        "Text-to-image generation across 72 models",
+        "Image-to-image generation across 74 models with multi-image reference",
+        "Inpainting support",
+        "Aspect ratio, resolution, and quality controls",
+        "Seed control and strength adjustment for I2I"
+      ],
+      "howToUse": "Enter a text prompt or upload reference images, select a model and aspect ratio, then generate. For I2I, upload one or more reference images and adjust strength.",
+      "inputs": [
+        "text prompt",
+        "reference images (up to 14 for I2I)",
+        "aspect ratio",
+        "resolution",
+        "quality preset",
+        "seed",
+        "strength (I2I)"
+      ],
+      "requiredInputs": [
+        "text prompt"
+      ],
+      "optionalInputs": [
+        "reference images",
+        "aspect ratio",
+        "resolution",
+        "quality",
+        "seed",
+        "strength"
+      ],
+      "generationModes": [
+        "text-to-image",
+        "image-to-image",
+        "inpainting"
+      ],
+      "modelCapabilities": "72 T2I models and 74 I2I models including Flux, Nano Banana, Google, and others. Models expose aspect ratio, resolution, quality, and effect options via schema-driven inputs.",
+      "advancedFeatures": [
+        "Multi-image reference input (up to 14 images)",
+        "Inpainting",
+        "Seed control",
+        "Schema-driven model options",
+        "Prompt recipes and templates"
+      ],
+      "outputs": [
+        "generated images"
+      ],
+      "limitations": [
+        "Generation requires a valid MuAPI key",
+        "Model availability depends on MuAPI backend",
+        "I2I max reference images capped by model schema"
+      ],
+      "troubleshooting": [
+        "Invalid API key: verify key format and re-enter in Settings",
+        "No output: check MuAPI balance and model availability",
+        "I2I not working: ensure at least one reference image is uploaded"
+      ],
+      "relatedStudios": [
+        "cinema",
+        "thumbnail-studio",
+        "ai-influencer",
+        "layers"
+      ],
+      "sourceFiles": [
+        "packages/studio/src/components/ImageStudio.jsx",
+        "packages/studio/src/muapi.js",
+        "packages/studio/src/models.js"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Component and muapi functions read directly from repository",
+        "verifiedAt": "2026-09-21T21:05:15.206Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
+      }
+    },
+    {
+      "id": "video",
+      "name": "Video Studio",
+      "route": "/studio/video",
+      "description": "Text-to-video, image-to-video, and video-to-video generation across 90 T2V, 131 I2V, and 36 V2V models with motion control support.",
+      "keyFeatures": [
+        "Text-to-video generation across 90 models",
+        "Image-to-video generation across 131 models",
+        "Video-to-video generation across 36 models including motion control",
+        "Aspect ratio, duration, resolution, and quality controls",
+        "Reference image and video upload support"
+      ],
+      "howToUse": "Enter a text prompt, upload reference images or video, select a model and aspect ratio, then generate. V2V mode accepts an input video and optional prompt.",
+      "inputs": [
+        "text prompt",
+        "reference images",
+        "input video",
+        "aspect ratio",
+        "duration",
+        "resolution",
+        "quality",
+        "mode",
+        "seed",
+        "motion control options"
+      ],
+      "requiredInputs": [
+        "text prompt (model-dependent)"
+      ],
+      "optionalInputs": [
+        "reference images",
+        "input video",
+        "aspect ratio",
+        "duration",
+        "resolution",
+        "quality",
+        "mode",
+        "seed"
+      ],
+      "generationModes": [
+        "text-to-video",
+        "image-to-video",
+        "video-to-video",
+        "motion control"
+      ],
+      "modelCapabilities": "90 T2V, 131 I2V, and 36 V2V models including Seedance, Kling, Runway, Luma, and MMAudio. Motion control models support precise camera and subject movement.",
+      "advancedFeatures": [
+        "Motion control (Seedance 2.5, Kling 2.6/3.0)",
+        "Video tools (watermark removal, face swap)",
+        "Cost estimation for V2V",
+        "Advanced control payload serialization",
+        "Prompt recipes and templates"
+      ],
+      "outputs": [
+        "generated videos"
+      ],
+      "limitations": [
+        "Generation requires a valid MuAPI key",
+        "Duration limits vary by model",
+        "Motion control image count limited by model (up to 30 for seedance-2.5)"
+      ],
+      "troubleshooting": [
+        "Invalid API key: verify key format and re-enter in Settings",
+        "No output: check MuAPI balance and model availability",
+        "Motion control failed: ensure reference video and images are valid"
+      ],
+      "relatedStudios": [
+        "image",
+        "clipping",
+        "vibe-motion",
+        "recast",
+        "vfx-studio"
+      ],
+      "sourceFiles": [
+        "packages/studio/src/components/VideoStudio.jsx",
+        "packages/studio/src/muapi.js",
+        "packages/studio/src/models.js",
+        "packages/studio/src/videoAdvancedControls.js"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Component and muapi functions read directly from repository",
+        "verifiedAt": "2026-09-21T21:05:15.208Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
+      }
+    },
+    {
+      "id": "audio",
+      "name": "Audio Studio",
+      "route": "/studio/audio",
+      "description": "AI music, voice, and sound generation via Suno, Minimax, ElevenLabs, and MMAudio with a built-in premium audio player.",
+      "keyFeatures": [
+        "Suno music generation with lyrics and vocals",
+        "Minimax speech/voice models",
+        "ElevenLabs voice synthesis",
+        "MMAudio sound and music generation",
+        "Built-in audio player with playback controls"
+      ],
+      "howToUse": "Select an audio model, enter a prompt describing the desired sound or lyrics, configure style and model version, then generate. Play back results in the built-in audio player.",
+      "inputs": [
+        "text prompt",
+        "style description",
+        "model version (Suno V3.5-V5.5)",
+        "custom mode toggle",
+        "title",
+        "persona ID",
+        "persona model",
+        "instrumental toggle",
+        "negative tags",
+        "audio file upload (for voice cloning)"
+      ],
+      "requiredInputs": [
+        "text prompt",
+        "style (Suno)"
+      ],
+      "optionalInputs": [
+        "model version",
+        "custom mode",
+        "title",
+        "persona ID",
+        "persona model",
+        "instrumental",
+        "negative tags",
+        "audio file upload"
+      ],
+      "generationModes": [
+        "text-to-music",
+        "text-to-voice",
+        "voice cloning",
+        "sound effects"
+      ],
+      "modelCapabilities": "17 audio models including Suno (V3.5-V5.5), Minimax, ElevenLabs, and MMAudio. Supports lyrics generation, voice personas, and instrumental mode.",
+      "advancedFeatures": [
+        "Suno custom mode with lyrics",
+        "Voice persona system",
+        "Instrumental mode",
+        "Negative tags for style exclusion",
+        "Audio file upload for voice cloning"
+      ],
+      "outputs": [
+        "generated audio tracks",
+        "music with vocals and instrumentation"
+      ],
+      "limitations": [
+        "Generation requires a valid MuAPI key",
+        "Suno requires style specification",
+        "Voice cloning limited by model support"
+      ],
+      "troubleshooting": [
+        "Invalid API key: verify key format and re-enter in Settings",
+        "No output: check MuAPI balance and model availability",
+        "Voice clone not working: ensure audio file is valid format"
+      ],
+      "relatedStudios": [
+        "video",
+        "lipsync",
+        "vibe-motion"
+      ],
+      "sourceFiles": [
+        "packages/studio/src/components/AudioStudio.jsx",
+        "packages/studio/src/muapi.js",
+        "packages/studio/src/models.js"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Component and muapi functions read directly from repository",
+        "verifiedAt": "2026-09-21T21:05:15.208Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
+      }
+    },
+    {
+      "id": "clipping",
+      "name": "AI Clipping",
+      "route": "/studio/clipping",
+      "description": "Extracts viral highlight clips and timing markers from long-form videos automatically.",
+      "keyFeatures": [
+        "Automatic highlight extraction from long-form video",
+        "Configurable number of highlights",
+        "Aspect ratio selection",
+        "Coordinate-only return mode for custom processing",
+        "Captions and hook-first framing"
+      ],
+      "howToUse": "Paste or upload a long-form video URL, set the number of highlights and aspect ratio, then generate. The service returns clip packages with timing markers.",
+      "inputs": [
+        "video URL",
+        "number of highlights",
+        "aspect ratio",
+        "return coordinates only flag"
+      ],
+      "requiredInputs": [
+        "video URL"
+      ],
+      "optionalInputs": [
+        "number of highlights",
+        "aspect ratio",
+        "return coordinates only"
+      ],
+      "generationModes": [
+        "highlight extraction",
+        "timing marker generation"
+      ],
+      "modelCapabilities": "Single ai-clipping backend endpoint. Returns multiple highlight clips with coordinate metadata.",
+      "advancedFeatures": [
+        "Coordinate-only return mode",
+        "Configurable highlight count",
+        "Aspect ratio presets"
+      ],
+      "outputs": [
+        "highlight clips",
+        "timing markers",
+        "clip packages"
+      ],
+      "limitations": [
+        "Requires a valid long-form video URL",
+        "Generation requires a valid MuAPI key",
+        "Output quality depends on source video content"
+      ],
+      "troubleshooting": [
+        "Invalid API key: verify key format and re-enter in Settings",
+        "No highlights found: try a video with more dynamic content",
+        "Processing failed: ensure video URL is accessible"
+      ],
+      "relatedStudios": [
+        "video",
+        "marketing",
+        "social-publishing"
+      ],
+      "sourceFiles": [
+        "packages/studio/src/components/ClippingStudio.jsx",
+        "packages/studio/src/muapi.js"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Component and muapi function read directly from repository",
+        "verifiedAt": "2026-09-21T21:05:15.208Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
+      }
+    },
+    {
+      "id": "vibe-motion",
+      "name": "Vibe Motion",
+      "route": "/studio/vibe-motion",
+      "description": "Generates and remixes animated motion graphics (kinetic typography, charts, logo reveals) from text prompts.",
+      "keyFeatures": [
+        "Text-to-motion generation",
+        "Edit mode for remixing existing motion graphics",
+        "Aspect ratio and duration controls",
+        "Native audio flag (via skills recipe)",
+        "Download and replay capabilities"
+      ],
+      "howToUse": "Enter a text prompt describing the desired motion, select aspect ratio and duration, then generate. Use edit mode to remix an existing motion graphic by request ID.",
+      "inputs": [
+        "text prompt",
+        "aspect ratio",
+        "duration seconds",
+        "source request ID (edit mode)",
+        "edit prompt (edit mode)",
+        "native audio flag"
+      ],
+      "requiredInputs": [
+        "text prompt"
+      ],
+      "optionalInputs": [
+        "aspect ratio",
+        "duration",
+        "source request ID",
+        "edit prompt",
+        "native audio"
+      ],
+      "generationModes": [
+        "text-to-motion",
+        "motion edit/remix"
+      ],
+      "modelCapabilities": "Single motion-graphics backend endpoint with edit endpoint (motion-graphics-edit). Supports 16:9 and 9:16 aspect ratios.",
+      "advancedFeatures": [
+        "Edit mode with request ID",
+        "Native audio support via skills recipe",
+        "Persistent UI state via localStorage",
+        "Download generated motion graphics"
+      ],
+      "outputs": [
+        "motion graphics videos"
+      ],
+      "limitations": [
+        "Generation requires a valid MuAPI key",
+        "Duration limited by backend",
+        "Edit mode requires a valid source request ID"
+      ],
+      "troubleshooting": [
+        "Invalid API key: verify key format and re-enter in Settings",
+        "Edit failed: ensure source request ID is valid",
+        "No output: check MuAPI balance"
+      ],
+      "relatedStudios": [
+        "video",
+        "cinema",
+        "lipsync"
+      ],
+      "sourceFiles": [
+        "packages/studio/src/components/VibeMotionStudio.jsx",
+        "packages/studio/src/muapi.js"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Component and muapi function read directly from repository",
+        "verifiedAt": "2026-09-21T21:05:15.208Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
+      }
+    },
+    {
+      "id": "lipsync",
+      "name": "Lip Sync Studio",
+      "route": "/studio/lipsync",
+      "description": "Turns portraits, video, or avatars into talking videos synced to audio, using 14 models across image, video, and avatar modes.",
+      "keyFeatures": [
+        "Image-based lipsync (portrait + audio -> talking video)",
+        "Video-based lipsync (existing video + audio -> synced video)",
+        "Avatar-based generation (Kling avatars)",
+        "14 models including Infinite Talk, Wan 2.2, LTX, Sync, LatentSync, Kling",
+        "Resolution options (480p, 720p, 1080p)"
+      ],
+      "howToUse": "Upload a portrait image, video, or select an avatar model, upload or provide an audio file, then generate. The output is a talking video synced to the audio.",
+      "inputs": [
+        "portrait image",
+        "input video",
+        "audio file or URL",
+        "text prompt (model-dependent)",
+        "resolution",
+        "seed"
+      ],
+      "requiredInputs": [
+        "audio URL or file",
+        "image URL or video URL (model-dependent)"
+      ],
+      "optionalInputs": [
+        "text prompt",
+        "resolution",
+        "seed"
+      ],
+      "generationModes": [
+        "image-to-video (portrait + audio)",
+        "video-to-video (existing video + audio)",
+        "avatar generation"
+      ],
+      "modelCapabilities": "14 models across image, video, and avatar categories: Infinite Talk, Wan 2.2, LTX 2.3/2-19B, Sync, LatentSync, Creatify, Veed, Volcengine, Kling v1/v2 Avatar Standard/Pro, Omnihuman 1.5.",
+      "advancedFeatures": [
+        "Multiple avatar models (Kling v1/v2 Standard/Pro)",
+        "Video-based lipsync modes (lite/basic)",
+        "Seed control for reproducibility",
+        "Cross-studio handoff from storyboard"
+      ],
+      "outputs": [
+        "talking videos",
+        "avatar videos"
+      ],
+      "limitations": [
+        "Generation requires a valid MuAPI key",
+        "Model-specific input requirements",
+        "Resolution limited by model (max 1080p)"
+      ],
+      "troubleshooting": [
+        "Invalid API key: verify key format and re-enter in Settings",
+        "No audio sync: ensure audio file is valid and supported format",
+        "Model not available: check MuAPI backend for model status"
+      ],
+      "relatedStudios": [
+        "video",
+        "audio",
+        "marketing",
+        "social-publishing"
+      ],
+      "sourceFiles": [
+        "packages/studio/src/components/LipSyncStudio.jsx",
+        "packages/studio/src/muapi.js",
+        "packages/studio/src/models.js"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Component and muapi functions read directly from repository",
+        "verifiedAt": "2026-09-21T21:05:15.208Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
+      }
+    },
+    {
+      "id": "cinema",
+      "name": "Cinema Studio",
+      "route": "/studio/cinema",
+      "description": "Produces photorealistic cinematic stills with director-grade virtual camera controls (camera bodies, lenses, focal lengths, apertures).",
+      "keyFeatures": [
+        "Camera body selection (6 options including 8K digital, 70mm film, 16mm film)",
+        "Lens selection (11 options including anamorphic, macro, prime)",
+        "Focal length control (8, 14, 24, 35, 50, 85)",
+        "Aperture control (f/1.4, f/4, f/11)",
+        "Image generation with cinematic prompt engineering"
+      ],
+      "howToUse": "Enter a scene description prompt, select a camera body, lens, focal length, and aperture, then generate a photorealistic cinematic still.",
+      "inputs": [
+        "text prompt",
+        "camera body",
+        "lens",
+        "focal length",
+        "aperture",
+        "aspect ratio",
+        "resolution",
+        "quality"
+      ],
+      "requiredInputs": [
+        "text prompt"
+      ],
+      "optionalInputs": [
+        "camera body",
+        "lens",
+        "focal length",
+        "aperture",
+        "aspect ratio",
+        "resolution",
+        "quality"
+      ],
+      "generationModes": [
+        "text-to-image (cinematic)"
+      ],
+      "modelCapabilities": "Uses image generation backend with cinematic prompt injection. Camera, lens, focal, and aperture selections are mapped to prompt modifiers.",
+      "advancedFeatures": [
+        "6 camera body presets with visual assets",
+        "11 lens presets with visual assets",
+        "6 focal length presets",
+        "3 aperture presets with depth-of-field effects",
+        "Persistent UI state via localStorage"
+      ],
+      "outputs": [
+        "photorealistic cinematic stills"
+      ],
+      "limitations": [
+        "Generation requires a valid MuAPI key",
+        "Output is image-only (not video)",
+        "Effectiveness depends on model's training on cinematic terminology"
+      ],
+      "troubleshooting": [
+        "Invalid API key: verify key format and re-enter in Settings",
+        "Output not cinematic enough: refine prompt with camera and lighting details",
+        "No output: check MuAPI balance"
+      ],
+      "relatedStudios": [
+        "image",
+        "thumbnail-studio",
+        "ai-influencer",
+        "storyboard"
+      ],
+      "sourceFiles": [
+        "packages/studio/src/components/CinemaStudio.jsx",
+        "packages/studio/src/muapi.js"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Component and muapi function read directly from repository",
+        "verifiedAt": "2026-09-21T21:05:15.208Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
+      }
+    },
+    {
+      "id": "storyboard",
+      "name": "Storyboard",
+      "route": "/studio/storyboard",
+      "description": "Multi-scene storyboard planner with characters, episodes, and AI-generated shots including camera/angle controls.",
+      "keyFeatures": [
+        "Project creation with name, brief, and visual style",
+        "Character creation with traits, outfit, and reference images",
+        "Episode creation with title and summary",
+        "Shot editor with drag-and-drop sorting",
+        "Camera controls (shot type, angle, movement)",
+        "Scene analysis view with stats",
+        "AI-generated shot frames"
+      ],
+      "howToUse": "Create a project with a name and creative brief, add characters with traits and reference images, create episodes, then generate shots with AI. Use the shot editor to arrange scenes and apply camera controls.",
+      "inputs": [
+        "project name",
+        "creative brief",
+        "visual style",
+        "character name",
+        "character traits",
+        "character outfit",
+        "character reference images",
+        "episode title",
+        "episode summary",
+        "shot scene description",
+        "camera controls (shot type, angle, movement)",
+        "frame model selection",
+        "aspect ratio"
+      ],
+      "requiredInputs": [
+        "project name",
+        "creative brief"
+      ],
+      "optionalInputs": [
+        "visual style",
+        "character details",
+        "episode details",
+        "shot descriptions",
+        "camera controls",
+        "frame model",
+        "aspect ratio"
+      ],
+      "generationModes": [
+        "project creation",
+        "character generation",
+        "episode creation",
+        "shot frame generation"
+      ],
+      "modelCapabilities": "Uses backend storyboard API for project, character, episode, and shot frame generation. Frame generation supports multiple image models with aspect ratio options.",
+      "advancedFeatures": [
+        "Drag-and-drop shot sorting",
+        "Camera taxonomy (shot type, angle, movement)",
+        "Character reference image support",
+        "Cross-studio handoff to other studios",
+        "Scene analysis with stats"
+      ],
+      "outputs": [
+        "storyboard projects",
+        "characters",
+        "episodes",
+        "shot frames",
+        "scene analysis"
+      ],
+      "limitations": [
+        "Requires SmartVideo GO entitlement",
+        "API-dependent (backend storyboard service)",
+        "Shot generation requires valid MuAPI key"
+      ],
+      "troubleshooting": [
+        "Payment required: ensure SmartVideo GO entitlement is active",
+        "Shot generation failed: check MuAPI key and model availability",
+        "Character not saving: verify all required fields are filled"
+      ],
+      "relatedStudios": [
+        "image",
+        "video",
+        "cinema",
+        "thumbnail-studio",
+        "vfx-studio"
+      ],
+      "sourceFiles": [
+        "src/apps/storyboard/Storyboard.tsx",
+        "src/apps/storyboard/StoryboardContext.tsx",
+        "src/apps/storyboard/pages/StoryboardPlanner.tsx",
+        "src/apps/storyboard/pages/ShotEditor.tsx",
+        "src/apps/storyboard/pages/SceneAnalysis.tsx",
+        "src/apps/storyboard/CameraControls.tsx",
+        "src/apps/storyboard/ModelSelector.tsx",
+        "src/apps/storyboard/cameraTaxonomy.ts"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "All storyboard pages and context read directly from repository",
+        "verifiedAt": "2026-09-21T21:05:15.208Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
+      }
+    },
+    {
+      "id": "marketing",
+      "name": "Marketing Studio",
+      "route": "/studio/marketing",
+      "description": "Generates high-converting AI video ads with selectable avatars, templates, and product images.",
+      "keyFeatures": [
+        "AI video ad generation",
+        "Avatar selection",
+        "Template support",
+        "Product image upload",
+        "CTA overlay support"
+      ],
+      "howToUse": "Describe the product or campaign, select an avatar and template, upload a product image if needed, then generate a high-converting video ad.",
+      "inputs": [
+        "text prompt",
+        "avatar selection",
+        "template",
+        "product image",
+        "CTA settings",
+        "aspect ratio",
+        "duration"
+      ],
+      "requiredInputs": [
+        "text prompt"
+      ],
+      "optionalInputs": [
+        "avatar",
+        "template",
+        "product image",
+        "CTA",
+        "aspect ratio",
+        "duration"
+      ],
+      "generationModes": [
+        "text-to-video (ad)"
+      ],
+      "modelCapabilities": "Uses seedance-2-vip-omni-reference or sd-2-vip-omni-reference-1080p backend endpoint. Supports images_list and video_files as references.",
+      "advancedFeatures": [
+        "1080p resolution option",
+        "Product image reference",
+        "Template-based generation",
+        "CTA overlay integration",
+        "Prompt recipes"
+      ],
+      "outputs": [
+        "video ads",
+        "campaign briefs"
+      ],
+      "limitations": [
+        "Generation requires a valid MuAPI key",
+        "Output format is video-only",
+        "Avatar availability depends on backend"
+      ],
+      "troubleshooting": [
+        "Invalid API key: verify key format and re-enter in Settings",
+        "No output: check MuAPI balance",
+        "Avatar not loading: ensure template data is valid"
+      ],
+      "relatedStudios": [
+        "video",
+        "image",
+        "recast",
+        "social-publishing"
+      ],
+      "sourceFiles": [
+        "packages/studio/src/components/MarketingStudio.jsx",
+        "packages/studio/src/muapi.js"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Component and muapi function read directly from repository",
+        "verifiedAt": "2026-09-21T21:05:15.208Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
+      }
+    },
+    {
+      "id": "recast",
+      "name": "Body Swap (Recast)",
+      "route": "/studio/recast",
+      "description": "Swaps the character in any video while preserving the original motion (Kling / Runway recast).",
+      "keyFeatures": [
+        "Kling 3.0 Pro Motion Control for character swap",
+        "Runway Act Two for character replacement",
+        "Wan2.2 Animate for video animation",
+        "Motion preservation from source video",
+        "Character image reference upload"
+      ],
+      "howToUse": "Upload a source video and a character image, optionally add a prompt, select a recast model, then generate. The output preserves the source motion with the new character.",
+      "inputs": [
+        "source video URL",
+        "character image URL",
+        "text prompt",
+        "aspect ratio",
+        "character orientation"
+      ],
+      "requiredInputs": [
+        "source video URL",
+        "character image URL"
+      ],
+      "optionalInputs": [
+        "text prompt",
+        "aspect ratio",
+        "character orientation"
+      ],
+      "generationModes": [
+        "video-to-video (body swap)"
+      ],
+      "modelCapabilities": "3 recast models: Kling 3.0 Pro Motion Control, Runway Act Two, Wan2.2 Animate. All accept video_url and image_url; prompt and aspect_ratio vary by model.",
+      "advancedFeatures": [
+        "Character orientation control",
+        "Multiple recast backends",
+        "Prompt-guided motion preservation"
+      ],
+      "outputs": [
+        "character-swapped videos"
+      ],
+      "limitations": [
+        "Generation requires a valid MuAPI key",
+        "Source video quality affects output",
+        "Character image should be clear and front-facing"
+      ],
+      "troubleshooting": [
+        "Invalid API key: verify key format and re-enter in Settings",
+        "Character not swapping: ensure image_url is a valid character photo",
+        "Motion not preserved: check source video has clear motion"
+      ],
+      "relatedStudios": [
+        "video",
+        "lipsync",
+        "marketing",
+        "vfx-studio"
+      ],
+      "sourceFiles": [
+        "packages/studio/src/components/RecastStudio.jsx",
+        "packages/studio/src/muapi.js",
+        "packages/studio/src/models.js"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Component and muapi functions read directly from repository",
+        "verifiedAt": "2026-09-21T21:05:15.208Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
+      }
+    },
+    {
+      "id": "layers",
+      "name": "Layers Studio",
+      "route": "/studio/layers",
+      "description": "Decomposes images into layers, upscales, removes backgrounds, expands images, and supports image-to-image generation.",
+      "keyFeatures": [
+        "Layer decomposition (Seedream 5.0 Pro Layer)",
+        "Image upscaling (Topaz, SeedVR2 up to 8K, AI Upscaler)",
+        "Background removal",
+        "Image expansion/outpainting",
+        "Image-to-image generation",
+        "Drawing and annotation tools (marker, shapes, text)"
+      ],
+      "howToUse": "Upload an image, then choose to decompose into layers, upscale, remove background, expand, or apply I2I transformations. Use drawing tools to annotate before processing.",
+      "inputs": [
+        "source image",
+        "prompt (for I2I and decomposition)",
+        "resolution",
+        "upscale factor",
+        "output format",
+        "drawing annotations"
+      ],
+      "requiredInputs": [
+        "source image"
+      ],
+      "optionalInputs": [
+        "prompt",
+        "resolution",
+        "upscale factor",
+        "output format",
+        "annotations"
+      ],
+      "generationModes": [
+        "layer decomposition",
+        "image upscaling",
+        "background removal",
+        "image expansion",
+        "image-to-image"
+      ],
+      "modelCapabilities": "Upscale models: Topaz, SeedVR2 (up to 8K), AI Upscaler. Decomposition uses bytedance-seedream-5.0-pro-layer. Background removal and expansion use dedicated endpoints.",
+      "advancedFeatures": [
+        "Multiple upscale models with different strengths",
+        "Layer decomposition with PNG output",
+        "Drawing tools (marker, shapes, text)",
+        "Preset color palette",
+        "I2I integration"
+      ],
+      "outputs": [
+        "decomposed image layers",
+        "upscaled images",
+        "background-removed images",
+        "expanded images",
+        "I2I results"
+      ],
+      "limitations": [
+        "Generation requires a valid MuAPI key",
+        "Layer decomposition output format is PNG",
+        "Upscale factor limits vary by model"
+      ],
+      "troubleshooting": [
+        "Invalid API key: verify key format and re-enter in Settings",
+        "Decomposition failed: ensure image is valid and URL accessible",
+        "Upscale not improving quality: check source resolution"
+      ],
+      "relatedStudios": [
+        "image",
+        "video",
+        "cinema",
+        "thumbnail-studio"
+      ],
+      "sourceFiles": [
+        "packages/studio/src/components/LayersStudio.jsx",
+        "packages/studio/src/muapi.js"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Component and muapi functions read directly from repository",
+        "verifiedAt": "2026-09-21T21:05:15.208Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
+      }
+    },
+    {
+      "id": "workflows",
+      "name": "Workflow Studio",
+      "route": "/studio/workflows",
+      "description": "Node-based, drag-and-drop builder for multi-step AI pipelines, with templates, community workflows, a playground, and API execution.",
+      "keyFeatures": [
+        "Node-based drag-and-drop workflow builder",
+        "Template workflows library",
+        "User-created workflow management",
+        "Published community workflows",
+        "API execution and snippet generation",
+        "Workflow input schema inspection"
+      ],
+      "howToUse": "Browse or create a workflow using the node-based builder. Connect nodes to define AI pipeline steps, save workflows, and execute them via the API or playground.",
+      "inputs": [
+        "workflow nodes",
+        "node connections",
+        "workflow inputs",
+        "API execution parameters"
+      ],
+      "requiredInputs": [
+        "workflow definition (for execution)"
+      ],
+      "optionalInputs": [
+        "workflow name",
+        "thumbnail",
+        "template selection",
+        "API options"
+      ],
+      "generationModes": [
+        "workflow execution",
+        "workflow creation",
+        "API snippet generation"
+      ],
+      "modelCapabilities": "Backend workflow API supports create, read, update, delete, and execute operations. Node schemas are fetched from getAllNodeSchemas. Templates and published workflows are available.",
+      "advancedFeatures": [
+        "Dynamic workflow builder (WorkflowUI)",
+        "Community workflow gallery",
+        "Playground mode",
+        "API snippet generation",
+        "Workflow renaming and deletion",
+        "Thumbnail proxy for workflow cards"
+      ],
+      "outputs": [
+        "workflow execution results",
+        "API snippets",
+        "workflow definitions"
+      ],
+      "limitations": [
+        "Requires SmartVideo GO entitlement for some actions",
+        "Workflow execution depends on backend availability",
+        "Node schema support depends on MuAPI backend"
+      ],
+      "troubleshooting": [
+        "Workflow execution failed: check node configuration and API key",
+        "No templates visible: ensure backend is reachable",
+        "Builder CSS issues: session flags are cleared on tab switch"
+      ],
+      "relatedStudios": [
+        "agents",
+        "design-agent",
+        "image",
+        "video"
+      ],
+      "sourceFiles": [
+        "packages/studio/src/components/WorkflowStudio.jsx",
+        "packages/studio/src/components/WorkflowUI.jsx",
+        "packages/studio/src/muapi.js"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Component and muapi functions read directly from repository",
+        "verifiedAt": "2026-09-21T21:05:15.208Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
+      }
+    },
+    {
+      "id": "agents",
+      "name": "Agents",
+      "route": "/studio/agents",
+      "description": "Browse and chat with template and user-created AI agents across a gallery, your agents, and conversation history.",
+      "keyFeatures": [
+        "Template agent gallery",
+        "User-created agent management",
+        "Conversation history",
+        "Agent icon and metadata display",
+        "Chat interface with agent"
+      ],
+      "howToUse": "Browse the template agent gallery or your created agents, select an agent, and start a conversation. View history of past conversations.",
+      "inputs": [
+        "agent selection",
+        "chat messages",
+        "attachments (image, video, audio)"
+      ],
+      "requiredInputs": [
+        "agent selection"
+      ],
+      "optionalInputs": [
+        "chat message",
+        "attachments"
+      ],
+      "generationModes": [
+        "agent chat",
+        "agent browsing"
+      ],
+      "modelCapabilities": "Backend provides template agents and user agents via getTemplateAgents and getUserAgents. Conversations stored via getUserConversations.",
+      "advancedFeatures": [
+        "Template agent gallery",
+        "User agent creation and management",
+        "Conversation history persistence",
+        "Attachment support (image, video, audio)",
+        "Icon proxying for CDN hotlink protection"
+      ],
+      "outputs": [
+        "agent responses",
+        "conversation history",
+        "generated assets"
+      ],
+      "limitations": [
+        "Agent availability depends on backend",
+        "Conversation history limited by backend storage",
+        "Attachment types limited to image, video, audio"
+      ],
+      "troubleshooting": [
+        "Agent not responding: check MuAPI key and backend status",
+        "History not loading: ensure signed in and backend reachable",
+        "Icons not loading: CDN hotlink protection may block direct URLs"
+      ],
+      "relatedStudios": [
+        "workflows",
+        "design-agent",
+        "go-ai-viral"
+      ],
+      "sourceFiles": [
+        "packages/studio/src/components/AgentStudio.jsx",
+        "packages/studio/src/muapi.js"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Component and muapi functions read directly from repository",
+        "verifiedAt": "2026-09-21T21:05:15.208Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
+      }
+    },
+    {
+      "id": "design-agent",
+      "name": "Design Agent AI",
+      "route": "/studio/design-agent",
+      "description": "AI Chat-based autonomous creative assistant (Go-AI) with 33 built-in templates for logos, ads, mockups, posters, and more.",
+      "keyFeatures": [
+        "33 built-in templates (logos, ads, mockups, posters, etc.)",
+        "Chat-based creative assistant (Go-AI)",
+        "Brand kit support (logo, colors, fonts, tone, style)",
+        "Project management with localStorage persistence",
+        "Asset actions: edit, upscale, remove background, vectorize",
+        "Modes: agent, generate, edit"
+      ],
+      "howToUse": "Select a template or enter a custom design goal in the chat. Go-AI will generate assets (images, videos, audio, text) based on your request. Manage projects and apply brand kits for consistency.",
+      "inputs": [
+        "text prompt",
+        "template selection",
+        "attachments (image, video, audio)",
+        "brand kit (logo, colors, fonts, tone, style)",
+        "asset action (edit, upscale, remove-bg, vectorize)"
+      ],
+      "requiredInputs": [
+        "text prompt or template selection"
+      ],
+      "optionalInputs": [
+        "attachments",
+        "brand kit",
+        "asset action",
+        "project context"
+      ],
+      "generationModes": [
+        "agent chat",
+        "template generation",
+        "asset editing",
+        "asset upscaling",
+        "background removal",
+        "vectorization"
+      ],
+      "modelCapabilities": "Backend API for agent calls with image, video, audio, and text asset generation. Supports brand kit injection and project persistence via localStorage.",
+      "advancedFeatures": [
+        "33 built-in templates",
+        "Brand kit with logo, colors, fonts, tone, style",
+        "Project creation and management",
+        "Attachment support (max 14)",
+        "Plan node generation with credit estimation",
+        "LocalStorage persistence for projects and brand kit"
+      ],
+      "outputs": [
+        "images",
+        "videos",
+        "audio",
+        "text",
+        "design directions"
+      ],
+      "limitations": [
+        "Requires SmartVideo GO entitlement",
+        "Max 14 attachments per message",
+        "Project data stored in localStorage only"
+      ],
+      "troubleshooting": [
+        "Payment required: ensure SmartVideo GO entitlement is active",
+        "Generation failed: check MuAPI and OpenAI keys",
+        "Project not saving: check localStorage quota"
+      ],
+      "relatedStudios": [
+        "agents",
+        "workflows",
+        "image",
+        "video",
+        "social-publishing"
+      ],
+      "sourceFiles": [
+        "src/apps/design-agent/DesignAgent.tsx",
+        "src/apps/design-agent/ErrorBoundary.tsx"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Component read directly from repository",
+        "verifiedAt": "2026-09-21T21:05:15.208Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
+      }
+    },
+    {
+      "id": "vfx-studio",
+      "name": "VFX Studio",
+      "route": "/studio/vfx-studio",
+      "description": "Applies AI effects, motion-control camera shots, and VFX (Levitate, Explosions, 360 Orbit, etc.) to video or image.",
+      "keyFeatures": [
+        "AI Effects category (10 effects: Kiss Me AI, Venom, Hulk, Muscle Surge, etc.)",
+        "Motion Controls category (10 shots: 360 Orbit, Hero Run, Arc Shot, Matrix Shot, etc.)",
+        "VFX category (14 effects: Levitate, Disintegration, Flying, Car Explosion, Tornado, etc.)",
+        "Image upload support",
+        "Aspect ratio, resolution, duration, and quality controls",
+        "Cross-studio handoff from GO-Viral and Storyboard"
+      ],
+      "howToUse": "Select an effect category and specific effect, upload an optional source image, enter a prompt, configure aspect ratio and duration, then generate. Cross-studio handoffs auto-populate prompt and aspect ratio.",
+      "inputs": [
+        "source image",
+        "text prompt",
+        "effect selection",
+        "category selection",
+        "aspect ratio",
+        "resolution",
+        "duration",
+        "quality"
+      ],
+      "requiredInputs": [
+        "effect selection"
+      ],
+      "optionalInputs": [
+        "source image",
+        "text prompt",
+        "aspect ratio",
+        "resolution",
+        "duration",
+        "quality"
+      ],
+      "generationModes": [
+        "AI effects application",
+        "motion control generation",
+        "VFX application"
+      ],
+      "modelCapabilities": "Backend video generation hook with 34 total effects across AI Effects, Motion Controls, and VFX categories. Supports 16:9, 9:16, 1:1 aspect ratios and 480p/720p resolutions.",
+      "advancedFeatures": [
+        "34 effects across 3 categories",
+        "Cross-studio handoff (GO-Viral, Storyboard)",
+        "LocalStorage UI state persistence",
+        "Search/filter effects",
+        "Drag-and-drop file upload",
+        "Copy prompt functionality"
+      ],
+      "outputs": [
+        "video with applied effects",
+        "motion control videos",
+        "VFX videos"
+      ],
+      "limitations": [
+        "Generation requires a valid MuAPI key",
+        "Resolution limited to 480p/720p",
+        "Duration limited to 5 or 10 seconds"
+      ],
+      "troubleshooting": [
+        "Invalid API key: verify key format and re-enter in Settings",
+        "Effect not applying: ensure source image is valid",
+        "Handoff not working: clear localStorage and retry"
+      ],
+      "relatedStudios": [
+        "video",
+        "go-ai-viral",
+        "storyboard",
+        "recast"
+      ],
+      "sourceFiles": [
+        "src/apps/vfx-studio/VFXStudio.tsx",
+        "src/apps/vfx-studio/pages/VFXGenerate.tsx",
+        "src/apps/vfx-studio/components/BottomInputBar.tsx"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "VFX studio pages read directly from repository",
+        "verifiedAt": "2026-09-21T21:05:15.208Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
+      }
+    },
+    {
+      "id": "thumbnail-studio",
+      "name": "Thumbnail Studio",
+      "route": "/studio/thumbnail-studio",
+      "description": "Creates CTR-optimized YouTube thumbnails with a CTR prompt engine, style presets, category templates, and a community gallery.",
+      "keyFeatures": [
+        "CTR prompt engine for click-through optimization",
+        "Style presets",
+        "Category templates",
+        "Community gallery",
+        "Session-based local history",
+        "Cross-studio handoff from Storyboard",
+        "Shared ImageGen components (ImageGallery, ImageEditor, MuapiImageStream)"
+      ],
+      "howToUse": "Enter a thumbnail description or use the CTR prompt engine, select a style preset and category template, then generate. Browse the community gallery for inspiration. Handoff from Storyboard auto-populates context.",
+      "inputs": [
+        "text prompt",
+        "style preset",
+        "category template",
+        "model selection",
+        "size preset",
+        "quality preset",
+        "aspect ratio"
+      ],
+      "requiredInputs": [
+        "text prompt"
+      ],
+      "optionalInputs": [
+        "style preset",
+        "category template",
+        "model",
+        "size preset",
+        "quality preset",
+        "aspect ratio"
+      ],
+      "generationModes": [
+        "text-to-image (thumbnail)"
+      ],
+      "modelCapabilities": "Uses shared ImageGen components and flux-dev image models via MuAPI. Supports SIZE_PRESETS and QUALITY_PRESETS from ImageGen. CTR engine enhances prompts for click-through optimization.",
+      "advancedFeatures": [
+        "CTR prompt engine",
+        "Style presets",
+        "Category templates",
+        "Community gallery (session-based + public feed)",
+        "Storyboard handoff integration",
+        "Provider logo map with CDN icons",
+        "Publish step integration",
+        "AI assistant step integration"
+      ],
+      "outputs": [
+        "thumbnail images"
+      ],
+      "limitations": [
+        "Generation requires a valid MuAPI key",
+        "Gallery requires session or public community data",
+        "Style preset availability depends on model"
+      ],
+      "troubleshooting": [
+        "Invalid API key: verify key format and re-enter in Settings",
+        "Thumbnail not loading: check image URL and model availability",
+        "Gallery empty: ensure session ID is set"
+      ],
+      "relatedStudios": [
+        "image",
+        "storyboard",
+        "social-publishing",
+        "design-agent"
+      ],
+      "sourceFiles": [
+        "src/apps/thumbnail-studio/ThumbnailStudio.tsx"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Component read directly from repository",
+        "verifiedAt": "2026-09-21T21:05:15.208Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
+      }
+    },
+    {
+      "id": "ai-influencer",
+      "name": "AI Influencer Studio",
+      "route": "/studio/ai-influencer",
+      "description": "Builds consistent AI-influencer/character portraits via a hierarchical attribute builder (nano-banana-pro).",
+      "keyFeatures": [
+        "Hierarchical attribute builder",
+        "Character type selection (human, elf, alien, amphibian, reptile, etc.)",
+        "Gender selection (female, male, non-binary, trans man, trans woman)",
+        "Ethnicity/origin selection (African, Asian, European, Indian, Middle Eastern, Mixed)",
+        "Eye color selection (blue, brown, green, amber, grey, red, purple, black)",
+        "Hair style and color options",
+        "Consistent portrait generation via nano-banana-pro model"
+      ],
+      "howToUse": "Build a character by selecting attributes across tabs (face, hair, style, etc.), enter an optional prompt, then generate consistent portraits using the nano-banana-pro model.",
+      "inputs": [
+        "character type",
+        "gender",
+        "ethnicity/origin",
+        "eye color",
+        "hair style",
+        "hair color",
+        "style/look",
+        "text prompt",
+        "aspect ratio",
+        "reference images"
+      ],
+      "requiredInputs": [
+        "character type",
+        "gender",
+        "ethnicity/origin"
+      ],
+      "optionalInputs": [
+        "eye color",
+        "hair style",
+        "hair color",
+        "style/look",
+        "text prompt",
+        "aspect ratio",
+        "reference images"
+      ],
+      "generationModes": [
+        "text-to-image (influencer portrait)",
+        "attribute-guided generation"
+      ],
+      "modelCapabilities": "Uses nano-banana-pro model for consistent portrait generation. Attribute builder maps visual selections to prompt modifiers for consistency across generations.",
+      "advancedFeatures": [
+        "Hierarchical attribute builder with visual pickers",
+        "13 character types",
+        "5 gender options",
+        "6 ethnicity/origin options",
+        "8 eye color options",
+        "Consistent character generation",
+        "CDN-hosted attribute preview images"
+      ],
+      "outputs": [
+        "AI influencer portraits",
+        "character images"
+      ],
+      "limitations": [
+        "Generation requires a valid MuAPI key",
+        "Consistency depends on attribute selection and model",
+        "Attribute coverage limited by CDN assets"
+      ],
+      "troubleshooting": [
+        "Invalid API key: verify key format and re-enter in Settings",
+        "Inconsistent outputs: ensure all required attributes are selected",
+        "No output: check MuAPI balance"
+      ],
+      "relatedStudios": [
+        "image",
+        "cinema",
+        "thumbnail-studio",
+        "design-agent"
+      ],
+      "sourceFiles": [
+        "packages/studio/src/components/AiInfluencerStudio.jsx",
+        "packages/studio/src/muapi.js",
+        "packages/studio/src/models.js"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Component read directly from repository",
+        "verifiedAt": "2026-09-21T21:05:15.208Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
+      }
+    },
+    {
+      "id": "social-publishing",
+      "name": "Social Publishing",
+      "route": "/studio/social-publishing",
+      "description": "Publishes generated media directly to YouTube, Instagram, and TikTok with per-platform options and publish history.",
+      "keyFeatures": [
+        "YouTube publishing with title, description, tags, privacy, category, kids mode",
+        "Instagram publishing with caption, placement (reels), privacy, comment/duet/stitch controls",
+        "TikTok publishing with caption, privacy, and engagement controls",
+        "Publish history (localStorage, last 12 items)",
+        "Social account connection management",
+        "External social account linking"
+      ],
+      "howToUse": "Select a platform, enter the media URL, fill platform-specific fields (title, description, tags for YouTube; caption for Instagram/TikTok), configure privacy and engagement settings, then publish.",
+      "inputs": [
+        "media URL",
+        "platform selection",
+        "title (YouTube)",
+        "description (YouTube)",
+        "tags (YouTube)",
+        "privacy setting (YouTube)",
+        "category ID (YouTube)",
+        "made for kids (YouTube)",
+        "caption (Instagram/TikTok)",
+        "media type",
+        "placement (Instagram)",
+        "share to feed (Instagram)",
+        "privacy level (Instagram/TikTok)",
+        "disable comment (Instagram/TikTok)",
+        "disable duet (Instagram)",
+        "disable stitch (Instagram)"
+      ],
+      "requiredInputs": [
+        "media URL",
+        "platform selection"
+      ],
+      "optionalInputs": [
+        "title",
+        "description",
+        "tags",
+        "privacy settings",
+        "category",
+        "made for kids",
+        "caption",
+        "placement",
+        "engagement controls"
+      ],
+      "generationModes": [
+        "youtube publish",
+        "instagram publish",
+        "tiktok publish"
+      ],
+      "modelCapabilities": "Backend MuAPI endpoints for publishToYouTube, publishToInstagram, publishToTikTok, and pollSocialResult. Supports account connection via listSocialAccounts, connectSocialAccount, and external account management.",
+      "advancedFeatures": [
+        "Per-platform publish options",
+        "Publish history (last 12 in localStorage)",
+        "External social account management",
+        "Polling for async publish results",
+        "Account connection UI"
+      ],
+      "outputs": [
+        "published YouTube videos",
+        "published Instagram posts/reels",
+        "published TikTok videos",
+        "publish history records"
+      ],
+      "limitations": [
+        "Requires connected social accounts",
+        "Media URL must be accessible",
+        "Publish status depends on platform API limits"
+      ],
+      "troubleshooting": [
+        "Publish failed: check social account connection and media URL",
+        "History not loading: ensure localStorage is available",
+        "Account not connecting: verify platform permissions"
+      ],
+      "relatedStudios": [
+        "video",
+        "image",
+        "marketing",
+        "go-ai-viral"
+      ],
+      "sourceFiles": [
+        "src/apps/social-publishing/SocialPublishing.tsx",
+        "src/lib/muapi.js"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Component read directly from repository",
+        "verifiedAt": "2026-09-21T21:05:15.208Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
+      }
+    },
+    {
+      "id": "go-ai-viral",
+      "name": "GO-Viral",
+      "route": "/studio/go-ai-viral",
+      "description": "Continuously refreshed public feed of AI image and video prompts from X, with original authors, source links, preview media, and machine-readable datasets.",
+      "keyFeatures": [
+        "Browse full prompt catalog organized by media type and category",
+        "Search by title, prompt text, or tags",
+        "Preview media assets (images + video posters)",
+        "View full prompt text with one-click copy",
+        "Jump to original X post for source attribution",
+        "Filter by recommended model",
+        "Handoff to other studios for generation",
+        "Academy mode for curated learning content"
+      ],
+      "howToUse": "Browse or search the prompt feed, filter by media type, category, or model. Click a prompt to view details, copy it for use in other studios, or hand it off to generate media directly.",
+      "inputs": [
+        "search query",
+        "media type filter (all, image, video)",
+        "category filter",
+        "model filter",
+        "sort option (newest, oldest)"
+      ],
+      "requiredInputs": [],
+      "optionalInputs": [
+        "search query",
+        "media type filter",
+        "category filter",
+        "model filter",
+        "sort option"
+      ],
+      "generationModes": [
+        "prompt browsing",
+        "prompt search",
+        "prompt handoff to other studios"
+      ],
+      "modelCapabilities": "Feed of 1658+ prompts sourced from X (Twitter) via ImgLume and ByRadar. Each prompt includes preview media, author attribution, source URLs, and machine-readable metadata.",
+      "advancedFeatures": [
+        "1658+ prompts with X attribution",
+        "Filter by recommended model (gptimage, nanobanana, seedance, etc.)",
+        "One-click prompt copy",
+        "Studio handoff via createViralHandoff and emitSendTo",
+        "Academy mode with curated assets",
+        "Video prompts mode",
+        "Feed pagination"
+      ],
+      "outputs": [
+        "prompt records",
+        "preview images",
+        "preview videos",
+        "handoff payloads for other studios"
+      ],
+      "limitations": [
+        "Feed data sourced from public X posts",
+        "Prompt count depends on feed freshness",
+        "Preview media depends on CDN availability"
+      ],
+      "troubleshooting": [
+        "Feed not loading: check network connectivity to feed API",
+        "Preview not showing: CDN may be blocked",
+        "Handoff not working: ensure target studio is loaded"
+      ],
+      "relatedStudios": [
+        "image",
+        "video",
+        "vfx-studio",
+        "storyboard",
+        "social-publishing"
+      ],
+      "sourceFiles": [
+        "src/apps/go-ai-viral/GoAiViralStudio.tsx",
+        "src/apps/go-ai-viral/StudioTargetPicker.tsx",
+        "src/types/go-ai-viral/prompt.ts",
+        "src/types/go-ai-viral/seedance.ts"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Component read directly from repository",
+        "verifiedAt": "2026-09-21T21:05:15.208Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
+      }
+    },
+    {
+      "id": "photo-studio",
+      "name": "Photo Studio",
+      "route": "/photo-studio",
+      "description": "Generates product photography with AI across categories like E-commerce, Lifestyle, Food & Beverage, Tech, Beauty, and Health.",
+      "keyFeatures": [
+        "Category-based style selection (6 categories)",
+        "30 style presets filtered by category",
+        "Brand-based generation",
+        "Product image URL input",
+        "Generation polling with timeout",
+        "Local history of generated photos"
+      ],
+      "howToUse": "Select a category, choose a style preset, optionally select a brand and enter a product image URL, then generate. View results and download. History shows past generations per brand.",
+      "inputs": [
+        "brand selection",
+        "product image URL",
+        "category",
+        "style preset"
+      ],
+      "requiredInputs": [
+        "style preset"
+      ],
+      "optionalInputs": [
+        "brand selection",
+        "product image URL"
+      ],
+      "generationModes": [
+        "product photography generation"
+      ],
+      "modelCapabilities": "Backend /api/photo-studio endpoint handles generation. Polls for completion with 90 attempts at 2-second intervals. Brand-based history via /api/photo-studio?brand_id=.",
+      "advancedFeatures": [
+        "30 style presets across 6 categories",
+        "Brand-based history filtering",
+        "Product URL integration",
+        "Download generated images",
+        "Generation timeout handling"
+      ],
+      "outputs": [
+        "generated product photos",
+        "photo history"
+      ],
+      "limitations": [
+        "Requires SmartVideo GO entitlement",
+        "Generation limited by backend processing time",
+        "Product URL must be accessible"
+      ],
+      "troubleshooting": [
+        "Payment required: ensure SmartVideo GO entitlement is active",
+        "Generation timed out: try again or check backend status",
+        "Product image not used: ensure URL is valid and accessible"
+      ],
+      "relatedStudios": [
+        "brand-studio",
+        "image",
+        "social-publishing",
+        "design-agent"
+      ],
+      "sourceFiles": [
+        "app/photo-studio/page.tsx"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Page component read directly from repository",
+        "verifiedAt": "2026-09-21T21:05:15.208Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
+      }
+    },
+    {
+      "id": "brand-studio",
+      "name": "Brand Studio",
+      "route": "/brand-studio",
+      "description": "Paste any website URL to extract brand DNA and generate campaigns, assets, and photos.",
+      "keyFeatures": [
+        "Brand DNA extraction from website URL",
+        "Campaign generation",
+        "8 platform support",
+        "Photo Studio integration",
+        "Animate integration",
+        "Recent brands list",
+        "Brand color extraction"
+      ],
+      "howToUse": "Paste a website URL and click Analyze. The system fetches the website, analyzes brand identity, and saves brand DNA. View recent brands and access generated campaigns and assets.",
+      "inputs": [
+        "website URL"
+      ],
+      "requiredInputs": [
+        "website URL"
+      ],
+      "optionalInputs": [],
+      "generationModes": [
+        "brand DNA extraction",
+        "campaign generation",
+        "asset generation"
+      ],
+      "modelCapabilities": "Backend /api/brands endpoint handles brand creation and analysis. Brand data includes brand_name, url, industry, primary_colors, and generated assets.",
+      "advancedFeatures": [
+        "3-step brand analysis (fetch, analyze, save)",
+        "Brand color extraction",
+        "Recent brands list with color preview",
+        "Integration with Photo Studio and Animate",
+        "8 platform support"
+      ],
+      "outputs": [
+        "brand DNA profiles",
+        "campaigns",
+        "brand assets",
+        "photo studio projects",
+        "animated content"
+      ],
+      "limitations": [
+        "Requires SmartVideo GO entitlement",
+        "Website must be publicly accessible",
+        "Brand analysis depends on backend AI"
+      ],
+      "troubleshooting": [
+        "Payment required: ensure SmartVideo GO entitlement is active",
+        "Analysis failed: check website URL is valid and accessible",
+        "Brand not appearing: refresh the brands list"
+      ],
+      "relatedStudios": [
+        "photo-studio",
+        "design-agent",
+        "marketing",
+        "social-publishing"
+      ],
+      "sourceFiles": [
+        "app/brand-studio/page.tsx"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Page component read directly from repository",
+        "verifiedAt": "2026-09-21T21:05:15.208Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
+      }
+    }
+  ],
+  "meta": {
+    "totalStudios": 21,
+    "generatedAt": "2026-09-21T20:56:26Z",
+    "application": "SmartVideo GO",
+    "note": "All entries based on actual code evidence from repository. Package studios use conservative descriptions from landingData.js and component exports. Audited studios (storyboard, vfx-studio, thumbnail-studio, photo-studio, brand-studio, design-agent) use detailed accurate descriptions from source code."
+  }
+}
