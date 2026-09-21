@@ -26,6 +26,8 @@ type SmartEditBody = {
   inputFidelity?: 'high' | 'low'
   outputFormat?: 'png' | 'jpeg' | 'webp'
   outputCompression?: number
+  stream?: boolean
+  partialImages?: number
   businessContext?: {
     businessName?: string
     industry?: string
@@ -152,6 +154,11 @@ export async function POST(req: NextRequest) {
       tool.output_compression = outputCompression
     }
     if (body.size && body.size !== 'original') tool.size = body.size
+    const stream = body.stream === true
+    const partialImages = stream
+      ? Math.max(1, Math.min(3, Math.round(Number(body.partialImages) || 2)))
+      : undefined
+    if (partialImages) tool.partial_images = partialImages
 
     const upstream = await fetch(RESPONSES_URL, {
       method: 'POST',
@@ -165,9 +172,38 @@ export async function POST(req: NextRequest) {
         input,
         tools: [tool],
         tool_choice: { type: 'image_generation' },
+        ...(stream ? { stream: true } : {}),
       }),
       signal: AbortSignal.timeout(110_000),
     })
+
+    if (stream) {
+      if (!upstream.ok) {
+        const payload = await upstream.json().catch(() => ({}))
+        return NextResponse.json(
+          {
+            error: payload?.error?.message || payload?.error || 'Smart Edit streaming failed.',
+            upstreamStatus: upstream.status,
+          },
+          { status: upstream.status },
+        )
+      }
+      if (!upstream.body) {
+        return NextResponse.json({ error: 'The Responses API returned no streaming body.' }, { status: 502 })
+      }
+
+      return new Response(upstream.body, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-cache, no-transform',
+          Connection: 'keep-alive',
+          'X-Accel-Buffering': 'no',
+          'X-SmartVideo-Image-Model': imageModel,
+          'X-SmartVideo-Output-Format': outputFormat,
+        },
+      })
+    }
 
     const payload = await upstream.json().catch(() => ({}))
     if (!upstream.ok) {
