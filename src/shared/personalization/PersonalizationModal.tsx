@@ -50,6 +50,7 @@ import ImageEditorModal, {
   type ImageEditorApplyResult,
   type PersonalizationImageEditorAsset,
 } from './image-editor/ImageEditorModal'
+import { makeDiscoveredAssetVideoReady } from './image-editor/batchVideoReady'
 
 // ── Design tokens (mirror the approved HTML CSS variables) ──────────────────
 
@@ -462,9 +463,9 @@ function DiscoveredAssetThumb({
           Edit
         </button>
       )}
-      {asset.edited && (
+      {(asset.edited || asset.videoReady) && (
         <div className="absolute left-1 top-6 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase" style={{ background: 'rgba(40,201,139,.9)', color: '#fff' }}>
-          Edited
+          {asset.videoReady ? 'Video Ready' : 'Edited'}
         </div>
       )}
       <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,.7), transparent 60%)' }} />
@@ -1453,6 +1454,13 @@ function ConfigurationView(props: any) {
   const logoInputRef = useRef<HTMLInputElement>(null)
   const productInputRef = useRef<HTMLInputElement>(null)
   const brandRefInputRef = useRef<HTMLInputElement>(null)
+  const [batchVideoReady, setBatchVideoReady] = useState<{
+    running: boolean
+    current: number
+    total: number
+    label: string
+    error: string | null
+  }>({ running: false, current: 0, total: 0, label: '', error: null })
 
   const handleIdentityAddClick = useCallback(() => {
     identityInputRef.current?.click()
@@ -1466,6 +1474,79 @@ function ConfigurationView(props: any) {
   const handleBrandRefAddClick = useCallback(() => {
     brandRefInputRef.current?.click()
   }, [])
+
+  const handleBatchMakeVideoReady = useCallback(async () => {
+    const selected = discoveredAssets.filter((asset: DiscoveredAsset) =>
+      asset.selected &&
+      !asset.rejected &&
+      asset.category !== 'irrelevant' &&
+      !asset.videoReady
+    )
+    if (selected.length === 0 || batchVideoReady.running) return
+
+    setBatchVideoReady({ running: true, current: 0, total: selected.length, label: 'Preparing assets', error: null })
+    let nextAssets = [...discoveredAssets]
+    const failures: string[] = []
+
+    for (let index = 0; index < selected.length; index += 1) {
+      const item = selected[index]
+      setBatchVideoReady((previous) => ({
+        ...previous,
+        current: index + 1,
+        label: item.category.replace(/_/g, ' ') + ' · starting',
+      }))
+
+      try {
+        const result = await makeDiscoveredAssetVideoReady(
+          item,
+          {
+            businessName: clientForm.businessName || clientForm.name,
+            industry: clientForm.industry,
+          },
+          (_step, _totalSteps, label) => {
+            setBatchVideoReady((previous) => ({
+              ...previous,
+              current: index + 1,
+              label,
+            }))
+          },
+        )
+
+        nextAssets = nextAssets.map((asset: DiscoveredAsset) => (
+          asset.id === item.id
+            ? {
+                ...asset,
+                originalPreviewUrl: asset.originalPreviewUrl || asset.previewUrl,
+                editedDataUrl: result.dataUrl,
+                edited: true,
+                videoReady: true,
+                hasTransparency: result.transparent,
+                editMetadata: {
+                  operation: result.operation,
+                  prompt: result.prompt,
+                  model: result.model,
+                  quality: result.quality,
+                },
+              }
+            : asset
+        ))
+        setDiscoveredAssets(nextAssets)
+      } catch (error) {
+        failures.push(
+          item.category.replace(/_/g, ' ') + ': ' +
+          (error instanceof Error ? error.message : 'Video Ready failed')
+        )
+      }
+    }
+
+    setBatchVideoReady({
+      running: false,
+      current: selected.length,
+      total: selected.length,
+      label: failures.length ? 'Completed with errors' : 'Selected assets are video ready',
+      error: failures.length ? failures.join(' • ') : null,
+    })
+  }, [batchVideoReady.running, clientForm.businessName, clientForm.industry, clientForm.name, discoveredAssets, setDiscoveredAssets])
 
   return (
     <div>
@@ -2128,8 +2209,22 @@ function ConfigurationView(props: any) {
               </button>
               <button
                 type="button"
+                onClick={handleBatchMakeVideoReady}
+                disabled={
+                  batchVideoReady.running ||
+                  discoveredAssets.filter((a) => a.selected && !a.rejected && a.category !== 'irrelevant' && !a.videoReady).length === 0
+                }
+                className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
+                style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.cyanBorder}`, background: C.cyanSoft, color: C.cyan }}
+              >
+                {batchVideoReady.running
+                  ? `Preparing ${batchVideoReady.current}/${batchVideoReady.total}…`
+                  : '✨ Make Selected Video Ready'}
+              </button>
+              <button
+                type="button"
                 onClick={importDiscoveredAssets}
-                disabled={discoveredAssets.filter((a) => a.selected && !a.rejected).length === 0}
+                disabled={batchVideoReady.running || discoveredAssets.filter((a) => a.selected && !a.rejected).length === 0}
                 className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
                 style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.cyan}`, background: C.cyan, color: '#041014' }}
               >
@@ -2145,6 +2240,24 @@ function ConfigurationView(props: any) {
               </button>
             </div>
           </div>
+
+          {(batchVideoReady.running || batchVideoReady.label || batchVideoReady.error) && (
+            <div
+              style={{
+                marginBottom: 14,
+                padding: '10px 12px',
+                borderRadius: 10,
+                border: `1px solid ${batchVideoReady.error ? 'rgba(239,91,103,.3)' : C.cyanBorder}`,
+                background: batchVideoReady.error ? 'rgba(239,91,103,.08)' : C.cyanSoft,
+                color: batchVideoReady.error ? '#ff9ba3' : C.cyan,
+                fontSize: 10,
+              }}
+            >
+              {batchVideoReady.running && <Loader2 size={12} className="mr-1.5 inline animate-spin" />}
+              {batchVideoReady.label}
+              {batchVideoReady.error ? ` — ${batchVideoReady.error}` : ''}
+            </div>
+          )}
 
           {(['person', 'logo', 'product', 'service', 'completed_work', 'storefront', 'office', 'branded_vehicle', 'team', 'brand', 'irrelevant'] as const).map((cat) => {
             const items = discoveredAssets.filter((a) => a.category === cat && !a.rejected)
