@@ -1244,7 +1244,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
     setAssets((prev) => {
       let next = { ...prev }
-      for (const { blob, role, isPrimary } of assetsToCreate) {
+      for (const { item, blob, role, isPrimary } of assetsToCreate) {
         const asset = createAsset(blob, role, {
           isPrimary,
           name: `discovered_${Date.now()}`,
