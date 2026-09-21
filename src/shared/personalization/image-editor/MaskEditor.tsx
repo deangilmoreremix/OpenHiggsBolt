@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Brush, Circle, Eraser, PenTool, RotateCcw, Square, Wand2 } from 'lucide-react'
 
 type Tool = 'brush' | 'eraser' | 'rectangle' | 'ellipse' | 'lasso'
@@ -232,7 +232,7 @@ export default function MaskEditor({ imageUrl, active, onMaskChange }: Props) {
 
   if (!active) return null
 
-  const toolButton = (id: Tool, label: string, icon: React.ReactNode) => (
+  const toolButton = (id: Tool, label: string, icon: ReactNode) => (
     <button
       type="button"
       onClick={() => setTool(id)}
