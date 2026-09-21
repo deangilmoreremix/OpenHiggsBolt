@@ -11,7 +11,22 @@ const nextConfig = {
       '@/types/*': ['./src/types/*', './src/shared/types/*'],
       '@/stores': ['./src/stores'],
       '@/stores/*': ['./src/stores/*'],
+      'vendor/VoiceStudio/frontend/src/*': ['./vendor/VoiceStudio/frontend/src/*'],
+      // Scope upstream global CSS so it does not leak into the host shell.
+      'vendor/VoiceStudio/frontend/src/index.css': ['./src/integrations/voice-studio/scoped-index.css'],
     },
+  },
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'vendor/VoiceStudio/frontend/src/*': ['./vendor/VoiceStudio/frontend/src/*'],
+      'vendor/VoiceStudio/frontend/src/index.css': ['./src/integrations/voice-studio/scoped-index.css'],
+      '@/components/ui': ['./src/components/ui'],
+      '@/components/ui/*': ['./src/components/ui/*'],
+      '@/lib': ['./src/lib'],
+      '@/lib/*': ['./src/lib/*'],
+    };
+    return config;
   },
   transpilePackages: ['studio', 'ai-agent', 'workflow-builder', 'design-agent'],
   eslint: {
