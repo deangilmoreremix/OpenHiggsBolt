@@ -16,12 +16,20 @@ export type GetSupabaseAdminFn = () => {
 export function buildHandlers(deps: {
   auth: AuthFn;
   getSupabaseAdmin: GetSupabaseAdminFn;
+  verifyOpenAIKey?: typeof verifyOpenAIKeyServerSide;
 }) {
-  const { auth, getSupabaseAdmin } = deps;
+  const { auth, getSupabaseAdmin, verifyOpenAIKey: verifyOpenAIKeyOverride } = deps;
 
   async function resolveUser() {
     const { userId } = await auth();
     return userId;
+  }
+
+  async function verifyKey(key: string) {
+    if (verifyOpenAIKeyOverride) {
+      return verifyOpenAIKeyOverride(key);
+    }
+    return verifyOpenAIKeyServerSide(key);
   }
 
   return {
@@ -87,11 +95,11 @@ export function buildHandlers(deps: {
       }
 
       // Reject keys that are too short or have surrounding whitespace/control chars.
-      if (openaiKey.length < 8 || /^[\s\x00-\x1F]|[\s\x00-\x1F]$/.test(openaiKey)) {
+      if (openaiKey.length < 8 || /^[\s\x00-\x1F]|[\s\x00-\x1F]$/.test(openaiKey) || /^["']|["']$/.test(openaiKey)) {
         return NextResponse.json(
           {
             ok: false,
-            error: 'Invalid key format. Keys must be at least 8 characters and cannot contain surrounding whitespace or control characters.',
+            error: 'Invalid key format. Keys must be at least 8 characters and cannot contain surrounding whitespace, control characters, or quotes.',
           },
           { status: 400 }
         );
@@ -100,7 +108,7 @@ export function buildHandlers(deps: {
       // Server-side verification.
       let verificationResult;
       try {
-        verificationResult = await verifyOpenAIKeyServerSide(openaiKey);
+        verificationResult = await verifyKey(openaiKey);
       } catch {
         // If the verification helper itself throws, treat as temporarily unavailable.
         verificationResult = {
@@ -173,7 +181,7 @@ export function buildHandlers(deps: {
       try {
         const sb = getSupabaseAdmin();
         const nowIso = new Date().toISOString();
-        await sb
+        const { error: delErr } = await sb
           .from('app_users')
           .update({
             openai_key: null,
@@ -181,6 +189,8 @@ export function buildHandlers(deps: {
             updated_at: nowIso,
           })
           .eq('clerk_user_id', userId);
+
+        if (delErr) throw delErr;
 
         return NextResponse.json({ ok: true, configured: false });
       } catch {

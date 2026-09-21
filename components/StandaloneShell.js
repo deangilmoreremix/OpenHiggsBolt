@@ -279,88 +279,89 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
 
   const [isSavingKey, setIsSavingKey] = useState(false);
 
+  const verifyMuapiKey = useCallback(async (key) => {
+    const { getUserBalance } = await import('studio');
+    await getUserBalance(key);
+  }, []);
+
   const handleKeySave = useCallback(async (key, openaiKeyValue) => {
     if (demoMode) return;
 
     const trimmed = (key || '').trim();
     const trimmedOpenai = (openaiKeyValue || '').trim();
-
-    let muapiError = null;
-    let openaiError = null;
-
-    // ── MuAPI validation ─────────────────────────────────────────────────────
-    if (trimmed && !isValidKeyFormat(trimmed)) {
-      muapiError = 'API key looks invalid (contains spaces or control characters). Re-copy it from your MuAPI dashboard.';
-    } else if (trimmed) {
-      try {
-        await fetchBalance(trimmed);
-      } catch (err) {
-        const status = err?.status || err?.response?.status;
-        const isAuthError =
-          status === 401 ||
-          status === 403 ||
-          /401|403|unauthorized|forbidden|not authorized/i.test(err?.message || '');
-        muapiError = isAuthError
-          ? 'That MuAPI key is invalid or unauthorized. Double-check it on your MuAPI dashboard and try again.'
-          : 'Could not verify the MuAPI key. Check your connection and try again.';
-      }
-    }
-
-    // ── OpenAI validation (format-only; server does the actual verification) ─
-    if (trimmedOpenai && !isValidKeyFormat(trimmedOpenai)) {
-      openaiError = 'OpenAI key looks invalid (contains spaces or control characters). Re-copy it from your OpenAI dashboard.';
-    }
-
-    if (muapiError) {
-      setAuthError(muapiError);
-      setIsSavingKey(false);
-      return;
-    }
-    if (openaiError) {
-      setAuthError(openaiError);
-      setIsSavingKey(false);
-      return;
-    }
-
-    // ── Optimistic local update ──────────────────────────────────────────────
-    if (trimmed) setApiKey(trimmed);
-    if (trimmedOpenai) setOpenAiKey(trimmedOpenai);
-
-    setSettingsKeyInput('');
-    setSettingsOpenaiInput('');
+    setIsSavingKey(true);
     setAuthError(null);
-    setShowSettings(false);
-    setShowApiKeyPopup(false);
-    settingsClosedAt.current = Date.now();
-    setIsSavingKey(false);
 
-    // ── Persist MuAPI (only when a new value is provided) ───────────────────
-    if (trimmed) {
-      fetch('/api/auth/muapi-key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({ key: trimmed }),
-      }).catch(() => {
-        // Server failure — surface a clear message.
-        setAuthError('We couldn\'t securely save your MuAPI key. Please try again.');
-      });
-    }
-
-    // ── Persist OpenAI (only when a new value is provided) ──────────────────
-    if (trimmedOpenai) {
-      try {
-        const result = await saveOpenAIKey(trimmedOpenai);
-        if (result.warning) {
-          setAuthError(result.warning);
-        }
-      } catch (err) {
-        setAuthError(err.message || 'We couldn\'t securely save your OpenAI key. Please try again.');
+    try {
+      // ── Validate formats ────────────────────────────────────────────────────
+      if (trimmed && !isValidKeyFormat(trimmed)) {
+        throw new Error('API key looks invalid (contains spaces or control characters). Re-copy it from your MuAPI dashboard.');
       }
-    }
+      if (trimmedOpenai && !isValidKeyFormat(trimmedOpenai)) {
+        throw new Error('OpenAI key looks invalid (contains spaces or control characters). Re-copy it from your OpenAI dashboard.');
+      }
 
-    if (trimmed) fetchBalance(trimmed).catch(() => {});
-  }, [fetchBalance, setApiKey, setOpenAiKey, demoMode]);
+      // ── Verify MuAPI credential before persisting ───────────────────────────
+      if (trimmed) {
+        try {
+          await verifyMuapiKey(trimmed);
+        } catch (err) {
+          const status = err?.status || err?.response?.status;
+          const isAuthError =
+            status === 401 ||
+            status === 403 ||
+            /401|403|unauthorized|forbidden|not authorized/i.test(err?.message || '');
+          if (isAuthError) {
+            throw new Error('That MuAPI key is invalid or unauthorized. Double-check it on your MuAPI dashboard and try again.');
+          }
+          throw new Error('Could not verify the MuAPI key. Check your connection and try again.');
+        }
+      }
+
+      // ── Persist MuAPI server-side (only when a new value is provided) ────────
+      if (trimmed) {
+        const muRes = await fetch('/api/auth/muapi-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ key: trimmed }),
+        });
+        const muData = await muRes.json();
+        if (!muRes.ok || !muData.ok) {
+          throw new Error(muData.error || 'Failed to save MuAPI key');
+        }
+      }
+
+      // ── Persist OpenAI server-side (only when a new value is provided) ───────
+      if (trimmedOpenai) {
+        try {
+          const result = await saveOpenAIKey(trimmedOpenai);
+          if (result.warning) {
+            setAuthError(result.warning);
+          }
+        } catch (err) {
+          throw new Error(err.message || 'We couldn\'t securely save your OpenAI key. Please try again.');
+        }
+      }
+
+      // ── Server accepted: now update local state ──────────────────────────────
+      if (trimmed) setApiKey(trimmed);
+      if (trimmedOpenai) setOpenAiKey(trimmedOpenai);
+
+      setSettingsKeyInput('');
+      setSettingsOpenaiInput('');
+      setShowSettings(false);
+      setShowApiKeyPopup(false);
+      settingsClosedAt.current = Date.now();
+
+      if (trimmed) fetchBalance(trimmed).catch(() => {});
+    } catch (err) {
+      // Server or verification failure: keep previous credentials, show error.
+      setAuthError(err.message || 'We couldn\'t save your keys. Please try again.');
+    } finally {
+      setIsSavingKey(false);
+    }
+  }, [fetchBalance, setApiKey, setOpenAiKey, verifyMuapiKey, demoMode]);
 
   const handleKeyChange = useCallback(() => {
     if (demoMode) return;

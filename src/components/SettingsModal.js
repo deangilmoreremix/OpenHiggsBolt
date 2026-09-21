@@ -152,48 +152,23 @@ export function SettingsModal(onClose) {
 
       hideStatus();
 
-      // ── Validate MuAPI ─────────────────────────────────────────────────────
+      // ── Validate formats ─────────────────────────────────────────────────────
       if (muapiInput && !isValidKeyFormat(muapiInput)) {
           showStatus('Please enter a valid MuAPI key (at least 8 characters, no surrounding quotes).');
           return;
       }
-
-      // ── Validate OpenAI format (server does the actual provider verification) ──
       if (openaiInput && !isValidKeyFormat(openaiInput)) {
           showStatus('Please enter a valid OpenAI key (at least 8 characters, no surrounding quotes).');
           return;
       }
 
-      // ── Clean keys ──────────────────────────────────────────────────────────
       const cleanMuapi = cleanApiKey(muapiInput);
       const cleanOpenai = cleanApiKey(openaiInput);
+      let openaiWarning = null;
 
-      // ── Persist to localStorage + cookies immediately ───────────────────────
       try {
-          if (typeof window !== 'undefined' && window.localStorage) {
-              if (cleanMuapi) {
-                  window.localStorage.setItem(MUAPI_KEY_STORAGE, cleanMuapi);
-              } else {
-                  window.localStorage.removeItem(MUAPI_KEY_STORAGE);
-              }
-              if (cleanOpenai) {
-                  window.localStorage.setItem(OPENAI_KEY_STORAGE, cleanOpenai);
-              } else {
-                  window.localStorage.removeItem(OPENAI_KEY_STORAGE);
-              }
-          }
-      } catch {
-          // ignore localStorage write errors (private mode, etc.)
-      }
-
-      // MuAPI cookie for server-side proxy routes.
-      document.cookie = buildCookie(MUAPI_KEY_COOKIE, cleanMuapi);
-      // OpenAI cookie for backward compatibility; server-side routes read from DB.
-      document.cookie = buildCookie(OPENAI_KEY_COOKIE, cleanOpenai);
-
-      // ── Persist MuAPI server-side (only when provided) ─────────────────────
-      if (cleanMuapi) {
-          try {
+          // ── Persist MuAPI server-side (only when provided) ─────────────────────
+          if (cleanMuapi) {
               const muRes = await fetch(MUAPI_KEY_API_ENDPOINT, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -204,15 +179,10 @@ export function SettingsModal(onClose) {
               if (!muRes.ok || !muData.ok) {
                   throw new Error(muData.error || 'Failed to save MuAPI key');
               }
-          } catch (err) {
-              showStatus(err?.message || 'Failed to save MuAPI key. Please try again.');
-              return;
           }
-      }
 
-      // ── Persist OpenAI server-side (only when provided) ────────────────────
-      if (cleanOpenai) {
-          try {
+          // ── Persist OpenAI server-side (only when provided) ────────────────────
+          if (cleanOpenai) {
               const oaRes = await fetch(OPENAI_KEY_API, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -224,19 +194,44 @@ export function SettingsModal(onClose) {
                   throw new Error(oaData.error || 'Failed to save OpenAI key');
               }
               if (oaData.warning) {
-                  showStatus(oaData.warning, false);
+                  openaiWarning = oaData.warning;
               }
-          } catch (err) {
-              showStatus(err?.message || 'Failed to save OpenAI key. Please try again.');
-              return;
           }
-      }
 
-      // Success feedback.
-      showStatus('✓ Keys saved', false);
-      setTimeout(() => {
-          close();
-      }, 600);
+          // ── Server accepted: now update localStorage + cookies ─────────────────
+          try {
+              if (typeof window !== 'undefined' && window.localStorage) {
+                  if (cleanMuapi) {
+                      window.localStorage.setItem(MUAPI_KEY_STORAGE, cleanMuapi);
+                  } else {
+                      window.localStorage.removeItem(MUAPI_KEY_STORAGE);
+                  }
+                  if (cleanOpenai) {
+                      window.localStorage.setItem(OPENAI_KEY_STORAGE, cleanOpenai);
+                  } else {
+                      window.localStorage.removeItem(OPENAI_KEY_STORAGE);
+                  }
+              }
+          } catch {
+              // ignore localStorage write errors (private mode, etc.)
+          }
+
+          document.cookie = buildCookie(MUAPI_KEY_COOKIE, cleanMuapi);
+          document.cookie = buildCookie(OPENAI_KEY_COOKIE, cleanOpenai);
+
+          // Success feedback. Preserve any OpenAI provider warning instead of
+          // overwriting it with a generic success message.
+          if (openaiWarning) {
+              showStatus(openaiWarning, false);
+          } else {
+              showStatus('✓ Keys saved', false);
+          }
+          setTimeout(() => {
+              close();
+          }, 600);
+      } catch (err) {
+          showStatus(err?.message || 'Failed to save keys. Please try again.');
+      }
   };
 
   header.querySelector('#settings-close-btn').onclick = close;

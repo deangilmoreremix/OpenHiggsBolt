@@ -10,25 +10,32 @@ const store = {
 };
 
 function makeBuilder() {
+  // Enforce that the route actually filters by clerk_user_id.
+  let lastEqClause = null;
   const builder = {
+    eq: (column, value) => {
+      if (column === 'clerk_user_id') {
+        lastEqClause = String(value);
+      }
+      return builder;
+    },
     update: (payload) => {
-      store.app_users.set(store.userId, {
-        openai_key: payload?.openai_key ?? null,
-        openai_key_updated_at: payload?.openai_key_updated_at ?? null,
+      const key = lastEqClause || store.userId;
+      const existing = store.app_users.get(key) || {};
+      store.app_users.set(key, {
+        ...existing,
+        ...payload,
       });
       return builder;
     },
     insert: (payload) => {
-      store.app_users.set(store.userId, {
-        openai_key: payload?.openai_key ?? null,
-        openai_key_updated_at: payload?.openai_key_updated_at ?? null,
-      });
+      store.app_users.set(payload.clerk_user_id, payload);
       return builder;
     },
-    eq: () => builder,
     select: () => builder,
     maybeSingle: () => {
-      const row = store.app_users.get(store.userId) || null;
+      const key = lastEqClause || store.userId;
+      const row = store.app_users.get(key) || null;
       return Promise.resolve({
         data: row ? { openai_key: row.openai_key, openai_key_updated_at: row.openai_key_updated_at } : null,
         error: null,
@@ -52,10 +59,22 @@ function postReq(body) {
 describe('openai-key route (integration)', () => {
   let route;
 
+  // Default verification mock: accept any key as valid.
+  const mockVerify = async () => ({
+    isValid: true,
+    status: 'verified',
+    warning: null,
+    error: null,
+  });
+
   before(async () => {
     store.app_users.clear();
     const mod = await import('../app/api/auth/openai-key/route.ts');
-    route = mod.buildHandlers({ auth: mockAuth, getSupabaseAdmin: mockSb });
+    route = mod.buildHandlers({
+      auth: mockAuth,
+      getSupabaseAdmin: mockSb,
+      verifyOpenAIKey: mockVerify,
+    });
   });
 
   after(() => { store.app_users.clear(); });
@@ -136,6 +155,29 @@ describe('openai-key route (integration)', () => {
     assert.equal(json.configured, false);
   });
 
+  it('DELETE returns failure when Supabase update errors', async () => {
+    const failingSb = () => ({
+      from: () => ({
+        update: async () => {
+          const { error } = await Promise.resolve({ error: new Error('Simulated DB delete failure') });
+          if (error) throw error;
+          return { error: null };
+        },
+        eq: () => ({
+          select: () => ({
+            maybeSingle: () => Promise.resolve({ data: null, error: null }),
+          }),
+        }),
+      }),
+    });
+    const mod = await import('../app/api/auth/openai-key/route.ts');
+    const h = mod.buildHandlers({ auth: mockAuth, getSupabaseAdmin: failingSb });
+    const res = await h.DELETE();
+    assert.equal(res.status, 500);
+    const json = await res.json();
+    assert.equal(json.ok, false);
+  });
+
   it('persists per-user: another user does not see a different user key', async () => {
     store.app_users.set('user_test_123', { openai_key: 'v1:owner:owner:owner', openai_key_updated_at: null });
     store.userId = 'user_other';
@@ -143,6 +185,32 @@ describe('openai-key route (integration)', () => {
     const json = await (await route.GET()).json();
     assert.equal(json.configured, false);
     store.userId = 'user_test_123';
+  });
+
+  it('uses the authenticated clerk_user_id filter', async () => {
+    const targetUserId = 'user_filter_test';
+    store.app_users.set(targetUserId, { openai_key: null, openai_key_updated_at: null });
+    store.userId = targetUserId;
+
+    const res = await route.POST(postReq({ openaiKey: 'filter-test-key' }));
+    assert.equal(res.status, 200);
+
+    const stored = store.app_users.get(targetUserId);
+    assert.ok(stored, 'row should be written under the authenticated user ID');
+    assert.ok(stored.openai_key.startsWith('v1:'));
+  });
+
+  it('first-write insert fallback: inserts when no row exists', async () => {
+    store.app_users.clear();
+    store.userId = 'user_first_write';
+
+    const res = await route.POST(postReq({ openaiKey: 'first-write-key' }));
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).ok, true);
+
+    const stored = store.app_users.get('user_first_write');
+    assert.ok(stored, 'insert fallback must create the row');
+    assert.ok(stored.openai_key.startsWith('v1:'));
   });
 
   it('saves an sk-proj-style key without rejecting the format', async () => {
@@ -171,13 +239,80 @@ describe('openai-key route (integration)', () => {
       }),
     });
     const mod = await import('../app/api/auth/openai-key/route.ts');
-    const h = mod.buildHandlers({ auth: mockAuth, getSupabaseAdmin: failingSb });
+    const h = mod.buildHandlers({ auth: mockAuth, getSupabaseAdmin: failingSb, verifyOpenAIKey: mockVerify });
     const res = await h.POST(postReq({ openaiKey: 'sk-proj-db-failure-test' }));
     assert.equal(res.status, 500);
     const json = await res.json();
     assert.equal(json.ok, false);
     assert.ok(typeof json.error === 'string');
     assert.ok(!json.error.includes('Simulated DB failure'), 'must not leak internal error');
+  });
+});
+
+describe('openai-key route — verification policy', () => {
+  async function makeHandlerWithVerify(verifyFn) {
+    const mod = await import('../app/api/auth/openai-key/route.ts');
+    return mod.buildHandlers({
+      auth: mockAuth,
+      getSupabaseAdmin: mockSb,
+      verifyOpenAIKey: verifyFn,
+    });
+  }
+
+  it('rejects save when verification returns invalid (simulated 401)', async () => {
+    const h = await makeHandlerWithVerify(async () => ({
+      isValid: false,
+      status: 'temporarily_unverified',
+      warning: null,
+      error: 'OpenAI did not recognize this API key. Re-copy the key from your OpenAI dashboard and try again.',
+    }));
+    const res = await h.POST(postReq({ openaiKey: 'sk-proj-invalid-key' }));
+    assert.equal(res.status, 400);
+    const json = await res.json();
+    assert.equal(json.ok, false);
+    assert.match(json.error, /openai did not recognize/i);
+  });
+
+  it('allows save with warning when verification returns restricted (403)', async () => {
+    const h = await makeHandlerWithVerify(async () => ({
+      isValid: true,
+      status: 'restricted',
+      warning: 'Your OpenAI key was saved, but OpenAI restricted the verification request.',
+      error: null,
+    }));
+    const res = await h.POST(postReq({ openaiKey: 'sk-proj-restricted-key' }));
+    assert.equal(res.status, 200);
+    const json = await res.json();
+    assert.equal(json.ok, true);
+    assert.equal(json.warning, 'Your OpenAI key was saved, but OpenAI restricted the verification request.');
+  });
+
+  it('allows save with warning when verification returns temporarily_unverified (429)', async () => {
+    const h = await makeHandlerWithVerify(async () => ({
+      isValid: true,
+      status: 'temporarily_unverified',
+      warning: 'Your OpenAI key was saved, but OpenAI temporarily rate-limited verification.',
+      error: null,
+    }));
+    const res = await h.POST(postReq({ openaiKey: 'sk-proj-rate-limited-key' }));
+    assert.equal(res.status, 200);
+    const json = await res.json();
+    assert.equal(json.ok, true);
+    assert.match(json.warning, /rate-limited/i);
+  });
+
+  it('allows save with warning when verification returns temporarily_unverified (5xx)', async () => {
+    const h = await makeHandlerWithVerify(async () => ({
+      isValid: true,
+      status: 'temporarily_unverified',
+      warning: 'Your OpenAI key was saved, but OpenAI verification is temporarily unavailable.',
+      error: null,
+    }));
+    const res = await h.POST(postReq({ openaiKey: 'sk-proj-server-error-key' }));
+    assert.equal(res.status, 200);
+    const json = await res.json();
+    assert.equal(json.ok, true);
+    assert.match(json.warning, /temporarily unavailable/i);
   });
 });
 
@@ -191,14 +326,6 @@ describe('openaiKey client service (unit)', () => {
   after(() => {
     globalThis.fetch = originalFetch;
   });
-
-  function mockFetch(responses) {
-    let callIndex = 0;
-    globalThis.fetch = async () => {
-      const response = responses[callIndex++] || { ok: true, status: 200, json: async () => ({}) };
-      return response;
-    };
-  }
 
   it('saveOpenAIKey sends the key to the canonical endpoint', async () => {
     let capturedUrl = null;

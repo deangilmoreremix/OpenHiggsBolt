@@ -55,59 +55,122 @@ test.describe('OpenAI API key E2E flow', () => {
     await completeOrgTaskIfPresent(page);
   });
 
-  test('user can save an OpenAI key and see it as configured after refresh', async ({ page }) => {
+  test('successful save: key is persisted and survives refresh', async ({ page }) => {
+    // Mock OpenAI verification to return 200 OK.
+    await page.route('**/v1/models', (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [{ id: 'gpt-4' }] }),
+      });
+    });
+
     const before = await getOpenAIKey(page);
     if (before?.configured) await clearOpenAIKey(page);
 
-    // Open Settings.
     await page.goto('/studio');
     await page.getByRole('button', { name: /settings/i }).click();
 
-    // Enter a fake sk-proj-style key.
-    const TEST_KEY = 'sk-proj-e2e-test-key-0123456789abcdef';
+    const TEST_KEY = 'sk-proj-e2e-success-key-0123456789abcdef';
     await page.getByPlaceholder(/sk-... \(openai key\)/i).fill(TEST_KEY);
     await page.getByRole('button', { name: /save openai key/i }).click();
 
-    // Should show a success message (server returns 200 with verification status).
-    await expect(page.getByText(/keys saved|saved|verified/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/keys saved/i)).toBeVisible({ timeout: 10000 });
 
-    // Reopen Settings and verify it shows as configured.
     await page.getByRole('button', { name: /close/i }).click();
     await page.waitForTimeout(500);
     await page.getByRole('button', { name: /settings/i }).click();
-
-    // The OpenAI section should show the masked key.
     await expect(page.getByText(/active openai key/i)).toBeVisible();
 
-    // Refresh the page and verify it persists.
     await page.reload();
     await page.waitForTimeout(1000);
     await page.getByRole('button', { name: /settings/i }).click();
     await expect(page.getByText(/active openai key/i)).toBeVisible();
 
-    // Cleanup.
     await clearOpenAIKey(page);
   });
 
-  test('403 verification response does not tell the user the key is invalid', async ({ page }) => {
+  test('401 verification rejects save and does not persist key', async ({ page }) => {
+    await page.route('**/v1/models', (route) => {
+      route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: { message: 'Invalid API key' } }) });
+    });
+
     await page.goto('/studio');
     await page.getByRole('button', { name: /settings/i }).click();
 
-    // We cannot force a 403 from the real OpenAI API in E2E without a restricted
-    // project key, so we verify the UI does not display the "invalid key" error
-    // for keys that merely fail provider verification. Instead, it should show a
-    // non-destructive warning.
-    const TEST_KEY = 'sk-proj-e2e-403-simulation-key-0123456789abcdef';
+    const TEST_KEY = 'sk-proj-e2e-401-key-0123456789abcdef';
     await page.getByPlaceholder(/sk-... \(openai key\)/i).fill(TEST_KEY);
     await page.getByRole('button', { name: /save openai key/i }).click();
 
-    // The key should save (server accepts it). We should NOT see "invalid API key".
+    // Should show invalid key error, not success.
+    await expect(page.getByText(/openai did not recognize this api key/i)).toBeVisible({ timeout: 10000 });
+
+    const after = await getOpenAIKey(page);
+    assert.equal(after?.configured, false);
+  });
+
+  test('403 verification saves key with restriction warning', async ({ page }) => {
+    await page.route('**/v1/models', (route) => {
+      route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ error: { message: 'Permission denied' } }) });
+    });
+
+    await page.goto('/studio');
+    await page.getByRole('button', { name: /settings/i }).click();
+
+    const TEST_KEY = 'sk-proj-e2e-403-key-0123456789abcdef';
+    await page.getByPlaceholder(/sk-... \(openai key\)/i).fill(TEST_KEY);
+    await page.getByRole('button', { name: /save openai key/i }).click();
+
+    // Should save and show restriction warning, NOT "invalid key".
+    await expect(page.getByText(/restricted the verification request/i)).toBeVisible({ timeout: 10000 });
     const invalidMsg = page.getByText(/openai key is invalid/i);
     if (await invalidMsg.count()) {
       await expect(invalidMsg).toHaveCount(0);
     }
 
-    // Cleanup.
+    const after = await getOpenAIKey(page);
+    assert.equal(after?.configured, true);
+
+    await clearOpenAIKey(page);
+  });
+
+  test('429 verification saves key with temporary warning', async ({ page }) => {
+    await page.route('**/v1/models', (route) => {
+      route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ error: { message: 'Rate limit exceeded' } }) });
+    });
+
+    await page.goto('/studio');
+    await page.getByRole('button', { name: /settings/i }).click();
+
+    const TEST_KEY = 'sk-proj-e2e-429-key-0123456789abcdef';
+    await page.getByPlaceholder(/sk-... \(openai key\)/i).fill(TEST_KEY);
+    await page.getByRole('button', { name: /save openai key/i }).click();
+
+    await expect(page.getByText(/rate-limited/i)).toBeVisible({ timeout: 10000 });
+
+    const after = await getOpenAIKey(page);
+    assert.equal(after?.configured, true);
+
+    await clearOpenAIKey(page);
+  });
+
+  test('500 verification saves key with provider warning', async ({ page }) => {
+    await page.route('**/v1/models', (route) => {
+      route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { message: 'Server error' } }) });
+    });
+
+    await page.goto('/studio');
+    await page.getByRole('button', { name: /settings/i }).click();
+
+    const TEST_KEY = 'sk-proj-e2e-500-key-0123456789abcdef';
+    await page.getByPlaceholder(/sk-... \(openai key\)/i).fill(TEST_KEY);
+    await page.getByRole('button', { name: /save openai key/i }).click();
+
+    await expect(page.getByText(/verification is temporarily unavailable/i)).toBeVisible({ timeout: 10000 });
+
+    const after = await getOpenAIKey(page);
+    assert.equal(after?.configured, true);
+
     await clearOpenAIKey(page);
   });
 });

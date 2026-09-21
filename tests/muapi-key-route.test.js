@@ -11,26 +11,35 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-secret';
 
 const store = {
   userId: 'user_test_123',
-  app_users: new Map(), // clerk_user_id -> { muapi_key }
+  app_users: new Map(), // clerk_user_id -> { muapi_key, openai_key, key_updated_at, openai_key_updated_at }
 };
 
 function makeBuilder() {
-  // The mock records the payload it was asked to write so we can assert the
-  // route actually persisted the (encrypted) key server-side.
+  // Track the last requested clerk_user_id so we can verify the filter is used.
+  let lastEqClause: string | null = null;
   const builder = {
+    eq: (column, value) => {
+      if (column === 'clerk_user_id') {
+        lastEqClause = String(value);
+      }
+      return builder;
+    },
     update: (payload) => {
-      store.app_users.set(store.userId, { muapi_key: payload?.muapi_key ?? null });
+      const existing = store.app_users.get(lastEqClause) || {};
+      store.app_users.set(lastEqClause, {
+        ...existing,
+        ...payload,
+      });
       return builder;
     },
     insert: (payload) => {
-      store.app_users.set(store.userId, { muapi_key: payload?.muapi_key ?? null });
+      store.app_users.set(payload.clerk_user_id || store.userId, payload);
       return builder;
     },
-    eq: () => builder,
     select: () => builder, // chain continues to maybeSingle()
     maybeSingle: () => {
-      const row = store.app_users.get(store.userId) || null;
-      return Promise.resolve({ data: row ? { muapi_key: row.muapi_key } : null, error: null });
+      const row = store.app_users.get(lastEqClause || store.userId) || null;
+      return Promise.resolve({ data: row || null, error: null });
     },
   };
   return builder;
@@ -51,11 +60,13 @@ function postReq(body) {
 
 describe('muapi-key route (integration)', () => {
   let route;
+
   before(async () => {
     store.app_users.clear();
     const mod = await import('../app/api/auth/muapi-key/route.ts');
     route = mod.buildHandlers({ auth: mockAuth, getSupabaseAdmin: mockSb });
   });
+
   after(() => { store.app_users.clear(); });
 
   it('blocks GET when unauthenticated (no userId) -> 401', async () => {
@@ -120,6 +131,62 @@ describe('muapi-key route (integration)', () => {
     store.app_users.set('user_other', { muapi_key: null });
     assert.equal((await (await route.GET()).json()).key, null);
     store.userId = 'user_test_123';
+  });
+
+  it('MuAPI-only save preserves existing OpenAI key (PATCH semantics)', async () => {
+    store.app_users.set(store.userId, {
+      muapi_key: 'v1:old_muapi:old',
+      openai_key: 'v1:old_openai:old',
+    });
+
+    const res = await route.POST(postReq({ key: 'new-muapi-key-123' }));
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).ok, true);
+
+    const stored = store.app_users.get(store.userId);
+    assert.ok(stored.muapi_key.startsWith('v1:'), 'MuAPI should be updated');
+    assert.equal(stored.openai_key, 'v1:old_openai:old', 'OpenAI must NOT be cleared by MuAPI-only save');
+  });
+
+  it('OpenAI-only save preserves existing MuAPI key (PATCH semantics)', async () => {
+    store.app_users.set(route, {
+      muapi_key: 'v1:old_muapi:old',
+      openai_key: 'v1:old_openai:old',
+    });
+
+    const res = await route.POST(postReq({ key: 'keep-muapi', openaiKey: 'new-openai-key' }));
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).ok, true);
+
+    const stored = store.app_users.get(store.userId);
+    assert.ok(stored.muapi_key.startsWith('v1:'), 'MuAPI must NOT be cleared by OpenAI-only save');
+    assert.ok(stored.openai_key.startsWith('v1:'), 'OpenAI should be updated');
+  });
+
+  it('uses the authenticated clerk_user_id filter, not a hard-coded value', async () => {
+    const targetUserId = 'user_filter_test';
+    store.app_users.set(targetUserId, { muapi_key: null });
+    store.userId = targetUserId;
+
+    const res = await route.POST(postReq({ key: 'filter-test-key' }));
+    assert.equal(res.status, 200);
+
+    const stored = store.app_users.get(targetUserId);
+    assert.ok(stored, 'row should be written under the authenticated user ID');
+    assert.ok(stored.muapi_key.startsWith('v1:'));
+  });
+
+  it('first-write insert fallback: inserts when no row exists', async () => {
+    store.app_users.clear();
+    store.userId = 'user_first_write';
+
+    const res = await route.POST(postReq({ key: 'first-write-key' }));
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).ok, true);
+
+    const stored = store.app_users.get('user_first_write');
+    assert.ok(stored, 'insert fallback must create the row');
+    assert.ok(stored.muapi_key.startsWith('v1:'));
   });
 });
 
