@@ -1,6 +1,6 @@
 import type { DiscoveredAsset, PersonalizationVisionAnalysis, PersonalizationVisionValidation } from '../types'
 import { editSmartVideoGoImage } from './imageEditApi'
-import { IMAGE_EDIT_OPERATIONS, getAssetRecipe, getOperation, type EditorOperationId } from './imageEditRegistry'
+import { IMAGE_EDIT_OPERATIONS, getAssetRecipe, getOperation, resolveEditorAssetKind, type EditorOperationId } from './imageEditRegistry'
 import { analyzePersonalizationImages, validatePersonalizationImageEdit } from './responsesVisionApi'
 
 export type BatchVideoReadyContext = {
@@ -100,6 +100,7 @@ export async function makeDiscoveredAssetVideoReady(
 
   const category = analysis && analysis.confidence >= 75 ? analysis.category : asset.category
   const recipe = getAssetRecipe(category)
+  const editorKind = resolveEditorAssetKind(category)
   const visionSteps = (analysis?.recommendedOperations || [])
     .filter((id): id is EditorOperationId => id in IMAGE_EDIT_OPERATIONS)
     .filter((id) => {
@@ -109,7 +110,7 @@ export async function makeDiscoveredAssetVideoReady(
         id !== 'custom' &&
         id !== 'video_ready' &&
         !operation.destructiveCreative &&
-        (!applicable || applicable.includes(category))
+        (!applicable || applicable.includes(editorKind))
       )
     })
     .slice(0, 3)
