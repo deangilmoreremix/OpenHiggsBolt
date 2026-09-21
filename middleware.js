@@ -5,8 +5,18 @@ const isProtectedRoute = createRouteMatcher([
   '/studio(.*)',
   '/vfx(.*)',
   '/account(.*)',
+  '/brand-studio(.*)',
+  '/brand(.*)',
+  '/photo-studio(.*)',
+  '/campaign(.*)',
+  '/asset(.*)',
   '/api/vfx(.*)',
   '/api/v1/protected(.*)',
+  '/api/campaigns(.*)',
+  '/api/assets(.*)',
+  '/api/photo-studio(.*)',
+  '/api/brands(.*)',
+  '/api/brand(.*)',
 ]);
 
 const isAuthRoute = createRouteMatcher([

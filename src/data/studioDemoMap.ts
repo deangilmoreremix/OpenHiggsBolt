@@ -51,6 +51,7 @@ export const ALL_KNOWN_STUDIO_TABS = [
   'ai-influencer',
   'social-publishing',
   'go-ai-viral',
+  'brand-studio',
   // additional tabs in StandaloneShell not in landingData FEATURES
   'music-studio',
   'scene-planner',

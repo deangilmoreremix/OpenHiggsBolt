@@ -7,6 +7,7 @@ const translations = {
         'nav.cinema': 'Cinema Studio',
         'nav.workflows': 'Workflows',
         'nav.agents': 'Agents',
+        'nav.brand-studio': 'Brand Studio',
         'nav.settings': 'Settings',
 
         // Sidebar

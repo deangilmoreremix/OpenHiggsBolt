@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { corsHeadersFor, handleCors } from "../_shared/cors.ts";
 import { mirrorUrlToStorage } from "../_shared/supabase.ts";
 import { MissingOpenAiKeyError, openAiFromRequest } from "../_shared/openai.ts";
 
@@ -28,11 +28,11 @@ const PLATFORMS: Platform[] = [
   { id: "youtube_thumb", label: "YouTube Thumbnail", width: 1280, height: 720, dalleSize: "1792x1024", wordCap: 60 },
 ];
 
-function jsonResponse(data: unknown, status = 200): Response {
+function jsonResponse(req: Request, data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      ...corsHeaders,
+      ...corsHeadersFor(req),
       "Content-Type": "application/json",
     },
   });
@@ -100,16 +100,17 @@ function csvToArray(value: unknown): string[] {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return handleCors();
+  if (req.method === "OPTIONS") return handleCors(req);
 
   try {
     const body = await readJson(req);
     const campaignId = String(body.campaign_id || body.campaignId || "");
     const platformId = String(body.platform || "");
     const conceptIndex = Number(body.concept_index ?? body.conceptIndex ?? 0);
+    const workspaceId = String(body.workspace_id || "");
 
     if (!campaignId || !platformId) {
-      return jsonResponse({ error: "Missing campaign_id or platform" }, 400);
+      return jsonResponse(req, { error: "Missing campaign_id or platform" }, 400);
     }
 
     const platform = PLATFORMS.find((item) => item.id === platformId) ||
@@ -125,7 +126,7 @@ Deno.serve(async (req) => {
 
     if (campaignError) throw campaignError;
     if (!campaignWithBrand) {
-      return jsonResponse({ error: "Campaign not found" }, 404);
+      return jsonResponse(req, { error: "Campaign not found" }, 404);
     }
 
     let brand = campaignWithBrand.brand_dna;
@@ -138,7 +139,7 @@ Deno.serve(async (req) => {
       if (brandError) throw brandError;
       brand = fallbackBrand;
     }
-    if (!brand) return jsonResponse({ error: "Brand not found" }, 404);
+    if (!brand) return jsonResponse(req, { error: "Brand not found" }, 404);
 
     const concept = campaignWithBrand.concepts?.[conceptIndex] ||
       campaignWithBrand.concepts?.[0] || {};
@@ -218,6 +219,7 @@ Keep the body under ${platform.wordCap} words. Do not include markdown fences.`;
       .insert({
         campaign_id: campaignId,
         brand_id: brand.id,
+        workspace_id: workspaceId || null,
         platform: platform.id,
         concept_index: Number.isInteger(conceptIndex) ? conceptIndex : 0,
         headline: String(copy.headline || ""),
@@ -240,12 +242,12 @@ Keep the body under ${platform.wordCap} words. Do not include markdown fences.`;
 
     if (assetError) throw assetError;
 
-    return jsonResponse(asset);
+    return jsonResponse(req, asset);
   } catch (error) {
     if (error instanceof MissingOpenAiKeyError) {
-      return jsonResponse({ error: error.message }, 400);
+      return jsonResponse(req, { error: error.message }, 400);
     }
-    return jsonResponse({
+    return jsonResponse(req, {
       error: error instanceof Error ? error.message : "Unknown error",
     }, 500);
   }
