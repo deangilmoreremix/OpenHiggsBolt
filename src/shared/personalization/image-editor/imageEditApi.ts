@@ -10,6 +10,7 @@ export type SmartVideoGoImageEditRequest = {
   quality: ImageQuality
   size: ImageSize
   outputFormat: ImageFormat
+  outputCompression?: number
   background: 'transparent' | 'opaque' | 'auto'
   inputFidelity: 'high' | 'low'
 }
@@ -22,6 +23,7 @@ export async function editSmartVideoGoImage(params: SmartVideoGoImageEditRequest
   form.append('quality', params.quality)
   form.append('size', params.size)
   form.append('output_format', params.outputFormat)
+  if (params.outputCompression !== undefined) form.append('output_compression', String(params.outputCompression))
   form.append('background', params.background)
   form.append('input_fidelity', params.inputFidelity)
   form.append('image', params.image, 'source.' + (params.image.type.split('/')[1] || 'png'))
