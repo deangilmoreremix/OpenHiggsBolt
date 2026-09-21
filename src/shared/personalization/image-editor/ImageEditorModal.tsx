@@ -576,7 +576,13 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
         .filter((id): id is EditorOperationId => id in IMAGE_EDIT_OPERATIONS)
         .filter((id) => {
           const operation = IMAGE_EDIT_OPERATIONS[id]
-          return id !== 'custom' && id !== 'video_ready' && !operation.destructiveCreative
+          const applicable = operation.applicableTo
+          return (
+            id !== 'custom' &&
+            id !== 'video_ready' &&
+            !operation.destructiveCreative &&
+            (!applicable || applicable.includes(kind))
+          )
         })
         .slice(0, 3)
       const recipeSteps = recipe.makeVideoReadySteps.length ? recipe.makeVideoReadySteps : ['video_ready'] as EditorOperationId[]
@@ -607,7 +613,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     } finally {
       setBusyLabel(null)
     }
-  }, [analyzeCurrentImage, appendVersion, asset, displayUrl, executeAiEdit, recipe.makeVideoReadySteps, visionAnalysis])
+  }, [analyzeCurrentImage, appendVersion, asset, displayUrl, executeAiEdit, kind, recipe.makeVideoReadySteps, visionAnalysis])
 
   function resetLocalControls() {
     setRotation(0)
@@ -837,6 +843,10 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
 
   const recommendedOperationIds = (visionAnalysis?.recommendedOperations || recipe.recommended)
     .filter((id): id is EditorOperationId => id in IMAGE_EDIT_OPERATIONS)
+    .filter((id) => {
+      const applicable = IMAGE_EDIT_OPERATIONS[id].applicableTo
+      return !applicable || applicable.includes(kind)
+    })
   const recommendedOperations = recommendedOperationIds.map(getOperation)
   const advancedGroups = Array.from(groupedOperations.entries())
   const activeOperations = groupedOperations.get(activeGroup) || []
