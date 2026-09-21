@@ -140,6 +140,16 @@ export interface PersonalizationAsset {
   uploadStatus?: 'local' | 'uploading' | 'ready' | 'error'
   uploadError?: string | null
   file?: File | null
+  originalUrl?: string
+  edited?: boolean
+  videoReady?: boolean
+  hasTransparency?: boolean
+  editMetadata?: {
+    operation?: string
+    prompt?: string
+    model?: string
+    quality?: string
+  }
 }
 
 export interface AssetLibrary {
@@ -374,4 +384,15 @@ export interface DiscoveredAsset {
   rejected: boolean
   assignedSection: AssignedSection
   autoAssigned: boolean
+  originalPreviewUrl?: string
+  editedDataUrl?: string
+  edited?: boolean
+  videoReady?: boolean
+  hasTransparency?: boolean
+  editMetadata?: {
+    operation?: string
+    prompt?: string
+    model?: string
+    quality?: string
+  }
 }
