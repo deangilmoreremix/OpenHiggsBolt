@@ -21,7 +21,8 @@ import {
   Wand2,
   X,
 } from 'lucide-react'
-import { editImage, type ImageFormat, type ImageSize } from '@/src/shared/api/openaiImage'
+import { type ImageFormat, type ImageSize } from '@/src/shared/api/openaiImage'
+import { editSmartVideoGoImage } from './imageEditApi'
 import { buttons, iconBadge, semantic } from '@/shared/styles/designTokens'
 import type { AssetRole, DiscoveredAssetCategory } from '../types'
 import MaskEditor from './MaskEditor'
@@ -324,17 +325,17 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     const size = aspectRatio === 'original' ? 'auto' : aspectSizes[aspectRatio]
     const format: ImageFormat = transparent && outputFormat === 'jpeg' ? 'png' : outputFormat
 
-    const results = await editImage({
+    const results = await editSmartVideoGoImage({
+      operation: operationId,
       prompt,
       image: sourceBlob,
       mask: maskBlob && operation.supportsMask ? maskBlob : undefined,
       model,
-      n: 1,
       quality,
       size,
-      output_format: format,
+      outputFormat: format,
       background: transparent ? 'transparent' : 'auto',
-      input_fidelity: operation.precision || recipe.precisionRecommended ? 'high' : 'low',
+      inputFidelity: operation.precision || recipe.precisionRecommended ? 'high' : 'low',
     })
 
     const first = results?.[0]
