@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import {
   Check,
   ChevronDown,
@@ -379,19 +379,21 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     setBusyLabel('SmartVideo GO is making this video ready')
     try {
       let source = displayUrl
-      for (const stepId of recipe.makeVideoReadySteps) {
-        const result = await executeAiEdit(stepId, source, '', true)
-        source = result.dataUrl
+      let finalResult: Omit<Version, 'id'> | null = null
+      const steps = recipe.makeVideoReadySteps.length ? recipe.makeVideoReadySteps : ['video_ready'] as EditorOperationId[]
+
+      for (const stepId of steps) {
+        finalResult = await executeAiEdit(stepId, source, '', false)
+        source = finalResult.dataUrl
       }
-      if (recipe.makeVideoReadySteps.length === 0) {
-        await executeAiEdit('video_ready', source, '', true)
-      } else {
-        const final = versions[versions.length - 1]
-        if (final) {
-          setVersions((previous) => previous.map((version, index) => (
-            index === previous.length - 1 ? { ...version, videoReady: true } : version
-          )))
-        }
+
+      if (finalResult) {
+        appendVersion({
+          ...finalResult,
+          label: 'Make Video Ready',
+          operation: 'video_ready',
+          videoReady: true,
+        })
       }
       setMaskBlob(null)
       setMaskMode(false)
@@ -400,7 +402,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     } finally {
       setBusyLabel(null)
     }
-  }, [asset, displayUrl, executeAiEdit, recipe.makeVideoReadySteps, versions])
+  }, [appendVersion, asset, displayUrl, executeAiEdit, recipe.makeVideoReadySteps])
 
   function resetLocalControls() {
     setRotation(0)
@@ -877,7 +879,7 @@ function MediaStage({
   safeArea: boolean
   aspectRatio: AspectRatio
   busyLabel: string | null
-  previewStyle?: React.CSSProperties
+  previewStyle?: CSSProperties
 }) {
   if (compareMode) {
     return (
@@ -950,7 +952,7 @@ function VersionStrip({
   )
 }
 
-function ControlLabel({ label, children }: { label: string; children: React.ReactNode }) {
+function ControlLabel({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <div className="mb-1.5 text-[9px] font-bold uppercase tracking-wide text-white/35">{label}</div>
