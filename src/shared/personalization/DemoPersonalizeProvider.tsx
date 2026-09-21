@@ -191,6 +191,9 @@ type DemoPersonalizeContextValue = {
       responseId?: string | null
       imageGenerationCallId?: string | null
       revisedPrompt?: string | null
+      outputFormat?: 'png' | 'jpeg' | 'webp'
+      outputCompression?: number | null
+      inputFidelity?: 'high' | 'low'
       visionAnalysis?: PersonalizationVisionAnalysis
       visionValidation?: PersonalizationVisionValidation
     },
@@ -914,6 +917,9 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         responseId: meta.responseId,
         imageGenerationCallId: meta.imageGenerationCallId,
         revisedPrompt: meta.revisedPrompt,
+        outputFormat: meta.outputFormat,
+        outputCompression: meta.outputCompression,
+        inputFidelity: meta.inputFidelity,
       },
       visionAnalysis: meta.visionAnalysis || target.visionAnalysis,
       visionValidation: meta.visionValidation,
