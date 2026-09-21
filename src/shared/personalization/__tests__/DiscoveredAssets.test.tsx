@@ -123,6 +123,51 @@ describe('Discovered Assets Integration', () => {
           json: async () => ({ ok: true, results }),
         } as any
       }
+      if (typeof url === 'string' && url.includes('/api/personalization/image-analyze')) {
+        const body = typeof options?.body === 'string' ? JSON.parse(options.body) : {}
+        if (body?.mode === 'validate') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              validation: {
+                passed: true,
+                confidence: 96,
+                issues: [],
+                preserved: ['logo', 'brand colors'],
+                changed: ['background'],
+                summary: 'Requested edit succeeded and protected branding was preserved.',
+                analyzedAt: new Date().toISOString(),
+                model: 'gpt-6-astra',
+              },
+            }),
+          } as any
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            analyses: (body?.images || []).map((image: any) => ({
+              id: image.id,
+              category: image.id === 'disc-vision' ? 'branded_vehicle' : (image.categoryHint || 'brand'),
+              confidence: 94,
+              qualityScore: 88,
+              relevanceScore: 93,
+              targetRole: 'Branded Vehicle Asset',
+              preserve: ['vehicle wrap', 'logo', 'phone number'],
+              issues: ['busy background'],
+              recommendedOperations: ['vehicle_enhance', 'safe_area'],
+              transparencyRecommended: false,
+              precisionRecommended: true,
+              textDetected: true,
+              duplicateLikely: false,
+              summary: 'Company vehicle with important branded wrap and contact text.',
+              analyzedAt: new Date().toISOString(),
+              model: 'gpt-6-astra',
+            })),
+          }),
+        } as any
+      }
       if (typeof url === 'string' && url.includes('/api/personalization/discover-assets')) {
         return {
           ok: true,
@@ -380,6 +425,46 @@ describe('Discovered Assets Integration', () => {
     c = (window as any).__personalizationCtx
     expect(c.discoveredAssets[0].selected).toBe(true)
     expect(c.discoveredAssets[1].selected).toBe(false)
+  })
+
+  it('uses SmartVideo GO Vision to refine discovery category, scores, and preservation metadata', async () => {
+    await renderProvider()
+    await openSource()
+
+    let c = (window as any).__personalizationCtx
+    await act(async () => {
+      c.setDiscoveredAssets([
+        {
+          id: 'disc-vision',
+          sourceUrl: 'https://test.com/truck.jpg',
+          previewUrl: 'https://test.com/truck.jpg',
+          sourceType: 'WEBSITE',
+          category: 'brand',
+          selected: false,
+          recommended: false,
+          rejected: false,
+          assignedSection: 'brand',
+          autoAssigned: true,
+        },
+      ])
+    })
+
+    c = (window as any).__personalizationCtx
+    await act(async () => {
+      await c.analyzeDiscoveredAssets()
+    })
+
+    c = (window as any).__personalizationCtx
+    expect(c.visionStatus).toBe('complete')
+    expect(c.discoveredAssets[0].category).toBe('branded_vehicle')
+    expect(c.discoveredAssets[0].confidence).toBe(94)
+    expect(c.discoveredAssets[0].qualityScore).toBe(88)
+    expect(c.discoveredAssets[0].relevanceScore).toBe(93)
+    expect(c.discoveredAssets[0].recommended).toBe(true)
+    expect(c.discoveredAssets[0].selected).toBe(true)
+    expect(c.discoveredAssets[0].assignedSection).toBe('brand')
+    expect(c.discoveredAssets[0].visionAnalysis.preserve).toContain('vehicle wrap')
+    expect(c.discoveredAssets[0].visionAnalysis.recommendedOperations).toContain('vehicle_enhance')
   })
 
   it('imports selected person assets into identities', async () => {
