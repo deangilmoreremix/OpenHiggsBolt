@@ -1,23 +1,38 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Check,
   ChevronDown,
+  Compare,
   FlipHorizontal,
   FlipVertical,
+  Grid3X3,
+  Layers3,
   Loader2,
-  Maximize2,
   MessageSquare,
+  Paintbrush,
+  Redo2,
   RotateCw,
-  Scissors,
-  SlidersHorizontal,
+  ShieldCheck,
   Sparkles,
+  Type,
+  Undo2,
   Wand2,
   X,
 } from 'lucide-react'
-import { editImage, type ImageSize } from '@/src/shared/api/openaiImage'
+import { editImage, type ImageFormat, type ImageSize } from '@/src/shared/api/openaiImage'
+import { buttons, iconBadge, semantic } from '@/shared/styles/designTokens'
 import type { AssetRole, DiscoveredAssetCategory } from '../types'
+import MaskEditor from './MaskEditor'
+import {
+  getAssetRecipe,
+  getOperation,
+  operationGroupsForAsset,
+  resolveEditorAssetKind,
+  type EditorOperationGroup,
+  type EditorOperationId,
+} from './imageEditRegistry'
 
 export type PersonalizationImageEditorAsset = {
   id: string
@@ -50,35 +65,20 @@ type Props = {
 
 type ModelMode = 'auto' | 'fast' | 'precision'
 type AspectRatio = 'original' | '9:16' | '16:9' | '1:1' | '4:5'
-type ToolId = 'video_ready' | 'remove_background' | 'enhance' | 'reframe' | 'cleanup'
+type EditorMode = 'simple' | 'advanced'
+type FitMode = 'contain' | 'cover'
+type TextPosition = 'top' | 'center' | 'bottom'
 
 type Version = {
   id: string
   label: string
-  dataUrl: string | null
+  dataUrl: string
   operation: string
   prompt: string
   model: ImageEditorApplyResult['model']
   transparent: boolean
   videoReady: boolean
 }
-
-const C = {
-  bg: '#080b0f',
-  modal: '#101419',
-  panel: '#151a20',
-  panelSoft: '#12171c',
-  field: '#0d1116',
-  border: 'rgba(255,255,255,.10)',
-  borderStrong: 'rgba(255,255,255,.16)',
-  text: '#f7f9fb',
-  muted: 'rgba(255,255,255,.58)',
-  muted2: 'rgba(255,255,255,.36)',
-  cyan: '#29d3f2',
-  cyanSoft: 'rgba(41,211,242,.12)',
-  cyanBorder: 'rgba(41,211,242,.45)',
-  green: '#28c98b',
-} as const
 
 const aspectSizes: Record<Exclude<AspectRatio, 'original'>, ImageSize> = {
   '9:16': '1024x1792',
@@ -92,6 +92,21 @@ const aspectCanvas: Record<Exclude<AspectRatio, 'original'>, [number, number]> =
   '16:9': [1792, 1024],
   '1:1': [1024, 1024],
   '4:5': [1024, 1280],
+}
+
+const GROUP_LABELS: Record<EditorOperationGroup, string> = {
+  smart: 'Smart',
+  background: 'Background',
+  subject: 'Subject',
+  people: 'People',
+  product: 'Product',
+  brand: 'Brand',
+  object: 'Objects',
+  text: 'Text',
+  scene: 'Scene',
+  video: 'Video',
+  effects: 'Effects',
+  transform: 'Transform',
 }
 
 function dataUrlToBlob(dataUrl: string): Blob {
@@ -123,102 +138,823 @@ function loadImage(dataUrl: string): Promise<HTMLImageElement> {
   })
 }
 
-function getRoleLabel(role?: AssetRole) {
-  return role ? role.replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase()) : null
+function fileExtension(format: ImageFormat) {
+  if (format === 'jpeg') return 'jpg'
+  return format
 }
 
-function isCutoutAsset(asset: PersonalizationImageEditorAsset | null) {
-  if (!asset) return false
+export default function ImageEditorModal({ open, asset, onClose, onApply }: Props) {
+  const modalRef = useRef<HTMLDivElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+
+  const [editorMode, setEditorMode] = useState<EditorMode>('simple')
+  const [modelMode, setModelMode] = useState<ModelMode>('auto')
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>('original')
+  const [outputFormat, setOutputFormat] = useState<ImageFormat>('png')
+  const [versions, setVersions] = useState<Version[]>([])
+  const [versionIndex, setVersionIndex] = useState(0)
+  const [customPrompt, setCustomPrompt] = useState('')
+  const [busyLabel, setBusyLabel] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [compareMode, setCompareMode] = useState(false)
+  const [activeGroup, setActiveGroup] = useState<EditorOperationGroup>('smart')
+  const [maskMode, setMaskMode] = useState(false)
+  const [maskBlob, setMaskBlob] = useState<Blob | null>(null)
+  const [safeArea, setSafeArea] = useState(false)
+
+  const [rotation, setRotation] = useState(0)
+  const [flipX, setFlipX] = useState(false)
+  const [flipY, setFlipY] = useState(false)
+  const [zoom, setZoom] = useState(100)
+  const [brightness, setBrightness] = useState(100)
+  const [contrast, setContrast] = useState(100)
+  const [saturation, setSaturation] = useState(100)
+  const [opacity, setOpacity] = useState(100)
+  const [blur, setBlur] = useState(0)
+  const [grayscale, setGrayscale] = useState(0)
+  const [sepia, setSepia] = useState(0)
+  const [padding, setPadding] = useState(0)
+  const [borderSize, setBorderSize] = useState(0)
+  const [shadow, setShadow] = useState(0)
+  const [fitMode, setFitMode] = useState<FitMode>('contain')
+  const [backgroundColor, setBackgroundColor] = useState('transparent')
+  const [overlayText, setOverlayText] = useState('')
+  const [textSize, setTextSize] = useState(48)
+  const [textPosition, setTextPosition] = useState<TextPosition>('bottom')
+
+  const kind = useMemo(() => resolveEditorAssetKind(asset?.category, asset?.role), [asset?.category, asset?.role])
+  const recipe = useMemo(() => getAssetRecipe(asset?.category, asset?.role), [asset?.category, asset?.role])
+  const groupedOperations = useMemo(() => operationGroupsForAsset(kind), [kind])
+
+  useEffect(() => {
+    if (!open || !asset) return
+    previousFocusRef.current = document.activeElement as HTMLElement | null
+    setEditorMode('simple')
+    setModelMode('auto')
+    setAspectRatio('original')
+    setOutputFormat('png')
+    setVersions([{
+      id: 'original',
+      label: 'Original',
+      dataUrl: asset.imageUrl,
+      operation: 'original',
+      prompt: '',
+      model: 'local',
+      transparent: false,
+      videoReady: false,
+    }])
+    setVersionIndex(0)
+    setCustomPrompt('')
+    setBusyLabel(null)
+    setSaving(false)
+    setError(null)
+    setCompareMode(false)
+    setActiveGroup('smart')
+    setMaskMode(false)
+    setMaskBlob(null)
+    setSafeArea(false)
+    resetLocalControls()
+  }, [open, asset?.id])
+
+  useEffect(() => {
+    if (!open) return
+    const modal = modalRef.current
+    if (!modal) return
+    const focusable = modal.querySelectorAll<HTMLElement>('button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])')
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    first?.focus()
+
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onClose()
+        return
+      }
+      if (event.key !== 'Tab' || !first || !last) return
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('keydown', handleKey)
+      previousFocusRef.current?.focus()
+    }
+  }, [open, onClose])
+
+  const currentVersion = versions[versionIndex]
+  const displayUrl = currentVersion?.dataUrl || asset?.imageUrl || ''
+  const hasChanges = versionIndex > 0 || versions.length > 1
+
+  const resolvedModel = useCallback((operationId: EditorOperationId) => {
+    const operation = getOperation(operationId)
+    if (modelMode === 'fast') return 'gpt-image-2.5-flare' as const
+    if (modelMode === 'precision') return 'gpt-image-2.5-sunburst' as const
+    return operation.precision || recipe.precisionRecommended
+      ? 'gpt-image-2.5-sunburst' as const
+      : 'gpt-image-2.5-flare' as const
+  }, [modelMode, recipe.precisionRecommended])
+
+  const prepareDataUrl = useCallback(async (url: string) => {
+    if (url.startsWith('data:')) return url
+    if (url.startsWith('blob:')) {
+      const response = await fetch(url)
+      if (!response.ok) throw new Error('Unable to read local image')
+      return blobToDataUrl(await response.blob())
+    }
+
+    const response = await fetch('/api/personalization/download-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ urls: [url] }),
+    })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(payload?.error || 'Unable to prepare image for editing')
+    const result = payload?.results?.[0]
+    if (!result?.ok || !result?.dataUrl) throw new Error(result?.error || 'Unable to download image')
+    return result.dataUrl as string
+  }, [])
+
+  const buildPrompt = useCallback((operationId: EditorOperationId, custom = '') => {
+    const operation = getOperation(operationId)
+    const businessContext = [asset?.businessName, asset?.industry].filter(Boolean).join(' - ')
+    const preserve = recipe.preserve.length ? ' Preserve: ' + recipe.preserve.join(', ') + '.' : ''
+    const context = businessContext ? ' Business context: ' + businessContext + '.' : ''
+    const ratio = aspectRatio === 'original' ? '' : ' Target composition: ' + aspectRatio + '.'
+    const maskInstruction = maskBlob ? ' Apply the requested change primarily to the masked region and preserve unmasked content as closely as possible.' : ''
+    const userInstruction = operationId === 'custom' ? custom.trim() : operation.prompt
+    return 'Edit this image for SmartVideo GO. ' + userInstruction + preserve + context + ratio + maskInstruction
+  }, [asset?.businessName, asset?.industry, aspectRatio, maskBlob, recipe.preserve])
+
+  const appendVersion = useCallback((version: Omit<Version, 'id'>) => {
+    const next: Version = {
+      ...version,
+      id: 'version_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+    }
+    setVersions((previous) => {
+      const truncated = previous.slice(0, versionIndex + 1)
+      const updated = [...truncated, next]
+      setVersionIndex(updated.length - 1)
+      return updated
+    })
+  }, [versionIndex])
+
+  const executeAiEdit = useCallback(async (
+    operationId: EditorOperationId,
+    sourceUrl: string,
+    custom = '',
+    addVersion = true,
+  ) => {
+    if (!asset) throw new Error('No image selected')
+    const operation = getOperation(operationId)
+    const sourceDataUrl = await prepareDataUrl(sourceUrl)
+    const sourceBlob = dataUrlToBlob(sourceDataUrl)
+    const model = resolvedModel(operationId)
+    const prompt = buildPrompt(operationId, custom)
+    const transparent = Boolean(operation.transparency || (operationId === 'video_ready' && recipe.transparencyRecommended))
+    const quality = model === 'gpt-image-2.5-sunburst' ? (modelMode === 'precision' ? 'xhigh' : 'high') : 'medium'
+    const size = aspectRatio === 'original' ? 'auto' : aspectSizes[aspectRatio]
+    const format: ImageFormat = transparent && outputFormat === 'jpeg' ? 'png' : outputFormat
+
+    const results = await editImage({
+      prompt,
+      image: sourceBlob,
+      mask: maskBlob && operation.supportsMask ? maskBlob : undefined,
+      model,
+      n: 1,
+      quality,
+      size,
+      output_format: format,
+      background: transparent ? 'transparent' : 'auto',
+      input_fidelity: operation.precision || recipe.precisionRecommended ? 'high' : 'low',
+    })
+
+    const first = results?.[0]
+    let dataUrl = first?.b64_json ? 'data:image/' + format + ';base64,' + first.b64_json : ''
+
+    if (!dataUrl && first?.url) dataUrl = await prepareDataUrl(first.url)
+    if (!dataUrl) throw new Error('The AI edit completed without an image result')
+
+    const version = {
+      label: operation.label,
+      dataUrl,
+      operation: operationId,
+      prompt,
+      model,
+      transparent,
+      videoReady: operationId === 'video_ready',
+    } satisfies Omit<Version, 'id'>
+
+    if (addVersion) appendVersion(version)
+    return version
+  }, [appendVersion, aspectRatio, asset, buildPrompt, maskBlob, modelMode, outputFormat, prepareDataUrl, recipe.precisionRecommended, recipe.transparencyRecommended, resolvedModel])
+
+  const runAiEdit = useCallback(async (operationId: EditorOperationId, custom = '') => {
+    if (operationId === 'custom' && !custom.trim()) return
+    setError(null)
+    setBusyLabel(operationId === 'custom' ? 'SmartVideo GO AI is editing' : getOperation(operationId).label)
+    try {
+      await executeAiEdit(operationId, displayUrl, custom)
+      if (operationId === 'custom') setCustomPrompt('')
+      setMaskBlob(null)
+      setMaskMode(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Image edit failed')
+    } finally {
+      setBusyLabel(null)
+    }
+  }, [displayUrl, executeAiEdit])
+
+  const runVideoReady = useCallback(async () => {
+    if (!asset) return
+    setError(null)
+    setBusyLabel('SmartVideo GO is making this video ready')
+    try {
+      let source = displayUrl
+      for (const stepId of recipe.makeVideoReadySteps) {
+        const result = await executeAiEdit(stepId, source, '', true)
+        source = result.dataUrl
+      }
+      if (recipe.makeVideoReadySteps.length === 0) {
+        await executeAiEdit('video_ready', source, '', true)
+      } else {
+        const final = versions[versions.length - 1]
+        if (final) {
+          setVersions((previous) => previous.map((version, index) => (
+            index === previous.length - 1 ? { ...version, videoReady: true } : version
+          )))
+        }
+      }
+      setMaskBlob(null)
+      setMaskMode(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Make Video Ready failed')
+    } finally {
+      setBusyLabel(null)
+    }
+  }, [asset, displayUrl, executeAiEdit, recipe.makeVideoReadySteps, versions])
+
+  function resetLocalControls() {
+    setRotation(0)
+    setFlipX(false)
+    setFlipY(false)
+    setZoom(100)
+    setBrightness(100)
+    setContrast(100)
+    setSaturation(100)
+    setOpacity(100)
+    setBlur(0)
+    setGrayscale(0)
+    setSepia(0)
+    setPadding(0)
+    setBorderSize(0)
+    setShadow(0)
+    setFitMode('contain')
+    setBackgroundColor('transparent')
+    setOverlayText('')
+    setTextSize(48)
+    setTextPosition('bottom')
+  }
+
+  const applyLocalAdjustments = useCallback(async () => {
+    setError(null)
+    setBusyLabel('Applying local edit')
+    try {
+      const source = await prepareDataUrl(displayUrl)
+      const image = await loadImage(source)
+      let canvasWidth = image.naturalWidth
+      let canvasHeight = image.naturalHeight
+      if (aspectRatio !== 'original') [canvasWidth, canvasHeight] = aspectCanvas[aspectRatio]
+
+      const maxEdge = 2048
+      const edgeScale = Math.min(1, maxEdge / Math.max(canvasWidth, canvasHeight))
+      canvasWidth = Math.max(1, Math.round(canvasWidth * edgeScale))
+      canvasHeight = Math.max(1, Math.round(canvasHeight * edgeScale))
+
+      const canvas = document.createElement('canvas')
+      canvas.width = canvasWidth
+      canvas.height = canvasHeight
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('Browser canvas is unavailable')
+
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight)
+      if (backgroundColor !== 'transparent') {
+        ctx.fillStyle = backgroundColor
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight)
+      }
+
+      const innerWidth = Math.max(1, canvasWidth - padding * 2)
+      const innerHeight = Math.max(1, canvasHeight - padding * 2)
+      const containScale = Math.min(innerWidth / image.naturalWidth, innerHeight / image.naturalHeight)
+      const coverScale = Math.max(innerWidth / image.naturalWidth, innerHeight / image.naturalHeight)
+      const baseScale = fitMode === 'cover' ? coverScale : containScale
+      const scale = baseScale * (zoom / 100)
+      const drawWidth = image.naturalWidth * scale
+      const drawHeight = image.naturalHeight * scale
+
+      ctx.save()
+      ctx.translate(canvasWidth / 2, canvasHeight / 2)
+      ctx.rotate((rotation * Math.PI) / 180)
+      ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1)
+      ctx.globalAlpha = opacity / 100
+      ctx.filter =
+        'brightness(' + brightness + '%) contrast(' + contrast + '%) saturate(' + saturation + '%) ' +
+        'blur(' + blur + 'px) grayscale(' + grayscale + '%) sepia(' + sepia + '%)'
+      if (shadow > 0) {
+        ctx.shadowColor = 'rgba(0,0,0,.45)'
+        ctx.shadowBlur = shadow
+        ctx.shadowOffsetY = Math.max(2, shadow / 3)
+      }
+      ctx.drawImage(image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight)
+      ctx.restore()
+
+      if (borderSize > 0) {
+        ctx.save()
+        ctx.strokeStyle = '#ffffff'
+        ctx.lineWidth = borderSize
+        ctx.strokeRect(borderSize / 2, borderSize / 2, canvasWidth - borderSize, canvasHeight - borderSize)
+        ctx.restore()
+      }
+
+      if (overlayText.trim()) {
+        ctx.save()
+        const scaledSize = Math.max(18, Math.round(textSize * edgeScale))
+        ctx.font = '700 ' + scaledSize + 'px system-ui, -apple-system, sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.lineWidth = Math.max(3, scaledSize * 0.08)
+        ctx.strokeStyle = 'rgba(0,0,0,.75)'
+        ctx.fillStyle = '#ffffff'
+        const y = textPosition === 'top' ? scaledSize * 1.3 : textPosition === 'center' ? canvasHeight / 2 : canvasHeight - scaledSize * 1.3
+        ctx.strokeText(overlayText.trim(), canvasWidth / 2, y, canvasWidth * 0.9)
+        ctx.fillText(overlayText.trim(), canvasWidth / 2, y, canvasWidth * 0.9)
+        ctx.restore()
+      }
+
+      const format: ImageFormat = backgroundColor === 'transparent' && outputFormat === 'jpeg' ? 'png' : outputFormat
+      const mime = format === 'jpeg' ? 'image/jpeg' : 'image/' + format
+      const dataUrl = canvas.toDataURL(mime, format === 'jpeg' || format === 'webp' ? 0.92 : undefined)
+
+      appendVersion({
+        label: 'Local Edit',
+        dataUrl,
+        operation: 'local_adjustments',
+        prompt: '',
+        model: 'local',
+        transparent: backgroundColor === 'transparent',
+        videoReady: currentVersion?.videoReady || false,
+      })
+      resetLocalControls()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Local edit failed')
+    } finally {
+      setBusyLabel(null)
+    }
+  }, [
+    appendVersion,
+    aspectRatio,
+    backgroundColor,
+    blur,
+    borderSize,
+    brightness,
+    contrast,
+    currentVersion?.videoReady,
+    displayUrl,
+    fitMode,
+    flipX,
+    flipY,
+    grayscale,
+    opacity,
+    outputFormat,
+    overlayText,
+    padding,
+    prepareDataUrl,
+    rotation,
+    saturation,
+    sepia,
+    shadow,
+    textPosition,
+    textSize,
+    zoom,
+  ])
+
+  const handleApply = useCallback(async () => {
+    if (!asset || !currentVersion) return
+    if (versionIndex === 0) {
+      onClose()
+      return
+    }
+
+    setSaving(true)
+    setError(null)
+    try {
+      await onApply({
+        dataUrl: await prepareDataUrl(currentVersion.dataUrl),
+        originalUrl: asset.imageUrl,
+        operation: currentVersion.operation,
+        prompt: currentVersion.prompt,
+        model: currentVersion.model,
+        quality: currentVersion.model === 'gpt-image-2.5-sunburst' ? 'high' : currentVersion.model === 'local' ? 'local' : 'medium',
+        transparent: currentVersion.transparent,
+        videoReady: currentVersion.videoReady,
+      })
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to save edited asset')
+    } finally {
+      setSaving(false)
+    }
+  }, [asset, currentVersion, onApply, onClose, prepareDataUrl, versionIndex])
+
+  if (!open || !asset || !currentVersion) return null
+
+  const recommendedOperations = recipe.recommended.map(getOperation)
+  const advancedGroups = Array.from(groupedOperations.entries())
+  const activeOperations = groupedOperations.get(activeGroup) || []
+
   return (
-    asset.category === 'person' ||
-    asset.category === 'logo' ||
-    asset.category === 'product' ||
-    asset.role === 'presenter_identity' ||
-    asset.role === 'face_identity' ||
-    asset.role === 'character_identity' ||
-    asset.role === 'logo' ||
-    asset.role === 'product_reference' ||
-    asset.role === 'cta_graphic'
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="smartvideo-go-image-editor-title"
+      className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto"
+      style={{ background: 'rgba(0,0,0,0.8)' }}
+      onClick={onClose}
+    >
+      <div
+        ref={modalRef}
+        className={'relative mx-4 my-8 w-full rounded-2xl border border-white/10 ' + (editorMode === 'advanced' ? 'max-w-7xl' : 'max-w-4xl')}
+        style={{ background: 'var(--bg-panel)' }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-white/10 p-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-7 w-7 flex-none items-center justify-center rounded-md" style={{ ...iconBadge }}>
+              <Sparkles size={14} className="text-black" />
+            </div>
+            <div className="min-w-0">
+              <h2 id="smartvideo-go-image-editor-title" className="truncate text-lg font-bold text-white">SmartVideo GO Image Editor</h2>
+              <p className="truncate text-[11px] text-white/40">{recipe.label} · {recipe.outputRole}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1">
+            {versions.length > 1 && (
+              <>
+                <button type="button" onClick={() => setVersionIndex((value) => Math.max(0, value - 1))} disabled={versionIndex === 0} className="rounded-lg p-2 text-white/50 transition hover:bg-white/10 hover:text-white disabled:opacity-25" aria-label="Undo edit">
+                  <Undo2 size={15} />
+                </button>
+                <button type="button" onClick={() => setVersionIndex((value) => Math.min(versions.length - 1, value + 1))} disabled={versionIndex >= versions.length - 1} className="rounded-lg p-2 text-white/50 transition hover:bg-white/10 hover:text-white disabled:opacity-25" aria-label="Redo edit">
+                  <Redo2 size={15} />
+                </button>
+              </>
+            )}
+            <button type="button" onClick={onClose} aria-label="Close SmartVideo GO image editor" className="rounded-lg p-1.5 text-white/50 transition-colors hover:bg-white/10 hover:text-white">
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        {editorMode === 'simple' ? (
+          <div className="space-y-4 p-4">
+            <MediaStage
+              src={displayUrl}
+              originalSrc={asset.imageUrl}
+              compareMode={compareMode}
+              safeArea={safeArea}
+              aspectRatio={aspectRatio}
+              busyLabel={busyLabel}
+            />
+
+            <div className="flex flex-wrap items-center gap-2 text-xs" style={{ color: semantic.textMuted }}>
+              <span className="rounded-full bg-white/5 px-3 py-1 font-semibold uppercase tracking-wide text-white/70">{recipe.label}</span>
+              <span>•</span>
+              <span>{recipe.outputRole}</span>
+              {currentVersion.transparent && <><span>•</span><span>Transparent</span></>}
+              {currentVersion.videoReady && <><span>•</span><span style={{ color: semantic.success }}>Video Ready</span></>}
+              {asset.source === 'discovered' && <><span>•</span><span>Discovered Asset</span></>}
+            </div>
+
+            <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/[0.04] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-semibold text-white"><Sparkles size={15} className="text-cyan-300" /> SmartVideo GO recommends</div>
+                  <p className="mt-1 text-xs leading-5 text-white/45">{recipe.description} Output target: {recipe.outputRole}.</p>
+                </div>
+                <button type="button" onClick={runVideoReady} disabled={Boolean(busyLabel)} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold disabled:opacity-50" style={buttons.primary}>
+                  <Sparkles size={14} /> Make Video Ready
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {recommendedOperations.slice(0, 6).map((operation) => (
+                <button key={operation.id} type="button" onClick={() => runAiEdit(operation.id)} disabled={Boolean(busyLabel)} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold disabled:opacity-50" style={buttons.ghost}>
+                  <Wand2 size={13} /> {operation.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-white/80"><MessageSquare size={14} /> Ask SmartVideo GO AI</div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <textarea
+                  value={customPrompt}
+                  onChange={(event) => setCustomPrompt(event.target.value)}
+                  rows={3}
+                  placeholder="Example: Remove the truck behind the contractor, but keep the contractor exactly the same."
+                  className="min-h-[78px] flex-1 resize-none rounded-xl border border-white/10 bg-black/30 p-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-cyan-400/50"
+                />
+                <button type="button" onClick={() => runAiEdit('custom', customPrompt)} disabled={!customPrompt.trim() || Boolean(busyLabel)} className="inline-flex min-w-[120px] items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-bold disabled:opacity-50" style={buttons.primary}>
+                  <Sparkles size={14} /> Edit
+                </button>
+              </div>
+            </div>
+
+            <VersionStrip versions={versions} versionIndex={versionIndex} onSelect={setVersionIndex} />
+
+            {error && <ErrorBox message={error} />}
+
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
+              <div className="flex flex-wrap gap-2">
+                {versions.length > 1 && (
+                  <button type="button" onClick={() => setCompareMode((value) => !value)} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold" style={buttons.ghost}>
+                    <Compare size={14} /> {compareMode ? 'Single View' : 'Compare'}
+                  </button>
+                )}
+                <button type="button" onClick={() => setSafeArea((value) => !value)} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold" style={safeArea ? buttons.activePill : buttons.ghost}>
+                  <Grid3X3 size={14} /> Safe Area
+                </button>
+                <button type="button" onClick={() => setEditorMode('advanced')} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold" style={buttons.ghost}>
+                  <Layers3 size={14} /> Advanced Edit
+                </button>
+              </div>
+
+              <button type="button" onClick={handleApply} disabled={saving || Boolean(busyLabel) || versionIndex === 0} className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold disabled:opacity-40" style={buttons.primary}>
+                {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Use Edited Asset
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid min-h-[700px] grid-cols-1 lg:grid-cols-[210px_minmax(0,1fr)_300px]">
+            <aside className="border-r border-white/10 p-3">
+              <button type="button" onClick={() => setEditorMode('simple')} className="mb-3 w-full rounded-xl px-3 py-2 text-left text-xs font-semibold" style={buttons.ghost}>← Back to Simple</button>
+              <div className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[.15em] text-white/30">Tools</div>
+              <div className="space-y-1">
+                {advancedGroups.map(([group]) => (
+                  <button key={group} type="button" onClick={() => setActiveGroup(group)} className="w-full rounded-lg px-3 py-2 text-left text-xs font-semibold transition" style={activeGroup === group ? buttons.activePill : { color: 'rgba(255,255,255,.55)', background: 'transparent' }}>
+                    {GROUP_LABELS[group]}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-4 border-t border-white/10 pt-3">
+                <button type="button" onClick={() => setMaskMode((value) => !value)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold" style={maskMode ? buttons.activePill : buttons.ghost}>
+                  <Paintbrush size={14} /> Select / Mask Area
+                </button>
+              </div>
+            </aside>
+
+            <main className="min-w-0 border-r border-white/10 p-4">
+              {maskMode ? (
+                <MaskEditor imageUrl={displayUrl} active={maskMode} onMaskChange={setMaskBlob} />
+              ) : (
+                <>
+                  <MediaStage
+                    src={displayUrl}
+                    originalSrc={asset.imageUrl}
+                    compareMode={compareMode}
+                    safeArea={safeArea}
+                    aspectRatio={aspectRatio}
+                    busyLabel={busyLabel}
+                    previewStyle={{
+                      transform: 'scale(' + (zoom / 100) + ') rotate(' + rotation + 'deg) scaleX(' + (flipX ? -1 : 1) + ') scaleY(' + (flipY ? -1 : 1) + ')',
+                      filter:
+                        'brightness(' + brightness + '%) contrast(' + contrast + '%) saturate(' + saturation + '%) ' +
+                        'blur(' + blur + 'px) grayscale(' + grayscale + '%) sepia(' + sepia + '%)',
+                      opacity: opacity / 100,
+                    }}
+                  />
+                  <VersionStrip versions={versions} versionIndex={versionIndex} onSelect={setVersionIndex} compact />
+                </>
+              )}
+
+              {error && <div className="mt-3"><ErrorBox message={error} /></div>}
+            </main>
+
+            <aside className="max-h-[700px] overflow-y-auto p-4 custom-scrollbar">
+              <div className="mb-4">
+                <div className="mb-2 text-[10px] font-bold uppercase tracking-[.15em] text-white/30">{GROUP_LABELS[activeGroup]} AI Tools</div>
+                <div className="space-y-2">
+                  {activeOperations.map((operation) => (
+                    <button key={operation.id} type="button" onClick={() => runAiEdit(operation.id)} disabled={Boolean(busyLabel)} className="w-full rounded-xl p-3 text-left disabled:opacity-50" style={{ background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.08)' }}>
+                      <div className="text-xs font-semibold text-white">{operation.label}</div>
+                      <div className="mt-1 text-[10px] leading-4 text-white/40">{operation.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <details className="group rounded-xl border border-white/10 bg-white/[0.02] p-3" open>
+                <summary className="cursor-pointer list-none text-xs font-semibold text-white">Output & AI</summary>
+                <div className="mt-3 space-y-3">
+                  <ControlLabel label="AI Mode">
+                    <div className="grid grid-cols-3 gap-1">
+                      {(['auto', 'fast', 'precision'] as ModelMode[]).map((mode) => (
+                        <button key={mode} type="button" onClick={() => setModelMode(mode)} className="rounded-lg px-2 py-2 text-[9px] font-bold uppercase" style={modelMode === mode ? buttons.activePill : buttons.inactivePill}>{mode}</button>
+                      ))}
+                    </div>
+                  </ControlLabel>
+
+                  <ControlLabel label="Aspect Ratio">
+                    <div className="grid grid-cols-5 gap-1">
+                      {(['original', '9:16', '16:9', '1:1', '4:5'] as AspectRatio[]).map((ratio) => (
+                        <button key={ratio} type="button" onClick={() => setAspectRatio(ratio)} className="rounded-lg px-1 py-2 text-[9px] font-bold" style={aspectRatio === ratio ? buttons.activePill : buttons.inactivePill}>{ratio === 'original' ? 'Orig' : ratio}</button>
+                      ))}
+                    </div>
+                  </ControlLabel>
+
+                  <ControlLabel label="Format">
+                    <div className="grid grid-cols-3 gap-1">
+                      {(['png', 'webp', 'jpeg'] as ImageFormat[]).map((format) => (
+                        <button key={format} type="button" onClick={() => setOutputFormat(format)} className="rounded-lg px-2 py-2 text-[9px] font-bold uppercase" style={outputFormat === format ? buttons.activePill : buttons.inactivePill}>{fileExtension(format)}</button>
+                      ))}
+                    </div>
+                  </ControlLabel>
+                </div>
+              </details>
+
+              <details className="group mt-3 rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                <summary className="cursor-pointer list-none text-xs font-semibold text-white">Local Canvas Tools</summary>
+                <div className="mt-3 space-y-3">
+                  <div className="grid grid-cols-3 gap-1">
+                    <button type="button" onClick={() => setRotation((value) => (value + 90) % 360)} className="rounded-lg py-2" style={buttons.ghost}><RotateCw size={13} className="mx-auto" /></button>
+                    <button type="button" onClick={() => setFlipX((value) => !value)} className="rounded-lg py-2" style={flipX ? buttons.activePill : buttons.ghost}><FlipHorizontal size={13} className="mx-auto" /></button>
+                    <button type="button" onClick={() => setFlipY((value) => !value)} className="rounded-lg py-2" style={flipY ? buttons.activePill : buttons.ghost}><FlipVertical size={13} className="mx-auto" /></button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-1">
+                    <button type="button" onClick={() => setFitMode('contain')} className="rounded-lg px-2 py-2 text-[9px] font-bold uppercase" style={fitMode === 'contain' ? buttons.activePill : buttons.inactivePill}>Fit</button>
+                    <button type="button" onClick={() => setFitMode('cover')} className="rounded-lg px-2 py-2 text-[9px] font-bold uppercase" style={fitMode === 'cover' ? buttons.activePill : buttons.inactivePill}>Fill / Crop</button>
+                  </div>
+
+                  <Slider label="Zoom" value={zoom} min={50} max={180} suffix="%" onChange={setZoom} />
+                  <Slider label="Brightness" value={brightness} min={50} max={150} suffix="%" onChange={setBrightness} />
+                  <Slider label="Contrast" value={contrast} min={50} max={150} suffix="%" onChange={setContrast} />
+                  <Slider label="Saturation" value={saturation} min={0} max={180} suffix="%" onChange={setSaturation} />
+                  <Slider label="Opacity" value={opacity} min={10} max={100} suffix="%" onChange={setOpacity} />
+                  <Slider label="Blur" value={blur} min={0} max={20} suffix="px" onChange={setBlur} />
+                  <Slider label="Grayscale" value={grayscale} min={0} max={100} suffix="%" onChange={setGrayscale} />
+                  <Slider label="Sepia" value={sepia} min={0} max={100} suffix="%" onChange={setSepia} />
+                  <Slider label="Padding" value={padding} min={0} max={240} suffix="px" onChange={setPadding} />
+                  <Slider label="Border" value={borderSize} min={0} max={40} suffix="px" onChange={setBorderSize} />
+                  <Slider label="Shadow" value={shadow} min={0} max={60} suffix="" onChange={setShadow} />
+
+                  <ControlLabel label="Canvas Background">
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setBackgroundColor('transparent')} className="flex-1 rounded-lg px-2 py-2 text-[9px] font-bold uppercase" style={backgroundColor === 'transparent' ? buttons.activePill : buttons.inactivePill}>Transparent</button>
+                      <input type="color" value={backgroundColor === 'transparent' ? '#000000' : backgroundColor} onChange={(event) => setBackgroundColor(event.target.value)} className="h-9 w-12 rounded-lg border border-white/10 bg-transparent" aria-label="Canvas background color" />
+                    </div>
+                  </ControlLabel>
+
+                  <button type="button" onClick={applyLocalAdjustments} disabled={Boolean(busyLabel)} className="w-full rounded-xl px-3 py-2.5 text-xs font-bold disabled:opacity-50" style={buttons.primary}>Apply Local Edit</button>
+                </div>
+              </details>
+
+              <details className="group mt-3 rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                <summary className="cursor-pointer list-none text-xs font-semibold text-white"><Type size={13} className="mr-1 inline" /> Text Overlay</summary>
+                <div className="mt-3 space-y-3">
+                  <input value={overlayText} onChange={(event) => setOverlayText(event.target.value)} placeholder="Optional overlay text" className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white outline-none" />
+                  <Slider label="Text Size" value={textSize} min={18} max={120} suffix="px" onChange={setTextSize} />
+                  <div className="grid grid-cols-3 gap-1">
+                    {(['top', 'center', 'bottom'] as TextPosition[]).map((position) => (
+                      <button key={position} type="button" onClick={() => setTextPosition(position)} className="rounded-lg px-2 py-2 text-[9px] font-bold uppercase" style={textPosition === position ? buttons.activePill : buttons.inactivePill}>{position}</button>
+                    ))}
+                  </div>
+                </div>
+              </details>
+
+              <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-white"><ShieldCheck size={14} className="text-cyan-300" /> SmartVideo GO Asset Protection</div>
+                <p className="mt-2 text-[10px] leading-4 text-white/40">AI prompts preserve {recipe.preserve.join(', ')} unless the selected edit explicitly requires a change.</p>
+              </div>
+
+              <div className="mt-4 flex gap-2">
+                <button type="button" onClick={() => setSafeArea((value) => !value)} className="rounded-xl px-3 py-2 text-xs font-semibold" style={safeArea ? buttons.activePill : buttons.ghost}><Grid3X3 size={13} className="mr-1 inline" /> Safe Area</button>
+                {versions.length > 1 && <button type="button" onClick={() => setCompareMode((value) => !value)} className="rounded-xl px-3 py-2 text-xs font-semibold" style={buttons.ghost}><Compare size={13} className="mr-1 inline" /> Compare</button>}
+              </div>
+
+              <button type="button" onClick={handleApply} disabled={saving || Boolean(busyLabel) || versionIndex === 0} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold disabled:opacity-40" style={buttons.primary}>
+                {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Use Edited Asset
+              </button>
+            </aside>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
-function isPrecisionSensitive(asset: PersonalizationImageEditorAsset | null) {
-  if (!asset) return false
+function MediaStage({
+  src,
+  originalSrc,
+  compareMode,
+  safeArea,
+  aspectRatio,
+  busyLabel,
+  previewStyle,
+}: {
+  src: string
+  originalSrc: string
+  compareMode: boolean
+  safeArea: boolean
+  aspectRatio: AspectRatio
+  busyLabel: string | null
+  previewStyle?: React.CSSProperties
+}) {
+  if (compareMode) {
+    return (
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <PreviewCard label="Original" src={originalSrc} />
+        <PreviewCard label="Edited" src={src} />
+      </div>
+    )
+  }
+
   return (
-    asset.category === 'person' ||
-    asset.category === 'logo' ||
-    asset.category === 'product' ||
-    asset.role === 'presenter_identity' ||
-    asset.role === 'face_identity' ||
-    asset.role === 'character_identity' ||
-    asset.role === 'logo' ||
-    asset.role === 'product_reference'
+    <div className="relative flex min-h-[360px] w-full items-center justify-center overflow-hidden rounded-xl bg-black">
+      <div className="absolute inset-0 opacity-25" style={{ backgroundImage: 'linear-gradient(45deg,#222 25%,transparent 25%),linear-gradient(-45deg,#222 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#222 75%),linear-gradient(-45deg,transparent 75%,#222 75%)', backgroundSize: '22px 22px', backgroundPosition: '0 0,0 11px,11px -11px,-11px 0' }} />
+      <img src={src} alt="SmartVideo GO edit preview" className="relative z-[1] max-h-[64vh] max-w-full object-contain transition-all" style={previewStyle} />
+
+      {safeArea && (
+        <div className="pointer-events-none absolute inset-[7%] z-[2] rounded-lg border border-dashed border-cyan-300/70">
+          <div className="absolute left-1/2 top-0 h-full border-l border-dashed border-cyan-300/20" />
+          <div className="absolute left-0 top-1/2 w-full border-t border-dashed border-cyan-300/20" />
+          {aspectRatio === '9:16' && <div className="absolute inset-x-0 bottom-0 h-[16%] bg-black/20" />}
+        </div>
+      )}
+
+      {busyLabel && (
+        <div className="absolute inset-0 z-[5] grid place-items-center bg-black/70 backdrop-blur-sm">
+          <div className="rounded-2xl border border-cyan-400/30 bg-black/70 px-7 py-6 text-center">
+            <Loader2 size={24} className="mx-auto mb-3 animate-spin text-cyan-300" />
+            <div className="text-xs font-bold uppercase tracking-wide text-white">{busyLabel}</div>
+            <div className="mt-1 text-[10px] text-white/40">SmartVideo GO is processing this asset.</div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
-function recommendedActions(asset: PersonalizationImageEditorAsset | null): ToolId[] {
-  if (!asset) return ['video_ready', 'enhance', 'reframe']
-  if (asset.category === 'logo' || asset.role === 'logo') return ['video_ready', 'remove_background', 'enhance', 'reframe']
-  if (asset.category === 'person' || asset.role?.includes('identity')) return ['video_ready', 'remove_background', 'enhance', 'reframe']
-  if (asset.category === 'product' || asset.role === 'product_reference') return ['video_ready', 'remove_background', 'enhance', 'cleanup', 'reframe']
-  return ['video_ready', 'enhance', 'cleanup', 'reframe']
-}
-
-function buildPrompt(
-  asset: PersonalizationImageEditorAsset,
-  operation: ToolId | 'custom',
-  customPrompt: string,
-  aspect: AspectRatio,
-) {
-  const businessContext = [asset.businessName, asset.industry].filter(Boolean).join(' - ')
-  const context = businessContext ? ' Business context: ' + businessContext + '.' : ''
-  const preserve = isPrecisionSensitive(asset)
-    ? ' Preserve the primary subject, identity, recognizable product or logo, proportions, brand colors, important text, and composition unless the requested edit specifically requires a change.'
-    : ' Preserve the important business subject, branding, and composition unless the requested edit specifically requires a change.'
-
-  if (operation === 'remove_background') {
-    return 'Edit this image by isolating the primary subject and removing the entire background. Return a clean transparent-background asset with natural, precise edges. Preserve hair detail, product geometry, facial identity, logos, colors, text, proportions, and the original subject as closely as possible. Do not add new objects.' + context
-  }
-  if (operation === 'enhance') {
-    return 'Edit this image to improve professional visual quality. Improve lighting, exposure, color balance, clarity, edge detail, and overall polish while keeping the subject, identity, product, logo, text, framing, and business branding unchanged. Do not invent new objects or redesign the image.' + context
-  }
-  if (operation === 'cleanup') {
-    return 'Edit this image to remove minor distracting clutter and visual artifacts while keeping the primary subject and business branding intact. Preserve people, products, logos, signage, text, architecture, and important scene details unless they are clearly incidental background distractions. Keep the result realistic.' + context
-  }
-  if (operation === 'reframe') {
-    const target = aspect === 'original' ? 'the current composition' : 'a ' + aspect + ' composition'
-    return 'Edit and intelligently reframe this image for ' + target + '. Keep the primary subject fully visible and naturally composed. Extend or reconstruct only the surrounding scene when necessary instead of cutting off important people, products, logos, or business details.' + preserve + context
-  }
-  if (operation === 'video_ready') {
-    const transparent = isCutoutAsset(asset)
-    let purpose = 'a polished video asset'
-    if (asset.category === 'logo' || asset.role === 'logo') purpose = 'a clean logo overlay'
-    else if (asset.category === 'person' || asset.role?.includes('identity')) purpose = 'a professional presenter overlay'
-    else if (asset.category === 'product' || asset.role === 'product_reference') purpose = 'a professional product overlay'
-    return 'Edit this image so it is ready to use as ' + purpose + ' in SmartVideo. Improve visual quality and composition, remove unnecessary visual distractions, preserve the actual subject and brand identity, and create clean usable edges.' +
-      (transparent ? ' Isolate the primary subject from the background and return it on a transparent background.' : '') +
-      (aspect !== 'original' ? ' Compose it for ' + aspect + '.' : '') + preserve + context
-  }
-  return 'Edit the supplied image according to this request: ' + customPrompt.trim() + '.' + preserve + context
-}
-
-const toolMeta: Record<ToolId, { label: string; description: string; icon: typeof Sparkles }> = {
-  video_ready: { label: 'Make Video Ready', description: 'Automatically prepare this asset for video use.', icon: Sparkles },
-  remove_background: { label: 'Remove Background', description: 'Create a clean transparent cutout.', icon: Scissors },
-  enhance: { label: 'Clean / Enhance', description: 'Improve lighting, clarity and polish.', icon: Wand2 },
-  reframe: { label: 'Reframe', description: 'Prepare the composition for another format.', icon: Maximize2 },
-  cleanup: { label: 'Clean Up', description: 'Remove minor distractions and artifacts.', icon: SlidersHorizontal },
-}
-
-function PreviewPanel({ label, src }: { label: string; src: string }) {
+function PreviewCard({ label, src }: { label: string; src: string }) {
   return (
-    <div className="overflow-hidden rounded-2xl" style={{ border: '1px solid ' + C.border, background: C.modal }}>
-      <div className="px-3 py-2 text-[9px] font-black uppercase" style={{ borderBottom: '1px solid ' + C.border, color: C.muted }}>
-        {label}
+    <div className="overflow-hidden rounded-xl border border-white/10 bg-black">
+      <div className="border-b border-white/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-white/40">{label}</div>
+      <div className="grid min-h-[320px] place-items-center p-2">
+        <img src={src} alt={label} className="max-h-[58vh] max-w-full object-contain" />
       </div>
-      <div className="grid min-h-[320px] place-items-center p-3" style={{ background: '#101419' }}>
-        <img src={src} alt={label} className="max-h-[62vh] max-w-full object-contain" />
-      </div>
+    </div>
+  )
+}
+
+function VersionStrip({
+  versions,
+  versionIndex,
+  onSelect,
+  compact = false,
+}: {
+  versions: Version[]
+  versionIndex: number
+  onSelect: (index: number) => void
+  compact?: boolean
+}) {
+  return (
+    <div className={(compact ? 'mt-3 ' : '') + 'flex gap-2 overflow-x-auto pb-1'}>
+      {versions.map((version, index) => (
+        <button key={version.id} type="button" onClick={() => onSelect(index)} className="group flex-none overflow-hidden rounded-xl text-left" style={{ width: compact ? 88 : 108, border: '1px solid ' + (index === versionIndex ? 'var(--color-primary)' : 'rgba(255,255,255,.1)'), background: index === versionIndex ? 'rgba(34,211,238,.08)' : 'rgba(255,255,255,.02)' }}>
+          <div className="h-14 overflow-hidden bg-black">
+            <img src={version.dataUrl} alt={version.label} className="h-full w-full object-cover" />
+          </div>
+          <div className="truncate px-2 py-1.5 text-[9px] font-semibold" style={{ color: index === versionIndex ? 'var(--color-primary)' : 'rgba(255,255,255,.55)' }}>{version.label}</div>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function ControlLabel({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="mb-1.5 text-[9px] font-bold uppercase tracking-wide text-white/35">{label}</div>
+      {children}
     </div>
   )
 }
@@ -228,345 +964,24 @@ function Slider({
   value,
   min,
   max,
+  suffix,
   onChange,
 }: {
   label: string
   value: number
   min: number
   max: number
+  suffix: string
   onChange: (value: number) => void
 }) {
   return (
     <label className="block">
-      <div className="mb-1 flex items-center justify-between text-[8px] font-bold uppercase" style={{ color: C.muted }}>
-        <span>{label}</span>
-        <span>{value}%</span>
-      </div>
-      <input type="range" min={min} max={max} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-full accent-cyan-400" />
+      <div className="mb-1 flex justify-between text-[9px] font-semibold text-white/45"><span>{label}</span><span>{value}{suffix}</span></div>
+      <input type="range" min={min} max={max} value={value} onChange={(event) => onChange(Number(event.target.value))} className="w-full accent-cyan-400" />
     </label>
   )
 }
 
-export default function ImageEditorModal({ open, asset, onClose, onApply }: Props) {
-  const [modelMode, setModelMode] = useState<ModelMode>('auto')
-  const [aspectRatio, setAspectRatio] = useState<AspectRatio>('original')
-  const [currentDataUrl, setCurrentDataUrl] = useState<string | null>(null)
-  const [versions, setVersions] = useState<Version[]>([])
-  const [customPrompt, setCustomPrompt] = useState('')
-  const [busyLabel, setBusyLabel] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [showMoreTools, setShowMoreTools] = useState(false)
-  const [showAdvanced, setShowAdvanced] = useState(false)
-  const [compare, setCompare] = useState(false)
-
-  const [rotation, setRotation] = useState(0)
-  const [flipX, setFlipX] = useState(false)
-  const [flipY, setFlipY] = useState(false)
-  const [brightness, setBrightness] = useState(100)
-  const [contrast, setContrast] = useState(100)
-  const [saturation, setSaturation] = useState(100)
-  const [opacity, setOpacity] = useState(100)
-  const [zoom, setZoom] = useState(100)
-
-  useEffect(() => {
-    if (!open || !asset) return
-    setModelMode('auto')
-    setAspectRatio('original')
-    setCurrentDataUrl(null)
-    setVersions([{ id: 'original', label: 'Original', dataUrl: null, operation: 'original', prompt: '', model: 'local', transparent: false, videoReady: false }])
-    setCustomPrompt('')
-    setBusyLabel(null)
-    setSaving(false)
-    setError(null)
-    setShowMoreTools(false)
-    setShowAdvanced(false)
-    setCompare(false)
-    setRotation(0)
-    setFlipX(false)
-    setFlipY(false)
-    setBrightness(100)
-    setContrast(100)
-    setSaturation(100)
-    setOpacity(100)
-    setZoom(100)
-  }, [open, asset?.id])
-
-  const recommended = useMemo(() => recommendedActions(asset), [asset])
-  const displayUrl = currentDataUrl || asset?.imageUrl || ''
-  const currentVersion = versions.find((v) => v.dataUrl === currentDataUrl) || versions[0]
-  const hasChanges = Boolean(currentDataUrl)
-
-  const resolvedModel = useMemo<'gpt-image-2.5-flare' | 'gpt-image-2.5-sunburst'>(() => {
-    if (modelMode === 'fast') return 'gpt-image-2.5-flare'
-    if (modelMode === 'precision') return 'gpt-image-2.5-sunburst'
-    return isPrecisionSensitive(asset) ? 'gpt-image-2.5-sunburst' : 'gpt-image-2.5-flare'
-  }, [modelMode, asset])
-
-  const prepareSourceDataUrl = useCallback(async () => {
-    if (currentDataUrl) return currentDataUrl
-    if (!asset?.imageUrl) throw new Error('No image is available to edit')
-    if (asset.imageUrl.startsWith('data:')) return asset.imageUrl
-    if (asset.imageUrl.startsWith('blob:')) {
-      const response = await fetch(asset.imageUrl)
-      if (!response.ok) throw new Error('Unable to read local image')
-      return blobToDataUrl(await response.blob())
-    }
-    const response = await fetch('/api/personalization/download-image', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify({ urls: [asset.imageUrl] }),
-    })
-    const payload = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(payload?.error || 'Unable to prepare image for editing')
-    const result = payload?.results?.[0]
-    if (!result?.ok || !result?.dataUrl) throw new Error(result?.error || 'Unable to download image')
-    return result.dataUrl as string
-  }, [asset?.imageUrl, currentDataUrl])
-
-  const pushVersion = useCallback((version: Omit<Version, 'id'>) => {
-    const next: Version = { ...version, id: 'version_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) }
-    setVersions((prev) => [...prev, next])
-    setCurrentDataUrl(next.dataUrl)
-  }, [])
-
-  const runAiEdit = useCallback(async (operation: ToolId | 'custom', custom = '') => {
-    if (!asset || (operation === 'custom' && !custom.trim())) return
-    setBusyLabel(operation === 'custom' ? 'Applying AI edit' : toolMeta[operation].label)
-    setError(null)
-    try {
-      const sourceDataUrl = await prepareSourceDataUrl()
-      const blob = dataUrlToBlob(sourceDataUrl)
-      const prompt = buildPrompt(asset, operation, custom, aspectRatio)
-      const transparent = operation === 'remove_background' || (operation === 'video_ready' && isCutoutAsset(asset))
-      const quality = resolvedModel === 'gpt-image-2.5-sunburst' ? 'high' : 'medium'
-      const size = aspectRatio === 'original' ? 'auto' : aspectSizes[aspectRatio]
-      const results = await editImage({
-        prompt,
-        image: blob,
-        model: resolvedModel,
-        n: 1,
-        quality,
-        size,
-        output_format: 'png',
-        background: transparent ? 'transparent' : 'auto',
-        input_fidelity: isPrecisionSensitive(asset) ? 'high' : 'low',
-      })
-      const first = results?.[0]
-      let nextDataUrl = first?.b64_json ? 'data:image/png;base64,' + first.b64_json : ''
-      if (!nextDataUrl && first?.url) {
-        const response = await fetch('/api/personalization/download-image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin',
-          body: JSON.stringify({ urls: [first.url] }),
-        })
-        const payload = await response.json().catch(() => ({}))
-        nextDataUrl = payload?.results?.[0]?.dataUrl || ''
-      }
-      if (!nextDataUrl) throw new Error('The image edit completed without an image result')
-      pushVersion({
-        label: operation === 'custom' ? 'AI Edit' : toolMeta[operation].label,
-        dataUrl: nextDataUrl,
-        operation,
-        prompt,
-        model: resolvedModel,
-        transparent,
-        videoReady: operation === 'video_ready',
-      })
-      if (operation === 'custom') setCustomPrompt('')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Image edit failed')
-    } finally {
-      setBusyLabel(null)
-    }
-  }, [asset, aspectRatio, prepareSourceDataUrl, pushVersion, resolvedModel])
-
-  const applyLocalAdjustments = useCallback(async () => {
-    if (!asset) return
-    setBusyLabel('Applying local edits')
-    setError(null)
-    try {
-      const sourceDataUrl = await prepareSourceDataUrl()
-      const img = await loadImage(sourceDataUrl)
-      let canvasWidth = img.naturalWidth
-      let canvasHeight = img.naturalHeight
-      if (aspectRatio !== 'original') [canvasWidth, canvasHeight] = aspectCanvas[aspectRatio]
-      const maxEdge = 2048
-      const edgeScale = Math.min(1, maxEdge / Math.max(canvasWidth, canvasHeight))
-      canvasWidth = Math.max(1, Math.round(canvasWidth * edgeScale))
-      canvasHeight = Math.max(1, Math.round(canvasHeight * edgeScale))
-      const canvas = document.createElement('canvas')
-      canvas.width = canvasWidth
-      canvas.height = canvasHeight
-      const ctx = canvas.getContext('2d')
-      if (!ctx) throw new Error('Browser canvas is unavailable')
-      ctx.clearRect(0, 0, canvasWidth, canvasHeight)
-      ctx.save()
-      ctx.translate(canvasWidth / 2, canvasHeight / 2)
-      ctx.rotate((rotation * Math.PI) / 180)
-      ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1)
-      ctx.globalAlpha = opacity / 100
-      ctx.filter = 'brightness(' + brightness + '%) contrast(' + contrast + '%) saturate(' + saturation + '%)'
-      const contain = Math.min(canvasWidth / img.naturalWidth, canvasHeight / img.naturalHeight)
-      const scale = contain * (zoom / 100)
-      const drawWidth = img.naturalWidth * scale
-      const drawHeight = img.naturalHeight * scale
-      ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight)
-      ctx.restore()
-      pushVersion({
-        label: 'Local Adjustments',
-        dataUrl: canvas.toDataURL('image/png'),
-        operation: 'local_adjustments',
-        prompt: '',
-        model: 'local',
-        transparent: currentVersion?.transparent || false,
-        videoReady: currentVersion?.videoReady || false,
-      })
-      setRotation(0); setFlipX(false); setFlipY(false); setBrightness(100); setContrast(100); setSaturation(100); setOpacity(100); setZoom(100)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Local edit failed')
-    } finally {
-      setBusyLabel(null)
-    }
-  }, [asset, aspectRatio, brightness, contrast, currentVersion?.transparent, currentVersion?.videoReady, flipX, flipY, opacity, prepareSourceDataUrl, pushVersion, rotation, saturation, zoom])
-
-  const handleApply = useCallback(async () => {
-    if (!asset) return
-    if (!currentDataUrl) { onClose(); return }
-    setSaving(true)
-    setError(null)
-    try {
-      await onApply({
-        dataUrl: currentDataUrl,
-        originalUrl: asset.imageUrl,
-        operation: currentVersion?.operation || 'edit',
-        prompt: currentVersion?.prompt || '',
-        model: currentVersion?.model || 'local',
-        quality: currentVersion?.model === 'gpt-image-2.5-sunburst' ? 'high' : currentVersion?.model === 'local' ? 'local' : 'medium',
-        transparent: currentVersion?.transparent || false,
-        videoReady: currentVersion?.videoReady || false,
-      })
-      onClose()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to save edited asset')
-    } finally {
-      setSaving(false)
-    }
-  }, [asset, currentDataUrl, currentVersion, onApply, onClose])
-
-  if (!open || !asset) return null
-  const categoryLabel = (asset.category && asset.category !== 'irrelevant' ? asset.category.replace(/_/g, ' ') : null) || getRoleLabel(asset.role) || 'Image Asset'
-  const allTools = (Object.keys(toolMeta) as ToolId[]).filter((id) => !recommended.includes(id))
-
-  return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-2 md:p-5" style={{ background: 'rgba(0,0,0,.82)', backdropFilter: 'blur(10px)' }} role="dialog" aria-modal="true" aria-label="SmartVideo Image Editor">
-      <div className="flex h-[96vh] w-full max-w-[1500px] flex-col overflow-hidden" style={{ background: C.modal, border: '1px solid ' + C.borderStrong, borderRadius: 22, boxShadow: '0 28px 90px rgba(0,0,0,.55)', color: C.text }}>
-        <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-5" style={{ borderBottom: '1px solid ' + C.border }}>
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="grid h-9 w-9 flex-none place-items-center rounded-xl" style={{ background: C.cyanSoft, color: C.cyan }}><Sparkles size={18} /></div>
-            <div className="min-w-0">
-              <div className="text-[12px] font-black uppercase tracking-[.12em]">SmartVideo Image Editor</div>
-              <div className="truncate text-[10px] capitalize" style={{ color: C.muted }}>{categoryLabel} · {asset.name || 'Business asset'}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {hasChanges && <button type="button" onClick={() => setCompare((v) => !v)} className="rounded-lg px-3 py-2 text-[10px] font-extrabold uppercase" style={{ border: '1px solid ' + (compare ? C.cyanBorder : C.border), color: compare ? C.cyan : C.text }}>{compare ? 'Editing View' : 'Compare'}</button>}
-            <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg" style={{ border: '1px solid ' + C.border, color: C.muted }} aria-label="Close image editor"><X size={16} /></button>
-          </div>
-        </header>
-
-        <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[250px_minmax(0,1fr)_290px]">
-          <aside className="hidden overflow-y-auto p-4 lg:block" style={{ borderRight: '1px solid ' + C.border }}>
-            <div className="mb-2 text-[9px] font-black uppercase tracking-[.14em]" style={{ color: C.muted }}>Smart Actions</div>
-            <div className="space-y-2">
-              {recommended.map((id) => {
-                const meta = toolMeta[id]; const Icon = meta.icon
-                return <button key={id} type="button" disabled={Boolean(busyLabel)} onClick={() => runAiEdit(id)} className="w-full rounded-xl p-3 text-left disabled:opacity-50" style={{ border: '1px solid ' + (id === 'video_ready' ? C.cyanBorder : C.border), background: id === 'video_ready' ? C.cyanSoft : C.panelSoft }}>
-                  <div className="mb-1 flex items-center gap-2"><Icon size={14} style={{ color: C.cyan }} /><span className="text-[10px] font-extrabold uppercase">{meta.label}</span></div>
-                  <div className="text-[9px] leading-4" style={{ color: C.muted }}>{meta.description}</div>
-                </button>
-              })}
-            </div>
-            {allTools.length > 0 && <div className="mt-3">
-              <button type="button" onClick={() => setShowMoreTools((v) => !v)} className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-[10px] font-extrabold uppercase" style={{ color: C.muted }}>More AI Tools <ChevronDown size={13} className={showMoreTools ? 'rotate-180' : ''} /></button>
-              {showMoreTools && <div className="mt-1 space-y-1">{allTools.map((id) => <button key={id} type="button" disabled={Boolean(busyLabel)} onClick={() => runAiEdit(id)} className="w-full rounded-lg px-3 py-2 text-left text-[10px] disabled:opacity-50" style={{ border: '1px solid ' + C.border, color: C.text }}>{toolMeta[id].label}</button>)}</div>}
-            </div>}
-          </aside>
-
-          <main className="flex min-h-0 flex-col overflow-hidden" style={{ background: C.bg }}>
-            <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-3 md:p-5">
-              {compare ? <div className="grid w-full max-w-[1100px] grid-cols-1 gap-3 md:grid-cols-2"><PreviewPanel label="Original" src={asset.imageUrl} /><PreviewPanel label="Edited" src={displayUrl} /></div> :
-                <div className="relative flex h-full min-h-[330px] w-full max-w-[1050px] items-center justify-center overflow-hidden rounded-2xl" style={{ border: '1px solid ' + C.border, background: '#101419' }}>
-                  <img src={displayUrl} alt={asset.name || 'Image being edited'} className="max-h-full max-w-full object-contain transition-all" style={{ transform: 'scale(' + (zoom / 100) + ') rotate(' + rotation + 'deg) scaleX(' + (flipX ? -1 : 1) + ') scaleY(' + (flipY ? -1 : 1) + ')', filter: 'brightness(' + brightness + '%) contrast(' + contrast + '%) saturate(' + saturation + '%)', opacity: opacity / 100 }} />
-                  {busyLabel && <div className="absolute inset-0 grid place-items-center bg-black/65"><div className="rounded-2xl px-6 py-5 text-center" style={{ background: C.modal, border: '1px solid ' + C.cyanBorder }}><Loader2 size={24} className="mx-auto mb-3 animate-spin" style={{ color: C.cyan }} /><div className="text-[11px] font-extrabold uppercase">{busyLabel}</div><div className="mt-1 text-[9px]" style={{ color: C.muted }}>SmartVideo is preparing your asset.</div></div></div>}
-                </div>}
-            </div>
-            <div className="px-3 pb-3 md:px-5 md:pb-4">
-              <div className="mb-2 flex gap-2 overflow-x-auto pb-1 lg:hidden">
-                {recommended.slice(0, 4).map((id) => { const Icon = toolMeta[id].icon; return <button key={id} type="button" disabled={Boolean(busyLabel)} onClick={() => runAiEdit(id)} className="flex-none rounded-lg px-3 py-2 text-[9px] font-extrabold uppercase disabled:opacity-50" style={{ border: '1px solid ' + (id === 'video_ready' ? C.cyanBorder : C.border), background: id === 'video_ready' ? C.cyanSoft : C.panel }}><Icon size={11} className="mr-1 inline" style={{ color: C.cyan }} />{toolMeta[id].label}</button> })}
-              </div>
-              <div className="flex items-center gap-2 overflow-x-auto rounded-xl p-2" style={{ border: '1px solid ' + C.border, background: C.panelSoft }}>
-                {versions.map((version) => { const active = version.dataUrl === currentDataUrl; return <button key={version.id} type="button" onClick={() => setCurrentDataUrl(version.dataUrl)} className="flex-none rounded-lg px-3 py-2 text-[9px] font-bold" style={{ border: '1px solid ' + (active ? C.cyanBorder : C.border), background: active ? C.cyanSoft : C.field, color: active ? C.cyan : C.text }}>{version.label}</button> })}
-              </div>
-            </div>
-          </main>
-
-          <aside className="min-h-0 overflow-y-auto p-4" style={{ borderLeft: '1px solid ' + C.border }}>
-            <div className="mb-4">
-              <div className="mb-2 text-[9px] font-black uppercase tracking-[.14em]" style={{ color: C.muted }}>AI Mode</div>
-              <div className="grid grid-cols-3 gap-1 rounded-xl p-1" style={{ background: C.field, border: '1px solid ' + C.border }}>
-                {(['auto', 'fast', 'precision'] as ModelMode[]).map((mode) => <button key={mode} type="button" onClick={() => setModelMode(mode)} className="rounded-lg px-2 py-2 text-[9px] font-extrabold uppercase" style={{ background: modelMode === mode ? C.cyanSoft : 'transparent', color: modelMode === mode ? C.cyan : C.muted }}>{mode}</button>)}
-              </div>
-              <div className="mt-1 text-[8px]" style={{ color: C.muted2 }}>{resolvedModel === 'gpt-image-2.5-sunburst' ? 'Precision editing' : 'Fast high-quality editing'}</div>
-            </div>
-
-            <div className="mb-4">
-              <div className="mb-2 text-[9px] font-black uppercase tracking-[.14em]" style={{ color: C.muted }}>Video Format</div>
-              <div className="grid grid-cols-5 gap-1">{(['original', '9:16', '16:9', '1:1', '4:5'] as AspectRatio[]).map((ratio) => <button key={ratio} type="button" onClick={() => setAspectRatio(ratio)} className="rounded-lg px-1 py-2 text-[8px] font-bold" style={{ border: '1px solid ' + (aspectRatio === ratio ? C.cyanBorder : C.border), color: aspectRatio === ratio ? C.cyan : C.muted, background: aspectRatio === ratio ? C.cyanSoft : C.field }}>{ratio === 'original' ? 'Orig' : ratio}</button>)}</div>
-            </div>
-
-            <div className="mb-4">
-              <div className="mb-2 flex items-center gap-2 text-[9px] font-black uppercase tracking-[.14em]" style={{ color: C.muted }}><MessageSquare size={12} /> Ask AI to Edit</div>
-              <textarea value={customPrompt} onChange={(e) => setCustomPrompt(e.target.value)} rows={4} placeholder="Example: Remove the truck behind the contractor but keep the person exactly the same." className="w-full resize-none rounded-xl p-3 text-[11px] outline-none" style={{ background: C.field, border: '1px solid ' + C.border, color: C.text }} />
-              <button type="button" disabled={!customPrompt.trim() || Boolean(busyLabel)} onClick={() => runAiEdit('custom', customPrompt)} className="mt-2 w-full rounded-xl py-2.5 text-[10px] font-black uppercase disabled:opacity-50" style={{ background: C.cyan, color: '#041014' }}><Sparkles size={12} className="mr-1 inline" /> Edit Image</button>
-            </div>
-
-            <button type="button" onClick={() => setShowAdvanced((v) => !v)} className="flex w-full items-center justify-between rounded-xl px-3 py-3 text-[10px] font-extrabold uppercase" style={{ border: '1px solid ' + C.border, background: C.panelSoft }}>Advanced Local Editor <ChevronDown size={13} className={showAdvanced ? 'rotate-180' : ''} /></button>
-
-            {showAdvanced && <div className="mt-3 space-y-3 rounded-xl p-3" style={{ border: '1px solid ' + C.border, background: C.field }}>
-              <div className="grid grid-cols-3 gap-1">
-                <button type="button" onClick={() => setRotation((v) => (v + 90) % 360)} className="rounded-lg py-2" style={{ border: '1px solid ' + C.border }} title="Rotate"><RotateCw size={13} className="mx-auto" /></button>
-                <button type="button" onClick={() => setFlipX((v) => !v)} className="rounded-lg py-2" style={{ border: '1px solid ' + (flipX ? C.cyanBorder : C.border) }} title="Flip horizontal"><FlipHorizontal size={13} className="mx-auto" /></button>
-                <button type="button" onClick={() => setFlipY((v) => !v)} className="rounded-lg py-2" style={{ border: '1px solid ' + (flipY ? C.cyanBorder : C.border) }} title="Flip vertical"><FlipVertical size={13} className="mx-auto" /></button>
-              </div>
-              <Slider label="Zoom" value={zoom} min={50} max={180} onChange={setZoom} />
-              <Slider label="Brightness" value={brightness} min={50} max={150} onChange={setBrightness} />
-              <Slider label="Contrast" value={contrast} min={50} max={150} onChange={setContrast} />
-              <Slider label="Saturation" value={saturation} min={0} max={180} onChange={setSaturation} />
-              <Slider label="Opacity" value={opacity} min={10} max={100} onChange={setOpacity} />
-              <button type="button" disabled={Boolean(busyLabel)} onClick={applyLocalAdjustments} className="w-full rounded-lg py-2 text-[9px] font-extrabold uppercase disabled:opacity-50" style={{ border: '1px solid ' + C.cyanBorder, color: C.cyan, background: C.cyanSoft }}>Apply Local Adjustments</button>
-            </div>}
-
-            {error && <div className="mt-3 rounded-xl p-3 text-[10px] leading-4" style={{ border: '1px solid rgba(239,91,103,.35)', background: 'rgba(239,91,103,.08)', color: '#ff9ba3' }}>{error}</div>}
-
-            <div className="mt-4 rounded-xl p-3" style={{ border: '1px solid ' + C.border, background: C.panelSoft }}>
-              <div className="mb-1 flex items-center gap-2 text-[9px] font-black uppercase" style={{ color: C.green }}><Check size={12} /> Asset Protection</div>
-              <div className="text-[9px] leading-4" style={{ color: C.muted }}>SmartVideo prompts the AI to preserve identity, products, logos, important text, proportions and brand treatment unless your requested edit requires a change.</div>
-            </div>
-          </aside>
-        </div>
-
-        <footer className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-5" style={{ borderTop: '1px solid ' + C.border }}>
-          <div className="text-[9px]" style={{ color: C.muted }}>{hasChanges ? String(versions.length - 1) + ' edit version' + (versions.length - 1 === 1 ? '' : 's') + ' · Original always preserved' : 'Original asset is unchanged'}</div>
-          <div className="flex items-center gap-2">
-            {hasChanges && <button type="button" onClick={() => setCurrentDataUrl(null)} className="rounded-lg px-3 py-2 text-[10px] font-extrabold uppercase" style={{ border: '1px solid ' + C.border, color: C.muted }}>Restore Original</button>}
-            <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-[10px] font-extrabold uppercase" style={{ border: '1px solid ' + C.border, color: C.text }}>Cancel</button>
-            <button type="button" onClick={handleApply} disabled={saving || Boolean(busyLabel)} className="rounded-lg px-5 py-2 text-[10px] font-black uppercase disabled:opacity-50" style={{ background: C.cyan, color: '#041014' }}>{saving ? <Loader2 size={12} className="mr-1 inline animate-spin" /> : <Check size={12} className="mr-1 inline" />}{hasChanges ? 'Use Edited Asset' : 'Use This Asset'}</button>
-          </div>
-        </footer>
-      </div>
-    </div>
-  )
+function ErrorBox({ message }: { message: string }) {
+  return <div className="rounded-xl border border-red-400/20 bg-red-400/[0.06] p-3 text-xs leading-5 text-red-300">{message}</div>
 }
