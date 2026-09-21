@@ -8,8 +8,33 @@
  */
 
 import { callOpenAIChat } from '@/shared/api/openai'
-import type { ClientProfile, AssetLibrary } from './types'
+import type { ClientProfile, AssetLibrary, PersonalizationAsset } from './types'
 
+function buildVisionAssetIntelligence(assets: AssetLibrary): string {
+  const all: Array<{ label: string; asset: PersonalizationAsset }> = []
+  if (assets.primaryIdentity) all.push({ label: 'Presenter', asset: assets.primaryIdentity })
+  if (assets.primaryLogo) all.push({ label: 'Logo', asset: assets.primaryLogo })
+  assets.products.slice(0, 4).forEach((asset, index) => all.push({ label: 'Product/Service ' + (index + 1), asset }))
+  assets.brandReferences.slice(0, 4).forEach((asset, index) => all.push({ label: 'Brand Reference ' + (index + 1), asset }))
+  if (assets.firstFrame) all.push({ label: 'First Frame', asset: assets.firstFrame })
+  if (assets.lastFrame) all.push({ label: 'Last Frame', asset: assets.lastFrame })
+  if (assets.ctaGraphic) all.push({ label: 'CTA Graphic', asset: assets.ctaGraphic })
+
+  return all
+    .filter(({ asset }) => Boolean(asset.visionAnalysis || asset.videoReady))
+    .map(({ label, asset }) => {
+      const vision = asset.visionAnalysis
+      const parts = [
+        label + ': ' + (vision?.summary || asset.name),
+        vision?.targetRole ? 'target role: ' + vision.targetRole : '',
+        asset.sourceCategory ? 'asset type: ' + asset.sourceCategory.replace(/_/g, ' ') : '',
+        vision?.preserve?.length ? 'protect: ' + vision.preserve.slice(0, 8).join(', ') : '',
+        asset.videoReady ? 'status: video ready' : '',
+      ].filter(Boolean)
+      return '- ' + parts.join('; ')
+    })
+    .join('\n')
+}
 export interface PersonalizePromptInput {
   originalPrompt: string
   client: ClientProfile
@@ -27,8 +52,9 @@ export async function personalizePrompt({
   const logo = assets.primaryLogo?.name || ''
   const products = assets.products.map((p) => p.name).join(', ')
   const brandRefs = assets.brandReferences.map((b) => b.name).join(', ')
+  const visionAssetIntelligence = buildVisionAssetIntelligence(assets)
 
-  const systemPrompt = `You are a professional video/image prompt personalization engine for SmartVideo.
+  const systemPrompt = `You are a professional video/image prompt personalization engine for SmartVideo GO.
 Your job is to PERSONALIZE an existing creative prompt for a specific client while preserving EVERY creative detail.
 
 RULES:
@@ -36,7 +62,9 @@ RULES:
 2. ONLY REPLACE generic/placeholder details with the client's actual information.
 3. Do NOT invent missing facts. If a field is empty, skip it or keep the original generic reference.
 4. Return ONLY the complete personalized prompt — no commentary, no quotes, no markdown.
-5. The output must be a fully-formed generation prompt ready to send to an AI model.`
+5. The output must be a fully-formed generation prompt ready to send to an AI model.
+6. When SmartVideo GO Vision asset intelligence is provided, use it to describe the real available assets accurately and honor its protection cues. Do not invent visual facts that Vision did not identify.
+7. If an asset is marked video ready, prefer using that prepared asset as the intended visual reference rather than asking the generation model to redesign it.`
 
   const userPrompt = `ORIGINAL PROMPT:
 ${originalPrompt}
@@ -59,6 +87,7 @@ ${identity ? `Presenter Identity: ${identity}` : ''}
 ${logo ? `Logo: ${logo}` : ''}
 ${products ? `Products/Services: ${products}` : ''}
 ${brandRefs ? `Brand References: ${brandRefs}` : ''}
+${visionAssetIntelligence ? `\nSMARTVIDEO GO VISION ASSET INTELLIGENCE:\n${visionAssetIntelligence}` : ''}
 
 OUTPUT TYPE: ${outputType}
 
