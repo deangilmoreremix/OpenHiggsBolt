@@ -99,37 +99,43 @@ export function buildHandlers(deps: {
       try {
         const sb = getSupabaseAdmin();
         const enc = encryptMuapiKey(key);
-        // OpenAI key is optional; only encrypt + persist when provided.
-        const openaiEnc = openaiKey ? encryptMuapiKey(openaiKey) : null;
         const nowIso = new Date().toISOString();
 
-        // Update the existing row when present; otherwise create a minimal row.
-        // Using update-then-insert avoids clobbering the row id (which is
-        // referenced by workspace_members) via an onConflict upsert.
+        // Build PATCH-like payload: only include fields that are actually being
+        // changed. Omitting `openai_key` here preserves an existing OpenAI key
+        // instead of overwriting it with null.
+        const updatePayload: Record<string, unknown> = {
+          muapi_key: enc,
+          updated_at: nowIso,
+          key_updated_at: nowIso,
+        };
+        if (openaiKey) {
+          updatePayload.openai_key = encryptMuapiKey(openaiKey);
+          updatePayload.openai_key_updated_at = nowIso;
+        }
+
         const { data: updated, error: updErr } = await sb
           .from('app_users')
-          .update({
-            muapi_key: enc,
-            openai_key: openaiEnc,
-            updated_at: nowIso,
-            key_updated_at: nowIso,
-            openai_key_updated_at: openaiKey ? nowIso : null,
-          })
+          .update(updatePayload)
           .eq('clerk_user_id', userId)
           .select('clerk_user_id');
         if (updErr) throw updErr;
 
         if (!updated || updated.length === 0) {
+          const insertPayload: Record<string, unknown> = {
+            id: userId,
+            clerk_user_id: userId,
+            muapi_key: enc,
+            key_updated_at: nowIso,
+            updated_at: nowIso,
+          };
+          if (openaiKey) {
+            insertPayload.openai_key = encryptMuapiKey(openaiKey);
+            insertPayload.openai_key_updated_at = nowIso;
+          }
           const { error: insErr } = await sb
             .from('app_users')
-            .insert({
-              id: userId,
-              clerk_user_id: userId,
-              muapi_key: enc,
-              openai_key: openaiEnc,
-              key_updated_at: nowIso,
-              openai_key_updated_at: openaiKey ? nowIso : null,
-            });
+            .insert(insertPayload);
           if (insErr) throw insErr;
         }
 

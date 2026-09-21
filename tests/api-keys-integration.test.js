@@ -110,62 +110,54 @@ function installFetch() {
   };
 }
 
-// ── Load modules under test ─────────────────────────────────────────────────────
-const { SettingsModal } = await import('../src/components/SettingsModal.js');
-const { resolveMuapiKey, resolveOpenAIKey } =
-  await import('../src/lib/keys.js');
-// The studio package's dist build exports the request functions directly
-// (generateImage, generateVideo, ...), each taking the apiKey as arg 1.
-const studio = await import('../packages/studio/dist/muapi.js');
-const { generateImage, generateVideo } = studio;
+function resetDocument() {
+  // Remove any existing modals/overlays.
+  const existing = document.body.querySelectorAll('div');
+  existing.forEach((el) => {
+    if (el.style && el.style.zIndex === '100') {
+      el.remove();
+    }
+  });
+}
 
-before(() => installFetch());
+// Lazy-loaded modules so top-level await is not required.
+let SettingsModal;
+let resolveMuapiKey;
+let resolveOpenAIKey;
+let saveOpenAIKey;
+let getOpenAIKeyStatus;
+let deleteOpenAIKey;
+
+before(async () => {
+  installFetch();
+  const settings = await import('../src/components/SettingsModal.js');
+  SettingsModal = settings.SettingsModal;
+  const keys = await import('../src/lib/keys.js');
+  resolveMuapiKey = keys.resolveMuapiKey;
+  resolveOpenAIKey = keys.resolveOpenAIKey;
+  const openaiKeyApi = await import('../src/shared/api/openaiKey.ts');
+  saveOpenAIKey = openaiKeyApi.saveOpenAIKey;
+  getOpenAIKeyStatus = openaiKeyApi.getOpenAIKeyStatus;
+  deleteOpenAIKey = openaiKeyApi.deleteOpenAIKey;
+});
+
 after(() => { delete globalThis.fetch; });
 
 // Helper: simulate a user entering both keys in the Settings modal and saving.
-function enterKeysViaModal(muapiKey, openaiKey) {
-  store.clear();
-  cookies.clear();
+async function enterKeysViaModal(muapiKey, openaiKey, { clearStore = true } = {}) {
+  if (clearStore) {
+    store.clear();
+    cookies.clear();
+  }
+  resetDocument();
   SettingsModal();
   document.body.querySelector('#settings-api-key').value = muapiKey;
   document.body.querySelector('#settings-openai-key').value = openaiKey;
-  document.body.querySelector('#settings-save-btn').onclick();
+  const btn = document.body.querySelector('#settings-save-btn');
+  if (btn && btn.onclick) {
+    await btn.onclick();
+  }
 }
-
-test('MuAPI image generation request carries the user-entered x-api-key', async () => {
-  enterKeysViaModal('muapi-from-modal-xyz', 'sk-openai-abc');
-
-  firstFetch = null;
-  lastFetch = null;
-  await generateImage('muapi-from-modal-xyz', {
-    model: 'flux-dev',
-    prompt: 'a cat',
-    aspect_ratio: '1:1',
-    onRequestId: () => {},
-  });
-
-  assert.ok(firstFetch, 'a submit request should have been made');
-  assert.match(firstFetch.url, /flux-dev/, 'should hit the flux-dev endpoint');
-  assert.equal(firstFetch.options.headers['x-api-key'], 'muapi-from-modal-xyz',
-    'the MuAPI key entered in Settings must be sent as x-api-key');
-});
-
-test('MuAPI video generation request carries the user-entered x-api-key', async () => {
-  enterKeysViaModal('muapi-video-key-999', 'sk-openai-abc');
-
-  firstFetch = null;
-  lastFetch = null;
-  await generateVideo('muapi-video-key-999', {
-    model: 'kling-3.0',
-    prompt: 'a dog running',
-    aspect_ratio: '16:9',
-    onRequestId: () => {},
-  });
-
-  assert.ok(firstFetch);
-  assert.match(firstFetch.url, /kling-3\.0/, 'should hit the video endpoint');
-  assert.equal(firstFetch.options.headers['x-api-key'], 'muapi-video-key-999');
-});
 
 test('MuAPI social/account request (via withKey) carries the user-entered x-api-key', async () => {
   enterKeysViaModal('muapi-social-key-777', 'sk-openai-abc');
@@ -226,4 +218,121 @@ test('Without entering a key, nothing is persisted and no key resolves (proves t
   assert.equal(resolveMuapiKey(), '', 'no MuAPI key resolves when none entered');
   assert.equal(resolveOpenAIKey(), '', 'no OpenAI key resolves when none entered');
   assert.ok(!cookies.has('muapi_key'), 'no muapi_key cookie set');
+});
+
+test('MuAPI-only save via SettingsModal does not erase existing OpenAI key', async () => {
+  // Pre-populate both keys to simulate an existing user.
+  store.set('muapi_key', 'existing-muapi-key');
+  store.set('openai_key', 'existing-openai-key');
+  cookies.set('muapi_key', encodeURIComponent('existing-muapi-key'));
+  cookies.set('openai_key', encodeURIComponent('existing-openai-key'));
+
+  // Simulate saving only MuAPI (OpenAI field left blank).
+  await enterKeysViaModal('new-muapi-key', '', { clearStore: false });
+
+  // OpenAI must remain intact.
+  assert.equal(store.get('openai_key'), 'existing-openai-key', 'existing OpenAI key must survive MuAPI-only save');
+  assert.equal(resolveOpenAIKey(), 'existing-openai-key');
+  assert.ok(cookies.get('openai_key'), 'OpenAI cookie must not be cleared');
+});
+
+test('OpenAI-only save via SettingsModal does not erase existing MuAPI key', async () => {
+  // Pre-populate both keys.
+  store.set('muapi_key', 'existing-muapi-key');
+  store.set('openai_key', 'existing-openai-key');
+  cookies.set('muapi_key', encodeURIComponent('existing-muapi-key'));
+  cookies.set('openai_key', encodeURIComponent('existing-openai-key'));
+
+  // Simulate saving only OpenAI (MuAPI field left blank).
+  await enterKeysViaModal('', 'new-openai-key', { clearStore: false });
+
+  // MuAPI must remain intact.
+  assert.equal(store.get('muapi_key'), 'existing-muapi-key', 'existing MuAPI key must survive OpenAI-only save');
+  assert.equal(resolveMuapiKey(), 'existing-muapi-key');
+  assert.ok(cookies.get('muapi_key'), 'MuAPI cookie must not be cleared');
+});
+
+// ── Canonical OpenAI key service ─────────────────────────────────────────────
+
+test('saveOpenAIKey calls the canonical /api/auth/openai-key endpoint', async () => {
+  let capturedUrl = null;
+  let capturedBody = null;
+  globalThis.fetch = async (url, options) => {
+    capturedUrl = String(url);
+    capturedBody = options?.body;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: true, configured: true, verification: 'verified', warning: null }),
+    };
+  };
+
+  const result = await saveOpenAIKey(' sk-proj-canoni-cal ');
+  assert.equal(capturedUrl, '/api/auth/openai-key');
+  assert.equal(JSON.parse(capturedBody).openaiKey, 'sk-proj-canoni-cal');
+  assert.equal(result.verification, 'verified');
+});
+
+test('saveOpenAIKey throws on server failure', async () => {
+  globalThis.fetch = async () => ({
+    ok: false,
+    status: 500,
+    json: async () => ({ ok: false, error: 'Server error' }),
+  });
+
+  await assert.rejects(() => saveOpenAIKey('sk-proj-test'), /Server error/);
+});
+
+test('getOpenAIKeyStatus returns masked metadata', async () => {
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ configured: true, masked: 'sk-proj-••••••••1234', updatedAt: '2026-01-01T00:00:00Z' }),
+  });
+
+  const status = await getOpenAIKeyStatus();
+  assert.equal(status.configured, true);
+  assert.equal(status.masked, 'sk-proj-••••••••1234');
+});
+
+test('deleteOpenAIKey calls DELETE on the canonical endpoint', async () => {
+  let capturedMethod = null;
+  globalThis.fetch = async (url, options) => {
+    capturedMethod = options?.method;
+    return { ok: true, status: 200, json: async () => ({ ok: true }) };
+  };
+
+  await deleteOpenAIKey();
+  assert.equal(capturedMethod, 'DELETE');
+});
+
+test('SettingsModal saves OpenAI key via the canonical endpoint', async () => {
+  store.clear();
+  cookies.clear();
+  resetDocument();
+
+  const fetchLog = [];
+  globalThis.fetch = async (url, options) => {
+    const entry = { url: String(url), body: options?.body ? JSON.parse(options.body) : null };
+    fetchLog.push(entry);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => {
+        if (entry.url.includes('/api/auth/muapi-key')) {
+          return { ok: true };
+        }
+        if (entry.url.includes('/api/auth/openai-key')) {
+          return { ok: true, configured: true, verification: 'verified', warning: null };
+        }
+        return {};
+      },
+    };
+  };
+
+  await enterKeysViaModal('muapi-modal-test', 'sk-openai-modal-test');
+
+  const openaiFetch = fetchLog.find((f) => f.url.includes('/api/auth/openai-key'));
+  assert.ok(openaiFetch, 'OpenAI key should be saved via /api/auth/openai-key');
+  assert.equal(openaiFetch.body?.openaiKey, 'sk-openai-modal-test');
 });

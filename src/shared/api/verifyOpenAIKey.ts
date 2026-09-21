@@ -1,31 +1,21 @@
-// Lightweight client-side verification for a user-supplied OpenAI key.
-//
-// We do NOT send the key anywhere except directly to OpenAI over HTTPS. A 200
-// from /v1/models means the key is valid; a 401 means invalid/unauthorized.
-// Any other error is surfaced generically so the user can retry. This mirrors
-// the MuAPI verification used for the MuAPI key (getUserBalance).
+/**
+ * @deprecated Client-side OpenAI key verification has been removed.
+ *
+ * Verification now happens server-side inside `/api/auth/openai-key` to avoid
+ * CORS issues, incorrectly classifying restricted project keys as invalid,
+ * and exposing raw keys to the browser's network layer.
+ *
+ * Import the canonical client service from `@/shared/api/openaiKey` instead:
+ *
+ *   import { saveOpenAIKey, getOpenAIKeyStatus, deleteOpenAIKey } from '@/shared/api/openaiKey';
+ *
+ * Server-side code can import the verification helper directly:
+ *
+ *   import { verifyOpenAIKeyServerSide } from '@/src/lib/server/openaiKeyVerification';
+ */
 
-export async function verifyOpenAIKey(key: string): Promise<void> {
-  const trimmed = key.trim();
-  if (!trimmed) throw new Error('missing');
+export { verifyOpenAIKeyServerSide } from '@/src/lib/server/openaiKeyVerification';
 
-  const res = await fetch('https://api.openai.com/v1/models', {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${trimmed}`,
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (res.status === 401) {
-    throw new Error('unauthorized');
-  }
-  if (res.status === 403) {
-    throw new Error('restricted');
-  }
-  if (!res.ok) {
-    // OpenAI returns 429 (rate limit) or 5xx for transient issues. Treat as
-    // a connectivity problem rather than "invalid key" so the user retries.
-    throw new Error(res.status === 429 ? 'rate_limited' : 'error');
-  }
-}
+// Backward-compatible re-export so any lingering imports don't crash at build time.
+// New code must not use this from the browser.
+export { verifyOpenAIKeyServerSide as verifyOpenAIKey } from '@/src/lib/server/openaiKeyVerification';

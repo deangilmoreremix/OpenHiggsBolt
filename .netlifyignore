@@ -1,0 +1,2 @@
+# Ignore Next.js cache directory to avoid bloating deploys
+.next/cache/
