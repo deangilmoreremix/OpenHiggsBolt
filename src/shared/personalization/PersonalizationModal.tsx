@@ -706,6 +706,21 @@ export default function PersonalizationModal() {
     setMode(null)
   }, [source?.id, setMode])
 
+  const editorReferenceImages = useMemo(() => {
+    const candidates = [
+      assets.primaryLogo,
+      assets.primaryIdentity,
+      ...assets.products.slice(0, 2),
+      ...assets.brandReferences.slice(0, 2),
+    ].filter(Boolean) as PersonalizationAsset[]
+
+    return Array.from(new Set(
+      candidates
+        .map((item) => item.uploadedUrl || item.url)
+        .filter((url): url is string => Boolean(url) && !url.startsWith('blob:')),
+    )).slice(0, 6)
+  }, [assets.brandReferences, assets.primaryIdentity, assets.primaryLogo, assets.products])
+
   const openDiscoveredImageEditor = useCallback((asset: DiscoveredAsset) => {
     setImageEditorAsset({
       id: asset.id,
@@ -715,21 +730,44 @@ export default function PersonalizationModal() {
       source: 'discovered',
       businessName: clientForm.businessName || clientForm.name,
       industry: clientForm.industry,
+      productService: clientForm.productService,
+      brandDescription: clientForm.brandDescription,
+      referenceImages: editorReferenceImages.filter((url) => url !== asset.previewUrl && url !== asset.editedDataUrl),
+      visionAnalysis: asset.visionAnalysis,
     })
-  }, [clientForm.businessName, clientForm.name, clientForm.industry])
+  }, [
+    clientForm.brandDescription,
+    clientForm.businessName,
+    clientForm.industry,
+    clientForm.name,
+    clientForm.productService,
+    editorReferenceImages,
+  ])
 
   const openLibraryImageEditor = useCallback((asset: PersonalizationAsset) => {
+    const imageUrl = asset.uploadedUrl || asset.url
     setImageEditorAsset({
       id: asset.id,
       name: asset.name,
-      imageUrl: asset.uploadedUrl || asset.url,
+      imageUrl,
       category: asset.sourceCategory,
       role: asset.role,
       source: 'library',
       businessName: clientForm.businessName || clientForm.name,
       industry: clientForm.industry,
+      productService: clientForm.productService,
+      brandDescription: clientForm.brandDescription,
+      referenceImages: editorReferenceImages.filter((url) => url !== imageUrl),
+      visionAnalysis: asset.visionAnalysis,
     })
-  }, [clientForm.businessName, clientForm.name, clientForm.industry])
+  }, [
+    clientForm.brandDescription,
+    clientForm.businessName,
+    clientForm.industry,
+    clientForm.name,
+    clientForm.productService,
+    editorReferenceImages,
+  ])
 
   const handleImageEditorApply = useCallback(async (result: ImageEditorApplyResult) => {
     if (!imageEditorAsset) return
@@ -748,7 +786,12 @@ export default function PersonalizationModal() {
                 prompt: result.prompt,
                 model: result.model,
                 quality: result.quality,
+                responseId: result.responseId,
+                imageGenerationCallId: result.imageGenerationCallId,
+                revisedPrompt: result.revisedPrompt,
               },
+              visionAnalysis: result.visionAnalysis || item.visionAnalysis,
+              visionValidation: result.visionValidation,
             }
           : item
       )))
@@ -762,6 +805,11 @@ export default function PersonalizationModal() {
       quality: result.quality,
       transparent: result.transparent,
       videoReady: result.videoReady,
+      responseId: result.responseId,
+      imageGenerationCallId: result.imageGenerationCallId,
+      revisedPrompt: result.revisedPrompt,
+      visionAnalysis: result.visionAnalysis,
+      visionValidation: result.visionValidation,
     })
   }, [applyEditedPersonalizationAsset, discoveredAssets, imageEditorAsset, setDiscoveredAssets])
 
