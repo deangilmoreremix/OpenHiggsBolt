@@ -710,7 +710,7 @@
     },
     {
       "id": "recast",
-      "name": "Body Swap (Recast)",
+      "name": "Body Swap",
       "route": "/studio/recast",
       "description": "Swaps the character in any video while preserving the original motion (Kling / Runway recast).",
       "keyFeatures": [
@@ -860,7 +860,7 @@
     },
     {
       "id": "workflows",
-      "name": "Workflow Studio",
+      "name": "Workflows",
       "route": "/studio/workflows",
       "description": "Node-based, drag-and-drop builder for multi-step AI pipelines, with templates, community workflows, a playground, and API execution.",
       "keyFeatures": [
