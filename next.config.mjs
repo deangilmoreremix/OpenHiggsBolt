@@ -24,6 +24,8 @@ const nextConfig = {
     'figlet',
     '7zip-bin',
     'es-abstract',
+    'playwright',
+    'jsdom',
   ],
   eslint: {
     ignoreDuringBuilds: true,
