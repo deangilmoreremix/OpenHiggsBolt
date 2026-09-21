@@ -162,6 +162,19 @@ function loadImage(dataUrl: string): Promise<HTMLImageElement> {
   })
 }
 
+
+async function normalizeDataUrlToPng(dataUrl: string): Promise<string> {
+  if (dataUrl.startsWith('data:image/png')) return dataUrl
+  const image = await loadImage(dataUrl)
+  const canvas = document.createElement('canvas')
+  canvas.width = image.naturalWidth
+  canvas.height = image.naturalHeight
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Browser canvas is unavailable')
+  ctx.drawImage(image, 0, 0)
+  return canvas.toDataURL('image/png')
+}
+
 function fileExtension(format: ImageFormat) {
   if (format === 'jpeg') return 'jpg'
   return format
@@ -347,7 +360,8 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
   ) => {
     if (!asset) throw new Error('No image selected')
     const operation = getOperation(operationId)
-    const sourceDataUrl = await prepareDataUrl(sourceUrl)
+    let sourceDataUrl = await prepareDataUrl(sourceUrl)
+    if (maskBlob) sourceDataUrl = await normalizeDataUrlToPng(sourceDataUrl)
     const sourceBlob = dataUrlToBlob(sourceDataUrl)
     const model = resolvedModel(operationId)
     const prompt = buildPrompt(operationId, custom)
