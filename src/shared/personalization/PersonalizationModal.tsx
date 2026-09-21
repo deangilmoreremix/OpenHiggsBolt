@@ -1593,6 +1593,8 @@ function ConfigurationView(props: any) {
                   model: result.model,
                   quality: result.quality,
                 },
+                visionAnalysis: result.visionAnalysis || asset.visionAnalysis,
+                visionValidation: result.visionValidation,
               }
             : asset
         ))
