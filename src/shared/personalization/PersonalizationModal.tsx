@@ -468,6 +468,15 @@ function DiscoveredAssetThumb({
           {asset.videoReady ? 'Video Ready' : 'Edited'}
         </div>
       )}
+      {asset.visionAnalysis && (
+        <div
+          className="absolute left-1 top-[42px] z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
+          style={{ background: 'rgba(168,85,247,.9)', color: '#fff' }}
+          title={asset.visionAnalysis.summary}
+        >
+          Vision {Math.round(asset.visionAnalysis.confidence)}%
+        </div>
+      )}
       <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,.7), transparent 60%)' }} />
       {/* Select checkbox */}
       <button
@@ -623,6 +632,9 @@ export default function PersonalizationModal() {
     importDiscoveredAssets,
     cancelDiscovery,
     discoverAssets,
+    visionStatus,
+    visionError,
+    analyzeDiscoveredAssets,
     // Business search
     businessSearchMode,
     businessSearchResults,
@@ -1105,6 +1117,9 @@ export default function PersonalizationModal() {
               importDiscoveredAssets={importDiscoveredAssets}
               cancelDiscovery={cancelDiscovery}
               discoverAssets={discoverAssets}
+              visionStatus={visionStatus}
+              visionError={visionError}
+              analyzeDiscoveredAssets={analyzeDiscoveredAssets}
               // Business search
               businessSearchMode={businessSearchMode}
               businessSearchResults={businessSearchResults}
@@ -1436,6 +1451,9 @@ function ConfigurationView(props: any) {
     importDiscoveredAssets,
     cancelDiscovery,
     discoverAssets,
+    visionStatus,
+    visionError,
+    analyzeDiscoveredAssets,
     // Business search
     businessSearchMode,
     businessSearchResults,
@@ -2201,6 +2219,15 @@ function ConfigurationView(props: any) {
             <div className="flex gap-2">
               <button
                 type="button"
+                onClick={analyzeDiscoveredAssets}
+                disabled={visionStatus === 'analyzing'}
+                className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
+                style={{ minHeight: 36, padding: '0 14px', border: '1px solid rgba(168,85,247,.45)', background: 'rgba(168,85,247,.10)', color: '#c4b5fd' }}
+              >
+                {visionStatus === 'analyzing' ? 'Analyzing…' : visionStatus === 'complete' ? '✓ Vision Analyzed' : '✦ Analyze with GO Vision'}
+              </button>
+              <button
+                type="button"
                 onClick={selectRecommendedDiscoveredAssets}
                 className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide"
                 style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.border}`, background: C.panel, color: 'white' }}
@@ -2240,6 +2267,27 @@ function ConfigurationView(props: any) {
               </button>
             </div>
           </div>
+
+          {(visionStatus === 'analyzing' || visionStatus === 'complete' || visionError) && (
+            <div
+              style={{
+                marginBottom: 14,
+                padding: '10px 12px',
+                borderRadius: 10,
+                border: visionError ? '1px solid rgba(239,91,103,.3)' : '1px solid rgba(168,85,247,.35)',
+                background: visionError ? 'rgba(239,91,103,.08)' : 'rgba(168,85,247,.08)',
+                color: visionError ? '#ff9ba3' : '#c4b5fd',
+                fontSize: 10,
+              }}
+            >
+              {visionStatus === 'analyzing' && <Loader2 size={12} className="mr-1.5 inline animate-spin" />}
+              {visionError
+                ? 'SmartVideo GO Vision: ' + visionError
+                : visionStatus === 'complete'
+                  ? 'SmartVideo GO Vision analyzed the discovered assets, refined categories and scores, and identified preservation rules and recommended edits.'
+                  : 'SmartVideo GO Vision is analyzing business assets…'}
+            </div>
+          )}
 
           {(batchVideoReady.running || batchVideoReady.label || batchVideoReady.error) && (
             <div
