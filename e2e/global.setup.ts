@@ -29,10 +29,13 @@ setup('authenticate SmartVideo GO demo user', async ({ page }) => {
     emailAddress: email,
   });
 
+  // Navigate to a protected route first; the Clerk organization task, if
+  // required by the instance, typically appears after the first protected
+  // navigation rather than immediately after sign-in.
+  await page.goto('/studio');
+
   // Complete the Clerk organization task if the instance requires it.
   await completeOrgTaskIfPresent(page);
-
-  await page.goto('/studio');
 
   await expect(page).toHaveURL(/\/studio/);
 
