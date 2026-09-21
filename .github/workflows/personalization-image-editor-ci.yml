@@ -6,6 +6,8 @@ on:
       - 'src/shared/personalization/**'
       - 'src/shared/api/openaiImage.ts'
       - 'app/api/personalization/image-edit/**'
+      - 'app/api/personalization/image-analyze/**'
+      - 'app/api/personalization/image-smart-edit/**'
       - 'tests/personalization-image-edit.vitest.test.ts'
       - '.github/workflows/personalization-image-editor-ci.yml'
   workflow_dispatch:
@@ -32,10 +34,54 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Typecheck
-        run: npm run typecheck
+        id: typecheck
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run typecheck 2>&1 | tee /tmp/smartvideo-go-typecheck.log
 
       - name: Run image editor unit tests
-        run: npx vitest run src/shared/personalization/__tests__/ImageEditorModal.test.tsx src/shared/personalization/__tests__/imageEditRegistry.test.ts src/shared/personalization/__tests__/responsesVisionApi.test.ts src/shared/personalization/__tests__/DiscoveredAssets.test.tsx tests/personalization-image-edit.vitest.test.ts
+        id: tests
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npx vitest run \
+            src/shared/personalization/__tests__/ImageEditorModal.test.tsx \
+            src/shared/personalization/__tests__/imageEditRegistry.test.ts \
+            src/shared/personalization/__tests__/responsesVisionApi.test.ts \
+            src/shared/personalization/__tests__/DiscoveredAssets.test.tsx \
+            tests/personalization-image-edit.vitest.test.ts \
+            2>&1 | tee /tmp/smartvideo-go-tests.log
 
       - name: Build
-        run: npm run build
+        id: build
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee /tmp/smartvideo-go-build.log
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smartvideo-go-image-editor-diagnostics
+          path: |
+            /tmp/smartvideo-go-typecheck.log
+            /tmp/smartvideo-go-tests.log
+            /tmp/smartvideo-go-build.log
+          if-no-files-found: warn
+          retention-days: 3
+
+      - name: Enforce release gate
+        if: always()
+        shell: bash
+        run: |
+          echo "typecheck=${{ steps.typecheck.outcome }}"
+          echo "tests=${{ steps.tests.outcome }}"
+          echo "build=${{ steps.build.outcome }}"
+          test "${{ steps.typecheck.outcome }}" = "success"
+          test "${{ steps.tests.outcome }}" = "success"
+          test "${{ steps.build.outcome }}" = "success"
