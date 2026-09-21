@@ -2309,6 +2309,7 @@ function ConfigurationView(props: any) {
                     label={String(i + 1)}
                     onRemove={() => removeProduct(asset.id)}
                     onRetry={() => retryAssetUpload(asset.id)}
+                  onEdit={() => openLibraryImageEditor(asset)}
                   />
                 ))
               ) : (
@@ -2342,6 +2343,7 @@ function ConfigurationView(props: any) {
                     label={asset.name?.split('.')?.[0]?.toUpperCase()?.slice(0, 10) || 'BRAND'}
                     onRemove={() => removeBrandReference(asset.id)}
                     onRetry={() => retryAssetUpload(asset.id)}
+                  onEdit={() => openLibraryImageEditor(asset)}
                   />
                 ))
               ) : (
@@ -2390,6 +2392,11 @@ function ConfigurationView(props: any) {
               )}
             </div>
             <span className="badge" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px 8px', borderRadius: 7, marginTop: 8, marginRight: 4, background: C.cyan, color: '#071014', fontSize: 9, fontWeight: 800, textTransform: 'uppercase' }}>First Frame</span>
+            {assets.firstFrame && (
+              <button type="button" onClick={() => openLibraryImageEditor(assets.firstFrame)} className="rounded-[8px] text-[9px] font-extrabold uppercase" style={{ minHeight: 28, padding: '0 9px', border: '1px solid ' + C.cyanBorder, background: C.cyanSoft, color: C.cyan }}>
+                ✨ Edit Image
+              </button>
+            )}
           </article>
 
           {/* 6. Last Frame / CTA */}
@@ -2428,6 +2435,11 @@ function ConfigurationView(props: any) {
               )}
             </div>
             <span className="badge" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px 8px', borderRadius: 7, marginTop: 8, marginRight: 4, background: C.cyan, color: '#071014', fontSize: 9, fontWeight: 800, textTransform: 'uppercase' }}>Last Frame</span>
+            {assets.lastFrame && (
+              <button type="button" onClick={() => openLibraryImageEditor(assets.lastFrame)} className="rounded-[8px] text-[9px] font-extrabold uppercase" style={{ minHeight: 28, padding: '0 9px', border: '1px solid ' + C.cyanBorder, background: C.cyanSoft, color: C.cyan }}>
+                ✨ Edit Image
+              </button>
+            )}
           </article>
         </div>
       </section>
