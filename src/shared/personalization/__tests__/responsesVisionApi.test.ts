@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   analyzePersonalizationImages,
   responsesSmartEdit,
+  responsesSmartEditStream,
   validatePersonalizationImageEdit,
 } from '../image-editor/responsesVisionApi'
 
@@ -78,6 +79,69 @@ describe('SmartVideo GO Responses/Vision client', () => {
 
     expect(result.responseId).toBe('resp_456')
     expect(result.revisedPrompt).toContain('preserving')
+  })
+
+
+  it('streams partial GPT Image 2.5 previews and returns the completed image', async () => {
+    const encoder = new TextEncoder()
+    const chunks = [
+      'data: ' + JSON.stringify({
+        type: 'response.image_generation_call.partial_image',
+        partial_image_index: 0,
+        partial_image_b64: 'UEFSVElBTA==',
+      }) + '\n\n',
+      'data: ' + JSON.stringify({
+        type: 'response.completed',
+        response: {
+          id: 'resp_streamed',
+          model: 'gpt-6-astra',
+          output: [{
+            type: 'image_generation_call',
+            id: 'ig_streamed',
+            result: 'RklOQUw=',
+            revised_prompt: 'Final refined prompt',
+          }],
+          usage: { input_tokens: 12 },
+        },
+      }) + '\n\n',
+    ]
+
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        chunks.forEach((chunk) => controller.enqueue(encoder.encode(chunk)))
+        controller.close()
+      },
+    })
+
+    globalThis.fetch = vi.fn(async (_url: string, options: any) => {
+      const body = JSON.parse(options.body)
+      expect(body.stream).toBe(true)
+      expect(body.partialImages).toBe(2)
+      return { ok: true, body } as any
+    }) as any
+
+    // Replace the mocked body with the SSE stream after validating the request.
+    ;(globalThis.fetch as any).mockImplementation(async (_url: string, options: any) => {
+      const body = JSON.parse(options.body)
+      expect(body.stream).toBe(true)
+      expect(body.partialImages).toBe(2)
+      return { ok: true, body: stream } as any
+    })
+
+    const partials: string[] = []
+    const result = await responsesSmartEditStream({
+      imageUrl: 'data:image/png;base64,AA==',
+      prompt: 'Make this more cinematic',
+      imageModel: 'gpt-image-2.5-sunburst',
+      outputFormat: 'png',
+      partialImages: 2,
+    }, (dataUrl) => partials.push(dataUrl))
+
+    expect(partials).toEqual(['data:image/png;base64,UEFSVElBTA=='])
+    expect(result.imageDataUrl).toBe('data:image/png;base64,RklOQUw=')
+    expect(result.responseId).toBe('resp_streamed')
+    expect(result.imageGenerationCallId).toBe('ig_streamed')
+    expect(result.revisedPrompt).toBe('Final refined prompt')
   })
 
   it('returns Vision QA validation', async () => {
