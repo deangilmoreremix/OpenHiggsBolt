@@ -34,12 +34,14 @@ export interface EditImageParams {
   prompt: string
   image: File | Blob | string   // file, blob, or base64 data URL
   mask?: File | Blob            // optional mask for inpainting
-  model?: 'gpt-image-2'
+  model?: 'gpt-image-2.5-flare' | 'gpt-image-2.5-sunburst' | 'gpt-image-2'
   n?: number
   quality?: ImageQuality
   size?: ImageSize
   output_format?: ImageFormat
   output_compression?: number   // 0-100 for jpeg/webp
+  background?: 'transparent' | 'opaque' | 'auto'
+  input_fidelity?: 'high' | 'low'
 }
 
 export interface ImageResult {
@@ -111,6 +113,9 @@ export async function editImage(params: EditImageParams): Promise<ImageResult[]>
   if (params.quality) formData.append('quality', params.quality)
   if (params.size) formData.append('size', params.size)
   if (params.output_format) formData.append('output_format', params.output_format)
+  if (params.output_compression !== undefined) formData.append('output_compression', String(params.output_compression))
+  if (params.background) formData.append('background', params.background)
+  if (params.input_fidelity) formData.append('input_fidelity', params.input_fidelity)
 
   // Handle image input
   if (typeof params.image === 'string') {
@@ -208,6 +213,8 @@ export async function* editImageStream(
   if (params.size) formData.append('size', params.size)
   if (params.output_format) formData.append('output_format', params.output_format)
   if (params.output_compression !== undefined) formData.append('output_compression', String(params.output_compression))
+  if (params.background) formData.append('background', params.background)
+  if (params.input_fidelity) formData.append('input_fidelity', params.input_fidelity)
 
   // Handle reference image input(s)
   if (typeof params.image === 'string') {
