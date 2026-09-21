@@ -113,3 +113,99 @@ export async function responsesSmartEdit(params: {
 
   return payload as ResponsesSmartEditResult
 }
+
+export async function responsesSmartEditStream(
+  params: Parameters<typeof responsesSmartEdit>[0] & { partialImages?: number },
+  onPartialImage: (dataUrl: string, index: number) => void,
+): Promise<ResponsesSmartEditResult> {
+  const response = await fetch('/api/personalization/image-smart-edit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({
+      ...params,
+      stream: true,
+      partialImages: Math.max(1, Math.min(3, Math.round(params.partialImages || 2))),
+    }),
+  })
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}))
+    throw new Error(payload?.message || payload?.error || 'SmartVideo GO Smart Edit streaming failed')
+  }
+  if (!response.body) throw new Error('SmartVideo GO Smart Edit returned no stream.')
+
+  const outputFormat =
+    params.outputFormat === 'jpeg' || params.outputFormat === 'webp' ? params.outputFormat : 'png'
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let finalResponse: any = null
+
+  const handleEvent = (raw: string) => {
+    const dataLines = raw
+      .split(/\r?\n/)
+      .filter((line) => line.startsWith('data:'))
+      .map((line) => line.slice(5).trim())
+    if (!dataLines.length) return
+    const data = dataLines.join('\n')
+    if (!data || data === '[DONE]') return
+
+    let event: any
+    try {
+      event = JSON.parse(data)
+    } catch {
+      return
+    }
+
+    if (event?.type === 'response.image_generation_call.partial_image' && event.partial_image_b64) {
+      onPartialImage(
+        `data:image/${outputFormat};base64,${event.partial_image_b64}`,
+        Number(event.partial_image_index) || 0,
+      )
+      return
+    }
+
+    if (event?.type === 'response.completed' && event.response) {
+      finalResponse = event.response
+      return
+    }
+
+    if (event?.type === 'error' || event?.type === 'response.failed') {
+      throw new Error(
+        event?.error?.message ||
+        event?.response?.error?.message ||
+        'SmartVideo GO Smart Edit streaming failed',
+      )
+    }
+  }
+
+  while (true) {
+    const { value, done } = await reader.read()
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done })
+    const events = buffer.split(/\r?\n\r?\n/)
+    buffer = events.pop() || ''
+    for (const raw of events) handleEvent(raw)
+    if (done) break
+  }
+  if (buffer.trim()) handleEvent(buffer)
+
+  const calls = Array.isArray(finalResponse?.output)
+    ? finalResponse.output.filter((item: any) => item?.type === 'image_generation_call')
+    : []
+  const call = calls[0]
+  const result = typeof call?.result === 'string' ? call.result : ''
+  if (!result) throw new Error('SmartVideo GO Smart Edit stream returned no final image.')
+
+  return {
+    imageDataUrl: `data:image/${outputFormat};base64,${result}`,
+    responseId: finalResponse?.id || null,
+    imageGenerationCallId: call?.id || null,
+    revisedPrompt: call?.revised_prompt || null,
+    model: params.imageModel,
+    orchestratorModel: finalResponse?.model,
+    usage: finalResponse?.usage,
+    outputFormat,
+    outputCompression: params.outputCompression ?? null,
+  }
+}
