@@ -24,7 +24,12 @@ import {
 import { type ImageFormat, type ImageSize } from '@/src/shared/api/openaiImage'
 import { editSmartVideoGoImage } from './imageEditApi'
 import { buttons, iconBadge, semantic } from '@/shared/styles/designTokens'
-import type { AssetRole, DiscoveredAssetCategory } from '../types'
+import type {
+  AssetRole,
+  DiscoveredAssetCategory,
+  PersonalizationVisionAnalysis,
+  PersonalizationVisionValidation,
+} from '../types'
 import MaskEditor from './MaskEditor'
 import {
   getAssetRecipe,
@@ -33,7 +38,13 @@ import {
   resolveEditorAssetKind,
   type EditorOperationGroup,
   type EditorOperationId,
+  IMAGE_EDIT_OPERATIONS,
 } from './imageEditRegistry'
+import {
+  analyzePersonalizationImages,
+  responsesSmartEdit,
+  validatePersonalizationImageEdit,
+} from './responsesVisionApi'
 
 export type PersonalizationImageEditorAsset = {
   id: string
@@ -44,6 +55,10 @@ export type PersonalizationImageEditorAsset = {
   source: 'discovered' | 'library'
   businessName?: string
   industry?: string
+  productService?: string
+  brandDescription?: string
+  referenceImages?: string[]
+  visionAnalysis?: PersonalizationVisionAnalysis
 }
 
 export type ImageEditorApplyResult = {
@@ -55,6 +70,11 @@ export type ImageEditorApplyResult = {
   quality: string
   transparent: boolean
   videoReady: boolean
+  visionAnalysis?: PersonalizationVisionAnalysis
+  visionValidation?: PersonalizationVisionValidation
+  responseId?: string | null
+  imageGenerationCallId?: string | null
+  revisedPrompt?: string | null
 }
 
 type Props = {
@@ -102,6 +122,10 @@ type Version = {
   model: ImageEditorApplyResult['model']
   transparent: boolean
   videoReady: boolean
+  responseId?: string | null
+  imageGenerationCallId?: string | null
+  revisedPrompt?: string | null
+  visionValidation?: PersonalizationVisionValidation
 }
 
 const aspectSizes: Record<Exclude<AspectRatio, 'original'>, ImageSize> = {
@@ -200,6 +224,9 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
   const [maskBlob, setMaskBlob] = useState<Blob | null>(null)
   const [safeArea, setSafeArea] = useState(false)
   const [protections, setProtections] = useState<Protections>(() => defaultProtections('general'))
+  const [visionAnalysis, setVisionAnalysis] = useState<PersonalizationVisionAnalysis | undefined>(undefined)
+  const [visionAnalyzing, setVisionAnalyzing] = useState(false)
+  const [validationOverrideVersionId, setValidationOverrideVersionId] = useState<string | null>(null)
 
   const [rotation, setRotation] = useState(0)
   const [flipX, setFlipX] = useState(false)
@@ -224,6 +251,10 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
   const kind = useMemo(() => resolveEditorAssetKind(asset?.category, asset?.role), [asset?.category, asset?.role])
   const recipe = useMemo(() => getAssetRecipe(asset?.category, asset?.role), [asset?.category, asset?.role])
   const groupedOperations = useMemo(() => operationGroupsForAsset(kind), [kind])
+  const mergedPreserve = useMemo(
+    () => Array.from(new Set([...(recipe.preserve || []), ...(visionAnalysis?.preserve || [])])),
+    [recipe.preserve, visionAnalysis?.preserve],
+  )
 
   useEffect(() => {
     if (!open || !asset) return
@@ -253,6 +284,9 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     setMaskBlob(null)
     setSafeArea(false)
     setProtections(defaultProtections(kind))
+    setVisionAnalysis(asset.visionAnalysis)
+    setVisionAnalyzing(false)
+    setValidationOverrideVersionId(null)
     resetLocalControls()
   }, [open, asset?.id, kind])
 
@@ -296,10 +330,10 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     const operation = getOperation(operationId)
     if (modelMode === 'fast') return 'gpt-image-2.5-flare' as const
     if (modelMode === 'precision') return 'gpt-image-2.5-sunburst' as const
-    return operation.precision || recipe.precisionRecommended
+    return operation.precision || recipe.precisionRecommended || visionAnalysis?.precisionRecommended
       ? 'gpt-image-2.5-sunburst' as const
       : 'gpt-image-2.5-flare' as const
-  }, [modelMode, recipe.precisionRecommended])
+  }, [modelMode, recipe.precisionRecommended, visionAnalysis?.precisionRecommended])
 
   const prepareDataUrl = useCallback(async (url: string) => {
     if (url.startsWith('data:')) return url
@@ -322,10 +356,43 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     return result.dataUrl as string
   }, [])
 
+  const analyzeCurrentImage = useCallback(async (sourceUrl = displayUrl) => {
+    if (!asset) return undefined
+    setVisionAnalyzing(true)
+    try {
+      const imageUrl = await prepareDataUrl(sourceUrl)
+      const analyses = await analyzePersonalizationImages({
+        images: [{
+          id: asset.id,
+          imageUrl,
+          categoryHint: asset.category,
+          roleHint: asset.role,
+        }],
+        businessContext: {
+          businessName: asset.businessName,
+          industry: asset.industry,
+          productService: asset.productService,
+          brandDescription: asset.brandDescription,
+        },
+        targetVideoFormat: aspectRatio === 'original' ? undefined : aspectRatio,
+      })
+      const analysis = analyses[0]
+      if (analysis) {
+        setVisionAnalysis(analysis)
+        if (analysis.precisionRecommended && modelMode === 'auto') {
+          // Auto routing will select Sunburst through resolvedModel.
+        }
+      }
+      return analysis
+    } finally {
+      setVisionAnalyzing(false)
+    }
+  }, [asset, aspectRatio, displayUrl, modelMode, prepareDataUrl])
+
   const buildPrompt = useCallback((operationId: EditorOperationId, custom = '') => {
     const operation = getOperation(operationId)
     const businessContext = [asset?.businessName, asset?.industry].filter(Boolean).join(' - ')
-    const preserve = recipe.preserve.length ? ' Preserve: ' + recipe.preserve.join(', ') + '.' : ''
+    const preserve = mergedPreserve.length ? ' Preserve: ' + mergedPreserve.join(', ') + '.' : ''
     const explicitProtections = (Object.entries(protections) as [ProtectionKey, boolean][])
       .filter(([, enabled]) => enabled)
       .map(([key]) => PROTECTION_LABELS[key])
@@ -337,7 +404,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     const maskInstruction = maskBlob ? ' Apply the requested change primarily to the masked region and preserve unmasked content as closely as possible.' : ''
     const userInstruction = operationId === 'custom' ? custom.trim() : operation.prompt
     return 'Edit this image for SmartVideo GO. ' + userInstruction + preserve + protectionInstruction + context + ratio + maskInstruction
-  }, [asset?.businessName, asset?.industry, aspectRatio, maskBlob, protections, recipe.preserve])
+  }, [asset?.businessName, asset?.industry, aspectRatio, maskBlob, mergedPreserve, protections])
 
   const appendVersion = useCallback((version: Omit<Version, 'id'>) => {
     const next: Version = {
@@ -382,7 +449,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
       size,
       outputFormat: format,
       background: transparent ? 'transparent' : 'auto',
-      inputFidelity: operation.precision || recipe.precisionRecommended ? 'high' : 'low',
+      inputFidelity: operation.precision || recipe.precisionRecommended || visionAnalysis?.precisionRecommended ? 'high' : 'low',
     })
 
     const first = results?.[0]
@@ -403,7 +470,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
 
     if (addVersion) appendVersion(version)
     return version
-  }, [appendVersion, aspectRatio, asset, buildPrompt, maskBlob, modelMode, outputFormat, prepareDataUrl, recipe.precisionRecommended, recipe.transparencyRecommended, resolvedModel])
+  }, [appendVersion, aspectRatio, asset, buildPrompt, maskBlob, modelMode, outputFormat, prepareDataUrl, recipe.precisionRecommended, recipe.transparencyRecommended, resolvedModel, visionAnalysis?.precisionRecommended])
 
   const runAiEdit = useCallback(async (operationId: EditorOperationId, custom = '') => {
     if (operationId === 'custom' && !custom.trim()) return
@@ -421,15 +488,99 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     }
   }, [displayUrl, executeAiEdit])
 
+  const runResponsesSmartEdit = useCallback(async () => {
+    if (!asset || !customPrompt.trim()) return
+    // Masks are deterministic regional edits; keep those on the direct image-edit path.
+    if (maskBlob) {
+      await runAiEdit('custom', customPrompt)
+      return
+    }
+
+    setError(null)
+    setBusyLabel('SmartVideo GO AI is editing')
+    try {
+      const canContinueConversation = Boolean(currentVersion?.responseId)
+      const sourceImage = canContinueConversation ? undefined : await prepareDataUrl(displayUrl)
+      const references = canContinueConversation
+        ? []
+        : (await Promise.all((asset.referenceImages || []).slice(0, 6).map((url) => prepareDataUrl(url).catch(() => '')))).filter(Boolean)
+      const model = resolvedModel('custom')
+      const result = await responsesSmartEdit({
+        imageUrl: sourceImage,
+        referenceImages: references,
+        prompt: customPrompt.trim(),
+        previousResponseId: currentVersion?.responseId || undefined,
+        imageModel: model,
+        action: canContinueConversation ? 'auto' : 'edit',
+        quality: model === 'gpt-image-2.5-sunburst' ? (modelMode === 'precision' ? 'xhigh' : 'high') : 'medium',
+        size: aspectRatio === 'original' ? undefined : aspectSizes[aspectRatio],
+        background: 'auto',
+        businessContext: {
+          businessName: asset.businessName,
+          industry: asset.industry,
+          productService: asset.productService,
+          brandDescription: asset.brandDescription,
+          targetRole: visionAnalysis?.targetRole || recipe.outputRole,
+          preserve: mergedPreserve,
+        },
+      })
+
+      appendVersion({
+        label: 'Smart Edit',
+        dataUrl: result.imageDataUrl,
+        operation: 'custom',
+        prompt: customPrompt.trim(),
+        model: result.model,
+        transparent: false,
+        videoReady: false,
+        responseId: result.responseId,
+        imageGenerationCallId: result.imageGenerationCallId,
+        revisedPrompt: result.revisedPrompt,
+      })
+      setCustomPrompt('')
+      setValidationOverrideVersionId(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'SmartVideo GO Smart Edit failed')
+    } finally {
+      setBusyLabel(null)
+    }
+  }, [
+    appendVersion,
+    aspectRatio,
+    asset,
+    currentVersion?.responseId,
+    customPrompt,
+    displayUrl,
+    maskBlob,
+    mergedPreserve,
+    modelMode,
+    prepareDataUrl,
+    recipe.outputRole,
+    resolvedModel,
+    runAiEdit,
+    visionAnalysis?.targetRole,
+  ])
+
   const runVideoReady = useCallback(async () => {
     if (!asset) return
     setError(null)
-    setBusyLabel('SmartVideo GO is making this video ready')
+    setBusyLabel('SmartVideo GO is analyzing this asset')
     try {
+      const analysis = visionAnalysis || await analyzeCurrentImage(displayUrl)
+      setBusyLabel('SmartVideo GO is making this video ready')
       let source = displayUrl
       let finalResult: Omit<Version, 'id'> | null = null
       let preserveTransparency = false
-      const steps = recipe.makeVideoReadySteps.length ? recipe.makeVideoReadySteps : ['video_ready'] as EditorOperationId[]
+
+      const visionSteps = (analysis?.recommendedOperations || [])
+        .filter((id): id is EditorOperationId => id in IMAGE_EDIT_OPERATIONS)
+        .filter((id) => {
+          const operation = IMAGE_EDIT_OPERATIONS[id]
+          return id !== 'custom' && id !== 'video_ready' && !operation.destructiveCreative
+        })
+        .slice(0, 3)
+      const recipeSteps = recipe.makeVideoReadySteps.length ? recipe.makeVideoReadySteps : ['video_ready'] as EditorOperationId[]
+      const steps = Array.from(new Set([...visionSteps, ...recipeSteps])).slice(0, 4)
 
       for (const stepId of steps) {
         const step = getOperation(stepId)
@@ -456,7 +607,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     } finally {
       setBusyLabel(null)
     }
-  }, [appendVersion, asset, displayUrl, executeAiEdit, recipe.makeVideoReadySteps])
+  }, [analyzeCurrentImage, appendVersion, asset, displayUrl, executeAiEdit, recipe.makeVideoReadySteps, visionAnalysis])
 
   function resetLocalControls() {
     setRotation(0)
@@ -612,8 +763,44 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     setSaving(true)
     setError(null)
     try {
+      const dataUrl = await prepareDataUrl(currentVersion.dataUrl)
+      let validation = currentVersion.visionValidation
+
+      if (
+        currentVersion.model !== 'local' &&
+        validationOverrideVersionId !== currentVersion.id &&
+        !validation?.passed
+      ) {
+        setBusyLabel('SmartVideo GO Vision is validating the edit')
+        const originalUrl = await prepareDataUrl(asset.imageUrl)
+        validation = await validatePersonalizationImageEdit({
+          originalImageUrl: originalUrl,
+          editedImageUrl: dataUrl,
+          preserve: mergedPreserve,
+          intendedOperation: currentVersion.operation,
+          businessContext: {
+            businessName: asset.businessName,
+            industry: asset.industry,
+          },
+        })
+
+        setVersions((previous) => previous.map((version) => (
+          version.id === currentVersion.id ? { ...version, visionValidation: validation } : version
+        )))
+
+        if (!validation.passed) {
+          setValidationOverrideVersionId(currentVersion.id)
+          setError(
+            'SmartVideo GO Vision found a possible unintended change: ' +
+            (validation.issues.join(' • ') || validation.summary) +
+            '. Review the comparison, then click Use Anyway if the result is acceptable.',
+          )
+          return
+        }
+      }
+
       await onApply({
-        dataUrl: await prepareDataUrl(currentVersion.dataUrl),
+        dataUrl,
         originalUrl: asset.imageUrl,
         operation: currentVersion.operation,
         prompt: currentVersion.prompt,
@@ -621,18 +808,36 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
         quality: currentVersion.model === 'gpt-image-2.5-sunburst' ? 'high' : currentVersion.model === 'local' ? 'local' : 'medium',
         transparent: currentVersion.transparent,
         videoReady: currentVersion.videoReady,
+        visionAnalysis,
+        visionValidation: validation,
+        responseId: currentVersion.responseId,
+        imageGenerationCallId: currentVersion.imageGenerationCallId,
+        revisedPrompt: currentVersion.revisedPrompt,
       })
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to save edited asset')
     } finally {
+      setBusyLabel(null)
       setSaving(false)
     }
-  }, [asset, currentVersion, onApply, onClose, prepareDataUrl, versionIndex])
+  }, [
+    asset,
+    currentVersion,
+    mergedPreserve,
+    onApply,
+    onClose,
+    prepareDataUrl,
+    validationOverrideVersionId,
+    versionIndex,
+    visionAnalysis,
+  ])
 
   if (!open || !asset || !currentVersion) return null
 
-  const recommendedOperations = recipe.recommended.map(getOperation)
+  const recommendedOperationIds = (visionAnalysis?.recommendedOperations || recipe.recommended)
+    .filter((id): id is EditorOperationId => id in IMAGE_EDIT_OPERATIONS)
+  const recommendedOperations = recommendedOperationIds.map(getOperation)
   const advancedGroups = Array.from(groupedOperations.entries())
   const activeOperations = groupedOperations.get(activeGroup) || []
 
@@ -703,11 +908,26 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2 text-sm font-semibold text-white"><Sparkles size={15} className="text-cyan-300" /> SmartVideo GO recommends</div>
-                  <p className="mt-1 text-xs leading-5 text-white/45">{recipe.description} Output target: {recipe.outputRole}.</p>
+                  <p className="mt-1 text-xs leading-5 text-white/45">
+                    {visionAnalysis?.summary || recipe.description} Output target: {visionAnalysis?.targetRole || recipe.outputRole}.
+                  </p>
+                  {visionAnalysis?.issues?.length ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {visionAnalysis.issues.slice(0, 4).map((issue) => (
+                        <span key={issue} className="rounded-full bg-white/[0.05] px-2 py-1 text-[9px] text-white/45">{issue}</span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
-                <button type="button" onClick={runVideoReady} disabled={Boolean(busyLabel)} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold disabled:opacity-50" style={buttons.primary}>
-                  <Sparkles size={14} /> Make Video Ready
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => analyzeCurrentImage()} disabled={visionAnalyzing || Boolean(busyLabel)} className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold disabled:opacity-50" style={buttons.ghost}>
+                    {visionAnalyzing ? <Loader2 size={13} className="animate-spin" /> : <ShieldCheck size={13} />}
+                    {visionAnalysis ? 'Re-analyze' : 'Analyze Image'}
+                  </button>
+                  <button type="button" onClick={runVideoReady} disabled={Boolean(busyLabel)} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold disabled:opacity-50" style={buttons.primary}>
+                    <Sparkles size={14} /> Make Video Ready
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -729,13 +949,28 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
                   placeholder="Example: Remove the truck behind the contractor, but keep the contractor exactly the same."
                   className="min-h-[78px] flex-1 resize-none rounded-xl border border-white/10 bg-black/30 p-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-cyan-400/50"
                 />
-                <button type="button" onClick={() => runAiEdit('custom', customPrompt)} disabled={!customPrompt.trim() || Boolean(busyLabel)} className="inline-flex min-w-[120px] items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-bold disabled:opacity-50" style={buttons.primary}>
-                  <Sparkles size={14} /> Edit
+                <button type="button" onClick={runResponsesSmartEdit} disabled={!customPrompt.trim() || Boolean(busyLabel)} className="inline-flex min-w-[120px] items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-bold disabled:opacity-50" style={buttons.primary}>
+                  <Sparkles size={14} /> Smart Edit
                 </button>
               </div>
             </div>
 
-            <VersionStrip versions={versions} versionIndex={versionIndex} onSelect={setVersionIndex} />
+            <VersionStrip versions={versions} versionIndex={versionIndex} onSelect={(index) => { setVersionIndex(index); setValidationOverrideVersionId(null) }} />
+
+            {currentVersion.revisedPrompt && (
+              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-[10px] leading-4 text-white/40">
+                <span className="font-semibold text-white/60">Smart Edit context:</span> {currentVersion.revisedPrompt}
+              </div>
+            )}
+            {currentVersion.visionValidation && (
+              <div className="rounded-xl border p-3 text-[10px] leading-4" style={{
+                borderColor: currentVersion.visionValidation.passed ? 'rgba(74,222,128,.25)' : 'rgba(251,191,36,.3)',
+                background: currentVersion.visionValidation.passed ? 'rgba(74,222,128,.06)' : 'rgba(251,191,36,.06)',
+                color: currentVersion.visionValidation.passed ? '#86efac' : '#fcd34d',
+              }}>
+                Vision QA: {currentVersion.visionValidation.passed ? 'Passed' : 'Review needed'} · {currentVersion.visionValidation.summary}
+              </div>
+            )}
 
             {error && <ErrorBox message={error} />}
 
@@ -755,7 +990,8 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
               </div>
 
               <button type="button" onClick={handleApply} disabled={saving || Boolean(busyLabel) || versionIndex === 0} className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold disabled:opacity-40" style={buttons.primary}>
-                {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Use Edited Asset
+                {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                {currentVersion.visionValidation && !currentVersion.visionValidation.passed && validationOverrideVersionId === currentVersion.id ? 'Use Anyway' : 'Use Edited Asset'}
               </button>
             </div>
           </div>
@@ -798,7 +1034,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
                       opacity: opacity / 100,
                     }}
                   />
-                  <VersionStrip versions={versions} versionIndex={versionIndex} onSelect={setVersionIndex} compact />
+                  <VersionStrip versions={versions} versionIndex={versionIndex} onSelect={(index) => { setVersionIndex(index); setValidationOverrideVersionId(null) }} compact />
                 </>
               )}
 
