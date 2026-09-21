@@ -46,6 +46,10 @@ import type { PersonalizationAsset, DiscoveredAsset, DiscoveredAssetCategory, As
 import { resolveModelCapabilities, FACE_SWAP_MODEL, FULL_BODY_MODEL, DEFAULT_T2V_MODEL, DEFAULT_I2I_MODEL } from './modelCapabilityResolver'
 import { getModelById, getVideoModelById } from '@/packages/studio/src/models.js'
 import { NICHE_CONTENT } from '@/data/nicheContent'
+import ImageEditorModal, {
+  type ImageEditorApplyResult,
+  type PersonalizationImageEditorAsset,
+} from './image-editor/ImageEditorModal'
 
 // ── Design tokens (mirror the approved HTML CSS variables) ──────────────────
 
@@ -322,12 +326,14 @@ function ThumbUploaded({
   label,
   onRemove,
   onRetry,
+  onEdit,
   light = false,
 }: {
   asset: PersonalizationAsset
   label?: string
   onRemove?: () => void
   onRetry?: () => void
+  onEdit?: () => void
   light?: boolean
 }) {
   const status = asset.uploadStatus
@@ -371,6 +377,17 @@ function ThumbUploaded({
       {displayUrl ? (
         <img src={displayUrl} alt={asset.name} className="absolute inset-0 w-full h-full object-cover" />
       ) : null}
+      {onEdit && isReady && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onEdit() }}
+          className="absolute left-1 top-1 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
+          style={{ background: 'rgba(41,211,242,.92)', color: '#041014' }}
+          aria-label="Edit image"
+        >
+          Edit
+        </button>
+      )}
       {label && (
         <span className="relative text-[9px] font-extrabold z-[1]" style={{ color: light ? '#101820' : 'white' }}>
           {label}
@@ -396,6 +413,7 @@ function DiscoveredAssetThumb({
   onToggle,
   onRemove,
   onCategoryChange,
+  onEdit,
   onRemoveFromSection,
   onMoveToSection,
 }: {
@@ -403,6 +421,7 @@ function DiscoveredAssetThumb({
   onToggle: () => void
   onRemove: () => void
   onCategoryChange: (cat: DiscoveredAssetCategory) => void
+  onEdit?: () => void
   onRemoveFromSection?: () => void
   onMoveToSection?: (section: AssignedSection) => void
 }) {
@@ -429,9 +448,25 @@ function DiscoveredAssetThumb({
         opacity: asset.rejected ? 0.5 : 1,
       }}
     >
-      {asset.previewUrl ? (
-        <img src={asset.previewUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+      {(asset.editedDataUrl || asset.previewUrl) ? (
+        <img src={asset.editedDataUrl || asset.previewUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
       ) : null}
+      {onEdit && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onEdit() }}
+          className="absolute right-1 top-6 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
+          style={{ background: 'rgba(41,211,242,.92)', color: '#041014' }}
+          aria-label="Edit discovered image"
+        >
+          Edit
+        </button>
+      )}
+      {asset.edited && (
+        <div className="absolute left-1 top-6 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase" style={{ background: 'rgba(40,201,139,.9)', color: '#fff' }}>
+          Edited
+        </div>
+      )}
       <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,.7), transparent 60%)' }} />
       {/* Select checkbox */}
       <button
@@ -571,6 +606,7 @@ export default function PersonalizationModal() {
     setCtaGraphicUrl,
     removeCtaGraphic,
     retryAssetUpload,
+    applyEditedPersonalizationAsset,
     discoveredAssets,
     discoveryStatus,
     discoveryError,
@@ -628,6 +664,7 @@ export default function PersonalizationModal() {
   const [isPersonalizing, setIsPersonalizing] = useState(false)
   const [isRegenerating, setIsRegenerating] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [imageEditorAsset, setImageEditorAsset] = useState<PersonalizationImageEditorAsset | null>(null)
 
   const dialogRef = useRef<HTMLDivElement>(null)
   const previousActiveElementRef = useRef<HTMLElement | null>(null)
@@ -655,6 +692,64 @@ export default function PersonalizationModal() {
   useEffect(() => {
     setMode(null)
   }, [source?.id, setMode])
+
+  const openDiscoveredImageEditor = useCallback((asset: DiscoveredAsset) => {
+    setImageEditorAsset({
+      id: asset.id,
+      name: asset.category.replace(/_/g, ' '),
+      imageUrl: asset.editedDataUrl || asset.previewUrl,
+      category: asset.category,
+      source: 'discovered',
+      businessName: clientForm.businessName || clientForm.name,
+      industry: clientForm.industry,
+    })
+  }, [clientForm.businessName, clientForm.name, clientForm.industry])
+
+  const openLibraryImageEditor = useCallback((asset: PersonalizationAsset) => {
+    setImageEditorAsset({
+      id: asset.id,
+      name: asset.name,
+      imageUrl: asset.uploadedUrl || asset.url,
+      role: asset.role,
+      source: 'library',
+      businessName: clientForm.businessName || clientForm.name,
+      industry: clientForm.industry,
+    })
+  }, [clientForm.businessName, clientForm.name, clientForm.industry])
+
+  const handleImageEditorApply = useCallback(async (result: ImageEditorApplyResult) => {
+    if (!imageEditorAsset) return
+    if (imageEditorAsset.source === 'discovered') {
+      setDiscoveredAssets(discoveredAssets.map((item) => (
+        item.id === imageEditorAsset.id
+          ? {
+              ...item,
+              originalPreviewUrl: item.originalPreviewUrl || item.previewUrl,
+              editedDataUrl: result.dataUrl,
+              edited: true,
+              videoReady: result.videoReady,
+              hasTransparency: result.transparent,
+              editMetadata: {
+                operation: result.operation,
+                prompt: result.prompt,
+                model: result.model,
+                quality: result.quality,
+              },
+            }
+          : item
+      )))
+      return
+    }
+
+    await applyEditedPersonalizationAsset(imageEditorAsset.id, result.dataUrl, {
+      operation: result.operation,
+      prompt: result.prompt,
+      model: result.model,
+      quality: result.quality,
+      transparent: result.transparent,
+      videoReady: result.videoReady,
+    })
+  }, [applyEditedPersonalizationAsset, discoveredAssets, imageEditorAsset, setDiscoveredAssets])
 
   if (!isOpen || !source) return null
 
@@ -959,6 +1054,8 @@ export default function PersonalizationModal() {
               handleCtaUrl={handleCtaUrl}
               removeCtaGraphic={removeCtaGraphic}
               retryAssetUpload={retryAssetUpload}
+              openDiscoveredImageEditor={openDiscoveredImageEditor}
+              openLibraryImageEditor={openLibraryImageEditor}
               promptState={promptState}
               updatePersonalizedPrompt={updatePersonalizedPrompt}
               resetPrompt={resetPrompt}
@@ -1064,6 +1161,12 @@ export default function PersonalizationModal() {
           </footer>
         )}
       </div>
+      <ImageEditorModal
+        open={Boolean(imageEditorAsset)}
+        asset={imageEditorAsset}
+        onClose={() => setImageEditorAsset(null)}
+        onApply={handleImageEditorApply}
+      />
     </div>
   )
 }
@@ -1303,6 +1406,8 @@ function ConfigurationView(props: any) {
     handleLastFrameUpload, handleLastFrameUrl, removeLastFrame,
     handleCtaUpload, handleCtaUrl, removeCtaGraphic,
     retryAssetUpload,
+    openDiscoveredImageEditor,
+    openLibraryImageEditor,
     promptState, updatePersonalizedPrompt, resetPrompt,
     isPersonalizing, isRegenerating,
     handlePersonalize, handleRegenerate, handleCopyPrompt, copiedPrompt,
@@ -2057,6 +2162,7 @@ function ConfigurationView(props: any) {
                       onToggle={() => toggleDiscoveredAssetSelection(asset.id)}
                       onRemove={() => rejectDiscoveredAsset(asset.id)}
                       onCategoryChange={(newCat) => updateDiscoveredAssetCategory(asset.id, newCat)}
+                      onEdit={() => openDiscoveredImageEditor(asset)}
                       onRemoveFromSection={() => removeDiscoveredAssetFromSection(asset.id)}
                       onMoveToSection={(section) => moveDiscoveredAssetToSection(asset.id, section)}
                     />
@@ -2115,6 +2221,7 @@ function ConfigurationView(props: any) {
                     label={asset.name?.split('.')?.[0]?.toUpperCase()?.slice(0, 8) || 'PHOTO'}
                     onRemove={() => removeIdentity(asset.id)}
                     onRetry={() => retryAssetUpload(asset.id)}
+                    onEdit={() => openLibraryImageEditor(asset)}
                   />
                 ))
               ) : (
@@ -2168,6 +2275,11 @@ function ConfigurationView(props: any) {
             </div>
             <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               <ThumbPlaceholder label="+" add onClick={handleLogoAddClick} />
+              {assets.primaryLogo && (
+                <button type="button" onClick={() => openLibraryImageEditor(assets.primaryLogo)} className="rounded-[8px] text-[9px] font-extrabold uppercase" style={{ padding: '0 10px', border: '1px solid ' + C.cyanBorder, background: C.cyanSoft, color: C.cyan }}>
+                  ✨ Edit Image
+                </button>
+              )}
             </div>
             {assets.primaryLogo && (
               <>
@@ -2449,6 +2561,7 @@ function ConfigurationView(props: any) {
                 asset={assets.ctaGraphic}
                 onRemove={removeCtaGraphic}
                 onRetry={() => assets.ctaGraphic && retryAssetUpload(assets.ctaGraphic.id)}
+                onEdit={() => assets.ctaGraphic && openLibraryImageEditor(assets.ctaGraphic)}
               />
             </div>
           )}
