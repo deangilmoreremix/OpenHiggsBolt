@@ -149,6 +149,9 @@ export interface PersonalizationAsset {
     prompt?: string
     model?: string
     quality?: string
+    responseId?: string | null
+    imageGenerationCallId?: string | null
+    revisedPrompt?: string | null
   }
   visionAnalysis?: PersonalizationVisionAnalysis
   visionValidation?: PersonalizationVisionValidation
