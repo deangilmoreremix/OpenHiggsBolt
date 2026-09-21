@@ -710,6 +710,7 @@ export default function PersonalizationModal() {
       id: asset.id,
       name: asset.name,
       imageUrl: asset.uploadedUrl || asset.url,
+      category: asset.sourceCategory,
       role: asset.role,
       source: 'library',
       businessName: clientForm.businessName || clientForm.name,
