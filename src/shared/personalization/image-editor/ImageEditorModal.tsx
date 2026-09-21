@@ -357,15 +357,17 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     sourceUrl: string,
     custom = '',
     addVersion = true,
+    options: { forceTransparent?: boolean; useMask?: boolean } = {},
   ) => {
     if (!asset) throw new Error('No image selected')
     const operation = getOperation(operationId)
+    const activeMask = options.useMask === false ? null : maskBlob
     let sourceDataUrl = await prepareDataUrl(sourceUrl)
-    if (maskBlob) sourceDataUrl = await normalizeDataUrlToPng(sourceDataUrl)
+    if (activeMask) sourceDataUrl = await normalizeDataUrlToPng(sourceDataUrl)
     const sourceBlob = dataUrlToBlob(sourceDataUrl)
     const model = resolvedModel(operationId)
     const prompt = buildPrompt(operationId, custom)
-    const transparent = Boolean(operation.transparency || (operationId === 'video_ready' && recipe.transparencyRecommended))
+    const transparent = Boolean(options.forceTransparent || operation.transparency || (operationId === 'video_ready' && recipe.transparencyRecommended))
     const quality = model === 'gpt-image-2.5-sunburst' ? (modelMode === 'precision' ? 'xhigh' : 'high') : 'medium'
     const size = aspectRatio === 'original' ? 'auto' : aspectSizes[aspectRatio]
     const format: ImageFormat = transparent && outputFormat === 'jpeg' ? 'png' : outputFormat
@@ -374,7 +376,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
       operation: operationId,
       prompt,
       image: sourceBlob,
-      mask: maskBlob && operation.supportsMask ? maskBlob : undefined,
+      mask: activeMask && operation.supportsMask ? activeMask : undefined,
       model,
       quality,
       size,
@@ -426,10 +428,16 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     try {
       let source = displayUrl
       let finalResult: Omit<Version, 'id'> | null = null
+      let preserveTransparency = false
       const steps = recipe.makeVideoReadySteps.length ? recipe.makeVideoReadySteps : ['video_ready'] as EditorOperationId[]
 
       for (const stepId of steps) {
-        finalResult = await executeAiEdit(stepId, source, '', false)
+        const step = getOperation(stepId)
+        preserveTransparency = preserveTransparency || Boolean(step.transparency) || (stepId === 'video_ready' && recipe.transparencyRecommended)
+        finalResult = await executeAiEdit(stepId, source, '', false, {
+          forceTransparent: preserveTransparency,
+          useMask: false,
+        })
         source = finalResult.dataUrl
       }
 
