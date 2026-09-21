@@ -150,6 +150,8 @@ export interface PersonalizationAsset {
     model?: string
     quality?: string
   }
+  visionAnalysis?: PersonalizationVisionAnalysis
+  visionValidation?: PersonalizationVisionValidation
   sourceCategory?: DiscoveredAssetCategory
   sourceType?: SourceType
   sourceDiscoveredAssetId?: string
@@ -332,6 +334,36 @@ export interface SharedMediaEntry {
   createdAt: string
 }
 
+
+export interface PersonalizationVisionAnalysis {
+  category: DiscoveredAssetCategory
+  confidence: number
+  qualityScore: number
+  relevanceScore: number
+  targetRole: string
+  preserve: string[]
+  issues: string[]
+  recommendedOperations: string[]
+  transparencyRecommended: boolean
+  precisionRecommended: boolean
+  textDetected: boolean
+  duplicateLikely: boolean
+  summary: string
+  analyzedAt: string
+  model?: string
+}
+
+export interface PersonalizationVisionValidation {
+  passed: boolean
+  confidence: number
+  issues: string[]
+  preserved: string[]
+  changed: string[]
+  summary: string
+  analyzedAt: string
+  model?: string
+}
+
 // ── Discovered Assets ──────────────────────────────────────────────────────────
 // Temporary review state for website-scraped assets. These are NOT part of the
 // permanent AssetLibrary until the user explicitly clicks "Use Selected Assets".
@@ -398,4 +430,6 @@ export interface DiscoveredAsset {
     model?: string
     quality?: string
   }
+  visionAnalysis?: PersonalizationVisionAnalysis
+  visionValidation?: PersonalizationVisionValidation
 }
