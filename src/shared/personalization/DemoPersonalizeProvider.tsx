@@ -1407,6 +1407,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         const category = useVisionCategory ? analysis.category : asset.category
         const recommended =
           category !== 'irrelevant' &&
+          !analysis.duplicateLikely &&
           analysis.relevanceScore >= 60 &&
           analysis.qualityScore >= 35
 
@@ -1417,7 +1418,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
           qualityScore: analysis.qualityScore,
           relevanceScore: analysis.relevanceScore,
           recommended,
-          selected: asset.selected || recommended,
+          selected: analysis.duplicateLikely ? false : (asset.selected || recommended),
           assignedSection:
             asset.autoAssigned && useVisionCategory
               ? sectionForCategory(category)
