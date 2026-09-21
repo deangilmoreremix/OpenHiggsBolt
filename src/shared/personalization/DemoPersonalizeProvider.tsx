@@ -176,6 +176,18 @@ type DemoPersonalizeContextValue = {
   setCtaGraphicUrl: (url: string) => void
   removeCtaGraphic: () => void
   retryAssetUpload: (id: string) => Promise<void>
+  applyEditedPersonalizationAsset: (
+    assetId: string,
+    dataUrl: string,
+    meta: {
+      operation: string
+      prompt: string
+      model: string
+      quality: string
+      transparent: boolean
+      videoReady: boolean
+    },
+  ) => Promise<void>
 
   // Discovered assets
   discoveredAssets: DiscoveredAsset[]
@@ -351,6 +363,38 @@ function updateAssetInLibrary(library: AssetLibrary, asset: PersonalizationAsset
       return { ...library, products: [...library.products, asset] }
     case 'brand_reference':
       return { ...library, brandReferences: [...library.brandReferences, asset] }
+    case 'first_frame':
+      return { ...library, firstFrame: asset }
+    case 'last_frame':
+      return { ...library, lastFrame: asset }
+    case 'cta_graphic':
+      return { ...library, ctaGraphic: asset }
+    default:
+      return library
+  }
+}
+
+
+function replaceAssetInLibrary(library: AssetLibrary, asset: PersonalizationAsset): AssetLibrary {
+  switch (asset.role) {
+    case 'presenter_identity':
+    case 'face_identity':
+    case 'character_identity':
+      return {
+        ...library,
+        identities: library.identities.map((a) => (a.id === asset.id ? asset : a)),
+        primaryIdentity: library.primaryIdentity?.id === asset.id ? asset : library.primaryIdentity,
+      }
+    case 'logo':
+      return {
+        ...library,
+        logos: library.logos.map((a) => (a.id === asset.id ? asset : a)),
+        primaryLogo: library.primaryLogo?.id === asset.id ? asset : library.primaryLogo,
+      }
+    case 'product_reference':
+      return { ...library, products: library.products.map((a) => (a.id === asset.id ? asset : a)) }
+    case 'brand_reference':
+      return { ...library, brandReferences: library.brandReferences.map((a) => (a.id === asset.id ? asset : a)) }
     case 'first_frame':
       return { ...library, firstFrame: asset }
     case 'last_frame':
@@ -799,6 +843,64 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     await uploadAsset(asset)
   }, [assets, uploadAsset])
 
+  const applyEditedPersonalizationAsset = useCallback(async (
+    assetId: string,
+    dataUrl: string,
+    meta: {
+      operation: string
+      prompt: string
+      model: string
+      quality: string
+      transparent: boolean
+      videoReady: boolean
+    },
+  ) => {
+    const all = [
+      ...assets.identities,
+      ...assets.logos,
+      ...assets.products,
+      ...assets.brandReferences,
+      assets.firstFrame,
+      assets.lastFrame,
+      assets.ctaGraphic,
+    ].filter(Boolean) as PersonalizationAsset[]
+
+    const target = all.find((a) => a.id === assetId)
+    if (!target) throw new Error('Asset not found')
+    const blob = dataUrlToBlob(dataUrl)
+    if (!blob) throw new Error('Edited image could not be read')
+
+    const extension = blob.type === 'image/webp' ? 'webp' : 'png'
+    const baseName = (target.name || 'edited-image').replace(/\.[^.]+$/, '')
+    const file = new File([blob], baseName + '-edited.' + extension, { type: blob.type || 'image/png' })
+    const localUrl = URL.createObjectURL(file)
+    const originalUrl = target.originalUrl || target.uploadedUrl || target.url
+
+    const editedAsset: PersonalizationAsset = {
+      ...target,
+      name: file.name,
+      url: localUrl,
+      uploadedUrl: undefined,
+      file,
+      mimeType: file.type,
+      uploadStatus: 'local',
+      uploadError: null,
+      originalUrl,
+      edited: true,
+      videoReady: meta.videoReady,
+      hasTransparency: meta.transparent,
+      editMetadata: {
+        operation: meta.operation,
+        prompt: meta.prompt,
+        model: meta.model,
+        quality: meta.quality,
+      },
+    }
+
+    setAssets((prev) => replaceAssetInLibrary(prev, editedAsset))
+    await uploadAsset(editedAsset)
+  }, [assets, uploadAsset])
+
   // ── Asset actions ──────────────────────────────────────────────────────────
 
   const addIdentityFiles = useCallback((files: FileList | null) => {
@@ -1073,43 +1175,54 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       brand: 'brand_reference',
     }
 
-    // 1. Download selected images server-side (SSRF-safe)
-    let downloadRes: Response
-    try {
-      downloadRes = await fetch('/api/personalization/download-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ urls: toImport.map((a) => a.previewUrl) }),
-        credentials: 'same-origin',
-      })
-    } catch (err) {
-      setDiscoveryError(err instanceof Error ? err.message : 'Failed to reach download service')
-      setDiscoveryStatus('reviewing')
-      return
+    // 1. Download only untouched remote assets. Edited assets already carry
+    // an in-memory data URL produced by the editor and should not be sent to
+    // the server-side downloader.
+    const remoteItems = toImport.filter((item) => !item.editedDataUrl)
+    const downloadedByUrl = new Map<string, string>()
+
+    if (remoteItems.length > 0) {
+      let downloadRes: Response
+      try {
+        downloadRes = await fetch('/api/personalization/download-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ urls: remoteItems.map((a) => a.previewUrl) }),
+          credentials: 'same-origin',
+        })
+      } catch (err) {
+        setDiscoveryError(err instanceof Error ? err.message : 'Failed to reach download service')
+        setDiscoveryStatus('reviewing')
+        return
+      }
+
+      if (!downloadRes.ok) {
+        const data = await downloadRes.json().catch(() => ({}))
+        setDiscoveryError(data?.error || `Download failed (HTTP ${downloadRes.status})`)
+        setDiscoveryStatus('reviewing')
+        return
+      }
+
+      const downloadData = await downloadRes.json()
+      const results = Array.isArray(downloadData?.results) ? downloadData.results : []
+      for (const result of results) {
+        if (result?.ok && result?.url && result?.dataUrl) {
+          downloadedByUrl.set(result.url, result.dataUrl)
+        }
+      }
     }
 
-    if (!downloadRes.ok) {
-      const data = await downloadRes.json().catch(() => ({}))
-      setDiscoveryError(data?.error || `Download failed (HTTP ${downloadRes.status})`)
-      setDiscoveryStatus('reviewing')
-      return
-    }
-
-    const downloadData = await downloadRes.json()
-    const results = Array.isArray(downloadData?.results) ? downloadData.results : []
-
-    // 2. Build assets from downloaded blobs
+    // 2. Build assets from either edited data URLs or downloaded originals.
     const assetsToCreate: { item: DiscoveredAsset; blob: Blob; role: PersonalizationAsset['role']; isPrimary: boolean }[] = []
 
-    for (let i = 0; i < toImport.length; i++) {
-      const item = toImport[i]
-      const result = results[i]
-      if (!result?.ok || !result.dataUrl) continue
+    for (const item of toImport) {
+      const dataUrl = item.editedDataUrl || downloadedByUrl.get(item.previewUrl)
+      if (!dataUrl) continue
 
       const role = sectionRoleMap[item.assignedSection || ''] || categoryRoleMap[item.category] || 'brand_reference'
       if (!role) continue
 
-      const blob = dataUrlToBlob(result.dataUrl)
+      const blob = dataUrlToBlob(dataUrl)
       if (!blob) continue
 
       const isPrimary =
@@ -1135,6 +1248,11 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         const asset = createAsset(blob, role, {
           isPrimary,
           name: `discovered_${Date.now()}`,
+          originalUrl: item.originalPreviewUrl || item.previewUrl,
+          edited: item.edited || false,
+          videoReady: item.videoReady || false,
+          hasTransparency: item.hasTransparency || false,
+          editMetadata: item.editMetadata,
         })
         createdAssets.push(asset)
         next = updateAssetInLibrary(next, asset)
@@ -1719,6 +1837,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     setCtaGraphicUrl,
     removeCtaGraphic,
     retryAssetUpload,
+    applyEditedPersonalizationAsset,
 
     // Discovered assets
     discoveredAssets,
