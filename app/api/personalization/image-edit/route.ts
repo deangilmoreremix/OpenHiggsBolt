@@ -80,6 +80,8 @@ export async function POST(req: NextRequest) {
     const quality = cleanString(incoming.get('quality')) || 'auto'
     const size = cleanString(incoming.get('size')) || 'auto'
     const outputFormat = cleanString(incoming.get('output_format')) || 'png'
+    const compressionRaw = cleanString(incoming.get('output_compression'))
+    const outputCompression = compressionRaw ? Number(compressionRaw) : undefined
     const background = cleanString(incoming.get('background')) || 'auto'
     const inputFidelity = cleanString(incoming.get('input_fidelity')) || 'high'
 
@@ -106,6 +108,15 @@ export async function POST(req: NextRequest) {
     }
     if (!ALLOWED_FORMATS.has(outputFormat)) {
       return NextResponse.json({ error: 'Unsupported output format.' }, { status: 400 })
+    }
+    if (
+      outputCompression !== undefined &&
+      (!Number.isFinite(outputCompression) || outputCompression < 0 || outputCompression > 100)
+    ) {
+      return NextResponse.json({ error: 'Output compression must be between 0 and 100.' }, { status: 400 })
+    }
+    if (outputCompression !== undefined && outputFormat === 'png') {
+      return NextResponse.json({ error: 'Output compression is only supported for JPEG or WebP.' }, { status: 400 })
     }
     if (!ALLOWED_BACKGROUNDS.has(background)) {
       return NextResponse.json({ error: 'Unsupported background mode.' }, { status: 400 })
@@ -137,6 +148,9 @@ export async function POST(req: NextRequest) {
     upstream.append('quality', quality)
     upstream.append('size', size)
     upstream.append('output_format', outputFormat)
+    if (outputCompression !== undefined && outputFormat !== 'png') {
+      upstream.append('output_compression', String(Math.round(outputCompression)))
+    }
     upstream.append('background', background)
     upstream.append('input_fidelity', inputFidelity)
 
