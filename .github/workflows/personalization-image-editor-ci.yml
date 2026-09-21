@@ -20,10 +20,32 @@ jobs:
     timeout-minutes: 30
 
     steps:
+      - name: Preflight
+        shell: bash
+        run: |
+          echo "runner-started" > /tmp/smartvideo-go-preflight.log
+
       - name: Checkout
+        id: checkout
+        continue-on-error: true
         uses: actions/checkout@v4
         with:
           submodules: false
+
+      - name: Setup Node.js
+        id: setup_node
+        continue-on-error: true
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Record setup outcomes
+        if: always()
+        shell: bash
+        run: |
+          echo "checkout=${{ steps.checkout.outcome }}" >> /tmp/smartvideo-go-preflight.log
+          echo "setup_node=${{ steps.setup_node.outcome }}" >> /tmp/smartvideo-go-preflight.log
 
       - name: Initialize required package submodules
         id: submodules
@@ -36,12 +58,6 @@ jobs:
             packages/Open-Poe-AI \
             packages/Vibe-Workflow \
             2>&1 | tee /tmp/smartvideo-go-submodules.log
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
 
       - name: Install dependencies
         id: install
@@ -88,6 +104,7 @@ jobs:
         with:
           name: smartvideo-go-image-editor-diagnostics
           path: |
+            /tmp/smartvideo-go-preflight.log
             /tmp/smartvideo-go-submodules.log
             /tmp/smartvideo-go-install.log
             /tmp/smartvideo-go-typecheck.log
@@ -100,11 +117,15 @@ jobs:
         if: always()
         shell: bash
         run: |
+          echo "checkout=${{ steps.checkout.outcome }}"
+          echo "setup_node=${{ steps.setup_node.outcome }}"
           echo "submodules=${{ steps.submodules.outcome }}"
           echo "install=${{ steps.install.outcome }}"
           echo "typecheck=${{ steps.typecheck.outcome }}"
           echo "tests=${{ steps.tests.outcome }}"
           echo "build=${{ steps.build.outcome }}"
+          test "${{ steps.checkout.outcome }}" = "success"
+          test "${{ steps.setup_node.outcome }}" = "success"
           test "${{ steps.submodules.outcome }}" = "success"
           test "${{ steps.install.outcome }}" = "success"
           test "${{ steps.typecheck.outcome }}" = "success"
