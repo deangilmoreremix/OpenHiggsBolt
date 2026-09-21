@@ -15,6 +15,7 @@ const ALLOWED_FORMATS = new Set(['png', 'jpeg', 'webp'])
 const ALLOWED_BACKGROUNDS = new Set(['transparent', 'opaque', 'auto'])
 const ALLOWED_FIDELITY = new Set(['high', 'low'])
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024
+const MAX_MASK_BYTES = 4 * 1024 * 1024
 const MAX_PROMPT_LENGTH = 32_000
 const RATE_WINDOW_MS = 60_000
 const RATE_MAX = 12
@@ -123,8 +124,8 @@ export async function POST(req: NextRequest) {
       if (image.type !== 'image/png') {
         return NextResponse.json({ error: 'Masked edits require the source image to be normalized to PNG.' }, { status: 400 })
       }
-      if (mask.size > MAX_IMAGE_BYTES) {
-        return NextResponse.json({ error: 'Mask exceeds the 50 MB limit.' }, { status: 413 })
+      if (mask.size > MAX_MASK_BYTES) {
+        return NextResponse.json({ error: 'Mask exceeds the 4 MB API limit.' }, { status: 413 })
       }
     }
 
