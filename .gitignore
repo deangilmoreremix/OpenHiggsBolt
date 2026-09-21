@@ -60,6 +60,9 @@ tsconfig.tsbuildinfo
 test-results/
 playwright-report/
 
+# Playwright Clerk auth state (treated as secret)
+playwright/.clerk/
+
 # Sync backups and monitoring artifacts
 .sync-backups/
 monitoring/
