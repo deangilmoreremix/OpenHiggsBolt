@@ -15,7 +15,6 @@ const nextConfig = {
   },
   transpilePackages: ['studio', 'ai-agent', 'workflow-builder', 'design-agent'],
   serverExternalPackages: [
-    'got-scraping',
     'get-stream',
     '@crawlee/cheerio',
     'electron',
