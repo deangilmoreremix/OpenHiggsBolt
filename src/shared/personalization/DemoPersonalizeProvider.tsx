@@ -42,6 +42,7 @@ import type {
   DiscoveredAsset,
   DiscoveredAssetCategory,
   AssignedSection,
+  PersonalizationVisionAnalysis,
 } from './types'
 import { EMPTY_GENERATION_STATE } from './types'
 import { normalizePersonalizationSource, getEligibility } from './sourceNormalizer'
@@ -205,6 +206,9 @@ type DemoPersonalizeContextValue = {
   importDiscoveredAssets: () => Promise<void>
   cancelDiscovery: () => void
   discoverAssets: (websiteUrl: string) => Promise<void>
+  visionStatus: 'idle' | 'analyzing' | 'complete' | 'error'
+  visionError: string | null
+  analyzeDiscoveredAssets: () => Promise<void>
 
   // Business search
   businessSearchMode: 'idle' | 'searching' | 'results' | 'selected' | 'error'
@@ -438,6 +442,8 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   const [discoveryStatus, setDiscoveryStatus] = useState<'idle' | 'discovering' | 'reviewing' | 'importing'>('idle')
   const [discoveryError, setDiscoveryError] = useState<string | null>(null)
   const [importConfirmation, setImportConfirmation] = useState<{ count: number; clientName?: string } | null>(null)
+  const [visionStatus, setVisionStatus] = useState<'idle' | 'analyzing' | 'complete' | 'error'>('idle')
+  const [visionError, setVisionError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!importConfirmation) return
@@ -1281,10 +1287,14 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     setDiscoveredAssetsState([])
     setDiscoveryStatus('idle')
     setDiscoveryError(null)
+    setVisionStatus('idle')
+    setVisionError(null)
   }, [])
 
   const discoverAssets = useCallback(async (websiteUrl: string) => {
     setDiscoveryError(null)
+    setVisionError(null)
+    setVisionStatus('idle')
     setDiscoveryStatus('discovering')
 
     try {
@@ -1318,6 +1328,101 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       setDiscoveryStatus('idle')
     }
   }, [setDiscoveredAssetsState, setDiscoveryError, setDiscoveryStatus, testMode])
+
+
+  const analyzeDiscoveredAssets = useCallback(async () => {
+    if (discoveredAssets.length === 0) return
+    setVisionStatus('analyzing')
+    setVisionError(null)
+
+    const sectionForCategory = (category: DiscoveredAssetCategory): AssignedSection => {
+      if (category === 'person') return 'person'
+      if (category === 'logo') return 'logo'
+      if (category === 'product' || category === 'service' || category === 'completed_work') return 'products'
+      if (category === 'storefront' || category === 'office' || category === 'branded_vehicle' || category === 'team' || category === 'brand') return 'brand'
+      return null
+    }
+
+    try {
+      const analysesById = new Map<string, PersonalizationVisionAnalysis>()
+      const candidates = discoveredAssets.filter((asset) => !asset.rejected && asset.previewUrl)
+
+      for (let index = 0; index < candidates.length; index += 8) {
+        const batch = candidates.slice(index, index + 8)
+        const res = await fetch('/api/personalization/image-analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            mode: 'analyze',
+            images: batch.map((asset) => ({
+              id: asset.id,
+              imageUrl: asset.editedDataUrl || asset.previewUrl,
+              categoryHint: asset.category,
+              roleHint: asset.assignedSection || undefined,
+            })),
+            businessContext: {
+              businessName: clientForm.businessName || clientForm.name,
+              industry: clientForm.industry,
+              productService: clientForm.productService,
+              brandDescription: clientForm.brandDescription,
+            },
+            targetVideoFormat: genOptions.aspectRatio || source?.aspectRatio || undefined,
+          }),
+        })
+
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          throw new Error(data?.message || data?.error || `Vision analysis failed (HTTP ${res.status})`)
+        }
+
+        for (const analysis of Array.isArray(data?.analyses) ? data.analyses : []) {
+          if (analysis?.id) analysesById.set(analysis.id, analysis as PersonalizationVisionAnalysis)
+        }
+      }
+
+      setDiscoveredAssetsState((previous) => previous.map((asset) => {
+        const analysis = analysesById.get(asset.id)
+        if (!analysis) return asset
+
+        const useVisionCategory = analysis.confidence >= 75
+        const category = useVisionCategory ? analysis.category : asset.category
+        const recommended =
+          category !== 'irrelevant' &&
+          analysis.relevanceScore >= 60 &&
+          analysis.qualityScore >= 35
+
+        return {
+          ...asset,
+          category,
+          confidence: analysis.confidence,
+          qualityScore: analysis.qualityScore,
+          relevanceScore: analysis.relevanceScore,
+          recommended,
+          selected: asset.selected || recommended,
+          assignedSection:
+            asset.autoAssigned && useVisionCategory
+              ? sectionForCategory(category)
+              : asset.assignedSection,
+          visionAnalysis: analysis,
+        }
+      }))
+
+      setVisionStatus('complete')
+    } catch (error) {
+      setVisionStatus('error')
+      setVisionError(error instanceof Error ? error.message : 'Vision analysis failed')
+    }
+  }, [
+    clientForm.brandDescription,
+    clientForm.businessName,
+    clientForm.industry,
+    clientForm.name,
+    clientForm.productService,
+    discoveredAssets,
+    genOptions.aspectRatio,
+    source?.aspectRatio,
+  ])
 
   // ── Business search actions ────────────────────────────────────────────────
 
@@ -1858,6 +1963,9 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     importDiscoveredAssets,
     cancelDiscovery,
     discoverAssets,
+    visionStatus,
+    visionError,
+    analyzeDiscoveredAssets,
 
     // Business search
     businessSearchMode,
