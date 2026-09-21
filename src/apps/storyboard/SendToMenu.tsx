@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react'
 import { useState } from 'react'
 import { Send, ChevronDown, Video, Film, Sparkles, Check, Mic, Scissors, Zap, RefreshCw } from 'lucide-react'
 import { useStoryboard } from './StoryboardContext'
@@ -15,7 +16,7 @@ import {
 } from '@/shared/crossStudio'
 import { buttons, panels, semantic } from '@/shared/styles/designTokens'
 
-const TARGET_ICON: Record<StudioTarget, JSX.Element> = {
+const TARGET_ICON: Record<StudioTarget, ReactElement> = {
   video: <Video size={14} />,
   cinema: <Film size={14} />,
   'vfx-studio': <Sparkles size={14} />,
