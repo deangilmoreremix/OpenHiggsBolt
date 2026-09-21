@@ -1253,6 +1253,9 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
           videoReady: item.videoReady || false,
           hasTransparency: item.hasTransparency || false,
           editMetadata: item.editMetadata,
+          sourceCategory: item.category,
+          sourceType: item.sourceType,
+          sourceDiscoveredAssetId: item.id,
         })
         createdAssets.push(asset)
         next = updateAssetInLibrary(next, asset)
