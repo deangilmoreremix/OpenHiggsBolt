@@ -40,6 +40,27 @@ const BLOCKED_URL_PATTERNS = [
 ]
 
 // ---------------------------------------------------------------------------
+// Runtime guard
+// ---------------------------------------------------------------------------
+
+export function isBrowserDiscoveryAvailable(): boolean {
+  try {
+    // Playwright is excluded from the Netlify serverless bundle to stay under
+    // the 250 MB function limit. If it is not resolvable at runtime, this
+    // module should not be used in production.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require.resolve('playwright')
+    return true
+  } catch {
+    return false
+  }
+}
+
+if (!isBrowserDiscoveryAvailable()) {
+  console.warn('[browserDiscovery] Playwright is not available in this runtime; browser fallback is disabled.')
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
