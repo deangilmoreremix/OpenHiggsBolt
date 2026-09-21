@@ -289,6 +289,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
 
     const trimmed = (key || '').trim();
     const trimmedOpenai = (openaiKeyValue || '').trim();
+
     setIsSavingKey(true);
     setAuthError(null);
 

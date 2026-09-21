@@ -18,6 +18,12 @@ const nextConfig = {
     'got-scraping',
     'get-stream',
     '@crawlee/cheerio',
+    'electron',
+    'app-builder-bin',
+    '@typescript-eslint',
+    'figlet',
+    '7zip-bin',
+    'es-abstract',
   ],
   eslint: {
     ignoreDuringBuilds: true,

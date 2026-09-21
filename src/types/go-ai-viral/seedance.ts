@@ -52,4 +52,8 @@ export interface SeedanceStats {
   withPrompt: number
   withDetailHref: number
   sourceLanguages: Record<string, number>
+  totalLikes: number
+  totalReposts: number
+  totalReplies: number
+  viralCount: number
 }
