@@ -35,7 +35,7 @@ jobs:
         run: npm run typecheck
 
       - name: Run image editor unit tests
-        run: npx vitest run src/shared/personalization/__tests__/ImageEditorModal.test.tsx src/shared/personalization/__tests__/imageEditRegistry.test.ts tests/personalization-image-edit.vitest.test.ts
+        run: npx vitest run src/shared/personalization/__tests__/ImageEditorModal.test.tsx src/shared/personalization/__tests__/imageEditRegistry.test.ts src/shared/personalization/__tests__/responsesVisionApi.test.ts src/shared/personalization/__tests__/DiscoveredAssets.test.tsx tests/personalization-image-edit.vitest.test.ts
 
       - name: Build
         run: npm run build
