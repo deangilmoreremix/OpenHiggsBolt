@@ -76,6 +76,8 @@ export type ResponsesSmartEditResult = {
   model: 'gpt-image-2.5-flare' | 'gpt-image-2.5-sunburst'
   orchestratorModel?: string
   usage?: unknown
+  outputFormat?: 'png' | 'jpeg' | 'webp'
+  outputCompression?: number | null
 }
 
 export async function responsesSmartEdit(params: {
@@ -88,6 +90,9 @@ export async function responsesSmartEdit(params: {
   quality?: 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'auto'
   size?: string
   background?: 'transparent' | 'opaque' | 'auto'
+  inputFidelity?: 'high' | 'low'
+  outputFormat?: 'png' | 'jpeg' | 'webp'
+  outputCompression?: number
   businessContext?: VisionBusinessContext & {
     targetRole?: string
     preserve?: string[]
