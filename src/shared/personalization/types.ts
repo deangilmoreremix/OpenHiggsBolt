@@ -150,6 +150,9 @@ export interface PersonalizationAsset {
     model?: string
     quality?: string
   }
+  sourceCategory?: DiscoveredAssetCategory
+  sourceType?: SourceType
+  sourceDiscoveredAssetId?: string
 }
 
 export interface AssetLibrary {
