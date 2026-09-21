@@ -104,7 +104,13 @@ export async function makeDiscoveredAssetVideoReady(
     .filter((id): id is EditorOperationId => id in IMAGE_EDIT_OPERATIONS)
     .filter((id) => {
       const operation = IMAGE_EDIT_OPERATIONS[id]
-      return id !== 'custom' && id !== 'video_ready' && !operation.destructiveCreative
+      const applicable = operation.applicableTo
+      return (
+        id !== 'custom' &&
+        id !== 'video_ready' &&
+        !operation.destructiveCreative &&
+        (!applicable || applicable.includes(category))
+      )
     })
     .slice(0, 3)
   const recipeSteps = recipe.makeVideoReadySteps.length
