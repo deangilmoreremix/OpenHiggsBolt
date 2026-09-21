@@ -26,13 +26,13 @@ describe('ImageEditorModal', () => {
       />,
     )
 
-    expect(screen.getByText('SmartVideo Image Editor')).toBeTruthy()
+    expect(screen.getByText('SmartVideo GO Image Editor')).toBeTruthy()
     expect(screen.getAllByText('Make Video Ready').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Remove Background').length).toBeGreaterThan(0)
-    expect(screen.getByText('Ask AI to Edit')).toBeTruthy()
-    expect(screen.getByText('Advanced Local Editor')).toBeTruthy()
-    expect(screen.getByText('Asset Protection')).toBeTruthy()
-    expect(screen.getByText('Use This Asset')).toBeTruthy()
+    expect(screen.getByText('Ask SmartVideo GO AI')).toBeTruthy()
+    expect(screen.getByText('Advanced Edit')).toBeTruthy()
+    expect(screen.getByText('SmartVideo GO Asset Protection')).toBeTruthy()
+    expect(screen.getByText('Use Edited Asset')).toBeTruthy()
   })
 
   it('does not render while closed', () => {
