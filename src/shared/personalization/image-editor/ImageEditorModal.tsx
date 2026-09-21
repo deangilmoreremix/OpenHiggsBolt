@@ -42,7 +42,7 @@ import {
 } from './imageEditRegistry'
 import {
   analyzePersonalizationImages,
-  responsesSmartEdit,
+  responsesSmartEditStream,
   validatePersonalizationImageEdit,
 } from './responsesVisionApi'
 
@@ -227,6 +227,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
   const [visionAnalysis, setVisionAnalysis] = useState<PersonalizationVisionAnalysis | undefined>(undefined)
   const [visionAnalyzing, setVisionAnalyzing] = useState(false)
   const [validationOverrideVersionId, setValidationOverrideVersionId] = useState<string | null>(null)
+  const [streamingPreview, setStreamingPreview] = useState<string | null>(null)
 
   const [rotation, setRotation] = useState(0)
   const [flipX, setFlipX] = useState(false)
@@ -287,6 +288,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     setVisionAnalysis(asset.visionAnalysis)
     setVisionAnalyzing(false)
     setValidationOverrideVersionId(null)
+    setStreamingPreview(null)
     resetLocalControls()
   }, [open, asset?.id, kind])
 
@@ -505,7 +507,8 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
         ? []
         : (await Promise.all((asset.referenceImages || []).slice(0, 6).map((url) => prepareDataUrl(url).catch(() => '')))).filter(Boolean)
       const model = resolvedModel('custom')
-      const result = await responsesSmartEdit({
+      setStreamingPreview(null)
+      const result = await responsesSmartEditStream({
         imageUrl: sourceImage,
         referenceImages: references,
         prompt: customPrompt.trim(),
@@ -523,6 +526,9 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
           targetRole: visionAnalysis?.targetRole || recipe.outputRole,
           preserve: mergedPreserve,
         },
+        partialImages: 2,
+      }, (partialDataUrl) => {
+        setStreamingPreview(partialDataUrl)
       })
 
       appendVersion({
@@ -542,6 +548,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     } catch (err) {
       setError(err instanceof Error ? err.message : 'SmartVideo GO Smart Edit failed')
     } finally {
+      setStreamingPreview(null)
       setBusyLabel(null)
     }
   }, [
@@ -897,12 +904,13 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
         {editorMode === 'simple' ? (
           <div className="space-y-4 p-4">
             <MediaStage
-              src={displayUrl}
+              src={streamingPreview || displayUrl}
               originalSrc={asset.imageUrl}
               compareMode={compareMode}
               safeArea={safeArea}
               aspectRatio={aspectRatio}
               busyLabel={busyLabel}
+              progressive={Boolean(streamingPreview)}
             />
 
             <div className="flex flex-wrap items-center gap-2 text-xs" style={{ color: semantic.textMuted }}>
@@ -1030,12 +1038,13 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
               ) : (
                 <>
                   <MediaStage
-                    src={displayUrl}
+                    src={streamingPreview || displayUrl}
                     originalSrc={asset.imageUrl}
                     compareMode={compareMode}
                     safeArea={safeArea}
                     aspectRatio={aspectRatio}
                     busyLabel={busyLabel}
+                    progressive={Boolean(streamingPreview)}
                     previewStyle={{
                       transform: 'scale(' + (zoom / 100) + ') rotate(' + rotation + 'deg) scaleX(' + (flipX ? -1 : 1) + ') scaleY(' + (flipY ? -1 : 1) + ')',
                       filter:
@@ -1184,6 +1193,7 @@ function MediaStage({
   safeArea,
   aspectRatio,
   busyLabel,
+  progressive = false,
   previewStyle,
 }: {
   src: string
@@ -1192,6 +1202,7 @@ function MediaStage({
   safeArea: boolean
   aspectRatio: AspectRatio
   busyLabel: string | null
+  progressive?: boolean
   previewStyle?: CSSProperties
 }) {
   if (compareMode) {
@@ -1217,11 +1228,11 @@ function MediaStage({
       )}
 
       {busyLabel && (
-        <div className="absolute inset-0 z-[5] grid place-items-center bg-black/70 backdrop-blur-sm">
+        <div className={'absolute inset-0 z-[5] grid place-items-center backdrop-blur-[1px] ' + (progressive ? 'bg-black/20' : 'bg-black/70')}>
           <div className="rounded-2xl border border-cyan-400/30 bg-black/70 px-7 py-6 text-center">
             <Loader2 size={24} className="mx-auto mb-3 animate-spin text-cyan-300" />
             <div className="text-xs font-bold uppercase tracking-wide text-white">{busyLabel}</div>
-            <div className="mt-1 text-[10px] text-white/40">SmartVideo GO is processing this asset.</div>
+            <div className="mt-1 text-[10px] text-white/40">{progressive ? 'Progressive GPT Image 2.5 preview' : 'SmartVideo GO is processing this asset.'}</div>
           </div>
         </div>
       )}
