@@ -9,6 +9,7 @@ on:
       - 'app/api/personalization/image-analyze/**'
       - 'app/api/personalization/image-smart-edit/**'
       - 'tests/personalization-image-edit.vitest.test.ts'
+      - 'tests/personalization-responses-vision.vitest.test.ts'
       - '.github/workflows/personalization-image-editor-ci.yml'
   workflow_dispatch:
 
@@ -58,6 +59,7 @@ jobs:
             src/shared/personalization/__tests__/responsesVisionApi.test.ts \
             src/shared/personalization/__tests__/DiscoveredAssets.test.tsx \
             tests/personalization-image-edit.vitest.test.ts \
+            tests/personalization-responses-vision.vitest.test.ts \
             2>&1 | tee /tmp/smartvideo-go-tests.log
 
       - name: Build
