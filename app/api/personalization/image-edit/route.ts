@@ -120,6 +120,9 @@ export async function POST(req: NextRequest) {
       if (!(mask instanceof File) || mask.type !== 'image/png') {
         return NextResponse.json({ error: 'Mask must be a PNG image with an alpha channel.' }, { status: 400 })
       }
+      if (image.type !== 'image/png') {
+        return NextResponse.json({ error: 'Masked edits require the source image to be normalized to PNG.' }, { status: 400 })
+      }
       if (mask.size > MAX_IMAGE_BYTES) {
         return NextResponse.json({ error: 'Mask exceeds the 50 MB limit.' }, { status: 413 })
       }
