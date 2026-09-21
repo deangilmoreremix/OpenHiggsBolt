@@ -16,7 +16,7 @@ import {
   Wand2,
   X,
 } from 'lucide-react'
-import { editImage } from '@/src/shared/api/openaiImage'
+import { editImage, type ImageSize } from '@/src/shared/api/openaiImage'
 import type { AssetRole, DiscoveredAssetCategory } from '../types'
 
 export type PersonalizationImageEditorAsset = {
@@ -80,7 +80,7 @@ const C = {
   green: '#28c98b',
 } as const
 
-const aspectSizes: Record<Exclude<AspectRatio, 'original'>, string> = {
+const aspectSizes: Record<Exclude<AspectRatio, 'original'>, ImageSize> = {
   '9:16': '1024x1792',
   '16:9': '1792x1024',
   '1:1': '1024x1024',
