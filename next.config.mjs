@@ -27,6 +27,20 @@ const nextConfig = {
     'playwright',
     'jsdom',
   ],
+  experimental: {
+    outputFileTracingExcludes: {
+      '*': [
+        'node_modules/playwright/**',
+        'node_modules/@playwright/**',
+        'node_modules/electron/**',
+        'node_modules/electron-builder/**',
+        'node_modules/app-builder-bin/**',
+        'node_modules/jsdom/**',
+        'node_modules/7zip-bin/**',
+        'node_modules/**/*.map',
+      ],
+    },
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },
