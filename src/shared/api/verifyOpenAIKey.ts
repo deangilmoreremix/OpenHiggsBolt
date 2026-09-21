@@ -17,8 +17,11 @@ export async function verifyOpenAIKey(key: string): Promise<void> {
     },
   });
 
-  if (res.status === 401 || res.status === 403) {
+  if (res.status === 401) {
     throw new Error('unauthorized');
+  }
+  if (res.status === 403) {
+    throw new Error('restricted');
   }
   if (!res.ok) {
     // OpenAI returns 429 (rate limit) or 5xx for transient issues. Treat as

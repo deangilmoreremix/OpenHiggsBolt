@@ -310,8 +310,11 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
         openaiError =
           kind === 'unauthorized'
             ? 'That OpenAI key is invalid or unauthorized. Double-check it on your OpenAI dashboard and try again.'
-            : 'Could not verify the OpenAI key. Check your connection and try again.';
+            : kind === 'restricted'
+              ? 'That OpenAI key is valid but restricted. Check your OpenAI organization permissions and try again.'
+              : 'Could not verify the OpenAI key. Check your connection and try again.';
       }
+    }
     }
 
     if (muapiError && openaiError) {
@@ -336,17 +339,31 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
     setSettingsKeyInput('');
     setSettingsOpenaiInput('');
     setAuthError(null);
-    setShowSettings(false);
-    setShowApiKeyPopup(false);
-    settingsClosedAt.current = Date.now();
-    setIsSavingKey(false);
+    setIsSavingKey(true);
 
-    fetch('/api/auth/muapi-key', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify({ key: trimmed || apiKey, openaiKey: trimmedOpenai || openaiKey }),
-    }).catch(() => {});
+    try {
+      const res = await fetch('/api/auth/muapi-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ key: trimmed || apiKey, openaiKey: trimmedOpenai || openaiKey }),
+      });
+
+      const data = await res.json().catch(() => ({ ok: false, error: 'Invalid server response' }));
+
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || `Server responded with ${res.status}`);
+      }
+
+      setShowSettings(false);
+      setShowApiKeyPopup(false);
+      settingsClosedAt.current = Date.now();
+    } catch (err) {
+      const message = err?.message || 'Failed to save key. Please try again.';
+      setAuthError(message);
+    } finally {
+      setIsSavingKey(false);
+    }
 
     fetchBalance(trimmed).catch(() => {});
   }, [fetchBalance, setApiKey, setOpenAiKey, apiKey, openaiKey]);
