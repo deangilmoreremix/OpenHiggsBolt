@@ -12,14 +12,14 @@ const BASE = 'https://api.openai.com/v1'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type ImageQuality = 'low' | 'medium' | 'high' | 'auto'
+export type ImageQuality = 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'auto'
 export type ImageFormat  = 'png' | 'jpeg' | 'webp'
 export type ImageSize    = '1024x1024' | '1536x1024' | '1024x1536' | '2048x2048' | '2048x1152' | '3840x2160' | `${number}x${number}` | 'auto'
 export type Moderation   = 'auto' | 'low'
 
 export interface GenerateImageParams {
   prompt: string
-  model?: 'gpt-image-2' | 'gpt-image-1' | 'gpt-image-1.5' | 'gpt-image-1-mini' | 'dall-e-3' | 'dall-e-2'
+  model?: 'gpt-image-2.5-flare' | 'gpt-image-2.5-sunburst' | 'gpt-image-2' | 'gpt-image-1' | 'gpt-image-1.5' | 'gpt-image-1-mini' | 'dall-e-3' | 'dall-e-2'
   n?: number                    // 1-10 images
   quality?: ImageQuality
   size?: ImageSize
