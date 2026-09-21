@@ -30,6 +30,7 @@ type SmartEditBody = {
     businessName?: string
     industry?: string
     productService?: string
+    brandDescription?: string
     targetRole?: string
     preserve?: string[]
   }
@@ -95,6 +96,7 @@ export async function POST(req: NextRequest) {
       body.businessContext?.businessName ? `Business: ${body.businessContext.businessName}.` : '',
       body.businessContext?.industry ? `Industry: ${body.businessContext.industry}.` : '',
       body.businessContext?.productService ? `Product/service: ${body.businessContext.productService}.` : '',
+      body.businessContext?.brandDescription ? `Brand description: ${body.businessContext.brandDescription}.` : '',
       body.businessContext?.targetRole ? `Target SmartVideo GO role: ${body.businessContext.targetRole}.` : '',
       preserve.length ? `Preserve as closely as possible: ${preserve.join(', ')}.` : '',
     ].filter(Boolean).join(' ')
