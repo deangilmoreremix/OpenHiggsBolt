@@ -36,29 +36,31 @@ type AnalyzeImageInput = {
   roleHint?: string
 }
 
-type RequestBody =
-  | {
-      mode?: 'analyze'
-      images: AnalyzeImageInput[]
-      businessContext?: {
-        businessName?: string
-        industry?: string
-        productService?: string
-        brandDescription?: string
-      }
-      targetVideoFormat?: string
-    }
-  | {
-      mode: 'validate'
-      originalImageUrl: string
-      editedImageUrl: string
-      preserve?: string[]
-      intendedOperation?: string
-      businessContext?: {
-        businessName?: string
-        industry?: string
-      }
-    }
+type AnalyzeRequestBody = {
+  mode?: 'analyze'
+  images: AnalyzeImageInput[]
+  businessContext?: {
+    businessName?: string
+    industry?: string
+    productService?: string
+    brandDescription?: string
+  }
+  targetVideoFormat?: string
+}
+
+type ValidateRequestBody = {
+  mode: 'validate'
+  originalImageUrl: string
+  editedImageUrl: string
+  preserve?: string[]
+  intendedOperation?: string
+  businessContext?: {
+    businessName?: string
+    industry?: string
+  }
+}
+
+type RequestBody = AnalyzeRequestBody | ValidateRequestBody
 
 function isSupportedImageReference(value: unknown): value is string {
   if (typeof value !== 'string' || !value.trim()) return false
@@ -212,18 +214,19 @@ export async function POST(req: NextRequest) {
     const mode = body.mode || 'analyze'
 
     if (mode === 'validate') {
-      const originalImageUrl = body.originalImageUrl
-      const editedImageUrl = body.editedImageUrl
+      const validateBody = body as ValidateRequestBody
+      const originalImageUrl = validateBody.originalImageUrl
+      const editedImageUrl = validateBody.editedImageUrl
       if (!isSupportedImageReference(originalImageUrl) || !isSupportedImageReference(editedImageUrl)) {
         return NextResponse.json({ error: 'Two valid image references are required.' }, { status: 400 })
       }
 
-      const preserve = Array.isArray(body.preserve)
-        ? body.preserve.map(String).filter(Boolean).slice(0, 20)
+      const preserve = Array.isArray(validateBody.preserve)
+        ? validateBody.preserve.map(String).filter(Boolean).slice(0, 20)
         : []
-      const intendedOperation = String(body.intendedOperation || 'image edit')
-      const businessName = String(body.businessContext?.businessName || '')
-      const industry = String(body.businessContext?.industry || '')
+      const intendedOperation = String(validateBody.intendedOperation || 'image edit')
+      const businessName = String(validateBody.businessContext?.businessName || '')
+      const industry = String(validateBody.businessContext?.industry || '')
 
       const prompt =
         'You are SmartVideo GO visual QA. Compare image 1 (original) with image 2 (edited). ' +
@@ -273,7 +276,8 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    const images = Array.isArray(body.images) ? body.images.slice(0, MAX_IMAGES) : []
+    const analyzeBody = body as AnalyzeRequestBody
+    const images = Array.isArray(analyzeBody.images) ? analyzeBody.images.slice(0, MAX_IMAGES) : []
     if (!images.length) {
       return NextResponse.json({ error: 'At least one image is required.' }, { status: 400 })
     }
@@ -284,11 +288,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const businessName = String(body.businessContext?.businessName || '')
-    const industry = String(body.businessContext?.industry || '')
-    const productService = String(body.businessContext?.productService || '')
-    const brandDescription = String(body.businessContext?.brandDescription || '')
-    const targetVideoFormat = String(body.targetVideoFormat || '')
+    const businessName = String(analyzeBody.businessContext?.businessName || '')
+    const industry = String(analyzeBody.businessContext?.industry || '')
+    const productService = String(analyzeBody.businessContext?.productService || '')
+    const brandDescription = String(analyzeBody.businessContext?.brandDescription || '')
+    const targetVideoFormat = String(analyzeBody.targetVideoFormat || '')
 
     const prompt =
       'You are the SmartVideo GO personalization vision planner. Analyze each supplied business image independently and return one analysis for every image id. ' +
