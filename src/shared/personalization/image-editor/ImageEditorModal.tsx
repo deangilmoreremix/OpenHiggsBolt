@@ -33,6 +33,7 @@ import type {
 import MaskEditor from './MaskEditor'
 import {
   getAssetRecipe,
+  getSourceAssetRecipe,
   getOperation,
   operationGroupsForAsset,
   resolveEditorAssetKind,
@@ -251,10 +252,15 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
 
   const kind = useMemo(() => resolveEditorAssetKind(asset?.category, asset?.role), [asset?.category, asset?.role])
   const recipe = useMemo(() => getAssetRecipe(asset?.category, asset?.role), [asset?.category, asset?.role])
+  const sourceRecipe = useMemo(() => getSourceAssetRecipe(asset?.category, asset?.role), [asset?.category, asset?.role])
   const groupedOperations = useMemo(() => operationGroupsForAsset(kind), [kind])
   const mergedPreserve = useMemo(
-    () => Array.from(new Set([...(recipe.preserve || []), ...(visionAnalysis?.preserve || [])])),
-    [recipe.preserve, visionAnalysis?.preserve],
+    () => Array.from(new Set([
+      ...(sourceRecipe.preserve || []),
+      ...(recipe.preserve || []),
+      ...(visionAnalysis?.preserve || []),
+    ])),
+    [recipe.preserve, sourceRecipe.preserve, visionAnalysis?.preserve],
   )
 
   useEffect(() => {
@@ -332,10 +338,10 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     const operation = getOperation(operationId)
     if (modelMode === 'fast') return 'gpt-image-2.5-flare' as const
     if (modelMode === 'precision') return 'gpt-image-2.5-sunburst' as const
-    return operation.precision || recipe.precisionRecommended || visionAnalysis?.precisionRecommended
+    return operation.precision || sourceRecipe.precisionRecommended || recipe.precisionRecommended || visionAnalysis?.precisionRecommended
       ? 'gpt-image-2.5-sunburst' as const
       : 'gpt-image-2.5-flare' as const
-  }, [modelMode, recipe.precisionRecommended, visionAnalysis?.precisionRecommended])
+  }, [modelMode, recipe.precisionRecommended, sourceRecipe.precisionRecommended, visionAnalysis?.precisionRecommended])
 
   const prepareDataUrl = useCallback(async (url: string) => {
     if (url.startsWith('data:')) return url
@@ -451,7 +457,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
       size,
       outputFormat: format,
       background: transparent ? 'transparent' : 'auto',
-      inputFidelity: operation.precision || recipe.precisionRecommended || visionAnalysis?.precisionRecommended ? 'high' : 'low',
+      inputFidelity: operation.precision || sourceRecipe.precisionRecommended || recipe.precisionRecommended || visionAnalysis?.precisionRecommended ? 'high' : 'low',
     })
 
     const first = results?.[0]
@@ -472,7 +478,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
 
     if (addVersion) appendVersion(version)
     return version
-  }, [appendVersion, aspectRatio, asset, buildPrompt, maskBlob, modelMode, outputFormat, prepareDataUrl, recipe.precisionRecommended, recipe.transparencyRecommended, resolvedModel, visionAnalysis?.precisionRecommended])
+  }, [appendVersion, aspectRatio, asset, buildPrompt, maskBlob, modelMode, outputFormat, prepareDataUrl, recipe.precisionRecommended, recipe.transparencyRecommended, resolvedModel, sourceRecipe.precisionRecommended, visionAnalysis?.precisionRecommended])
 
   const runAiEdit = useCallback(async (operationId: EditorOperationId, custom = '') => {
     if (operationId === 'custom' && !custom.trim()) return
