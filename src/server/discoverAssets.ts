@@ -500,41 +500,65 @@ export async function discoverBusinessAssets(options: DiscoveryOptions): Promise
   console.log(`[discovery] unique candidates: ${uniqueCandidates.length}`)
 
   // 5. Filter out junk and validate images
+  const MAX_VALIDATION_CONCURRENCY = 6
   const validCandidates: ImageCandidate[] = []
+  const validationPromises: Promise<{ candidate: ImageCandidate; valid: boolean; mime?: string }>[] = []
+
   for (const candidate of uniqueCandidates) {
     if (validCandidates.length >= maxImages) break
-    const validation = await validateImage(candidate.url)
-    if (!validation.valid) {
-      console.log(`[validateImage] ${candidate.url} -> rejected`)
+    const validationPromise = validateImage(candidate.url)
+      .then((validation) => ({ candidate, valid: validation.valid, mime: validation.mime }))
+      .catch(() => ({ candidate, valid: false }))
+    validationPromises.push(validationPromise)
+  }
+
+  const validationResults = await Promise.all(validationPromises)
+  for (const result of validationResults) {
+    if (validCandidates.length >= maxImages) break
+    if (!result.valid) {
+      console.log(`[validateImage] ${result.candidate.url} -> rejected`)
       continue
     }
-    console.log(`[validateImage] ${candidate.url} -> valid (${validation.mime})`)
-    validCandidates.push(candidate)
+    console.log(`[validateImage] ${result.candidate.url} -> valid (${result.mime})`)
+    validCandidates.push(result.candidate)
   }
   console.log(`[discovery] valid candidates: ${validCandidates.length}`)
 
   // 8. Classify each image
-  const results: DiscoveredAsset[] = []
-  for (const candidate of validCandidates) {
-    const classification = await classifyImage(candidate.url, openAiKey, openAiModel)
-    if (!classification) {
-      console.log(`[discovery] rejected by classifier: ${candidate.url}`)
-      continue
-    }
-    console.log(`[discovery] classified: ${candidate.url} -> ${classification.category} (${classification.confidence}%)`)
+  const MAX_CLASSIFICATION_CONCURRENCY = 4
+  const classificationChunks: ImageCandidate[][] = []
+  for (let i = 0; i < validCandidates.length; i += MAX_CLASSIFICATION_CONCURRENCY) {
+    classificationChunks.push(validCandidates.slice(i, i + MAX_CLASSIFICATION_CONCURRENCY))
+  }
 
-    results.push({
-      id: `disc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      sourceUrl: candidate.url,
-      previewUrl: candidate.url,
-      category: classification.category,
-      confidence: classification.confidence,
-      qualityScore: classification.confidence,
-      relevanceScore: classification.confidence,
-      selected: classification.recommended,
-      recommended: classification.recommended,
-      rejected: false,
-    })
+  const results: DiscoveredAsset[] = []
+  for (const chunk of classificationChunks) {
+    const classificationPromises = chunk.map((candidate) =>
+      classifyImage(candidate.url, openAiKey, openAiModel)
+        .then((classification) => ({ candidate, classification }))
+        .catch(() => ({ candidate, classification: null as any })),
+    )
+    const classificationResults = await Promise.all(classificationPromises)
+    for (const { candidate, classification } of classificationResults) {
+      if (!classification) {
+        console.log(`[discovery] rejected by classifier: ${candidate.url}`)
+        continue
+      }
+      console.log(`[discovery] classified: ${candidate.url} -> ${classification.category} (${classification.confidence}%)`)
+
+      results.push({
+        id: `disc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        sourceUrl: candidate.url,
+        previewUrl: candidate.url,
+        category: classification.category,
+        confidence: classification.confidence,
+        qualityScore: classification.confidence,
+        relevanceScore: classification.confidence,
+        selected: classification.recommended,
+        recommended: classification.recommended,
+        rejected: false,
+      })
+    }
   }
 
   const discoveryMode = 'STATIC_ONLY'
