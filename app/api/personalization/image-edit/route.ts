@@ -36,7 +36,14 @@ function isAllowedSize(size: string) {
   const width = Number(match[1])
   const height = Number(match[2])
   if (!Number.isFinite(width) || !Number.isFinite(height)) return false
-  return width >= 256 && height >= 256 && width <= 4096 && height <= 4096
+  if (width % 16 !== 0 || height % 16 !== 0) return false
+  if (width > 3840 || height > 3840) return false
+
+  const aspectRatio = width / height
+  if (aspectRatio < 1 / 3 || aspectRatio > 3) return false
+
+  const pixels = width * height
+  return pixels >= 655_360 && pixels <= 8_294_400
 }
 
 export async function POST(req: NextRequest) {
