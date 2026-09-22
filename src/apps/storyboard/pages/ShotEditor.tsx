@@ -20,6 +20,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { generateShotFrame } from '@/api/storyboard'
+import { PublishStep } from '@/components/SocialPublishProvider'
 import { useStoryboard, type StoryboardShot, type StoryboardCharacter } from '../StoryboardContext'
 import CameraControls from '../CameraControls'
 import { buildShotPrompt, withCharacters } from '../cameraTaxonomy'
@@ -146,8 +147,18 @@ function SortableShot({
         style={{ ...glassStyle, width: 72, height: aspectRatio === '16:9' ? 40 : 72 }}
       >
         {shot.frameUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={shot.frameUrl} alt={`frame ${index + 1}`} className="w-full h-full object-cover" />
+          <div className="relative w-full h-full">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={shot.frameUrl} alt={`frame ${index + 1}`} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 hover:opacity-100 transition-opacity">
+              <PublishStep
+                mediaUrl={shot.frameUrl}
+                mediaType="image"
+                title={"Shot " + (index + 1)}
+                className="p-1.5 bg-black/70 backdrop-blur-sm rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10"
+              />
+            </div>
+          </div>
         ) : (
           <span className="text-sm font-bold" style={{ color: '#22d3ee' }}>{index + 1}</span>
         )}
