@@ -199,25 +199,28 @@ export function SettingsModal(onClose) {
           }
 
           // ── Server accepted: now update localStorage + cookies ─────────────────
+          // Only write non-empty values; never remove a key just because its
+          // field is blank. Explicit removal is handled by the dedicated
+          // Remove button in the Next.js shell, not by blanking a field here.
           try {
               if (typeof window !== 'undefined' && window.localStorage) {
                   if (cleanMuapi) {
                       window.localStorage.setItem(MUAPI_KEY_STORAGE, cleanMuapi);
-                  } else {
-                      window.localStorage.removeItem(MUAPI_KEY_STORAGE);
                   }
                   if (cleanOpenai) {
                       window.localStorage.setItem(OPENAI_KEY_STORAGE, cleanOpenai);
-                  } else {
-                      window.localStorage.removeItem(OPENAI_KEY_STORAGE);
                   }
               }
           } catch {
               // ignore localStorage write errors (private mode, etc.)
           }
 
-          document.cookie = buildCookie(MUAPI_KEY_COOKIE, cleanMuapi);
-          document.cookie = buildCookie(OPENAI_KEY_COOKIE, cleanOpenai);
+          if (cleanMuapi) {
+              document.cookie = buildCookie(MUAPI_KEY_COOKIE, cleanMuapi);
+          }
+          if (cleanOpenai) {
+              document.cookie = buildCookie(OPENAI_KEY_COOKIE, cleanOpenai);
+          }
 
           // Success feedback. Preserve any OpenAI provider warning instead of
           // overwriting it with a generic success message.

@@ -158,10 +158,8 @@ describe('openai-key route (integration)', () => {
   it('DELETE returns failure when Supabase update errors', async () => {
     const failingSb = () => ({
       from: () => ({
-        update: async () => {
-          const { error } = await Promise.resolve({ error: new Error('Simulated DB delete failure') });
-          if (error) throw error;
-          return { error: null };
+        update: () => {
+          throw new Error('Simulated DB delete failure');
         },
         eq: () => ({
           select: () => ({
@@ -228,7 +226,7 @@ describe('openai-key route (integration)', () => {
   it('returns 500 on database failure without leaking internals', async () => {
     const failingSb = () => ({
       from: () => ({
-        update: async () => {
+        update: () => {
           throw new Error('Simulated DB failure');
         },
         eq: () => ({

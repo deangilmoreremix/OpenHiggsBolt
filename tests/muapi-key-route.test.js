@@ -16,7 +16,25 @@ const store = {
 
 function makeBuilder() {
   // Track the last requested clerk_user_id so we can verify the filter is used.
-  let lastEqClause: string | null = null;
+  let lastEqClause = null;
+  let pendingUpdate = null;
+  let selectColumns = null;
+
+  function applyPendingUpdate() {
+    if (pendingUpdate && lastEqClause) {
+      const existing = store.app_users.get(lastEqClause) || {};
+      store.app_users.set(lastEqClause, {
+        ...existing,
+        ...pendingUpdate,
+      });
+      pendingUpdate = null;
+    }
+  }
+
+  function getRow() {
+    return store.app_users.get(lastEqClause || store.userId) || null;
+  }
+
   const builder = {
     eq: (column, value) => {
       if (column === 'clerk_user_id') {
@@ -25,21 +43,27 @@ function makeBuilder() {
       return builder;
     },
     update: (payload) => {
-      const existing = store.app_users.get(lastEqClause) || {};
-      store.app_users.set(lastEqClause, {
-        ...existing,
-        ...payload,
-      });
+      pendingUpdate = payload;
       return builder;
     },
     insert: (payload) => {
       store.app_users.set(payload.clerk_user_id || store.userId, payload);
       return builder;
     },
-    select: () => builder, // chain continues to maybeSingle()
+    select: (columns) => {
+      selectColumns = columns;
+      return builder;
+    },
     maybeSingle: () => {
-      const row = store.app_users.get(lastEqClause || store.userId) || null;
+      applyPendingUpdate();
+      const row = getRow();
       return Promise.resolve({ data: row || null, error: null });
+    },
+    then(resolve) {
+      // Make the builder thenable so `await` on the chain works.
+      applyPendingUpdate();
+      const row = getRow();
+      resolve({ data: row, error: null });
     },
   };
   return builder;
@@ -149,7 +173,7 @@ describe('muapi-key route (integration)', () => {
   });
 
   it('OpenAI-only save preserves existing MuAPI key (PATCH semantics)', async () => {
-    store.app_users.set(route, {
+    store.app_users.set(store.userId, {
       muapi_key: 'v1:old_muapi:old',
       openai_key: 'v1:old_openai:old',
     });
