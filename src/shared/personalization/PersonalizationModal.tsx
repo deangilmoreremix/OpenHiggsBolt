@@ -95,6 +95,17 @@ const OUTPUT_OPTIONS_VIDEO = [
   { key: 'everything', label: 'Everything', description: 'Prompt + Video + Assets + CTA.' },
 ] as const
 
+function destinationRoleForSection(section: AssignedSection): PersonalizationAsset['role'] | undefined {
+  if (section === 'person') return 'presenter_identity'
+  if (section === 'logo') return 'logo'
+  if (section === 'products') return 'product_reference'
+  if (section === 'brand') return 'brand_reference'
+  if (section === 'firstFrame') return 'first_frame'
+  if (section === 'lastFrame') return 'last_frame'
+  if (section === 'ctaGraphic') return 'cta_graphic'
+  return undefined
+}
+
 const OUTPUT_OPTIONS_IMAGE = [
   { key: 'prompt', label: 'Prompt', description: 'Create a personalized prompt only.' },
   { key: 'image', label: 'Image', description: 'Generate a personalized image.' },
@@ -727,6 +738,7 @@ export default function PersonalizationModal() {
       name: asset.category.replace(/_/g, ' '),
       imageUrl: asset.editedDataUrl || asset.previewUrl,
       category: asset.category,
+      role: destinationRoleForSection(asset.assignedSection),
       source: 'discovered',
       businessName: clientForm.businessName || clientForm.name,
       industry: clientForm.industry,
