@@ -267,7 +267,8 @@
         "Be specific in prompts: include subject, style, lighting, and composition for more predictable results.",
         "Upload multiple reference images in I2I mode to blend styles or subjects.",
         "Lock the seed after getting a good result to create variations.",
-        "Check model schemas for available aspect ratios and effects."
+        "Check model schemas for available aspect ratios and effects.",
+        "Use negative prompts or tags to exclude unwanted elements from generated images."
       ],
       "commonProblems": [
         {
@@ -284,6 +285,16 @@
           "problem": "Output quality inconsistent",
           "whyItHappens": "Model-dependent variability",
           "howToFix": "Try different models or adjust strength and seed settings."
+        },
+        {
+          "problem": "Output does not match prompt style",
+          "whyItHappens": "Model mismatch or insufficient prompt detail",
+          "howToFix": "Try a model specialized for your desired style and add more specific style keywords to the prompt."
+        },
+        {
+          "problem": "Generation returns blank or corrupted image",
+          "whyItHappens": "Model backend error or invalid parameters",
+          "howToFix": "Check MuAPI balance, try a different model, and verify aspect ratio and resolution settings are valid."
         }
       ],
       "troubleshootingSteps": [
@@ -376,6 +387,30 @@
         {
           "question": "Why is my generation failing?",
           "answer": "Ensure your MuAPI key is valid and you have sufficient balance. Check the troubleshooting steps for specific errors."
+        },
+        {
+          "question": "What's the difference between T2I and I2I?",
+          "answer": "T2I (text-to-image) generates new images from text prompts only. I2I (image-to-image) transforms uploaded reference images using AI, preserving composition while changing style or content."
+        },
+        {
+          "question": "Can I batch-generate multiple images at once?",
+          "answer": "Image Studio generates one output per request. Use seed variations or generate multiple times to build a set of images."
+        },
+        {
+          "question": "Which models support inpainting?",
+          "answer": "Inpainting support varies by model. Check the model schema in the studio UI to see if inpainting options are available for your selected model."
+        },
+        {
+          "question": "How do I choose the right model?",
+          "answer": "Review the model explanations in Image Studio. Some models excel at photorealism, others at illustration or stylized art. Test a few to find the best fit for your use case."
+        },
+        {
+          "question": "Can I use generated images commercially?",
+          "answer": "Commercial use depends on the specific model's license and your MuAPI plan terms. Check the model documentation and your agreement for usage rights."
+        },
+        {
+          "question": "Why does my I2I output look too different from the reference?",
+          "answer": "Lower the strength slider to make the output resemble the reference more closely. Higher strength values allow more creative deviation."
         }
       ]
     },
@@ -693,6 +728,16 @@
           "problem": "V2V output does not preserve source motion",
           "whyItHappens": "Model-dependent or low-quality source",
           "howToFix": "Use a higher-quality source video and check model specs."
+        },
+        {
+          "problem": "V2V cost estimate too high",
+          "whyItHappens": "Long source video or high-resolution model selected",
+          "howToFix": "Trim the source video or choose a lower-resolution model to reduce cost."
+        },
+        {
+          "problem": "I2V output has jittery motion",
+          "whyItHappens": "Model not optimized for smooth motion or low-quality source image",
+          "howToFix": "Use a higher-quality source image and select a model known for smooth motion like Luma or Kling."
         }
       ],
       "troubleshootingSteps": [
@@ -791,6 +836,30 @@
         {
           "question": "Why is my video generation taking so long?",
           "answer": "Video generation time depends on model, duration, and resolution. Check the model specs for estimated processing times."
+        },
+        {
+          "question": "What's the difference between T2V, I2V, and V2V?",
+          "answer": "T2V generates video from text. I2V animates a static image. V2V transforms an existing video while preserving its motion."
+        },
+        {
+          "question": "Which models support motion control?",
+          "answer": "Motion control is supported by Seedance 2.5, Kling 2.6, and Kling 3.0. Check the motion control category in the model selector."
+        },
+        {
+          "question": "Can I remove watermarks from generated video?",
+          "answer": "Yes, Video Studio includes video tools with watermark removal capabilities on supported models."
+        },
+        {
+          "question": "How long can generated videos be?",
+          "answer": "Duration limits vary by model. Check the model details in the selector for maximum supported duration."
+        },
+        {
+          "question": "What video formats are supported as input?",
+          "answer": "Supported input formats depend on the model. Common formats like MP4 and MOV are typically accepted. Check model documentation for specifics."
+        },
+        {
+          "question": "Can I use face swap in Video Studio?",
+          "answer": "Yes, Video Studio includes video tools with face swap capabilities on supported models."
         }
       ]
     },
@@ -1085,7 +1154,8 @@
         "For Suno, be specific with your style description.",
         "Use custom mode in Suno when you need exact lyrics.",
         "Use negative tags to exclude unwanted instruments or styles.",
-        "Upload high-quality audio samples for better voice cloning results."
+        "Upload high-quality audio samples for better voice cloning results.",
+        "For Suno, structure your prompt with genre, mood, tempo, and instrumentation for best results."
       ],
       "commonProblems": [
         {
@@ -1102,6 +1172,16 @@
           "problem": "Suno ignores style description",
           "whyItHappens": "Style too vague",
           "howToFix": "Add more specific style keywords and use negative tags."
+        },
+        {
+          "problem": "Suno generates lyrics when I wanted instrumental",
+          "whyItHappens": "Instrumental toggle not enabled",
+          "howToFix": "Enable the instrumental toggle before generating."
+        },
+        {
+          "problem": "Voice clone sounds robotic",
+          "whyItHappens": "Low-quality reference audio or wrong model",
+          "howToFix": "Use a high-quality, clear reference audio sample and try a different voice model."
         }
       ],
       "troubleshootingSteps": [
@@ -1188,6 +1268,30 @@
         {
           "question": "Can I use instrumental-only mode?",
           "answer": "Yes, enable the instrumental toggle in Suno mode to generate tracks without vocals."
+        },
+        {
+          "question": "What's the difference between Suno and ElevenLabs?",
+          "answer": "Suno generates full music tracks with lyrics, vocals, and instrumentation. ElevenLabs specializes in speech synthesis and voice cloning."
+        },
+        {
+          "question": "Can I generate music without vocals?",
+          "answer": "Yes, enable the instrumental toggle in Suno mode to generate tracks without vocals."
+        },
+        {
+          "question": "How do I use custom lyrics in Suno?",
+          "answer": "Enable custom mode in Suno and paste your full lyrics into the prompt field. Suno will set them to music."
+        },
+        {
+          "question": "What voice models are available?",
+          "answer": "Minimax and ElevenLabs provide speech and voice models. ElevenLabs is particularly strong for voice cloning and realistic voiceovers."
+        },
+        {
+          "question": "Can I generate sound effects for games?",
+          "answer": "Yes, use MMAudio models to generate sound effects and ambient audio for games, videos, or apps."
+        },
+        {
+          "question": "Why does my Suno output sound distorted?",
+          "answer": "Try a different Suno model version or simplify the prompt. Some versions handle complex arrangements better than others."
         }
       ]
     },
@@ -1417,7 +1521,8 @@
         "Use videos with dynamic content for better highlight detection.",
         "Match aspect ratio to target platform before generating.",
         "Use coordinate-only mode for integration with external editing tools.",
-        "Review clips and adjust highlight count if needed."
+        "Review clips and adjust highlight count if needed.",
+        "Pre-trim very long videos into segments under 30 minutes for faster and more accurate clipping."
       ],
       "commonProblems": [
         {
@@ -1429,6 +1534,21 @@
           "problem": "Processing failed",
           "whyItHappens": "Video URL inaccessible",
           "howToFix": "Ensure video URL is publicly accessible."
+        },
+        {
+          "problem": "Highlights are not engaging",
+          "whyItHappens": "Source video has low engagement moments",
+          "howToFix": "Choose videos with more dynamic content, speaker changes, or emotional peaks for better results."
+        },
+        {
+          "problem": "Clip timing is slightly off",
+          "whyItHappens": "Backend timing estimation variance",
+          "howToFix": "Use coordinate-only mode to get precise timestamps and fine-tune in your editing software."
+        },
+        {
+          "problem": "Request times out on long videos",
+          "whyItHappens": "Backend processing time exceeds limits for very long videos",
+          "howToFix": "Try shorter segments or split the video into parts and process separately."
         }
       ],
       "troubleshootingSteps": [
@@ -1503,6 +1623,30 @@
         {
           "question": "Can I clip a private video?",
           "answer": "No, the video URL must be publicly accessible so the service can fetch and process it."
+        },
+        {
+          "question": "What video platforms work best for clipping?",
+          "answer": "YouTube, Vimeo, and publicly hosted MP4 links work well. The video must be publicly accessible for processing."
+        },
+        {
+          "question": "Can I clip a live stream recording?",
+          "answer": "Yes, as long as the recording is available at a publicly accessible URL."
+        },
+        {
+          "question": "What formats are supported for input video?",
+          "answer": "Common video formats hosted at publicly accessible URLs are supported. The backend fetches the video from the provided URL."
+        },
+        {
+          "question": "Can I download all highlights at once?",
+          "answer": "Yes, the service returns clip packages that can be downloaded together or individually."
+        },
+        {
+          "question": "Is there a maximum number of highlights I can request?",
+          "answer": "The maximum depends on the backend. Start with a reasonable number like 5-10 and adjust based on results."
+        },
+        {
+          "question": "Do extracted clips include captions?",
+          "answer": "AI Clipping is designed for hook-first framing. Caption availability depends on the output format and backend configuration."
         }
       ]
     },
@@ -1720,13 +1864,23 @@
             "Choose aspect ratio for target platform.",
             "Generate and export for social media."
           ]
+        },
+        {
+          "title": "Animated data chart",
+          "steps": [
+            "Describe the chart type and data in the prompt.",
+            "Set duration to 10 seconds and aspect ratio to 16:9.",
+            "Generate the animated chart.",
+            "Download and use in a presentation or video."
+          ]
         }
       ],
       "tips": [
         "Describe motion clearly in prompts: 'zoom in', 'slide from left', 'fade in'.",
         "Use edit mode with a request ID to remix existing motion graphics.",
         "Enable native audio for synchronized motion and sound.",
-        "Download results for reuse in video editing software."
+        "Download results for reuse in video editing software.",
+        "Use specific motion verbs in prompts: 'zoom in', 'slide from left', 'fade in', 'bounce'."
       ],
       "commonProblems": [
         {
@@ -1738,6 +1892,21 @@
           "problem": "No motion detected",
           "whyItHappens": "Prompt too static",
           "howToFix": "Include motion descriptors in your prompt."
+        },
+        {
+          "problem": "Motion graphic too short or too long",
+          "whyItHappens": "Duration not properly set or backend interprets duration differently",
+          "howToFix": "Explicitly set the duration in seconds and test with a shorter duration first."
+        },
+        {
+          "problem": "Text not appearing in motion graphic",
+          "whyItHappens": "Prompt did not clearly specify text content",
+          "howToFix": "Explicitly include the text you want rendered in the prompt, e.g., 'kinetic typography with the word SUCCESS'."
+        },
+        {
+          "problem": "Edit mode produces unexpected results",
+          "whyItHappens": "Edit prompt conflicts with original motion style",
+          "howToFix": "Use edit prompts that build on the original style rather than contradicting it."
         }
       ],
       "troubleshootingSteps": [
@@ -1818,6 +1987,30 @@
         {
           "question": "Does Vibe Motion support audio?",
           "answer": "Yes, native audio support is available via skills recipe for synchronized motion and sound."
+        },
+        {
+          "question": "What types of motion graphics can I create?",
+          "answer": "Vibe Motion supports kinetic typography, animated charts, logo reveals, data visualizations, and abstract motion content from text prompts."
+        },
+        {
+          "question": "Can I customize the motion speed?",
+          "answer": "Duration is configurable in seconds. The backend handles motion pacing based on your prompt and duration setting."
+        },
+        {
+          "question": "What aspect ratios are supported?",
+          "answer": "Vibe Motion supports 16:9 and 9:16 aspect ratios for different platform needs."
+        },
+        {
+          "question": "Can I export motion graphics with transparency?",
+          "answer": "Export format depends on the backend. Check the output settings after generation for available formats."
+        },
+        {
+          "question": "Does Vibe Motion support 3D motion?",
+          "answer": "Vibe Motion focuses on 2D motion graphics. For 3D content, use Video Studio with 3D-capable models."
+        },
+        {
+          "question": "How do I add text to motion graphics?",
+          "answer": "Include text content in your prompt (e.g., 'kinetic typography saying Hello World'). The model will render animated text."
         }
       ]
     },
@@ -2061,13 +2254,24 @@
             "Select a video-based lipsync model.",
             "Generate the dubbed video."
           ]
+        },
+        {
+          "title": "Social media talking head",
+          "steps": [
+            "Generate or select a portrait image in Image Studio.",
+            "Upload the narration audio from Audio Studio.",
+            "Select Infinite Talk model and 720p resolution.",
+            "Generate the talking head video.",
+            "Download and publish to social platforms."
+          ]
         }
       ],
       "tips": [
         "Use clear, front-facing portrait images for best results.",
         "Ensure audio is clear and well-recorded for accurate sync.",
         "Match resolution to your delivery platform.",
-        "Use seed control for consistent character appearance."
+        "Use seed control for consistent character appearance.",
+        "Use portrait images with even, frontal lighting for the most accurate lip sync."
       ],
       "commonProblems": [
         {
@@ -2079,6 +2283,21 @@
           "problem": "Model not available",
           "whyItHappens": "Backend model status",
           "howToFix": "Check MuAPI backend for model availability."
+        },
+        {
+          "problem": "Lip movements don't match audio",
+          "whyItHappens": "Model not suited for audio type or poor audio quality",
+          "howToFix": "Ensure audio is clear and well-recorded. Try a different lipsync model better suited to your audio type."
+        },
+        {
+          "problem": "Face looks distorted in output",
+          "whyItHappens": "Low-quality portrait or model limitations",
+          "howToFix": "Use a high-resolution, front-facing portrait. Try models known for facial fidelity like Infinite Talk."
+        },
+        {
+          "problem": "Avatar generation failed",
+          "whyItHappens": "Avatar model unavailable or backend issue",
+          "howToFix": "Check MuAPI backend for Kling avatar model availability and try an alternative avatar model."
         }
       ],
       "troubleshootingSteps": [
@@ -2161,6 +2380,34 @@
         {
           "question": "Can I use my own video for lipsync?",
           "answer": "Yes, video-based lipsync modes accept input videos. The model will sync the new audio to the existing video."
+        },
+        {
+          "question": "Which model is best for portrait-based lipsync?",
+          "answer": "Infinite Talk and Wan 2.2 are strong general-purpose choices for portrait-based lipsync. Kling avatars are best for consistent character generation."
+        },
+        {
+          "question": "Can I lipsync a video with multiple people?",
+          "answer": "Video-based lipsync works on single-subject videos. For multiple people, process each subject separately or use Video Studio for full scene generation."
+        },
+        {
+          "question": "What's the maximum resolution supported?",
+          "answer": "Resolution options range from 480p to 1080p depending on the model. Check the model selector for specific resolution ceilings."
+        },
+        {
+          "question": "Can I use lipsync for singing videos?",
+          "answer": "Yes, provide a singing audio file. Some models handle singing better than others\u2014test with your chosen model."
+        },
+        {
+          "question": "How long can the input audio be?",
+          "answer": "Audio duration limits depend on the model and resolution. Longer audio requires more processing time and may hit model-specific limits."
+        },
+        {
+          "question": "Can I change the voice in an existing video?",
+          "answer": "Yes, use video-based lipsync mode to sync new audio to an existing video, effectively changing the voice."
+        },
+        {
+          "question": "What makes a good portrait image for lipsync?",
+          "answer": "Use a clear, front-facing portrait with good lighting and minimal occlusion. Avoid profiles, extreme angles, or heavily obscured faces."
         }
       ]
     },
@@ -2398,19 +2645,60 @@
             "Set f/1.4 for shallow depth of field.",
             "Generate and download the cinematic product shot."
           ]
+        },
+        {
+          "title": "Film still concept",
+          "steps": [
+            "Describe the scene with lighting and mood details.",
+            "Select 70mm film camera for classic film grain.",
+            "Choose anamorphic lens and set f/1.4.",
+            "Set focal length to 35mm for natural perspective.",
+            "Generate and use as reference for production."
+          ]
+        },
+        {
+          "title": "Product hero shot",
+          "steps": [
+            "Describe the product with studio lighting details.",
+            "Select 8K digital camera for maximum detail.",
+            "Choose macro lens for extreme detail.",
+            "Set f/4 for moderate depth of field.",
+            "Generate high-resolution still for marketing."
+          ]
         }
       ],
       "tips": [
         "Combine camera body, lens, and aperture selections for realistic depth of field.",
         "Use specific lighting descriptions in prompts for more cinematic results.",
         "Try different focal lengths to change perspective and compression.",
-        "Use 70mm film preset for classic anamorphic look."
+        "Use 70mm film preset for classic anamorphic look.",
+        "Always specify lighting in prompts\u2014'golden hour', 'neon lit', 'high key'\u2014for more cinematic results."
       ],
       "commonProblems": [
         {
           "problem": "Output not cinematic enough",
           "whyItHappens": "Prompt lacks camera details",
           "howToFix": "Refine prompt with camera, lens, and lighting details."
+        },
+        {
+          "problem": "Output looks like a regular photo, not cinematic",
+          "whyItHappens": "Prompt lacks cinematic terminology or camera controls not used",
+          "howToFix": "Add film-specific keywords like 'cinematic lighting', 'film grain', and always use camera body and lens selections."
+        },
+        {
+          "problem": "Depth of field not visible in output",
+          "whyItHappens": "Aperture setting too narrow or model ignores depth cues",
+          "howToFix": "Use wider aperture (f/1.4) and ensure prompt mentions background blur or bokeh."
+        },
+        {
+          "problem": "Film grain not appearing",
+          "whyItHappens": "70mm film preset not selected or model doesn't emulate grain",
+          "howToFix": "Explicitly select 70mm film camera body and add 'film grain' to the prompt."
+        },
+        {
+          "problem": "Anamorphic lens flare missing",
+          "whyItHappens": "Anamorphic lens not selected or prompt lacks light source",
+          "howToFix": "Select anamorphic lens and include a strong light source in the prompt to trigger lens flares."
         }
       ],
       "troubleshootingSteps": [
@@ -2485,6 +2773,30 @@
         {
           "question": "How do I get a shallow depth of field?",
           "answer": "Select a wide aperture like f/1.4 and a longer focal length like 85mm for the most shallow depth of field."
+        },
+        {
+          "question": "What camera bodies are available?",
+          "answer": "6 camera body presets including 8K digital, 70mm film, 16mm film, and others. Each maps to specific prompt modifiers for cinematic look."
+        },
+        {
+          "question": "How do lens choices affect the output?",
+          "answer": "Anamorphic lenses produce wide-aspect cinematic flares. Macro lenses create extreme close-ups with shallow depth. Prime lenses offer classic sharpness."
+        },
+        {
+          "question": "Can I combine Cinema Studio with other studios?",
+          "answer": "Yes, send Cinema Studio outputs to Image Studio for further editing, or to Storyboard for scene planning."
+        },
+        {
+          "question": "What aspect ratios work best for cinema?",
+          "answer": "2.39:1 (anamorphic widescreen) and 1.85:1 (flat widescreen) are common cinematic ratios. Check available options in the studio UI."
+        },
+        {
+          "question": "Can I generate cinematic videos?",
+          "answer": "No, Cinema Studio generates still images only. Use Video Studio for cinematic video generation with motion control."
+        },
+        {
+          "question": "How does aperture affect the output?",
+          "answer": "Wide apertures like f/1.4 create shallow depth of field with blurred backgrounds. Narrow apertures like f/11 keep more of the scene in focus."
         }
       ]
     },
@@ -2824,13 +3136,36 @@
             "Generate frames for each shot.",
             "Review scene analysis and refine."
           ]
+        },
+        {
+          "title": "YouTube series pre-production",
+          "steps": [
+            "Create project with series name and visual style brief.",
+            "Add 3 main characters with reference images.",
+            "Create 4 episodes for the first season.",
+            "Add 20 shots with camera controls.",
+            "Generate frames and review scene analysis.",
+            "Hand off to Video Studio for production."
+          ]
+        },
+        {
+          "title": "Short film pre-visualization",
+          "steps": [
+            "Create project with short film concept and visual style.",
+            "Add 2-3 main characters with reference images.",
+            "Create episodes for act breakdowns.",
+            "Add 15 shots with varied camera controls (close-ups, wide shots, tracking).",
+            "Generate frames for key shots.",
+            "Review scene analysis and hand off to Video Studio for production."
+          ]
         }
       ],
       "tips": [
         "Create detailed character descriptions and upload reference images for consistency.",
         "Use camera controls to specify shot types and movements for each scene.",
         "Drag and drop shots to reorder the sequence.",
-        "Use scene analysis to track progress and identify gaps."
+        "Use scene analysis to track progress and identify gaps.",
+        "Upload detailed reference images for characters to maintain visual consistency across shots."
       ],
       "commonProblems": [
         {
@@ -2842,6 +3177,21 @@
           "problem": "Character not saving",
           "whyItHappens": "Required fields missing",
           "howToFix": "Verify all required character fields are filled."
+        },
+        {
+          "problem": "Shot frames look inconsistent with each other",
+          "whyItHappens": "Different models or prompts produce varied styles",
+          "howToFix": "Use the same frame model across all shots and maintain consistent prompt structure with shared visual style references."
+        },
+        {
+          "problem": "Camera controls not affecting output",
+          "whyItHappens": "Model doesn't respond to prompt-injected camera terms",
+          "howToFix": "Try models known for cinematic adherence, and ensure camera taxonomy fields are fully populated."
+        },
+        {
+          "problem": "Character not matching across shots",
+          "whyItHappens": "Reference images not used or model varies character appearance",
+          "howToFix": "Upload detailed reference images for each character and use consistent prompt language across shots."
         }
       ],
       "troubleshootingSteps": [
@@ -2929,6 +3279,34 @@
         {
           "question": "Can I send my storyboard to another studio?",
           "answer": "Yes, use the Send To feature to hand off your storyboard to Video Studio, Cinema Studio, or other supported studios."
+        },
+        {
+          "question": "How many shots can I add to a project?",
+          "answer": "The shot editor supports up to 30 shots per project. Plan your scenes accordingly."
+        },
+        {
+          "question": "Can I reuse characters across episodes?",
+          "answer": "Yes, characters created in a project are available across all episodes within that project."
+        },
+        {
+          "question": "What frame models are available for shot generation?",
+          "answer": "The ModelSelector provides 10 curated models including Flux 2 Dev/Pro, Flux Kontext variants, Midjourney V7, Ideogram v3, GPT Image 2, and Wan 2.6 T2I."
+        },
+        {
+          "question": "Can I export my storyboard?",
+          "answer": "Yes, export storyboard projects as JSON or PDF for sharing with team members or clients."
+        },
+        {
+          "question": "Does Storyboard support camera movement in shots?",
+          "answer": "Yes, the camera taxonomy includes shot type, angle, and movement controls for each shot."
+        },
+        {
+          "question": "Can I hand off shots to other studios?",
+          "answer": "Yes, use the Send To feature to hand off shots or projects to Video Studio, Cinema Studio, VFX Studio, and other supported studios."
+        },
+        {
+          "question": "Is there a limit on characters per project?",
+          "answer": "There's no hard limit on characters, but very large projects may impact performance. Keep character count reasonable for your project scope."
         }
       ]
     },
@@ -3168,19 +3546,61 @@
             "Choose 1080p resolution and 16:9 aspect ratio.",
             "Generate and download for campaign use."
           ]
+        },
+        {
+          "title": "E-commerce product ad",
+          "steps": [
+            "Describe the product and key selling points.",
+            "Select an avatar matching your target demographic.",
+            "Upload a clean product image.",
+            "Choose a template optimized for e-commerce.",
+            "Set 1080p resolution and 16:9 aspect ratio.",
+            "Generate and download for ad campaigns."
+          ]
+        },
+        {
+          "title": "SaaS demo ad",
+          "steps": [
+            "Describe the SaaS product and its main benefit.",
+            "Select a professional avatar.",
+            "Choose a tech-focused template.",
+            "Generate multiple variations for A/B testing.",
+            "Download and send to Social Publishing."
+          ]
         }
       ],
       "tips": [
         "Use clear product images as references for better ad generation.",
         "Select avatars that match your target audience demographics.",
         "Use templates to maintain brand consistency across campaigns.",
-        "Include strong CTAs in prompts for conversion-focused output."
+        "Include strong CTAs in prompts for conversion-focused output.",
+        "Write prompts that focus on the viewer's benefit, not just product features, for higher-converting ads."
       ],
       "commonProblems": [
         {
           "problem": "Avatar not loading",
           "whyItHappens": "Template data invalid",
           "howToFix": "Ensure template data is valid and complete."
+        },
+        {
+          "problem": "Avatar doesn't match brand tone",
+          "whyItHappens": "Avatar selection not aligned with target audience",
+          "howToFix": "Review available avatars and select one that visually matches your brand demographics and tone."
+        },
+        {
+          "problem": "Product image not visible in ad",
+          "whyItHappens": "Image not properly referenced or model didn't integrate it",
+          "howToFix": "Ensure the product image URL is valid and try a different template or model that supports product references."
+        },
+        {
+          "problem": "Generated ad is too short or too long",
+          "whyItHappens": "Duration not set or model has fixed output length",
+          "howToFix": "Explicitly set duration and check model specs. Some models produce fixed-length outputs."
+        },
+        {
+          "problem": "CTA overlay not appearing",
+          "whyItHappens": "Template doesn't support CTA or settings not configured",
+          "howToFix": "Choose a template that includes CTA support and ensure CTA settings are properly configured before generating."
         }
       ],
       "troubleshootingSteps": [
@@ -3268,6 +3688,34 @@
         {
           "question": "What resolution is supported?",
           "answer": "1080p resolution is available for high-quality ad output."
+        },
+        {
+          "question": "What avatar styles are available?",
+          "answer": "Avatar availability depends on the backend template data. Check the avatar selector in the studio for current options."
+        },
+        {
+          "question": "Can I customize the CTA overlay?",
+          "answer": "Yes, CTA settings are configurable. The level of customization depends on the selected template."
+        },
+        {
+          "question": "What's the maximum video duration for ads?",
+          "answer": "Duration limits depend on the model. Check the model selector for supported duration ranges."
+        },
+        {
+          "question": "Can I use Marketing Studio for audio-only ads?",
+          "answer": "No, Marketing Studio generates video ads only. Use Audio Studio for audio ad creative."
+        },
+        {
+          "question": "How do I A/B test ad creatives?",
+          "answer": "Generate multiple variations with different avatars, prompts, or templates. Download each and test performance on your target platform."
+        },
+        {
+          "question": "Can I add background music to generated ads?",
+          "answer": "Background music integration depends on the model and template. Some templates may support audio layering through the backend."
+        },
+        {
+          "question": "What makes a good product image for Marketing Studio?",
+          "answer": "Use clear, high-resolution product images with transparent or simple backgrounds for best integration into generated ads."
         }
       ]
     },
@@ -3464,13 +3912,33 @@
             "Select Kling 3.0 Pro for high-quality swap.",
             "Generate to test the casting choice."
           ]
+        },
+        {
+          "title": "Director casting test",
+          "steps": [
+            "Upload a scene from the screenplay with the original actor.",
+            "Upload headshots of 2-3 replacement actors.",
+            "Run Recast with Kling 3.0 Pro for each replacement.",
+            "Compare results side by side to make casting decisions."
+          ]
+        },
+        {
+          "title": "Content localization with new character",
+          "steps": [
+            "Upload the original video with the character to replace.",
+            "Upload a reference image of the localized character.",
+            "Select Runway Act Two for creative flexibility.",
+            "Generate the swapped version.",
+            "Send to Lip Sync Studio for dubbed audio sync."
+          ]
         }
       ],
       "tips": [
         "Use clear, front-facing character images for best results.",
         "Ensure source video has clear, consistent motion.",
         "Add prompts to guide the character's appearance and style.",
-        "Try different recast models for varying quality and speed."
+        "Try different recast models for varying quality and speed.",
+        "Use high-contrast, front-facing reference images with plain backgrounds for the most accurate character swaps."
       ],
       "commonProblems": [
         {
@@ -3482,6 +3950,21 @@
           "problem": "Motion not preserved",
           "whyItHappens": "Source video lacks clear motion",
           "howToFix": "Use source video with clear, consistent motion."
+        },
+        {
+          "problem": "Swapped character blends with background",
+          "whyItHappens": "Character reference lacks contrast or model has segmentation issues",
+          "howToFix": "Use a reference image with strong contrast and clear edges. Try Kling 3.0 Pro which generally has better segmentation."
+        },
+        {
+          "problem": "Motion looks unnatural after swap",
+          "whyItHappens": "Source video has complex motion or model not suited for motion type",
+          "howToFix": "Use source videos with clear, natural motion. Try different recast models to find the best match."
+        },
+        {
+          "problem": "Processing takes too long",
+          "whyItHappens": "Long source video or high-resolution model selected",
+          "howToFix": "Trim the source video to the essential segment and try a faster model like Wan2.2 Animate."
         }
       ],
       "troubleshootingSteps": [
@@ -3564,6 +4047,30 @@
         {
           "question": "Why is my motion not preserved?",
           "answer": "Ensure the source video has clear, consistent motion. Very static videos or videos with rapid cuts may not preserve motion well."
+        },
+        {
+          "question": "How long can the source video be?",
+          "answer": "Source video duration depends on the recast model. Check model specifications for maximum supported lengths."
+        },
+        {
+          "question": "Can I control the new character's pose?",
+          "answer": "Character orientation control is available for precise positioning. Full pose control depends on the model's capabilities."
+        },
+        {
+          "question": "What video formats are supported for input?",
+          "answer": "Common video formats are supported. Ensure the source video is accessible via URL and in a format the backend can process."
+        },
+        {
+          "question": "Can I swap multiple characters in one video?",
+          "answer": "Recast processes one character swap at a time. For multiple characters, process each swap separately or use Video Studio for full scene generation."
+        },
+        {
+          "question": "Does Recast preserve the original audio?",
+          "answer": "Yes, Recast preserves the original motion and audio from the source video while replacing the character."
+        },
+        {
+          "question": "Why does the swapped character look different from my reference?",
+          "answer": "Ensure the reference image is clear, front-facing, and well-lit. Model limitations may also affect character fidelity."
         }
       ]
     },
@@ -3839,13 +4346,33 @@
             "Upscale to 8K for print.",
             "Download for marketing materials."
           ]
+        },
+        {
+          "title": "E-commerce product photo pipeline",
+          "steps": [
+            "Upload product photo with plain background.",
+            "Remove background automatically.",
+            "Upscale to 4K using SeedVR2 for print-ready quality.",
+            "Download transparent PNG for use in marketing materials."
+          ]
+        },
+        {
+          "title": "Creative image expansion",
+          "steps": [
+            "Upload a portrait with tight framing.",
+            "Use expansion mode to extend the canvas.",
+            "Enter a prompt describing the desired background.",
+            "Generate the expanded image.",
+            "Refine in Image Studio if needed."
+          ]
         }
       ],
       "tips": [
         "Use drawing tools to annotate areas before decomposition or upscaling.",
         "Try different upscale models for varying quality and speed.",
         "Remove backgrounds before expanding for cleaner outpainting results.",
-        "Use I2I mode for creative transformations after layer work."
+        "Use I2I mode for creative transformations after layer work.",
+        "Remove backgrounds before expanding for cleaner outpainting results with fewer artifacts."
       ],
       "commonProblems": [
         {
@@ -3857,6 +4384,21 @@
           "problem": "Upscale not improving quality",
           "whyItHappens": "Source resolution too low",
           "howToFix": "Check source resolution; very low-res images may not upscale well."
+        },
+        {
+          "problem": "Decomposition returns incomplete layers",
+          "whyItHappens": "Image is too complex or model cannot separate elements",
+          "howToFix": "Use simpler images with distinct foreground and background for better decomposition results."
+        },
+        {
+          "problem": "Background removal leaves artifacts",
+          "whyItHappens": "Complex edges like hair or fur confuse the model",
+          "howToFix": "Use high-contrast images with clean edges, or clean up artifacts in external editing software after removal."
+        },
+        {
+          "problem": "Expanded area doesn't match original style",
+          "whyItHappens": "Prompt doesn't describe the surrounding context well",
+          "howToFix": "Include detailed descriptions of the original scene's background, lighting, and style in the expansion prompt."
         }
       ],
       "troubleshootingSteps": [
@@ -3945,6 +4487,30 @@
         {
           "question": "Can I edit images after processing?",
           "answer": "Yes, use the drawing tools to annotate before processing, or download results for external editing."
+        },
+        {
+          "question": "What file formats are supported for input?",
+          "answer": "Common image formats are supported for input. Check the model specifications for exact format support."
+        },
+        {
+          "question": "Can I edit layers after decomposition?",
+          "answer": "Yes, download decomposed layers as PNG files and edit them in external design software like Photoshop or Figma."
+        },
+        {
+          "question": "What's the highest resolution I can upscale to?",
+          "answer": "SeedVR2 supports upscaling up to 8K. Other models like Topaz and AI Upscaler have different limits. Check the model selector for specifics."
+        },
+        {
+          "question": "Does background removal work on complex images?",
+          "answer": "Background removal works best on images with clear subject-background separation. Complex scenes with hair, fur, or transparency may require manual cleanup."
+        },
+        {
+          "question": "Can I use Layers Studio for batch processing?",
+          "answer": "Layers Studio processes one image at a time. For batch processing, use Workflows to chain multiple layers operations."
+        },
+        {
+          "question": "What's the difference between upscaling and expansion?",
+          "answer": "Upscaling increases the resolution of the existing image. Expansion (outpainting) extends the canvas beyond the original image bounds."
         }
       ]
     },
@@ -4176,13 +4742,34 @@
             "Add social publishing node.",
             "Execute pipeline for end-to-end content repurposing."
           ]
+        },
+        {
+          "title": "Social content repurposing",
+          "steps": [
+            "Create workflow with video input node.",
+            "Add clipping node to extract highlights.",
+            "Add thumbnail generation node connected to each clip.",
+            "Add social publishing node.",
+            "Execute pipeline to turn long-form video into multi-platform clips."
+          ]
+        },
+        {
+          "title": "Brand asset generation pipeline",
+          "steps": [
+            "Create workflow with brand DNA input from Brand Studio.",
+            "Add image generation node for brand-aligned visuals.",
+            "Add upscaling node for high-resolution output.",
+            "Add background removal node for product shots.",
+            "Execute pipeline and download results."
+          ]
         }
       ],
       "tips": [
         "Start with templates to learn node connections and configurations.",
         "Use the playground to test workflows before API integration.",
         "Check node schemas for input requirements before connecting nodes.",
-        "Rename workflows clearly for team collaboration."
+        "Rename workflows clearly for team collaboration.",
+        "Start with a template workflow to understand node connections before building from scratch."
       ],
       "commonProblems": [
         {
@@ -4194,6 +4781,21 @@
           "problem": "No templates visible",
           "whyItHappens": "Backend unreachable",
           "howToFix": "Ensure backend is reachable."
+        },
+        {
+          "problem": "Node connection not saving",
+          "whyItHappens": "UI state cleared on tab switch or browser issue",
+          "howToFix": "Complete node connections before switching tabs. The builder CSS and state may reset on tab changes."
+        },
+        {
+          "problem": "Workflow executes but returns empty results",
+          "whyItHappens": "Node parameters not configured or input data missing",
+          "howToFix": "Check each node's configuration and ensure input data flows correctly between connected nodes."
+        },
+        {
+          "problem": "API snippet doesn't work in external tool",
+          "whyItHappens": "API key or endpoint configuration missing in external environment",
+          "howToFix": "Ensure the external tool has the correct MuAPI key and endpoint configuration matching your workspace."
         }
       ],
       "troubleshootingSteps": [
@@ -4268,6 +4870,26 @@
         {
           "question": "What is the playground?",
           "answer": "The playground is a testing environment where you can execute workflows and see results before integrating them into production."
+        },
+        {
+          "question": "Do I need coding experience to use Workflows?",
+          "answer": "No, the node-based builder is visual. Drag nodes onto the canvas and connect them to build workflows without coding."
+        },
+        {
+          "question": "How many nodes can a workflow have?",
+          "answer": "There's no hard limit in the UI, but very large workflows may impact performance. Check node schema support in the model selector."
+        },
+        {
+          "question": "Can I schedule workflow execution?",
+          "answer": "Workflows can be executed via API, which can be integrated with external scheduling tools. The studio itself does not have a built-in scheduler."
+        },
+        {
+          "question": "Are there pre-built templates?",
+          "answer": "Yes, browse the template workflows library for pre-built pipelines you can use as starting points."
+        },
+        {
+          "question": "Can workflows trigger other workflows?",
+          "answer": "Yes, use API snippets to chain workflows together or integrate with external automation tools."
         }
       ]
     },
@@ -4479,12 +5101,34 @@
             "Attach reference images.",
             "Iterate on generated designs."
           ]
+        },
+        {
+          "title": "Design iteration with agent",
+          "steps": [
+            "Select a design-focused template agent.",
+            "Describe your design requirements in the chat.",
+            "Attach reference images for context.",
+            "Iterate on generated designs through follow-up messages.",
+            "Download final assets and send to other studios."
+          ]
+        },
+        {
+          "title": "Video script development",
+          "steps": [
+            "Select a writing-focused agent.",
+            "Describe your video concept and target audience.",
+            "Iterate on script structure and dialogue.",
+            "Export the final script.",
+            "Hand off to Video Studio for production."
+          ]
         }
       ],
       "tips": [
         "Browse template agents to find pre-built assistants for common tasks.",
         "Use attachments to provide context in conversations.",
-        "Check conversation history to continue previous work."
+        "Check conversation history to continue previous work.",
+        "Browse template agents first to find a pre-built assistant matched to your task.",
+        "Use attachments to provide rich context\u2014images, videos, and audio all help agents understand your needs."
       ],
       "commonProblems": [
         {
@@ -4496,6 +5140,21 @@
           "problem": "History not loading",
           "whyItHappens": "Backend unreachable",
           "howToFix": "Ensure signed in and backend reachable."
+        },
+        {
+          "problem": "Agent gives irrelevant responses",
+          "whyItHappens": "Wrong agent selected or prompt lacks context",
+          "howToFix": "Choose a template agent suited to your task and provide clear context with attachments."
+        },
+        {
+          "problem": "Attachments not uploading",
+          "whyItHappens": "File size too large or unsupported format",
+          "howToFix": "Ensure files are under size limits and in supported formats (image, video, audio)."
+        },
+        {
+          "problem": "Agent response is slow",
+          "whyItHappens": "Backend processing delay or complex request",
+          "howToFix": "Wait for processing or simplify your request. Check backend status if delays persist."
         }
       ],
       "troubleshootingSteps": [
@@ -4578,6 +5237,30 @@
         {
           "question": "What file types can I attach?",
           "answer": "You can attach images, video, and audio files. The maximum is 14 attachments per message."
+        },
+        {
+          "question": "How do I create my own agent?",
+          "answer": "You can create and manage your own agents in addition to using template agents. Configure the agent settings in your agents management panel."
+        },
+        {
+          "question": "What file types can I attach to agent conversations?",
+          "answer": "You can attach images, video, and audio files. The maximum is 14 attachments per message."
+        },
+        {
+          "question": "Can agents generate images or videos?",
+          "answer": "Yes, depending on the agent's capabilities. Some agents can generate images, videos, or other assets during conversation."
+        },
+        {
+          "question": "How long is conversation history retained?",
+          "answer": "Conversation history is stored via the backend. Old conversations may be pruned based on backend storage limits."
+        },
+        {
+          "question": "Are template agents free to use?",
+          "answer": "Template agents are available based on your SmartVideo GO entitlement. Check your subscription for access details."
+        },
+        {
+          "question": "Can I delete my conversation history?",
+          "answer": "Yes, you can delete individual conversations from the history panel."
         }
       ]
     },
@@ -4858,13 +5541,34 @@
             "Generate logo variations.",
             "Upscale the best option for print."
           ]
+        },
+        {
+          "title": "Complete brand package",
+          "steps": [
+            "Set up brand kit with logo, colors, and fonts.",
+            "Use logo template to generate logo variations.",
+            "Use ad template to create social media ad.",
+            "Use mockup template to preview logo on products.",
+            "Download all assets for brand launch."
+          ]
+        },
+        {
+          "title": "Marketing campaign visuals",
+          "steps": [
+            "Select ad template matching campaign format.",
+            "Describe campaign message and visual direction.",
+            "Attach reference images for product and style.",
+            "Generate multiple ad variations.",
+            "Edit and upscale the best variations for final use."
+          ]
         }
       ],
       "tips": [
         "Set up a brand kit first for consistent outputs across sessions.",
         "Use templates as starting points and refine through conversation.",
         "Upload reference images to guide the assistant.",
-        "Save projects to track iterations and variations."
+        "Save projects to track iterations and variations.",
+        "Set up your brand kit before generating to ensure all assets inherit consistent colors, fonts, and tone."
       ],
       "commonProblems": [
         {
@@ -4876,6 +5580,21 @@
           "problem": "Project not saving",
           "whyItHappens": "localStorage quota exceeded",
           "howToFix": "Check localStorage quota and clear old projects."
+        },
+        {
+          "problem": "Generated design doesn't match brand colors",
+          "whyItHappens": "Brand kit not applied or colors not specified clearly",
+          "howToFix": "Verify brand kit is configured and active. Specify color preferences explicitly in the prompt."
+        },
+        {
+          "problem": "Vectorization produces low-quality output",
+          "whyItHappens": "Source image has too much detail or low contrast",
+          "howToFix": "Use high-contrast, simple source images for vectorization. Complex photos may not vectorize well."
+        },
+        {
+          "problem": "Project data lost after browser close",
+          "whyItHappens": "localStorage cleared or browser doesn't persist data",
+          "howToFix": "Export projects regularly. localStorage is browser-local and may be cleared by browser settings or privacy modes."
         }
       ],
       "troubleshootingSteps": [
@@ -4958,6 +5677,34 @@
         {
           "question": "Can I export my projects?",
           "answer": "Projects are stored in localStorage. You can download individual assets, but project data is browser-local."
+        },
+        {
+          "question": "Can I use Design Agent AI offline?",
+          "answer": "No, Design Agent AI requires an internet connection to access the backend API for generation."
+        },
+        {
+          "question": "What file formats can I export designs in?",
+          "answer": "Generated assets can be downloaded in common formats. Vectorized assets are available as vector files. Check the asset actions for specific export options."
+        },
+        {
+          "question": "How many assets can I generate in one session?",
+          "answer": "There's no hard limit, but generation depends on your MuAPI and OpenAI key credits. Monitor your usage in Settings."
+        },
+        {
+          "question": "Can I use my own brand assets as input?",
+          "answer": "Yes, upload brand assets as attachments and apply your brand kit for consistent styling across generations."
+        },
+        {
+          "question": "What's the difference between agent mode and generate mode?",
+          "answer": "Agent mode is conversational\u2014you describe needs and Go-AI iterates. Generate mode uses templates for direct asset creation."
+        },
+        {
+          "question": "Can I vectorize raster images?",
+          "answer": "Yes, use the vectorize asset action to convert raster images to scalable vector formats."
+        },
+        {
+          "question": "Does Design Agent AI support team collaboration?",
+          "answer": "Projects are stored in localStorage, which is browser-local. For team collaboration, share exported assets manually."
         }
       ]
     },
@@ -5223,13 +5970,34 @@
             "Set 9:16 aspect ratio for TikTok.",
             "Generate and download."
           ]
+        },
+        {
+          "title": "Music video effect sequence",
+          "steps": [
+            "Select VFX category and choose Levitate effect.",
+            "Upload artist performance image.",
+            "Set 10 seconds at 720p.",
+            "Generate levitation clip.",
+            "Apply additional effects sequentially for the full sequence."
+          ]
+        },
+        {
+          "title": "Social media attention-grabber",
+          "steps": [
+            "Select AI Effects category and choose Muscle Surge.",
+            "Upload product or character image.",
+            "Set 9:16 aspect ratio for TikTok.",
+            "Generate 5-second effect clip.",
+            "Download and combine with original content in editing software."
+          ]
         }
       ],
       "tips": [
         "Use clear, high-quality source images for best effects.",
         "Search and filter effects by category to find the right look.",
         "Use cross-studio handoff from Storyboard or GO-Viral for seamless workflows.",
-        "Copy prompts from effects and customize for your needs."
+        "Copy prompts from effects and customize for your needs.",
+        "Use high-contrast source images with clear subjects for the most impactful effects."
       ],
       "commonProblems": [
         {
@@ -5241,6 +6009,21 @@
           "problem": "Handoff not working",
           "whyItHappens": "localStorage issue",
           "howToFix": "Clear localStorage and retry."
+        },
+        {
+          "problem": "Effect not visible in output",
+          "whyItHappens": "Source image doesn't have clear subject or prompt too vague",
+          "howToFix": "Use a source image with a clear, distinct subject and add specific effect descriptions to the prompt."
+        },
+        {
+          "problem": "Motion control shot looks static",
+          "whyItHappens": "Source image lacks motion cues or prompt doesn't specify movement",
+          "howToFix": "Use dynamic source images and explicitly describe the desired camera movement in the prompt."
+        },
+        {
+          "problem": "Cross-studio handoff data is stale",
+          "whyItHappens": "localStorage contains old handoff data from previous session",
+          "howToFix": "Clear localStorage and retry the handoff from the source studio."
         }
       ],
       "troubleshootingSteps": [
@@ -5323,6 +6106,30 @@
         {
           "question": "What resolutions are supported?",
           "answer": "VFX Studio supports 480p and 720p resolutions with 5 or 10 second durations."
+        },
+        {
+          "question": "Can I apply multiple effects at once?",
+          "answer": "VFX Studio applies one effect at a time. Chain multiple effects by generating sequentially or use Video Studio for combined effects."
+        },
+        {
+          "question": "What's the difference between AI Effects and VFX?",
+          "answer": "AI Effects are stylized character transformations (Venom, Hulk, etc.). VFX are environmental or physical effects (Levitate, Explosion, Tornado)."
+        },
+        {
+          "question": "Can I use VFX Studio with images instead of video?",
+          "answer": "Yes, upload a source image and apply effects to generate short video clips from still images."
+        },
+        {
+          "question": "How long can VFX videos be?",
+          "answer": "Duration is limited to 5 or 10 seconds depending on the effect and model."
+        },
+        {
+          "question": "Can I customize effect intensity?",
+          "answer": "Effect intensity is controlled via the text prompt. Be more or less descriptive to adjust the strength of the effect."
+        },
+        {
+          "question": "What happens if the handoff data is stale?",
+          "answer": "If handoff data is stale or invalid, clear localStorage and retry the handoff from the source studio."
         }
       ]
     },
@@ -5549,13 +6356,34 @@
             "Generate 3 variations with different seeds.",
             "A/B test variations on YouTube."
           ]
+        },
+        {
+          "title": "A/B thumbnail testing",
+          "steps": [
+            "Enter CTR-focused prompt describing the video topic.",
+            "Select style preset matching video content type.",
+            "Generate 3 variations using different seeds.",
+            "Upload variations to YouTube as A/B test.",
+            "Monitor CTR performance and select winner."
+          ]
+        },
+        {
+          "title": "Batch thumbnail generation for series",
+          "steps": [
+            "Use Storyboard handoff to import video context.",
+            "Write prompts for each episode in the series.",
+            "Use consistent style preset across all thumbnails.",
+            "Generate thumbnails for 5-10 episodes.",
+            "Download all for bulk upload to YouTube."
+          ]
         }
       ],
       "tips": [
         "Use the CTR prompt engine to optimize prompts for engagement.",
         "Browse the community gallery for trending styles and approaches.",
         "Use cross-studio handoff from Storyboard to maintain visual continuity.",
-        "Test multiple style presets to find the best performing thumbnail."
+        "Test multiple style presets to find the best performing thumbnail.",
+        "Use the CTR prompt engine to optimize prompts for engagement\u2014include emotion, contrast, and curiosity elements."
       ],
       "commonProblems": [
         {
@@ -5567,6 +6395,21 @@
           "problem": "Gallery empty",
           "whyItHappens": "Session ID not set",
           "howToFix": "Ensure session ID is set."
+        },
+        {
+          "problem": "Thumbnail text is garbled or unreadable",
+          "whyItHappens": "Model struggles with text rendering or prompt not specific enough",
+          "howToFix": "Simplify text, use larger font descriptions in prompts, or add text in post-production editing software."
+        },
+        {
+          "problem": "Thumbnail doesn't match video content",
+          "whyItHappens": "Prompt doesn't accurately describe video content",
+          "howToFix": "Use the CTR prompt engine with accurate video descriptions and use Storyboard handoff for continuity."
+        },
+        {
+          "problem": "Gallery not showing community thumbnails",
+          "whyItHappens": "Session ID not set or community feed unavailable",
+          "howToFix": "Ensure session ID is set and check community feed availability. Refresh the gallery."
         }
       ],
       "troubleshootingSteps": [
@@ -5649,6 +6492,34 @@
         {
           "question": "What size are the thumbnails?",
           "answer": "Thumbnails are generated at YouTube-optimized dimensions. Use size presets to match specific platform requirements."
+        },
+        {
+          "question": "What dimensions should I use for YouTube thumbnails?",
+          "answer": "YouTube recommends 1280x720 pixels (16:9 aspect ratio). Use size presets in Thumbnail Studio for platform-optimized dimensions."
+        },
+        {
+          "question": "Can I create thumbnails for other platforms?",
+          "answer": "Thumbnail Studio is optimized for YouTube but can generate images in any aspect ratio for other platforms."
+        },
+        {
+          "question": "How does the CTR prompt engine work?",
+          "answer": "The CTR prompt engine analyzes and enhances your thumbnail description to include elements known to drive higher click-through rates, such as contrast, emotion, and visual hierarchy."
+        },
+        {
+          "question": "Can I A/B test thumbnails?",
+          "answer": "Generate multiple thumbnail variations with different seeds and styles, then test them on YouTube to compare performance."
+        },
+        {
+          "question": "Can I use Storyboard frames as thumbnail input?",
+          "answer": "Yes, Thumbnail Studio supports cross-studio handoff from Storyboard to maintain visual continuity with your video project."
+        },
+        {
+          "question": "What style presets are available?",
+          "answer": "Style presets vary by category. Browse the style preset selector to see options available for your content type."
+        },
+        {
+          "question": "Can I add text overlays to thumbnails?",
+          "answer": "Text overlay support depends on the model and style preset. Include text descriptions in your prompt and check if the selected preset supports text rendering."
         }
       ]
     },
@@ -5933,19 +6804,60 @@
             "Add style/look preferences.",
             "Generate consistent portrait series."
           ]
+        },
+        {
+          "title": "Influencer brand character series",
+          "steps": [
+            "Build character using attribute builder: human, female, Asian, brown hair.",
+            "Add style/look for influencer aesthetic.",
+            "Generate portrait series with different prompts but same attributes.",
+            "Use consistent seed for visual continuity.",
+            "Send to Thumbnail Studio for profile picture variants."
+          ]
+        },
+        {
+          "title": "Game NPC design",
+          "steps": [
+            "Select alien character type for sci-fi game.",
+            "Choose gender, ethnicity, and eye color for unique look.",
+            "Add style/look for game art direction.",
+            "Generate character portrait.",
+            "Send to Cinema Studio for cinematic character renders."
+          ]
         }
       ],
       "tips": [
         "Complete all required attribute selections for best consistency.",
         "Use reference images alongside attributes for finer control.",
         "Save attribute combinations as templates for recurring characters.",
-        "Review CDN preview images to confirm selections before generating."
+        "Review CDN preview images to confirm selections before generating.",
+        "Complete all required attributes before generating\u2014partial attribute sets lead to inconsistent results."
       ],
       "commonProblems": [
         {
           "problem": "Inconsistent outputs",
           "whyItHappens": "Incomplete attribute selection",
           "howToFix": "Ensure all required attributes are selected."
+        },
+        {
+          "problem": "Generated character doesn't match selected attributes",
+          "whyItHappens": "Attribute builder not fully populated or model doesn't respect all attributes",
+          "howToFix": "Complete all required attribute fields and use reference images to guide the generation toward your selections."
+        },
+        {
+          "problem": "Inconsistent character across regenerations",
+          "whyItHappens": "Seed changed or attributes not fully specified",
+          "howToFix": "Lock the seed and ensure all attributes are selected. Use reference images for additional consistency."
+        },
+        {
+          "problem": "Attribute preview images not loading",
+          "whyItHappens": "CDN-hosted preview images blocked or unavailable",
+          "howToFix": "Check network connectivity. Preview images are hosted on CDN and may be blocked in some networks."
+        },
+        {
+          "problem": "Character type options limited",
+          "whyItHappens": "CDN assets for certain character types not available",
+          "howToFix": "Use available character types and check for updates. Some exotic types may have limited preview support."
         }
       ],
       "troubleshootingSteps": [
@@ -6028,6 +6940,34 @@
         {
           "question": "How do I ensure consistency across generations?",
           "answer": "Complete all required attributes and use the same seed value. The nano-banana-pro model maintains consistency when attributes are fully specified."
+        },
+        {
+          "question": "Can I create non-human characters?",
+          "answer": "Yes, 13 character types are available including human, elf, alien, amphibian, and reptile."
+        },
+        {
+          "question": "How many gender options are there?",
+          "answer": "5 gender options: female, male, non-binary, trans man, and trans woman."
+        },
+        {
+          "question": "Can I generate characters in different poses?",
+          "answer": "Pose variation depends on the prompt and model. The nano-banana-pro model focuses on consistent portraits. Use prompts to suggest different poses or angles."
+        },
+        {
+          "question": "Are generated portraits commercially licensable?",
+          "answer": "Commercial use depends on the model license and your MuAPI plan terms. Check the license agreement for usage rights."
+        },
+        {
+          "question": "Can I export character attribute sets?",
+          "answer": "Attribute combinations can be saved by noting your selections. The studio does not currently have a built-in export for attribute profiles."
+        },
+        {
+          "question": "What's the best way to get consistent character across multiple images?",
+          "answer": "Complete all required attributes, use reference images, and use the same seed value for each generation session."
+        },
+        {
+          "question": "Can I use AI Influencer Studio for game character design?",
+          "answer": "Yes, use the attribute builder to create consistent character designs for games, then refine in other studios if needed."
         }
       ]
     },
@@ -6357,13 +7297,34 @@
             "Publish to Instagram as Reel with optimized caption.",
             "Publish to TikTok with engagement-focused caption."
           ]
+        },
+        {
+          "title": "Multi-platform product launch",
+          "steps": [
+            "Generate product video in Video Studio.",
+            "Publish to YouTube with full title, description, and tags.",
+            "Publish to Instagram as Reel with optimized caption.",
+            "Publish to TikTok with trending hashtags.",
+            "Review publish history for all platforms."
+          ]
+        },
+        {
+          "title": "Content repurposing across platforms",
+          "steps": [
+            "Extract highlights from long-form video in AI Clipping.",
+            "Upload clip to Social Publishing.",
+            "Publish to TikTok with engagement-focused caption.",
+            "Publish to Instagram Reels with different caption.",
+            "Publish best clip to YouTube Shorts."
+          ]
         }
       ],
       "tips": [
         "Connect social accounts before generating content for one-click publishing.",
         "Use platform-specific settings to optimize each post.",
         "Check publish history to track content distribution.",
-        "Use privacy settings to control audience access."
+        "Use privacy settings to control audience access.",
+        "Connect and verify all social accounts before starting a publishing session."
       ],
       "commonProblems": [
         {
@@ -6375,6 +7336,21 @@
           "problem": "History not loading",
           "whyItHappens": "localStorage unavailable",
           "howToFix": "Ensure localStorage is available in browser."
+        },
+        {
+          "problem": "Publish status stuck in pending",
+          "whyItHappens": "Async polling taking longer than expected or platform processing delay",
+          "howToFix": "Wait for polling to complete. Check platform directly to confirm publish status. Retry if stuck for extended period."
+        },
+        {
+          "problem": "Media not showing on platform after publish",
+          "whyItHappens": "Platform processing delay or privacy setting issue",
+          "howToFix": "Wait a few minutes for platform processing. Verify privacy settings allow public viewing."
+        },
+        {
+          "problem": "Account connection lost",
+          "whyItHappens": "Token expired or platform permissions revoked",
+          "howToFix": "Re-authorize the social account connection in settings."
         }
       ],
       "troubleshootingSteps": [
@@ -6464,6 +7440,34 @@
         {
           "question": "Why did my publish fail?",
           "answer": "Check social account connection, media URL accessibility, and platform API limits. Review the error message for specific details."
+        },
+        {
+          "question": "Can I schedule posts for later?",
+          "answer": "Social Publishing focuses on immediate publishing. Use each platform's native scheduling features for scheduled posts."
+        },
+        {
+          "question": "What media formats are supported?",
+          "answer": "Common video and image formats are supported. Ensure media URLs are publicly accessible for the platform APIs to fetch them."
+        },
+        {
+          "question": "Can I publish to multiple platforms at once?",
+          "answer": "Yes, select each platform and configure settings individually. The studio supports publishing to YouTube, Instagram, and TikTok."
+        },
+        {
+          "question": "Why did my publish fail even with a valid account?",
+          "answer": "Check media URL accessibility, platform API limits, and account permissions. Review the specific error message for details."
+        },
+        {
+          "question": "How many posts can I publish at once?",
+          "answer": "Publishing limits depend on each platform's API rate limits. Check platform documentation for specific quotas."
+        },
+        {
+          "question": "Can I manage multiple accounts per platform?",
+          "answer": "Yes, Social Publishing supports external social account management for multiple accounts per platform."
+        },
+        {
+          "question": "Where does publish history get stored?",
+          "answer": "Publish history of the last 12 items is stored in localStorage. Older history may be pruned as new items are added."
         }
       ]
     },
@@ -6720,13 +7724,34 @@
             "Copy prompt or hand off to Image Studio.",
             "Generate image using the discovered prompt."
           ]
+        },
+        {
+          "title": "Prompt discovery to production",
+          "steps": [
+            "Browse GO-Viral feed filtered by image prompts.",
+            "Find a trending prompt tagged with flux-dev.",
+            "Copy the prompt or hand off to Image Studio.",
+            "Generate image using the discovered prompt.",
+            "Download and use in marketing materials."
+          ]
+        },
+        {
+          "title": "Video prompt inspiration",
+          "steps": [
+            "Switch to video prompts mode.",
+            "Filter by seedance-recommended prompts.",
+            "Preview video results from the prompt.",
+            "Copy prompt and hand off to Video Studio.",
+            "Generate video with your own parameters."
+          ]
         }
       ],
       "tips": [
         "Filter by recommended model to find prompts compatible with your preferred models.",
         "Use Academy mode for curated, educational prompt collections.",
         "Copy prompts and adapt them to your specific needs.",
-        "Check author attribution for original context and credit."
+        "Check author attribution for original context and credit.",
+        "Filter by recommended model to find prompts that work best with your preferred models."
       ],
       "commonProblems": [
         {
@@ -6738,6 +7763,21 @@
           "problem": "Preview not showing",
           "whyItHappens": "CDN blocked",
           "howToFix": "CDN may be blocked in your network."
+        },
+        {
+          "problem": "Feed returns empty results",
+          "whyItHappens": "Feed API unreachable or X API issue",
+          "howToFix": "Check network connectivity and feed API status. Refresh the page."
+        },
+        {
+          "problem": "Preview images not loading",
+          "whyItHappens": "CDN blocked in your network",
+          "howToFix": "Check if CDN is accessible. Try a different network or disable CDN-blocking extensions."
+        },
+        {
+          "problem": "Handoff opens wrong studio",
+          "whyItHappens": "Target studio not loaded or selection error",
+          "howToFix": "Ensure the target studio is loaded in another tab before using handoff. Clear localStorage and retry."
         }
       ],
       "troubleshootingSteps": [
@@ -6827,6 +7867,34 @@
         {
           "question": "How do I hand off a prompt to another studio?",
           "answer": "Click the handoff button on any prompt and select the target studio. The prompt and context will be automatically transferred."
+        },
+        {
+          "question": "How often is the prompt feed updated?",
+          "answer": "The feed is continuously refreshed with new prompts from X (Twitter). Prompt count and freshness depend on the ImgLume and ByRadar sources."
+        },
+        {
+          "question": "Do I need to credit prompt authors?",
+          "answer": "Each prompt includes original author attribution and source links. While not legally required for all uses, crediting authors is good practice."
+        },
+        {
+          "question": "Can I save favorite prompts?",
+          "answer": "Bookmark favorite prompts in your browser or copy them to a personal document. The studio does not currently have a built-in favorites system."
+        },
+        {
+          "question": "Are prompts verified to work with specific models?",
+          "answer": "Prompts are tagged with recommended models (e.g., gptimage, nanobanana, seedance). Results may vary based on model version and backend."
+        },
+        {
+          "question": "Can I filter prompts by model compatibility?",
+          "answer": "Yes, use the model filter to find prompts tagged with specific recommended models."
+        },
+        {
+          "question": "What is Academy mode?",
+          "answer": "Academy mode provides curated learning content from the prompt feed, organized for educational purposes."
+        },
+        {
+          "question": "Can I submit my own prompts to the feed?",
+          "answer": "GO-Viral sources prompts from public X posts via ImgLume and ByRadar. Direct submission is not currently supported."
         }
       ]
     },
@@ -7032,13 +8100,34 @@
             "Enter product image URL.",
             "Generate and download for product listing."
           ]
+        },
+        {
+          "title": "New product launch photography",
+          "steps": [
+            "Select appropriate category for the product.",
+            "Choose a style preset matching brand aesthetic.",
+            "Enter product image URL.",
+            "Generate multiple style variations.",
+            "Download best options for e-commerce listing."
+          ]
+        },
+        {
+          "title": "Brand-coherent product catalog",
+          "steps": [
+            "Select brand for context.",
+            "Choose Lifestyle category for natural product shots.",
+            "Generate photos for 3-5 products.",
+            "Review history filtered by brand.",
+            "Download all for catalog update."
+          ]
         }
       ],
       "tips": [
         "Select a category first to see relevant style presets.",
         "Use brand selection for consistent brand-aligned outputs.",
         "Provide clear product image URLs for better results.",
-        "Check history to reuse or reference previous generations."
+        "Check history to reuse or reference previous generations.",
+        "Select a category first to filter style presets to those most relevant to your product type."
       ],
       "commonProblems": [
         {
@@ -7050,6 +8139,21 @@
           "problem": "Product image not used",
           "whyItHappens": "Invalid URL",
           "howToFix": "Ensure URL is valid and accessible."
+        },
+        {
+          "problem": "Generated photo doesn't include the product",
+          "whyItHappens": "Product image URL not accessible or not processed by backend",
+          "howToFix": "Ensure the product image URL is publicly accessible and in a supported format."
+        },
+        {
+          "problem": "Style doesn't match category expectation",
+          "whyItHappens": "Style preset description not specific enough or model interpretation varies",
+          "howToFix": "Review style preset descriptions and try different presets within the same category."
+        },
+        {
+          "problem": "Generation times out repeatedly",
+          "whyItHappens": "Backend overload or product image processing issue",
+          "howToFix": "Try again later, check backend status, or try a simpler product image URL."
         }
       ],
       "troubleshootingSteps": [
@@ -7132,6 +8236,34 @@
         {
           "question": "How long does generation take?",
           "answer": "Generation polls for completion with up to 90 attempts at 2-second intervals. Typical completion time varies by backend load."
+        },
+        {
+          "question": "What product categories are supported?",
+          "answer": "6 categories: E-commerce, Lifestyle, Food & Beverage, Tech, Beauty, and Health."
+        },
+        {
+          "question": "Can I generate photos without a product image?",
+          "answer": "Yes, the product image URL is optional. Results are generally better with a product image, but the studio can generate without one."
+        },
+        {
+          "question": "How does brand selection affect generation?",
+          "answer": "Selecting a brand provides context for consistent styling. Brand history shows past generations for that brand."
+        },
+        {
+          "question": "What resolution are generated photos?",
+          "answer": "Resolution depends on the backend model. Check the output after generation for specific dimensions."
+        },
+        {
+          "question": "Can I edit generated product photos?",
+          "answer": "Download generated photos and edit them in external tools, or send them to Layers Studio or Image Studio for further processing."
+        },
+        {
+          "question": "How long does a generation take?",
+          "answer": "Generation polls for completion with up to 90 attempts at 2-second intervals. Typical completion time varies by backend load."
+        },
+        {
+          "question": "Can I generate photos in batch?",
+          "answer": "Photo Studio generates one photo at a time. Use Workflows to chain multiple generations for batch processing."
         }
       ]
     },
@@ -7348,13 +8480,34 @@
             "Review brand colors and industry.",
             "Use brand DNA to inform your own campaigns."
           ]
+        },
+        {
+          "title": "New client onboarding",
+          "steps": [
+            "Paste new client website URL.",
+            "Extract brand DNA including colors and tone.",
+            "Review and refine brand profile.",
+            "Use brand DNA in Photo Studio for product photos.",
+            "Generate initial campaign concepts in Marketing Studio."
+          ]
+        },
+        {
+          "title": "Brand-aligned campaign creation",
+          "steps": [
+            "Analyze client website to extract brand DNA.",
+            "Review extracted colors, industry, and tone.",
+            "Use brand DNA in Marketing Studio to generate ad concepts.",
+            "Generate product photos in Photo Studio using brand context.",
+            "Review all assets for brand consistency before delivery."
+          ]
         }
       ],
       "tips": [
         "Use publicly accessible URLs for best analysis results.",
         "Review extracted brand DNA before generating assets.",
         "Use brand profiles to maintain consistency across projects.",
-        "Check recent brands list to avoid duplicate analysis."
+        "Check recent brands list to avoid duplicate analysis.",
+        "Use the homepage URL for the most comprehensive brand analysis."
       ],
       "commonProblems": [
         {
@@ -7366,6 +8519,21 @@
           "problem": "Brand not appearing",
           "whyItHappens": "List not refreshed",
           "howToFix": "Refresh the brands list."
+        },
+        {
+          "problem": "Analysis returns generic brand data",
+          "whyItHappens": "Website has minimal content or backend AI couldn't extract specific details",
+          "howToFix": "Use websites with rich visual content and clear brand messaging. Manually refine extracted brand DNA."
+        },
+        {
+          "problem": "Brand not appearing in recent list",
+          "whyItHappens": "Analysis didn't complete or list not refreshed",
+          "howToFix": "Ensure the analysis completed successfully. Refresh the brands list."
+        },
+        {
+          "problem": "Extracted colors don't match brand",
+          "whyItHappens": "Website uses dynamic colors or backend extraction picked non-brand colors",
+          "howToFix": "Manually adjust extracted colors in the brand profile to match the actual brand palette."
         }
       ],
       "troubleshootingSteps": [
@@ -7448,6 +8616,30 @@
         {
           "question": "How do I use extracted brand DNA?",
           "answer": "Use brand DNA to generate campaigns, create brand-aligned assets in other studios, and maintain visual consistency across projects."
+        },
+        {
+          "question": "What information is extracted from a website?",
+          "answer": "Brand DNA includes brand name, industry, primary colors, and visual characteristics extracted from the website."
+        },
+        {
+          "question": "How long does brand analysis take?",
+          "answer": "Analysis time depends on backend processing. The 3-step process (fetch, analyze, save) typically completes within seconds."
+        },
+        {
+          "question": "Can I edit extracted brand DNA?",
+          "answer": "Yes, review and refine the extracted brand DNA before using it to generate campaigns or assets."
+        },
+        {
+          "question": "How many brands can I analyze?",
+          "answer": "There's no hard limit, but recent brands are shown in the UI for quick access. Older brands may require refreshing the list."
+        },
+        {
+          "question": "Can I share brand profiles with my team?",
+          "answer": "Brand profiles are stored in the backend. Share generated campaigns and assets with your team through normal file sharing."
+        },
+        {
+          "question": "Does Brand Studio work with social media profiles?",
+          "answer": "Brand Studio analyzes website URLs. For social media profiles, use the website URL if the brand has one, or manually input brand attributes."
         }
       ]
     }
