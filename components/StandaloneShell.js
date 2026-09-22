@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useRouter, usePathname } from 'next/navigation';
+import { useParams, useRouter, usePathname, Link } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import axios from 'axios';
 import { MemoryRouter } from 'react-router-dom';
@@ -552,7 +552,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                    )}
                  </button>
                ))}
-                <a
+                <Link
                   href="/academy"
                   className={`relative inline-flex text-[13px] font-medium transition-all duration-300 whitespace-nowrap px-1 flex-shrink-0 items-center h-full ${
                     pathname === '/academy'
@@ -561,11 +561,11 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                   }`}
                 >
                  <span className="relative z-10">Academy</span>
-                 {pathname === '/academy' && (
-                   <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#22d3ee] to-[#a855f7] rounded-full shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
-                 )}
-               </a>
-             </nav>
+                  {pathname === '/academy' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#22d3ee] to-[#a855f7] rounded-full shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
+                  )}
+                </Link>
+              </nav>
             
             {/* Fade Right Overlay */}
             <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#030303] to-transparent pointer-events-none z-10 block lg:hidden" />
