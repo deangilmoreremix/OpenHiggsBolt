@@ -243,13 +243,11 @@ describe('PR #31 Regression Tests', () => {
 
   it('Saved client: Set Primary button condition logic', () => {
     // Verify the Set Primary button is only rendered for identities and logos
-    const tabs = ['identities', 'logos', 'products', 'brandReferences'] as const
-    const supportedTabs = ['identities', 'logos'] as const
-    for (const tab of tabs) {
-      const shouldRender = supportedTabs.includes(tab)
-      if (tab === 'products' || tab === 'brandReferences') {
-        expect(shouldRender).toBe(false)
-      }
+    // The setPrimarySavedAsset function only accepts 'identity' | 'logo'
+    const validRoles = ['identity', 'logo'] as const
+    const invalidRoles = ['product', 'brand'] as const
+    for (const role of invalidRoles) {
+      expect(validRoles).not.toContain(role)
     }
   })
 })
