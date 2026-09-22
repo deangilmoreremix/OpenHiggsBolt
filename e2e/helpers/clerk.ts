@@ -13,6 +13,14 @@ const ORG_TASK_APPEAR_TIMEOUT_MS = 12_000;
 const ORG_TASK_RESOLVE_TIMEOUT_MS = 10_000;
 const ORG_CONTROL_TIMEOUT_MS = 5_000;
 
+export interface CompleteOrgTaskOptions {
+  /**
+   * Wait briefly for Clerk to surface the optional organization task.
+   * Use only after navigating to a protected route that can trigger the task.
+   */
+  waitForAppearance?: boolean;
+}
+
 export function isChooseOrganizationTask(url: URL | string): boolean {
   const parsed = typeof url === 'string' ? new URL(url) : url;
   return parsed.hash.includes('choose-organization');
@@ -30,7 +38,7 @@ async function waitForOrgTaskToAppear(page: Page): Promise<boolean> {
     return true;
   } catch {
     // The organization task is optional. A timeout here means it did not
-    // appear during Clerk's known post-sign-in task window.
+    // appear during Clerk's known post-protected-navigation task window.
     return false;
   }
 }
@@ -44,17 +52,24 @@ async function waitForOrgTaskToClear(page: Page): Promise<void> {
 /**
  * Complete the Clerk "choose organization" session task when required.
  *
- * Clerk can surface this task asynchronously after the first protected-route
- * navigation, so this helper first waits for the known task window. If the
- * task appears, it must be resolved before the helper returns.
+ * Normal callers remain fast: if the task is not already active, this helper
+ * returns immediately. Callers that have just navigated to a protected route
+ * may opt into a short appearance wait because Clerk can surface the task
+ * asynchronously after that navigation.
  *
  * Preferred order:
  * 1. Select an existing organization if one is available.
  * 2. Otherwise create exactly one deterministic demo organization.
  * 3. Fail if the task cannot be resolved; never persist a broken auth state.
  */
-export async function completeOrgTaskIfPresent(page: Page): Promise<void> {
-  const taskAppeared = await waitForOrgTaskToAppear(page);
+export async function completeOrgTaskIfPresent(
+  page: Page,
+  options: CompleteOrgTaskOptions = {},
+): Promise<void> {
+  const taskAppeared = options.waitForAppearance
+    ? await waitForOrgTaskToAppear(page)
+    : isChooseOrganizationTask(page.url());
+
   if (!taskAppeared) {
     return;
   }
