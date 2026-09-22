@@ -15,8 +15,6 @@ const nextConfig = {
   },
   transpilePackages: ['studio', 'ai-agent', 'workflow-builder', 'design-agent'],
   serverExternalPackages: [
-    'get-stream',
-    '@crawlee/cheerio',
     'electron',
     'app-builder-bin',
     '@typescript-eslint',
