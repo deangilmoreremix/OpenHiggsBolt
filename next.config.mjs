@@ -24,7 +24,6 @@ const nextConfig = {
     '7zip-bin',
     'es-abstract',
     'playwright',
-    'jsdom',
   ],
   outputFileTracingExcludes: {
     '*': [
