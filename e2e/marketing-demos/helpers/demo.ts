@@ -1,6 +1,7 @@
 import { type Page, type Locator } from '@playwright/test';
+import { resolveDemoBaseURL } from '../../../playwright.shared';
 
-export const DEMO_BASE_URL = process.env.DEMO_BASE_URL || 'http://localhost:3111';
+export const DEMO_BASE_URL = resolveDemoBaseURL();
 
 export async function gotoStudio(page: Page): Promise<void> {
   await page.goto(`${DEMO_BASE_URL}/studio`);

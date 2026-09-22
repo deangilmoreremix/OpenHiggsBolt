@@ -9,6 +9,13 @@ if (!process.env.CLERK_PUBLISHABLE_KEY && process.env.NEXT_PUBLIC_CLERK_PUBLISHA
   process.env.CLERK_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 }
 
+export function resolveDemoBaseURL(): string {
+  return process.env.DEMO_BASE_URL || 'http://localhost:3111';
+}
+
+const DEMO_BASE_URL = resolveDemoBaseURL();
+const isLocalDemo = DEMO_BASE_URL === 'http://localhost:3111';
+
 export const base = {
   testDir: './e2e',
   timeout: 90_000,
@@ -17,15 +24,17 @@ export const base = {
   retries: 1,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:3111',
+    baseURL: DEMO_BASE_URL,
     trace: 'on-first-retry',
   },
-  webServer: {
-    command: 'npx next dev --port 3111 --turbopack',
-    url: 'http://localhost:3111',
-    reuseExistingServer: true,
-    timeout: 180_000,
-  },
+  webServer: isLocalDemo
+    ? {
+        command: 'npx next dev --port 3111 --turbopack',
+        url: 'http://localhost:3111',
+        reuseExistingServer: true,
+        timeout: 180_000,
+      }
+    : undefined,
 };
 
 export const normalProjects = [
@@ -53,5 +62,6 @@ export const marketingProjects = [
       },
       viewport: { width: 1920, height: 1080 },
     },
+    outputDir: 'playwright/marketing-artifacts',
   },
 ];

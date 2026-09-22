@@ -9,17 +9,17 @@ test.describe('SmartVideo GO — studio overview demo', () => {
     await expect(page.getByRole('button', { name: /image studio/i })).toBeVisible();
   });
 
-  test('primary studio tabs are reachable without paid generation', async ({ page }) => {
+  test('primary studio tabs are interactive after navigation', async ({ page }) => {
     await gotoStudio(page);
     await dismissModals(page);
 
-    // Verify a representative set of studio tabs. Full horizontal nav coverage
-    // is exercised by the individual studio demo specs.
+    // Verify a representative set of studio tabs.
     const tabs = ['Image Studio', 'Video Studio', 'Audio Studio', 'Marketing Studio'];
 
     for (const tabLabel of tabs) {
       const tab = await openTab(page, tabLabel);
       await tab.click();
+      await expect(tab).toHaveAttribute('aria-current', 'true');
       await expect(tab).toBeVisible();
     }
   });
