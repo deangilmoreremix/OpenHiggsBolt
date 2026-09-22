@@ -2,7 +2,7 @@ import { clerk, clerkSetup } from '@clerk/testing/playwright';
 import { test as setup, expect } from '@playwright/test';
 import path from 'path';
 
-import { completeOrgTaskIfPresent } from './helpers/clerk';
+import { completeOrgTaskIfPresent, isChooseOrganizationTask } from './helpers/clerk';
 
 setup.describe.configure({ mode: 'serial' });
 
@@ -29,12 +29,15 @@ setup('authenticate SmartVideo GO demo user', async ({ page }) => {
     emailAddress: email,
   });
 
-  // Complete the Clerk organization task if the instance requires it.
-  await completeOrgTaskIfPresent(page);
-
+  // The Clerk organization task, when enabled, is surfaced asynchronously
+  // after the first protected navigation as #/tasks/choose-organization.
   await page.goto('/studio');
 
-  await expect(page).toHaveURL(/\/studio/);
+  await completeOrgTaskIfPresent(page, { waitForAppearance: true });
+
+  await expect(page).toHaveURL((url) => {
+    return url.pathname.includes('/studio') && !isChooseOrganizationTask(url);
+  });
 
   await page.context().storageState({
     path: authFile,

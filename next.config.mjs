@@ -15,9 +15,6 @@ const nextConfig = {
   },
   transpilePackages: ['studio', 'ai-agent', 'workflow-builder', 'design-agent'],
   serverExternalPackages: [
-    'got-scraping',
-    'get-stream',
-    '@crawlee/cheerio',
     'electron',
     'app-builder-bin',
     '@typescript-eslint',
@@ -25,8 +22,18 @@ const nextConfig = {
     '7zip-bin',
     'es-abstract',
     'playwright',
-    'jsdom',
   ],
+  outputFileTracingExcludes: {
+    '*': [
+      'node_modules/playwright/**',
+      'node_modules/@playwright/**',
+      'node_modules/electron/**',
+      'node_modules/electron-builder/**',
+      'node_modules/app-builder-bin/**',
+      'node_modules/7zip-bin/**',
+      'node_modules/**/*.map',
+    ],
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },

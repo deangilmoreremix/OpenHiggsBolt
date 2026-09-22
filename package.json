@@ -6,7 +6,6 @@
   "version": "2.0.0",
   "license": "MIT",
   "workspaces": [
-    ".",
     "packages/studio",
     "packages/Vibe-Workflow/packages/workflow-builder",
     "packages/Open-Poe-AI/packages/agents",
@@ -21,8 +20,8 @@
     "test:muapi": "tsx --test tests/muapiKeyCrypto.test.js tests/muapi-key-route.test.js",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
-    "demo:capture": "playwright test --project=marketing-demos",
-    "demo:auth": "playwright test --project='global setup'",
+    "demo:capture": "playwright test --config=playwright.marketing.config.ts --project=marketing-demos",
+    "demo:auth": "playwright test --config=playwright.marketing.config.ts --project=\"global setup\"",
     "verify:muapi": "node scripts/verify-muapi-apis.mjs",
     "validate:env": "node scripts/validate-env.js",
     "prestart": "node scripts/validate-env.js",

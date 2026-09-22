@@ -6,8 +6,6 @@
  * existing security model.
  */
 
-import { chromium } from 'playwright'
-
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
@@ -38,6 +36,36 @@ const BLOCKED_URL_PATTERNS = [
   /analytics/i,
   /tracking/i,
 ]
+
+// ---------------------------------------------------------------------------
+// Runtime guard / lazy loader
+// ---------------------------------------------------------------------------
+
+let cachedChromium: Promise<typeof import('playwright')['chromium']> | null = null
+
+export function isBrowserDiscoveryAvailable(): boolean {
+  try {
+    // Playwright is excluded from the Netlify serverless bundle to stay under
+    // the 250 MB function limit. Resolve it lazily so module loading does not
+    // fail when Playwright is not installed in the runtime.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require.resolve('playwright')
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function getChromium() {
+  if (!cachedChromium) {
+    cachedChromium = import('playwright').then((m) => m.chromium)
+  }
+  return cachedChromium
+}
+
+if (!isBrowserDiscoveryAvailable()) {
+  console.warn('[browserDiscovery] Playwright is not available in this runtime; browser fallback is disabled.')
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -199,6 +227,7 @@ async function collectBrowserCandidates(baseUrl: string, pages: string[]): Promi
   const allCandidates: BrowserImageCandidate[] = []
 
   try {
+    const chromium = await getChromium()
     browser = await chromium.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],

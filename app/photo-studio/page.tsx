@@ -23,7 +23,7 @@ export default function PhotoStudioPage() {
   useEffect(() => {
     fetch('/api/brands')
       .then((r) => r.json())
-      .then(setBrands)
+      .then((json) => setBrands(json.data || []))
       .catch(() => {});
   }, []);
 
@@ -31,7 +31,7 @@ export default function PhotoStudioPage() {
     if (!brandId) return;
     fetch('/api/photo-studio?brand_id=' + brandId)
       .then((r) => r.json())
-      .then(setHistory)
+      .then((json) => setHistory(json.data || []))
       .catch(() => {});
     setResult(null);
   }, [brandId]);
