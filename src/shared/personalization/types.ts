@@ -140,6 +140,27 @@ export interface PersonalizationAsset {
   uploadStatus?: 'local' | 'uploading' | 'ready' | 'error'
   uploadError?: string | null
   file?: File | null
+  originalUrl?: string
+  edited?: boolean
+  videoReady?: boolean
+  hasTransparency?: boolean
+  editMetadata?: {
+    operation?: string
+    prompt?: string
+    model?: string
+    quality?: string
+    responseId?: string | null
+    imageGenerationCallId?: string | null
+    revisedPrompt?: string | null
+    outputFormat?: 'png' | 'jpeg' | 'webp'
+    outputCompression?: number | null
+    inputFidelity?: 'high' | 'low'
+  }
+  visionAnalysis?: PersonalizationVisionAnalysis
+  visionValidation?: PersonalizationVisionValidation
+  sourceCategory?: DiscoveredAssetCategory
+  sourceType?: SourceType
+  sourceDiscoveredAssetId?: string
 }
 
 export interface AssetLibrary {
@@ -319,6 +340,36 @@ export interface SharedMediaEntry {
   createdAt: string
 }
 
+
+export interface PersonalizationVisionAnalysis {
+  category: DiscoveredAssetCategory
+  confidence: number
+  qualityScore: number
+  relevanceScore: number
+  targetRole: string
+  preserve: string[]
+  issues: string[]
+  recommendedOperations: string[]
+  transparencyRecommended: boolean
+  precisionRecommended: boolean
+  textDetected: boolean
+  duplicateLikely: boolean
+  summary: string
+  analyzedAt: string
+  model?: string
+}
+
+export interface PersonalizationVisionValidation {
+  passed: boolean
+  confidence: number
+  issues: string[]
+  preserved: string[]
+  changed: string[]
+  summary: string
+  analyzedAt: string
+  model?: string
+}
+
 // ── Discovered Assets ──────────────────────────────────────────────────────────
 // Temporary review state for website-scraped assets. These are NOT part of the
 // permanent AssetLibrary until the user explicitly clicks "Use Selected Assets".
@@ -374,4 +425,17 @@ export interface DiscoveredAsset {
   rejected: boolean
   assignedSection: AssignedSection
   autoAssigned: boolean
+  originalPreviewUrl?: string
+  editedDataUrl?: string
+  edited?: boolean
+  videoReady?: boolean
+  hasTransparency?: boolean
+  editMetadata?: {
+    operation?: string
+    prompt?: string
+    model?: string
+    quality?: string
+  }
+  visionAnalysis?: PersonalizationVisionAnalysis
+  visionValidation?: PersonalizationVisionValidation
 }

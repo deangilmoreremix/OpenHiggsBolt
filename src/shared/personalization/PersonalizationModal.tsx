@@ -46,6 +46,11 @@ import type { PersonalizationAsset, DiscoveredAsset, DiscoveredAssetCategory, As
 import { resolveModelCapabilities, FACE_SWAP_MODEL, FULL_BODY_MODEL, DEFAULT_T2V_MODEL, DEFAULT_I2I_MODEL } from './modelCapabilityResolver'
 import { getModelById, getVideoModelById } from '@/packages/studio/src/models.js'
 import { NICHE_CONTENT } from '@/data/nicheContent'
+import ImageEditorModal, {
+  type ImageEditorApplyResult,
+  type PersonalizationImageEditorAsset,
+} from './image-editor/ImageEditorModal'
+import { makeDiscoveredAssetVideoReady } from './image-editor/batchVideoReady'
 
 // ── Design tokens (mirror the approved HTML CSS variables) ──────────────────
 
@@ -89,6 +94,17 @@ const OUTPUT_OPTIONS_VIDEO = [
   { key: 'video', label: 'Video', description: 'Generate a personalized video.' },
   { key: 'everything', label: 'Everything', description: 'Prompt + Video + Assets + CTA.' },
 ] as const
+
+function destinationRoleForSection(section: AssignedSection): PersonalizationAsset['role'] | undefined {
+  if (section === 'person') return 'presenter_identity'
+  if (section === 'logo') return 'logo'
+  if (section === 'products') return 'product_reference'
+  if (section === 'brand') return 'brand_reference'
+  if (section === 'firstFrame') return 'first_frame'
+  if (section === 'lastFrame') return 'last_frame'
+  if (section === 'ctaGraphic') return 'cta_graphic'
+  return undefined
+}
 
 const OUTPUT_OPTIONS_IMAGE = [
   { key: 'prompt', label: 'Prompt', description: 'Create a personalized prompt only.' },
@@ -322,12 +338,14 @@ function ThumbUploaded({
   label,
   onRemove,
   onRetry,
+  onEdit,
   light = false,
 }: {
   asset: PersonalizationAsset
   label?: string
   onRemove?: () => void
   onRetry?: () => void
+  onEdit?: () => void
   light?: boolean
 }) {
   const status = asset.uploadStatus
@@ -371,6 +389,17 @@ function ThumbUploaded({
       {displayUrl ? (
         <img src={displayUrl} alt={asset.name} className="absolute inset-0 w-full h-full object-cover" />
       ) : null}
+      {onEdit && isReady && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onEdit() }}
+          className="absolute left-1 top-1 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
+          style={{ background: 'rgba(41,211,242,.92)', color: '#041014' }}
+          aria-label="Edit image"
+        >
+          Edit
+        </button>
+      )}
       {label && (
         <span className="relative text-[9px] font-extrabold z-[1]" style={{ color: light ? '#101820' : 'white' }}>
           {label}
@@ -396,6 +425,7 @@ function DiscoveredAssetThumb({
   onToggle,
   onRemove,
   onCategoryChange,
+  onEdit,
   onRemoveFromSection,
   onMoveToSection,
 }: {
@@ -403,6 +433,7 @@ function DiscoveredAssetThumb({
   onToggle: () => void
   onRemove: () => void
   onCategoryChange: (cat: DiscoveredAssetCategory) => void
+  onEdit?: () => void
   onRemoveFromSection?: () => void
   onMoveToSection?: (section: AssignedSection) => void
 }) {
@@ -429,9 +460,34 @@ function DiscoveredAssetThumb({
         opacity: asset.rejected ? 0.5 : 1,
       }}
     >
-      {asset.previewUrl ? (
-        <img src={asset.previewUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+      {(asset.editedDataUrl || asset.previewUrl) ? (
+        <img src={asset.editedDataUrl || asset.previewUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
       ) : null}
+      {onEdit && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onEdit() }}
+          className="absolute right-1 top-6 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
+          style={{ background: 'rgba(41,211,242,.92)', color: '#041014' }}
+          aria-label="Edit discovered image"
+        >
+          Edit
+        </button>
+      )}
+      {(asset.edited || asset.videoReady) && (
+        <div className="absolute left-1 top-6 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase" style={{ background: 'rgba(40,201,139,.9)', color: '#fff' }}>
+          {asset.videoReady ? 'Video Ready' : 'Edited'}
+        </div>
+      )}
+      {asset.visionAnalysis && (
+        <div
+          className="absolute left-1 top-[42px] z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
+          style={{ background: 'rgba(168,85,247,.9)', color: '#fff' }}
+          title={asset.visionAnalysis.summary}
+        >
+          Vision {Math.round(asset.visionAnalysis.confidence)}%
+        </div>
+      )}
       <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,.7), transparent 60%)' }} />
       {/* Select checkbox */}
       <button
@@ -571,6 +627,7 @@ export default function PersonalizationModal() {
     setCtaGraphicUrl,
     removeCtaGraphic,
     retryAssetUpload,
+    applyEditedPersonalizationAsset,
     discoveredAssets,
     discoveryStatus,
     discoveryError,
@@ -586,6 +643,9 @@ export default function PersonalizationModal() {
     importDiscoveredAssets,
     cancelDiscovery,
     discoverAssets,
+    visionStatus,
+    visionError,
+    analyzeDiscoveredAssets,
     // Business search
     businessSearchMode,
     businessSearchResults,
@@ -628,6 +688,7 @@ export default function PersonalizationModal() {
   const [isPersonalizing, setIsPersonalizing] = useState(false)
   const [isRegenerating, setIsRegenerating] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [imageEditorAsset, setImageEditorAsset] = useState<PersonalizationImageEditorAsset | null>(null)
 
   const dialogRef = useRef<HTMLDivElement>(null)
   const previousActiveElementRef = useRef<HTMLElement | null>(null)
@@ -655,6 +716,114 @@ export default function PersonalizationModal() {
   useEffect(() => {
     setMode(null)
   }, [source?.id, setMode])
+
+  const editorReferenceImages = useMemo(() => {
+    const candidates = [
+      assets.primaryLogo,
+      assets.primaryIdentity,
+      ...assets.products.slice(0, 2),
+      ...assets.brandReferences.slice(0, 2),
+    ].filter(Boolean) as PersonalizationAsset[]
+
+    return Array.from(new Set(
+      candidates
+        .map((item) => item.uploadedUrl || item.url)
+        .filter((url): url is string => Boolean(url) && !url.startsWith('blob:')),
+    )).slice(0, 6)
+  }, [assets.brandReferences, assets.primaryIdentity, assets.primaryLogo, assets.products])
+
+  const openDiscoveredImageEditor = useCallback((asset: DiscoveredAsset) => {
+    setImageEditorAsset({
+      id: asset.id,
+      name: asset.category.replace(/_/g, ' '),
+      imageUrl: asset.editedDataUrl || asset.previewUrl,
+      category: asset.category,
+      role: destinationRoleForSection(asset.assignedSection),
+      source: 'discovered',
+      businessName: clientForm.businessName || clientForm.name,
+      industry: clientForm.industry,
+      productService: clientForm.productService,
+      brandDescription: clientForm.brandDescription,
+      referenceImages: editorReferenceImages.filter((url) => url !== asset.previewUrl && url !== asset.editedDataUrl),
+      visionAnalysis: asset.visionAnalysis,
+    })
+  }, [
+    clientForm.brandDescription,
+    clientForm.businessName,
+    clientForm.industry,
+    clientForm.name,
+    clientForm.productService,
+    editorReferenceImages,
+  ])
+
+  const openLibraryImageEditor = useCallback((asset: PersonalizationAsset) => {
+    const imageUrl = asset.uploadedUrl || asset.url
+    setImageEditorAsset({
+      id: asset.id,
+      name: asset.name,
+      imageUrl,
+      category: asset.sourceCategory,
+      role: asset.role,
+      source: 'library',
+      businessName: clientForm.businessName || clientForm.name,
+      industry: clientForm.industry,
+      productService: clientForm.productService,
+      brandDescription: clientForm.brandDescription,
+      referenceImages: editorReferenceImages.filter((url) => url !== imageUrl),
+      visionAnalysis: asset.visionAnalysis,
+    })
+  }, [
+    clientForm.brandDescription,
+    clientForm.businessName,
+    clientForm.industry,
+    clientForm.name,
+    clientForm.productService,
+    editorReferenceImages,
+  ])
+
+  const handleImageEditorApply = useCallback(async (result: ImageEditorApplyResult) => {
+    if (!imageEditorAsset) return
+    if (imageEditorAsset.source === 'discovered') {
+      setDiscoveredAssets(discoveredAssets.map((item) => (
+        item.id === imageEditorAsset.id
+          ? {
+              ...item,
+              originalPreviewUrl: item.originalPreviewUrl || item.previewUrl,
+              editedDataUrl: result.dataUrl,
+              edited: true,
+              videoReady: result.videoReady,
+              hasTransparency: result.transparent,
+              editMetadata: {
+                operation: result.operation,
+                prompt: result.prompt,
+                model: result.model,
+                quality: result.quality,
+                responseId: result.responseId,
+                imageGenerationCallId: result.imageGenerationCallId,
+                revisedPrompt: result.revisedPrompt,
+              },
+              visionAnalysis: result.visionAnalysis || item.visionAnalysis,
+              visionValidation: result.visionValidation,
+            }
+          : item
+      )))
+      return
+    }
+
+    await applyEditedPersonalizationAsset(imageEditorAsset.id, result.dataUrl, {
+      operation: result.operation,
+      prompt: result.prompt,
+      model: result.model,
+      quality: result.quality,
+      transparent: result.transparent,
+      videoReady: result.videoReady,
+      responseId: result.responseId,
+      imageGenerationCallId: result.imageGenerationCallId,
+      revisedPrompt: result.revisedPrompt,
+      visionAnalysis: result.visionAnalysis,
+      visionValidation: result.visionValidation,
+    })
+  }, [applyEditedPersonalizationAsset, discoveredAssets, imageEditorAsset, setDiscoveredAssets])
 
   if (!isOpen || !source) return null
 
@@ -959,6 +1128,8 @@ export default function PersonalizationModal() {
               handleCtaUrl={handleCtaUrl}
               removeCtaGraphic={removeCtaGraphic}
               retryAssetUpload={retryAssetUpload}
+              openDiscoveredImageEditor={openDiscoveredImageEditor}
+              openLibraryImageEditor={openLibraryImageEditor}
               promptState={promptState}
               updatePersonalizedPrompt={updatePersonalizedPrompt}
               resetPrompt={resetPrompt}
@@ -1006,6 +1177,9 @@ export default function PersonalizationModal() {
               importDiscoveredAssets={importDiscoveredAssets}
               cancelDiscovery={cancelDiscovery}
               discoverAssets={discoverAssets}
+              visionStatus={visionStatus}
+              visionError={visionError}
+              analyzeDiscoveredAssets={analyzeDiscoveredAssets}
               // Business search
               businessSearchMode={businessSearchMode}
               businessSearchResults={businessSearchResults}
@@ -1064,6 +1238,12 @@ export default function PersonalizationModal() {
           </footer>
         )}
       </div>
+      <ImageEditorModal
+        open={Boolean(imageEditorAsset)}
+        asset={imageEditorAsset}
+        onClose={() => setImageEditorAsset(null)}
+        onApply={handleImageEditorApply}
+      />
     </div>
   )
 }
@@ -1303,6 +1483,8 @@ function ConfigurationView(props: any) {
     handleLastFrameUpload, handleLastFrameUrl, removeLastFrame,
     handleCtaUpload, handleCtaUrl, removeCtaGraphic,
     retryAssetUpload,
+    openDiscoveredImageEditor,
+    openLibraryImageEditor,
     promptState, updatePersonalizedPrompt, resetPrompt,
     isPersonalizing, isRegenerating,
     handlePersonalize, handleRegenerate, handleCopyPrompt, copiedPrompt,
@@ -1329,6 +1511,9 @@ function ConfigurationView(props: any) {
     importDiscoveredAssets,
     cancelDiscovery,
     discoverAssets,
+    visionStatus,
+    visionError,
+    analyzeDiscoveredAssets,
     // Business search
     businessSearchMode,
     businessSearchResults,
@@ -1347,6 +1532,13 @@ function ConfigurationView(props: any) {
   const logoInputRef = useRef<HTMLInputElement>(null)
   const productInputRef = useRef<HTMLInputElement>(null)
   const brandRefInputRef = useRef<HTMLInputElement>(null)
+  const [batchVideoReady, setBatchVideoReady] = useState<{
+    running: boolean
+    current: number
+    total: number
+    label: string
+    error: string | null
+  }>({ running: false, current: 0, total: 0, label: '', error: null })
 
   const handleIdentityAddClick = useCallback(() => {
     identityInputRef.current?.click()
@@ -1360,6 +1552,81 @@ function ConfigurationView(props: any) {
   const handleBrandRefAddClick = useCallback(() => {
     brandRefInputRef.current?.click()
   }, [])
+
+  const handleBatchMakeVideoReady = useCallback(async () => {
+    const selected = discoveredAssets.filter((asset: DiscoveredAsset) =>
+      asset.selected &&
+      !asset.rejected &&
+      asset.category !== 'irrelevant' &&
+      !asset.videoReady
+    )
+    if (selected.length === 0 || batchVideoReady.running) return
+
+    setBatchVideoReady({ running: true, current: 0, total: selected.length, label: 'Preparing assets', error: null })
+    let nextAssets = [...discoveredAssets]
+    const failures: string[] = []
+
+    for (let index = 0; index < selected.length; index += 1) {
+      const item = selected[index]
+      setBatchVideoReady((previous) => ({
+        ...previous,
+        current: index + 1,
+        label: item.category.replace(/_/g, ' ') + ' · starting',
+      }))
+
+      try {
+        const result = await makeDiscoveredAssetVideoReady(
+          item,
+          {
+            businessName: clientForm.businessName || clientForm.name,
+            industry: clientForm.industry,
+          },
+          (_step, _totalSteps, label) => {
+            setBatchVideoReady((previous) => ({
+              ...previous,
+              current: index + 1,
+              label,
+            }))
+          },
+        )
+
+        nextAssets = nextAssets.map((asset: DiscoveredAsset) => (
+          asset.id === item.id
+            ? {
+                ...asset,
+                originalPreviewUrl: asset.originalPreviewUrl || asset.previewUrl,
+                editedDataUrl: result.dataUrl,
+                edited: true,
+                videoReady: true,
+                hasTransparency: result.transparent,
+                editMetadata: {
+                  operation: result.operation,
+                  prompt: result.prompt,
+                  model: result.model,
+                  quality: result.quality,
+                },
+                visionAnalysis: result.visionAnalysis || asset.visionAnalysis,
+                visionValidation: result.visionValidation,
+              }
+            : asset
+        ))
+        setDiscoveredAssets(nextAssets)
+      } catch (error) {
+        failures.push(
+          item.category.replace(/_/g, ' ') + ': ' +
+          (error instanceof Error ? error.message : 'Video Ready failed')
+        )
+      }
+    }
+
+    setBatchVideoReady({
+      running: false,
+      current: selected.length,
+      total: selected.length,
+      label: failures.length ? 'Completed with errors' : 'Selected assets are video ready',
+      error: failures.length ? failures.join(' • ') : null,
+    })
+  }, [batchVideoReady.running, clientForm.businessName, clientForm.industry, clientForm.name, discoveredAssets, setDiscoveredAssets])
 
   return (
     <div>
@@ -2014,6 +2281,15 @@ function ConfigurationView(props: any) {
             <div className="flex gap-2">
               <button
                 type="button"
+                onClick={analyzeDiscoveredAssets}
+                disabled={visionStatus === 'analyzing'}
+                className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
+                style={{ minHeight: 36, padding: '0 14px', border: '1px solid rgba(168,85,247,.45)', background: 'rgba(168,85,247,.10)', color: '#c4b5fd' }}
+              >
+                {visionStatus === 'analyzing' ? 'Analyzing…' : visionStatus === 'complete' ? '✓ Vision Analyzed' : '✦ Analyze with GO Vision'}
+              </button>
+              <button
+                type="button"
                 onClick={selectRecommendedDiscoveredAssets}
                 className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide"
                 style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.border}`, background: C.panel, color: 'white' }}
@@ -2022,8 +2298,22 @@ function ConfigurationView(props: any) {
               </button>
               <button
                 type="button"
+                onClick={handleBatchMakeVideoReady}
+                disabled={
+                  batchVideoReady.running ||
+                  discoveredAssets.filter((a) => a.selected && !a.rejected && a.category !== 'irrelevant' && !a.videoReady).length === 0
+                }
+                className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
+                style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.cyanBorder}`, background: C.cyanSoft, color: C.cyan }}
+              >
+                {batchVideoReady.running
+                  ? `Preparing ${batchVideoReady.current}/${batchVideoReady.total}…`
+                  : '✨ Make Selected Video Ready'}
+              </button>
+              <button
+                type="button"
                 onClick={importDiscoveredAssets}
-                disabled={discoveredAssets.filter((a) => a.selected && !a.rejected).length === 0}
+                disabled={batchVideoReady.running || discoveredAssets.filter((a) => a.selected && !a.rejected).length === 0}
                 className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
                 style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.cyan}`, background: C.cyan, color: '#041014' }}
               >
@@ -2039,6 +2329,45 @@ function ConfigurationView(props: any) {
               </button>
             </div>
           </div>
+
+          {(visionStatus === 'analyzing' || visionStatus === 'complete' || visionError) && (
+            <div
+              style={{
+                marginBottom: 14,
+                padding: '10px 12px',
+                borderRadius: 10,
+                border: visionError ? '1px solid rgba(239,91,103,.3)' : '1px solid rgba(168,85,247,.35)',
+                background: visionError ? 'rgba(239,91,103,.08)' : 'rgba(168,85,247,.08)',
+                color: visionError ? '#ff9ba3' : '#c4b5fd',
+                fontSize: 10,
+              }}
+            >
+              {visionStatus === 'analyzing' && <Loader2 size={12} className="mr-1.5 inline animate-spin" />}
+              {visionError
+                ? 'SmartVideo GO Vision: ' + visionError
+                : visionStatus === 'complete'
+                  ? 'SmartVideo GO Vision analyzed the discovered assets, refined categories and scores, and identified preservation rules and recommended edits.'
+                  : 'SmartVideo GO Vision is analyzing business assets…'}
+            </div>
+          )}
+
+          {(batchVideoReady.running || batchVideoReady.label || batchVideoReady.error) && (
+            <div
+              style={{
+                marginBottom: 14,
+                padding: '10px 12px',
+                borderRadius: 10,
+                border: `1px solid ${batchVideoReady.error ? 'rgba(239,91,103,.3)' : C.cyanBorder}`,
+                background: batchVideoReady.error ? 'rgba(239,91,103,.08)' : C.cyanSoft,
+                color: batchVideoReady.error ? '#ff9ba3' : C.cyan,
+                fontSize: 10,
+              }}
+            >
+              {batchVideoReady.running && <Loader2 size={12} className="mr-1.5 inline animate-spin" />}
+              {batchVideoReady.label}
+              {batchVideoReady.error ? ` — ${batchVideoReady.error}` : ''}
+            </div>
+          )}
 
           {(['person', 'logo', 'product', 'service', 'completed_work', 'storefront', 'office', 'branded_vehicle', 'team', 'brand', 'irrelevant'] as const).map((cat) => {
             const items = discoveredAssets.filter((a) => a.category === cat && !a.rejected)
@@ -2057,6 +2386,7 @@ function ConfigurationView(props: any) {
                       onToggle={() => toggleDiscoveredAssetSelection(asset.id)}
                       onRemove={() => rejectDiscoveredAsset(asset.id)}
                       onCategoryChange={(newCat) => updateDiscoveredAssetCategory(asset.id, newCat)}
+                      onEdit={() => openDiscoveredImageEditor(asset)}
                       onRemoveFromSection={() => removeDiscoveredAssetFromSection(asset.id)}
                       onMoveToSection={(section) => moveDiscoveredAssetToSection(asset.id, section)}
                     />
@@ -2115,6 +2445,7 @@ function ConfigurationView(props: any) {
                     label={asset.name?.split('.')?.[0]?.toUpperCase()?.slice(0, 8) || 'PHOTO'}
                     onRemove={() => removeIdentity(asset.id)}
                     onRetry={() => retryAssetUpload(asset.id)}
+                    onEdit={() => openLibraryImageEditor(asset)}
                   />
                 ))
               ) : (
@@ -2168,6 +2499,11 @@ function ConfigurationView(props: any) {
             </div>
             <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               <ThumbPlaceholder label="+" add onClick={handleLogoAddClick} />
+              {assets.primaryLogo && (
+                <button type="button" onClick={() => openLibraryImageEditor(assets.primaryLogo)} className="rounded-[8px] text-[9px] font-extrabold uppercase" style={{ padding: '0 10px', border: '1px solid ' + C.cyanBorder, background: C.cyanSoft, color: C.cyan }}>
+                  ✨ Edit Image
+                </button>
+              )}
             </div>
             {assets.primaryLogo && (
               <>
@@ -2197,6 +2533,7 @@ function ConfigurationView(props: any) {
                     label={String(i + 1)}
                     onRemove={() => removeProduct(asset.id)}
                     onRetry={() => retryAssetUpload(asset.id)}
+                  onEdit={() => openLibraryImageEditor(asset)}
                   />
                 ))
               ) : (
@@ -2230,6 +2567,7 @@ function ConfigurationView(props: any) {
                     label={asset.name?.split('.')?.[0]?.toUpperCase()?.slice(0, 10) || 'BRAND'}
                     onRemove={() => removeBrandReference(asset.id)}
                     onRetry={() => retryAssetUpload(asset.id)}
+                  onEdit={() => openLibraryImageEditor(asset)}
                   />
                 ))
               ) : (
@@ -2278,6 +2616,11 @@ function ConfigurationView(props: any) {
               )}
             </div>
             <span className="badge" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px 8px', borderRadius: 7, marginTop: 8, marginRight: 4, background: C.cyan, color: '#071014', fontSize: 9, fontWeight: 800, textTransform: 'uppercase' }}>First Frame</span>
+            {assets.firstFrame && (
+              <button type="button" onClick={() => openLibraryImageEditor(assets.firstFrame)} className="rounded-[8px] text-[9px] font-extrabold uppercase" style={{ minHeight: 28, padding: '0 9px', border: '1px solid ' + C.cyanBorder, background: C.cyanSoft, color: C.cyan }}>
+                ✨ Edit Image
+              </button>
+            )}
           </article>
 
           {/* 6. Last Frame / CTA */}
@@ -2316,6 +2659,11 @@ function ConfigurationView(props: any) {
               )}
             </div>
             <span className="badge" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px 8px', borderRadius: 7, marginTop: 8, marginRight: 4, background: C.cyan, color: '#071014', fontSize: 9, fontWeight: 800, textTransform: 'uppercase' }}>Last Frame</span>
+            {assets.lastFrame && (
+              <button type="button" onClick={() => openLibraryImageEditor(assets.lastFrame)} className="rounded-[8px] text-[9px] font-extrabold uppercase" style={{ minHeight: 28, padding: '0 9px', border: '1px solid ' + C.cyanBorder, background: C.cyanSoft, color: C.cyan }}>
+                ✨ Edit Image
+              </button>
+            )}
           </article>
         </div>
       </section>
@@ -2449,6 +2797,7 @@ function ConfigurationView(props: any) {
                 asset={assets.ctaGraphic}
                 onRemove={removeCtaGraphic}
                 onRetry={() => assets.ctaGraphic && retryAssetUpload(assets.ctaGraphic.id)}
+                onEdit={() => assets.ctaGraphic && openLibraryImageEditor(assets.ctaGraphic)}
               />
             </div>
           )}

@@ -42,6 +42,8 @@ import type {
   DiscoveredAsset,
   DiscoveredAssetCategory,
   AssignedSection,
+  PersonalizationVisionAnalysis,
+  PersonalizationVisionValidation,
 } from './types'
 import { EMPTY_GENERATION_STATE } from './types'
 import { normalizePersonalizationSource, getEligibility } from './sourceNormalizer'
@@ -176,6 +178,26 @@ type DemoPersonalizeContextValue = {
   setCtaGraphicUrl: (url: string) => void
   removeCtaGraphic: () => void
   retryAssetUpload: (id: string) => Promise<void>
+  applyEditedPersonalizationAsset: (
+    assetId: string,
+    dataUrl: string,
+    meta: {
+      operation: string
+      prompt: string
+      model: string
+      quality: string
+      transparent: boolean
+      videoReady: boolean
+      responseId?: string | null
+      imageGenerationCallId?: string | null
+      revisedPrompt?: string | null
+      outputFormat?: 'png' | 'jpeg' | 'webp'
+      outputCompression?: number | null
+      inputFidelity?: 'high' | 'low'
+      visionAnalysis?: PersonalizationVisionAnalysis
+      visionValidation?: PersonalizationVisionValidation
+    },
+  ) => Promise<void>
 
   // Discovered assets
   discoveredAssets: DiscoveredAsset[]
@@ -193,6 +215,9 @@ type DemoPersonalizeContextValue = {
   importDiscoveredAssets: () => Promise<void>
   cancelDiscovery: () => void
   discoverAssets: (websiteUrl: string) => Promise<void>
+  visionStatus: 'idle' | 'analyzing' | 'complete' | 'error'
+  visionError: string | null
+  analyzeDiscoveredAssets: () => Promise<void>
 
   // Business search
   businessSearchMode: 'idle' | 'searching' | 'results' | 'selected' | 'error'
@@ -362,6 +387,38 @@ function updateAssetInLibrary(library: AssetLibrary, asset: PersonalizationAsset
   }
 }
 
+
+function replaceAssetInLibrary(library: AssetLibrary, asset: PersonalizationAsset): AssetLibrary {
+  switch (asset.role) {
+    case 'presenter_identity':
+    case 'face_identity':
+    case 'character_identity':
+      return {
+        ...library,
+        identities: library.identities.map((a) => (a.id === asset.id ? asset : a)),
+        primaryIdentity: library.primaryIdentity?.id === asset.id ? asset : library.primaryIdentity,
+      }
+    case 'logo':
+      return {
+        ...library,
+        logos: library.logos.map((a) => (a.id === asset.id ? asset : a)),
+        primaryLogo: library.primaryLogo?.id === asset.id ? asset : library.primaryLogo,
+      }
+    case 'product_reference':
+      return { ...library, products: library.products.map((a) => (a.id === asset.id ? asset : a)) }
+    case 'brand_reference':
+      return { ...library, brandReferences: library.brandReferences.map((a) => (a.id === asset.id ? asset : a)) }
+    case 'first_frame':
+      return { ...library, firstFrame: asset }
+    case 'last_frame':
+      return { ...library, lastFrame: asset }
+    case 'cta_graphic':
+      return { ...library, ctaGraphic: asset }
+    default:
+      return library
+  }
+}
+
 // ── Provider ─────────────────────────────────────────────────────────────────
 
 export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeProviderProps) {
@@ -394,6 +451,8 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   const [discoveryStatus, setDiscoveryStatus] = useState<'idle' | 'discovering' | 'reviewing' | 'importing'>('idle')
   const [discoveryError, setDiscoveryError] = useState<string | null>(null)
   const [importConfirmation, setImportConfirmation] = useState<{ count: number; clientName?: string } | null>(null)
+  const [visionStatus, setVisionStatus] = useState<'idle' | 'analyzing' | 'complete' | 'error'>('idle')
+  const [visionError, setVisionError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!importConfirmation) return
@@ -799,6 +858,77 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     await uploadAsset(asset)
   }, [assets, uploadAsset])
 
+  const applyEditedPersonalizationAsset = useCallback(async (
+    assetId: string,
+    dataUrl: string,
+    meta: {
+      operation: string
+      prompt: string
+      model: string
+      quality: string
+      transparent: boolean
+      videoReady: boolean
+      responseId?: string | null
+      imageGenerationCallId?: string | null
+      revisedPrompt?: string | null
+      visionAnalysis?: PersonalizationVisionAnalysis
+      visionValidation?: PersonalizationVisionValidation
+    },
+  ) => {
+    const all = [
+      ...assets.identities,
+      ...assets.logos,
+      ...assets.products,
+      ...assets.brandReferences,
+      assets.firstFrame,
+      assets.lastFrame,
+      assets.ctaGraphic,
+    ].filter(Boolean) as PersonalizationAsset[]
+
+    const target = all.find((a) => a.id === assetId)
+    if (!target) throw new Error('Asset not found')
+    const blob = dataUrlToBlob(dataUrl)
+    if (!blob) throw new Error('Edited image could not be read')
+
+    const extension = blob.type === 'image/webp' ? 'webp' : 'png'
+    const baseName = (target.name || 'edited-image').replace(/\.[^.]+$/, '')
+    const file = new File([blob], baseName + '-edited.' + extension, { type: blob.type || 'image/png' })
+    const localUrl = URL.createObjectURL(file)
+    const originalUrl = target.originalUrl || target.uploadedUrl || target.url
+
+    const editedAsset: PersonalizationAsset = {
+      ...target,
+      name: file.name,
+      url: localUrl,
+      uploadedUrl: undefined,
+      file,
+      mimeType: file.type,
+      uploadStatus: 'local',
+      uploadError: null,
+      originalUrl,
+      edited: true,
+      videoReady: meta.videoReady,
+      hasTransparency: meta.transparent,
+      editMetadata: {
+        operation: meta.operation,
+        prompt: meta.prompt,
+        model: meta.model,
+        quality: meta.quality,
+        responseId: meta.responseId,
+        imageGenerationCallId: meta.imageGenerationCallId,
+        revisedPrompt: meta.revisedPrompt,
+        outputFormat: meta.outputFormat,
+        outputCompression: meta.outputCompression,
+        inputFidelity: meta.inputFidelity,
+      },
+      visionAnalysis: meta.visionAnalysis || target.visionAnalysis,
+      visionValidation: meta.visionValidation,
+    }
+
+    setAssets((prev) => replaceAssetInLibrary(prev, editedAsset))
+    await uploadAsset(editedAsset)
+  }, [assets, uploadAsset])
+
   // ── Asset actions ──────────────────────────────────────────────────────────
 
   const addIdentityFiles = useCallback((files: FileList | null) => {
@@ -1058,6 +1188,9 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       logo: 'logo',
       products: 'product_reference',
       brand: 'brand_reference',
+      firstFrame: 'first_frame',
+      lastFrame: 'last_frame',
+      ctaGraphic: 'cta_graphic',
     }
 
     const categoryRoleMap: Record<string, PersonalizationAsset['role']> = {
@@ -1073,43 +1206,54 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       brand: 'brand_reference',
     }
 
-    // 1. Download selected images server-side (SSRF-safe)
-    let downloadRes: Response
-    try {
-      downloadRes = await fetch('/api/personalization/download-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ urls: toImport.map((a) => a.previewUrl) }),
-        credentials: 'same-origin',
-      })
-    } catch (err) {
-      setDiscoveryError(err instanceof Error ? err.message : 'Failed to reach download service')
-      setDiscoveryStatus('reviewing')
-      return
+    // 1. Download only untouched remote assets. Edited assets already carry
+    // an in-memory data URL produced by the editor and should not be sent to
+    // the server-side downloader.
+    const remoteItems = toImport.filter((item) => !item.editedDataUrl)
+    const downloadedByUrl = new Map<string, string>()
+
+    if (remoteItems.length > 0) {
+      let downloadRes: Response
+      try {
+        downloadRes = await fetch('/api/personalization/download-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ urls: remoteItems.map((a) => a.previewUrl) }),
+          credentials: 'same-origin',
+        })
+      } catch (err) {
+        setDiscoveryError(err instanceof Error ? err.message : 'Failed to reach download service')
+        setDiscoveryStatus('reviewing')
+        return
+      }
+
+      if (!downloadRes.ok) {
+        const data = await downloadRes.json().catch(() => ({}))
+        setDiscoveryError(data?.error || `Download failed (HTTP ${downloadRes.status})`)
+        setDiscoveryStatus('reviewing')
+        return
+      }
+
+      const downloadData = await downloadRes.json()
+      const results = Array.isArray(downloadData?.results) ? downloadData.results : []
+      for (const result of results) {
+        if (result?.ok && result?.url && result?.dataUrl) {
+          downloadedByUrl.set(result.url, result.dataUrl)
+        }
+      }
     }
 
-    if (!downloadRes.ok) {
-      const data = await downloadRes.json().catch(() => ({}))
-      setDiscoveryError(data?.error || `Download failed (HTTP ${downloadRes.status})`)
-      setDiscoveryStatus('reviewing')
-      return
-    }
-
-    const downloadData = await downloadRes.json()
-    const results = Array.isArray(downloadData?.results) ? downloadData.results : []
-
-    // 2. Build assets from downloaded blobs
+    // 2. Build assets from either edited data URLs or downloaded originals.
     const assetsToCreate: { item: DiscoveredAsset; blob: Blob; role: PersonalizationAsset['role']; isPrimary: boolean }[] = []
 
-    for (let i = 0; i < toImport.length; i++) {
-      const item = toImport[i]
-      const result = results[i]
-      if (!result?.ok || !result.dataUrl) continue
+    for (const item of toImport) {
+      const dataUrl = item.editedDataUrl || downloadedByUrl.get(item.previewUrl)
+      if (!dataUrl) continue
 
       const role = sectionRoleMap[item.assignedSection || ''] || categoryRoleMap[item.category] || 'brand_reference'
       if (!role) continue
 
-      const blob = dataUrlToBlob(result.dataUrl)
+      const blob = dataUrlToBlob(dataUrl)
       if (!blob) continue
 
       const isPrimary =
@@ -1131,10 +1275,20 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
     setAssets((prev) => {
       let next = { ...prev }
-      for (const { blob, role, isPrimary } of assetsToCreate) {
+      for (const { item, blob, role, isPrimary } of assetsToCreate) {
         const asset = createAsset(blob, role, {
           isPrimary,
           name: `discovered_${Date.now()}`,
+          originalUrl: item.originalPreviewUrl || item.previewUrl,
+          edited: item.edited || false,
+          videoReady: item.videoReady || false,
+          hasTransparency: item.hasTransparency || false,
+          editMetadata: item.editMetadata,
+          visionAnalysis: item.visionAnalysis,
+          visionValidation: item.visionValidation,
+          sourceCategory: item.category,
+          sourceType: item.sourceType,
+          sourceDiscoveredAssetId: item.id,
         })
         createdAssets.push(asset)
         next = updateAssetInLibrary(next, asset)
@@ -1160,10 +1314,14 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     setDiscoveredAssetsState([])
     setDiscoveryStatus('idle')
     setDiscoveryError(null)
+    setVisionStatus('idle')
+    setVisionError(null)
   }, [])
 
   const discoverAssets = useCallback(async (websiteUrl: string) => {
     setDiscoveryError(null)
+    setVisionError(null)
+    setVisionStatus('idle')
     setDiscoveryStatus('discovering')
 
     try {
@@ -1197,6 +1355,102 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       setDiscoveryStatus('idle')
     }
   }, [setDiscoveredAssetsState, setDiscoveryError, setDiscoveryStatus, testMode])
+
+
+  const analyzeDiscoveredAssets = useCallback(async () => {
+    if (discoveredAssets.length === 0) return
+    setVisionStatus('analyzing')
+    setVisionError(null)
+
+    const sectionForCategory = (category: DiscoveredAssetCategory): AssignedSection => {
+      if (category === 'person') return 'person'
+      if (category === 'logo') return 'logo'
+      if (category === 'product' || category === 'service' || category === 'completed_work') return 'products'
+      if (category === 'storefront' || category === 'office' || category === 'branded_vehicle' || category === 'team' || category === 'brand') return 'brand'
+      return null
+    }
+
+    try {
+      const analysesById = new Map<string, PersonalizationVisionAnalysis>()
+      const candidates = discoveredAssets.filter((asset) => !asset.rejected && asset.previewUrl)
+
+      for (let index = 0; index < candidates.length; index += 8) {
+        const batch = candidates.slice(index, index + 8)
+        const res = await fetch('/api/personalization/image-analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            mode: 'analyze',
+            images: batch.map((asset) => ({
+              id: asset.id,
+              imageUrl: asset.editedDataUrl || asset.previewUrl,
+              categoryHint: asset.category,
+              roleHint: asset.assignedSection || undefined,
+            })),
+            businessContext: {
+              businessName: clientForm.businessName || clientForm.name,
+              industry: clientForm.industry,
+              productService: clientForm.productService,
+              brandDescription: clientForm.brandDescription,
+            },
+            targetVideoFormat: genOptions.aspectRatio || source?.aspectRatio || undefined,
+          }),
+        })
+
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          throw new Error(data?.message || data?.error || `Vision analysis failed (HTTP ${res.status})`)
+        }
+
+        for (const analysis of Array.isArray(data?.analyses) ? data.analyses : []) {
+          if (analysis?.id) analysesById.set(analysis.id, analysis as PersonalizationVisionAnalysis)
+        }
+      }
+
+      setDiscoveredAssetsState((previous) => previous.map((asset) => {
+        const analysis = analysesById.get(asset.id)
+        if (!analysis) return asset
+
+        const useVisionCategory = analysis.confidence >= 75
+        const category = useVisionCategory ? analysis.category : asset.category
+        const recommended =
+          category !== 'irrelevant' &&
+          !analysis.duplicateLikely &&
+          analysis.relevanceScore >= 60 &&
+          analysis.qualityScore >= 35
+
+        return {
+          ...asset,
+          category,
+          confidence: analysis.confidence,
+          qualityScore: analysis.qualityScore,
+          relevanceScore: analysis.relevanceScore,
+          recommended,
+          selected: analysis.duplicateLikely ? false : (asset.selected || recommended),
+          assignedSection:
+            asset.autoAssigned && useVisionCategory
+              ? sectionForCategory(category)
+              : asset.assignedSection,
+          visionAnalysis: analysis,
+        }
+      }))
+
+      setVisionStatus('complete')
+    } catch (error) {
+      setVisionStatus('error')
+      setVisionError(error instanceof Error ? error.message : 'Vision analysis failed')
+    }
+  }, [
+    clientForm.brandDescription,
+    clientForm.businessName,
+    clientForm.industry,
+    clientForm.name,
+    clientForm.productService,
+    discoveredAssets,
+    genOptions.aspectRatio,
+    source?.aspectRatio,
+  ])
 
   // ── Business search actions ────────────────────────────────────────────────
 
@@ -1719,6 +1973,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     setCtaGraphicUrl,
     removeCtaGraphic,
     retryAssetUpload,
+    applyEditedPersonalizationAsset,
 
     // Discovered assets
     discoveredAssets,
@@ -1736,6 +1991,9 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     importDiscoveredAssets,
     cancelDiscovery,
     discoverAssets,
+    visionStatus,
+    visionError,
+    analyzeDiscoveredAssets,
 
     // Business search
     businessSearchMode,

@@ -123,6 +123,51 @@ describe('Discovered Assets Integration', () => {
           json: async () => ({ ok: true, results }),
         } as any
       }
+      if (typeof url === 'string' && url.includes('/api/personalization/image-analyze')) {
+        const body = typeof options?.body === 'string' ? JSON.parse(options.body) : {}
+        if (body?.mode === 'validate') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              validation: {
+                passed: true,
+                confidence: 96,
+                issues: [],
+                preserved: ['logo', 'brand colors'],
+                changed: ['background'],
+                summary: 'Requested edit succeeded and protected branding was preserved.',
+                analyzedAt: new Date().toISOString(),
+                model: 'gpt-6-astra',
+              },
+            }),
+          } as any
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            analyses: (body?.images || []).map((image: any) => ({
+              id: image.id,
+              category: image.id === 'disc-vision' ? 'branded_vehicle' : (image.categoryHint || 'brand'),
+              confidence: 94,
+              qualityScore: 88,
+              relevanceScore: 93,
+              targetRole: 'Branded Vehicle Asset',
+              preserve: ['vehicle wrap', 'logo', 'phone number'],
+              issues: ['busy background'],
+              recommendedOperations: ['vehicle_enhance', 'safe_area'],
+              transparencyRecommended: false,
+              precisionRecommended: true,
+              textDetected: true,
+              duplicateLikely: false,
+              summary: 'Company vehicle with important branded wrap and contact text.',
+              analyzedAt: new Date().toISOString(),
+              model: 'gpt-6-astra',
+            })),
+          }),
+        } as any
+      }
       if (typeof url === 'string' && url.includes('/api/personalization/discover-assets')) {
         return {
           ok: true,
@@ -382,6 +427,46 @@ describe('Discovered Assets Integration', () => {
     expect(c.discoveredAssets[1].selected).toBe(false)
   })
 
+  it('uses SmartVideo GO Vision to refine discovery category, scores, and preservation metadata', async () => {
+    await renderProvider()
+    await openSource()
+
+    let c = (window as any).__personalizationCtx
+    await act(async () => {
+      c.setDiscoveredAssets([
+        {
+          id: 'disc-vision',
+          sourceUrl: 'https://test.com/truck.jpg',
+          previewUrl: 'https://test.com/truck.jpg',
+          sourceType: 'WEBSITE',
+          category: 'brand',
+          selected: false,
+          recommended: false,
+          rejected: false,
+          assignedSection: 'brand',
+          autoAssigned: true,
+        },
+      ])
+    })
+
+    c = (window as any).__personalizationCtx
+    await act(async () => {
+      await c.analyzeDiscoveredAssets()
+    })
+
+    c = (window as any).__personalizationCtx
+    expect(c.visionStatus).toBe('complete')
+    expect(c.discoveredAssets[0].category).toBe('branded_vehicle')
+    expect(c.discoveredAssets[0].confidence).toBe(94)
+    expect(c.discoveredAssets[0].qualityScore).toBe(88)
+    expect(c.discoveredAssets[0].relevanceScore).toBe(93)
+    expect(c.discoveredAssets[0].recommended).toBe(true)
+    expect(c.discoveredAssets[0].selected).toBe(true)
+    expect(c.discoveredAssets[0].assignedSection).toBe('brand')
+    expect(c.discoveredAssets[0].visionAnalysis.preserve).toContain('vehicle wrap')
+    expect(c.discoveredAssets[0].visionAnalysis.recommendedOperations).toContain('vehicle_enhance')
+  })
+
   it('imports selected person assets into identities', async () => {
     const container = await renderProvider()
     await openSource()
@@ -524,6 +609,66 @@ describe('Discovered Assets Integration', () => {
     c = (window as any).__personalizationCtx
     expect(c.assets.brandReferences.length).toBe(2)
     expect(c.assets.brandReferences.every((b: any) => b.role === 'brand_reference')).toBe(true)
+  })
+
+  it('preserves manually assigned First Frame, Last Frame, and CTA destinations on import', async () => {
+    await renderProvider()
+    await openSource()
+
+    let c = (window as any).__personalizationCtx
+    await act(async () => {
+      c.setDiscoveredAssets([
+        {
+          id: 'disc-first',
+          sourceUrl: 'https://test.com/storefront.png',
+          previewUrl: 'https://test.com/storefront.png',
+          sourceType: 'WEBSITE',
+          category: 'storefront',
+          selected: true,
+          recommended: true,
+          rejected: false,
+          assignedSection: 'firstFrame',
+          autoAssigned: false,
+        },
+        {
+          id: 'disc-last',
+          sourceUrl: 'https://test.com/product.png',
+          previewUrl: 'https://test.com/product.png',
+          sourceType: 'WEBSITE',
+          category: 'product',
+          selected: true,
+          recommended: true,
+          rejected: false,
+          assignedSection: 'lastFrame',
+          autoAssigned: false,
+        },
+        {
+          id: 'disc-cta',
+          sourceUrl: 'https://test.com/brand.png',
+          previewUrl: 'https://test.com/brand.png',
+          sourceType: 'WEBSITE',
+          category: 'brand',
+          selected: true,
+          recommended: true,
+          rejected: false,
+          assignedSection: 'ctaGraphic',
+          autoAssigned: false,
+        },
+      ])
+    })
+
+    c = (window as any).__personalizationCtx
+    await act(async () => {
+      await c.importDiscoveredAssets()
+    })
+
+    c = (window as any).__personalizationCtx
+    expect(c.assets.firstFrame?.role).toBe('first_frame')
+    expect(c.assets.firstFrame?.sourceCategory).toBe('storefront')
+    expect(c.assets.lastFrame?.role).toBe('last_frame')
+    expect(c.assets.lastFrame?.sourceCategory).toBe('product')
+    expect(c.assets.ctaGraphic?.role).toBe('cta_graphic')
+    expect(c.assets.ctaGraphic?.sourceCategory).toBe('brand')
   })
 
   it('does not auto-populate firstFrame during import', async () => {
