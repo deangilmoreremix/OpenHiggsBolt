@@ -256,9 +256,8 @@ export const ASSET_RECIPES: Record<EditorAssetKind, AssetRecipe> = {
   general: recipe('general', 'Business Image', 'Video Asset', ['enhance', 'cleanup', 'reframe', 'social_ad', 'commercial_ad'], ['enhance', 'safe_area'], ['important subject', 'business identity']),
 }
 
-export function resolveEditorAssetKind(category?: DiscoveredAssetCategory, role?: AssetRole): EditorAssetKind {
-  if (category && category !== 'irrelevant') return category
-  if (!role) return 'general'
+function roleToEditorAssetKind(role?: AssetRole): EditorAssetKind | null {
+  if (!role) return null
   if (role === 'presenter_identity' || role === 'face_identity' || role === 'character_identity') return 'person'
   if (role === 'logo') return 'logo'
   if (role === 'product_reference') return 'product'
@@ -268,15 +267,48 @@ export function resolveEditorAssetKind(category?: DiscoveredAssetCategory, role?
   if (role === 'background_reference') return 'background_reference'
   if (role === 'saved_reference') return 'saved_reference'
   if (role === 'brand_reference') return 'brand'
-  return 'general'
+  return null
+}
+
+/**
+ * Resolve what the asset physically is. Source/category semantics win so a
+ * storefront remains a storefront, a product remains a product, etc. This is
+ * used for protection rules and operation applicability.
+ */
+export function resolveEditorAssetKind(category?: DiscoveredAssetCategory, role?: AssetRole): EditorAssetKind {
+  if (category && category !== 'irrelevant') return category
+  return roleToEditorAssetKind(role) || 'general'
+}
+
+/**
+ * Resolve what SmartVideo GO needs the asset to become. Explicit destination
+ * roles such as first frame / last frame / CTA take precedence over the source
+ * category so imported discovered assets keep both source and destination
+ * semantics.
+ */
+export function resolveEditorRecipeKind(category?: DiscoveredAssetCategory, role?: AssetRole): EditorAssetKind {
+  if (
+    role === 'first_frame' ||
+    role === 'last_frame' ||
+    role === 'cta_graphic' ||
+    role === 'background_reference' ||
+    role === 'saved_reference'
+  ) {
+    return roleToEditorAssetKind(role) || 'general'
+  }
+  return resolveEditorAssetKind(category, role)
 }
 
 export function getOperation(id: EditorOperationId) {
   return IMAGE_EDIT_OPERATIONS[id]
 }
 
-export function getAssetRecipe(category?: DiscoveredAssetCategory, role?: AssetRole) {
+export function getSourceAssetRecipe(category?: DiscoveredAssetCategory, role?: AssetRole) {
   return ASSET_RECIPES[resolveEditorAssetKind(category, role)]
+}
+
+export function getAssetRecipe(category?: DiscoveredAssetCategory, role?: AssetRole) {
+  return ASSET_RECIPES[resolveEditorRecipeKind(category, role)]
 }
 
 export function getOperationsForAsset(kind: EditorAssetKind) {
