@@ -1,0 +1,441 @@
+diff --git a/node_modules/html-encoding-sniffer/lib/html-encoding-sniffer.js b/node_modules/html-encoding-sniffer/lib/html-encoding-sniffer.js
+index 08a92d3..5f3d32f 100644
+--- a/node_modules/html-encoding-sniffer/lib/html-encoding-sniffer.js
++++ b/node_modules/html-encoding-sniffer/lib/html-encoding-sniffer.js
+@@ -1,7 +1,67 @@
+ "use strict";
+-const { getBOMEncoding, labelToName } = require("@exodus/bytes/encoding-lite.js");
+ 
+-// https://html.spec.whatwg.org/#encoding-sniffing-algorithm
++// Inline implementations to avoid requiring @exodus/bytes which is ESM-only.
++function fromSource(x) {
++  if (x instanceof Uint8Array) return x
++  if (ArrayBuffer.isView(x)) return new Uint8Array(x.buffer, x.byteOffset, x.byteLength)
++  if (!x || typeof x.byteLength !== 'number') throw new TypeError('Argument must be a SharedArrayBuffer, ArrayBuffer or ArrayBufferView')
++  return new Uint8Array(x)
++}
++
++function getBOMEncoding(input) {
++  const u8 = fromSource(input)
++  if (u8.length >= 3 && u8[0] === 0xef && u8[1] === 0xbb && u8[2] === 0xbf) return 'utf-8'
++  if (u8.length < 2) return null
++  if (u8[0] === 0xff && u8[1] === 0xfe) return 'utf-16le'
++  if (u8[0] === 0xfe && u8[1] === 0xff) return 'utf-16be'
++  return null
++}
++
++const labels = {
++  'utf-8': ['unicode-1-1-utf-8', 'unicode11utf8', 'unicode20utf8', 'utf8', 'x-unicode20utf8'],
++  'utf-16be': ['unicodefffe'],
++  'utf-16le': ['csunicode', 'iso-10646-ucs-2', 'ucs-2', 'unicode', 'unicodefeff', 'utf-16'],
++  'iso-8859-2': ['iso-ir-101'],
++  'iso-8859-3': ['iso-ir-109'],
++  'iso-8859-4': ['iso-ir-110'],
++  'iso-8859-5': ['csisolatincyrillic', 'cyrillic', 'iso-ir-144'],
++  'iso-8859-6': ['arabic', 'asmo-708', 'csiso88596e', 'csiso88596i', 'csisolatinarabic', 'ecma-114', 'iso-8859-6-e', 'iso-8859-6-i', 'iso-ir-127'],
++  'iso-8859-7': ['csisolatingreek', 'ecma-118', 'elot_928', 'greek', 'greek8', 'iso-ir-126', 'sun_eu_greek'],
++  'iso-8859-8': ['csiso88598e', 'csisolatinhebrew', 'hebrew', 'iso-8859-8-e', 'iso-ir-138', 'visual'],
++  'iso-8859-8-i': ['csiso88598i', 'logical'],
++  'iso-8859-16': [],
++  'koi8-r': ['cskoi8r', 'koi', 'koi8', 'koi8_r'],
++  'koi8-u': ['koi8-ru'],
++  'windows-874': ['dos-874', 'iso-8859-11', 'iso8859-11', 'iso885911', 'tis-620'],
++  ibm866: ['866', 'cp866', 'csibm866'],
++  'x-mac-cyrillic': ['x-mac-ukrainian'],
++  macintosh: ['csmacintosh', 'mac', 'x-mac-roman'],
++  gbk: ['chinese', 'csgb2312', 'csiso58gb231280', 'gb2312', 'gb_2312', 'gb_2312-80', 'iso-ir-58', 'x-gbk'],
++  gb18030: [],
++  big5: ['big5-hkscs', 'cn-big5', 'csbig5', 'x-x-big5'],
++  'euc-jp': ['cseucpkdfmtjapanese', 'x-euc-jp'],
++  shift_jis: ['csshiftjis', 'ms932', 'ms_kanji', 'shift-jis', 'sjis', 'windows-31j', 'x-sjis'],
++  'euc-kr': ['cseuckr', 'csksc56011987', 'iso-ir-149', 'korean', 'ks_c_5601-1987', 'ks_c_5601-1989', 'ksc5601', 'ksc_5601', 'windows-949'],
++  'iso-2022-jp': ['csiso2022jp'],
++  replacement: ['csiso2022kr', 'hz-gb-2312', 'iso-2022-cn', 'iso-2022-cn-ext', 'iso-2022-kr'],
++  'x-user-defined': [],
++}
++
++for (const i of [10, 13, 14, 15]) labels[`iso-8859-${i}`] = [`iso8859-${i}`, `iso8859${i}`, `iso_8859-${i}`]
++for (const i of [2, 6, 7]) labels[`iso-8859-${i}`].push(`iso_8859-${i}:1987`)
++for (let i = 3; i <= 8; i++) labels[`iso-8859-${i}`].push(`iso_8859-${i}:1988`)
++for (let i = 2; i < 9; i++) labels[`iso-8859-${i}`].push(`iso8859-${i}`, `iso8859${i}`, `iso_8859-${i}`)
++for (let i = 2; i < 5; i++) labels[`iso-8859-${i}`].push(`csisolatin${i}`, `l${i}`, `latin${i}`)
++
++function labelToName(label) {
++  if (!label) return null
++  const low = `${label}`.trim().toLowerCase()
++  for (const [name, aliases] of Object.entries(labels)) {
++    if (name === low || aliases.includes(low)) return name
++  }
++  return null
++}
++
+ module.exports = (uint8Array, { xml = false, transportLayerEncodingLabel, defaultEncoding } = {}) => {
+   if (defaultEncoding === undefined) {
+     defaultEncoding = xml ? "UTF-8" : "windows-1252";
+@@ -69,10 +129,8 @@ function prescanMetaCharset(uint8Array) {
+               gotPragma = attrRes.attr.value === "content-type";
+             } else if (attrRes.attr.name === "content" && !charset) {
+               charset = extractCharacterEncodingFromMeta(attrRes.attr.value);
+-              if (charset !== null) {
+-                needPragma = true;
+-              }
+-            } else if (attrRes.attr.name === "charset") {
++            }
++            if (charset === null && attrRes.attr.name === "charset") {
+               charset = labelToName(attrRes.attr.value);
+               needPragma = false;
+             }
+@@ -132,13 +190,14 @@ function getAttribute(uint8Array, i, l) {
+   for (; i < l; i++) {
+     let c = uint8Array[i];
+     // space or /
+-    if (isSpaceCharacter(c) || c === 0x2F) {
++    if (c === 0x20 || c === 0x2F) {
+       continue;
+     }
+     // ">"
+     if (c === 0x3E) {
+       break;
+     }
++
+     let name = "";
+     let value = "";
+     nameLoop:for (; i < l; i++) {
+@@ -149,11 +208,11 @@ function getAttribute(uint8Array, i, l) {
+         break;
+       }
+       // space
+-      if (isSpaceCharacter(c)) {
++      if (c === 0x20) {
+         for (i++; i < l; i++) {
+           c = uint8Array[i];
+           // space
+-          if (isSpaceCharacter(c)) {
++          if (c === 0x20) {
+             continue;
+           }
+           // not "="
+@@ -179,11 +238,11 @@ function getAttribute(uint8Array, i, l) {
+     }
+     c = uint8Array[i];
+     // space
+-    if (isSpaceCharacter(c)) {
++    if (c === 0x20) {
+       for (i++; i < l; i++) {
+         c = uint8Array[i];
+         // space
+-        if (isSpaceCharacter(c)) {
++        if (c === 0x20) {
+           continue;
+         } else {
+           break;
+diff --git a/node_modules/html-encoding-sniffer/lib/html-encoding-sniffer.js.bak b/node_modules/html-encoding-sniffer/lib/html-encoding-sniffer.js.bak
+new file mode 100644
+index 0000000..4324588
+--- /dev/null
++++ b/node_modules/html-encoding-sniffer/lib/html-encoding-sniffer.js.bak
+@@ -0,0 +1,304 @@
++"use strict";
++let getBOMEncoding, labelToName;
++try {
++  ({ getBOMEncoding, labelToName } = require("@exodus/bytes/encoding-lite.js"));
++} catch (err) {
++  throw new Error("Failed to load @exodus/bytes/encoding-lite.js. This package is ESM-only and cannot be required from CommonJS. See: " + err.message);
++}
++
++// https://html.spec.whatwg.org/#encoding-sniffing-algorithm
++module.exports = (uint8Array, { xml = false, transportLayerEncodingLabel, defaultEncoding } = {}) => {
++  if (defaultEncoding === undefined) {
++    defaultEncoding = xml ? "UTF-8" : "windows-1252";
++  }
++
++  let encoding = labelToName(getBOMEncoding(uint8Array));
++
++  if (encoding === null && transportLayerEncodingLabel !== undefined) {
++    encoding = labelToName(transportLayerEncodingLabel);
++  }
++
++  if (encoding === null && !xml) {
++    encoding = prescanMetaCharset(uint8Array);
++  }
++
++  if (encoding === null) {
++    encoding = defaultEncoding;
++  }
++
++  return encoding;
++};
++
++// https://html.spec.whatwg.org/multipage/syntax.html#prescan-a-byte-stream-to-determine-its-encoding
++function prescanMetaCharset(uint8Array) {
++  const l = Math.min(uint8Array.byteLength, 1024);
++  for (let i = 0; i < l; i++) {
++    let c = uint8Array[i];
++    if (c === 0x3C) {
++      // "<"
++      const c1 = uint8Array[i + 1];
++      const c2 = uint8Array[i + 2];
++      const c3 = uint8Array[i + 3];
++      const c4 = uint8Array[i + 4];
++      const c5 = uint8Array[i + 5];
++      // !-- (comment start)
++      if (c1 === 0x21 && c2 === 0x2D && c3 === 0x2D) {
++        i += 4;
++        for (; i < l; i++) {
++          c = uint8Array[i];
++          const cMinus1 = uint8Array[i - 1];
++          const cMinus2 = uint8Array[i - 2];
++          // --> (comment end)
++          if (c === 0x3E && cMinus1 === 0x2D && cMinus2 === 0x2D) {
++            break;
++          }
++        }
++      } else if ((c1 === 0x4D || c1 === 0x6D) &&
++         (c2 === 0x45 || c2 === 0x65) &&
++         (c3 === 0x54 || c3 === 0x74) &&
++         (c4 === 0x41 || c4 === 0x61) &&
++         (isSpaceCharacter(c5) || c5 === 0x2F)) {
++        // "meta" + space or /
++        i += 6;
++        const attributeList = new Set();
++        let gotPragma = false;
++        let needPragma = null;
++        let charset = null;
++
++        let attrRes;
++        do {
++          attrRes = getAttribute(uint8Array, i, l);
++          if (attrRes.attr && !attributeList.has(attrRes.attr.name)) {
++            attributeList.add(attrRes.attr.name);
++            if (attrRes.attr.name === "http-equiv") {
++              gotPragma = attrRes.attr.value === "content-type";
++            } else if (attrRes.attr.name === "content" && !charset) {
++              charset = extractCharacterEncodingFromMeta(attrRes.attr.value);
++              if (charset !== null) {
++                needPragma = true;
++              }
++            } else if (attrRes.attr.name === "charset") {
++              charset = labelToName(attrRes.attr.value);
++              needPragma = false;
++            }
++          }
++          i = attrRes.i;
++        } while (attrRes.attr);
++
++        if (needPragma === null) {
++          continue;
++        }
++        if (needPragma === true && gotPragma === false) {
++          continue;
++        }
++        if (charset === null) {
++          continue;
++        }
++
++        if (charset === "UTF-16LE" || charset === "UTF-16BE") {
++          charset = "UTF-8";
++        }
++        if (charset === "x-user-defined") {
++          charset = "windows-1252";
++        }
++
++        return charset;
++      } else if ((c1 >= 0x41 && c1 <= 0x5A) || (c1 >= 0x61 && c1 <= 0x7A)) {
++        // a-z or A-Z
++        for (i += 2; i < l; i++) {
++          c = uint8Array[i];
++          // space or >
++          if (isSpaceCharacter(c) || c === 0x3E) {
++            break;
++          }
++        }
++        let attrRes;
++        do {
++          attrRes = getAttribute(uint8Array, i, l);
++          i = attrRes.i;
++        } while (attrRes.attr);
++      } else if (c1 === 0x21 || c1 === 0x2F || c1 === 0x3F) {
++        // ! or / or ?
++        for (i += 2; i < l; i++) {
++          c = uint8Array[i];
++          // >
++          if (c === 0x3E) {
++            break;
++          }
++        }
++      }
++    }
++  }
++  return null;
++}
++
++// https://html.spec.whatwg.org/multipage/syntax.html#concept-get-attributes-when-sniffing
++function getAttribute(uint8Array, i, l) {
++  for (; i < l; i++) {
++    let c = uint8Array[i];
++    // space or /
++    if (isSpaceCharacter(c) || c === 0x2F) {
++      continue;
++    }
++    // ">"
++    if (c === 0x3E) {
++      break;
++    }
++    let name = "";
++    let value = "";
++    nameLoop:for (; i < l; i++) {
++      c = uint8Array[i];
++      // "="
++      if (c === 0x3D && name !== "") {
++        i++;
++        break;
++      }
++      // space
++      if (isSpaceCharacter(c)) {
++        for (i++; i < l; i++) {
++          c = uint8Array[i];
++          // space
++          if (isSpaceCharacter(c)) {
++            continue;
++          }
++          // not "="
++          if (c !== 0x3D) {
++            return { attr: { name, value }, i };
++          }
++
++          i++;
++          break nameLoop;
++        }
++        break;
++      }
++      // / or >
++      if (c === 0x2F || c === 0x3E) {
++        return { attr: { name, value }, i };
++      }
++      // A-Z
++      if (c >= 0x41 && c <= 0x5A) {
++        name += String.fromCharCode(c + 0x20); // lowercase
++      } else {
++        name += String.fromCharCode(c);
++      }
++    }
++    c = uint8Array[i];
++    // space
++    if (isSpaceCharacter(c)) {
++      for (i++; i < l; i++) {
++        c = uint8Array[i];
++        // space
++        if (isSpaceCharacter(c)) {
++          continue;
++        } else {
++          break;
++        }
++      }
++    }
++    // " or '
++    if (c === 0x22 || c === 0x27) {
++      const quote = c;
++      for (i++; i < l; i++) {
++        c = uint8Array[i];
++
++        if (c === quote) {
++          i++;
++          return { attr: { name, value }, i };
++        }
++
++        // A-Z
++        if (c >= 0x41 && c <= 0x5A) {
++          value += String.fromCharCode(c + 0x20); // lowercase
++        } else {
++          value += String.fromCharCode(c);
++        }
++      }
++    }
++
++    // >
++    if (c === 0x3E) {
++      return { attr: { name, value }, i };
++    }
++
++    // A-Z
++    if (c >= 0x41 && c <= 0x5A) {
++      value += String.fromCharCode(c + 0x20); // lowercase
++    } else {
++      value += String.fromCharCode(c);
++    }
++
++    for (i++; i < l; i++) {
++      c = uint8Array[i];
++
++      // space or >
++      if (isSpaceCharacter(c) || c === 0x3E) {
++        return { attr: { name, value }, i };
++      }
++
++      // A-Z
++      if (c >= 0x41 && c <= 0x5A) {
++        value += String.fromCharCode(c + 0x20); // lowercase
++      } else {
++        value += String.fromCharCode(c);
++      }
++    }
++  }
++  return { i };
++}
++
++function extractCharacterEncodingFromMeta(string) {
++  let position = 0;
++
++  while (true) {
++    const indexOfCharset = string.substring(position).search(/charset/ui);
++
++    if (indexOfCharset === -1) {
++      return null;
++    }
++    let subPosition = position + indexOfCharset + "charset".length;
++
++    while (isSpaceCharacter(string[subPosition].charCodeAt(0))) {
++      ++subPosition;
++    }
++
++    if (string[subPosition] !== "=") {
++      position = subPosition - 1;
++      continue;
++    }
++
++    ++subPosition;
++
++    while (isSpaceCharacter(string[subPosition].charCodeAt(0))) {
++      ++subPosition;
++    }
++
++    position = subPosition;
++    break;
++  }
++
++  if (string[position] === "\"" || string[position] === "'") {
++    const nextIndex = string.indexOf(string[position], position + 1);
++
++    if (nextIndex !== -1) {
++      return labelToName(string.substring(position + 1, nextIndex));
++    }
++
++    // It is an unmatched quotation mark
++    return null;
++  }
++
++  if (string.length === position + 1) {
++    return null;
++  }
++
++  const indexOfASCIIWhitespaceOrSemicolon = string.substring(position + 1).search(/\x09|\x0A|\x0C|\x0D|\x20|;/u);
++  const end = indexOfASCIIWhitespaceOrSemicolon === -1 ?
++    string.length :
++    position + indexOfASCIIWhitespaceOrSemicolon + 1;
++
++  return labelToName(string.substring(position, end));
++}
++
++function isSpaceCharacter(c) {
++  return c === 0x09 || c === 0x0A || c === 0x0C || c === 0x0D || c === 0x20;
++}

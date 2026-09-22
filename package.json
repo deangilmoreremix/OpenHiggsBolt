@@ -1,6 +1,6 @@
 {
   "name": "open-generative-ai",
-  "description": "Open-source alternative to HF AI \u2014 AI image, video, cinema and lip sync studio",
+  "description": "Open-source alternative to HF AI — AI image, video, cinema and lip sync studio",
   "homepage": "https://github.com/Anil-matcha/Open-Generative-AI",
   "private": true,
   "version": "2.0.0",
@@ -53,12 +53,13 @@
     "render:deploy": "render blueprints apply --confirm",
     "source:status": "node scripts/verify-source-of-truth.mjs",
     "source:verify": "node scripts/verify-source-of-truth.mjs",
-    "build:metadata": "node scripts/generate-build-info.mjs"
+    "build:metadata": "node scripts/generate-build-info.mjs",
+    "postinstall": "patch-package"
   },
   "build": {
     "appId": "ai.generative.open",
     "productName": "SmartVideo GO",
-    "copyright": "Copyright \u00a9 2025",
+    "copyright": "Copyright © 2025",
     "directories": {
       "output": "release"
     },
@@ -174,6 +175,7 @@
     "electron-builder": "^25.1.8",
     "eslint": "^9",
     "eslint-config-next": "^15.0.0",
+    "patch-package": "^8.0.1",
     "tsx": "^4.23.1",
     "typescript": "6.0.3",
     "vite": "^5.4.0",
