@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import {
   Check,
   ChevronDown,
-  Compare,
+  GitCompare,
   FlipHorizontal,
   FlipVertical,
   Grid3X3,
@@ -76,6 +76,9 @@ export type ImageEditorApplyResult = {
   responseId?: string | null
   imageGenerationCallId?: string | null
   revisedPrompt?: string | null
+  outputFormat?: 'png' | 'jpeg' | 'webp'
+  outputCompression?: number | null
+  inputFidelity?: 'high' | 'low'
 }
 
 type Props = {
@@ -832,6 +835,8 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
         responseId: currentVersion.responseId,
         imageGenerationCallId: currentVersion.imageGenerationCallId,
         revisedPrompt: currentVersion.revisedPrompt,
+        outputFormat,
+        inputFidelity: getOperation(currentVersion.operation as EditorOperationId).precision || sourceRecipe.precisionRecommended || recipe.precisionRecommended || visionAnalysis?.precisionRecommended ? 'high' : 'low',
       })
       onClose()
     } catch (err) {
@@ -1002,7 +1007,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
               <div className="flex flex-wrap gap-2">
                 {versions.length > 1 && (
                   <button type="button" onClick={() => setCompareMode((value) => !value)} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold" style={buttons.ghost}>
-                    <Compare size={14} /> {compareMode ? 'Single View' : 'Compare'}
+                    <GitCompare size={14} /> {compareMode ? 'Single View' : 'Compare'}
                   </button>
                 )}
                 <button type="button" onClick={() => setSafeArea((value) => !value)} className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold" style={safeArea ? buttons.activePill : buttons.ghost}>
@@ -1178,7 +1183,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
 
               <div className="mt-4 flex gap-2">
                 <button type="button" onClick={() => setSafeArea((value) => !value)} className="rounded-xl px-3 py-2 text-xs font-semibold" style={safeArea ? buttons.activePill : buttons.ghost}><Grid3X3 size={13} className="mr-1 inline" /> Safe Area</button>
-                {versions.length > 1 && <button type="button" onClick={() => setCompareMode((value) => !value)} className="rounded-xl px-3 py-2 text-xs font-semibold" style={buttons.ghost}><Compare size={13} className="mr-1 inline" /> Compare</button>}
+                {versions.length > 1 && <button type="button" onClick={() => setCompareMode((value) => !value)} className="rounded-xl px-3 py-2 text-xs font-semibold" style={buttons.ghost}><GitCompare size={13} className="mr-1 inline" /> Compare</button>}
               </div>
 
               <button type="button" onClick={handleApply} disabled={saving || Boolean(busyLabel) || versionIndex === 0} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold disabled:opacity-40" style={buttons.primary}>

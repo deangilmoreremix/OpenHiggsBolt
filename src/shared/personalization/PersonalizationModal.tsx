@@ -820,6 +820,9 @@ export default function PersonalizationModal() {
       responseId: result.responseId,
       imageGenerationCallId: result.imageGenerationCallId,
       revisedPrompt: result.revisedPrompt,
+      outputFormat: result.outputFormat,
+      outputCompression: result.outputCompression,
+      inputFidelity: result.inputFidelity,
       visionAnalysis: result.visionAnalysis,
       visionValidation: result.visionValidation,
     })
