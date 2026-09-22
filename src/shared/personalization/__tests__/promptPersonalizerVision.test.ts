@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const callOpenAIChat = vi.fn()
+const { callOpenAIChat } = vi.hoisted(() => ({ callOpenAIChat: vi.fn() }))
 
 vi.mock('@/shared/api/openai', () => ({
   callOpenAIChat,

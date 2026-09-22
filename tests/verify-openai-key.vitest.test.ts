@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { verifyOpenAIKey } from '../src/shared/api/verifyOpenAIKey';
 
 describe('verifyOpenAIKey', () => {
@@ -6,7 +6,7 @@ describe('verifyOpenAIKey', () => {
     vi.resetAllMocks();
   });
 
-  it('throws unauthorized for 401', async () => {
+  it('returns invalid status for 401', async () => {
     global.fetch = vi.fn(() =>
       Promise.resolve({
         status: 401,
@@ -15,10 +15,14 @@ describe('verifyOpenAIKey', () => {
       } as Response)
     );
 
-    await expect(verifyOpenAIKey('sk-invalid')).rejects.toThrow('unauthorized');
+    const result = await verifyOpenAIKey('sk-invalid');
+    expect(result.isValid).toBe(false);
+    expect(result.status).toBe('temporarily_unverified');
+    expect(result.error).toBeTruthy();
+    expect(result.warning).toBeNull();
   });
 
-  it('throws restricted for 403', async () => {
+  it('returns restricted status for 403', async () => {
     global.fetch = vi.fn(() =>
       Promise.resolve({
         status: 403,
@@ -27,10 +31,14 @@ describe('verifyOpenAIKey', () => {
       } as Response)
     );
 
-    await expect(verifyOpenAIKey('sk-restricted')).rejects.toThrow('restricted');
+    const result = await verifyOpenAIKey('sk-restricted');
+    expect(result.isValid).toBe(true);
+    expect(result.status).toBe('restricted');
+    expect(result.warning).toBeTruthy();
+    expect(result.error).toBeNull();
   });
 
-  it('throws rate_limited for 429', async () => {
+  it('returns temporarily_unverified for 429', async () => {
     global.fetch = vi.fn(() =>
       Promise.resolve({
         status: 429,
@@ -39,10 +47,14 @@ describe('verifyOpenAIKey', () => {
       } as Response)
     );
 
-    await expect(verifyOpenAIKey('sk-rate-limited')).rejects.toThrow('rate_limited');
+    const result = await verifyOpenAIKey('sk-rate-limited');
+    expect(result.isValid).toBe(true);
+    expect(result.status).toBe('temporarily_unverified');
+    expect(result.warning).toBeTruthy();
+    expect(result.error).toBeNull();
   });
 
-  it('throws error for 500', async () => {
+  it('returns temporarily_unverified for 500', async () => {
     global.fetch = vi.fn(() =>
       Promise.resolve({
         status: 500,
@@ -51,10 +63,14 @@ describe('verifyOpenAIKey', () => {
       } as Response)
     );
 
-    await expect(verifyOpenAIKey('sk-server-error')).rejects.toThrow('error');
+    const result = await verifyOpenAIKey('sk-server-error');
+    expect(result.isValid).toBe(true);
+    expect(result.status).toBe('temporarily_unverified');
+    expect(result.warning).toBeTruthy();
+    expect(result.error).toBeNull();
   });
 
-  it('resolves for 200', async () => {
+  it('resolves with verified status for 200', async () => {
     global.fetch = vi.fn(() =>
       Promise.resolve({
         status: 200,
@@ -63,6 +79,10 @@ describe('verifyOpenAIKey', () => {
       } as Response)
     );
 
-    await expect(verifyOpenAIKey('sk-valid')).resolves.toBeUndefined();
+    const result = await verifyOpenAIKey('sk-valid');
+    expect(result.isValid).toBe(true);
+    expect(result.status).toBe('verified');
+    expect(result.warning).toBeNull();
+    expect(result.error).toBeNull();
   });
 });
