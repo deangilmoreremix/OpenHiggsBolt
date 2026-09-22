@@ -18,6 +18,7 @@ import { sanitizeUrl, classifyImage, heuristicFallback } from './discoverAssets'
 import { getBusinessAssetClassificationModel } from './discoveryClassificationConfig'
 import { autoPlaceAssets, DEFAULT_AUTO_PLACEMENT_CONFIG } from './autoPlacementEngine'
 import { discoverSitemapUrls } from './sitemapDiscovery'
+import { isBrowserDiscoveryAvailable } from './browserDiscovery'
 import type { DiscoveredAsset, DiscoveredAssetCategory } from '../shared/personalization/types'
 import {
   USEFUL_CATEGORIES,
@@ -218,40 +219,44 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
   // 5. If still insufficient and browser fallback enabled, try browser
   if (!hasEnoughUsefulAssets(discoveredAssets) && enableBrowserFallback) {
     providerAttempts.push('SMARTVIDEO_BROWSER')
-    try {
-      const { discoverRenderedAssets } = await import('./browserDiscovery')
-      const priorityPages = result?.candidates?.map((c) => c.sourcePage) || [baseUrl]
-      const uniquePages = Array.from(new Set(priorityPages)).slice(0, 4)
+    if (!isBrowserDiscoveryAvailable()) {
+      console.warn('[discovery] Browser fallback skipped: Playwright is not available in this runtime.')
+    } else {
+      try {
+        const { discoverRenderedAssets } = await import('./browserDiscovery')
+        const priorityPages = result?.candidates?.map((c) => c.sourcePage) || [baseUrl]
+        const uniquePages = Array.from(new Set(priorityPages)).slice(0, 4)
 
-      const browserResult = await discoverRenderedAssets(baseUrl, uniquePages)
-      if (browserResult.candidates.length > 0) {
-        const existingUrls = new Set(result?.candidates?.map((c) => c.url) || [])
-        const newCandidates = browserResult.candidates.filter((c) => !existingUrls.has(c.url))
+        const browserResult = await discoverRenderedAssets(baseUrl, uniquePages)
+        if (browserResult.candidates.length > 0) {
+          const existingUrls = new Set(result?.candidates?.map((c) => c.url) || [])
+          const newCandidates = browserResult.candidates.filter((c) => !existingUrls.has(c.url))
 
-        if (result) {
-          result = {
-            ...result,
-            candidates: [...result.candidates, ...newCandidates],
-            rawCandidates: (result.rawCandidates || 0) + browserResult.candidates.length,
-            pagesCrawled: (result.pagesCrawled || 0) + browserResult.pagesCrawled,
+          if (result) {
+            result = {
+              ...result,
+              candidates: [...result.candidates, ...newCandidates],
+              rawCandidates: (result.rawCandidates || 0) + browserResult.candidates.length,
+              pagesCrawled: (result.pagesCrawled || 0) + browserResult.pagesCrawled,
+            }
+          } else {
+            result = {
+              candidates: newCandidates,
+              provider: 'SMARTVIDEO_BROWSER',
+              pagesCrawled: browserResult.pagesCrawled,
+              rawCandidates: browserResult.candidates.length,
+              socialProfiles: [],
+            }
           }
-        } else {
-          result = {
-            candidates: newCandidates,
-            provider: 'SMARTVIDEO_BROWSER',
-            pagesCrawled: browserResult.pagesCrawled,
-            rawCandidates: browserResult.candidates.length,
-            socialProfiles: [],
-          }
+
+          const browserAssets = await buildDiscoveredAssetsFromCandidates(newCandidates, maxImages, openAiKey, openAiModel)
+          discoveredAssets = [...discoveredAssets, ...browserAssets]
+          localUsefulAssetCount = discoveredAssets.filter((asset) => isUsefulCategory(asset.category)).length
+          providerUsed = 'SMARTVIDEO_BROWSER'
         }
-
-        const browserAssets = await buildDiscoveredAssetsFromCandidates(newCandidates, maxImages, openAiKey, openAiModel)
-        discoveredAssets = [...discoveredAssets, ...browserAssets]
-        localUsefulAssetCount = discoveredAssets.filter((asset) => isUsefulCategory(asset.category)).length
-        providerUsed = 'SMARTVIDEO_BROWSER'
+      } catch (err) {
+        console.error('[discovery] Browser fallback failed:', err instanceof Error ? err.message : err)
       }
-    } catch (err) {
-      console.error('[discovery] Browser fallback failed:', err instanceof Error ? err.message : err)
     }
   }
 
