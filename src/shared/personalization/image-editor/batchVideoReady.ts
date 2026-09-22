@@ -1,6 +1,6 @@
-import type { DiscoveredAsset, PersonalizationVisionAnalysis, PersonalizationVisionValidation } from '../types'
+import type { AssetRole, DiscoveredAsset, PersonalizationVisionAnalysis, PersonalizationVisionValidation } from '../types'
 import { editSmartVideoGoImage } from './imageEditApi'
-import { IMAGE_EDIT_OPERATIONS, getAssetRecipe, getOperation, resolveEditorAssetKind, type EditorOperationId } from './imageEditRegistry'
+import { IMAGE_EDIT_OPERATIONS, getAssetRecipe, getSourceAssetRecipe, getOperation, resolveEditorAssetKind, type EditorOperationId } from './imageEditRegistry'
 import { analyzePersonalizationImages, validatePersonalizationImageEdit } from './responsesVisionApi'
 
 export type BatchVideoReadyContext = {
@@ -56,18 +56,37 @@ async function prepareDataUrl(url: string): Promise<string> {
   return result.dataUrl as string
 }
 
+function destinationRoleForSection(section: DiscoveredAsset['assignedSection']): AssetRole | undefined {
+  if (section === 'person') return 'presenter_identity'
+  if (section === 'logo') return 'logo'
+  if (section === 'products') return 'product_reference'
+  if (section === 'brand') return 'brand_reference'
+  if (section === 'firstFrame') return 'first_frame'
+  if (section === 'lastFrame') return 'last_frame'
+  if (section === 'ctaGraphic') return 'cta_graphic'
+  return undefined
+}
+
 function buildPrompt(
   asset: DiscoveredAsset,
   operationId: EditorOperationId,
   context: BatchVideoReadyContext,
+  destinationRole?: AssetRole,
 ) {
-  const recipe = getAssetRecipe(asset.visionAnalysis?.confidence && asset.visionAnalysis.confidence >= 75 ? asset.visionAnalysis.category : asset.category)
+  const category = asset.visionAnalysis?.confidence && asset.visionAnalysis.confidence >= 75
+    ? asset.visionAnalysis.category
+    : asset.category
+  const recipe = getAssetRecipe(category, destinationRole)
+  const sourceRecipe = getSourceAssetRecipe(category, destinationRole)
   const operation = getOperation(operationId)
   const business = [context.businessName, context.industry].filter(Boolean).join(' - ')
   return [
     'Edit this image for SmartVideo GO.',
     operation.prompt,
-    Array.from(new Set([...recipe.preserve, ...(asset.visionAnalysis?.preserve || [])])).length ? 'Preserve: ' + Array.from(new Set([...recipe.preserve, ...(asset.visionAnalysis?.preserve || [])])).join(', ') + '.' : '',
+    Array.from(new Set([...sourceRecipe.preserve, ...recipe.preserve, ...(asset.visionAnalysis?.preserve || [])])).length
+      ? 'Preserve: ' + Array.from(new Set([...sourceRecipe.preserve, ...recipe.preserve, ...(asset.visionAnalysis?.preserve || [])])).join(', ') + '.'
+      : '',
+    'Target SmartVideo GO role: ' + recipe.outputRole + '.',
     business ? 'Business context: ' + business + '.' : '',
     'This is an automatic Make Video Ready workflow. Do not make creative changes that are not required by the asset recipe.',
   ].filter(Boolean).join(' ')
@@ -99,8 +118,10 @@ export async function makeDiscoveredAssetVideoReady(
   }
 
   const category = analysis && analysis.confidence >= 75 ? analysis.category : asset.category
-  const recipe = getAssetRecipe(category)
-  const editorKind = resolveEditorAssetKind(category)
+  const destinationRole = destinationRoleForSection(asset.assignedSection)
+  const recipe = getAssetRecipe(category, destinationRole)
+  const sourceRecipe = getSourceAssetRecipe(category, destinationRole)
+  const editorKind = resolveEditorAssetKind(category, destinationRole)
   const visionSteps = (analysis?.recommendedOperations || [])
     .filter((id): id is EditorOperationId => id in IMAGE_EDIT_OPERATIONS)
     .filter((id) => {
@@ -124,7 +145,7 @@ export async function makeDiscoveredAssetVideoReady(
   let finalPrompt = ''
   let finalModel: BatchVideoReadyResult['model'] = 'gpt-image-2.5-flare'
   let finalQuality: BatchVideoReadyResult['quality'] = 'medium'
-  const preserve = Array.from(new Set([...recipe.preserve, ...(analysis?.preserve || [])]))
+  const preserve = Array.from(new Set([...sourceRecipe.preserve, ...recipe.preserve, ...(analysis?.preserve || [])]))
 
   const effectiveAsset: DiscoveredAsset = analysis
     ? { ...asset, category, visionAnalysis: analysis }
@@ -138,12 +159,12 @@ export async function makeDiscoveredAssetVideoReady(
       Boolean(operation.transparency) ||
       (stepId === 'video_ready' && (analysis?.transparencyRecommended || recipe.transparencyRecommended))
 
-    finalModel = operation.precision || recipe.precisionRecommended || analysis?.precisionRecommended
+    finalModel = operation.precision || sourceRecipe.precisionRecommended || recipe.precisionRecommended || analysis?.precisionRecommended
       ? 'gpt-image-2.5-sunburst'
       : 'gpt-image-2.5-flare'
     finalQuality = finalModel === 'gpt-image-2.5-sunburst' ? 'high' : 'medium'
     finalPrompt = [
-      buildPrompt(effectiveAsset, stepId, context),
+      buildPrompt(effectiveAsset, stepId, context, destinationRole),
       preserve.length ? 'Vision protection: ' + preserve.join(', ') + '.' : '',
       analysis?.issues?.length ? 'Address these diagnosed issues when relevant: ' + analysis.issues.join(', ') + '.' : '',
     ].filter(Boolean).join(' ')
@@ -159,7 +180,7 @@ export async function makeDiscoveredAssetVideoReady(
       size: 'auto',
       outputFormat: 'png',
       background: preserveTransparency ? 'transparent' : 'auto',
-      inputFidelity: operation.precision || recipe.precisionRecommended || analysis?.precisionRecommended ? 'high' : 'low',
+      inputFidelity: operation.precision || sourceRecipe.precisionRecommended || recipe.precisionRecommended || analysis?.precisionRecommended ? 'high' : 'low',
     })
 
     const first = results?.[0]
