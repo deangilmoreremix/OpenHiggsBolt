@@ -689,6 +689,7 @@ export default function PersonalizationModal() {
   const [isRegenerating, setIsRegenerating] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [imageEditorAsset, setImageEditorAsset] = useState<PersonalizationImageEditorAsset | null>(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   const dialogRef = useRef<HTMLDivElement>(null)
   const previousActiveElementRef = useRef<HTMLElement | null>(null)
