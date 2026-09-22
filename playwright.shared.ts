@@ -47,6 +47,11 @@ export const marketingProjects = [
     use: {
       ...devices['Desktop Chrome'],
       storageState: 'playwright/.clerk/smartvideo-demo.json',
+      video: {
+        mode: 'on',
+        size: { width: 1920, height: 1080 },
+      },
+      viewport: { width: 1920, height: 1080 },
     },
   },
 ];
