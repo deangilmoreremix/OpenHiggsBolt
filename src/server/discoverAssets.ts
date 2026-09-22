@@ -13,7 +13,7 @@
  */
 
 import axios from 'axios'
-import { JSDOM } from 'jsdom'
+import * as cheerio from 'cheerio'
 import OpenAI from 'openai'
 import { getBusinessAssetClassificationModel } from './discoveryClassificationConfig'
 
@@ -164,14 +164,12 @@ async function fetchPage(url: string): Promise<string | null> {
 // ---------------------------------------------------------------------------
 
 function extractInternalLinks(baseUrl: string, html: string): string[] {
-  const dom = new JSDOM(html, { url: baseUrl })
-  const doc = dom.window.document
+  const $ = cheerio.load(html)
   const base = new URL(baseUrl)
   const links = new Set<string>()
 
-  const anchorTags = doc.querySelectorAll('a[href]')
-  for (const a of anchorTags) {
-    const href = a.getAttribute('href') || ''
+  $('a[href]').each((_i, elem) => {
+    const href = $(elem).attr('href') || ''
     try {
       const absolute = new URL(href, base)
       if (absolute.hostname === base.hostname) {
@@ -180,7 +178,7 @@ function extractInternalLinks(baseUrl: string, html: string): string[] {
     } catch {
       // skip invalid URLs
     }
-  }
+  })
 
   return Array.from(links)
 }
@@ -228,8 +226,7 @@ function isLikelyJunk(url: string): boolean {
 }
 
 function extractImages(baseUrl: string, html: string, pageUrl: string): ImageCandidate[] {
-  const dom = new JSDOM(html, { url: baseUrl })
-  const doc = dom.window.document
+  const $ = cheerio.load(html)
   const candidates: ImageCandidate[] = []
   const seen = new Set<string>()
 
@@ -248,22 +245,22 @@ function extractImages(baseUrl: string, html: string, pageUrl: string): ImageCan
   }
 
   // img[src]
-  doc.querySelectorAll('img[src]').forEach((img) => {
-    add(img.getAttribute('src') || '', img.getAttribute('alt') || undefined)
+  $('img[src]').each((_i, elem) => {
+    add($(elem).attr('src') || '', $(elem).attr('alt') || undefined)
   })
 
   // srcset
-  doc.querySelectorAll('img[srcset]').forEach((img) => {
-    const srcset = img.getAttribute('srcset') || ''
+  $('img[srcset]').each((_i, elem) => {
+    const srcset = $(elem).attr('srcset') || ''
     const entries = srcset.split(',').map((s) => s.trim().split(/\s+/)[0]).filter(Boolean)
     for (const entry of entries) {
-      add(entry, img.getAttribute('alt') || undefined)
+      add(entry, $(elem).attr('alt') || undefined)
     }
   })
 
   // picture/source
-  doc.querySelectorAll('picture source[srcset]').forEach((source) => {
-    const srcset = source.getAttribute('srcset') || ''
+  $('picture source[srcset]').each((_i, elem) => {
+    const srcset = $(elem).attr('srcset') || ''
     const entries = srcset.split(',').map((s) => s.trim().split(/\s+/)[0]).filter(Boolean)
     for (const entry of entries) {
       add(entry)
@@ -277,8 +274,8 @@ function extractImages(baseUrl: string, html: string, pageUrl: string): ImageCan
   ]
   for (const { attr, values } of metaTags) {
     for (const val of values) {
-      doc.querySelectorAll(`meta[${attr}="${val}"]`).forEach((meta) => {
-        const content = meta.getAttribute('content') || ''
+      $(`meta[${attr}="${val}"]`).each((_i, elem) => {
+        const content = $(elem).attr('content') || ''
         add(content, undefined, val)
       })
     }

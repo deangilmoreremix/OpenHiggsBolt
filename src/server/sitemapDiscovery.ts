@@ -9,7 +9,7 @@
  */
 
 import axios from 'axios'
-import { JSDOM } from 'jsdom'
+import * as cheerio from 'cheerio'
 import { sanitizeUrl } from './discoverAssets'
 import {
   MAX_PAGES,
@@ -80,25 +80,22 @@ function scoreUrl(url: string): number {
   return score
 }
 
-function extractSitemapUrls(xml: string, baseUrl: string): { urls: string[]; sitemapIndexUrls: string[] } {
+function extractSitemapUrls(xml: string, _baseUrl: string): { urls: string[]; sitemapIndexUrls: string[] } {
   const urls: string[] = []
-  const dom = new JSDOM(xml, { url: baseUrl })
-  const doc = dom.window.document
+  const $ = cheerio.load(xml, { xmlMode: true })
 
   // Standard sitemap URL set
-  const urlTags = doc.querySelectorAll('url > loc')
-  for (const tag of urlTags) {
-    const loc = tag.textContent?.trim()
+  $('url > loc').each((_i, elem) => {
+    const loc = $(elem).text().trim()
     if (loc) urls.push(loc)
-  }
+  })
 
   // Sitemap index
-  const sitemapTags = doc.querySelectorAll('sitemap > loc')
   const sitemapIndexUrls: string[] = []
-  for (const tag of sitemapTags) {
-    const loc = tag.textContent?.trim()
+  $('sitemap > loc').each((_i, elem) => {
+    const loc = $(elem).text().trim()
     if (loc) sitemapIndexUrls.push(loc)
-  }
+  })
 
   return { urls, sitemapIndexUrls }
 }

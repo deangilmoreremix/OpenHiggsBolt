@@ -1,7 +1,7 @@
 /**
  * Server-side Playwright/Chromium fallback for business asset discovery.
  *
- * This module is only invoked when the static axios+JSDOM path appears
+ * This module is only invoked when the static axios+Cheerio path appears
  * insufficient. It keeps browser resources bounded and preserves the
  * existing security model.
  */

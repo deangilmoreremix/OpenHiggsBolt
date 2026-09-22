@@ -7,7 +7,7 @@
  */
 
 import type { ImageCandidate, DiscoveryResult, SocialProfileSource, SourceType } from './discoveryProvider'
-import { JSDOM } from 'jsdom'
+import * as cheerio from 'cheerio'
 
 const FIRECRAWL_BASE_URL = 'https://api.firecrawl.dev/v2'
 const FIRECRAWL_SCRAPE_LIMIT = 5
@@ -176,8 +176,7 @@ function extractHtmlFromFirecrawlPage(page: any): string | null {
 }
 
 function extractImageCandidatesFromHtml(html: string, pageUrl: string, maxImages: number): ImageCandidate[] {
-  const dom = new JSDOM(html, { url: pageUrl })
-  const doc = dom.window.document
+  const $ = cheerio.load(html)
   const candidates: ImageCandidate[] = []
   const seen = new Set<string>()
 
@@ -202,13 +201,13 @@ function extractImageCandidatesFromHtml(html: string, pageUrl: string, maxImages
   }
 
   try {
-    for (const img of doc.querySelectorAll('img')) {
-      const src = (img as HTMLImageElement).getAttribute('src') || ''
-      const srcset = (img as HTMLImageElement).getAttribute('srcset') || ''
-      const alt = (img as HTMLImageElement).getAttribute('alt') || undefined
-      const parentAnchor = img.closest('a[href]')
-      const linkTarget = parentAnchor ? (parentAnchor as HTMLAnchorElement).getAttribute('href') || undefined : undefined
-      const nearbyText = getNearbyText(img)
+    $('img').each((_i, elem) => {
+      const src = $(elem).attr('src') || ''
+      const srcset = $(elem).attr('srcset') || ''
+      const alt = $(elem).attr('alt') || undefined
+      const parentAnchor = $(elem).closest('a[href]')
+      const linkTarget = parentAnchor.attr('href') || undefined
+      const nearbyText = getNearbyTextCheerio($, elem)
 
       const extra: Partial<ImageCandidate> = {
         altText: alt,
@@ -228,19 +227,19 @@ function extractImageCandidatesFromHtml(html: string, pageUrl: string, maxImages
           add(entry, extra)
         }
       }
-    }
+    })
 
-    for (const source of doc.querySelectorAll('source[srcset]')) {
-      const srcset = (source as HTMLSourceElement).getAttribute('srcset') || ''
+    $('source[srcset]').each((_i, elem) => {
+      const srcset = $(elem).attr('srcset') || ''
       for (const entry of srcset.split(',').map((s: string) => s.trim().split(/\s+/)[0]).filter(Boolean)) {
         add(entry)
       }
-    }
+    })
 
-    const ogImage = doc.querySelector('meta[property="og:image"]')
-    if (ogImage) add((ogImage as HTMLMetaElement).getAttribute('content') || '')
-    const twitterImage = doc.querySelector('meta[name="twitter:image"]')
-    if (twitterImage) add((twitterImage as HTMLMetaElement).getAttribute('content') || '')
+    const ogImage = $('meta[property="og:image"]').attr('content')
+    if (ogImage) add(ogImage)
+    const twitterImage = $('meta[name="twitter:image"]').attr('content')
+    if (twitterImage) add(twitterImage)
   } catch {
     // ignore extraction errors
   }
@@ -248,9 +247,9 @@ function extractImageCandidatesFromHtml(html: string, pageUrl: string, maxImages
   return candidates
 }
 
-function getNearbyText(el: Element): string | null {
+function getNearbyTextCheerio($: ReturnType<typeof cheerio.load>, elem: cheerio.Element): string | null {
   const maxLength = 120
-  const text = el.textContent || ''
+  const text = $(elem).text() || ''
   const trimmed = text.trim().replace(/\s+/g, ' ')
   if (trimmed.length === 0) return null
   if (trimmed.length <= maxLength) return trimmed
@@ -258,8 +257,7 @@ function getNearbyText(el: Element): string | null {
 }
 
 function extractSocialProfiles(html: string, pageUrl: string): SocialProfileSource[] {
-  const dom = new JSDOM(html, { url: pageUrl })
-  const doc = dom.window.document
+  const $ = cheerio.load(html)
   const profiles: SocialProfileSource[] = []
   const seen = new Set<string>()
 
@@ -282,8 +280,8 @@ function extractSocialProfiles(html: string, pageUrl: string): SocialProfileSour
   }
 
   try {
-    for (const a of doc.querySelectorAll('a[href]')) {
-      const href = (a as HTMLAnchorElement).getAttribute('href') || ''
+    $('a[href]').each((_i, elem) => {
+      const href = $(elem).attr('href') || ''
       const lower = href.toLowerCase()
       for (const [domain, sourceType] of Object.entries(SOCIAL_DOMAINS)) {
         if (lower.includes(domain)) {
@@ -291,7 +289,7 @@ function extractSocialProfiles(html: string, pageUrl: string): SocialProfileSour
           break
         }
       }
-    }
+    })
   } catch {
     // ignore extraction errors
   }
@@ -359,31 +357,29 @@ function canonicalizePageUrl(raw: string): string {
 }
 
 function extractInternalLinks(html: string, baseUrl: string): string[] {
-  const dom = new JSDOM(html, { url: baseUrl })
-  const doc = dom.window.document
-  const links = Array.from(doc.querySelectorAll('a[href]'))
+  const $ = cheerio.load(html)
   const seen = new Set<string>()
   const results: string[] = []
 
-  for (const link of links) {
-    const href = (link as HTMLAnchorElement).getAttribute('href') || ''
+  $('a[href]').each((_i, elem) => {
+    const href = $(elem).attr('href') || ''
     let absolute: string
     try {
       absolute = new URL(href, baseUrl).toString()
     } catch {
-      continue
+      return
     }
 
     const canonical = canonicalizePageUrl(absolute)
-    if (seen.has(canonical)) continue
+    if (seen.has(canonical)) return
     seen.add(canonical)
 
     const host = new URL(canonical).host
-    if (host !== new URL(baseUrl).host) continue
-    if (LOW_VALUE_PATH_FRAGMENTS.some((frag) => canonical.toLowerCase().includes(frag))) continue
+    if (host !== new URL(baseUrl).host) return
+    if (LOW_VALUE_PATH_FRAGMENTS.some((frag) => canonical.toLowerCase().includes(frag))) return
 
     results.push(canonical)
-  }
+  })
 
   return results
 }

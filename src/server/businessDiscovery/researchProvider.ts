@@ -11,7 +11,7 @@
  */
 
 import axios from 'axios'
-import { JSDOM } from 'jsdom'
+import * as cheerio from 'cheerio'
 import { sanitizeUrl } from '../discoverAssets'
 import type { BusinessDiscoveryRecord } from './types'
 
@@ -56,14 +56,12 @@ const SOCIAL_PATTERNS: Record<string, RegExp> = {
   pinterest: /pinterest\.com\/([A-Za-z0-9._-]+)/i,
 }
 
-function extractSocialLinks(html: string, baseUrl: string): BusinessResearchResult['socialLinks'] {
-  const dom = new JSDOM(html, { url: baseUrl })
-  const doc = dom.window.document
+function extractSocialLinks(html: string, _baseUrl: string): BusinessResearchResult['socialLinks'] {
+  const $ = cheerio.load(html)
   const links: BusinessResearchResult['socialLinks'] = {}
 
-  const anchors = doc.querySelectorAll('a[href]')
-  for (const a of anchors) {
-    const href = a.getAttribute('href') || ''
+  $('a[href]').each((_i, elem) => {
+    const href = $(elem).attr('href') || ''
     const lower = href.toLowerCase()
     for (const [platform, pattern] of Object.entries(SOCIAL_PATTERNS)) {
       if (lower.match(pattern)) {
@@ -71,19 +69,17 @@ function extractSocialLinks(html: string, baseUrl: string): BusinessResearchResu
         break
       }
     }
-  }
+  })
 
   return links
 }
 
-function extractJsonLd(html: string, baseUrl: string): Record<string, unknown>[] {
-  const dom = new JSDOM(html, { url: baseUrl })
-  const doc = dom.window.document
-  const scripts = doc.querySelectorAll('script[type="application/ld+json"]')
+function extractJsonLd(html: string, _baseUrl: string): Record<string, unknown>[] {
+  const $ = cheerio.load(html)
   const results: Record<string, unknown>[] = []
-  for (const script of scripts) {
+  $('script[type="application/ld+json"]').each((_i, elem) => {
     try {
-      const parsed = JSON.parse(script.textContent || '')
+      const parsed = JSON.parse($(elem).text() || '')
       if (Array.isArray(parsed)) {
         results.push(...parsed)
       } else {
@@ -92,63 +88,56 @@ function extractJsonLd(html: string, baseUrl: string): Record<string, unknown>[]
     } catch {
       // skip invalid JSON-LD
     }
-  }
+  })
   return results
 }
 
-function extractOpenGraph(html: string, baseUrl: string): Record<string, string> {
-  const dom = new JSDOM(html, { url: baseUrl })
-  const doc = dom.window.document
+function extractOpenGraph(html: string, _baseUrl: string): Record<string, string> {
+  const $ = cheerio.load(html)
   const result: Record<string, string> = {}
-  const metaTags = doc.querySelectorAll('meta[property^="og:"], meta[name^="og:"]')
-  for (const meta of metaTags) {
-    const property = meta.getAttribute('property') || meta.getAttribute('name') || ''
-    const content = meta.getAttribute('content') || ''
+  $('meta[property^="og:"], meta[name^="og:"]').each((_i, elem) => {
+    const property = $(elem).attr('property') || $(elem).attr('name') || ''
+    const content = $(elem).attr('content') || ''
     if (property && content) {
       result[property.replace(/^og:/, '')] = content
     }
-  }
+  })
   return result
 }
 
-function extractTwitterCard(html: string, baseUrl: string): Record<string, string> {
-  const dom = new JSDOM(html, { url: baseUrl })
-  const doc = dom.window.document
+function extractTwitterCard(html: string, _baseUrl: string): Record<string, string> {
+  const $ = cheerio.load(html)
   const result: Record<string, string> = {}
-  const metaTags = doc.querySelectorAll('meta[name^="twitter:"], meta[property^="twitter:"]')
-  for (const meta of metaTags) {
-    const name = meta.getAttribute('name') || meta.getAttribute('property') || ''
-    const content = meta.getAttribute('content') || ''
+  $('meta[name^="twitter:"], meta[property^="twitter:"]').each((_i, elem) => {
+    const name = $(elem).attr('name') || $(elem).attr('property') || ''
+    const content = $(elem).attr('content') || ''
     if (name && content) {
       result[name.replace(/^twitter:/, '')] = content
     }
-  }
+  })
   return result
 }
 
-function extractContactInfo(html: string, baseUrl: string): BusinessResearchResult['contactInfo'] {
-  const dom = new JSDOM(html, { url: baseUrl })
-  const doc = dom.window.document
+function extractContactInfo(html: string, _baseUrl: string): BusinessResearchResult['contactInfo'] {
+  const $ = cheerio.load(html)
   const phones = new Set<string>()
   const emails = new Set<string>()
   const addresses = new Set<string>()
 
   // Extract from mailto links
-  const mailtos = doc.querySelectorAll('a[href^="mailto:"]')
-  for (const a of mailtos) {
-    const email = a.getAttribute('href')?.replace(/^mailto:/, '')?.split('?')[0]
+  $('a[href^="mailto:"]').each((_i, elem) => {
+    const email = $(elem).attr('href')?.replace(/^mailto:/, '')?.split('?')[0]
     if (email) emails.add(email.toLowerCase())
-  }
+  })
 
   // Extract from tel links
-  const tels = doc.querySelectorAll('a[href^="tel:"]')
-  for (const a of tels) {
-    const phone = a.getAttribute('href')?.replace(/^tel:/, '')
+  $('a[href^="tel:"]').each((_i, elem) => {
+    const phone = $(elem).attr('href')?.replace(/^tel:/, '')
     if (phone) phones.add(phone)
-  }
+  })
 
   // Extract emails from text
-  const text = doc.body?.textContent || ''
+  const text = $('body').text() || ''
   const emailMatches = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g)
   if (emailMatches) {
     for (const email of emailMatches) {
@@ -157,7 +146,7 @@ function extractContactInfo(html: string, baseUrl: string): BusinessResearchResu
   }
 
   // Extract from JSON-LD
-  const jsonLd = extractJsonLd(html, baseUrl)
+  const jsonLd = extractJsonLd(html, _baseUrl)
   for (const item of jsonLd) {
     if (item.telephone && typeof item.telephone === 'string') phones.add(item.telephone)
     if (item.email && typeof item.email === 'string') emails.add(item.email.toLowerCase())

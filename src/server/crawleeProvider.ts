@@ -9,7 +9,7 @@
  */
 
 import { CheerioCrawler } from '@crawlee/cheerio'
-import { JSDOM } from 'jsdom'
+import * as cheerio from 'cheerio'
 import { sanitizeUrl } from './discoverAssets'
 import {
   MAX_PAGES,
@@ -81,8 +81,7 @@ function isExcluded(url: string): boolean {
 }
 
 function extractImagesFromHtml(baseUrl: string, html: string, pageUrl: string): ImageCandidate[] {
-  const dom = new JSDOM(html, { url: baseUrl })
-  const doc = dom.window.document
+  const $ = cheerio.load(html)
   const candidates: ImageCandidate[] = []
   const seen = new Set<string>()
 
@@ -98,20 +97,20 @@ function extractImagesFromHtml(baseUrl: string, html: string, pageUrl: string): 
     }
   }
 
-  doc.querySelectorAll('img[src]').forEach((img) => {
-    add(img.getAttribute('src') || '', img.getAttribute('alt') || undefined)
+  $('img[src]').each((_i, elem) => {
+    add($(elem).attr('src') || '', $(elem).attr('alt') || undefined)
   })
 
-  doc.querySelectorAll('img[srcset]').forEach((img) => {
-    const srcset = img.getAttribute('srcset') || ''
+  $('img[srcset]').each((_i, elem) => {
+    const srcset = $(elem).attr('srcset') || ''
     const entries = srcset.split(',').map((s) => s.trim().split(/\s+/)[0]).filter(Boolean)
     for (const entry of entries) {
-      add(entry, img.getAttribute('alt') || undefined)
+      add(entry, $(elem).attr('alt') || undefined)
     }
   })
 
-  doc.querySelectorAll('picture source[srcset]').forEach((source) => {
-    const srcset = source.getAttribute('srcset') || ''
+  $('picture source[srcset]').each((_i, elem) => {
+    const srcset = $(elem).attr('srcset') || ''
     const entries = srcset.split(',').map((s) => s.trim().split(/\s+/)[0]).filter(Boolean)
     for (const entry of entries) {
       add(entry)
@@ -124,8 +123,8 @@ function extractImagesFromHtml(baseUrl: string, html: string, pageUrl: string): 
   ]
   for (const { attr, values } of metaTags) {
     for (const val of values) {
-      doc.querySelectorAll(`meta[${attr}="${val}"]`).forEach((meta) => {
-        const content = meta.getAttribute('content') || ''
+      $(`meta[${attr}="${val}"]`).each((_i, elem) => {
+        const content = $(elem).attr('content') || ''
         add(content, undefined, val)
       })
     }
@@ -185,13 +184,12 @@ export async function discoverWithCrawlee(baseUrl: string): Promise<DiscoveryRes
       const outgoing = request.loadedUrl
       if (outgoing) {
         try {
-          const dom = new JSDOM(html, { url: sanitized })
-          const doc = dom.window.document
+          const $ = cheerio.load(html)
           const base = new URL(outgoing)
           const links: string[] = []
 
-          doc.querySelectorAll('a[href]').forEach((a) => {
-            const href = a.getAttribute('href') || ''
+          $('a[href]').each((_i, elem) => {
+            const href = $(elem).attr('href') || ''
             try {
               const absolute = new URL(href, base).toString()
               if (new URL(absolute).origin !== origin) return

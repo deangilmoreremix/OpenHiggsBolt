@@ -1,5 +1,5 @@
 /**
- * Static discovery provider that reuses the existing axios + JSDOM crawler.
+ * Static discovery provider that reuses the existing axios + Cheerio crawler.
  *
  * This remains the fallback when Firecrawl is unavailable or returns
  * insufficient results.
