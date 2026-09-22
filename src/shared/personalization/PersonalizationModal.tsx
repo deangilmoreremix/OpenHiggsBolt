@@ -991,13 +991,14 @@ export default function PersonalizationModal() {
         aria-modal="true"
         aria-labelledby="personalize-title"
         tabIndex={-1}
-        className="w-full max-w-[1240px] overflow-hidden shadow-2xl flex flex-col"
+        className="w-full overflow-hidden shadow-2xl flex flex-col"
         style={{
           background: C.modal,
-          border: `1px solid ${C.borderStrong}`,
-          borderRadius: 22,
-          maxHeight: '94vh',
-          boxShadow: '0 30px 90px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.025)',
+          border: isFullscreen ? 'none' : `1px solid ${C.borderStrong}`,
+          borderRadius: isFullscreen ? 0 : 22,
+          maxWidth: isFullscreen ? '100vw' : 1100,
+          maxHeight: isFullscreen ? '100vh' : '90vh',
+          boxShadow: isFullscreen ? 'none' : '0 30px 90px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.025)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -1046,6 +1047,16 @@ export default function PersonalizationModal() {
             aria-label="Close personalization modal"
           >
             ×
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsFullscreen((prev) => !prev)}
+            className="w-[38px] h-[38px] border-0 rounded-[10px] text-[18px] flex items-center justify-center transition-colors flex-shrink-0"
+            style={{ background: 'transparent', color: C.muted }}
+            aria-label={isFullscreen ? 'Exit fullscreen' : 'Expand to fullscreen'}
+            aria-pressed={isFullscreen}
+          >
+            {isFullscreen ? '🗗' : '⛶'}
           </button>
         </header>
 
@@ -1385,11 +1396,11 @@ function ResultView(props: any) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="rounded-xl border border-white/10 overflow-hidden">
               <div className="p-2 border-b border-white/10"><span className="text-xs font-semibold text-white/40">ORIGINAL</span></div>
-              {source.sourceMedia && <video src={source.sourceMedia} controls className="w-full" style={{ maxHeight: '50vh' }} />}
+              {source.sourceMedia && <video src={source.sourceMedia} controls autoPlay muted playsInline loop className="w-full" style={{ maxHeight: '50vh' }} />}
             </div>
             <div className="rounded-xl border overflow-hidden" style={{ borderColor: C.cyanBorder }}>
               <div className="p-2 border-b" style={{ borderColor: C.cyanBorder }}><span className="text-xs font-semibold" style={{ color: C.cyan }}>PERSONALIZED</span></div>
-              <video src={result.url} controls autoPlay className="w-full" style={{ maxHeight: '50vh' }} />
+              <video src={result.url} controls autoPlay muted playsInline loop className="w-full" style={{ maxHeight: '50vh' }} />
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -1664,6 +1675,10 @@ function ConfigurationView(props: any) {
                 src={source.sourceMedia}
                 poster={source.poster || undefined}
                 controls
+                autoPlay
+                muted
+                playsInline
+                loop
                 className="w-full h-full"
                 style={{ maxHeight: '50vh', objectFit: 'contain' }}
               />
