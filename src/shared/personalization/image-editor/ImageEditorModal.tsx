@@ -216,6 +216,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
   const [modelMode, setModelMode] = useState<ModelMode>('auto')
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('original')
   const [outputFormat, setOutputFormat] = useState<ImageFormat>('png')
+  const [outputCompression, setOutputCompression] = useState<number | undefined>(undefined)
   const [versions, setVersions] = useState<Version[]>([])
   const [versionIndex, setVersionIndex] = useState(0)
   const [customPrompt, setCustomPrompt] = useState('')
@@ -527,6 +528,9 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
         quality: model === 'gpt-image-2.5-sunburst' ? (modelMode === 'precision' ? 'xhigh' : 'high') : 'medium',
         size: aspectRatio === 'original' ? undefined : aspectSizes[aspectRatio],
         background: 'auto',
+        outputFormat,
+        outputCompression,
+        inputFidelity: sourceRecipe.precisionRecommended || recipe.precisionRecommended || visionAnalysis?.precisionRecommended ? 'high' : 'low',
         businessContext: {
           businessName: asset.businessName,
           industry: asset.industry,
@@ -836,6 +840,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
         imageGenerationCallId: currentVersion.imageGenerationCallId,
         revisedPrompt: currentVersion.revisedPrompt,
         outputFormat,
+        outputCompression,
         inputFidelity: getOperation(currentVersion.operation as EditorOperationId).precision || sourceRecipe.precisionRecommended || recipe.precisionRecommended || visionAnalysis?.precisionRecommended ? 'high' : 'low',
       })
       onClose()

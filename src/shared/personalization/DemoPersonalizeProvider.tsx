@@ -22,7 +22,7 @@ import { SocialPublishContext } from '@/components/SocialPublishProvider'
 import { useAuthConfig } from '@/lib/authConfig'
 
 /** Safe accessor for SocialPublishContext — returns null when not wrapped in a provider. */
-function useOptionalSocialPublish() {
+function useOptionalSocialPublish(): null | { openPublish: (opts: { mediaUrl: string; mediaType?: 'image' | 'video'; title?: string; caption?: string }) => void; closePublish: () => void; openSocialPublisher: (opts: { asset: unknown }) => void } {
   return useContext(SocialPublishContext)
 }
 import type {
@@ -77,6 +77,19 @@ import { uploadFile } from 'studio/src/muapi'
 import type { BusinessDiscoveryRecord } from './types'
 
 // ── Constants ────────────────────────────────────────────────────────────────
+
+function normalizeUrl(url: string): string {
+  try {
+    const parsed = new URL(url)
+    let normalized = `${parsed.protocol}://${parsed.hostname}${parsed.pathname}`
+    if (parsed.port && !['80', '443'].includes(parsed.port)) {
+      normalized += `:${parsed.port}`
+    }
+    return normalized.toLowerCase()
+  } catch {
+    return url.toLowerCase().replace(/\/+$/, '')
+  }
+}
 
 const EMPTY_ASSET_LIBRARY: AssetLibrary = {
   identities: [],
@@ -1437,6 +1450,42 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
               : asset.assignedSection,
           visionAnalysis: analysis,
         }
+      }))
+
+      // Cross-batch duplicate detection: propagate duplicateLikely to assets
+      // with normalized matching URLs across all batches.
+      const normalizedUrlIndex = new Map<string, string>()
+      for (const asset of discoveredAssets) {
+        const url = asset.editedDataUrl || asset.previewUrl
+        if (!url) continue
+        const normalized = normalizeUrl(url)
+        if (normalizedUrlIndex.has(normalized)) {
+          normalizedUrlIndex.set(normalized, asset.id)
+        } else {
+          normalizedUrlIndex.set(normalized, asset.id)
+        }
+      }
+
+      setDiscoveredAssetsState((previous) => previous.map((asset) => {
+        const analysis = analysesById.get(asset.id)
+        if (!analysis) return asset
+        const url = asset.editedDataUrl || asset.previewUrl
+        if (!url) return asset
+        const normalized = normalizeUrl(url)
+        const duplicateOf = normalizedUrlIndex.get(normalized)
+        if (duplicateOf && duplicateOf !== asset.id) {
+          return {
+            ...asset,
+            selected: false,
+            recommended: false,
+            visionAnalysis: {
+              ...analysis,
+              duplicateLikely: true,
+              duplicateOf,
+            },
+          }
+        }
+        return asset
       }))
 
       setVisionStatus('complete')

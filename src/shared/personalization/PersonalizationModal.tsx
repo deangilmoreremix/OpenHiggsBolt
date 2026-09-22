@@ -703,7 +703,7 @@ export default function PersonalizationModal() {
     if (!isOpen) return
     previousActiveElementRef.current = document.activeElement as HTMLElement
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !personalizationInProgress) closePersonalize()
+      if (e.key === 'Escape' && !personalizationInProgress && !imageEditorAsset) closePersonalize()
     }
     document.addEventListener('keydown', handleKeyDown)
     document.body.style.overflow = 'hidden'
@@ -712,7 +712,7 @@ export default function PersonalizationModal() {
       document.body.style.overflow = ''
       previousActiveElementRef.current?.focus()
     }
-  }, [isOpen, closePersonalize, personalizationInProgress])
+  }, [isOpen, closePersonalize, personalizationInProgress, imageEditorAsset])
 
   useEffect(() => {
     setMode(null)
