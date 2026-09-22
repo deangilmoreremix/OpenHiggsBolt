@@ -332,6 +332,19 @@ function ThumbPlaceholder({ label, add = false, onClick }: { label: string; add?
   )
 }
 
+const EDIT_WITH_AI = 'Edit with AI'
+
+const isImageEditSupported = (asset: { mimeType?: string; url?: string; previewUrl?: string; editedDataUrl?: string }) => {
+  const mime = asset.mimeType || ''
+  if (mime.startsWith('image/')) return true
+  const candidate = asset.editedDataUrl || asset.url || asset.previewUrl || ''
+  if (candidate && !candidate.startsWith('blob:')) {
+    const ext = candidate.split('.').pop()?.toLowerCase() || ''
+    return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(ext)
+  }
+  return false
+}
+
 /** Uploaded asset thumb with status overlays and actions. */
 function ThumbUploaded({
   asset,
@@ -389,7 +402,7 @@ function ThumbUploaded({
       {displayUrl ? (
         <img src={displayUrl} alt={asset.name} className="absolute inset-0 w-full h-full object-cover" />
       ) : null}
-      {onEdit && isReady && (
+      {onEdit && isReady && isImageEditSupported(asset) && (
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onEdit() }}
@@ -397,7 +410,7 @@ function ThumbUploaded({
           style={{ background: 'rgba(41,211,242,.92)', color: '#041014' }}
           aria-label="Edit image"
         >
-          Edit
+          {EDIT_WITH_AI}
         </button>
       )}
       {label && (
@@ -463,7 +476,7 @@ function DiscoveredAssetThumb({
       {(asset.editedDataUrl || asset.previewUrl) ? (
         <img src={asset.editedDataUrl || asset.previewUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
       ) : null}
-      {onEdit && (
+      {onEdit && isImageEditSupported(asset) && (
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onEdit() }}
@@ -471,7 +484,7 @@ function DiscoveredAssetThumb({
           style={{ background: 'rgba(41,211,242,.92)', color: '#041014' }}
           aria-label="Edit discovered image"
         >
-          Edit
+          {EDIT_WITH_AI}
         </button>
       )}
       {(asset.edited || asset.videoReady) && (
@@ -2501,7 +2514,7 @@ function ConfigurationView(props: any) {
                 placeItems: 'center',
                 border: `1px solid ${C.border}`,
                 borderRadius: 10,
-                background: assets.primaryLogo?.url ? '#000' : 'linear-gradient(145deg, #2d3740, #10151a)',
+                background: assets.primaryLogo?.url ? '#000' : 'linear-gradient(145deg, #2d3742, #10151a)',
                 fontSize: 12,
                 fontWeight: 800,
                 textAlign: 'center',
@@ -2515,14 +2528,19 @@ function ConfigurationView(props: any) {
               ) : (
                 'Logo'
               )}
+              {assets.primaryLogo?.uploadStatus === 'ready' && isImageEditSupported(assets.primaryLogo) && (
+                <button
+                  type="button"
+                  onClick={() => openLibraryImageEditor(assets.primaryLogo)}
+                  className="absolute left-1 bottom-1 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
+                  style={{ background: 'rgba(41,211,242,.92)', color: '#041014' }}
+                >
+                  {EDIT_WITH_AI}
+                </button>
+              )}
             </div>
             <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               <ThumbPlaceholder label="+" add onClick={handleLogoAddClick} />
-              {assets.primaryLogo && (
-                <button type="button" onClick={() => openLibraryImageEditor(assets.primaryLogo)} className="rounded-[8px] text-[9px] font-extrabold uppercase" style={{ padding: '0 10px', border: '1px solid ' + C.cyanBorder, background: C.cyanSoft, color: C.cyan }}>
-                  ✨ Edit Image
-                </button>
-              )}
             </div>
             {assets.primaryLogo && (
               <>
@@ -2633,13 +2651,18 @@ function ConfigurationView(props: any) {
               ) : (
                 'First Frame'
               )}
+              {assets.firstFrame?.uploadStatus === 'ready' && isImageEditSupported(assets.firstFrame) && (
+                <button
+                  type="button"
+                  onClick={() => openLibraryImageEditor(assets.firstFrame)}
+                  className="absolute left-1 bottom-1 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
+                  style={{ background: 'rgba(41,211,242,.92)', color: '#041014' }}
+                >
+                  {EDIT_WITH_AI}
+                </button>
+              )}
             </div>
             <span className="badge" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px 8px', borderRadius: 7, marginTop: 8, marginRight: 4, background: C.cyan, color: '#071014', fontSize: 9, fontWeight: 800, textTransform: 'uppercase' }}>First Frame</span>
-            {assets.firstFrame && (
-              <button type="button" onClick={() => openLibraryImageEditor(assets.firstFrame)} className="rounded-[8px] text-[9px] font-extrabold uppercase" style={{ minHeight: 28, padding: '0 9px', border: '1px solid ' + C.cyanBorder, background: C.cyanSoft, color: C.cyan }}>
-                ✨ Edit Image
-              </button>
-            )}
           </article>
 
           {/* 6. Last Frame / CTA */}
@@ -2676,13 +2699,18 @@ function ConfigurationView(props: any) {
               ) : (
                 'Last Frame/CTA'
               )}
+              {assets.lastFrame?.uploadStatus === 'ready' && isImageEditSupported(assets.lastFrame) && (
+                <button
+                  type="button"
+                  onClick={() => openLibraryImageEditor(assets.lastFrame)}
+                  className="absolute left-1 bottom-1 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
+                  style={{ background: 'rgba(41,211,242,.92)', color: '#041014' }}
+                >
+                  {EDIT_WITH_AI}
+                </button>
+              )}
             </div>
             <span className="badge" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px 8px', borderRadius: 7, marginTop: 8, marginRight: 4, background: C.cyan, color: '#071014', fontSize: 9, fontWeight: 800, textTransform: 'uppercase' }}>Last Frame</span>
-            {assets.lastFrame && (
-              <button type="button" onClick={() => openLibraryImageEditor(assets.lastFrame)} className="rounded-[8px] text-[9px] font-extrabold uppercase" style={{ minHeight: 28, padding: '0 9px', border: '1px solid ' + C.cyanBorder, background: C.cyanSoft, color: C.cyan }}>
-                ✨ Edit Image
-              </button>
-            )}
           </article>
         </div>
       </section>
@@ -2765,6 +2793,16 @@ function ConfigurationView(props: any) {
                     )}
                     {isAssetInCurrentJob(asset, assets) && (
                       <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', color: C.green }}>✓ In Job</span>
+                    )}
+                    {isImageEditSupported(asset) && (
+                      <button
+                        type="button"
+                        onClick={() => openLibraryImageEditor(asset)}
+                        className="text-[9px] font-extrabold uppercase"
+                        style={{ color: C.cyan, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                      >
+                        Edit with AI
+                      </button>
                     )}
                     <button
                       type="button"
