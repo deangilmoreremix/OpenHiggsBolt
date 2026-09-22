@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { researchBusiness } from '@/server/businessDiscovery/researchProvider'
 import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
 import { validatePersonalizationEnv } from '@/server/envValidation'
 
@@ -38,6 +37,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'websiteUrl is required' }, { status: 400 })
     }
 
+    const { researchBusiness } = await import('@/server/businessDiscovery/researchProvider')
     const result = await researchBusiness(websiteUrl)
 
     logPersonalization({
@@ -53,19 +53,26 @@ export async function POST(req: NextRequest) {
       ok: true,
       research: result,
     })
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    const status = message.includes('not allowed') || message.includes('Private') || message.includes('Invalid') ? 400 : 500
+  } catch (rawErr) {
+    const err: Error = rawErr instanceof Error ? rawErr : new Error('Unknown error')
+    const anyErr = rawErr as any
+    const nodeCode = anyErr && typeof anyErr.code === 'string' ? anyErr.code : undefined
+    const safeCode = nodeCode || 'PERSONALIZATION_RUNTIME_ERROR'
+    const message = String(sanitizeForLog(err.message))
+    const status = /not allowed|Private|Invalid/i.test(message) ? 400 : 500
     logPersonalization({
       route: '/api/personalization/research-business',
       stage: 'unhandled',
       provider: 'STATIC_HTTP',
       httpStatus: status,
-      safeErrorCode: status >= 500 ? 'UNEXPECTED_ERROR' : 'VALIDATION_ERROR',
+      safeErrorCode: safeCode,
       safeMessage: message,
       correlationId,
       durationMs: Date.now() - startTime,
     })
-    return NextResponse.json({ error: message }, { status })
+    return NextResponse.json(
+      { error: 'Personalization runtime error', code: safeCode, correlationId },
+      { status, headers: { 'x-correlation-id': correlationId } },
+    )
   }
 }

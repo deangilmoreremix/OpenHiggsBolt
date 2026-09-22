@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { orchestrateDiscovery, buildDiscoveredAssetsFromCandidates } from '@/server/discoveryOrchestrator'
+import type { ImageCandidate, SocialProfileSource } from '@/server/discoveryProvider'
+import type { DiscoveredAsset } from '@/server/discoverAssets'
 import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer'
 import { getFixture } from '@/src/server/fixtures/discoveryFixtures'
 import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
@@ -8,7 +9,24 @@ import { validatePersonalizationEnv } from '@/server/envValidation'
 
 export const runtime = 'nodejs'
 
-type RawDiscoveryResult = Awaited<ReturnType<typeof orchestrateDiscovery>>
+type RawDiscoveryResult = {
+  providerUsed: string
+  providerAttempted: string
+  candidates: ImageCandidate[]
+  pagesCrawled: number
+  rawCandidates: number
+  duration: number
+  socialProfiles: SocialProfileSource[]
+  discoveredAssets: DiscoveredAsset[]
+  firecrawlUsed: boolean
+  providerAttempts: string[]
+  firecrawlReason?: string
+  firecrawlSkippedReason?: string
+  localUsefulAssetCount?: number
+  firecrawlUsefulAssetCount?: number
+  sitemapFound?: boolean
+  crawleePagesCrawled?: number
+}
 
 const discoveryCache = new Map<string, { result: RawDiscoveryResult; expiresAt: number }>()
 const CACHE_TTL_MS = (process.env.FIRECRAWL_DISCOVERY_CACHE_TTL_MS || '86400000') as string
@@ -174,6 +192,9 @@ export async function POST(req: NextRequest) {
 
     const fixture = testMode ? getFixture(websiteUrl) : null
 
+    const { orchestrateDiscovery, buildDiscoveredAssetsFromCandidates } =
+      await import('@/server/discoveryOrchestrator')
+
     let result: RawDiscoveryResult
     if (fixture) {
       const discoveredAssets = await buildDiscoveredAssetsFromCandidates(
@@ -236,9 +257,10 @@ export async function POST(req: NextRequest) {
       duration: result.duration,
       socialProfiles: result.socialProfiles,
     })
-  } catch (err) {
+  } catch (rawErr) {
     clearTimeout(timeoutId)
-    if (err instanceof Error && err.name === 'AbortError') {
+    const err: Error = rawErr instanceof Error ? rawErr : new Error('Unknown error')
+    if (err.name === 'AbortError') {
       logPersonalization({
         route: '/api/personalization/discover-assets',
         stage: 'request',
@@ -250,18 +272,24 @@ export async function POST(req: NextRequest) {
       })
       return NextResponse.json({ error: 'Request timed out' }, { status: 504 })
     }
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    const status = message.includes('not allowed') || message.includes('Private') || message.includes('Invalid') ? 400 : 500
+    const anyErr = rawErr as any
+    const nodeCode = anyErr && typeof anyErr.code === 'string' ? anyErr.code : undefined
+    const safeCode = nodeCode || 'PERSONALIZATION_RUNTIME_ERROR'
+    const message = String(sanitizeForLog(err.message))
+    const status = /not allowed|Private|Invalid/i.test(message) ? 400 : 500
     logPersonalization({
       route: '/api/personalization/discover-assets',
       stage: 'unhandled',
       provider: 'ORCHESTRATOR',
       httpStatus: status,
-      safeErrorCode: status >= 500 ? 'UNEXPECTED_ERROR' : 'VALIDATION_ERROR',
-      safeMessage: sanitizeErrorMessage(message),
+      safeErrorCode: safeCode,
+      safeMessage: message,
       correlationId,
       durationMs: Date.now() - startTime,
     })
-    return NextResponse.json({ error: sanitizeErrorMessage(message) }, { status })
+    return NextResponse.json(
+      { error: 'Personalization runtime error', code: safeCode, correlationId },
+      { status, headers: { 'x-correlation-id': correlationId } },
+    )
   }
 }
