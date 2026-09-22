@@ -324,7 +324,15 @@ function dataUrlToBlob(dataUrl: string): Blob | null {
     const [header, base64] = dataUrl.split(',')
     const mimeMatch = header.match(/:(.*?);/)
     const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream'
-    const binary = atob(base64)
+    const binary =
+      typeof globalThis.atob === 'function'
+        ? globalThis.atob(base64)
+        : (() => {
+            const buf = Buffer.from(base64, 'base64')
+            let str = ''
+            for (let i = 0; i < buf.length; i++) str += String.fromCharCode(buf[i])
+            return str
+          })()
     const bytes = new Uint8Array(binary.length)
     for (let i = 0; i < binary.length; i++) {
       bytes[i] = binary.charCodeAt(i)
@@ -463,7 +471,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   const [discoveredAssets, setDiscoveredAssetsState] = useState<DiscoveredAsset[]>([])
   const [discoveryStatus, setDiscoveryStatus] = useState<'idle' | 'discovering' | 'reviewing' | 'importing'>('idle')
   const [discoveryError, setDiscoveryError] = useState<string | null>(null)
-  const [importConfirmation, setImportConfirmation] = useState<{ count: number; clientName?: string } | null>(null)
+  const [importConfirmation, setImportConfirmation] = useState<{ count: number; failedCount?: number; clientName?: string } | null>(null)
   const [visionStatus, setVisionStatus] = useState<'idle' | 'analyzing' | 'complete' | 'error'>('idle')
   const [visionError, setVisionError] = useState<string | null>(null)
 
@@ -1227,6 +1235,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     // the server-side downloader.
     const remoteItems = toImport.filter((item) => !item.editedDataUrl)
     const downloadedByUrl = new Map<string, string>()
+    let partialDownloadError: string | null = null
 
     if (remoteItems.length > 0) {
       let downloadRes: Response
@@ -1245,17 +1254,34 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
       if (!downloadRes.ok) {
         const data = await downloadRes.json().catch(() => ({}))
-        setDiscoveryError(data?.error || `Download failed (HTTP ${downloadRes.status})`)
+        const status = downloadRes.status
+        if (status === 401) {
+          setDiscoveryError('Authentication required. Please sign in to continue.')
+        } else if (status === 403) {
+          setDiscoveryError('You do not have access to this feature. Contact your administrator.')
+        } else {
+          setDiscoveryError(data?.error || `Download failed (HTTP ${status})`)
+        }
         setDiscoveryStatus('reviewing')
         return
       }
 
       const downloadData = await downloadRes.json()
       const results = Array.isArray(downloadData?.results) ? downloadData.results : []
+      const failedDownloads: string[] = []
       for (const result of results) {
         if (result?.ok && result?.url && result?.dataUrl) {
           downloadedByUrl.set(result.url, result.dataUrl)
+        } else if (result?.url) {
+          failedDownloads.push(result.url)
         }
+      }
+      if (failedDownloads.length > 0 && failedDownloads.length < remoteItems.length) {
+        partialDownloadError = `${failedDownloads.length} of ${remoteItems.length} assets failed to download. ${downloadedByUrl.size} assets were imported.`
+      } else if (failedDownloads.length === remoteItems.length) {
+        setDiscoveryError('All assets failed to download. Please try again.')
+        setDiscoveryStatus('reviewing')
+        return
       }
     }
 
@@ -1281,49 +1307,73 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     }
 
     if (assetsToCreate.length === 0) {
-      setDiscoveryError('No valid images could be downloaded.')
+      setDiscoveryError(partialDownloadError || 'No valid images could be downloaded.')
       setDiscoveryStatus('reviewing')
       return
     }
 
-    // 3. Add assets to library and upload each one
+    // 3. Build asset objects before updating library so upload can reference them.
     const createdAssets: PersonalizationAsset[] = []
+    for (const { item, blob, role, isPrimary } of assetsToCreate) {
+      const asset = createAsset(blob, role, {
+        isPrimary,
+        name: `discovered_${Date.now()}`,
+        originalUrl: item.originalPreviewUrl || item.previewUrl,
+        edited: item.edited || false,
+        videoReady: item.videoReady || false,
+        hasTransparency: item.hasTransparency || false,
+        editMetadata: item.editMetadata,
+        visionAnalysis: item.visionAnalysis,
+        visionValidation: item.visionValidation,
+        sourceCategory: item.category,
+        sourceType: item.sourceType,
+        sourceDiscoveredAssetId: item.id,
+      })
+      createdAssets.push(asset)
+    }
 
+    // 3a. Add assets to library
     setAssets((prev) => {
       let next = { ...prev }
-      for (const { item, blob, role, isPrimary } of assetsToCreate) {
-        const asset = createAsset(blob, role, {
-          isPrimary,
-          name: `discovered_${Date.now()}`,
-          originalUrl: item.originalPreviewUrl || item.previewUrl,
-          edited: item.edited || false,
-          videoReady: item.videoReady || false,
-          hasTransparency: item.hasTransparency || false,
-          editMetadata: item.editMetadata,
-          visionAnalysis: item.visionAnalysis,
-          visionValidation: item.visionValidation,
-          sourceCategory: item.category,
-          sourceType: item.sourceType,
-          sourceDiscoveredAssetId: item.id,
-        })
-        createdAssets.push(asset)
+      for (const asset of createdAssets) {
         next = updateAssetInLibrary(next, asset)
       }
       return next
     })
 
     // 4. Upload each asset to get durable URLs
+    const uploadErrors: string[] = []
     for (const asset of createdAssets) {
       try {
         await uploadAsset(asset)
       } catch (e) {
-        console.error('Discovered asset upload failed', asset.id, e)
+        const message = e instanceof Error ? e.message : 'Upload failed'
+        uploadErrors.push(`${asset.name}: ${message}`)
+        setAssetUploadStatus(asset.id, 'error', message)
       }
     }
 
     setDiscoveredAssetsState([])
     setDiscoveryStatus('idle')
-    setImportConfirmation({ count: assetsToCreate.length, clientName: clientForm.businessName || clientForm.name || undefined })
+
+    const totalAttempted = createdAssets.length
+    const successCount = totalAttempted - uploadErrors.length
+    if (uploadErrors.length > 0) {
+      const summary = uploadErrors.length === totalAttempted
+        ? `All ${totalAttempted} asset(s) failed to upload.`
+        : `${uploadErrors.length} of ${totalAttempted} asset(s) failed to upload. ${successCount} succeeded.`
+      setDiscoveryError(partialDownloadError
+        ? `${partialDownloadError} ${summary}`
+        : summary)
+    } else if (partialDownloadError) {
+      setDiscoveryError(partialDownloadError)
+    }
+
+    setImportConfirmation({
+      count: successCount,
+      failedCount: uploadErrors.length,
+      clientName: clientForm.businessName || clientForm.name || undefined,
+    })
   }, [discoveredAssets, setAssets, uploadAsset, clientForm])
 
   const cancelDiscovery = useCallback(() => {
@@ -1350,7 +1400,14 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(data?.error || `Discovery failed (HTTP ${res.status})`)
+        const status = res.status
+        if (status === 401) {
+          throw new Error('Authentication required. Please sign in to continue.')
+        }
+        if (status === 403) {
+          throw new Error('You do not have access to this feature. Contact your administrator.')
+        }
+        throw new Error(data?.error || `Discovery failed (HTTP ${status})`)
       }
 
       const data = await res.json()
@@ -1416,10 +1473,22 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
         const data = await res.json().catch(() => ({}))
         if (!res.ok) {
-          throw new Error(data?.message || data?.error || `Vision analysis failed (HTTP ${res.status})`)
+          const status = res.status
+          if (status === 401) {
+            throw new Error('Authentication required. Please sign in to use SmartVideo GO Vision.')
+          }
+          if (status === 403) {
+            throw new Error('You do not have the SmartVideo GO entitlement. Contact your administrator.')
+          }
+          throw new Error(data?.message || data?.error || `Vision analysis failed (HTTP ${status})`)
         }
 
-        for (const analysis of Array.isArray(data?.analyses) ? data.analyses : []) {
+        const analyses = Array.isArray(data?.analyses) ? data.analyses : []
+        if (analyses.length === 0 && candidates.length > 0) {
+          throw new Error('Vision analysis returned no results. Please try again or check your images.')
+        }
+
+        for (const analysis of analyses) {
           if (analysis?.id) analysesById.set(analysis.id, analysis as PersonalizationVisionAnalysis)
         }
       }
@@ -1895,6 +1964,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     const result = lastResultRef.current
     const project = lastProjectRef.current
     const prompt = result.prompt || project.personalizedPrompt || project.source.originalPrompt || ''
+    const safeUrl = result.url && !result.url.startsWith('blob:') ? result.url : (project.source.sourceMedia && !project.source.sourceMedia.startsWith('blob:') ? project.source.sourceMedia : null)
 
     writeHandoff({
       version: 1,
@@ -1904,13 +1974,13 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       aspectRatio: (project.source.aspectRatio as '16:9' | '9:16' | '1:1' | null) || '1:1',
       episodeDuration: 0,
       videoUrl: null,
-      referenceImageUrl: result.url || project.source.sourceMedia || null,
+      referenceImageUrl: safeUrl,
       characterNames: project.assets.identities.map((i) => i.name).filter(Boolean),
       shots: prompt
         ? [{ scene: project.source.title || 'Personalized', prompt, duration: 0, characterNames: [] }]
         : [],
       combinedPrompt: prompt,
-      firstFrameUrl: result.url || project.source.sourceMedia || null,
+      firstFrameUrl: safeUrl,
       createdAt: new Date().toISOString(),
     })
 

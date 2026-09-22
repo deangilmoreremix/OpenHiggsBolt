@@ -334,6 +334,11 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     }
   }, [open, onClose])
 
+  useEffect(() => {
+    if (versions.length === 0) return
+    setVersionIndex((value) => Math.max(0, Math.min(versions.length - 1, value)))
+  }, [versions.length])
+
   const currentVersion = versions[versionIndex]
   const displayUrl = currentVersion?.dataUrl || asset?.imageUrl || ''
   const hasChanges = versionIndex > 0 || versions.length > 1

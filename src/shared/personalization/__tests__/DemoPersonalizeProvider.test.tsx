@@ -874,3 +874,199 @@ describe('DemoPersonalizeProvider generation flows', () => {
     expect(ctx.result.url).toBe('https://example.com/video-final.mp4')
   })
 })
+
+describe('DemoPersonalizeProvider asset import / durable upload', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.resetModules()
+    URL.createObjectURL = vi.fn(() => 'blob:http://localhost/test')
+    URL.revokeObjectURL = vi.fn()
+    ;(globalThis as any).fetch = vi.fn()
+  })
+
+  const renderProvider = async () => {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+
+    await act(async () => {
+      root.render(
+        <DemoPersonalizeProvider>
+          <TestOpener />
+        </DemoPersonalizeProvider>,
+      )
+    })
+
+    return container
+  }
+
+  const openSource = async () => {
+    await act(async () => {
+      ;(window as any).__personalizationCtx.openPersonalize({
+        source: { id: 'demo-1', title: 'Test', mediaType: 'video', originalPrompt: 'test', sourceMedia: null, poster: null, fullPrompt: 'test', shortPrompt: 'test', sourceType: 'landing-demo', sourceMetadata: {} },
+      })
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+  }
+
+  const mockDownloadResponse = (results: Array<{ url: string; ok: boolean; dataUrl?: string; error?: string }>) => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ results }),
+    } as Response)
+    return fetchSpy
+  }
+
+  it('surfaces partial download failures in discoveryError and importConfirmation', async () => {
+    const fetchSpy = mockDownloadResponse([
+      { url: 'https://example.com/a.jpg', ok: true, dataUrl: `data:image/png;base64,${Buffer.from('fake-image-a').toString('base64')}` },
+      { url: 'https://example.com/b.jpg', ok: false, error: 'Network timeout' },
+      { url: 'https://example.com/c.jpg', ok: true, dataUrl: `data:image/png;base64,${Buffer.from('fake-image-c').toString('base64')}` },
+    ])
+    const mockUploadFile = uploadFile as any
+    mockUploadFile.mockResolvedValue('https://example.com/uploaded.png')
+
+    await renderProvider()
+    await openSource()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.setDiscoveredAssets([
+        { id: 'd1', sourceUrl: 'https://example.com/a.jpg', previewUrl: 'https://example.com/a.jpg', sourceType: 'WEBSITE', category: 'logo', confidence: 90, selected: true, recommended: true, rejected: false, assignedSection: 'logo', autoAssigned: true, originalPreviewUrl: 'https://example.com/a.jpg', edited: false, videoReady: false, hasTransparency: false, editMetadata: undefined, visionAnalysis: undefined, visionValidation: undefined },
+        { id: 'd2', sourceUrl: 'https://example.com/b.jpg', previewUrl: 'https://example.com/b.jpg', sourceType: 'WEBSITE', category: 'person', confidence: 85, selected: true, recommended: true, rejected: false, assignedSection: 'person', autoAssigned: true, originalPreviewUrl: 'https://example.com/b.jpg', edited: false, videoReady: false, hasTransparency: false, editMetadata: undefined, visionAnalysis: undefined, visionValidation: undefined },
+        { id: 'd3', sourceUrl: 'https://example.com/c.jpg', previewUrl: 'https://example.com/c.jpg', sourceType: 'WEBSITE', category: 'brand', confidence: 80, selected: true, recommended: true, rejected: false, assignedSection: 'brand', autoAssigned: true, originalPreviewUrl: 'https://example.com/c.jpg', edited: false, videoReady: false, hasTransparency: false, editMetadata: undefined, visionAnalysis: undefined, visionValidation: undefined },
+      ])
+    })
+
+    let ctx = (window as any).__personalizationCtx
+    await act(async () => {
+      await ctx.importDiscoveredAssets()
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 100))
+    })
+
+    ctx = (window as any).__personalizationCtx
+    expect(ctx.discoveryError).toMatch(/1 of 3 assets failed to download/)
+    expect(ctx.importConfirmation).toBeTruthy()
+    expect(ctx.importConfirmation.count).toBe(2)
+
+    fetchSpy.mockRestore()
+  })
+
+  it('reports upload failures during import and exposes retry affordance', async () => {
+    const fetchSpy = mockDownloadResponse([
+      { url: 'https://example.com/a.jpg', ok: true, dataUrl: `data:image/png;base64,${Buffer.from('fake-image-a').toString('base64')}` },
+      { url: 'https://example.com/b.jpg', ok: true, dataUrl: `data:image/png;base64,${Buffer.from('fake-image-b').toString('base64')}` },
+    ])
+    const mockUploadFile = uploadFile as any
+    mockUploadFile
+      .mockRejectedValueOnce(new Error('Storage quota exceeded'))
+      .mockResolvedValueOnce('https://example.com/uploaded-b.png')
+
+    await renderProvider()
+    await openSource()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.setDiscoveredAssets([
+        { id: 'd1', sourceUrl: 'https://example.com/a.jpg', previewUrl: 'https://example.com/a.jpg', sourceType: 'WEBSITE', category: 'logo', confidence: 90, selected: true, recommended: true, rejected: false, assignedSection: 'logo', autoAssigned: true, originalPreviewUrl: 'https://example.com/a.jpg', edited: false, videoReady: false, hasTransparency: false, editMetadata: undefined, visionAnalysis: undefined, visionValidation: undefined },
+        { id: 'd2', sourceUrl: 'https://example.com/b.jpg', previewUrl: 'https://example.com/b.jpg', sourceType: 'WEBSITE', category: 'brand', confidence: 85, selected: true, recommended: true, rejected: false, assignedSection: 'brand', autoAssigned: true, originalPreviewUrl: 'https://example.com/b.jpg', edited: false, videoReady: false, hasTransparency: false, editMetadata: undefined, visionAnalysis: undefined, visionValidation: undefined },
+      ])
+    })
+
+    let ctx = (window as any).__personalizationCtx
+    await act(async () => {
+      await ctx.importDiscoveredAssets()
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 100))
+    })
+
+    ctx = (window as any).__personalizationCtx
+    expect(ctx.discoveryError).toMatch(/1 of 2 asset\(s\) failed to upload/)
+    expect(ctx.importConfirmation).toBeTruthy()
+    expect(ctx.importConfirmation.failedCount).toBe(1)
+    expect(ctx.importConfirmation.count).toBe(1)
+
+    const allAssets = [
+      ...ctx.assets.identities,
+      ...ctx.assets.logos,
+      ...ctx.assets.products,
+      ...ctx.assets.brandReferences,
+      ctx.assets.firstFrame,
+      ctx.assets.lastFrame,
+      ctx.assets.ctaGraphic,
+    ].filter(Boolean)
+    const failedAsset = allAssets.find((a: any) => a.uploadStatus === 'error')
+    expect(failedAsset).toBeTruthy()
+    expect(failedAsset.uploadError).toBeTruthy()
+
+    fetchSpy.mockRestore()
+  })
+
+  it('shows actionable message for 401 auth error on download-image', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({}),
+    } as Response)
+
+    await renderProvider()
+    await openSource()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.setDiscoveredAssets([
+        { id: 'd1', sourceUrl: 'https://example.com/a.jpg', previewUrl: 'https://example.com/a.jpg', sourceType: 'WEBSITE', category: 'logo', confidence: 90, selected: true, recommended: true, rejected: false, assignedSection: 'logo', autoAssigned: true, originalPreviewUrl: 'https://example.com/a.jpg', edited: false, videoReady: false, hasTransparency: false, editMetadata: undefined, visionAnalysis: undefined, visionValidation: undefined },
+      ])
+    })
+
+    let ctx = (window as any).__personalizationCtx
+    await act(async () => {
+      await ctx.importDiscoveredAssets()
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    ctx = (window as any).__personalizationCtx
+    expect(ctx.discoveryError).toMatch(/Authentication required/)
+
+    fetchSpy.mockRestore()
+  })
+
+  it('shows actionable message for 403 entitlement error on download-image', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: async () => ({}),
+    } as Response)
+
+    await renderProvider()
+    await openSource()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.setDiscoveredAssets([
+        { id: 'd1', sourceUrl: 'https://example.com/a.jpg', previewUrl: 'https://example.com/a.jpg', sourceType: 'WEBSITE', category: 'logo', confidence: 90, selected: true, recommended: true, rejected: false, assignedSection: 'logo', autoAssigned: true, originalPreviewUrl: 'https://example.com/a.jpg', edited: false, videoReady: false, hasTransparency: false, editMetadata: undefined, visionAnalysis: undefined, visionValidation: undefined },
+      ])
+    })
+
+    let ctx = (window as any).__personalizationCtx
+    await act(async () => {
+      await ctx.importDiscoveredAssets()
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    ctx = (window as any).__personalizationCtx
+    expect(ctx.discoveryError).toMatch(/Contact your administrator/)
+
+    fetchSpy.mockRestore()
+  })
+})

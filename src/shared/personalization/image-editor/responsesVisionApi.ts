@@ -142,6 +142,22 @@ export async function responsesSmartEditStream(
   let buffer = ''
   let finalResponse: any = null
 
+  const readWithTimeout = async (): Promise<{ value?: Uint8Array; done: boolean }> => {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('SmartVideo GO Smart Edit streaming timed out after 90 seconds')), 90000)
+    })
+    try {
+      return await Promise.race([reader.read(), timeoutPromise])
+    } catch (err) {
+      try {
+        await reader.cancel()
+      } catch {
+        // ignore cancel errors
+      }
+      throw err
+    }
+  }
+
   const handleEvent = (raw: string) => {
     const dataLines = raw
       .split(/\r?\n/)
@@ -181,7 +197,7 @@ export async function responsesSmartEditStream(
   }
 
   while (true) {
-    const { value, done } = await reader.read()
+    const { value, done } = await readWithTimeout()
     buffer += decoder.decode(value || new Uint8Array(), { stream: !done })
     const events = buffer.split(/\r?\n\r?\n/)
     buffer = events.pop() || ''

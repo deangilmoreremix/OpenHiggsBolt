@@ -9,7 +9,7 @@
 | Severity | Found | Fixed | Open |
 |----------|-------|-------|------|
 | P0 | 0 | 0 | 0 |
-| P1 | 37 | 11 | 26 |
+| P1 | 37 | 20 | 17 |
 | P2 | 33 | 3 | 30 |
 | P3 | 0 | 0 | 0 |
 
@@ -32,6 +32,15 @@
 | 5.1 | First Frame / Last Frame / CTA | First frame upload accepted multiple files but only processed first | Added `multiple={false}` to UploadZone | PASS | e5bf5eab |
 | 5.2 | First Frame / Last Frame / CTA | `setFirstFrameFile(null)` didn't revoke old blob URL | Call `revokeAssetUrl` before clearing | PASS | e5bf5eab |
 | 7.4 | Saved Clients / Library | "Set Primary" button visible but non-functional for products/brand references | Conditionally render button only for identities/logos tabs | PASS | e5bf5eab |
+| 6.1 | Asset Import / Durable Upload | Partial download failures silently skipped | Track download failures, show partial error/confirmation summary | PASS | audit/personalization-full-release |
+| 6.2 | Asset Import / Durable Upload | Failed uploads leave asset unusable | Set uploadStatus to error, expose retry via setAssetUploadStatus | PASS | audit/personalization-full-release |
+| 6.3 | Asset Import / Durable Upload | 401 auth errors shown as generic failures | Detect 401/403 on download-image and show actionable message | PASS | audit/personalization-full-release |
+| 10.2 | GO Vision Integration | Empty analyses array treated as success | Check empty array after batch, throw clear error | PASS | audit/personalization-full-release |
+| 11.2 | Smart Edit Streaming | No timeout in reader loop | Add 90s timeout with reader.cancel() in responsesVisionApi | PASS | audit/personalization-full-release |
+| 12.3 | Version History | versionIndex out of bounds causes editor to return null | Clamp versionIndex in useEffect when versions length changes | PASS | audit/personalization-full-release |
+| 15.1 | Generation Handoff | Blob URLs can leak into handoff payload | Filter blob URLs before writeHandoff in editInImageStudio/editInVideoStudio | PASS | audit/personalization-full-release |
+| 17.3 | Auth / Route / Type Contracts | 403 entitlement error shown as generic failure | Detect 403 on discover/image-analyze and show specific message | PASS | audit/personalization-full-release |
+| 17.6 | Auth / Route / Type Contracts | 401 auth error shown as generic failure | Detect 401 on discover/image-analyze and show specific message | PASS | audit/personalization-full-release |
 
 ### OPEN (Remaining P1)
 
@@ -43,9 +52,6 @@
 | 3.1 | Asset Review / Category | Category select lacks keyboard handlers | Screen reader users can't navigate dropdown | Add onKeyDown and aria improvements | A11y |
 | 4.2 | Manual Uploads / Person | No client-side file type validation | Non-image files reach server | Add client-side type check | Unit |
 | 4.3 | Manual Uploads / Person | Upload limit check after files already start uploading | Race condition on upload start | Move limit check before upload begins | Unit |
-| 6.1 | Asset Import / Durable Upload | Partial download failures silently skipped | User doesn't know which assets failed | Track per-asset errors, show partial banner | E2E |
-| 6.2 | Asset Import / Durable Upload | Failed uploads leave asset in local state without retry | Asset unusable for generation | Set uploadStatus to error, add retry button | E2E |
-| 6.3 | Asset Import / Durable Upload | 401 auth errors shown as generic failures | User doesn't know to re-authenticate | Detect 401, show re-auth message | Unit |
 | 7.1 | Saved Clients / Library | deleteSavedClient race condition in Strict Mode | Client record may not be deleted | Use functional state update | Unit |
 | 7.3 | Saved Clients / Library | Redundant sync effect causes double localStorage writes | Performance concern | Remove sync effect | Unit |
 | 8.2 | Image Editor / Mask | Mask toolbar buttons lack type="button" | Latent form submission risk | Add type="button" | A11y |
@@ -53,18 +59,13 @@
 | 9.1 | Direct AI Edit | No per-operation loading state | Generic busy label only | Add per-operation progress indicator | E2E |
 | 9.2 | Direct AI Edit | No progress indicator during Smart Edit streaming wait | Blank canvas UX | Add loading skeleton | E2E |
 | 10.1 | GO Vision Integration | Invalid vision model default causes silent failures | All vision calls fail | Add startup model validation | Unit |
-| 10.2 | GO Vision Integration | Empty analyses array treated as success | User sees "no analysis" without error | Check empty array, throw clear error | Unit |
 | 11.1 | Smart Edit Streaming | Stream parsing loses data if chunk doesn't end with delimiter | Final image data lost | Fix stream parsing for partial chunks | Unit |
-| 11.2 | Smart Edit Streaming | No timeout in reader loop | Stream can hang indefinitely | Add 90-second timeout | Unit |
 | 13.1 | Make Video Ready Batch | Callback dependency on batchVideoReady.running | Stale closure risk | Use ref instead of dependency | Unit |
 | 13.2 | Make Video Ready Batch | Empty validation error message | "Vision QA needs review: " | Provide fallback error message | Unit |
 | 14.1 | Prompt Personalization | Fallback returns original prompt unchanged without error | User thinks AI personalization worked | Throw error when fallback is no-op | Unit |
 | 15.1 | Generation Handoff | writeHandoff + router.push race in Strict Mode | Target studio reads stale handoff | Verify handoff before nav or add polling | E2E |
 | 16.1 | Error Recovery | Error view retry re-runs entire generation | Can't retry just branding | Differentiate error types, show appropriate retry | E2E |
 | 16.2 | Error Recovery | Failed uploads have no retry button | User must remove and re-upload | Add retry button in error view | E2E |
-| 17.1 | Auth / Route / Type Contracts | SupabaseSharedMediaEntry.clientId type mismatch | Type confusion | Align type with DB column naming | Typecheck |
-| 17.3 | Auth / Route / Type Contracts | 403 entitlement error shown as generic failure | User doesn't know entitlement required | Detect 403, show specific message | E2E |
-| 17.6 | Auth / Route / Type Contracts | 401 auth error shown as generic failure | User doesn't know to authenticate | Detect 401, show specific message | E2E |
 
 ---
 
