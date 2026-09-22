@@ -1188,6 +1188,9 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       logo: 'logo',
       products: 'product_reference',
       brand: 'brand_reference',
+      firstFrame: 'first_frame',
+      lastFrame: 'last_frame',
+      ctaGraphic: 'cta_graphic',
     }
 
     const categoryRoleMap: Record<string, PersonalizationAsset['role']> = {
