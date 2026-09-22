@@ -3,8 +3,10 @@ import {
   ASSET_RECIPES,
   IMAGE_EDIT_OPERATIONS,
   getAssetRecipe,
+  getSourceAssetRecipe,
   getOperationsForAsset,
   resolveEditorAssetKind,
+  resolveEditorRecipeKind,
 } from '../image-editor/imageEditRegistry'
 import type { DiscoveredAssetCategory } from '../types'
 
@@ -38,6 +40,18 @@ describe('SmartVideo GO image edit registry', () => {
     expect(resolveEditorAssetKind(undefined, 'cta_graphic')).toBe('cta_graphic')
     expect(resolveEditorAssetKind(undefined, 'background_reference')).toBe('background_reference')
     expect(resolveEditorAssetKind(undefined, 'saved_reference')).toBe('saved_reference')
+  })
+
+  it('keeps source semantics while explicit video destinations drive the recipe', () => {
+    expect(resolveEditorAssetKind('storefront', 'first_frame')).toBe('storefront')
+    expect(resolveEditorRecipeKind('storefront', 'first_frame')).toBe('first_frame')
+    expect(getSourceAssetRecipe('storefront', 'first_frame').kind).toBe('storefront')
+    expect(getAssetRecipe('storefront', 'first_frame').kind).toBe('first_frame')
+
+    expect(resolveEditorAssetKind('product', 'cta_graphic')).toBe('product')
+    expect(resolveEditorRecipeKind('product', 'cta_graphic')).toBe('cta_graphic')
+    expect(getSourceAssetRecipe('product', 'cta_graphic').preserve).toContain('packaging')
+    expect(getAssetRecipe('product', 'cta_graphic').makeVideoReadySteps).toContain('cta_prep')
   })
 
   it('has recipes for all editor asset kinds', () => {
