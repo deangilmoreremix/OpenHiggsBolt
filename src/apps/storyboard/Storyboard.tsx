@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { StoryboardProvider, useStoryboard } from './StoryboardContext'
+import { SocialPublishProvider } from '@/components/SocialPublishProvider'
 import StoryboardPlanner from './pages/StoryboardPlanner'
 import ShotEditor from './pages/ShotEditor'
 import SceneAnalysis from './pages/SceneAnalysis'
@@ -31,12 +32,14 @@ export default function StoryboardApp({ apiKey, templateData }: { apiKey?: strin
   }, [apiKey])
 
   return (
-    <StoryboardProvider>
+    <SocialPublishProvider apiKey={apiKey ?? null}>
+      <StoryboardProvider>
       <Routes>
         <Route path="/" element={<StoryboardPlannerWithTemplate templateData={templateData} />} />
         <Route path="/shots/:sceneId" element={<ShotEditor />} />
         <Route path="/analysis/:sceneId" element={<SceneAnalysis />} />
       </Routes>
     </StoryboardProvider>
+    </SocialPublishProvider>
   )
 }
