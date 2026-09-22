@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import StandaloneShell from '@/components/StandaloneShell';
 import { PRODUCT_NAME, NAV_ITEMS, LOGOS, TESTIMONIALS, PRICING, FAQS } from './landingData';
 import PersonalizedHeroHeading from './PersonalizedHeroHeading';
+import HeroSection from './HeroSection';
 import { DemoPersonalizeProvider } from '@/shared/personalization';
 
 const SmartVideoShowcase = dynamic(() => import('./SmartVideoShowcase'), {
@@ -120,35 +121,7 @@ export default function LandingPage({ FullStudio, AuthControls }) {
       </header>
 
       {/* ── Hero ── */}
-      <section className="relative mx-auto max-w-7xl px-6 pb-20 pt-20 md:pb-32 md:pt-28">
-        <div className="landing-orb" style={{left:'-6rem',top:'6rem',height:'18rem',width:'18rem',background:'#22d3ee'}} aria-hidden="true" />
-        <div className="landing-orb" style={{right:0,top:'10rem',height:'24rem',width:'24rem',background:'#a855f7'}} aria-hidden="true" />
-        <div className="mx-auto max-w-4xl text-center">
-          <p className="mb-5 inline-flex rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-cyan-200">
-            Every output is personalized to your brand and style
-          </p>
-          <PersonalizedHeroHeading />
-          <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-white/65 md:text-xl">
-            Tell us your brand once — your colors, fonts, tone, audience, and reference work — and every model, preset, and workflow adapts to it. Generate on-brand video, images, UGC ads, scripts, and assets in your voice, not a generic one.
-          </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <a href="#studio" className="w-full rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 px-6 py-3 text-sm font-bold text-black shadow-lg transition hover:scale-[1.02] sm:w-auto">
-              Set up your brand
-            </a>
-            <a href="#studio" className="w-full rounded-full border border-white/10 bg-white/[0.04] px-6 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/[0.08] sm:w-auto">
-              Launch full studio
-            </a>
-          </div>
-          <div className="mt-12 grid grid-cols-3 gap-3 text-center text-white/60">
-            {[['20+','studio apps'],['200+','models'],['0','demo API key required']].map(([value,label]) => (
-              <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="text-2xl font-black text-white">{value}</div>
-                <div className="mt-1 text-xs uppercase tracking-wider">{label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <HeroSection />
 
       {/* ── Social proof strip ── */}
       <section className="border-y border-white/10 bg-white/[0.02]">

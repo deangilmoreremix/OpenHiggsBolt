@@ -1,37 +1,38 @@
 'use client';
 
-import { useUser } from '@clerk/nextjs';
+import AnimatedHeadline from './AnimatedHeadline';
+import {
+  HERO_ANIMATED_CREATION_TYPES,
+  HERO_CREATION_PHRASE_INTERVAL_MS,
+  HERO_PHRASE_TRANSITION_MS,
+} from './heroConstants';
 
-/**
- * PersonalizedHeroHeading
- *
- * Renders the hero <h1> with dynamic personalization when the user is
- * signed in: greets them by first name and reinforces that the studio is
- * already tuned to their brand. Falls back to the static headline for
- * signed-out visitors so the SSR HTML and pre-hydration state still read
- * cleanly.
- */
 const isClerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
 export default function PersonalizedHeroHeading() {
+  const shared = (
+    <h1 className="landing-gradient-text text-5xl font-black tracking-tight md:text-7xl lg:text-8xl">
+      Turn Any Local Business Into
+      <br className="hidden sm:inline" />
+      <span className="mt-2 inline-block">
+        <AnimatedHeadline
+          phrases={HERO_ANIMATED_CREATION_TYPES}
+          interval={HERO_CREATION_PHRASE_INTERVAL_MS}
+          transition={HERO_PHRASE_TRANSITION_MS}
+          className="text-5xl md:text-7xl lg:text-8xl"
+        />
+      </span>
+    </h1>
+  );
+
   if (!isClerkEnabled) {
-    return (
-      <h1 className="landing-gradient-text text-5xl font-black tracking-tight md:text-7xl lg:text-8xl">
-        A creative studio that learns the way you create.
-      </h1>
-    );
+    return shared;
   }
 
   const { isSignedIn, isLoaded, user } = useUser();
 
-  // Static headline shown to signed-out visitors (and during SSR / before
-  // Clerk finishes loading) — keeps the page meaningful without auth.
   if (!isLoaded || !isSignedIn) {
-    return (
-      <h1 className="landing-gradient-text text-5xl font-black tracking-tight md:text-7xl lg:text-8xl">
-        A creative studio that learns the way you create.
-      </h1>
-    );
+    return shared;
   }
 
   const firstName =
@@ -41,7 +42,16 @@ export default function PersonalizedHeroHeading() {
 
   return (
     <h1 className="landing-gradient-text text-5xl font-black tracking-tight md:text-7xl lg:text-8xl">
-      Welcome back, {firstName} — your studio already knows your style.
+      Turn Any Local Business Into
+      <br className="hidden sm:inline" />
+      <span className="mt-2 inline-block">
+        <AnimatedHeadline
+          phrases={HERO_ANIMATED_CREATION_TYPES}
+          interval={HERO_CREATION_PHRASE_INTERVAL_MS}
+          transition={HERO_PHRASE_TRANSITION_MS}
+          className="text-5xl md:text-7xl lg:text-8xl"
+        />
+      </span>
     </h1>
   );
 }
