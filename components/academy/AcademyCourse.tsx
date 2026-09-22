@@ -8,7 +8,7 @@ import { academyAssets, type AcademyAsset } from '@/data/academyAssets';
 import { academyTemplates } from '@/data/academyTemplates';
 import type { AcademyTrack } from '@/lib/academyLessons';
 import manifest from '@/data/academyMediaManifest.json';
-import studioKb from '@/data/studioKnowledgeBase.json';
+import studioKnowledgeBase from '@/data/studioKnowledgeBase.json';
 import { panels, buttons, semantic, appWrapper, optionStyle, colors } from '@/shared/styles/designTokens';
 
 /* ------------------------------------------------------------------ */
@@ -17,22 +17,137 @@ import { panels, buttons, semantic, appWrapper, optionStyle, colors } from '@/sh
 
 type Step = 'learn' | 'see' | 'create';
 
-type StudioKb = {
+type StudioTab =
+  | 'overview'
+  | 'getting-started'
+  | 'inputs-models'
+  | 'best-practices'
+  | 'use-cases'
+  | 'troubleshooting'
+  | 'business-related'
+  | 'glossary'
+  | 'academy-guidance';
+
+interface Studio {
   id: string;
   name: string;
   route: string;
   description: string;
+  shortDescription: string;
   keyFeatures: string[];
-  targetCustomers: string[];
-  contentTypes: string[];
   howToUse: string;
-  bestPractices: string[];
-  useCases: { title: string; description: string; steps: string[]; expectedOutput: string; businessImpact: string }[];
-  glossary: Record<string, string>;
-  academyGuidance: { resource: string; whatYouLearn: string }[];
-};
+  whenToUse?: string[];
+  whenToUseAnother?: string[];
+  bestFor?: string;
+  featureExplanations?: Array<{
+    feature: string;
+    explanation: string;
+    whyToUse: string;
+    inputRequired: string;
+    restrictions: string;
+  }>;
+  inputDetails?: Array<{
+    name: string;
+    description: string;
+    required: boolean;
+    whenToUse: string;
+    restrictions: string;
+  }>;
+  modeExplanations?: Array<{
+    mode: string;
+    description: string;
+    acronymExpanded: string;
+    useCase: string;
+  }>;
+  modelExplanations?: string;
+  advancedFeatureExplanations?: Array<{
+    feature: string;
+    explanation: string;
+    useCase: string;
+    restrictions: string;
+  }>;
+  outputDetails?: Array<{
+    outputType: string;
+    description: string;
+    postGenerationActions: string[];
+  }>;
+  exampleWorkflows?: Array<{
+    title: string;
+    steps: string[];
+  }>;
+  tips?: string[];
+  commonProblems?: Array<{
+    problem: string;
+    whyItHappens: string;
+    howToFix: string;
+  }>;
+  troubleshootingSteps?: Array<{
+    issue: string;
+    steps: string[];
+  }>;
+  limitationDetails?: Array<{
+    limitation: string;
+    impact: string;
+    workaround: string;
+  }>;
+  relatedStudioGuidance?: Array<{
+    studio: string;
+    relationship: string;
+    whenToMove: string;
+    why: string;
+  }>;
+  faqs?: Array<{
+    question: string;
+    answer: string;
+  }>;
+  targetCustomers?: string[];
+  contentTypes?: string[];
+  businessValue?: string;
+  competitivePositioning?: string;
+  gettingStarted?: string[];
+  bestPractices?: string[];
+  useCases?: Array<{
+    title: string;
+    description: string;
+    steps: string[];
+    expectedOutput: string;
+    businessImpact: string;
+  }>;
+  glossary?: Record<string, string>;
+  academyGuidance?: Array<{
+    resource: string;
+    whatYouLearn: string;
+  }>;
+  inputs?: string[];
+  requiredInputs?: string[];
+  optionalInputs?: string[];
+  generationModes?: string[];
+  modelCapabilities?: string;
+  advancedFeatures?: string[];
+  outputs?: string[];
+  limitations?: string[];
+  troubleshooting?: string[];
+  relatedStudios?: string[];
+  howToSteps?: string[];
+}
 
-const studios = studioKb.studios as unknown as StudioKb[];
+interface StudioKnowledgeBase {
+  studios: Studio[];
+}
+
+const STUDIOS: Studio[] = (studioKnowledgeBase as any as StudioKnowledgeBase).studios;
+
+const STUDIO_TABS: { id: StudioTab; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'getting-started', label: 'Getting Started' },
+  { id: 'inputs-models', label: 'Inputs & Models' },
+  { id: 'best-practices', label: 'Best Practices' },
+  { id: 'use-cases', label: 'Use Cases' },
+  { id: 'troubleshooting', label: 'Troubleshooting' },
+  { id: 'business-related', label: 'Business & Related' },
+  { id: 'glossary', label: 'Glossary' },
+  { id: 'academy-guidance', label: 'Academy Guidance' },
+];
 
 /* ------------------------------------------------------------------ */
 /*  Step meta                                                          */
@@ -327,15 +442,6 @@ function LearningPathsView({ tracks }: { tracks: AcademyTrack[] }) {
           </div>
         )}
       </main>
-
-      {modalTemplate && (
-        <TemplateModal
-          track={activeTrack.slug}
-          slug={modalTemplate.slug}
-          title={modalTemplate.title}
-          onClose={() => setModalTemplate(null)}
-        />
-      )}
     </div>
   );
 }
@@ -344,58 +450,30 @@ function LearningPathsView({ tracks }: { tracks: AcademyTrack[] }) {
 /*  Sub-component: Studio Reference View                              */
 /* ------------------------------------------------------------------ */
 
-type DetailTab =
-  | 'overview'
-  | 'targetCustomers'
-  | 'contentTypes'
-  | 'howToUse'
-  | 'bestPractices'
-  | 'useCases'
-  | 'glossary'
-  | 'academyGuidance';
-
-const DETAIL_TABS: { id: DetailTab; label: string }[] = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'targetCustomers', label: 'Target Customers' },
-  { id: 'contentTypes', label: 'Content Types' },
-  { id: 'howToUse', label: 'How to Use' },
-  { id: 'bestPractices', label: 'Best Practices' },
-  { id: 'useCases', label: 'Use Cases' },
-  { id: 'glossary', label: 'Glossary' },
-  { id: 'academyGuidance', label: 'Academy Guidance' },
-];
-
-function StudioCard({ studio, onClick }: { studio: StudioKb; onClick: () => void }) {
+function StudioCard({ studio, onClick }: { studio: Studio; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="w-full rounded-2xl p-5 text-left transition-colors hover:border-[#22d3ee]/40"
+      className="w-full rounded-2xl p-5 text-left transition-all hover:border-[#22d3ee]/30"
       style={panels.card}
     >
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="text-sm font-bold text-white">{studio.name}</h3>
-        <span
-          className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold"
-          style={{ background: semantic.activeAccent, color: colors.primary, border: '1px solid rgba(34,211,238,0.25)' }}
-        >
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <h3 className="text-sm font-extrabold text-white">{studio.name}</h3>
+        <span className="flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: 'rgba(34,211,238,0.15)', color: colors.primary }}>
           {studio.keyFeatures.length} features
         </span>
       </div>
-      <p className="mt-2 line-clamp-2 text-xs leading-relaxed" style={{ color: semantic.textSecondary }}>
-        {studio.description}
+      <p className="mb-3 text-xs leading-relaxed line-clamp-3" style={{ color: semantic.textSecondary }}>
+        {studio.shortDescription}
       </p>
-      <div className="mt-3 flex flex-wrap gap-1">
-        {studio.keyFeatures.slice(0, 3).map((f) => (
-          <span
-            key={f}
-            className="rounded-md px-2 py-0.5 text-[10px]"
-            style={{ background: 'rgba(255,255,255,0.05)', color: semantic.textSecondary, border: '1px solid var(--border-color)' }}
-          >
+      <div className="flex flex-wrap gap-1.5">
+        {studio.keyFeatures.slice(0, 3).map((f, i) => (
+          <span key={i} className="rounded-md px-2 py-0.5 text-[10px] font-semibold" style={{ background: 'rgba(255,255,255,0.05)', color: semantic.textSecondary }}>
             {f}
           </span>
         ))}
         {studio.keyFeatures.length > 3 && (
-          <span className="px-2 py-0.5 text-[10px]" style={{ color: semantic.textMuted }}>
+          <span className="rounded-md px-2 py-0.5 text-[10px] font-semibold" style={{ background: 'rgba(255,255,255,0.05)', color: semantic.textMuted }}>
             +{studio.keyFeatures.length - 3} more
           </span>
         )}
@@ -404,264 +482,466 @@ function StudioCard({ studio, onClick }: { studio: StudioKb; onClick: () => void
   );
 }
 
-function StudioDetailPanel({ studio, onClose }: { studio: StudioKb; onClose: () => void }) {
-  const [tab, setTab] = React.useState<DetailTab>('overview');
+function StudioDetailPanel({ studio, onClose }: { studio: Studio; onClose: () => void }) {
+  const [activeTab, setActiveTab] = React.useState<StudioTab>('overview');
 
-  const sections: { id: DetailTab; label: string; render: () => React.ReactNode }[] = [
-    {
-      id: 'overview',
-      label: 'Overview',
-      render: () => (
-        <div className="space-y-4">
-          <p className="text-sm leading-relaxed" style={{ color: semantic.textSecondary }}>{studio.description}</p>
-          <div>
-            <h4 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Key Features</h4>
-            <ul className="space-y-1.5">
-              {studio.keyFeatures.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-xs" style={{ color: semantic.textSecondary }}>
-                  <span style={{ color: colors.primary }}>›</span>
-                  {f}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <h4 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>How to Use</h4>
-            <p className="text-xs leading-relaxed" style={{ color: semantic.textSecondary }}>{studio.howToUse}</p>
-          </div>
+  const renderField = (label: string, value: React.ReactNode) => (
+    <div className="mb-4">
+      <h4 className="mb-1 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>{label}</h4>
+      <div className="text-sm leading-relaxed" style={{ color: semantic.textSecondary }}>{value}</div>
+    </div>
+  );
+
+  const renderList = (items: string[] = []) => (
+    <ul className="space-y-1.5">
+      {items.map((item, i) => (
+        <li key={i} className="flex items-start gap-2 text-sm" style={{ color: semantic.textSecondary }}>
+          <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: colors.primary }} />
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+
+  const renderDict = (obj: Record<string, string> = {}) => (
+    <div className="space-y-2">
+      {Object.entries(obj).map(([key, val]) => (
+        <div key={key} className="rounded-lg p-3" style={panels.card}>
+          <span className="block text-xs font-bold" style={{ color: colors.primary }}>{key}</span>
+          <span className="mt-1 block text-sm" style={{ color: semantic.textSecondary }}>{val}</span>
         </div>
-      ),
-    },
-    {
-      id: 'targetCustomers',
-      label: 'Target Customers',
-      render: () => (
-        <div className="flex flex-wrap gap-2">
-          {studio.targetCustomers.map((c) => (
-            <span
-              key={c}
-              className="rounded-lg px-3 py-1.5 text-xs"
-              style={{ background: 'rgba(255,255,255,0.05)', color: semantic.textSecondary, border: '1px solid var(--border-color)' }}
-            >
-              {c}
-            </span>
-          ))}
-        </div>
-      ),
-    },
-    {
-      id: 'contentTypes',
-      label: 'Content Types',
-      render: () => (
-        <div className="flex flex-wrap gap-2">
-          {studio.contentTypes.map((c) => (
-            <span
-              key={c}
-              className="rounded-lg px-3 py-1.5 text-xs"
-              style={{ background: 'rgba(255,255,255,0.05)', color: semantic.textSecondary, border: '1px solid var(--border-color)' }}
-            >
-              {c}
-            </span>
-          ))}
-        </div>
-      ),
-    },
-    {
-      id: 'howToUse',
-      label: 'How to Use',
-      render: () => (
-        <div className="space-y-4">
-          <p className="text-sm leading-relaxed" style={{ color: semantic.textSecondary }}>{studio.howToUse}</p>
-        </div>
-      ),
-    },
-    {
-      id: 'bestPractices',
-      label: 'Best Practices',
-      render: () => (
-        <ul className="space-y-2">
-          {studio.bestPractices.map((bp) => (
-            <li key={bp} className="flex items-start gap-2 text-xs" style={{ color: semantic.textSecondary }}>
-              <span className="mt-0.5 shrink-0" style={{ color: colors.primary }}>✓</span>
-              {bp}
-            </li>
-          ))}
-        </ul>
-      ),
-    },
-    {
-      id: 'useCases',
-      label: 'Use Cases',
-      render: () => (
-        <div className="space-y-5">
-          {studio.useCases.map((uc) => (
-            <div key={uc.title} className="rounded-xl p-4" style={{ ...panels.card, background: 'var(--glass-bg)' }}>
-              <h4 className="text-sm font-bold text-white">{uc.title}</h4>
-              <p className="mt-1 text-xs leading-relaxed" style={{ color: semantic.textSecondary }}>{uc.description}</p>
-              <ol className="mt-2 list-decimal space-y-1 pl-4">
-                {uc.steps.map((s, i) => (
-                  <li key={i} className="text-xs" style={{ color: semantic.textSecondary }}>{s}</li>
-                ))}
-              </ol>
-              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <div className="rounded-lg p-2" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                  <span className="text-[10px] font-bold uppercase" style={{ color: semantic.textLabel }}>Expected Output</span>
-                  <p className="mt-0.5 text-[11px]" style={{ color: semantic.textSecondary }}>{uc.expectedOutput}</p>
+      ))}
+    </div>
+  );
+
+  const renderArrayObjects = (items: Array<Record<string, any>> = [], titleKey?: string) => (
+    <div className="space-y-3">
+      {items.map((item, i) => (
+        <div key={i} className="rounded-xl p-4" style={{ ...panels.card, background: 'rgba(255,255,255,0.02)' }}>
+          {titleKey && item[titleKey] && (
+            <h4 className="mb-2 text-sm font-bold text-white">{item[titleKey]}</h4>
+          )}
+          {Object.entries(item).map(([key, val]) => {
+            if (titleKey && key === titleKey) return null;
+            if (Array.isArray(val)) {
+              return (
+                <div key={key} className="mb-2">
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide" style={{ color: semantic.textLabel }}>{key}</span>
+                  <ul className="mt-1 space-y-1">
+                    {(val as string[]).map((v, j) => (
+                      <li key={j} className="flex items-start gap-2 text-sm" style={{ color: semantic.textSecondary }}>
+                        <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: colors.primary }} />
+                        <span>{v}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <div className="rounded-lg p-2" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                  <span className="text-[10px] font-bold uppercase" style={{ color: semantic.textLabel }}>Business Impact</span>
-                  <p className="mt-0.5 text-[11px]" style={{ color: semantic.textSecondary }}>{uc.businessImpact}</p>
+              );
+            }
+            if (typeof val === 'object' && val !== null) {
+              return (
+                <div key={key} className="mb-2">
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide" style={{ color: semantic.textLabel }}>{key}</span>
+                  <div className="mt-1 rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                    {Object.entries(val).map(([k, v]) => (
+                      <div key={k} className="mb-1">
+                        <span className="text-xs font-bold" style={{ color: colors.primary }}>{k}: </span>
+                        <span className="text-sm" style={{ color: semantic.textSecondary }}>{String(v)}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+              );
+            }
+            return (
+              <div key={key} className="mb-1">
+                <span className="text-xs font-bold" style={{ color: colors.primary }}>{key}: </span>
+                <span className="text-sm" style={{ color: semantic.textSecondary }}>{String(val)}</span>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
-      ),
-    },
-    {
-      id: 'glossary',
-      label: 'Glossary',
-      render: () => (
-        <dl className="space-y-3">
-          {Object.entries(studio.glossary).map(([term, def]) => (
-            <div key={term}>
-              <dt className="text-xs font-bold" style={{ color: colors.primary }}>{term}</dt>
-              <dd className="mt-0.5 text-xs leading-relaxed" style={{ color: semantic.textSecondary }}>{def}</dd>
-            </div>
-          ))}
-        </dl>
-      ),
-    },
-    {
-      id: 'academyGuidance',
-      label: 'Academy Guidance',
-      render: () => (
-        <div className="space-y-3">
-          {studio.academyGuidance.map((g) => (
-            <div key={g.resource} className="rounded-xl p-4" style={{ ...panels.card, background: 'rgba(34,211,238,0.05)', borderColor: 'rgba(34,211,238,0.15)' }}>
-              <h4 className="text-xs font-bold" style={{ color: colors.primary }}>{g.resource}</h4>
-              <p className="mt-1 text-xs leading-relaxed" style={{ color: semantic.textSecondary }}>{g.whatYouLearn}</p>
-            </div>
-          ))}
-        </div>
-      ),
-    },
-  ];
+      ))}
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 z-[80] flex items-start justify-center bg-black/80 p-4 pt-8 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl"
+        className="max-h-[85vh] w-full max-w-4xl overflow-auto rounded-2xl"
         style={panels.card}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="shrink-0 border-b border-white/10 p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-extrabold text-white">{studio.name}</h2>
-              <p className="mt-1 text-xs" style={{ color: semantic.textSecondary }}>{studio.description}</p>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="shrink-0 rounded-md px-2 py-1 text-xs hover:bg-white/10"
-              style={buttons.ghost}
-            >
-              Close
-            </button>
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 p-5" style={{ background: 'var(--bg-card)' }}>
+          <div>
+            <h2 className="text-lg font-extrabold text-white">{studio.name}</h2>
+            <p className="mt-1 text-xs" style={{ color: semantic.textSecondary }}>{studio.shortDescription}</p>
           </div>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {studio.keyFeatures.slice(0, 5).map((f) => (
-              <span
-                key={f}
-                className="rounded-full px-2.5 py-1 text-[10px] font-semibold"
-                style={{ background: semantic.activeAccent, color: colors.primary }}
-              >
-                {f}
-              </span>
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md px-3 py-1.5 text-xs hover:bg-white/10"
+            style={buttons.ghost}
+          >
+            Close
+          </button>
         </div>
 
         {/* Tabs */}
-        <div className="shrink-0 overflow-x-auto border-b border-white/10">
-          <div className="flex gap-0.5 px-4 pt-2">
-            {DETAIL_TABS.map((t) => (
+        <div className="border-b border-white/10 px-5 pt-3">
+          <div className="flex gap-1 overflow-x-auto">
+            {STUDIO_TABS.map((tab) => (
               <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={cx(
-                  'whitespace-nowrap rounded-t-lg px-3 py-2 text-xs font-semibold transition-colors',
-                )}
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition-colors"
                 style={
-                  tab === t.id
-                    ? { background: semantic.activeAccent, color: colors.primary, borderBottom: '2px solid var(--color-primary)' }
+                  activeTab === tab.id
+                    ? { background: semantic.activeAccent, color: colors.primary }
                     : { color: semantic.textMuted }
                 }
               >
-                {t.label}
+                {tab.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5">
-          {sections.find((s) => s.id === tab)?.render()}
+        {/* Tab Content */}
+        <div className="p-5">
+          {activeTab === 'overview' && (
+            <div>
+              {renderField('Description', <p className="whitespace-pre-line">{studio.description}</p>)}
+              {studio.keyFeatures?.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Key Features</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {studio.keyFeatures.map((f, i) => (
+                      <Pill key={i} tone="primary">{f}</Pill>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {renderField('How to Use', <p className="whitespace-pre-line">{studio.howToUse}</p>)}
+              {studio.whenToUse && studio.whenToUse.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>When to Use</h4>
+                  {renderList(studio.whenToUse)}
+                </div>
+              )}
+              {studio.whenToUseAnother && studio.whenToUseAnother.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>When to Use Another Studio</h4>
+                  {renderList(studio.whenToUseAnother)}
+                </div>
+              )}
+              {studio.bestFor && renderField('Best For', studio.bestFor)}
+            </div>
+          )}
+
+          {activeTab === 'getting-started' && (
+            <div>
+              {studio.gettingStarted && studio.gettingStarted.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Getting Started</h4>
+                  <div className="space-y-3">
+                    {studio.gettingStarted.map((step, i) => (
+                      <div key={i} className="flex items-start gap-3">
+                        <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-[11px] font-bold" style={{ background: 'rgba(34,211,238,0.15)', color: colors.primary }}>{i + 1}</span>
+                        <span className="text-sm" style={{ color: semantic.textSecondary }}>{step}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {studio.howToSteps && studio.howToSteps.length > 0 && (
+                <div>
+                  <h4 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>How To Steps</h4>
+                  <div className="space-y-3">
+                    {studio.howToSteps.map((step, i) => (
+                      <div key={i} className="flex items-start gap-3">
+                        <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-[11px] font-bold" style={{ background: 'rgba(168,85,247,0.15)', color: '#c4b5fd' }}>{i + 1}</span>
+                        <span className="text-sm" style={{ color: semantic.textSecondary }}>{step}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'inputs-models' && (
+            <div className="space-y-6">
+              {studio.inputs && studio.inputs.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Inputs</h4>
+                  {renderList(studio.inputs)}
+                </div>
+              )}
+              {studio.requiredInputs && studio.requiredInputs.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Required Inputs</h4>
+                  {renderList(studio.requiredInputs)}
+                </div>
+              )}
+              {studio.optionalInputs && studio.optionalInputs.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Optional Inputs</h4>
+                  {renderList(studio.optionalInputs)}
+                </div>
+              )}
+              {studio.generationModes && studio.generationModes.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Generation Modes</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {studio.generationModes.map((m, i) => (
+                      <Pill key={i} tone="accent">{m}</Pill>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {studio.modelCapabilities && renderField('Model Capabilities', <p className="whitespace-pre-line">{studio.modelCapabilities}</p>)}
+              {studio.modelExplanations && renderField('Model Explanations', <p className="whitespace-pre-line">{studio.modelExplanations}</p>)}
+              {studio.featureExplanations && studio.featureExplanations.length > 0 && (
+                <div>
+                  <h4 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Feature Explanations</h4>
+                  {renderArrayObjects(studio.featureExplanations, 'feature')}
+                </div>
+              )}
+              {studio.inputDetails && studio.inputDetails.length > 0 && (
+                <div>
+                  <h4 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Input Details</h4>
+                  {renderArrayObjects(studio.inputDetails, 'name')}
+                </div>
+              )}
+              {studio.modeExplanations && studio.modeExplanations.length > 0 && (
+                <div>
+                  <h4 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Mode Explanations</h4>
+                  {renderArrayObjects(studio.modeExplanations, 'mode')}
+                </div>
+              )}
+              {studio.advancedFeatures && studio.advancedFeatures.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Advanced Features</h4>
+                  {renderList(studio.advancedFeatures)}
+                </div>
+              )}
+              {studio.advancedFeatureExplanations && studio.advancedFeatureExplanations.length > 0 && (
+                <div>
+                  <h4 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Advanced Feature Explanations</h4>
+                  {renderArrayObjects(studio.advancedFeatureExplanations, 'feature')}
+                </div>
+              )}
+              {studio.outputDetails && studio.outputDetails.length > 0 && (
+                <div>
+                  <h4 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Output Details</h4>
+                  {renderArrayObjects(studio.outputDetails, 'outputType')}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'best-practices' && (
+            <div>
+              {studio.bestPractices && studio.bestPractices.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Best Practices</h4>
+                  {renderList(studio.bestPractices)}
+                </div>
+              )}
+              {studio.tips && studio.tips.length > 0 && (
+                <div>
+                  <h4 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Tips</h4>
+                  {renderList(studio.tips)}
+                </div>
+              )}
+              {studio.exampleWorkflows && studio.exampleWorkflows.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Example Workflows</h4>
+                  {renderArrayObjects(studio.exampleWorkflows, 'title')}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'use-cases' && (
+            <div>
+              {studio.useCases && studio.useCases.length > 0 ? (
+                renderArrayObjects(studio.useCases, 'title')
+              ) : (
+                <p className="text-sm" style={{ color: semantic.textMuted }}>No use cases documented yet.</p>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'troubleshooting' && (
+            <div className="space-y-6">
+              {studio.commonProblems && studio.commonProblems.length > 0 && (
+                <div>
+                  <h4 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Common Problems</h4>
+                  {renderArrayObjects(studio.commonProblems, 'problem')}
+                </div>
+              )}
+              {studio.troubleshootingSteps && studio.troubleshootingSteps.length > 0 && (
+                <div>
+                  <h4 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Troubleshooting Steps</h4>
+                  {renderArrayObjects(studio.troubleshootingSteps, 'issue')}
+                </div>
+              )}
+              {studio.limitationDetails && studio.limitationDetails.length > 0 && (
+                <div>
+                  <h4 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Limitation Details</h4>
+                  {renderArrayObjects(studio.limitationDetails, 'limitation')}
+                </div>
+              )}
+              {studio.limitations && studio.limitations.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Limitations</h4>
+                  {renderList(studio.limitations)}
+                </div>
+              )}
+              {studio.troubleshooting && studio.troubleshooting.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Troubleshooting</h4>
+                  {renderList(studio.troubleshooting)}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'business-related' && (
+            <div className="space-y-6">
+              {studio.businessValue && renderField('Business Value', <p className="whitespace-pre-line">{studio.businessValue}</p>)}
+              {studio.competitivePositioning && renderField('Competitive Positioning', <p className="whitespace-pre-line">{studio.competitivePositioning}</p>)}
+              {studio.targetCustomers && studio.targetCustomers.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Target Customers</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {studio.targetCustomers.map((c, i) => (
+                      <Pill key={i} tone="default">{c}</Pill>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {studio.contentTypes && studio.contentTypes.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Content Types</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {studio.contentTypes.map((c, i) => (
+                      <Pill key={i} tone="accent">{c}</Pill>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {studio.relatedStudioGuidance && studio.relatedStudioGuidance.length > 0 && (
+                <div>
+                  <h4 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>Related Studio Guidance</h4>
+                  {renderArrayObjects(studio.relatedStudioGuidance, 'studio')}
+                </div>
+              )}
+              {studio.faqs && studio.faqs.length > 0 && (
+                <div>
+                  <h4 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: semantic.textLabel }}>FAQs</h4>
+                  <div className="space-y-3">
+                    {studio.faqs.map((faq, i) => (
+                      <div key={i} className="rounded-xl p-4" style={panels.card}>
+                        <h5 className="mb-1 text-sm font-bold text-white">{faq.question}</h5>
+                        <p className="text-sm" style={{ color: semantic.textSecondary }}>{faq.answer}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'glossary' && (
+            <div>
+              {studio.glossary && Object.keys(studio.glossary).length > 0 ? (
+                renderDict(studio.glossary)
+              ) : (
+                <p className="text-sm" style={{ color: semantic.textMuted }}>No glossary terms documented yet.</p>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'academy-guidance' && (
+            <div>
+              {studio.academyGuidance && studio.academyGuidance.length > 0 ? (
+                <div className="space-y-3">
+                  {studio.academyGuidance.map((ag, i) => (
+                    <div key={i} className="rounded-xl p-4" style={{ ...panels.card, borderColor: 'rgba(34,211,238,0.2)' }}>
+                      <h4 className="mb-1 text-sm font-bold" style={{ color: colors.primary }}>{ag.resource}</h4>
+                      <p className="text-sm" style={{ color: semantic.textSecondary }}>{ag.whatYouLearn}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm" style={{ color: semantic.textMuted }}>No academy guidance documented yet.</p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function StudioReferenceView() {
-  const [query, setQuery] = React.useState('');
-  const [selectedStudio, setSelectedStudio] = React.useState<StudioKb | null>(null);
+function StudioReferenceView({ onBack }: { onBack: () => void }) {
+  const [search, setSearch] = React.useState('');
+  const [selectedStudio, setSelectedStudio] = React.useState<Studio | null>(null);
 
   const filtered = React.useMemo(() => {
-    if (!query.trim()) return studios;
-    const q = query.toLowerCase();
-    return studios.filter(
+    if (!search.trim()) return STUDIOS;
+    const q = search.toLowerCase();
+    return STUDIOS.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
         s.description.toLowerCase().includes(q) ||
-        s.keyFeatures.some((f) => f.toLowerCase().includes(q)) ||
-        s.id.toLowerCase().includes(q)
+        s.shortDescription.toLowerCase().includes(q) ||
+        s.keyFeatures.some((f) => f.toLowerCase().includes(q))
     );
-  }, [query]);
+  }, [search]);
 
   return (
     <div>
-      {/* Search */}
-      <div className="mb-5">
-        <input
-          type="text"
-          placeholder="Search studios by name, feature, or keyword…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="w-full rounded-xl px-4 py-2.5 text-sm outline-none transition-colors"
-          style={{ ...panels.card, color: 'white', borderColor: 'rgba(255,255,255,0.1)' }}
-        />
-        {query && (
-          <p className="mt-1.5 text-[11px]" style={{ color: semantic.textMuted }}>
-            {filtered.length} studio{filtered.length !== 1 ? 's' : ''} found
-          </p>
-        )}
+      <div className="mb-6">
+        <h2 className="text-xl font-extrabold text-white">Studio Reference</h2>
+        <p className="mt-1 text-xs" style={{ color: semantic.textSecondary }}>
+          Browse all {STUDIOS.length} SmartVideo GO AI studios. Click a studio to view detailed documentation.
+        </p>
       </div>
 
-      {/* Grid / list */}
-      {filtered.length > 0 ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((s) => (
-            <StudioCard key={s.id} studio={s} onClick={() => setSelectedStudio(s)} />
-          ))}
+      {/* Search */}
+      <div className="mb-6">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search studios by name, description, or keyword..."
+          className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none"
+          style={{ ...panels.card, color: 'white' }}
+        />
+      </div>
+
+      {/* Grid */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {filtered.map((studio) => (
+          <StudioCard
+            key={studio.id}
+            studio={studio}
+            onClick={() => setSelectedStudio(studio)}
+          />
+        ))}
+      </div>
+
+      {filtered.length === 0 && (
+        <div className="mt-8 text-center">
+          <p className="text-sm" style={{ color: semantic.textMuted }}>No studios match your search.</p>
         </div>
-      ) : (
-        <EmptyState text="No studios match your search." />
       )}
 
-      {/* Detail modal */}
       {selectedStudio && (
         <StudioDetailPanel studio={selectedStudio} onClose={() => setSelectedStudio(null)} />
       )}
@@ -686,7 +966,7 @@ function EmptyState({ text }: { text: string }) {
 /* ------------------------------------------------------------------ */
 
 export default function AcademyCourse({ tracks }: { tracks: AcademyTrack[] }) {
-  const [view, setView] = React.useState<'learning' | 'reference'>('learning');
+  const [view, setView] = React.useState<'learning-paths' | 'studio-reference'>('learning-paths');
 
   return (
     <div className="min-h-screen" style={appWrapper}>
@@ -707,12 +987,12 @@ export default function AcademyCourse({ tracks }: { tracks: AcademyTrack[] }) {
           {/* View switcher */}
           <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)' }}>
             <button
-              onClick={() => setView('learning')}
+              onClick={() => setView('learning-paths')}
               className={cx(
                 'rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors',
               )}
               style={
-                view === 'learning'
+                view === 'learning-paths'
                   ? { background: semantic.activeAccent, color: colors.primary, border: '1px solid rgba(34,211,238,0.3)' }
                   : { color: semantic.textMuted }
               }
@@ -720,12 +1000,12 @@ export default function AcademyCourse({ tracks }: { tracks: AcademyTrack[] }) {
               Learning Paths
             </button>
             <button
-              onClick={() => setView('reference')}
+              onClick={() => setView('studio-reference')}
               className={cx(
                 'rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors',
               )}
               style={
-                view === 'reference'
+                view === 'studio-reference'
                   ? { background: semantic.activeAccent, color: colors.primary, border: '1px solid rgba(34,211,238,0.3)' }
                   : { color: semantic.textMuted }
               }
@@ -745,10 +1025,10 @@ export default function AcademyCourse({ tracks }: { tracks: AcademyTrack[] }) {
       </header>
 
       <div className="mx-auto max-w-7xl px-6 py-8">
-        {view === 'learning' ? (
+        {view === 'learning-paths' ? (
           <LearningPathsView tracks={tracks} />
         ) : (
-          <StudioReferenceView />
+          <StudioReferenceView onBack={() => setView('learning-paths')} />
         )}
       </div>
     </div>
