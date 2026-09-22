@@ -611,6 +611,66 @@ describe('Discovered Assets Integration', () => {
     expect(c.assets.brandReferences.every((b: any) => b.role === 'brand_reference')).toBe(true)
   })
 
+  it('preserves manually assigned First Frame, Last Frame, and CTA destinations on import', async () => {
+    await renderProvider()
+    await openSource()
+
+    let c = (window as any).__personalizationCtx
+    await act(async () => {
+      c.setDiscoveredAssets([
+        {
+          id: 'disc-first',
+          sourceUrl: 'https://test.com/storefront.png',
+          previewUrl: 'https://test.com/storefront.png',
+          sourceType: 'WEBSITE',
+          category: 'storefront',
+          selected: true,
+          recommended: true,
+          rejected: false,
+          assignedSection: 'firstFrame',
+          autoAssigned: false,
+        },
+        {
+          id: 'disc-last',
+          sourceUrl: 'https://test.com/product.png',
+          previewUrl: 'https://test.com/product.png',
+          sourceType: 'WEBSITE',
+          category: 'product',
+          selected: true,
+          recommended: true,
+          rejected: false,
+          assignedSection: 'lastFrame',
+          autoAssigned: false,
+        },
+        {
+          id: 'disc-cta',
+          sourceUrl: 'https://test.com/brand.png',
+          previewUrl: 'https://test.com/brand.png',
+          sourceType: 'WEBSITE',
+          category: 'brand',
+          selected: true,
+          recommended: true,
+          rejected: false,
+          assignedSection: 'ctaGraphic',
+          autoAssigned: false,
+        },
+      ])
+    })
+
+    c = (window as any).__personalizationCtx
+    await act(async () => {
+      await c.importDiscoveredAssets()
+    })
+
+    c = (window as any).__personalizationCtx
+    expect(c.assets.firstFrame?.role).toBe('first_frame')
+    expect(c.assets.firstFrame?.sourceCategory).toBe('storefront')
+    expect(c.assets.lastFrame?.role).toBe('last_frame')
+    expect(c.assets.lastFrame?.sourceCategory).toBe('product')
+    expect(c.assets.ctaGraphic?.role).toBe('cta_graphic')
+    expect(c.assets.ctaGraphic?.sourceCategory).toBe('brand')
+  })
+
   it('does not auto-populate firstFrame during import', async () => {
     const container = await renderProvider()
     await openSource()
