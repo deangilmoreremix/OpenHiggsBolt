@@ -33,7 +33,7 @@ setup('authenticate SmartVideo GO demo user', async ({ page }) => {
   // after the first protected navigation as #/tasks/choose-organization.
   await page.goto('/studio');
 
-  await completeOrgTaskIfPresent(page);
+  await completeOrgTaskIfPresent(page, { waitForAppearance: true });
 
   await expect(page).toHaveURL((url) => {
     return url.pathname.includes('/studio') && !isChooseOrganizationTask(url);
