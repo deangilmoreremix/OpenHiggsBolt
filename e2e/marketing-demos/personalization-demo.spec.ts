@@ -1,5 +1,5 @@
-import { test, expect } from './demo-test';
-import { DEMO_BASE_URL } from './helpers/demo';
+import { test, expect } from '@playwright/test';
+import { DEMO_BASE_URL } from '../../playwright.shared';
 
 test.describe('SmartVideo GO — personalization demo', () => {
   test('opens personalization demo in test mode without requiring an API key', async ({ page }) => {

@@ -62,17 +62,18 @@ test.describe('Personalization Demo — Live Feature Tests', () => {
 
     const bodyText = await page.textContent('body');
     expect(bodyText).toContain('Source Demo');
-    expect(bodyText).toContain('Who Is This For');
+    expect(bodyText).toContain('WHO IS THIS FOR?');
     expect(bodyText).toContain('Client Profile');
     expect(bodyText).toContain('Person / Presenter');
     expect(bodyText).toContain('Products / Services');
     expect(bodyText).toContain('Brand References');
     expect(bodyText).toContain('First Frame');
     expect(bodyText).toContain('Last Frame / CTA');
-    expect(bodyText).toContain('CTA & Business Content');
+    expect(bodyText).toContain('CTA & BUSINESS CONTENT');
     expect(bodyText).toContain('Original Prompt');
     expect(bodyText).toContain('Personalized Prompt');
-    expect(bodyText).toContain('What Do You Want To Create');
+    expect(bodyText).toContain('STEP 4 — CREATE');
+    expect(bodyText).toContain('SMARTVIDEO ENGINE');
     expect(bodyText).toContain('SmartVideo Recommended');
   });
 
@@ -85,7 +86,7 @@ test.describe('Personalization Demo — Live Feature Tests', () => {
     await page.fill('input[placeholder="Protect Your Home Today"]', 'Protect Your Home Today');
     await page.fill('input[placeholder="Book Your Inspection"]', 'Book Your Inspection');
     await page.fill('input[placeholder="555-555-5555"]', '555-555-5555');
-    await page.fill('input[placeholder="abcroofing.com"]', 'abcroofing.com');
+    await page.fill('input[placeholder="https://joesroofing.com"]', 'https://abcroofing.com');
 
     await page.screenshot({ path: '/tmp/personalization-client-form.png', fullPage: true });
 

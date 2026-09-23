@@ -1964,9 +1964,9 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     if (!safeUrl) return
 
     const handoff = {
-      version: 1,
-      target: 'image',
-      from: 'storyboard',
+      version: 1 as const,
+      target: 'image' as const,
+      from: 'storyboard' as const,
       projectName: project.source.title || 'Personalized Image',
       aspectRatio: (project.source.aspectRatio as '16:9' | '9:16' | '1:1' | null) || '1:1',
       episodeDuration: 0,
@@ -2001,9 +2001,9 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     if (!videoUrl || !referenceImageUrl) return
 
     const handoff = {
-      version: 1,
-      target: 'video',
-      from: 'storyboard',
+      version: 1 as const,
+      target: 'video' as const,
+      from: 'storyboard' as const,
       projectName: project.source.title || 'Personalized Video',
       aspectRatio: (project.source.aspectRatio as '16:9' | '9:16' | '1:1' | null) || '16:9',
       episodeDuration: project.source.duration || 0,

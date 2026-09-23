@@ -13,6 +13,7 @@ import {
   MessageSquare,
   Paintbrush,
   Redo2,
+  RefreshCw,
   RotateCw,
   ShieldCheck,
   Sparkles,
