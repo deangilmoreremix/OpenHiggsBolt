@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { createRoot } from 'react-dom/client';
 import PersonalizationModal from '../PersonalizationModal';
@@ -44,13 +44,25 @@ function TestOpener({ source, onMounted }: { source: any; onMounted: (open: (opt
   return null;
 }
 
+function ContextExposer() {
+  const ctx = useDemoPersonalize()
+  ;(window as any).__personalizationCtx = ctx
+  return null
+}
+
 describe('PersonalizationModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    document.querySelectorAll('[data-testid="personalization-root"]').forEach((el) => el.remove())
+    delete (window as any).__personalizationCtx
+  })
+
   it('renders six visible client asset cards without tab navigation', async () => {
     const container = document.createElement('div');
+    container.setAttribute('data-testid', 'personalization-root')
     document.body.appendChild(container);
     const root = createRoot(container);
 
@@ -148,6 +160,7 @@ describe('PersonalizationModal', () => {
 
   it('renders the niche-specific CTA heading when source.sourceMetadata.nicheId is set', async () => {
     const container = document.createElement('div');
+    container.setAttribute('data-testid', 'personalization-root')
     document.body.appendChild(container);
     const root = createRoot(container);
 
@@ -190,6 +203,7 @@ describe('PersonalizationModal', () => {
 
   it('falls back to the generic header when no nicheId is present', async () => {
     const container = document.createElement('div');
+    container.setAttribute('data-testid', 'personalization-root')
     document.body.appendChild(container);
     const root = createRoot(container);
 
@@ -227,4 +241,101 @@ describe('PersonalizationModal', () => {
     const genericMatches = screen.getAllByText(/Personalize this demo/i);
     expect(genericMatches.length).toBeGreaterThanOrEqual(1);
   });
+
+  it('shows manual website input when selected business has no website', async () => {
+    const container = document.createElement('div');
+    container.setAttribute('data-testid', 'personalization-root')
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <DemoPersonalizeProvider>
+          <ContextExposer />
+        </DemoPersonalizeProvider>,
+      );
+    });
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.openPersonalize({
+        source: { id: 'demo-1', title: 'Test Demo', mediaType: 'video', originalPrompt: 'test', sourceMedia: null, poster: null, fullPrompt: 'test', shortPrompt: 'test', sourceType: 'landing-demo', sourceMetadata: { audience: 'customer' } },
+      });
+    });
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.updateClientForm({ audience: 'customer' })
+      ;(window as any).__personalizationCtx.selectBusiness({
+        id: 'osm-no-web',
+        source: 'OPENSTREETMAP',
+        name: 'No Website Biz',
+        category: 'Restaurant',
+        city: 'Tampa',
+        region: 'FL',
+        phone: '555-0000',
+        website: undefined,
+        websiteStatus: 'unknown',
+        verificationStatus: 'unverified',
+        leadScore: 50,
+      })
+    });
+
+    expect(screen.getByPlaceholderText('Enter website manually to research')).toBeTruthy()
+    expect(screen.getByText('Not listed in OpenStreetMap')).toBeTruthy()
+  });
+
+  it('keeps retry button visible when business research fails', async () => {
+    const container = document.createElement('div');
+    container.setAttribute('data-testid', 'personalization-root')
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <DemoPersonalizeProvider>
+          <ContextExposer />
+        </DemoPersonalizeProvider>,
+      );
+    });
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.openPersonalize({
+        source: { id: 'demo-1', title: 'Test Demo', mediaType: 'video', originalPrompt: 'test', sourceMedia: null, poster: null, fullPrompt: 'test', shortPrompt: 'test', sourceType: 'landing-demo', sourceMetadata: { audience: 'customer' } },
+      });
+    });
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.updateClientForm({ audience: 'customer' })
+      ;(window as any).__personalizationCtx.selectBusiness({
+        id: 'osm-fail',
+        source: 'OPENSTREETMAP',
+        name: 'Fail Biz',
+        category: 'Plumbing',
+        city: 'Miami',
+        region: 'FL',
+        phone: '555-1111',
+        website: undefined,
+        websiteStatus: 'unknown',
+        verificationStatus: 'unverified',
+        leadScore: 50,
+      })
+      ;(window as any).__personalizationCtx.updateClientForm({ website: 'https://fail-biz.example.com' })
+    })
+
+    await act(async () => {
+      ;(globalThis as any).fetch = vi.fn(async () => ({
+        ok: false,
+        status: 500,
+        json: async () => ({ error: 'Server error' }),
+      } as Response))
+      ;(window as any).__personalizationCtx.researchBusiness()
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 100))
+    })
+
+    expect(screen.getByText('Research failed: Server error')).toBeTruthy()
+    expect(screen.getByText('Retry')).toBeTruthy()
+    expect(screen.getByPlaceholderText('Enter website manually to research')).toBeTruthy()
+  })
 });

@@ -13,18 +13,36 @@ export async function gotoStudio(page: Page): Promise<void> {
 export async function dismissModals(page: Page): Promise<void> {
   // Try Escape first in case the modal listens for it.
   await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
 
-  // Force-hide any remaining full-screen overlays via JS.
-  await page.evaluate(() => {
-    document.querySelectorAll('[style*="z-[200]"], .fixed.inset-0').forEach((el) => {
-      (el as HTMLElement).style.display = 'none';
-    });
-    document.querySelectorAll('[role="dialog"], [aria-modal="true"]').forEach((el) => {
-      (el as HTMLElement).style.display = 'none';
-    });
-  });
+  // Try to dismiss the known first-login API-key overlay through its actual
+  // close control before falling back to JS hiding.
+  const apiKeyOverlayClose = page.locator('button[aria-label="Close"]').first();
+  if (await apiKeyOverlayClose.count() > 0) {
+    try {
+      await apiKeyOverlayClose.click({ timeout: 1_000 }).catch(() => {});
+      await page.waitForTimeout(300);
+    } catch {
+      // ignore
+    }
+  }
 
-  // Allow any transition/animation to settle.
+  // If the known overlay is still present, hide only that specific overlay.
+  // Do NOT blanket-hide every dialog; the personalization demo depends on its
+  // real dialog remaining intact.
+  const overlayStillPresent = await page.locator('.fixed.inset-0.z-\\[200\\]').count();
+  if (overlayStillPresent > 0) {
+    await page.evaluate(() => {
+      const overlay = document.querySelector('.fixed.inset-0.z-\\[200\\]');
+      if (overlay) {
+        (overlay as HTMLElement).style.display = 'none';
+      }
+    });
+    await page.waitForTimeout(200);
+  }
+
+  // Dismiss again in case a new overlay appeared after the first dismissal.
+  await page.keyboard.press('Escape');
   await page.waitForTimeout(200);
 }
 
@@ -43,6 +61,10 @@ export async function openTab(page: Page, label: string): Promise<Locator> {
   }, label);
 
   await tab.waitFor({ state: 'visible', timeout: 15_000 });
+
+  // Dismiss any modal that might intercept the click.
+  await dismissModals(page);
+
   return tab;
 }
 

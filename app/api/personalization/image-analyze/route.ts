@@ -12,6 +12,12 @@ export const maxDuration = 120
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses'
 const VISION_MODEL = process.env.SMARTVIDEO_VISION_MODEL || 'gpt-6-astra'
+const ALLOWED_VISION_MODELS = new Set(['gpt-6-astra', 'gpt-4o', 'gpt-4o-mini'])
+if (!ALLOWED_VISION_MODELS.has(VISION_MODEL)) {
+  throw new Error(
+    `Invalid SMARTVIDEO_VISION_MODEL "${VISION_MODEL}". Allowed values: ${Array.from(ALLOWED_VISION_MODELS).join(', ')}`,
+  )
+}
 const MAX_IMAGES = 8
 const MAX_DATA_URL_CHARS = 14_000_000
 const ALLOWED_CATEGORIES: DiscoveredAssetCategory[] = [
@@ -212,6 +218,17 @@ export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as RequestBody
     const mode = body.mode || 'analyze'
+
+    const visionModel = process.env.SMARTVIDEO_VISION_MODEL || 'gpt-6-astra'
+    if (!ALLOWED_VISION_MODELS.has(visionModel)) {
+      return NextResponse.json(
+        {
+          error: 'INVALID_VISION_MODEL',
+          message: `Invalid SMARTVIDEO_VISION_MODEL "${visionModel}". Allowed values: ${Array.from(ALLOWED_VISION_MODELS).join(', ')}`,
+        },
+        { status: 500 },
+      )
+    }
 
     if (mode === 'validate') {
       const validateBody = body as ValidateRequestBody

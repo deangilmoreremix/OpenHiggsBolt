@@ -9,7 +9,7 @@
 | Severity | Found | Fixed | Open |
 |----------|-------|-------|------|
 | P0 | 0 | 0 | 0 |
-| P1 | 37 | 20 | 17 |
+| P1 | 37 | 29 | 8 |
 | P2 | 33 | 3 | 30 |
 | P3 | 0 | 0 | 0 |
 
@@ -41,27 +41,27 @@
 | 15.1 | Generation Handoff | Blob URLs can leak into handoff payload | Filter blob URLs before writeHandoff in editInImageStudio/editInVideoStudio | PASS | audit/personalization-full-release |
 | 17.3 | Auth / Route / Type Contracts | 403 entitlement error shown as generic failure | Detect 403 on discover/image-analyze and show specific message | PASS | audit/personalization-full-release |
 | 17.6 | Auth / Route / Type Contracts | 401 auth error shown as generic failure | Detect 401 on discover/image-analyze and show specific message | PASS | audit/personalization-full-release |
+| 2.1 | Business Finder / Research | OSM businesses lack website field | Research fails immediately for OSM-sourced businesses | Prompt manual website entry when website missing | E2E |
+| 2.2 | Business Finder / Research | Inline type cast drops fields from BusinessResearchResult | Frontend contract narrower than API | Import shared BusinessResearchResult type | Typecheck |
+| 4.2 | Manual Uploads / Person | No client-side file type validation | Non-image files reach server | Add client-side type check | Unit |
+| 4.3 | Manual Uploads / Person | Upload limit check after files already start uploading | Race condition on upload start | Move limit check before upload begins | Unit |
+| 8.3 | Image Editor / Mask | Mask canvas lacks ARIA labels | Screen reader users can't use mask editor | Add role, aria-label, keyboard shortcuts | A11y |
+| 11.1 | Smart Edit Streaming | Stream parsing loses data if chunk doesn't end with delimiter | Final image data lost | Fix stream parsing for partial chunks | Unit |
+| 13.1 | Make Video Ready Batch | Callback dependency on batchVideoReady.running | Stale closure risk | Use ref instead of dependency | Unit |
+| 13.2 | Make Video Ready Batch | Empty validation error message | "Vision QA needs review: " | Provide fallback error message | Unit |
 
 ### OPEN (Remaining P1)
 
 | ID | Area | Root Cause | User Impact | Suggested Fix | Test Needed |
 |----|------|------------|-------------|---------------|-------------|
-| 2.1 | Business Finder / Research | OSM businesses lack website field | Research fails immediately for OSM-sourced businesses | Prompt manual website entry when website missing | E2E |
-| 2.2 | Business Finder / Research | Inline type cast drops fields from BusinessResearchResult | Frontend contract narrower than API | Import shared BusinessResearchResult type | Typecheck |
 | 2.3 | Business Finder / Research | Unreachable URL fails without retry | User stuck with no way to research | Add manual URL retry input | E2E |
 | 3.1 | Asset Review / Category | Category select lacks keyboard handlers | Screen reader users can't navigate dropdown | Add onKeyDown and aria improvements | A11y |
-| 4.2 | Manual Uploads / Person | No client-side file type validation | Non-image files reach server | Add client-side type check | Unit |
-| 4.3 | Manual Uploads / Person | Upload limit check after files already start uploading | Race condition on upload start | Move limit check before upload begins | Unit |
 | 7.1 | Saved Clients / Library | deleteSavedClient race condition in Strict Mode | Client record may not be deleted | Use functional state update | Unit |
 | 7.3 | Saved Clients / Library | Redundant sync effect causes double localStorage writes | Performance concern | Remove sync effect | Unit |
 | 8.2 | Image Editor / Mask | Mask toolbar buttons lack type="button" | Latent form submission risk | Add type="button" | A11y |
-| 8.3 | Image Editor / Mask | Mask canvas lacks ARIA labels | Screen reader users can't use mask editor | Add role, aria-label, keyboard shortcuts | A11y |
 | 9.1 | Direct AI Edit | No per-operation loading state | Generic busy label only | Add per-operation progress indicator | E2E |
 | 9.2 | Direct AI Edit | No progress indicator during Smart Edit streaming wait | Blank canvas UX | Add loading skeleton | E2E |
 | 10.1 | GO Vision Integration | Invalid vision model default causes silent failures | All vision calls fail | Add startup model validation | Unit |
-| 11.1 | Smart Edit Streaming | Stream parsing loses data if chunk doesn't end with delimiter | Final image data lost | Fix stream parsing for partial chunks | Unit |
-| 13.1 | Make Video Ready Batch | Callback dependency on batchVideoReady.running | Stale closure risk | Use ref instead of dependency | Unit |
-| 13.2 | Make Video Ready Batch | Empty validation error message | "Vision QA needs review: " | Provide fallback error message | Unit |
 | 14.1 | Prompt Personalization | Fallback returns original prompt unchanged without error | User thinks AI personalization worked | Throw error when fallback is no-op | Unit |
 | 15.1 | Generation Handoff | writeHandoff + router.push race in Strict Mode | Target studio reads stale handoff | Verify handoff before nav or add polling | E2E |
 | 16.1 | Error Recovery | Error view retry re-runs entire generation | Can't retry just branding | Differentiate error types, show appropriate retry | E2E |

@@ -1567,6 +1567,7 @@ function ConfigurationView(props: any) {
     label: string
     error: string | null
   }>({ running: false, current: 0, total: 0, label: '', error: null })
+  const batchVideoReadyRunningRef = useRef(batchVideoReady.running)
 
   const handleIdentityAddClick = useCallback(() => {
     identityInputRef.current?.click()
@@ -1588,8 +1589,9 @@ function ConfigurationView(props: any) {
       asset.category !== 'irrelevant' &&
       !asset.videoReady
     )
-    if (selected.length === 0 || batchVideoReady.running) return
+    if (selected.length === 0 || batchVideoReadyRunningRef.current) return
 
+    batchVideoReadyRunningRef.current = true
     setBatchVideoReady({ running: true, current: 0, total: selected.length, label: 'Preparing assets', error: null })
     let nextAssets = [...discoveredAssets]
     const failures: string[] = []
@@ -1654,7 +1656,8 @@ function ConfigurationView(props: any) {
       label: failures.length ? 'Completed with errors' : 'Selected assets are video ready',
       error: failures.length ? failures.join(' • ') : null,
     })
-  }, [batchVideoReady.running, clientForm.businessName, clientForm.industry, clientForm.name, discoveredAssets, setDiscoveredAssets])
+    batchVideoReadyRunningRef.current = false
+  }, [clientForm.businessName, clientForm.industry, clientForm.name, discoveredAssets, setDiscoveredAssets])
 
   return (
     <div>
@@ -2039,7 +2042,25 @@ function ConfigurationView(props: any) {
                 {selectedBusiness.website ? (
                   <div>Website: <a href={selectedBusiness.website} target="_blank" rel="noopener noreferrer" style={{ color: C.cyan }}>{selectedBusiness.website}</a></div>
                 ) : (
-                  <div style={{ color: C.muted2 }}>Website: Not listed in OpenStreetMap</div>
+                  <div>
+                    <div style={{ color: C.muted2, marginBottom: 4 }}>Not listed in OpenStreetMap</div>
+                    <input
+                      type="text"
+                      value={clientForm.website || ''}
+                      onChange={(e) => updateClientForm({ ...clientForm, website: e.target.value })}
+                      placeholder="Enter website manually to research"
+                      className="w-full outline-none"
+                      style={{
+                        minHeight: 34,
+                        padding: '0 10px',
+                        border: `1px solid ${C.border}`,
+                        borderRadius: 8,
+                        background: C.field,
+                        color: C.text,
+                        fontSize: 11,
+                      }}
+                    />
+                  </div>
                 )}
               </div>
               <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>

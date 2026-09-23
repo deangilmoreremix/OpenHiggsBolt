@@ -97,12 +97,14 @@ function createFile(name: string, type = 'image/png'): File {
 }
 
 function createFileList(files: File[]): FileList {
+  const list: Record<number, File> = {}
+  files.forEach((file, i) => {
+    list[i] = file
+  })
   return {
-    0: files[0],
-    1: files[1],
-    2: files[2],
     length: files.length,
-    item: (i: number) => files[i] ?? null,
+    item: (i: number) => list[i] ?? null,
+    ...list,
   } as unknown as FileList
 }
 
@@ -134,7 +136,7 @@ describe('DemoPersonalizeProvider durable uploads', () => {
   const openSource = async () => {
     await act(async () => {
       ;(window as any).__personalizationCtx.openPersonalize({
-        source: { id: 'demo-1', title: 'Test', mediaType: 'video', originalPrompt: 'test', sourceMedia: null, poster: null, fullPrompt: 'test', shortPrompt: 'test', sourceType: 'landing-demo', sourceMetadata: {} },
+        source: { id: 'demo-1', title: 'Test', mediaType: 'video', originalPrompt: 'test', sourceMedia: null, poster: null, fullPrompt: 'test', shortPrompt: 'test', sourceType: 'landing-demo', model: 'kling-o1-video-edit', sourceMetadata: {} },
       })
     })
     await act(async () => {
@@ -527,6 +529,182 @@ describe('DemoPersonalizeProvider durable uploads', () => {
     expect(ctx.assets.logos.every((l: any) => l.uploadStatus === 'ready' || l.uploadStatus === 'uploading')).toBe(true)
   })
 
+  it('rejects non-image files for identity upload', async () => {
+    await renderProvider()
+    await openSource()
+
+    const files = createFileList([createFile('doc.txt', 'text/plain')])
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.addIdentityFiles(files)
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    expect(ctx.assets.identities.length).toBe(0)
+  })
+
+  it('rejects non-image files for logo upload', async () => {
+    await renderProvider()
+    await openSource()
+
+    const files = createFileList([createFile('doc.txt', 'text/plain')])
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.addLogoFiles(files)
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    expect(ctx.assets.logos.length).toBe(0)
+  })
+
+  it('rejects non-image and non-video files for product upload', async () => {
+    await renderProvider()
+    await openSource()
+
+    const files = createFileList([createFile('doc.txt', 'text/plain')])
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.addProductFiles(files)
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    expect(ctx.assets.products.length).toBe(0)
+  })
+
+  it('rejects non-image and non-video files for brand reference upload', async () => {
+    await renderProvider()
+    await openSource()
+
+    const files = createFileList([createFile('doc.txt', 'text/plain')])
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.addBrandReferenceFiles(files)
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    expect(ctx.assets.brandReferences.length).toBe(0)
+  })
+
+  it('respects maxImages limit for identity uploads', async () => {
+    const mockUploadFile = uploadFile as any
+    mockUploadFile.mockResolvedValue('https://example.com/uploaded.jpg')
+
+    await renderProvider()
+    await openSource()
+
+    const files1 = createFileList([createFile('face.jpg', 'image/jpeg')])
+    await act(async () => {
+      ;(window as any).__personalizationCtx.addIdentityFiles(files1)
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    let ctx = (window as any).__personalizationCtx
+    expect(ctx.assets.identities.length).toBe(1)
+
+    const files2 = createFileList([createFile('body.jpg', 'image/jpeg'), createFile('side.jpg', 'image/jpeg'), createFile('profile.jpg', 'image/jpeg')])
+    await act(async () => {
+      ;(window as any).__personalizationCtx.addIdentityFiles(files2)
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    ctx = (window as any).__personalizationCtx
+    expect(ctx.assets.identities.length).toBe(4)
+  })
+
+  it('respects MAX_REFERENCE_UPLOADS limit for logo uploads', async () => {
+    const mockUploadFile = uploadFile as any
+    mockUploadFile.mockResolvedValue('https://example.com/uploaded.jpg')
+
+    await renderProvider()
+    await openSource()
+
+    const files1 = createFileList([createFile('logo1.png')])
+    await act(async () => {
+      ;(window as any).__personalizationCtx.addLogoFiles(files1)
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    let ctx = (window as any).__personalizationCtx
+    expect(ctx.assets.logos.length).toBe(1)
+
+    const files2 = createFileList(Array.from({ length: 10 }, (_, i) => createFile(`logo${i + 2}.png`)))
+    await act(async () => {
+      ;(window as any).__personalizationCtx.addLogoFiles(files2)
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    ctx = (window as any).__personalizationCtx
+    expect(ctx.assets.logos.length).toBe(10)
+  })
+
+  it('respects MAX_REFERENCE_UPLOADS limit for product uploads', async () => {
+    const mockUploadFile = uploadFile as any
+    mockUploadFile.mockResolvedValue('https://example.com/uploaded.jpg')
+
+    await renderProvider()
+    await openSource()
+
+    const files1 = createFileList([createFile('p1.png')])
+    await act(async () => {
+      ;(window as any).__personalizationCtx.addProductFiles(files1)
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    let ctx = (window as any).__personalizationCtx
+    expect(ctx.assets.products.length).toBe(1)
+
+    const files2 = createFileList(Array.from({ length: 10 }, (_, i) => createFile(`p${i + 2}.png`)))
+    await act(async () => {
+      ;(window as any).__personalizationCtx.addProductFiles(files2)
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    ctx = (window as any).__personalizationCtx
+    expect(ctx.assets.products.length).toBe(10)
+  })
+
+  it('respects MAX_REFERENCE_UPLOADS limit for brand reference uploads', async () => {
+    const mockUploadFile = uploadFile as any
+    mockUploadFile.mockResolvedValue('https://example.com/uploaded.jpg')
+
+    await renderProvider()
+    await openSource()
+
+    const files1 = createFileList([createFile('b1.png')])
+    await act(async () => {
+      ;(window as any).__personalizationCtx.addBrandReferenceFiles(files1)
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    let ctx = (window as any).__personalizationCtx
+    expect(ctx.assets.brandReferences.length).toBe(1)
+
+    const files2 = createFileList(Array.from({ length: 10 }, (_, i) => createFile(`b${i + 2}.png`)))
+    await act(async () => {
+      ;(window as any).__personalizationCtx.addBrandReferenceFiles(files2)
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    ctx = (window as any).__personalizationCtx
+    expect(ctx.assets.brandReferences.length).toBe(10)
+  })
+
   it('getGenerationAssetUrl returns undefined for uploading asset', () => {
     const asset = {
       id: '1',
@@ -726,7 +904,7 @@ describe('DemoPersonalizeProvider generation flows', () => {
   const openSource = async () => {
     await act(async () => {
       ;(window as any).__personalizationCtx.openPersonalize({
-        source: { id: 'demo-1', title: 'Test', mediaType: 'video', originalPrompt: 'test', sourceMedia: null, poster: null, fullPrompt: 'test', shortPrompt: 'test', sourceType: 'landing-demo', sourceMetadata: {} },
+        source: { id: 'demo-1', title: 'Test', mediaType: 'video', originalPrompt: 'test', sourceMedia: null, poster: null, fullPrompt: 'test', shortPrompt: 'test', sourceType: 'landing-demo', model: 'kling-o1-video-edit', sourceMetadata: {} },
       })
     })
     await act(async () => {
@@ -903,7 +1081,7 @@ describe('DemoPersonalizeProvider asset import / durable upload', () => {
   const openSource = async () => {
     await act(async () => {
       ;(window as any).__personalizationCtx.openPersonalize({
-        source: { id: 'demo-1', title: 'Test', mediaType: 'video', originalPrompt: 'test', sourceMedia: null, poster: null, fullPrompt: 'test', shortPrompt: 'test', sourceType: 'landing-demo', sourceMetadata: {} },
+        source: { id: 'demo-1', title: 'Test', mediaType: 'video', originalPrompt: 'test', sourceMedia: null, poster: null, fullPrompt: 'test', shortPrompt: 'test', sourceType: 'landing-demo', model: 'kling-o1-video-edit', sourceMetadata: {} },
       })
     })
     await act(async () => {
@@ -1068,5 +1246,165 @@ describe('DemoPersonalizeProvider asset import / durable upload', () => {
     expect(ctx.discoveryError).toMatch(/Contact your administrator/)
 
     fetchSpy.mockRestore()
+  })
+})
+
+describe('DemoPersonalizeProvider business search / research', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.resetModules()
+    URL.createObjectURL = vi.fn(() => 'blob:http://localhost/test')
+    URL.revokeObjectURL = vi.fn()
+    ;(globalThis as any).fetch = vi.fn()
+  })
+
+  const renderProvider = async () => {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+
+    await act(async () => {
+      root.render(
+        <DemoPersonalizeProvider>
+          <TestOpener />
+        </DemoPersonalizeProvider>,
+      )
+    })
+
+    return container
+  }
+
+  const openSource = async () => {
+    await act(async () => {
+      ;(window as any).__personalizationCtx.openPersonalize({
+        source: { id: 'demo-1', title: 'Test', mediaType: 'video', originalPrompt: 'test', sourceMedia: null, poster: null, fullPrompt: 'test', shortPrompt: 'test', sourceType: 'landing-demo', sourceMetadata: {} },
+      })
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+  }
+
+  it('populates client form from selected business and preserves manual website entry', async () => {
+    await renderProvider()
+    await openSource()
+
+    const businessWithNoWebsite = {
+      id: 'osm-1',
+      source: 'OPENSTREETMAP' as const,
+      name: 'No Website Co',
+      category: 'Roofing',
+      city: 'Tampa',
+      region: 'FL',
+      phone: '555-1234',
+      website: undefined,
+      websiteStatus: 'unknown' as const,
+      verificationStatus: 'unverified' as const,
+      leadScore: 80,
+    }
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.selectBusiness(businessWithNoWebsite)
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    expect(ctx.selectedBusiness.id).toBe('osm-1')
+    expect(ctx.selectedBusiness.website).toBeUndefined()
+    expect(ctx.clientForm.businessName).toBe('No Website Co')
+    expect(ctx.clientForm.website).toBeUndefined()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.updateClientForm({ website: 'https://nowebsite.com' })
+    })
+
+    expect((window as any).__personalizationCtx.clientForm.website).toBe('https://nowebsite.com')
+  })
+
+  it('sets error state when researchBusiness is called with no website', async () => {
+    await renderProvider()
+    await openSource()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.selectBusiness({
+        id: 'osm-2',
+        source: 'OPENSTREETMAP',
+        name: 'Still No Website',
+        category: 'Plumbing',
+        city: 'Miami',
+        region: 'FL',
+        phone: '555-5678',
+        website: undefined,
+        websiteStatus: 'unknown',
+        verificationStatus: 'unverified',
+        leadScore: 60,
+      })
+    })
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.researchBusiness()
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    expect(ctx.businessResearch.status).toBe('error')
+    expect(ctx.businessResearch.error).toMatch(/No website available/)
+  })
+
+  it('uses manual website for research and stores BusinessResearchResult', async () => {
+    const mockResearchResult = {
+      canonicalUrl: 'https://manual-example.com',
+      finalUrl: 'https://manual-example.com',
+      reachable: true,
+      statusCode: 200,
+      contentType: 'text/html',
+      title: 'Manual Example',
+      description: 'A manually entered website',
+      logoUrl: 'https://manual-example.com/logo.png',
+      socialLinks: { facebook: 'https://facebook.com/manual' },
+      jsonLd: [],
+      openGraph: {},
+      twitterCard: {},
+      contactInfo: { phones: ['555-9999'], emails: ['info@manual.com'], addresses: [] },
+    }
+
+    ;(globalThis as any).fetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: true, research: mockResearchResult }),
+    } as Response))
+
+    await renderProvider()
+    await openSource()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.selectBusiness({
+        id: 'osm-3',
+        source: 'OPENSTREETMAP',
+        name: 'Manual Entry Co',
+        category: 'HVAC',
+        city: 'Orlando',
+        region: 'FL',
+        phone: '555-1111',
+        website: undefined,
+        websiteStatus: 'unknown',
+        verificationStatus: 'unverified',
+        leadScore: 90,
+      })
+    })
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.updateClientForm({ website: 'https://manual-example.com' })
+    })
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.researchBusiness()
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    expect(ctx.businessResearch.status).toBe('done')
+    expect(ctx.businessResearch.result).toBeDefined()
+    expect(ctx.businessResearch.result.canonicalUrl).toBe('https://manual-example.com')
+    expect(ctx.businessResearch.result.reachable).toBe(true)
+    expect(ctx.businessResearch.result.socialLinks.facebook).toBe('https://facebook.com/manual')
+    expect(ctx.businessResearch.result.contactInfo.phones).toEqual(['555-9999'])
   })
 })

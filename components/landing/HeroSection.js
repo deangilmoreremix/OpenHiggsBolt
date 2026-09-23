@@ -28,7 +28,7 @@ export default function HeroSection() {
         <h1 className="mx-auto max-w-4xl text-5xl font-black tracking-tight md:text-7xl lg:text-8xl">
           <span className="landing-gradient-text" style={{ textWrap: 'balance' }}>Turn Any Local Business Into</span>
           <br className="hidden sm:inline" />
-          <span className="mt-2 inline-block">
+          <span className="mt-2">
             <AnimatedHeadline
               phrases={HERO_ANIMATED_CREATION_TYPES}
               interval={HERO_CREATION_PHRASE_INTERVAL_MS}

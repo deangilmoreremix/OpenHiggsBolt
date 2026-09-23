@@ -410,6 +410,34 @@ export type AssignedSection =
   | 'ctaGraphic'
   | null
 
+export interface BusinessResearchResult {
+  canonicalUrl: string
+  finalUrl: string
+  reachable: boolean
+  statusCode?: number
+  contentType?: string
+  title?: string
+  description?: string
+  logoUrl?: string
+  socialLinks: {
+    facebook?: string
+    instagram?: string
+    linkedin?: string
+    youtube?: string
+    tiktok?: string
+    x?: string
+    pinterest?: string
+  }
+  jsonLd: Record<string, unknown>[]
+  openGraph: Record<string, string>
+  twitterCard: Record<string, string>
+  contactInfo: {
+    phones: string[]
+    emails: string[]
+    addresses: string[]
+  }
+}
+
 export interface DiscoveredAsset {
   id: string
   sourceUrl: string

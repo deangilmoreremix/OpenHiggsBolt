@@ -206,9 +206,13 @@ export async function makeDiscoveredAssetVideoReady(
   })
 
   if (!validation.passed) {
+    const issues = Array.isArray(validation.issues)
+      ? validation.issues.join(' • ')
+      : ''
+    const summary = validation.summary
     throw new Error(
       'Vision QA needs review: ' +
-      (validation.issues.join(' • ') || validation.summary),
+      (issues || summary || 'The edited image did not pass visual QA.'),
     )
   }
 

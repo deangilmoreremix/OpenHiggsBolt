@@ -14,13 +14,21 @@ test.describe('SmartVideo GO — studio overview demo', () => {
     await dismissModals(page);
 
     // Verify a representative set of studio tabs.
-    const tabs = ['Image Studio', 'Video Studio', 'Audio Studio', 'Marketing Studio'];
+    const tabs = [
+      { label: 'Image Studio', route: '/studio/image', marker: /Describe a scene, character, mood, or style/ },
+      { label: 'Video Studio', route: '/studio/video', marker: /Video Studio/ },
+      { label: 'Audio Studio', route: '/studio/audio', marker: /Audio Studio/ },
+      { label: 'Marketing Studio', route: '/studio/marketing', marker: /MARKETING STUDIO|Marketing Studio/ },
+    ];
 
-    for (const tabLabel of tabs) {
-      const tab = await openTab(page, tabLabel);
-      await tab.click();
-      await expect(tab).toHaveAttribute('aria-current', 'true');
-      await expect(tab).toBeVisible();
+    for (const tab of tabs) {
+      const tabLocator = await openTab(page, tab.label);
+      await dismissModals(page);
+      await tabLocator.click();
+
+      // Prove the tab click actually changed the studio panel.
+      await assertRoute(page, tab.route);
+      await expect(page.getByText(tab.marker)).toBeVisible();
     }
   });
 

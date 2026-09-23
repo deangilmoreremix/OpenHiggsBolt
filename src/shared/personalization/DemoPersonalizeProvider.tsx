@@ -44,6 +44,7 @@ import type {
   AssignedSection,
   PersonalizationVisionAnalysis,
   PersonalizationVisionValidation,
+  BusinessResearchResult,
 } from './types'
 import { EMPTY_GENERATION_STATE } from './types'
 import { normalizePersonalizationSource, getEligibility } from './sourceNormalizer'
@@ -120,6 +121,8 @@ const EMPTY_GENERATION_OPTIONS: GenerationOptions = {
   lastFrameMode: 'none',
   consentGiven: false,
 }
+
+const MAX_REFERENCE_UPLOADS = 10
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -240,20 +243,12 @@ type DemoPersonalizeContextValue = {
   selectedBusiness: BusinessDiscoveryRecord | null
   businessResearch: {
     status: 'idle' | 'researching' | 'done' | 'error'
-    result?: {
-      canonicalUrl?: string
-      reachable: boolean
-      title?: string
-      description?: string
-      logoUrl?: string
-      socialLinks?: Record<string, string>
-      contactInfo?: { phones: string[]; emails: string[] }
-    }
+    result?: BusinessResearchResult
     error?: string
   }
   findBusinesses: (niche: string, location: string, radiusMiles: number) => Promise<void>
   selectBusiness: (business: BusinessDiscoveryRecord) => void
-  researchBusiness: () => Promise<void>
+  researchBusiness: (retryUrl?: string) => Promise<void>
   clearBusinessSearch: () => void
   setBusinessSearchMode: (mode: 'idle' | 'searching' | 'results' | 'selected' | 'error') => void
 
@@ -489,15 +484,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   const [selectedBusiness, setSelectedBusiness] = useState<BusinessDiscoveryRecord | null>(null)
   const [businessResearch, setBusinessResearch] = useState<{
     status: 'idle' | 'researching' | 'done' | 'error'
-    result?: {
-      canonicalUrl?: string
-      reachable: boolean
-      title?: string
-      description?: string
-      logoUrl?: string
-      socialLinks?: Record<string, string>
-      contactInfo?: { phones: string[]; emails: string[] }
-    }
+    result?: BusinessResearchResult
     error?: string
   }>({ status: 'idle' })
 
@@ -957,14 +944,22 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
   const addIdentityFiles = useCallback((files: FileList | null) => {
     if (!files) return
-    const newAssets = Array.from(files).map((file) => createAsset(file, 'presenter_identity', {
+    const imageFiles = Array.from(files).filter((file) => file.type.startsWith('image/'))
+    if (imageFiles.length === 0) return
+
+    const maxImages = source ? resolveModelCapabilities(source, genOptions).maxImages : 1
+    const remaining = maxImages - assets.identities.length
+    const filesToAdd = imageFiles.slice(0, Math.max(0, remaining))
+    if (filesToAdd.length === 0) return
+
+    const newAssets = filesToAdd.map((file) => createAsset(file, 'presenter_identity', {
       isPrimary: assets.identities.length === 0,
     }))
     newAssets.forEach((asset) => {
       setAssets((prev) => updateAssetInLibrary(prev, asset))
       uploadAsset(asset).catch(() => {/* upload status handled in state */})
     })
-  }, [assets.identities.length, uploadAsset])
+  }, [assets.identities.length, uploadAsset, source, genOptions])
 
   const addIdentityUrl = useCallback((url: string) => {
     const asset = createAssetFromUrl(url, 'presenter_identity', {
@@ -995,7 +990,14 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
   const addLogoFiles = useCallback((files: FileList | null) => {
     if (!files) return
-    const newAssets = Array.from(files).map((file) => createAsset(file, 'logo', {
+    const imageFiles = Array.from(files).filter((file) => file.type.startsWith('image/'))
+    if (imageFiles.length === 0) return
+
+    const remaining = MAX_REFERENCE_UPLOADS - assets.logos.length
+    const filesToAdd = imageFiles.slice(0, Math.max(0, remaining))
+    if (filesToAdd.length === 0) return
+
+    const newAssets = filesToAdd.map((file) => createAsset(file, 'logo', {
       isPrimary: assets.logos.length === 0,
     }))
     newAssets.forEach((asset) => {
@@ -1033,12 +1035,19 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
   const addProductFiles = useCallback((files: FileList | null) => {
     if (!files) return
-    const newAssets = Array.from(files).map((file) => createAsset(file, 'product_reference'))
+    const validFiles = Array.from(files).filter((file) => file.type.startsWith('image/') || file.type.startsWith('video/'))
+    if (validFiles.length === 0) return
+
+    const remaining = MAX_REFERENCE_UPLOADS - assets.products.length
+    const filesToAdd = validFiles.slice(0, Math.max(0, remaining))
+    if (filesToAdd.length === 0) return
+
+    const newAssets = filesToAdd.map((file) => createAsset(file, 'product_reference'))
     newAssets.forEach((asset) => {
       setAssets((prev) => updateAssetInLibrary(prev, asset))
       uploadAsset(asset).catch(() => {/* upload status handled in state */})
     })
-  }, [uploadAsset])
+  }, [assets.products.length, uploadAsset])
 
   const addProductUrl = useCallback((url: string) => {
     const asset = createAssetFromUrl(url, 'product_reference')
@@ -1058,12 +1067,19 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
   const addBrandReferenceFiles = useCallback((files: FileList | null) => {
     if (!files) return
-    const newAssets = Array.from(files).map((file) => createAsset(file, 'brand_reference'))
+    const validFiles = Array.from(files).filter((file) => file.type.startsWith('image/') || file.type.startsWith('video/'))
+    if (validFiles.length === 0) return
+
+    const remaining = MAX_REFERENCE_UPLOADS - assets.brandReferences.length
+    const filesToAdd = validFiles.slice(0, Math.max(0, remaining))
+    if (filesToAdd.length === 0) return
+
+    const newAssets = filesToAdd.map((file) => createAsset(file, 'brand_reference'))
     newAssets.forEach((asset) => {
       setAssets((prev) => updateAssetInLibrary(prev, asset))
       uploadAsset(asset).catch(() => {/* upload status handled in state */})
     })
-  }, [uploadAsset])
+  }, [assets.brandReferences.length, uploadAsset])
 
   const addBrandReferenceUrl = useCallback((url: string) => {
     const asset = createAssetFromUrl(url, 'brand_reference')
@@ -1653,30 +1669,17 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         throw new Error(data?.error || `Research failed (HTTP ${res.status})`)
       }
 
-      const data = (await res.json()) as { research?: { canonicalUrl?: string; reachable?: boolean; title?: string; description?: string; logoUrl?: string; socialLinks?: Record<string, string>; contactInfo?: { phones?: string[]; emails?: string[] } } }
-      const research = data?.research
+      const data = await res.json() as { research: BusinessResearchResult }
+      const research = data.research
 
-      if (!research) {
+      if (!research || !research.finalUrl) {
         throw new Error('No research data returned')
       }
 
       // Update business research state
       setBusinessResearch({
         status: 'done',
-        result: {
-          canonicalUrl: research.canonicalUrl,
-          reachable: research.reachable ?? false,
-          title: research.title,
-          description: research.description,
-          logoUrl: research.logoUrl,
-          socialLinks: research.socialLinks,
-          contactInfo: research.contactInfo
-            ? {
-                phones: research.contactInfo.phones ?? [],
-                emails: research.contactInfo.emails ?? [],
-              }
-            : undefined,
-        },
+        result: research,
       })
 
       // Update website field with canonical URL if different

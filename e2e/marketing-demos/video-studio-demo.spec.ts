@@ -8,11 +8,11 @@ test.describe('SmartVideo GO — video studio demo', () => {
 
     await dismissModals(page);
     const tab = await openTab(page, 'Video Studio');
+    await dismissModals(page);
     await tab.click();
-
-    // Verify Video Studio tab is active after click.
+    await assertRoute(page, /\/studio\/video/);
     await expect(page.getByRole('button', { name: /Video Studio/i })).toBeVisible();
-    await expect(tab).toHaveAttribute('aria-current', 'true');
+    await expect(page.getByText(/Video Studio/)).toBeVisible();
   });
 
   test('video studio exposes controls without submitting a generation', async ({ page }) => {
@@ -20,10 +20,11 @@ test.describe('SmartVideo GO — video studio demo', () => {
     await dismissModals(page);
 
     const tab = await openTab(page, 'Video Studio');
+    await dismissModals(page);
     await tab.click();
-    await expect(page.getByRole('button', { name: /Video Studio/i })).toBeVisible();
-
-    // Verify the active Video Studio panel is visible.
-    await expect(tab).toHaveAttribute('aria-current', 'true');
+    await assertRoute(page, /\/studio\/video/);
+    await expect(tab).toBeVisible();
+    await expect(tab).toBeEnabled();
+    await expect(page.getByText(/Video Studio/)).toBeVisible();
   });
 });

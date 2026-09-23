@@ -20,7 +20,7 @@ export default function AnimatedLine({
   text,
   words,
   interval = 3000,
-  transition = 400,
+  transition = 420,
   className = '',
 }) {
   const prefersReducedMotion = getPrefersReducedMotion();

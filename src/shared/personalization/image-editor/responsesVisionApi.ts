@@ -199,11 +199,12 @@ export async function responsesSmartEditStream(
   while (true) {
     const { value, done } = await readWithTimeout()
     buffer += decoder.decode(value || new Uint8Array(), { stream: !done })
+    if (done) break
     const events = buffer.split(/\r?\n\r?\n/)
     buffer = events.pop() || ''
     for (const raw of events) handleEvent(raw)
-    if (done) break
   }
+  buffer += decoder.decode()
   if (buffer.trim()) handleEvent(buffer)
 
   const calls = Array.isArray(finalResponse?.output)
