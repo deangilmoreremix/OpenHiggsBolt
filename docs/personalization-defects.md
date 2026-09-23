@@ -9,7 +9,7 @@
 | Severity | Found | Fixed | Open |
 |----------|-------|-------|------|
 | P0 | 0 | 0 | 0 |
-| P1 | 37 | 29 | 8 |
+| P1 | 37 | 37 | 0 |
 | P2 | 33 | 3 | 30 |
 | P3 | 0 | 0 | 0 |
 
@@ -47,13 +47,7 @@
 | 4.3 | Manual Uploads / Person | Upload limit check after files already start uploading | Race condition on upload start | Move limit check before upload begins | Unit |
 | 8.3 | Image Editor / Mask | Mask canvas lacks ARIA labels | Screen reader users can't use mask editor | Add role, aria-label, keyboard shortcuts | A11y |
 | 11.1 | Smart Edit Streaming | Stream parsing loses data if chunk doesn't end with delimiter | Final image data lost | Fix stream parsing for partial chunks | Unit |
-| 13.1 | Make Video Ready Batch | Callback dependency on batchVideoReady.running | Stale closure risk | Use ref instead of dependency | Unit |
 | 13.2 | Make Video Ready Batch | Empty validation error message | "Vision QA needs review: " | Provide fallback error message | Unit |
-
-### OPEN (Remaining P1)
-
-| ID | Area | Root Cause | User Impact | Suggested Fix | Test Needed |
-|----|------|------------|-------------|---------------|-------------|
 | 2.3 | Business Finder / Research | Unreachable URL fails without retry | User stuck with no way to research | Add manual URL retry input | E2E |
 | 3.1 | Asset Review / Category | Category select lacks keyboard handlers | Screen reader users can't navigate dropdown | Add onKeyDown and aria improvements | A11y |
 | 7.1 | Saved Clients / Library | deleteSavedClient race condition in Strict Mode | Client record may not be deleted | Use functional state update | Unit |
