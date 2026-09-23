@@ -10,7 +10,7 @@ export const runtime = 'nodejs';
 export async function POST(req: NextRequest) {
   let event;
   try {
-    event = await verifyWebhook(req, {
+    event = await verifyWebhook(req as unknown as Parameters<typeof verifyWebhook>[0], {
       signingSecret:
         process.env.CLERK_WEBHOOK_SIGNING_SECRET ?? process.env.CLERK_WEBHOOK_SECRET,
     });

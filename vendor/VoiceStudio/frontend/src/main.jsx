@@ -1,4 +1,4 @@
-if (import.meta.env.DEV && !window.__vite_plugin_react_preamble_installed__) {
+if (import.meta.env?.DEV && !window.__vite_plugin_react_preamble_installed__) {
   const RefreshRuntime = await import('/@react-refresh');
   RefreshRuntime.default.injectIntoGlobalHook(window);
   window.$RefreshReg$ = () => {};

@@ -18,6 +18,13 @@ import { setVoiceStudioApiBase } from './api.js';
 // This must happen at module-body time, before App.jsx imports api/client.ts.
 setVoiceStudioApiBase('/api/voice');
 
+// VoiceStudio expects `__APP_VERSION__` to be injected at build time by Vite.
+// Define it here for the web runtime so version-dependent UI (About, bug
+// report, first-run notes) can read it without crashing.
+if (typeof window !== 'undefined' && typeof window.__APP_VERSION__ === 'undefined') {
+  window.__APP_VERSION__ = '0.5.2';
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

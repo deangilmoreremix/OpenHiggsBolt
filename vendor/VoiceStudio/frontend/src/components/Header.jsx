@@ -339,7 +339,7 @@ export default function Header({
               </>
             ) : null}
           </div>
-          {import.meta.env.DEV && (
+          {import.meta.env?.DEV && (
             <Button
               variant="ghost"
               size="sm"

@@ -1049,7 +1049,7 @@ export function useBootstrapStage(pollMs = 1000) {
       setState({ stage: 'ready', message: null, attempt: 0 });
       return;
     }
-    if (import.meta.env.DEV) {
+    if (import.meta.env?.DEV) {
       setState({ stage: 'ready', message: null, attempt: 0 });
       return;
     }

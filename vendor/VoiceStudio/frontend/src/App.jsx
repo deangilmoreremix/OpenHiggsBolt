@@ -736,7 +736,7 @@ function App() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!('__TAURI_INTERNALS__' in window)) return;
-    if (import.meta.env.DEV) return;
+    if (import.meta.env?.DEV) return;
     // Non-blocking: surface update availability into the store so the user can
     // choose to install + restart (with a progress bar) from Settings → Updates,
     // so an update never interrupts in-flight work.

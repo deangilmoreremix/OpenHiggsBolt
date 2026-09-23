@@ -1,3 +1,5 @@
+import path from 'path';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   turbopack: {
@@ -12,19 +14,19 @@ const nextConfig = {
       '@/stores': ['./src/stores'],
       '@/stores/*': ['./src/stores/*'],
       'vendor/VoiceStudio/frontend/src/*': ['./vendor/VoiceStudio/frontend/src/*'],
-      // Scope upstream global CSS so it does not leak into the host shell.
-      'vendor/VoiceStudio/frontend/src/index.css': ['./src/integrations/voice-studio/scoped-index.css'],
+      // Map upstream internal aliases used by vendor/VoiceStudio/frontend/src.
+      '@/lib/utils': ['./vendor/VoiceStudio/frontend/src/lib/utils.ts'],
+      '@/components/ui/*': ['./vendor/VoiceStudio/frontend/src/components/ui/*'],
     },
   },
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
       'vendor/VoiceStudio/frontend/src/*': ['./vendor/VoiceStudio/frontend/src/*'],
-      'vendor/VoiceStudio/frontend/src/index.css': ['./src/integrations/voice-studio/scoped-index.css'],
-      '@/components/ui': ['./src/components/ui'],
-      '@/components/ui/*': ['./src/components/ui/*'],
+      '@/components/ui/*': ['./vendor/VoiceStudio/frontend/src/components/ui/*'],
       '@/lib': ['./src/lib'],
       '@/lib/*': ['./src/lib/*'],
+      '@/lib/utils': ['./vendor/VoiceStudio/frontend/src/lib/utils.ts'],
     };
     return config;
   },

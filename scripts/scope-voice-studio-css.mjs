@@ -12,6 +12,14 @@ const dst = join(process.cwd(), 'src/integrations/voice-studio/scoped-index.css'
 const css = readFileSync(src, 'utf8');
 
 const scoped = css
+  // Remove Vite/Tailwind-v4-specific imports that do not resolve in the
+  // host Next.js webpack build. The host already provides its own Tailwind
+  // layer setup, so these are not needed here.
+  .replace(/@import "tailwindcss\/theme\.css" layer\(theme\);\n/g, '')
+  .replace(/@import "tailwindcss\/utilities\.css" layer\(utilities\);\n/g, '')
+  .replace(/@import "tw-animate-css";\n/g, '')
+  // Scope top-level global selectors so they only match inside the
+  // VoiceStudio mount point.
   .replace(/^:root\s*\{/gm, '[data-voice-studio] :root {')
   .replace(/^#root\s*\{/gm, '[data-voice-studio] #root {')
   .replace(/^html\s*\{/gm, '[data-voice-studio] html {')

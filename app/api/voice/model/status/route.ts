@@ -1,0 +1,13 @@
+export const runtime = 'edge';
+
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  return NextResponse.json({
+    status: 'idle',
+    sub_stage: null,
+    detail: '',
+    error: null,
+    progress: null,
+  });
+}

@@ -1,11 +1,8 @@
 @layer theme, base, components, utilities;
-@import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/utilities.css" layer(utilities);
 /* tw-animate-css — keyframes + animate-* utilities the shadcn primitives use
    for enter/exit transitions (Dialog/Dropdown/etc.). Foundation-only for now:
    Button/Input don't reference it, but it's part of the shadcn v4 baseline so
    future `npx shadcn add` components render their animations out of the box. */
-@import "tw-animate-css";
 
 /* ════════════════════════════════════════════════════════════════════
    CONSOLIDATED FOUNDATION (P5 — single foundation file)
