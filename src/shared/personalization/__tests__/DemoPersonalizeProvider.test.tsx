@@ -1407,4 +1407,152 @@ describe('DemoPersonalizeProvider business search / research', () => {
     expect(ctx.businessResearch.result.socialLinks.facebook).toBe('https://facebook.com/manual')
     expect(ctx.businessResearch.result.contactInfo.phones).toEqual(['555-9999'])
   })
+
+  it('keeps business selected and allows retry after research failure with corrected URL', async () => {
+    ;(globalThis as any).fetch = vi.fn(async () => ({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: 'Website unreachable' }),
+    } as Response))
+
+    await renderProvider()
+    await openSource()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.selectBusiness({
+        id: 'osm-retry',
+        source: 'OPENSTREETMAP',
+        name: 'Retry Co',
+        category: 'Roofing',
+        city: 'Tampa',
+        region: 'FL',
+        phone: '555-1234',
+        website: 'https://unreachable.example.com',
+        websiteStatus: 'listed',
+        verificationStatus: 'unverified',
+        leadScore: 80,
+      })
+    })
+
+    let ctx = (window as any).__personalizationCtx
+    expect(ctx.selectedBusiness.id).toBe('osm-retry')
+    expect(ctx.businessSearchMode).toBe('selected')
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.researchBusiness()
+    })
+
+    ctx = (window as any).__personalizationCtx
+    expect(ctx.businessResearch.status).toBe('error')
+    expect(ctx.businessResearch.error).toMatch(/unreachable/i)
+    expect(ctx.selectedBusiness.id).toBe('osm-retry')
+    expect(ctx.businessSearchMode).toBe('selected')
+
+    ;(globalThis as any).fetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        ok: true,
+        research: {
+          canonicalUrl: 'https://corrected.example.com',
+          finalUrl: 'https://corrected.example.com',
+          reachable: true,
+          statusCode: 200,
+          contentType: 'text/html',
+          title: 'Corrected',
+          description: '',
+          logoUrl: '',
+          socialLinks: {},
+          jsonLd: [],
+          openGraph: {},
+          twitterCard: {},
+          contactInfo: { phones: [], emails: [], addresses: [] },
+        },
+      }),
+    } as Response))
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.updateClientForm({ website: 'https://corrected.example.com' })
+    })
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.researchBusiness()
+    })
+
+    ctx = (window as any).__personalizationCtx
+    expect(ctx.businessResearch.status).toBe('done')
+    expect(ctx.businessResearch.result.canonicalUrl).toBe('https://corrected.example.com')
+  })
+})
+
+describe('DemoPersonalizeProvider deleteSavedClient regression', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.resetModules()
+    URL.createObjectURL = vi.fn(() => 'blob:http://localhost/test')
+    URL.revokeObjectURL = vi.fn()
+    generationPromiseResolvers.length = 0
+  })
+
+  const renderProvider = async () => {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+
+    await act(async () => {
+      root.render(
+        <DemoPersonalizeProvider>
+          <TestOpener />
+        </DemoPersonalizeProvider>,
+      )
+    })
+
+    return container
+  }
+
+  const openSource = async () => {
+    await act(async () => {
+      ;(window as any).__personalizationCtx.openPersonalize({
+        source: { id: 'demo-1', title: 'Test', mediaType: 'video', originalPrompt: 'test', sourceMedia: null, poster: null, fullPrompt: 'test', shortPrompt: 'test', sourceType: 'landing-demo', sourceMetadata: {} },
+      })
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+  }
+
+  it('deletes saved client deterministically and clears selected state and job refs', async () => {
+    await renderProvider()
+    await openSource()
+
+    const mockUploadFile = uploadFile as any
+    mockUploadFile.mockResolvedValue('https://example.com/uploaded.png')
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.saveClient()
+    })
+
+    await act(async () => {
+      const files = createFileList([createFile('logo.png')])
+      ;(window as any).__personalizationCtx.addLogoFiles(files)
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    let ctx = (window as any).__personalizationCtx
+    const clientId = ctx.selectedClientId
+    expect(clientId).toBeTruthy()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.deleteSavedClient(clientId)
+    })
+
+    ctx = (window as any).__personalizationCtx
+    expect(ctx.clients.find((c: any) => c.id === clientId)).toBeUndefined()
+    expect(ctx.selectedClientId).toBe('')
+    expect(ctx.savedClientAssets.logos).toHaveLength(0)
+    expect(ctx.clientForm.businessName).toBeUndefined()
+  })
 })

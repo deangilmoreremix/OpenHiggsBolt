@@ -101,7 +101,11 @@ Replace generic references with the client's actual details. Keep the entire cre
 
   try {
     const result = await callOpenAIChat(messages)
-    return result.trim()
+    const trimmed = result.trim()
+    if (trimmed === originalPrompt) {
+      throw new Error('PERSONALIZATION_NOOP')
+    }
+    return trimmed
   } catch (error) {
     console.error('Prompt personalization failed:', error)
     let personalized = originalPrompt

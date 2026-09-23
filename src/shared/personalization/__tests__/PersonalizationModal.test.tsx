@@ -38,6 +38,13 @@ vi.mock('@/lib/authConfig', () => ({
   }),
 }))
 
+vi.mock('studio/src/muapi', () => ({
+  uploadFile: vi.fn(),
+}))
+
+URL.createObjectURL = vi.fn(() => 'blob:http://localhost/test')
+URL.revokeObjectURL = vi.fn()
+
 function TestOpener({ source, onMounted }: { source: any; onMounted: (open: (opts: any) => void) => void }) {
   const { openPersonalize } = useDemoPersonalize();
   onMounted(openPersonalize);
@@ -279,8 +286,8 @@ describe('PersonalizationModal', () => {
       })
     });
 
-    expect(screen.getByPlaceholderText('Enter website manually to research')).toBeTruthy()
-    expect(screen.getByText('Not listed in OpenStreetMap')).toBeTruthy()
+    expect(screen.getByPlaceholderText('https://corrected-website.com')).toBeTruthy()
+    expect(screen.getAllByText('Website').length).toBeGreaterThanOrEqual(1)
   });
 
   it('keeps retry button visible when business research fails', async () => {
@@ -336,6 +343,62 @@ describe('PersonalizationModal', () => {
 
     expect(screen.getByText('Research failed: Server error')).toBeTruthy()
     expect(screen.getByText('Retry')).toBeTruthy()
-    expect(screen.getByPlaceholderText('Enter website manually to research')).toBeTruthy()
+    expect(screen.getByPlaceholderText('https://corrected-website.com')).toBeTruthy()
+  })
+
+  it('renders retry button on ThumbUploaded assets with uploadStatus error', async () => {
+    const container = document.createElement('div');
+    container.setAttribute('data-testid', 'personalization-root')
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    const { uploadFile } = await import('studio/src/muapi')
+    ;(uploadFile as any).mockRejectedValueOnce(new Error('Network error'))
+
+    await act(async () => {
+      root.render(
+        <DemoPersonalizeProvider>
+          <ContextExposer />
+        </DemoPersonalizeProvider>,
+      );
+    });
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.openPersonalize({
+        source: { id: 'demo-1', title: 'Test Demo', mediaType: 'video', originalPrompt: 'test', sourceMedia: null, poster: null, fullPrompt: 'test', shortPrompt: 'test', sourceType: 'landing-demo', sourceMetadata: { audience: 'customer' } },
+      });
+    });
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.updateClientForm({ audience: 'customer' })
+    })
+
+    function createFile(name: string, type = 'image/png'): File {
+      return new File([name], name, { type })
+    }
+
+    function createFileList(files: File[]): FileList {
+      const list: Record<number, File> = {}
+      files.forEach((file, i) => {
+        list[i] = file
+      })
+      return {
+        length: files.length,
+        item: (i: number) => list[i] ?? null,
+        ...list,
+      } as unknown as FileList
+    }
+
+    await act(async () => {
+      const files = createFileList([createFile('logo.png')])
+      ;(window as any).__personalizationCtx.addLogoFiles(files)
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    const retryButtons = screen.getAllByText('Retry')
+    expect(retryButtons.length).toBeGreaterThanOrEqual(1)
   })
 });

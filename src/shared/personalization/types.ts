@@ -241,6 +241,7 @@ export interface GenerationState {
   progress: number
   progressMessage: string
   errorMessage: string | null
+  failedStage?: 'prompt' | 'generation'
 }
 
 export const EMPTY_GENERATION_STATE: GenerationState = {

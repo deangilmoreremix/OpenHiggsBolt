@@ -51,6 +51,7 @@ import ImageEditorModal, {
   type PersonalizationImageEditorAsset,
 } from './image-editor/ImageEditorModal'
 import { makeDiscoveredAssetVideoReady } from './image-editor/batchVideoReady'
+import { isImageEditSupported } from './image-editor/imageEditSupport'
 
 // ── Design tokens (mirror the approved HTML CSS variables) ──────────────────
 
@@ -334,17 +335,6 @@ function ThumbPlaceholder({ label, add = false, onClick }: { label: string; add?
 
 const EDIT_WITH_AI = 'Edit with AI'
 
-const isImageEditSupported = (asset: { mimeType?: string; url?: string; previewUrl?: string; editedDataUrl?: string }) => {
-  const mime = asset.mimeType || ''
-  if (mime.startsWith('image/')) return true
-  const candidate = asset.editedDataUrl || asset.url || asset.previewUrl || ''
-  if (candidate && !candidate.startsWith('blob:')) {
-    const ext = candidate.split('.').pop()?.toLowerCase() || ''
-    return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(ext)
-  }
-  return false
-}
-
 /** Uploaded asset thumb with status overlays and actions. */
 function ThumbUploaded({
   asset,
@@ -569,19 +559,19 @@ function DiscoveredAssetThumb({
         {asset.sourceType.replace('_', ' ')}
       </div>
       {/* Category selector */}
-      <select
-        value={asset.category}
-        onChange={(e) => onCategoryChange(e.target.value as DiscoveredAssetCategory)}
-        onClick={(e) => e.stopPropagation()}
-        className="absolute bottom-1 left-1 right-1 z-10 text-[7px] font-bold rounded px-0.5 py-0.5"
-        style={{
-          background: 'rgba(0,0,0,.6)',
-          color: 'white',
-          border: '1px solid rgba(255,255,255,.2)',
-          fontSize: 7,
-        }}
-        aria-label="Change category"
-      >
+       <select
+         value={asset.category}
+         onChange={(e) => onCategoryChange(e.target.value as DiscoveredAssetCategory)}
+         onClick={(e) => e.stopPropagation()}
+         className="absolute bottom-1 left-1 right-1 z-10 text-[7px] font-bold rounded px-0.5 py-0.5 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-black"
+         style={{
+           background: 'rgba(0,0,0,.6)',
+           color: 'white',
+           border: '1px solid rgba(255,255,255,.2)',
+           fontSize: 7,
+         }}
+         aria-label="Change category"
+       >
         {categories.map((c) => (
           <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>
         ))}
@@ -1103,8 +1093,9 @@ export default function PersonalizationModal() {
           ) : generation.status === 'error' ? (
             <ErrorView
               errorMessage={generation.errorMessage}
-              retry={retry}
+              retry={generation.failedStage === 'prompt' ? handlePersonalize : retry}
               generate={generate}
+              stage={generation.failedStage}
             />
           ) : personalizationInProgress ? (
             <ProgressView
@@ -1294,7 +1285,8 @@ function ProgressView({ status, progress, message }: { status: string; progress:
   )
 }
 
-function ErrorView({ errorMessage, retry, generate }: { errorMessage: string | null; retry: () => void; generate: () => void }) {
+function ErrorView({ errorMessage, retry, generate, stage }: { errorMessage: string | null; retry: () => void; generate: () => void; stage?: 'prompt' | 'generation' | 'research' | 'discovery' | 'upload' }) {
+  const retryLabel = stage === 'prompt' ? 'Retry Personalization' : stage === 'generation' ? 'Retry Generation' : stage === 'research' ? 'Retry Research' : stage === 'discovery' ? 'Retry Discovery' : stage === 'upload' ? 'Retry Upload' : 'Retry'
   return (
     <div className="px-6 py-16 text-center space-y-4">
       <AlertTriangle size={40} style={{ color: C.danger }} className="mx-auto" />
@@ -1307,15 +1299,17 @@ function ErrorView({ errorMessage, retry, generate }: { errorMessage: string | n
           className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold"
           style={{ background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', color: C.cyan }}
         >
-          <RefreshCw size={14} /> Retry
+          <RefreshCw size={14} /> {retryLabel}
         </button>
-        <button
-          onClick={generate}
-          className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold"
-          style={{ background: C.cyan, color: '#041014' }}
-        >
-          Try Again
-        </button>
+        {stage !== 'prompt' && (
+          <button
+            onClick={generate}
+            className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold"
+            style={{ background: C.cyan, color: '#041014' }}
+          >
+            Try Again
+          </button>
+        )}
       </div>
     </div>
   )
@@ -2039,29 +2033,25 @@ function ConfigurationView(props: any) {
               <div style={{ fontSize: 10, color: C.muted, lineHeight: 1.5 }}>
                 {[selectedBusiness.category, selectedBusiness.address, selectedBusiness.city, selectedBusiness.region].filter(Boolean).join(' • ')}
                 {selectedBusiness.phone && <div>Phone: {selectedBusiness.phone}</div>}
-                {selectedBusiness.website ? (
-                  <div>Website: <a href={selectedBusiness.website} target="_blank" rel="noopener noreferrer" style={{ color: C.cyan }}>{selectedBusiness.website}</a></div>
-                ) : (
-                  <div>
-                    <div style={{ color: C.muted2, marginBottom: 4 }}>Not listed in OpenStreetMap</div>
-                    <input
-                      type="text"
-                      value={clientForm.website || ''}
-                      onChange={(e) => updateClientForm({ ...clientForm, website: e.target.value })}
-                      placeholder="Enter website manually to research"
-                      className="w-full outline-none"
-                      style={{
-                        minHeight: 34,
-                        padding: '0 10px',
-                        border: `1px solid ${C.border}`,
-                        borderRadius: 8,
-                        background: C.field,
-                        color: C.text,
-                        fontSize: 11,
-                      }}
-                    />
-                  </div>
-                )}
+                <div>
+                  <label style={{ display: 'block', marginBottom: 4, color: C.muted, fontSize: 10 }}>Website</label>
+                  <input
+                    type="text"
+                    value={clientForm.website || ''}
+                    onChange={(e) => updateClientForm({ ...clientForm, website: e.target.value })}
+                    placeholder={selectedBusiness.website || 'https://corrected-website.com'}
+                    className="w-full outline-none"
+                    style={{
+                      minHeight: 34,
+                      padding: '0 10px',
+                      border: `1px solid ${C.border}`,
+                      borderRadius: 8,
+                      background: C.field,
+                      color: C.text,
+                      fontSize: 11,
+                    }}
+                  />
+                </div>
               </div>
               <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button
@@ -2559,6 +2549,16 @@ function ConfigurationView(props: any) {
                   {EDIT_WITH_AI}
                 </button>
               )}
+              {assets.primaryLogo?.uploadStatus === 'error' && (
+                <button
+                  type="button"
+                  onClick={() => retryAssetUpload(assets.primaryLogo!.id)}
+                  className="absolute top-1 right-1 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
+                  style={{ background: 'rgba(239,91,103,.9)', color: '#fff' }}
+                >
+                  Retry
+                </button>
+              )}
             </div>
             <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               <ThumbPlaceholder label="+" add onClick={handleLogoAddClick} />
@@ -2672,7 +2672,7 @@ function ConfigurationView(props: any) {
               ) : (
                 'First Frame'
               )}
-              {assets.firstFrame?.uploadStatus === 'ready' && isImageEditSupported(assets.firstFrame) && (
+               {assets.firstFrame?.uploadStatus === 'ready' && isImageEditSupported(assets.firstFrame) && (
                 <button
                   type="button"
                   onClick={() => openLibraryImageEditor(assets.firstFrame)}
@@ -2680,6 +2680,16 @@ function ConfigurationView(props: any) {
                   style={{ background: 'rgba(41,211,242,.92)', color: '#041014' }}
                 >
                   {EDIT_WITH_AI}
+                </button>
+              )}
+              {assets.firstFrame?.uploadStatus === 'error' && (
+                <button
+                  type="button"
+                  onClick={() => retryAssetUpload(assets.firstFrame!.id)}
+                  className="absolute top-1 right-1 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
+                  style={{ background: 'rgba(239,91,103,.9)', color: '#fff' }}
+                >
+                  Retry
                 </button>
               )}
             </div>
@@ -2728,6 +2738,16 @@ function ConfigurationView(props: any) {
                   style={{ background: 'rgba(41,211,242,.92)', color: '#041014' }}
                 >
                   {EDIT_WITH_AI}
+                </button>
+              )}
+              {assets.lastFrame?.uploadStatus === 'error' && (
+                <button
+                  type="button"
+                  onClick={() => retryAssetUpload(assets.lastFrame!.id)}
+                  className="absolute top-1 right-1 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
+                  style={{ background: 'rgba(239,91,103,.9)', color: '#fff' }}
+                >
+                  Retry
                 </button>
               )}
             </div>

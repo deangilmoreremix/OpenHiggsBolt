@@ -1,22 +1,13 @@
 import { clerk, clerkSetup } from '@clerk/testing/playwright';
 import { test as setup, expect } from '@playwright/test';
-import path from 'path';
 
 import { completeOrgTaskIfPresent, isChooseOrganizationTask } from './helpers/clerk';
-import { resolveDemoBaseURL } from '../playwright.shared';
+import { resolveDemoBaseURL, resolveDemoAuthStatePath } from '../playwright.shared';
 
 setup.describe.configure({ mode: 'serial' });
 
 const DEMO_BASE_URL = resolveDemoBaseURL();
-
-// Store auth state in an origin-specific file so local and production sessions
-// do not overwrite each other.
-function authFileForOrigin(origin: string): string {
-  const safe = origin.replace(/[^a-z0-9]+/gi, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-  return path.join(process.cwd(), 'playwright/.clerk', `smartvideo-demo-${safe}.json`);
-}
-
-const authFile = authFileForOrigin(new URL(DEMO_BASE_URL).origin);
+const authFile = resolveDemoAuthStatePath();
 
 setup('configure Clerk', async () => {
   await clerkSetup();

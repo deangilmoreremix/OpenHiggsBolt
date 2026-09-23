@@ -17,7 +17,7 @@ import {
 } from 'react'
 import { useRouter } from 'next/navigation'
 import PersonalizationModal from './PersonalizationModal'
-import { writeHandoff } from '@/shared/crossStudio'
+import { readHandoff, writeHandoff } from '@/shared/crossStudio'
 import { SocialPublishContext } from '@/components/SocialPublishProvider'
 import { useAuthConfig } from '@/lib/authConfig'
 
@@ -77,20 +77,7 @@ import { applyPostProcessing, generateEndCardImage } from './postProcessor'
 import { uploadFile } from 'studio/src/muapi'
 import type { BusinessDiscoveryRecord } from './types'
 
-// ── Constants ────────────────────────────────────────────────────────────────
-
-function normalizeUrl(url: string): string {
-  try {
-    const parsed = new URL(url)
-    let normalized = `${parsed.protocol}://${parsed.hostname}${parsed.pathname}`
-    if (parsed.port && !['80', '443'].includes(parsed.port)) {
-      normalized += `:${parsed.port}`
-    }
-    return normalized.toLowerCase()
-  } catch {
-    return url.toLowerCase().replace(/\/+$/, '')
-  }
-}
+import { normalizeUrl, TRACKING_PARAMS } from './urlNormalizer'
 
 const EMPTY_ASSET_LIBRARY: AssetLibrary = {
   identities: [],
@@ -566,18 +553,6 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     setEligibility(getEligibility(source))
   }, [source?.id, source])
 
-  // ── Saved client assets sync ────────────────────────────────────────────────
-
-  useEffect(() => {
-    const library = loadClientAssets(selectedClientId)
-    setSavedClientAssets(library)
-  }, [selectedClientId])
-
-  useEffect(() => {
-    if (!selectedClientId) return
-    saveClientAssets(selectedClientId, savedClientAssets)
-  }, [savedClientAssets, selectedClientId])
-
   // Persist current reusable assets to saved client library whenever they change
   useEffect(() => {
     if (!selectedClientId) return
@@ -589,6 +564,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       products: assets.products,
       brandReferences: assets.brandReferences,
     }
+    saveClientAssets(selectedClientId, library)
     setSavedClientAssets(library)
   }, [
     assets.identities,
@@ -710,14 +686,19 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   const deleteSavedClient = useCallback((id: string) => {
     deleteClientAssets(id)
     setSavedClientAssets({ ...EMPTY_CLIENT_ASSET_LIBRARY })
-    if (selectedClientId === id) {
-      deleteClientRecord(id)
-      setClients(loadClients())
-      setSelectedClientId('')
-      setCurrentClientId(null)
-      setClientForm({})
-    }
-  }, [selectedClientId])
+    setClients((prev) => prev.filter((c) => c.id !== id))
+    setSelectedClientId((prev) => {
+      if (prev === id) {
+        deleteClientRecord(id)
+        setCurrentClientId(null)
+        setClientForm({})
+        lastResultRef.current = null
+        lastProjectRef.current = null
+        return ''
+      }
+      return prev
+    })
+  }, [])
 
   const selectSavedAsset = useCallback((asset: PersonalizationAsset) => {
     setAssets((prev) => updateAssetInLibrary(prev, asset))
@@ -1713,6 +1694,15 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         assets,
         outputType,
       })
+      if (personalized === promptState.original) {
+        setGeneration((prev) => ({
+          ...prev,
+          status: 'error',
+          errorMessage: 'Personalization returned the same prompt. Please edit manually or retry.',
+          failedStage: 'prompt',
+        }))
+        return
+      }
       setPromptState((prev) => ({ ...prev, personalized }))
       setGeneration((prev) => ({ ...prev, status: 'idle', progress: 100, progressMessage: 'Prompt personalized' }))
     } catch (error) {
@@ -1720,6 +1710,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         ...prev,
         status: 'error',
         errorMessage: error instanceof Error ? error.message : 'Failed to personalize prompt',
+        failedStage: 'prompt',
       }))
     }
   }, [source, clientForm, promptState.original, assets, outputType])
@@ -1903,6 +1894,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         ...EMPTY_GENERATION_STATE,
         status: 'error',
         errorMessage: error instanceof Error ? error.message : 'Generation failed',
+        failedStage: 'generation',
       })
     }
   }, [source, apiKey, assets, mode, genOptions, promptState, clientForm, selectedClientId])
@@ -1969,7 +1961,9 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     const prompt = result.prompt || project.personalizedPrompt || project.source.originalPrompt || ''
     const safeUrl = result.url && !result.url.startsWith('blob:') ? result.url : (project.source.sourceMedia && !project.source.sourceMedia.startsWith('blob:') ? project.source.sourceMedia : null)
 
-    writeHandoff({
+    if (!safeUrl) return
+
+    const handoff = {
       version: 1,
       target: 'image',
       from: 'storyboard',
@@ -1985,7 +1979,11 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       combinedPrompt: prompt,
       firstFrameUrl: safeUrl,
       createdAt: new Date().toISOString(),
-    })
+    }
+
+    writeHandoff(handoff)
+    const readBack = readHandoff('image')
+    if (!readBack || readBack.referenceImageUrl !== handoff.referenceImageUrl || readBack.projectName !== handoff.projectName) return
 
     closePersonalize()
     router.push('/studio/image')
@@ -1996,24 +1994,33 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     const result = lastResultRef.current
     const project = lastProjectRef.current
     const prompt = result.prompt || project.personalizedPrompt || project.source.originalPrompt || ''
+    const videoUrl = result.url && !result.url.startsWith('blob:') ? result.url : null
+    const referenceImageUrl = getGenerationAssetUrl(project.assets.primaryIdentity)
+    const firstFrameUrl = getGenerationAssetUrl(project.assets.firstFrame)
 
-    writeHandoff({
+    if (!videoUrl || !referenceImageUrl) return
+
+    const handoff = {
       version: 1,
       target: 'video',
       from: 'storyboard',
       projectName: project.source.title || 'Personalized Video',
       aspectRatio: (project.source.aspectRatio as '16:9' | '9:16' | '1:1' | null) || '16:9',
       episodeDuration: project.source.duration || 0,
-      videoUrl: result.url || null,
-      referenceImageUrl: getGenerationAssetUrl(project.assets.primaryIdentity) || null,
+      videoUrl,
+      referenceImageUrl,
       characterNames: project.assets.identities.map((i) => i.name).filter(Boolean),
       shots: prompt
         ? [{ scene: project.source.title || 'Personalized', prompt, duration: project.source.duration || 0, characterNames: [] }]
         : [],
       combinedPrompt: prompt,
-      firstFrameUrl: getGenerationAssetUrl(project.assets.firstFrame) || null,
+      firstFrameUrl: firstFrameUrl || null,
       createdAt: new Date().toISOString(),
-    })
+    }
+
+    writeHandoff(handoff)
+    const readBack = readHandoff('video')
+    if (!readBack || readBack.videoUrl !== handoff.videoUrl || readBack.projectName !== handoff.projectName) return
 
     closePersonalize()
     router.push('/studio/video')

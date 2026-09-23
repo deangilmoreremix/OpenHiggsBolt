@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './demo-test';
 import { DEMO_BASE_URL } from './helpers/demo';
 
 test.describe('SmartVideo GO — personalization demo', () => {

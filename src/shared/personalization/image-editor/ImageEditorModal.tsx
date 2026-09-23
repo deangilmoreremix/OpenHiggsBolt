@@ -233,6 +233,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
   const [visionAnalyzing, setVisionAnalyzing] = useState(false)
   const [validationOverrideVersionId, setValidationOverrideVersionId] = useState<string | null>(null)
   const [streamingPreview, setStreamingPreview] = useState<string | null>(null)
+  const [smartEditFailed, setSmartEditFailed] = useState(false)
 
   const [rotation, setRotation] = useState(0)
   const [flipX, setFlipX] = useState(false)
@@ -289,6 +290,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     setBusyLabel(null)
     setSaving(false)
     setError(null)
+    setSmartEditFailed(false)
     setCompareMode(false)
     setActiveGroup('smart')
     setMaskMode(false)
@@ -492,7 +494,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
   const runAiEdit = useCallback(async (operationId: EditorOperationId, custom = '') => {
     if (operationId === 'custom' && !custom.trim()) return
     setError(null)
-    setBusyLabel(operationId === 'custom' ? 'SmartVideo GO AI is editing' : getOperation(operationId).label)
+    setBusyLabel(getOperation(operationId).label)
     try {
       await executeAiEdit(operationId, displayUrl, custom)
       if (operationId === 'custom') setCustomPrompt('')
@@ -514,7 +516,8 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     }
 
     setError(null)
-    setBusyLabel('SmartVideo GO AI is editing')
+    setSmartEditFailed(false)
+    setBusyLabel('Smart Edit')
     try {
       const canContinueConversation = Boolean(currentVersion?.responseId)
       const sourceImage = canContinueConversation ? undefined : await prepareDataUrl(displayUrl)
@@ -563,7 +566,9 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
       })
       setCustomPrompt('')
       setValidationOverrideVersionId(null)
+      setSmartEditFailed(false)
     } catch (err) {
+      setSmartEditFailed(true)
       setError(err instanceof Error ? err.message : 'SmartVideo GO Smart Edit failed')
     } finally {
       setStreamingPreview(null)
@@ -583,6 +588,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     recipe.outputRole,
     resolvedModel,
     runAiEdit,
+    smartEditFailed,
     visionAnalysis?.targetRole,
   ])
 
@@ -1011,7 +1017,16 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
               </div>
             )}
 
-            {error && <ErrorBox message={error} />}
+            {error && (
+              <div className="mt-2 flex items-center gap-2">
+                <ErrorBox message={error} />
+                {smartEditFailed && customPrompt.trim() && (
+                  <button type="button" onClick={runResponsesSmartEdit} disabled={Boolean(busyLabel)} className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold disabled:opacity-50 shrink-0" style={buttons.primary}>
+                    <RefreshCw size={14} /> Retry
+                  </button>
+                )}
+              </div>
+            )}
 
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
               <div className="flex flex-wrap gap-2">
