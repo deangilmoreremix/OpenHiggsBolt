@@ -19,7 +19,7 @@ function useInterval(callback, delay) {
 export default function AnimatedHeadline({
   phrases,
   interval = 2800,
-  transition = 420,
+  transition = 400,
   className = '',
 }) {
   const prefersReducedMotion = getPrefersReducedMotion();
@@ -62,9 +62,7 @@ export default function AnimatedHeadline({
     >
       <span
         className={[
-          'animated-word-container',
-          'animated-word-container--inline',
-          'landing-gradient-text',
+          'animated-word landing-gradient-text',
           phase === 'default' && 'animated-word--default',
           phase === 'exiting' && 'animated-word--exit',
           phase === 'entering' && 'animated-word--hidden',
@@ -77,17 +75,7 @@ export default function AnimatedHeadline({
         {currentPhrase}
       </span>
       {phase === 'entering' && (
-        <span
-          className={[
-            'animated-word-container',
-            'animated-word-container--inline',
-            'landing-gradient-text',
-            'animated-word--enter',
-          ]
-            .filter(Boolean)
-            .join(' ')}
-          aria-hidden
-        >
+        <span className="animated-word landing-gradient-text animated-word--enter" aria-hidden>
           {nextPhrase}
         </span>
       )}
