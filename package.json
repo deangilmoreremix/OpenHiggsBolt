@@ -1,6 +1,6 @@
 {
   "name": "open-generative-ai",
-  "description": "Open-source alternative to HF AI \u2014 AI image, video, cinema and lip sync studio",
+  "description": "Open-source alternative to HF AI — AI image, video, cinema and lip sync studio",
   "homepage": "https://github.com/Anil-matcha/Open-Generative-AI",
   "private": true,
   "version": "2.0.0",
@@ -60,7 +60,7 @@
   "build": {
     "appId": "ai.generative.open",
     "productName": "SmartVideo GO",
-    "copyright": "Copyright \u00a9 2025",
+    "copyright": "Copyright © 2025",
     "directories": {
       "output": "release"
     },
@@ -140,6 +140,7 @@
     "@crawlee/cheerio": "^3.18.1",
     "@netlify/plugin-nextjs": "^5.15.12",
     "@octokit/rest": "^22.0.1",
+    "@sparticuz/chromium": "^153.0.0",
     "@supabase/supabase-js": "^2.108.2",
     "ai-agent": "file:./packages/Open-Poe-AI/packages/agents",
     "autoprefixer": "^10.4.24",
@@ -151,6 +152,7 @@
     "next": "^15.0.0",
     "octokit": "^5.0.5",
     "openai": "^6.44.0",
+    "playwright-core": "^1.63.0",
     "postcss": "^8.5.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

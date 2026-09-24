@@ -12,10 +12,10 @@
 
 export const BROWSER_FALLBACK_MAX_PAGES = 4
 export const BROWSER_FALLBACK_MAX_CANDIDATES = 60
-export const BROWSER_FALLBACK_NAVIGATION_TIMEOUT = 20_000
-export const BROWSER_FALLBACK_SCROLL_TIMEOUT = 4_000
-export const BROWSER_FALLBACK_SCROLL_ATTEMPTS = 4
-export const BROWSER_FALLBACK_SCROLL_DELAY = 600
+export const BROWSER_FALLBACK_NAVIGATION_TIMEOUT = 5_000
+export const BROWSER_FALLBACK_SCROLL_TIMEOUT = 2_000
+export const BROWSER_FALLBACK_SCROLL_ATTEMPTS = 1
+export const BROWSER_FALLBACK_SCROLL_DELAY = 100
 export const BROWSER_FALLBACK_MAX_IMAGES_PER_PAGE = 40
 
 // Resource types to block during discovery to improve performance.
@@ -41,24 +41,50 @@ const BLOCKED_URL_PATTERNS = [
 // Runtime guard / lazy loader
 // ---------------------------------------------------------------------------
 
-let cachedChromium: Promise<typeof import('playwright')['chromium']> | null = null
+let cachedChromium: Promise<any> | null = null
 
 export function isBrowserDiscoveryAvailable(): boolean {
   try {
-    // Playwright is excluded from the Netlify serverless bundle to stay under
-    // the 250 MB function limit. Resolve it lazily so module loading does not
-    // fail when Playwright is not installed in the runtime.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     require.resolve('playwright')
     return true
   } catch {
-    return false
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require.resolve('playwright-core')
+      return true
+    } catch {
+      return false
+    }
   }
+}
+
+async function getChromiumExecutablePath(): Promise<string | undefined> {
+  try {
+    // @sparticuz/chromium provides a Linux serverless-compatible Chromium.
+    // Use it only when the local platform is not macOS, because the downloaded
+    // binary is Linux ELF and cannot run on Darwin.
+    if (process.platform !== 'darwin') {
+      const { default: chromium } = await import('@sparticuz/chromium')
+      return chromium.executablePath()
+    }
+  } catch {
+    // Fall back to Playwright-managed Chromium below.
+  }
+  return undefined
 }
 
 async function getChromium() {
   if (!cachedChromium) {
-    cachedChromium = import('playwright').then((m) => m.chromium)
+    cachedChromium = (async () => {
+      try {
+        const { chromium } = await import('playwright')
+        return chromium
+      } catch {
+        const { chromium } = await import('playwright-core')
+        return chromium
+      }
+    })()
   }
   return cachedChromium
 }
@@ -116,7 +142,7 @@ function isLikelyJunk(url: string): boolean {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractRenderedImages(page: any, pageUrl: string): BrowserImageCandidate[] {
+async function extractRenderedImages(page: any, pageUrl: string): Promise<BrowserImageCandidate[]> {
   const candidates: BrowserImageCandidate[] = []
   const seen = new Set<string>()
 
@@ -134,7 +160,7 @@ function extractRenderedImages(page: any, pageUrl: string): BrowserImageCandidat
     candidates.push({ url: absolute, sourcePage: pageUrl, altText })
   }
 
-  page.evaluate(() => {
+  await page.evaluate(() => {
     const win = window as unknown as { __discoveryCandidates: Array<{ src: string; alt?: string }> }
     if (!win.__discoveryCandidates) {
       win.__discoveryCandidates = []
@@ -191,7 +217,14 @@ function extractRenderedImages(page: any, pageUrl: string): BrowserImageCandidat
     walk(document)
   })
 
-  const raw = page.evaluate(() => (window as any).__discoveryCandidates || []) // eslint-disable-line @typescript-eslint/no-explicit-any
+  const raw = (await page.evaluate(() => {
+    const win = window as unknown as { __discoveryCandidates: Array<{ src: string; alt?: string }> }
+    if (!win.__discoveryCandidates) {
+      return []
+    }
+    return win.__discoveryCandidates
+  })) as Array<{ src: string; alt?: string }>
+
   for (const item of raw) {
     add(item.src, item.alt)
   }
@@ -220,20 +253,49 @@ async function scrollPage(page: any, maxAttempts: number, delayMs: number): Prom
   await page.evaluate(() => window.scrollTo(0, 0))
 }
 
+let cachedBrowser: Promise<any> | null = null
+
+async function getOrCreateBrowser() {
+  // If we have a cached promise, verify the resolved browser is still alive.
+  if (cachedBrowser) {
+    try {
+      const browser = await cachedBrowser
+      if (browser && typeof browser.isConnected === 'function' && !browser.isConnected()) {
+        cachedBrowser = null
+      }
+    } catch {
+      cachedBrowser = null
+    }
+  }
+
+  if (!cachedBrowser) {
+    cachedBrowser = (async () => {
+      const chromium = await getChromium()
+      const executablePath = await getChromiumExecutablePath()
+      const browser = await chromium.launch({
+        headless: true,
+        executablePath,
+        args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+      })
+      return browser
+    })().catch((err) => {
+      cachedBrowser = null
+      throw err
+    })
+  }
+  return cachedBrowser
+}
+
 async function collectBrowserCandidates(baseUrl: string, pages: string[]): Promise<BrowserDiscoveryResult> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let browser: any = null
+  let context: any = null
   let pagesCrawled = 0
   const allCandidates: BrowserImageCandidate[] = []
 
   try {
-    const chromium = await getChromium()
-    browser = await chromium.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-    })
+    browser = await getOrCreateBrowser()
 
-    const context = await browser.newContext({
+    context = await browser.newContext({
       userAgent: 'Mozilla/5.0 (compatible; AssetDiscovery/1.0; +https://example.com/bot)',
       viewport: { width: 1280, height: 900 },
     })
@@ -271,7 +333,7 @@ async function collectBrowserCandidates(baseUrl: string, pages: string[]): Promi
 
         await scrollPage(page, BROWSER_FALLBACK_SCROLL_ATTEMPTS, BROWSER_FALLBACK_SCROLL_DELAY)
 
-        const pageCandidates = extractRenderedImages(page, pageUrl)
+        const pageCandidates = await extractRenderedImages(page, pageUrl)
         allCandidates.push(...pageCandidates)
         pagesCrawled++
       } catch (err) {
@@ -281,8 +343,15 @@ async function collectBrowserCandidates(baseUrl: string, pages: string[]): Promi
       }
     }
   } finally {
-    if (browser) {
-      await browser.close()
+    // Close the browser context after each discovery run so businesses do not
+    // share cookies, cache, or storage between runs. The cached browser
+    // process itself is kept for warm-server reuse.
+    if (context) {
+      try {
+        await context.close()
+      } catch {
+        // ignore context close errors
+      }
     }
   }
 
