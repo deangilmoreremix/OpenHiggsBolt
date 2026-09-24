@@ -3,13 +3,12 @@ import { test as setup, expect } from '@playwright/test';
 import path from 'path';
 
 import { completeOrgTaskIfPresent, isChooseOrganizationTask } from './helpers/clerk';
+import { resolveDemoBaseURL, resolveDemoAuthStatePath } from '../playwright.shared';
 
 setup.describe.configure({ mode: 'serial' });
 
-const authFile = path.join(
-  process.cwd(),
-  'playwright/.clerk/smartvideo-demo.json'
-);
+const DEMO_BASE_URL = resolveDemoBaseURL();
+const authFile = resolveDemoAuthStatePath();
 
 setup('configure Clerk', async () => {
   await clerkSetup();
@@ -22,7 +21,7 @@ setup('authenticate SmartVideo GO demo user', async ({ page }) => {
     throw new Error('E2E_CLERK_USER_EMAIL is not configured');
   }
 
-  await page.goto('/');
+  await page.goto(`${DEMO_BASE_URL}/`);
 
   await clerk.signIn({
     page,
@@ -31,7 +30,7 @@ setup('authenticate SmartVideo GO demo user', async ({ page }) => {
 
   // The Clerk organization task, when enabled, is surfaced asynchronously
   // after the first protected navigation as #/tasks/choose-organization.
-  await page.goto('/studio');
+  await page.goto(`${DEMO_BASE_URL}/studio`);
 
   await completeOrgTaskIfPresent(page, { waitForAppearance: true });
 

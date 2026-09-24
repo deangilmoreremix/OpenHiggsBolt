@@ -63,6 +63,9 @@ playwright-report/
 # Playwright Clerk auth state (treated as secret)
 playwright/.clerk/
 
+# Playwright marketing demo recordings
+playwright/marketing-artifacts/
+
 # Sync backups and monitoring artifacts
 .sync-backups/
 monitoring/

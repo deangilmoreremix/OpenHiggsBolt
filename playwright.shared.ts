@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 import dotenv from 'dotenv';
+import path from 'path';
 
 dotenv.config({ path: '.env.local' });
 
@@ -9,6 +10,19 @@ if (!process.env.CLERK_PUBLISHABLE_KEY && process.env.NEXT_PUBLIC_CLERK_PUBLISHA
   process.env.CLERK_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 }
 
+export function resolveDemoBaseURL(): string {
+  return process.env.DEMO_BASE_URL || 'http://localhost:3111';
+}
+
+export function resolveDemoAuthStatePath(): string {
+  const origin = new URL(resolveDemoBaseURL()).origin;
+  const safe = origin.replace(/[^a-z0-9]+/gi, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+  return path.join(process.cwd(), 'playwright/.clerk', `smartvideo-demo-${safe}.json`);
+}
+
+const DEMO_BASE_URL = resolveDemoBaseURL();
+const isLocalDemo = DEMO_BASE_URL === 'http://localhost:3111';
+
 export const base = {
   testDir: './e2e',
   timeout: 90_000,
@@ -17,15 +31,17 @@ export const base = {
   retries: 1,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:3111',
+    baseURL: DEMO_BASE_URL,
     trace: 'on-first-retry',
   },
-  webServer: {
-    command: 'npx next dev --port 3111 --turbopack',
-    url: 'http://localhost:3111',
-    reuseExistingServer: true,
-    timeout: 180_000,
-  },
+  webServer: isLocalDemo
+    ? {
+        command: 'npx next dev --port 3111 --turbopack',
+        url: 'http://localhost:3111',
+        reuseExistingServer: true,
+        timeout: 180_000,
+      }
+    : undefined,
 };
 
 export const normalProjects = [
@@ -46,7 +62,13 @@ export const marketingProjects = [
     dependencies: ['global setup'],
     use: {
       ...devices['Desktop Chrome'],
-      storageState: 'playwright/.clerk/smartvideo-demo.json',
+      storageState: resolveDemoAuthStatePath(),
+      video: {
+        mode: 'on',
+        size: { width: 1920, height: 1080 },
+      },
+      viewport: { width: 1920, height: 1080 },
     },
+    outputDir: 'playwright/marketing-artifacts',
   },
 ];
