@@ -1,5 +1,6 @@
 import { clerk, clerkSetup } from '@clerk/testing/playwright';
 import { test as setup, expect } from '@playwright/test';
+import path from 'path';
 
 import { completeOrgTaskIfPresent, isChooseOrganizationTask } from './helpers/clerk';
 import { resolveDemoBaseURL, resolveDemoAuthStatePath } from '../playwright.shared';
