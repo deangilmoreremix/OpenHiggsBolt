@@ -3,7 +3,10 @@ import fs from 'fs/promises';
 import path from 'path';
 
 const BASE = 'http://localhost:3111';
-const OUTPUT_DIR = path.resolve(__dirname, '../visual-assets/studios');
+const OUTPUT_DIR = path.resolve(
+  process.env.MARKETING_SCREENSHOT_OUTPUT_DIR ||
+    path.join(__dirname, '../visual-assets/marketing-current'),
+);
 const VIEWPORT = { width: 1920, height: 1080 };
 
 const FAKE_MUAPI_KEY = 'e2e-fake-muapi-key';
@@ -281,6 +284,48 @@ const STUDIO_SPECIFIC_CLOSE_UPS: Record<string, { name: string; selector: string
     { name: 'url-input', selector: 'input[placeholder*="http" i]' },
     { name: 'analyze-button', selector: 'button:has-text("Analyze")' },
   ],
+  image: [
+    { name: 'reference-picker', selector: 'button:has-text("Reference"), button:has-text("Upload")' },
+    { name: 'generation-history', selector: 'text=History' },
+  ],
+  video: [
+    { name: 'first-frame', selector: 'text=First Frame, text=Start Frame' },
+    { name: 'last-frame', selector: 'text=Last Frame, text=End Frame' },
+    { name: 'reference-media', selector: 'text=Reference' },
+    { name: 'extend-control', selector: 'text=Extend' },
+  ],
+  audio: [
+    { name: 'audio-models', selector: 'button:has-text("Model"), [aria-label*="model" i]' },
+    { name: 'audio-player', selector: 'audio' },
+  ],
+  lipsync: [
+    { name: 'portrait-mode', selector: 'text=Portrait Image, text=Portrait' },
+    { name: 'video-mode', selector: 'text=Video' },
+    { name: 'audio-input', selector: 'text=Audio, input[accept*="audio"]' },
+  ],
+  layers: [
+    { name: 'layers-canvas', selector: 'canvas, [class*="canvas" i]' },
+    { name: 'layer-tools', selector: 'text=Remove Background, text=Upscale, text=Expand' },
+  ],
+  workflows: [
+    { name: 'workflow-templates', selector: 'text=Templates' },
+    { name: 'my-workflows', selector: 'text=My Workflows' },
+    { name: 'community-workflows', selector: 'text=Community' },
+  ],
+  'design-agent': [
+    { name: 'template-library', selector: 'text=Templates' },
+    { name: 'attachments', selector: 'input[type="file"], button:has-text("Attach")' },
+  ],
+  'go-ai-viral': [
+    { name: 'viral-search', selector: 'input[type="search"], input[placeholder*="search" i]' },
+    { name: 'viral-filters', selector: 'button:has-text("Filter"), text=Filters' },
+    { name: 'personalize-action', selector: 'button:has-text("Personalize")' },
+    { name: 'open-in-studio', selector: 'button:has-text("Open in Studio")' },
+  ],
+  'social-publishing': [
+    { name: 'platforms', selector: 'text=YouTube, text=Instagram, text=TikTok' },
+    { name: 'publish-action', selector: 'button:has-text("Publish")' },
+  ],
 };
 
 // ---------------------------------------------------------------------------
@@ -335,6 +380,9 @@ test.describe('Studio Visual Capture', () => {
       // 1. Full-page screenshot of the entire studio interface.
       // -------------------------------------------------------------------
       await page.screenshot({ path: path.join(dir, 'full-page.png'), fullPage: true });
+
+      // Stable viewport capture for email/landing-page creative.
+      await page.screenshot({ path: path.join(dir, 'viewport-1920x1080.png'), fullPage: false });
 
       // -------------------------------------------------------------------
       // 2. Targeted close-up screenshots of key UI components.
