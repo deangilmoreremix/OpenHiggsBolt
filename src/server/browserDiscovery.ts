@@ -66,10 +66,12 @@ async function getChromiumExecutablePath(): Promise<string | undefined> {
     // binary is Linux ELF and cannot run on Darwin.
     if (process.platform !== 'darwin') {
       const { default: chromium } = await import('@sparticuz/chromium')
-      return chromium.executablePath()
+      const path = chromium.executablePath()
+      console.log('[browserDiscovery][NETLIFY] @sparticuz/chromium executablePath=', path)
+      return path
     }
-  } catch {
-    // Fall back to Playwright-managed Chromium below.
+  } catch (err) {
+    console.log('[browserDiscovery][NETLIFY] @sparticuz/chromium fallback:', err instanceof Error ? err.message : err)
   }
   return undefined
 }
@@ -79,9 +81,11 @@ async function getChromium() {
     cachedChromium = (async () => {
       try {
         const { chromium } = await import('playwright')
+        console.log('[browserDiscovery][NETLIFY] chromium module source=playwright')
         return chromium
-      } catch {
+      } catch (err) {
         const { chromium } = await import('playwright-core')
+        console.log('[browserDiscovery][NETLIFY] chromium module source=playwright-core fallback:', err instanceof Error ? err.message : err)
         return chromium
       }
     })()
@@ -272,13 +276,16 @@ async function getOrCreateBrowser() {
     cachedBrowser = (async () => {
       const chromium = await getChromium()
       const executablePath = await getChromiumExecutablePath()
+      console.log('[browserDiscovery][NETLIFY] launching chromium executablePath=', executablePath)
       const browser = await chromium.launch({
         headless: true,
         executablePath,
         args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
       })
+      console.log('[browserDiscovery][NETLIFY] chromium launched')
       return browser
     })().catch((err) => {
+      console.log('[browserDiscovery][NETLIFY] chromium launch failed:', err instanceof Error ? err.message : err)
       cachedBrowser = null
       throw err
     })
@@ -287,6 +294,7 @@ async function getOrCreateBrowser() {
 }
 
 async function collectBrowserCandidates(baseUrl: string, pages: string[]): Promise<BrowserDiscoveryResult> {
+  console.log('[browserDiscovery][NETLIFY] collectBrowserCandidates start baseUrl=', baseUrl, 'pages=', pages)
   let browser: any = null
   let context: any = null
   let pagesCrawled = 0
@@ -317,6 +325,7 @@ async function collectBrowserCandidates(baseUrl: string, pages: string[]): Promi
 
       const page = await context.newPage()
       try {
+        console.log('[browserDiscovery][NETLIFY] navigating pageUrl=', pageUrl)
         await page.goto(pageUrl, {
           waitUntil: 'domcontentloaded',
           timeout: BROWSER_FALLBACK_NAVIGATION_TIMEOUT,
@@ -327,6 +336,7 @@ async function collectBrowserCandidates(baseUrl: string, pages: string[]): Promi
         const currentHostname = new URL(currentUrl).hostname
         const baseHostname = new URL(baseUrl).hostname
         if (currentHostname !== baseHostname) {
+          console.log('[browserDiscovery][NETLIFY] page navigated away currentUrl=', currentUrl)
           await page.close()
           continue
         }
@@ -334,6 +344,7 @@ async function collectBrowserCandidates(baseUrl: string, pages: string[]): Promi
         await scrollPage(page, BROWSER_FALLBACK_SCROLL_ATTEMPTS, BROWSER_FALLBACK_SCROLL_DELAY)
 
         const pageCandidates = await extractRenderedImages(page, pageUrl)
+        console.log('[browserDiscovery][NETLIFY] extracted candidates=', pageCandidates.length, 'pageUrl=', pageUrl)
         allCandidates.push(...pageCandidates)
         pagesCrawled++
       } catch (err) {
@@ -349,10 +360,12 @@ async function collectBrowserCandidates(baseUrl: string, pages: string[]): Promi
     if (context) {
       try {
         await context.close()
-      } catch {
-        // ignore context close errors
+        console.log('[browserDiscovery][NETLIFY] context closed')
+      } catch (err) {
+        console.log('[browserDiscovery][NETLIFY] context close error:', err instanceof Error ? err.message : err)
       }
     }
+    console.log('[browserDiscovery][NETLIFY] collectBrowserCandidates end pagesCrawled=', pagesCrawled, 'candidates=', allCandidates.length)
   }
 
   const staticCount = allCandidates.length
