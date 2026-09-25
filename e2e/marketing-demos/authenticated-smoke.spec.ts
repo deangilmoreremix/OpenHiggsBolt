@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './demo-test';
 
 test.describe('SmartVideo GO marketing demos', () => {
   test('landing page shows authenticated user menu', async ({ page }) => {

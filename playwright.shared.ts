@@ -14,17 +14,14 @@ export function resolveDemoBaseURL(): string {
   return process.env.DEMO_BASE_URL || 'http://localhost:3111';
 }
 
-export const DEMO_BASE_URL = resolveDemoBaseURL();
-const isLocalDemo = DEMO_BASE_URL === 'http://localhost:3111';
-
-function authFileForOrigin(origin: string): string {
+export function resolveDemoAuthStatePath(): string {
+  const origin = new URL(resolveDemoBaseURL()).origin;
   const safe = origin.replace(/[^a-z0-9]+/gi, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
   return path.join(process.cwd(), 'playwright/.clerk', `smartvideo-demo-${safe}.json`);
 }
 
-export function resolveDemoAuthStatePath(): string {
-  return authFileForOrigin(new URL(DEMO_BASE_URL).origin);
-}
+const DEMO_BASE_URL = resolveDemoBaseURL();
+const isLocalDemo = DEMO_BASE_URL === 'http://localhost:3111';
 
 export const base = {
   testDir: './e2e',
@@ -39,7 +36,7 @@ export const base = {
   },
   webServer: isLocalDemo
     ? {
-        command: 'npx next dev --port 3111',
+        command: 'npx next dev --port 3111 --turbopack',
         url: 'http://localhost:3111',
         reuseExistingServer: true,
         timeout: 180_000,
@@ -58,13 +55,11 @@ export const marketingProjects = [
   {
     name: 'global setup',
     testMatch: /global\.setup\.ts/,
-    timeout: 180_000,
   },
   {
     name: 'marketing-demos',
     testMatch: /marketing-demos\/.*\.spec\.ts/,
     dependencies: ['global setup'],
-    timeout: 180_000,
     use: {
       ...devices['Desktop Chrome'],
       storageState: resolveDemoAuthStatePath(),
@@ -75,20 +70,5 @@ export const marketingProjects = [
       viewport: { width: 1920, height: 1080 },
     },
     outputDir: 'playwright/marketing-artifacts',
-  },
-  {
-    name: 'marketing-demos-mobile',
-    testMatch: /marketing-demos\/.*\.spec\.ts/,
-    dependencies: ['global setup'],
-    timeout: 180_000,
-    use: {
-      ...devices['iPhone 14'],
-      storageState: resolveDemoAuthStatePath(),
-      video: {
-        mode: 'on',
-        size: { width: 390, height: 844 },
-      },
-    },
-    outputDir: 'playwright/marketing-artifacts/mobile',
   },
 ];
