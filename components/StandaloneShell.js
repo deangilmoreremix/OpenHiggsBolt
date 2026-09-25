@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useRouter, usePathname } from 'next/navigation';
+import { useParams, useRouter, usePathname, Link } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import axios from 'axios';
 import { MemoryRouter } from 'react-router-dom';
@@ -552,7 +552,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                    )}
                  </button>
                ))}
-                <a
+                <Link
                   href="/academy"
                   className={`relative inline-flex text-[13px] font-medium transition-all duration-300 whitespace-nowrap px-1 flex-shrink-0 items-center h-full ${
                     pathname === '/academy'
@@ -564,7 +564,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                  {pathname === '/academy' && (
                    <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#22d3ee] to-[#a855f7] rounded-full shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
                  )}
-               </a>
+               </Link>
              </nav>
             
             {/* Fade Right Overlay */}
@@ -754,7 +754,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                   {apiKey
                     ? 'Your key is stored securely to your account and restored automatically when you sign in.'
                     : 'Add your own MuAPI key to start generating. It is stored securely to your account, so you only need to enter it once.'}{' '}
-                  <a
+                                  <Link
                     href="https://muapi.ai/access-keys"
                     target="_blank"
                     rel="noreferrer"
@@ -825,7 +825,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                   {openaiKey
                     ? 'Used for prompt enhancement, script generation and some image paths. Stored securely to your account.'
                     : 'Used for prompt enhancement, script generation and some image paths. Add your own OpenAI key to enable them.'}{' '}
-                  <a
+                                  <Link
                     href="https://platform.openai.com/api-keys"
                     target="_blank"
                     rel="noreferrer"
