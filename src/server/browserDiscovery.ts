@@ -160,70 +160,77 @@ async function extractRenderedImages(page: any, pageUrl: string): Promise<Browse
     candidates.push({ url: absolute, sourcePage: pageUrl, altText })
   }
 
-  await page.evaluate(() => {
-    const win = window as unknown as { __discoveryCandidates: Array<{ src: string; alt?: string }> }
-    if (!win.__discoveryCandidates) {
-      win.__discoveryCandidates = []
-    }
+  await page.evaluate(`
+    (function() {
+      var win = window;
+      if (!win.__discoveryCandidates) {
+        win.__discoveryCandidates = [];
+      }
 
-    const walk = (root: Document | Element) => {
-      const imgs = root.querySelectorAll('img')
-      for (const img of imgs) {
-        const src = (img as HTMLImageElement).src || ''
-        const currentSrc = (img as HTMLImageElement).currentSrc || ''
-        const dataSrc = (img as HTMLImageElement).getAttribute('data-src') || ''
-        const dataSrcset = (img as HTMLImageElement).getAttribute('data-srcset') || ''
-        const srcset = (img as HTMLImageElement).getAttribute('srcset') || ''
+      function walk(root) {
+        var imgs = root.querySelectorAll('img');
+        for (var i = 0; i < imgs.length; i++) {
+          var img = imgs[i];
+          var src = img.src || '';
+          var currentSrc = img.currentSrc || '';
+          var dataSrc = img.getAttribute('data-src') || '';
+          var dataSrcset = img.getAttribute('data-srcset') || '';
+          var srcset = img.getAttribute('srcset') || '';
 
-        if (src) win.__discoveryCandidates.push({ src, alt: (img as HTMLImageElement).alt || '' })
-        if (currentSrc && currentSrc !== src) win.__discoveryCandidates.push({ src: currentSrc, alt: (img as HTMLImageElement).alt || '' })
-        if (dataSrc) win.__discoveryCandidates.push({ src: dataSrc, alt: (img as HTMLImageElement).alt || '' })
-        if (dataSrcset) {
-          for (const entry of dataSrcset.split(',').map((s: string) => s.trim().split(/\s+/)[0]).filter(Boolean)) {
-            win.__discoveryCandidates.push({ src: entry, alt: (img as HTMLImageElement).alt || '' })
+          if (src) win.__discoveryCandidates.push({ src: src, alt: img.alt || '' });
+          if (currentSrc && currentSrc !== src) win.__discoveryCandidates.push({ src: currentSrc, alt: img.alt || '' });
+          if (dataSrc) win.__discoveryCandidates.push({ src: dataSrc, alt: img.alt || '' });
+          if (dataSrcset) {
+            var dataEntries = dataSrcset.split(',').map(function(s) { return s.trim().split(/\\s+/)[0]; }).filter(Boolean);
+            for (var j = 0; j < dataEntries.length; j++) {
+              win.__discoveryCandidates.push({ src: dataEntries[j], alt: img.alt || '' });
+            }
+          }
+          if (srcset) {
+            var srcEntries = srcset.split(',').map(function(s) { return s.trim().split(/\\s+/)[0]; }).filter(Boolean);
+            for (var k = 0; k < srcEntries.length; k++) {
+              win.__discoveryCandidates.push({ src: srcEntries[k], alt: img.alt || '' });
+            }
           }
         }
-        if (srcset) {
-          for (const entry of srcset.split(',').map((s: string) => s.trim().split(/\s+/)[0]).filter(Boolean)) {
-            win.__discoveryCandidates.push({ src: entry, alt: (img as HTMLImageElement).alt || '' })
+
+        var pictures = root.querySelectorAll('picture');
+        for (var p = 0; p < pictures.length; p++) {
+          var sources = pictures[p].querySelectorAll('source[srcset]');
+          for (var s = 0; s < sources.length; s++) {
+            var sourceSrcset = sources[s].getAttribute('srcset') || '';
+            var sourceEntries = sourceSrcset.split(',').map(function(x) { return x.trim().split(/\\s+/)[0]; }).filter(Boolean);
+            for (var e = 0; e < sourceEntries.length; e++) {
+              win.__discoveryCandidates.push({ src: sourceEntries[e] });
+            }
+          }
+        }
+
+        var allElements = root.querySelectorAll('[style]');
+        for (var el = 0; el < allElements.length; el++) {
+          var bg = allElements[el].style.backgroundImage;
+          if (bg && bg.includes('url(')) {
+            var match = bg.match(/url\\(["']?([^"')]+)["']?\\)/);
+            if (match && match[1]) {
+              win.__discoveryCandidates.push({ src: match[1] });
+            }
           }
         }
       }
 
-      const pictures = root.querySelectorAll('picture')
-      for (const picture of pictures) {
-        const sources = picture.querySelectorAll('source[srcset]')
-        for (const source of sources) {
-          const srcset = (source as HTMLSourceElement).getAttribute('srcset') || ''
-          for (const entry of srcset.split(',').map((s: string) => s.trim().split(/\s+/)[0]).filter(Boolean)) {
-            win.__discoveryCandidates.push({ src: entry })
-          }
-        }
+      walk(document);
+    })
+  `)
+
+  const raw = (await page.evaluate(`
+    (function() {
+      var win = window;
+      if (!win.__discoveryCandidates) {
+        return [];
       }
-
-      // CSS background images from inline styles
-      const allElements = root.querySelectorAll('[style]')
-      for (const el of allElements) {
-        const bg = (el as HTMLElement).style.backgroundImage
-        if (bg && bg.includes('url(')) {
-          const match = bg.match(/url\(["']?([^"')]+)["']?\)/)
-          if (match?.[1]) {
-            win.__discoveryCandidates.push({ src: match[1] })
-          }
-        }
-      }
-    }
-
-    walk(document)
-  })
-
-  const raw = (await page.evaluate(() => {
-    const win = window as unknown as { __discoveryCandidates: Array<{ src: string; alt?: string }> }
-    if (!win.__discoveryCandidates) {
-      return []
-    }
-    return win.__discoveryCandidates
-  })) as Array<{ src: string; alt?: string }>
+      return win.__discoveryCandidates;
+    })()
+  `)) as Array<{ src: string; alt?: string }>
 
   for (const item of raw) {
     add(item.src, item.alt)
@@ -240,17 +247,16 @@ async function scrollPage(page: any, maxAttempts: number, delayMs: number): Prom
   await page.waitForTimeout(500)
 
   while (attempts < maxAttempts) {
-    const currentHeight = await page.evaluate(() => document.documentElement.scrollHeight)
+    const currentHeight = await page.evaluate('document.documentElement.scrollHeight')
     if (currentHeight === lastHeight) break
 
     lastHeight = currentHeight
-    await page.evaluate(() => window.scrollBy(0, window.innerHeight * 0.8))
+    await page.evaluate('window.scrollBy(0, window.innerHeight * 0.8)')
     await page.waitForTimeout(delayMs)
     attempts++
   }
 
-  // Scroll back to top
-  await page.evaluate(() => window.scrollTo(0, 0))
+  await page.evaluate('window.scrollTo(0, 0)')
 }
 
 let cachedBrowser: Promise<any> | null = null
