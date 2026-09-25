@@ -1,8 +1,19 @@
 import { test, expect, type Page, type Route } from '@playwright/test';
+import fs from 'fs/promises';
+import path from 'path';
 
 const BASE = 'http://localhost:3111';
 const FAKE_MUAPI_KEY = 'e2e-fake-muapi-key';
 const FAKE_OPENAI_KEY = 'e2e-fake-openai-key';
+const MARKETING_DIR = path.resolve(
+  process.env.MARKETING_SCREENSHOT_OUTPUT_DIR || './visual-assets/marketing-current',
+  'personalization',
+);
+
+async function marketingShot(page: Page, name: string, fullPage = true) {
+  await fs.mkdir(MARKETING_DIR, { recursive: true });
+  await page.screenshot({ path: path.join(MARKETING_DIR, `${name}.png`), fullPage });
+}
 
 function mockMuApi(page: Page) {
   page.route('/api/auth/muapi-key', async (route: Route) => {
@@ -58,7 +69,7 @@ test.describe('Personalization Demo — Live Feature Tests', () => {
   });
 
   test('opens modal and shows all configuration sections', async ({ page }) => {
-    await page.screenshot({ path: '/tmp/personalization-modal-open.png', fullPage: true });
+    await marketingShot(page, '01-modal-overview');
 
     const bodyText = await page.textContent('body');
     expect(bodyText).toContain('Source Demo');
@@ -88,7 +99,7 @@ test.describe('Personalization Demo — Live Feature Tests', () => {
     await page.fill('input[placeholder="555-555-5555"]', '555-555-5555');
     await page.fill('input[placeholder="https://joesroofing.com"]', 'https://abcroofing.com');
 
-    await page.screenshot({ path: '/tmp/personalization-client-form.png', fullPage: true });
+    await marketingShot(page, '02-client-profile');
 
     await page.fill('input[placeholder="Protect Your Home Today"]', 'New Headline');
     const buttonValue = await page.locator('input[placeholder="Book Your Inspection"]').inputValue();
@@ -109,12 +120,32 @@ test.describe('Personalization Demo — Live Feature Tests', () => {
     
     await expect(page.getByText('Personalizing prompt...')).toBeVisible({ timeout: 10000 });
 
-    await page.screenshot({ path: '/tmp/personalization-prompt-result.png', fullPage: true });
+    await marketingShot(page, '03-personalized-prompt');
+  });
+
+  test('captures current business discovery and image editing entry points', async ({ page }) => {
+    const findAssets = page.getByText(/Find Business Assets/i).first();
+    if (await findAssets.isVisible().catch(() => false)) {
+      await findAssets.scrollIntoViewIfNeeded();
+      await marketingShot(page, '05-find-business-assets', false);
+    }
+
+    const editImage = page.getByText(/Edit Image|Edit with AI/i).first();
+    if (await editImage.isVisible().catch(() => false)) {
+      await editImage.scrollIntoViewIfNeeded();
+      await marketingShot(page, '06-edit-image-entry', false);
+    }
+
+    const smartVideoUse = page.getByText(/What SmartVideo Will Use/i).first();
+    if (await smartVideoUse.isVisible().catch(() => false)) {
+      await smartVideoUse.scrollIntoViewIfNeeded();
+      await marketingShot(page, '07-what-smartvideo-will-use', false);
+    }
   });
 
   test('can upload asset and verify upload UI is present', async ({ page }) => {
     const uploadText = page.getByText(/Drag & drop or browse/i).first();
     await expect(uploadText).toBeVisible();
-    await page.screenshot({ path: '/tmp/personalization-upload-ui.png', fullPage: true });
+    await marketingShot(page, '04-asset-upload');
   });
 });
