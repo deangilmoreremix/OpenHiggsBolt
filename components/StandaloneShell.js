@@ -754,14 +754,14 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                   {apiKey
                     ? 'Your key is stored securely to your account and restored automatically when you sign in.'
                     : 'Add your own MuAPI key to start generating. It is stored securely to your account, so you only need to enter it once.'}{' '}
-                                  <Link
+                  <Link
                     href="https://muapi.ai/access-keys"
                     target="_blank"
                     rel="noreferrer"
                     className="text-[#22d3ee] font-semibold hover:underline"
                   >
                     Get your key at muapi.ai
-                  </a>
+                  </Link>
                 </p>
               </div>
               <div>
@@ -825,14 +825,14 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                   {openaiKey
                     ? 'Used for prompt enhancement, script generation and some image paths. Stored securely to your account.'
                     : 'Used for prompt enhancement, script generation and some image paths. Add your own OpenAI key to enable them.'}{' '}
-                                  <Link
+                  <Link
                     href="https://platform.openai.com/api-keys"
                     target="_blank"
                     rel="noreferrer"
                     className="text-[#22d3ee] font-semibold hover:underline"
                   >
                     Get your key at platform.openai.com
-                  </a>
+                  </Link>
                 </p>
               </div>
             </div>
