@@ -47,7 +47,7 @@ const groups = [
   { familyNames: ALIBABA_MODEL_GROUP.familyNames, ...alibabaParameters },
   {
     familyNames: SEEDANCE_MODEL_GROUP.familyNames,
-    plan: planSeedaceSelection,
+    plan: planSeedanceSelection,
     resolutions: getSeedanceResolutionOptions,
     adjustments: getSeedanceSelectionAdjustments,
   },
