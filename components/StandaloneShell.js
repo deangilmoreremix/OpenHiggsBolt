@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useRouter, usePathname, Link } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import axios from 'axios';
 import { MemoryRouter } from 'react-router-dom';
