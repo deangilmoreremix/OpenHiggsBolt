@@ -145,6 +145,7 @@
     "ai-agent": "file:./packages/Open-Poe-AI/packages/agents",
     "autoprefixer": "^10.4.24",
     "axios": "^1.7.0",
+    "chromium-bidi": "^17.0.2",
     "crawlee": "^3.18.1",
     "design-agent": "file:./packages/Open-AI-Design-Agent/packages/design-agent",
     "jsdom": "^29.1.1",

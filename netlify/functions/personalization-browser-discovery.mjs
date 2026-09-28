@@ -237,7 +237,7 @@ async function collectBrowserCandidates(baseUrl, pages, pageTelemetry) {
   }
 }
 
-module.exports = { handler: async (event) => {
+export const handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' }, body: '' }
   }
@@ -398,4 +398,4 @@ module.exports = { handler: async (event) => {
 
     return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: errorMessage, code: errorCode }) }
   }
-}}
+}
