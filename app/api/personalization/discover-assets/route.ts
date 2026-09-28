@@ -6,6 +6,8 @@ import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer'
 import { getFixture } from '@/src/server/fixtures/discoveryFixtures'
 import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
 import { validatePersonalizationEnv } from '@/server/envValidation'
+import { createDiscoveryJob, getDiscoveryJobForUser } from '@/server/discoveryJobs'
+import { runFastDiscovery } from '@/server/discoveryOrchestrator'
 
 export const runtime = 'nodejs'
 
@@ -188,49 +190,71 @@ export async function POST(req: NextRequest) {
     }
 
     const openAiKey = userId ? await getOpenAiKeyForUser() : null
-    const firecrawlApiKey = testMode ? null : (process.env.FIRECRAWL_API_KEY || null)
 
-    const fixture = testMode ? getFixture(websiteUrl) : null
-
-    const { orchestrateDiscovery, buildDiscoveredAssetsFromCandidates } =
-      await import('@/server/discoveryOrchestrator')
-
-    let result: RawDiscoveryResult
-    if (fixture) {
-      const discoveredAssets = await buildDiscoveredAssetsFromCandidates(
-        fixture.candidates,
-        60,
-        openAiKey || undefined,
-      )
-      result = {
-        providerUsed: 'FIXTURE',
-        providerAttempted: 'FIXTURE',
-        candidates: fixture.candidates,
-        pagesCrawled: fixture.pagesCrawled,
-        rawCandidates: fixture.rawCandidates,
-        duration: 0,
-        socialProfiles: fixture.socialProfiles,
-        discoveredAssets,
-        firecrawlUsed: false,
-        providerAttempts: ['FIXTURE'],
-      }
-    } else {
-      result = await orchestrateDiscovery({
+    let fastResult: RawDiscoveryResult
+    try {
+      const fast = await runFastDiscovery({
         websiteUrl,
         maxPages: 8,
         maxImages: 60,
         openAiKey: openAiKey || undefined,
-        firecrawlApiKey: firecrawlApiKey || undefined,
-        enableFirecrawlFallback: process.env.ENABLE_FIRECRAWL_FALLBACK === 'true',
-        enableBrowserFallback: process.env.ENABLE_BROWSER_DISCOVERY === 'true',
-        minAcceptableAssets: 5,
       })
+      fastResult = {
+        ...fast.result,
+        discoveredAssets: fast.fastAssets,
+      }
+    } catch (fastErr) {
+      clearTimeout(timeoutId)
+      logPersonalization({
+        route: '/api/personalization/discover-assets',
+        stage: 'fast-discovery',
+        httpStatus: 500,
+        safeErrorCode: 'FAST_DISCOVERY_FAILED',
+        safeMessage: 'Fast discovery failed',
+        correlationId,
+        durationMs: Date.now() - startTime,
+      })
+      return NextResponse.json({ error: 'Fast discovery failed' }, { status: 500 })
     }
 
-    if (!testMode) {
-      discoveryCache.set(cacheKey, {
-        result,
-        expiresAt: Date.now() + cacheTtlMs,
+    const job = await createDiscoveryJob({
+      clerkUserId: userId || 'anon',
+      websiteUrl,
+      fastResult,
+      telemetry: {
+        providerAttempts: fastResult.providerAttempts,
+        providerUsed: fastResult.providerUsed,
+        pagesCrawled: fastResult.pagesCrawled,
+        rawCandidates: fastResult.rawCandidates,
+      },
+    })
+
+    const needsBrowser = (fastResult.discoveredAssets.filter((asset) => {
+      const category = (asset as any).category
+      return ['logo', 'product', 'service', 'completed_work', 'storefront', 'office', 'branded_vehicle', 'team', 'brand'].includes(category)
+    }).length < 5) && process.env.ENABLE_BROWSER_DISCOVERY === 'true'
+    const browserQueued = needsBrowser
+
+    if (browserQueued) {
+      const netlifyFnUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/.netlify/functions/personalization-browser-discovery`
+      const priorityPages = [
+        websiteUrl,
+        ...fastResult.candidates
+          .map((candidate: any) => candidate.sourcePage || candidate.url)
+          .filter(Boolean),
+      ]
+      const uniquePriorityPages = Array.from(new Set(priorityPages)).slice(0, 4)
+
+      fetch(netlifyFnUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId: job.id,
+          websiteUrl,
+          priorityPages: uniquePriorityPages,
+        }),
+      }).catch((dispatchErr) => {
+        console.error('[discover-assets] Failed to dispatch browser background job:', dispatchErr)
       })
     }
 
@@ -238,25 +262,31 @@ export async function POST(req: NextRequest) {
     logPersonalization({
       route: '/api/personalization/discover-assets',
       stage: 'discovery',
-      provider: result.providerUsed,
-      httpStatus: 200,
+      provider: fastResult.providerUsed,
+      httpStatus: browserQueued ? 202 : 200,
       correlationId,
       durationMs: Date.now() - startTime,
     })
 
-    return NextResponse.json({
-      ok: true,
-      cached: false,
-      providerUsed: result.providerUsed,
-      providerAttempted: result.providerAttempted,
-      discoveredAssets: result.discoveredAssets,
-      candidates: result.candidates,
-      count: result.discoveredAssets.length,
-      pagesCrawled: result.pagesCrawled,
-      rawCandidates: result.rawCandidates,
-      duration: result.duration,
-      socialProfiles: result.socialProfiles,
-    })
+    return NextResponse.json(
+      {
+        ok: true,
+        cached: false,
+        status: browserQueued ? 'processing' : 'complete',
+        providerUsed: fastResult.providerUsed,
+        providerAttempted: fastResult.providerAttempted,
+        discoveredAssets: fastResult.discoveredAssets,
+        candidates: fastResult.candidates,
+        count: fastResult.discoveredAssets.length,
+        pagesCrawled: fastResult.pagesCrawled,
+        rawCandidates: fastResult.rawCandidates,
+        duration: fastResult.duration,
+        socialProfiles: fastResult.socialProfiles,
+        jobId: job.id,
+        browserQueued,
+      },
+      { status: browserQueued ? 202 : 200 },
+    )
   } catch (rawErr) {
     clearTimeout(timeoutId)
     const err: Error = rawErr instanceof Error ? rawErr : new Error('Unknown error')
@@ -292,4 +322,59 @@ export async function POST(req: NextRequest) {
       { status, headers: { 'x-correlation-id': correlationId } },
     )
   }
+}
+
+export async function GET(req: NextRequest) {
+  const correlationId = createCorrelationId(req)
+  const jobId = req.nextUrl.searchParams.get('jobId')
+
+  if (!jobId) {
+    return NextResponse.json({ error: 'jobId is required' }, { status: 400 })
+  }
+
+  const { userId } = await auth()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const job = await getDiscoveryJobForUser(jobId, userId)
+  if (!job) {
+    return NextResponse.json({ error: 'Job not found' }, { status: 404 })
+  }
+
+  const safeTelemetry = job.telemetry_json
+    ? (({ ...(job.telemetry_json as Record<string, unknown>), browserErrorMessage: undefined }) as Record<string, unknown>)
+    : null
+
+  const response: Record<string, unknown> = {
+    id: job.id,
+    status: job.status,
+    websiteUrl: job.website_url,
+    providerAttempts: (safeTelemetry as any)?.providerAttempts || [],
+    pagesCrawled: (safeTelemetry as any)?.pagesCrawled ?? 0,
+    created_at: job.created_at,
+    started_at: job.started_at,
+    completed_at: job.completed_at,
+  }
+
+  if (job.status === 'complete' || job.status === 'error') {
+    response.browserQueued = false
+    if (job.error_code) {
+      response.errorCode = job.error_code
+      response.errorMessage = job.error_message
+    }
+    if (job.final_result_json) {
+      response.result = job.final_result_json
+    } else if (job.fast_result_json) {
+      response.result = job.fast_result_json
+    }
+  } else if (job.status === 'running') {
+    response.browserQueued = true
+  }
+
+  if (safeTelemetry) {
+    response.telemetry = safeTelemetry
+  }
+
+  return NextResponse.json(response)
 }

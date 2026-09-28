@@ -19,6 +19,7 @@ import { getBusinessAssetClassificationModel } from './discoveryClassificationCo
 import { autoPlaceAssets, DEFAULT_AUTO_PLACEMENT_CONFIG } from './autoPlacementEngine'
 import { discoverSitemapUrls } from './sitemapDiscovery'
 import { isBrowserDiscoveryAvailable } from './browserDiscovery'
+import { buildDiscoveredAssetsFromCandidates } from './fastDiscovery'
 import type { DiscoveredAsset, DiscoveredAssetCategory } from '../shared/personalization/types'
 import {
   USEFUL_CATEGORIES,
@@ -327,56 +328,4 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
   }
 }
 
-export async function buildDiscoveredAssetsFromCandidates(
-  candidates: ImageCandidate[],
-  maxImages: number,
-  openAiKey?: string,
-  openAiModel?: string,
-): Promise<DiscoveredAsset[]> {
-  const model = openAiModel || getBusinessAssetClassificationModel()
-  const discoveredAssets: DiscoveredAsset[] = []
-  const seenUrls = new Set<string>()
-
-  for (const candidate of candidates) {
-    if (discoveredAssets.length >= maxImages) break
-    if (seenUrls.has(candidate.url)) continue
-    seenUrls.add(candidate.url)
-
-    let classification: { category: DiscoveredAssetCategory; confidence: number; recommended: boolean } | null = null
-    try {
-      const classificationResult = await classifyImage(candidate.url, openAiKey, model)
-      classification = classificationResult
-    } catch {
-      classification = null
-    }
-
-    if (!classification) {
-      classification = heuristicFallback(candidate.url)
-    }
-
-    // Only keep personalization-relevant assets.
-    // Everything else is discarded before user review.
-    if (!isUsefulCategory(classification!.category)) {
-      continue
-    }
-
-    discoveredAssets.push({
-      id: `disc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      sourceUrl: candidate.url,
-      previewUrl: candidate.url,
-      sourceType: candidate.sourceType || 'WEBSITE',
-      socialProfileUrl: candidate.socialProfileUrl,
-      category: classification!.category,
-      confidence: classification!.confidence,
-      qualityScore: classification!.confidence,
-      relevanceScore: classification!.confidence,
-      selected: classification!.recommended,
-      recommended: classification!.recommended,
-      rejected: false,
-      assignedSection: null,
-      autoAssigned: false,
-    })
-  }
-
-  return autoPlaceAssets(discoveredAssets, DEFAULT_AUTO_PLACEMENT_CONFIG)
-}
+export { runFastDiscovery } from './fastDiscovery'
