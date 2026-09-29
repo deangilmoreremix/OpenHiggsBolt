@@ -399,3 +399,5 @@ async function handler(event) {
     return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: errorMessage, code: errorCode }) }
   }
 }
+
+module.exports.handler = handler
