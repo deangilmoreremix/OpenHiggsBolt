@@ -27,6 +27,9 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+  [plugins.inputs]
+    exclude = ["**/electron/dist/**"]
+
 [[redirects]]
   from = "/api/brands"
   to = "/.netlify/functions/brands"
