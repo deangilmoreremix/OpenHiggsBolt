@@ -189,12 +189,14 @@ export async function POST(req: NextRequest) {
     }
 
     let fastResult: RawDiscoveryResult
+    let needsBrowser = false
     try {
       const fast = await runFastDiscovery({
         websiteUrl,
         maxPages: 1,
         maxImages: 20,
       })
+      needsBrowser = fast.needsBrowser && process.env.ENABLE_BROWSER_DISCOVERY !== 'false'
       fastResult = {
         ...fast.result,
         discoveredAssets: fast.fastAssets,
@@ -225,9 +227,6 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    const needsBrowser =
-      fastResult.needsBrowser &&
-      process.env.ENABLE_BROWSER_DISCOVERY !== 'false'
     const browserQueued = needsBrowser
 
     if (browserQueued) {
