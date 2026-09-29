@@ -1,7 +1,7 @@
 [build]
   # Build all workspace packages whose dist/ is gitignored and must be
   # generated before the root Next.js build can resolve them.
-  command = "pwd && ls -la && set -x && npm run build:metadata && npm run build:packages && npm run build"
+  command = "pwd && ls -la && rm -rf node_modules/electron/dist && set -x && npm run build:metadata && npm run build:packages && npm run build"
   publish = ".next"
   exclude = ["electron/dist/**", "playwright/**"]
 
@@ -27,9 +27,6 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-
-  [plugins.inputs]
-    exclude = ["**/electron/dist/**"]
 
 [[redirects]]
   from = "/api/brands"
