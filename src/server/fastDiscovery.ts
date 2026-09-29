@@ -1,5 +1,6 @@
 import type { ImageCandidate, DiscoveryResult, SocialProfileSource } from './discoveryProvider'
-import { StaticDiscoveryProvider } from './staticDiscovery'
+// Static discovery is too slow for Netlify sync path; use sitemap + background browser instead.
+// import { StaticDiscoveryProvider } from './staticDiscovery'
 import { sanitizeUrl, classifyImage, heuristicFallback } from './discoverAssets'
 import { getBusinessAssetClassificationModel } from './discoveryClassificationConfig'
 import { autoPlaceAssets, DEFAULT_AUTO_PLACEMENT_CONFIG } from './autoPlacementEngine'
@@ -61,14 +62,8 @@ export async function runFastDiscovery(options: {
 
   providerAttempts.push('SMARTVIDEO_STATIC')
   try {
-    const staticProvider = new StaticDiscoveryProvider()
-    result = await staticProvider.discover({
-      websiteUrl: baseUrl,
-      maxPages: 1,
-      maxImages: 20,
-      openAiKey,
-      openAiModel,
-    })
+    // Static discovery bypassed for Netlify sync limit.
+    result = null
   } catch (err) {
     console.error('[discovery] Static failed:', err instanceof Error ? err.message : err)
     result = null
