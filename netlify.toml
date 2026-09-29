@@ -1,7 +1,7 @@
 [build]
   # Build all workspace packages whose dist/ is gitignored and must be
   # generated before the root Next.js build can resolve them.
-  command = "cd packages/Vibe-Workflow/packages/workflow-builder && npm run build:css && echo 'BUILD_CSS_SUCCESS'"
+  command = "set -x && npm run build:metadata && npm run build:packages && npm run build"
   publish = ".next"
 
   [build.environment]
