@@ -10,6 +10,8 @@
     NPM_CONFIG_PRODUCTION = "false"
     # Skip Playwright browser downloads during install to avoid network/timeouts.
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
+    # Skip Electron binary download on CI/Netlify; this app does not use Electron in production.
+    ELECTRON_SKIP_BINARY_DOWNLOAD = "1"
     # Match Netlify build image runtime.
     NODE_VERSION = "24"
 
