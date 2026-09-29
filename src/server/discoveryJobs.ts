@@ -100,3 +100,18 @@ export async function getDiscoveryJobForUser(id: string, clerkUserId: string): P
 
   return data as DiscoveryJobRow
 }
+
+export async function getDiscoveryJobById(id: string): Promise<DiscoveryJobRow | null> {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from('personalization_discovery_jobs')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error || !data) {
+    return null
+  }
+
+  return data as DiscoveryJobRow
+}

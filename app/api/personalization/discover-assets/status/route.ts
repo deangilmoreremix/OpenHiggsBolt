@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { getDiscoveryJobForUser } from '@/server/discoveryJobs'
+import { getDiscoveryJobForUser, getDiscoveryJobById } from '@/server/discoveryJobs'
 
 export const runtime = 'nodejs'
 
@@ -12,13 +12,11 @@ export async function GET(req: NextRequest) {
   }
 
   const { userId } = await auth()
-  if (!userId) {
-    // Allow anonymous status lookups when a valid jobId is provided.
-    // The discovery jobId is an unguessable UUID, so exposing terminal
-    // discovery state does not leak sensitive user data.
-  }
 
-  const job = await getDiscoveryJobForUser(jobId, userId || '')
+  const job = userId
+    ? await getDiscoveryJobForUser(jobId, userId)
+    : await getDiscoveryJobById(jobId)
+
   if (!job) {
     return NextResponse.json({ error: 'Job not found' }, { status: 404 })
   }
