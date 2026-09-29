@@ -61,13 +61,10 @@ export async function runFastDiscovery(options: {
   let sitemapFound = false
 
   providerAttempts.push('SMARTVIDEO_STATIC')
-  try {
-    // Static discovery bypassed for Netlify sync limit.
-    result = null
-  } catch (err) {
-    console.error('[discovery] Static failed:', err instanceof Error ? err.message : err)
-    result = null
-  }
+  // Static discovery is bypassed here because it is too slow for the
+  // Netlify synchronous path. The background function handles the expensive
+  // browser enrichment instead.
+  result = null
 
   if (result?.candidates?.length) {
     discoveredAssets = await buildDiscoveredAssetsFromCandidates(result.candidates, maxImages, openAiKey, openAiModel)
