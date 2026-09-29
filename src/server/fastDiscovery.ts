@@ -81,47 +81,12 @@ export async function runFastDiscovery(options: {
   const staticSufficient = hasEnoughUsefulAssets(discoveredAssets)
 
   const sitemapCandidates: string[] = []
-  if (!staticSufficient || !result?.candidates?.length) {
+  if (!staticSufficient) {
     try {
       sitemapCandidates.push(...(await discoverSitemapUrls(baseUrl)))
       sitemapFound = sitemapCandidates.length > 0
     } catch (err) {
       console.error('[discovery] Sitemap discovery failed:', err instanceof Error ? err.message : err)
-    }
-  }
-
-  if (!staticSufficient && sitemapCandidates.length > 0) {
-    providerAttempts.push('CRAWLEE_CHEERIO')
-    try {
-      const { discoverWithCrawlee } = await import('./crawleeProvider')
-      const crawleeResult = await discoverWithCrawlee(baseUrl)
-      if (crawleeResult.candidates.length > 0) {
-        const existingUrls = new Set(result?.candidates?.map((c) => c.url) || [])
-        const newCandidates = crawleeResult.candidates.filter((c) => !existingUrls.has(c.url))
-
-        if (result) {
-          result = {
-            ...result,
-            candidates: [...result.candidates, ...newCandidates],
-            rawCandidates: (result.rawCandidates || 0) + crawleeResult.rawCandidates,
-            pagesCrawled: (result.pagesCrawled || 0) + crawleeResult.pagesCrawled,
-          }
-        } else {
-          result = {
-            candidates: newCandidates,
-            provider: 'CRAWLEE_CHEERIO',
-            pagesCrawled: crawleeResult.pagesCrawled,
-            rawCandidates: crawleeResult.rawCandidates,
-            socialProfiles: crawleeResult.socialProfiles,
-          }
-        }
-
-        const crawleeAssets = await buildDiscoveredAssetsFromCandidates(newCandidates, maxImages, openAiKey, openAiModel)
-        discoveredAssets = [...discoveredAssets, ...crawleeAssets]
-        crawleePagesCrawled = crawleeResult.pagesCrawled
-      }
-    } catch (err) {
-      console.error('[discovery] Crawlee fallback failed:', err instanceof Error ? err.message : err)
     }
   }
 
