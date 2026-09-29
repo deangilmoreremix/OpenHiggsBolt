@@ -156,6 +156,31 @@
 - [ ] Video Studio handoff works
 - ] Publish uses final URL
 
+## Production Status
+
+As of 2026-09-29:
+- Background function `/.netlify/functions/personalization-browser-discovery` is deployed and responding correctly
+- Main site `https://go.smartvid.app` is currently returning 404 due to a Netlify build pipeline issue (all Netlify builds failing with exit code 2)
+- The `/personalization-demo` page is included in the local build but not yet deployed to production
+
+### Background Function Verification
+
+```bash
+curl -X POST https://go.smartvid.app/.netlify/functions/personalization-browser-discovery \
+  -H "Content-Type: application/json" \
+  -d '{"jobId":"test-123","websiteUrl":"https://example.com"}'
+```
+
+Expected response: `{"error":"Job not found"}` (confirms function is live and no longer throws `Runtime.ImportModuleError` or `HandlerNotFound`)
+
+### Netlify Build Issue
+
+All Netlify builds are failing with "Build script returned non-zero exit code: 2". Build logs are inaccessible via API. The following fixes have been applied to address potential causes:
+- Updated `NODE_VERSION` to match Netlify build image runtime
+- Set `ELECTRON_SKIP_BINARY_DOWNLOAD=1` to skip Electron binary download
+- Fixed `.netlifyignore` to allow `.next/` directory uploads
+- Fixed JSX syntax errors in `components/StandaloneShell.js`
+
 ## Known Limitations
 - Real API smoke tests are blocked if no MuAPI key is available
 - Playwright E2E tests require a running dev server; compilation may take 2-5 minutes on first run
