@@ -66,7 +66,7 @@ export async function runFastDiscovery(options: {
   // browser enrichment instead.
 
   if ((result as any) && (result as any).candidates.length) {
-    discoveredAssets = await buildDiscoveredAssetsFromCandidates((result as any).candidates, maxImages, openAiKey, openAiModel)
+    discoveredAssets = await buildDiscoveredAssetsFromCandidates((result as any).candidates, maxImages)
   }
 
   const staticSufficient = hasEnoughUsefulAssets(discoveredAssets)
@@ -116,10 +116,7 @@ export async function runFastDiscovery(options: {
 export async function buildDiscoveredAssetsFromCandidates(
   candidates: ImageCandidate[],
   maxImages: number,
-  openAiKey?: string,
-  openAiModel?: string,
 ): Promise<DiscoveredAsset[]> {
-  const model = openAiModel || getBusinessAssetClassificationModel()
   const discoveredAssets: DiscoveredAsset[] = []
   const seenUrls = new Set<string>()
 
@@ -132,7 +129,7 @@ export async function buildDiscoveredAssetsFromCandidates(
 
     let classification: { category: DiscoveredAssetCategory; confidence: number; recommended: boolean } | null = null
     try {
-      classification = await classifyImage(normalizedUrl, model, openAiKey)
+      classification = heuristicFallback(normalizedUrl)
     } catch {
       classification = null
     }

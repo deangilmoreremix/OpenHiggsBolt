@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { mirrorUrlToStorage } from "../_shared/supabase.ts";
-import { MissingOpenAiKeyError, openAiFromRequest, resolveOpenAiKey } from "../_shared/openai.ts";
+import { MissingOpenAiKeyError, openAiFromRequest } from "../_shared/openai.ts";
 
 const OPENAI_MODEL = "gpt-4o";
 
@@ -160,9 +160,6 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Missing website URL" }, 400);
     }
 
-    // Fail fast before any network/storage work if the caller has no key.
-    if (!resolveOpenAiKey(req)) throw new MissingOpenAiKeyError();
-
     const normalizedUrl = websiteUrl.startsWith("http")
       ? websiteUrl
       : `https://${websiteUrl}`;
@@ -194,7 +191,6 @@ Deno.serve(async (req) => {
     const absoluteOgImage = ogImage ? new URL(ogImage, normalizedUrl).href : "";
 
     const supabase = createServerClient();
-    const openai = openAiFromRequest(req);
     let screenshotUrl = "";
 
     if (absoluteOgImage) {
@@ -206,8 +202,58 @@ Deno.serve(async (req) => {
       );
     }
 
-    const prompt =
-      `You are a senior brand strategist. Analyze the website content and optional og:image. Return ONLY a valid JSON object with these exact keys:
+    // Deterministic non-AI fallback metadata from extracted website evidence
+    const deterministicRow = {
+      url: normalizedUrl,
+      brand_name: title || domainFromUrl(normalizedUrl),
+      industry: "General",
+      tagline: description || "",
+      value_proposition: description || "",
+      tone_of_voice: "",
+      brand_personality: "",
+      target_audience: "",
+      key_messages: "",
+      primary_colors: colors.length
+        ? colors.slice(0, 3).join(", ")
+        : themeColor
+        ? themeColor
+        : "#111111, #ffffff",
+      secondary_colors: colors.length > 3
+        ? colors.slice(3, 6).join(", ")
+        : "",
+      fonts: fonts.join(", "),
+      logo_url: "",
+      screenshot_url: screenshotUrl || "",
+      imagery_style: "",
+      layout_style: "",
+      raw_json: {
+        title,
+        description,
+        theme_color: themeColor,
+        og_image: absoluteOgImage,
+        colors,
+        fonts,
+        body_text_excerpt: bodyText,
+        mode: "deterministic",
+      },
+    };
+
+    const { data: deterministicData, error: deterministicError } = await supabase
+      .from("brand_dna")
+      .insert(deterministicRow)
+      .select()
+      .single();
+
+    if (deterministicError) {
+      return jsonResponse({ error: deterministicError.message }, 500);
+    }
+
+    // Optional AI brand analysis if OpenAI key is available
+    const openai = openAiFromRequest(req);
+    let aiRow = deterministicRow;
+    try {
+      const prompt =
+        `You are a senior brand strategist. Analyze the website content and optional og:image. Return ONLY a valid JSON object with these exact keys:
 {
   "brand_name": "string",
   "industry": "string",
@@ -237,77 +283,86 @@ Fonts found: ${fonts.join(", ")}
 Mirrored og:image for vision: ${screenshotUrl || "none"}
 HTML text excerpt: ${bodyText}`;
 
-    const response = await openai.responses.create({
-      model: OPENAI_MODEL,
-      input: [
-        {
-          role: "system",
-          content:
-            "Extract structured brand DNA from the provided website evidence. Return only JSON.",
+      const response = await openai.responses.create({
+        model: OPENAI_MODEL,
+        input: [
+          {
+            role: "system",
+            content:
+              "Extract structured brand DNA from the provided website evidence. Return only JSON.",
+          },
+          {
+            role: "user",
+            content: [
+              { type: "input_text", text: prompt },
+              ...(screenshotUrl
+                ? [{ type: "input_image", image_url: screenshotUrl }]
+                : []),
+            ],
+          },
+        ] as any,
+        max_output_tokens: 3000,
+      });
+
+      const parsed = parseJsonObject(responseText(response));
+      const fallbackColors = colors.length
+        ? colors
+        : themeColor
+        ? [themeColor]
+        : ["#111111", "#ffffff"];
+      aiRow = {
+        ...deterministicRow,
+        brand_name: String(
+          parsed.brand_name || title || domainFromUrl(normalizedUrl),
+        ),
+        industry: String(parsed.industry || "General"),
+        tagline: String(parsed.tagline || description || ""),
+        value_proposition: String(parsed.value_proposition || description || ""),
+        tone_of_voice: toCsv(parsed.tone_of_voice),
+        brand_personality: toCsv(parsed.brand_personality),
+        target_audience: String(parsed.target_audience || ""),
+        key_messages: toCsv(parsed.key_messages),
+        primary_colors: toCsv(
+          asArray(parsed.primary_colors).length
+            ? parsed.primary_colors
+            : fallbackColors.slice(0, 3),
+        ),
+        secondary_colors: toCsv(
+          asArray(parsed.secondary_colors).length
+            ? parsed.secondary_colors
+            : fallbackColors.slice(3, 6),
+        ),
+        fonts: toCsv(asArray(parsed.fonts).length ? parsed.fonts : fonts),
+        logo_url: String(parsed.logo_url || ""),
+        screenshot_url: String(parsed.screenshot_url || screenshotUrl || ""),
+        imagery_style: String(parsed.imagery_style || ""),
+        layout_style: String(parsed.layout_style || ""),
+        raw_json: {
+          title,
+          description,
+          theme_color: themeColor,
+          og_image: absoluteOgImage,
+          colors,
+          fonts,
+          body_text_excerpt: bodyText,
+          ai: parsed,
         },
-        {
-          role: "user",
-          content: [
-            { type: "input_text", text: prompt },
-            ...(screenshotUrl
-              ? [{ type: "input_image", image_url: screenshotUrl }]
-              : []),
-          ],
-        },
-      ] as any,
-      max_output_tokens: 3000,
-    });
+      };
 
-    const parsed = parseJsonObject(responseText(response));
-    const fallbackColors = colors.length
-      ? colors
-      : themeColor
-      ? [themeColor]
-      : ["#111111", "#ffffff"];
-    const row = {
-      url: normalizedUrl,
-      brand_name: String(
-        parsed.brand_name || title || domainFromUrl(normalizedUrl),
-      ),
-      industry: String(parsed.industry || "General"),
-      tagline: String(parsed.tagline || description || ""),
-      value_proposition: String(parsed.value_proposition || description || ""),
-      tone_of_voice: toCsv(parsed.tone_of_voice),
-      brand_personality: toCsv(parsed.brand_personality),
-      target_audience: String(parsed.target_audience || ""),
-      key_messages: toCsv(parsed.key_messages),
-      primary_colors: toCsv(
-        asArray(parsed.primary_colors).length
-          ? parsed.primary_colors
-          : fallbackColors.slice(0, 3),
-      ),
-      secondary_colors: toCsv(
-        asArray(parsed.secondary_colors).length
-          ? parsed.secondary_colors
-          : fallbackColors.slice(3, 6),
-      ),
-      fonts: toCsv(asArray(parsed.fonts).length ? parsed.fonts : fonts),
-      logo_url: String(parsed.logo_url || ""),
-      screenshot_url: String(parsed.screenshot_url || screenshotUrl || ""),
-      imagery_style: String(parsed.imagery_style || ""),
-      layout_style: String(parsed.layout_style || ""),
-      raw_json: {
-        title,
-        description,
-        theme_color: themeColor,
-        og_image: absoluteOgImage,
-        colors,
-        fonts,
-        body_text_excerpt: bodyText,
-        ai: parsed,
-      },
-    };
+      const { data: aiData, error: aiError } = await supabase
+        .from("brand_dna")
+        .insert(aiRow)
+        .select()
+        .single();
 
-    const { data, error } = await supabase.from("brand_dna").insert(row)
-      .select().single();
-    if (error) throw error;
+      if (!aiError && aiData) {
+        return jsonResponse(aiData);
+      }
+    } catch {
+      // AI analysis is optional; return deterministic result if AI fails
+    }
 
-    return jsonResponse(data);
+    return jsonResponse(deterministicData);
   } catch (error) {
     if (error instanceof MissingOpenAiKeyError) {
       return jsonResponse({ error: error.message }, 400);

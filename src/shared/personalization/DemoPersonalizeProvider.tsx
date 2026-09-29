@@ -1410,7 +1410,86 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       const data = await res.json()
       const discoveredAssets: DiscoveredAsset[] = Array.isArray(data?.discoveredAssets) ? data.discoveredAssets : []
       const providerUsed = typeof data?.providerUsed === 'string' ? data.providerUsed : 'UNKNOWN'
+      const jobId = typeof data?.jobId === 'string' ? data.jobId : null
+      const browserQueued = Boolean(data?.browserQueued)
+      const responseStatus = typeof data?.status === 'string' ? data.status : (res.status === 202 ? 'processing' : 'complete')
 
+      // If background discovery is queued, show fast assets and poll for completion
+      if (jobId && (responseStatus === 'processing' || browserQueued)) {
+        if (discoveredAssets.length > 0) {
+          setDiscoveredAssetsState(discoveredAssets)
+          setDiscoveryStatus('reviewing')
+        } else {
+          setDiscoveryStatus('discovering')
+        }
+
+        // Poll status endpoint until complete
+        let pollCount = 0
+        const maxPolls = 60
+        const pollInterval = 2000
+
+        const pollStatus = async (): Promise<void> => {
+          while (pollCount < maxPolls) {
+            await new Promise((resolve) => setTimeout(resolve, pollInterval))
+            pollCount++
+
+            try {
+              const statusRes = await fetch(`/api/personalization/discover-assets?jobId=${encodeURIComponent(jobId)}`, {
+                credentials: 'same-origin',
+              })
+
+              if (!statusRes.ok) {
+                const statusData = await statusRes.json().catch(() => ({}))
+                throw new Error(statusData?.error || `Status lookup failed (HTTP ${statusRes.status})`)
+              }
+
+              const statusData = await statusRes.json()
+              const jobStatus = typeof statusData?.status === 'string' ? statusData.status : 'unknown'
+
+              if (jobStatus === 'complete') {
+                const finalAssets: DiscoveredAsset[] = Array.isArray(statusData?.result?.discoveredAssets)
+                  ? statusData.result.discoveredAssets
+                  : []
+
+                if (finalAssets.length > 0) {
+                  setDiscoveredAssetsState(finalAssets)
+                  setDiscoveryStatus('reviewing')
+                  setDiscoveryError(null)
+                } else {
+                  setDiscoveryError('No useful assets were found on that website.')
+                  setDiscoveryStatus('idle')
+                }
+                return
+              }
+
+              if (jobStatus === 'error') {
+                const errorMessage = typeof statusData?.errorMessage === 'string'
+                  ? statusData.errorMessage
+                  : typeof statusData?.error === 'string'
+                    ? statusData.error
+                    : 'Discovery job failed'
+                setDiscoveryError(errorMessage)
+                setDiscoveryStatus('idle')
+                return
+              }
+
+              // Still running; continue polling
+            } catch {
+              setDiscoveryError('Failed to check discovery status. Please try again.')
+              setDiscoveryStatus('idle')
+              return
+            }
+          }
+
+          setDiscoveryError('Discovery timed out. Please try again.')
+          setDiscoveryStatus('idle')
+        }
+
+        pollStatus()
+        return
+      }
+
+      // Immediate complete response
       if (discoveredAssets.length === 0) {
         setDiscoveryError('No useful assets were found on that website.')
         setDiscoveryStatus('idle')

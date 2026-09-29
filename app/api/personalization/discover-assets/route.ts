@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import type { ImageCandidate, SocialProfileSource } from '@/server/discoveryProvider'
 import type { DiscoveredAsset } from '@/server/discoverAssets'
-import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer'
 import { getFixture } from '@/src/server/fixtures/discoveryFixtures'
 import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
 import { validatePersonalizationEnv } from '@/server/envValidation'
@@ -189,15 +188,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const openAiKey = userId ? await getOpenAiKeyForUser() : null
-
     let fastResult: RawDiscoveryResult
     try {
       const fast = await runFastDiscovery({
         websiteUrl,
         maxPages: 1,
         maxImages: 20,
-        openAiKey: openAiKey || undefined,
       })
       fastResult = {
         ...fast.result,

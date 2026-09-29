@@ -162,7 +162,7 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
   let localUsefulAssetCount = 0
 
   if (result?.candidates?.length) {
-    discoveredAssets = await buildDiscoveredAssetsFromCandidates(result.candidates, maxImages, openAiKey, openAiModel)
+    discoveredAssets = await buildDiscoveredAssetsFromCandidates(result.candidates, maxImages)
     localUsefulAssetCount = discoveredAssets.filter((asset) => isUsefulCategory(asset.category)).length
   }
 
@@ -206,7 +206,7 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
           }
         }
 
-        const crawleeAssets = await buildDiscoveredAssetsFromCandidates(newCandidates, maxImages, openAiKey, openAiModel)
+        const crawleeAssets = await buildDiscoveredAssetsFromCandidates(newCandidates, maxImages)
         discoveredAssets = [...discoveredAssets, ...crawleeAssets]
         localUsefulAssetCount = discoveredAssets.filter((asset) => isUsefulCategory(asset.category)).length
         crawleePagesCrawled = crawleeResult.pagesCrawled
@@ -250,7 +250,7 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
             }
           }
 
-          const browserAssets = await buildDiscoveredAssetsFromCandidates(newCandidates, maxImages, openAiKey, openAiModel)
+          const browserAssets = await buildDiscoveredAssetsFromCandidates(newCandidates, maxImages)
           discoveredAssets = [...discoveredAssets, ...browserAssets]
           localUsefulAssetCount = discoveredAssets.filter((asset) => isUsefulCategory(asset.category)).length
           providerUsed = 'SMARTVIDEO_BROWSER'
@@ -293,7 +293,7 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
         result = firecrawlResult
       }
 
-      const firecrawlAssets = await buildDiscoveredAssetsFromCandidates(newCandidates, maxImages, openAiKey, openAiModel)
+      const firecrawlAssets = await buildDiscoveredAssetsFromCandidates(newCandidates, maxImages)
       discoveredAssets = [...discoveredAssets, ...firecrawlAssets]
 
       providerUsed = 'FIRECRAWL'

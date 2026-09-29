@@ -1562,3 +1562,147 @@ describe('DemoPersonalizeProvider deleteSavedClient regression', () => {
     expect(ctx.clientForm.businessName).toBeUndefined()
   })
 })
+
+describe('DemoPersonalizeProvider zero-key discovery', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.resetModules()
+    URL.createObjectURL = vi.fn(() => 'blob:http://localhost/test')
+    URL.revokeObjectURL = vi.fn()
+    generationPromiseResolvers.length = 0
+  })
+
+  const renderProvider = async () => {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+
+    await act(async () => {
+      root.render(
+        <DemoPersonalizeProvider>
+          <TestOpener />
+        </DemoPersonalizeProvider>,
+      )
+    })
+
+    return container
+  }
+
+  it('does not show false no-assets message when background job is queued with zero fast assets', async () => {
+    const container = await renderProvider()
+
+    // Track fetch calls to simulate status polling
+    const fetchCalls: Array<{ url: string; opts?: any }> = []
+    const mockFetch = vi.fn(async (url: string, opts?: any) => {
+      fetchCalls.push({ url, opts })
+
+      const body = typeof opts?.body === 'string' ? JSON.parse(opts.body) : {}
+      if (url.includes('/api/personalization/discover-assets?jobId=')) {
+        // Status poll - return complete with assets
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            status: 'complete',
+            result: {
+              discoveredAssets: [
+                { id: '1', sourceUrl: 'https://example.com/logo.png', previewUrl: 'https://example.com/logo.png', category: 'logo', confidence: 80, selected: true, recommended: true, rejected: false },
+              ],
+            },
+          }),
+        }
+      }
+
+      // Initial POST - return 202 with zero fast assets
+      return {
+        ok: true,
+        status: 202,
+        json: async () => ({
+          ok: true,
+          status: 'processing',
+          jobId: 'test-job-123',
+          browserQueued: true,
+          discoveredAssets: [],
+          providerUsed: 'SMARTVIDEO_STATIC',
+        }),
+      }
+    })
+
+    // @ts-ignore
+    global.fetch = mockFetch
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.discoverAssets('https://example.com')
+    })
+
+    let ctx = (window as any).__personalizationCtx
+    expect(ctx.discoveryStatus).toBe('discovering')
+    expect(ctx.discoveryError).toBeNull()
+
+    // Wait for polling to complete (poll interval is 2s, max 60 polls)
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 2500))
+    })
+
+    ctx = (window as any).__personalizationCtx
+    expect(ctx.discoveryStatus).toBe('reviewing')
+    expect(ctx.discoveredAssets).toHaveLength(1)
+  })
+
+  it('shows no-assets message only after background job completes with zero assets', async () => {
+    const container = await renderProvider()
+
+    const fetchCalls: Array<{ url: string; opts?: any }> = []
+    const mockFetch = vi.fn(async (url: string, opts?: any) => {
+      fetchCalls.push({ url, opts })
+
+      if (url.includes('/api/personalization/discover-assets?jobId=')) {
+        // Status poll - return complete with zero assets
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            status: 'complete',
+            result: {
+              discoveredAssets: [],
+            },
+          }),
+        }
+      }
+
+      // Initial POST - return 202 with zero fast assets
+      return {
+        ok: true,
+        status: 202,
+        json: async () => ({
+          ok: true,
+          status: 'processing',
+          jobId: 'test-job-456',
+          browserQueued: true,
+          discoveredAssets: [],
+          providerUsed: 'SMARTVIDEO_STATIC',
+        }),
+      }
+    })
+
+    // @ts-ignore
+    global.fetch = mockFetch
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.discoverAssets('https://example.com')
+    })
+
+    let ctx = (window as any).__personalizationCtx
+    expect(ctx.discoveryStatus).toBe('discovering')
+    expect(ctx.discoveryError).toBeNull()
+
+    // Wait for polling to complete
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 2500))
+    })
+
+    ctx = (window as any).__personalizationCtx
+    expect(ctx.discoveryStatus).toBe('idle')
+    expect(ctx.discoveryError).toBe('No useful assets were found on that website.')
+  })
+})
