@@ -108,6 +108,12 @@ function createFileList(files: File[]): FileList {
   } as unknown as FileList
 }
 
+beforeEach(() => {
+  if (typeof window !== 'undefined') {
+    localStorage.clear()
+  }
+})
+
 describe('DemoPersonalizeProvider durable uploads', () => {
   beforeEach(() => {
     vi.clearAllMocks()
