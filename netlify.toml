@@ -3,7 +3,7 @@
   # generated before the root Next.js build can resolve them.
   command = "pwd && ls -la && set -x && npm run build:metadata && npm run build:packages && npm run build"
   publish = ".next"
-  exclude = ["**/electron/dist/**"]
+  exclude = ["node_modules/electron/dist/**"]
 
   [build.environment]
     # Ensure build-time dependencies (tailwindcss, autoprefixer, jsdom, babel, etc.)
