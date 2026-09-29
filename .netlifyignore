@@ -1,4 +1,3 @@
-# Ignore Next.js cache and build output to avoid bloating deploys
+# Ignore Next.js cache to avoid bloating deploys
 # The build command regenerates these during deploy.
-.next/
 .next/cache/
