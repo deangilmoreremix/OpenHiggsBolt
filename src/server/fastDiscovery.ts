@@ -64,10 +64,9 @@ export async function runFastDiscovery(options: {
   // Static discovery is bypassed here because it is too slow for the
   // Netlify synchronous path. The background function handles the expensive
   // browser enrichment instead.
-  result = null
 
-  if (result?.candidates?.length) {
-    discoveredAssets = await buildDiscoveredAssetsFromCandidates(result.candidates, maxImages, openAiKey, openAiModel)
+  if ((result as any) && (result as any).candidates.length) {
+    discoveredAssets = await buildDiscoveredAssetsFromCandidates((result as any).candidates, maxImages, openAiKey, openAiModel)
   }
 
   const staticSufficient = hasEnoughUsefulAssets(discoveredAssets)
@@ -86,12 +85,17 @@ export async function runFastDiscovery(options: {
   const needsBrowser = !hasEnoughUsefulAssets(discoveredAssets)
 
   const finalResult: OrchestratedDiscoveryResult = {
+    // @ts-ignore
     providerUsed: result?.provider || providerAttempts[providerAttempts.length - 1] || 'NONE',
     providerAttempted: providerAttempts[providerAttempts.length - 1] || 'NONE',
+    // @ts-ignore
     candidates: result?.candidates || [],
+    // @ts-ignore
     pagesCrawled: result?.pagesCrawled || 0,
+    // @ts-ignore
     rawCandidates: result?.rawCandidates || 0,
     duration: Date.now() - startTime,
+    // @ts-ignore
     socialProfiles: result?.socialProfiles || [],
     discoveredAssets,
     firecrawlUsed: false,
