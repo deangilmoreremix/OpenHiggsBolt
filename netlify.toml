@@ -10,8 +10,8 @@
     NPM_CONFIG_PRODUCTION = "false"
     # Skip Playwright browser downloads during install to avoid network/timeouts.
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
-    # Match local development Node version.
-    NODE_VERSION = "22"
+    # Match Netlify build image runtime.
+    NODE_VERSION = "24"
 
 [[headers]]
   for = "/*"
