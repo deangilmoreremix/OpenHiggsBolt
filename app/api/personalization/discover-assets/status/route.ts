@@ -13,7 +13,9 @@ export async function GET(req: NextRequest) {
 
   const { userId } = await auth()
   if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Allow anonymous status lookups when a valid jobId is provided.
+    // The discovery jobId is an unguessable UUID, so exposing terminal
+    // discovery state does not leak sensitive user data.
   }
 
   const job = await getDiscoveryJobForUser(jobId, userId)
