@@ -236,6 +236,7 @@ type DemoPersonalizeContextValue = {
   updateDiscoveredAssetCategory: (id: string, category: DiscoveredAssetCategory) => void
   removeDiscoveredAssetFromSection: (id: string) => void
   moveDiscoveredAssetToSection: (id: string, section: AssignedSection) => void
+  revertDiscoveredAssetEdit: (id: string) => void
   selectRecommendedDiscoveredAssets: () => void
   importDiscoveredAssets: () => Promise<void>
   cancelDiscovery: () => void
@@ -243,6 +244,12 @@ type DemoPersonalizeContextValue = {
   visionStatus: 'idle' | 'analyzing' | 'complete' | 'error'
   visionError: string | null
   analyzeDiscoveredAssets: () => Promise<void>
+
+  // Library asset actions
+  moveLibraryAssetToSection: (assetId: string, section: AssignedSection) => void
+  removeLibraryAssetFromSection: (assetId: string) => void
+  deleteLibraryAsset: (assetId: string) => void
+  revertLibraryAssetToOriginal: (assetId: string) => void
 
   // Business search
   businessSearchMode: 'idle' | 'searching' | 'results' | 'selected' | 'error'
@@ -924,7 +931,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       visionValidation?: PersonalizationVisionValidation
     },
   ) => {
-    const all = [
+    const currentJobAssets = [
       ...assets.identities,
       ...assets.logos,
       ...assets.products,
@@ -934,7 +941,14 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       assets.ctaGraphic,
     ].filter(Boolean) as PersonalizationAsset[]
 
-    const target = all.find((a) => a.id === assetId)
+    const savedAssets = [
+      ...savedClientAssets.identities,
+      ...savedClientAssets.logos,
+      ...savedClientAssets.products,
+      ...savedClientAssets.brandReferences,
+    ]
+
+    const target = currentJobAssets.find((a) => a.id === assetId) || savedAssets.find((a) => a.id === assetId)
     if (!target) throw new Error('Asset not found')
     const blob = dataUrlToBlob(dataUrl)
     if (!blob) throw new Error('Edited image could not be read')
@@ -956,6 +970,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       uploadError: null,
       originalUrl,
       edited: true,
+      editedDataUrl: dataUrl,
       videoReady: meta.videoReady,
       hasTransparency: meta.transparent,
       editMetadata: {
@@ -974,9 +989,18 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       visionValidation: meta.visionValidation,
     }
 
-    setAssets((prev) => replaceAssetInLibrary(prev, editedAsset))
+    const inCurrentJob = currentJobAssets.some((a) => a.id === assetId)
+    const inSavedLibrary = savedAssets.some((a) => a.id === assetId)
+
+    if (inCurrentJob) {
+      setAssets((prev) => replaceAssetInLibrary(prev, editedAsset))
+    }
+    if (inSavedLibrary && selectedClientId) {
+      const updatedLibrary = updateAssetInClientLibrary(selectedClientId, editedAsset)
+      setSavedClientAssets(updatedLibrary)
+    }
     await uploadAsset(editedAsset)
-  }, [assets, uploadAsset])
+  }, [assets, savedClientAssets, selectedClientId, setSavedClientAssets, uploadAsset])
 
   const applyEditedSavedClientAsset = useCallback(async (
     clientId: string,
@@ -1298,6 +1322,227 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     })
   }, [])
 
+  // ── Library asset move / remove / delete ────────────────────────────────────
+
+  const moveLibraryAssetToSection = useCallback((assetId: string, section: AssignedSection) => {
+    setAssets((prev) => {
+      const all = [
+        ...prev.identities,
+        ...prev.logos,
+        ...prev.products,
+        ...prev.brandReferences,
+        prev.firstFrame,
+        prev.lastFrame,
+        prev.ctaGraphic,
+        ...prev.audio,
+        ...prev.savedReferences,
+      ].filter(Boolean) as PersonalizationAsset[]
+
+      const target = all.find((a) => a.id === assetId)
+      if (!target) return prev
+
+      // Determine new role from destination section
+      const newRole = (() => {
+        switch (section) {
+          case 'person': return 'presenter_identity'
+          case 'logo': return 'logo'
+          case 'products': return 'product_reference'
+          case 'brand': return 'brand_reference'
+          case 'firstFrame': return 'first_frame'
+          case 'lastFrame': return 'last_frame'
+          case 'ctaGraphic': return 'cta_graphic'
+          default: return target.role
+        }
+      })()
+
+      const movedAsset: PersonalizationAsset = {
+        ...target,
+        role: newRole,
+        // Preserve edited data and source classification
+        sourceCategory: target.sourceCategory,
+        originalUrl: target.originalUrl || target.uploadedUrl || target.url,
+        edited: target.edited,
+        editedDataUrl: target.editedDataUrl,
+        editMetadata: target.editMetadata,
+        visionAnalysis: target.visionAnalysis,
+        visionValidation: target.visionValidation,
+        videoReady: target.videoReady,
+        hasTransparency: target.hasTransparency,
+        isPrimary: section === 'person' || section === 'logo' ? target.isPrimary : false,
+      }
+
+      // Remove from old location first
+      let next: AssetLibrary = {
+        ...prev,
+        identities: prev.identities.filter((a) => a.id !== assetId),
+        logos: prev.logos.filter((a) => a.id !== assetId),
+        products: prev.products.filter((a) => a.id !== assetId),
+        brandReferences: prev.brandReferences.filter((a) => a.id !== assetId),
+        firstFrame: prev.firstFrame?.id === assetId ? null : prev.firstFrame,
+        lastFrame: prev.lastFrame?.id === assetId ? null : prev.lastFrame,
+        ctaGraphic: prev.ctaGraphic?.id === assetId ? null : prev.ctaGraphic,
+        audio: prev.audio.filter((a) => a.id !== assetId),
+        savedReferences: prev.savedReferences.filter((a) => a.id !== assetId),
+      }
+
+      // Handle primary cleanup for person/logo
+      if (section === 'person') {
+        next.primaryIdentity = next.identities.find((a) => a.isPrimary) || next.primaryIdentity
+      } else if (section === 'logo') {
+        next.primaryLogo = next.logos.find((a) => a.isPrimary) || next.primaryLogo
+      }
+      
+      // If moving away from person/logo, clear primary if the moved asset was primary
+      if (section !== 'person' && prev.primaryIdentity?.id === assetId) {
+        next.primaryIdentity = next.identities.find((a) => a.isPrimary) || null
+      }
+      if (section !== 'logo' && prev.primaryLogo?.id === assetId) {
+        next.primaryLogo = next.logos.find((a) => a.isPrimary) || null
+      }
+
+      // Add to new location
+      switch (newRole) {
+        case 'presenter_identity':
+        case 'face_identity':
+        case 'character_identity':
+          return {
+            ...next,
+            identities: [...next.identities, movedAsset],
+            primaryIdentity: next.primaryIdentity || movedAsset,
+          }
+        case 'logo':
+          return {
+            ...next,
+            logos: [...next.logos, movedAsset],
+            primaryLogo: next.primaryLogo || movedAsset,
+          }
+        case 'product_reference':
+          return { ...next, products: [...next.products, movedAsset] }
+        case 'brand_reference':
+          return { ...next, brandReferences: [...next.brandReferences, movedAsset] }
+        case 'first_frame':
+          return { ...next, firstFrame: movedAsset }
+        case 'last_frame':
+          return { ...next, lastFrame: movedAsset }
+        case 'cta_graphic':
+          return { ...next, ctaGraphic: movedAsset }
+        default:
+          return next
+      }
+    })
+  }, [])
+
+  const removeLibraryAssetFromSection = useCallback((assetId: string) => {
+    setAssets((prev) => {
+      const all = [
+        ...prev.identities,
+        ...prev.logos,
+        ...prev.products,
+        ...prev.brandReferences,
+        prev.firstFrame,
+        prev.lastFrame,
+        prev.ctaGraphic,
+        ...prev.audio,
+        ...prev.savedReferences,
+      ].filter(Boolean) as PersonalizationAsset[]
+
+      const asset = all.find((a) => a.id === assetId)
+      if (!asset) return prev
+
+      revokeAssetUrl(asset)
+
+      return {
+        ...prev,
+        identities: prev.identities.filter((a) => a.id !== assetId),
+        logos: prev.logos.filter((a) => a.id !== assetId),
+        products: prev.products.filter((a) => a.id !== assetId),
+        brandReferences: prev.brandReferences.filter((a) => a.id !== assetId),
+        firstFrame: prev.firstFrame?.id === assetId ? null : prev.firstFrame,
+        lastFrame: prev.lastFrame?.id === assetId ? null : prev.lastFrame,
+        ctaGraphic: prev.ctaGraphic?.id === assetId ? null : prev.ctaGraphic,
+        audio: prev.audio.filter((a) => a.id !== assetId),
+        savedReferences: prev.savedReferences.filter((a) => a.id !== assetId),
+        primaryIdentity: prev.primaryIdentity?.id === assetId ? null : prev.primaryIdentity,
+        primaryLogo: prev.primaryLogo?.id === assetId ? null : prev.primaryLogo,
+      }
+    })
+  }, [])
+
+  const deleteLibraryAsset = useCallback((assetId: string) => {
+    setAssets((prev) => {
+      const all = [
+        ...prev.identities,
+        ...prev.logos,
+        ...prev.products,
+        ...prev.brandReferences,
+        prev.firstFrame,
+        prev.lastFrame,
+        prev.ctaGraphic,
+        ...prev.audio,
+        ...prev.savedReferences,
+      ].filter(Boolean) as PersonalizationAsset[]
+
+      const asset = all.find((a) => a.id === assetId)
+      if (!asset) return prev
+
+      revokeAssetUrl(asset)
+
+      return {
+        ...prev,
+        identities: prev.identities.filter((a) => a.id !== assetId),
+        logos: prev.logos.filter((a) => a.id !== assetId),
+        products: prev.products.filter((a) => a.id !== assetId),
+        brandReferences: prev.brandReferences.filter((a) => a.id !== assetId),
+        firstFrame: prev.firstFrame?.id === assetId ? null : prev.firstFrame,
+        lastFrame: prev.lastFrame?.id === assetId ? null : prev.lastFrame,
+        ctaGraphic: prev.ctaGraphic?.id === assetId ? null : prev.ctaGraphic,
+        audio: prev.audio.filter((a) => a.id !== assetId),
+        savedReferences: prev.savedReferences.filter((a) => a.id !== assetId),
+        primaryIdentity: prev.primaryIdentity?.id === assetId ? null : prev.primaryIdentity,
+        primaryLogo: prev.primaryLogo?.id === assetId ? null : prev.primaryLogo,
+      }
+    })
+  }, [])
+
+  const revertLibraryAssetToOriginal = useCallback((assetId: string) => {
+    setAssets((prev) => {
+      const all = [
+        ...prev.identities,
+        ...prev.logos,
+        ...prev.products,
+        ...prev.brandReferences,
+        prev.firstFrame,
+        prev.lastFrame,
+        prev.ctaGraphic,
+        ...prev.audio,
+        ...prev.savedReferences,
+      ].filter(Boolean) as PersonalizationAsset[]
+
+      const target = all.find((a) => a.id === assetId)
+      if (!target || !target.edited || !target.originalUrl) return prev
+
+      revokeAssetUrl(target)
+
+      const reverted: PersonalizationAsset = {
+        ...target,
+        url: target.originalUrl,
+        uploadedUrl: target.originalUrl,
+        edited: false,
+        editedDataUrl: undefined,
+        editMetadata: undefined,
+        visionValidation: undefined,
+        videoReady: false,
+        hasTransparency: false,
+        uploadStatus: 'ready',
+        uploadError: null,
+        file: null,
+        name: target.name.replace('-edited.', '.').replace('_edited.', '.') || target.name,
+      }
+
+      return replaceAssetInLibrary(prev, reverted)
+    })
+  }, [])
+
   // ── Discovered assets actions ───────────────────────────────────────────────
 
   const setDiscoveredAssets = useCallback((assets: DiscoveredAsset[]) => {
@@ -1345,6 +1590,20 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   const moveDiscoveredAssetToSection = useCallback((id: string, section: AssignedSection) => {
     setDiscoveredAssetsState((prev) =>
       prev.map((a) => (a.id === id ? { ...a, assignedSection: section, autoAssigned: false } : a)),
+    )
+  }, [])
+
+  const revertDiscoveredAssetEdit = useCallback((id: string) => {
+    setDiscoveredAssetsState((prev) =>
+      prev.map((a) => (a.id === id ? {
+        ...a,
+        editedDataUrl: undefined,
+        edited: false,
+        editMetadata: undefined,
+        visionValidation: undefined,
+        videoReady: false,
+        hasTransparency: false,
+      } : a)),
     )
   }, [])
 
@@ -1471,6 +1730,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         name: `discovered_${Date.now()}`,
         originalUrl: item.originalPreviewUrl || item.previewUrl,
         edited: item.edited || false,
+        editedDataUrl: item.editedDataUrl,
         videoReady: item.videoReady || false,
         hasTransparency: item.hasTransparency || false,
         editMetadata: item.editMetadata,
@@ -2353,6 +2613,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     updateDiscoveredAssetCategory,
     removeDiscoveredAssetFromSection,
     moveDiscoveredAssetToSection,
+    revertDiscoveredAssetEdit,
     selectRecommendedDiscoveredAssets,
     importDiscoveredAssets,
     cancelDiscovery,
@@ -2360,6 +2621,11 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     visionStatus,
     visionError,
     analyzeDiscoveredAssets,
+    // Library asset actions
+    moveLibraryAssetToSection,
+    removeLibraryAssetFromSection,
+    deleteLibraryAsset,
+    revertLibraryAssetToOriginal,
 
     // Business search
     businessSearchMode,

@@ -109,6 +109,42 @@ export function addAssetToClientLibrary(
   return next
 }
 
+export function updateAssetInClientLibrary(
+  clientId: string,
+  asset: PersonalizationAsset,
+): ClientAssetLibrary {
+  const current = loadClientAssets(clientId)
+  const next = { ...current }
+
+  switch (asset.role) {
+    case 'presenter_identity':
+    case 'face_identity':
+    case 'character_identity':
+      next.identities = current.identities.map((a) => (a.id === asset.id ? asset : a))
+      if (next.primaryIdentity?.id === asset.id) {
+        next.primaryIdentity = asset
+      }
+      break
+    case 'logo':
+      next.logos = current.logos.map((a) => (a.id === asset.id ? asset : a))
+      if (next.primaryLogo?.id === asset.id) {
+        next.primaryLogo = asset
+      }
+      break
+    case 'product_reference':
+      next.products = current.products.map((a) => (a.id === asset.id ? asset : a))
+      break
+    case 'brand_reference':
+      next.brandReferences = current.brandReferences.map((a) => (a.id === asset.id ? asset : a))
+      break
+    default:
+      break
+  }
+
+  saveClientAssets(clientId, next)
+  return next
+}
+
 export function removeAssetFromClientLibrary(clientId: string, assetId: string): ClientAssetLibrary {
   const current = loadClientAssets(clientId)
   const next = {

@@ -142,6 +142,7 @@ export interface PersonalizationAsset {
   file?: File | null
   originalUrl?: string
   edited?: boolean
+  editedDataUrl?: string
   videoReady?: boolean
   hasTransparency?: boolean
   editMetadata?: {
