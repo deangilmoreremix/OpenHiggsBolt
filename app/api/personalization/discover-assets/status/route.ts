@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     // discovery state does not leak sensitive user data.
   }
 
-  const job = await getDiscoveryJobForUser(jobId, userId)
+  const job = await getDiscoveryJobForUser(jobId, userId || '')
   if (!job) {
     return NextResponse.json({ error: 'Job not found' }, { status: 404 })
   }

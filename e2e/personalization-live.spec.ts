@@ -1,8 +1,21 @@
 import { test, expect, type Page, type Route } from '@playwright/test';
+import fs from 'fs/promises';
+import path from 'path';
 
 const BASE = 'http://localhost:3111';
 const FAKE_MUAPI_KEY = 'e2e-fake-muapi-key';
 const FAKE_OPENAI_KEY = 'e2e-fake-openai-key';
+const OUTPUT_DIR = path.resolve(__dirname, '../visual-assets/marketing-current/personalization');
+
+async function ensureDir(filePath: string) {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+}
+
+async function marketingShot(page: Page, name: string, fullPage = true) {
+  const filePath = path.join(OUTPUT_DIR, `${name}.png`);
+  await ensureDir(filePath);
+  await page.screenshot({ path: filePath, fullPage });
+}
 
 function mockMuApi(page: Page) {
   page.route('/api/auth/muapi-key', async (route: Route) => {
@@ -58,7 +71,7 @@ test.describe('Personalization Demo — Live Feature Tests', () => {
   });
 
   test('opens modal and shows all configuration sections', async ({ page }) => {
-    await page.screenshot({ path: '/tmp/personalization-modal-open.png', fullPage: true });
+    await marketingShot(page, '01-modal-overview');
 
     const bodyText = await page.textContent('body');
     expect(bodyText).toContain('Source Demo');
@@ -88,7 +101,7 @@ test.describe('Personalization Demo — Live Feature Tests', () => {
     await page.fill('input[placeholder="555-555-5555"]', '555-555-5555');
     await page.fill('input[placeholder="https://joesroofing.com"]', 'https://abcroofing.com');
 
-    await page.screenshot({ path: '/tmp/personalization-client-form.png', fullPage: true });
+    await marketingShot(page, '02-client-profile');
 
     await page.fill('input[placeholder="Protect Your Home Today"]', 'New Headline');
     const buttonValue = await page.locator('input[placeholder="Book Your Inspection"]').inputValue();
@@ -109,12 +122,48 @@ test.describe('Personalization Demo — Live Feature Tests', () => {
     
     await expect(page.getByText('Personalizing prompt...')).toBeVisible({ timeout: 10000 });
 
-    await page.screenshot({ path: '/tmp/personalization-prompt-result.png', fullPage: true });
+    await marketingShot(page, '03-personalized-prompt');
   });
 
   test('can upload asset and verify upload UI is present', async ({ page }) => {
     const uploadText = page.getByText(/Drag & drop or browse/i).first();
     await expect(uploadText).toBeVisible();
-    await page.screenshot({ path: '/tmp/personalization-upload-ui.png', fullPage: true });
+    await marketingShot(page, '04-asset-upload');
   });
+
+  test('can upload image and open edit image entry', async ({ page }) => {
+    // Fill required client fields so uploads/assets are enabled.
+    await page.fill('input[placeholder="ABC Roofing"]', 'ABC Roofing');
+    await page.fill('input[placeholder="Roofing"]', 'Roofing');
+    await page.fill('input[placeholder="Tampa, Florida"]', 'Tampa, Florida');
+    await page.fill('input[placeholder="Residential Roof Replacement"]', 'Residential Roof Replacement');
+    await page.fill('input[placeholder="Free Roof Inspection"]', 'Free Roof Inspection');
+
+    // Upload a small image into the Person / Presenter identity uploader.
+    const fileInput = page.locator('input[type="file"]').first();
+    await expect(fileInput).toBeAttached();
+    await fileInput.setInputFiles(path.join(__dirname, '../../test-assets/sample-person.png'));
+
+    // Wait for the asset to become ready and expose Edit with AI.
+    const editButton = page.locator('button:has-text("Edit with AI")').first();
+    await expect(editButton).toBeVisible({ timeout: 30000 });
+
+    await editButton.click();
+    await expect(page.locator('.image-editor-modal, [data-testid="image-editor-modal"], text=Edit Image').first()).toBeVisible({ timeout: 10000 });
+    await marketingShot(page, '06-edit-image-entry');
+  });
+
+  test('can reveal what smartvideo will use engine section', async ({ page }) => {
+    await page.fill('input[placeholder="ABC Roofing"]', 'ABC Roofing');
+    await page.fill('input[placeholder="Roofing"]', 'Roofing');
+    await page.fill('input[placeholder="Tampa, Florida"]', 'Tampa, Florida');
+    await page.fill('input[placeholder="Residential Roof Replacement"]', 'Residential Roof Replacement');
+    await page.fill('input[placeholder="Free Roof Inspection"]', 'Free Roof Inspection');
+
+    const engineSection = page.locator('text=SMARTVIDEO ENGINE').first();
+    await expect(engineSection).toBeVisible();
+    await engineSection.scrollIntoViewIfNeeded();
+    await marketingShot(page, '07-what-smartvideo-will-use', false);
+  });
+});
 });
