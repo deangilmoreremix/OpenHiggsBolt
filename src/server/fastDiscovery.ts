@@ -64,8 +64,8 @@ export async function runFastDiscovery(options: {
     const staticProvider = new StaticDiscoveryProvider()
     result = await staticProvider.discover({
       websiteUrl: baseUrl,
-      maxPages,
-      maxImages,
+      maxPages: 1,
+      maxImages: 20,
       openAiKey,
       openAiModel,
     })

@@ -195,8 +195,8 @@ export async function POST(req: NextRequest) {
     try {
       const fast = await runFastDiscovery({
         websiteUrl,
-        maxPages: 3,
-        maxImages: 30,
+        maxPages: 2,
+        maxImages: 20,
         openAiKey: openAiKey || undefined,
       })
       fastResult = {
