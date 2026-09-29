@@ -7,6 +7,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports["default"] = CinemaStudio;
 var _react = require("react");
+var _reactHotToast = _interopRequireWildcard(require("react-hot-toast"));
 var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
 var _AiAssistantProvider = require("../../../../components/AiAssistantProvider");
 var _muapi = require("../muapi.js");
@@ -14,9 +15,15 @@ var _skillStore = require("../lib/skillStore");
 var _registry = _interopRequireDefault(require("../skills/registry.json"));
 var _promptRecipes = require("../lib/promptRecipes");
 var _useTemplateData2 = require("../hooks/useTemplateData");
+var _TemplateBanner = _interopRequireDefault(require("./TemplateBanner"));
 var _storyboardHandoff = require("../storyboardHandoff.js");
+var _persistKey = require("../persistKey.js");
+var _cinemaStudio = _interopRequireDefault(require("../messages/en/cinemaStudio.json"));
+var _cinemaStudio2 = _interopRequireDefault(require("../messages/zh/cinemaStudio.json"));
+var _i18nUtils = require("../i18nUtils");
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
+function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function _interopRequireWildcard(e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, "default": e }; if (null === e || "object" != _typeof(e) && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (var _t5 in e) "default" !== _t5 && {}.hasOwnProperty.call(e, _t5) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, _t5)) && (i.get || i.set) ? o(f, _t5, i) : f[_t5] = e[_t5]); return f; })(e, t); }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
@@ -440,8 +447,11 @@ function CinemaStudio(_ref4) {
   var apiKey = _ref4.apiKey,
     onGenerationComplete = _ref4.onGenerationComplete,
     historyItems = _ref4.historyItems,
-    templateData = _ref4.templateData;
-  var PERSIST_KEY = "hg_cinema_studio_persistent";
+    templateData = _ref4.templateData,
+    _ref4$locale = _ref4.locale,
+    locale = _ref4$locale === void 0 ? "en" : _ref4$locale;
+  var copy = (0, _i18nUtils.resolveCopy)(_cinemaStudio["default"], _cinemaStudio2["default"], locale);
+  var PERSIST_KEY = (0, _persistKey.scopedPersistKey)("hg_cinema_studio_persistent", apiKey);
 
   // ── Settings state ──
   var _useState3 = (0, _react.useState)({
@@ -601,6 +611,7 @@ function CinemaStudio(_ref4) {
   // ── Persistence: Load ────────────────────────────────────────────────────
   (0, _react.useEffect)(function () {
     try {
+      (0, _persistKey.migrateLegacyPersistKey)("hg_cinema_studio_persistent", PERSIST_KEY);
       var stored = localStorage.getItem(PERSIST_KEY);
       if (stored) {
         var data = JSON.parse(stored);
@@ -898,7 +909,12 @@ function CinemaStudio(_ref4) {
   // ── Render ───────────────────────────────────────────────────────────────
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     className: "w-full h-full flex flex-col items-center justify-center bg-black relative overflow-hidden",
-    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_reactHotToast.Toaster, {
+      position: "top-right",
+      containerStyle: {
+        zIndex: 99999
+      }
+    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
       className: "flex-1 w-full max-w-7xl mx-auto overflow-y-auto custom-scrollbar pb-40 lg:pb-32 px-2",
       children: history.length > 0 ? /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
         className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full pt-4 animate-fade-in-up",
@@ -1136,17 +1152,9 @@ function CinemaStudio(_ref4) {
       className: "absolute bottom-4 left-4 right-4 md:left-0 md:right-0 md:mx-auto md:max-w-[95%] lg:max-w-4xl z-30 transition-all duration-700 animate-fade-in-up",
       children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
         className: "w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]",
-        children: [isTemplateApplied && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "flex items-center justify-between rounded-xl bg-[#22d3ee]/10 border border-[#22d3ee]/20 px-3 py-2 text-xs text-[#22d3ee]",
-          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-            className: "font-semibold",
-            children: "Template loaded"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-            type: "button",
-            onClick: resetTemplate,
-            className: "rounded-md bg-white/5 px-2 py-1 text-[11px] font-bold text-white/80 hover:text-white hover:bg-white/10 transition-colors",
-            children: "Clear"
-          })]
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_TemplateBanner["default"], {
+          isApplied: isTemplateApplied,
+          onClear: resetTemplate
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
           className: "flex items-start gap-4 w-full px-1",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {

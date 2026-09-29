@@ -1,11 +1,13 @@
 "use strict";
 "use client";
 
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports["default"] = ClippingStudio;
 var _react = require("react");
+var _reactHotToast = _interopRequireWildcard(require("react-hot-toast"));
 var _useTemplateData2 = require("../hooks/useTemplateData");
 var _TemplateBanner = _interopRequireDefault(require("./TemplateBanner"));
 var _muapi = require("../muapi.js");
@@ -14,8 +16,12 @@ var _skillStore = require("../lib/skillStore");
 var _registry = _interopRequireDefault(require("../skills/registry.json"));
 var _promptRecipes = require("../lib/promptRecipes");
 var _storyboardHandoff = require("../storyboardHandoff.js");
+var _clippingStudio = _interopRequireDefault(require("../messages/en/clippingStudio.json"));
+var _clippingStudio2 = _interopRequireDefault(require("../messages/zh/clippingStudio.json"));
+var _i18nUtils = require("../i18nUtils");
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
+function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function _interopRequireWildcard(e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, "default": e }; if (null === e || "object" != _typeof(e) && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (var _t4 in e) "default" !== _t4 && {}.hasOwnProperty.call(e, _t4) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, _t4)) && (i.get || i.set) ? o(f, _t4, i) : f[_t4] = e[_t4]); return f; })(e, t); }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
@@ -210,7 +216,10 @@ function ClippingStudio(_ref2) {
     onGenerationComplete = _ref2.onGenerationComplete,
     droppedFiles = _ref2.droppedFiles,
     onFilesHandled = _ref2.onFilesHandled,
-    templateData = _ref2.templateData;
+    templateData = _ref2.templateData,
+    _ref2$locale = _ref2.locale,
+    locale = _ref2$locale === void 0 ? "en" : _ref2$locale;
+  var copy = (0, _i18nUtils.resolveCopy)(_clippingStudio["default"], _clippingStudio2["default"], locale);
   var PERSIST_KEY = "hg_clipping_studio_persistent";
 
   // ── Clipping Parameters State ───────────────────────────────────────────
@@ -632,7 +641,7 @@ function ClippingStudio(_ref2) {
   // ── Dispatch Run / Call submitAndPoll ────────────────────────────────────
   var handleGenerate = /*#__PURE__*/function () {
     var _ref5 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3() {
-      var _res$output, _res$output2, _res$output3, params, res, clips, outputCoordinates, newResult, _t3;
+      var _res$output, _res$output2, _res$output3, params, res, clips, outputCoordinates, newResult, message, _t3;
       return _regenerator().w(function (_context3) {
         while (1) switch (_context3.p = _context3.n) {
           case 0:
@@ -703,7 +712,9 @@ function ClippingStudio(_ref2) {
             _context3.p = 4;
             _t3 = _context3.v;
             console.error("[ClippingStudio] Error generating clips:", _t3);
-            setGenerateError(_t3.message || "Failed to process AI clipping.");
+            message = _t3.message || "Failed to process AI clipping.";
+            setGenerateError(message);
+            _reactHotToast["default"].error(message);
           case 5:
             _context3.p = 5;
             setIsGenerating(false);
@@ -727,7 +738,12 @@ function ClippingStudio(_ref2) {
   };
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     className: "w-full h-full flex flex-col items-center justify-center bg-app-bg text-white relative overflow-hidden",
-    children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_reactHotToast.Toaster, {
+      position: "top-right",
+      containerStyle: {
+        zIndex: 99999
+      }
+    }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
       className: "flex-1 w-full max-w-7xl mx-auto overflow-y-auto custom-scrollbar pb-40 lg:pb-32 px-2",
       children: [generateError && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
         className: "bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded text-xs font-semibold leading-relaxed mb-6",

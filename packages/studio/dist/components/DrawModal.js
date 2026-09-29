@@ -8,9 +8,10 @@ exports["default"] = DrawModal;
 var _react = _interopRequireWildcard(require("react"));
 var _muapi = require("../muapi.js");
 var _jsxRuntime = require("react/jsx-runtime");
-function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function _interopRequireWildcard(e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, "default": e }; if (null === e || "object" != _typeof(e) && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (var _t2 in e) "default" !== _t2 && {}.hasOwnProperty.call(e, _t2) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, _t2)) && (i.get || i.set) ? o(f, _t2, i) : f[_t2] = e[_t2]); return f; })(e, t); }
+function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function _interopRequireWildcard(e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, "default": e }; if (null === e || "object" != _typeof(e) && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (var _t4 in e) "default" !== _t4 && {}.hasOwnProperty.call(e, _t4) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, _t4)) && (i.get || i.set) ? o(f, _t4, i) : f[_t4] = e[_t4]); return f; })(e, t); }
 function _regenerator() { /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ var e, t, r = "function" == typeof Symbol ? Symbol : {}, n = r.iterator || "@@iterator", o = r.toStringTag || "@@toStringTag"; function i(r, n, o, i) { var c = n && n.prototype instanceof Generator ? n : Generator, u = Object.create(c.prototype); return _regeneratorDefine2(u, "_invoke", function (r, n, o) { var i, c, u, f = 0, p = o || [], y = !1, G = { p: 0, n: 0, v: e, a: d, f: d.bind(e, 4), d: function d(t, r) { return i = t, c = 0, u = e, G.n = r, a; } }; function d(r, n) { for (c = r, u = n, t = 0; !y && f && !o && t < p.length; t++) { var o, i = p[t], d = G.p, l = i[2]; r > 3 ? (o = l === n) && (u = i[(c = i[4]) ? 5 : (c = 3, 3)], i[4] = i[5] = e) : i[0] <= d && ((o = r < 2 && d < i[1]) ? (c = 0, G.v = n, G.n = i[1]) : d < l && (o = r < 3 || i[0] > n || n > l) && (i[4] = r, i[5] = n, G.n = l, c = 0)); } if (o || r > 1) return a; throw y = !0, n; } return function (o, p, l) { if (f > 1) throw TypeError("Generator is already running"); for (y && 1 === p && d(p, l), c = p, u = l; (t = c < 2 ? e : u) || !y;) { i || (c ? c < 3 ? (c > 1 && (G.n = -1), d(c, u)) : G.n = u : G.v = u); try { if (f = 2, i) { if (c || (o = "next"), t = i[o]) { if (!(t = t.call(i, u))) throw TypeError("iterator result is not an object"); if (!t.done) return t; u = t.value, c < 2 && (c = 0); } else 1 === c && (t = i["return"]) && t.call(i), c < 2 && (u = TypeError("The iterator does not provide a '" + o + "' method"), c = 1); i = e; } else if ((t = (y = G.n < 0) ? u : r.call(n, G)) !== a) break; } catch (t) { i = e, c = 1, u = t; } finally { f = 1; } } return { value: t, done: y }; }; }(r, o, i), !0), u; } var a = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} t = Object.getPrototypeOf; var c = [][n] ? t(t([][n]())) : (_regeneratorDefine2(t = {}, n, function () { return this; }), t), u = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(c); function f(e) { return Object.setPrototypeOf ? Object.setPrototypeOf(e, GeneratorFunctionPrototype) : (e.__proto__ = GeneratorFunctionPrototype, _regeneratorDefine2(e, o, "GeneratorFunction")), e.prototype = Object.create(u), e; } return GeneratorFunction.prototype = GeneratorFunctionPrototype, _regeneratorDefine2(u, "constructor", GeneratorFunctionPrototype), _regeneratorDefine2(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = "GeneratorFunction", _regeneratorDefine2(GeneratorFunctionPrototype, o, "GeneratorFunction"), _regeneratorDefine2(u), _regeneratorDefine2(u, o, "Generator"), _regeneratorDefine2(u, n, function () { return this; }), _regeneratorDefine2(u, "toString", function () { return "[object Generator]"; }), (_regenerator = function _regenerator() { return { w: i, m: f }; })(); }
 function _regeneratorDefine2(e, r, n, t) { var i = Object.defineProperty; try { i({}, "", {}); } catch (e) { i = 0; } _regeneratorDefine2 = function _regeneratorDefine(e, r, n, t) { function o(r, n) { _regeneratorDefine2(e, r, function (e) { return this._invoke(r, n, e); }); } r ? i ? i(e, r, { value: n, enumerable: !t, configurable: !t, writable: !t }) : e[r] = n : (o("next", 0), o("throw", 1), o("return", 2)); }, _regeneratorDefine2(e, r, n, t); }
+function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
 function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
 function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
@@ -143,6 +144,16 @@ function DrawModal(_ref) {
   var insertImageInputRef = (0, _react.useRef)(null);
   var modelDropdownRef = (0, _react.useRef)(null);
   var arDropdownRef = (0, _react.useRef)(null);
+  var _useState39 = (0, _react.useState)(false),
+    _useState40 = _slicedToArray(_useState39, 2),
+    isBgDragging = _useState40[0],
+    setIsBgDragging = _useState40[1];
+  var bgDragCounterRef = (0, _react.useRef)(0);
+  var _useState41 = (0, _react.useState)(false),
+    _useState42 = _slicedToArray(_useState41, 2),
+    isOverlayDragging = _useState42[0],
+    setIsOverlayDragging = _useState42[1];
+  var overlayDragCounterRef = (0, _react.useRef)(0);
 
   // Predefined colors for drawing toolbar (rendered inline now)
   var PRESET_COLORS = ["#ef4444",
@@ -841,17 +852,91 @@ function DrawModal(_ref) {
   }, [brushSize]);
 
   // Upload background file
-  var handleUploadBg = function handleUploadBg(e) {
-    var _e$target$files;
-    var file = (_e$target$files = e.target.files) === null || _e$target$files === void 0 ? void 0 : _e$target$files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function (event) {
-      setBgImageUrl(event.target.result);
-      setAspectRatio("Auto");
-      setViewState("canvas");
+  var handleUploadBg = /*#__PURE__*/function () {
+    var _ref2 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee(filesOrEvent) {
+      var _filesOrEvent$target;
+      var files, _iterator, _step, file, reader, _t;
+      return _regenerator().w(function (_context) {
+        while (1) switch (_context.p = _context.n) {
+          case 0:
+            files = filesOrEvent !== null && filesOrEvent !== void 0 && (_filesOrEvent$target = filesOrEvent.target) !== null && _filesOrEvent$target !== void 0 && _filesOrEvent$target.files ? Array.from(filesOrEvent.target.files) : Array.isArray(filesOrEvent) ? filesOrEvent : [];
+            _iterator = _createForOfIteratorHelper(files);
+            _context.p = 1;
+            _iterator.s();
+          case 2:
+            if ((_step = _iterator.n()).done) {
+              _context.n = 5;
+              break;
+            }
+            file = _step.value;
+            if (file) {
+              _context.n = 3;
+              break;
+            }
+            return _context.a(3, 4);
+          case 3:
+            reader = new FileReader();
+            reader.onload = function (event) {
+              setBgImageUrl(event.target.result);
+              setAspectRatio("Auto");
+              setViewState("canvas");
+            };
+            reader.readAsDataURL(file);
+          case 4:
+            _context.n = 2;
+            break;
+          case 5:
+            _context.n = 7;
+            break;
+          case 6:
+            _context.p = 6;
+            _t = _context.v;
+            _iterator.e(_t);
+          case 7:
+            _context.p = 7;
+            _iterator.f();
+            return _context.f(7);
+          case 8:
+            return _context.a(2);
+        }
+      }, _callee, null, [[1, 6, 7, 8]]);
+    }));
+    return function handleUploadBg(_x) {
+      return _ref2.apply(this, arguments);
     };
-    reader.readAsDataURL(file);
+  }();
+  var handleBgDragEnter = function handleBgDragEnter(e) {
+    var _e$dataTransfer;
+    e.preventDefault();
+    e.stopPropagation();
+    bgDragCounterRef.current += 1;
+    if ((_e$dataTransfer = e.dataTransfer) !== null && _e$dataTransfer !== void 0 && _e$dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsBgDragging(true);
+    }
+  };
+  var handleBgDragLeave = function handleBgDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    bgDragCounterRef.current -= 1;
+    if (bgDragCounterRef.current <= 0) {
+      bgDragCounterRef.current = 0;
+      setIsBgDragging(false);
+    }
+  };
+  var handleBgDragOver = function handleBgDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  var handleBgDrop = function handleBgDrop(e) {
+    var _e$dataTransfer2;
+    e.preventDefault();
+    e.stopPropagation();
+    bgDragCounterRef.current = 0;
+    setIsBgDragging(false);
+    var files = (_e$dataTransfer2 = e.dataTransfer) === null || _e$dataTransfer2 === void 0 ? void 0 : _e$dataTransfer2.files;
+    if (files && files.length > 0) {
+      handleUploadBg(Array.from(files));
+    }
   };
 
   // Insert Overlay image
@@ -859,40 +944,114 @@ function DrawModal(_ref) {
     var _insertImageInputRef$;
     (_insertImageInputRef$ = insertImageInputRef.current) === null || _insertImageInputRef$ === void 0 || _insertImageInputRef$.click();
   };
-  var handleInsertImage = function handleInsertImage(e) {
-    var _e$target$files2;
-    var file = (_e$target$files2 = e.target.files) === null || _e$target$files2 === void 0 ? void 0 : _e$target$files2[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function (event) {
-      var img = new Image();
-      img.onload = function () {
-        var id = Math.random().toString(36).substring(7);
-        var w = img.naturalWidth || img.width || 150;
-        var h = img.naturalHeight || img.height || 150;
-        var maxDim = 150;
-        var scale = Math.min(maxDim / w, maxDim / h);
-        var startW = Math.round(w * scale);
-        var startH = Math.round(h * scale);
-        var newImageObj = {
-          id: id,
-          type: "image",
-          img: img,
-          url: event.target.result,
-          x: Math.round((canvasDimensions.width - startW) / 2),
-          y: Math.round((canvasDimensions.height - startH) / 2),
-          width: startW,
-          height: startH
-        };
-        var nextObjs = [].concat(_toConsumableArray(canvasObjects), [newImageObj]);
-        setCanvasObjects(nextObjs);
-        saveStateToHistory(nextObjs);
-        setSelectedObjectId(id);
-        setActiveTool("pointer");
-      };
-      img.src = event.target.result;
+  var handleInsertImage = /*#__PURE__*/function () {
+    var _ref3 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2(filesOrEvent) {
+      var _filesOrEvent$target2;
+      var files, _iterator2, _step2, file, reader, _t2;
+      return _regenerator().w(function (_context2) {
+        while (1) switch (_context2.p = _context2.n) {
+          case 0:
+            files = filesOrEvent !== null && filesOrEvent !== void 0 && (_filesOrEvent$target2 = filesOrEvent.target) !== null && _filesOrEvent$target2 !== void 0 && _filesOrEvent$target2.files ? Array.from(filesOrEvent.target.files) : Array.isArray(filesOrEvent) ? filesOrEvent : [];
+            _iterator2 = _createForOfIteratorHelper(files);
+            _context2.p = 1;
+            _iterator2.s();
+          case 2:
+            if ((_step2 = _iterator2.n()).done) {
+              _context2.n = 5;
+              break;
+            }
+            file = _step2.value;
+            if (file) {
+              _context2.n = 3;
+              break;
+            }
+            return _context2.a(3, 4);
+          case 3:
+            reader = new FileReader();
+            reader.onload = function (event) {
+              var img = new Image();
+              img.onload = function () {
+                var id = Math.random().toString(36).substring(7);
+                var w = img.naturalWidth || img.width || 150;
+                var h = img.naturalHeight || img.height || 150;
+                var maxDim = 150;
+                var scale = Math.min(maxDim / w, maxDim / h);
+                var startW = Math.round(w * scale);
+                var startH = Math.round(h * scale);
+                var newImageObj = {
+                  id: id,
+                  type: "image",
+                  img: img,
+                  url: event.target.result,
+                  x: Math.round((canvasDimensions.width - startW) / 2),
+                  y: Math.round((canvasDimensions.height - startH) / 2),
+                  width: startW,
+                  height: startH
+                };
+                var nextObjs = [].concat(_toConsumableArray(canvasObjects), [newImageObj]);
+                setCanvasObjects(nextObjs);
+                saveStateToHistory(nextObjs);
+                setSelectedObjectId(id);
+                setActiveTool("pointer");
+              };
+              img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+          case 4:
+            _context2.n = 2;
+            break;
+          case 5:
+            _context2.n = 7;
+            break;
+          case 6:
+            _context2.p = 6;
+            _t2 = _context2.v;
+            _iterator2.e(_t2);
+          case 7:
+            _context2.p = 7;
+            _iterator2.f();
+            return _context2.f(7);
+          case 8:
+            return _context2.a(2);
+        }
+      }, _callee2, null, [[1, 6, 7, 8]]);
+    }));
+    return function handleInsertImage(_x2) {
+      return _ref3.apply(this, arguments);
     };
-    reader.readAsDataURL(file);
+  }();
+  var handleOverlayDragEnter = function handleOverlayDragEnter(e) {
+    var _e$dataTransfer3;
+    e.preventDefault();
+    e.stopPropagation();
+    overlayDragCounterRef.current += 1;
+    if ((_e$dataTransfer3 = e.dataTransfer) !== null && _e$dataTransfer3 !== void 0 && _e$dataTransfer3.items && e.dataTransfer.items.length > 0) {
+      setIsOverlayDragging(true);
+    }
+  };
+  var handleOverlayDragLeave = function handleOverlayDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    overlayDragCounterRef.current -= 1;
+    if (overlayDragCounterRef.current <= 0) {
+      overlayDragCounterRef.current = 0;
+      setIsOverlayDragging(false);
+    }
+  };
+  var handleOverlayDragOver = function handleOverlayDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  var handleOverlayDrop = function handleOverlayDrop(e) {
+    var _e$dataTransfer4;
+    e.preventDefault();
+    e.stopPropagation();
+    overlayDragCounterRef.current = 0;
+    setIsOverlayDragging(false);
+    var files = (_e$dataTransfer4 = e.dataTransfer) === null || _e$dataTransfer4 === void 0 ? void 0 : _e$dataTransfer4.files;
+    if (files && files.length > 0) {
+      handleInsertImage(Array.from(files));
+    }
   };
 
   // Clear Canvas (Remove image, drawings, text overlays and reset to setup screen)
@@ -913,36 +1072,36 @@ function DrawModal(_ref) {
 
   // Merge Layers and Trigger Generation
   var handleGenerateClick = /*#__PURE__*/function () {
-    var _ref2 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2() {
-      var canvas, bgCanvas, mergeCanvas, mCtx, bgImg, blob, uploadedUrl, results, _t;
-      return _regenerator().w(function (_context2) {
-        while (1) switch (_context2.p = _context2.n) {
+    var _ref4 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee4() {
+      var canvas, bgCanvas, mergeCanvas, mCtx, bgImg, blob, uploadedUrl, results, _t3;
+      return _regenerator().w(function (_context4) {
+        while (1) switch (_context4.p = _context4.n) {
           case 0:
             if (!generating) {
-              _context2.n = 1;
+              _context4.n = 1;
               break;
             }
-            return _context2.a(2);
+            return _context4.a(2);
           case 1:
             canvas = canvasRef.current;
             bgCanvas = bgCanvasRef.current;
             if (!(!canvas || !bgCanvas)) {
-              _context2.n = 2;
+              _context4.n = 2;
               break;
             }
-            return _context2.a(2);
+            return _context4.a(2);
           case 2:
             setGenerating(true);
-            _context2.p = 3;
+            _context4.p = 3;
             mergeCanvas = document.createElement("canvas");
             mergeCanvas.width = canvas.width;
             mergeCanvas.height = canvas.height;
             mCtx = mergeCanvas.getContext("2d"); // 1. Draw static background layer (preserving asynchronous image loading coordinates)
             if (!bgImageUrl) {
-              _context2.n = 5;
+              _context4.n = 5;
               break;
             }
-            _context2.n = 4;
+            _context4.n = 4;
             return new Promise(function (resolve, reject) {
               var img = new Image();
               img.onload = function () {
@@ -952,9 +1111,9 @@ function DrawModal(_ref) {
               img.src = bgImageUrl;
             });
           case 4:
-            bgImg = _context2.v;
+            bgImg = _context4.v;
             mCtx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
-            _context2.n = 6;
+            _context4.n = 6;
             break;
           case 5:
             mCtx.drawImage(bgCanvas, 0, 0);
@@ -994,29 +1153,29 @@ function DrawModal(_ref) {
               }
               mCtx.fillText(line, textObj.x, testY);
             });
-            _context2.n = 7;
+            _context4.n = 7;
             return new Promise(function (resolve) {
               return mergeCanvas.toBlob(resolve, "image/jpeg", 0.92);
             });
           case 7:
-            blob = _context2.v;
+            blob = _context4.v;
             if (blob) {
-              _context2.n = 8;
+              _context4.n = 8;
               break;
             }
             throw new Error("Canvas serialization failed");
           case 8:
-            _context2.n = 9;
+            _context4.n = 9;
             return (0, _muapi.uploadFile)(apiKey, blob);
           case 9:
-            uploadedUrl = _context2.v;
-            _context2.n = 10;
+            uploadedUrl = _context4.v;
+            _context4.n = 10;
             return Promise.all(Array.from({
               length: batchSize
-            }).map(/*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee() {
+            }).map(/*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3() {
               var genParams;
-              return _regenerator().w(function (_context) {
-                while (1) switch (_context.n) {
+              return _regenerator().w(function (_context3) {
+                while (1) switch (_context3.n) {
                   case 0:
                     genParams = {
                       model: selectedModel,
@@ -1024,21 +1183,21 @@ function DrawModal(_ref) {
                       images_list: [uploadedUrl],
                       aspect_ratio: aspectRatio === "Auto" ? "1:1" : aspectRatio
                     };
-                    _context.n = 1;
+                    _context3.n = 1;
                     return (0, _muapi.generateI2I)(apiKey, genParams);
                   case 1:
-                    return _context.a(2, _context.v);
+                    return _context3.a(2, _context3.v);
                 }
-              }, _callee);
+              }, _callee3);
             }))));
           case 10:
-            results = _context2.v;
+            results = _context4.v;
             results.forEach(function (res) {
               if (res && res.url) {
                 var entry = {
                   id: res.id || Math.random().toString(36).substring(7),
                   url: res.url,
-                  prompt: "Draw to Edit with ".concat(selectedModel === "nano-banana-pro-edit" ? "Nano Banana Pro Edit" : "Nano Banana 2 Edit"),
+                  prompt: "Draw to Edit with ".concat(selectedModel === "nano-banana-pro-edit" ? "Nano Banana Pro" : "Nano Banana 2"),
                   model: selectedModel,
                   aspect_ratio: aspectRatio === "Auto" ? "1:1" : aspectRatio,
                   timestamp: new Date().toISOString()
@@ -1048,24 +1207,24 @@ function DrawModal(_ref) {
             });
             alert("Generations complete!");
             onClose();
-            _context2.n = 12;
+            _context4.n = 12;
             break;
           case 11:
-            _context2.p = 11;
-            _t = _context2.v;
-            console.error("[DrawModal] Generation failed:", _t);
-            alert("Generation failed: ".concat(_t.message));
+            _context4.p = 11;
+            _t3 = _context4.v;
+            console.error("[DrawModal] Generation failed:", _t3);
+            alert("Generation failed: ".concat(_t3.message));
           case 12:
-            _context2.p = 12;
+            _context4.p = 12;
             setGenerating(false);
-            return _context2.f(12);
+            return _context4.f(12);
           case 13:
-            return _context2.a(2);
+            return _context4.a(2);
         }
-      }, _callee2, null, [[3, 11, 12, 13]]);
+      }, _callee4, null, [[3, 11, 12, 13]]);
     }));
     return function handleGenerateClick() {
-      return _ref2.apply(this, arguments);
+      return _ref4.apply(this, arguments);
     };
   }();
 
@@ -1111,7 +1270,11 @@ function DrawModal(_ref) {
         /*#__PURE__*/
         /* Setup Card */
         (0, _jsxRuntime.jsxs)("div", {
-          className: "border-2 border-dashed border-white/10 rounded-2xl p-8 max-w-md w-full text-center flex flex-col items-center gap-6 bg-[#070708]/50",
+          onDragEnter: handleBgDragEnter,
+          onDragLeave: handleBgDragLeave,
+          onDragOver: handleBgDragOver,
+          onDrop: handleBgDrop,
+          className: "border-2 border-dashed rounded-2xl p-8 max-w-md w-full text-center flex flex-col items-center gap-6 bg-[#070708]/50 transition-colors ".concat(isBgDragging ? "border-[#b5f500] bg-[#b5f500]/5" : "border-white/10"),
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "w-56 h-36 rounded-xl border border-white/5 overflow-hidden shadow-lg select-none relative bg-black/40",
             children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
@@ -1466,8 +1629,12 @@ function DrawModal(_ref) {
               })
             }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
               onClick: handleInsertImageClick,
+              onDragEnter: handleOverlayDragEnter,
+              onDragLeave: handleOverlayDragLeave,
+              onDragOver: handleOverlayDragOver,
+              onDrop: handleOverlayDrop,
               title: "Insert overlay image",
-              className: "p-1.5 rounded-lg transition-all ".concat(activeTool === "image" ? "bg-white text-black" : "text-white/60 hover:text-white"),
+              className: "p-1.5 rounded-lg transition-all ".concat(activeTool === "image" ? "bg-white text-black" : "text-white/60 hover:text-white", " ").concat(isOverlayDragging ? "border-[#b5f500] bg-[#b5f500]/5" : ""),
               children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
                 width: "16",
                 height: "16",
@@ -1581,7 +1748,7 @@ function DrawModal(_ref) {
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                 className: "text-[10px] text-[#b5f500] font-black bg-[#b5f500]/10 px-1.5 rounded border border-[#b5f500]/25",
                 children: "G"
-              }), selectedModel === "nano-banana-pro-edit" ? "Nano Banana Pro Edit" : "Nano Banana 2 Edit", /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+              }), selectedModel === "nano-banana-pro-edit" ? "Nano Banana Pro" : "Nano Banana 2", /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                 className: "opacity-45 text-[8px] ml-0.5",
                 children: "\u25BC"
               })]
@@ -1598,7 +1765,7 @@ function DrawModal(_ref) {
                 className: "flex flex-col text-left p-2.5 rounded-xl transition-all ".concat(selectedModel === "nano-banana-2-edit" ? "bg-[#b5f500]/10 text-white" : "hover:bg-white/5 text-white/70"),
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
                   className: "text-xs font-bold flex items-center gap-1.5",
-                  children: ["Nano Banana 2 Edit", selectedModel === "nano-banana-2-edit" && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                  children: ["Nano Banana 2", selectedModel === "nano-banana-2-edit" && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                     className: "text-[#b5f500]",
                     children: "\u2713"
                   })]
@@ -1614,7 +1781,7 @@ function DrawModal(_ref) {
                 className: "flex flex-col text-left p-2.5 rounded-xl transition-all ".concat(selectedModel === "nano-banana-pro-edit" ? "bg-[#b5f500]/10 text-white" : "hover:bg-white/5 text-white/70"),
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
                   className: "text-xs font-bold flex items-center gap-1.5",
-                  children: ["Nano Banana Pro Edit", selectedModel === "nano-banana-pro-edit" && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                  children: ["Nano Banana Pro", selectedModel === "nano-banana-pro-edit" && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                     className: "text-[#b5f500]",
                     children: "\u2713"
                   })]

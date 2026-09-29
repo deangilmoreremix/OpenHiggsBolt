@@ -6,6 +6,10 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports["default"] = ImageStudio;
+var _PromptComposer = require("./prompt/PromptComposer.jsx");
+var _imageStudio = _interopRequireDefault(require("../messages/en/imageStudio.json"));
+var _imageStudio2 = _interopRequireDefault(require("../messages/zh/imageStudio.json"));
+var _i18nUtils = require("../i18nUtils");
 var _react = require("react");
 var _muapi = require("../muapi.js");
 var _characterStore = require("../lib/characterStore");
@@ -17,6 +21,8 @@ var _models = require("../models.js");
 var _registry = _interopRequireDefault(require("../skills/registry.json"));
 var _skillStore = require("../lib/skillStore");
 var _promptRecipes = require("../lib/promptRecipes");
+var _useTemplateData2 = require("../hooks/useTemplateData");
+var _TemplateBanner = _interopRequireDefault(require("./TemplateBanner"));
 var _navigation = require("next/navigation");
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
@@ -43,20 +49,20 @@ function downloadImage(_x, _x2) {
   return _downloadImage.apply(this, arguments);
 } // ─── UploadButton (inline picker) ───────────────────────────────────────────
 function _downloadImage() {
-  _downloadImage = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee7(url, filename) {
-    var response, blob, blobUrl, a, _t6;
-    return _regenerator().w(function (_context7) {
-      while (1) switch (_context7.p = _context7.n) {
+  _downloadImage = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee9(url, filename) {
+    var response, blob, blobUrl, a, _t8;
+    return _regenerator().w(function (_context9) {
+      while (1) switch (_context9.p = _context9.n) {
         case 0:
-          _context7.p = 0;
-          _context7.n = 1;
+          _context9.p = 0;
+          _context9.n = 1;
           return fetch(url);
         case 1:
-          response = _context7.v;
-          _context7.n = 2;
+          response = _context9.v;
+          _context9.n = 2;
           return response.blob();
         case 2:
-          blob = _context7.v;
+          blob = _context9.v;
           blobUrl = URL.createObjectURL(blob);
           a = document.createElement("a");
           a.href = blobUrl;
@@ -65,16 +71,16 @@ function _downloadImage() {
           a.click();
           document.body.removeChild(a);
           URL.revokeObjectURL(blobUrl);
-          _context7.n = 4;
+          _context9.n = 4;
           break;
         case 3:
-          _context7.p = 3;
-          _t6 = _context7.v;
+          _context9.p = 3;
+          _t8 = _context9.v;
           window.open(url, "_blank");
         case 4:
-          return _context7.a(2);
+          return _context9.a(2);
       }
-    }, _callee7, null, [[0, 3]]);
+    }, _callee9, null, [[0, 3]]);
   }));
   return _downloadImage.apply(this, arguments);
 }
@@ -86,7 +92,12 @@ function UploadButton(_ref) {
     _ref$initialUrls = _ref.initialUrls,
     initialUrls = _ref$initialUrls === void 0 ? [] : _ref$initialUrls,
     _ref$label = _ref.label,
-    label = _ref$label === void 0 ? null : _ref$label;
+    label = _ref$label === void 0 ? null : _ref$label,
+    _ref$persistedHistory = _ref.persistedHistory,
+    persistedHistory = _ref$persistedHistory === void 0 ? null : _ref$persistedHistory,
+    _ref$onHistoryChange = _ref.onHistoryChange,
+    onHistoryChange = _ref$onHistoryChange === void 0 ? null : _ref$onHistoryChange,
+    copy = _ref.copy;
   var _useState = (0, _react.useState)(false),
     _useState2 = _slicedToArray(_useState, 2),
     panelOpen = _useState2[0],
@@ -99,17 +110,44 @@ function UploadButton(_ref) {
     _useState6 = _slicedToArray(_useState5, 2),
     selectedEntries = _useState6[0],
     setSelectedEntries = _useState6[1]; // [{url, thumbnail}]
-  var _useState7 = (0, _react.useState)([]),
+  var _useState7 = (0, _react.useState)(0),
     _useState8 = _slicedToArray(_useState7, 2),
-    uploadHistory = _useState8[0],
-    setUploadHistory = _useState8[1]; // [{id, name, url, thumbnail}]
-  var _useState9 = (0, _react.useState)(0),
-    _useState0 = _slicedToArray(_useState9, 2),
-    lastUploadProgress = _useState0[0],
-    setLastUploadProgress = _useState0[1];
+    lastUploadProgress = _useState8[0],
+    setLastUploadProgress = _useState8[1];
   var fileInputRef = (0, _react.useRef)(null);
   var panelRef = (0, _react.useRef)(null);
   var triggerRef = (0, _react.useRef)(null);
+  var t = (copy === null || copy === void 0 ? void 0 : copy.uploadButton) || {};
+  var _useState9 = (0, _react.useState)(persistedHistory || []),
+    _useState0 = _slicedToArray(_useState9, 2),
+    uploadHistory = _useState0[0],
+    setUploadHistory = _useState0[1];
+  var onSelectRef = (0, _react.useRef)(onSelect);
+  onSelectRef.current = onSelect;
+  var onHistoryChangeRef = (0, _react.useRef)(onHistoryChange);
+  onHistoryChangeRef.current = onHistoryChange;
+  (0, _react.useEffect)(function () {
+    var _onHistoryChangeRef$c;
+    (_onHistoryChangeRef$c = onHistoryChangeRef.current) === null || _onHistoryChangeRef$c === void 0 || _onHistoryChangeRef$c.call(onHistoryChangeRef, uploadHistory);
+  }, [uploadHistory]);
+  (0, _react.useEffect)(function () {
+    if (persistedHistory && persistedHistory.length > 0) {
+      setUploadHistory(function (prev) {
+        var existingUrls = new Set(prev.map(function (h) {
+          return h.url;
+        }));
+        var missing = persistedHistory.filter(function (h) {
+          return h.url && !existingUrls.has(h.url);
+        });
+        return missing.length > 0 ? [].concat(_toConsumableArray(prev), _toConsumableArray(missing)) : prev;
+      });
+    }
+  }, [persistedHistory]);
+  var _useState1 = (0, _react.useState)(false),
+    _useState10 = _slicedToArray(_useState1, 2),
+    isDragging = _useState10[0],
+    setIsDragging = _useState10[1];
+  var dragCounterRef = (0, _react.useRef)(0);
 
   // Close on outside click
   (0, _react.useEffect)(function () {
@@ -346,6 +384,165 @@ function UploadButton(_ref) {
       setSelectedEntries(next);
     }
   };
+  var handleTriggerDragEnter = function handleTriggerDragEnter(e) {
+    var _e$dataTransfer;
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current += 1;
+    if ((_e$dataTransfer = e.dataTransfer) !== null && _e$dataTransfer !== void 0 && _e$dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+  var handleTriggerDragLeave = function handleTriggerDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsDragging(false);
+    }
+  };
+  var handleTriggerDragOver = function handleTriggerDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  var handleTriggerDrop = function handleTriggerDrop(e) {
+    var _e$dataTransfer2;
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDragging(false);
+    var files = Array.from(((_e$dataTransfer2 = e.dataTransfer) === null || _e$dataTransfer2 === void 0 ? void 0 : _e$dataTransfer2.files) || []).filter(function (f) {
+      return f.type.startsWith("image/");
+    });
+    if (files.length > 0) {
+      processFiles(files);
+    }
+  };
+  var processFiles = /*#__PURE__*/function () {
+    var _ref4 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee4(files) {
+      var MAX_IMAGE_SIZE, tooLarge, toUpload, _t4;
+      return _regenerator().w(function (_context4) {
+        while (1) switch (_context4.p = _context4.n) {
+          case 0:
+            if (files.length) {
+              _context4.n = 1;
+              break;
+            }
+            return _context4.a(2);
+          case 1:
+            MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+            tooLarge = files.filter(function (f) {
+              return f.size > MAX_IMAGE_SIZE;
+            });
+            if (!(tooLarge.length > 0)) {
+              _context4.n = 2;
+              break;
+            }
+            alert(t.tooLargeAlert.replace("{names}", tooLarge.map(function (f) {
+              return f.name;
+            }).join(", ")));
+            return _context4.a(2);
+          case 2:
+            setUploading(true);
+            _context4.p = 3;
+            toUpload = maxImages === 1 ? files.slice(0, 1) : files.slice(0, maxImages - selectedEntries.length || 1);
+            _context4.n = 4;
+            return Promise.all(toUpload.map(/*#__PURE__*/function () {
+              var _ref5 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3(file) {
+                var id, placeholder, uploadedUrl, newEntry, _t3;
+                return _regenerator().w(function (_context3) {
+                  while (1) switch (_context3.p = _context3.n) {
+                    case 0:
+                      id = Date.now().toString() + Math.random();
+                      placeholder = {
+                        id: id,
+                        name: file.name,
+                        url: null,
+                        progress: 0
+                      };
+                      setUploadHistory(function (prev) {
+                        return [placeholder].concat(_toConsumableArray(prev));
+                      });
+                      _context3.p = 1;
+                      _context3.n = 2;
+                      return (0, _muapi.uploadFile)(apiKey, file, function (pct) {
+                        setLastUploadProgress(pct);
+                        setUploadHistory(function (prev) {
+                          return prev.map(function (h) {
+                            return h.id === id ? _objectSpread(_objectSpread({}, h), {}, {
+                              progress: pct
+                            }) : h;
+                          });
+                        });
+                      });
+                    case 2:
+                      uploadedUrl = _context3.v;
+                      setUploadHistory(function (prev) {
+                        return prev.map(function (h) {
+                          if (h.id === id) {
+                            return _objectSpread(_objectSpread({}, h), {}, {
+                              url: uploadedUrl,
+                              progress: 100
+                            });
+                          }
+                          return h;
+                        });
+                      });
+                      if (selectedEntries.length < maxImages) {
+                        newEntry = {
+                          url: uploadedUrl
+                        };
+                        setSelectedEntries(function (prev) {
+                          return [].concat(_toConsumableArray(prev), [newEntry]);
+                        });
+                        if (maxImages === 1) {
+                          fireOnSelect([newEntry]);
+                          setPanelOpen(false);
+                        }
+                      }
+                      _context3.n = 4;
+                      break;
+                    case 3:
+                      _context3.p = 3;
+                      _t3 = _context3.v;
+                      console.error("[UploadButton] Upload failed for", file.name, _t3);
+                      setUploadHistory(function (prev) {
+                        return prev.filter(function (h) {
+                          return h.id !== id;
+                        });
+                      });
+                      throw _t3;
+                    case 4:
+                      return _context3.a(2);
+                  }
+                }, _callee3, null, [[1, 3]]);
+              }));
+              return function (_x6) {
+                return _ref5.apply(this, arguments);
+              };
+            }()));
+          case 4:
+            _context4.n = 6;
+            break;
+          case 5:
+            _context4.p = 5;
+            _t4 = _context4.v;
+            alert(t.uploadFailedAlert.replace("{message}", _t4.message));
+          case 6:
+            _context4.p = 6;
+            setUploading(false);
+            setLastUploadProgress(0);
+            return _context4.f(6);
+          case 7:
+            return _context4.a(2);
+        }
+      }, _callee4, null, [[3, 5, 6, 7]]);
+    }));
+    return function processFiles(_x5) {
+      return _ref4.apply(this, arguments);
+    };
+  }();
   var handleRemoveFromHistory = function handleRemoveFromHistory(e, entry) {
     e.stopPropagation();
     if (entry.localUrl) URL.revokeObjectURL(entry.localUrl);
@@ -455,32 +652,38 @@ function UploadButton(_ref) {
           return !o;
         });
       },
-      className: "w-12 h-12 shrink-0 rounded-xl border border-dashed transition-all flex items-center justify-center relative overflow-hidden bg-white/[0.02] hover:bg-white/5 group ".concat(hasSelection ? "border-[#22d3ee]/40 hover:border-[#22d3ee]/60" : "border-white/10 hover:border-[#22d3ee]/40"),
+      onDragEnter: handleTriggerDragEnter,
+      onDragLeave: handleTriggerDragLeave,
+      onDragOver: handleTriggerDragOver,
+      onDrop: handleTriggerDrop,
+      className: "".concat((0, _PromptComposer.promptMediaButtonClassName)({
+        active: hasSelection
+      })).concat(isDragging ? " ring-2 ring-primary border-primary bg-primary/10" : ""),
       children: triggerContent
-    }), panelOpen && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+    }), panelOpen && /*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptPopover, {
       ref: panelRef,
       onClick: function onClick(e) {
         return e.stopPropagation();
       },
-      className: "absolute z-50 bottom-[calc(100%+8px)] left-0 bg-[#111] rounded-xl p-3 shadow-4xl border border-white/10 w-96",
+      className: "w-96 max-w-[calc(100vw-2rem)]",
       children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
         className: "flex items-center justify-between px-1 pb-3 mb-2 border-b border-white/5",
         children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
           className: "flex flex-col gap-0.5",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
             className: "text-xs font-bold text-secondary",
-            children: "Reference Images"
-          }), isMulti && /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
+            children: t.headerTitle
+          }), isMulti && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
             className: "text-[9px] text-muted",
-            children: ["Select up to ", maxImages, " images"]
+            children: t.selectUpTo.replace("{max}", maxImages)
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
           className: "flex items-center gap-2",
-          children: [isMulti && hasSelection && /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+          children: [isMulti && hasSelection && /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
             type: "button",
             onClick: handleDone,
             className: "flex items-center gap-1 px-3 py-1.5 bg-primary text-black rounded-xl text-xs font-black transition-all hover:scale-105",
-            children: ["\u2713 Done (", count, ")"]
+            children: t.doneButton.replace("{count}", count)
           }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
             type: "button",
             onClick: function onClick(e) {
@@ -507,7 +710,7 @@ function UploadButton(_ref) {
                 x2: "12",
                 y2: "15"
               })]
-            }), isMulti ? "Upload files" : "Upload new"]
+            }), isMulti ? t.uploadFilesButton : t.uploadNewButton]
           })]
         })]
       }), uploadHistory.length === 0 ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
@@ -532,7 +735,7 @@ function UploadButton(_ref) {
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
           className: "text-xs text-secondary",
-          children: "No uploads yet"
+          children: t.emptyState
         })]
       }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
         className: "grid grid-cols-3 gap-2 max-h-56 overflow-y-auto custom-scrollbar pr-0.5",
@@ -610,14 +813,14 @@ function UploadButton(_ref) {
         })
       }), isMulti && hasSelection && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
         className: "mt-3 pt-3 border-t border-white/5 flex items-center justify-between",
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
           className: "text-xs text-secondary",
-          children: [count, " of ", maxImages, " selected"]
+          children: t.selectedCount.replace("{count}", count).replace("{max}", maxImages)
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
           type: "button",
           onClick: handleDone,
           className: "px-4 py-1.5 bg-primary text-black rounded-xl text-xs font-black transition-all hover:scale-105",
-          children: "Use Selected"
+          children: t.useSelected
         })]
       })]
     })]
@@ -654,20 +857,46 @@ var PROVIDER_LOGOS = {
   stability: "https://cdn.muapi.ai/models/stability.png"
 };
 var invertLogos = ['openai', 'blackforest', 'runway', 'ideogram', 'lightricks', 'grok'];
-function ModelDropdown(_ref4) {
+function ModelDropdown(_ref6) {
   var _availableProviders$f;
-  var models = _ref4.models,
-    selectedModel = _ref4.selectedModel,
-    onSelect = _ref4.onSelect,
-    onClose = _ref4.onClose;
-  var _useState1 = (0, _react.useState)(""),
-    _useState10 = _slicedToArray(_useState1, 2),
-    search = _useState10[0],
-    setSearch = _useState10[1];
-  var _useState11 = (0, _react.useState)("all"),
+  var models = _ref6.models,
+    selectedModel = _ref6.selectedModel,
+    onSelect = _ref6.onSelect,
+    onClose = _ref6.onClose,
+    copy = _ref6.copy;
+  var _useState11 = (0, _react.useState)(""),
     _useState12 = _slicedToArray(_useState11, 2),
-    selectedProvider = _useState12[0],
-    setSelectedProvider = _useState12[1];
+    search = _useState12[0],
+    setSearch = _useState12[1];
+  var _useState13 = (0, _react.useState)("all"),
+    _useState14 = _slicedToArray(_useState13, 2),
+    selectedProvider = _useState14[0],
+    setSelectedProvider = _useState14[1];
+  var t = (copy === null || copy === void 0 ? void 0 : copy.modelDropdown) || {};
+  var _useState15 = (0, _react.useState)("all"),
+    _useState16 = _slicedToArray(_useState15, 2),
+    selectedCategory = _useState16[0],
+    setSelectedCategory = _useState16[1];
+  var modelCategories = [{
+    id: "all",
+    label: t.categoryAll || "All",
+    entries: models
+  }, {
+    id: "t2i",
+    label: t.categoryT2I || "Text to Image",
+    entries: models.filter(function (m) {
+      return !m.id.startsWith("i2i");
+    })
+  }, {
+    id: "i2i",
+    label: t.categoryI2I || "Image to Image",
+    entries: models.filter(function (m) {
+      return m.id.startsWith("i2i");
+    })
+  }];
+  var activeCategory = modelCategories.find(function (category) {
+    return category.id === selectedCategory;
+  }) || modelCategories[0];
   var getProviderStyle = function getProviderStyle(provider) {
     switch (provider) {
       case "grok":
@@ -763,7 +992,7 @@ function ModelDropdown(_ref4) {
       });
     }
   });
-  var filtered = models.filter(function (m) {
+  var filtered = activeCategory.entries.filter(function (m) {
     // 1. Filter by provider tab
     if (selectedProvider !== "all") {
       var pId = m.provider || 'muapi';
@@ -778,7 +1007,20 @@ function ModelDropdown(_ref4) {
     className: "flex gap-4 h-full max-h-[60vh] min-h-[350px] overflow-x-hidden",
     children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
       className: "flex flex-col gap-2.5 items-center pr-3 border-r border-white/5 shrink-0 select-none overflow-y-auto custom-scrollbar w-12 pt-0.5",
-      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        className: "flex flex-col gap-1.5 overflow-x-auto custom-scrollbar mb-1",
+        children: modelCategories.map(function (category) {
+          return /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+            type: "button",
+            onClick: function onClick() {
+              setSelectedCategory(category.id);
+              setSelectedProvider("all");
+            },
+            className: "shrink-0 rounded-lg px-2 py-1 text-[10px] font-bold transition-colors border ".concat(selectedCategory === category.id ? "bg-[#22d3ee]/15 text-[#22d3ee] border-[#22d3ee]/30" : "bg-white/[0.02] text-white/50 border-white/[0.04] hover:bg-white/5 hover:text-white"),
+            children: category.label
+          }, category.id);
+        })
+      }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
         type: "button",
         onClick: function onClick() {
           return setSelectedProvider("all");
@@ -849,8 +1091,8 @@ function ModelDropdown(_ref4) {
         })
       }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
         className: "text-xs font-semibold text-secondary py-1 shrink-0 flex items-center justify-between",
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-          children: "Available models"
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
+          children: [activeCategory.label, " ", t.modelsSuffix]
         }), selectedProvider !== "all" && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
           className: "text-[10px] bg-white/5 px-2 py-0.5 rounded text-white/60",
           children: ((_availableProviders$f = availableProviders.find(function (p) {
@@ -861,7 +1103,7 @@ function ModelDropdown(_ref4) {
         className: "flex flex-col gap-1.5 overflow-y-auto custom-scrollbar pr-1 pb-2 flex-1",
         children: filtered.length === 0 ? /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
           className: "text-xs text-white/30 text-center py-6",
-          children: "No models found"
+          children: t.noModelsFound
         }) : filtered.map(function (m) {
           return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             onClick: function onClick(e) {
@@ -912,12 +1154,12 @@ function ModelDropdown(_ref4) {
 
 // ─── SimpleDropdown ───────────────────────────────────────────────────────────
 
-function SimpleDropdown(_ref5) {
-  var title = _ref5.title,
-    options = _ref5.options,
-    selected = _ref5.selected,
-    onSelect = _ref5.onSelect,
-    onClose = _ref5.onClose;
+function SimpleDropdown(_ref7) {
+  var title = _ref7.title,
+    options = _ref7.options,
+    selected = _ref7.selected,
+    onSelect = _ref7.onSelect,
+    onClose = _ref7.onClose;
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
     children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
       className: "text-xs font-semibold text-white/30 uppercase tracking-wider pb-2 border-b border-white/[0.05] mb-2 px-1",
@@ -954,125 +1196,129 @@ function SimpleDropdown(_ref5) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-function ImageStudio(_ref6) {
-  var _t2iModels$0$inputs, _getI2IModelById;
-  var apiKey = _ref6.apiKey,
-    onGenerationComplete = _ref6.onGenerationComplete,
-    onGenerationError = _ref6.onGenerationError,
-    historyItems = _ref6.historyItems,
-    droppedFiles = _ref6.droppedFiles,
-    onFilesHandled = _ref6.onFilesHandled;
+function ImageStudio(_ref8) {
+  var _t2iModels$0$inputs, _getI2IModelById, _copy$promptBar;
+  var apiKey = _ref8.apiKey,
+    onGenerationComplete = _ref8.onGenerationComplete,
+    onGenerationError = _ref8.onGenerationError,
+    historyItems = _ref8.historyItems,
+    droppedFiles = _ref8.droppedFiles,
+    onFilesHandled = _ref8.onFilesHandled,
+    templateData = _ref8.templateData,
+    _ref8$locale = _ref8.locale,
+    locale = _ref8$locale === void 0 ? "en" : _ref8$locale;
+  var copy = (0, _i18nUtils.resolveCopy)(_imageStudio["default"], _imageStudio2["default"], locale);
   var PERSIST_KEY = "hg_image_studio_persistent";
   var router = (0, _navigation.useRouter)();
 
   // ── Model / mode state ──────────────────────────────────────────────────
-  var _useState13 = (0, _react.useState)(false),
-    _useState14 = _slicedToArray(_useState13, 2),
-    imageMode = _useState14[0],
-    setImageMode = _useState14[1]; // false=t2i, true=i2i
-  var _useState15 = (0, _react.useState)(_models.t2iModels[0].id),
-    _useState16 = _slicedToArray(_useState15, 2),
-    selectedModelId = _useState16[0],
-    setSelectedModelId = _useState16[1];
-  var _useState17 = (0, _react.useState)(_models.t2iModels[0].name),
+  var _useState17 = (0, _react.useState)(false),
     _useState18 = _slicedToArray(_useState17, 2),
-    selectedModelName = _useState18[0],
-    setSelectedModelName = _useState18[1];
-  var _useState19 = (0, _react.useState)(((_t2iModels$0$inputs = _models.t2iModels[0].inputs) === null || _t2iModels$0$inputs === void 0 || (_t2iModels$0$inputs = _t2iModels$0$inputs.aspect_ratio) === null || _t2iModels$0$inputs === void 0 ? void 0 : _t2iModels$0$inputs["default"]) || "1:1"),
+    imageMode = _useState18[0],
+    setImageMode = _useState18[1]; // false=t2i, true=i2i
+  var _useState19 = (0, _react.useState)(_models.t2iModels[0].id),
     _useState20 = _slicedToArray(_useState19, 2),
-    selectedAr = _useState20[0],
-    setSelectedAr = _useState20[1];
-  var _useState21 = (0, _react.useState)(function () {
+    selectedModelId = _useState20[0],
+    setSelectedModelId = _useState20[1];
+  var _useState21 = (0, _react.useState)(_models.t2iModels[0].name),
+    _useState22 = _slicedToArray(_useState21, 2),
+    selectedModelName = _useState22[0],
+    setSelectedModelName = _useState22[1];
+  var _useState23 = (0, _react.useState)(((_t2iModels$0$inputs = _models.t2iModels[0].inputs) === null || _t2iModels$0$inputs === void 0 || (_t2iModels$0$inputs = _t2iModels$0$inputs.aspect_ratio) === null || _t2iModels$0$inputs === void 0 ? void 0 : _t2iModels$0$inputs["default"]) || "1:1"),
+    _useState24 = _slicedToArray(_useState23, 2),
+    selectedAr = _useState24[0],
+    setSelectedAr = _useState24[1];
+  var _useState25 = (0, _react.useState)(function () {
       var resolutions = (0, _models.getResolutionsForModel)(_models.t2iModels[0].id);
       return resolutions[0] || null;
     }),
-    _useState22 = _slicedToArray(_useState21, 2),
-    selectedQuality = _useState22[0],
-    setSelectedQuality = _useState22[1];
-  var _useState23 = (0, _react.useState)(""),
-    _useState24 = _slicedToArray(_useState23, 2),
-    selectedEffect = _useState24[0],
-    setSelectedEffect = _useState24[1];
-  var _useState25 = (0, _react.useState)(1),
     _useState26 = _slicedToArray(_useState25, 2),
-    maxImages = _useState26[0],
-    setMaxImages = _useState26[1];
-
-  // ── Prompt / upload state ───────────────────────────────────────────────
+    selectedQuality = _useState26[0],
+    setSelectedQuality = _useState26[1];
   var _useState27 = (0, _react.useState)(""),
     _useState28 = _slicedToArray(_useState27, 2),
-    prompt = _useState28[0],
-    setPrompt = _useState28[1];
-  var _useState29 = (0, _react.useState)([]),
+    selectedEffect = _useState28[0],
+    setSelectedEffect = _useState28[1];
+  var _useState29 = (0, _react.useState)(1),
     _useState30 = _slicedToArray(_useState29, 2),
-    uploadedImageUrls = _useState30[0],
-    setUploadedImageUrls = _useState30[1];
-  var _useState31 = (0, _react.useState)(null),
+    maxImages = _useState30[0],
+    setMaxImages = _useState30[1];
+
+  // ── Prompt / upload state ───────────────────────────────────────────────
+  var _useState31 = (0, _react.useState)(""),
     _useState32 = _slicedToArray(_useState31, 2),
-    swapImageUrl = _useState32[0],
-    setSwapImageUrl = _useState32[1];
+    prompt = _useState32[0],
+    setPrompt = _useState32[1];
+  var _useState33 = (0, _react.useState)([]),
+    _useState34 = _slicedToArray(_useState33, 2),
+    uploadedImageUrls = _useState34[0],
+    setUploadedImageUrls = _useState34[1];
+  var _useState35 = (0, _react.useState)(null),
+    _useState36 = _slicedToArray(_useState35, 2),
+    swapImageUrl = _useState36[0],
+    setSwapImageUrl = _useState36[1];
 
   // ── Wave 1 recipe-driven state ───────────────────────────────────────────
-  var _useState33 = (0, _react.useState)(null),
-    _useState34 = _slicedToArray(_useState33, 2),
-    selectedResolution = _useState34[0],
-    setSelectedResolution = _useState34[1];
-  var _useState35 = (0, _react.useState)(false),
-    _useState36 = _slicedToArray(_useState35, 2),
-    grokEditMode = _useState36[0],
-    setGrokEditMode = _useState36[1];
-  var _useState37 = (0, _react.useState)(""),
+  var _useState37 = (0, _react.useState)(null),
     _useState38 = _slicedToArray(_useState37, 2),
-    grokRequestId = _useState38[0],
-    setGrokRequestId = _useState38[1];
-  var _useState39 = (0, _react.useState)(""),
+    selectedResolution = _useState38[0],
+    setSelectedResolution = _useState38[1];
+  var _useState39 = (0, _react.useState)(false),
     _useState40 = _slicedToArray(_useState39, 2),
-    grokMask = _useState40[0],
-    setGrokMask = _useState40[1];
-  var _useState41 = (0, _react.useState)(null),
+    grokEditMode = _useState40[0],
+    setGrokEditMode = _useState40[1];
+  var _useState41 = (0, _react.useState)(""),
     _useState42 = _slicedToArray(_useState41, 2),
-    characterSheetUrl = _useState42[0],
-    setCharacterSheetUrl = _useState42[1];
+    grokRequestId = _useState42[0],
+    setGrokRequestId = _useState42[1];
+  var _useState43 = (0, _react.useState)(""),
+    _useState44 = _slicedToArray(_useState43, 2),
+    grokMask = _useState44[0],
+    setGrokMask = _useState44[1];
+  var _useState45 = (0, _react.useState)(null),
+    _useState46 = _slicedToArray(_useState45, 2),
+    characterSheetUrl = _useState46[0],
+    setCharacterSheetUrl = _useState46[1];
 
   // ── UI state ────────────────────────────────────────────────────────────
-  var _useState43 = (0, _react.useState)(null),
-    _useState44 = _slicedToArray(_useState43, 2),
-    dropdownOpen = _useState44[0],
-    setDropdownOpen = _useState44[1]; // 'model' | 'ar' | 'quality' | null
-  var _useState45 = (0, _react.useState)(false),
-    _useState46 = _slicedToArray(_useState45, 2),
-    generating = _useState46[0],
-    setGenerating = _useState46[1];
   var _useState47 = (0, _react.useState)(null),
     _useState48 = _slicedToArray(_useState47, 2),
-    generateError = _useState48[0],
-    setGenerateError = _useState48[1];
-  var _useState49 = (0, _react.useState)(null),
+    dropdownOpen = _useState48[0],
+    setDropdownOpen = _useState48[1]; // 'model' | 'ar' | 'quality' | null
+  var _useState49 = (0, _react.useState)(false),
     _useState50 = _slicedToArray(_useState49, 2),
-    fullscreenUrl = _useState50[0],
-    setFullscreenUrl = _useState50[1];
-  var _useState51 = (0, _react.useState)(false),
+    generating = _useState50[0],
+    setGenerating = _useState50[1];
+  var _useState51 = (0, _react.useState)(null),
     _useState52 = _slicedToArray(_useState51, 2),
-    isDrawModalOpen = _useState52[0],
-    setIsDrawModalOpen = _useState52[1];
-
-  // ── Canvas / history state ──────────────────────────────────────────────
+    generateError = _useState52[0],
+    setGenerateError = _useState52[1];
   var _useState53 = (0, _react.useState)(null),
     _useState54 = _slicedToArray(_useState53, 2),
-    currentImageUrl = _useState54[0],
-    setCurrentImageUrl = _useState54[1];
-  var _useState55 = (0, _react.useState)(0),
+    fullscreenUrl = _useState54[0],
+    setFullscreenUrl = _useState54[1];
+  var _useState55 = (0, _react.useState)(false),
     _useState56 = _slicedToArray(_useState55, 2),
-    activeHistoryIdx = _useState56[0],
-    setActiveHistoryIdx = _useState56[1];
-  var _useState57 = (0, _react.useState)(1),
+    isDrawModalOpen = _useState56[0],
+    setIsDrawModalOpen = _useState56[1];
+
+  // ── Canvas / history state ──────────────────────────────────────────────
+  var _useState57 = (0, _react.useState)(null),
     _useState58 = _slicedToArray(_useState57, 2),
-    batchSize = _useState58[0],
-    setBatchSize = _useState58[1];
-  var _useState59 = (0, _react.useState)([]),
+    currentImageUrl = _useState58[0],
+    setCurrentImageUrl = _useState58[1];
+  var _useState59 = (0, _react.useState)(0),
     _useState60 = _slicedToArray(_useState59, 2),
-    localHistory = _useState60[0],
-    setLocalHistory = _useState60[1]; // [{id,url,prompt,model,aspect_ratio,timestamp}]
+    activeHistoryIdx = _useState60[0],
+    setActiveHistoryIdx = _useState60[1];
+  var _useState61 = (0, _react.useState)(1),
+    _useState62 = _slicedToArray(_useState61, 2),
+    batchSize = _useState62[0],
+    setBatchSize = _useState62[1];
+  var _useState63 = (0, _react.useState)([]),
+    _useState64 = _slicedToArray(_useState63, 2),
+    localHistory = _useState64[0],
+    setLocalHistory = _useState64[1]; // [{id,url,prompt,model,aspect_ratio,timestamp}]
 
   // Use prop history if provided, otherwise local
   var history = historyItems !== null && historyItems !== void 0 ? historyItems : localHistory;
@@ -1142,6 +1388,21 @@ function ImageStudio(_ref6) {
       console.warn("Failed to load ImageStudio persistence:", err);
     }
   }, []);
+  var _useTemplateData = (0, _useTemplateData2.useTemplateData)(templateData, function (data) {
+      if (data.prompt) setPrompt(data.prompt);
+      if (data.aspectRatio) setSelectedAr(data.aspectRatio);
+      if (data.model) {
+        var target = (0, _models.getI2IModelById)(data.model) || _models.t2iModels.find(function (m) {
+          return m.id === data.model;
+        });
+        if (target) {
+          setSelectedModelId(target.id);
+          setSelectedModelName(target.name);
+        }
+      }
+    }),
+    resetTemplate = _useTemplateData.reset,
+    isTemplateApplied = _useTemplateData.isTemplateApplied;
 
   // ── Adjust height on load ────────────────────────────────────────────────
   (0, _react.useEffect)(function () {
@@ -1193,75 +1454,75 @@ function ImageStudio(_ref6) {
     };
   }, [imageMode, selectedModelId, selectedModelName, selectedAr, selectedQuality, selectedEffect, maxImages, prompt, uploadedImageUrls, batchSize, localHistory]);
   var processDroppedImages = /*#__PURE__*/function () {
-    var _ref7 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee4(files) {
-      var MAX_IMAGE_SIZE, tooLarge, toUpload, urls, _t4;
-      return _regenerator().w(function (_context4) {
-        while (1) switch (_context4.p = _context4.n) {
+    var _ref9 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee6(files) {
+      var MAX_IMAGE_SIZE, tooLarge, toUpload, urls, _t6;
+      return _regenerator().w(function (_context6) {
+        while (1) switch (_context6.p = _context6.n) {
           case 0:
             MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
             tooLarge = files.filter(function (f) {
               return f.size > MAX_IMAGE_SIZE;
             });
             if (!(tooLarge.length > 0)) {
-              _context4.n = 1;
+              _context6.n = 1;
               break;
             }
             alert("The following images are too large (max 10MB): ".concat(tooLarge.map(function (f) {
               return f.name;
             }).join(", ")));
-            return _context4.a(2);
+            return _context6.a(2);
           case 1:
             setGenerating(true); // Show as generating/busy
-            _context4.p = 2;
+            _context6.p = 2;
             toUpload = maxImages === 1 ? files.slice(0, 1) : files.slice(0, maxImages);
-            _context4.n = 3;
+            _context6.n = 3;
             return Promise.all(toUpload.map(/*#__PURE__*/function () {
-              var _ref8 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3(file) {
-                var _t3;
-                return _regenerator().w(function (_context3) {
-                  while (1) switch (_context3.p = _context3.n) {
+              var _ref0 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee5(file) {
+                var _t5;
+                return _regenerator().w(function (_context5) {
+                  while (1) switch (_context5.p = _context5.n) {
                     case 0:
-                      _context3.p = 0;
-                      _context3.n = 1;
+                      _context5.p = 0;
+                      _context5.n = 1;
                       return (0, _muapi.uploadFile)(apiKey, file);
                     case 1:
-                      return _context3.a(2, _context3.v);
+                      return _context5.a(2, _context5.v);
                     case 2:
-                      _context3.p = 2;
-                      _t3 = _context3.v;
-                      console.error("[ImageStudio] Drop upload failed for", file.name, _t3);
-                      throw _t3;
+                      _context5.p = 2;
+                      _t5 = _context5.v;
+                      console.error("[ImageStudio] Drop upload failed for", file.name, _t5);
+                      throw _t5;
                     case 3:
-                      return _context3.a(2);
+                      return _context5.a(2);
                   }
-                }, _callee3, null, [[0, 2]]);
+                }, _callee5, null, [[0, 2]]);
               }));
-              return function (_x6) {
-                return _ref8.apply(this, arguments);
+              return function (_x8) {
+                return _ref0.apply(this, arguments);
               };
             }()));
           case 3:
-            urls = _context4.v;
+            urls = _context6.v;
             handleUploadSelect({
               urls: urls
             });
-            _context4.n = 5;
+            _context6.n = 5;
             break;
           case 4:
-            _context4.p = 4;
-            _t4 = _context4.v;
-            alert("Image upload failed: ".concat(_t4.message));
+            _context6.p = 4;
+            _t6 = _context6.v;
+            alert("Image upload failed: ".concat(_t6.message));
           case 5:
-            _context4.p = 5;
+            _context6.p = 5;
             setGenerating(false);
-            return _context4.f(5);
+            return _context6.f(5);
           case 6:
-            return _context4.a(2);
+            return _context6.a(2);
         }
-      }, _callee4, null, [[2, 4, 5, 6]]);
+      }, _callee6, null, [[2, 4, 5, 6]]);
     }));
-    return function processDroppedImages(_x5) {
-      return _ref7.apply(this, arguments);
+    return function processDroppedImages(_x7) {
+      return _ref9.apply(this, arguments);
     };
   }();
 
@@ -1297,9 +1558,9 @@ function ImageStudio(_ref6) {
   };
 
   // ── Upload picker callbacks ──────────────────────────────────────────────
-  var handleUploadSelect = (0, _react.useCallback)(function (_ref9) {
-    var url = _ref9.url,
-      urls = _ref9.urls;
+  var handleUploadSelect = (0, _react.useCallback)(function (_ref1) {
+    var url = _ref1.url,
+      urls = _ref1.urls;
     var newUrls = urls || [url];
     setUploadedImageUrls(newUrls);
     if (!imageMode) {
@@ -1457,59 +1718,59 @@ function ImageStudio(_ref6) {
 
   // ── Generation ───────────────────────────────────────────────────────────
   var handleGenerate = /*#__PURE__*/function () {
-    var _ref0 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee6() {
-      var modelInfo, results, _e$message, _t5;
-      return _regenerator().w(function (_context6) {
-        while (1) switch (_context6.p = _context6.n) {
+    var _ref10 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee8() {
+      var modelInfo, results, _e$message, _t7;
+      return _regenerator().w(function (_context8) {
+        while (1) switch (_context8.p = _context8.n) {
           case 0:
             if (!generating) {
-              _context6.n = 1;
+              _context8.n = 1;
               break;
             }
-            return _context6.a(2);
+            return _context8.a(2);
           case 1:
             if (!imageMode) {
-              _context6.n = 4;
+              _context8.n = 4;
               break;
             }
             if (!(uploadedImageUrls.length === 0)) {
-              _context6.n = 2;
+              _context8.n = 2;
               break;
             }
             alert("Please upload a reference image first.");
-            return _context6.a(2);
+            return _context8.a(2);
           case 2:
             modelInfo = (0, _models.getI2IModelById)(selectedModelId);
             if (!(modelInfo !== null && modelInfo !== void 0 && modelInfo.swapField && !swapImageUrl)) {
-              _context6.n = 3;
+              _context8.n = 3;
               break;
             }
             alert("Please upload a swap face image.");
-            return _context6.a(2);
+            return _context8.a(2);
           case 3:
-            _context6.n = 5;
+            _context8.n = 5;
             break;
           case 4:
             if (prompt.trim()) {
-              _context6.n = 5;
+              _context8.n = 5;
               break;
             }
             alert("Please enter a prompt to generate an image.");
-            return _context6.a(2);
+            return _context8.a(2);
           case 5:
             setGenerating(true);
             setGenerateError(null);
-            _context6.p = 6;
-            _context6.n = 7;
+            _context8.p = 6;
+            _context8.n = 7;
             return Promise.all(Array.from({
               length: batchSize
-            }).map(/*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee5() {
+            }).map(/*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee7() {
               var genParams, _genParams, _genParams2;
-              return _regenerator().w(function (_context5) {
-                while (1) switch (_context5.n) {
+              return _regenerator().w(function (_context7) {
+                while (1) switch (_context7.n) {
                   case 0:
                     if (!grokEditMode) {
-                      _context5.n = 2;
+                      _context7.n = 2;
                       break;
                     }
                     genParams = {
@@ -1519,13 +1780,13 @@ function ImageStudio(_ref6) {
                       aspect_ratio: selectedAr
                     };
                     if (selectedResolution) genParams.resolution = selectedResolution;
-                    _context5.n = 1;
+                    _context7.n = 1;
                     return (0, _muapi.generateImage)(apiKey, genParams);
                   case 1:
-                    return _context5.a(2, _context5.v);
+                    return _context7.a(2, _context7.v);
                   case 2:
                     if (!imageMode) {
-                      _context5.n = 4;
+                      _context7.n = 4;
                       break;
                     }
                     _genParams = {
@@ -1541,10 +1802,10 @@ function ImageStudio(_ref6) {
                     }
                     if (selectedResolution) _genParams.resolution = selectedResolution;
                     if (showEffectBtn && selectedEffect) _genParams.name = selectedEffect;
-                    _context5.n = 3;
+                    _context7.n = 3;
                     return (0, _muapi.generateI2I)(apiKey, _genParams);
                   case 3:
-                    return _context5.a(2, _context5.v);
+                    return _context7.a(2, _context7.v);
                   case 4:
                     _genParams2 = {
                       model: selectedModelId,
@@ -1555,17 +1816,17 @@ function ImageStudio(_ref6) {
                       _genParams2[currentQualityField] = selectedQuality;
                     }
                     if (selectedResolution) _genParams2.resolution = selectedResolution;
-                    _context5.n = 5;
+                    _context7.n = 5;
                     return (0, _muapi.generateImage)(apiKey, _genParams2);
                   case 5:
-                    return _context5.a(2, _context5.v);
+                    return _context7.a(2, _context7.v);
                   case 6:
-                    return _context5.a(2);
+                    return _context7.a(2);
                 }
-              }, _callee5);
+              }, _callee7);
             }))));
           case 7:
-            results = _context6.v;
+            results = _context8.v;
             results.forEach(function (res) {
               if (res && res.url) {
                 var entry = {
@@ -1585,28 +1846,28 @@ function ImageStudio(_ref6) {
                 });
               }
             });
-            _context6.n = 9;
+            _context8.n = 9;
             break;
           case 8:
-            _context6.p = 8;
-            _t5 = _context6.v;
-            console.error("[ImageStudio] Generation failed:", _t5);
-            setGenerateError(_t5.message.slice(0, 80));
+            _context8.p = 8;
+            _t7 = _context8.v;
+            console.error("[ImageStudio] Generation failed:", _t7);
+            setGenerateError(_t7.message.slice(0, 80));
             setTimeout(function () {
               return setGenerateError(null);
             }, 4000);
-            onGenerationError === null || onGenerationError === void 0 || onGenerationError(((_e$message = _t5.message) === null || _e$message === void 0 ? void 0 : _e$message.slice(0, 120)) || "Image generation failed");
+            onGenerationError === null || onGenerationError === void 0 || onGenerationError(((_e$message = _t7.message) === null || _e$message === void 0 ? void 0 : _e$message.slice(0, 120)) || "Image generation failed");
           case 9:
-            _context6.p = 9;
+            _context8.p = 9;
             setGenerating(false);
-            return _context6.f(9);
+            return _context8.f(9);
           case 10:
-            return _context6.a(2);
+            return _context8.a(2);
         }
-      }, _callee6, null, [[6, 8, 9, 10]]);
+      }, _callee8, null, [[6, 8, 9, 10]]);
     }));
     return function handleGenerate() {
-      return _ref0.apply(this, arguments);
+      return _ref10.apply(this, arguments);
     };
   }();
   var placeholderText = uploadedImageUrls.length > 1 ? "".concat(uploadedImageUrls.length, " images selected \u2014 describe the transformation (optional)") : imageMode ? "Describe how to transform this image (optional)" : "Describe the image you want to create";
@@ -1844,20 +2105,24 @@ function ImageStudio(_ref6) {
               maxImages: maxImages,
               onSelect: handleUploadSelect,
               onClear: handleUploadClear,
-              initialUrls: uploadedImageUrls
+              initialUrls: uploadedImageUrls,
+              copy: copy
             }), imageMode && ((_getI2IModelById = (0, _models.getI2IModelById)(selectedModelId)) === null || _getI2IModelById === void 0 ? void 0 : _getI2IModelById.swapField) && /*#__PURE__*/(0, _jsxRuntime.jsx)(UploadButton, {
               apiKey: apiKey,
               maxImages: 1,
-              onSelect: function onSelect(_ref10) {
-                var urls = _ref10.urls;
+              onSelect: function onSelect(_ref12) {
+                var urls = _ref12.urls;
                 return setSwapImageUrl(urls[0] || null);
               },
               onClear: function onClear() {
                 return setSwapImageUrl(null);
               },
               initialUrls: swapImageUrl ? [swapImageUrl] : [],
-              label: "Swap Face"
+              label: (copy === null || copy === void 0 || (_copy$promptBar = copy.promptBar) === null || _copy$promptBar === void 0 ? void 0 : _copy$promptBar.swapFaceLabel) || "Swap Face"
             })]
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_TemplateBanner["default"], {
+            isApplied: isTemplateApplied,
+            onClear: resetTemplate
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
             ref: textareaRef,
             value: prompt,
@@ -1946,7 +2211,8 @@ function ImageStudio(_ref6) {
                   onSelect: handleModelSelect,
                   onClose: function onClose() {
                     return setDropdownOpen(null);
-                  }
+                  },
+                  copy: copy
                 })
               })]
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {

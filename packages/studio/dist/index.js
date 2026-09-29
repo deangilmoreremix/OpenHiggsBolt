@@ -95,7 +95,7 @@ Object.defineProperty(exports, "VibeMotionStudio", {
 Object.defineProperty(exports, "VideoStudio", {
   enumerable: true,
   get: function get() {
-    return _VideoStudioParity["default"];
+    return _VideoStudio["default"];
   }
 });
 Object.defineProperty(exports, "WorkflowStudio", {
@@ -105,7 +105,7 @@ Object.defineProperty(exports, "WorkflowStudio", {
   }
 });
 var _ImageStudio = _interopRequireDefault(require("./components/ImageStudio"));
-var _VideoStudioParity = _interopRequireDefault(require("./components/VideoStudioParity"));
+var _VideoStudio = _interopRequireDefault(require("./components/VideoStudio"));
 var _ClippingStudio = _interopRequireDefault(require("./components/ClippingStudio"));
 var _VibeMotionStudio = _interopRequireDefault(require("./components/VibeMotionStudio"));
 var _LipSyncStudio = _interopRequireDefault(require("./components/LipSyncStudio"));
