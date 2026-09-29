@@ -225,10 +225,9 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    const needsBrowser = (fastResult.discoveredAssets.filter((asset) => {
-      const category = (asset as any).category
-      return ['logo', 'product', 'service', 'completed_work', 'storefront', 'office', 'branded_vehicle', 'team', 'brand'].includes(category)
-    }).length < 5) && process.env.ENABLE_BROWSER_DISCOVERY === 'true'
+    const needsBrowser =
+      fastResult.needsBrowser &&
+      process.env.ENABLE_BROWSER_DISCOVERY !== 'false'
     const browserQueued = needsBrowser
 
     if (browserQueued) {

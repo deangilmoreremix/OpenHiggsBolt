@@ -249,9 +249,9 @@ Deno.serve(async (req) => {
     }
 
     // Optional AI brand analysis if OpenAI key is available
-    const openai = openAiFromRequest(req);
     let aiRow = deterministicRow;
     try {
+      const openai = openAiFromRequest(req);
       const prompt =
         `You are a senior brand strategist. Analyze the website content and optional og:image. Return ONLY a valid JSON object with these exact keys:
 {
