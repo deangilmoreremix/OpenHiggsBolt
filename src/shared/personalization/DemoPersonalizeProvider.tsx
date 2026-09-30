@@ -62,6 +62,7 @@ import {
   deleteClientAssets,
   removeAssetFromClientLibrary,
   setPrimaryInClientLibrary,
+  updateAssetInClientLibrary,
   type ClientAssetLibrary,
   EMPTY_CLIENT_ASSET_LIBRARY,
 } from './clientAssets'
@@ -182,6 +183,27 @@ type DemoPersonalizeContextValue = {
   removeCtaGraphic: () => void
   retryAssetUpload: (id: string) => Promise<void>
   applyEditedPersonalizationAsset: (
+    assetId: string,
+    dataUrl: string,
+    meta: {
+      operation: string
+      prompt: string
+      model: string
+      quality: string
+      transparent: boolean
+      videoReady: boolean
+      responseId?: string | null
+      imageGenerationCallId?: string | null
+      revisedPrompt?: string | null
+      outputFormat?: 'png' | 'jpeg' | 'webp'
+      outputCompression?: number | null
+      inputFidelity?: 'high' | 'low'
+      visionAnalysis?: PersonalizationVisionAnalysis
+      visionValidation?: PersonalizationVisionValidation
+    },
+  ) => Promise<void>
+  applyEditedSavedClientAsset: (
+    clientId: string,
     assetId: string,
     dataUrl: string,
     meta: {
@@ -918,6 +940,103 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     }
 
     setAssets((prev) => replaceAssetInLibrary(prev, editedAsset))
+    await uploadAsset(editedAsset)
+  }, [assets, uploadAsset])
+
+  const applyEditedSavedClientAsset = useCallback(async (
+    clientId: string,
+    assetId: string,
+    dataUrl: string,
+    meta: {
+      operation: string
+      prompt: string
+      model: string
+      quality: string
+      transparent: boolean
+      videoReady: boolean
+      responseId?: string | null
+      imageGenerationCallId?: string | null
+      revisedPrompt?: string | null
+      outputFormat?: 'png' | 'jpeg' | 'webp'
+      outputCompression?: number | null
+      inputFidelity?: 'high' | 'low'
+      visionAnalysis?: PersonalizationVisionAnalysis
+      visionValidation?: PersonalizationVisionValidation
+    },
+  ) => {
+    if (!clientId) throw new Error('A selected client is required to save a client asset edit')
+
+    const library = loadClientAssets(clientId)
+    const allSaved = [
+      ...library.identities,
+      ...library.logos,
+      ...library.products,
+      ...library.brandReferences,
+    ]
+    const savedTarget = allSaved.find((a) => a.id === assetId)
+    if (!savedTarget) throw new Error('Saved client asset not found')
+
+    const blob = dataUrlToBlob(dataUrl)
+    if (!blob) throw new Error('Edited image could not be read')
+
+    const extension = blob.type === 'image/webp' ? 'webp' : 'png'
+    const baseName = (savedTarget.name || 'edited-image').replace(/\.[^.]+$/, '')
+    const file = new File([blob], baseName + '-edited.' + extension, { type: blob.type || 'image/png' })
+    const originalUrl = savedTarget.originalUrl || savedTarget.uploadedUrl || savedTarget.url
+
+    const editedAsset: PersonalizationAsset = {
+      ...savedTarget,
+      name: file.name,
+      url: URL.createObjectURL(file),
+      uploadedUrl: undefined,
+      file,
+      mimeType: file.type,
+      uploadStatus: 'local',
+      uploadError: null,
+      originalUrl,
+      edited: true,
+      videoReady: meta.videoReady,
+      hasTransparency: meta.transparent,
+      editMetadata: {
+        operation: meta.operation,
+        prompt: meta.prompt,
+        model: meta.model,
+        quality: meta.quality,
+        responseId: meta.responseId,
+        imageGenerationCallId: meta.imageGenerationCallId,
+        revisedPrompt: meta.revisedPrompt,
+        outputFormat: meta.outputFormat,
+        outputCompression: meta.outputCompression,
+        inputFidelity: meta.inputFidelity,
+      },
+      visionAnalysis: meta.visionAnalysis || savedTarget.visionAnalysis,
+      visionValidation: meta.visionValidation,
+    }
+
+    const updatedLibrary = updateAssetInClientLibrary(clientId, editedAsset)
+    setSavedClientAssets(updatedLibrary)
+
+    const currentJobTarget = [
+      ...assets.identities,
+      ...assets.logos,
+      ...assets.products,
+      ...assets.brandReferences,
+      assets.firstFrame,
+      assets.lastFrame,
+      assets.ctaGraphic,
+    ].filter((a): a is PersonalizationAsset => Boolean(a)).find((a) => a.id === assetId)
+
+    if (currentJobTarget) {
+      const syncedAsset: PersonalizationAsset = {
+        ...editedAsset,
+        url: currentJobTarget.url,
+        uploadedUrl: currentJobTarget.uploadedUrl,
+        file: currentJobTarget.file,
+        uploadStatus: currentJobTarget.uploadStatus,
+      }
+      setAssets((prev) => replaceAssetInLibrary(prev, syncedAsset))
+    }
+
     await uploadAsset(editedAsset)
   }, [assets, uploadAsset])
 
@@ -2185,6 +2304,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     removeCtaGraphic,
     retryAssetUpload,
     applyEditedPersonalizationAsset,
+    applyEditedSavedClientAsset,
 
     // Discovered assets
     discoveredAssets,
