@@ -142,3 +142,42 @@ export function setPrimaryInClientLibrary(
   saveClientAssets(clientId, next)
   return next
 }
+
+export function updateAssetInClientLibrary(
+  clientId: string,
+  asset: PersonalizationAsset,
+): ClientAssetLibrary {
+  const current = loadClientAssets(clientId)
+  const next = { ...current }
+
+  const updateList = (list: PersonalizationAsset[]) =>
+    list.map((a) => (a.id === asset.id ? asset : a))
+
+  switch (asset.role) {
+    case 'presenter_identity':
+    case 'face_identity':
+    case 'character_identity':
+      next.identities = updateList(current.identities)
+      if (current.primaryIdentity?.id === asset.id) {
+        next.primaryIdentity = asset
+      }
+      break
+    case 'logo':
+      next.logos = updateList(current.logos)
+      if (current.primaryLogo?.id === asset.id) {
+        next.primaryLogo = asset
+      }
+      break
+    case 'product_reference':
+      next.products = updateList(current.products)
+      break
+    case 'brand_reference':
+      next.brandReferences = updateList(current.brandReferences)
+      break
+    default:
+      break
+  }
+
+  saveClientAssets(clientId, next)
+  return next
+}

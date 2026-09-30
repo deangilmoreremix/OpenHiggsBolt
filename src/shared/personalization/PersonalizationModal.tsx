@@ -631,6 +631,7 @@ export default function PersonalizationModal() {
     removeCtaGraphic,
     retryAssetUpload,
     applyEditedPersonalizationAsset,
+    applyEditedSavedClientAsset,
     discoveredAssets,
     discoveryStatus,
     discoveryError,
@@ -741,6 +742,7 @@ export default function PersonalizationModal() {
       id: asset.id,
       name: asset.category.replace(/_/g, ' '),
       imageUrl: asset.editedDataUrl || asset.previewUrl,
+      originalImageUrl: asset.originalPreviewUrl || asset.previewUrl,
       category: asset.category,
       role: destinationRoleForSection(asset.assignedSection),
       source: 'discovered',
@@ -762,13 +764,15 @@ export default function PersonalizationModal() {
 
   const openLibraryImageEditor = useCallback((asset: PersonalizationAsset) => {
     const imageUrl = asset.uploadedUrl || asset.url
+    const originalImageUrl = asset.originalUrl || asset.uploadedUrl || asset.url
     setImageEditorAsset({
       id: asset.id,
       name: asset.name,
       imageUrl,
+      originalImageUrl,
       category: asset.sourceCategory,
       role: asset.role,
-      source: 'library',
+      source: 'current-job',
       businessName: clientForm.businessName || clientForm.name,
       industry: clientForm.industry,
       productService: clientForm.productService,
@@ -785,8 +789,39 @@ export default function PersonalizationModal() {
     editorReferenceImages,
   ])
 
+  const openSavedClientImageEditor = useCallback((asset: PersonalizationAsset) => {
+    if (!selectedClientId) return
+    const imageUrl = asset.uploadedUrl || asset.url
+    const originalImageUrl = asset.originalUrl || asset.uploadedUrl || asset.url
+    setImageEditorAsset({
+      id: asset.id,
+      name: asset.name,
+      imageUrl,
+      originalImageUrl,
+      category: asset.sourceCategory,
+      role: asset.role,
+      source: 'saved-client',
+      clientId: selectedClientId,
+      businessName: clientForm.businessName || clientForm.name,
+      industry: clientForm.industry,
+      productService: clientForm.productService,
+      brandDescription: clientForm.brandDescription,
+      referenceImages: editorReferenceImages.filter((url) => url !== imageUrl),
+      visionAnalysis: asset.visionAnalysis,
+    })
+  }, [
+    clientForm.brandDescription,
+    clientForm.businessName,
+    clientForm.industry,
+    clientForm.name,
+    clientForm.productService,
+    editorReferenceImages,
+    selectedClientId,
+  ])
+
   const handleImageEditorApply = useCallback(async (result: ImageEditorApplyResult) => {
     if (!imageEditorAsset) return
+
     if (imageEditorAsset.source === 'discovered') {
       setDiscoveredAssets(discoveredAssets.map((item) => (
         item.id === imageEditorAsset.id
@@ -814,6 +849,29 @@ export default function PersonalizationModal() {
       return
     }
 
+    if (imageEditorAsset.source === 'saved-client') {
+      if (!imageEditorAsset.clientId) {
+        throw new Error('A client must be selected to save edits to a saved client asset.')
+      }
+      await applyEditedSavedClientAsset(imageEditorAsset.clientId, imageEditorAsset.id, result.dataUrl, {
+        operation: result.operation,
+        prompt: result.prompt,
+        model: result.model,
+        quality: result.quality,
+        transparent: result.transparent,
+        videoReady: result.videoReady,
+        responseId: result.responseId,
+        imageGenerationCallId: result.imageGenerationCallId,
+        revisedPrompt: result.revisedPrompt,
+        outputFormat: result.outputFormat,
+        outputCompression: result.outputCompression,
+        inputFidelity: result.inputFidelity,
+        visionAnalysis: result.visionAnalysis,
+        visionValidation: result.visionValidation,
+      })
+      return
+    }
+
     await applyEditedPersonalizationAsset(imageEditorAsset.id, result.dataUrl, {
       operation: result.operation,
       prompt: result.prompt,
@@ -830,7 +888,7 @@ export default function PersonalizationModal() {
       visionAnalysis: result.visionAnalysis,
       visionValidation: result.visionValidation,
     })
-  }, [applyEditedPersonalizationAsset, discoveredAssets, imageEditorAsset, setDiscoveredAssets])
+  }, [applyEditedPersonalizationAsset, applyEditedSavedClientAsset, discoveredAssets, imageEditorAsset, setDiscoveredAssets])
 
   if (!isOpen || !source) return null
 
@@ -1149,6 +1207,7 @@ export default function PersonalizationModal() {
               retryAssetUpload={retryAssetUpload}
               openDiscoveredImageEditor={openDiscoveredImageEditor}
               openLibraryImageEditor={openLibraryImageEditor}
+              openSavedClientImageEditor={openSavedClientImageEditor}
               promptState={promptState}
               updatePersonalizedPrompt={updatePersonalizedPrompt}
               resetPrompt={resetPrompt}
@@ -1507,6 +1566,7 @@ function ConfigurationView(props: any) {
     retryAssetUpload,
     openDiscoveredImageEditor,
     openLibraryImageEditor,
+    openSavedClientImageEditor,
     promptState, updatePersonalizedPrompt, resetPrompt,
     isPersonalizing, isRegenerating,
     handlePersonalize, handleRegenerate, handleCopyPrompt, copiedPrompt,
@@ -2838,7 +2898,7 @@ function ConfigurationView(props: any) {
                     {isImageEditSupported(asset) && (
                       <button
                         type="button"
-                        onClick={() => openLibraryImageEditor(asset)}
+                        onClick={() => openSavedClientImageEditor(asset)}
                         className="text-[9px] font-extrabold uppercase"
                         style={{ color: C.cyan, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
                       >

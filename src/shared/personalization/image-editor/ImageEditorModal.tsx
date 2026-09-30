@@ -52,9 +52,11 @@ export type PersonalizationImageEditorAsset = {
   id: string
   name?: string
   imageUrl: string
+  originalImageUrl: string
   category?: DiscoveredAssetCategory
   role?: AssetRole
-  source: 'discovered' | 'library'
+  source: 'discovered' | 'current-job' | 'saved-client'
+  clientId?: string
   businessName?: string
   industry?: string
   productService?: string
@@ -279,7 +281,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     setVersions([{
       id: 'original',
       label: 'Original',
-      dataUrl: asset.imageUrl,
+      dataUrl: asset.originalImageUrl,
       operation: 'original',
       prompt: '',
       model: 'local',
@@ -810,17 +812,17 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
         !validation?.passed
       ) {
         setBusyLabel('SmartVideo GO Vision is validating the edit')
-        const originalUrl = await prepareDataUrl(asset.imageUrl)
-        validation = await validatePersonalizationImageEdit({
-          originalImageUrl: originalUrl,
-          editedImageUrl: dataUrl,
-          preserve: mergedPreserve,
-          intendedOperation: currentVersion.operation,
-          businessContext: {
-            businessName: asset.businessName,
-            industry: asset.industry,
-          },
-        })
+      const originalUrlForValidation = await prepareDataUrl(asset.originalImageUrl)
+      validation = await validatePersonalizationImageEdit({
+        originalImageUrl: originalUrlForValidation,
+        editedImageUrl: dataUrl,
+        preserve: mergedPreserve,
+        intendedOperation: currentVersion.operation,
+        businessContext: {
+          businessName: asset.businessName,
+          industry: asset.industry,
+        },
+      })
 
         setVersions((previous) => previous.map((version) => (
           version.id === currentVersion.id ? { ...version, visionValidation: validation } : version
@@ -839,7 +841,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
 
       await onApply({
         dataUrl,
-        originalUrl: asset.imageUrl,
+        originalUrl: asset.originalImageUrl,
         operation: currentVersion.operation,
         prompt: currentVersion.prompt,
         model: currentVersion.model,
@@ -923,6 +925,28 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
                 </button>
               </>
             )}
+            {versionIndex > 0 && (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!asset) return
+                  const originalDataUrl = await prepareDataUrl(asset.originalImageUrl)
+                  appendVersion({
+                    dataUrl: originalDataUrl,
+                    label: 'Reverted to Original',
+                    operation: 'original',
+                    prompt: '',
+                    model: 'local',
+                    transparent: false,
+                    videoReady: false,
+                  })
+                }}
+                className="rounded-lg px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-white/70 transition hover:bg-white/10 hover:text-white"
+                aria-label="Revert to original"
+              >
+                Revert to Original
+              </button>
+            )}
             <button type="button" onClick={onClose} aria-label="Close SmartVideo GO image editor" className="rounded-lg p-1.5 text-white/50 transition-colors hover:bg-white/10 hover:text-white">
               <X size={18} />
             </button>
@@ -933,7 +957,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
           <div className="space-y-4 p-4">
             <MediaStage
               src={streamingPreview || displayUrl}
-              originalSrc={asset.imageUrl}
+              originalSrc={asset.originalImageUrl}
               compareMode={compareMode}
               safeArea={safeArea}
               aspectRatio={aspectRatio}
@@ -1076,7 +1100,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
                 <>
                   <MediaStage
                     src={streamingPreview || displayUrl}
-                    originalSrc={asset.imageUrl}
+                    originalSrc={asset.originalImageUrl}
                     compareMode={compareMode}
                     safeArea={safeArea}
                     aspectRatio={aspectRatio}
