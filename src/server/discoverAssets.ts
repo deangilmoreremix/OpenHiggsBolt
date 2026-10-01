@@ -380,13 +380,13 @@ export async function classifyImage(
   model = getBusinessAssetClassificationModel(),
 ): Promise<{ category: DiscoveredAssetCategory; confidence: number; recommended: boolean } | null> {
   try {
-    const hasKey = Boolean(openAiKey || process.env.OPENAI_API_KEY)
+    const hasExplicitKey = Boolean(openAiKey && openAiKey.trim().length > 0)
 
-    if (!hasKey) {
+    if (!hasExplicitKey) {
       return heuristicFallback(url)
     }
 
-    const openai = new OpenAI({ apiKey: openAiKey || undefined })
+    const openai = new OpenAI({ apiKey: openAiKey })
     const response = await openai.chat.completions.create({
       model,
       messages: [

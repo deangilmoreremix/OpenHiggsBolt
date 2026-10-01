@@ -12,6 +12,7 @@
 | P1 | 37 | 37 | 0 |
 | P2 | 33 | 3 | 30 |
 | P3 | 0 | 0 | 0 |
+| Infrastructure | 5 | 5 | 0 |
 
 ---
 
@@ -110,11 +111,23 @@
 
 ---
 
+## Infrastructure / Build Fixes
+
+| ID | Area | Root Cause | Fix | Commit |
+|----|------|------------|-----|--------|
+| INFRA-1 | Netlify Background Function | Missing `netlify/package.json` and CommonJS export caused `Runtime.ImportModuleError` and `HandlerNotFound` | Added function dependencies and `module.exports.handler = handler` | 62a9a503 |
+| INFRA-2 | Netlify Deploy | `.netlifyignore` excluded `.next/` directory, breaking SSR page deploys | Removed `.next/` from `.netlifyignore` | df43c21a |
+| INFRA-3 | Netlify Build | Electron binary download failed on Netlify build image | Set `ELECTRON_SKIP_BINARY_DOWNLOAD=1` | 9d568243 |
+| INFRA-4 | Next.js Build | JSX syntax error in `StandaloneShell.js` (`<Link>` closed with `</a>`) | Fixed closing tags to match opening tags | df43c21a |
+| INFRA-5 | Test Stability | React 19 `act()` environment warnings and test flakiness due to shared localStorage state | Added global `vitest.setup.ts` with `IS_REACT_ACT_ENVIRONMENT = true` and `localStorage.clear()` in test beforeEach | 5cccbd68 |
+
+---
+
 ## Pre-existing Failures (Not Introduced by This Audit)
 
 | Test | Status | Action |
 |------|--------|--------|
-| tests/verify-openai-key.vitest.test.ts | FAIL (5 tests) | Pre-existing, unrelated to personalization |
+| packages/Vibe-Workflow/packages/workflow-builder/src/components/NodeFlow.test.jsx | FAIL (1 test) | Pre-existing, unrelated to personalization |
 | promptPersonalizerVision.test.ts | FAIL (module error) | Pre-existing circular dependency issue |
 
 ---
@@ -123,12 +136,12 @@
 
 | Metric | Value |
 |--------|-------|
-| Total test files | 49 |
-| Passing test files | 47 |
-| Failing test files | 2 (pre-existing) |
-| Total tests | 499 |
-| Passing tests | 494 |
-| Failing tests | 5 (pre-existing) |
+| Total test files | 54 |
+| Passing test files | 53 |
+| Failing test files | 1 (pre-existing: NodeFlow.test.jsx) |
+| Total tests | 553 |
+| Passing tests | 552 |
+| Failing tests | 1 (pre-existing) |
 | New regression tests | 9 |
 | Typecheck | PASS |
 | Build | PASS |

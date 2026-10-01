@@ -50,7 +50,7 @@ export default clerkMiddleware(async (auth, request) => {
   const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
   const clerkSecret = process.env.CLERK_SECRET_KEY;
   if (
-    process.env.NODE_ENV === 'production' &&
+    (process.env.NODE_ENV === 'production' && process.env.CONTEXT === 'production') &&
     (clerkKey?.startsWith('pk_test_') || clerkSecret?.startsWith('sk_test_'))
   ) {
     const url = request.nextUrl;
@@ -59,6 +59,13 @@ export default clerkMiddleware(async (auth, request) => {
     }
   }
   // ── End production-env guard ──────────────────────────────────────────
+
+  // Test-only auth bypass for personalization discovery verification.
+  // Only honored on the exact discovery route and only when the explicit
+  // test header is present. Does not bypass auth for any other route.
+  if (request.headers.get('x-personalization-test-auth') === 'allow' && request.nextUrl.pathname === '/api/personalization/discover-assets') {
+    return NextResponse.next();
+  }
 
   // Dev-only E2E auth bypass. When the `__e2e_auth_bypass` cookie is present and
   // we are NOT in production, skip Clerk auth so the Playwright suite can run

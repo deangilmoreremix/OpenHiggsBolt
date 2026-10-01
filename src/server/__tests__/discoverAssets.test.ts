@@ -242,3 +242,51 @@ describe('deduplication', () => {
     expect(urls.length).toBe(uniqueUrls.size)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Zero-key scraping regression tests
+// ---------------------------------------------------------------------------
+
+describe('zero-key scraping', () => {
+  it('classifyImage uses heuristicFallback when no explicit API key is provided', async () => {
+    const { classifyImage } = await import('../discoverAssets')
+
+    // Ensure no env key is present
+    const originalEnv = process.env.OPENAI_API_KEY
+    process.env.OPENAI_API_KEY = ''
+
+    try {
+      const result = await classifyImage('https://example.com/logo.png')
+      expect(result).not.toBeNull()
+      expect(result?.category).toBeDefined()
+    } finally {
+      process.env.OPENAI_API_KEY = originalEnv
+    }
+  })
+
+  it('does not use env OPENAI_API_KEY for classification when caller passes no key', async () => {
+    const { classifyImage } = await import('../discoverAssets')
+
+    const originalEnv = process.env.OPENAI_API_KEY
+    process.env.OPENAI_API_KEY = 'sk-env-key-should-be-ignored'
+
+    try {
+      const result = await classifyImage('https://example.com/logo.png')
+      // Should return heuristic result, not attempt OpenAI call
+      expect(result).not.toBeNull()
+      expect(result?.category).toBeDefined()
+    } finally {
+      process.env.OPENAI_API_KEY = originalEnv
+    }
+  })
+
+  it('discovers assets without requiring OpenAI key', async () => {
+    const result = await discoverBusinessAssets({
+      websiteUrl: 'https://example.com',
+      maxPages: 1,
+      maxImages: 5,
+    })
+
+    expect(Array.isArray(result)).toBe(true)
+  })
+})

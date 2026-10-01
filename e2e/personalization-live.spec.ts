@@ -5,14 +5,16 @@ import path from 'path';
 const BASE = 'http://localhost:3111';
 const FAKE_MUAPI_KEY = 'e2e-fake-muapi-key';
 const FAKE_OPENAI_KEY = 'e2e-fake-openai-key';
-const MARKETING_DIR = path.resolve(
-  process.env.MARKETING_SCREENSHOT_OUTPUT_DIR || './visual-assets/marketing-current',
-  'personalization',
-);
+const OUTPUT_DIR = path.resolve(__dirname, '../visual-assets/marketing-current/personalization');
+
+async function ensureDir(filePath: string) {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+}
 
 async function marketingShot(page: Page, name: string, fullPage = true) {
-  await fs.mkdir(MARKETING_DIR, { recursive: true });
-  await page.screenshot({ path: path.join(MARKETING_DIR, `${name}.png`), fullPage });
+  const filePath = path.join(OUTPUT_DIR, `${name}.png`);
+  await ensureDir(filePath);
+  await page.screenshot({ path: filePath, fullPage });
 }
 
 function mockMuApi(page: Page) {
@@ -123,29 +125,45 @@ test.describe('Personalization Demo — Live Feature Tests', () => {
     await marketingShot(page, '03-personalized-prompt');
   });
 
-  test('captures current business discovery and image editing entry points', async ({ page }) => {
-    const findAssets = page.getByText(/Find Business Assets/i).first();
-    if (await findAssets.isVisible().catch(() => false)) {
-      await findAssets.scrollIntoViewIfNeeded();
-      await marketingShot(page, '05-find-business-assets', false);
-    }
-
-    const editImage = page.getByText(/Edit Image|Edit with AI/i).first();
-    if (await editImage.isVisible().catch(() => false)) {
-      await editImage.scrollIntoViewIfNeeded();
-      await marketingShot(page, '06-edit-image-entry', false);
-    }
-
-    const smartVideoUse = page.getByText(/What SmartVideo Will Use/i).first();
-    if (await smartVideoUse.isVisible().catch(() => false)) {
-      await smartVideoUse.scrollIntoViewIfNeeded();
-      await marketingShot(page, '07-what-smartvideo-will-use', false);
-    }
-  });
-
   test('can upload asset and verify upload UI is present', async ({ page }) => {
     const uploadText = page.getByText(/Drag & drop or browse/i).first();
     await expect(uploadText).toBeVisible();
     await marketingShot(page, '04-asset-upload');
   });
+
+  test('can upload image and open edit image entry', async ({ page }) => {
+    // Fill required client fields so uploads/assets are enabled.
+    await page.fill('input[placeholder="ABC Roofing"]', 'ABC Roofing');
+    await page.fill('input[placeholder="Roofing"]', 'Roofing');
+    await page.fill('input[placeholder="Tampa, Florida"]', 'Tampa, Florida');
+    await page.fill('input[placeholder="Residential Roof Replacement"]', 'Residential Roof Replacement');
+    await page.fill('input[placeholder="Free Roof Inspection"]', 'Free Roof Inspection');
+
+    // Upload a small image into the Person / Presenter identity uploader.
+    const fileInput = page.locator('input[type="file"]').first();
+    await expect(fileInput).toBeAttached();
+    await fileInput.setInputFiles(path.join(__dirname, '../../test-assets/sample-person.png'));
+
+    // Wait for the asset to become ready and expose Edit with AI.
+    const editButton = page.locator('button:has-text("Edit with AI")').first();
+    await expect(editButton).toBeVisible({ timeout: 30000 });
+
+    await editButton.click();
+    await expect(page.locator('.image-editor-modal, [data-testid="image-editor-modal"], text=Edit Image').first()).toBeVisible({ timeout: 10000 });
+    await marketingShot(page, '06-edit-image-entry');
+  });
+
+  test('can reveal what smartvideo will use engine section', async ({ page }) => {
+    await page.fill('input[placeholder="ABC Roofing"]', 'ABC Roofing');
+    await page.fill('input[placeholder="Roofing"]', 'Roofing');
+    await page.fill('input[placeholder="Tampa, Florida"]', 'Tampa, Florida');
+    await page.fill('input[placeholder="Residential Roof Replacement"]', 'Residential Roof Replacement');
+    await page.fill('input[placeholder="Free Roof Inspection"]', 'Free Roof Inspection');
+
+    const engineSection = page.locator('text=SMARTVIDEO ENGINE').first();
+    await expect(engineSection).toBeVisible();
+    await engineSection.scrollIntoViewIfNeeded();
+    await marketingShot(page, '07-what-smartvideo-will-use', false);
+  });
+});
 });

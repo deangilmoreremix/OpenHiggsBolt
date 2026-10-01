@@ -1,8 +1,9 @@
 [build]
   # Build all workspace packages whose dist/ is gitignored and must be
   # generated before the root Next.js build can resolve them.
-  command = "set -x && npm run build:metadata && npm run build:packages && npm run build"
+  command = "pwd && ls -la && rm -rf node_modules/electron/dist && set -x && npm run build:metadata && npm run build:packages && npm run build"
   publish = ".next"
+  exclude = ["electron/dist/**", "playwright/**"]
 
   [build.environment]
     # Ensure build-time dependencies (tailwindcss, autoprefixer, jsdom, babel, etc.)
@@ -10,6 +11,8 @@
     NPM_CONFIG_PRODUCTION = "false"
     # Skip Playwright browser downloads during install to avoid network/timeouts.
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
+    # Skip Electron binary download on CI/Netlify; this app does not use Electron in production.
+    ELECTRON_SKIP_BINARY_DOWNLOAD = "1"
     # Match local development Node version.
     NODE_VERSION = "22"
 
