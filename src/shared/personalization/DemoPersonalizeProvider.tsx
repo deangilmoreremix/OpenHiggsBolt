@@ -822,10 +822,10 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   const uploadAsset = useCallback(async (asset: PersonalizationAsset): Promise<string> => {
     if (!apiKey) throw new Error('Missing API key')
 
-    const TEST_BYPASS_KEY = 'test-mode-key'
+    // Test-only bypass: avoid real network uploads in test mode with the placeholder key.
     if (
       process.env.NODE_ENV !== 'production' &&
-      apiKey === TEST_BYPASS_KEY &&
+      apiKey === 'test-mode-key' &&
       testMode
     ) {
       const fakeUrl = 'https://example.com/test-uploaded-asset.png'

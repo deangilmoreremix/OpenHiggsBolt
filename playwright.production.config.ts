@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 import dotenv from 'dotenv';
+import { resolveDemoAuthStatePath } from './playwright.shared';
 
 dotenv.config({ path: '.env.local' });
 
@@ -17,6 +18,7 @@ export default defineConfig({
   reporter: 'list',
   use: {
     baseURL: 'https://go.smartvid.app',
+    storageState: resolveDemoAuthStatePath(),
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
