@@ -75,14 +75,14 @@ function forbiddenRequestReason(
   const url = request.url();
   const method = request.method().toUpperCase();
 
+  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
+    return null;
+  }
+
   for (const pattern of forbiddenPatterns) {
     if (pattern.test(url)) {
       return `matched ${pattern.source}`;
     }
-  }
-
-  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
-    return null;
   }
 
   let parsed: URL;
