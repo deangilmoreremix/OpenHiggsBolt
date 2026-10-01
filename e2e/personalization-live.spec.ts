@@ -18,6 +18,16 @@ async function marketingShot(page: Page, name: string, fullPage = true) {
 }
 
 function mockMuApi(page: Page) {
+  page.route('https://example.com/person.png', async (route: Route) => {
+    const png =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC';
+    await route.fulfill({
+      status: 200,
+      contentType: 'image/png',
+      body: Buffer.from(png, 'base64'),
+    });
+  });
+
   page.route('/api/auth/muapi-key', async (route: Route) => {
     const req = route.request();
     if (req.method() === 'POST') {
