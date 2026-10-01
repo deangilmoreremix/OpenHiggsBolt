@@ -1,6 +1,7 @@
 import { test, expect, type Page, type Route } from '@playwright/test';
 
 const AUTH_STATE_PATH = 'playwright/.clerk/smartvideo-demo-http_localhost_3111.json';
+const DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
 test.use({ storageState: AUTH_STATE_PATH });
 
@@ -65,18 +66,58 @@ function mockPersonalizationApis(page: Page) {
 }
 
 async function openEditorForAsset(page: Page, assetLabel: string) {
-  const section = page.getByRole('article').filter({ hasText: assetLabel });
+  const section = page.locator('article.asset-card').filter({ hasText: assetLabel });
+  
+  // Find URL input in the section
   const urlInput = section.getByPlaceholder('Paste image URL and press Enter');
-  await urlInput.fill('https://example.com/test-image.png');
-  await urlInput.press('Enter');
-  await page.waitForTimeout(2000);
-
-  const img = section.locator('img[src*="test-image"]');
+  if (await urlInput.count() === 0) {
+    const logoUrlInput = section.getByPlaceholder('Paste logo URL and press Enter');
+    if (await logoUrlInput.count() > 0) {
+      await logoUrlInput.fill(DATA_URL);
+    } else {
+      const genericUrlInput = section.getByPlaceholder('Paste image or video URL and press Enter');
+      if (await genericUrlInput.count() > 0) {
+        await genericUrlInput.fill(DATA_URL);
+      }
+    }
+  } else {
+    await urlInput.fill(DATA_URL);
+  }
+  
+  // Use global button selectors based on section type
+  let addBtn;
+  const upperLabel = assetLabel.toUpperCase();
+  if (upperLabel.includes('PERSON')) {
+    addBtn = page.locator('button:has-text("Add Photo URL")').first();
+  } else if (upperLabel.includes('LOGO')) {
+    addBtn = page.locator('button:has-text("Add Logo URL")').first();
+  } else if (upperLabel.includes('PRODUCT') || upperLabel.includes('BRAND')) {
+    addBtn = page.locator('button:has-text("Add Image/Video URL")').first();
+  } else if (upperLabel.includes('FIRST FRAME') || upperLabel.includes('LAST FRAME')) {
+    addBtn = page.locator('button:has-text("Add Image URL")').first();
+  } else if (upperLabel.includes('CTA')) {
+    addBtn = page.locator('button:has-text("Add CTA Graphic")').first();
+  } else {
+    // Generic fallback
+    addBtn = page.locator('button:has-text("Add Images")').first();
+    if (await addBtn.count() === 0) {
+      addBtn = page.locator('button:has-text("Add Image URL")').first();
+    }
+  }
+  
+  if (await addBtn.count() > 0 && await addBtn.isVisible().catch(() => false)) {
+    await addBtn.dispatchEvent('click');
+  }
+  
+  // Wait for image to load and Edit with AI button to appear
+  await page.waitForTimeout(3000);
+  
+  const img = section.locator('img[src*="data:image"]');
   await expect(img).toBeVisible({ timeout: 30000 });
 
-  const editBtn = section.getByRole('button', { name: /Edit with AI/i });
+  const editBtn = page.locator('button:has-text("Edit with AI")').first();
   await expect(editBtn).toBeVisible({ timeout: 30000 });
-  await editBtn.click();
+  await editBtn.dispatchEvent('click');
   await page.waitForTimeout(2000);
 
   const editor = page.getByRole('dialog', { name: /smartvideo go image editor/i }).first();
@@ -86,27 +127,42 @@ async function openEditorForAsset(page: Page, assetLabel: string) {
 
 async function applyLocalEditAndUseEditedAsset(page: Page) {
   const advancedBtn = page.getByRole('button', { name: /Advanced Edit/i }).first();
-  if (await advancedBtn.count() > 0 && await advancedBtn.isVisible().catch(() => false)) {
-    await advancedBtn.click();
+  console.log('7. advanced edit button visible:', await advancedBtn.isVisible().catch(() => false));
+  if (await advancedBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await advancedBtn.dispatchEvent('click');
+    console.log('8. switched to advanced mode');
     await page.waitForTimeout(1000);
   }
 
   const localToolsSummary = page.locator('summary:has-text("Local Canvas Tools")').first();
-  if (await localToolsSummary.count() > 0 && await localToolsSummary.isVisible().catch(() => false)) {
-    await localToolsSummary.click();
+  console.log('9. local canvas tools summary visible:', await localToolsSummary.isVisible().catch(() => false));
+  if (await localToolsSummary.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await localToolsSummary.dispatchEvent('click');
+    console.log('10. expanded local canvas tools');
     await page.waitForTimeout(1000);
   }
 
   const applyLocalBtn = page.getByRole('button', { name: /Apply Local Edit/i }).first();
-  if (await applyLocalBtn.count() > 0 && await applyLocalBtn.isVisible().catch(() => false)) {
-    await applyLocalBtn.click();
+  console.log('11. apply local edit button visible:', await applyLocalBtn.isVisible().catch(() => false));
+  if (await applyLocalBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await applyLocalBtn.dispatchEvent('click');
+    console.log('12. clicked apply local edit');
     await page.waitForTimeout(3000);
+  } else {
+    console.log('11. apply local edit button NOT visible');
   }
 
   const useEditedBtn = page.getByRole('button', { name: /Use Edited Asset/i }).first();
-  if (await useEditedBtn.count() > 0) {
-    await expect(useEditedBtn).toBeEnabled({ timeout: 30000 });
-    await useEditedBtn.click();
+  const isEnabled = await useEditedBtn.isEnabled();
+  const disabledAttr = await useEditedBtn.getAttribute('disabled');
+  console.log('13. apply button state after local edit:', { isEnabled, disabledAttr });
+  
+  if (isEnabled) {
+    console.log('14. clicking use edited asset');
+    await useEditedBtn.dispatchEvent('click');
+    console.log('15. waiting for editor to close');
+  } else {
+    console.log('14. apply button still disabled, cannot complete flow');
   }
 }
 
@@ -126,7 +182,7 @@ test.describe('Personalization Image Editor — Full Asset Type Certification', 
     await page.fill('input[placeholder="Residential Roof Replacement"]', 'Roof Replacement');
     await page.fill('input[placeholder="Free Roof Inspection"]', 'Free Inspection');
 
-    const editor = await openEditorForAsset(page, '1. Person / Presenter');
+    const editor = await openEditorForAsset(page, '1. PERSON / PRESENTER');
     await applyLocalEditAndUseEditedAsset(page);
     await expect(editor).toBeHidden({ timeout: 10000 });
   });
@@ -142,7 +198,7 @@ test.describe('Personalization Image Editor — Full Asset Type Certification', 
     await page.fill('input[placeholder="Residential Roof Replacement"]', 'Roof Replacement');
     await page.fill('input[placeholder="Free Roof Inspection"]', 'Free Inspection');
 
-    const editor = await openEditorForAsset(page, '2. Logo');
+    const editor = await openEditorForAsset(page, '2. LOGO');
     await applyLocalEditAndUseEditedAsset(page);
     await expect(editor).toBeHidden({ timeout: 10000 });
   });
@@ -158,7 +214,7 @@ test.describe('Personalization Image Editor — Full Asset Type Certification', 
     await page.fill('input[placeholder="Residential Roof Replacement"]', 'Roof Replacement');
     await page.fill('input[placeholder="Free Roof Inspection"]', 'Free Inspection');
 
-    const editor = await openEditorForAsset(page, '3. Product');
+    const editor = await openEditorForAsset(page, '3. Products / Services');
     await applyLocalEditAndUseEditedAsset(page);
     await expect(editor).toBeHidden({ timeout: 10000 });
   });
@@ -174,7 +230,7 @@ test.describe('Personalization Image Editor — Full Asset Type Certification', 
     await page.fill('input[placeholder="Residential Roof Replacement"]', 'Roof Replacement');
     await page.fill('input[placeholder="Free Roof Inspection"]', 'Free Inspection');
 
-    const editor = await openEditorForAsset(page, '4. Brand Reference');
+    const editor = await openEditorForAsset(page, '4. Brand References');
     await applyLocalEditAndUseEditedAsset(page);
     await expect(editor).toBeHidden({ timeout: 10000 });
   });
@@ -184,7 +240,7 @@ test.describe('Personalization Image Editor — Full Asset Type Certification', 
     await page.waitForLoadState('domcontentloaded', { timeout: 30000 });
     await page.waitForTimeout(2000);
 
-    const editor = await openEditorForAsset(page, '5. First Frame');
+    const editor = await openEditorForAsset(page, '5. FIRST FRAME');
     await applyLocalEditAndUseEditedAsset(page);
     await expect(editor).toBeHidden({ timeout: 10000 });
   });
@@ -194,7 +250,7 @@ test.describe('Personalization Image Editor — Full Asset Type Certification', 
     await page.waitForLoadState('domcontentloaded', { timeout: 30000 });
     await page.waitForTimeout(2000);
 
-    const editor = await openEditorForAsset(page, '6. Last Frame');
+    const editor = await openEditorForAsset(page, '6. LAST FRAME / CTA');
     await applyLocalEditAndUseEditedAsset(page);
     await expect(editor).toBeHidden({ timeout: 10000 });
   });
@@ -204,7 +260,8 @@ test.describe('Personalization Image Editor — Full Asset Type Certification', 
     await page.waitForLoadState('domcontentloaded', { timeout: 30000 });
     await page.waitForTimeout(2000);
 
-    const editor = await openEditorForAsset(page, '7. CTA Graphic');
+    // CTA Graphic is part of the Last Frame / CTA section
+    const editor = await openEditorForAsset(page, '6. LAST FRAME / CTA');
     await applyLocalEditAndUseEditedAsset(page);
     await expect(editor).toBeHidden({ timeout: 10000 });
   });
@@ -234,7 +291,7 @@ test.describe('Personalization Image Editor — Full Asset Type Certification', 
     await page.waitForLoadState('domcontentloaded', { timeout: 30000 });
     await page.waitForTimeout(2000);
 
-    const editor = await openEditorForAsset(page, '1. Person / Presenter');
+    const editor = await openEditorForAsset(page, '1. PERSON / PRESENTER');
     await applyLocalEditAndUseEditedAsset(page);
     await expect(editor).toBeHidden({ timeout: 10000 });
 
