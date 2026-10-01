@@ -1,9 +1,13 @@
-name: Temporary Verify PR40 Marketing Recordings
+name: Manual Verify Marketing Recordings
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to verify'
+        required: false
+        default: 'main'
+        type: string
 
 permissions:
   contents: read
@@ -28,7 +32,7 @@ jobs:
       - name: Checkout PR40 feature branch
         uses: actions/checkout@v4
         with:
-          ref: feature/playwright-marketing-recordings
+          ref: ${{ inputs.ref || 'main' }}
           submodules: recursive
 
       - name: Record exact branch commit
