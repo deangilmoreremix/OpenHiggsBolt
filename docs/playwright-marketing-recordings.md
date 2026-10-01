@@ -48,3 +48,8 @@ When `DEMO_BASE_URL` points to a remote origin, the recordings config does not s
 
 - `e2e/marketing-demos/` — functional validation
 - `e2e/marketing-recordings/` — polished customer-facing recordings
+
+
+## CI Verification
+
+PR #40 includes a branch-only GitHub Actions verifier that uses the repository's protected production test environment to run the recording suite against `https://go.smartvid.app`. It does not permit paid or state-changing requests and uploads only the generated `.webm` recordings plus diagnostics on failure.
