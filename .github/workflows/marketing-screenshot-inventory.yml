@@ -1,14 +1,6 @@
 name: SmartVideo GO Marketing Screenshot Inventory
 
 on:
-  pull_request:
-    paths:
-      - 'e2e/studio-visual-capture.spec.ts'
-      - 'e2e/personalization-live.spec.ts'
-      - 'playwright.config.ts'
-      - 'playwright.shared.ts'
-      - 'visual-assets/marketing-current/**'
-      - '.github/workflows/marketing-screenshot-inventory.yml'
   workflow_dispatch:
 
 jobs:
@@ -16,12 +8,6 @@ jobs:
     name: Capture and certify current marketing screenshots
     runs-on: ubuntu-latest
     timeout-minutes: 45
-
-    env:
-      MARKETING_SCREENSHOT_OUTPUT_DIR: visual-assets/marketing-current
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-      CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-      NEXT_PUBLIC_CLERK_SECRET_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_SECRET_KEY }}
 
     steps:
       - name: Checkout
@@ -49,51 +35,8 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Capture studio and personalization inventory
-        run: >
-          npx playwright test
-          e2e/studio-visual-capture.spec.ts
-          e2e/personalization-live.spec.ts
-          --config=playwright.config.ts
-          --project=chromium
-          --reporter=list
-
-      - name: Verify required screenshot inventory
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          studio_full="$(find visual-assets/marketing-current -mindepth 2 -maxdepth 2 -type f -name 'full-page.png' | wc -l | tr -d ' ')"
-          studio_viewport="$(find visual-assets/marketing-current -mindepth 2 -maxdepth 2 -type f -name 'viewport-1920x1080.png' | wc -l | tr -d ' ')"
-
-          echo "studio_full_page=$studio_full"
-          echo "studio_viewport=$studio_viewport"
-
-          test "$studio_full" -eq 21
-          test "$studio_viewport" -eq 21
-
-          required=(
-            "01-modal-overview.png"
-            "02-client-profile.png"
-            "03-personalized-prompt.png"
-            "04-asset-upload.png"
-            "05-find-business-assets.png"
-            "06-edit-image-entry.png"
-            "07-what-smartvideo-will-use.png"
-          )
-
-          for file in "${required[@]}"; do
-            path="visual-assets/marketing-current/personalization/$file"
-            echo "checking $path"
-            test -s "$path"
-          done
-
-          echo "PERSONALIZATION_SCREENSHOTS=7/7"
-          echo "STUDIO_SURFACES=21/21"
-          echo "SCREENSHOT_INVENTORY=PASS"
+      - name: Capture and certify screenshot inventory
+        run: npm run marketing:screenshots
 
       - name: Upload current marketing screenshots
         if: always()
