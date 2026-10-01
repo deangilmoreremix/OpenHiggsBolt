@@ -813,8 +813,43 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   }, [])
 
   const uploadAsset = useCallback(async (asset: PersonalizationAsset): Promise<string> => {
-    if (!asset.file) throw new Error('Missing file for upload')
     if (!apiKey) throw new Error('Missing API key')
+
+    const TEST_BYPASS_KEY = 'test-mode-key'
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      apiKey === TEST_BYPASS_KEY &&
+      testMode
+    ) {
+      const fakeUrl = 'https://example.com/test-uploaded-asset.png'
+      setAssetUploadStatus(asset.id, 'ready', null)
+      setAssets((prev) => {
+        const updater = (list: PersonalizationAsset[]) => list.map((a) => (a.id === asset.id ? { ...a, url: fakeUrl, uploadedUrl: fakeUrl } : a))
+        const old = [
+          ...prev.identities,
+          ...prev.logos,
+          ...prev.products,
+          ...prev.brandReferences,
+          prev.firstFrame,
+          prev.lastFrame,
+          prev.ctaGraphic,
+        ].find((a) => a?.id === asset.id)
+        if (old) revokeAssetUrl(old)
+        return {
+          ...prev,
+          identities: updater(prev.identities),
+          logos: updater(prev.logos),
+          products: updater(prev.products),
+          brandReferences: updater(prev.brandReferences),
+          firstFrame: prev.firstFrame?.id === asset.id ? { ...prev.firstFrame, url: fakeUrl, uploadedUrl: fakeUrl } : prev.firstFrame,
+          lastFrame: prev.lastFrame?.id === asset.id ? { ...prev.lastFrame, url: fakeUrl, uploadedUrl: fakeUrl } : prev.lastFrame,
+          ctaGraphic: prev.ctaGraphic?.id === asset.id ? { ...prev.ctaGraphic, url: fakeUrl, uploadedUrl: fakeUrl } : prev.ctaGraphic,
+        }
+      })
+      return fakeUrl
+    }
+
+    if (!asset.file) throw new Error('Missing file for upload')
 
     setAssetUploadStatus(asset.id, 'uploading')
     try {
@@ -852,7 +887,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       setAssetUploadStatus(asset.id, 'error', message)
       throw error
     }
-  }, [apiKey, setAssetUploadStatus])
+  }, [apiKey, setAssetUploadStatus, testMode])
 
   const retryAssetUpload = useCallback(async (id: string) => {
     const all = [
