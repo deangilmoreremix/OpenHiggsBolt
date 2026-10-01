@@ -1,0 +1,115 @@
+name: Temporary Verify PR40 Marketing Recordings
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify-pr40-recordings:
+    name: Verify PR40 recordings against production
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: production
+      url: https://go.smartvid.app
+    env:
+      DEMO_BASE_URL: https://go.smartvid.app
+      E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_SECRET_KEY }}
+      NEXT_PUBLIC_CLERK_SECRET_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_SECRET_KEY }}
+
+    steps:
+      - name: Checkout PR40 feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/playwright-marketing-recordings
+          submodules: recursive
+
+      - name: Record exact branch commit
+        run: git rev-parse HEAD
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Verify required protected credentials exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in E2E_CLERK_USER_EMAIL NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY CLERK_SECRET_KEY; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Required protected credential is not configured: $name"
+              missing=1
+            fi
+          done
+          test "$missing" -eq 0
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify recording tests are discoverable
+        run: npx playwright test --config=playwright.recordings.config.ts --list
+
+      - name: Clear stale recording output
+        run: rm -rf playwright/marketing-recordings && mkdir -p playwright/marketing-recordings
+
+      - name: Authenticate recording user
+        run: npm run recordings:auth
+
+      - name: Capture marketing recordings
+        run: npm run recordings:capture
+
+      - name: Verify fresh non-zero WebM artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t videos < <(find playwright/marketing-recordings -type f -name '*.webm' -size +0c | sort)
+          count="${#videos[@]}"
+          echo "Found $count non-zero WebM recording(s)."
+          test "$count" -ge 4
+
+          zero_count=$(find playwright/marketing-recordings -type f -name '*.webm' -size 0c | wc -l | tr -d ' ')
+          test "$zero_count" -eq 0
+
+          for video in "${videos[@]}"; do
+            size=$(stat -c%s "$video")
+            echo "$video $size bytes"
+          done
+
+      - name: Upload verified recordings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr40-smartvideo-go-marketing-recordings
+          path: playwright/marketing-recordings/**/*.webm
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr40-marketing-recordings-diagnostics
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 7
