@@ -5,7 +5,7 @@ import path from 'path';
 const BASE = 'http://localhost:3111';
 const FAKE_MUAPI_KEY = 'e2e-fake-muapi-key';
 const FAKE_OPENAI_KEY = 'e2e-fake-openai-key';
-const OUTPUT_DIR = path.resolve(__dirname, '../visual-assets/marketing-current/personalization');
+const OUTPUT_DIR = path.resolve(\n  process.env.MARKETING_SCREENSHOT_OUTPUT_DIR || path.join(__dirname, '../visual-assets/marketing-current'),\n  'personalization',\n);
 
 async function ensureDir(filePath: string) {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -125,32 +125,37 @@ test.describe('Personalization Demo — Live Feature Tests', () => {
     await marketingShot(page, '03-personalized-prompt');
   });
 
+  test('captures find business assets entry point', async ({ page }) => {
+    const findAssets = page.getByRole('button', { name: /Find Business Assets/i }).first();
+    await expect(findAssets).toBeVisible();
+    await findAssets.scrollIntoViewIfNeeded();
+    await marketingShot(page, '05-find-business-assets', false);
+  });
+
   test('can upload asset and verify upload UI is present', async ({ page }) => {
     const uploadText = page.getByText(/Drag & drop or browse/i).first();
     await expect(uploadText).toBeVisible();
     await marketingShot(page, '04-asset-upload');
   });
 
-  test('can upload image and open edit image entry', async ({ page }) => {
-    // Fill required client fields so uploads/assets are enabled.
+  test('can add an image URL and open the real edit image entry', async ({ page }) => {
     await page.fill('input[placeholder="ABC Roofing"]', 'ABC Roofing');
     await page.fill('input[placeholder="Roofing"]', 'Roofing');
     await page.fill('input[placeholder="Tampa, Florida"]', 'Tampa, Florida');
-    await page.fill('input[placeholder="Residential Roof Replacement"]', 'Residential Roof Replacement');
-    await page.fill('input[placeholder="Free Roof Inspection"]', 'Free Roof Inspection');
 
-    // Upload a small image into the Person / Presenter identity uploader.
-    const fileInput = page.locator('input[type="file"]').first();
-    await expect(fileInput).toBeAttached();
-    await fileInput.setInputFiles(path.join(__dirname, '../../test-assets/sample-person.png'));
+    const photoUrlInput = page.getByPlaceholder('Paste image URL and press Enter').first();
+    await expect(photoUrlInput).toBeVisible();
+    await photoUrlInput.fill('https://example.com/person.png');
+    await photoUrlInput.press('Enter');
 
-    // Wait for the asset to become ready and expose Edit with AI.
-    const editButton = page.locator('button:has-text("Edit with AI")').first();
-    await expect(editButton).toBeVisible({ timeout: 30000 });
-
+    const editButton = page.getByRole('button', { name: 'Edit image' }).first();
+    await expect(editButton).toBeVisible({ timeout: 10000 });
+    await editButton.scrollIntoViewIfNeeded();
     await editButton.click();
-    await expect(page.locator('.image-editor-modal, [data-testid="image-editor-modal"], text=Edit Image').first()).toBeVisible({ timeout: 10000 });
-    await marketingShot(page, '06-edit-image-entry');
+
+    const editorTitle = page.getByRole('heading', { name: 'SmartVideo GO Image Editor' });
+    await expect(editorTitle).toBeVisible({ timeout: 10000 });
+    await marketingShot(page, '06-edit-image-entry', false);
   });
 
   test('can reveal what smartvideo will use engine section', async ({ page }) => {
@@ -160,10 +165,10 @@ test.describe('Personalization Demo — Live Feature Tests', () => {
     await page.fill('input[placeholder="Residential Roof Replacement"]', 'Residential Roof Replacement');
     await page.fill('input[placeholder="Free Roof Inspection"]', 'Free Roof Inspection');
 
-    const engineSection = page.locator('text=SMARTVIDEO ENGINE').first();
+    const engineSection = page.getByRole('heading', { name: 'SMARTVIDEO ENGINE' });
     await expect(engineSection).toBeVisible();
+    await expect(page.getByText(/SmartVideo Recommended/i).first()).toBeVisible();
     await engineSection.scrollIntoViewIfNeeded();
     await marketingShot(page, '07-what-smartvideo-will-use', false);
   });
-});
 });
