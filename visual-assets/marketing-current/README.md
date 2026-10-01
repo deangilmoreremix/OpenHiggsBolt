@@ -43,4 +43,4 @@ The inventory is PASS only when:
 - UI text matches the current product;
 - the CI screenshot verification step passes.
 
-Use `.github/workflows/marketing-screenshot-inventory.yml` as the executable certification gate.
+Run `npm run marketing:screenshots` as the executable certification gate. It captures the two Playwright suites and then refuses to mark the manifest PASS unless every required studio and Personalization file exists and is non-empty. The GitHub Actions workflow mirrors this command when hosted runners are available.
