@@ -55,7 +55,11 @@
     "source:verify": "node scripts/verify-source-of-truth.mjs",
     "build:metadata": "node scripts/generate-build-info.mjs",
     "postinstall": "patch-package",
-    "prebuild": "node scripts/verify-html-encoding-sniffer-patch.mjs"
+    "prebuild": "node scripts/verify-html-encoding-sniffer-patch.mjs",
+    "recordings:auth": "playwright test --config=playwright.recordings.config.ts --project=\"global setup\"",
+    "recordings:capture": "playwright test --config=playwright.recordings.config.ts",
+    "recordings:auth:local": "DEMO_BASE_URL=http://localhost:3111 npm run recordings:auth",
+    "recordings:capture:local": "DEMO_BASE_URL=http://localhost:3111 npm run recordings:capture"
   },
   "build": {
     "appId": "ai.generative.open",
