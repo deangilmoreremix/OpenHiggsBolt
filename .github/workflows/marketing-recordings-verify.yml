@@ -1,0 +1,130 @@
+name: Verify Marketing Recordings
+
+on:
+  push:
+    branches:
+      - feature/playwright-marketing-recordings
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-recordings:
+    name: Production-safe marketing recording verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: production
+      url: https://go.smartvid.app
+    env:
+      DEMO_BASE_URL: https://go.smartvid.app
+      E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_SECRET_KEY }}
+      NEXT_PUBLIC_CLERK_SECRET_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_SECRET_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Verify required protected credentials exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in E2E_CLERK_USER_EMAIL NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY CLERK_SECRET_KEY; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Required protected credential is not configured: $name"
+              missing=1
+            fi
+          done
+          test "$missing" -eq 0
+
+      - name: Initialize required package submodules
+        shell: bash
+        run: |
+          set -euo pipefail
+          git submodule update --init             packages/Open-AI-Design-Agent             packages/Open-Poe-AI             packages/Vibe-Workflow
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify recording tests are discoverable
+        run: npx playwright test --config=playwright.recordings.config.ts --list
+
+      - name: Clear stale recording output
+        shell: bash
+        run: |
+          rm -rf playwright/marketing-recordings
+          mkdir -p playwright/marketing-recordings
+
+      - name: Authenticate recording user against production
+        run: npm run recordings:auth
+
+      - name: Capture production-safe marketing recordings
+        run: npm run recordings:capture
+
+      - name: Verify fresh recording artifacts
+        id: artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t videos < <(find playwright/marketing-recordings -type f -name '*.webm' -size +0c | sort)
+          count="${#videos[@]}"
+          echo "video_count=$count" >> "$GITHUB_OUTPUT"
+          echo "Found $count non-zero WebM recording(s)."
+          if [ "$count" -lt 4 ]; then
+            echo "::error::Expected at least 4 non-zero marketing recordings, found $count"
+            find playwright/marketing-recordings -type f -maxdepth 5 -print || true
+            exit 1
+          fi
+
+          zero_count=$(find playwright/marketing-recordings -type f -name '*.webm' -size 0c | wc -l | tr -d ' ')
+          if [ "$zero_count" -ne 0 ]; then
+            echo "::error::Found $zero_count zero-byte WebM file(s)"
+            exit 1
+          fi
+
+          for video in "${videos[@]}"; do
+            size=$(stat -c%s "$video")
+            echo "$video $size bytes"
+          done
+
+      - name: Upload verified recordings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smartvideo-go-marketing-recordings-${{ github.sha }}
+          path: playwright/marketing-recordings/**/*.webm
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smartvideo-go-marketing-recordings-diagnostics-${{ github.sha }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 7
