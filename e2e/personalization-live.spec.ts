@@ -5,7 +5,10 @@ import path from 'path';
 const BASE = 'http://localhost:3111';
 const FAKE_MUAPI_KEY = 'e2e-fake-muapi-key';
 const FAKE_OPENAI_KEY = 'e2e-fake-openai-key';
-const OUTPUT_DIR = path.resolve(\n  process.env.MARKETING_SCREENSHOT_OUTPUT_DIR || path.join(__dirname, '../visual-assets/marketing-current'),\n  'personalization',\n);
+const OUTPUT_DIR = path.resolve(
+  process.env.MARKETING_SCREENSHOT_OUTPUT_DIR || path.join(__dirname, '../visual-assets/marketing-current'),
+  'personalization',
+);
 
 async function ensureDir(filePath: string) {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
