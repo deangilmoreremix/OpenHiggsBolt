@@ -22,6 +22,9 @@ const nextConfig = {
     '7zip-bin',
     'es-abstract',
     'playwright',
+    'got-scraping',
+    'get-stream',
+    '@crawlee/cheerio',
   ],
   outputFileTracingExcludes: {
     '*': [
