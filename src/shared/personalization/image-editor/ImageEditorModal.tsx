@@ -433,10 +433,9 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     }
     setVersions((previous) => {
       const truncated = previous.slice(0, versionIndex + 1)
-      const updated = [...truncated, next]
-      setVersionIndex(updated.length - 1)
-      return updated
+      return [...truncated, next]
     })
+    setVersionIndex(versionIndex + 1)
   }, [versionIndex])
 
   const executeAiEdit = useCallback(async (
