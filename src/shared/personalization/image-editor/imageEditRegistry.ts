@@ -101,6 +101,7 @@ export type EditorOperationId =
   | 'change_weather'
   | 'change_clothing'
   | 'custom'
+  | 'local_adjustments'
 
 export type EditorOperation = {
   id: EditorOperationId
@@ -213,6 +214,7 @@ export const IMAGE_EDIT_OPERATIONS: Record<EditorOperationId, EditorOperation> =
   change_weather: op('change_weather', 'Change Weather', 'scene', 'Change weather conditions while preserving the business scene.', 'Change the weather to the requested condition while preserving the location, people, products, vehicles, signage and business identity.', { destructiveCreative: true }),
   change_clothing: op('change_clothing', 'Change Clothing', 'people', 'Change clothing only while preserving identity and pose.', 'Change only the requested clothing. Preserve the person’s identity, face, hair, pose, body proportions, expression and surrounding scene.', { precision: true, destructiveCreative: true, applicableTo: ['person'] }),
   custom: op('custom', 'Ask SmartVideo GO AI', 'smart', 'Describe any image edit in natural language.', 'Follow the user’s requested edit precisely. Preserve everything not explicitly requested to change.', { precision: true }),
+  local_adjustments: op('local_adjustments', 'Local Adjustments', 'effects', 'Apply manual canvas adjustments.', 'Apply manual canvas adjustments including rotation, crop, brightness, contrast, saturation, opacity, blur, and text overlay. Preserve subject identity and branding.', { precision: false }),
 }
 
 const recipe = (

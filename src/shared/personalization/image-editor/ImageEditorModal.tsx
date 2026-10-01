@@ -352,7 +352,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     const operation = getOperation(operationId)
     if (modelMode === 'fast') return 'gpt-image-2.5-flare' as const
     if (modelMode === 'precision') return 'gpt-image-2.5-sunburst' as const
-    return operation.precision || sourceRecipe.precisionRecommended || recipe.precisionRecommended || visionAnalysis?.precisionRecommended
+    return operation?.precision || sourceRecipe.precisionRecommended || recipe.precisionRecommended || visionAnalysis?.precisionRecommended
       ? 'gpt-image-2.5-sunburst' as const
       : 'gpt-image-2.5-flare' as const
   }, [modelMode, recipe.precisionRecommended, sourceRecipe.precisionRecommended, visionAnalysis?.precisionRecommended])
@@ -471,7 +471,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
       size,
       outputFormat: format,
       background: transparent ? 'transparent' : 'auto',
-      inputFidelity: operation.precision || sourceRecipe.precisionRecommended || recipe.precisionRecommended || visionAnalysis?.precisionRecommended ? 'high' : 'low',
+      inputFidelity: operation?.precision || sourceRecipe.precisionRecommended || recipe.precisionRecommended || visionAnalysis?.precisionRecommended ? 'high' : 'low',
     })
 
     const first = results?.[0]
@@ -855,14 +855,14 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
         revisedPrompt: currentVersion.revisedPrompt,
         outputFormat,
         outputCompression,
-        inputFidelity: getOperation(currentVersion.operation as EditorOperationId).precision || sourceRecipe.precisionRecommended || recipe.precisionRecommended || visionAnalysis?.precisionRecommended ? 'high' : 'low',
+        inputFidelity: getOperation(currentVersion.operation as EditorOperationId)?.precision || sourceRecipe.precisionRecommended || recipe.precisionRecommended || visionAnalysis?.precisionRecommended ? 'high' : 'low',
       })
-      onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to save edited asset')
     } finally {
       setBusyLabel(null)
       setSaving(false)
+      onClose()
     }
   }, [
     asset,
