@@ -6,34 +6,52 @@ const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 const supabase = createClient(supabaseUrl, serviceRole)
 
-async function getChromiumExecutablePath() {
+let serverlessChromiumEnvironmentReady = false
+
+async function ensureServerlessChromiumEnvironment() {
+  if (serverlessChromiumEnvironmentReady) {
+    return
+  }
   try {
-    const { default: Chromium } = await import('@sparticuz/chromium')
-    if (process.platform !== 'darwin') {
-      return await Chromium.executablePath()
+    const { setupLambdaEnvironment } = await import('@sparticuz/chromium')
+    if (typeof setupLambdaEnvironment === 'function') {
+      const { tmpdir } = require('node:os')
+      const { join } = require('node:path')
+      setupLambdaEnvironment(join(tmpdir(), 'al2023', 'lib'))
     }
   } catch {
     // ignore
   }
-  return undefined
+  serverlessChromiumEnvironmentReady = true
 }
 
-const BROWSER_ARGS = [
-  '--no-sandbox',
-  '--disable-setuid-sandbox',
-  '--disable-dev-shm-usage',
-  '--disable-gpu',
-  '--disable-extensions',
-  '--disable-background-networking',
-  '--disable-sync',
-  '--disable-translate',
-  '--metrics-recording-only',
-  '--mute-audio',
-  '--no-first-run',
-  '--safebrowsing-disable-auto-update',
-  '--disable-default-apps',
-  '--disable-features=site-per-process',
-]
+async function getBrowserArgs() {
+  await ensureServerlessChromiumEnvironment()
+  try {
+    const { default: Chromium } = await import('@sparticuz/chromium')
+    const args = Array.isArray(Chromium.args) ? Chromium.args : []
+    const filtered = args.filter((arg) => !arg.startsWith('--disable-features='))
+    filtered.push('--disable-features=site-per-process')
+    return filtered
+  } catch {
+    return [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--disable-extensions',
+      '--disable-background-networking',
+      '--disable-sync',
+      '--disable-translate',
+      '--metrics-recording-only',
+      '--mute-audio',
+      '--no-first-run',
+      '--safebrowsing-disable-auto-update',
+      '--disable-default-apps',
+      '--disable-features=site-per-process',
+    ]
+  }
+}
 
 const BLOCKED_RESOURCE_TYPES = ['media', 'font', 'stylesheet']
 
@@ -73,9 +91,8 @@ function isLikelyJunk(url) {
 
 async function collectBrowserCandidates(baseUrl, pages, pageTelemetry) {
   const browser = await chromium.launch({
-    headless: true,
     executablePath: await getChromiumExecutablePath(),
-    args: BROWSER_ARGS,
+    args: await getBrowserArgs(),
   })
 
   const context = await browser.newContext({
@@ -343,9 +360,8 @@ async function handler(event) {
 
     try {
       const browser = await chromium.launch({
-        headless: true,
         executablePath: browserExecutableResolved !== 'playwright-managed' ? browserExecutableResolved : undefined,
-        args: BROWSER_ARGS,
+        args: await getBrowserArgs(),
       })
       browserLaunchedAt = new Date().toISOString()
 
