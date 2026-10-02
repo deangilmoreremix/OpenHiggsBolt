@@ -1588,7 +1588,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
             pollCount++
 
             try {
-              const statusRes = await fetch(`/api/personalization/discover-assets?jobId=${encodeURIComponent(jobId)}`, {
+              const statusRes = await fetch(`/api/personalization/discover-assets/status?jobId=${encodeURIComponent(jobId)}`, {
                 credentials: 'same-origin',
               })
 
