@@ -25,6 +25,19 @@ async function ensureServerlessChromiumEnvironment() {
   serverlessChromiumEnvironmentReady = true
 }
 
+async function getChromiumExecutablePath() {
+  await ensureServerlessChromiumEnvironment()
+  try {
+    const { default: Chromium } = await import('@sparticuz/chromium')
+    if (process.platform !== 'darwin') {
+      return await Chromium.executablePath()
+    }
+  } catch {
+    // ignore
+  }
+  return undefined
+}
+
 async function getBrowserArgs() {
   await ensureServerlessChromiumEnvironment()
   try {
