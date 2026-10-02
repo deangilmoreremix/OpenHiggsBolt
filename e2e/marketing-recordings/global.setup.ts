@@ -29,9 +29,14 @@ setup('authenticate SmartVideo GO demo user', async ({ page }) => {
   await page.goto(`${DEMO_BASE_URL}/studio`);
   await completeOrgTaskIfPresent(page, { waitForAppearance: true });
 
-  await expect(page).toHaveURL((url) => {
-    return url.pathname.includes('/studio') && !isChooseOrganizationTask(url);
-  });
+  try {
+    await expect(page).toHaveURL((url) => {
+      return url.pathname.includes('/studio') && !isChooseOrganizationTask(url);
+    }, { timeout: 30_000 });
+  } catch (error) {
+    console.error(`Recording auth did not settle on Studio. Current URL: ${page.url()}`);
+    throw error;
+  }
 
   await page.context().storageState({ path: authFile });
 });
