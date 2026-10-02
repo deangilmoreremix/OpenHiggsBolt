@@ -180,11 +180,11 @@ async function collectBrowserCandidates(baseUrl, pages, pageTelemetry) {
                 if (currentSrc && currentSrc !== src) win.__discoveryCandidates.push({ src: currentSrc, alt: img.alt || '' });
                 if (dataSrc) win.__discoveryCandidates.push({ src: dataSrc, alt: img.alt || '' });
                 if (dataSrcset) {
-                  var entries = dataSrcset.split(',').map(function(s) { return s.trim().split(/\\s+/)[0]; }).filter(Boolean);
+                  var entries = dataSrcset.split(',').map(function(s) { return s.trim().split(/\s+/)[0]; }).filter(Boolean);
                   for (var j = 0; j < entries.length; j++) win.__discoveryCandidates.push({ src: entries[j], alt: img.alt || '' });
                 }
                 if (srcset) {
-                  var srcEntries = srcset.split(',').map(function(s) { return s.trim().split(/\\s+/)[0]; }).filter(Boolean);
+                  var srcEntries = srcset.split(',').map(function(s) { return s.trim().split(/\s+/)[0]; }).filter(Boolean);
                   for (var k = 0; k < srcEntries.length; k++) win.__discoveryCandidates.push({ src: srcEntries[k], alt: img.alt || '' });
                 }
               }
@@ -193,7 +193,7 @@ async function collectBrowserCandidates(baseUrl, pages, pageTelemetry) {
                 var sources = pictures[p].querySelectorAll('source[srcset]');
                 for (var s = 0; s < sources.length; s++) {
                   var sourceSrcset = sources[s].getAttribute('srcset') || '';
-                  var sourceEntries = sourceSrcset.split(',').map(function(x) { return x.trim().split(/\\s+/)[0]; }).filter(Boolean);
+                  var sourceEntries = sourceSrcset.split(',').map(function(x) { return x.trim().split(/\s+/)[0]; }).filter(Boolean);
                   for (var e = 0; e < sourceEntries.length; e++) win.__discoveryCandidates.push({ src: sourceEntries[e] });
                 }
               }
@@ -201,20 +201,20 @@ async function collectBrowserCandidates(baseUrl, pages, pageTelemetry) {
               for (var el = 0; el < allElements.length; el++) {
                 var bg = allElements[el].style.backgroundImage;
                 if (bg && bg.includes('url(')) {
-                  var match = bg.match(/\\(["']?([^"')]+)["']?\\)/);
+                  var match = bg.match(/\(["']?([^"')]+)["']?\)/);
                   if (match && match[1]) win.__discoveryCandidates.push({ src: match[1] });
                 }
               }
             }
             walk(document);
-          })
+          })()
         `)
 
         const raw = await page.evaluate(`
           (function() {
             var win = window;
             return win.__discoveryCandidates || [];
-          })
+          })()
         `)
 
         const seen = new Set()
