@@ -60,6 +60,8 @@ export function buildForbiddenGenerationPatterns(): RegExp[] {
     /\/api\/audio\/generation/i,
     /\/api\/marketing\/generation/i,
     /\/api\/workflow\/.*\/run/i,
+    /\/api\/proxy\/openai-/i,
+    /\/api\/stripe\/checkout/i,
     /\/api\/checkout/i,
     /\/api\/purchase/i,
     /\/api\/social\/publish/i,
@@ -79,12 +81,6 @@ function forbiddenRequestReason(
     return null;
   }
 
-  for (const pattern of forbiddenPatterns) {
-    if (pattern.test(url)) {
-      return `matched ${pattern.source}`;
-    }
-  }
-
   let parsed: URL;
   try {
     parsed = new URL(url);
@@ -93,6 +89,35 @@ function forbiddenRequestReason(
   }
 
   const path = parsed.pathname;
+
+  // Cost estimation is read-only even though it uses POST.
+  if (
+    method === 'POST' &&
+    /^\/api\/(?:api\/)?v1\/models\/[^/]+\/estimate-cost\/?$/i.test(path)
+  ) {
+    return null;
+  }
+
+  // Personalization's deterministic demo discovery is safe only in test mode.
+  if (
+    method === 'POST' &&
+    path === '/api/personalization/discover-assets'
+  ) {
+    try {
+      const body = JSON.parse(request.postData() || '{}') as { testMode?: unknown };
+      if (body.testMode === true) {
+        return null;
+      }
+    } catch {
+      // Fall through and block malformed/non-test discovery mutations.
+    }
+  }
+
+  for (const pattern of forbiddenPatterns) {
+    if (pattern.test(url)) {
+      return `matched ${pattern.source}`;
+    }
+  }
 
   if (/^\/api\/(?:api\/)?v1\//i.test(path)) {
     return 'MuAPI mutation route';
@@ -106,8 +131,11 @@ function forbiddenRequestReason(
   if (/^\/api\/personalization(?:\/|$)/i.test(path)) {
     return 'personalization mutation route';
   }
-  if (/^\/api\/(?:checkout|purchase)(?:\/|$)/i.test(path)) {
+  if (/^\/api\/(?:stripe\/checkout|checkout|purchase)(?:\/|$)/i.test(path)) {
     return 'checkout or purchase route';
+  }
+  if (/^\/api\/proxy\/openai-/i.test(path)) {
+    return 'OpenAI proxy mutation route';
   }
   if (/^\/api\/social(?:\/|$)/i.test(path)) {
     return 'social publishing mutation route';
@@ -135,14 +163,15 @@ export async function installForbiddenRequestGuard(
       violations.push(
         `${request.method()} ${request.url()} (${reason})`
       );
-      await route.abort('blockedbyclient');
+      await route.abort('blockedbyclient').catch(() => {});
       return;
     }
 
-    await route.continue();
+    await route.continue().catch(() => {});
   };
 
-  await page.route('**/*', handler);
+  const routeMatcher = /(?:\/api\/|api\.openai\.com|api\.muapi\.ai)/i;
+  await page.route(routeMatcher, handler);
 
   return {
     assertClean() {
@@ -153,7 +182,7 @@ export async function installForbiddenRequestGuard(
       }
     },
     async dispose() {
-      await page.unroute('**/*', handler);
+      await page.unroute(routeMatcher, handler).catch(() => {});
     },
   };
 }
