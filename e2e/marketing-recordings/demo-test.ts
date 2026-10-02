@@ -27,10 +27,12 @@ const test = base.extend<RecordingFixtures, RecordingWorkerFixtures>({
         buildForbiddenGenerationPatterns()
       );
 
-      await use();
-
-      guard.assertClean();
-      await guard.dispose();
+      try {
+        await use();
+        guard.assertClean();
+      } finally {
+        await guard.dispose();
+      }
     },
     { auto: true },
   ],
