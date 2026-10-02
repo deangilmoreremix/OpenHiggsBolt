@@ -1597,7 +1597,7 @@ describe('DemoPersonalizeProvider zero-key discovery', () => {
       fetchCalls.push({ url, opts })
 
       const body = typeof opts?.body === 'string' ? JSON.parse(opts.body) : {}
-      if (url.includes('/api/personalization/discover-assets?jobId=')) {
+      if (url.includes('/api/personalization/discover-assets/status?jobId=')) {
         // Status poll - return complete with assets
         return {
           ok: true,
@@ -1647,6 +1647,9 @@ describe('DemoPersonalizeProvider zero-key discovery', () => {
     ctx = (window as any).__personalizationCtx
     expect(ctx.discoveryStatus).toBe('reviewing')
     expect(ctx.discoveredAssets).toHaveLength(1)
+
+    const legacyPollCalls = fetchCalls.filter((call) => call.url === '/api/personalization/discover-assets?jobId=test-job-123')
+    expect(legacyPollCalls).toHaveLength(0)
   })
 
   it('shows no-assets message only after background job completes with zero assets', async () => {
@@ -1656,7 +1659,7 @@ describe('DemoPersonalizeProvider zero-key discovery', () => {
     const mockFetch = vi.fn(async (url: string, opts?: any) => {
       fetchCalls.push({ url, opts })
 
-      if (url.includes('/api/personalization/discover-assets?jobId=')) {
+      if (url.includes('/api/personalization/discover-assets/status?jobId=')) {
         // Status poll - return complete with zero assets
         return {
           ok: true,
@@ -1704,5 +1707,8 @@ describe('DemoPersonalizeProvider zero-key discovery', () => {
     ctx = (window as any).__personalizationCtx
     expect(ctx.discoveryStatus).toBe('idle')
     expect(ctx.discoveryError).toBe('No useful assets were found on that website.')
+
+    const legacyPollCalls = fetchCalls.filter((call) => call.url === '/api/personalization/discover-assets?jobId=test-job-456')
+    expect(legacyPollCalls).toHaveLength(0)
   })
 })

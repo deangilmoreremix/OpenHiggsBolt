@@ -237,6 +237,61 @@ async function collectBrowserCandidates(baseUrl, pages, pageTelemetry) {
   }
 }
 
+function classifyBrowserCandidateUrl(url) {
+  const lower = url.toLowerCase()
+  const rules = [
+    { keywords: ['/logo', '/logos', '-logo.', '_logo.', '/brand/'], category: 'logo', confidence: 70 },
+    { keywords: ['/team', '/staff', '/people', '/about-us', '/our-team'], category: 'team', confidence: 65 },
+    { keywords: ['/product', '/products', '/shop', '/menu', '/catalog'], category: 'product', confidence: 65 },
+    { keywords: ['/store', '/location', '/locations', '/find-us'], category: 'storefront', confidence: 60 },
+    { keywords: ['/office', '/interior', '/showroom'], category: 'office', confidence: 60 },
+    { keywords: ['/vehicle', '/truck', '/van', '/fleet'], category: 'branded_vehicle', confidence: 60 },
+    { keywords: ['/project', '/projects', '/gallery', '/portfolio', '/completed'], category: 'completed_work', confidence: 60 },
+    { keywords: ['/service', '/services', '/what-we-do'], category: 'service', confidence: 55 },
+    { keywords: ['headshot', 'portrait', 'face', 'avatar'], category: 'person', confidence: 60 },
+    { keywords: ['favicon', 'icon', 'sprite', 'pixel', '1x1', 'tracking', 'beacon'], category: 'irrelevant', confidence: 80 },
+  ]
+
+  for (const rule of rules) {
+    if (rule.keywords.some((kw) => lower.includes(kw))) {
+      return { category: rule.category, confidence: rule.confidence, recommended: rule.category !== 'irrelevant' }
+    }
+  }
+
+  return { category: 'brand', confidence: 40, recommended: true }
+}
+
+function buildDiscoveredAssetsFromBrowserCandidates(candidates, maxImages) {
+  const discoveredAssets = []
+  const seen = new Set()
+
+  for (const candidate of candidates.slice(0, maxImages || 60)) {
+    if (discoveredAssets.length >= (maxImages || 60)) break
+
+    const normalizedUrl = (candidate.url || '').trim()
+    if (!normalizedUrl || seen.has(normalizedUrl)) continue
+    seen.add(normalizedUrl)
+
+    const classification = classifyBrowserCandidateUrl(normalizedUrl)
+    if (!classification.recommended) continue
+
+    discoveredAssets.push({
+      id: `disc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      sourceUrl: normalizedUrl,
+      previewUrl: normalizedUrl,
+      category: classification.category,
+      confidence: classification.confidence,
+      qualityScore: classification.confidence,
+      relevanceScore: classification.confidence,
+      selected: classification.recommended,
+      recommended: classification.recommended,
+      rejected: false,
+    })
+  }
+
+  return discoveredAssets
+}
+
 async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' }, body: '' }
@@ -305,9 +360,12 @@ async function handler(event) {
       const browserCompletedAt = new Date().toISOString()
       browserDurationMs = new Date(browserCompletedAt).getTime() - new Date(browserLaunchStartedAt).getTime()
 
+      const discoveredAssets = buildDiscoveredAssetsFromBrowserCandidates(candidates, 60)
+
       finalResult = {
         provider: 'SMARTVIDEO_BROWSER',
         candidates,
+        discoveredAssets,
         pagesCrawled,
         rawCandidates: candidates.length,
         socialProfiles: [],
