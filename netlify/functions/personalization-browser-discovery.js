@@ -8,9 +8,9 @@ const supabase = createClient(supabaseUrl, serviceRole)
 
 async function getChromiumExecutablePath() {
   try {
-    const { default: chromiumMin } = await import('@sparticuz/chromium-min')
+    const { default: Chromium } = await import('@sparticuz/chromium')
     if (process.platform !== 'darwin') {
-      return chromiumMin.executablePath()
+      return await Chromium.executablePath()
     }
   } catch {
     // ignore
