@@ -66,6 +66,9 @@ playwright/.clerk/
 # Playwright marketing demo recordings
 playwright/marketing-artifacts/
 
+# Playwright polished marketing recordings
+playwright/marketing-recordings/
+
 # Sync backups and monitoring artifacts
 .sync-backups/
 monitoring/
