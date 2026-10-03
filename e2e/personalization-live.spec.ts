@@ -5,7 +5,10 @@ import path from 'path';
 const BASE = 'http://localhost:3111';
 const FAKE_MUAPI_KEY = 'e2e-fake-muapi-key';
 const FAKE_OPENAI_KEY = 'e2e-fake-openai-key';
-const OUTPUT_DIR = path.resolve(__dirname, '../visual-assets/marketing-current/personalization');
+const OUTPUT_DIR = path.resolve(
+  process.env.MARKETING_SCREENSHOT_OUTPUT_DIR || path.join(__dirname, '../visual-assets/marketing-current'),
+  'personalization',
+);
 
 async function ensureDir(filePath: string) {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -135,6 +138,13 @@ test.describe('Personalization Demo — Live Feature Tests', () => {
     await marketingShot(page, '03-personalized-prompt');
   });
 
+  test('captures find business assets entry point', async ({ page }) => {
+    const findAssets = page.getByRole('button', { name: /Find Business Assets/i }).first();
+    await expect(findAssets).toBeVisible();
+    await findAssets.scrollIntoViewIfNeeded();
+    await marketingShot(page, '05-find-business-assets', false);
+  });
+
   test('can upload asset and verify upload UI is present', async ({ page }) => {
     const uploadText = page.getByText(/Drag & drop or browse/i).first();
     await expect(uploadText).toBeVisible();
@@ -168,8 +178,9 @@ test.describe('Personalization Demo — Live Feature Tests', () => {
     await page.fill('input[placeholder="Residential Roof Replacement"]', 'Residential Roof Replacement');
     await page.fill('input[placeholder="Free Roof Inspection"]', 'Free Roof Inspection');
 
-    const engineSection = page.locator('text=SMARTVIDEO ENGINE').first();
+    const engineSection = page.getByRole('heading', { name: 'SMARTVIDEO ENGINE' });
     await expect(engineSection).toBeVisible();
+    await expect(page.getByText(/SmartVideo Recommended/i).first()).toBeVisible();
     await engineSection.scrollIntoViewIfNeeded();
     await marketingShot(page, '07-what-smartvideo-will-use', false);
   });

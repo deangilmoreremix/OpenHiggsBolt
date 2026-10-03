@@ -1,0 +1,21 @@
+{
+  "inventory": "SmartVideo GO current marketing screenshots",
+  "status": "PARTIAL",
+  "studioSurfacesRequired": 21,
+  "personalizationStatesRequired": 7,
+  "requiredPersonalizationScreenshots": [
+    "personalization/01-modal-overview.png",
+    "personalization/02-client-profile.png",
+    "personalization/03-personalized-prompt.png",
+    "personalization/04-asset-upload.png",
+    "personalization/05-find-business-assets.png",
+    "personalization/06-edit-image-entry.png",
+    "personalization/07-what-smartvideo-will-use.png"
+  ],
+  "certification": {
+    "studioCapture": "PENDING_RERUN",
+    "personalizationCapture": "PENDING_RERUN",
+    "manifestPathsVerified": false,
+    "readyForMailerLiteEmailAuthoring": false
+  }
+}
