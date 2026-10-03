@@ -843,7 +843,7 @@ export default function PersonalizationModal() {
     setDragOverSection(null)
     setDragPayload(null)
 
-    let payload: { assetId: string; source: string; assetType: string } | null = null
+    let payload: { assetId: string; source: string; assetType: string } | null = dragPayload ?? null
     try {
       const data = e.dataTransfer.getData('application/json')
       if (data) payload = JSON.parse(data)
@@ -877,7 +877,7 @@ export default function PersonalizationModal() {
 
     // Handle library assets: move between sections
     moveLibraryAssetToSection(assetId, section)
-  }, [moveDiscoveredAssetToSection, moveLibraryAssetToSection, savedClientAssets, selectSavedAsset])
+  }, [dragPayload, moveDiscoveredAssetToSection, moveLibraryAssetToSection, savedClientAssets, selectSavedAsset])
 
   // ── Focus trap & Escape ──────────────────────────────────────────────────
 
