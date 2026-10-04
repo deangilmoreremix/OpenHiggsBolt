@@ -3,6 +3,11 @@
 # Linked project ref: bzxohkrxcwodllketcpz (VideoRemix Product)
 project_id = "bzxohkrxcwodllketcpz"
 
+[functions.weekend-bonus-3pay-webhook]
+# Stripe webhook endpoint. Security is enforced via Stripe webhook signature
+# verification (STRIPE_3PAY_WEBHOOK_SECRET), not JWT.
+verify_jwt = false
+
 [functions.enhance-prompt]
 # Called from the browser (src/shared/api/openai.ts) with no Supabase JWT.
 verify_jwt = false
