@@ -38,9 +38,15 @@ export async function editSmartVideoGoImage(params: SmartVideoGoImageEditRequest
     body: form,
   })
 
-  const payload = await response.json().catch(() => ({}))
+  let payload: Record<string, unknown>
+  try {
+    payload = await response.json()
+  } catch {
+    if (!response.ok) throw new Error('SmartVideo GO image edit failed')
+    throw new Error('Unable to parse image edit response')
+  }
   if (!response.ok) {
-    throw new Error(payload?.message || payload?.error || 'SmartVideo GO image edit failed')
+    throw new Error(typeof payload?.message === 'string' ? payload.message : typeof payload?.error === 'string' ? payload.error : 'SmartVideo GO image edit failed')
   }
 
   return Array.isArray(payload?.data) ? payload.data : []

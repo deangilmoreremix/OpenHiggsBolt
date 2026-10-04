@@ -63,6 +63,7 @@ export type PersonalizationImageEditorAsset = {
   brandDescription?: string
   referenceImages?: string[]
   visionAnalysis?: PersonalizationVisionAnalysis
+  file?: File
 }
 
 export type ImageEditorApplyResult = {
@@ -89,6 +90,7 @@ type Props = {
   asset: PersonalizationImageEditorAsset | null
   onClose: () => void
   onApply: (result: ImageEditorApplyResult) => Promise<void> | void
+  onDropAsset?: (payload: { assetId: string; source: string; assetType: string }) => void
 }
 
 type ModelMode = 'auto' | 'fast' | 'precision'
@@ -211,9 +213,10 @@ function fileExtension(format: ImageFormat) {
   return format
 }
 
-export default function ImageEditorModal({ open, asset, onClose, onApply }: Props) {
+export default function ImageEditorModal({ open, asset, onClose, onApply, onDropAsset }: Props) {
   const modalRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
+  const mountedRef = useRef(true)
 
   const [editorMode, setEditorMode] = useState<EditorMode>('simple')
   const [modelMode, setModelMode] = useState<ModelMode>('auto')
@@ -237,6 +240,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
   const [validationOverrideVersionId, setValidationOverrideVersionId] = useState<string | null>(null)
   const [streamingPreview, setStreamingPreview] = useState<string | null>(null)
   const [smartEditFailed, setSmartEditFailed] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
 
   const [rotation, setRotation] = useState(0)
   const [flipX, setFlipX] = useState(false)
@@ -360,23 +364,35 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
   const prepareDataUrl = useCallback(async (url: string) => {
     if (url.startsWith('data:')) return url
     if (url.startsWith('blob:')) {
-      const response = await fetch(url)
-      if (!response.ok) throw new Error('Unable to read local image')
-      return blobToDataUrl(await response.blob())
+      const sourceFile = asset?.file
+      if (sourceFile instanceof File) {
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(String(reader.result || ''))
+          reader.onerror = () => reject(new Error('Unable to read local image file'))
+          reader.readAsDataURL(sourceFile)
+        })
+      }
     }
 
-    const response = await fetch('/api/personalization/download-image', {
+    const downloadRes = await fetch('/api/personalization/download-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
       body: JSON.stringify({ urls: [url] }),
     })
-    const payload = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(payload?.error || 'Unable to prepare image for editing')
+    let payload: Record<string, unknown>
+    try {
+      payload = await downloadRes.json()
+    } catch {
+      if (!downloadRes.ok) throw new Error('Unable to prepare image for editing')
+      throw new Error('Unable to parse download response')
+    }
+    if (!downloadRes.ok) throw new Error(typeof payload?.error === 'string' ? payload.error : `Download failed (HTTP ${downloadRes.status})`)
     const result = payload?.results?.[0]
-    if (!result?.ok || !result?.dataUrl) throw new Error(result?.error || 'Unable to download image')
+    if (!result?.ok || !result?.dataUrl) throw new Error(typeof result?.error === 'string' ? result.error : 'Unable to download image')
     return result.dataUrl as string
-  }, [])
+  }, [asset?.file])
 
   const analyzeCurrentImage = useCallback(async (sourceUrl = displayUrl) => {
     if (!asset) return undefined
@@ -399,7 +415,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
         targetVideoFormat: aspectRatio === 'original' ? undefined : aspectRatio,
       })
       const analysis = analyses[0]
-      if (analysis) {
+      if (analysis && mountedRef.current) {
         setVisionAnalysis(analysis)
         if (analysis.precisionRecommended && modelMode === 'auto') {
           // Auto routing will select Sunburst through resolvedModel.
@@ -407,7 +423,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
       }
       return analysis
     } finally {
-      setVisionAnalyzing(false)
+      if (mountedRef.current) setVisionAnalyzing(false)
     }
   }, [asset, aspectRatio, displayUrl, modelMode, prepareDataUrl])
 
@@ -551,7 +567,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
         },
         partialImages: 2,
       }, (partialDataUrl) => {
-        setStreamingPreview(partialDataUrl)
+        if (mountedRef.current) setStreamingPreview(partialDataUrl)
       })
 
       appendVersion({
@@ -566,15 +582,19 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
         imageGenerationCallId: result.imageGenerationCallId,
         revisedPrompt: result.revisedPrompt,
       })
-      setCustomPrompt('')
-      setValidationOverrideVersionId(null)
-      setSmartEditFailed(false)
+      if (mountedRef.current) setCustomPrompt('')
+      if (mountedRef.current) setValidationOverrideVersionId(null)
+      if (mountedRef.current) setSmartEditFailed(false)
     } catch (err) {
-      setSmartEditFailed(true)
-      setError(err instanceof Error ? err.message : 'SmartVideo GO Smart Edit failed')
+      if (mountedRef.current) {
+        setSmartEditFailed(true)
+        setError(err instanceof Error ? err.message : 'SmartVideo GO Smart Edit failed')
+      }
     } finally {
-      setStreamingPreview(null)
-      setBusyLabel(null)
+      if (mountedRef.current) {
+        setStreamingPreview(null)
+        setBusyLabel(null)
+      }
     }
   }, [
     appendVersion,
@@ -631,7 +651,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
         source = finalResult.dataUrl
       }
 
-      if (finalResult) {
+      if (finalResult && mountedRef.current) {
         appendVersion({
           ...finalResult,
           label: 'Make Video Ready',
@@ -639,12 +659,14 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
           videoReady: true,
         })
       }
-      setMaskBlob(null)
-      setMaskMode(false)
+      if (mountedRef.current) {
+        setMaskBlob(null)
+        setMaskMode(false)
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Make Video Ready failed')
+      if (mountedRef.current) setError(err instanceof Error ? err.message : 'Make Video Ready failed')
     } finally {
-      setBusyLabel(null)
+      if (mountedRef.current) setBusyLabel(null)
     }
   }, [analyzeCurrentImage, appendVersion, asset, displayUrl, executeAiEdit, kind, recipe.makeVideoReadySteps, visionAnalysis])
 
@@ -763,6 +785,7 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
       setError(err instanceof Error ? err.message : 'Local edit failed')
     } finally {
       setBusyLabel(null)
+      setSaving(false)
     }
   }, [
     appendVersion,
@@ -857,10 +880,12 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
         inputFidelity: getOperation(currentVersion.operation as EditorOperationId)?.precision || sourceRecipe.precisionRecommended || recipe.precisionRecommended || visionAnalysis?.precisionRecommended ? 'high' : 'low',
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to save edited asset')
+      if (mountedRef.current) setError(err instanceof Error ? err.message : 'Unable to save edited asset')
     } finally {
-      setBusyLabel(null)
-      setSaving(false)
+      if (mountedRef.current) {
+        setBusyLabel(null)
+        setSaving(false)
+      }
       onClose()
     }
   }, [
@@ -874,6 +899,37 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
     versionIndex,
     visionAnalysis,
   ])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOver(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOver(false)
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOver(false)
+
+    if (!onDropAsset) return
+
+    let payload: { assetId: string; source: string; assetType: string } | null = null
+    try {
+      const data = e.dataTransfer.getData('application/json')
+      if (data) payload = JSON.parse(data)
+    } catch {
+      // ignore invalid payload
+    }
+    if (payload) {
+      onDropAsset(payload)
+    }
+  }, [onDropAsset])
 
   if (!open || !asset || !currentVersion) return null
 
@@ -895,14 +951,22 @@ export default function ImageEditorModal({ open, asset, onClose, onApply }: Prop
       className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto"
       style={{ background: 'rgba(0,0,0,0.8)' }}
       onClick={onClose}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       <div
         ref={modalRef}
-        className={'relative mx-4 my-8 w-full rounded-2xl border border-white/10 ' + (editorMode === 'advanced' ? 'max-w-7xl' : 'max-w-4xl')}
-        style={{ background: 'var(--bg-panel)' }}
+        className={'relative mx-4 my-8 w-full rounded-2xl border border-white/10 ' + (editorMode === 'advanced' ? 'max-w-7xl' : 'max-w-4xl') + (dragOver ? ' border-cyan-400/60' : '')}
+        style={{ background: 'var(--bg-panel)', boxShadow: dragOver ? '0 0 40px rgba(34,211,238,.18)' : undefined }}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-white/10 p-4">
+          {dragOver && (
+            <div className="absolute inset-x-0 top-0 z-50 flex items-center justify-center rounded-t-2xl border border-cyan-400/40 bg-cyan-400/10 py-3 text-xs font-bold uppercase tracking-wide text-cyan-300">
+              Drop asset to replace current image
+            </div>
+          )}
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-7 w-7 flex-none items-center justify-center rounded-md" style={{ ...iconBadge }}>
               <Sparkles size={14} className="text-black" />
