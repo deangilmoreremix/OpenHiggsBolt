@@ -18,6 +18,16 @@ async function marketingShot(page: Page, name: string, fullPage = true) {
 }
 
 function mockMuApi(page: Page) {
+  page.route('https://example.com/person.png', async (route: Route) => {
+    const png =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC';
+    await route.fulfill({
+      status: 200,
+      contentType: 'image/png',
+      body: Buffer.from(png, 'base64'),
+    });
+  });
+
   page.route('/api/auth/muapi-key', async (route: Route) => {
     const req = route.request();
     if (req.method() === 'POST') {
@@ -131,26 +141,24 @@ test.describe('Personalization Demo — Live Feature Tests', () => {
     await marketingShot(page, '04-asset-upload');
   });
 
-  test('can upload image and open edit image entry', async ({ page }) => {
-    // Fill required client fields so uploads/assets are enabled.
+  test('can add an image URL and open the real edit image entry', async ({ page }) => {
     await page.fill('input[placeholder="ABC Roofing"]', 'ABC Roofing');
     await page.fill('input[placeholder="Roofing"]', 'Roofing');
     await page.fill('input[placeholder="Tampa, Florida"]', 'Tampa, Florida');
-    await page.fill('input[placeholder="Residential Roof Replacement"]', 'Residential Roof Replacement');
-    await page.fill('input[placeholder="Free Roof Inspection"]', 'Free Roof Inspection');
 
-    // Upload a small image into the Person / Presenter identity uploader.
-    const fileInput = page.locator('input[type="file"]').first();
-    await expect(fileInput).toBeAttached();
-    await fileInput.setInputFiles(path.join(__dirname, '../../test-assets/sample-person.png'));
+    const photoUrlInput = page.getByPlaceholder('Paste image URL and press Enter').first();
+    await expect(photoUrlInput).toBeVisible();
+    await photoUrlInput.fill('https://example.com/person.png');
+    await photoUrlInput.press('Enter');
 
-    // Wait for the asset to become ready and expose Edit with AI.
-    const editButton = page.locator('button:has-text("Edit with AI")').first();
-    await expect(editButton).toBeVisible({ timeout: 30000 });
-
+    const editButton = page.getByRole('button', { name: 'Edit image' }).first();
+    await expect(editButton).toBeVisible({ timeout: 10000 });
+    await editButton.scrollIntoViewIfNeeded();
     await editButton.click();
-    await expect(page.locator('.image-editor-modal, [data-testid="image-editor-modal"], text=Edit Image').first()).toBeVisible({ timeout: 10000 });
-    await marketingShot(page, '06-edit-image-entry');
+
+    const editorTitle = page.getByRole('heading', { name: 'SmartVideo GO Image Editor' });
+    await expect(editorTitle).toBeVisible({ timeout: 10000 });
+    await marketingShot(page, '06-edit-image-entry', false);
   });
 
   test('can reveal what smartvideo will use engine section', async ({ page }) => {
@@ -165,5 +173,4 @@ test.describe('Personalization Demo — Live Feature Tests', () => {
     await engineSection.scrollIntoViewIfNeeded();
     await marketingShot(page, '07-what-smartvideo-will-use', false);
   });
-});
 });

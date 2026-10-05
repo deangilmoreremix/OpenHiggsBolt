@@ -1,15 +1,14 @@
-name: SmartVideo GO Image Editor CI
+name: SmartVideo GO Personalization CI
 
 on:
   pull_request:
     paths:
       - 'src/shared/personalization/**'
       - 'src/shared/api/openaiImage.ts'
-      - 'app/api/personalization/image-edit/**'
-      - 'app/api/personalization/image-analyze/**'
-      - 'app/api/personalization/image-smart-edit/**'
-      - 'tests/personalization-image-edit.vitest.test.ts'
-      - 'tests/personalization-responses-vision.vitest.test.ts'
+      - 'app/api/personalization/**'
+      - 'app/personalization-demo/**'
+      - 'tests/personalization-*.vitest.test.ts'
+      - 'src/shared/personalization/__tests__/**'
       - '.github/workflows/personalization-image-editor-ci.yml'
   workflow_dispatch:
 
@@ -75,18 +74,24 @@ jobs:
           set -o pipefail
           npm run typecheck 2>&1 | tee /tmp/smartvideo-go-typecheck.log
 
-      - name: Run image editor unit tests
+      - name: Run personalization unit tests
         id: tests
         continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
           npx vitest run \
+            src/shared/personalization/__tests__/DemoPersonalizeProvider.test.tsx \
+            src/shared/personalization/__tests__/PersonalizationModal.test.tsx \
+            src/shared/personalization/__tests__/PersonalizationPR31Regression.test.tsx \
             src/shared/personalization/__tests__/ImageEditorModal.test.tsx \
             src/shared/personalization/__tests__/imageEditRegistry.test.ts \
             src/shared/personalization/__tests__/responsesVisionApi.test.ts \
             src/shared/personalization/__tests__/promptPersonalizerVision.test.ts \
             src/shared/personalization/__tests__/DiscoveredAssets.test.tsx \
+            src/shared/personalization/__tests__/modelCapabilityResolver.test.ts \
+            src/shared/personalization/__tests__/postProcessor.test.ts \
+            src/shared/personalization/__tests__/batchVideoReady.test.ts \
             tests/personalization-image-edit.vitest.test.ts \
             tests/personalization-responses-vision.vitest.test.ts \
             2>&1 | tee /tmp/smartvideo-go-tests.log

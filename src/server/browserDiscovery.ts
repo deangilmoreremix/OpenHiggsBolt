@@ -219,7 +219,7 @@ async function extractRenderedImages(page: any, pageUrl: string): Promise<Browse
       }
 
       walk(document);
-    })
+    })()
   `)
 
   const raw = (await page.evaluate(`
