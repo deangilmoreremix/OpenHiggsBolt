@@ -42,7 +42,7 @@ import {
   Share2,
 } from 'lucide-react'
 import { useDemoPersonalize } from './DemoPersonalizeProvider'
-import type { PersonalizationAsset, DiscoveredAsset, DiscoveredAssetCategory, AssignedSection } from './types'
+import type { PersonalizationAsset, DiscoveredAsset, DiscoveredAssetCategory, AssignedSection, AssetRole, PersonalizationVisionAnalysis } from './types'
 import { resolveModelCapabilities, FACE_SWAP_MODEL, FULL_BODY_MODEL, DEFAULT_T2V_MODEL, DEFAULT_I2I_MODEL } from './modelCapabilityResolver'
 import { getModelById, getVideoModelById } from '@/packages/studio/src/models.js'
 import { NICHE_CONTENT } from '@/data/nicheContent'
@@ -121,6 +121,39 @@ const OUTPUT_OPTIONS_PROMPT = [
 
 function classNames(...classes: (string | boolean | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ')
+}
+
+type PersonalizationDragSource = 'discovered' | 'current-job' | 'saved-client'
+
+type PersonalizationDragPayload = {
+  assetId: string
+  source: PersonalizationDragSource
+  assetType: string
+  url: string
+  uploadedUrl?: string
+  metadata: {
+    role?: string
+    name?: string
+    sourceCategory?: string
+    sourceType?: string
+  }
+}
+
+function isUsableImageSource(url?: string): boolean {
+  const candidate = url || ''
+  if (!candidate || candidate.startsWith('blob:')) return false
+  if (candidate.startsWith('data:')) {
+    return candidate.startsWith('data:image/')
+  }
+  const path = candidate.split(/[?#]/, 1)[0]
+  const ext = path.split('.').pop()?.toLowerCase() || ''
+  if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp', 'ico'].includes(ext)) return true
+  try {
+    const parsed = new URL(candidate)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
 }
 
 function Field({ label, value, placeholder, onChange, full = false }: { label: string; value: string | undefined | null; placeholder: string; onChange: (v: string) => void; full?: boolean }) {
@@ -342,14 +375,24 @@ function ThumbUploaded({
   onRemove,
   onRetry,
   onEdit,
+  onRevert,
+  onMoveToSection,
   light = false,
+  draggable = false,
+  onDragStart,
+  onDragEnd,
 }: {
   asset: PersonalizationAsset
   label?: string
   onRemove?: () => void
   onRetry?: () => void
   onEdit?: () => void
+  onRevert?: () => void
+  onMoveToSection?: (section: AssignedSection) => void
   light?: boolean
+  draggable?: boolean
+  onDragStart?: (e: DragEvent) => void
+  onDragEnd?: (e: DragEvent) => void
 }) {
   const status = asset.uploadStatus
   const isUploading = status === 'uploading'
@@ -359,11 +402,16 @@ function ThumbUploaded({
 
   return (
     <div
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       className="relative w-[82px] min-h-[86px] rounded-[9px] border overflow-hidden flex items-end justify-center p-1.5 group"
       style={{
         borderColor: C.border,
         background: light ? '#f6f7f9' : 'linear-gradient(145deg, #3b4652, #151a20)',
         color: light ? '#101820' : 'white',
+        cursor: draggable ? 'grab' : 'default',
+        opacity: isUploading ? 0.7 : 1,
       }}
     >
       {isUploading && (
@@ -403,6 +451,17 @@ function ThumbUploaded({
           {EDIT_WITH_AI}
         </button>
       )}
+      {asset.edited && onRevert && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onRevert() }}
+          className="absolute right-1 top-1 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
+          style={{ background: 'rgba(255,255,255,.9)', color: '#041014' }}
+          aria-label="Revert to original"
+        >
+          Revert
+        </button>
+      )}
       {label && (
         <span className="relative text-[9px] font-extrabold z-[1]" style={{ color: light ? '#101820' : 'white' }}>
           {label}
@@ -418,6 +477,38 @@ function ThumbUploaded({
           <X size={8} className="text-white" />
         </button>
       )}
+      {onMoveToSection && (
+        <div
+          className="absolute bottom-0.5 right-0.5 z-20 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <select
+            value=""
+            onChange={(e) => {
+              e.stopPropagation()
+              if (e.target.value) onMoveToSection(e.target.value as AssignedSection)
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="text-[7px] font-bold rounded px-0.5 py-0.5 outline-none"
+            style={{
+              background: 'rgba(0,0,0,.7)',
+              color: 'white',
+              border: '1px solid rgba(255,255,255,.25)',
+              fontSize: 7,
+            }}
+            aria-label="Move to section"
+          >
+            <option value="">Move To…</option>
+            <option value="person">Person</option>
+            <option value="logo">Logo</option>
+            <option value="products">Products</option>
+            <option value="brand">Brand</option>
+            <option value="firstFrame">First Frame</option>
+            <option value="lastFrame">Last Frame</option>
+            <option value="ctaGraphic">CTA</option>
+          </select>
+        </div>
+      )}
     </div>
   )
 }
@@ -429,16 +520,24 @@ function DiscoveredAssetThumb({
   onRemove,
   onCategoryChange,
   onEdit,
+  onRevert,
   onRemoveFromSection,
   onMoveToSection,
+  draggable = false,
+  onDragStart,
+  onDragEnd,
 }: {
   asset: DiscoveredAsset
   onToggle: () => void
   onRemove: () => void
   onCategoryChange: (cat: DiscoveredAssetCategory) => void
   onEdit?: () => void
+  onRevert?: () => void
   onRemoveFromSection?: () => void
   onMoveToSection?: (section: AssignedSection) => void
+  draggable?: boolean
+  onDragStart?: (e: DragEvent) => void
+  onDragEnd?: (e: DragEvent) => void
 }) {
   const categories: DiscoveredAssetCategory[] = [
     'person',
@@ -456,11 +555,15 @@ function DiscoveredAssetThumb({
 
   return (
     <div
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       className="relative w-[82px] min-h-[86px] rounded-[9px] border overflow-hidden"
       style={{
         borderColor: asset.selected ? C.cyanBorder : asset.rejected ? 'rgba(239,91,103,.4)' : C.border,
         background: asset.rejected ? 'rgba(239,91,103,.08)' : 'linear-gradient(145deg, #3b4652, #151a20)',
         opacity: asset.rejected ? 0.5 : 1,
+        cursor: draggable ? 'grab' : 'default',
       }}
     >
       {(asset.editedDataUrl || asset.previewUrl) ? (
@@ -475,6 +578,17 @@ function DiscoveredAssetThumb({
           aria-label="Edit discovered image"
         >
           {EDIT_WITH_AI}
+        </button>
+      )}
+      {asset.edited && onRevert && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onRevert() }}
+          className="absolute left-1 top-6 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
+          style={{ background: 'rgba(255,255,255,.9)', color: '#041014' }}
+          aria-label="Revert to original"
+        >
+          Revert
         </button>
       )}
       {(asset.edited || asset.videoReady) && (
@@ -631,7 +745,6 @@ export default function PersonalizationModal() {
     removeCtaGraphic,
     retryAssetUpload,
     applyEditedPersonalizationAsset,
-    applyEditedSavedClientAsset,
     discoveredAssets,
     discoveryStatus,
     discoveryError,
@@ -643,6 +756,7 @@ export default function PersonalizationModal() {
     updateDiscoveredAssetCategory,
     removeDiscoveredAssetFromSection,
     moveDiscoveredAssetToSection,
+    revertDiscoveredAssetEdit,
     selectRecommendedDiscoveredAssets,
     importDiscoveredAssets,
     cancelDiscovery,
@@ -650,6 +764,11 @@ export default function PersonalizationModal() {
     visionStatus,
     visionError,
     analyzeDiscoveredAssets,
+    // Library asset actions
+    moveLibraryAssetToSection,
+    removeLibraryAssetFromSection,
+    deleteLibraryAsset,
+    revertLibraryAssetToOriginal,
     // Business search
     businessSearchMode,
     businessSearchResults,
@@ -695,11 +814,163 @@ export default function PersonalizationModal() {
   const [imageEditorAsset, setImageEditorAsset] = useState<PersonalizationImageEditorAsset | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
+  // Drag and drop state
+  const [dragPayload, setDragPayload] = useState<PersonalizationDragPayload | null>(null)
+  const [dragOverSection, setDragOverSection] = useState<AssignedSection | null>(null)
+  const [dropError, setDropError] = useState<string | null>(null)
+  const mountedRef = useRef(true)
+
+  const dragPayloadRef = useRef(dragPayload)
+  useEffect(() => { dragPayloadRef.current = dragPayload }, [dragPayload])
+
+  const savedClientAssetsRef = useRef(savedClientAssets)
+  useEffect(() => { savedClientAssetsRef.current = savedClientAssets }, [savedClientAssets])
+
+  const sectionDragCountersRef = useRef<Record<string, number>>({})
+
   const dialogRef = useRef<HTMLDivElement>(null)
   const previousActiveElementRef = useRef<HTMLElement | null>(null)
 
   const personalizationInProgress =
     generation.status === 'generating' || generation.status === 'personalizing-prompt'
+
+  // ── Drag and drop handlers ──────────────────────────────────────────────────
+
+  const handleAssetDragStart = useCallback((
+    payload: PersonalizationDragPayload,
+    e: DragEvent,
+  ) => {
+    setDropError(null)
+    setDragPayload(payload)
+    e.dataTransfer.setData('application/json', JSON.stringify(payload))
+    e.dataTransfer.effectAllowed = 'move'
+  }, [])
+
+  const handleAssetDragEnd = useCallback(() => {
+    setDragPayload(null)
+    setDragOverSection(null)
+    setDropError(null)
+    Object.keys(sectionDragCountersRef.current).forEach((key) => {
+      sectionDragCountersRef.current[key] = 0
+    })
+  }, [])
+
+  const handleSectionDragEnter = useCallback((section: string, e: DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDropError(null)
+    sectionDragCountersRef.current[section] = (sectionDragCountersRef.current[section] || 0) + 1
+    setDragOverSection(section as AssignedSection)
+  }, [])
+
+  const handleSectionDragOver = useCallback((section: AssignedSection, e: DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverSection(section)
+  }, [])
+
+  const handleSectionDragLeave = useCallback((section: string, e: DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    sectionDragCountersRef.current[section] = Math.max(0, (sectionDragCountersRef.current[section] || 0) - 1)
+    if (sectionDragCountersRef.current[section] === 0) {
+      setDragOverSection((current) => current === section ? null : current)
+    }
+  }, [])
+
+  const handleSectionDrop = useCallback((section: string, e: DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    sectionDragCountersRef.current[section] = 0
+    setDragOverSection(null)
+    setDragPayload(null)
+
+    // Reject arbitrary text/HTML drops
+    const hasText = e.dataTransfer.types.includes('text/plain') || e.dataTransfer.types.includes('text/html')
+    const hasJson = e.dataTransfer.types.includes('application/json')
+    if (hasText && !hasJson) {
+      setDropError('Only personalization assets can be dropped here.')
+      setTimeout(() => setDropError(null), 3000)
+      return
+    }
+
+    // Reject external video file drops
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      for (const file of Array.from(e.dataTransfer.files)) {
+        if (file.type.startsWith('video/')) {
+          setDropError('Video files cannot be dropped here. Use the URL field instead.')
+          setTimeout(() => setDropError(null), 3000)
+          return
+        }
+      }
+    }
+
+    let payload: PersonalizationDragPayload | null = null
+    try {
+      const data = e.dataTransfer.getData('application/json')
+      if (data) payload = JSON.parse(data) as PersonalizationDragPayload
+    } catch {
+      // ignore invalid payload
+    }
+    if (!payload) {
+      payload = dragPayloadRef.current
+    }
+    if (!payload) {
+      setDropError('Invalid drop. Only personalization assets are accepted.')
+      setTimeout(() => setDropError(null), 3000)
+      return
+    }
+
+    // Validate normalized payload shape
+    if (!payload.assetId || !payload.source || !payload.assetType || !payload.url) {
+      setDropError('Malformed asset. Please try again.')
+      setTimeout(() => setDropError(null), 3000)
+      return
+    }
+
+    const validSources: PersonalizationDragSource[] = ['discovered', 'current-job', 'saved-client']
+    if (!validSources.includes(payload.source)) {
+      setDropError('Unknown asset source.')
+      setTimeout(() => setDropError(null), 3000)
+      return
+    }
+
+    // Reject assets without a usable image source
+    const candidate = payload.uploadedUrl || payload.url
+    if (!isUsableImageSource(candidate)) {
+      setDropError('This asset does not have a usable image source.')
+      setTimeout(() => setDropError(null), 3000)
+      return
+    }
+
+    const { assetId, source } = payload
+
+    // Handle discovered assets: just update assignedSection
+    if (source === 'discovered') {
+      moveDiscoveredAssetToSection(assetId, section as AssignedSection)
+      return
+    }
+
+    // Handle saved client assets: add to current job
+    if (source === 'saved-client') {
+      const savedAssets = savedClientAssetsRef.current
+      const savedAsset = [
+        ...savedAssets.identities,
+        ...savedAssets.logos,
+        ...savedAssets.products,
+        ...savedAssets.brandReferences,
+      ].find((a) => a.id === assetId)
+      if (savedAsset) {
+        selectSavedAsset(savedAsset)
+      }
+      return
+    }
+
+    // Handle current job assets: move between sections
+    moveLibraryAssetToSection(assetId, section as AssignedSection)
+  }, [moveDiscoveredAssetToSection, moveLibraryAssetToSection, selectSavedAsset])
 
   // ── Focus trap & Escape ──────────────────────────────────────────────────
 
@@ -737,12 +1008,38 @@ export default function PersonalizationModal() {
     )).slice(0, 6)
   }, [assets.brandReferences, assets.primaryIdentity, assets.primaryLogo, assets.products])
 
+  // ── Image editor asset normalization ─────────────────────────────────────
+
+  const normalizeImageEditorAsset = useCallback((
+    raw: {
+      id: string
+      name?: string
+      imageUrl: string
+      originalImageUrl: string
+      category?: DiscoveredAssetCategory
+      role?: AssetRole
+      source: 'discovered' | 'current-job' | 'saved-client'
+      clientId?: string
+      businessName?: string
+      industry?: string
+      productService?: string
+      brandDescription?: string
+      referenceImages?: string[]
+      visionAnalysis?: PersonalizationVisionAnalysis
+      file?: File
+    },
+  ) => raw, [])
+
+  const loadAssetIntoEditor = useCallback((asset: PersonalizationImageEditorAsset) => {
+    setImageEditorAsset(asset)
+  }, [])
+
   const openDiscoveredImageEditor = useCallback((asset: DiscoveredAsset) => {
-    setImageEditorAsset({
+    loadAssetIntoEditor(normalizeImageEditorAsset({
       id: asset.id,
       name: asset.category.replace(/_/g, ' '),
       imageUrl: asset.editedDataUrl || asset.previewUrl,
-      originalImageUrl: asset.originalPreviewUrl || asset.previewUrl,
+      originalImageUrl: asset.previewUrl,
       category: asset.category,
       role: destinationRoleForSection(asset.assignedSection),
       source: 'discovered',
@@ -752,7 +1049,8 @@ export default function PersonalizationModal() {
       brandDescription: clientForm.brandDescription,
       referenceImages: editorReferenceImages.filter((url) => url !== asset.previewUrl && url !== asset.editedDataUrl),
       visionAnalysis: asset.visionAnalysis,
-    })
+      file: (asset as { file?: File }).file,
+    }))
   }, [
     clientForm.brandDescription,
     clientForm.businessName,
@@ -760,16 +1058,61 @@ export default function PersonalizationModal() {
     clientForm.name,
     clientForm.productService,
     editorReferenceImages,
+    loadAssetIntoEditor,
+    normalizeImageEditorAsset,
   ])
+
+  const isAssetInCurrentJob = useCallback((asset: PersonalizationAsset): boolean => {
+    const all = [
+      ...assets.identities,
+      ...assets.logos,
+      ...assets.products,
+      ...assets.brandReferences,
+      assets.firstFrame,
+      assets.lastFrame,
+      assets.ctaGraphic,
+    ].filter(Boolean) as PersonalizationAsset[]
+    return all.some((a) => a.id === asset.id || a.url === asset.url || a.uploadedUrl === asset.uploadedUrl)
+  }, [assets])
 
   const openLibraryImageEditor = useCallback((asset: PersonalizationAsset) => {
     const imageUrl = asset.uploadedUrl || asset.url
-    const originalImageUrl = asset.originalUrl || asset.uploadedUrl || asset.url
-    setImageEditorAsset({
+    const source = isAssetInCurrentJob(asset) ? 'current-job' : 'saved-client'
+    loadAssetIntoEditor(normalizeImageEditorAsset({
       id: asset.id,
       name: asset.name,
       imageUrl,
-      originalImageUrl,
+      originalImageUrl: imageUrl,
+      category: asset.sourceCategory,
+      role: asset.role,
+      source,
+      businessName: clientForm.businessName || clientForm.name,
+      industry: clientForm.industry,
+      productService: clientForm.productService,
+      brandDescription: clientForm.brandDescription,
+      referenceImages: editorReferenceImages.filter((url) => url !== imageUrl),
+      visionAnalysis: asset.visionAnalysis,
+      file: asset.file ?? undefined,
+    }))
+  }, [
+    clientForm.brandDescription,
+    clientForm.businessName,
+    clientForm.industry,
+    clientForm.name,
+    clientForm.productService,
+    editorReferenceImages,
+    isAssetInCurrentJob,
+    loadAssetIntoEditor,
+    normalizeImageEditorAsset,
+  ])
+
+  const openCurrentJobImageEditor = useCallback((asset: PersonalizationAsset) => {
+    const imageUrl = asset.uploadedUrl || asset.url
+    loadAssetIntoEditor(normalizeImageEditorAsset({
+      id: asset.id,
+      name: asset.name,
+      imageUrl,
+      originalImageUrl: imageUrl,
       category: asset.sourceCategory,
       role: asset.role,
       source: 'current-job',
@@ -779,7 +1122,8 @@ export default function PersonalizationModal() {
       brandDescription: clientForm.brandDescription,
       referenceImages: editorReferenceImages.filter((url) => url !== imageUrl),
       visionAnalysis: asset.visionAnalysis,
-    })
+      file: asset.file ?? undefined,
+    }))
   }, [
     clientForm.brandDescription,
     clientForm.businessName,
@@ -787,41 +1131,66 @@ export default function PersonalizationModal() {
     clientForm.name,
     clientForm.productService,
     editorReferenceImages,
+    loadAssetIntoEditor,
+    normalizeImageEditorAsset,
   ])
 
-  const openSavedClientImageEditor = useCallback((asset: PersonalizationAsset) => {
-    if (!selectedClientId) return
-    const imageUrl = asset.uploadedUrl || asset.url
-    const originalImageUrl = asset.originalUrl || asset.uploadedUrl || asset.url
-    setImageEditorAsset({
-      id: asset.id,
-      name: asset.name,
-      imageUrl,
-      originalImageUrl,
-      category: asset.sourceCategory,
-      role: asset.role,
-      source: 'saved-client',
-      clientId: selectedClientId,
-      businessName: clientForm.businessName || clientForm.name,
-      industry: clientForm.industry,
-      productService: clientForm.productService,
-      brandDescription: clientForm.brandDescription,
-      referenceImages: editorReferenceImages.filter((url) => url !== imageUrl),
-      visionAnalysis: asset.visionAnalysis,
-    })
+  const handleImageEditorDrop = useCallback((payload: { assetId: string; source: string; assetType: string }) => {
+    const { assetId, source } = payload
+
+    if (source === 'discovered') {
+      const discovered = discoveredAssets.find((a) => a.id === assetId)
+      if (discovered) {
+        openDiscoveredImageEditor(discovered)
+        return
+      }
+    }
+
+    if (source === 'library' || source === 'saved') {
+      const allAssets: PersonalizationAsset[] = [
+        ...assets.identities,
+        ...assets.logos,
+        ...assets.products,
+        ...assets.brandReferences,
+        assets.firstFrame,
+        assets.lastFrame,
+        assets.ctaGraphic,
+        ...savedClientAssets.identities,
+        ...savedClientAssets.logos,
+        ...savedClientAssets.products,
+        ...savedClientAssets.brandReferences,
+      ].filter(Boolean) as PersonalizationAsset[]
+      const libraryAsset = allAssets.find((a) => a.id === assetId)
+      if (libraryAsset) {
+        if (isAssetInCurrentJob(libraryAsset)) {
+          openCurrentJobImageEditor(libraryAsset)
+        } else {
+          openLibraryImageEditor(libraryAsset)
+        }
+        return
+      }
+    }
   }, [
-    clientForm.brandDescription,
-    clientForm.businessName,
-    clientForm.industry,
-    clientForm.name,
-    clientForm.productService,
-    editorReferenceImages,
-    selectedClientId,
+    assets.brandReferences,
+    assets.ctaGraphic,
+    assets.firstFrame,
+    assets.identities,
+    assets.lastFrame,
+    assets.logos,
+    assets.products,
+    discoveredAssets,
+    isAssetInCurrentJob,
+    openCurrentJobImageEditor,
+    openDiscoveredImageEditor,
+    openLibraryImageEditor,
+    savedClientAssets.brandReferences,
+    savedClientAssets.identities,
+    savedClientAssets.logos,
+    savedClientAssets.products,
   ])
 
   const handleImageEditorApply = useCallback(async (result: ImageEditorApplyResult) => {
     if (!imageEditorAsset) return
-
     if (imageEditorAsset.source === 'discovered') {
       setDiscoveredAssets(discoveredAssets.map((item) => (
         item.id === imageEditorAsset.id
@@ -849,11 +1218,8 @@ export default function PersonalizationModal() {
       return
     }
 
-    if (imageEditorAsset.source === 'saved-client') {
-      if (!imageEditorAsset.clientId) {
-        throw new Error('A client must be selected to save edits to a saved client asset.')
-      }
-      await applyEditedSavedClientAsset(imageEditorAsset.clientId, imageEditorAsset.id, result.dataUrl, {
+    if (imageEditorAsset.source === 'current-job') {
+      await applyEditedPersonalizationAsset(imageEditorAsset.id, result.dataUrl, {
         operation: result.operation,
         prompt: result.prompt,
         model: result.model,
@@ -888,7 +1254,7 @@ export default function PersonalizationModal() {
       visionAnalysis: result.visionAnalysis,
       visionValidation: result.visionValidation,
     })
-  }, [applyEditedPersonalizationAsset, applyEditedSavedClientAsset, discoveredAssets, imageEditorAsset, setDiscoveredAssets])
+  }, [applyEditedPersonalizationAsset, discoveredAssets, imageEditorAsset, setDiscoveredAssets])
 
   if (!isOpen || !source) return null
 
@@ -1017,13 +1383,15 @@ export default function PersonalizationModal() {
   }, [promptState])
 
   const handlePersonalize = useCallback(async () => {
+    if (!mountedRef.current) return
     setIsPersonalizing(true)
-    try { await personalizePrompt() } finally { setIsPersonalizing(false) }
+    try { await personalizePrompt() } finally { if (mountedRef.current) setIsPersonalizing(false) }
   }, [personalizePrompt])
 
   const handleRegenerate = useCallback(async () => {
+    if (!mountedRef.current) return
     setIsRegenerating(true)
-    try { await personalizePrompt() } finally { setIsRegenerating(false) }
+    try { await personalizePrompt() } finally { if (mountedRef.current) setIsRegenerating(false) }
   }, [personalizePrompt])
 
   const generateLabel = outputType === 'prompt'
@@ -1207,7 +1575,6 @@ export default function PersonalizationModal() {
               retryAssetUpload={retryAssetUpload}
               openDiscoveredImageEditor={openDiscoveredImageEditor}
               openLibraryImageEditor={openLibraryImageEditor}
-              openSavedClientImageEditor={openSavedClientImageEditor}
               promptState={promptState}
               updatePersonalizedPrompt={updatePersonalizedPrompt}
               resetPrompt={resetPrompt}
@@ -1268,9 +1635,24 @@ export default function PersonalizationModal() {
               findBusinesses={findBusinesses}
               selectBusiness={selectBusiness}
               researchBusiness={researchBusiness}
-              clearBusinessSearch={clearBusinessSearch}
-              setBusinessSearchMode={setBusinessSearchMode}
-            />
+               clearBusinessSearch={clearBusinessSearch}
+               setBusinessSearchMode={setBusinessSearchMode}
+                // Drag and drop
+                dragPayload={dragPayload}
+                dragOverSection={dragOverSection}
+                dropError={dropError}
+                handleAssetDragStart={handleAssetDragStart}
+                handleAssetDragEnd={handleAssetDragEnd}
+                handleSectionDragEnter={handleSectionDragEnter}
+                handleSectionDragOver={handleSectionDragOver}
+                handleSectionDragLeave={handleSectionDragLeave}
+                handleSectionDrop={handleSectionDrop}
+                moveLibraryAssetToSection={moveLibraryAssetToSection}
+                removeLibraryAssetFromSection={removeLibraryAssetFromSection}
+                deleteLibraryAsset={deleteLibraryAsset}
+                revertLibraryAssetToOriginal={revertLibraryAssetToOriginal}
+                revertDiscoveredAssetEdit={revertDiscoveredAssetEdit}
+              />
           )}
         </main>
 
@@ -1321,6 +1703,7 @@ export default function PersonalizationModal() {
         asset={imageEditorAsset}
         onClose={() => setImageEditorAsset(null)}
         onApply={handleImageEditorApply}
+        onDropAsset={handleImageEditorDrop}
       />
     </div>
   )
@@ -1566,7 +1949,6 @@ function ConfigurationView(props: any) {
     retryAssetUpload,
     openDiscoveredImageEditor,
     openLibraryImageEditor,
-    openSavedClientImageEditor,
     promptState, updatePersonalizedPrompt, resetPrompt,
     isPersonalizing, isRegenerating,
     handlePersonalize, handleRegenerate, handleCopyPrompt, copiedPrompt,
@@ -1608,6 +1990,20 @@ function ConfigurationView(props: any) {
     researchBusiness,
     clearBusinessSearch,
     setBusinessSearchMode,
+    dragPayload,
+    dragOverSection,
+    dropError,
+    handleAssetDragStart,
+    handleAssetDragEnd,
+    handleSectionDragEnter,
+    handleSectionDragOver,
+    handleSectionDragLeave,
+    handleSectionDrop,
+    moveLibraryAssetToSection,
+    removeLibraryAssetFromSection,
+    deleteLibraryAsset,
+    revertLibraryAssetToOriginal,
+    revertDiscoveredAssetEdit,
   } = props
 
   const identityInputRef = useRef<HTMLInputElement>(null)
@@ -1635,6 +2031,32 @@ function ConfigurationView(props: any) {
   const handleBrandRefAddClick = useCallback(() => {
     brandRefInputRef.current?.click()
   }, [])
+
+  // ── What SmartVideo Will Use summary ─────────────────────────────────────
+
+  const assetSummary = useMemo(() => {
+    const items: { section: string; name: string; url: string }[] = []
+    if (assets.primaryIdentity) {
+      items.push({ section: 'Person', name: assets.primaryIdentity.name, url: assets.primaryIdentity.uploadedUrl || assets.primaryIdentity.url })
+    }
+    assets.identities.forEach((a) => {
+      if (a.id === assets.primaryIdentity?.id) return
+      items.push({ section: 'Person', name: a.name, url: a.uploadedUrl || a.url })
+    })
+    if (assets.primaryLogo) {
+      items.push({ section: 'Logo', name: assets.primaryLogo.name, url: assets.primaryLogo.uploadedUrl || assets.primaryLogo.url })
+    }
+    assets.logos.forEach((a) => {
+      if (a.id === assets.primaryLogo?.id) return
+      items.push({ section: 'Logo', name: a.name, url: a.uploadedUrl || a.url })
+    })
+    assets.products.forEach((a) => items.push({ section: 'Products', name: a.name, url: a.uploadedUrl || a.url }))
+    assets.brandReferences.forEach((a) => items.push({ section: 'Brand', name: a.name, url: a.uploadedUrl || a.url }))
+    if (assets.firstFrame) items.push({ section: 'First Frame', name: assets.firstFrame.name, url: assets.firstFrame.uploadedUrl || assets.firstFrame.url })
+    if (assets.lastFrame) items.push({ section: 'Last Frame', name: assets.lastFrame.name, url: assets.lastFrame.uploadedUrl || assets.lastFrame.url })
+    if (assets.ctaGraphic) items.push({ section: 'CTA', name: assets.ctaGraphic.name, url: assets.ctaGraphic.uploadedUrl || assets.ctaGraphic.url })
+    return items
+  }, [assets])
 
   const handleBatchMakeVideoReady = useCallback(async () => {
     const selected = discoveredAssets.filter((asset: DiscoveredAsset) =>
@@ -1713,13 +2135,47 @@ function ConfigurationView(props: any) {
     batchVideoReadyRunningRef.current = false
   }, [clientForm.businessName, clientForm.industry, clientForm.name, discoveredAssets, setDiscoveredAssets])
 
-  return (
-    <div>
-      {/* Hidden file inputs for add-more placeholders */}
-      <input ref={identityInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { handleIdentityUpload(e.target.files); e.target.value = '' }} />
-      <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { handleLogoUpload(e.target.files); e.target.value = '' }} />
-      <input ref={productInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={(e) => { handleProductUpload(e.target.files); e.target.value = '' }} />
-      <input ref={brandRefInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={(e) => { handleBrandRefUpload(e.target.files); e.target.value = '' }} />
+    return (
+      <div>
+        {dropError && (
+          <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.danger}`, background: 'rgba(239,91,103,.08)', color: '#ff9ba3', fontSize: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertTriangle size={14} />
+            <span>{dropError}</span>
+          </div>
+        )}
+        {/* Hidden file inputs for add-more placeholders */}
+       <input ref={identityInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { handleIdentityUpload(e.target.files); e.target.value = '' }} />
+       <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { handleLogoUpload(e.target.files); e.target.value = '' }} />
+       <input ref={productInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={(e) => { handleProductUpload(e.target.files); e.target.value = '' }} />
+       <input ref={brandRefInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={(e) => { handleBrandRefUpload(e.target.files); e.target.value = '' }} />
+
+       {/* ── WHAT SMARTVIDEO WILL USE ─────────────────────────────── */}
+       <section style={{ padding: '18px 0 10px', borderBottom: `1px solid ${C.border}` }}>
+         <div className="flex items-center justify-between flex-wrap gap-3" style={{ marginBottom: 10 }}>
+           <div>
+             <h2 style={{ margin: 0, fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>What SmartVideo Will Use</h2>
+             <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 11 }}>
+               {assetSummary.length} asset{assetSummary.length === 1 ? '' : 's'} assigned across {new Set(assetSummary.map((a) => a.section)).size} block{new Set(assetSummary.map((a) => a.section)).size === 1 ? '' : 's'}
+             </p>
+           </div>
+         </div>
+         <div className="flex flex-wrap gap-2">
+           {assetSummary.map((item) => (
+             <div
+               key={`${item.section}-${item.url}`}
+               className="flex items-center gap-1.5 rounded-lg px-2 py-1"
+               style={{ background: 'rgba(41,211,242,.06)', border: `1px solid rgba(41,211,242,.18)` }}
+             >
+               <img src={item.url} alt="" className="w-5 h-5 rounded object-cover" style={{ background: '#000' }} />
+               <span style={{ fontSize: 10, fontWeight: 700, color: C.text }}>{item.name?.split('.')?.[0]?.toUpperCase()?.slice(0, 8) || 'ASSET'}</span>
+               <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', color: C.cyan }}>{item.section}</span>
+             </div>
+           ))}
+           {assetSummary.length === 0 && (
+             <span style={{ fontSize: 11, color: C.muted2 }}>No assets assigned yet.</span>
+           )}
+         </div>
+       </section>
 
       {/* ── TOP OVERVIEW: Source Demo | Client Profile ────────────── */}
       <section className="grid grid-cols-1 lg:grid-cols-2" style={{ padding: '26px 0', gap: 18, borderBottom: `1px solid ${C.border}` }}>
@@ -2483,16 +2939,30 @@ function ConfigurationView(props: any) {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {items.map((asset) => (
-                    <DiscoveredAssetThumb
-                      key={asset.id}
-                      asset={asset}
-                      onToggle={() => toggleDiscoveredAssetSelection(asset.id)}
-                      onRemove={() => rejectDiscoveredAsset(asset.id)}
-                      onCategoryChange={(newCat) => updateDiscoveredAssetCategory(asset.id, newCat)}
-                      onEdit={() => openDiscoveredImageEditor(asset)}
-                      onRemoveFromSection={() => removeDiscoveredAssetFromSection(asset.id)}
-                      onMoveToSection={(section) => moveDiscoveredAssetToSection(asset.id, section)}
-                    />
+                     <DiscoveredAssetThumb
+                       key={asset.id}
+                       asset={asset}
+                       onToggle={() => toggleDiscoveredAssetSelection(asset.id)}
+                       onRemove={() => rejectDiscoveredAsset(asset.id)}
+                       onCategoryChange={(newCat) => updateDiscoveredAssetCategory(asset.id, newCat)}
+                       onEdit={() => openDiscoveredImageEditor(asset)}
+                        onRevert={() => revertDiscoveredAssetEdit(asset.id)}
+                       onRemoveFromSection={() => removeDiscoveredAssetFromSection(asset.id)}
+                       onMoveToSection={(section) => moveDiscoveredAssetToSection(asset.id, section)}
+                       draggable
+                        onDragStart={(e) => handleAssetDragStart({
+                          assetId: asset.id,
+                          source: 'discovered',
+                          assetType: asset.category,
+                          url: asset.sourceUrl,
+                          uploadedUrl: asset.editedDataUrl || undefined,
+                          metadata: {
+                            sourceCategory: asset.category,
+                            sourceType: asset.sourceType,
+                          },
+                        }, e)}
+                       onDragEnd={handleAssetDragEnd}
+                     />
                   ))}
                 </div>
               </div>
@@ -2523,7 +2993,22 @@ function ConfigurationView(props: any) {
 
         <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 14 }}>
           {/* 1. Person / Presenter */}
-          <article className="asset-card" style={{ minHeight: 280, padding: 18, background: C.panelSoft, border: `1px solid ${C.border}`, borderRadius: 16 }}>
+          <article
+            className="asset-card"
+            data-asset-section="person"
+            onDragEnter={(e) => handleSectionDragEnter('person', e)}
+            onDragOver={(e) => handleSectionDragOver('person', e)}
+            onDragLeave={(e) => handleSectionDragLeave('person', e)}
+            onDrop={(e) => handleSectionDrop('person', e)}
+            style={{
+              minHeight: 280,
+              padding: 18,
+              background: dragOverSection === 'person' ? 'rgba(41,211,242,.04)' : C.panelSoft,
+              border: dragOverSection === 'person' ? `1px solid ${C.cyanBorder}` : `1px solid ${C.border}`,
+              borderRadius: 16,
+              transition: 'border-color .15s, background .15s',
+            }}
+          >
             <div className="flex gap-2.5 items-start" style={{ marginBottom: 14 }}>
               <div className="w-[35px] h-[35px] rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: C.cyanSoft, color: C.cyan, fontSize: 16 }}>👤</div>
               <div>
@@ -2549,6 +3034,23 @@ function ConfigurationView(props: any) {
                     onRemove={() => removeIdentity(asset.id)}
                     onRetry={() => retryAssetUpload(asset.id)}
                     onEdit={() => openLibraryImageEditor(asset)}
+                    onRevert={() => revertLibraryAssetToOriginal(asset.id)}
+                    draggable
+                    onDragStart={(e) => handleAssetDragStart({
+                      assetId: asset.id,
+                      source: 'current-job',
+                      assetType: asset.role,
+                      url: asset.url,
+                      uploadedUrl: asset.uploadedUrl,
+                      metadata: {
+                        role: asset.role,
+                        name: asset.name,
+                        sourceCategory: asset.sourceCategory,
+                        sourceType: asset.sourceType,
+                      },
+                    }, e)}
+                    onDragEnd={handleAssetDragEnd}
+                    onMoveToSection={(section) => moveLibraryAssetToSection(asset.id, section)}
                   />
                 ))
               ) : (
@@ -2567,7 +3069,15 @@ function ConfigurationView(props: any) {
           </article>
 
           {/* 2. Logo */}
-          <article className="asset-card" style={{ minHeight: 280, padding: 18, background: C.panelSoft, border: `1px solid ${C.border}`, borderRadius: 16 }}>
+          <article
+            className="asset-card"
+            data-asset-section="logo"
+            onDragEnter={(e) => handleSectionDragEnter('logo', e)}
+            onDragOver={(e) => handleSectionDragOver('logo', e)}
+            onDragLeave={(e) => handleSectionDragLeave('logo', e)}
+            onDrop={(e) => handleSectionDrop('logo', e)}
+            style={{ minHeight: 280, padding: 18, background: dragOverSection === 'logo' ? 'rgba(41,211,242,.04)' : C.panelSoft, border: dragOverSection === 'logo' ? `1px solid ${C.cyanBorder}` : `1px solid ${C.border}`, borderRadius: 16, transition: 'border-color .15s, background .15s' }}
+          >
             <div className="flex gap-2.5 items-start" style={{ marginBottom: 14 }}>
               <div className="w-[35px] h-[35px] rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: C.cyanSoft, color: C.cyan, fontSize: 16 }}>🏷</div>
               <div>
@@ -2578,6 +3088,21 @@ function ConfigurationView(props: any) {
             <UploadZone primary="Upload Logo" secondary="Drag & drop or browse" onFiles={handleLogoUpload} onUrl={handleLogoUrl} urlLabel="Add Logo URL" urlPlaceholder="Paste logo URL and press Enter" />
             <div
               className="logo-preview frame-preview"
+              draggable
+              onDragStart={(e) => assets.primaryLogo && handleAssetDragStart({
+                assetId: assets.primaryLogo.id,
+                source: 'current-job',
+                assetType: 'logo',
+                url: assets.primaryLogo.url,
+                uploadedUrl: assets.primaryLogo.uploadedUrl,
+                metadata: {
+                  role: assets.primaryLogo.role,
+                  name: assets.primaryLogo.name,
+                  sourceCategory: assets.primaryLogo.sourceCategory,
+                  sourceType: assets.primaryLogo.sourceType,
+                },
+              }, e)}
+              onDragEnd={handleAssetDragEnd}
               style={{
                 marginTop: 12,
                 height: 105,
@@ -2592,6 +3117,7 @@ function ConfigurationView(props: any) {
                 position: 'relative',
                 overflow: 'hidden',
                 color: 'white',
+                cursor: assets.primaryLogo ? 'grab' : 'default',
               }}
             >
               {assets.primaryLogo?.url ? (
@@ -2621,6 +3147,33 @@ function ConfigurationView(props: any) {
               )}
             </div>
             <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {assets.logos.filter((a) => a.id !== assets.primaryLogo?.id).map((asset: PersonalizationAsset) => (
+                 <ThumbUploaded
+                   key={asset.id}
+                   asset={asset}
+                   label={asset.name?.split('.')?.[0]?.toUpperCase()?.slice(0, 8) || 'LOGO'}
+                   onRemove={() => removeLogo(asset.id)}
+                   onRetry={() => retryAssetUpload(asset.id)}
+                   onEdit={() => openLibraryImageEditor(asset)}
+                   onRevert={() => revertLibraryAssetToOriginal(asset.id)}
+                   draggable
+                   onDragStart={(e) => handleAssetDragStart({
+                     assetId: asset.id,
+                     source: 'current-job',
+                     assetType: asset.role,
+                     url: asset.url,
+                     uploadedUrl: asset.uploadedUrl,
+                     metadata: {
+                       role: asset.role,
+                       name: asset.name,
+                       sourceCategory: asset.sourceCategory,
+                       sourceType: asset.sourceType,
+                     },
+                   }, e)}
+                   onDragEnd={handleAssetDragEnd}
+                   onMoveToSection={(section) => moveLibraryAssetToSection(asset.id, section)}
+                 />
+              ))}
               <ThumbPlaceholder label="+" add onClick={handleLogoAddClick} />
             </div>
             {assets.primaryLogo && (
@@ -2632,7 +3185,15 @@ function ConfigurationView(props: any) {
           </article>
 
           {/* 3. Products / Services */}
-          <article className="asset-card" style={{ minHeight: 280, padding: 18, background: C.panelSoft, border: `1px solid ${C.border}`, borderRadius: 16 }}>
+          <article
+            className="asset-card"
+            data-asset-section="products"
+            onDragEnter={(e) => handleSectionDragEnter('products', e)}
+            onDragOver={(e) => handleSectionDragOver('products', e)}
+            onDragLeave={(e) => handleSectionDragLeave('products', e)}
+            onDrop={(e) => handleSectionDrop('products', e)}
+            style={{ minHeight: 280, padding: 18, background: dragOverSection === 'products' ? 'rgba(41,211,242,.04)' : C.panelSoft, border: dragOverSection === 'products' ? `1px solid ${C.cyanBorder}` : `1px solid ${C.border}`, borderRadius: 16, transition: 'border-color .15s, background .15s' }}
+          >
             <div className="flex gap-2.5 items-start" style={{ marginBottom: 14 }}>
               <div className="w-[35px] h-[35px] rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: C.cyanSoft, color: C.cyan, fontSize: 16 }}>📦</div>
               <div>
@@ -2645,14 +3206,31 @@ function ConfigurationView(props: any) {
             <div className="flex flex-wrap gap-2">
               {assets.products.length > 0 ? (
                 assets.products.map((asset: PersonalizationAsset, i: number) => (
-                  <ThumbUploaded
-                    key={asset.id}
-                    asset={asset}
-                    label={String(i + 1)}
-                    onRemove={() => removeProduct(asset.id)}
-                    onRetry={() => retryAssetUpload(asset.id)}
-                  onEdit={() => openLibraryImageEditor(asset)}
-                  />
+                 <ThumbUploaded
+                   key={asset.id}
+                   asset={asset}
+                   label={String(i + 1)}
+                   onRemove={() => removeProduct(asset.id)}
+                   onRetry={() => retryAssetUpload(asset.id)}
+                   onEdit={() => openLibraryImageEditor(asset)}
+                   onRevert={() => revertLibraryAssetToOriginal(asset.id)}
+                   draggable
+                   onDragStart={(e) => handleAssetDragStart({
+                     assetId: asset.id,
+                     source: 'current-job',
+                     assetType: asset.role,
+                     url: asset.url,
+                     uploadedUrl: asset.uploadedUrl,
+                     metadata: {
+                       role: asset.role,
+                       name: asset.name,
+                       sourceCategory: asset.sourceCategory,
+                       sourceType: asset.sourceType,
+                     },
+                   }, e)}
+                   onDragEnd={handleAssetDragEnd}
+                   onMoveToSection={(section) => moveLibraryAssetToSection(asset.id, section)}
+                 />
                 ))
               ) : (
                 <>
@@ -2666,7 +3244,15 @@ function ConfigurationView(props: any) {
           </article>
 
           {/* 4. Brand References */}
-          <article className="asset-card" style={{ minHeight: 280, padding: 18, background: C.panelSoft, border: `1px solid ${C.border}`, borderRadius: 16 }}>
+          <article
+            className="asset-card"
+            data-asset-section="brand"
+            onDragEnter={(e) => handleSectionDragEnter('brand', e)}
+            onDragOver={(e) => handleSectionDragOver('brand', e)}
+            onDragLeave={(e) => handleSectionDragLeave('brand', e)}
+            onDrop={(e) => handleSectionDrop('brand', e)}
+            style={{ minHeight: 280, padding: 18, background: dragOverSection === 'brand' ? 'rgba(41,211,242,.04)' : C.panelSoft, border: dragOverSection === 'brand' ? `1px solid ${C.cyanBorder}` : `1px solid ${C.border}`, borderRadius: 16, transition: 'border-color .15s, background .15s' }}
+          >
             <div className="flex gap-2.5 items-start" style={{ marginBottom: 14 }}>
               <div className="w-[35px] h-[35px] rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: C.cyanSoft, color: C.cyan, fontSize: 16 }}>🏢</div>
               <div>
@@ -2679,14 +3265,31 @@ function ConfigurationView(props: any) {
             <div className="flex flex-wrap gap-2">
               {assets.brandReferences.length > 0 ? (
                 assets.brandReferences.map((asset: PersonalizationAsset) => (
-                  <ThumbUploaded
-                    key={asset.id}
-                    asset={asset}
-                    label={asset.name?.split('.')?.[0]?.toUpperCase()?.slice(0, 10) || 'BRAND'}
-                    onRemove={() => removeBrandReference(asset.id)}
-                    onRetry={() => retryAssetUpload(asset.id)}
-                  onEdit={() => openLibraryImageEditor(asset)}
-                  />
+                 <ThumbUploaded
+                   key={asset.id}
+                   asset={asset}
+                   label={asset.name?.split('.')?.[0]?.toUpperCase()?.slice(0, 10) || 'BRAND'}
+                   onRemove={() => removeBrandReference(asset.id)}
+                   onRetry={() => retryAssetUpload(asset.id)}
+                   onEdit={() => openLibraryImageEditor(asset)}
+                   onRevert={() => revertLibraryAssetToOriginal(asset.id)}
+                   draggable
+                   onDragStart={(e) => handleAssetDragStart({
+                     assetId: asset.id,
+                     source: 'current-job',
+                     assetType: asset.role,
+                     url: asset.url,
+                     uploadedUrl: asset.uploadedUrl,
+                     metadata: {
+                       role: asset.role,
+                       name: asset.name,
+                       sourceCategory: asset.sourceCategory,
+                       sourceType: asset.sourceType,
+                     },
+                   }, e)}
+                   onDragEnd={handleAssetDragEnd}
+                   onMoveToSection={(section) => moveLibraryAssetToSection(asset.id, section)}
+                 />
                 ))
               ) : (
                 <>
@@ -2700,7 +3303,15 @@ function ConfigurationView(props: any) {
           </article>
 
           {/* 5. First Frame */}
-          <article className="asset-card" style={{ minHeight: 280, padding: 18, background: C.panelSoft, border: `1px solid ${C.border}`, borderRadius: 16 }}>
+          <article
+            className="asset-card"
+            data-asset-section="firstFrame"
+            onDragEnter={(e) => handleSectionDragEnter('firstFrame', e)}
+            onDragOver={(e) => handleSectionDragOver('firstFrame', e)}
+            onDragLeave={(e) => handleSectionDragLeave('firstFrame', e)}
+            onDrop={(e) => handleSectionDrop('firstFrame', e)}
+            style={{ minHeight: 280, padding: 18, background: dragOverSection === 'firstFrame' ? 'rgba(41,211,242,.04)' : C.panelSoft, border: dragOverSection === 'firstFrame' ? `1px solid ${C.cyanBorder}` : `1px solid ${C.border}`, borderRadius: 16, transition: 'border-color .15s, background .15s' }}
+          >
             <div className="flex gap-2.5 items-start" style={{ marginBottom: 14 }}>
               <div className="w-[35px] h-[35px] rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: C.cyanSoft, color: C.cyan, fontSize: 16 }}>🎬</div>
               <div>
@@ -2711,6 +3322,21 @@ function ConfigurationView(props: any) {
             <UploadZone primary="Upload Image" onFiles={handleFirstFrameUpload} onUrl={handleFirstFrameUrl} urlLabel="Add Image URL" urlPlaceholder="Paste image URL and press Enter" accept="image/*,video/*" />
             <div
               className="frame-preview"
+              draggable={!!assets.firstFrame}
+              onDragStart={(e) => assets.firstFrame && handleAssetDragStart({
+                assetId: assets.firstFrame.id,
+                source: 'current-job',
+                assetType: 'first_frame',
+                url: assets.firstFrame.url,
+                uploadedUrl: assets.firstFrame.uploadedUrl,
+                metadata: {
+                  role: assets.firstFrame.role,
+                  name: assets.firstFrame.name,
+                  sourceCategory: assets.firstFrame.sourceCategory,
+                  sourceType: assets.firstFrame.sourceType,
+                },
+              }, e)}
+              onDragEnd={handleAssetDragEnd}
               style={{
                 marginTop: 12,
                 height: 105,
@@ -2725,6 +3351,7 @@ function ConfigurationView(props: any) {
                 position: 'relative',
                 overflow: 'hidden',
                 color: 'white',
+                cursor: assets.firstFrame ? 'grab' : 'default',
               }}
             >
               {assets.firstFrame?.url ? (
@@ -2732,7 +3359,7 @@ function ConfigurationView(props: any) {
               ) : (
                 'First Frame'
               )}
-               {assets.firstFrame?.uploadStatus === 'ready' && isImageEditSupported(assets.firstFrame) && (
+                {assets.firstFrame?.uploadStatus === 'ready' && isImageEditSupported(assets.firstFrame) && (
                 <button
                   type="button"
                   onClick={() => openLibraryImageEditor(assets.firstFrame)}
@@ -2740,6 +3367,16 @@ function ConfigurationView(props: any) {
                   style={{ background: 'rgba(41,211,242,.92)', color: '#041014' }}
                 >
                   {EDIT_WITH_AI}
+                </button>
+              )}
+              {assets.firstFrame?.edited && (
+                <button
+                  type="button"
+                  onClick={() => revertLibraryAssetToOriginal(assets.firstFrame!.id)}
+                  className="absolute right-1 bottom-1 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
+                  style={{ background: 'rgba(255,255,255,.9)', color: '#041014' }}
+                >
+                  Revert
                 </button>
               )}
               {assets.firstFrame?.uploadStatus === 'error' && (
@@ -2753,11 +3390,31 @@ function ConfigurationView(props: any) {
                 </button>
               )}
             </div>
-            <span className="badge" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px 8px', borderRadius: 7, marginTop: 8, marginRight: 4, background: C.cyan, color: '#071014', fontSize: 9, fontWeight: 800, textTransform: 'uppercase' }}>First Frame</span>
+            <div style={{ marginTop: 6, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span className="badge" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px 8px', borderRadius: 7, background: C.cyan, color: '#071014', fontSize: 9, fontWeight: 800, textTransform: 'uppercase' }}>First Frame</span>
+              {assets.firstFrame && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); removeFirstFrame() }}
+                  className="text-[9px] font-extrabold uppercase"
+                  style={{ color: C.danger, background: 'none', border: 'none', padding: '2px 4px', cursor: 'pointer' }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
           </article>
 
           {/* 6. Last Frame / CTA */}
-          <article className="asset-card" style={{ minHeight: 280, padding: 18, background: C.panelSoft, border: `1px solid ${C.border}`, borderRadius: 16 }}>
+          <article
+            className="asset-card"
+            data-asset-section="lastFrame"
+            onDragEnter={(e) => handleSectionDragEnter('lastFrame', e)}
+            onDragOver={(e) => handleSectionDragOver('lastFrame', e)}
+            onDragLeave={(e) => handleSectionDragLeave('lastFrame', e)}
+            onDrop={(e) => handleSectionDrop('lastFrame', e)}
+            style={{ minHeight: 280, padding: 18, background: dragOverSection === 'lastFrame' ? 'rgba(41,211,242,.04)' : C.panelSoft, border: dragOverSection === 'lastFrame' ? `1px solid ${C.cyanBorder}` : `1px solid ${C.border}`, borderRadius: 16, transition: 'border-color .15s, background .15s' }}
+          >
             <div className="flex gap-2.5 items-start" style={{ marginBottom: 14 }}>
               <div className="w-[35px] h-[35px] rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: C.cyanSoft, color: C.cyan, fontSize: 16 }}>🎯</div>
               <div>
@@ -2768,6 +3425,21 @@ function ConfigurationView(props: any) {
             <UploadZone primary="Upload Image" onFiles={handleLastFrameUpload} onUrl={handleLastFrameUrl} urlLabel="Add Image URL" urlPlaceholder="Paste image URL and press Enter" accept="image/*,video/*" />
             <div
               className="frame-preview"
+              draggable={!!assets.lastFrame}
+              onDragStart={(e) => assets.lastFrame && handleAssetDragStart({
+                assetId: assets.lastFrame.id,
+                source: 'current-job',
+                assetType: 'last_frame',
+                url: assets.lastFrame.url,
+                uploadedUrl: assets.lastFrame.uploadedUrl,
+                metadata: {
+                  role: assets.lastFrame.role,
+                  name: assets.lastFrame.name,
+                  sourceCategory: assets.lastFrame.sourceCategory,
+                  sourceType: assets.lastFrame.sourceType,
+                },
+              }, e)}
+              onDragEnd={handleAssetDragEnd}
               style={{
                 marginTop: 12,
                 height: 105,
@@ -2783,6 +3455,7 @@ function ConfigurationView(props: any) {
                 overflow: 'hidden',
                 padding: 8,
                 color: 'white',
+                cursor: assets.lastFrame ? 'grab' : 'default',
               }}
             >
               {assets.lastFrame?.url ? (
@@ -2800,6 +3473,16 @@ function ConfigurationView(props: any) {
                   {EDIT_WITH_AI}
                 </button>
               )}
+              {assets.lastFrame?.edited && (
+                <button
+                  type="button"
+                  onClick={() => revertLibraryAssetToOriginal(assets.lastFrame!.id)}
+                  className="absolute right-1 bottom-1 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
+                  style={{ background: 'rgba(255,255,255,.9)', color: '#041014' }}
+                >
+                  Revert
+                </button>
+              )}
               {assets.lastFrame?.uploadStatus === 'error' && (
                 <button
                   type="button"
@@ -2811,7 +3494,19 @@ function ConfigurationView(props: any) {
                 </button>
               )}
             </div>
-            <span className="badge" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px 8px', borderRadius: 7, marginTop: 8, marginRight: 4, background: C.cyan, color: '#071014', fontSize: 9, fontWeight: 800, textTransform: 'uppercase' }}>Last Frame</span>
+            <div style={{ marginTop: 6, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span className="badge" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px 8px', borderRadius: 7, background: C.cyan, color: '#071014', fontSize: 9, fontWeight: 800, textTransform: 'uppercase' }}>Last Frame</span>
+              {assets.lastFrame && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); removeLastFrame() }}
+                  className="text-[9px] font-extrabold uppercase"
+                  style={{ color: C.danger, background: 'none', border: 'none', padding: '2px 4px', cursor: 'pointer' }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
           </article>
         </div>
       </section>
@@ -2860,73 +3555,92 @@ function ConfigurationView(props: any) {
                 savedAssetLibraryTab === 'logos' ? savedClientAssets.logos :
                 savedAssetLibraryTab === 'products' ? savedClientAssets.products :
                 savedClientAssets.brandReferences
-              ).map((asset) => (
-                <div
-                  key={asset.id}
-                  className="text-left"
-                  style={{
-                    width: 110,
-                    padding: 8,
-                    border: `1px solid ${C.border}`,
-                    borderRadius: 10,
-                    background: C.panelSoft,
-                    position: 'relative',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '100%',
-                      height: 80,
-                      borderRadius: 8,
-                      overflow: 'hidden',
-                      background: '#000',
-                      marginBottom: 6,
-                      cursor: 'pointer',
-                    }}
-                    onClick={() => selectSavedAsset(asset)}
-                  >
-                    <img src={asset.uploadedUrl || asset.url} alt={asset.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{asset.name?.split('.')?.[0]?.toUpperCase()?.slice(0, 10) || 'ASSET'}</div>
-                  <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
-                    {asset.isPrimary && (
-                      <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', color: C.cyan }}>★ Primary</span>
-                    )}
-                    {isAssetInCurrentJob(asset, assets) && (
-                      <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', color: C.green }}>✓ In Job</span>
-                    )}
-                    {isImageEditSupported(asset) && (
-                      <button
-                        type="button"
-                        onClick={() => openSavedClientImageEditor(asset)}
-                        className="text-[9px] font-extrabold uppercase"
-                        style={{ color: C.cyan, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                      >
-                        Edit with AI
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (savedAssetLibraryTab === 'identities') setPrimarySavedAsset('identity', asset.id)
-                        else if (savedAssetLibraryTab === 'logos') setPrimarySavedAsset('logo', asset.id)
-                      }}
-                      className="text-[9px] font-extrabold uppercase"
-                      style={{ color: C.cyan, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                    >
-                      Set Primary
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { if (window.confirm('Remove this asset from the saved client library?')) removeSavedAsset(asset.id) }}
-                      className="text-[9px] font-extrabold uppercase"
-                      style={{ color: C.danger, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))
+               ).map((asset) => (
+                 <div
+                   key={asset.id}
+                   className="text-left"
+                   draggable
+                     onDragStart={(e) => {
+                       const tabKey = savedAssetLibraryTab === 'identities' ? 'identity' : savedAssetLibraryTab === 'logos' ? 'logo' : savedAssetLibraryTab === 'products' ? 'product' : 'brand'
+                       handleAssetDragStart({
+                         assetId: asset.id,
+                         source: 'saved-client',
+                         assetType: tabKey,
+                         url: asset.url,
+                         uploadedUrl: asset.uploadedUrl,
+                         metadata: {
+                           role: asset.role,
+                           name: asset.name,
+                           sourceCategory: asset.sourceCategory,
+                           sourceType: asset.sourceType,
+                         },
+                       }, e)
+                     }}
+                   onDragEnd={handleAssetDragEnd}
+                   style={{
+                     width: 110,
+                     padding: 8,
+                     border: `1px solid ${C.border}`,
+                     borderRadius: 10,
+                     background: C.panelSoft,
+                     position: 'relative',
+                     cursor: 'grab',
+                   }}
+                 >
+                   <div
+                     style={{
+                       width: '100%',
+                       height: 80,
+                       borderRadius: 8,
+                       overflow: 'hidden',
+                       background: '#000',
+                       marginBottom: 6,
+                       cursor: 'pointer',
+                     }}
+                     onClick={() => selectSavedAsset(asset)}
+                   >
+                     <img src={asset.uploadedUrl || asset.url} alt={asset.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                   </div>
+                   <div style={{ fontSize: 10, fontWeight: 700, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{asset.name?.split('.')?.[0]?.toUpperCase()?.slice(0, 10) || 'ASSET'}</div>
+                   <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+                     {asset.isPrimary && (
+                       <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', color: C.cyan }}>★ Primary</span>
+                     )}
+                     {isAssetInCurrentJob(asset, assets) && (
+                       <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', color: C.green }}>✓ In Job</span>
+                     )}
+                     {isImageEditSupported(asset) && (
+                       <button
+                         type="button"
+                         onClick={() => openLibraryImageEditor(asset)}
+                         className="text-[9px] font-extrabold uppercase"
+                         style={{ color: C.cyan, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                       >
+                         Edit with AI
+                       </button>
+                     )}
+                     <button
+                       type="button"
+                       onClick={() => {
+                         if (savedAssetLibraryTab === 'identities') setPrimarySavedAsset('identity', asset.id)
+                         else if (savedAssetLibraryTab === 'logos') setPrimarySavedAsset('logo', asset.id)
+                       }}
+                       className="text-[9px] font-extrabold uppercase"
+                       style={{ color: C.cyan, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                     >
+                       Set Primary
+                     </button>
+                     <button
+                       type="button"
+                       onClick={() => { if (window.confirm('Remove this asset from the saved client library?')) removeSavedAsset(asset.id) }}
+                       className="text-[9px] font-extrabold uppercase"
+                       style={{ color: C.danger, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                     >
+                       Delete
+                     </button>
+                   </div>
+                 </div>
+               ))
             ) : (
               <div style={{ padding: 18, border: `1px dashed ${C.border}`, borderRadius: 10, color: C.muted, fontSize: 11 }}>
                 No saved assets yet. Upload assets in the sections above and they will be saved automatically for this client.
@@ -2946,7 +3660,21 @@ function ConfigurationView(props: any) {
           <Field label="Button / Action" value={clientForm.callToAction} placeholder="Book Your Inspection" onChange={(v) => updateClientForm({ ...clientForm, callToAction: v })} />
           <Field label="Phone" value={clientForm.phone} placeholder="555-555-5555" onChange={(v) => updateClientForm({ ...clientForm, phone: v })} />
         </div>
-        <div style={{ marginTop: 14 }}>
+        <div
+          data-asset-section="ctaGraphic"
+          onDragEnter={(e) => handleSectionDragEnter('ctaGraphic', e)}
+          onDragOver={(e) => handleSectionDragOver('ctaGraphic', e)}
+          onDragLeave={(e) => handleSectionDragLeave('ctaGraphic', e)}
+          onDrop={(e) => handleSectionDrop('ctaGraphic', e)}
+          style={{
+            marginTop: 14,
+            padding: 12,
+            borderRadius: 10,
+            border: dragOverSection === 'ctaGraphic' ? `1px solid ${C.cyanBorder}` : `1px solid transparent`,
+            background: dragOverSection === 'ctaGraphic' ? 'rgba(41,211,242,.04)' : 'transparent',
+            transition: 'border-color .15s, background .15s',
+          }}
+        >
           <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>CTA Graphic</div>
           <UploadZone primary="Upload CTA Graphic" secondary="Drag & drop or browse" onFiles={handleCtaUpload} onUrl={handleCtaUrl} urlLabel="Add CTA URL" urlPlaceholder="Paste image URL and press Enter" accept="image/*,video/*" />
           {assets.ctaGraphic?.url && (
@@ -2956,6 +3684,23 @@ function ConfigurationView(props: any) {
                 onRemove={removeCtaGraphic}
                 onRetry={() => assets.ctaGraphic && retryAssetUpload(assets.ctaGraphic.id)}
                 onEdit={() => assets.ctaGraphic && openLibraryImageEditor(assets.ctaGraphic)}
+                onRevert={() => assets.ctaGraphic && revertLibraryAssetToOriginal(assets.ctaGraphic.id)}
+                draggable
+                onDragStart={(e) => assets.ctaGraphic && handleAssetDragStart({
+                  assetId: assets.ctaGraphic.id,
+                  source: 'current-job',
+                  assetType: 'cta_graphic',
+                  url: assets.ctaGraphic.url,
+                  uploadedUrl: assets.ctaGraphic.uploadedUrl,
+                  metadata: {
+                    role: assets.ctaGraphic.role,
+                    name: assets.ctaGraphic.name,
+                    sourceCategory: assets.ctaGraphic.sourceCategory,
+                    sourceType: assets.ctaGraphic.sourceType,
+                  },
+                }, e)}
+                onDragEnd={handleAssetDragEnd}
+                onMoveToSection={(section) => moveLibraryAssetToSection(assets.ctaGraphic!.id, section)}
               />
             </div>
           )}

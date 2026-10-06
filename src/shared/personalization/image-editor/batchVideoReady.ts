@@ -49,10 +49,16 @@ async function prepareDataUrl(url: string): Promise<string> {
     credentials: 'same-origin',
     body: JSON.stringify({ urls: [url] }),
   })
-  const payload = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(payload?.error || 'Unable to prepare discovered asset')
+  let payload: Record<string, unknown>
+  try {
+    payload = await response.json()
+  } catch {
+    if (!response.ok) throw new Error('Unable to prepare discovered asset')
+    throw new Error('Unable to parse download response')
+  }
+  if (!response.ok) throw new Error(typeof payload?.error === 'string' ? payload.error : 'Unable to prepare discovered asset')
   const result = payload?.results?.[0]
-  if (!result?.ok || !result?.dataUrl) throw new Error(result?.error || 'Unable to download discovered asset')
+  if (!result?.ok || !result?.dataUrl) throw new Error(typeof result?.error === 'string' ? result.error : 'Unable to download discovered asset')
   return result.dataUrl as string
 }
 

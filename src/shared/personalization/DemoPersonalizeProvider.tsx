@@ -125,8 +125,12 @@ export function getGenerationAssetUrl(asset: PersonalizationAsset | null | undef
 function revokeAssetUrl(asset: PersonalizationAsset | null | undefined) {
   if (!asset) return
   const url = asset.url
+  const uploaded = asset.uploadedUrl
   if (url && url.startsWith('blob:')) {
     URL.revokeObjectURL(url)
+  }
+  if (uploaded && uploaded.startsWith('blob:') && uploaded !== url) {
+    URL.revokeObjectURL(uploaded)
   }
 }
 
@@ -236,6 +240,7 @@ type DemoPersonalizeContextValue = {
   updateDiscoveredAssetCategory: (id: string, category: DiscoveredAssetCategory) => void
   removeDiscoveredAssetFromSection: (id: string) => void
   moveDiscoveredAssetToSection: (id: string, section: AssignedSection) => void
+  revertDiscoveredAssetEdit: (id: string) => void
   selectRecommendedDiscoveredAssets: () => void
   importDiscoveredAssets: () => Promise<void>
   cancelDiscovery: () => void
@@ -243,6 +248,12 @@ type DemoPersonalizeContextValue = {
   visionStatus: 'idle' | 'analyzing' | 'complete' | 'error'
   visionError: string | null
   analyzeDiscoveredAssets: () => Promise<void>
+
+  // Library asset actions
+  moveLibraryAssetToSection: (assetId: string, section: AssignedSection) => void
+  removeLibraryAssetFromSection: (assetId: string) => void
+  deleteLibraryAsset: (assetId: string) => void
+  revertLibraryAssetToOriginal: (assetId: string) => void
 
   // Business search
   businessSearchMode: 'idle' | 'searching' | 'results' | 'selected' | 'error'
@@ -470,6 +481,8 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
   // Assets
   const [assets, setAssets] = useState<AssetLibrary>({ ...EMPTY_ASSET_LIBRARY })
+  const assetsRef = useRef(assets)
+  useEffect(() => { assetsRef.current = assets }, [assets])
 
   // Discovered assets (temporary review state — NOT part of permanent AssetLibrary)
   const [discoveredAssets, setDiscoveredAssetsState] = useState<DiscoveredAsset[]>([])
@@ -815,26 +828,26 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   const uploadAsset = useCallback(async (asset: PersonalizationAsset): Promise<string> => {
     if (!apiKey) throw new Error('Missing API key')
 
-    const TEST_BYPASS_KEY = 'test-mode-key'
+    // Test-only bypass: avoid real network uploads in test mode with the placeholder key.
     if (
       process.env.NODE_ENV !== 'production' &&
-      apiKey === TEST_BYPASS_KEY &&
+      apiKey === 'test-mode-key' &&
       testMode
     ) {
       const fakeUrl = 'https://example.com/test-uploaded-asset.png'
       setAssetUploadStatus(asset.id, 'ready', null)
+      const old = [
+        ...assetsRef.current.identities,
+        ...assetsRef.current.logos,
+        ...assetsRef.current.products,
+        ...assetsRef.current.brandReferences,
+        assetsRef.current.firstFrame,
+        assetsRef.current.lastFrame,
+        assetsRef.current.ctaGraphic,
+      ].find((a) => a?.id === asset.id)
+      if (old) revokeAssetUrl(old)
       setAssets((prev) => {
         const updater = (list: PersonalizationAsset[]) => list.map((a) => (a.id === asset.id ? { ...a, url: fakeUrl, uploadedUrl: fakeUrl } : a))
-        const old = [
-          ...prev.identities,
-          ...prev.logos,
-          ...prev.products,
-          ...prev.brandReferences,
-          prev.firstFrame,
-          prev.lastFrame,
-          prev.ctaGraphic,
-        ].find((a) => a?.id === asset.id)
-        if (old) revokeAssetUrl(old)
         return {
           ...prev,
           identities: updater(prev.identities),
@@ -858,18 +871,18 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       })
       setAssetUploadStatus(asset.id, 'ready', null)
       // Update URL to durable uploaded URL and revoke old blob
+      const old = [
+        ...assetsRef.current.identities,
+        ...assetsRef.current.logos,
+        ...assetsRef.current.products,
+        ...assetsRef.current.brandReferences,
+        assetsRef.current.firstFrame,
+        assetsRef.current.lastFrame,
+        assetsRef.current.ctaGraphic,
+      ].find((a) => a?.id === asset.id)
+      if (old) revokeAssetUrl(old)
       setAssets((prev) => {
         const updater = (list: PersonalizationAsset[]) => list.map((a) => (a.id === asset.id ? { ...a, url, uploadedUrl: url } : a))
-        const old = [
-          ...prev.identities,
-          ...prev.logos,
-          ...prev.products,
-          ...prev.brandReferences,
-          prev.firstFrame,
-          prev.lastFrame,
-          prev.ctaGraphic,
-        ].find((a) => a?.id === asset.id)
-        if (old) revokeAssetUrl(old)
         return {
           ...prev,
           identities: updater(prev.identities),
@@ -924,7 +937,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       visionValidation?: PersonalizationVisionValidation
     },
   ) => {
-    const all = [
+    const currentJobAssets = [
       ...assets.identities,
       ...assets.logos,
       ...assets.products,
@@ -934,7 +947,14 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       assets.ctaGraphic,
     ].filter(Boolean) as PersonalizationAsset[]
 
-    const target = all.find((a) => a.id === assetId)
+    const savedAssets = [
+      ...savedClientAssets.identities,
+      ...savedClientAssets.logos,
+      ...savedClientAssets.products,
+      ...savedClientAssets.brandReferences,
+    ]
+
+    const target = currentJobAssets.find((a) => a.id === assetId) || savedAssets.find((a) => a.id === assetId)
     if (!target) throw new Error('Asset not found')
     const blob = dataUrlToBlob(dataUrl)
     if (!blob) throw new Error('Edited image could not be read')
@@ -949,13 +969,14 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       ...target,
       name: file.name,
       url: localUrl,
-      uploadedUrl: undefined,
+      uploadedUrl: target.uploadedUrl,
       file,
       mimeType: file.type,
       uploadStatus: 'local',
       uploadError: null,
       originalUrl,
       edited: true,
+      editedDataUrl: dataUrl,
       videoReady: meta.videoReady,
       hasTransparency: meta.transparent,
       editMetadata: {
@@ -974,9 +995,31 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       visionValidation: meta.visionValidation,
     }
 
-    setAssets((prev) => replaceAssetInLibrary(prev, editedAsset))
-    await uploadAsset(editedAsset)
-  }, [assets, uploadAsset])
+    const inCurrentJob = currentJobAssets.some((a) => a.id === assetId)
+    const inSavedLibrary = savedAssets.some((a) => a.id === assetId)
+
+    if (inCurrentJob) {
+      setAssets((prev) => replaceAssetInLibrary(prev, editedAsset))
+    }
+    if (inSavedLibrary && selectedClientId) {
+      const updatedLibrary = updateAssetInClientLibrary(selectedClientId, editedAsset)
+      setSavedClientAssets(updatedLibrary)
+    }
+    try {
+      const uploadedUrl = await uploadAsset(editedAsset)
+      if (inSavedLibrary && selectedClientId) {
+        const updatedLibrary = updateAssetInClientLibrary(selectedClientId, {
+          ...editedAsset,
+          url: uploadedUrl,
+          uploadedUrl,
+        })
+        setSavedClientAssets(updatedLibrary)
+      }
+    } catch (error) {
+      URL.revokeObjectURL(localUrl)
+      throw error
+    }
+  }, [assets, savedClientAssets, selectedClientId, setSavedClientAssets, uploadAsset])
 
   const applyEditedSavedClientAsset = useCallback(async (
     clientId: string,
@@ -1072,7 +1115,12 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       setAssets((prev) => replaceAssetInLibrary(prev, syncedAsset))
     }
 
-    await uploadAsset(editedAsset)
+    try {
+      await uploadAsset(editedAsset)
+    } catch (error) {
+      URL.revokeObjectURL(editedAsset.url)
+      throw error
+    }
   }, [assets, uploadAsset])
 
   // ── Asset actions ──────────────────────────────────────────────────────────
@@ -1092,7 +1140,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     }))
     newAssets.forEach((asset) => {
       setAssets((prev) => updateAssetInLibrary(prev, asset))
-      uploadAsset(asset).catch(() => {/* upload status handled in state */})
+      uploadAsset(asset).catch((error) => { console.error('Upload failed:', error) })
     })
   }, [assets.identities.length, uploadAsset, source, genOptions])
 
@@ -1104,16 +1152,14 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   }, [assets.identities.length])
 
   const removeIdentity = useCallback((id: string) => {
-    setAssets((prev) => {
-      const asset = prev.identities.find((a) => a.id === id) || prev.primaryIdentity
-      revokeAssetUrl(asset)
-      return {
-        ...prev,
-        identities: prev.identities.filter((a) => a.id !== id),
-        primaryIdentity: prev.primaryIdentity?.id === id ? null : prev.primaryIdentity,
-      }
-    })
-  }, [])
+    const asset = assets.identities.find((a) => a.id === id) || assets.primaryIdentity
+    if (asset) revokeAssetUrl(asset)
+    setAssets((prev) => ({
+      ...prev,
+      identities: prev.identities.filter((a) => a.id !== id),
+      primaryIdentity: prev.primaryIdentity?.id === id ? null : prev.primaryIdentity,
+    }))
+  }, [assets])
 
   const setPrimaryIdentity = useCallback((id: string) => {
     setAssets((prev) => ({
@@ -1137,7 +1183,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     }))
     newAssets.forEach((asset) => {
       setAssets((prev) => updateAssetInLibrary(prev, asset))
-      uploadAsset(asset).catch(() => {/* upload status handled in state */})
+      uploadAsset(asset).catch((error) => { console.error('Upload failed:', error) })
     })
   }, [assets.logos.length, uploadAsset])
 
@@ -1149,16 +1195,16 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   }, [assets.logos.length])
 
   const removeLogo = useCallback((id: string) => {
+    const asset = assets.logos.find((a) => a.id === id) || assets.primaryLogo
+    if (asset) revokeAssetUrl(asset)
     setAssets((prev) => {
-      const asset = prev.logos.find((a) => a.id === id) || prev.primaryLogo
-      revokeAssetUrl(asset)
       return {
         ...prev,
         logos: prev.logos.filter((a) => a.id !== id),
         primaryLogo: prev.primaryLogo?.id === id ? null : prev.primaryLogo,
       }
     })
-  }, [])
+  }, [assets])
 
   const setPrimaryLogo = useCallback((id: string) => {
     setAssets((prev) => ({
@@ -1180,7 +1226,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     const newAssets = filesToAdd.map((file) => createAsset(file, 'product_reference'))
     newAssets.forEach((asset) => {
       setAssets((prev) => updateAssetInLibrary(prev, asset))
-      uploadAsset(asset).catch(() => {/* upload status handled in state */})
+      uploadAsset(asset).catch((error) => { console.error('Upload failed:', error) })
     })
   }, [assets.products.length, uploadAsset])
 
@@ -1190,15 +1236,13 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   }, [])
 
   const removeProduct = useCallback((id: string) => {
-    setAssets((prev) => {
-      const asset = prev.products.find((a) => a.id === id)
-      revokeAssetUrl(asset)
-      return {
-        ...prev,
-        products: prev.products.filter((a) => a.id !== id),
-      }
-    })
-  }, [])
+    const asset = assets.products.find((a) => a.id === id)
+    if (asset) revokeAssetUrl(asset)
+    setAssets((prev) => ({
+      ...prev,
+      products: prev.products.filter((a) => a.id !== id),
+    }))
+  }, [assets])
 
   const addBrandReferenceFiles = useCallback((files: FileList | null) => {
     if (!files) return
@@ -1212,7 +1256,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     const newAssets = filesToAdd.map((file) => createAsset(file, 'brand_reference'))
     newAssets.forEach((asset) => {
       setAssets((prev) => updateAssetInLibrary(prev, asset))
-      uploadAsset(asset).catch(() => {/* upload status handled in state */})
+      uploadAsset(asset).catch((error) => { console.error('Upload failed:', error) })
     })
   }, [assets.brandReferences.length, uploadAsset])
 
@@ -1222,15 +1266,13 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   }, [])
 
   const removeBrandReference = useCallback((id: string) => {
-    setAssets((prev) => {
-      const asset = prev.brandReferences.find((a) => a.id === id)
-      revokeAssetUrl(asset)
-      return {
-        ...prev,
-        brandReferences: prev.brandReferences.filter((a) => a.id !== id),
-      }
-    })
-  }, [])
+    const asset = assets.brandReferences.find((a) => a.id === id)
+    if (asset) revokeAssetUrl(asset)
+    setAssets((prev) => ({
+      ...prev,
+      brandReferences: prev.brandReferences.filter((a) => a.id !== id),
+    }))
+  }, [assets])
 
   const setFirstFrameFile = useCallback((file: File | null) => {
     if (!file) {
@@ -1239,7 +1281,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     }
     const asset = createAsset(file, 'first_frame', { isPrimary: true })
     setAssets((prev) => ({ ...prev, firstFrame: asset }))
-    uploadAsset(asset).catch(() => {/* upload status handled in state */})
+    uploadAsset(asset).catch((error) => { console.error('Upload failed:', error) })
   }, [uploadAsset])
 
   const setFirstFrameUrl = useCallback((url: string) => {
@@ -1248,11 +1290,9 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   }, [])
 
   const removeFirstFrame = useCallback(() => {
-    setAssets((prev) => {
-      revokeAssetUrl(prev.firstFrame)
-      return { ...prev, firstFrame: null }
-    })
-  }, [])
+    if (assets.firstFrame) revokeAssetUrl(assets.firstFrame)
+    setAssets((prev) => ({ ...prev, firstFrame: null }))
+  }, [assets.firstFrame])
 
   const setLastFrameFile = useCallback((file: File | null) => {
     if (!file) {
@@ -1261,7 +1301,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     }
     const asset = createAsset(file, 'last_frame', { isPrimary: true })
     setAssets((prev) => ({ ...prev, lastFrame: asset }))
-    uploadAsset(asset).catch(() => {/* upload status handled in state */})
+    uploadAsset(asset).catch((error) => { console.error('Upload failed:', error) })
   }, [uploadAsset])
 
   const setLastFrameUrl = useCallback((url: string) => {
@@ -1270,11 +1310,9 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   }, [])
 
   const removeLastFrame = useCallback(() => {
-    setAssets((prev) => {
-      revokeAssetUrl(prev.lastFrame)
-      return { ...prev, lastFrame: null }
-    })
-  }, [])
+    if (assets.lastFrame) revokeAssetUrl(assets.lastFrame)
+    setAssets((prev) => ({ ...prev, lastFrame: null }))
+  }, [assets.lastFrame])
 
   const setCtaGraphicFile = useCallback((file: File | null) => {
     if (!file) {
@@ -1283,7 +1321,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     }
     const asset = createAsset(file, 'cta_graphic', { isPrimary: true })
     setAssets((prev) => ({ ...prev, ctaGraphic: asset }))
-    uploadAsset(asset).catch(() => {/* upload status handled in state */})
+    uploadAsset(asset).catch((error) => { console.error('Upload failed:', error) })
   }, [uploadAsset])
 
   const setCtaGraphicUrl = useCallback((url: string) => {
@@ -1292,11 +1330,215 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   }, [])
 
   const removeCtaGraphic = useCallback(() => {
+    if (assets.ctaGraphic) revokeAssetUrl(assets.ctaGraphic)
+    setAssets((prev) => ({ ...prev, ctaGraphic: null }))
+  }, [assets.ctaGraphic])
+
+  // ── Library asset move / remove / delete ────────────────────────────────────
+
+  const moveLibraryAssetToSection = useCallback((assetId: string, section: AssignedSection) => {
     setAssets((prev) => {
-      revokeAssetUrl(prev.ctaGraphic)
-      return { ...prev, ctaGraphic: null }
+      const all = [
+        ...prev.identities,
+        ...prev.logos,
+        ...prev.products,
+        ...prev.brandReferences,
+        prev.firstFrame,
+        prev.lastFrame,
+        prev.ctaGraphic,
+        ...prev.audio,
+        ...prev.savedReferences,
+      ].filter(Boolean) as PersonalizationAsset[]
+
+      const target = all.find((a) => a.id === assetId)
+      if (!target) return prev
+
+      // Determine new role from destination section
+      const newRole = (() => {
+        switch (section) {
+          case 'person': return 'presenter_identity'
+          case 'logo': return 'logo'
+          case 'products': return 'product_reference'
+          case 'brand': return 'brand_reference'
+          case 'firstFrame': return 'first_frame'
+          case 'lastFrame': return 'last_frame'
+          case 'ctaGraphic': return 'cta_graphic'
+          default: return target.role
+        }
+      })()
+
+      const movedAsset: PersonalizationAsset = {
+        ...target,
+        role: newRole,
+        // Preserve edited data and source classification
+        sourceCategory: target.sourceCategory,
+        originalUrl: target.originalUrl || target.uploadedUrl || target.url,
+        edited: target.edited,
+        editedDataUrl: target.editedDataUrl,
+        editMetadata: target.editMetadata,
+        visionAnalysis: target.visionAnalysis,
+        visionValidation: target.visionValidation,
+        videoReady: target.videoReady,
+        hasTransparency: target.hasTransparency,
+        isPrimary: section === 'person' || section === 'logo' ? target.isPrimary : false,
+      }
+
+      // Remove from old location first
+      let next: AssetLibrary = {
+        ...prev,
+        identities: prev.identities.filter((a) => a.id !== assetId),
+        logos: prev.logos.filter((a) => a.id !== assetId),
+        products: prev.products.filter((a) => a.id !== assetId),
+        brandReferences: prev.brandReferences.filter((a) => a.id !== assetId),
+        firstFrame: prev.firstFrame?.id === assetId ? null : prev.firstFrame,
+        lastFrame: prev.lastFrame?.id === assetId ? null : prev.lastFrame,
+        ctaGraphic: prev.ctaGraphic?.id === assetId ? null : prev.ctaGraphic,
+        audio: prev.audio.filter((a) => a.id !== assetId),
+        savedReferences: prev.savedReferences.filter((a) => a.id !== assetId),
+      }
+
+      // Handle primary cleanup for person/logo
+      if (section === 'person') {
+        next.primaryIdentity = next.identities.find((a) => a.isPrimary) || next.primaryIdentity
+      } else if (section === 'logo') {
+        next.primaryLogo = next.logos.find((a) => a.isPrimary) || next.primaryLogo
+      }
+      
+      // If moving away from person/logo, clear primary if the moved asset was primary
+      if (section !== 'person' && prev.primaryIdentity?.id === assetId) {
+        next.primaryIdentity = next.identities.find((a) => a.isPrimary) || null
+      }
+      if (section !== 'logo' && prev.primaryLogo?.id === assetId) {
+        next.primaryLogo = next.logos.find((a) => a.isPrimary) || null
+      }
+
+      // Add to new location
+      switch (newRole) {
+        case 'presenter_identity':
+        case 'face_identity':
+        case 'character_identity':
+          return {
+            ...next,
+            identities: [...next.identities, movedAsset],
+            primaryIdentity: next.primaryIdentity || movedAsset,
+          }
+        case 'logo':
+          return {
+            ...next,
+            logos: [...next.logos, movedAsset],
+            primaryLogo: next.primaryLogo || movedAsset,
+          }
+        case 'product_reference':
+          return { ...next, products: [...next.products, movedAsset] }
+        case 'brand_reference':
+          return { ...next, brandReferences: [...next.brandReferences, movedAsset] }
+        case 'first_frame':
+          return { ...next, firstFrame: movedAsset }
+        case 'last_frame':
+          return { ...next, lastFrame: movedAsset }
+        case 'cta_graphic':
+          return { ...next, ctaGraphic: movedAsset }
+        default:
+          return next
+      }
     })
   }, [])
+
+  const removeLibraryAssetFromSection = useCallback((assetId: string) => {
+    const all = [
+      ...assets.identities,
+      ...assets.logos,
+      ...assets.products,
+      ...assets.brandReferences,
+      assets.firstFrame,
+      assets.lastFrame,
+      assets.ctaGraphic,
+      ...assets.audio,
+      ...assets.savedReferences,
+    ].filter(Boolean) as PersonalizationAsset[]
+    const asset = all.find((a) => a.id === assetId)
+    if (asset) revokeAssetUrl(asset)
+    setAssets((prev) => ({
+      ...prev,
+      identities: prev.identities.filter((a) => a.id !== assetId),
+      logos: prev.logos.filter((a) => a.id !== assetId),
+      products: prev.products.filter((a) => a.id !== assetId),
+      brandReferences: prev.brandReferences.filter((a) => a.id !== assetId),
+      firstFrame: prev.firstFrame?.id === assetId ? null : prev.firstFrame,
+      lastFrame: prev.lastFrame?.id === assetId ? null : prev.lastFrame,
+      ctaGraphic: prev.ctaGraphic?.id === assetId ? null : prev.ctaGraphic,
+      audio: prev.audio.filter((a) => a.id !== assetId),
+      savedReferences: prev.savedReferences.filter((a) => a.id !== assetId),
+      primaryIdentity: prev.primaryIdentity?.id === assetId ? null : prev.primaryIdentity,
+      primaryLogo: prev.primaryLogo?.id === assetId ? null : prev.primaryLogo,
+    }))
+  }, [assets])
+
+  const deleteLibraryAsset = useCallback((assetId: string) => {
+    const all = [
+      ...assets.identities,
+      ...assets.logos,
+      ...assets.products,
+      ...assets.brandReferences,
+      assets.firstFrame,
+      assets.lastFrame,
+      assets.ctaGraphic,
+      ...assets.audio,
+      ...assets.savedReferences,
+    ].filter(Boolean) as PersonalizationAsset[]
+    const asset = all.find((a) => a.id === assetId)
+    if (asset) revokeAssetUrl(asset)
+    setAssets((prev) => ({
+      ...prev,
+      identities: prev.identities.filter((a) => a.id !== assetId),
+      logos: prev.logos.filter((a) => a.id !== assetId),
+      products: prev.products.filter((a) => a.id !== assetId),
+      brandReferences: prev.brandReferences.filter((a) => a.id !== assetId),
+      firstFrame: prev.firstFrame?.id === assetId ? null : prev.firstFrame,
+      lastFrame: prev.lastFrame?.id === assetId ? null : prev.lastFrame,
+      ctaGraphic: prev.ctaGraphic?.id === assetId ? null : prev.ctaGraphic,
+      audio: prev.audio.filter((a) => a.id !== assetId),
+      savedReferences: prev.savedReferences.filter((a) => a.id !== assetId),
+      primaryIdentity: prev.primaryIdentity?.id === assetId ? null : prev.primaryIdentity,
+      primaryLogo: prev.primaryLogo?.id === assetId ? null : prev.primaryLogo,
+    }))
+  }, [assets])
+
+  const revertLibraryAssetToOriginal = useCallback((assetId: string) => {
+    const all = [
+      ...assets.identities,
+      ...assets.logos,
+      ...assets.products,
+      ...assets.brandReferences,
+      assets.firstFrame,
+      assets.lastFrame,
+      assets.ctaGraphic,
+      ...assets.audio,
+      ...assets.savedReferences,
+    ].filter(Boolean) as PersonalizationAsset[]
+    const target = all.find((a) => a.id === assetId)
+    if (!target || !target.edited || !target.originalUrl) {
+      setAssets((prev) => prev)
+      return
+    }
+    revokeAssetUrl(target)
+    const reverted: PersonalizationAsset = {
+      ...target,
+      url: target.originalUrl,
+      uploadedUrl: target.originalUrl,
+      edited: false,
+      editedDataUrl: undefined,
+      editMetadata: undefined,
+      visionValidation: undefined,
+      videoReady: false,
+      hasTransparency: false,
+      uploadStatus: 'ready',
+      uploadError: null,
+      file: null,
+      name: target.name.replace('-edited.', '.').replace('_edited.', '.') || target.name,
+    }
+    setAssets((prev) => replaceAssetInLibrary(prev, reverted))
+  }, [assets])
 
   // ── Discovered assets actions ───────────────────────────────────────────────
 
@@ -1345,6 +1587,20 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   const moveDiscoveredAssetToSection = useCallback((id: string, section: AssignedSection) => {
     setDiscoveredAssetsState((prev) =>
       prev.map((a) => (a.id === id ? { ...a, assignedSection: section, autoAssigned: false } : a)),
+    )
+  }, [])
+
+  const revertDiscoveredAssetEdit = useCallback((id: string) => {
+    setDiscoveredAssetsState((prev) =>
+      prev.map((a) => (a.id === id ? {
+        ...a,
+        editedDataUrl: undefined,
+        edited: false,
+        editMetadata: undefined,
+        visionValidation: undefined,
+        videoReady: false,
+        hasTransparency: false,
+      } : a)),
     )
   }, [])
 
@@ -1404,14 +1660,19 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       }
 
       if (!downloadRes.ok) {
-        const data = await downloadRes.json().catch(() => ({}))
+        let data: Record<string, unknown>
+        try {
+          data = await downloadRes.json()
+        } catch {
+          data = {}
+        }
         const status = downloadRes.status
         if (status === 401) {
           setDiscoveryError('Authentication required. Please sign in to continue.')
         } else if (status === 403) {
           setDiscoveryError('You do not have access to this feature. Contact your administrator.')
         } else {
-          setDiscoveryError(data?.error || `Download failed (HTTP ${status})`)
+          setDiscoveryError(typeof data?.error === 'string' ? data.error : `Download failed (HTTP ${status})`)
         }
         setDiscoveryStatus('reviewing')
         return
@@ -1471,6 +1732,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         name: `discovered_${Date.now()}`,
         originalUrl: item.originalPreviewUrl || item.previewUrl,
         edited: item.edited || false,
+        editedDataUrl: item.editedDataUrl,
         videoReady: item.videoReady || false,
         hasTransparency: item.hasTransparency || false,
         editMetadata: item.editMetadata,
@@ -1550,7 +1812,12 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       })
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
+        let data: Record<string, unknown>
+        try {
+          data = await res.json()
+        } catch {
+          data = {}
+        }
         const status = res.status
         if (status === 401) {
           throw new Error('Authentication required. Please sign in to continue.')
@@ -1558,7 +1825,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         if (status === 403) {
           throw new Error('You do not have access to this feature. Contact your administrator.')
         }
-        throw new Error(data?.error || `Discovery failed (HTTP ${status})`)
+        throw new Error(typeof data?.error === 'string' ? data.error : `Discovery failed (HTTP ${status})`)
       }
 
       const data = await res.json()
@@ -1593,8 +1860,13 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
               })
 
               if (!statusRes.ok) {
-                const statusData = await statusRes.json().catch(() => ({}))
-                throw new Error(statusData?.error || `Status lookup failed (HTTP ${statusRes.status})`)
+                let statusData: Record<string, unknown>
+                try {
+                  statusData = await statusRes.json()
+                } catch {
+                  statusData = {}
+                }
+                throw new Error(typeof statusData?.error === 'string' ? statusData.error : `Status lookup failed (HTTP ${statusRes.status})`)
               }
 
               const statusData = await statusRes.json()
@@ -1701,7 +1973,12 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
           }),
         })
 
-        const data = await res.json().catch(() => ({}))
+        let data: Record<string, unknown>
+        try {
+          data = await res.json()
+        } catch {
+          data = {}
+        }
         if (!res.ok) {
           const status = res.status
           if (status === 401) {
@@ -1710,7 +1987,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
           if (status === 403) {
             throw new Error('You do not have the SmartVideo GO entitlement. Contact your administrator.')
           }
-          throw new Error(data?.message || data?.error || `Vision analysis failed (HTTP ${status})`)
+          throw new Error(typeof data?.message === 'string' ? data.message : typeof data?.error === 'string' ? data.error : `Vision analysis failed (HTTP ${status})`)
         }
 
         const analyses = Array.isArray(data?.analyses) ? data.analyses : []
@@ -1820,8 +2097,13 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       })
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data?.error || `Business search failed (HTTP ${res.status})`)
+        let data: Record<string, unknown>
+        try {
+          data = await res.json()
+        } catch {
+          data = {}
+        }
+        throw new Error(typeof data?.error === 'string' ? data.error : `Business search failed (HTTP ${res.status})`)
       }
 
       const data = await res.json()
@@ -1879,8 +2161,13 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       })
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data?.error || `Research failed (HTTP ${res.status})`)
+        let data: Record<string, unknown>
+        try {
+          data = await res.json()
+        } catch {
+          data = {}
+        }
+        throw new Error(typeof data?.error === 'string' ? data.error : `Research failed (HTTP ${res.status})`)
       }
 
       const data = await res.json() as { research: BusinessResearchResult }
@@ -2353,6 +2640,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     updateDiscoveredAssetCategory,
     removeDiscoveredAssetFromSection,
     moveDiscoveredAssetToSection,
+    revertDiscoveredAssetEdit,
     selectRecommendedDiscoveredAssets,
     importDiscoveredAssets,
     cancelDiscovery,
@@ -2360,6 +2648,11 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     visionStatus,
     visionError,
     analyzeDiscoveredAssets,
+    // Library asset actions
+    moveLibraryAssetToSection,
+    removeLibraryAssetFromSection,
+    deleteLibraryAsset,
+    revertLibraryAssetToOriginal,
 
     // Business search
     businessSearchMode,

@@ -58,7 +58,7 @@ export const marketingProjects = [
   },
   {
     name: 'marketing-demos',
-    testMatch: /marketing-demos\/.*\.spec\.ts/,
+    testMatch: /marketing-demos\/.*\.spec\.ts|personalization-image-editor-certification\.spec\.ts/,
     dependencies: ['global setup'],
     use: {
       ...devices['Desktop Chrome'],
