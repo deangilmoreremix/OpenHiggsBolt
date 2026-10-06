@@ -2,7 +2,7 @@
  * weekend-bonus-3pay-webhook — isolated Stripe webhook for the 3-payment plan.
  *
  * Handles: checkout.session.completed
- * Target price: price_1UMLtpBdz48jmuogvEGx8RI8 ($69/month, 3 payments total)
+ * Target price: price_1UMcc8ReMAzXDpPB7jeVo0ek ($69/month, 3 payments total)
  *
  * Behavior:
  *   - Verifies Stripe webhook signature with a dedicated secret.
@@ -26,8 +26,8 @@ import Stripe from "npm:stripe";
 // Configuration
 // ---------------------------------------------------------------------------
 
-const TARGET_PRICE_ID = "price_1UMLtpBdz48jmuogvEGx8RI8";
-const SCHEDULE_PHASE_DURATION = "2 months"; // 2 MORE payments after checkout (total 3)
+const TARGET_PRICE_ID = "price_1UMdUGDdmNBqrzmW8ek6Obfo";
+const SCHEDULE_PHASE_DURATION = "2 months"; // informational: 2 MORE payments after checkout (total 3)
 const END_BEHAVIOR = "cancel";
 const PAYMENT_PLAN_METADATA: Record<string, string> = {
   payment_plan: "weekend_bonus_3pay",
@@ -91,18 +91,28 @@ function extractTargetPriceId(
 /**
  * Check if a subscription already has a schedule attached.
  * Returns the schedule ID if found, empty string otherwise.
+ *
+ * Note: subscriptionSchedules.list does not support filtering by subscription ID
+ * directly, so we search by metadata instead.
  */
 async function findExistingSchedule(
   stripe: Stripe,
   subscriptionId: string
 ): Promise<string> {
   try {
+    // Search for schedules with our payment_plan metadata and matching source_subscription_id
     const schedules = await stripe.subscriptionSchedules.list({
-      subscription: subscriptionId,
-      limit: 1,
+      limit: 100,
     });
-    if (schedules.data.length > 0) {
-      return schedules.data[0].id;
+
+    for (const schedule of schedules.data) {
+      const metadata = schedule.metadata || {};
+      if (
+        metadata.payment_plan === PAYMENT_PLAN_METADATA.payment_plan &&
+        metadata.source_subscription_id === subscriptionId
+      ) {
+        return schedule.id;
+      }
     }
   } catch (err) {
     console.error(
@@ -133,9 +143,14 @@ async function verifyScheduleConfiguration(
 
     // Check that the schedule references the target price
     let hasTargetPrice = false;
-    for (const phase of schedule.phases.data || []) {
-      for (const item of phase.items || []) {
-        if (item.price?.id === TARGET_PRICE_ID) {
+    const phases = Array.isArray(schedule.phases) ? schedule.phases : [];
+    for (const phase of phases) {
+      const items = Array.isArray(phase.items) ? phase.items : [];
+      for (const item of items) {
+        const priceId = typeof item.price === "string"
+          ? item.price
+          : item.price?.id;
+        if (priceId === TARGET_PRICE_ID) {
           hasTargetPrice = true;
           break;
         }
@@ -154,14 +169,46 @@ async function verifyScheduleConfiguration(
 
 /**
  * Create a Subscription Schedule from an existing subscription.
- * The schedule will bill exactly 2 MORE times (total 3 payments including checkout).
+ * Because Stripe does not allow phases/end_behavior overrides on
+ * `from_subscription`, we cancel the original subscription and create a
+ * new bounded schedule for the same customer.
+ *
+ * The schedule bills exactly 2 MORE times (total 3 payments including checkout).
  */
 async function create3PaySchedule(
   stripe: Stripe,
   subscriptionId: string
 ): Promise<Stripe.SubscriptionSchedule> {
+  // Retrieve the subscription to get the customer ID before canceling.
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+    expand: ["customer"],
+  });
+
+  const customerId = typeof subscription.customer === "string"
+    ? subscription.customer
+    : subscription.customer.id;
+
+  if (!customerId) {
+    throw new Error(
+      `Cannot create 3-pay schedule: subscription ${subscriptionId} has no customer.`
+    );
+  }
+
+  // Cancel the original subscription to prevent further billing.
+  // We use proration_behavior=none to avoid creating an extra invoice.
+  await stripe.subscriptions.update(subscriptionId, {
+    cancel_at_period_end: true,
+  });
+
+  // Calculate end_date for 2 additional months.
+  const now = Math.floor(Date.now() / 1000);
+  const twoMonthsSeconds = 60 * 60 * 24 * 60; // ~2 months
+  const endDate = now + twoMonthsSeconds;
+
+  // Create a new subscription schedule for the customer.
   const schedule = await stripe.subscriptionSchedules.create({
-    from_subscription: subscriptionId,
+    customer: customerId,
+    start_date: "now",
     end_behavior: END_BEHAVIOR,
     phases: [
       {
@@ -171,11 +218,7 @@ async function create3PaySchedule(
             quantity: 1,
           },
         ],
-        // Use the modern duration field instead of deprecated iterations.
-        // This configures the schedule for 2 MORE billing periods.
-        // Combined with the already-paid checkout period, the customer
-        // receives exactly 3 total $69 charges.
-        duration: SCHEDULE_PHASE_DURATION,
+        end_date: endDate,
       },
     ],
     metadata: {
@@ -232,7 +275,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(body, signature, WEBHOOK_SECRET);
+    // Use async version for Deno/Edge runtime compatibility.
+    // The sync `constructEvent` uses SubtleCryptoProvider, which is not
+    // allowed in a synchronous context on Supabase Edge Functions.
+    event = await stripe.webhooks.constructEventAsync(body, signature, WEBHOOK_SECRET);
   } catch (err: any) {
     console.error(
       `[3pay-webhook] signature verification failed: ${err.message}`
