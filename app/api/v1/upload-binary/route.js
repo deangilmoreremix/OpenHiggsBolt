@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getApiKeyFromRequest, validateUploadProxyTarget, isBlockedFileType } from '@/lib/uploadProxyTarget';
-import { resolveMuAPIKey } from '../vfx/_helpers';
+import { resolveMuAPIKey } from '../../vfx/_helpers';
 
 export const dynamic = "force-dynamic";
 
