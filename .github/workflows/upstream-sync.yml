@@ -30,11 +30,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test ! -f packages/studio/src/components/AppsStudio.jsx
           test ! -f packages/studio/src/components/McpCliStudio.jsx
-          test ! -f packages/studio/src/messages/en/appsStudio.json
           test ! -f packages/studio/src/messages/en/mcpCliStudio.json
-          grep -Fq "redirect('/studio/image')" app/studio/apps/page.js
           grep -Fq "redirect('/studio/image')" app/studio/mcp-cli/page.js
           if git grep -niEi 'white[-_ ]?label|whitelabel' -- components/StandaloneShell.js src/apps/design-agent app/api/design-agent; then
             echo "::error::White-label logic detected in active SmartVideo product code."
@@ -126,6 +123,8 @@ jobs:
             components/StandaloneShell.js \
             messages/en/common.json \
             packages/studio/src/index.js \
+            packages/studio/src/components/AppsStudio.jsx \
+            packages/studio/src/messages/en/appsStudio.json \
             app/studio/apps \
             app/studio/mcp-cli \
             app/sign-in \
@@ -150,12 +149,6 @@ jobs:
               git checkout HEAD -- "$path"
             fi
           done
-
-          git rm -f --ignore-unmatch \
-            packages/studio/src/components/AppsStudio.jsx \
-            packages/studio/src/messages/en/appsStudio.json \
-            packages/studio/src/components/McpCliStudio.jsx \
-            packages/studio/src/messages/en/mcpCliStudio.json
 
           git rm -rf --ignore-unmatch \
             app/zh \
@@ -218,7 +211,7 @@ jobs:
             echo "- Target branch: $BASE_BRANCH"
             echo
             echo "### SmartVideo scope"
-            echo "- Explore Apps remains excluded"
+            echo "- Explore Apps remains protected as a SmartVideo-owned surface"
             echo "- MCP / CLI remains excluded"
             echo "- White-label product layers remain excluded"
             echo "- SmartVideo-owned auth, studios, personalization and Design Agent remain authoritative"

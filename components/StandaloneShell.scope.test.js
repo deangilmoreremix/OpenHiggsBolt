@@ -16,10 +16,10 @@ describe('SmartVideo parity scope', () => {
     expect(shell).not.toContain("loadStudio('McpCliStudio')");
     expect(shell).not.toContain("id: 'mcp-cli'");
     expect(shell).not.toContain("activeTab === 'mcp-cli'");
-    expect(shell).not.toContain("loadStudio('AppsStudio')");
-    expect(shell).not.toContain("id: 'apps'");
-    expect(shell).not.toContain("activeTab === 'apps'");
-    expect(index).not.toContain('AppsStudio');
+    expect(shell).toContain("loadStudio('AppsStudio')");
+    expect(shell).toContain("id: 'apps'");
+    expect(shell).toContain("activeTab === 'apps'");
+    expect(index).toContain('AppsStudio');
   });
 
   it('keeps tenant branding logic out of active SmartVideo surfaces', () => {
@@ -34,6 +34,7 @@ describe('SmartVideo parity scope', () => {
     const sync = fs.readFileSync(syncPath, 'utf8');
 
     expect(sync).toContain('packages/studio/src/components/AppsStudio.jsx');
+    expect(sync).toContain('packages/studio/src/messages/en/appsStudio.json');
     expect(sync).toContain('packages/studio/src/components/McpCliStudio.jsx');
     expect(sync).toContain('components/StandaloneShell.js');
     expect(sync).toContain('src/apps/');

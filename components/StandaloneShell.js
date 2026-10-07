@@ -34,6 +34,7 @@ const WorkflowStudio = loadStudio('WorkflowStudio');
 const AgentStudio = loadStudio('AgentStudio');
 const AiInfluencerStudio = loadStudio('AiInfluencerStudio');
 const LayersStudio = loadStudio('LayersStudio');
+const AppsStudio = loadStudio('AppsStudio');
 
 const DesignAgentStudio = dynamic(() => import('../src/apps/design-agent/DesignAgent'), { ssr: false });
 const VFXStudio = dynamic(() => import('../src/apps/vfx-studio/VFXStudio'), { ssr: false });
@@ -61,6 +62,7 @@ const TABS = [
   { id: 'ai-influencer', label: 'AI Influencer Studio' },
   { id: 'social-publishing', label: 'Social Publishing' },
   { id: 'go-ai-viral', label: 'GO-Viral' },
+  { id: 'apps', label: 'SmartVideo GO AI Apps' },
 ];
 
 // Maps every landing-page studio slug to the studio tab that renders it.
@@ -74,6 +76,7 @@ const SLUG_TO_TAB = {
   'ai-influencer': 'ai-influencer',
   'social-publishing': 'social-publishing',
   'go-ai-viral': 'go-ai-viral',
+  apps: 'apps',
 };
 
 export default function StandaloneShell({ embedded = false, initialTab = null, demoMode = false, templateData = null, locale = 'en' } = {}) {
@@ -640,8 +643,9 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
            </div>
          )}
          {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} templateData={templateData} locale={locale} />}
-         {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
-         {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
+          {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
+          {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
+          {activeTab === 'apps' && <AppsStudio />}
       </div>
       </DemoPersonalizeProvider>
       </SocialPublishProvider>

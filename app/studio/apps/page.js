@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
+import StandaloneShell from '@/components/StandaloneShell';
 
-export default function AppsRedirect() {
-  redirect('/studio/image');
+export default function AppsPage() {
+  return <StandaloneShell initialTab="apps" />;
 }
