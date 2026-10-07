@@ -1,9 +1,34 @@
 /**
  * Phase 29 - Provider Negative Regression Tests
  *
- * Proves the Personalization AI Assist provider architecture:
- * - IMAGE path: OpenAI image endpoint IS called; MuAPI image endpoint IS NOT called
- * - VIDEO path: MuAPI video endpoint IS called; OpenAI image endpoint IS NOT used for video
+ * Authoritative routing architecture for AI Assist + Personalization:
+ *
+ *   Personalization image generation/editing:
+ *     - recreate (t2i)  → openaiClient.generateImage() → /images/generations (OpenAI)
+ *     - replace_face    → openaiClient.editImage() → /images/edits (OpenAI)
+ *     - replace_person  → openaiClient.editImage() → /images/edits (OpenAI)
+ *     - keep_design     → openaiClient.editImage() → /images/edits (OpenAI)
+ *     → NEVER calls MuAPI generateImage or generateI2I
+ *
+ *   Personalization video generation:
+ *     - recreate (t2v)  → MuAPI generateVideo (MuAPI)
+ *     - i2v             → MuAPI generateI2V (MuAPI)
+ *     - face_only (v2v) → MuAPI processV2V (MuAPI)
+ *     - full_body       → MuAPI processRecast (MuAPI)
+ *     → NEVER calls OpenAI /images/generations for video
+ *
+ *   AI Assist image tools (AiAssistantModal):
+ *     - upscale, background-remove, style-transfer, restore → editImage() → /api/proxy/openai-image (OpenAI)
+ *     → NEVER calls MuAPI enhanceImage()
+ *
+ *   Text enhancement (AiAssistantModal):
+ *     - rewrite, tone, expand, summarize, translate → callOpenAIChat() → /api/proxy/openai-enhance (OpenAI)
+ *
+ *   Vision analysis:
+ *     - analyze_asset → POST /api/personalization/image-analyze (OpenAI Responses API)
+ *
+ *   Persistence:
+ *     - project, record, generated-video → POST /api/personalization/* (Supabase)
  *
  * These are mandatory architectural regression tests.
  */
@@ -276,6 +301,33 @@ describe('Phase 29 - Provider Negative Regression Tests', () => {
       expect(muapiCalls.generateImage).toHaveLength(0)
       expect(muapiCalls.generateI2I).toHaveLength(0)
     })
+
+    it('replace_person: calls OpenAI /images/edits and NEVER calls MuAPI generateI2I', async () => {
+      const source = makeImageSource({
+        sourceMedia: 'https://example.com/source.png',
+      })
+      const resolved = makeResolved({
+        directInputs: { image_url: 'https://example.com/source.png' },
+      })
+
+      const result = await runGeneration({
+        source,
+        client: {},
+        assets: makeAssets(),
+        resolved,
+        prompt: 'Replace the person with a professional presenter',
+        mode: 'replace_person',
+        options: baseOptions,
+        apiKey: 'sk-test',
+      })
+
+      expect(result.type).toBe('image')
+
+      const editCalls = openaiCalls.filter((c) => c.endpoint === '/images/edits')
+      expect(editCalls.length).toBeGreaterThanOrEqual(1)
+
+      expect(muapiCalls.generateI2I).toHaveLength(0)
+    })
   })
 
   // ── VIDEO PATH ──────────────────────────────────────────────────────────────
@@ -356,6 +408,36 @@ describe('Phase 29 - Provider Negative Regression Tests', () => {
       expect(result.type).toBe('video')
 
       expect(muapiCalls.generateI2V).toHaveLength(1)
+
+      const generationCalls = openaiCalls.filter((c) => c.endpoint === '/images/generations')
+      expect(generationCalls.length).toBe(0)
+    })
+
+    it('full_body (recast): calls MuAPI processRecast, NEVER calls OpenAI image generation', async () => {
+      const source = makeVideoSource({
+        sourceMedia: 'https://example.com/source.mp4',
+      })
+      const resolved = makeResolved({
+        directInputs: {
+          video_url: 'https://example.com/source.mp4',
+          image_url: 'https://example.com/identity.jpg',
+        },
+      })
+
+      const result = await runGeneration({
+        source,
+        client: {},
+        assets: makeAssets(),
+        resolved,
+        prompt: 'Replace the full presenter',
+        mode: 'full_body',
+        options: { ...baseOptions, model: 'ai-video-recast' },
+        apiKey: 'sk-test',
+      })
+
+      expect(result.type).toBe('video')
+
+      expect(muapiCalls.processRecast).toHaveLength(1)
 
       const generationCalls = openaiCalls.filter((c) => c.endpoint === '/images/generations')
       expect(generationCalls.length).toBe(0)
