@@ -35,7 +35,7 @@ export default function TopNavigation() {
                 }`
               }
             >
-              {item.icon}
+              {item.icon as any}
               <span>{item.label}</span>
             </NavLink>
           ))}

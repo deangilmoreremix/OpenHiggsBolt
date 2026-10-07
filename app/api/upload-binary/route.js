@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { validateUploadProxyTarget, getApiKeyFromRequest, isBlockedFileType } from '@/lib/uploadProxyTarget';
 import { resolveMuAPIKey } from './vfx/_helpers';
 
+export const dynamic = "force-dynamic";
+
 // Upload binary proxy — forwards a multipart upload (from MuAPI's S3 presigned
 // form) server-to-server so the browser never needs direct S3/CORS access.
 //

@@ -120,18 +120,18 @@ export function getGenerationAssetUrl(asset: PersonalizationAsset | null | undef
   if (!asset) return undefined
   if (asset.uploadStatus !== 'ready') return undefined
   const url = asset.uploadedUrl || asset.url
-  if (!url || url.startsWith('blob:')) return undefined
+  if (!url || typeof url !== 'string' || url.startsWith('blob:')) return undefined
   return url
 }
-
 function revokeAssetUrl(asset: PersonalizationAsset | null | undefined) {
   if (!asset) return
   const url = asset.url
   const uploaded = asset.uploadedUrl
-  if (url && url.startsWith('blob:')) {
+
+  if (url && typeof url === 'string' && url.startsWith('blob:')) {
     URL.revokeObjectURL(url)
   }
-  if (uploaded && uploaded.startsWith('blob:') && uploaded !== url) {
+  if (uploaded && typeof uploaded === 'string' && uploaded.startsWith('blob:') && uploaded !== url) {
     URL.revokeObjectURL(uploaded)
   }
 }
@@ -362,7 +362,7 @@ interface DemoPersonalizeProviderProps {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function dataUrlToBlob(dataUrl: string): Blob | null {
+  function dataUrlToBlob(dataUrl: string): Blob | null {
   try {
     const [header, base64] = dataUrl.split(',')
     const mimeMatch = header.match(/:(.*?);/)
@@ -382,7 +382,7 @@ function dataUrlToBlob(dataUrl: string): Blob | null {
     }
     return new Blob([bytes], { type: mime })
   } catch {
-    return null
+    return new Blob([''], { type: 'application/octet-stream' })
   }
 }
 
@@ -801,7 +801,6 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
     const entry = result.data
 
-    // ── Restore client form ───────────────────────────────────────────────────
     const savedClient = entry.clientId
       ? clients.find((c) => c.id === entry.clientId) ?? loadClients().find((c) => c.id === entry.clientId)
       : null
@@ -926,7 +925,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       id: entry.id || '',
       sourceDemoId: entry.sourceDemoId || src.id,
       personalizedPrompt: entry.personalizedPrompt,
-      clientId: entry.clientId,
+      clientId: entry.clientId ?? null,
       status: entry.status || 'draft',
       updatedAt: new Date().toISOString(),
     })
@@ -1208,8 +1207,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
     setAssetUploadStatus(asset.id, 'uploading')
     try {
-      const url = await uploadPersonalizationAsset({
-        apiKey,
+      const { url } = await uploadPersonalizationAsset(apiKey, {
         file: asset.file as File,
       })
       setAssetUploadStatus(asset.id, 'ready', null)
@@ -1345,39 +1343,37 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       const persistResult = await persistEditedPersonalizationAsset({
         assetId: editedAsset.id,
         dataUrl,
-        meta: {
-          blob,
-          mimeType: file.type,
-          width: editedAsset.width || 0,
-          height: editedAsset.height || 0,
-          originalAssetId: target.id,
-          clientId: selectedClientId || undefined,
-          category: target.sourceCategory,
-          role: target.role,
-          name: file.name,
-          operation: meta.operation,
-          prompt: meta.prompt,
-          model: meta.model,
-          quality: meta.quality,
-          outputFormat: meta.outputFormat,
-          outputCompression: meta.outputCompression,
-          inputFidelity: meta.inputFidelity,
-          responseId: meta.responseId,
-          imageGenerationCallId: meta.imageGenerationCallId,
-          revisedPrompt: meta.revisedPrompt,
-          editMetadata: editedAsset.editMetadata,
-          visionAnalysis: meta.visionAnalysis as Record<string, unknown> | undefined,
-          visionValidation: meta.visionValidation as Record<string, unknown> | undefined,
-          sourceCategory: target.sourceCategory,
-          sourceType: target.sourceType,
-          sourceDiscoveredAssetId: target.sourceDiscoveredAssetId,
-          videoReady: meta.videoReady,
-          transparent: meta.transparent,
-        },
+        blob,
+        mimeType: file.type,
+        width: editedAsset.width || 0,
+        height: editedAsset.height || 0,
+        originalAssetId: target.id,
+        clientId: selectedClientId || undefined,
+        category: target.sourceCategory,
+        role: target.role,
+        name: file.name,
+        operation: meta.operation,
+        prompt: meta.prompt,
+        model: meta.model,
+        quality: meta.quality,
+        outputFormat: meta.outputFormat,
+        outputCompression: meta.outputCompression,
+        inputFidelity: meta.inputFidelity,
+        responseId: meta.responseId,
+        imageGenerationCallId: meta.imageGenerationCallId,
+        revisedPrompt: meta.revisedPrompt,
+        editMetadata: editedAsset.editMetadata,
+        visionAnalysis: meta.visionAnalysis as Record<string, unknown> | undefined,
+        visionValidation: meta.visionValidation as Record<string, unknown> | undefined,
+        sourceCategory: target.sourceCategory,
+        sourceType: target.sourceType,
+        sourceDiscoveredAssetId: target.sourceDiscoveredAssetId,
+        videoReady: meta.videoReady,
+        transparent: meta.transparent,
       })
 
-      if (persistResult.ok && persistResult.url) {
-        supabaseUrl = persistResult.url
+      if (persistResult.ok && persistResult.publicUrl) {
+        supabaseUrl = persistResult.publicUrl
         setAssets((prev) => {
           const updater = (list: PersonalizationAsset[]) =>
             list.map((a) => (a.id === editedAsset.id ? { ...a, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : a))
@@ -1504,39 +1500,37 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       const persistResult = await persistEditedPersonalizationAsset({
         assetId: editedAsset.id,
         dataUrl,
-        meta: {
-          blob,
-          mimeType: file.type,
-          width: editedAsset.width || 0,
-          height: editedAsset.height || 0,
-          originalAssetId: savedTarget.id,
-          clientId,
-          category: savedTarget.sourceCategory,
-          role: savedTarget.role,
-          name: file.name,
-          operation: meta.operation,
-          prompt: meta.prompt,
-          model: meta.model,
-          quality: meta.quality,
-          outputFormat: meta.outputFormat,
-          outputCompression: meta.outputCompression,
-          inputFidelity: meta.inputFidelity,
-          responseId: meta.responseId,
-          imageGenerationCallId: meta.imageGenerationCallId,
-          revisedPrompt: meta.revisedPrompt,
-          editMetadata: editedAsset.editMetadata,
-          visionAnalysis: meta.visionAnalysis as Record<string, unknown> | undefined,
-          visionValidation: meta.visionValidation as Record<string, unknown> | undefined,
-          sourceCategory: savedTarget.sourceCategory,
-          sourceType: savedTarget.sourceType,
-          sourceDiscoveredAssetId: savedTarget.sourceDiscoveredAssetId,
-          videoReady: meta.videoReady,
-          transparent: meta.transparent,
-        },
+        blob,
+        mimeType: file.type,
+        width: editedAsset.width || 0,
+        height: editedAsset.height || 0,
+        originalAssetId: savedTarget.id,
+        clientId,
+        category: savedTarget.sourceCategory,
+        role: savedTarget.role,
+        name: file.name,
+        operation: meta.operation,
+        prompt: meta.prompt,
+        model: meta.model,
+        quality: meta.quality,
+        outputFormat: meta.outputFormat,
+        outputCompression: meta.outputCompression,
+        inputFidelity: meta.inputFidelity,
+        responseId: meta.responseId,
+        imageGenerationCallId: meta.imageGenerationCallId,
+        revisedPrompt: meta.revisedPrompt,
+        editMetadata: editedAsset.editMetadata,
+        visionAnalysis: meta.visionAnalysis as Record<string, unknown> | undefined,
+        visionValidation: meta.visionValidation as Record<string, unknown> | undefined,
+        sourceCategory: savedTarget.sourceCategory,
+        sourceType: savedTarget.sourceType,
+        sourceDiscoveredAssetId: savedTarget.sourceDiscoveredAssetId,
+        videoReady: meta.videoReady,
+        transparent: meta.transparent,
       })
 
-      if (persistResult.ok && persistResult.url) {
-        supabaseUrl = persistResult.url
+      if (persistResult.ok && persistResult.publicUrl) {
+        supabaseUrl = persistResult.publicUrl
         const finalSavedAsset: PersonalizationAsset = {
           ...editedAsset,
           url: supabaseUrl!,
@@ -2180,7 +2174,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         isPrimary,
         name: `discovered_${Date.now()}`,
         originalUrl: item.originalPreviewUrl || item.previewUrl,
-        edited: item.edited || false,
+        edited: Boolean(item.edited || item.editedDataUrl),
         editedDataUrl: item.editedDataUrl,
         videoReady: item.videoReady || false,
         hasTransparency: item.hasTransparency || false,
@@ -2382,7 +2376,10 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
 
   const analyzeDiscoveredAssets = useCallback(async () => {
-    if (discoveredAssets.length === 0) return
+    if (discoveredAssets.length === 0) {
+      setVisionStatus('complete')
+      return
+    }
     setVisionStatus('analyzing')
     setVisionError(null)
 
@@ -2468,9 +2465,9 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
           qualityScore: analysis.qualityScore,
           relevanceScore: analysis.relevanceScore,
           recommended,
-          selected: analysis.duplicateLikely ? false : (asset.selected || recommended),
+          selected: asset.selected || recommended,
           assignedSection:
-            asset.autoAssigned && useVisionCategory
+            useVisionCategory && !asset.assignedSection
               ? sectionForCategory(category)
               : asset.assignedSection,
           visionAnalysis: analysis,
@@ -2728,7 +2725,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       return
     }
 
-    const blobAssets = allAssets.filter((a) => a.url.startsWith('blob:'))
+    const blobAssets = allAssets.filter((a) => typeof a.url === 'string' && a.url.startsWith('blob:'))
     if (blobAssets.length > 0) {
       setGeneration({
         ...EMPTY_GENERATION_STATE,

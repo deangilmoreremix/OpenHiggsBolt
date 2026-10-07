@@ -4,6 +4,8 @@ import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/ap
 import { ENTITLEMENTS } from '@/access/entitlements';
 import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer';
 
+export const dynamic = "force-dynamic";
+
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const ENHANCE_FUNCTION = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/enhance-prompt` : '/.netlify/functions/enhance-prompt';
 

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getApiKeyFromRequest, validateUploadProxyTarget, isBlockedFileType } from '@/lib/uploadProxyTarget';
 import { resolveMuAPIKey } from '../vfx/_helpers';
 
+export const dynamic = "force-dynamic";
+
 // Upload binary proxy — forwards a multipart upload server-to-server.
 // Mirrors /api/upload-binary for upstream clients calling /api/v1/upload-binary.
 export async function POST(request) {

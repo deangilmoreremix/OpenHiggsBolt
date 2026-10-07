@@ -4,6 +4,8 @@ import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/ap
 import { ENTITLEMENTS } from '@/access/entitlements'
 import { safeApiJson } from '@/lib/safeApiResponse'
 
+export const dynamic = "force-dynamic";
+
 const GENERATION_GET_PATTERNS = [
   /\/gpt-image-2$/,
   /\/text-to-video$/,

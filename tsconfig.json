@@ -19,6 +19,7 @@
     "incremental": true,
     "types": [
       "node",
+      "styled-jsx",
       "vite/client"
     ],
     "baseUrl": ".",

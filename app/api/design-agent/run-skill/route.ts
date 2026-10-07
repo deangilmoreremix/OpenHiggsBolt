@@ -6,6 +6,8 @@ import { ENTITLEMENTS } from '@/access/entitlements'
 import { auth } from '@clerk/nextjs/server'
 import { requireOwnership, recordOwnership } from '../lib/ownership'
 
+export const dynamic = "force-dynamic";
+
 const BASE = 'https://api.muapi.ai/api/v1/creative-agent'
 
 function latestUserInput(messagesSnapshot: any[]) {

@@ -7,6 +7,8 @@ import {
 import { Workspace } from '../../../../src/lib/tenantSync';
 import { apiError } from '@/lib/apiError';
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const { userId } = await auth();

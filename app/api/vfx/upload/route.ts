@@ -7,6 +7,8 @@ import { rateLimit, rateLimit429 } from '@/lib/rateLimit'
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
 import { ENTITLEMENTS } from '@/access/entitlements'
 
+export const dynamic = "force-dynamic";
+
 // Per-key rate limit: 10 requests / 60s, keyed by the resolved MuAPI apiKey.
 // Tune via rateLimit(key, { windowMs, max }).
 const RATE_LIMIT_MAX = 10

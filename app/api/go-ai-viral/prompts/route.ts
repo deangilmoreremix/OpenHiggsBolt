@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import type { PromptRecord, FeedStats } from '@/types/go-ai-viral/prompt'
 import { classifyBatch, type NicheResult } from '@/lib/nicheClassifier'
 
+export const dynamic = "force-dynamic";
+
 /**
  * GO- AI Viral — Prompts API
  *

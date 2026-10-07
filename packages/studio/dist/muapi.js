@@ -43,6 +43,7 @@ exports.handleProxyRequest = handleProxyRequest;
 exports.handleServerSideProxy = handleServerSideProxy;
 exports.pollAgentChatResult = pollAgentChatResult;
 exports.processLipSync = processLipSync;
+exports.processMotionControl = processMotionControl;
 exports.processRecast = processRecast;
 exports.processV2V = processV2V;
 exports.registerAppInterest = registerAppInterest;
@@ -643,7 +644,7 @@ function getUserBalance(_x27) {
 }
 function _getUserBalance() {
   _getUserBalance = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee12(apiKey) {
-    var response, errText;
+    var response, errText, error;
     return _regenerator().w(function (_context12) {
       while (1) switch (_context12.n) {
         case 0:
@@ -665,7 +666,9 @@ function _getUserBalance() {
         case 2:
           errText = _context12.v;
           notifyAuthRequired(response.status, errText);
-          throw new Error("Failed to fetch balance: ".concat(response.status, " - ").concat(errText.slice(0, 100)));
+          error = new Error("Failed to fetch balance: ".concat(response.status, " - ").concat(errText.slice(0, 100)));
+          error.status = response.status;
+          throw error;
         case 3:
           _context12.n = 4;
           return response.json();
@@ -2195,4 +2198,54 @@ function buildWorkflowApiSnippets(workflowId, inputs, options) {
 }
 function generateCharacterVideo() {
   return {};
+}
+function processMotionControl(_x105, _x106) {
+  return _processMotionControl.apply(this, arguments);
+}
+function _processMotionControl() {
+  _processMotionControl = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee50(apiKey, params) {
+    var model, mode, internalPrompt, userPrompt, finalPrompt, imagesList, duration, payload;
+    return _regenerator().w(function (_context50) {
+      while (1) switch (_context50.n) {
+        case 0:
+          model = params.model || 'seedance-2.5-motion-control';
+          mode = params.mode || 'motion_transfer';
+          internalPrompt = mode === 'objects_swap' ? 'Keep the rest of the scene as filmed, swap the characters, products, or clothes with the reference images.' : 'Extract motion from the reference video and rebuild the scene with the new characters and assets, preserving the original motion, choreography, and camera movements.';
+          userPrompt = String(params.prompt || '').trim();
+          finalPrompt = userPrompt ? "".concat(internalPrompt, " ").concat(userPrompt) : internalPrompt;
+          imagesList = [];
+          if (Array.isArray(params.images_list)) {
+            imagesList = params.images_list;
+          } else if (params.images) {
+            imagesList = Array.isArray(params.images) ? params.images : [params.images];
+          } else if (params.image_url) {
+            imagesList = [params.image_url];
+          }
+          duration = Number(params.duration) || 5;
+          payload = {
+            video_url: params.video_url,
+            images_list: imagesList,
+            aspect_ratio: params.aspect_ratio || '16:9',
+            duration: duration,
+            generate_audio: !!params.generate_audio,
+            prompt: finalPrompt
+          };
+          if (model === 'seedance-2-motion-control') {
+            if (payload.duration > 15) payload.duration = 15;
+            if (payload.duration < 4) payload.duration = 4;
+            if (payload.images_list.length > 9) payload.images_list = payload.images_list.slice(0, 9);
+            payload.quality = params.quality === 'basic' ? 'basic' : 'high';
+            if (params.seed !== undefined && params.seed !== -1) payload.seed = Number(params.seed);
+          } else {
+            if (payload.duration > 30) payload.duration = 30;
+            if (payload.duration < 4) payload.duration = 4;
+            if (payload.images_list.length > 30) payload.images_list = payload.images_list.slice(0, 30);
+            payload.high_bitrate = !!params.high_bitrate;
+            if (params.seed !== undefined && params.seed !== -1) payload.seed = Number(params.seed);
+          }
+          return _context50.a(2, submitAndPoll(model, payload, apiKey, params.onRequestId, 900));
+      }
+    }, _callee50);
+  }));
+  return _processMotionControl.apply(this, arguments);
 }

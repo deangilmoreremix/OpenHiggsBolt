@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
 import { ENTITLEMENTS } from '@/access/entitlements';
 
+export const dynamic = "force-dynamic";
+
 const MUAPI_BASE = 'https://api.muapi.ai';
 
 // Rewrite upstream artwork URLs (icon_url / thumbnail / agent_icon_url) into our
