@@ -469,3 +469,51 @@ export interface DiscoveredAsset {
   visionAnalysis?: PersonalizationVisionAnalysis
   visionValidation?: PersonalizationVisionValidation
 }
+
+// ── AI Assist Types (Phases 15-19) ─────────────────────────────────────────────
+
+export interface AIAssistReadiness {
+  canGenerate: boolean
+  missing: string[]
+  warnings: string[]
+  score: number // 0-100
+}
+
+export interface AIAssistRecommendation {
+  id: string
+  type: 'asset' | 'mode' | 'output' | 'client' | 'prompt'
+  priority: 'high' | 'medium' | 'low'
+  title: string
+  description: string
+  action?: () => void | Promise<void>
+}
+
+export interface AIAssistAction {
+  id: string
+  type: 'read' | 'mutate'
+  label: string
+  description: string
+  requiresConfirmation: boolean
+  execute: () => Promise<void>
+}
+
+export interface GenerationPlanStep {
+  label: string
+  description: string
+  estimatedDuration: string
+}
+
+export interface GenerationPlan {
+  steps: GenerationPlanStep[]
+  estimatedTotalDuration: string
+}
+
+export interface AIAssistStructuredResponse {
+  message: string
+  recommendations: AIAssistRecommendation[]
+  actions: AIAssistAction[]
+  missingRequirements: string[]
+  warnings: string[]
+  readiness: AIAssistReadiness
+  generationPlan?: GenerationPlan
+}

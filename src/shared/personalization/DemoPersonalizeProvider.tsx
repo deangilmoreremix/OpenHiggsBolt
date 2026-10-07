@@ -75,10 +75,12 @@ import { personalizePrompt } from './promptPersonalizer'
 import { runGeneration } from './generationRouter'
 import { resolveModelCapabilities, resolveAssetsForModel } from './modelCapabilityResolver'
 import { applyPostProcessing, generateEndCardImage } from './postProcessor'
-import { uploadFile } from 'studio/src/muapi'
 import type { BusinessDiscoveryRecord } from './types'
+import { uploadPersonalizationAsset } from './assetUploadService'
+import { persistEditedPersonalizationAsset } from './editedAssetPersistence'
 
 import { normalizeUrl, TRACKING_PARAMS } from './urlNormalizer'
+import { createProjectPersistence, loadProject, type LoadProjectResult } from './supabaseProjectPersistence'
 
 const EMPTY_ASSET_LIBRARY: AssetLibrary = {
   identities: [],
@@ -141,7 +143,7 @@ type OpenPersonalizeOptions = {
   trigger?: HTMLElement | null
 }
 
-type DemoPersonalizeContextValue = {
+export type DemoPersonalizeContextValue = {
   // Modal
   isOpen: boolean
   source: PersonalizationSource | null
@@ -301,6 +303,21 @@ type DemoPersonalizeContextValue = {
   setResultTab: (tab: 'prompt' | 'images' | 'videos') => void
   editInImageStudio: () => void
   editInVideoStudio: () => void
+  openImageEditor?: (asset: {
+    id: string
+    name: string
+    imageUrl: string
+    originalImageUrl: string
+    category: string | undefined
+    role: string
+    source: string
+    businessName?: string
+    industry?: string
+    productService?: string
+    brandDescription?: string
+    referenceImages: string[]
+    visionAnalysis?: any
+  }, operation: string) => void
   publish: () => void
   download: () => void
 
@@ -317,6 +334,17 @@ type DemoPersonalizeContextValue = {
   selectSavedAsset: (asset: PersonalizationAsset) => void
   setPrimarySavedAsset: (role: 'identity' | 'logo', assetId: string) => void
   removeSavedAsset: (assetId: string) => void
+
+  // Project restore (Phase 14)
+  loadedProject: {
+    id: string
+    sourceDemoId: string
+    personalizedPrompt: string
+    clientId: string | null
+    status: string
+    updatedAt: string
+  } | null
+  restoring: boolean
 }
 
 const PersonalizationContext = createContext<DemoPersonalizeContextValue | null>(null)
@@ -538,6 +566,17 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     recommendedMode: undefined,
   })
 
+  // Project restore (Phase 14)
+  const [loadedProject, setLoadedProject] = useState<{
+    id: string
+    sourceDemoId: string
+    personalizedPrompt: string
+    clientId: string | null
+    status: string
+    updatedAt: string
+  } | null>(null)
+  const [restoring, setRestoring] = useState(false)
+
   // Refs for studio handoff persistence
   const lastResultRef = useRef<GenerationResult | null>(null)
   const lastProjectRef = useRef<{
@@ -547,6 +586,9 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     mode: VideoPersonalizationMode | ImagePersonalizationMode | null
     personalizedPrompt?: string
   } | null>(null)
+
+  // Debounced Supabase project persistence
+  const projectPersistence = useRef(createProjectPersistence({ debounceMs: 1500 }))
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -611,6 +653,303 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     selectedClientId,
   ])
 
+  // Debounced Supabase project persistence
+  useEffect(() => {
+    if (!source) return
+    projectPersistence.current.persist({
+      originStudio: 'demo-personalization',
+      sourceType: source.sourceType,
+      sourceDemoId: source.id,
+      sourceDemoSlug: (source as { slug?: string }).slug ?? null,
+      sourceMedia: source.sourceMedia,
+      sourceUrl: source.sourceUrl ?? null,
+      personalizationMode: mode || null,
+      model: source.model || genOptions.model || null,
+      originalPrompt: promptState.original,
+      personalizedPrompt: promptState.personalized || promptState.edited,
+      identityAssetIds: assets.identities.map((i) => i.id),
+      logoAssetIds: assets.logos.map((l) => l.id),
+      productAssetIds: assets.products.map((p) => p.id),
+      brandReferenceAssetIds: assets.brandReferences.map((b) => b.id),
+      firstFrameAssetId: assets.firstFrame?.id || null,
+      lastFrameAssetId: assets.lastFrame?.id || null,
+      outputUrls: result?.urls || (result?.url ? [result.url] : []),
+      outputType,
+      clientId: selectedClientId || null,
+      status: generation.status === 'complete' ? 'complete' : 'draft',
+      ctaHeadline: clientForm.ctaHeadline || null,
+      callToAction: clientForm.callToAction || null,
+      generationSettings: {
+        engine: genOptions.engine,
+        preserveAudio: genOptions.preserveAudio,
+        exactLogoHandling: genOptions.exactLogoHandling,
+        exactCtaHandling: genOptions.exactCtaHandling,
+        firstFrameMode: genOptions.firstFrameMode,
+        lastFrameMode: genOptions.lastFrameMode,
+        advancedModel: genOptions.advancedModel || null,
+        aspectRatio: genOptions.aspectRatio || null,
+        duration: genOptions.duration || null,
+        resolution: genOptions.resolution || null,
+        quality: genOptions.quality || null,
+        consentGiven: genOptions.consentGiven,
+      },
+      aiAssistState: {},
+    })
+  }, [
+    source?.id,
+    source,
+    mode,
+    promptState.original,
+    promptState.personalized,
+    promptState.edited,
+    assets,
+    outputType,
+    selectedClientId,
+    generation.status,
+    result?.url,
+    result?.urls,
+    clientForm.ctaHeadline,
+    clientForm.callToAction,
+    genOptions,
+  ])
+
+  // Debounced Supabase project persistence
+  useEffect(() => {
+    if (!source) return
+    projectPersistence.current.persist({
+      originStudio: 'demo-personalization',
+      sourceType: source.sourceType,
+      sourceDemoId: source.id,
+      sourceDemoSlug: (source as { slug?: string }).slug ?? null,
+      sourceMedia: source.sourceMedia,
+      sourceUrl: source.sourceUrl ?? null,
+      personalizationMode: mode || null,
+      model: source.model || genOptions.model || null,
+      originalPrompt: promptState.original,
+      personalizedPrompt: promptState.personalized || promptState.edited,
+      identityAssetIds: assets.identities.map((i) => i.id),
+      logoAssetIds: assets.logos.map((l) => l.id),
+      productAssetIds: assets.products.map((p) => p.id),
+      brandReferenceAssetIds: assets.brandReferences.map((b) => b.id),
+      firstFrameAssetId: assets.firstFrame?.id || null,
+      lastFrameAssetId: assets.lastFrame?.id || null,
+      outputUrls: result?.urls || (result?.url ? [result.url] : []),
+      outputType,
+      clientId: selectedClientId || null,
+      status: generation.status === 'complete' ? 'complete' : 'draft',
+      ctaHeadline: clientForm.ctaHeadline || null,
+      callToAction: clientForm.callToAction || null,
+      generationSettings: {
+        engine: genOptions.engine,
+        preserveAudio: genOptions.preserveAudio,
+        exactLogoHandling: genOptions.exactLogoHandling,
+        exactCtaHandling: genOptions.exactCtaHandling,
+        firstFrameMode: genOptions.firstFrameMode,
+        lastFrameMode: genOptions.lastFrameMode,
+        advancedModel: genOptions.advancedModel || null,
+        aspectRatio: genOptions.aspectRatio || null,
+        duration: genOptions.duration || null,
+        resolution: genOptions.resolution || null,
+        quality: genOptions.quality || null,
+        consentGiven: genOptions.consentGiven,
+      },
+      aiAssistState: {},
+    })
+  }, [
+    source?.id,
+    source,
+    mode,
+    promptState.original,
+    promptState.personalized,
+    promptState.edited,
+    assets,
+    outputType,
+    selectedClientId,
+    generation.status,
+    result?.url,
+    result?.urls,
+    clientForm.ctaHeadline,
+    clientForm.callToAction,
+    genOptions,
+  ])
+
+  // Cancel pending project persistence on unmount
+  useEffect(() => {
+    return () => {
+      projectPersistence.current.cancel()
+    }
+  }, [])
+
+  // ── Project restore (Phase 14) ──────────────────────────────────────────────
+  // When the modal opens with a source, attempt to load the most-recently-saved
+  // project for that source from Supabase.  The debounced-persist effect above
+  // will write state changes back; localStorage is left as a fast local cache
+  // but Supabase is the durable source of truth.
+
+  const restoreProject = useCallback(async (src: PersonalizationSource): Promise<void> => {
+    if (!src?.id) return
+    projectPersistence.current.cancel() // don't race with an in-flight save
+
+    let result: LoadProjectResult
+    try {
+      result = await loadProject({ sourceId: src.id })
+    } catch {
+      return
+    }
+
+    if (!result.ok || !result.data) return
+
+    const entry = result.data
+
+    // ── Restore client form ───────────────────────────────────────────────────
+    const savedClient = entry.clientId
+      ? clients.find((c) => c.id === entry.clientId) ?? loadClients().find((c) => c.id === entry.clientId)
+      : null
+
+    const clientFormPatch: Partial<ClientProfile> = { ...(savedClient ?? {}) }
+    if (entry.ctaHeadline) clientFormPatch.ctaHeadline = entry.ctaHeadline
+    if (entry.callToAction) clientFormPatch.callToAction = entry.callToAction
+    setClientForm(clientFormPatch)
+
+    if (savedClient) {
+      setSelectedClientId(savedClient.id)
+      setCurrentClientId(savedClient.id)
+    }
+
+    // ── Restore assets ───────────────────────────────────────────────────────
+    const assetEntries: { id: string; url: string; role: PersonalizationAsset['role']; isPrimary: boolean }[] = []
+
+    entry.identityAssetIds.forEach((id, idx) => {
+      assetEntries.push({ id, url: id, role: 'presenter_identity', isPrimary: idx === 0 })
+    })
+    entry.logoAssetIds.forEach((id, idx) => {
+      assetEntries.push({ id, url: id, role: 'logo', isPrimary: idx === 0 })
+    })
+    entry.productAssetIds.forEach((id) => {
+      assetEntries.push({ id, url: id, role: 'product_reference', isPrimary: false })
+    })
+    entry.brandReferenceAssetIds.forEach((id) => {
+      assetEntries.push({ id, url: id, role: 'brand_reference', isPrimary: false })
+    })
+    if (entry.firstFrameAssetId) {
+      assetEntries.push({ id: entry.firstFrameAssetId, url: entry.firstFrameAssetId, role: 'first_frame', isPrimary: true })
+    }
+    if (entry.lastFrameAssetId) {
+      assetEntries.push({ id: entry.lastFrameAssetId, url: entry.lastFrameAssetId, role: 'last_frame', isPrimary: true })
+    }
+
+    // Build the AssetLibrary in one shot to avoid intermediate empty states
+    const restoredLibrary = assetEntries.reduce<AssetLibrary>((lib, a) => {
+      const asset: PersonalizationAsset = {
+        id: a.id,
+        role: a.role,
+        name: a.url.split('/').pop() || a.id,
+        url: a.url,
+        uploadedUrl: a.url,
+        isPrimary: a.isPrimary,
+        mimeType: '',
+        createdAt: new Date().toISOString(),
+        uploadStatus: 'ready',
+        uploadError: null,
+        file: null,
+      }
+      return updateAssetInLibrary(lib, asset)
+    }, { ...EMPTY_ASSET_LIBRARY })
+
+    setAssets(restoredLibrary)
+
+    // ── Restore prompt ───────────────────────────────────────────────────────
+    setPromptState({
+      original: entry.originalPrompt || src.originalPrompt || src.fullPrompt || '',
+      personalized: entry.personalizedPrompt || '',
+      edited: entry.personalizedPrompt || '',
+    })
+
+    // ── Restore generation settings ──────────────────────────────────────────
+    if (entry.generationSettings && typeof entry.generationSettings === 'object') {
+      const gs = entry.generationSettings as Record<string, unknown>
+      setGenOptions((prev) => ({
+        ...prev,
+        engine: typeof gs.engine === 'string' ? gs.engine : prev.engine,
+        preserveAudio: gs.preserveAudio !== false,
+        exactLogoHandling: (typeof gs.exactLogoHandling === 'string' ? gs.exactLogoHandling : prev.exactLogoHandling) as GenerationOptions['exactLogoHandling'],
+        exactCtaHandling: (typeof gs.exactCtaHandling === 'string' ? gs.exactCtaHandling : prev.exactCtaHandling) as GenerationOptions['exactCtaHandling'],
+        firstFrameMode: (typeof gs.firstFrameMode === 'string' ? gs.firstFrameMode : prev.firstFrameMode) as GenerationOptions['firstFrameMode'],
+        lastFrameMode: (typeof gs.lastFrameMode === 'string' ? gs.lastFrameMode : prev.lastFrameMode) as GenerationOptions['lastFrameMode'],
+        advancedModel: typeof gs.advancedModel === 'string' ? gs.advancedModel : prev.advancedModel,
+        aspectRatio: typeof gs.aspectRatio === 'string' ? gs.aspectRatio : prev.aspectRatio,
+        duration: typeof gs.duration === 'number' ? gs.duration : prev.duration,
+        resolution: typeof gs.resolution === 'string' ? gs.resolution : prev.resolution,
+        quality: typeof gs.quality === 'string' ? gs.quality : prev.quality,
+        consentGiven: gs.consentGiven === true,
+      }))
+    }
+
+    // ── Restore output type ──────────────────────────────────────────────────
+    if (entry.outputType && ['prompt', 'image', 'video', 'everything'].includes(entry.outputType)) {
+      setOutputType(entry.outputType as OutputType)
+    }
+
+    // ── Restore mode ─────────────────────────────────────────────────────────
+    const validModes = src.mediaType === 'video'
+      ? ['face_only', 'full_body', 'recreate', 'complete']
+      : src.mediaType === 'image'
+        ? ['keep_design', 'replace_face', 'replace_person', 'recreate', 'complete']
+        : []
+    if (entry.personalizationMode && validModes.includes(entry.personalizationMode)) {
+      setMode(entry.personalizationMode as VideoPersonalizationMode | ImagePersonalizationMode)
+    }
+
+    // ── Restore CTA ──────────────────────────────────────────────────────────
+    if (entry.ctaHeadline || entry.callToAction) {
+      setClientForm((prev) => ({
+        ...prev,
+        ctaHeadline: entry.ctaHeadline ?? prev.ctaHeadline,
+        callToAction: entry.callToAction ?? prev.callToAction,
+      }))
+    }
+
+    // ── Restore result URLs (non-blob) ───────────────────────────────────────
+    if (Array.isArray(entry.outputUrls) && entry.outputUrls.length > 0) {
+      const durableUrls = entry.outputUrls.filter((u) => typeof u === 'string' && !u.startsWith('blob:'))
+      if (durableUrls.length > 0) {
+        setResult({
+          type: entry.outputType as GenerationResult['type'],
+          urls: durableUrls,
+          prompt: entry.personalizedPrompt || undefined,
+        })
+      }
+    }
+
+    // Expose restore summary to the UI
+    setLoadedProject({
+      id: entry.id || '',
+      sourceDemoId: entry.sourceDemoId || src.id,
+      personalizedPrompt: entry.personalizedPrompt,
+      clientId: entry.clientId,
+      status: entry.status || 'draft',
+      updatedAt: new Date().toISOString(),
+    })
+  }, [clients])
+
+  // Hydrate state from Supabase whenever the modal opens with a source.
+  // The reset-on-source-change effect (above) runs first, clearing state;
+  // this effect then fills it back in from durable storage.
+  useEffect(() => {
+    if (!source?.id || !isOpen) return
+    let cancelled = false
+    setRestoring(true)
+    setLoadedProject(null)
+
+    restoreProject(source).finally(() => {
+      if (!cancelled) setRestoring(false)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [source?.id, isOpen, restoreProject])
+
   // ── Modal actions ──────────────────────────────────────────────────────────
 
   const openPersonalize = useCallback((opts: OpenPersonalizeOptions) => {
@@ -621,9 +960,12 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
           ? 'GO AI Viral'
           : undefined
       setSourceTypeLabel(label)
-      triggerRef.current = opts.trigger || null
+      // Set source BEFORE isOpen so the restore effect (which watches
+      // source?.id && isOpen) runs in the same render cycle as the modal
+      // appearing — and AFTER the reset-on-source-change effect clears state.
       setSource(normalized)
       setIsOpen(true)
+      triggerRef.current = opts.trigger || null
     }
   }, [])
 
@@ -866,8 +1208,9 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
     setAssetUploadStatus(asset.id, 'uploading')
     try {
-      const url = await uploadFile(apiKey, asset.file, (_percent) => {
-        // optional progress hook
+      const url = await uploadPersonalizationAsset({
+        apiKey,
+        file: asset.file as File,
       })
       setAssetUploadStatus(asset.id, 'ready', null)
       // Update URL to durable uploaded URL and revoke old blob
@@ -995,31 +1338,79 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       visionValidation: meta.visionValidation,
     }
 
-    const inCurrentJob = currentJobAssets.some((a) => a.id === assetId)
-    const inSavedLibrary = savedAssets.some((a) => a.id === assetId)
+    setAssets((prev) => replaceAssetInLibrary(prev, editedAsset))
 
-    if (inCurrentJob) {
-      setAssets((prev) => replaceAssetInLibrary(prev, editedAsset))
-    }
-    if (inSavedLibrary && selectedClientId) {
-      const updatedLibrary = updateAssetInClientLibrary(selectedClientId, editedAsset)
-      setSavedClientAssets(updatedLibrary)
-    }
+    let supabaseUrl: string | undefined
     try {
-      const uploadedUrl = await uploadAsset(editedAsset)
-      if (inSavedLibrary && selectedClientId) {
-        const updatedLibrary = updateAssetInClientLibrary(selectedClientId, {
-          ...editedAsset,
-          url: uploadedUrl,
-          uploadedUrl,
+      const persistResult = await persistEditedPersonalizationAsset({
+        assetId: editedAsset.id,
+        dataUrl,
+        meta: {
+          blob,
+          mimeType: file.type,
+          width: editedAsset.width || 0,
+          height: editedAsset.height || 0,
+          originalAssetId: target.id,
+          clientId: selectedClientId || undefined,
+          category: target.sourceCategory,
+          role: target.role,
+          name: file.name,
+          operation: meta.operation,
+          prompt: meta.prompt,
+          model: meta.model,
+          quality: meta.quality,
+          outputFormat: meta.outputFormat,
+          outputCompression: meta.outputCompression,
+          inputFidelity: meta.inputFidelity,
+          responseId: meta.responseId,
+          imageGenerationCallId: meta.imageGenerationCallId,
+          revisedPrompt: meta.revisedPrompt,
+          editMetadata: editedAsset.editMetadata,
+          visionAnalysis: meta.visionAnalysis as Record<string, unknown> | undefined,
+          visionValidation: meta.visionValidation as Record<string, unknown> | undefined,
+          sourceCategory: target.sourceCategory,
+          sourceType: target.sourceType,
+          sourceDiscoveredAssetId: target.sourceDiscoveredAssetId,
+          videoReady: meta.videoReady,
+          transparent: meta.transparent,
+        },
+      })
+
+      if (persistResult.ok && persistResult.url) {
+        supabaseUrl = persistResult.url
+        setAssets((prev) => {
+          const updater = (list: PersonalizationAsset[]) =>
+            list.map((a) => (a.id === editedAsset.id ? { ...a, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : a))
+          const old = [
+            ...prev.identities,
+            ...prev.logos,
+            ...prev.products,
+            ...prev.brandReferences,
+            prev.firstFrame,
+            prev.lastFrame,
+            prev.ctaGraphic,
+          ].find((a) => a?.id === editedAsset.id)
+          if (old) revokeAssetUrl(old)
+          return {
+            ...prev,
+            identities: updater(prev.identities),
+            logos: updater(prev.logos),
+            products: updater(prev.products),
+            brandReferences: updater(prev.brandReferences),
+            firstFrame: prev.firstFrame?.id === editedAsset.id ? { ...prev.firstFrame, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : prev.firstFrame,
+            lastFrame: prev.lastFrame?.id === editedAsset.id ? { ...prev.lastFrame, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : prev.lastFrame,
+            ctaGraphic: prev.ctaGraphic?.id === editedAsset.id ? { ...prev.ctaGraphic, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : prev.ctaGraphic,
+          }
         })
-        setSavedClientAssets(updatedLibrary)
       }
-    } catch (error) {
-      URL.revokeObjectURL(localUrl)
-      throw error
+    } catch {
+      // Supabase persistence failed — fall back to MuAPI upload below
     }
-  }, [assets, savedClientAssets, selectedClientId, setSavedClientAssets, uploadAsset])
+
+    if (!supabaseUrl) {
+      await uploadAsset(editedAsset)
+    }
+  }, [assets, uploadAsset, selectedClientId])
 
   const applyEditedSavedClientAsset = useCallback(async (
     clientId: string,
@@ -1105,21 +1496,79 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     ].filter((a): a is PersonalizationAsset => Boolean(a)).find((a) => a.id === assetId)
 
     if (currentJobTarget) {
-      const syncedAsset: PersonalizationAsset = {
-        ...editedAsset,
-        url: currentJobTarget.url,
-        uploadedUrl: currentJobTarget.uploadedUrl,
-        file: currentJobTarget.file,
-        uploadStatus: currentJobTarget.uploadStatus,
-      }
-      setAssets((prev) => replaceAssetInLibrary(prev, syncedAsset))
+      setAssets((prev) => replaceAssetInLibrary(prev, editedAsset))
     }
 
+    let supabaseUrl: string | undefined
     try {
+      const persistResult = await persistEditedPersonalizationAsset({
+        assetId: editedAsset.id,
+        dataUrl,
+        meta: {
+          blob,
+          mimeType: file.type,
+          width: editedAsset.width || 0,
+          height: editedAsset.height || 0,
+          originalAssetId: savedTarget.id,
+          clientId,
+          category: savedTarget.sourceCategory,
+          role: savedTarget.role,
+          name: file.name,
+          operation: meta.operation,
+          prompt: meta.prompt,
+          model: meta.model,
+          quality: meta.quality,
+          outputFormat: meta.outputFormat,
+          outputCompression: meta.outputCompression,
+          inputFidelity: meta.inputFidelity,
+          responseId: meta.responseId,
+          imageGenerationCallId: meta.imageGenerationCallId,
+          revisedPrompt: meta.revisedPrompt,
+          editMetadata: editedAsset.editMetadata,
+          visionAnalysis: meta.visionAnalysis as Record<string, unknown> | undefined,
+          visionValidation: meta.visionValidation as Record<string, unknown> | undefined,
+          sourceCategory: savedTarget.sourceCategory,
+          sourceType: savedTarget.sourceType,
+          sourceDiscoveredAssetId: savedTarget.sourceDiscoveredAssetId,
+          videoReady: meta.videoReady,
+          transparent: meta.transparent,
+        },
+      })
+
+      if (persistResult.ok && persistResult.url) {
+        supabaseUrl = persistResult.url
+        const finalSavedAsset: PersonalizationAsset = {
+          ...editedAsset,
+          url: supabaseUrl!,
+          uploadedUrl: supabaseUrl,
+          uploadStatus: 'ready',
+        }
+        updateAssetInClientLibrary(clientId, finalSavedAsset)
+        setSavedClientAssets(updateAssetInClientLibrary(clientId, finalSavedAsset))
+
+        if (currentJobTarget) {
+          setAssets((prev) => {
+            const updater = (list: PersonalizationAsset[]) =>
+              list.map((a) => (a.id === editedAsset.id ? { ...a, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : a))
+            return {
+              ...prev,
+              identities: updater(prev.identities),
+              logos: updater(prev.logos),
+              products: updater(prev.products),
+              brandReferences: updater(prev.brandReferences),
+              firstFrame: prev.firstFrame?.id === editedAsset.id ? { ...prev.firstFrame, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : prev.firstFrame,
+              lastFrame: prev.lastFrame?.id === editedAsset.id ? { ...prev.lastFrame, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : prev.lastFrame,
+              ctaGraphic: prev.ctaGraphic?.id === editedAsset.id ? { ...prev.ctaGraphic, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : prev.ctaGraphic,
+            }
+          })
+        }
+      }
+    } catch {
+      // Supabase persistence failed — fall back to MuAPI upload below
+    }
+
+    if (!supabaseUrl) {
       await uploadAsset(editedAsset)
-    } catch (error) {
-      URL.revokeObjectURL(editedAsset.url)
-      throw error
     }
   }, [assets, uploadAsset])
 
@@ -2702,6 +3151,10 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     // Shared media
     sharedMediaEntries,
     eligibility,
+
+    // Project restore (Phase 14)
+    loadedProject,
+    restoring,
   }
 
   return (
