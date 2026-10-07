@@ -6,13 +6,13 @@ import { ENTITLEMENTS } from '@/access/entitlements';
 const MUAPI_BASE = 'https://api.muapi.ai';
 
 function getApiKey(request) {
+    const headerKey = request.headers.get('x-api-key');
+    if (headerKey && headerKey.trim()) return headerKey.trim();
     const authHeader = request.headers.get('Authorization');
     if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.substring(7).trim();
         if (token) return token;
     }
-    const headerKey = request.headers.get('x-api-key');
-    if (headerKey && headerKey.trim()) return headerKey.trim();
     return null;
 }
 
@@ -40,8 +40,8 @@ export async function GET(request, { params }) {
     const pathSegments = slug.path || [];
     const path = pathSegments.join('/');
     
-    // Handle alias: get_upload_file -> get_file_upload_url
-    const effectivePath = path === 'get_upload_file' ? 'get_file_upload_url' : path;
+    // Handle aliases for upload URL paths
+    const effectivePath = path === 'get_upload_url' ? 'get_file_upload_url' : path === 'get_upload_file' ? 'get_file_upload_url' : path;
     
     const { search } = new URL(request.url);
     const targetUrl = `${MUAPI_BASE}/app/${effectivePath}${search}`;

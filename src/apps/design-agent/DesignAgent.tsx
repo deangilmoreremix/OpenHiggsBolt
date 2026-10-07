@@ -472,33 +472,20 @@ export default function DesignAgent({ apiKey: propApiKey, onRequestApiKey, templ
           for (const file of files) {
             const supported = file.type.startsWith('image/') || file.type.startsWith('video/') || file.type.startsWith('audio/')
             if (!supported) continue
-            const maxBytes = file.type.startsWith('video/') ? 100 * 1024 * 1024 : 20 * 1024 * 1024
-            if (file.size > maxBytes) throw new Error(`${file.name} exceeds the ${file.type.startsWith('video/') ? '100MB' : '20MB'} reference limit`)
+            const maxBytes = file.type.startsWith('video/') ? 50 * 1024 * 1024 : 10 * 1024 * 1024
+            if (file.size > maxBytes) throw new Error(`${file.name} exceeds the ${file.type.startsWith('video/') ? '50MB' : '10MB'} upload limit`)
 
             const kind: AgentAttachment['kind'] = file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : 'image'
-            const sign = await axios.get('/api/v1/get_upload_url', {
-              params: { filename: file.name },
-              headers: { 'x-api-key': apiKey },
-            })
-            const { url, fields } = sign.data || {}
-            if (!url || !fields?.key) throw new Error('MuAPI did not return an upload URL')
-
-            const formData = new FormData()
-            formData.append('x-proxy-target-url', url)
-            Object.entries(fields).forEach(([key, value]) => formData.append(key, String(value)))
-            formData.append('file', file)
-            await axios.post('/api/v1/upload-binary', formData, {
+            const uploadForm = new FormData()
+            uploadForm.append('file', file)
+            const sign = await axios.post('/api/v1/upload_file', uploadForm, {
               headers: { 'Content-Type': 'multipart/form-data', 'x-api-key': apiKey },
               onUploadProgress: event => {
                 if (event.total) setUploadProgress(Math.round((event.loaded * 100) / event.total))
               },
             })
-
-            const encodedKey = String(fields.key)
-              .split('/')
-              .map(encodeURIComponent)
-              .join('/')
-            const uploadedUrl = `https://cdn.muapi.ai/${encodedKey}`
+            const uploadedUrl = sign.data?.url
+            if (!uploadedUrl) throw new Error('MuAPI did not return an upload URL')
             const registered = await apiCall('/api/design-agent/session-assets', {
               method: 'POST',
               body: JSON.stringify({ sessionId: project.id, url: uploadedUrl, kind }),

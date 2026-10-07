@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { validateUploadProxyTarget, getApiKeyFromRequest, isBlockedFileType } from '@/lib/uploadProxyTarget';
+import { resolveMuAPIKey } from './vfx/_helpers';
 
 // Upload binary proxy — forwards a multipart upload (from MuAPI's S3 presigned
 // form) server-to-server so the browser never needs direct S3/CORS access.
@@ -17,7 +18,19 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 });
         }
 
+        // Validate the API key against MuAPI configuration
+        const resolvedKey = await resolveMuAPIKey(request);
+        if (!resolvedKey) {
+            return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 });
+        }
+
         const formData = await request.formData();
+
+        // Validate that a file is present in the upload
+        const fileEntry = Array.from(formData.entries()).find(([_, value]) => value && typeof value === 'object' && typeof value.name === 'string');
+        if (!fileEntry) {
+            return NextResponse.json({ error: 'file is required' }, { status: 400 });
+        }
 
         // Extract the original S3 target URL we injected earlier
         const targetUrl = formData.get('x-proxy-target-url');
@@ -26,7 +39,7 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Missing proxy target URL' }, { status: 400 });
         }
 
-        const validatedTarget = validateUploadProxyTarget(targetUrl);
+        const validatedTarget = await validateUploadProxyTarget(targetUrl);
         if (!validatedTarget.ok) {
             return NextResponse.json(
                 { error: 'Invalid upload target', reason: validatedTarget.reason },
@@ -73,6 +86,7 @@ export async function POST(request) {
         const s3Response = await fetch(validatedTarget.url, {
             method: 'POST',
             body: s3FormData,
+            signal: AbortSignal.timeout(120000),
         });
 
         if (s3Response.ok || s3Response.status === 204) {
@@ -84,6 +98,6 @@ export async function POST(request) {
         }
     } catch (error) {
         console.error('Upload Proxy Exception:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
