@@ -1,4 +1,18 @@
+import dns from 'dns';
+import { promisify } from 'util';
+
+const resolve4 = promisify(dns.resolve4);
+
 const DEFAULT_S3_REGION_PATTERN = /^[a-z0-9-]+$/;
+
+const BLOCKED_IP_RANGES = [
+  { start: Buffer.from('0A000000', 'hex'), end: Buffer.from('0AFFFFFF', 'hex') },       // 10.0.0.0/8
+  { start: Buffer.from('AC100000', 'hex'), end: Buffer.from('AC1FFFFFF', 'hex') },      // 172.16.0.0/12
+  { start: Buffer.from('C0A80000', 'hex'), end: Buffer.from('C0A8FFFF', 'hex') },       // 192.168.0.0/16
+  { start: Buffer.from('A9FE0000', 'hex'), end: Buffer.from('A9FEFFFF', 'hex') },       // 169.254.0.0/16
+  { start: Buffer.from('7F000000', 'hex'), end: Buffer.from('7FFFFFFF', 'hex') },       // 127.0.0.0/8
+  { start: Buffer.from('00000000000000000000000000000001', 'hex'), end: Buffer.from('00000000000000000000000000000001', 'hex') }, // ::1
+];
 
 function normalizeHostname(hostname) {
     return hostname.toLowerCase().replace(/\.$/, '');
@@ -125,7 +139,20 @@ export function isBlockedFileType(filename = '', contentType = '') {
     return false;
 }
 
-export function validateUploadProxyTarget(rawTarget, { env = process.env } = {}) {
+function isBlockedIp(ip) {
+  if (!ip || typeof ip !== 'string') return true;
+  const parts = ip.split('.').map(Number);
+  if (parts.length !== 4 || parts.some(p => isNaN(p) || p < 0 || p > 255)) return true;
+  const buf = Buffer.from(parts);
+  for (const range of BLOCKED_IP_RANGES) {
+    if (buf.length === range.start.length && buf >= range.start && buf <= range.end) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export async function validateUploadProxyTarget(rawTarget, { env = process.env } = {}) {
     if (typeof rawTarget !== 'string' || rawTarget.trim() === '') {
         return { ok: false, reason: 'missing_target' };
     }
@@ -149,6 +176,16 @@ export function validateUploadProxyTarget(rawTarget, { env = process.env } = {})
     const allowedHosts = parseAllowedHosts(env);
     if (!isAllowedS3Host(hostname) && !allowedHosts.includes(hostname)) {
         return { ok: false, reason: 'host_not_allowed' };
+    }
+
+    // Resolve hostname to prevent SSRF via DNS rebinding
+    try {
+        const addresses = await resolve4(hostname);
+        if (addresses.some(addr => isBlockedIp(addr))) {
+            return { ok: false, reason: 'resolved_to_blocked_ip' };
+        }
+    } catch {
+        return { ok: false, reason: 'dns_resolution_failed' };
     }
 
     return { ok: true, url: url.toString() };

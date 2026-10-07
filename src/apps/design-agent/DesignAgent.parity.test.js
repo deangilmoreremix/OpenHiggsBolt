@@ -19,8 +19,7 @@ describe('SmartVideo Design Agent parity', () => {
 
   it('supports registered multi-reference media', () => {
     expect(source).toContain('MAX_ATTACHMENTS = 14');
-    expect(source).toContain('/api/v1/get_upload_url');
-    expect(source).toContain('/api/v1/upload-binary');
+    expect(source).toContain('/api/v1/upload_file');
     expect(source).toContain('/api/design-agent/session-assets');
     expect(source).toContain('asset_label');
     expect(source).toContain('multiple');
@@ -44,9 +43,9 @@ describe('SmartVideo Design Agent parity', () => {
     expect(source).toContain('Download');
   });
 
-  it('safely encodes CDN upload URLs to handle special characters', () => {
-    expect(source).toContain('split');
-    expect(source).toContain('encodeURIComponent');
-    expect(source).toContain('cdn.muapi.ai');
+  it('safely handles direct upload URLs from MuAPI', () => {
+    expect(source).toContain('/api/v1/upload_file');
+    expect(source).toContain('sign.data?.url');
+    expect(source).toContain('MuAPI did not return an upload URL');
   });
 });

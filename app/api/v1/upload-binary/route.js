@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getApiKeyFromRequest, validateUploadProxyTarget, isBlockedFileType } from '@/lib/uploadProxyTarget';
+import { resolveMuAPIKey } from '../vfx/_helpers';
 
 // Upload binary proxy — forwards a multipart upload server-to-server.
 // Mirrors /api/upload-binary for upstream clients calling /api/v1/upload-binary.
@@ -10,6 +11,12 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 });
         }
 
+        // Validate the API key against MuAPI configuration
+        const resolvedKey = await resolveMuAPIKey(request);
+        if (!resolvedKey) {
+            return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 });
+        }
+
         const formData = await request.formData();
 
         const targetUrl = formData.get('x-proxy-target-url');
@@ -17,7 +24,7 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Missing proxy target URL' }, { status: 400 });
         }
 
-        const validatedTarget = validateUploadProxyTarget(targetUrl);
+        const validatedTarget = await validateUploadProxyTarget(targetUrl);
         if (!validatedTarget.ok) {
             return NextResponse.json(
                 { error: 'Invalid upload target', reason: validatedTarget.reason },
@@ -68,6 +75,6 @@ export async function POST(request) {
         }
     } catch (error) {
         console.error('Upload Proxy Exception:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
