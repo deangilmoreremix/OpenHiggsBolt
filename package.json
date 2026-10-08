@@ -9,7 +9,6 @@
     "packages/studio",
     "packages/Vibe-Workflow/packages/workflow-builder",
     "packages/Open-Poe-AI/packages/agents",
-    "packages/Open-AI-Design-Agent/packages/design-agent",
     "apps/cutai/frontend"
   ],
   "scripts": {
@@ -32,9 +31,8 @@
     "cutai:dev": "concurrently \"npm run cutai:backend\" \"npm run cutai:frontend\"",
     "build:workflow": "npm run build -w workflow-builder",
     "build:agent": "npm run build -w ai-agent",
-    "build:design-agent": "npm run build -w design-agent",
     "build:studio": "npm run build -w studio",
-    "build:packages": "npm run build:workflow && npm run build:agent && npm run build:design-agent && npm run build:studio",
+    "build:packages": "npm run build:workflow && npm run build:agent && npm run build:studio",
     "setup": "git submodule update --init --recursive && npm install && npm run build:packages",
     "vite:dev": "vite",
     "vite:build": "vite build",
@@ -147,7 +145,6 @@
     "axios": "^1.7.0",
     "chromium-bidi": "^10.5.1",
     "crawlee": "^3.18.1",
-    "design-agent": "file:./packages/Open-AI-Design-Agent/packages/design-agent",
     "gsap": "^3.12.5",
     "jsdom": "^29.1.1",
     "lucide-react": "^1.21.0",
