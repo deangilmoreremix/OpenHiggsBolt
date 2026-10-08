@@ -3,12 +3,7 @@
   # generated before the root Next.js build can resolve them.
   command = "pwd && ls -la && rm -rf node_modules/electron/dist && set -x && npm run build:metadata && npm run build:packages && npm run build"
   publish = ".next"
-  exclude = ["electron/dist/**", "playwright/**", "src/**", "index.html", "vite.svg", "public/vite.svg", "electron/**", "*.md", "!public/**"]
-  # Exclude the 1.1 GB .next/cache from the deploy payload to prevent
-  # Netlify "timed out while waiting to enter states [prepared, ready]"
-  # internal deploy timeouts.
-  # Also exclude Vite/Electron dev files that conflict with Next.js App Router
-  ignore = [".next/cache/**", "src/**", "index.html", "vite.svg", "electron/**", "*.md", "!public/**"]
+  exclude = ["electron/dist/**", "playwright/**", "src/**", "index.html", "vite.svg", "public/vite.svg", "electron/**", "*.md", "!public/**", ".next/cache/**"]
 
   [build.environment]
     # Ensure build-time dependencies (tailwindcss, autoprefixer, jsdom, babel, etc.)
