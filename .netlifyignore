@@ -1,0 +1,24 @@
+# Netlify deploy ignore file
+# Exclude Next.js build cache from deploy — it is never needed in production
+# and is the primary cause of the "timed out while waiting to enter states
+# [prepared, ready]" deploy timeout.
+
+.next/cache/**
+
+# Exclude node_modules from deploy
+node_modules/**
+
+# Exclude git internals
+.git/**
+
+# Exclude monorepo workspace build outputs that are not required at runtime
+packages/*/dist/**
+
+# Exclude local Netlify CLI state from deploy
+.netlify/**
+
+# Exclude temporary and development artifacts
+*.log
+*.tsbuildinfo
+coverage/
+.nyc_output/

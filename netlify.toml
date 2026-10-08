@@ -4,6 +4,10 @@
   command = "pwd && ls -la && rm -rf node_modules/electron/dist && set -x && npm run build:metadata && npm run build:packages && npm run build"
   publish = ".next"
   exclude = ["electron/dist/**", "playwright/**"]
+  # Exclude the 1.1 GB .next/cache from the deploy payload to prevent
+  # Netlify "timed out while waiting to enter states [prepared, ready]"
+  # internal deploy timeouts.
+  ignore = ".next/cache/**"
 
   [build.environment]
     # Ensure build-time dependencies (tailwindcss, autoprefixer, jsdom, babel, etc.)
