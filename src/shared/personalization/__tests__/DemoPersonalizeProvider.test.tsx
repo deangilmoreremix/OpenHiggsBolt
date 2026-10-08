@@ -62,12 +62,17 @@ vi.mock('../PersonalizationModal', () => ({
   default: () => null,
 }))
 
+vi.mock('../editedAssetPersistence', () => ({
+  persistEditedPersonalizationAsset: vi.fn(),
+}))
+
 const { DemoPersonalizeProvider, useDemoPersonalize, getGenerationAssetUrl } = await import('../DemoPersonalizeProvider')
 const { uploadFile } = await import('studio/src/muapi')
 const { uploadPersonalizationAsset } = await import('../assetUploadService')
 const { personalizePrompt, regeneratePrompt } = await import('../promptPersonalizer')
 const { runGeneration } = await import('../generationRouter')
 const { applyPostProcessing, generateEndCardImage } = await import('../postProcessor')
+const { persistEditedPersonalizationAsset } = await import('../editedAssetPersistence')
 
 const generationPromiseResolvers: ((status: string) => void)[] = []
 
@@ -1894,5 +1899,153 @@ describe('DemoPersonalizeProvider zero-key discovery', () => {
 
     const legacyPollCalls = fetchCalls.filter((call) => call.url === '/api/personalization/discover-assets?jobId=test-job-456')
     expect(legacyPollCalls).toHaveLength(0)
+  })
+})
+
+describe('DemoPersonalizeProvider edit persistence fallback', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.resetModules()
+    URL.createObjectURL = vi.fn(() => 'blob:http://localhost/test')
+    URL.revokeObjectURL = vi.fn()
+    generationPromiseResolvers.length = 0
+  })
+
+  const renderProvider = async () => {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+
+    await act(async () => {
+      root.render(
+        <DemoPersonalizeProvider>
+          <TestOpener />
+        </DemoPersonalizeProvider>,
+      )
+    })
+
+    return container
+  }
+
+  const openSource = async () => {
+    await act(async () => {
+      ;(window as any).__personalizationCtx.openPersonalize({
+        source: { id: 'demo-1', title: 'Test', mediaType: 'video', originalPrompt: 'test', sourceMedia: null, poster: null, fullPrompt: 'test', shortPrompt: 'test', sourceType: 'landing-demo', model: 'kling-o1-video-edit', sourceMetadata: {} },
+      })
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+  }
+
+  it('applyEditedPersonalizationAsset falls back to upload when Supabase persistence fails', async () => {
+    const mockPersist = persistEditedPersonalizationAsset as any
+    mockPersist.mockResolvedValue({ ok: false })
+    const mockUpload = uploadPersonalizationAsset as any
+    mockUpload.mockResolvedValue('https://example.com/uploaded.png')
+
+    await renderProvider()
+    await openSource()
+
+    const files = createFileList([createFile('logo.png')])
+    await act(async () => {
+      ;(window as any).__personalizationCtx.addLogoFiles(files)
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    const logo = ctx.assets.logos[0]
+    expect(logo).toBeTruthy()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.applyEditedPersonalizationAsset(
+        logo.id,
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        {
+          operation: 'enhance',
+          prompt: 'enhance quality',
+          model: 'test-model',
+          quality: 'high',
+          transparent: false,
+          videoReady: false,
+        },
+      )
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    const updated = (window as any).__personalizationCtx.assets.logos.find((l: any) => l.id === logo.id)
+    expect(updated).toBeTruthy()
+    expect(updated.url).toBe('https://example.com/uploaded.png')
+    expect(updated.uploadStatus).toBe('ready')
+    expect(mockUpload).toHaveBeenCalled()
+  })
+
+  it('applyEditedSavedClientAsset falls back to upload when Supabase persistence fails', async () => {
+    const mockPersist = persistEditedPersonalizationAsset as any
+    mockPersist.mockResolvedValue({ ok: false })
+    const mockUpload = uploadPersonalizationAsset as any
+    mockUpload.mockResolvedValue('https://example.com/uploaded-saved.png')
+
+    await renderProvider()
+    await openSource()
+
+    const files = createFileList([createFile('logo.png')])
+    await act(async () => {
+      ;(window as any).__personalizationCtx.addLogoFiles(files)
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.saveClient()
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    const ctxBefore = (window as any).__personalizationCtx
+    const clientId = ctxBefore.selectedClientId
+    expect(clientId).toBeTruthy()
+
+    const originalLogo = ctxBefore.assets.logos[0]
+    expect(originalLogo).toBeTruthy()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.applyEditedSavedClientAsset(
+        clientId,
+        originalLogo.id,
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        {
+          operation: 'enhance',
+          prompt: 'enhance quality',
+          model: 'test-model',
+          quality: 'high',
+          transparent: false,
+          videoReady: false,
+        },
+      )
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    const ctxAfter = (window as any).__personalizationCtx
+    const savedLogo = ctxAfter.savedClientAssets.logos.find((l: any) => l.id === originalLogo.id)
+    expect(savedLogo).toBeTruthy()
+    expect(savedLogo.url).toBe('https://example.com/uploaded-saved.png')
+    expect(savedLogo.uploadStatus).toBe('ready')
+
+    const jobLogo = ctxAfter.assets.logos.find((l: any) => l.id === originalLogo.id)
+    expect(jobLogo).toBeTruthy()
+    expect(jobLogo.url).toBe('https://example.com/uploaded-saved.png')
+    expect(mockUpload).toHaveBeenCalled()
   })
 })
