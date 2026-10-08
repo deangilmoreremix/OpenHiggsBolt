@@ -4,3 +4,8 @@ packages:
   - packages/Open-Poe-AI/packages/agents
   - packages/Open-AI-Design-Agent/packages/design-agent
   - apps/cutai/frontend
+allowBuilds:
+  electron: true
+  esbuild: true
+  sharp: true
+  unrs-resolver: true
