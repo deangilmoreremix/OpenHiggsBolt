@@ -73,28 +73,6 @@
           ]
         }
       },
-      "packages/Open-AI-Design-Agent/packages/design-agent": {
-        "packageJson": {
-          "dependencies": [
-            "npm:@babel/cli@^7.28.3",
-            "npm:@babel/core@^7.29.0",
-            "npm:@babel/preset-env@^7.28.5",
-            "npm:@babel/preset-react@^7.28.5",
-            "npm:autoprefixer@^10.4.14",
-            "npm:axios@^1.7.0",
-            "npm:framer-motion@12",
-            "npm:konva@^10.3.0",
-            "npm:postcss@^8.4.24",
-            "npm:react-hot-toast@^2.5.2",
-            "npm:react-icons@^5.5.0",
-            "npm:react-konva@19",
-            "npm:react-markdown@^10.1.0",
-            "npm:react-syntax-highlighter@^15.6.1",
-            "npm:remark-gfm@^4.0.1",
-            "npm:tailwindcss@^3.3.3"
-          ]
-        }
-      },
       "packages/Open-Poe-AI/packages/agents": {
         "packageJson": {
           "dependencies": [

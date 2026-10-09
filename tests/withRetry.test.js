@@ -5,7 +5,7 @@ const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
 describe('withRetry', () => {
   it('resolves on first success', async () => {
-    const { withRetry } = await import('../packages/Open-AI-Design-Agent/packages/design-agent/src/lib/withRetry.ts');
+    const { withRetry } = await import('../src/lib/withRetry.ts');
     let calls = 0;
     const result = await withRetry(async () => {
       calls++;
@@ -16,7 +16,7 @@ describe('withRetry', () => {
   });
 
   it('retries on 5xx and eventually succeeds', async () => {
-    const { withRetry } = await import('../packages/Open-AI-Design-Agent/packages/design-agent/src/lib/withRetry.ts');
+    const { withRetry } = await import('../src/lib/withRetry.ts');
     let calls = 0;
     const result = await withRetry(async () => {
       calls++;
@@ -32,7 +32,7 @@ describe('withRetry', () => {
   });
 
   it('does not retry on 400 client errors', async () => {
-    const { withRetry } = await import('../packages/Open-AI-Design-Agent/packages/design-agent/src/lib/withRetry.ts');
+    const { withRetry } = await import('../src/lib/withRetry.ts');
     let calls = 0;
     try {
       await withRetry(async () => {
@@ -49,7 +49,7 @@ describe('withRetry', () => {
   });
 
   it('aborts immediately when signal is already aborted', async () => {
-    const { withRetry } = await import('../packages/Open-AI-Design-Agent/packages/design-agent/src/lib/withRetry.ts');
+    const { withRetry } = await import('../src/lib/withRetry.ts');
     const controller = new AbortController();
     controller.abort();
     try {

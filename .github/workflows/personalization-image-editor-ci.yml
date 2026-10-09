@@ -53,7 +53,6 @@ jobs:
         run: |
           set -o pipefail
           git submodule update --init \
-            packages/Open-AI-Design-Agent \
             packages/Open-Poe-AI \
             packages/Vibe-Workflow \
             2>&1 | tee /tmp/smartvideo-go-submodules.log

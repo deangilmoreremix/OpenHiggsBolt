@@ -99,8 +99,7 @@ flowchart LR
 ```mermaid
 flowchart TB
     subgraph Upstream_Submodules["Upstream Submodules"]
-        S1["packages/Open-AI-Design-Agent"]
-        S2["packages/Open-Poe-AI"]
+        S1["packages/Open-Poe-AI"]
     end
 
     subgraph Fork_Submodules["Fork Submodules"]
@@ -110,7 +109,6 @@ flowchart TB
     end
 
     S1 -- "sync from upstream" --> F[Fork]
-    S2 -- "sync from upstream" --> F
     S3 -- "fork-only, no sync" --> F
     S4 -- "fork-only, no sync" --> F
     S5 -- "fork-only, no sync" --> F
@@ -650,7 +648,6 @@ These upstream files are deliberately NOT present in the fork:
 
 | Submodule | Source | Sync From Upstream |
 |-----------|--------|-------------------|
-| `packages/Open-AI-Design-Agent` | `Anil-matcha/Open-AI-Design-Agent` | Yes |
 | `packages/Open-Poe-AI` | `Anil-matcha/Open-Poe-AI` | Yes |
 | `packages/Vibe-Workflow` | `deangilmoreremix/Vibe-Workflow` | No (fork-only) |
 | `packages/timeline-studio` | `deangilmoreremix/timeline-studio` | No (fork-only) |
@@ -823,12 +820,12 @@ A: No. Submodules must be updated separately. Run `git submodule update --remote
 **Q: How do I update a submodule?**
 A:
 ```bash
-cd packages/Open-AI-Design-Agent
+cd packages/Open-Poe-AI
 git fetch origin
 git checkout origin/main
 cd ../..
-git add packages/Open-AI-Design-Agent
-git commit -m "chore: update Open-AI-Design-Agent submodule"
+git add packages/Open-Poe-AI
+git commit -m "chore: update Open-Poe-AI submodule"
 ```
 
 ### Rollback

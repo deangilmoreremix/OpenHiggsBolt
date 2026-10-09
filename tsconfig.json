@@ -64,9 +64,6 @@
       "workflow-builder": [
         "./packages/Vibe-Workflow/packages/workflow-builder/src/index.js"
       ],
-      "design-agent": [
-        "./packages/Open-AI-Design-Agent/packages/design-agent/src/index.js"
-      ],
       "studio": [
         "./packages/studio/src/index.js"
       ],

@@ -43,7 +43,6 @@ const FILES_TO_SYNC = [
 ]
 
 const EXCLUDE_PATTERNS = [
-  /Open-AI-Design-Agent/i,
   /DesignAgentStudio\.jsx$/,
 ]
 
@@ -106,7 +105,6 @@ FILES SYNCED:
   packages/studio/src/persistKey.js
 
 EXCLUDED:
-  Open-AI-Design-Agent package
   DesignAgentStudio.jsx component
 `)
   process.exit(EXIT.SUCCESS)

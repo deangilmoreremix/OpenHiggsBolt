@@ -23,7 +23,6 @@ export default defineConfig({
       { find: /^@\/(.*)$/, replacement: '/src/$1' },
       { find: /^studio\/(.*)$/, replacement: `${repoRoot}packages/studio/$1` },
       { find: /^workflow-builder\/(.*)$/, replacement: `${repoRoot}packages/Vibe-Workflow/packages/workflow-builder/$1` },
-      { find: /^design-agent\/(.*)$/, replacement: `${repoRoot}packages/Open-AI-Design-Agent/packages/design-agent/$1` },
       { find: /^ai-agent\/(.*)$/, replacement: `${repoRoot}packages/Open-Poe-AI/packages/agents/$1` },
     ],
   },

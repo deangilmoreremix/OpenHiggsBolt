@@ -267,9 +267,11 @@ Do not touch `_validation.ts` — the allowlists there are correct and complete.
 **Agent 5 — Build and submodules (audit H1)**
 Scope: submodules, `package.json`, `netlify.toml`.
 `npx next build` fails with `Module not found: 'ai-agent'` because
-`packages/Open-AI-Design-Agent` is uninitialized. Run
-`git submodule update --init --recursive && npm run setup`, confirm the build passes,
-and document what Netlify needs for submodule fetching.
+the Design Agent was migrated from `packages/Open-AI-Design-Agent` submodule to
+`src/apps/design-agent/` (React component) and `app/api/design-agent/` (API routes).
+Run `git submodule update --init --recursive && npm run setup` for remaining submodules
+(Open-Poe-AI, Vibe-Workflow), confirm the build passes, and document what Netlify needs
+for submodule fetching.
 This also fixes `withRetry.test.js` and `api-keys-integration.test.js`.
 **Do not vendor, stub, or inline the submodule contents.** Do not remove the `ai-agent`
 import to make the build pass.
