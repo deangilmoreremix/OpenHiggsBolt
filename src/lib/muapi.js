@@ -3,6 +3,7 @@ import axios from 'axios';
 import { getStableUserId } from '../shared/auth/stableUserId';
 import { getApiKey } from './authConfig.ts';
 import { cleanApiKey } from './keys.js';
+import { UPLOAD_LIMITS, UPLOAD_MIME_TYPES, getUploadLimit, isAllowedUploadMimeType, normalizeImageMimeType } from './uploadConfig.ts';
 
 // Marks an error as terminal so the polling loop rethrows instead of retrying.
 function fatal(message) {
@@ -460,21 +461,15 @@ export class MuapiClient {
     async uploadFile(file) {
         const key = this.getKey();
 
-        // --- Client-side pre-flight validation (MuAPI file upload spec) ---
-        const ALLOWED_UPLOAD_MIME_TYPES = new Set([
-            'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
-            'video/mp4', 'video/webm',
-            'audio/mpeg', 'audio/wav', 'audio/webm',
-            'application/zip', 'application/pdf', 'application/json',
-        ]);
-        const MAX_UPLOAD_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB per docs
-
         if (!file) throw new Error('No file provided');
-        if (!ALLOWED_UPLOAD_MIME_TYPES.has(file.type)) {
-            throw new Error(`Invalid file type: ${file.type}. Allowed: ${[...ALLOWED_UPLOAD_MIME_TYPES].join(', ')}`);
+        const normalizedType = normalizeImageMimeType(file.type);
+        if (!isAllowedUploadMimeType(file)) {
+            throw new Error(`Invalid file type: ${file.type}. Allowed: ${[...UPLOAD_MIME_TYPES.image, ...UPLOAD_MIME_TYPES.video, ...UPLOAD_MIME_TYPES.audio].join(', ')}`);
         }
-        if (file.size > MAX_UPLOAD_FILE_SIZE_BYTES) {
-            throw new Error(`File too large: ${(file.size/1024/1024).toFixed(1)} MB. Maximum: 10 MB`);
+        const maxBytes = getUploadLimit(file);
+        if (file.size > maxBytes) {
+            const limitMB = maxBytes / 1024 / 1024;
+            throw new Error(`File too large: ${(file.size/1024/1024).toFixed(1)} MB. Maximum: ${limitMB} MB`);
         }
 
         const url = `${this.baseUrl}/api/v1/upload_file`;

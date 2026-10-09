@@ -48,4 +48,22 @@ describe('SmartVideo Design Agent parity', () => {
     expect(source).toContain('sign.data?.url');
     expect(source).toContain('MuAPI did not return an upload URL');
   });
+
+  it('rejects oversize files in the upload handler', () => {
+    expect(source).toContain('exceeds the');
+    expect(source).toContain('upload limit');
+  });
+
+  it('skips unsupported MIME types instead of uploading them', () => {
+    expect(source).toContain('!supported) continue');
+  });
+
+  it('invokes the axios onUploadProgress callback during upload', () => {
+    expect(source).toContain('onUploadProgress');
+    expect(source).toContain('setUploadProgress');
+  });
+
+  it('registers the attachment on successful upload', () => {
+    expect(source).toContain('setAttachments(previous');
+  });
 });

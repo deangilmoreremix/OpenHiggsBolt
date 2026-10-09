@@ -178,6 +178,7 @@ function isImageUrl(s: string): boolean {
 }
 
 import { cleanApiKey } from '@/lib/keys'
+import { UPLOAD_LIMITS, UPLOAD_MIME_TYPES, getUploadLimit, isAllowedUploadMimeType, normalizeImageMimeType } from '@/lib/uploadConfig'
 
 function createAuthHeaders(apiKey: string): HeadersInit {
   return {
@@ -219,15 +220,13 @@ export class MuAPIImageClient {
    */
   async uploadImage(file: File, onProgress?: (percent: number) => void): Promise<string> {
     if (!file) throw new Error('No file provided')
-    const ALLOWED = new Set([
-      'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
-    ])
-    if (!ALLOWED.has(file.type)) {
+    const normalizedType = normalizeImageMimeType(file.type)
+    if (!isAllowedUploadMimeType(file)) {
       throw new Error(`Invalid file type: ${file.type}. Use JPG, PNG or WebP.`)
     }
-    const MAX = 10 * 1024 * 1024
-    if (file.size > MAX) {
-      throw new Error(`File too large: ${(file.size / 1024 / 1024).toFixed(1)} MB. Max 10 MB.`)
+    const maxBytes = getUploadLimit(file)
+    if (file.size > maxBytes) {
+      throw new Error(`File too large: ${(file.size / 1024 / 1024).toFixed(1)} MB. Max ${maxBytes / 1024 / 1024} MB.`)
     }
 
     const url = `${this.baseUrl}/api/v1/upload_file`
@@ -277,14 +276,12 @@ export class MuAPIImageClient {
     const ALLOWED = new Set([
       'image/png', 'image/jpeg', 'image/jpg', 'image/webp',
     ])
-    // A canvas-generated mask Blob may arrive without a MIME type; allow it through
-    // since masks are always raster images, but still reject clearly-wrong types.
     const type = (file as File).type
     if (type && !ALLOWED.has(type)) {
       throw new Error(`Invalid mask type: ${type}. Use PNG, JPG or WebP.`)
     }
-    const MAX = 10 * 1024 * 1024
-    if (typeof (file as Blob).size === 'number' && (file as Blob).size > MAX) {
+    const maxBytes = 10 * 1024 * 1024
+    if (typeof (file as Blob).size === 'number' && (file as Blob).size > maxBytes) {
       throw new Error(`Mask too large: ${((file as Blob).size / 1024 / 1024).toFixed(1)} MB. Max 10 MB.`)
     }
 

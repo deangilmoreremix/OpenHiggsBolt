@@ -16,8 +16,13 @@ const BASE_URL = (typeof window !== 'undefined' && window.location?.protocol?.st
     ? '/api'
     : 'https://api.muapi.ai';
 const PROXY_WF_BASE = '/api/workflow';
-const FILE_UPLOAD_TIMEOUT_MS = 300_000;
+// Server timeout is the source of truth for uploads. app/api/v1/upload_file/route.ts
+// uses AbortSignal.timeout(120_000), so we match that here to avoid premature
+// client-side aborts before the server has had a chance to respond.
+const FILE_UPLOAD_TIMEOUT_MS = 120_000;
 const FILE_UPLOAD_PENDING_PROGRESS = 99;
+const FILE_UPLOAD_MAX_RETRIES = 3;
+const FILE_UPLOAD_BASE_DELAY_MS = 1_000;
 
 function notifyAuthRequired(status, detail) {
     if (typeof window === 'undefined') return;
@@ -316,28 +321,71 @@ export async function generateAudio(apiKey, params) {
 
 export function uploadFile(apiKey, file, onProgress) {
     return new Promise((resolve, reject) => {
-        const url = `${BASE_URL}/api/v1/upload_file`;
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', url);
-        xhr.setRequestHeader('x-api-key', apiKey);
-        xhr.timeout = FILE_UPLOAD_TIMEOUT_MS;
-
-        if (onProgress) {
-            xhr.upload.onprogress = (event) => {
-                if (event.lengthComputable) {
-                    const percentComplete = Math.min(
-                        Math.round((event.loaded / event.total) * 100),
-                        FILE_UPLOAD_PENDING_PROGRESS
-                    );
-                    onProgress(percentComplete);
-                }
-            };
+        if (!file) return reject(new Error('No file provided'));
+        const ALLOWED_MIME_TYPES = new Set([
+            'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
+            'video/mp4', 'video/webm',
+            'audio/mpeg', 'audio/wav', 'audio/webm',
+        ]);
+        const normalizedType = file.type === 'image/jpg' ? 'image/jpeg' : file.type;
+        if (!ALLOWED_MIME_TYPES.has(normalizedType)) {
+            return reject(new Error(`Invalid file type: ${file.type}`));
+        }
+        const MAX_FILE_SIZE = file.type.startsWith('video/') ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+        if (file.size > MAX_FILE_SIZE) {
+            return reject(new Error(`File too large: ${(file.size/1024/1024).toFixed(1)} MB. Maximum: ${MAX_FILE_SIZE/1024/1024} MB`));
         }
 
-        xhr.onload = () => {
+        const url = `${BASE_URL}/api/v1/upload_file`;
+
+        async function attemptUpload() {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            return new Promise((resolveAttempt, rejectAttempt) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', url);
+                xhr.setRequestHeader('x-api-key', apiKey);
+                xhr.timeout = FILE_UPLOAD_TIMEOUT_MS;
+
+                if (onProgress) {
+                    xhr.upload.onprogress = (event) => {
+                        if (event.lengthComputable) {
+                            const percentComplete = Math.min(
+                                Math.round((event.loaded / event.total) * 100),
+                                FILE_UPLOAD_PENDING_PROGRESS
+                            );
+                            onProgress(percentComplete);
+                        }
+                    };
+                }
+
+                xhr.onload = () => resolveAttempt(xhr);
+                xhr.onerror = () => rejectAttempt(new Error('Network error during file upload'));
+                xhr.ontimeout = () => rejectAttempt(new Error('File upload timed out. Please try again.'));
+                xhr.send(formData);
+            });
+        }
+
+        async function retryableUpload() {
+            let lastError;
+            for (let attempt = 0; attempt < FILE_UPLOAD_MAX_RETRIES; attempt++) {
+                if (attempt > 0) {
+                    const delay = FILE_UPLOAD_BASE_DELAY_MS * attempt;
+                    await new Promise(r => setTimeout(r, delay));
+                }
+
+                try {
+                    const xhr = await attemptUpload();
+                    return xhr;
+                } catch (error) {
+                    lastError = error;
+                }
+            }
+            throw lastError;
+        }
+
+        retryableUpload().then(xhr => {
             if (xhr.status >= 200 && xhr.status < 300) {
                 try {
                     const data = JSON.parse(xhr.responseText);
@@ -362,11 +410,7 @@ export function uploadFile(apiKey, file, onProgress) {
                 notifyAuthRequired(xhr.status, detail);
                 reject(new Error(`File upload failed: ${xhr.status} - ${detail}`));
             }
-        };
-
-        xhr.onerror = () => reject(new Error('Network error during file upload'));
-        xhr.ontimeout = () => reject(new Error('File upload timed out. Please try again.'));
-        xhr.send(formData);
+        }).catch(reject);
     });
 }
 

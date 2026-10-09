@@ -1,5 +1,6 @@
 import { muapi } from '../lib/muapi.js';
 import { i2iModels, getAspectRatiosForModel, getResolutionsForModel, getQualityFieldForModel } from '../lib/models.js';
+import { isAllowedUploadMimeType, getUploadLimit } from '../lib/uploadConfig.js';
 
 // Feature 14: Canvas drawing → img2img editor.
 // Returns { el, open, close }. `onAddHistoryItem(entry)` is called with the
@@ -259,6 +260,13 @@ export function DrawModal({ apiKey = '', onAddHistoryItem } = {}) {
         try {
             const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
             const file = new File([blob], 'drawing.png', { type: 'image/png' });
+            if (!isAllowedUploadMimeType(file)) {
+                throw new Error(`Invalid file type: ${file.type}`);
+            }
+            const maxBytes = getUploadLimit(file);
+            if (file.size > maxBytes) {
+                throw new Error(`File too large: ${(file.size/1024/1024).toFixed(1)} MB. Maximum: ${maxBytes/1024/1024} MB`);
+            }
             const uploadedUrl = await muapi.uploadFile(file);
             const genParams = { model: selectedModelId, image_url: uploadedUrl, aspect_ratio: aspectRatio };
             if (prompt) genParams.prompt = prompt;

@@ -20,6 +20,7 @@ import type {
   GenerationStatus,
   UseVideoGenerationReturn,
 } from '@/types/vfx'
+import { getUploadLimit, isAllowedUploadMimeType } from '@/lib/uploadConfig'
 
 const STORAGE_KEY = 'vfx_generation_state'
 const POLL_INTERVAL_MS = 5000
@@ -38,9 +39,6 @@ interface PersistedState {
   status: GenerationState
 }
 
-const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp']
-const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024
-
 function isValidImageUrl(url: string): boolean {
   try {
     const parsed = new URL(url)
@@ -52,15 +50,12 @@ function isValidImageUrl(url: string): boolean {
 }
 
 function validateFile(file: File): string | null {
-  if (!file.type.startsWith('image/')) {
-    return 'File must be an image'
+  if (!isAllowedUploadMimeType(file)) {
+    return 'Invalid file type. Allowed: jpg, jpeg, png, webp, mp4, webm, mpeg, wav'
   }
-  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
-  if (!allowedTypes.includes(file.type)) {
-    return 'Invalid image format. Allowed: jpg, jpeg, png, webp'
-  }
-  if (file.size > MAX_FILE_SIZE_BYTES) {
-    return `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max: 20MB`
+  const maxBytes = getUploadLimit(file)
+  if (file.size > maxBytes) {
+    return `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max: ${maxBytes / 1024 / 1024}MB`
   }
   return null
 }

@@ -12,6 +12,7 @@ import type {
   GenerationState,
 } from '@/types/vfx'
 import { cleanApiKey } from '@/lib/keys'
+import { UPLOAD_LIMITS, UPLOAD_MIME_TYPES, getUploadLimit, isAllowedUploadMimeType } from '@/lib/uploadConfig'
 
 const MUAPI_BASE = process.env.MUAPI_BASE_URL || 'https://api.muapi.ai'
 const DEFAULT_POLL_INTERVAL_MS = 5000
@@ -53,14 +54,7 @@ function createAuthHeaders(apiKey: string): HeadersInit {
     'x-api-key': cleanApiKey(apiKey),
   }
 }
-// MuAPI file upload spec constants
-const ALLOWED_UPLOAD_MIME_TYPES = new Set([
-  'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
-  'video/mp4', 'video/webm',
-  'audio/mpeg', 'audio/wav', 'audio/webm',
-  'application/zip', 'application/pdf', 'application/json',
-])
-const MAX_UPLOAD_FILE_SIZE_BYTES = 10 * 1024 * 1024 // 10 MB per docs
+// MuAPI file upload spec constants are now in @/lib/uploadConfig
 
 function parseUploadErrorResponse(text: string): string {
   try {
@@ -105,14 +99,15 @@ export class MuAPIVFXClient {
     if (!file) {
       throw new Error('No file provided')
     }
-    if (!ALLOWED_UPLOAD_MIME_TYPES.has(file.type)) {
+    if (!isAllowedUploadMimeType(file)) {
       throw new Error(
-        `Invalid file type: ${file.type}. Allowed: ${[...ALLOWED_UPLOAD_MIME_TYPES].join(', ')}`
+        `Invalid file type: ${file.type}. Allowed: ${[...UPLOAD_MIME_TYPES.image, ...UPLOAD_MIME_TYPES.video, ...UPLOAD_MIME_TYPES.audio].join(', ')}`
       )
     }
-    if (file.size > MAX_UPLOAD_FILE_SIZE_BYTES) {
+    const maxBytes = getUploadLimit(file)
+    if (file.size > maxBytes) {
       throw new Error(
-        `File too large: ${(file.size / 1024 / 1024).toFixed(1)} MB. Maximum: 10 MB`
+        `File too large: ${(file.size / 1024 / 1024).toFixed(1)} MB. Maximum: ${maxBytes / 1024 / 1024} MB`
       )
     }
 

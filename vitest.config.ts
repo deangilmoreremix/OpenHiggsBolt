@@ -8,6 +8,7 @@ const repoRoot = fileURLToPath(new URL('.', import.meta.url));
 export default defineConfig({
   esbuild: { jsx: 'automatic' },
   resolve: {
+    extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json'],
     alias: [
       { find: /^@\/api\/(.*)$/, replacement: '/src/shared/api/$1' },
       { find: /^@\/components\/(.*)$/, replacement: '/components/$1' },
@@ -17,8 +18,8 @@ export default defineConfig({
       { find: /^@\/stores\/(.*)$/, replacement: '/src/stores/$1' },
       { find: /^@\/apps\/(.*)$/, replacement: '/src/apps/$1' },
       { find: /^@\/app\/(.*)$/, replacement: '/app/$1' },
-      { find: /^@\/packages\/studio\/(.*)$/, replacement: '/packages/studio/$1' },
-      { find: /^@\/src\/(.*)$/, replacement: '/src/$1' },
+      { find: /^@\/packages\/studio\/(.*)$/, replacement: `${repoRoot}packages/studio/$1` },
+      { find: /^@\/src\/(.*)$/, replacement: `${repoRoot}src/$1` },
       { find: /^@\/(.*)$/, replacement: '/src/$1' },
       { find: /^studio\/(.*)$/, replacement: `${repoRoot}packages/studio/$1` },
       { find: /^workflow-builder\/(.*)$/, replacement: `${repoRoot}packages/Vibe-Workflow/packages/workflow-builder/$1` },
@@ -27,6 +28,7 @@ export default defineConfig({
     ],
   },
   test: {
+    ssr: false,
     include: [
       'src/**/*.test.{js,jsx,ts,tsx}',
       'components/**/*.test.{js,jsx,ts,tsx}',

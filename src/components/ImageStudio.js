@@ -148,6 +148,7 @@ export function ImageStudio() {
         anchorContainer: container,
         uploadFn: (file) => useLocalModel ? URL.createObjectURL(file) : muapi.uploadFile(file),
         requireApiKey: () => !useLocalModel,
+        accept: 'image/*',
         onSelect: ({ url, urls }) => {
             uploadedImageUrls = urls || [url];
             if (!imageMode) {
@@ -219,6 +220,7 @@ export function ImageStudio() {
         anchorContainer: container,
         uploadFn: (file) => muapi.uploadFile(file),
         requireApiKey: () => true,
+        accept: 'image/*',
         onSelect: ({ url }) => { swapImageUrl = url; saveSettings(); },
         onClear: () => { swapImageUrl = null; saveSettings(); },
     });

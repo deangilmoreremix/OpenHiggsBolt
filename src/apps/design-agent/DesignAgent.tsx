@@ -8,6 +8,7 @@ import DesignAgentErrorBoundary from './ErrorBoundary'
 import { PublishStep } from '@/components/SocialPublishProvider'
 import { AssistStep } from '@/components/AiAssistantProvider'
 import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider'
+import { getUploadLimit, isAllowedUploadMimeType } from '@/lib/uploadConfig'
 
 type AgentMode = 'agent' | 'generate' | 'edit'
 type ActivityStatus = 'running' | 'done' | 'error'
@@ -470,10 +471,10 @@ export default function DesignAgent({ apiKey: propApiKey, onRequestApiKey, templ
       async () => {
         try {
           for (const file of files) {
-            const supported = file.type.startsWith('image/') || file.type.startsWith('video/') || file.type.startsWith('audio/')
+            const supported = isAllowedUploadMimeType(file)
             if (!supported) continue
-            const maxBytes = file.type.startsWith('video/') ? 50 * 1024 * 1024 : 10 * 1024 * 1024
-            if (file.size > maxBytes) throw new Error(`${file.name} exceeds the ${file.type.startsWith('video/') ? '50MB' : '10MB'} upload limit`)
+            const maxBytes = getUploadLimit(file)
+            if (file.size > maxBytes) throw new Error(`${file.name} exceeds the ${maxBytes / 1024 / 1024}MB upload limit`)
 
             const kind: AgentAttachment['kind'] = file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : 'image'
             const uploadForm = new FormData()
@@ -483,6 +484,7 @@ export default function DesignAgent({ apiKey: propApiKey, onRequestApiKey, templ
               onUploadProgress: event => {
                 if (event.total) setUploadProgress(Math.round((event.loaded * 100) / event.total))
               },
+              timeout: 120_000,
             })
             const uploadedUrl = sign.data?.url
             if (!uploadedUrl) throw new Error('MuAPI did not return an upload URL')

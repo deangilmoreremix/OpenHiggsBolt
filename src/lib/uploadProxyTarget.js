@@ -1,6 +1,11 @@
 import dns from 'dns';
 import { promisify } from 'util';
 
+// NOTE: isBlockedFileType() is used by legacy proxy routes but not by the
+// direct upload route. The direct upload route (/api/v1/upload_file) uses
+// its own MIME allowlist (ALLOWED_UPLOAD_MIME_TYPES) instead of relying on
+// this blocked-file check.
+
 const resolve4 = promisify(dns.resolve4);
 
 const DEFAULT_S3_REGION_PATTERN = /^[a-z0-9-]+$/;
@@ -71,18 +76,23 @@ function isBlockedHost(hostname) {
     );
 }
 
-function isAllowedS3Host(hostname) {
+function isAllowedS3Host(hostname, allowedHosts = []) {
     // Reject empty labels (leading dot, trailing dot, or consecutive dots).
     if (hostname.split('.').some((label) => label === '')) {
         return false;
     }
 
-    if (hostname === 's3.amazonaws.com') {
+    // Allow exact matches from UPLOAD_PROXY_ALLOWED_HOSTS
+    if (allowedHosts.includes(hostname)) {
         return true;
     }
 
-    if (hostname.endsWith('.s3.amazonaws.com')) {
-        return hostname.length > '.s3.amazonaws.com'.length;
+    // Exact S3 regional patterns:
+    // bucket.s3.amazonaws.com (global endpoint)
+    // bucket.s3-<region>.amazonaws.com (regional endpoint)
+    // bucket.s3.<region>.amazonaws.com (dualstack endpoint)
+    if (/^[a-z0-9][a-z0-9\-\.]*[a-z0-9]\.s3(-[a-z0-9][a-z0-9\-]*[a-z0-9])?(\.[a-z0-9][a-z0-9\-]*[a-z0-9])?\.amazonaws\.com$/.test(hostname)) {
+        return true;
     }
 
     return false;
@@ -174,7 +184,7 @@ export async function validateUploadProxyTarget(rawTarget, { env = process.env }
     }
 
     const allowedHosts = parseAllowedHosts(env);
-    if (!isAllowedS3Host(hostname) && !allowedHosts.includes(hostname)) {
+    if (!isAllowedS3Host(hostname, allowedHosts)) {
         return { ok: false, reason: 'host_not_allowed' };
     }
 

@@ -20,7 +20,8 @@ function cleanHeaders(request) {
     const headers = new Headers(request.headers);
     headers.delete('host');
     headers.delete('connection');
-    headers.delete('cookie'); // CRITICAL: Stop forwarding browser cookies to MuAPI to avoid auth conflicts
+    headers.delete('cookie');
+    headers.delete('authorization');
     return headers;
 }
 

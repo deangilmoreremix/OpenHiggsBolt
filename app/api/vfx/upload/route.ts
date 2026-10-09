@@ -7,10 +7,17 @@ import { rateLimit, rateLimit429 } from '@/lib/rateLimit'
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
 import { ENTITLEMENTS } from '@/access/entitlements'
 
+// VFX uploads are image-only by design.
+// Video and audio uploads should use /api/v1/upload_file instead.
+
 // Per-key rate limit: 10 requests / 60s, keyed by the resolved MuAPI apiKey.
 // Tune via rateLimit(key, { windowMs, max }).
 const RATE_LIMIT_MAX = 10
 const RATE_LIMIT_WINDOW_MS = 60_000
+
+// Configurable Supabase bucket for VFX upload fallback.
+// Override via VFX_UPLOAD_BUCKET env var.
+const VFX_UPLOAD_BUCKET = process.env.VFX_UPLOAD_BUCKET || 'vfx-uploads'
 
 export async function POST(req: NextRequest) {
   const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
@@ -103,7 +110,7 @@ export async function POST(req: NextRequest) {
     const supabase = createClient(supabaseUrl, supabaseKey)
     const fileExt = file.name.split('.').pop() || 'jpg'
     const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`
-    const bucket = 'vfx-uploads'
+    const bucket = VFX_UPLOAD_BUCKET
 
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from(bucket)
@@ -116,7 +123,7 @@ export async function POST(req: NextRequest) {
       console.error('[VFX upload supabase fallback]', uploadError)
       return NextResponse.json({
         error: `Storage upload failed: ${uploadError.message}`,
-        hint: 'Ensure the "vfx-uploads" bucket exists and has write policies applied.',
+        hint: `Ensure the "${VFX_UPLOAD_BUCKET}" bucket exists and has write policies applied.`,
       }, { status: 502 })
     }
 

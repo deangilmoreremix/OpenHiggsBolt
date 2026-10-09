@@ -1,9 +1,34 @@
 import { NextResponse } from 'next/server';
-import { getApiKeyFromRequest, validateUploadProxyTarget, isBlockedFileType } from '@/lib/uploadProxyTarget';
-import { resolveMuAPIKey } from '../vfx/_helpers';
+import { getApiKeyFromRequest, validateUploadProxyTarget } from '@/lib/uploadProxyTarget';
+import { resolveMuAPIKey } from '../../vfx/_helpers';
+import { safeApiJson, upstreamErrorResponse } from '@/lib/safeApiResponse';
 
-// Upload binary proxy — forwards a multipart upload server-to-server.
-// Mirrors /api/upload-binary for upstream clients calling /api/v1/upload-binary.
+const ALLOWED_UPLOAD_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'video/mp4',
+  'video/webm',
+  'audio/mpeg',
+  'audio/wav',
+  'audio/webm',
+]);
+
+const ALLOWED_S3_FORM_FIELDS = new Set([
+  'key',
+  'AWSAccessKeyId',
+  'policy',
+  'signature',
+  'file',
+  'content-type-range',
+  'acl',
+  'success_action_redirect',
+  'success_action_status',
+  'Content-Type',
+  'Content-Disposition',
+]);
+
 export async function POST(request) {
     try {
         const apiKey = getApiKeyFromRequest(request);
@@ -11,13 +36,17 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 });
         }
 
-        // Validate the API key against MuAPI configuration
         const resolvedKey = await resolveMuAPIKey(request);
         if (!resolvedKey) {
             return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 });
         }
 
         const formData = await request.formData();
+
+        const fileEntry = Array.from(formData.entries()).find(([_, value]) => value && typeof value === 'object' && typeof value.name === 'string');
+        if (!fileEntry) {
+            return NextResponse.json({ error: 'file is required' }, { status: 400 });
+        }
 
         const targetUrl = formData.get('x-proxy-target-url');
         if (!targetUrl) {
@@ -33,29 +62,19 @@ export async function POST(request) {
         }
 
         const fileContentType = formData.get('Content-Type') || formData.get('content-type') || '';
-        const keyName = formData.get('key') || '';
+        const fileMimeType = (fileEntry[1].type || fileContentType || '').toLowerCase().split(';')[0].trim();
 
-        for (const [key, value] of formData.entries()) {
-            if (value && typeof value === 'object' && typeof value.name === 'string') {
-                if (isBlockedFileType(value.name, value.type || fileContentType)) {
-                    return NextResponse.json(
-                        { error: 'Invalid file type', reason: 'blocked_file_type' },
-                        { status: 400 }
-                    );
-                }
-            }
-        }
-
-        if (isBlockedFileType(keyName, fileContentType)) {
+        if (!ALLOWED_UPLOAD_MIME_TYPES.has(fileMimeType)) {
             return NextResponse.json(
-                { error: 'Invalid file type', reason: 'blocked_file_type' },
+                { error: 'Invalid file type', reason: 'mime_type_not_allowed' },
                 { status: 400 }
             );
         }
 
         const s3FormData = new FormData();
         for (const [key, value] of formData.entries()) {
-            if (key !== 'x-proxy-target-url') {
+            if (key === 'x-proxy-target-url') continue;
+            if (ALLOWED_S3_FORM_FIELDS.has(key)) {
                 s3FormData.append(key, value);
             }
         }
@@ -67,11 +86,27 @@ export async function POST(request) {
         });
 
         if (s3Response.ok || s3Response.status === 204) {
-            return new Response(null, { status: 204 });
+            const headers = new Headers();
+            for (const [key, value] of s3Response.headers.entries()) {
+                if (['etag', 'location', 'x-amz-request-id'].includes(key.toLowerCase())) {
+                    headers.set(key, value);
+                }
+            }
+
+            if (s3Response.status === 204) {
+                return new Response(null, { status: 204, headers });
+            }
+
+            const body = await safeApiJson(s3Response);
+            return new Response(JSON.stringify(body), {
+                status: s3Response.status,
+                headers,
+            });
         } else {
-            const errorText = await s3Response.text();
-            console.error('S3 Proxy Error:', errorText);
-            return new Response(errorText, { status: s3Response.status });
+            const rawError = await s3Response.text();
+            console.error('S3 Proxy Error:', rawError);
+            const parsed = await safeApiJson(new Response(rawError));
+            return upstreamErrorResponse(s3Response, parsed);
         }
     } catch (error) {
         console.error('Upload Proxy Exception:', error);

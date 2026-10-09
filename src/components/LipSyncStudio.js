@@ -4,6 +4,7 @@ import { lipsyncModels, imageLipSyncModels, videoLipSyncModels, getLipSyncModelB
 import { t } from '../lib/i18n.js';
 import { createUploadPicker } from './UploadPicker.js';
 import { savePendingJob, removePendingJob, getPendingJobs } from '../lib/pendingJobs.js';
+import { getUploadLimit, isAllowedUploadMimeType } from '../lib/uploadConfig.js';
 
 export function LipSyncStudio() {
     const container = document.createElement('div');
@@ -94,6 +95,7 @@ export function LipSyncStudio() {
     // ── Image Upload — uses createUploadPicker (same as VideoStudio) ──
     const imagePicker = createUploadPicker({
         anchorContainer: container,
+        accept: 'image/*',
         onSelect: ({ url }) => {
             uploadedImageUrl = url;
             imageStatusLabel.textContent = t('lipsync.imageReady');
@@ -171,6 +173,19 @@ export function LipSyncStudio() {
         if (!file) return;
         const apiKey = getApiKey();
         if (!apiKey) { alert('Please enter your MuAPI key in Settings first.'); return; }
+        if (!isAllowedUploadMimeType(file)) {
+            alert(`Invalid file type: ${file.type}. Allowed: video/mp4, video/webm`);
+            showVideoIcon();
+            videoFileInput.value = '';
+            return;
+        }
+        const maxBytes = getUploadLimit(file);
+        if (file.size > maxBytes) {
+            alert(`File too large: ${(file.size/1024/1024).toFixed(1)} MB. Maximum: ${maxBytes/1024/1024} MB`);
+            showVideoIcon();
+            videoFileInput.value = '';
+            return;
+        }
         showVideoSpinner();
         try {
             uploadedVideoUrl = await muapi.uploadFile(file);
@@ -239,6 +254,19 @@ export function LipSyncStudio() {
         if (!file) return;
         const apiKey = getApiKey();
         if (!apiKey) { alert('Please enter your MuAPI key in Settings first.'); return; }
+        if (!isAllowedUploadMimeType(file)) {
+            alert(`Invalid file type: ${file.type}. Allowed: audio/mpeg, audio/wav, audio/webm`);
+            showAudioIcon();
+            audioFileInput.value = '';
+            return;
+        }
+        const maxBytes = getUploadLimit(file);
+        if (file.size > maxBytes) {
+            alert(`File too large: ${(file.size/1024/1024).toFixed(1)} MB. Maximum: ${maxBytes/1024/1024} MB`);
+            showAudioIcon();
+            audioFileInput.value = '';
+            return;
+        }
         showAudioSpinner();
         try {
             uploadedAudioUrl = await muapi.uploadFile(file);

@@ -1,6 +1,7 @@
 import { muapi } from '../lib/muapi.js';
 import { getApiKey } from '../lib/authConfig.ts';
 import { getUploadHistory, saveUpload, removeUpload, generateThumbnail } from '../lib/uploadHistory.js';
+import { UPLOAD_LIMITS, UPLOAD_MIME_TYPES, getUploadLimit, isAllowedUploadMimeType, normalizeImageMimeType, getUploadAcceptAttribute } from '../lib/uploadConfig.js';
 
 /**
  * Creates a self-contained upload picker: a trigger button + history panel.
@@ -13,12 +14,14 @@ import { getUploadHistory, saveUpload, removeUpload, generateThumbnail } from '.
  * @param {number} [options.maxImages=1] - Maximum number of images selectable
  * @returns {{ trigger: HTMLElement, panel: HTMLElement, reset: function, setMaxImages: function }}
  */
-export function createUploadPicker({ anchorContainer, onSelect, onClear, maxImages: initialMaxImages = 1, uploadFn, requireApiKey }) {
+export function createUploadPicker({ anchorContainer, onSelect, onClear, maxImages: initialMaxImages = 1, uploadFn, requireApiKey, accept }) {
     // uploadFn(file) → Promise<string url>. Defaults to Muapi-hosted upload.
     // requireApiKey() → boolean. Lets the caller suppress the API key prompt when
     // the active provider doesn't need a Muapi key (e.g. local Wan2GP).
+    // accept: string | undefined — optional accept attribute override for the file input.
     const doUpload = uploadFn || ((file) => muapi.uploadFile(file));
     const needsKey = typeof requireApiKey === 'function' ? requireApiKey : () => true;
+    const fileAccept = accept || 'image/*';
     let panelOpen = false;
     let maxImages = initialMaxImages;
     let selectedEntries = []; // [{ url, thumbnail }, ...]
@@ -26,7 +29,7 @@ export function createUploadPicker({ anchorContainer, onSelect, onClear, maxImag
     // ── Hidden file input ─────────────────────────────────────────────────────
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
-    fileInput.accept = 'image/*';
+    fileInput.accept = fileAccept;
     fileInput.className = 'hidden';
 
     // ── Trigger button ────────────────────────────────────────────────────────
@@ -331,6 +334,21 @@ export function createUploadPicker({ anchorContainer, onSelect, onClear, maxImag
             }
         }
 
+        const invalidType = files.find(f => !isAllowedUploadMimeType(f));
+        if (invalidType) {
+            alert(`Invalid file type: ${invalidType.type}. Allowed: ${[...UPLOAD_MIME_TYPES.image, ...UPLOAD_MIME_TYPES.video, ...UPLOAD_MIME_TYPES.audio].join(', ')}`);
+            updateTrigger();
+            return;
+        }
+
+        const oversized = files.find(f => f.size > getUploadLimit(f));
+        if (oversized) {
+            const limitMB = getUploadLimit(oversized) / 1024 / 1024;
+            alert(`File too large: ${oversized.name} (${(oversized.size/1024/1024).toFixed(1)} MB). Maximum: ${limitMB} MB`);
+            updateTrigger();
+            return;
+        }
+
         showSpinner();
 
         try {
@@ -419,6 +437,20 @@ export function createUploadPicker({ anchorContainer, onSelect, onClear, maxImag
             const apiKey = getApiKey();
             if (!apiKey) { alert('Please enter your MuAPI key in Settings first.'); return; }
         }
+
+        const invalidType = fileList.find(f => !isAllowedUploadMimeType(f));
+        if (invalidType) {
+            alert(`Invalid file type: ${invalidType.type}. Allowed: ${[...UPLOAD_MIME_TYPES.image, ...UPLOAD_MIME_TYPES.video, ...UPLOAD_MIME_TYPES.audio].join(', ')}`);
+            return;
+        }
+
+        const oversized = fileList.find(f => f.size > getUploadLimit(f));
+        if (oversized) {
+            const limitMB = getUploadLimit(oversized) / 1024 / 1024;
+            alert(`File too large: ${oversized.name} (${(oversized.size/1024/1024).toFixed(1)} MB). Maximum: ${limitMB} MB`);
+            return;
+        }
+
         showSpinner();
         try {
             if (maxImages === 1) {

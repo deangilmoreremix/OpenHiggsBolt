@@ -367,3 +367,106 @@ describe('GET /api/storyboard/result (storyboard status poll)', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })
+
+// ── v1 upload-binary route ────────────────────────────────────────────────────
+
+describe('POST /api/v1/upload-binary', () => {
+  beforeEach(() => {
+    vi.doMock('@/lib/uploadProxyTarget', () => ({
+      getApiKeyFromRequest: vi.fn(() => 'proxy-key'),
+      validateUploadProxyTarget: vi.fn(async () => ({ ok: true, url: 'https://bucket.s3.amazonaws.com/upload' })),
+    }))
+
+    vi.doMock('app/vfx/_helpers', () => ({
+      resolveMuAPIKey: vi.fn(async () => 'proxy-key'),
+    }))
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.clearAllMocks()
+  })
+
+  it('returns 400 when file field is missing', async () => {
+    const { POST } = await import('@/app/api/v1/upload-binary/route')
+
+    const formData = new FormData()
+    formData.append('x-proxy-target-url', 'https://bucket.s3.amazonaws.com/upload')
+
+    const res = await POST(
+      new NextRequest('http://localhost/api/v1/upload-binary', {
+        method: 'POST',
+        headers: { 'x-api-key': 'proxy-key' },
+        body: formData,
+      })
+    )
+
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/file is required/i)
+  })
+
+  it('returns 400 when x-proxy-target-url is missing', async () => {
+    const { POST } = await import('@/app/api/v1/upload-binary/route')
+
+    const formData = new FormData()
+    formData.append('file', new File(['test'], 'test.jpg', { type: 'image/jpeg' }))
+
+    const res = await POST(
+      new NextRequest('http://localhost/api/v1/upload-binary', {
+        method: 'POST',
+        headers: { 'x-api-key': 'proxy-key' },
+        body: formData,
+      })
+    )
+
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/Missing proxy target URL/i)
+  })
+
+  it('returns 400 when target host resolves to blocked IP', async () => {
+    vi.doMock('@/lib/uploadProxyTarget', () => ({
+      getApiKeyFromRequest: vi.fn(() => 'proxy-key'),
+      validateUploadProxyTarget: vi.fn(async () => ({ ok: false, reason: 'resolved_to_blocked_ip' })),
+    }))
+
+    const { POST } = await import('@/app/api/v1/upload-binary/route')
+
+    const formData = new FormData()
+    formData.append('file', new File(['test'], 'test.jpg', { type: 'image/jpeg' }))
+    formData.append('x-proxy-target-url', 'https://bucket.s3.amazonaws.com/upload')
+
+    const res = await POST(
+      new NextRequest('http://localhost/api/v1/upload-binary', {
+        method: 'POST',
+        headers: { 'x-api-key': 'proxy-key' },
+        body: formData,
+      })
+    )
+
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/Invalid upload target/i)
+  })
+
+  it('returns 400 for blocked file types', async () => {
+    const { POST } = await import('@/app/api/v1/upload-binary/route')
+
+    const formData = new FormData()
+    formData.append('file', new File(['test'], 'test.exe', { type: 'application/x-msdownload' }))
+    formData.append('x-proxy-target-url', 'https://bucket.s3.amazonaws.com/upload')
+
+    const res = await POST(
+      new NextRequest('http://localhost/api/v1/upload-binary', {
+        method: 'POST',
+        headers: { 'x-api-key': 'proxy-key' },
+        body: formData,
+      })
+    )
+
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/Invalid file type/i)
+  })
+})

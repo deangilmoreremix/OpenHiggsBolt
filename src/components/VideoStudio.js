@@ -5,6 +5,7 @@ import { createUploadPicker } from './UploadPicker.js';
 import { savePendingJob, removePendingJob, getPendingJobs } from '../lib/pendingJobs.js';
 import { localAI, isLocalAIAvailable } from '../lib/localInferenceClient.js';
 import { isWan2gpModelId, getLocalModelById, localT2VModels, localI2VModels } from '../lib/localModels.js';
+import { getUploadLimit, isAllowedUploadMimeType } from '../lib/uploadConfig.js';
 
 // Promotes a wan2gp catalog entry (lib/localModels.js shape) into the
 // `inputs`-shaped descriptor the Video Studio dropdowns/controls expect.
@@ -121,6 +122,7 @@ export function VideoStudio() {
     // --- Image Upload Picker (Image-to-Video) ---
     const picker = createUploadPicker({
         anchorContainer: container,
+        accept: 'image/*',
         onSelect: ({ url }) => {
             uploadedImageUrl = url;
             // Motion-control v2v: image is a second input alongside the video, not a mode switch
@@ -181,6 +183,7 @@ export function VideoStudio() {
     // a corner badge differentiates it from the start-frame picker.
     const endPicker = createUploadPicker({
         anchorContainer: container,
+        accept: 'image/*',
         onSelect: ({ url }) => { uploadedEndImageUrl = url; },
         onClear: () => { uploadedEndImageUrl = null; },
         uploadFn: (file) => isWan2gpModelId(selectedModel) ? localAI.uploadFileToWan2gp(file) : muapi.uploadFile(file),
@@ -300,6 +303,20 @@ export function VideoStudio() {
         const apiKey = getApiKey();
         if (!apiKey) {
             alert('Please enter your MuAPI key in Settings first.');
+            return;
+        }
+
+        if (!isAllowedUploadMimeType(file)) {
+            alert(`Invalid file type: ${file.type}. Allowed: video/mp4, video/webm`);
+            showVideoIcon();
+            videoFileInput.value = '';
+            return;
+        }
+        const maxBytes = getUploadLimit(file);
+        if (file.size > maxBytes) {
+            alert(`File too large: ${(file.size/1024/1024).toFixed(1)} MB. Maximum: ${maxBytes/1024/1024} MB`);
+            showVideoIcon();
+            videoFileInput.value = '';
             return;
         }
 

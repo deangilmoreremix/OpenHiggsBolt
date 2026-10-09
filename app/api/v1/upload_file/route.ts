@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { safeApiJson, upstreamErrorResponse } from '@/lib/safeApiResponse';
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
 import { ENTITLEMENTS } from '@/access/entitlements';
-import { getApiKeyFromRequest } from '@/lib/uploadProxyTarget';
+import { getApiKeyFromRequest, isBlockedFileType } from '@/lib/uploadProxyTarget';
 
 const MUAPI_UPLOAD_URL = 'https://api.muapi.ai/api/v1/upload_file';
 
@@ -17,6 +17,47 @@ const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   'audio/wav',
   'audio/webm',
 ]);
+
+const UPLOAD_MAX_RETRIES = 3;
+const UPLOAD_BASE_DELAY_MS = 1_000;
+
+async function attemptMuApiUpload(apiKey: string, formData: FormData): Promise<Response> {
+  return fetch(MUAPI_UPLOAD_URL, {
+    method: 'POST',
+    headers: { 'x-api-key': apiKey },
+    body: formData,
+    signal: AbortSignal.timeout(120_000),
+  });
+}
+
+async function uploadWithRetry(apiKey: string, formData: FormData): Promise<Response> {
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < UPLOAD_MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      const delay = UPLOAD_BASE_DELAY_MS * attempt;
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+
+    try {
+      const response = await attemptMuApiUpload(apiKey, formData);
+      if (response.ok) return response;
+      
+      // Don't retry on client errors (4xx) except 429
+      const status = response.status;
+      if (status >= 400 && status < 500 && status !== 429) {
+        return response;
+      }
+      
+      // For 5xx and 429, we'll retry
+      const text = await response.text().catch(() => '');
+      lastError = new Error(`MuAPI upload failed with status ${status}: ${text}`);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error('Network error during upload');
+    }
+  }
+  
+  throw lastError || new Error('MuAPI upload failed after retries');
+}
 
 export async function POST(request: NextRequest) {
   const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
@@ -47,6 +88,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (isBlockedFileType(file.name, file.type)) {
+      return NextResponse.json(
+        { error: `Blocked file extension or MIME type: ${file.name}` },
+        { status: 400 }
+      );
+    }
+
     const maxBytes = file.type.startsWith('video/') ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
     if (file.size > maxBytes) {
       return NextResponse.json(
@@ -63,12 +111,32 @@ export async function POST(request: NextRequest) {
     const uploadForm = new FormData();
     uploadForm.append('file', file);
 
-    const response = await fetch(MUAPI_UPLOAD_URL, {
-      method: 'POST',
-      headers: { 'x-api-key': apiKey },
-      body: uploadForm,
-      signal: AbortSignal.timeout(120_000),
-    });
+    let response: Response;
+    try {
+      response = await uploadWithRetry(apiKey, uploadForm);
+    } catch (error) {
+      console.error('MuAPI upload failed after retries:', error);
+      
+      if (error instanceof TypeError) {
+        return NextResponse.json(
+          { error: 'Unable to reach MuAPI. Please check your connection and try again.' },
+          { status: 502 }
+        );
+      }
+      
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      if (/MuAPI upload failed with status 5\d\d/.test(message)) {
+        return NextResponse.json(
+          { error: 'MuAPI is temporarily unavailable. Please try again in a moment.' },
+          { status: 502 }
+        );
+      }
+      
+      return NextResponse.json(
+        { error: message || 'MuAPI upload failed. Please try again.' },
+        { status: 502 }
+      );
+    }
 
     const parsed = await safeApiJson(response);
 
