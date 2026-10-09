@@ -10,6 +10,3 @@
 [submodule "apps/headshot-generator"]
 	path = apps/headshot-generator
 	url = https://github.com/deangilmoreremix/ai-headshot-generator.git
-[submodule "packages/Open-AI-Design-Agent"]
-	path = packages/Open-AI-Design-Agent
-	url = https://github.com/Anil-matcha/Open-AI-Design-Agent.git
