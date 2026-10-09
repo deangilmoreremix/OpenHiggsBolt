@@ -105,12 +105,15 @@ describe('PersonalizationModal', () => {
       expect(screen.getByText(title)).toBeTruthy();
     });
 
-    // Verify the full-width design sections are present
-    expect(screen.getByText('Source Demo')).toBeTruthy();
-    expect(screen.getByText(/Client Assets/i)).toBeTruthy();
-    expect(screen.getByText(/CTA & Business Content/i)).toBeTruthy();
-    expect(screen.getByText(/Personalize The Prompt/i)).toBeTruthy();
-    expect(screen.getByText(/SmartVideo Engine/i)).toBeTruthy();
+    // Verify the full-width design sections are present.
+    // Scoped to headings: the sticky section nav also renders short link
+    // labels (e.g. "Client Assets"), so unscoped text queries would be
+    // ambiguous.
+    expect(screen.getByRole('heading', { name: 'Source Demo' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /CLIENT ASSETS/i })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /CTA & Business Content/i })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /Personalize The Prompt/i })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /SmartVideo Engine/i })).toBeTruthy();
 
     // Verify SmartVideo Recommended is prominently visible (check container text)
     expect(container.textContent).toMatch(/SmartVideo/)
