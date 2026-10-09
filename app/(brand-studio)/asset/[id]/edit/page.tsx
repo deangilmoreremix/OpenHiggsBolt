@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Save, Download, RefreshCw, Loader2 } from 'lucide-react';
-import { panels, buttons, semantic, appWrapper } from '@/shared/styles/designTokens';
+import { panels, buttons, semantic } from '@/shared/styles/designTokens';
 
 const GRID = [
   'top-left', 'top-center', 'top-right',
@@ -75,7 +75,7 @@ export default function AssetEditPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ ...appWrapper, color: semantic.textSecondary }}>
+      <div className="flex items-center justify-center py-24" style={{ color: semantic.textSecondary }}>
         <Loader2 size={24} className="animate-spin" />
       </div>
     );
@@ -94,8 +94,8 @@ export default function AssetEditPage() {
   };
 
   return (
-    <div className="min-h-screen" style={appWrapper}>
-      <div className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-[1fr_22rem] gap-6">
+    <div className="p-6">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 lg:grid-cols-[1fr_22rem]">
         <div>
           <div className="flex items-center justify-between mb-4">
             <button onClick={() => router.back()} className="text-sm" style={{ color: semantic.textSecondary }}>← Back</button>

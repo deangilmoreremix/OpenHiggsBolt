@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Upload, Download, Loader2, ChevronRight } from 'lucide-react';
-import { panels, buttons, semantic, appWrapper, optionStyle } from '@/shared/styles/designTokens';
+import { Upload, Download, Loader2 } from 'lucide-react';
+import { panels, buttons, semantic, optionStyle } from '@/shared/styles/designTokens';
 import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider';
 
 export const dynamic = "force-dynamic";
@@ -95,8 +95,8 @@ export default function PhotoStudioPage() {
   });
 
   return (
-    <div className="min-h-screen" style={appWrapper}>
-      <div className="max-w-7xl mx-auto px-6 py-8">
+    <div className="p-6">
+      <div className="mx-auto max-w-7xl">
         <div className="flex items-end justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold">Photo Studio</h1>

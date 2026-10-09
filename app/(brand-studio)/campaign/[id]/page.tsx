@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Loader2, Check, ChevronRight } from 'lucide-react';
-import { panels, buttons, semantic, appWrapper, optionStyle } from '@/shared/styles/designTokens';
+import { Loader2, Check } from 'lucide-react';
+import { panels, buttons, semantic, optionStyle } from '@/shared/styles/designTokens';
 
 type Concept = {
   title: string;
@@ -104,15 +104,15 @@ export default function CampaignPage() {
 
   if (!campaign) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ ...appWrapper, color: semantic.textSecondary }}>
+      <div className="flex items-center justify-center py-24" style={{ color: semantic.textSecondary }}>
         <Loader2 size={24} className="animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen" style={appWrapper}>
-      <div className="max-w-7xl mx-auto px-6 py-8">
+    <div className="p-6">
+      <div className="mx-auto max-w-7xl">
         <div className="flex items-start justify-between mb-8">
           <div>
             <p className="text-xs uppercase tracking-wider mb-1" style={{ color: semantic.textMuted }}>Campaign</p>

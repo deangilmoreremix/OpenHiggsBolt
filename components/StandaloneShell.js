@@ -44,6 +44,7 @@ const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/Thumb
 const SocialPublishing = dynamic(() => import('../src/apps/social-publishing/SocialPublishing'), { ssr: false });
 const TABS = [
   { id: 'image',   label: 'Image Studio' },
+  { id: 'brand-studio', label: 'Brand Studio' },
   { id: 'video',   label: 'Video Studio' },
   { id: 'audio',   label: 'Audio Studio' },
   { id: 'clipping', label: 'AI Clipping' },
@@ -67,7 +68,7 @@ const TABS = [
 
 // Maps every landing-page studio slug to the studio tab that renders it.
 const SLUG_TO_TAB = {
-  image: 'image', video: 'video', audio: 'audio', clipping: 'clipping',
+  image: 'image', 'brand-studio': 'brand-studio', video: 'video', audio: 'audio', clipping: 'clipping',
   'vibe-motion': 'vibe-motion', lipsync: 'lipsync', cinema: 'cinema',
   storyboard: 'storyboard', marketing: 'marketing', recast: 'recast', layers: 'layers',
   workflows: 'workflows', agents: 'agents', 'design-agent': 'design-agent',

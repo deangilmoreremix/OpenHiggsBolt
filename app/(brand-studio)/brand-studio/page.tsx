@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Globe, Palette, BarChart3, Image, Camera, Film, Loader2, Check, ChevronRight } from 'lucide-react';
-import { panels, buttons, semantic, appWrapper, optionStyle } from '@/shared/styles/designTokens';
+import { Globe, Loader2, Check } from 'lucide-react';
+import { panels, buttons, semantic } from '@/shared/styles/designTokens';
 import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider';
 
 export const dynamic = "force-dynamic";
@@ -14,14 +14,6 @@ const STEPS = [
   'Saving brand DNA...',
 ];
 
-const FEATURES = [
-  { label: 'Brand DNA', icon: Palette },
-  { label: 'Campaigns', icon: BarChart3 },
-  { label: '8 Platforms', icon: Image },
-  { label: 'Photo Studio', icon: Camera },
-  { label: 'Animate', icon: Film },
-];
-
 export default function BrandStudioLanding() {
   const router = useRouter();
   const { requireEntitlement } = useSmartVideoAccess();
@@ -29,14 +21,6 @@ export default function BrandStudioLanding() {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(-1);
   const [error, setError] = useState<string | null>(null);
-  const [brands, setBrands] = useState<any[]>([]);
-
-  useEffect(() => {
-    fetch('/api/brands')
-      .then((r) => r.json())
-      .then((json) => setBrands(json.data || []))
-      .catch(() => {});
-  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -80,16 +64,17 @@ export default function BrandStudioLanding() {
   }, [loading]);
 
   return (
-    <div className="min-h-screen p-6" style={appWrapper}>
-      <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-3">Brand Studio</h1>
+    <div className="p-6">
+      <div className="mx-auto max-w-3xl">
+        <div className="mb-10 text-center">
+          <h1 className="mb-3 text-4xl font-bold">New Brand</h1>
           <p className="text-lg" style={{ color: semantic.textSecondary }}>
-            Paste any website URL to extract brand DNA and generate campaigns, assets, and photos.
+            Paste any website URL and Brand Studio extracts its Brand DNA, then generates on-brand campaigns,
+            platform creatives, and product photography — all in one workspace.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="mb-12">
+        <form onSubmit={handleSubmit}>
           <div className="rounded-xl p-8" style={panels.glass}>
             <div className="flex gap-3">
               <input
@@ -129,49 +114,9 @@ export default function BrandStudioLanding() {
           </div>
         </form>
 
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Recent Brands</h2>
-          {brands.length === 0 ? (
-            <p className="text-sm" style={{ color: semantic.textMuted }}>
-              No brands yet. Paste a URL above to get started.
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {brands.map((b) => (
-                <button
-                  key={b.id}
-                  onClick={() => router.push(`/brand/${b.id}`)}
-                  className="text-left rounded-xl p-4 transition hover:opacity-80"
-                  style={panels.card}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-3">
-                      {b.primary_colors && (
-                        <div className="w-6 h-6 rounded-full border border-white/10" style={{ background: b.primary_colors.split(',')[0] || '#000' }} />
-                      )}
-                      <div>
-                        <p className="font-semibold">{b.brand_name || 'Untitled Brand'}</p>
-                        <p className="text-xs truncate mt-1" style={{ color: semantic.textSecondary }}>{b.industry || b.url}</p>
-                      </div>
-                    </div>
-                    <ChevronRight size={18} style={{ color: semantic.textMuted }} />
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          {FEATURES.map((f) => {
-            const Icon = f.icon;
-            return (
-              <span key={f.label} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium" style={buttons.inactivePill}>
-                <Icon size={14} /> {f.label}
-              </span>
-            );
-          })}
-        </div>
+        <p className="mt-6 text-center text-sm" style={{ color: semantic.textMuted }}>
+          Your existing brands are in the menu on the left. New brands you create appear there too.
+        </p>
       </div>
     </div>
   );

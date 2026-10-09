@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Sparkles, Loader2 } from 'lucide-react';
-import { panels, buttons, semantic, appWrapper } from '@/shared/styles/designTokens';
+import { panels, buttons, semantic } from '@/shared/styles/designTokens';
 
 const GOALS = [
   { id: 'product_launch', label: 'Product Launch', desc: 'Announce a new product or feature', icon: '🚀' },
@@ -41,9 +41,12 @@ export default function NewCampaignPage() {
   };
 
   return (
-    <div className="min-h-screen p-6" style={{ ...appWrapper, color: semantic.textPrimary }}>
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6">New Campaign</h1>
+    <div className="p-6">
+      <div className="mx-auto max-w-3xl">
+        <p className="mb-1 text-xs uppercase tracking-wider" style={{ color: semantic.textMuted }}>
+          Campaigns
+        </p>
+        <h1 className="mb-6 text-2xl font-bold">New Campaign</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           {GOALS.map((g) => (
             <button
