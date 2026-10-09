@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ChevronLeft, Save, Loader2, Check, Plus, X } from 'lucide-react';
-import { panels, buttons, semantic, appWrapper, optionStyle } from '@/shared/styles/designTokens';
+import { Save, Loader2, Check, Plus, X, Camera, Sparkles } from 'lucide-react';
+import { panels, buttons, semantic } from '@/shared/styles/designTokens';
 
 type Brand = {
   id: string;
@@ -118,7 +118,7 @@ export default function BrandPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ ...appWrapper, color: semantic.textSecondary }}>
+      <div className="flex items-center justify-center py-24" style={{ color: semantic.textSecondary }}>
         <Loader2 size={24} className="animate-spin" />
       </div>
     );
@@ -126,52 +126,50 @@ export default function BrandPage() {
 
   if (!brand) {
     return (
-      <div className="min-h-screen p-6" style={{ ...appWrapper, color: semantic.error }}>
+      <div className="p-6" style={{ color: semantic.error }}>
         {error || 'Brand not found'}
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen" style={appWrapper}>
-      <header className="sticky top-0 z-50 border-b backdrop-blur-md" style={{ borderColor: 'var(--border-color)', background: 'rgba(0,0,0,0.2)' }}>
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <button onClick={() => router.push('/brand-studio')} className="p-2 rounded-lg hover:opacity-80" style={buttons.ghost}>
-              <ChevronLeft size={18} />
-            </button>
-            <div className="flex items-center gap-3">
-              {form.primary_colors[0] && (
-                <div className="w-5 h-5 rounded-full border border-white/10" style={{ background: form.primary_colors[0] }} />
-              )}
-              <h1 className="text-lg font-semibold">{form.brand_name || 'Brand DNA'}</h1>
+    <div className="p-6">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            {form.primary_colors[0] && (
+              <div className="w-6 h-6 rounded-full border border-white/10" style={{ background: form.primary_colors[0] }} />
+            )}
+            <div>
+              <p className="text-xs uppercase tracking-wider" style={{ color: semantic.textMuted }}>Brand DNA</p>
+              <h1 className="text-2xl font-semibold">{form.brand_name || 'Untitled Brand'}</h1>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => router.push(`/brand/${params.id}/campaigns/new`)} className="px-4 py-2 rounded-lg text-sm font-medium" style={buttons.ghost}>
-              Create Campaign
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={() => router.push(`/brand/${params.id}/campaigns/new`)} className="rounded-lg px-4 py-2 text-sm font-medium" style={buttons.ghost}>
+              <Sparkles size={14} className="mr-1.5 inline" />
+              New Campaign
             </button>
-            <button onClick={save} disabled={saving} className="px-4 py-2 rounded-lg font-semibold flex items-center gap-2 disabled:opacity-50" style={buttons.primary}>
+            <a href={`/photo-studio?brand_id=${params.id}`} className="rounded-lg px-4 py-2 text-sm font-medium" style={buttons.ghost}>
+              <Camera size={14} className="mr-1.5 inline" />
+              Photo Studio
+            </a>
+            <button onClick={save} disabled={saving} className="rounded-lg px-4 py-2 font-semibold flex items-center gap-2 disabled:opacity-50" style={buttons.primary}>
               {saving ? <Loader2 size={16} className="animate-spin" /> : saved ? <Check size={16} /> : <Save size={16} />}
               {saved ? 'Saved' : 'Save'}
             </button>
           </div>
         </div>
-      </header>
 
-      {error && (
-        <div className="max-w-7xl mx-auto px-6 mt-6">
-          <div className="p-4 rounded-lg text-sm" style={{ background: semantic.errorBg, border: `1px solid ${semantic.errorBorder}`, color: semantic.error }}>{error}</div>
-        </div>
-      )}
+        {error && (
+          <div className="mb-6 p-4 rounded-lg text-sm" style={{ background: semantic.errorBg, border: `1px solid ${semantic.errorBorder}`, color: semantic.error }}>{error}</div>
+        )}
 
-      {brand.screenshot_url && (
-        <div className="w-full h-48">
-          <img src={brand.screenshot_url} alt="" className="w-full h-full object-cover" />
-        </div>
-      )}
-
-      <main className="max-w-7xl mx-auto px-6 py-8">
+        {brand.screenshot_url && (
+          <div className="mb-8 w-full h-48 rounded-xl overflow-hidden">
+            <img src={brand.screenshot_url} alt="" className="w-full h-full object-cover" />
+          </div>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
             <section className="rounded-xl p-6" style={panels.glass}>
@@ -220,14 +218,10 @@ export default function BrandPage() {
                   <img src={form.logo_url} alt="logo" className="max-h-24 object-contain" />
                 </div>
               )}
-              <div className="mt-4 flex flex-wrap gap-2">
-                <a href={`/brand/${params.id}/campaigns/new`} className="px-3 py-2 rounded-lg text-sm font-medium" style={buttons.ghost}>Create Campaign</a>
-                 <a href={`/photo-studio?brand_id=${params.id}`} className="px-3 py-2 rounded-lg text-sm font-medium" style={buttons.ghost}>Photo Studio</a>
-              </div>
             </section>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

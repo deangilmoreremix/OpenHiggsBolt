@@ -3791,6 +3791,14 @@ packages:
     resolution: {integrity: sha512-0je+qPKHEMohvfRTCEo3CrPG6cAzAYgmzKyxRiYSSDkS6eGJdyVJm7WaYA5ECaAD9wLB2T4EEeymA5aFVcYXCA==}
     engines: {node: '>=6'}
 
+  design-agent@file:packages/Open-AI-Design-Agent/packages/design-agent:
+    resolution: {directory: packages/Open-AI-Design-Agent/packages/design-agent, type: directory}
+    peerDependencies:
+      next: '>=14.0.0'
+      next-themes: '>=0.4.0'
+      react: '>=18.0.0'
+      react-dom: '>=18.0.0'
+
   detect-libc@2.1.2:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
@@ -10923,6 +10931,30 @@ snapshots:
   delegates@1.0.0: {}
 
   dequal@2.0.3: {}
+
+  design-agent@file:packages/Open-AI-Design-Agent/packages/design-agent(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@10.2.2))(next-themes@0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(next@15.5.15(@babel/core@7.29.7(supports-color@10.2.2))(@playwright/test@1.63.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@10.2.2):
+    dependencies:
+      axios: 1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2)
+      framer-motion: 12.43.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      konva: 10.7.1
+      next: 15.5.15(@babel/core@7.29.7(supports-color@10.2.2))(@playwright/test@1.63.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      next-themes: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react: 19.3.0
+      react-dom: 19.3.0(react@19.3.0)
+      react-hot-toast: 2.6.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react-icons: 5.7.0(react@19.3.0)
+      react-konva: 19.2.4(@types/react@19.3.0)(konva@10.7.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react-markdown: 10.1.0(@types/react@19.3.0)(react@19.3.0)(supports-color@10.2.2)
+      react-syntax-highlighter: 15.6.6(react@19.3.0)
+      remark-gfm: 4.0.1(supports-color@10.2.2)
+    transitivePeerDependencies:
+      - '@emotion/is-prop-valid'
+      - '@types/react'
+      - '@types/react-dom'
+      - canvas
+      - debug
+      - skia-canvas
+      - supports-color
 
   detect-libc@2.1.2: {}
 
