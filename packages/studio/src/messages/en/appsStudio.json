@@ -1,0 +1,35 @@
+{
+  "hero": {
+    "badge": "AI Apps",
+    "titleLine1": "SmartVideo GO AI Apps",
+    "titleLine2": "",
+    "subtitle": "Explore a collection of available AI applications, tools, and open-source experiences for creative, business, image, video, and productivity workflows."
+  },
+  "card": {
+    "github": "GitHub",
+    "demo": "Live Demo",
+    "templateFallback": "App"
+  },
+  "search": {
+    "placeholder": "Search SmartVideo GO AI Apps..."
+  },
+  "filter": {
+    "all": "All"
+  },
+  "categories": {
+    "all": "All",
+    "image": "Image",
+    "video": "Video",
+    "business": "Business",
+    "productivity": "Productivity",
+    "audio": "Audio",
+    "creative": "Creative",
+    "realEstate": "Real Estate",
+    "design": "Design",
+    "lifestyle": "Lifestyle",
+    "marketing": "Marketing"
+  },
+  "empty": {
+    "noResults": "No apps found matching your criteria."
+  }
+}

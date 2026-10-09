@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartVideo GO AI Apps</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { background: #030303; }
+    .card-hover:hover {
+      transform: translateY(-4px);
+      border-color: rgba(255,255,255,0.1);
+      background: #0f0f0f;
+    }
+  </style>
+</head>
+<body>
+  <div class="min-h-screen flex flex-col items-center py-12 px-6">
+    <!-- Header -->
+    <div class="text-center space-y-6 max-w-3xl mb-10">
+      <h1 class="text-5xl font-black text-white tracking-tighter leading-[0.9]">
+        AI Apps
+      </h1>
+      <p class="text-white/40 text-sm font-medium leading-relaxed max-w-xl mx-auto">
+        Explore a collection of available AI applications, tools, and open-source experiences for creative, business, image, video, and productivity workflows.
+      </p>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="w-full max-w-3xl space-y-4 mb-10">
+      <div class="relative">
+        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm"></i>
+        <input
+          type="text"
+          placeholder="Search SmartVideo GO AI Apps..."
+          class="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 transition-colors"
+        />
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button class="px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all bg-[#22d3ee]/10 text-[#22d3ee] border border-[#22d3ee]/20">All</button>
+        <button class="px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all bg-white/5 text-white/50 border border-white/5 hover:text-white hover:bg-white/10">Image</button>
+        <button class="px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all bg-white/5 text-white/50 border border-white/5 hover:text-white hover:bg-white/10">Video</button>
+        <button class="px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all bg-white/5 text-white/50 border border-white/5 hover:text-white hover:bg-white/10">Business</button>
+        <button class="px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all bg-white/5 text-white/50 border border-white/5 hover:text-white hover:bg-white/10">Creative</button>
+        <button class="px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all bg-white/5 text-white/50 border border-white/5 hover:text-white hover:bg-white/10">Lifestyle</button>
+        <button class="px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all bg-white/5 text-white/50 border border-white/5 hover:text-white hover:bg-white/10">Productivity</button>
+      </div>
+    </div>
+
+    <!-- Apps Grid - First 6 apps as preview -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full max-w-7xl">
+      <!-- App Card 1 -->
+      <div class="group bg-[#0a0a0a] border border-white/5 rounded-lg flex flex-col overflow-hidden transition-all duration-300 card-hover">
+        <div class="relative h-44 w-full overflow-hidden bg-white/5">
+          <img src="https://cdn.muapi.ai/apps/d9c39378f60e48098f6b6ce657dc18b5.png" alt="AI Headshot Studio" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
+        </div>
+        <div class="p-5 flex flex-col flex-1 space-y-4">
+          <div class="flex-1">
+            <h3 class="text-sm font-bold text-white uppercase tracking-tight mb-1">AI Headshot Studio</h3>
+            <p class="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-2">Image</p>
+            <p class="text-xs text-white/50 leading-relaxed font-medium line-clamp-2">Professional AI headshot generator for LinkedIn, team portraits, and personal branding.</p>
+          </div>
+          <div class="flex items-center gap-2 pt-2">
+            <a href="https://github.com/SamurAIGPT/ai-headshot-generator" target="_blank" rel="noopener noreferrer" class="flex-1 py-2 bg-white/5 text-white rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/10 transition-all border border-white/5 active:scale-95">
+              <i class="fab fa-github text-xs"></i> GitHub
+            </a>
+            <a href="https://ai-headshot-generator-xi.vercel.app/" target="_blank" rel="noopener noreferrer" class="flex-1 py-2 bg-[#22d3ee]/10 text-[#22d3ee] rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[#22d3ee]/20 transition-all border border-[#22d3ee]/20 active:scale-95">
+              <i class="fas fa-external-link-alt text-[9px]"></i> Live Demo
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- App Card 2 -->
+      <div class="group bg-[#0a0a0a] border border-white/5 rounded-lg flex flex-col overflow-hidden transition-all duration-300 card-hover">
+        <div class="relative h-44 w-full overflow-hidden bg-white/5">
+          <img src="https://cdn.muapi.ai/data/2/874086171651/Screenshot_2026-04-15_103743.png" alt="Nano Banana Studio" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
+        </div>
+        <div class="p-5 flex flex-col flex-1 space-y-4">
+          <div class="flex-1">
+            <h3 class="text-sm font-bold text-white uppercase tracking-tight mb-1">Nano Banana Studio</h3>
+            <p class="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-2">Image</p>
+            <p class="text-xs text-white/50 leading-relaxed font-medium line-clamp-2">AI image generation platform with text-to-image and multi-image reference editing.</p>
+          </div>
+          <div class="flex items-center gap-2 pt-2">
+            <a href="https://github.com/SamurAIGPT/nano-banana-generator" target="_blank" rel="noopener noreferrer" class="flex-1 py-2 bg-white/5 text-white rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/10 transition-all border border-white/5 active:scale-95">
+              <i class="fab fa-github text-xs"></i> GitHub
+            </a>
+            <a href="https://nano-banana-generator-psi.vercel.app" target="_blank" rel="noopener noreferrer" class="flex-1 py-2 bg-[#22d3ee]/10 text-[#22d3ee] rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[#22d3ee]/20 transition-all border border-[#22d3ee]/20 active:scale-95">
+              <i class="fas fa-external-link-alt text-[9px]"></i> Live Demo
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- App Card 3 -->
+      <div class="group bg-[#0a0a0a] border border-white/5 rounded-lg flex flex-col overflow-hidden transition-all duration-300 card-hover">
+        <div class="relative h-44 w-full overflow-hidden bg-white/5">
+          <img src="https://cdn.muapi.ai/apps/4cd1f49d48934d448e7f493f9d5e476e.png" alt="Seedance V2 Studio" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
+        </div>
+        <div class="p-5 flex flex-col flex-1 space-y-4">
+          <div class="flex-1">
+            <h3 class="text-sm font-bold text-white uppercase tracking-tight mb-1">Seedance V2 Studio</h3>
+            <p class="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-2">Video</p>
+            <p class="text-xs text-white/50 leading-relaxed font-medium line-clamp-2">AI video generation workspace for Seedance 2.0 and Seedance 2 Mini text-to-video and image-to-video.</p>
+          </div>
+          <div class="flex items-center gap-2 pt-2">
+            <a href="https://github.com/SamurAIGPT/seedance-2-generator" target="_blank" rel="noopener noreferrer" class="flex-1 py-2 bg-white/5 text-white rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/10 transition-all border border-white/5 active:scale-95">
+              <i class="fab fa-github text-xs"></i> GitHub
+            </a>
+            <a href="https://seedance-2-generator.vercel.app/" target="_blank" rel="noopener noreferrer" class="flex-1 py-2 bg-[#22d3ee]/10 text-[#22d3ee] rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[#22d3ee]/20 transition-all border border-[#22d3ee]/20 active:scale-95">
+              <i class="fas fa-external-link-alt text-[9px]"></i> Live Demo
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- App Card 4 -->
+      <div class="group bg-[#0a0a0a] border border-white/5 rounded-lg flex flex-col overflow-hidden transition-all duration-300 card-hover">
+        <div class="relative h-44 w-full overflow-hidden bg-white/5">
+          <img src="https://cdn.muapi.ai/data/2/883345778103/cca8b5bb-25f1-40fe-928e-53dce2c8c928.png" alt="AI Clipping Studio" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
+        </div>
+        <div class="p-5 flex flex-col flex-1 space-y-4">
+          <div class="flex-1">
+            <h3 class="text-sm font-bold text-white uppercase tracking-tight mb-1">AI Clipping Studio</h3>
+            <p class="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-2">Video</p>
+            <p class="text-xs text-white/50 leading-relaxed font-medium line-clamp-2">AI-powered video clipping that extracts viral highlights from YouTube videos automatically.</p>
+          </div>
+          <div class="flex items-center gap-2 pt-2">
+            <a href="https://github.com/SamurAIGPT/ai-clipping-generator" target="_blank" rel="noopener noreferrer" class="flex-1 py-2 bg-white/5 text-white rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/10 transition-all border border-white/5 active:scale-95">
+              <i class="fab fa-github text-xs"></i> GitHub
+            </a>
+            <a href="https://ai-clipping-generator.vercel.app/" target="_blank" rel="noopener noreferrer" class="flex-1 py-2 bg-[#22d3ee]/10 text-[#22d3ee] rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[#22d3ee]/20 transition-all border border-[#22d3ee]/20 active:scale-95">
+              <i class="fas fa-external-link-alt text-[9px]"></i> Live Demo
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- App Card 5 - AI YouTube Shorts Generator (38th app) -->
+      <div class="group bg-[#0a0a0a] border border-white/5 rounded-lg flex flex-col overflow-hidden transition-all duration-300 card-hover">
+        <div class="relative h-44 w-full overflow-hidden bg-white/5">
+          <img src="https://github.com/SamurAIGPT/AI-Youtube-Shorts-Generator/raw/main/assets/video-demo-thumb.png" alt="AI YouTube Shorts Generator" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
+        </div>
+        <div class="p-5 flex flex-col flex-1 space-y-4">
+          <div class="flex-1">
+            <h3 class="text-sm font-bold text-white uppercase tracking-tight mb-1">AI YouTube Shorts Generator</h3>
+            <p class="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-2">Video</p>
+            <p class="text-xs text-white/50 leading-relaxed font-medium line-clamp-2">Turn long-form YouTube videos into viral 9:16 shorts with LLM highlight detection and auto vertical cropping.</p>
+          </div>
+          <div class="flex items-center gap-2 pt-2">
+            <a href="https://github.com/SamurAIGPT/AI-Youtube-Shorts-Generator" target="_blank" rel="noopener noreferrer" class="flex-1 py-2 bg-white/5 text-white rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/10 transition-all border border-white/5 active:scale-95">
+              <i class="fab fa-github text-xs"></i> GitHub
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer info -->
+    <div class="mt-12 text-center">
+      <p class="text-white/30 text-xs">38 verified apps • No Coming Soon • No Request Access</p>
+    </div>
+  </div>
+</body>
+</html>
