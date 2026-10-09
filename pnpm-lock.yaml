@@ -44,9 +44,6 @@ importers:
       crawlee:
         specifier: ^3.18.1
         version: 3.18.2(@types/node@26.6.4)(idcac-playwright@0.2.0)(playwright@1.63.0)(supports-color@10.2.2)
-      design-agent:
-        specifier: file:./packages/Open-AI-Design-Agent/packages/design-agent
-        version: link:packages/Open-AI-Design-Agent/packages/design-agent
       gsap:
         specifier: ^3.12.5
         version: 3.15.0
@@ -232,70 +229,6 @@ importers:
       vite:
         specifier: ^5.4.11
         version: 5.4.21(@types/node@26.6.4)(lightningcss@1.32.0)
-
-  packages/Open-AI-Design-Agent/packages/design-agent:
-    dependencies:
-      axios:
-        specifier: ^1.7.0
-        version: 1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2)
-      framer-motion:
-        specifier: ^12.0.0
-        version: 12.43.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      konva:
-        specifier: ^10.3.0
-        version: 10.7.1
-      next:
-        specifier: '>=14.0.0'
-        version: 15.5.15(@babel/core@7.29.7(supports-color@10.2.2))(@playwright/test@1.63.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      next-themes:
-        specifier: '>=0.4.0'
-        version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      react:
-        specifier: '>=18.0.0'
-        version: 19.3.0
-      react-dom:
-        specifier: '>=18.0.0'
-        version: 19.3.0(react@19.3.0)
-      react-hot-toast:
-        specifier: ^2.5.2
-        version: 2.6.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      react-icons:
-        specifier: ^5.5.0
-        version: 5.7.0(react@19.3.0)
-      react-konva:
-        specifier: 19.2.4
-        version: 19.2.4(@types/react@19.3.0)(konva@10.7.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      react-markdown:
-        specifier: ^10.1.0
-        version: 10.1.0(@types/react@19.3.0)(react@19.3.0)(supports-color@10.2.2)
-      react-syntax-highlighter:
-        specifier: ^15.6.1
-        version: 15.6.6(react@19.3.0)
-      remark-gfm:
-        specifier: ^4.0.1
-        version: 4.0.1(supports-color@10.2.2)
-    devDependencies:
-      '@babel/cli':
-        specifier: ^7.28.3
-        version: 7.29.7(@babel/core@7.29.7(supports-color@10.2.2))
-      '@babel/core':
-        specifier: ^7.29.0
-        version: 7.29.7(supports-color@10.2.2)
-      '@babel/preset-env':
-        specifier: ^7.28.5
-        version: 7.29.7(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
-      '@babel/preset-react':
-        specifier: ^7.28.5
-        version: 7.29.7(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
-      autoprefixer:
-        specifier: ^10.4.14
-        version: 10.6.1(postcss@8.5.29)
-      postcss:
-        specifier: ^8.4.24
-        version: 8.5.29
-      tailwindcss:
-        specifier: ^3.3.3
-        version: 3.4.19(tsx@4.23.15)(yaml@2.9.1)
 
   packages/Open-Poe-AI/packages/agents:
     dependencies:
@@ -3885,6 +3818,14 @@ packages:
   dequal@2.0.3:
     resolution: {integrity: sha512-0je+qPKHEMohvfRTCEo3CrPG6cAzAYgmzKyxRiYSSDkS6eGJdyVJm7WaYA5ECaAD9wLB2T4EEeymA5aFVcYXCA==}
     engines: {node: '>=6'}
+
+  design-agent@file:packages/Open-AI-Design-Agent/packages/design-agent:
+    resolution: {directory: packages/Open-AI-Design-Agent/packages/design-agent, type: directory}
+    peerDependencies:
+      next: '>=14.0.0'
+      next-themes: '>=0.4.0'
+      react: '>=18.0.0'
+      react-dom: '>=18.0.0'
 
   detect-libc@2.1.2:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
@@ -11133,6 +11074,30 @@ snapshots:
   delegates@1.0.0: {}
 
   dequal@2.0.3: {}
+
+  design-agent@file:packages/Open-AI-Design-Agent/packages/design-agent(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(debug@4.4.3(supports-color@10.2.2))(next-themes@0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(next@15.5.15(@babel/core@7.29.7(supports-color@10.2.2))(@playwright/test@1.63.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@10.2.2):
+    dependencies:
+      axios: 1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2)
+      framer-motion: 12.43.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      konva: 10.7.1
+      next: 15.5.15(@babel/core@7.29.7(supports-color@10.2.2))(@playwright/test@1.63.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      next-themes: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react: 19.3.0
+      react-dom: 19.3.0(react@19.3.0)
+      react-hot-toast: 2.6.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react-icons: 5.7.0(react@19.3.0)
+      react-konva: 19.2.4(@types/react@19.3.0)(konva@10.7.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react-markdown: 10.1.0(@types/react@19.3.0)(react@19.3.0)(supports-color@10.2.2)
+      react-syntax-highlighter: 15.6.6(react@19.3.0)
+      remark-gfm: 4.0.1(supports-color@10.2.2)
+    transitivePeerDependencies:
+      - '@emotion/is-prop-valid'
+      - '@types/react'
+      - '@types/react-dom'
+      - canvas
+      - debug
+      - skia-canvas
+      - supports-color
 
   detect-libc@2.1.2: {}
 
