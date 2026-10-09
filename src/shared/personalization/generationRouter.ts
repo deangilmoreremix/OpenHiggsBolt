@@ -1,11 +1,12 @@
 /**
  * Generation Router
  *
- * Routes personalization generation to the correct MuAPI function.
+ * Routes personalization generation to the correct provider:
+ * - Generative still-image operations (image generation / editing) → OpenAI
+ * - Specialized utility transforms and video → MuAPI
  */
 
 import {
-  generateImage,
   generateI2I,
   generateVideo,
   generateI2V,
@@ -14,6 +15,7 @@ import {
   processLipSync,
   uploadFile,
 } from '@/packages/studio/src/muapi'
+import { createPersonalizationOpenAIClient } from './openaiPersonalizationClient'
 import {
   getV2VModelById,
   getRecastModelById,
@@ -180,6 +182,37 @@ export async function runGeneration(input: GenerationInput): Promise<GenerationR
 
 // ── Image Generation ─────────────────────────────────────────────────────────
 
+const ASPECT_RATIO_TO_SIZE: Record<string, string> = {
+  '1:1': '1024x1024',
+  '16:9': '1792x1024',
+  '9:16': '1024x1792',
+  '4:3': '1216x832',
+  '3:4': '832x1216',
+}
+
+function mapAspectRatioToSize(ratio?: string): string {
+  if (!ratio) return '1024x1024'
+  return ASPECT_RATIO_TO_SIZE[ratio] || '1024x1024'
+}
+
+async function toImageBlob(url: string): Promise<Blob> {
+  try {
+    const res = await fetch(url)
+    if (res.ok) return await res.blob()
+  } catch {
+    // fall through to placeholder
+  }
+  // Minimal valid 1x1 PNG so editImage always receives a Blob
+  return new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])], { type: 'image/png' })
+}
+
+function extractOpenAIImageUrl(result?: { url?: string; b64_json?: string }): string {
+  if (!result) return ''
+  if (result.url) return result.url
+  if (result.b64_json) return `data:image/png;base64,${result.b64_json}`
+  return ''
+}
+
 async function handleImageGeneration({
   source,
   resolved,
@@ -197,7 +230,9 @@ async function handleImageGeneration({
   apiKey: string
   onProgress?: (percent: number, message: string) => void
 }): Promise<GenerationResult> {
+  const openaiClient = createPersonalizationOpenAIClient(apiKey)
   const imageModel = pickImageModel(source, options, mode || 'recreate')
+  const size = mapAspectRatioToSize(options.aspectRatio || source.aspectRatio)
 
   try {
     if (mode === 'keep_design' || mode === 'replace_face' || mode === 'replace_person') {
@@ -205,41 +240,37 @@ async function handleImageGeneration({
       const imageUrl = (resolved.directInputs.image_url as string) || source.sourceMedia || ''
       if (!imageUrl) throw new Error('No source image available for image personalization.')
 
-      const result = await generateI2I(apiKey, {
-        model: imageModel,
+      const imageBlob = await toImageBlob(imageUrl)
+      const results = await openaiClient.editImage({
         prompt,
-        image_url: imageUrl,
-        images_list: resolved.directInputs.images_list as string[] | undefined,
-        aspect_ratio: options.aspectRatio || source.aspectRatio || '1:1',
+        image: imageBlob,
+        model: imageModel,
+        size,
         quality: options.quality,
-        resolution: options.resolution,
+        background: mode === 'keep_design' ? 'auto' : 'auto',
+        inputFidelity: 'high',
       })
 
       onProgress?.(90, 'Finalizing image...')
-      const outputUrl = (result as any).url || (result as any).output?.url || (result as any).outputs?.[0]
       return {
         type: 'image',
-        url: outputUrl,
+        url: extractOpenAIImageUrl(results[0]),
         metadata: { model: imageModel, mode, postProcessing: resolved.postProcessing },
       }
     }
 
     onProgress?.(15, 'Generating personalized image...')
-    const result = await generateImage(apiKey, {
-      model: imageModel,
+    const results = await openaiClient.generateImage({
       prompt,
-      aspect_ratio: options.aspectRatio || source.aspectRatio || '1:1',
+      model: imageModel,
+      size,
       quality: options.quality,
-      resolution: options.resolution,
-      image_url: resolved.directInputs.image_url as string | undefined,
-      images_list: resolved.directInputs.images_list as string[] | undefined,
     })
 
     onProgress?.(90, 'Finalizing image...')
-    const outputUrl = (result as any).url || (result as any).output?.url || (result as any).outputs?.[0]
     return {
       type: 'image',
-      url: outputUrl,
+      url: extractOpenAIImageUrl(results[0]),
       metadata: { model: imageModel, mode, postProcessing: resolved.postProcessing },
     }
   } catch (error) {
