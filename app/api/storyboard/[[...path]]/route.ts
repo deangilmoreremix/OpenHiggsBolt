@@ -4,6 +4,8 @@ import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/ap
 import { ENTITLEMENTS } from '@/access/entitlements';
 import { cleanApiKey } from '@/lib/keys';
 
+export const dynamic = "force-dynamic";
+
 const MUAPI_BASE = process.env.MUAPI_BASE_URL || 'https://api.muapi.ai'
 const STORYBOARD_MODEL = process.env.STORYBOARD_MODEL || 'openai-sora-2-pro-storyboard'
 // Image model used to render per-shot storyboard frames (still previews).

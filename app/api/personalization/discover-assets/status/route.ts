@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { getDiscoveryJobForUser, getDiscoveryJobById } from '@/server/discoveryJobs'
 
+export const dynamic = "force-dynamic";
+
 export const runtime = 'nodejs'
 
 export async function GET(req: NextRequest) {

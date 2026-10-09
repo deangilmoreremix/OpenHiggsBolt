@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import type { SeedancePrompt, SeedanceStats } from '@/types/go-ai-viral/seedance'
 import { classifyPrompt } from '@/lib/nicheClassifier'
 
+export const dynamic = "force-dynamic";
+
 /**
  * Production-safe data source.
  *

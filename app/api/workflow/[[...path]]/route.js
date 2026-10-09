@@ -4,6 +4,8 @@ import { rewriteThumbnails } from './thumbnail-rewrite.js';
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
 import { ENTITLEMENTS } from '@/access/entitlements';
 
+export const dynamic = "force-dynamic";
+
 const MUAPI_BASE = 'https://api.muapi.ai';
 
 // The MuAPI API returns thumbnail URLs pointing at cdn.muapi.ai. Some of those

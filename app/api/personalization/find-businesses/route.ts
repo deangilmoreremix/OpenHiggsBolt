@@ -4,6 +4,8 @@ import { getNicheMapping, getSupportedNiches } from '@/server/businessDiscovery'
 import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
 import { validatePersonalizationEnv } from '@/server/envValidation'
 
+export const dynamic = "force-dynamic";
+
 export const runtime = 'nodejs'
 
 const CACHE_TTL_MS = 1000 * 60 * 60 // 1 hour

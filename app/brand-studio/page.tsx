@@ -6,6 +6,8 @@ import { Globe, Palette, BarChart3, Image, Camera, Film, Loader2, Check, Chevron
 import { panels, buttons, semantic, appWrapper, optionStyle } from '@/shared/styles/designTokens';
 import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider';
 
+export const dynamic = "force-dynamic";
+
 const STEPS = [
   'Fetching website...',
   'Analyzing brand identity...',

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { stat } from 'node:fs/promises'
 
+export const dynamic = "force-dynamic";
+
 const DATA_PATH = process.cwd() + '/src/data/seedance_prompts.json'
 const FEED_JSONL = 'https://raw.githubusercontent.com/Hanyuyu/visual-prompt-feed/main/data/prompts.jsonl'
 const FEED_STATS = 'https://raw.githubusercontent.com/Hanyuyu/visual-prompt-feed/main/stats.json'

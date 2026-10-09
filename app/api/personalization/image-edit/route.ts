@@ -6,6 +6,8 @@ import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer'
 import { rateLimit, rateLimit429 } from '@/lib/rateLimit'
 import { IMAGE_EDIT_OPERATIONS, type EditorOperationId } from '@/src/shared/personalization/image-editor/imageEditRegistry'
 
+export const dynamic = "force-dynamic";
+
 export const runtime = 'nodejs'
 
 const OPENAI_EDIT_URL = 'https://api.openai.com/v1/images/edits'

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import type { FeedStats } from '@/types/go-ai-viral/prompt'
 import { safeApiJson } from '@/lib/safeApiResponse'
 
+export const dynamic = "force-dynamic";
+
 /**
  * GO- AI Viral — Stats API
  *

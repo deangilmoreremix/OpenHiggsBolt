@@ -5,6 +5,8 @@ import { Upload, Download, Loader2, ChevronRight } from 'lucide-react';
 import { panels, buttons, semantic, appWrapper, optionStyle } from '@/shared/styles/designTokens';
 import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider';
 
+export const dynamic = "force-dynamic";
+
 const CATEGORIES = [
   'E-commerce', 'Lifestyle', 'Food & Beverage', 'Tech & Electronics', 'Beauty & Fashion', 'Health & Wellness'
 ];

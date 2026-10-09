@@ -737,16 +737,8 @@ export async function publishToX(apiKey, payload) {
  * @param {string} apiKey   MuAPI key (BYOK)
  * @param {string} endpoint Endpoint slug appended to `/api/v1/` (e.g. `ai-image-upscale`)
  * @param {object} payload  Request body — typically `{ image_url, ...params }`
- * @returns {Promise<string>} Final hosted image URL (`output.url` or `url`)
+ * @returns {Promise<any>} Final result object from polling
  */
-export async function enhanceImage(apiKey, endpoint, payload) {
-  const res = await axios.post(`/api/v1/${endpoint}`, payload, withKey({ method: 'POST' }, apiKey));
-  const requestId = res.data?.request_id || res.data?.id;
-  const final = await pollSocialResult(apiKey, requestId, 120, 2000);
-  const url = final?.output?.url || final?.url;
-  return url;
-}
-
 export async function pollSocialResult(apiKey, requestId, maxAttempts = 120, interval = 2000) {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     await new Promise((resolve) => setTimeout(resolve, interval));

@@ -4,6 +4,8 @@ import { createServerClient } from '@/lib/supabase'
 import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
 import { requirePersonalizationEnv } from '@/server/envValidation'
 
+export const dynamic = "force-dynamic";
+
 export const runtime = 'nodejs'
 
 const MAX_PAYLOAD_SIZE = 1_000_000

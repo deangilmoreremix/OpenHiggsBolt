@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
 import { validatePersonalizationEnv } from '@/server/envValidation'
 
+export const dynamic = "force-dynamic";
+
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {

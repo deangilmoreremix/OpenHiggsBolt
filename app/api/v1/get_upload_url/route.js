@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { safeApiJson } from '@/lib/safeApiResponse';
 
+export const dynamic = "force-dynamic";
+
 const MUAPI_BASE = 'https://api.muapi.ai';
 
 function getApiKey(request) {

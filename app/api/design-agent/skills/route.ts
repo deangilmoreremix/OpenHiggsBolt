@@ -2,6 +2,8 @@ import { safeApiJson } from '@/lib/safeApiResponse';
 import { NextRequest, NextResponse } from 'next/server'
 import { getDesignAgentApiKey } from '../lib/auth'
 
+export const dynamic = "force-dynamic";
+
 const BASE = 'https://api.muapi.ai/api/v1/creative-agent'
 
 export async function GET(req: NextRequest) {

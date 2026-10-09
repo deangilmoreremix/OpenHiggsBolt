@@ -69,3 +69,4 @@ playwright/marketing-artifacts/
 # Sync backups and monitoring artifacts
 .sync-backups/
 monitoring/
+.kilo/openhiggsbolt-personalization-fix/
