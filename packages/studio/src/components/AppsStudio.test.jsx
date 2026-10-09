@@ -95,11 +95,13 @@ describe('AppsStudio', () => {
     expect(screen.getByText('Nano Banana Studio')).toBeDefined();
   });
 
-  it('filters apps by search query', () => {
+  it('filters apps by search query', async () => {
     render(<AppsStudio />);
     const searchInputs = screen.getAllByPlaceholderText('Search SmartVideo GO AI Apps...');
     const searchInput = searchInputs[0];
     fireEvent.change(searchInput, { target: { value: 'headshot' } });
+    // Wait for debounce (300ms) + rendering
+    await new Promise(resolve => setTimeout(resolve, 400));
     expect(screen.getByText('AI Headshot Studio')).toBeDefined();
     expect(screen.queryByText('AI Clipping Studio')).toBeNull();
   });
@@ -126,13 +128,16 @@ describe('AppsStudio', () => {
     expect(cards.length).toBe(38);
   });
 
-  it('clears search when input is cleared', () => {
+  it('clears search when input is cleared', async () => {
     render(<AppsStudio />);
     const searchInputs = screen.getAllByPlaceholderText('Search SmartVideo GO AI Apps...');
     const searchInput = searchInputs[0];
     fireEvent.change(searchInput, { target: { value: 'headshot' } });
+    // Wait for debounce
+    await new Promise(resolve => setTimeout(resolve, 400));
     expect(screen.queryByText('AI Clipping Studio')).toBeNull();
     fireEvent.change(searchInput, { target: { value: '' } });
+    await new Promise(resolve => setTimeout(resolve, 400));
     const cards = screen.getAllByRole('heading', { level: 3 });
     expect(cards.length).toBe(38);
   });
@@ -166,11 +171,13 @@ describe('AppsStudio', () => {
     expect(screen.getAllByText('Business').length).toBeGreaterThan(0);
   });
 
-  it('shows empty state when no apps match', () => {
+  it('shows empty state when no apps match', async () => {
     render(<AppsStudio />);
     const searchInputs = screen.getAllByPlaceholderText('Search SmartVideo GO AI Apps...');
     const searchInput = searchInputs[0];
     fireEvent.change(searchInput, { target: { value: 'xyznonexistent' } });
+    // Wait for debounce
+    await new Promise(resolve => setTimeout(resolve, 400));
     expect(screen.getByText('No apps found matching your criteria.')).toBeDefined();
   });
 });

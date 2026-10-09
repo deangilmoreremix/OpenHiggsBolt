@@ -16,6 +16,19 @@
   "filter": {
     "all": "All"
   },
+  "categories": {
+    "all": "All",
+    "image": "Image",
+    "video": "Video",
+    "business": "Business",
+    "productivity": "Productivity",
+    "audio": "Audio",
+    "creative": "Creative",
+    "realEstate": "Real Estate",
+    "design": "Design",
+    "lifestyle": "Lifestyle",
+    "marketing": "Marketing"
+  },
   "empty": {
     "noResults": "No apps found matching your criteria."
   }

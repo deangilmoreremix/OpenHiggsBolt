@@ -645,7 +645,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} templateData={templateData} locale={locale} />}
           {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
           {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
-          {activeTab === 'apps' && <AppsStudio />}
+          {activeTab === 'apps' && <AppsStudio locale={locale} />}
       </div>
       </DemoPersonalizeProvider>
       </SocialPublishProvider>

@@ -125,6 +125,7 @@ jobs:
             packages/studio/src/index.js \
             packages/studio/src/components/AppsStudio.jsx \
             packages/studio/src/messages/en/appsStudio.json \
+            packages/studio/src/messages/zh/appsStudio.json \
             app/studio/apps \
             app/studio/mcp-cli \
             app/sign-in \

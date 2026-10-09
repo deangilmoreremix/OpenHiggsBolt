@@ -1,10 +1,14 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { FaGithub, FaExternalLinkAlt, FaSearch } from "react-icons/fa";
+import en from "../messages/en/appsStudio.json";
+import zh from "../messages/zh/appsStudio.json";
+import { resolveCopy } from "../i18nUtils";
 
 const APPS = [
   {
+    id: "ai-headshot-studio",
     name: "AI Headshot Studio",
     description: "Professional AI headshot generator for LinkedIn, team portraits, and personal branding.",
     category: "Image",
@@ -13,6 +17,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/d9c39378f60e48098f6b6ce657dc18b5.png"
   },
   {
+    id: "nano-banana-studio",
     name: "Nano Banana Studio",
     description: "AI image generation platform with text-to-image and multi-image reference editing.",
     category: "Image",
@@ -21,6 +26,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/data/2/874086171651/Screenshot_2026-04-15_103743.png"
   },
   {
+    id: "seedance-v2-studio",
     name: "Seedance V2 Studio",
     description: "AI video generation workspace for Seedance 2.0 and Seedance 2 Mini text-to-video and image-to-video.",
     category: "Video",
@@ -29,6 +35,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/4cd1f49d48934d448e7f493f9d5e476e.png"
   },
   {
+    id: "ai-clipping-studio",
     name: "AI Clipping Studio",
     description: "AI-powered video clipping that extracts viral highlights from YouTube videos automatically.",
     category: "Video",
@@ -37,6 +44,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/data/2/883345778103/cca8b5bb-25f1-40fe-928e-53dce2c8c928.png"
   },
   {
+    id: "ai-youtube-shorts-generator",
     name: "AI YouTube Shorts Generator",
     description: "Turn long-form YouTube videos into viral 9:16 shorts with LLM highlight detection and auto vertical cropping.",
     category: "Video",
@@ -44,6 +52,7 @@ const APPS = [
     thumbnail: "https://github.com/SamurAIGPT/AI-Youtube-Shorts-Generator/raw/main/assets/video-demo-thumb.png"
   },
   {
+    id: "easyveo-studio",
     name: "EasyVeo Studio",
     description: "Complete Veo video generation suite for text-to-video, image-to-video, and reference-to-video.",
     category: "Video",
@@ -52,6 +61,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/data/2/901343404247/94ac6d86-be4e-4b70-b1e6-96d7e3692604.png"
   },
   {
+    id: "pet-product-studio",
     name: "Pet Product Studio",
     description: "AI pet product ad generator that places pet products into stunning lifestyle scenes.",
     category: "Business",
@@ -59,6 +69,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/Pet_Product_Studio.jpg"
   },
   {
+    id: "resale-photo-enhancer",
     name: "Resale Photo Enhancer",
     description: "AI product photo studio for resellers. Swap backgrounds and enhance listing photos.",
     category: "Business",
@@ -66,6 +77,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/Resale_Photo_Enhancer.png"
   },
   {
+    id: "blogger-cms",
     name: "Blogger CMS",
     description: "AI-powered blog writer and SEO content management system with rich text editor.",
     category: "Business",
@@ -73,6 +85,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/Blogger_CMS.png"
   },
   {
+    id: "amazon-product-studio",
     name: "Amazon Product Studio",
     description: "AI product photography studio for Amazon sellers with multi-image reference and scene presets.",
     category: "Business",
@@ -80,6 +93,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/Amazon_Product_Studio.webp"
   },
   {
+    id: "ai-business-card",
     name: "AI Business Card",
     description: "AI digital business card generator with QR sharing, templates, and visitor chatbot.",
     category: "Business",
@@ -87,6 +101,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/AI_Business_Card.webp"
   },
   {
+    id: "mailwise",
     name: "MailWise",
     description: "AI email composer and cold outreach assistant with template presets and tone controls.",
     category: "Productivity",
@@ -94,6 +109,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/MailWise.png"
   },
   {
+    id: "my-podcast",
     name: "My Podcast",
     description: "AI voiceover and podcast narration studio with fine-grained voice controls.",
     category: "Audio",
@@ -101,6 +117,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/My_Podcast.webp"
   },
   {
+    id: "ai-knowledge-base",
     name: "AI Knowledge Base",
     description: "Custom AI knowledge base and chatbot builder with RAG, document upload, and embeddable widgets.",
     category: "Business",
@@ -108,6 +125,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/AI_Knowledge_Base.png"
   },
   {
+    id: "ai-royal-portrait",
     name: "AI Royal Portrait",
     description: "Transform photos into 18th-century royal oil paintings and artistic portrait styles.",
     category: "Creative",
@@ -115,6 +133,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/AI_Royal_Portrait.png"
   },
   {
+    id: "ai-meme",
     name: "AI MEME",
     description: "Viral-ready meme generation based on trending topics with multi-model AI support.",
     category: "Creative",
@@ -122,6 +141,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/AI_MEME.png"
   },
   {
+    id: "ai-real-estate-stager",
     name: "AI Real Estate Stager",
     description: "Virtually furnish and stage empty homes for sale with photorealistic AI staging.",
     category: "Real Estate",
@@ -129,6 +149,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/AI_Real_Estate_Stager.webp"
   },
   {
+    id: "ai-logo",
     name: "AI Logo",
     description: "Dynamic brand identity and logo generator with text-to-logo and sketch-to-logo modes.",
     category: "Design",
@@ -136,6 +157,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/AI_Logo.png"
   },
   {
+    id: "oldphoto",
     name: "OldPhoto",
     description: "Restore, colorize, and sharpen vintage family photos with AI.",
     category: "Creative",
@@ -143,6 +165,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/OldPhoto.png"
   },
   {
+    id: "aitryon",
     name: "AITryOn",
     description: "Virtual fitting room for fashion brands. Fit garments onto any person photo with AI.",
     category: "Lifestyle",
@@ -150,6 +173,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/AITryOn.png"
   },
   {
+    id: "ai-professional-makeup-generator",
     name: "AI Professional Makeup Generator",
     description: "Try on hundreds of professional makeup looks virtually before buying.",
     category: "Lifestyle",
@@ -157,6 +181,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/AI_Professional_Makeup_Generator.webp"
   },
   {
+    id: "ai-group-photo",
     name: "AI Group Photo",
     description: "Seamlessly combine individual portraits into a high-fidelity group photo.",
     category: "Creative",
@@ -164,6 +189,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/AI_Group_Photo.webp"
   },
   {
+    id: "ai-tattoo-try-on",
     name: "AI Tattoo Try-On",
     description: "Visualize tattoos on your body before getting inked with photorealistic AI.",
     category: "Lifestyle",
@@ -171,6 +197,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/AI_Tattoo_Try_On.webp"
   },
   {
+    id: "ai-hair-style-simulator",
     name: "AI Hair Style Simulator",
     description: "Try on new haircuts and colors with zero commitment using AI.",
     category: "Lifestyle",
@@ -178,6 +205,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/AI_Hair_Style_Simulator.webp"
   },
   {
+    id: "ai-kids-to-adult-prediction",
     name: "AI Kids-to-Adult Prediction",
     description: "Visualize how a child will look as an adult with high-fidelity age progression.",
     category: "Creative",
@@ -185,6 +213,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/AI_Kids_to_Adult_Prediction.webp"
   },
   {
+    id: "ai-room-declutter",
     name: "AI Room Declutter",
     description: "Instantly clean up messy room photos for listings and virtual staging.",
     category: "Real Estate",
@@ -192,6 +221,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/AI_Room_Declutter.webp"
   },
   {
+    id: "ai-fitness-body-simulator",
     name: "AI Fitness Body Simulator",
     description: "Visualize your fitness goals on your own body with photorealistic AI transformation.",
     category: "Lifestyle",
@@ -199,6 +229,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/AI_Fitness_Body_Simulator.webp"
   },
   {
+    id: "ai-pet-portrait",
     name: "AI Pet Portrait",
     description: "Transform pet photos into oil paintings, royal portraits, and art masterpieces.",
     category: "Lifestyle",
@@ -206,6 +237,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/AI_Pet_Portrait.webp"
   },
   {
+    id: "ai-kissing-video-generator",
     name: "AI Kissing Video Generator",
     description: "Merge two portrait photos into a romantic AI kissing video with multi-model support.",
     category: "Video",
@@ -213,6 +245,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/AI_Kissing_Video_Generator.webp"
   },
   {
+    id: "ai-travel-studio",
     name: "AI Travel Studio",
     description: "Place yourself into iconic travel destinations worldwide with photorealistic AI.",
     category: "Creative",
@@ -220,6 +253,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/AI_Travel_Studio.png"
   },
   {
+    id: "prompt-architect",
     name: "Prompt Architect",
     description: "Refine and optimize complex prompts for high-tier AI models with conversational refinement.",
     category: "Productivity",
@@ -227,6 +261,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/Prompt_Architect.webp"
   },
   {
+    id: "clearmark-ai",
     name: "ClearMark AI",
     description: "Remove watermarks, logos, stamps, and text overlays from images in seconds.",
     category: "Business",
@@ -234,6 +269,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/ClearMark_AI.webp"
   },
   {
+    id: "ai-wedding-photo",
     name: "AI Wedding Photo",
     description: "Generate dreamy, photorealistic wedding photos from any portrait with scene templates.",
     category: "Creative",
@@ -241,6 +277,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/AI_Wedding_Photo.png"
   },
   {
+    id: "social-post",
     name: "Social Post",
     description: "AI social media post generator with live platform mockups for LinkedIn, X, Instagram, and more.",
     category: "Marketing",
@@ -248,6 +285,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/Social_Post.webp"
   },
   {
+    id: "magicself-ai",
     name: "MagicSelf AI",
     description: "Transform any selfie into oil paintings, watercolors, anime, and digital art.",
     category: "Creative",
@@ -255,6 +293,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/MagicSelf_AI.webp"
   },
   {
+    id: "ai-resume-builder",
     name: "AI Resume Builder",
     description: "Generate professional, ATS-optimized resumes with AI in seconds.",
     category: "Productivity",
@@ -262,6 +301,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/AI_Resume_Builder.webp"
   },
   {
+    id: "geo-checker",
     name: "GEO Checker",
     description: "Audit landing page AI search visibility and citation potential for ChatGPT, Perplexity, and Gemini.",
     category: "Business",
@@ -269,6 +309,7 @@ const APPS = [
     thumbnail: "https://cdn.muapi.ai/apps/GEO_Checker.webp"
   },
   {
+    id: "ai-character-studio",
     name: "AI Character Studio",
     description: "Create custom AI character portraits and engage in interactive conversational personas.",
     category: "Creative",
@@ -279,22 +320,37 @@ const APPS = [
 
 const CATEGORIES = ["All", ...Array.from(new Set(APPS.map(app => app.category)))];
 
-export default function AppsStudio() {
+function categoryKey(category) {
+  return category.toLowerCase().replace(/\s+/g, '');
+}
+
+export default function AppsStudio({ locale = "en" }) {
+  const copy = resolveCopy(en, zh, locale);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [failedImages, setFailedImages] = useState(new Set());
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const filteredApps = useMemo(() => {
     return APPS.filter(app => {
-      const matchesSearch = !searchQuery || 
-        app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        app.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        app.category.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = !debouncedSearchQuery || 
+        app.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        app.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        app.category.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
       
-      const matchesCategory = selectedCategory === "All" || app.category === selectedCategory;
+      const matchesCategory = selectedCategory === "All" || app.category.toLowerCase() === selectedCategory.toLowerCase();
       
       return matchesSearch && matchesCategory;
     });
-  }, [searchQuery, selectedCategory]);
+  }, [debouncedSearchQuery, selectedCategory]);
 
   return (
     <div className="h-full w-full flex flex-col items-center bg-[#030303] overflow-y-auto custom-scrollbar relative">
@@ -303,10 +359,10 @@ export default function AppsStudio() {
         {/* Header Section */}
         <div className="text-center space-y-6 max-w-3xl">
           <h1 className="text-5xl font-black text-white tracking-tighter leading-[0.9]">
-            AI Apps
+            {copy.hero.badge}
           </h1>
           <p className="text-white/40 text-sm font-medium leading-relaxed max-w-xl mx-auto">
-            Explore a collection of available AI applications, tools, and open-source experiences for creative, business, image, video, and productivity workflows.
+            {copy.hero.subtitle}
           </p>
         </div>
 
@@ -314,9 +370,13 @@ export default function AppsStudio() {
         <div className="w-full max-w-3xl space-y-4">
           <div className="relative">
             <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm" />
+            <label htmlFor="search-apps" className="sr-only">
+              {copy.search.placeholder}
+            </label>
             <input
+              id="search-apps"
               type="text"
-              placeholder="Search SmartVideo GO AI Apps..."
+              placeholder={copy.search.placeholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 transition-colors"
@@ -333,7 +393,7 @@ export default function AppsStudio() {
                     : 'bg-white/5 text-white/50 border border-white/5 hover:text-white hover:bg-white/10'
                 }`}
               >
-                {category}
+                {copy.categories[categoryKey(category)] || category}
               </button>
             ))}
           </div>
@@ -343,21 +403,29 @@ export default function AppsStudio() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full">
           {filteredApps.map((app, index) => (
             <div 
-              key={app.name}
+              key={app.id}
               className="group bg-[#0a0a0a] border border-white/5 rounded-lg flex flex-col overflow-hidden transition-all duration-300 hover:border-white/10 hover:bg-[#0f0f0f] hover:shadow-2xl hover:shadow-blue-500/5 hover:-translate-y-1"
             >
               {/* Thumbnail Section */}
               <div className="relative h-44 w-full overflow-hidden bg-white/5">
-                {app.thumbnail ? (
+                {app.thumbnail && !failedImages.has(app.name) ? (
                   <img
                     src={app.thumbnail}
                     alt={app.name}
+                    loading="lazy"
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    onError={() => {
+                    setFailedImages(prev => {
+                      const next = new Set(prev);
+                      next.add(app.name);
+                      return next;
+                    });
+                  }}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-600/20 to-indigo-600/20 transition-colors">
                     <div className="text-4xl opacity-20 text-white group-hover:opacity-40 transition-opacity">
-                      {app.name.charAt(0)}
+                      {app.name?.[0] || '?'}
                     </div>
                   </div>
                 )}
@@ -367,7 +435,7 @@ export default function AppsStudio() {
               {/* Content Section */}
               <div className="p-5 flex flex-col flex-1 space-y-4">
                 <div className="flex-1">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-tight mb-1">{app.name}</h3>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-tight mb-1 truncate">{app.name}</h3>
                   <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-2">{app.category}</p>
                   <p className="text-xs text-white/50 leading-relaxed font-medium line-clamp-2 min-h-[2.5rem]">{app.description}</p>
                 </div>
@@ -381,7 +449,7 @@ export default function AppsStudio() {
                     className="flex-1 py-2 bg-white/5 text-white rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/10 transition-all border border-white/5 active:scale-95"
                   >
                     <FaGithub className="text-xs" />
-                    GitHub
+                    {copy.card.github}
                   </a>
                   {app.hosted && (
                     <a
@@ -391,7 +459,7 @@ export default function AppsStudio() {
                       className="flex-1 py-2 bg-[#22d3ee]/10 text-[#22d3ee] rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[#22d3ee]/20 transition-all border border-[#22d3ee]/20 active:scale-95"
                     >
                       <FaExternalLinkAlt className="text-[9px]" />
-                      Live Demo
+                      {copy.card.demo}
                     </a>
                   )}
                 </div>
@@ -403,7 +471,7 @@ export default function AppsStudio() {
         {/* Empty State */}
         {filteredApps.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-white/30 text-sm font-medium">No apps found matching your criteria.</p>
+            <p className="text-white/30 text-sm font-medium">{copy.empty.noResults}</p>
           </div>
         )}
       </div>
