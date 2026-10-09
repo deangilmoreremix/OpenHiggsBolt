@@ -470,3 +470,95 @@ describe('POST /api/v1/upload-binary', () => {
     expect(json.error).toMatch(/Invalid file type/i)
   })
 })
+
+// ── canonical upload-binary route ────────────────────────────────────────────
+// Regression guard: this route previously shipped with a broken relative import
+// ('../../vfx/_helpers' resolves to a non-existent path) and had ZERO test
+// coverage, so the defect reached production silently. These tests load the
+// module directly so any future import breakage fails loudly here.
+
+describe('POST /api/upload-binary', () => {
+  beforeEach(() => {
+    vi.doMock('@/lib/uploadProxyTarget', () => ({
+      getApiKeyFromRequest: vi.fn(() => 'proxy-key'),
+      validateUploadProxyTarget: vi.fn(async () => ({ ok: true, url: 'https://bucket.s3.amazonaws.com/upload' })),
+    }))
+
+    vi.doMock('app/api/vfx/_helpers', () => ({
+      resolveMuAPIKey: vi.fn(async () => 'proxy-key'),
+    }))
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.clearAllMocks()
+  })
+
+  it('loads its module graph without import errors', async () => {
+    // A broken relative import to ../vfx/_helpers throws at import time.
+    const mod = await import('@/app/api/upload-binary/route')
+    expect(typeof mod.POST).toBe('function')
+  })
+
+  it('returns 401 when no API key is provided', async () => {
+    vi.doMock('@/lib/uploadProxyTarget', () => ({
+      getApiKeyFromRequest: vi.fn(() => null),
+      validateUploadProxyTarget: vi.fn(async () => ({ ok: true, url: 'https://bucket.s3.amazonaws.com/upload' })),
+    }))
+
+    const { POST } = await import('@/app/api/upload-binary/route')
+
+    const formData = new FormData()
+    formData.append('file', new File(['test'], 'test.jpg', { type: 'image/jpeg' }))
+    formData.append('x-proxy-target-url', 'https://bucket.s3.amazonaws.com/upload')
+
+    const res = await POST(
+      new NextRequest('http://localhost/api/upload-binary', {
+        method: 'POST',
+        headers: { 'x-api-key': 'proxy-key' },
+        body: formData,
+      })
+    )
+
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 400 when file field is missing', async () => {
+    const { POST } = await import('@/app/api/upload-binary/route')
+
+    const formData = new FormData()
+    formData.append('x-proxy-target-url', 'https://bucket.s3.amazonaws.com/upload')
+
+    const res = await POST(
+      new NextRequest('http://localhost/api/upload-binary', {
+        method: 'POST',
+        headers: { 'x-api-key': 'proxy-key' },
+        body: formData,
+      })
+    )
+
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/file is required/i)
+  })
+
+  it('returns 400 for blocked file types', async () => {
+    const { POST } = await import('@/app/api/upload-binary/route')
+
+    const formData = new FormData()
+    formData.append('file', new File(['test'], 'test.exe', { type: 'application/x-msdownload' }))
+    formData.append('x-proxy-target-url', 'https://bucket.s3.amazonaws.com/upload')
+
+    const res = await POST(
+      new NextRequest('http://localhost/api/upload-binary', {
+        method: 'POST',
+        headers: { 'x-api-key': 'proxy-key' },
+        body: formData,
+      })
+    )
+
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/Invalid file type/i)
+  })
+})

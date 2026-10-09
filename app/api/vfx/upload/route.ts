@@ -7,6 +7,8 @@ import { rateLimit, rateLimit429 } from '@/lib/rateLimit'
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
 import { ENTITLEMENTS } from '@/access/entitlements'
 
+export const dynamic = 'force-dynamic';
+
 // VFX uploads are image-only by design.
 // Video and audio uploads should use /api/v1/upload_file instead.
 

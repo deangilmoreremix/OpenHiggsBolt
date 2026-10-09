@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { validateUploadProxyTarget, getApiKeyFromRequest } from '@/lib/uploadProxyTarget';
-import { resolveMuAPIKey } from '../../vfx/_helpers';
+import { resolveMuAPIKey } from '../vfx/_helpers';
 import { safeApiJson, upstreamErrorResponse } from '@/lib/safeApiResponse';
+
+export const dynamic = 'force-dynamic';
 
 const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   'image/jpeg',
