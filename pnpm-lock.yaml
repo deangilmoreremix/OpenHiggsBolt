@@ -7,6 +7,9 @@ settings:
 overrides:
   react-konva: 19.2.4
 
+patchedDependencies:
+  html-encoding-sniffer@6.0.0: 70d1c886baaf8870f902a6766f2bcc3f7d80fac959861fd2aca8b85a931b1770
+
 importers:
 
   .:
@@ -12008,7 +12011,7 @@ snapshots:
     dependencies:
       whatwg-encoding: 3.1.1
 
-  html-encoding-sniffer@6.0.0:
+  html-encoding-sniffer@6.0.0(patch_hash=70d1c886baaf8870f902a6766f2bcc3f7d80fac959861fd2aca8b85a931b1770):
     dependencies:
       '@exodus/bytes': 1.16.0
     transitivePeerDependencies:
@@ -12423,7 +12426,7 @@ snapshots:
       css-tree: 3.2.1
       data-urls: 7.0.0
       decimal.js: 10.6.0
-      html-encoding-sniffer: 6.0.0
+      html-encoding-sniffer: 6.0.0(patch_hash=70d1c886baaf8870f902a6766f2bcc3f7d80fac959861fd2aca8b85a931b1770)
       is-potential-custom-element-name: 1.0.1
       lru-cache: 11.5.3
       parse5: 8.0.1
