@@ -77,7 +77,7 @@ function pickImageModel(source: PersonalizationSource, options: GenerationOption
 
 // ── Error Handling ───────────────────────────────────────────────────────────
 
-function classifyMuApiError(error: unknown): string {
+export function classifyMuApiError(error: unknown): string {
   if (!error || typeof error !== 'object') {
     return 'Generation service unavailable'
   }
@@ -126,7 +126,7 @@ function classifyMuApiError(error: unknown): string {
   return message.slice(0, 200)
 }
 
-function wrapGenerationError(error: unknown, context: string): Error {
+export function wrapGenerationError(error: unknown, context: string): Error {
   const userMessage = classifyMuApiError(error)
   const originalMessage = error instanceof Error ? error.message : String(error)
   const wrapped = new Error(`${context}: ${userMessage}`)
