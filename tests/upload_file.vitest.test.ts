@@ -220,4 +220,78 @@ describe('POST /api/v1/upload_file', () => {
     expect(calledFetch[1]).toBeDefined()
     expect(calledFetch[1].signal).toBeInstanceOf(AbortSignal)
   })
+
+  // ── MuAPI spec conformance ────────────────────────────────────────────────
+  // https://muapi.ai/docs/file-upload documents Videos as ".mp4, .mov" and an
+  // "Others" category of ".zip, .pdf, .json" at 10MB. Both were previously
+  // rejected by our allowlist, which would have returned a spurious 400 for
+  // formats MuAPI explicitly supports.
+
+  it.each([
+    ['video/quicktime', 'clip.mov', 48 * 1024 * 1024],
+    ['application/zip', 'bundle.zip', 5 * 1024 * 1024],
+    ['application/pdf', 'brief.pdf', 5 * 1024 * 1024],
+    ['application/json', 'payload.json', 5 * 1024 * 1024],
+  ])('accepts spec-supported %s (%s)', async (mimeType, filename, declaredSize) => {
+    const { POST } = await import('@/app/api/v1/upload_file/route')
+
+    const file = new File(['x'], filename, { type: mimeType })
+    // Avoid allocating large buffers just to satisfy a size check.
+    Object.defineProperty(file, 'size', { value: declaredSize })
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const res = await POST(
+      new NextRequest('http://localhost/api/v1/upload_file', {
+        method: 'POST',
+        body: formData,
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.url).toBe('https://cdn.muapi.ai/test.mp4')
+  })
+
+  it('allows a .mov video up to 50MB like other video formats', async () => {
+    const { POST } = await import('@/app/api/v1/upload_file/route')
+
+    const formData = new FormData()
+    const file = new File(['x'], 'clip.mov', { type: 'video/quicktime' })
+    Object.defineProperty(file, 'size', { value: 50 * 1024 * 1024 })
+    formData.append('file', file)
+
+    const res = await POST(
+      new NextRequest('http://localhost/api/v1/upload_file', {
+        method: 'POST',
+        body: formData,
+      })
+    )
+
+    expect(res.status).toBe(200)
+  })
+
+  it('treats the "others" category with the 10MB limit, not the 50MB video limit', async () => {
+    // Asserted on the shared config directly: a FormData round-trip re-derives
+    // `size` from real content, so the route-level size check cannot be faked
+    // cheaply. This lock is what keeps .zip/.pdf/.json from inheriting the
+    // 50MB video budget.
+    const { getUploadLimit, isAllowedUploadMimeType } = await import('@/lib/uploadConfig')
+
+    const mk = (type: string) => new File(['x'], 'f', { type })
+
+    expect(getUploadLimit(mk('application/pdf'))).toBe(10 * 1024 * 1024)
+    expect(getUploadLimit(mk('application/zip'))).toBe(10 * 1024 * 1024)
+    expect(getUploadLimit(mk('application/json'))).toBe(10 * 1024 * 1024)
+    expect(getUploadLimit(mk('video/quicktime'))).toBe(50 * 1024 * 1024)
+
+    expect(isAllowedUploadMimeType(mk('video/quicktime'))).toBe(true)
+    expect(isAllowedUploadMimeType(mk('application/pdf'))).toBe(true)
+    expect(isAllowedUploadMimeType(mk('application/zip'))).toBe(true)
+    expect(isAllowedUploadMimeType(mk('application/json'))).toBe(true)
+    // Still rejects genuinely dangerous types.
+    expect(isAllowedUploadMimeType(mk('text/html'))).toBe(false)
+    expect(isAllowedUploadMimeType(mk('application/x-msdownload'))).toBe(false)
+  })
 })

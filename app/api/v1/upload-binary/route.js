@@ -12,9 +12,13 @@ const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   'image/webp',
   'video/mp4',
   'video/webm',
+  'video/quicktime',
   'audio/mpeg',
   'audio/wav',
   'audio/webm',
+  'application/zip',
+  'application/pdf',
+  'application/json',
 ]);
 
 const ALLOWED_S3_FORM_FIELDS = new Set([
