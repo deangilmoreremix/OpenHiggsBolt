@@ -15,6 +15,18 @@ import { loadProject, listProjects } from '../projectRestore'
 
 const originalFetch = globalThis.fetch
 
+/**
+ * Request init passed by projectRestore: a method, a JSON header record and
+ * same-origin credentials. Declaring it keeps the mocked call arguments typed
+ * so the assertions below read real properties instead of an opaque tuple.
+ */
+type ProjectRestoreFetchInit = {
+  method: string
+  headers: Record<string, string>
+  body?: BodyInit | null
+  credentials?: RequestCredentials
+}
+
 function jsonResponse(body: unknown, { ok = true, status = 200 }: { ok?: boolean; status?: number } = {}) {
   return { ok, status, json: async () => body } as unknown as Response
 }
@@ -43,8 +55,10 @@ describe('projectRestore', () => {
       created_at: '2026-01-01T00:00:00.000Z',
       updated_at: '2026-01-02T00:00:00.000Z',
     }
-    const fetchMock = vi.fn(async () => jsonResponse({ project: persisted }))
-    globalThis.fetch = fetchMock as any
+    const fetchMock = vi.fn(async (_url: RequestInfo | URL, _init: ProjectRestoreFetchInit) =>
+      jsonResponse({ project: persisted }),
+    )
+    globalThis.fetch = fetchMock
 
     const res = await loadProject('proj-123')
 

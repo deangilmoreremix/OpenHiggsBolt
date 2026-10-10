@@ -46,6 +46,7 @@ import type { PersonalizationAsset, DiscoveredAsset, DiscoveredAssetCategory, As
 import { resolveModelCapabilities, FACE_SWAP_MODEL, FULL_BODY_MODEL, DEFAULT_T2V_MODEL, DEFAULT_I2I_MODEL } from './modelCapabilityResolver'
 import { getModelById, getVideoModelById } from '@/packages/studio/src/models.js'
 import { NICHE_CONTENT } from '@/data/nicheContent'
+import { BUSINESS_NICHES } from './businessNiches'
 import ImageEditorModal, {
   type ImageEditorApplyResult,
   type PersonalizationImageEditorAsset,
@@ -2006,6 +2007,32 @@ function ConfigurationView(props: any) {
     revertDiscoveredAssetEdit,
   } = props
 
+  // ── Find Local Business (lead finder) entry flow ───────────────────────────
+  // The chooser/how-to-enter panel and the search form are local UI state: the
+  // chooser is dismissed once the client decides how to enter their profile,
+  // and the search form is controlled so the search can be blocked until both
+  // a niche and a location are filled in.
+  const [clientEntryDismissed, setClientEntryDismissed] = useState(false)
+  const [searchNiche, setSearchNiche] = useState('')
+  const [searchLocation, setSearchLocation] = useState('')
+  const [searchRadius, setSearchRadius] = useState(15)
+
+  const searchFormReady = Boolean(searchNiche && searchLocation.trim())
+
+  const handleClientEntryDismiss = useCallback(() => setClientEntryDismissed(true), [])
+
+  // Re-arm the chooser whenever the audience changes, so the entry decision is
+  // made again for each audience instead of being remembered forever.
+  useEffect(() => {
+    setClientEntryDismissed(false)
+  }, [clientForm.audience])
+
+  const runBusinessSearch = useCallback((radiusMiles: number) => {
+    if (!searchNiche || !searchLocation.trim()) return
+    setSearchRadius(radiusMiles)
+    findBusinesses(searchNiche, searchLocation.trim(), radiusMiles)
+  }, [findBusinesses, searchLocation, searchNiche])
+
   const identityInputRef = useRef<HTMLInputElement>(null)
   const logoInputRef = useRef<HTMLInputElement>(null)
   const productInputRef = useRef<HTMLInputElement>(null)
@@ -2260,7 +2287,7 @@ function ConfigurationView(props: any) {
           </div>
 
           {/* Find Local Business */}
-          {clientForm.audience === 'customer' && businessSearchMode === 'idle' && (
+          {clientForm.audience === 'customer' && businessSearchMode === 'idle' && !clientEntryDismissed && (
             <div style={{ marginBottom: 18, padding: 14, border: `1px dashed ${C.border}`, borderRadius: 10, background: 'rgba(41,211,242,.03)' }}>
               <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>How would you like to add this client?</div>
               <div className="flex flex-wrap gap-2">
@@ -2280,7 +2307,7 @@ function ConfigurationView(props: any) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {}}
+                  onClick={handleClientEntryDismiss}
                   className="rounded-lg text-[11px] font-extrabold uppercase tracking-wide"
                   style={{
                     minHeight: 38,
@@ -2308,9 +2335,11 @@ function ConfigurationView(props: any) {
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 10, marginBottom: 12 }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: 4, color: C.muted, fontSize: 10 }}>Business Type / Niche</label>
+                  <label htmlFor="business-niche" style={{ display: 'block', marginBottom: 4, color: C.muted, fontSize: 10 }}>Business Type / Niche</label>
                   <select
                     id="business-niche"
+                    value={searchNiche}
+                    onChange={(e) => setSearchNiche(e.target.value)}
                     className="w-full outline-none"
                     style={{
                       minHeight: 40,
@@ -2322,30 +2351,18 @@ function ConfigurationView(props: any) {
                     }}
                   >
                     <option value="">Select a niche...</option>
-                    {Object.keys({
-                      'ecommerce': 'E-Commerce / Retail',
-                      'real-estate': 'Real Estate',
-                      'restaurants-food': 'Restaurants / Food',
-                      'beauty': 'Beauty / Salon',
-                      'wellness-fitness': 'Wellness / Fitness',
-                      'education': 'Education',
-                      'technology': 'Technology / SaaS',
-                      'finance': 'Finance',
-                      'entertainment-media': 'Entertainment / Media',
-                      'automotive': 'Automotive',
-                      'travel-hospitality': 'Travel / Hospitality',
-                      'sports-outdoors': 'Sports / Outdoors',
-                      'general-business': 'General Business',
-                    }).map((niche) => (
-                      <option key={niche} value={niche}>{niche}</option>
+                    {BUSINESS_NICHES.map((niche) => (
+                      <option key={niche.key} value={niche.key}>{niche.label}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: 4, color: C.muted, fontSize: 10 }}>Location</label>
+                  <label htmlFor="business-location" style={{ display: 'block', marginBottom: 4, color: C.muted, fontSize: 10 }}>Location</label>
                   <input
                     id="business-location"
                     type="text"
+                    value={searchLocation}
+                    onChange={(e) => setSearchLocation(e.target.value)}
                     placeholder="Hollywood, Florida"
                     className="w-full outline-none"
                     style={{
@@ -2366,18 +2383,13 @@ function ConfigurationView(props: any) {
                     <button
                       key={miles}
                       type="button"
-                      onClick={() => {
-                        const niche = (document.getElementById('business-niche') as HTMLSelectElement)?.value
-                        const location = (document.getElementById('business-location') as HTMLInputElement)?.value
-                        if (niche && location) {
-                          findBusinesses(niche, location, miles)
-                        }
-                      }}
-                      className="rounded-lg text-[10px] font-extrabold uppercase tracking-wide"
+                      onClick={() => runBusinessSearch(miles)}
+                      disabled={!searchFormReady}
+                      className="rounded-lg text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
                       style={{
                         minHeight: 34,
                         padding: '0 12px',
-                        border: `1px solid ${C.border}`,
+                        border: `1px solid ${searchRadius === miles ? C.cyan : C.border}`,
                         background: '#11161b',
                         color: C.text,
                       }}
@@ -2389,15 +2401,9 @@ function ConfigurationView(props: any) {
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  const niche = (document.getElementById('business-niche') as HTMLSelectElement)?.value
-                  const location = (document.getElementById('business-location') as HTMLInputElement)?.value
-                  const radius = 15 // default
-                  if (niche && location) {
-                    findBusinesses(niche, location, radius)
-                  }
-                }}
-                className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide"
+                onClick={() => runBusinessSearch(searchRadius)}
+                disabled={!searchFormReady}
+                className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   minHeight: 42,
                   padding: '0 19px',

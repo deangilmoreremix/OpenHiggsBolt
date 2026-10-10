@@ -26,6 +26,24 @@ import type { ToolAction } from '@/shared/personalization/ai/types'
 import type { AIAssistContext } from '@/shared/personalization/ai/contextProvider'
 import type { AssetLibrary, PersonalizationAsset } from '@/shared/personalization/types'
 
+// ── MuAPI mock ────────────────────────────────────────────────────────────────
+// `vi.mock` is hoisted to the top of the file, so separate in-test registrations
+// for the same module collapse into the last one registered. Register the module
+// once here and configure its behaviour per test instead, so each failure path
+// below is the one actually exercised.
+
+const muapiMock = vi.hoisted(() => ({
+  generateI2I: vi.fn(async () => ({ url: 'https://example.com/watermarked.png' })),
+  processV2V: vi.fn(async () => ({ url: 'https://example.com/watermarked.mp4' })),
+  uploadFile: vi.fn(async () => 'https://example.com/uploaded.png'),
+}))
+
+vi.mock('studio/src/muapi', () => ({
+  generateI2I: muapiMock.generateI2I,
+  processV2V: muapiMock.processV2V,
+  uploadFile: muapiMock.uploadFile,
+}))
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function makeAsset(overrides: Partial<PersonalizationAsset> = {}): PersonalizationAsset {
@@ -196,12 +214,10 @@ describe('Phase 31 - Error Recovery', () => {
 
   describe('postProcessor: background removal / watermark failures', () => {
     it('image watermark failure returns null without throwing', async () => {
-      vi.mock('studio/src/muapi', () => ({
-        generateI2I: vi.fn(async () => {
-          throw new Error('Background removal service unavailable')
-        }),
-        uploadFile: vi.fn(async () => 'https://example.com/uploaded.png'),
-      }))
+      muapiMock.generateI2I.mockRejectedValue(
+        new Error('Background removal service unavailable'),
+      )
+      muapiMock.uploadFile.mockResolvedValue('https://example.com/uploaded.png')
 
       const result = await applyPostProcessing({
         generatedUrl: 'https://example.com/generated.png',
@@ -210,18 +226,17 @@ describe('Phase 31 - Error Recovery', () => {
         apiKey: 'test-key',
       })
 
+      expect(muapiMock.generateI2I).toHaveBeenCalled()
       expect(result.failed).toBe('logo-overlay')
       expect(result.originalUrl).toBe('https://example.com/generated.png')
       expect(result.finalUrl).toBe('https://example.com/generated.png')
     })
 
     it('video watermark failure returns partial result without throwing', async () => {
-      vi.mock('studio/src/muapi', () => ({
-        processV2V: vi.fn(async () => {
-          throw new Error('Video watermark service unavailable')
-        }),
-        uploadFile: vi.fn(async () => 'https://example.com/uploaded.png'),
-      }))
+      muapiMock.processV2V.mockRejectedValue(
+        new Error('Video watermark service unavailable'),
+      )
+      muapiMock.uploadFile.mockResolvedValue('https://example.com/uploaded.png')
 
       const result = await applyPostProcessing({
         generatedUrl: 'https://example.com/generated.mp4',
@@ -230,6 +245,13 @@ describe('Phase 31 - Error Recovery', () => {
         apiKey: 'test-key',
       })
 
+      expect(muapiMock.processV2V).toHaveBeenCalledWith(
+        'test-key',
+        expect.objectContaining({
+          model: 'add-video-watermark',
+          video_url: 'https://example.com/generated.mp4',
+        }),
+      )
       expect(result.failed).toBe('video-overlay')
       expect(result.originalUrl).toBe('https://example.com/generated.mp4')
       expect(result.finalUrl).toBe('https://example.com/generated.mp4')
@@ -360,12 +382,8 @@ describe('Phase 31 - Error Recovery', () => {
 
   describe('asset preservation on failure', () => {
     it('failed image edit: original asset URL is preserved in result', async () => {
-      vi.mock('studio/src/muapi', () => ({
-        generateI2I: vi.fn(async () => {
-          throw new Error('Edit service unavailable')
-        }),
-        uploadFile: vi.fn(async () => 'https://example.com/uploaded.png'),
-      }))
+      muapiMock.generateI2I.mockRejectedValue(new Error('Edit service unavailable'))
+      muapiMock.uploadFile.mockResolvedValue('https://example.com/uploaded.png')
 
       const result = await applyPostProcessing({
         generatedUrl: 'https://example.com/original.png',
@@ -374,6 +392,7 @@ describe('Phase 31 - Error Recovery', () => {
         apiKey: 'test-key',
       })
 
+      expect(muapiMock.generateI2I).toHaveBeenCalled()
       expect(result.originalUrl).toBe('https://example.com/original.png')
       expect(result.finalUrl).toBe('https://example.com/original.png')
     })

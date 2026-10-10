@@ -17,6 +17,19 @@ import {
 
 const originalFetch = globalThis.fetch
 
+/**
+ * Request init built by PersonalizationOpenAIClient: a POST with a flat header
+ * record (Authorization plus an optional Content-Type), an optional body and a
+ * timeout signal. Declaring it keeps the mocked call arguments typed so the
+ * assertions below read real properties instead of an opaque tuple.
+ */
+type OpenAIClientFetchInit = {
+  method: string
+  headers: Record<string, string>
+  body?: BodyInit | null
+  signal?: AbortSignal
+}
+
 function mockResponse(data: unknown) {
   return {
     ok: true,
@@ -36,10 +49,10 @@ describe('PersonalizationOpenAIClient', () => {
   })
 
   it('editImage posts to /v1/images/edits with a gpt-image-2.5 model', async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = vi.fn(async (_url: RequestInfo | URL, _init: OpenAIClientFetchInit) =>
       mockResponse({ data: [{ url: 'https://example.com/edited.png' }] }),
     )
-    globalThis.fetch = fetchMock as any
+    globalThis.fetch = fetchMock
 
     const client: PersonalizationOpenAIClient = createPersonalizationOpenAIClient('sk-test')
     const result = await client.editImage({
@@ -62,10 +75,10 @@ describe('PersonalizationOpenAIClient', () => {
   })
 
   it('generateImage posts to /v1/images/generations with the dall-e-3 model', async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = vi.fn(async (_url: RequestInfo | URL, _init: OpenAIClientFetchInit) =>
       mockResponse({ data: [{ url: 'https://example.com/generated.png', revisedPrompt: 'revised' }] }),
     )
-    globalThis.fetch = fetchMock as any
+    globalThis.fetch = fetchMock
 
     const client = createPersonalizationOpenAIClient('sk-test')
     const result = await client.generateImage({ prompt: 'A futuristic city skyline at sunset' })
