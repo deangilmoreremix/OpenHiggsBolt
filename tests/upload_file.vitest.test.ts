@@ -221,8 +221,38 @@ describe('POST /api/v1/upload_file', () => {
     expect(calledFetch[1].signal).toBeInstanceOf(AbortSignal)
   })
 
-  // ── MuAPI spec conformance ────────────────────────────────────────────────
-  // https://muapi.ai/docs/file-upload documents Videos as ".mp4, .mov" and an
+  it('never echoes the raw upstream error body back to the client', async () => {
+    // Regression guard: the retry layer embeds the upstream response text inside
+    // the thrown Error message. The catch block used to return that message
+    // verbatim, leaking upstream detail (and any identifiers it contained).
+    fetchMock.mockImplementation(async () => ({
+      ok: false,
+      status: 429,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      async json() { return {} },
+      async text() { return 'quota exceeded for upstream-key sk-SECRET-12345' },
+    }))
+
+    const { POST } = await import('@/app/api/v1/upload_file/route')
+
+    const formData = new FormData()
+    formData.append('file', new File(['test'], 'test.jpg', { type: 'image/jpeg' }))
+
+    const res = await POST(
+      new NextRequest('http://localhost/api/v1/upload_file', {
+        method: 'POST',
+        body: formData,
+      })
+    )
+
+    expect(res.status).toBe(502)
+    const body = await res.text()
+    expect(body).not.toMatch(/sk-SECRET-12345/)
+    expect(body).not.toMatch(/quota exceeded/)
+    expect(body).toMatch(/MuAPI upload failed/i)
+  })
+
+  // ── MuAPI spec conformance ────────────────────────────────────────────────  // https://muapi.ai/docs/file-upload documents Videos as ".mp4, .mov" and an
   // "Others" category of ".zip, .pdf, .json" at 10MB. Both were previously
   // rejected by our allowlist, which would have returned a spurious 400 for
   // formats MuAPI explicitly supports.
