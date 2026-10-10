@@ -4,6 +4,8 @@ import { downloadImageAsDataUrl } from '@/server/downloadImage'
 import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
 import { validatePersonalizationEnv } from '@/server/envValidation'
 
+export const dynamic = "force-dynamic";
+
 export const runtime = 'nodejs'
 
 const RATE_LIMIT_WINDOW_MS = 60_000

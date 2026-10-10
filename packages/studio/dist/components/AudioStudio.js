@@ -12,6 +12,9 @@ var _TemplateBanner = _interopRequireDefault(require("./TemplateBanner"));
 var _muapi = require("../muapi.js");
 var _models = require("../models.js");
 var _CostEstimator = _interopRequireDefault(require("./CostEstimator.jsx"));
+var _audioStudio = _interopRequireDefault(require("../messages/en/audioStudio.json"));
+var _audioStudio2 = _interopRequireDefault(require("../messages/zh/audioStudio.json"));
+var _i18nUtils = require("../i18nUtils");
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
 function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
@@ -170,7 +173,9 @@ function AudioFileUploader(_ref2) {
   var label = _ref2.label,
     value = _ref2.value,
     onChange = _ref2.onChange,
-    apiKey = _ref2.apiKey;
+    apiKey = _ref2.apiKey,
+    _ref2$copy = _ref2.copy,
+    copy = _ref2$copy === void 0 ? _audioStudio["default"] : _ref2$copy;
   var _useState = (0, _react.useState)(value ? UPLOAD_STATE.READY : UPLOAD_STATE.IDLE),
     _useState2 = _slicedToArray(_useState, 2),
     uploadState = _useState2[0],
@@ -184,6 +189,11 @@ function AudioFileUploader(_ref2) {
     fileName = _useState6[0],
     setFileName = _useState6[1];
   var fileInputRef = (0, _react.useRef)(null);
+  var _useState7 = (0, _react.useState)(false),
+    _useState8 = _slicedToArray(_useState7, 2),
+    isDragging = _useState8[0],
+    setIsDragging = _useState8[1];
+  var dragCounterRef = (0, _react.useRef)(0);
   (0, _react.useEffect)(function () {
     if (!value) {
       setUploadState(UPLOAD_STATE.IDLE);
@@ -195,13 +205,12 @@ function AudioFileUploader(_ref2) {
     }
   }, [value]);
   var handleUpload = /*#__PURE__*/function () {
-    var _ref3 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee(e) {
-      var _e$target$files;
+    var _ref3 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee(files) {
       var file, url, _t;
       return _regenerator().w(function (_context) {
         while (1) switch (_context.p = _context.n) {
           case 0:
-            file = (_e$target$files = e.target.files) === null || _e$target$files === void 0 ? void 0 : _e$target$files[0];
+            file = files === null || files === void 0 ? void 0 : files[0];
             if (file) {
               _context.n = 1;
               break;
@@ -212,7 +221,7 @@ function AudioFileUploader(_ref2) {
               _context.n = 2;
               break;
             }
-            alert("Audio file exceeds 20MB limit.");
+            alert(copy.uploader.sizeLimitError);
             return _context.a(2);
           case 2:
             setUploadState(UPLOAD_STATE.UPLOADING);
@@ -233,7 +242,7 @@ function AudioFileUploader(_ref2) {
             _context.p = 5;
             _t = _context.v;
             setUploadState(UPLOAD_STATE.IDLE);
-            alert("Upload failed: ".concat(_t.message));
+            alert(copy.uploader.uploadFailedError.replace('{message}', _t.message));
           case 6:
             _context.p = 6;
             setProgress(0);
@@ -247,6 +256,45 @@ function AudioFileUploader(_ref2) {
       return _ref3.apply(this, arguments);
     };
   }();
+  var handleInputChange = function handleInputChange(e) {
+    handleUpload(Array.from(e.target.files || []));
+  };
+  var handleDragEnter = function handleDragEnter(e) {
+    var _e$dataTransfer;
+    e.preventDefault();
+    e.stopPropagation();
+    if (uploadState !== UPLOAD_STATE.IDLE) return;
+    dragCounterRef.current += 1;
+    if ((_e$dataTransfer = e.dataTransfer) !== null && _e$dataTransfer !== void 0 && _e$dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+  var handleDragLeave = function handleDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (uploadState !== UPLOAD_STATE.IDLE) return;
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsDragging(false);
+    }
+  };
+  var handleDragOver = function handleDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  var handleDrop = function handleDrop(e) {
+    var _e$dataTransfer2;
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDragging(false);
+    if (uploadState !== UPLOAD_STATE.IDLE) return;
+    var files = (_e$dataTransfer2 = e.dataTransfer) === null || _e$dataTransfer2 === void 0 ? void 0 : _e$dataTransfer2.files;
+    if (files && files.length > 0) {
+      handleUpload(Array.from(files));
+    }
+  };
   var clearFile = function clearFile(e) {
     e.stopPropagation();
     onChange(null);
@@ -262,20 +310,24 @@ function AudioFileUploader(_ref2) {
         type: "button",
         onClick: clearFile,
         className: "text-xs font-bold text-red-400 hover:text-red-300 transition-colors uppercase tracking-wider flex items-center gap-1.5",
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(TrashIcon, {}), " Clear"]
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(TrashIcon, {}), " ", copy.uploader.clear]
       })]
     }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
       onClick: function onClick() {
         var _fileInputRef$current;
         return uploadState === UPLOAD_STATE.IDLE && ((_fileInputRef$current = fileInputRef.current) === null || _fileInputRef$current === void 0 ? void 0 : _fileInputRef$current.click());
       },
-      className: "relative border rounded p-4 transition-all duration-300 flex items-center gap-3.5 cursor-pointer ".concat(uploadState === UPLOAD_STATE.READY ? "border-primary/60 bg-primary/10 shadow-[0_0_15px_rgba(34,211,238,0.05)]" : "border-zinc-700 bg-zinc-900 hover:bg-zinc-850 hover:border-primary/50"),
+      onDragEnter: handleDragEnter,
+      onDragLeave: handleDragLeave,
+      onDragOver: handleDragOver,
+      onDrop: handleDrop,
+      className: "relative border rounded p-4 transition-all duration-300 flex items-center gap-3.5 cursor-pointer ".concat(isDragging ? "border-primary bg-primary/15 shadow-[0_0_15px_rgba(34,211,238,0.15)]" : uploadState === UPLOAD_STATE.READY ? "border-primary/60 bg-primary/10 shadow-[0_0_15px_rgba(34,211,238,0.05)]" : "border-zinc-700 bg-zinc-900 hover:bg-zinc-850 hover:border-primary/50"),
       children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
         ref: fileInputRef,
         type: "file",
         accept: "audio/*",
         className: "hidden",
-        onChange: handleUpload
+        onChange: handleInputChange
       }), uploadState === UPLOAD_STATE.IDLE && /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
         children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
           className: "w-10 h-10 rounded bg-zinc-800 flex items-center justify-center text-zinc-200 border border-zinc-700/50",
@@ -294,10 +346,10 @@ function AudioFileUploader(_ref2) {
           className: "text-left",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
             className: "text-xs font-bold text-white",
-            children: "Upload audio track"
+            children: copy.uploader.uploadPrompt
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
             className: "text-[11px] text-zinc-300 font-medium mt-0.5",
-            children: "MP3, WAV, M4A up to 20MB"
+            children: copy.uploader.uploadHint
           })]
         })]
       }), uploadState === UPLOAD_STATE.UPLOADING && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
@@ -307,7 +359,7 @@ function AudioFileUploader(_ref2) {
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "flex justify-between text-xs text-white/95 mb-1.5 font-bold",
             children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-              children: "Uploading..."
+              children: copy.uploader.uploading
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
               children: [progress, "%"]
             })]
@@ -334,7 +386,7 @@ function AudioFileUploader(_ref2) {
             children: fileName
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
             className: "text-[11px] text-primary font-bold mt-0.5",
-            children: "Ready to generate"
+            children: copy.uploader.ready
           })]
         })]
       })]
@@ -352,7 +404,9 @@ function AudioListUploader(_ref4) {
     onChange = _ref4.onChange,
     apiKey = _ref4.apiKey,
     _ref4$maxItems = _ref4.maxItems,
-    maxItems = _ref4$maxItems === void 0 ? 2 : _ref4$maxItems;
+    maxItems = _ref4$maxItems === void 0 ? 2 : _ref4$maxItems,
+    _ref4$copy = _ref4.copy,
+    copy = _ref4$copy === void 0 ? _audioStudio["default"] : _ref4$copy;
   var handleItemChange = function handleItemChange(index, url) {
     var newItems = _toConsumableArray(value);
     if (url) {
@@ -366,19 +420,20 @@ function AudioListUploader(_ref4) {
     className: "space-y-4",
     children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("label", {
       className: "block text-xs font-bold text-zinc-200 uppercase tracking-wider",
-      children: [label, " (Max ", maxItems, ")"]
+      children: [label, " ", copy.uploader.maxSuffix.replace('{max}', maxItems)]
     }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
       className: "space-y-3",
       children: Array.from({
         length: maxItems
       }).map(function (_, i) {
         return /*#__PURE__*/(0, _jsxRuntime.jsx)(AudioFileUploader, {
-          label: "Track #".concat(i + 1),
+          label: copy.uploader.trackLabel.replace('{index}', i + 1),
           value: value[i] || null,
           onChange: function onChange(url) {
             return handleItemChange(i, url);
           },
-          apiKey: apiKey
+          apiKey: apiKey,
+          copy: copy
         }, i);
       })
     })]
@@ -391,33 +446,33 @@ function AudioListUploader(_ref4) {
 function PremiumAudioPlayer(_ref5) {
   var url = _ref5.url,
     title = _ref5.title;
-  var _useState7 = (0, _react.useState)(false),
-    _useState8 = _slicedToArray(_useState7, 2),
-    isPlaying = _useState8[0],
-    setIsPlaying = _useState8[1];
-  var _useState9 = (0, _react.useState)(0),
+  var _useState9 = (0, _react.useState)(false),
     _useState0 = _slicedToArray(_useState9, 2),
-    currentTime = _useState0[0],
-    setCurrentTime = _useState0[1];
+    isPlaying = _useState0[0],
+    setIsPlaying = _useState0[1];
   var _useState1 = (0, _react.useState)(0),
     _useState10 = _slicedToArray(_useState1, 2),
-    duration = _useState10[0],
-    setDuration = _useState10[1];
-  var _useState11 = (0, _react.useState)(1),
+    currentTime = _useState10[0],
+    setCurrentTime = _useState10[1];
+  var _useState11 = (0, _react.useState)(0),
     _useState12 = _slicedToArray(_useState11, 2),
-    volume = _useState12[0],
-    setVolume = _useState12[1];
-  var _useState13 = (0, _react.useState)(false),
+    duration = _useState12[0],
+    setDuration = _useState12[1];
+  var _useState13 = (0, _react.useState)(1),
     _useState14 = _slicedToArray(_useState13, 2),
-    isMuted = _useState14[0],
-    setIsMuted = _useState14[1];
+    volume = _useState14[0],
+    setVolume = _useState14[1];
+  var _useState15 = (0, _react.useState)(false),
+    _useState16 = _slicedToArray(_useState15, 2),
+    isMuted = _useState16[0],
+    setIsMuted = _useState16[1];
   var audioRef = (0, _react.useRef)(null);
   var progressBarRef = (0, _react.useRef)(null);
   var visualizerIntervalRef = (0, _react.useRef)(null);
-  var _useState15 = (0, _react.useState)(Array(18).fill(15)),
-    _useState16 = _slicedToArray(_useState15, 2),
-    visualizerHeights = _useState16[0],
-    setVisualizerHeights = _useState16[1];
+  var _useState17 = (0, _react.useState)(Array(18).fill(15)),
+    _useState18 = _slicedToArray(_useState17, 2),
+    visualizerHeights = _useState18[0],
+    setVisualizerHeights = _useState18[1];
 
   // Reset player when URL changes
   (0, _react.useEffect)(function () {
@@ -674,56 +729,59 @@ function AudioStudio(_ref7) {
     historyItems = _ref7.historyItems,
     droppedFiles = _ref7.droppedFiles,
     onFilesHandled = _ref7.onFilesHandled,
-    templateData = _ref7.templateData;
+    templateData = _ref7.templateData,
+    _ref7$locale = _ref7.locale,
+    locale = _ref7$locale === void 0 ? "en" : _ref7$locale;
   var PERSIST_KEY = "hg_audio_studio_persistent";
+  var copy = (0, _i18nUtils.resolveCopy)(_audioStudio["default"], _audioStudio2["default"], locale);
 
   // ── Mode & model state ──────────────────────────────────────────────────
-  var _useState17 = (0, _react.useState)((_audioModels$0$id = (_audioModels$ = _models.audioModels[0]) === null || _audioModels$ === void 0 ? void 0 : _audioModels$.id) !== null && _audioModels$0$id !== void 0 ? _audioModels$0$id : ""),
-    _useState18 = _slicedToArray(_useState17, 2),
-    selectedModelId = _useState18[0],
-    setSelectedModelId = _useState18[1];
-  var _useState19 = (0, _react.useState)({}),
+  var _useState19 = (0, _react.useState)((_audioModels$0$id = (_audioModels$ = _models.audioModels[0]) === null || _audioModels$ === void 0 ? void 0 : _audioModels$.id) !== null && _audioModels$0$id !== void 0 ? _audioModels$0$id : ""),
     _useState20 = _slicedToArray(_useState19, 2),
-    params = _useState20[0],
-    setParams = _useState20[1];
-  var _useState21 = (0, _react.useState)(false),
+    selectedModelId = _useState20[0],
+    setSelectedModelId = _useState20[1];
+  var _useState21 = (0, _react.useState)({}),
     _useState22 = _slicedToArray(_useState21, 2),
-    openDropdown = _useState22[0],
-    setOpenDropdown = _useState22[1];
+    params = _useState22[0],
+    setParams = _useState22[1];
+  var _useState23 = (0, _react.useState)(false),
+    _useState24 = _slicedToArray(_useState23, 2),
+    openDropdown = _useState24[0],
+    setOpenDropdown = _useState24[1];
   var modelBtnRef = (0, _react.useRef)(null);
 
   // ── Generation state ──────────────────────────────────────────────────
-  var _useState23 = (0, _react.useState)(false),
-    _useState24 = _slicedToArray(_useState23, 2),
-    isGenerating = _useState24[0],
-    setIsGenerating = _useState24[1];
-  var _useState25 = (0, _react.useState)(null),
+  var _useState25 = (0, _react.useState)(false),
     _useState26 = _slicedToArray(_useState25, 2),
-    generateError = _useState26[0],
-    setGenerateError = _useState26[1];
+    isGenerating = _useState26[0],
+    setIsGenerating = _useState26[1];
   var _useState27 = (0, _react.useState)(null),
     _useState28 = _slicedToArray(_useState27, 2),
-    activeResultUrl = _useState28[0],
-    setActiveResultUrl = _useState28[1];
-  var _useState29 = (0, _react.useState)(""),
+    generateError = _useState28[0],
+    setGenerateError = _useState28[1];
+  var _useState29 = (0, _react.useState)(null),
     _useState30 = _slicedToArray(_useState29, 2),
-    activeResultTitle = _useState30[0],
-    setActiveResultTitle = _useState30[1];
-  var _useState31 = (0, _react.useState)("input"),
+    activeResultUrl = _useState30[0],
+    setActiveResultUrl = _useState30[1];
+  var _useState31 = (0, _react.useState)(""),
     _useState32 = _slicedToArray(_useState31, 2),
-    view = _useState32[0],
-    setView = _useState32[1]; // 'input' | 'result'
+    activeResultTitle = _useState32[0],
+    setActiveResultTitle = _useState32[1];
+  var _useState33 = (0, _react.useState)("input"),
+    _useState34 = _slicedToArray(_useState33, 2),
+    view = _useState34[0],
+    setView = _useState34[1]; // 'input' | 'result'
 
   // ── History state ────────────────────────────────────────────────────
-  var _useState33 = (0, _react.useState)([]),
-    _useState34 = _slicedToArray(_useState33, 2),
-    internalHistory = _useState34[0],
-    setInternalHistory = _useState34[1];
-  var history = historyItems !== null && historyItems !== void 0 ? historyItems : internalHistory;
-  var _useState35 = (0, _react.useState)(0),
+  var _useState35 = (0, _react.useState)([]),
     _useState36 = _slicedToArray(_useState35, 2),
-    activeHistoryIdx = _useState36[0],
-    setActiveHistoryIdx = _useState36[1];
+    internalHistory = _useState36[0],
+    setInternalHistory = _useState36[1];
+  var history = historyItems !== null && historyItems !== void 0 ? historyItems : internalHistory;
+  var _useState37 = (0, _react.useState)(0),
+    _useState38 = _slicedToArray(_useState37, 2),
+    activeHistoryIdx = _useState38[0],
+    setActiveHistoryIdx = _useState38[1];
   var selectedModel = (0, _models.getAudioModelById)(selectedModelId);
 
   // ── Initialize params when model changes ──────────────────────────────
@@ -1046,7 +1104,8 @@ function AudioStudio(_ref7) {
                     return _objectSpread(_objectSpread({}, prev), {}, _defineProperty({}, key, url));
                   });
                 },
-                apiKey: apiKey
+                apiKey: apiKey,
+                copy: copy
               }, key);
             }
             // Audio URLs list file upload (multiple)
@@ -1060,7 +1119,8 @@ function AudioStudio(_ref7) {
                   });
                 },
                 apiKey: apiKey,
-                maxItems: schema.maxItems || 2
+                maxItems: schema.maxItems || 2,
+                copy: copy
               }, key);
             }
             // Boolean Toggles

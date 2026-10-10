@@ -44,7 +44,7 @@ export default function SideNavigation() {
               }`
             }
           >
-            {item.icon}
+            {item.icon as any}
             <span className="font-medium">{item.label}</span>
           </NavLink>
         ))}

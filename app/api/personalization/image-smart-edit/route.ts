@@ -5,6 +5,8 @@ import { ENTITLEMENTS } from '@/access/entitlements'
 import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer'
 import { rateLimit, rateLimit429 } from '@/lib/rateLimit'
 
+export const dynamic = "force-dynamic";
+
 export const runtime = 'nodejs'
 export const maxDuration = 120
 

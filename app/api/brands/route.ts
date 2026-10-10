@@ -3,6 +3,8 @@ import dns from 'node:dns/promises'
 import { brands, type Brand } from '@/shared/brandStore'
 import { ok, apiError } from '@/lib/apiError'
 
+export const dynamic = "force-dynamic";
+
 const MAX_BYTES = 1_000_000
 const FETCH_TIMEOUT_MS = 5000
 const DEFAULT_PAGE_SIZE = 20

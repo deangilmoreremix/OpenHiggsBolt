@@ -5,6 +5,8 @@ import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/ap
 import { ENTITLEMENTS } from '@/access/entitlements';
 import { safeApiJson } from '@/lib/safeApiResponse';
 
+export const dynamic = "force-dynamic";
+
 const BASE = 'https://api.muapi.ai/api/v1/creative-agent';
 
 function cleanHeaders(request) {

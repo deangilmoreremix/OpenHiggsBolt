@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { auth } from '@clerk/nextjs/server';
 
+export const dynamic = "force-dynamic";
+
 export const runtime = 'nodejs';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';

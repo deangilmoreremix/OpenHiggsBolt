@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { ensureUserAndWorkspace } from '../../../../src/lib/tenantSync';
 import { apiError } from '@/lib/apiError';
 
+export const dynamic = "force-dynamic";
+
 export async function POST() {
   try {
     const { user, workspace } = await ensureUserAndWorkspace();

@@ -4,6 +4,8 @@ import { isRequestCancelled } from '../cancel/route'
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
 import { ENTITLEMENTS } from '@/access/entitlements'
 
+export const dynamic = "force-dynamic";
+
 function cancelledResponse(id: string) {
   return { request_id: id, status: 'cancelled' as const }
 }

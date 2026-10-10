@@ -5,6 +5,8 @@ import { useSearchParams } from 'next/navigation'
 import { DemoPersonalizeProvider, useDemoPersonalize } from '@/shared/personalization'
 import { useAuthConfig } from '@/lib/authConfig'
 
+export const dynamic = "force-dynamic";
+
 const SAMPLE_SOURCE = {
   id: 'demo-roofing-1',
   title: 'Viral Roofing Demo — Storm Damage',

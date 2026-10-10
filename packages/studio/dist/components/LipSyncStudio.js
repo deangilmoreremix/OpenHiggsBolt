@@ -17,6 +17,10 @@ var _characterStore = require("../lib/characterStore");
 var _registry = _interopRequireDefault(require("../skills/registry.json"));
 var _promptRecipes = require("../lib/promptRecipes");
 var _storyboardHandoff = require("../storyboardHandoff.js");
+var _PromptComposer = require("./prompt/PromptComposer.jsx");
+var _lipSyncStudio = _interopRequireDefault(require("../messages/en/lipSyncStudio.json"));
+var _lipSyncStudio2 = _interopRequireDefault(require("../messages/zh/lipSyncStudio.json"));
+var _i18nUtils = require("../i18nUtils");
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
@@ -25,21 +29,16 @@ function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArra
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
 function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
-function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
-function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
-function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
-function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
-function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
+function _regenerator() { /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ var e, t, r = "function" == typeof Symbol ? Symbol : {}, n = r.iterator || "@@iterator", o = r.toStringTag || "@@toStringTag"; function i(r, n, o, i) { var c = n && n.prototype instanceof Generator ? n : Generator, u = Object.create(c.prototype); return _regeneratorDefine2(u, "_invoke", function (r, n, o) { var i, c, u, f = 0, p = o || [], y = !1, G = { p: 0, n: 0, v: e, a: d, f: d.bind(e, 4), d: function d(t, r) { return i = t, c = 0, u = e, G.n = r, a; } }; function d(r, n) { for (c = r, u = n, t = 0; !y && f && !o && t < p.length; t++) { var o, i = p[t], d = G.p, l = i[2]; r > 3 ? (o = l === n) && (u = i[(c = i[4]) ? 5 : (c = 3, 3)], i[4] = i[5] = e) : i[0] <= d && ((o = r < 2 && d < i[1]) ? (c = 0, G.v = n, G.n = i[1]) : d < l && (o = r < 3 || i[0] > n || n > l) && (i[4] = r, i[5] = n, G.n = l, c = 0)); } if (o || r > 1) return a; throw y = !0, n; } return function (o, p, l) { if (f > 1) throw TypeError("Generator is already running"); for (y && 1 === p && d(p, l), c = p, u = l; (t = c < 2 ? e : u) || !y;) { i || (c ? c < 3 ? (c > 1 && (G.n = -1), d(c, u)) : G.n = u : G.v = u); try { if (f = 2, i) { if (c || (o = "next"), t = i[o]) { if (!(t = t.call(i, u))) throw TypeError("iterator result is not an object"); if (!t.done) return t; u = t.value, c < 2 && (c = 0); } else 1 === c && (t = i["return"]) && t.call(i), c < 2 && (u = TypeError("The iterator does not provide a '" + o + "' method"), c = 1); i = e; } else if ((t = (y = G.n < 0) ? u : r.call(n, G)) !== a) break; } catch (t) { i = e, c = 1, u = t; } finally { f = 1; } } return { value: t, done: y }; }; }(r, o, i), !0), u; } var a = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} t = Object.getPrototypeOf; var c = [][n] ? t(t([][n]())) : (_regeneratorDefine2(t = {}, n, function () { return this; }), t), u = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(c); function f(e) { return Object.setPrototypeOf ? Object.setPrototypeOf(e, GeneratorFunctionPrototype) : (e.__proto__ = GeneratorFunctionPrototype, _regeneratorDefine2(e, o, "GeneratorFunction")), e.prototype = Object.create(u), e; } return GeneratorFunction.prototype = GeneratorFunctionPrototype, _regeneratorDefine2(u, "constructor", GeneratorFunctionPrototype), _regeneratorDefine2(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = "GeneratorFunction", _regeneratorDefine2(GeneratorFunctionPrototype, o, "GeneratorFunction"), _regeneratorDefine2(u), _regeneratorDefine2(u, o, "Generator"), _regeneratorDefine2(u, n, function () { return this; }), _regeneratorDefine2(u, "toString", function () { return "[object Generator]"; }), (_regenerator = function _regenerator() { return { w: i, m: f }; })(); }
+function _regeneratorDefine2(e, r, n, t) { var i = Object.defineProperty; try { i({}, "", {}); } catch (e) { i = 0; } _regeneratorDefine2 = function _regeneratorDefine(e, r, n, t) { function o(r, n) { _regeneratorDefine2(e, r, function (e) { return this._invoke(r, n, e); }); } r ? i ? i(e, r, { value: n, enumerable: !t, configurable: !t, writable: !t }) : e[r] = n : (o("next", 0), o("throw", 1), o("return", 2)); }, _regeneratorDefine2(e, r, n, t); }
+function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
+function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
 function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
 function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
 function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
 function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
-function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
-function _regenerator() { /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ var e, t, r = "function" == typeof Symbol ? Symbol : {}, n = r.iterator || "@@iterator", o = r.toStringTag || "@@toStringTag"; function i(r, n, o, i) { var c = n && n.prototype instanceof Generator ? n : Generator, u = Object.create(c.prototype); return _regeneratorDefine2(u, "_invoke", function (r, n, o) { var i, c, u, f = 0, p = o || [], y = !1, G = { p: 0, n: 0, v: e, a: d, f: d.bind(e, 4), d: function d(t, r) { return i = t, c = 0, u = e, G.n = r, a; } }; function d(r, n) { for (c = r, u = n, t = 0; !y && f && !o && t < p.length; t++) { var o, i = p[t], d = G.p, l = i[2]; r > 3 ? (o = l === n) && (u = i[(c = i[4]) ? 5 : (c = 3, 3)], i[4] = i[5] = e) : i[0] <= d && ((o = r < 2 && d < i[1]) ? (c = 0, G.v = n, G.n = i[1]) : d < l && (o = r < 3 || i[0] > n || n > l) && (i[4] = r, i[5] = n, G.n = l, c = 0)); } if (o || r > 1) return a; throw y = !0, n; } return function (o, p, l) { if (f > 1) throw TypeError("Generator is already running"); for (y && 1 === p && d(p, l), c = p, u = l; (t = c < 2 ? e : u) || !y;) { i || (c ? c < 3 ? (c > 1 && (G.n = -1), d(c, u)) : G.n = u : G.v = u); try { if (f = 2, i) { if (c || (o = "next"), t = i[o]) { if (!(t = t.call(i, u))) throw TypeError("iterator result is not an object"); if (!t.done) return t; u = t.value, c < 2 && (c = 0); } else 1 === c && (t = i["return"]) && t.call(i), c < 2 && (u = TypeError("The iterator does not provide a '" + o + "' method"), c = 1); i = e; } else if ((t = (y = G.n < 0) ? u : r.call(n, G)) !== a) break; } catch (t) { i = e, c = 1, u = t; } finally { f = 1; } } return { value: t, done: y }; }; }(r, o, i), !0), u; } var a = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} t = Object.getPrototypeOf; var c = [][n] ? t(t([][n]())) : (_regeneratorDefine2(t = {}, n, function () { return this; }), t), u = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(c); function f(e) { return Object.setPrototypeOf ? Object.setPrototypeOf(e, GeneratorFunctionPrototype) : (e.__proto__ = GeneratorFunctionPrototype, _regeneratorDefine2(e, o, "GeneratorFunction")), e.prototype = Object.create(u), e; } return GeneratorFunction.prototype = GeneratorFunctionPrototype, _regeneratorDefine2(u, "constructor", GeneratorFunctionPrototype), _regeneratorDefine2(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = "GeneratorFunction", _regeneratorDefine2(GeneratorFunctionPrototype, o, "GeneratorFunction"), _regeneratorDefine2(u), _regeneratorDefine2(u, o, "Generator"), _regeneratorDefine2(u, n, function () { return this; }), _regeneratorDefine2(u, "toString", function () { return "[object Generator]"; }), (_regenerator = function _regenerator() { return { w: i, m: f }; })(); }
-function _regeneratorDefine2(e, r, n, t) { var i = Object.defineProperty; try { i({}, "", {}); } catch (e) { i = 0; } _regeneratorDefine2 = function _regeneratorDefine(e, r, n, t) { function o(r, n) { _regeneratorDefine2(e, r, function (e) { return this._invoke(r, n, e); }); } r ? i ? i(e, r, { value: n, enumerable: !t, configurable: !t, writable: !t }) : e[r] = n : (o("next", 0), o("throw", 1), o("return", 2)); }, _regeneratorDefine2(e, r, n, t); }
-function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
-function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; } // ---------------------------------------------------------------------------
+function _arrayWithHoles(r) { if (Array.isArray(r)) return r; } // ---------------------------------------------------------------------------
 // Upload button states
 // ---------------------------------------------------------------------------
 var UPLOAD_STATE = {
@@ -58,8 +57,16 @@ function MediaPickerButton(_ref) {
     fileName = _ref.fileName,
     previewUrl = _ref.previewUrl,
     isVideo = _ref.isVideo,
-    apiKey = _ref.apiKey;
+    apiKey = _ref.apiKey,
+    _ref$mediaCopy = _ref.mediaCopy,
+    mediaCopy = _ref$mediaCopy === void 0 ? _lipSyncStudio["default"].media : _ref$mediaCopy;
   var inputRef = (0, _react.useRef)(null);
+  var _useState = (0, _react.useState)(false),
+    _useState2 = _slicedToArray(_useState, 2),
+    isDragging = _useState2[0],
+    setIsDragging = _useState2[1];
+  var dragCounterRef = (0, _react.useRef)(0);
+  var acceptPrefix = accept ? accept.split(",")[0].trim().replace("/*", "") : "";
   var handleClick = function handleClick(e) {
     var _inputRef$current;
     e.stopPropagation();
@@ -71,13 +78,12 @@ function MediaPickerButton(_ref) {
   };
   var handleChange = /*#__PURE__*/function () {
     var _ref2 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee(e) {
-      var _e$target$files;
-      var file;
+      var files;
       return _regenerator().w(function (_context) {
         while (1) switch (_context.n) {
           case 0:
-            file = (_e$target$files = e.target.files) === null || _e$target$files === void 0 ? void 0 : _e$target$files[0];
-            if (file) {
+            files = e.target.files;
+            if (!(!files || files.length === 0)) {
               _context.n = 1;
               break;
             }
@@ -85,7 +91,7 @@ function MediaPickerButton(_ref) {
           case 1:
             e.target.value = "";
             _context.n = 2;
-            return onUpload(file);
+            return onUpload(Array.from(files));
           case 2:
             return _context.a(2);
         }
@@ -95,12 +101,85 @@ function MediaPickerButton(_ref) {
       return _ref2.apply(this, arguments);
     };
   }();
+  var handleDragEnter = function handleDragEnter(e) {
+    var _e$dataTransfer;
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current += 1;
+    if ((_e$dataTransfer = e.dataTransfer) !== null && _e$dataTransfer !== void 0 && _e$dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+  var handleDragLeave = function handleDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsDragging(false);
+    }
+  };
+  var handleDragOver = function handleDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  var handleDrop = /*#__PURE__*/function () {
+    var _ref3 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2(e) {
+      var _e$dataTransfer2;
+      var files, matched;
+      return _regenerator().w(function (_context2) {
+        while (1) switch (_context2.n) {
+          case 0:
+            e.preventDefault();
+            e.stopPropagation();
+            dragCounterRef.current = 0;
+            setIsDragging(false);
+            if (!(uploadState === UPLOAD_STATE.UPLOADING)) {
+              _context2.n = 1;
+              break;
+            }
+            return _context2.a(2);
+          case 1:
+            files = (_e$dataTransfer2 = e.dataTransfer) === null || _e$dataTransfer2 === void 0 ? void 0 : _e$dataTransfer2.files;
+            if (!(!files || files.length === 0)) {
+              _context2.n = 2;
+              break;
+            }
+            return _context2.a(2);
+          case 2:
+            matched = acceptPrefix ? Array.from(files).filter(function (f) {
+              return f.type.startsWith("".concat(acceptPrefix, "/"));
+            }) : Array.from(files);
+            if (!(matched.length === 0)) {
+              _context2.n = 3;
+              break;
+            }
+            return _context2.a(2);
+          case 3:
+            _context2.n = 4;
+            return onUpload(matched);
+          case 4:
+            return _context2.a(2);
+        }
+      }, _callee2);
+    }));
+    return function handleDrop(_x2) {
+      return _ref3.apply(this, arguments);
+    };
+  }();
   var borderClass = uploadState === UPLOAD_STATE.READY ? "border-primary/60 bg-primary/5" : "border-white/[0.03] bg-white/[0.03] hover:bg-white/[0.06] hover:border-primary/40";
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
     type: "button",
-    title: uploadState === UPLOAD_STATE.READY ? "".concat(fileName, " \u2014 click to clear") : "Upload ".concat(label.toLowerCase(), " file"),
+    title: uploadState === UPLOAD_STATE.READY ? "".concat(fileName, " \u2014 ").concat(mediaCopy.clickToClear) : "".concat(mediaCopy.uploadFilePrefix, " ").concat(label, " ").concat(mediaCopy.uploadFileSuffix),
     onClick: handleClick,
-    className: "flex-shrink-0 w-10 h-10 rounded-full border transition-all flex items-center justify-center relative overflow-hidden group ".concat(borderClass),
+    onDragEnter: handleDragEnter,
+    onDragLeave: handleDragLeave,
+    onDragOver: handleDragOver,
+    onDrop: handleDrop,
+    className: (0, _PromptComposer.promptMediaButtonClassName)({
+      active: uploadState === UPLOAD_STATE.READY,
+      className: isDragging ? "ring-2 ring-[#22d3ee] ring-offset-1 ring-offset-black scale-105" : ""
+    }),
     children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
       ref: inputRef,
       type: "file",
@@ -180,42 +259,17 @@ function MediaPickerButton(_ref) {
 // ---------------------------------------------------------------------------
 // Inline dropdown
 // ---------------------------------------------------------------------------
-function Dropdown(_ref3) {
-  var isOpen = _ref3.isOpen,
-    items = _ref3.items,
-    selectedId = _ref3.selectedId,
-    onSelect = _ref3.onSelect,
-    onClose = _ref3.onClose,
-    anchorRef = _ref3.anchorRef;
+function Dropdown(_ref4) {
+  var isOpen = _ref4.isOpen,
+    title = _ref4.title,
+    items = _ref4.items,
+    selectedId = _ref4.selectedId,
+    onSelect = _ref4.onSelect,
+    onClose = _ref4.onClose,
+    anchorRef = _ref4.anchorRef,
+    _ref4$className = _ref4.className,
+    className = _ref4$className === void 0 ? "" : _ref4$className;
   var dropRef = (0, _react.useRef)(null);
-  var _useState = (0, _react.useState)({}),
-    _useState2 = _slicedToArray(_useState, 2),
-    style = _useState2[0],
-    setStyle = _useState2[1];
-  (0, _react.useEffect)(function () {
-    if (!isOpen || !(anchorRef !== null && anchorRef !== void 0 && anchorRef.current) || !dropRef.current) return;
-    var rect = anchorRef.current.getBoundingClientRect();
-    var ddHeight = dropRef.current.offsetHeight;
-    var spaceBelow = window.innerHeight - rect.bottom - 8;
-    var spaceAbove = rect.top - 8;
-    var top, bottom, maxHeight;
-    if (spaceBelow >= ddHeight || spaceBelow >= spaceAbove) {
-      top = rect.bottom + 8;
-      bottom = "auto";
-      maxHeight = Math.max(150, spaceBelow - 8);
-    } else {
-      top = "auto";
-      bottom = window.innerHeight - rect.top + 8;
-      maxHeight = Math.max(150, spaceAbove - 8);
-    }
-    var left = Math.min(rect.left, window.innerWidth - 220);
-    setStyle({
-      top: top,
-      bottom: bottom,
-      left: left,
-      maxHeight: maxHeight
-    });
-  }, [isOpen, anchorRef]);
   (0, _react.useEffect)(function () {
     if (!isOpen) return;
     var handler = function handler(e) {
@@ -230,41 +284,38 @@ function Dropdown(_ref3) {
     };
   }, [isOpen, onClose, anchorRef]);
   if (!isOpen) return null;
-  return /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+  return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptPopover, {
     ref: dropRef,
-    style: _objectSpread({
-      position: "fixed",
-      zIndex: 100,
-      overflowY: "auto"
-    }, style),
-    className: "bg-[#111] border border-white/10 rounded-lg shadow-3xl p-2 custom-scrollbar w-[calc(100vw-3rem)] max-w-xs",
-    children: items.map(function (item) {
-      return /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-        type: "button",
-        onClick: function onClick() {
-          onSelect(item);
-          onClose();
-        },
-        className: "w-full text-left px-4 py-2 rounded text-sm transition-all hover:bg-white/10 ".concat(item.id === selectedId ? "text-primary font-bold bg-primary/5" : "text-white font-medium"),
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+    className: className,
+    onClick: function onClick(e) {
+      return e.stopPropagation();
+    },
+    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptPopoverHeader, {
+      children: title
+    }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptMenuList, {
+      children: items.map(function (item) {
+        return /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptMenuItem, {
+          selected: item.id === selectedId,
+          description: item.description ? "".concat(item.description.slice(0, 60)).concat(item.description.length > 60 ? "..." : "") : undefined,
+          onClick: function onClick() {
+            onSelect(item);
+            onClose();
+          },
           children: item.name
-        }), item.description && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "text-xs text-muted mt-0.5",
-          children: [item.description.slice(0, 60), "..."]
-        })]
-      }, item.id);
-    })
+        }, item.id);
+      })
+    })]
   });
 }
 
 // ---------------------------------------------------------------------------
 // History sidebar thumbnail
 // ---------------------------------------------------------------------------
-function HistoryThumb(_ref4) {
-  var entry = _ref4.entry,
-    isActive = _ref4.isActive,
-    onSelect = _ref4.onSelect,
-    onDownload = _ref4.onDownload;
+function HistoryThumb(_ref5) {
+  var entry = _ref5.entry,
+    isActive = _ref5.isActive,
+    onSelect = _ref5.onSelect,
+    onDownload = _ref5.onDownload;
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     onClick: onSelect,
     className: "relative group/thumb cursor-pointer rounded-lg overflow-hidden border-2 transition-all duration-300 ".concat(isActive ? "border-primary shadow-glow" : "border-white/10 hover:border-white/30"),
@@ -302,9 +353,9 @@ function HistoryThumb(_ref4) {
 // ---------------------------------------------------------------------------
 // SVG icons
 // ---------------------------------------------------------------------------
-var MicIcon = function MicIcon(_ref5) {
-  var _ref5$className = _ref5.className,
-    className = _ref5$className === void 0 ? "text-muted group-hover:text-primary transition-colors" : _ref5$className;
+var MicIcon = function MicIcon(_ref6) {
+  var _ref6$className = _ref6.className,
+    className = _ref6$className === void 0 ? "text-muted group-hover:text-primary transition-colors" : _ref6$className;
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
     width: "16",
     height: "16",
@@ -325,9 +376,9 @@ var MicIcon = function MicIcon(_ref5) {
     })]
   });
 };
-var VideoIcon = function VideoIcon(_ref6) {
-  var _ref6$className = _ref6.className,
-    className = _ref6$className === void 0 ? "text-muted group-hover:text-primary transition-colors" : _ref6$className;
+var VideoIcon = function VideoIcon(_ref7) {
+  var _ref7$className = _ref7.className,
+    className = _ref7$className === void 0 ? "text-muted group-hover:text-primary transition-colors" : _ref7$className;
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
     width: "16",
     height: "16",
@@ -352,14 +403,17 @@ var VideoIcon = function VideoIcon(_ref6) {
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
-function LipSyncStudio(_ref7) {
+function LipSyncStudio(_ref8) {
   var _firstModel$id, _firstModel$inputs$re, _firstModel$inputs, _selectedModel$name;
-  var apiKey = _ref7.apiKey,
-    onGenerationComplete = _ref7.onGenerationComplete,
-    historyItems = _ref7.historyItems,
-    droppedFiles = _ref7.droppedFiles,
-    onFilesHandled = _ref7.onFilesHandled,
-    templateData = _ref7.templateData;
+  var apiKey = _ref8.apiKey,
+    onGenerationComplete = _ref8.onGenerationComplete,
+    historyItems = _ref8.historyItems,
+    droppedFiles = _ref8.droppedFiles,
+    onFilesHandled = _ref8.onFilesHandled,
+    templateData = _ref8.templateData,
+    _ref8$locale = _ref8.locale,
+    locale = _ref8$locale === void 0 ? "en" : _ref8$locale;
+  var copy = (0, _i18nUtils.resolveCopy)(_lipSyncStudio["default"], _lipSyncStudio2["default"], locale);
   var PERSIST_KEY = "hg_lipsync_studio_persistent";
 
   // ── Mode & model state ──────────────────────────────────────────────────
@@ -690,145 +744,162 @@ function LipSyncStudio(_ref7) {
 
   // ── Upload handlers ─────────────────────────────────────────────────────
   var handleImageUpload = (0, _react.useCallback)(/*#__PURE__*/function () {
-    var _ref8 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2(file) {
-      var url, _t;
-      return _regenerator().w(function (_context2) {
-        while (1) switch (_context2.p = _context2.n) {
-          case 0:
-            if (!(file.size > 10 * 1024 * 1024)) {
-              _context2.n = 1;
-              break;
-            }
-            alert("Image exceeds 10MB limit.");
-            return _context2.a(2);
-          case 1:
-            setImageState(UPLOAD_STATE.UPLOADING);
-            setImageProgress(0);
-            _context2.p = 2;
-            _context2.n = 3;
-            return (0, _muapi.uploadFile)(apiKey, file, function (pct) {
-              setImageProgress(pct);
-            });
-          case 3:
-            url = _context2.v;
-            setImageUrl(url);
-            setImageName(file.name);
-            setImageState(UPLOAD_STATE.READY);
-            _context2.n = 5;
-            break;
-          case 4:
-            _context2.p = 4;
-            _t = _context2.v;
-            setImageState(UPLOAD_STATE.IDLE);
-            alert("Image upload failed: ".concat(_t.message));
-          case 5:
-            _context2.p = 5;
-            setImageProgress(0);
-            return _context2.f(5);
-          case 6:
-            return _context2.a(2);
-        }
-      }, _callee2, null, [[2, 4, 5, 6]]);
-    }));
-    return function (_x2) {
-      return _ref8.apply(this, arguments);
-    };
-  }(), [apiKey]);
-  var handleVideoPick = (0, _react.useCallback)(/*#__PURE__*/function () {
-    var _ref9 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3(file) {
-      var url, _t2;
+    var _ref9 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3(files) {
+      var file, url, _t;
       return _regenerator().w(function (_context3) {
         while (1) switch (_context3.p = _context3.n) {
           case 0:
-            if (!(file.size > 50 * 1024 * 1024)) {
+            file = Array.isArray(files) ? files[0] : files;
+            if (file) {
               _context3.n = 1;
               break;
             }
-            alert("Video exceeds 50MB limit.");
             return _context3.a(2);
           case 1:
-            setVideoState(UPLOAD_STATE.UPLOADING);
-            setVideoProgress(0);
-            _context3.p = 2;
-            _context3.n = 3;
+            if (!(file.size > 10 * 1024 * 1024)) {
+              _context3.n = 2;
+              break;
+            }
+            alert("Image exceeds 10MB limit.");
+            return _context3.a(2);
+          case 2:
+            setImageState(UPLOAD_STATE.UPLOADING);
+            setImageProgress(0);
+            _context3.p = 3;
+            _context3.n = 4;
             return (0, _muapi.uploadFile)(apiKey, file, function (pct) {
-              setVideoProgress(pct);
+              setImageProgress(pct);
             });
-          case 3:
-            url = _context3.v;
-            setVideoUrl(url);
-            setVideoName(file.name);
-            setVideoState(UPLOAD_STATE.READY);
-            _context3.n = 5;
-            break;
           case 4:
-            _context3.p = 4;
-            _t2 = _context3.v;
-            setVideoState(UPLOAD_STATE.IDLE);
-            alert("Video upload failed: ".concat(_t2.message));
+            url = _context3.v;
+            setImageUrl(url);
+            setImageName(file.name);
+            setImageState(UPLOAD_STATE.READY);
+            _context3.n = 6;
+            break;
           case 5:
             _context3.p = 5;
-            setVideoProgress(0);
-            return _context3.f(5);
+            _t = _context3.v;
+            setImageState(UPLOAD_STATE.IDLE);
+            alert("Image upload failed: ".concat(_t.message));
           case 6:
+            _context3.p = 6;
+            setImageProgress(0);
+            return _context3.f(6);
+          case 7:
             return _context3.a(2);
         }
-      }, _callee3, null, [[2, 4, 5, 6]]);
+      }, _callee3, null, [[3, 5, 6, 7]]);
     }));
     return function (_x3) {
       return _ref9.apply(this, arguments);
     };
   }(), [apiKey]);
-  var handlePromptInput = function handlePromptInput(e) {
-    setPrompt(e.target.value);
-    var el = e.target;
-    el.style.height = "auto";
-    var maxH = window.innerWidth < 768 ? 150 : 250;
-    el.style.height = Math.min(el.scrollHeight, maxH) + "px";
-  };
-  var handleAudioPick = (0, _react.useCallback)(/*#__PURE__*/function () {
-    var _ref0 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee4(file) {
-      var url, _t3;
+  var handleVideoPick = (0, _react.useCallback)(/*#__PURE__*/function () {
+    var _ref0 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee4(files) {
+      var file, url, _t2;
       return _regenerator().w(function (_context4) {
         while (1) switch (_context4.p = _context4.n) {
           case 0:
-            if (!(file.size > 10 * 1024 * 1024)) {
+            file = Array.isArray(files) ? files[0] : files;
+            if (file) {
               _context4.n = 1;
               break;
             }
-            alert("Audio file exceeds 10MB limit.");
             return _context4.a(2);
           case 1:
-            setAudioState(UPLOAD_STATE.UPLOADING);
-            setAudioProgress(0);
-            _context4.p = 2;
-            _context4.n = 3;
+            if (!(file.size > 50 * 1024 * 1024)) {
+              _context4.n = 2;
+              break;
+            }
+            alert("Video exceeds 50MB limit.");
+            return _context4.a(2);
+          case 2:
+            setVideoState(UPLOAD_STATE.UPLOADING);
+            setVideoProgress(0);
+            _context4.p = 3;
+            _context4.n = 4;
             return (0, _muapi.uploadFile)(apiKey, file, function (pct) {
-              setAudioProgress(pct);
+              setVideoProgress(pct);
             });
-          case 3:
-            url = _context4.v;
-            setAudioUrl(url);
-            setAudioName(file.name);
-            setAudioState(UPLOAD_STATE.READY);
-            _context4.n = 5;
-            break;
           case 4:
-            _context4.p = 4;
-            _t3 = _context4.v;
-            setAudioState(UPLOAD_STATE.IDLE);
-            alert("Audio upload failed: ".concat(_t3.message));
+            url = _context4.v;
+            setVideoUrl(url);
+            setVideoName(file.name);
+            setVideoState(UPLOAD_STATE.READY);
+            _context4.n = 6;
+            break;
           case 5:
             _context4.p = 5;
-            setAudioProgress(0);
-            return _context4.f(5);
+            _t2 = _context4.v;
+            setVideoState(UPLOAD_STATE.IDLE);
+            alert("Video upload failed: ".concat(_t2.message));
           case 6:
+            _context4.p = 6;
+            setVideoProgress(0);
+            return _context4.f(6);
+          case 7:
             return _context4.a(2);
         }
-      }, _callee4, null, [[2, 4, 5, 6]]);
+      }, _callee4, null, [[3, 5, 6, 7]]);
     }));
     return function (_x4) {
       return _ref0.apply(this, arguments);
+    };
+  }(), [apiKey]);
+  var handlePromptInput = function handlePromptInput(e) {
+    setPrompt(e.target.value);
+  };
+  var handleAudioPick = (0, _react.useCallback)(/*#__PURE__*/function () {
+    var _ref1 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee5(files) {
+      var file, url, _t3;
+      return _regenerator().w(function (_context5) {
+        while (1) switch (_context5.p = _context5.n) {
+          case 0:
+            file = Array.isArray(files) ? files[0] : files;
+            if (file) {
+              _context5.n = 1;
+              break;
+            }
+            return _context5.a(2);
+          case 1:
+            if (!(file.size > 10 * 1024 * 1024)) {
+              _context5.n = 2;
+              break;
+            }
+            alert("Audio file exceeds 10MB limit.");
+            return _context5.a(2);
+          case 2:
+            setAudioState(UPLOAD_STATE.UPLOADING);
+            setAudioProgress(0);
+            _context5.p = 3;
+            _context5.n = 4;
+            return (0, _muapi.uploadFile)(apiKey, file, function (pct) {
+              setAudioProgress(pct);
+            });
+          case 4:
+            url = _context5.v;
+            setAudioUrl(url);
+            setAudioName(file.name);
+            setAudioState(UPLOAD_STATE.READY);
+            _context5.n = 6;
+            break;
+          case 5:
+            _context5.p = 5;
+            _t3 = _context5.v;
+            setAudioState(UPLOAD_STATE.IDLE);
+            alert("Audio upload failed: ".concat(_t3.message));
+          case 6:
+            _context5.p = 6;
+            setAudioProgress(0);
+            return _context5.f(6);
+          case 7:
+            return _context5.a(2);
+        }
+      }, _callee5, null, [[3, 5, 6, 7]]);
+    }));
+    return function (_x5) {
+      return _ref1.apply(this, arguments);
     };
   }(), [apiKey]);
 
@@ -902,20 +973,20 @@ function LipSyncStudio(_ref7) {
     });
   }, []);
   var downloadFile = /*#__PURE__*/function () {
-    var _ref1 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee5(url, filename) {
+    var _ref10 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee6(url, filename) {
       var response, blob, blobUrl, a, _t4;
-      return _regenerator().w(function (_context5) {
-        while (1) switch (_context5.p = _context5.n) {
+      return _regenerator().w(function (_context6) {
+        while (1) switch (_context6.p = _context6.n) {
           case 0:
-            _context5.p = 0;
-            _context5.n = 1;
+            _context6.p = 0;
+            _context6.n = 1;
             return fetch(url);
           case 1:
-            response = _context5.v;
-            _context5.n = 2;
+            response = _context6.v;
+            _context6.n = 2;
             return response.blob();
           case 2:
-            blob = _context5.v;
+            blob = _context6.v;
             blobUrl = URL.createObjectURL(blob);
             a = document.createElement("a");
             a.href = blobUrl;
@@ -924,53 +995,53 @@ function LipSyncStudio(_ref7) {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(blobUrl);
-            _context5.n = 4;
+            _context6.n = 4;
             break;
           case 3:
-            _context5.p = 3;
-            _t4 = _context5.v;
+            _context6.p = 3;
+            _t4 = _context6.v;
             window.open(url, "_blank");
           case 4:
-            return _context5.a(2);
+            return _context6.a(2);
         }
-      }, _callee5, null, [[0, 3]]);
+      }, _callee6, null, [[0, 3]]);
     }));
-    return function downloadFile(_x5, _x6) {
-      return _ref1.apply(this, arguments);
+    return function downloadFile(_x6, _x7) {
+      return _ref10.apply(this, arguments);
     };
   }();
 
   // ── Generation ──────────────────────────────────────────────────────────
   var handleGenerate = /*#__PURE__*/function () {
-    var _ref10 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee6() {
+    var _ref11 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee7() {
       var lipsyncParams, res, genId, entry, _e$message$slice, _e$message, _t5;
-      return _regenerator().w(function (_context6) {
-        while (1) switch (_context6.p = _context6.n) {
+      return _regenerator().w(function (_context7) {
+        while (1) switch (_context7.p = _context7.n) {
           case 0:
             if (audioUrl) {
-              _context6.n = 1;
+              _context7.n = 1;
               break;
             }
             alert("Please upload an audio file first.");
-            return _context6.a(2);
+            return _context7.a(2);
           case 1:
             if (!(inputMode === "image" && !imageUrl)) {
-              _context6.n = 2;
+              _context7.n = 2;
               break;
             }
             alert("Please upload a portrait image first.");
-            return _context6.a(2);
+            return _context7.a(2);
           case 2:
             if (!(inputMode === "video" && !videoUrl)) {
-              _context6.n = 3;
+              _context7.n = 3;
               break;
             }
             alert("Please upload a source video first.");
-            return _context6.a(2);
+            return _context7.a(2);
           case 3:
             setIsGenerating(true);
             setGenerateError(null);
-            _context6.p = 4;
+            _context7.p = 4;
             lipsyncParams = {
               model: selectedModelId,
               audio_url: audioUrl
@@ -979,12 +1050,12 @@ function LipSyncStudio(_ref7) {
             if (prompt && selectedModel !== null && selectedModel !== void 0 && selectedModel.hasPrompt) lipsyncParams.prompt = prompt;
             if (showResolution) lipsyncParams.resolution = selectedResolution;
             if (selectedModel !== null && selectedModel !== void 0 && selectedModel.hasSeed) lipsyncParams.seed = -1;
-            _context6.n = 5;
+            _context7.n = 5;
             return (0, _muapi.processLipSync)(apiKey, lipsyncParams);
           case 5:
-            res = _context6.v;
+            res = _context7.v;
             if (res !== null && res !== void 0 && res.url) {
-              _context6.n = 6;
+              _context7.n = 6;
               break;
             }
             throw new Error("No video URL returned by API");
@@ -1009,27 +1080,27 @@ function LipSyncStudio(_ref7) {
                 type: "lipsync"
               });
             }
-            _context6.n = 8;
+            _context7.n = 8;
             break;
           case 7:
-            _context6.p = 7;
-            _t5 = _context6.v;
+            _context7.p = 7;
+            _t5 = _context7.v;
             console.error("[LipSyncStudio]", _t5);
             setGenerateError((_e$message$slice = (_e$message = _t5.message) === null || _e$message === void 0 ? void 0 : _e$message.slice(0, 80)) !== null && _e$message$slice !== void 0 ? _e$message$slice : "Unknown error");
             setTimeout(function () {
               return setGenerateError(null);
             }, 4000);
           case 8:
-            _context6.p = 8;
+            _context7.p = 8;
             setIsGenerating(false);
-            return _context6.f(8);
+            return _context7.f(8);
           case 9:
-            return _context6.a(2);
+            return _context7.a(2);
         }
-      }, _callee6, null, [[4, 7, 8, 9]]);
+      }, _callee7, null, [[4, 7, 8, 9]]);
     }));
     return function handleGenerate() {
-      return _ref10.apply(this, arguments);
+      return _ref11.apply(this, arguments);
     };
   }();
 
@@ -1268,220 +1339,217 @@ function LipSyncStudio(_ref7) {
           children: "Sync any voice with any face video to create premium talking avatars and videos."
         })]
       })
-    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-      className: "absolute bottom-4 w-full max-w-[95%] lg:max-w-4xl z-40 animate-fade-in-up",
-      style: {
-        animationDelay: "0.2s"
-      },
-      children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-        className: "w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]",
+    }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptComposer, {
+      children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+        className: "flex items-center gap-2 px-3",
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+          type: "button",
+          onClick: switchToImage,
+          className: "px-3 py-1 rounded-md text-xs font-bold transition-all border ".concat(inputMode === "image" ? "border-[#22d3ee]/60 bg-[#22d3ee]/5 text-[#22d3ee]" : "border-white/[0.03] bg-white/[0.03] text-white/40 hover:border-white/20 hover:text-white"),
+          children: "\uD83D\uDDBC Portrait Image"
+        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+          type: "button",
+          onClick: switchToVideo,
+          className: "px-3 py-1 rounded-md text-[10px] font-bold transition-all border ".concat(inputMode === "video" ? "border-[#22d3ee]/60 bg-[#22d3ee]/5 text-[#22d3ee]" : "border-white/[0.03] bg-white/[0.03] text-white/40 hover:border-white/20 hover:text-white"),
+          children: "\uD83C\uDFAC Video"
+        })]
+      }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+        className: "flex items-center gap-2 px-1",
         children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "flex items-center gap-2 px-3",
-          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-            type: "button",
-            onClick: switchToImage,
-            className: "px-3 py-1 rounded-md text-xs font-bold transition-all border ".concat(inputMode === "image" ? "border-[#22d3ee]/60 bg-[#22d3ee]/5 text-[#22d3ee]" : "border-white/[0.03] bg-white/[0.03] text-white/40 hover:border-white/20 hover:text-white"),
-            children: "\uD83D\uDDBC Portrait Image"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-            type: "button",
-            onClick: switchToVideo,
-            className: "px-3 py-1 rounded-md text-[10px] font-bold transition-all border ".concat(inputMode === "video" ? "border-[#22d3ee]/60 bg-[#22d3ee]/5 text-[#22d3ee]" : "border-white/[0.03] bg-white/[0.03] text-white/40 hover:border-white/20 hover:text-white"),
-            children: "\uD83C\uDFAC Video"
+          className: "flex items-center gap-2",
+          children: [inputMode === "image" && /*#__PURE__*/(0, _jsxRuntime.jsx)(MediaPickerButton, {
+            accept: "image/*",
+            label: copy.media.imageLabel,
+            mediaCopy: copy.media,
+            icon: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+              width: "16",
+              height: "16",
+              viewBox: "0 0 24 24",
+              fill: "none",
+              stroke: "currentColor",
+              strokeWidth: "2",
+              className: "text-white/40 group-hover:text-[#22d3ee] transition-colors",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("rect", {
+                x: "3",
+                y: "3",
+                width: "18",
+                height: "18",
+                rx: "2",
+                ry: "2"
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                cx: "8.5",
+                cy: "8.5",
+                r: "1.5"
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
+                points: "21 15 16 10 5 21"
+              })]
+            }),
+            onUpload: handleImageUpload,
+            onClear: function onClear() {
+              setImageUrl(null);
+              setImageState(UPLOAD_STATE.IDLE);
+              setImageName("");
+            },
+            uploadState: imageState,
+            progress: imageProgress,
+            fileName: imageName,
+            previewUrl: imageUrl,
+            isVideo: false,
+            apiKey: apiKey
+          }), inputMode === "video" && /*#__PURE__*/(0, _jsxRuntime.jsx)(MediaPickerButton, {
+            accept: "video/*",
+            label: copy.media.videoLabel,
+            mediaCopy: copy.media,
+            icon: /*#__PURE__*/(0, _jsxRuntime.jsx)(VideoIcon, {
+              className: "text-white/40 group-hover:text-[#22d3ee] transition-colors"
+            }),
+            onUpload: handleVideoPick,
+            onClear: function onClear() {
+              setVideoUrl(null);
+              setVideoState(UPLOAD_STATE.IDLE);
+              setVideoName("");
+            },
+            uploadState: videoState,
+            progress: videoProgress,
+            fileName: videoName,
+            previewUrl: videoUrl,
+            isVideo: true,
+            apiKey: apiKey
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)(MediaPickerButton, {
+            accept: "audio/*",
+            label: copy.media.audioLabel,
+            mediaCopy: copy.media,
+            icon: /*#__PURE__*/(0, _jsxRuntime.jsx)(MicIcon, {
+              className: "text-white/40 group-hover:text-[#22d3ee] transition-colors"
+            }),
+            onUpload: handleAudioPick,
+            onClear: function onClear() {
+              setAudioUrl(null);
+              setAudioState(UPLOAD_STATE.IDLE);
+              setAudioName("");
+            },
+            uploadState: audioState,
+            progress: audioProgress,
+            fileName: audioName,
+            previewUrl: null,
+            isVideo: false,
+            apiKey: apiKey
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+          className: "flex-1 flex flex-col",
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_TemplateBanner["default"], {
+            isApplied: isTemplateApplied,
+            onClear: resetTemplate
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptTextarea, {
+            ref: textareaRef,
+            value: prompt,
+            onChange: handlePromptInput,
+            placeholder: copy.prompt.placeholder
+          })]
+        })]
+      }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+        className: "flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-3 border-t border-white/[0.03] relative",
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
           className: "flex items-center gap-2 px-1",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "flex items-center gap-2",
-            children: [inputMode === "image" && /*#__PURE__*/(0, _jsxRuntime.jsx)(MediaPickerButton, {
-              accept: "image/*",
-              label: "Image",
-              icon: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-                width: "16",
-                height: "16",
+            className: "relative",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+              ref: modelBtnRef,
+              type: "button",
+              onClick: function onClick(e) {
+                e.stopPropagation();
+                setOpenDropdown(openDropdown === "model" ? null : "model");
+              },
+              className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                className: "w-3.5 h-3.5 bg-[#22d3ee] rounded-sm flex items-center justify-center",
+                children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                  className: "text-[9px] font-black text-black",
+                  children: "S"
+                })
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                className: "text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
+                children: (_selectedModel$name = selectedModel === null || selectedModel === void 0 ? void 0 : selectedModel.name) !== null && _selectedModel$name !== void 0 ? _selectedModel$name : "Select model"
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
+                width: "10",
+                height: "10",
                 viewBox: "0 0 24 24",
                 fill: "none",
                 stroke: "currentColor",
-                strokeWidth: "2",
-                className: "text-white/40 group-hover:text-[#22d3ee] transition-colors",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("rect", {
-                  x: "3",
-                  y: "3",
-                  width: "18",
-                  height: "18",
-                  rx: "2",
-                  ry: "2"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-                  cx: "8.5",
-                  cy: "8.5",
-                  r: "1.5"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
-                  points: "21 15 16 10 5 21"
-                })]
-              }),
-              onUpload: handleImageUpload,
-              onClear: function onClear() {
-                setImageUrl(null);
-                setImageState(UPLOAD_STATE.IDLE);
-                setImageName("");
-              },
-              uploadState: imageState,
-              progress: imageProgress,
-              fileName: imageName,
-              previewUrl: imageUrl,
-              isVideo: false,
-              apiKey: apiKey
-            }), inputMode === "video" && /*#__PURE__*/(0, _jsxRuntime.jsx)(MediaPickerButton, {
-              accept: "video/*",
-              label: "Video",
-              icon: /*#__PURE__*/(0, _jsxRuntime.jsx)(VideoIcon, {
-                className: "text-white/40 group-hover:text-[#22d3ee] transition-colors"
-              }),
-              onUpload: handleVideoPick,
-              onClear: function onClear() {
-                setVideoUrl(null);
-                setVideoState(UPLOAD_STATE.IDLE);
-                setVideoName("");
-              },
-              uploadState: videoState,
-              progress: videoProgress,
-              fileName: videoName,
-              previewUrl: videoUrl,
-              isVideo: true,
-              apiKey: apiKey
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)(MediaPickerButton, {
-              accept: "audio/*",
-              label: "Audio",
-              icon: /*#__PURE__*/(0, _jsxRuntime.jsx)(MicIcon, {
-                className: "text-white/40 group-hover:text-[#22d3ee] transition-colors"
-              }),
-              onUpload: handleAudioPick,
-              onClear: function onClear() {
-                setAudioUrl(null);
-                setAudioState(UPLOAD_STATE.IDLE);
-                setAudioName("");
-              },
-              uploadState: audioState,
-              progress: audioProgress,
-              fileName: audioName,
-              previewUrl: null,
-              isVideo: false,
-              apiKey: apiKey
-            })]
-          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "flex-1 flex flex-col",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_TemplateBanner["default"], {
-              isApplied: isTemplateApplied,
-              onClear: resetTemplate
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
-              ref: textareaRef,
-              value: prompt,
-              onChange: handlePromptInput,
-              placeholder: "Describe speech style...",
-              className: "w-full bg-transparent border-none text-white text-sm placeholder:text-white/20 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar disabled:opacity-40",
-              rows: 1
-            })]
-          })]
-        }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-3 border-t border-white/[0.03] relative",
-          children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "flex items-center gap-2 px-1",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-              className: "relative",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-                ref: modelBtnRef,
-                type: "button",
-                onClick: function onClick(e) {
-                  e.stopPropagation();
-                  setOpenDropdown(openDropdown === "model" ? null : "model");
-                },
-                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                  className: "w-3.5 h-3.5 bg-[#22d3ee] rounded-sm flex items-center justify-center",
-                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                    className: "text-[9px] font-black text-black",
-                    children: "S"
-                  })
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                  className: "text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
-                  children: (_selectedModel$name = selectedModel === null || selectedModel === void 0 ? void 0 : selectedModel.name) !== null && _selectedModel$name !== void 0 ? _selectedModel$name : "Select model"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
-                  width: "10",
-                  height: "10",
-                  viewBox: "0 0 24 24",
-                  fill: "none",
-                  stroke: "currentColor",
-                  strokeWidth: "4",
-                  className: "opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0",
-                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-                    d: "M6 9l6 6 6-6"
-                  })
-                })]
-              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(Dropdown, {
-                isOpen: openDropdown === "model",
-                items: modelDropdownItems,
-                selectedId: selectedModelId,
-                onSelect: handleModelSelect,
-                onClose: function onClose() {
-                  return setOpenDropdown(null);
-                },
-                anchorRef: modelBtnRef
-              })]
-            }), showResolution && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-              className: "relative",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-                ref: resolutionBtnRef,
-                type: "button",
-                onClick: function onClick(e) {
-                  e.stopPropagation();
-                  setOpenDropdown(openDropdown === "resolution" ? null : "resolution");
-                },
-                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
-                children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                  className: "text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
-                  children: selectedResolution
+                strokeWidth: "4",
+                className: "opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0",
+                children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                  d: "M6 9l6 6 6-6"
                 })
-              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(Dropdown, {
-                isOpen: openDropdown === "resolution",
-                items: resolutionDropdownItems,
-                selectedId: selectedResolution,
-                onSelect: function onSelect(item) {
-                  return setSelectedResolution(item.id);
-                },
-                onClose: function onClose() {
-                  return setOpenDropdown(null);
-                },
-                anchorRef: resolutionBtnRef
               })]
-            }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-              type: "button",
-              onClick: function onClick() {
-                return setNativeAudio(!nativeAudio);
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)(Dropdown, {
+              isOpen: openDropdown === "model",
+              title: copy.model.dropdownTitle,
+              items: modelDropdownItems,
+              selectedId: selectedModelId,
+              onSelect: handleModelSelect,
+              onClose: function onClose() {
+                return setOpenDropdown(null);
               },
-              className: "h-[34px] flex items-center gap-2 px-3.5 rounded-md transition-all border whitespace-nowrap text-[11px] font-semibold shadow-inner ".concat(nativeAudio ? "bg-[#22d3ee]/10 border-[#22d3ee]/20 text-[#22d3ee]" : "bg-[#16161a]/60 border-white/[0.06] text-white/70 hover:bg-[#202026]/80 hover:text-white"),
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(MicIcon, {
-                className: "w-3.5 h-3.5 text-current"
-              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                children: "Native Audio"
-              })]
+              anchorRef: modelBtnRef,
+              className: "w-80 max-w-[calc(100vw-3rem)]"
             })]
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-            type: "button",
-            onClick: handleGenerate,
-            disabled: isGenerating,
-            className: "bg-[#22d3ee] text-black px-7 py-3 rounded-full font-black text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10",
-            children: isGenerating ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                className: "animate-spin inline-block text-black",
-                children: "\u25CC"
-              }), " ", "Generating..."]
-            }) : generateError ? "Error: ".concat(generateError) : /*#__PURE__*/(0, _jsxRuntime.jsx)(_jsxRuntime.Fragment, {
+          }), showResolution && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            className: "relative",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+              ref: resolutionBtnRef,
+              type: "button",
+              onClick: function onClick(e) {
+                e.stopPropagation();
+                setOpenDropdown(openDropdown === "resolution" ? null : "resolution");
+              },
+              className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
               children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                children: "Sync Lip"
+                className: "text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
+                children: selectedResolution
               })
-            })
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)(Dropdown, {
+              isOpen: openDropdown === "resolution",
+              title: copy.model.resolutionDropdownTitle,
+              items: resolutionDropdownItems,
+              selectedId: selectedResolution,
+              onSelect: function onSelect(item) {
+                return setSelectedResolution(item.id);
+              },
+              onClose: function onClose() {
+                return setOpenDropdown(null);
+              },
+              anchorRef: resolutionBtnRef
+            })]
+          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+            type: "button",
+            onClick: function onClick() {
+              return setNativeAudio(!nativeAudio);
+            },
+            className: "h-[34px] flex items-center gap-2 px-3.5 rounded-md transition-all border whitespace-nowrap text-[11px] font-semibold shadow-inner ".concat(nativeAudio ? "bg-[#22d3ee]/10 border-[#22d3ee]/20 text-[#22d3ee]" : "bg-[#16161a]/60 border-white/[0.06] text-white/70 hover:bg-[#202026]/80 hover:text-white"),
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(MicIcon, {
+              className: "w-3.5 h-3.5 text-current"
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+              children: "Native Audio"
+            })]
           })]
+        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+          type: "button",
+          onClick: handleGenerate,
+          disabled: isGenerating,
+          className: "bg-[#22d3ee] text-black px-7 py-3 rounded-full font-black text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10",
+          children: isGenerating ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+              className: "animate-spin inline-block text-black",
+              children: "\u25CC"
+            }), " ", "Generating..."]
+          }) : generateError ? "Error: ".concat(generateError) : /*#__PURE__*/(0, _jsxRuntime.jsx)(_jsxRuntime.Fragment, {
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+              children: "Sync Lip"
+            })
+          })
         })]
-      })
+      })]
     }), fullscreenUrl && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
       className: "fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm animate-fade-in",
       onClick: function onClick() {

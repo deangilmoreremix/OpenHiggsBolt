@@ -18,7 +18,7 @@ import {
   Image as ImageIcon,
   Type,
 } from 'lucide-react';
-import { enhanceImage } from '@/lib/muapi';
+import { editImage } from '@/shared/api/openaiImage';
 import { callOpenAIChat } from '@/shared/api/openai';
 import type { AiAssistantModalProps, AiAssistantResult } from './AiAssistantProvider';
 
@@ -44,43 +44,6 @@ const TEXT_TOOLS = [
 const TONES = ['professional', 'casual', 'friendly', 'confident', 'playful', 'formal'];
 const STYLES = ['anime', '3d', 'sketch', 'watercolor'];
 const LANGUAGES = ['Spanish', 'French', 'German', 'Italian', 'Portuguese', 'Chinese', 'Japanese', 'Korean', 'Arabic', 'Hindi'];
-
-/* ------------------------------------------------------------------ *
- * Image tool → endpoint + payload mapping
- * (endpoints verified against packages/studio/src/models.js)
- * ------------------------------------------------------------------ */
-
-function buildImagePayload(tool: string, imageUrl: string, opts: { style?: string; strength?: number; scale?: number }) {
-  switch (tool) {
-    case 'upscale':
-      return {
-        endpoint: 'ai-image-upscale',
-        payload: { image_url: imageUrl, scale: opts.scale ?? 2 },
-      };
-    case 'style-transfer':
-      return {
-        endpoint: 'bytedance-seededit-image',
-        payload: {
-          image_url: imageUrl,
-          style: opts.style ?? 'anime',
-          strength: opts.strength ?? 0.6,
-          prompt: `Transform the image into a ${opts.style ?? 'anime'} style.`,
-        },
-      };
-    case 'background-remove':
-      return {
-        endpoint: 'ai-background-remover',
-        payload: { image_url: imageUrl },
-      };
-    case 'restore':
-      return {
-        endpoint: 'ai-skin-enhancer',
-        payload: { image_url: imageUrl },
-      };
-    default:
-      return { endpoint: 'ai-image-upscale', payload: { image_url: imageUrl } };
-  }
-}
 
 /* ------------------------------------------------------------------ *
  * Text system prompts + defensive JSON parse
@@ -238,7 +201,6 @@ export default function AiAssistantModal(props: AiAssistantModalProps) {
     input,
     inputKind,
     defaultValue,
-    apiKey,
     openaiKey,
     onClose,
     onApply,
@@ -350,14 +312,18 @@ export default function AiAssistantModal(props: AiAssistantModalProps) {
     try {
       if (modeState === 'image') {
         if (!input) throw new Error('No image provided to enhance.');
-        if (!apiKey) throw new Error('Enter your MuAPI key in Settings first.');
-        const { endpoint, payload } = buildImagePayload(tool, input, {
-          style: styleSel,
-          strength,
-          scale,
-        });
-        dispatch({ type: 'PROCESSING', pollStatus: 'Enhancing image…' });
-        const url = await enhanceImage(apiKey, endpoint, payload);
+        dispatch({ type: 'PROCESSING', pollStatus: 'Generating…' });
+        const prompt =
+          tool === 'upscale'
+            ? `Upscale this image ${scale}x while preserving all details, text, and quality.`
+            : tool === 'style-transfer'
+              ? `Transform this image into a ${styleSel} style. Preserve the main subjects and composition.`
+              : tool === 'background-remove'
+                ? `Remove the background from this image and make it transparent. Preserve the main subject with clean, natural edges.`
+                : `Restore this image by repairing damage, scratches, and artifacts while preserving the original subjects, branding, and composition.`;
+        const results = await editImage({ prompt, image: input });
+        const first = results[0];
+        const url = first?.url || (first?.b64_json ? 'data:image/png;base64,' + first.b64_json : undefined);
         if (!url) throw new Error('No image was returned by the API.');
         dispatch({ type: 'COMPLETED', result: url });
       } else {
@@ -374,7 +340,7 @@ export default function AiAssistantModal(props: AiAssistantModalProps) {
     } catch (err: any) {
       dispatch({ type: 'FAILED', error: err?.message || 'Request failed.' });
     }
-  }, [modeState, input, apiKey, tool, styleSel, strength, scale, textValue, tone, targetLang]);
+  }, [modeState, input, tool, styleSel, scale, textValue, tone, targetLang]);
 
   const handleApply = useCallback(() => {
     let result: AiAssistantResult;

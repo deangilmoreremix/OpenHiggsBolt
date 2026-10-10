@@ -8,6 +8,8 @@ import { validatePersonalizationEnv } from '@/server/envValidation'
 import { createDiscoveryJob, getDiscoveryJobForUser } from '@/server/discoveryJobs'
 import { runFastDiscovery } from '@/server/discoveryOrchestrator'
 
+export const dynamic = "force-dynamic";
+
 export const runtime = 'nodejs'
 
 type RawDiscoveryResult = {

@@ -9981,7 +9981,7 @@
         "design-agent"
       ],
       "sourceFiles": [
-        "app/photo-studio/page.tsx"
+        "app/(brand-studio)/photo-studio/page.tsx"
       ],
       "verification": {
         "status": "verified",
@@ -10456,7 +10456,12 @@
         "social-publishing"
       ],
       "sourceFiles": [
-        "app/brand-studio/page.tsx"
+        "app/(brand-studio)/layout.tsx",
+        "app/(brand-studio)/brand-studio/page.tsx",
+        "app/(brand-studio)/brand/[id]/page.tsx",
+        "app/(brand-studio)/brand/[id]/campaigns/new/page.tsx",
+        "app/(brand-studio)/campaign/[id]/page.tsx",
+        "app/(brand-studio)/asset/[id]/edit/page.tsx"
       ],
       "verification": {
         "status": "verified",
@@ -10465,7 +10470,7 @@
         "verifiedBy": "SmartVideo GO AI Knowledge Base Release Engineer"
       },
       "shortDescription": "Paste any website URL to extract brand DNA and generate campaigns, assets, and photos.",
-      "fullDescription": "Brand Studio analyzes website URLs to extract brand DNA including brand name, industry, and primary colors. Paste any publicly accessible website URL and click Analyze. The system fetches the website, analyzes brand identity, and saves brand DNA. View recent brands with color previews. Generated campaigns, assets, and photo studio projects are linked to the brand profile for consistent creative output.",
+      "fullDescription": "Brand Studio analyzes website URLs to extract brand DNA including brand name, industry, and primary colors. Paste any publicly accessible website URL and click Analyze. The system fetches the website, analyzes brand identity, and saves brand DNA. All brands are listed in the Brand Studio side menu, where each brand opens its Brand DNA editor, campaigns, and Photo Studio. Generated campaigns, assets, and photo studio projects are linked to the brand profile for consistent creative output.",
       "whenToUse": [
         "Analyzing competitor or client brands",
         "Extracting brand identity from websites",

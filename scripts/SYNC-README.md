@@ -87,11 +87,10 @@ git push origin main --force-with-lease
 
 ```bash
 # Update upstream-sourced submodules
-git submodule update --remote packages/Open-AI-Design-Agent
 git submodule update --remote packages/Open-Poe-AI
 
 # Commit submodule updates
-git add packages/Open-AI-Design-Agent packages/Open-Poe-AI
+git add packages/Open-Poe-AI
 git commit -m "chore: update upstream submodules"
 ```
 

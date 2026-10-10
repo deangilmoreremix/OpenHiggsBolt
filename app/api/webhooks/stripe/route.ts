@@ -4,6 +4,8 @@ import { getSupabaseAdmin } from '@/src/lib/supabaseServer';
 import { grantEntitlement } from '@/access/resolveAccess';
 import { ENTITLEMENTS } from '@/access/entitlements';
 
+export const dynamic = "force-dynamic";
+
 export const runtime = 'nodejs';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';

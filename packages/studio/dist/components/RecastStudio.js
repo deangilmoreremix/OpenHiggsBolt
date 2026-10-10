@@ -7,6 +7,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports["default"] = RecastStudio;
 var _react = require("react");
+var _reactHotToast = _interopRequireWildcard(require("react-hot-toast"));
 var _useTemplateData2 = require("../hooks/useTemplateData");
 var _TemplateBanner = _interopRequireDefault(require("./TemplateBanner"));
 var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
@@ -17,8 +18,12 @@ var _skillStore = require("../lib/skillStore");
 var _registry = _interopRequireDefault(require("../skills/registry.json"));
 var _promptRecipes = require("../lib/promptRecipes");
 var _storyboardHandoff = require("../storyboardHandoff.js");
+var _recastStudio = _interopRequireDefault(require("../messages/en/recastStudio.json"));
+var _recastStudio2 = _interopRequireDefault(require("../messages/zh/recastStudio.json"));
+var _i18nUtils = require("../i18nUtils");
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
+function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function _interopRequireWildcard(e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, "default": e }; if (null === e || "object" != _typeof(e) && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (var _t5 in e) "default" !== _t5 && {}.hasOwnProperty.call(e, _t5) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, _t5)) && (i.get || i.set) ? o(f, _t5, i) : f[_t5] = e[_t5]); return f; })(e, t); }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
@@ -293,7 +298,10 @@ function RecastStudio(_ref6) {
     historyItems = _ref6.historyItems,
     droppedFiles = _ref6.droppedFiles,
     onFilesHandled = _ref6.onFilesHandled,
-    templateData = _ref6.templateData;
+    templateData = _ref6.templateData,
+    _ref6$locale = _ref6.locale,
+    locale = _ref6$locale === void 0 ? "en" : _ref6$locale;
+  var copy = (0, _i18nUtils.resolveCopy)(_recastStudio["default"], _recastStudio2["default"], locale);
   var PERSIST_KEY = "hg_recast_studio_persistent";
 
   // ── Model state ───────────────────────────────────────────────────────────
@@ -669,7 +677,7 @@ function RecastStudio(_ref6) {
   // ── Generation ──────────────────────────────────────────────────────────────
   var handleGenerate = /*#__PURE__*/function () {
     var _ref0 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee5() {
-      var params, res, genId, entry, _e$message$slice, _e$message, _t4;
+      var params, res, genId, entry, _e$message$slice, _e$message, message, _t4;
       return _regenerator().w(function (_context5) {
         while (1) switch (_context5.p = _context5.n) {
           case 0:
@@ -730,7 +738,9 @@ function RecastStudio(_ref6) {
             _context5.p = 6;
             _t4 = _context5.v;
             console.error("[RecastStudio]", _t4);
-            setGenerateError((_e$message$slice = (_e$message = _t4.message) === null || _e$message === void 0 ? void 0 : _e$message.slice(0, 80)) !== null && _e$message$slice !== void 0 ? _e$message$slice : "Unknown error");
+            message = (_e$message$slice = (_e$message = _t4.message) === null || _e$message === void 0 ? void 0 : _e$message.slice(0, 80)) !== null && _e$message$slice !== void 0 ? _e$message$slice : "Unknown error";
+            setGenerateError(message);
+            _reactHotToast["default"].error(message);
             setTimeout(function () {
               return setGenerateError(null);
             }, 4000);
@@ -759,7 +769,12 @@ function RecastStudio(_ref6) {
   // ── Render ────────────────────────────────────────────────────────────────
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     className: "w-full h-full flex flex-col items-center justify-center bg-app-bg relative overflow-hidden",
-    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_reactHotToast.Toaster, {
+      position: "top-right",
+      containerStyle: {
+        zIndex: 99999
+      }
+    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
       className: "flex-1 w-full max-w-7xl mx-auto overflow-y-auto custom-scrollbar pb-40 lg:pb-32 px-2",
       children: history.length > 0 ? /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
         className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full pt-4 animate-fade-in-up",

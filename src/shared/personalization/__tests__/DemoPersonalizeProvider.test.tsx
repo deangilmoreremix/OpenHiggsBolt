@@ -1,10 +1,14 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { act, useEffect } from 'react'
+import { act, useEffect, useLayoutEffect, useMemo } from 'react'
 import { createRoot } from 'react-dom/client'
 
 vi.mock('studio/src/muapi', () => ({
   uploadFile: vi.fn(),
+}))
+
+vi.mock('../assetUploadService', () => ({
+  uploadPersonalizationAsset: vi.fn(),
 }))
 
 vi.mock('next/navigation', () => ({
@@ -54,25 +58,43 @@ vi.mock('../postProcessor', () => ({
   generateEndCardImage: vi.fn(),
 }))
 
+vi.mock('../PersonalizationModal', () => ({
+  default: () => null,
+}))
+
+vi.mock('../editedAssetPersistence', () => ({
+  persistEditedPersonalizationAsset: vi.fn(),
+}))
+
 const { DemoPersonalizeProvider, useDemoPersonalize, getGenerationAssetUrl } = await import('../DemoPersonalizeProvider')
 const { uploadFile } = await import('studio/src/muapi')
+const { uploadPersonalizationAsset } = await import('../assetUploadService')
 const { personalizePrompt, regeneratePrompt } = await import('../promptPersonalizer')
 const { runGeneration } = await import('../generationRouter')
 const { applyPostProcessing, generateEndCardImage } = await import('../postProcessor')
+const { persistEditedPersonalizationAsset } = await import('../editedAssetPersistence')
 
 const generationPromiseResolvers: ((status: string) => void)[] = []
 
 function TestOpener() {
   const ctx = useDemoPersonalize()
-  ;(window as any).__personalizationCtx = ctx
+  const ctxRef = useMemo(() => ({ current: ctx as any }), [])
+  ctxRef.current = ctx
+  ;(window as any).__personalizationCtx = ctxRef.current
 
-  useEffect(() => {
-    ;(window as any).__onGenerationChange = (status: string) => {
-      generationPromiseResolvers.forEach((r) => r(status))
-      generationPromiseResolvers.length = 0
+  ;(window as any).__onGenerationChange = (status: string) => {
+    generationPromiseResolvers.forEach((r) => r(status))
+    generationPromiseResolvers.length = 0
+  }
+
+  const prevStatusRef = useMemo(() => ({ current: null as string | null }), [])
+  useLayoutEffect(() => {
+    const status = ctx.generation.status
+    if (prevStatusRef.current !== null && prevStatusRef.current !== status) {
+      ;(window as any).__onGenerationChange?.(status)
     }
-    ;(window as any).__onGenerationChange?.(ctx.generation.status)
-  }, [ctx.generation.status])
+    prevStatusRef.current = status
+  }, [ctx])
 
   return null
 }
@@ -151,8 +173,8 @@ describe('DemoPersonalizeProvider durable uploads', () => {
   }
 
   it('uploads identity files and stores durable URL', async () => {
-    const mockUploadFile = uploadFile as any
-    mockUploadFile.mockResolvedValue('https://example.com/uploaded-identity.jpg')
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded-identity.jpg')
 
     await renderProvider()
     await openSource()
@@ -175,8 +197,8 @@ describe('DemoPersonalizeProvider durable uploads', () => {
   })
 
   it('uploads logo files and stores durable URL', async () => {
-    const mockUploadFile = uploadFile as any
-    mockUploadFile.mockResolvedValue('https://example.com/uploaded-logo.png')
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded-logo.png')
 
     await renderProvider()
     await openSource()
@@ -199,8 +221,8 @@ describe('DemoPersonalizeProvider durable uploads', () => {
   })
 
   it('uploads product files and stores durable URL', async () => {
-    const mockUploadFile = uploadFile as any
-    mockUploadFile.mockResolvedValue('https://example.com/uploaded-product.png')
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded-product.png')
 
     await renderProvider()
     await openSource()
@@ -223,8 +245,8 @@ describe('DemoPersonalizeProvider durable uploads', () => {
   })
 
   it('uploads brand reference files and stores durable URL', async () => {
-    const mockUploadFile = uploadFile as any
-    mockUploadFile.mockResolvedValue('https://example.com/uploaded-brand.png')
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded-brand.png')
 
     await renderProvider()
     await openSource()
@@ -247,8 +269,8 @@ describe('DemoPersonalizeProvider durable uploads', () => {
   })
 
   it('uploads first frame and stores durable URL', async () => {
-    const mockUploadFile = uploadFile as any
-    mockUploadFile.mockResolvedValue('https://example.com/uploaded-first.png')
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded-first.png')
 
     await renderProvider()
     await openSource()
@@ -271,8 +293,8 @@ describe('DemoPersonalizeProvider durable uploads', () => {
   })
 
   it('uploads last frame and stores durable URL', async () => {
-    const mockUploadFile = uploadFile as any
-    mockUploadFile.mockResolvedValue('https://example.com/uploaded-last.png')
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded-last.png')
 
     await renderProvider()
     await openSource()
@@ -295,8 +317,8 @@ describe('DemoPersonalizeProvider durable uploads', () => {
   })
 
   it('uploads CTA graphic and stores durable URL', async () => {
-    const mockUploadFile = uploadFile as any
-    mockUploadFile.mockResolvedValue('https://example.com/uploaded-cta.png')
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded-cta.png')
 
     await renderProvider()
     await openSource()
@@ -319,8 +341,8 @@ describe('DemoPersonalizeProvider durable uploads', () => {
   })
 
   it('rejects blob URLs in generation guard for logo', async () => {
-    const mockUploadFile = uploadFile as any
-    mockUploadFile.mockImplementation(() => new Promise(() => {}))
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockImplementation(() => new Promise(() => {}))
 
     await renderProvider()
     await openSource()
@@ -354,8 +376,8 @@ describe('DemoPersonalizeProvider durable uploads', () => {
   })
 
   it('handles upload failure and retry', async () => {
-    const mockUploadFile = uploadFile as any
-    mockUploadFile
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset
       .mockRejectedValueOnce(new Error('Network error'))
       .mockResolvedValueOnce('https://example.com/retried-logo.png')
 
@@ -391,8 +413,8 @@ describe('DemoPersonalizeProvider durable uploads', () => {
   })
 
   it('removes asset and revokes blob URL', async () => {
-    const mockUploadFile = uploadFile as any
-    mockUploadFile.mockResolvedValue('https://example.com/uploaded-logo.png')
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded-logo.png')
 
     await renderProvider()
     await openSource()
@@ -420,10 +442,10 @@ describe('DemoPersonalizeProvider durable uploads', () => {
   })
 
   it('supports multiple concurrent product uploads', async () => {
-    const mockUploadFile = uploadFile as any
-    mockUploadFile.mockImplementation((_apiKey: string, _file: File) => {
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockImplementation((opts: { apiKey: string, file: File }) => {
       return new Promise<string>((resolve) => {
-        setTimeout(() => resolve(`https://example.com/uploaded-${_file.name}`), Math.random() * 50 + 10)
+        setTimeout(() => resolve(`https://example.com/uploaded-${opts.file.name}`), Math.random() * 50 + 10)
       })
     })
 
@@ -451,10 +473,10 @@ describe('DemoPersonalizeProvider durable uploads', () => {
   })
 
   it('supports multiple concurrent brand reference uploads', async () => {
-    const mockUploadFile = uploadFile as any
-    mockUploadFile.mockImplementation((_apiKey: string, _file: File) => {
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockImplementation((opts: { apiKey: string, file: File }) => {
       return new Promise<string>((resolve) => {
-        setTimeout(() => resolve(`https://example.com/uploaded-${_file.name}`), Math.random() * 50 + 10)
+        setTimeout(() => resolve(`https://example.com/uploaded-${opts.file.name}`), Math.random() * 50 + 10)
       })
     })
 
@@ -477,10 +499,10 @@ describe('DemoPersonalizeProvider durable uploads', () => {
   })
 
   it('keeps primary identity correct during async uploads', async () => {
-    const mockUploadFile = uploadFile as any
-    mockUploadFile.mockImplementation((_apiKey: string, _file: File) => {
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockImplementation((opts: { apiKey: string, file: File }) => {
       return new Promise<string>((resolve) => {
-        setTimeout(() => resolve(`https://example.com/uploaded-${_file.name}`), Math.random() * 100 + 20)
+        setTimeout(() => resolve(`https://example.com/uploaded-${opts.file.name}`), Math.random() * 100 + 20)
       })
     })
 
@@ -504,10 +526,10 @@ describe('DemoPersonalizeProvider durable uploads', () => {
   })
 
   it('keeps primary logo correct during async uploads', async () => {
-    const mockUploadFile = uploadFile as any
-    mockUploadFile.mockImplementation((_apiKey: string, _file: File) => {
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockImplementation((opts: { apiKey: string, file: File }) => {
       return new Promise<string>((resolve) => {
-        setTimeout(() => resolve(`https://example.com/uploaded-${_file.name}`), Math.random() * 100 + 20)
+        setTimeout(() => resolve(`https://example.com/uploaded-${opts.file.name}`), Math.random() * 100 + 20)
       })
     })
 
@@ -592,8 +614,8 @@ describe('DemoPersonalizeProvider durable uploads', () => {
   })
 
   it('respects maxImages limit for identity uploads', async () => {
-    const mockUploadFile = uploadFile as any
-    mockUploadFile.mockResolvedValue('https://example.com/uploaded.jpg')
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded.jpg')
 
     await renderProvider()
     await openSource()
@@ -622,8 +644,8 @@ describe('DemoPersonalizeProvider durable uploads', () => {
   })
 
   it('respects MAX_REFERENCE_UPLOADS limit for logo uploads', async () => {
-    const mockUploadFile = uploadFile as any
-    mockUploadFile.mockResolvedValue('https://example.com/uploaded.jpg')
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded.jpg')
 
     await renderProvider()
     await openSource()
@@ -652,8 +674,8 @@ describe('DemoPersonalizeProvider durable uploads', () => {
   })
 
   it('respects MAX_REFERENCE_UPLOADS limit for product uploads', async () => {
-    const mockUploadFile = uploadFile as any
-    mockUploadFile.mockResolvedValue('https://example.com/uploaded.jpg')
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded.jpg')
 
     await renderProvider()
     await openSource()
@@ -682,8 +704,8 @@ describe('DemoPersonalizeProvider durable uploads', () => {
   })
 
   it('respects MAX_REFERENCE_UPLOADS limit for brand reference uploads', async () => {
-    const mockUploadFile = uploadFile as any
-    mockUploadFile.mockResolvedValue('https://example.com/uploaded.jpg')
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded.jpg')
 
     await renderProvider()
     await openSource()
@@ -965,8 +987,8 @@ describe('DemoPersonalizeProvider generation flows', () => {
   })
 
   it('blocks generation when assets are still uploading', async () => {
-    const mockUploadFile = uploadFile as any
-    mockUploadFile.mockImplementation(() => new Promise(() => {}))
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockImplementation(() => new Promise(() => {}))
 
     await renderProvider()
     await openSource()
@@ -1110,8 +1132,8 @@ describe('DemoPersonalizeProvider asset import / durable upload', () => {
       { url: 'https://example.com/b.jpg', ok: false, error: 'Network timeout' },
       { url: 'https://example.com/c.jpg', ok: true, dataUrl: `data:image/png;base64,${Buffer.from('fake-image-c').toString('base64')}` },
     ])
-    const mockUploadFile = uploadFile as any
-    mockUploadFile.mockResolvedValue('https://example.com/uploaded.png')
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded.png')
 
     await renderProvider()
     await openSource()
@@ -1146,8 +1168,8 @@ describe('DemoPersonalizeProvider asset import / durable upload', () => {
       { url: 'https://example.com/a.jpg', ok: true, dataUrl: `data:image/png;base64,${Buffer.from('fake-image-a').toString('base64')}` },
       { url: 'https://example.com/b.jpg', ok: true, dataUrl: `data:image/png;base64,${Buffer.from('fake-image-b').toString('base64')}` },
     ])
-    const mockUploadFile = uploadFile as any
-    mockUploadFile
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset
       .mockRejectedValueOnce(new Error('Storage quota exceeded'))
       .mockResolvedValueOnce('https://example.com/uploaded-b.png')
 
@@ -1531,8 +1553,8 @@ describe('DemoPersonalizeProvider deleteSavedClient regression', () => {
     await renderProvider()
     await openSource()
 
-    const mockUploadFile = uploadFile as any
-    mockUploadFile.mockResolvedValue('https://example.com/uploaded.png')
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded.png')
 
     await act(async () => {
       ;(window as any).__personalizationCtx.saveClient()
@@ -1560,6 +1582,173 @@ describe('DemoPersonalizeProvider deleteSavedClient regression', () => {
     expect(ctx.selectedClientId).toBe('')
     expect(ctx.savedClientAssets.logos).toHaveLength(0)
     expect(ctx.clientForm.businessName).toBeUndefined()
+  })
+})
+
+describe('DemoPersonalizeProvider saved-client edited asset regression', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.resetModules()
+    URL.createObjectURL = vi.fn(() => 'blob:http://localhost/test')
+    URL.revokeObjectURL = vi.fn()
+    generationPromiseResolvers.length = 0
+  })
+
+  const renderProvider = async () => {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+
+    await act(async () => {
+      root.render(
+        <DemoPersonalizeProvider>
+          <TestOpener />
+        </DemoPersonalizeProvider>,
+      )
+    })
+
+    return container
+  }
+
+  const openSource = async () => {
+    await act(async () => {
+      ;(window as any).__personalizationCtx.openPersonalize({
+        source: { id: 'demo-1', title: 'Test', mediaType: 'video', originalPrompt: 'test', sourceMedia: null, poster: null, fullPrompt: 'test', shortPrompt: 'test', sourceType: 'landing-demo', sourceMetadata: {} },
+      })
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+  }
+
+  it('propagates edited saved-client logo to current job with uploaded URL', async () => {
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded-logo.png')
+
+    await renderProvider()
+    await openSource()
+
+    await act(async () => {
+      const files = createFileList([createFile('logo.png')])
+      ;(window as any).__personalizationCtx.addLogoFiles(files)
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.saveClient()
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    const ctxBefore = (window as any).__personalizationCtx
+    const clientId = ctxBefore.selectedClientId
+    expect(clientId).toBeTruthy()
+
+    const originalLogo = ctxBefore.assets.logos[0]
+    expect(originalLogo).toBeTruthy()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.applyEditedSavedClientAsset(
+        clientId,
+        originalLogo.id,
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        {
+          operation: 'remove-background',
+          prompt: 'remove background',
+          model: 'test-model',
+          quality: 'high',
+          transparent: true,
+          videoReady: false,
+        },
+      )
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    const ctxAfter = (window as any).__personalizationCtx
+    const savedLogo = ctxAfter.savedClientAssets.logos.find((l: any) => l.id === originalLogo.id)
+    expect(savedLogo).toBeTruthy()
+    expect(savedLogo.edited).toBe(true)
+    expect(savedLogo.editMetadata?.operation).toBe('remove-background')
+    expect(savedLogo.url).toBe('https://example.com/uploaded-logo.png')
+
+    const jobLogo = ctxAfter.assets.logos.find((l: any) => l.id === originalLogo.id)
+    expect(jobLogo).toBeTruthy()
+    expect(jobLogo.edited).toBe(true)
+    expect(jobLogo.editMetadata?.operation).toBe('remove-background')
+    expect(jobLogo.url).toBe('https://example.com/uploaded-logo.png')
+  })
+
+  it('propagates edited saved-client brand reference to current job with uploaded URL', async () => {
+    const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
+    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded-brand.png')
+
+    await renderProvider()
+    await openSource()
+
+    await act(async () => {
+      const files = createFileList([createFile('brand.png')])
+      ;(window as any).__personalizationCtx.addBrandReferenceFiles(files)
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.saveClient()
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    const ctxBefore = (window as any).__personalizationCtx
+    const clientId = ctxBefore.selectedClientId
+    expect(clientId).toBeTruthy()
+
+    const originalBrand = ctxBefore.assets.brandReferences[0]
+    expect(originalBrand).toBeTruthy()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.applyEditedSavedClientAsset(
+        clientId,
+        originalBrand.id,
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        {
+          operation: 'enhance',
+          prompt: 'enhance quality',
+          model: 'test-model',
+          quality: 'high',
+          transparent: false,
+          videoReady: false,
+        },
+      )
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    const ctxAfter = (window as any).__personalizationCtx
+    const savedBrand = ctxAfter.savedClientAssets.brandReferences.find((b: any) => b.id === originalBrand.id)
+    expect(savedBrand).toBeTruthy()
+    expect(savedBrand.edited).toBe(true)
+    expect(savedBrand.editMetadata?.operation).toBe('enhance')
+    expect(savedBrand.url).toBe('https://example.com/uploaded-brand.png')
+
+    const jobBrand = ctxAfter.assets.brandReferences.find((b: any) => b.id === originalBrand.id)
+    expect(jobBrand).toBeTruthy()
+    expect(jobBrand.edited).toBe(true)
+    expect(jobBrand.editMetadata?.operation).toBe('enhance')
+    expect(jobBrand.url).toBe('https://example.com/uploaded-brand.png')
   })
 })
 
@@ -1710,5 +1899,276 @@ describe('DemoPersonalizeProvider zero-key discovery', () => {
 
     const legacyPollCalls = fetchCalls.filter((call) => call.url === '/api/personalization/discover-assets?jobId=test-job-456')
     expect(legacyPollCalls).toHaveLength(0)
+  })
+})
+
+describe('DemoPersonalizeProvider edit persistence fallback', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.resetModules()
+    URL.createObjectURL = vi.fn(() => 'blob:http://localhost/test')
+    URL.revokeObjectURL = vi.fn()
+    generationPromiseResolvers.length = 0
+  })
+
+  const renderProvider = async () => {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+
+    await act(async () => {
+      root.render(
+        <DemoPersonalizeProvider>
+          <TestOpener />
+        </DemoPersonalizeProvider>,
+      )
+    })
+
+    return container
+  }
+
+  const openSource = async () => {
+    await act(async () => {
+      ;(window as any).__personalizationCtx.openPersonalize({
+        source: { id: 'demo-1', title: 'Test', mediaType: 'video', originalPrompt: 'test', sourceMedia: null, poster: null, fullPrompt: 'test', shortPrompt: 'test', sourceType: 'landing-demo', model: 'kling-o1-video-edit', sourceMetadata: {} },
+      })
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+  }
+
+  it('applyEditedPersonalizationAsset falls back to upload when Supabase persistence fails', async () => {
+    const mockPersist = persistEditedPersonalizationAsset as any
+    mockPersist.mockResolvedValue({ ok: false })
+    const mockUpload = uploadPersonalizationAsset as any
+    mockUpload.mockResolvedValue('https://example.com/uploaded.png')
+
+    await renderProvider()
+    await openSource()
+
+    const files = createFileList([createFile('logo.png')])
+    await act(async () => {
+      ;(window as any).__personalizationCtx.addLogoFiles(files)
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    const logo = ctx.assets.logos[0]
+    expect(logo).toBeTruthy()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.applyEditedPersonalizationAsset(
+        logo.id,
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        {
+          operation: 'enhance',
+          prompt: 'enhance quality',
+          model: 'test-model',
+          quality: 'high',
+          transparent: false,
+          videoReady: false,
+        },
+      )
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    const updated = (window as any).__personalizationCtx.assets.logos.find((l: any) => l.id === logo.id)
+    expect(updated).toBeTruthy()
+    expect(updated.url).toBe('https://example.com/uploaded.png')
+    expect(updated.uploadStatus).toBe('ready')
+    expect(mockUpload).toHaveBeenCalled()
+  })
+
+  it('applyEditedSavedClientAsset falls back to upload when Supabase persistence fails', async () => {
+    const mockPersist = persistEditedPersonalizationAsset as any
+    mockPersist.mockResolvedValue({ ok: false })
+    const mockUpload = uploadPersonalizationAsset as any
+    mockUpload.mockResolvedValue('https://example.com/uploaded-saved.png')
+
+    await renderProvider()
+    await openSource()
+
+    const files = createFileList([createFile('logo.png')])
+    await act(async () => {
+      ;(window as any).__personalizationCtx.addLogoFiles(files)
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.saveClient()
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    const ctxBefore = (window as any).__personalizationCtx
+    const clientId = ctxBefore.selectedClientId
+    expect(clientId).toBeTruthy()
+
+    const originalLogo = ctxBefore.assets.logos[0]
+    expect(originalLogo).toBeTruthy()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.applyEditedSavedClientAsset(
+        clientId,
+        originalLogo.id,
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        {
+          operation: 'enhance',
+          prompt: 'enhance quality',
+          model: 'test-model',
+          quality: 'high',
+          transparent: false,
+          videoReady: false,
+        },
+      )
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    const ctxAfter = (window as any).__personalizationCtx
+    const savedLogo = ctxAfter.savedClientAssets.logos.find((l: any) => l.id === originalLogo.id)
+    expect(savedLogo).toBeTruthy()
+    expect(savedLogo.url).toBe('https://example.com/uploaded-saved.png')
+    expect(savedLogo.uploadStatus).toBe('ready')
+
+    const jobLogo = ctxAfter.assets.logos.find((l: any) => l.id === originalLogo.id)
+    expect(jobLogo).toBeTruthy()
+    expect(jobLogo.url).toBe('https://example.com/uploaded-saved.png')
+    expect(mockUpload).toHaveBeenCalled()
+  })
+
+  it('applyEditedPersonalizationAsset uses Supabase URL when persistence succeeds', async () => {
+    const mockPersist = persistEditedPersonalizationAsset as any
+    mockPersist.mockResolvedValue({ ok: true, url: 'https://example.com/persisted.png' })
+    const mockUpload = uploadPersonalizationAsset as any
+    mockUpload.mockResolvedValue('https://example.com/uploaded.png')
+
+    await renderProvider()
+    await openSource()
+
+    const files = createFileList([createFile('logo.png')])
+    await act(async () => {
+      ;(window as any).__personalizationCtx.addLogoFiles(files)
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    const logo = ctx.assets.logos[0]
+    expect(logo).toBeTruthy()
+
+    // The initial addLogoFiles upload already ran once — reset it so any
+    // further upload call proves the Supabase result was not used.
+    mockUpload.mockClear()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.applyEditedPersonalizationAsset(
+        logo.id,
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        {
+          operation: 'enhance',
+          prompt: 'enhance quality',
+          model: 'test-model',
+          quality: 'high',
+          transparent: false,
+          videoReady: false,
+        },
+      )
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    expect(mockPersist).toHaveBeenCalledTimes(1)
+
+    const updated = (window as any).__personalizationCtx.assets.logos.find((l: any) => l.id === logo.id)
+    expect(updated).toBeTruthy()
+    expect(updated.url).toBe('https://example.com/persisted.png')
+    expect(updated.uploadedUrl).toBe('https://example.com/persisted.png')
+    expect(updated.uploadStatus).toBe('ready')
+    expect(mockUpload).not.toHaveBeenCalled()
+  })
+
+  it('applyEditedSavedClientAsset uses Supabase URL when persistence succeeds', async () => {
+    const mockPersist = persistEditedPersonalizationAsset as any
+    mockPersist.mockResolvedValue({ ok: true, url: 'https://example.com/persisted-saved.png' })
+    const mockUpload = uploadPersonalizationAsset as any
+    mockUpload.mockResolvedValue('https://example.com/uploaded-saved.png')
+
+    await renderProvider()
+    await openSource()
+
+    const files = createFileList([createFile('logo.png')])
+    await act(async () => {
+      ;(window as any).__personalizationCtx.addLogoFiles(files)
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.saveClient()
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    const ctxBefore = (window as any).__personalizationCtx
+    const clientId = ctxBefore.selectedClientId
+    expect(clientId).toBeTruthy()
+
+    const originalLogo = ctxBefore.assets.logos[0]
+    expect(originalLogo).toBeTruthy()
+
+    mockUpload.mockClear()
+
+    await act(async () => {
+      ;(window as any).__personalizationCtx.applyEditedSavedClientAsset(
+        clientId,
+        originalLogo.id,
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        {
+          operation: 'enhance',
+          prompt: 'enhance quality',
+          model: 'test-model',
+          quality: 'high',
+          transparent: false,
+          videoReady: false,
+        },
+      )
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    expect(mockPersist).toHaveBeenCalledTimes(1)
+
+    const ctxAfter = (window as any).__personalizationCtx
+    const savedLogo = ctxAfter.savedClientAssets.logos.find((l: any) => l.id === originalLogo.id)
+    expect(savedLogo).toBeTruthy()
+    expect(savedLogo.url).toBe('https://example.com/persisted-saved.png')
+    expect(savedLogo.uploadedUrl).toBe('https://example.com/persisted-saved.png')
+    expect(savedLogo.uploadStatus).toBe('ready')
+
+    const jobLogo = ctxAfter.assets.logos.find((l: any) => l.id === originalLogo.id)
+    expect(jobLogo).toBeTruthy()
+    expect(jobLogo.url).toBe('https://example.com/persisted-saved.png')
+    expect(mockUpload).not.toHaveBeenCalled()
   })
 })
