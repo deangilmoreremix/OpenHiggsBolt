@@ -27,15 +27,39 @@ export function getUploadLimit(file: File): number {
   return UPLOAD_LIMITS.other;
 }
 
-export function isAllowedUploadMimeType(file: File): boolean {
-  if (file.type.startsWith('image/')) return UPLOAD_MIME_TYPES.image.has(file.type);
-  if (file.type.startsWith('video/')) return UPLOAD_MIME_TYPES.video.has(file.type);
-  if (file.type.startsWith('audio/')) return UPLOAD_MIME_TYPES.audio.has(file.type);
-  return UPLOAD_MIME_TYPES.other.has(file.type);
-}
-
 export function normalizeImageMimeType(mime: string): string {
   return mime === 'image/jpg' ? 'image/jpeg' : mime;
+}
+
+export type UploadCategory = 'image' | 'video' | 'audio' | 'other'
+
+/**
+ * Whether a file's MIME type is allowed.
+ *
+ * With no `category`, returns true for anything the MuAPI spec supports
+ * (images, videos, audio, and the documented ".zip .pdf .json" others).
+ *
+ * Pass a `category` to restrict a media-specific caller: `uploadImage()`
+ * for example accepts images only and must keep rejecting a PDF even
+ * though MuAPI would accept it, so its own contract stays intact.
+ */
+export function isAllowedUploadMimeType(file: File, category?: UploadCategory): boolean {
+  const type = file.type
+
+  if (category === 'image') {
+    return UPLOAD_MIME_TYPES.image.has(type) || UPLOAD_MIME_TYPES.image.has(normalizeImageMimeType(type))
+  }
+  if (category === 'video') return UPLOAD_MIME_TYPES.video.has(type)
+  if (category === 'audio') return UPLOAD_MIME_TYPES.audio.has(type)
+  if (category === 'other') return UPLOAD_MIME_TYPES.other.has(type)
+
+  return (
+    UPLOAD_MIME_TYPES.image.has(type) ||
+    UPLOAD_MIME_TYPES.image.has(normalizeImageMimeType(type)) ||
+    UPLOAD_MIME_TYPES.video.has(type) ||
+    UPLOAD_MIME_TYPES.audio.has(type) ||
+    UPLOAD_MIME_TYPES.other.has(type)
+  )
 }
 
 export function getUploadAcceptAttribute(fileType?: 'image' | 'video' | 'audio'): string {

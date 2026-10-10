@@ -293,5 +293,13 @@ describe('POST /api/v1/upload_file', () => {
     // Still rejects genuinely dangerous types.
     expect(isAllowedUploadMimeType(mk('text/html'))).toBe(false)
     expect(isAllowedUploadMimeType(mk('application/x-msdownload'))).toBe(false)
+
+    // Category scoping: an image-only caller (MuAPIImageClient.uploadImage,
+    // VfxClient.uploadImage) must keep rejecting types that the spec allows
+    // elsewhere, otherwise its own contract ("JPG, PNG or WebP") breaks.
+    expect(isAllowedUploadMimeType(mk('application/pdf'), 'image')).toBe(false)
+    expect(isAllowedUploadMimeType(mk('application/zip'), 'image')).toBe(false)
+    expect(isAllowedUploadMimeType(mk('image/jpg'), 'image')).toBe(true)
+    expect(isAllowedUploadMimeType(mk('image/png'), 'image')).toBe(true)
   })
 })
