@@ -99,9 +99,12 @@ export class MuAPIVFXClient {
     if (!file) {
       throw new Error('No file provided')
     }
-    if (!isAllowedUploadMimeType(file)) {
+    // VFX uploads are image-only by design, so scope validation to images.
+    // Without this a PDF/zip would pass here (MuAPI accepts those under its
+    // "others" category) and then fail downstream in the VFX pipeline.
+    if (!isAllowedUploadMimeType(file, 'image')) {
       throw new Error(
-        `Invalid file type: ${file.type}. Allowed: ${[...UPLOAD_MIME_TYPES.image, ...UPLOAD_MIME_TYPES.video, ...UPLOAD_MIME_TYPES.audio].join(', ')}`
+        `Invalid file type: ${file.type}. Allowed: ${[...UPLOAD_MIME_TYPES.image].join(', ')}`
       )
     }
     const maxBytes = getUploadLimit(file)
