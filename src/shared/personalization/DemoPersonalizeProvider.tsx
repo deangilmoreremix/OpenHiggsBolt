@@ -134,6 +134,19 @@ function revokeAssetUrl(asset: PersonalizationAsset | null | undefined) {
   }
 }
 
+/**
+ * Revoke a blob URL that was created locally for a file that has just been
+ * uploaded, where `replacementUrl` is the durable URL that took its place.
+ *
+ * Only `blob:` URLs are ever revoked (never CDN/uploaded URLs) and only when
+ * the blob is no longer the URL in use, which keeps double-revokes out.
+ */
+function revokeLocalBlobUrl(localUrl: string | null | undefined, replacementUrl?: string | null) {
+  if (!localUrl || !localUrl.startsWith('blob:')) return
+  if (replacementUrl && replacementUrl === localUrl) return
+  URL.revokeObjectURL(localUrl)
+}
+
 // ── Context ──────────────────────────────────────────────────────────────────
 
 type OpenPersonalizeOptions = {
@@ -481,8 +494,6 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
   // Assets
   const [assets, setAssets] = useState<AssetLibrary>({ ...EMPTY_ASSET_LIBRARY })
-  const assetsRef = useRef(assets)
-  useEffect(() => { assetsRef.current = assets }, [assets])
 
   // Discovered assets (temporary review state — NOT part of permanent AssetLibrary)
   const [discoveredAssets, setDiscoveredAssetsState] = useState<DiscoveredAsset[]>([])
@@ -828,6 +839,16 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   const uploadAsset = useCallback(async (asset: PersonalizationAsset): Promise<string> => {
     if (!apiKey) throw new Error('Missing API key')
 
+    // Capture the local blob URL from the asset object this upload was started
+    // with. Revoking it must never depend on a ref mirror of the asset library:
+    // such a mirror is only synced inside an effect, so when an upload resolves
+    // in the same tick the asset was added, the mirror still points at the
+    // previous library, the by-id lookup finds nothing, revocation silently
+    // no-ops and the blob URL leaks for good once `url` is overwritten with the
+    // durable URL below. The asset object itself is never mutated, so the URL
+    // captured here is always the pre-upload one.
+    const localBlobUrl = asset.url && asset.url.startsWith('blob:') ? asset.url : null
+
     // Test-only bypass: avoid real network uploads in test mode with the placeholder key.
     if (
       process.env.NODE_ENV !== 'production' &&
@@ -836,16 +857,6 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     ) {
       const fakeUrl = 'https://example.com/test-uploaded-asset.png'
       setAssetUploadStatus(asset.id, 'ready', null)
-      const old = [
-        ...assetsRef.current.identities,
-        ...assetsRef.current.logos,
-        ...assetsRef.current.products,
-        ...assetsRef.current.brandReferences,
-        assetsRef.current.firstFrame,
-        assetsRef.current.lastFrame,
-        assetsRef.current.ctaGraphic,
-      ].find((a) => a?.id === asset.id)
-      if (old) revokeAssetUrl(old)
       setAssets((prev) => {
         const updater = (list: PersonalizationAsset[]) => list.map((a) => (a.id === asset.id ? { ...a, url: fakeUrl, uploadedUrl: fakeUrl } : a))
         return {
@@ -859,6 +870,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
           ctaGraphic: prev.ctaGraphic?.id === asset.id ? { ...prev.ctaGraphic, url: fakeUrl, uploadedUrl: fakeUrl } : prev.ctaGraphic,
         }
       })
+      revokeLocalBlobUrl(localBlobUrl, fakeUrl)
       return fakeUrl
     }
 
@@ -870,17 +882,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         // optional progress hook
       })
       setAssetUploadStatus(asset.id, 'ready', null)
-      // Update URL to durable uploaded URL and revoke old blob
-      const old = [
-        ...assetsRef.current.identities,
-        ...assetsRef.current.logos,
-        ...assetsRef.current.products,
-        ...assetsRef.current.brandReferences,
-        assetsRef.current.firstFrame,
-        assetsRef.current.lastFrame,
-        assetsRef.current.ctaGraphic,
-      ].find((a) => a?.id === asset.id)
-      if (old) revokeAssetUrl(old)
+      // The local blob is being replaced by the durable CDN URL, so free it.
       setAssets((prev) => {
         const updater = (list: PersonalizationAsset[]) => list.map((a) => (a.id === asset.id ? { ...a, url, uploadedUrl: url } : a))
         return {
@@ -894,8 +896,13 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
           ctaGraphic: prev.ctaGraphic?.id === asset.id ? { ...prev.ctaGraphic, url, uploadedUrl: url } : prev.ctaGraphic,
         }
       })
+      revokeLocalBlobUrl(localBlobUrl, url)
       return url
     } catch (error) {
+      // On failure the blob URL stays the asset's live `url` (the user sees a
+      // preview plus a retry affordance), so it must NOT be revoked here — it
+      // is still released by removeLogo()/removeProduct()/removeIdentity()/…
+      // when the asset is dropped.
       const message = error instanceof Error ? error.message : 'Upload failed'
       setAssetUploadStatus(asset.id, 'error', message)
       throw error
