@@ -356,14 +356,48 @@ export default function AppsStudio({ locale = "en" }) {
     <div className="h-full w-full flex flex-col items-center bg-[#030303] overflow-y-auto custom-scrollbar relative">
       <div className="flex flex-col gap-10 items-center w-full max-w-7xl pt-12 pb-24 px-6">
         
-        {/* Header Section */}
-        <div className="text-center space-y-6 max-w-3xl">
-          <h1 className="text-5xl font-black text-white tracking-tighter leading-[0.9]">
-            {copy.hero.badge}
+        {/* Marketing Header */}
+        <div className="text-center space-y-6 max-w-4xl">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#22d3ee]/10 border border-[#22d3ee]/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#22d3ee]" />
+            <span className="text-[11px] font-bold uppercase tracking-widest text-[#22d3ee]">
+              {copy.hero.badge}
+            </span>
+          </div>
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-black text-white tracking-tighter leading-[0.95]">
+            <span className="block">{copy.hero.titleLine1}</span>
+            <span className="block text-[#22d3ee]">{copy.hero.titleLine2}</span>
           </h1>
-          <p className="text-white/40 text-sm font-medium leading-relaxed max-w-xl mx-auto">
+          <p className="text-white/40 text-sm md:text-base font-medium leading-relaxed max-w-2xl mx-auto">
             {copy.hero.subtitle}
           </p>
+        </div>
+
+        {/* Steps Section */}
+        <div className="w-full max-w-5xl">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { id: "step1", num: "01" },
+              { id: "step2", num: "02" },
+              { id: "step3", num: "03" },
+            ].map((step) => (
+              <div
+                key={step.id}
+                className="relative overflow-hidden bg-white/[0.02] border border-white/10 rounded-2xl p-6 flex flex-col gap-3 transition-all duration-300 hover:border-[#22d3ee]/20 hover:bg-white/[0.04] hover:shadow-lg hover:shadow-cyan-500/5 hover:-translate-y-1"
+              >
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#22d3ee]/40 to-transparent" />
+                <span className="text-3xl md:text-4xl font-black tracking-tighter text-[#22d3ee]/50 leading-none">
+                  Step {step.num}
+                </span>
+                <h2 className="text-sm font-bold text-white uppercase tracking-tight">
+                  {copy.steps[step.id].title}
+                </h2>
+                <p className="text-xs text-white/40 leading-relaxed font-medium">
+                  {copy.steps[step.id].description}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Search and Filter */}

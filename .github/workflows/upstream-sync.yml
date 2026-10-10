@@ -124,8 +124,14 @@ jobs:
             messages/en/common.json \
             packages/studio/src/index.js \
             packages/studio/src/components/AppsStudio.jsx \
+            packages/studio/src/components/AppsStudio.test.jsx \
+            packages/studio/src/components/McpCliStudio.jsx \
             packages/studio/src/messages/en/appsStudio.json \
             packages/studio/src/messages/zh/appsStudio.json \
+            packages/studio/src/messages/en/McpCliStudio.json \
+            packages/studio/src/messages/zh/McpCliStudio.json \
+            packages/studio/src/i18nUtils.js \
+            components/StandaloneShell.scope.test.js \
             app/studio/apps \
             app/studio/mcp-cli \
             app/sign-in \
@@ -151,10 +157,15 @@ jobs:
             fi
           done
 
+          # Remove locale-bridge surfaces that must not exist on SmartVideo.
+          # NOTE: packages/studio/src/messages/zh is intentionally NOT removed —
+          # 12 studio components statically import zh message bundles at build
+          # time (including AppsStudio.jsx), so deleting the directory breaks
+          # `next build`. SmartVideo ships no Chinese *route* (app/zh), which is
+          # asserted by components/StandaloneShell.scope.test.js.
           git rm -rf --ignore-unmatch \
             app/zh \
-            messages/zh \
-            packages/studio/src/messages/zh
+            messages/zh
 
           WHITE_LABEL_PATHS=$(git ls-files | grep -Ei '(^|/)(white[-_]?label|whitelabel)(/|\.|$)' || true)
           if [ -n "$WHITE_LABEL_PATHS" ]; then

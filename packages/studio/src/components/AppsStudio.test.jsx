@@ -10,7 +10,7 @@ describe('AppsStudio', () => {
 
   it('renders the SmartVideo GO AI Apps heading', () => {
     render(<AppsStudio />);
-    expect(screen.getByText('AI Apps')).toBeDefined();
+    expect(screen.getByText('LAUNCH AN AI APP.')).toBeDefined();
   });
 
   it('renders SmartVideo GO AI branding', () => {
@@ -23,9 +23,33 @@ describe('AppsStudio', () => {
     expect(screen.queryByText(/SmartVisual/i)).toBeNull();
   });
 
+  it('renders the Revenue-Ready Templates badge', () => {
+    render(<AppsStudio />);
+    expect(screen.getByText('Revenue-Ready Templates')).toBeDefined();
+  });
+
+  it('renders the second headline line', () => {
+    render(<AppsStudio />);
+    expect(screen.getByText('START EARNING TODAY.')).toBeDefined();
+  });
+
+  it('renders all three revenue steps', () => {
+    render(<AppsStudio />);
+    expect(screen.getByText('Deploy in Minutes')).toBeDefined();
+    expect(screen.getByText('Collect Payments')).toBeDefined();
+    expect(screen.getByText('Keep the Revenue')).toBeDefined();
+  });
+
+  it('renders the step numerals', () => {
+    render(<AppsStudio />);
+    expect(screen.getByText('Step 01')).toBeDefined();
+    expect(screen.getByText('Step 02')).toBeDefined();
+    expect(screen.getByText('Step 03')).toBeDefined();
+  });
+
   it('renders the supporting copy', () => {
     render(<AppsStudio />);
-    expect(screen.getByText(/Explore a collection of available AI applications/i)).toBeDefined();
+    expect(screen.getByText(/fully-functional, Stripe-integrated AI SaaS/i)).toBeDefined();
   });
 
   it('renders exactly 38 verified app cards', () => {
