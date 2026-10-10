@@ -29,6 +29,12 @@ export default defineConfig({
   },
   test: {
     ssr: false,
+    // The personalization provider tests drive real async upload/asset lifecycles
+    // (mock upload round-trips, waitForGeneration polling, provider re-renders) and
+    // legitimately take 1-5s each. Vitest's 5s default was too tight and made them
+    // flaky under load (they timed out rather than failing an assertion). 30s still
+    // catches genuine hangs; no test relies on the 5s default.
+    testTimeout: 30_000,
     include: [
       'src/**/*.test.{js,jsx,ts,tsx}',
       'components/**/*.test.{js,jsx,ts,tsx}',
