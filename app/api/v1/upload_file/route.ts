@@ -6,6 +6,10 @@ import { getApiKeyFromRequest, isBlockedFileType } from '@/lib/uploadProxyTarget
 
 const MUAPI_UPLOAD_URL = 'https://api.muapi.ai/api/v1/upload_file';
 
+// Mirrors the MuAPI File Upload API contract (https://muapi.ai/docs/file-upload):
+//   Images  10MB  .jpg .png .webp
+//   Videos  50MB  .mp4 .mov
+//   Others  10MB  .zip .pdf .json
 const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   'image/jpeg',
   'image/jpg',
@@ -13,9 +17,13 @@ const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   'image/webp',
   'video/mp4',
   'video/webm',
+  'video/quicktime',
   'audio/mpeg',
   'audio/wav',
   'audio/webm',
+  'application/zip',
+  'application/pdf',
+  'application/json',
 ]);
 
 const UPLOAD_MAX_RETRIES = 3;

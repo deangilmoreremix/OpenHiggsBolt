@@ -322,10 +322,15 @@ export async function generateAudio(apiKey, params) {
 export function uploadFile(apiKey, file, onProgress) {
     return new Promise((resolve, reject) => {
         if (!file) return reject(new Error('No file provided'));
+        // Mirrors the MuAPI File Upload API contract (https://muapi.ai/docs/file-upload):
+        //   Images 10MB .jpg .png .webp | Videos 50MB .mp4 .mov | Others 10MB .zip .pdf .json
+        // Note: this package cannot import src/lib/uploadConfig.ts (separate npm
+        // package), so the allowlist is duplicated here. Keep both in sync.
         const ALLOWED_MIME_TYPES = new Set([
             'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
-            'video/mp4', 'video/webm',
+            'video/mp4', 'video/webm', 'video/quicktime',
             'audio/mpeg', 'audio/wav', 'audio/webm',
+            'application/zip', 'application/pdf', 'application/json',
         ]);
         const normalizedType = file.type === 'image/jpg' ? 'image/jpeg' : file.type;
         if (!ALLOWED_MIME_TYPES.has(normalizedType)) {
