@@ -28,6 +28,13 @@ export default defineConfig({
   },
   test: {
     ssr: false,
+    // Repo-wide test timeout. The Personalization modal's cold render costs
+    // ~1.5-4s per open under jsdom, and CPU contention between test files
+    // sharing a worker widens that. Per-file `vi.setConfig({ testTimeout })`
+    // does not propagate reliably across files in a shared worker, so the
+    // timeout is set at the config level instead. Individual tests may still
+    // opt into a longer timeout with an explicit third argument.
+    testTimeout: 30000,
     include: [
       'src/**/*.test.{js,jsx,ts,tsx}',
       'components/**/*.test.{js,jsx,ts,tsx}',

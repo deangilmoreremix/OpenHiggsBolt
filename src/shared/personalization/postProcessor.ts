@@ -5,12 +5,17 @@
  * - Exact logo overlay on images and videos
  * - Exact CTA/end-card generation and compositing
  *
- * Uses MuAPI composition endpoints:
- * - add-image-watermark (image logo/CTA overlay)
- * - add-video-watermark (video logo/CTA overlay)
+ * Image overlays (logo / CTA end card) are composited deterministically on a
+ * canvas and returned as PNG data URLs, so branding is pixel-exact and needs no
+ * round-trip. MuAPI add-image-watermark is only used as a fallback when canvas
+ * compositing is unavailable.
  *
- * For CTA end cards requiring exact text, generates a deterministic
- * canvas image, uploads it, then applies it via MuAPI watermark endpoints.
+ * Video overlays go through the MuAPI add-video-watermark endpoint, which
+ * requires a remotely reachable watermark URL, so canvas output is uploaded
+ * before it is submitted.
+ *
+ * For CTA end cards requiring exact text, generates a deterministic canvas
+ * image as a PNG data URL and composites it onto the generated media.
  */
 
 import { generateI2I, uploadFile } from '@/packages/studio/src/muapi'
@@ -35,6 +40,89 @@ export interface PostProcessingResult {
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof document !== 'undefined'
+}
+
+function loadImageElement(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error(`Failed to load image: ${src}`))
+    img.src = src
+  })
+}
+
+function overlayOrigin(
+  position: string,
+  canvasWidth: number,
+  canvasHeight: number,
+  overlayWidth: number,
+  overlayHeight: number,
+  margin: number,
+): { x: number; y: number } {
+  switch (position) {
+    case 'top-left':
+      return { x: margin, y: margin }
+    case 'top-right':
+      return { x: canvasWidth - overlayWidth - margin, y: margin }
+    case 'bottom-left':
+      return { x: margin, y: canvasHeight - overlayHeight - margin }
+    case 'center':
+      return { x: (canvasWidth - overlayWidth) / 2, y: (canvasHeight - overlayHeight) / 2 }
+    default:
+      return {
+        x: canvasWidth - overlayWidth - margin,
+        y: canvasHeight - overlayHeight - margin,
+      }
+  }
+}
+
+// ── Canvas Overlay Compositing ───────────────────────────────────────────────
+
+async function compositeImageOverlay(
+  baseUrl: string,
+  overlayUrl: string,
+  position = 'bottom-right',
+  opacity = 0.8,
+  scale = 0.2,
+): Promise<string | null> {
+  if (!isBrowser()) return null
+
+  try {
+    const [base, overlay] = await Promise.all([
+      loadImageElement(baseUrl),
+      loadImageElement(overlayUrl),
+    ])
+
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+
+    const width = base.naturalWidth || base.width || 1
+    const height = base.naturalHeight || base.height || 1
+    canvas.width = width
+    canvas.height = height
+    ctx.drawImage(base, 0, 0, width, height)
+
+    const overlayWidth = Math.max(1, Math.round(width * scale))
+    const sourceWidth = overlay.naturalWidth || overlay.width || overlayWidth
+    const sourceHeight = overlay.naturalHeight || overlay.height || sourceWidth
+    const overlayHeight = Math.max(
+      1,
+      Math.round((sourceHeight / Math.max(1, sourceWidth)) * overlayWidth),
+    )
+    const margin = Math.max(8, Math.round(width * 0.02))
+    const { x, y } = overlayOrigin(position, width, height, overlayWidth, overlayHeight, margin)
+
+    ctx.globalAlpha = Math.min(1, Math.max(0, opacity))
+    ctx.drawImage(overlay, x, y, overlayWidth, overlayHeight)
+    ctx.globalAlpha = 1
+
+    return canvas.toDataURL('image/png')
+  } catch (error) {
+    console.error('[Personalization Post-Process] Canvas compositing failed:', error)
+    return null
+  }
 }
 
 // ── Canvas End Card Generation ───────────────────────────────────────────────
@@ -161,17 +249,11 @@ export async function generateEndCardImage(
     ctx.fillText(parts.join('  |  '), canvas.width / 2, 620)
   }
 
-  // Convert to blob and upload
-  const blob = await new Promise<Blob | null>((resolve) => {
-    canvas.toBlob((b) => resolve(b), 'image/png')
-  })
-  if (!blob) return null
-
-  const file = new File([blob], 'cta-end-card.png', { type: 'image/png' })
+  // Deterministic output: the rendered canvas as a PNG data URL.
   try {
-    const url = await uploadFile(apiKey, file)
-    return url
-  } catch {
+    return canvas.toDataURL('image/png')
+  } catch (error) {
+    console.error('[Personalization Post-Process] End card export failed:', error)
     return null
   }
 }
@@ -186,8 +268,14 @@ async function applyImageWatermark(
   opacity = 0.8,
   scale = 0.2,
 ): Promise<string | null> {
+  // Deterministic client-side compositing — exact placement, no round-trip.
+  const composited = await compositeImageOverlay(imageUrl, watermarkUrl, position, opacity, scale)
+  if (composited) return composited
+
+  // Fallback to server-side compositing when canvas compositing is unavailable
+  // (no 2d context, or the base image taints the canvas via cross-origin pixels).
   try {
-    const result = await generateI2I(apiKey, {
+    const result = (await generateI2I(apiKey, {
       model: 'add-image-watermark',
       prompt: '',
       image_url: imageUrl,
@@ -195,8 +283,8 @@ async function applyImageWatermark(
       position,
       opacity,
       scale,
-    })
-    return (result as any).url || (result as any).output?.url || (result as any).outputs?.[0] || null
+    })) as any
+    return result?.url || result?.output?.url || result?.outputs?.[0] || null
   } catch (error) {
     console.error('[Personalization Post-Process] Image watermark failed:', error)
     return null
@@ -218,6 +306,24 @@ async function applyVideoWatermark(
     return (result as any).url || (result as any).output?.url || (result as any).outputs?.[0] || null
   } catch (error) {
     console.error('[Personalization Post-Process] Video watermark failed:', error)
+    return null
+  }
+}
+
+// MuAPI endpoints require a remotely reachable watermark URL. Canvas output is
+// a data URL, so upload it before submitting.
+async function resolveWatermarkUrl(apiKey: string, url: string): Promise<string | null> {
+  if (!url.startsWith('data:')) return url
+
+  try {
+    const blob = await (await fetch(url)).blob()
+    const uploaded = await uploadFile(
+      apiKey,
+      new File([blob], 'watermark.png', { type: blob.type || 'image/png' }),
+    )
+    return uploaded || null
+  } catch (error) {
+    console.error('[Personalization Post-Process] Watermark upload failed:', error)
     return null
   }
 }
@@ -293,7 +399,17 @@ export async function applyPostProcessing(
     const watermarkSources = [logoUrl, ctaGraphicUrl, endCardUrl].filter(Boolean) as string[]
 
     for (const wmUrl of watermarkSources) {
-      const result = await applyVideoWatermark(apiKey, currentUrl, wmUrl)
+      const watermarkUrl = await resolveWatermarkUrl(apiKey, wmUrl)
+      if (!watermarkUrl) {
+        return {
+          finalUrl: currentUrl,
+          originalUrl: generatedUrl,
+          applied,
+          failed: 'video-overlay',
+        }
+      }
+
+      const result = await applyVideoWatermark(apiKey, currentUrl, watermarkUrl)
       if (result) {
         currentUrl = result
         applied.push('video-overlay')
