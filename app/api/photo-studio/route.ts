@@ -5,6 +5,8 @@ import { ENTITLEMENTS } from '@/access/entitlements'
 import { auth } from '@clerk/nextjs/server'
 import { getSupabaseAdmin } from '@/src/lib/supabaseServer'
 
+export const dynamic = "force-dynamic";
+
 const MUAPI = 'https://api.muapi.ai/api/v1'
 const STATUS_TIMEOUT_MS = 30000
 const SUBMIT_TIMEOUT_MS = 30000

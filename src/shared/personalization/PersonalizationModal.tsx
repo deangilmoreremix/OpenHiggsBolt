@@ -46,6 +46,7 @@ import type { PersonalizationAsset, DiscoveredAsset, DiscoveredAssetCategory, As
 import { resolveModelCapabilities, FACE_SWAP_MODEL, FULL_BODY_MODEL, DEFAULT_T2V_MODEL, DEFAULT_I2I_MODEL } from './modelCapabilityResolver'
 import { getModelById, getVideoModelById } from '@/packages/studio/src/models.js'
 import { NICHE_CONTENT } from '@/data/nicheContent'
+import { BUSINESS_NICHES } from './businessNiches'
 import ImageEditorModal, {
   type ImageEditorApplyResult,
   type PersonalizationImageEditorAsset,
@@ -1426,7 +1427,7 @@ export default function PersonalizationModal() {
           background: C.modal,
           border: isFullscreen ? 'none' : `1px solid ${C.borderStrong}`,
           borderRadius: isFullscreen ? 0 : 22,
-          maxWidth: isFullscreen ? '100vw' : 1100,
+          maxWidth: isFullscreen ? '100vw' : 1480,
           maxHeight: isFullscreen ? '100vh' : '90vh',
           boxShadow: isFullscreen ? 'none' : '0 30px 90px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.025)',
         }}
@@ -1454,13 +1455,13 @@ export default function PersonalizationModal() {
                 </h1>
                 {niche ? (
                   <p
-                    className="mt-1.5 max-w-[760px] text-[13px] leading-[1.55]"
+                    className="mt-1.5 max-w-[900px] text-[13px] leading-[1.55]"
                     style={{ color: C.muted }}
                     dangerouslySetInnerHTML={{ __html: niche.ctaBody }}
                   />
                 ) : (
                   <p
-                    className="mt-1.5 max-w-[760px] text-[13px] leading-[1.55]"
+                    className="mt-1.5 max-w-[900px] text-[13px] leading-[1.55]"
                     style={{ color: C.muted }}
                   >
                     Turn this demo into a custom version for yourself, your business, or a customer. Personalize the person, branding, products, prompt, offer and CTA.
@@ -2006,6 +2007,32 @@ function ConfigurationView(props: any) {
     revertDiscoveredAssetEdit,
   } = props
 
+  // ── Find Local Business (lead finder) entry flow ───────────────────────────
+  // The chooser/how-to-enter panel and the search form are local UI state: the
+  // chooser is dismissed once the client decides how to enter their profile,
+  // and the search form is controlled so the search can be blocked until both
+  // a niche and a location are filled in.
+  const [clientEntryDismissed, setClientEntryDismissed] = useState(false)
+  const [searchNiche, setSearchNiche] = useState('')
+  const [searchLocation, setSearchLocation] = useState('')
+  const [searchRadius, setSearchRadius] = useState(15)
+
+  const searchFormReady = Boolean(searchNiche && searchLocation.trim())
+
+  const handleClientEntryDismiss = useCallback(() => setClientEntryDismissed(true), [])
+
+  // Re-arm the chooser whenever the audience changes, so the entry decision is
+  // made again for each audience instead of being remembered forever.
+  useEffect(() => {
+    setClientEntryDismissed(false)
+  }, [clientForm.audience])
+
+  const runBusinessSearch = useCallback((radiusMiles: number) => {
+    if (!searchNiche || !searchLocation.trim()) return
+    setSearchRadius(radiusMiles)
+    findBusinesses(searchNiche, searchLocation.trim(), radiusMiles)
+  }, [findBusinesses, searchLocation, searchNiche])
+
   const identityInputRef = useRef<HTMLInputElement>(null)
   const logoInputRef = useRef<HTMLInputElement>(null)
   const productInputRef = useRef<HTMLInputElement>(null)
@@ -2178,7 +2205,7 @@ function ConfigurationView(props: any) {
        </section>
 
       {/* ── TOP OVERVIEW: Source Demo | Client Profile ────────────── */}
-      <section className="grid grid-cols-1 lg:grid-cols-2" style={{ padding: '26px 0', gap: 18, borderBottom: `1px solid ${C.border}` }}>
+      <section id="pz-overview" className="grid grid-cols-1 lg:grid-cols-2" style={{ padding: '20px 0', gap: 18, scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
         {/* Source Demo */}
         <div className="panel" style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18 }}>
           <h2 style={{ margin: '0 0 13px', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>Source Demo</h2>
@@ -2260,7 +2287,7 @@ function ConfigurationView(props: any) {
           </div>
 
           {/* Find Local Business */}
-          {clientForm.audience === 'customer' && businessSearchMode === 'idle' && (
+          {clientForm.audience === 'customer' && businessSearchMode === 'idle' && !clientEntryDismissed && (
             <div style={{ marginBottom: 18, padding: 14, border: `1px dashed ${C.border}`, borderRadius: 10, background: 'rgba(41,211,242,.03)' }}>
               <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>How would you like to add this client?</div>
               <div className="flex flex-wrap gap-2">
@@ -2280,7 +2307,7 @@ function ConfigurationView(props: any) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {}}
+                  onClick={handleClientEntryDismiss}
                   className="rounded-lg text-[11px] font-extrabold uppercase tracking-wide"
                   style={{
                     minHeight: 38,
@@ -2308,9 +2335,11 @@ function ConfigurationView(props: any) {
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 10, marginBottom: 12 }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: 4, color: C.muted, fontSize: 10 }}>Business Type / Niche</label>
+                  <label htmlFor="business-niche" style={{ display: 'block', marginBottom: 4, color: C.muted, fontSize: 10 }}>Business Type / Niche</label>
                   <select
                     id="business-niche"
+                    value={searchNiche}
+                    onChange={(e) => setSearchNiche(e.target.value)}
                     className="w-full outline-none"
                     style={{
                       minHeight: 40,
@@ -2322,30 +2351,18 @@ function ConfigurationView(props: any) {
                     }}
                   >
                     <option value="">Select a niche...</option>
-                    {Object.keys({
-                      'ecommerce': 'E-Commerce / Retail',
-                      'real-estate': 'Real Estate',
-                      'restaurants-food': 'Restaurants / Food',
-                      'beauty': 'Beauty / Salon',
-                      'wellness-fitness': 'Wellness / Fitness',
-                      'education': 'Education',
-                      'technology': 'Technology / SaaS',
-                      'finance': 'Finance',
-                      'entertainment-media': 'Entertainment / Media',
-                      'automotive': 'Automotive',
-                      'travel-hospitality': 'Travel / Hospitality',
-                      'sports-outdoors': 'Sports / Outdoors',
-                      'general-business': 'General Business',
-                    }).map((niche) => (
-                      <option key={niche} value={niche}>{niche}</option>
+                    {BUSINESS_NICHES.map((niche) => (
+                      <option key={niche.key} value={niche.key}>{niche.label}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: 4, color: C.muted, fontSize: 10 }}>Location</label>
+                  <label htmlFor="business-location" style={{ display: 'block', marginBottom: 4, color: C.muted, fontSize: 10 }}>Location</label>
                   <input
                     id="business-location"
                     type="text"
+                    value={searchLocation}
+                    onChange={(e) => setSearchLocation(e.target.value)}
                     placeholder="Hollywood, Florida"
                     className="w-full outline-none"
                     style={{
@@ -2366,18 +2383,13 @@ function ConfigurationView(props: any) {
                     <button
                       key={miles}
                       type="button"
-                      onClick={() => {
-                        const niche = (document.getElementById('business-niche') as HTMLSelectElement)?.value
-                        const location = (document.getElementById('business-location') as HTMLInputElement)?.value
-                        if (niche && location) {
-                          findBusinesses(niche, location, miles)
-                        }
-                      }}
-                      className="rounded-lg text-[10px] font-extrabold uppercase tracking-wide"
+                      onClick={() => runBusinessSearch(miles)}
+                      disabled={!searchFormReady}
+                      className="rounded-lg text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
                       style={{
                         minHeight: 34,
                         padding: '0 12px',
-                        border: `1px solid ${C.border}`,
+                        border: `1px solid ${searchRadius === miles ? C.cyan : C.border}`,
                         background: '#11161b',
                         color: C.text,
                       }}
@@ -2389,15 +2401,9 @@ function ConfigurationView(props: any) {
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  const niche = (document.getElementById('business-niche') as HTMLSelectElement)?.value
-                  const location = (document.getElementById('business-location') as HTMLInputElement)?.value
-                  const radius = 15 // default
-                  if (niche && location) {
-                    findBusinesses(niche, location, radius)
-                  }
-                }}
-                className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide"
+                onClick={() => runBusinessSearch(searchRadius)}
+                disabled={!searchFormReady}
+                className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   minHeight: 42,
                   padding: '0 19px',
@@ -2827,9 +2833,58 @@ function ConfigurationView(props: any) {
         </div>
       )}
 
+      {/* ── SECTION NAV (sticky) ───────────────────────────────────────
+          Native anchor links (no JS) so keyboard/screen-reader users can
+          jump between the (now two-column) sections. Chips only render for
+          sections that are currently visible.                            */}
+      <nav
+        aria-label="Personalization sections"
+        className="sticky top-0 z-10 flex flex-wrap items-center gap-1.5"
+        style={{ padding: '10px 0', background: C.modal, borderBottom: `1px solid ${C.border}` }}
+      >
+        {[
+          { id: 'pz-overview', label: 'Overview' },
+          ...(discoveryStatus === 'reviewing' && discoveredAssets.length > 0
+            ? [{ id: 'pz-discovered', label: 'Discovered' }]
+            : []),
+          { id: 'pz-client-assets', label: 'Client Assets' },
+          ...(selectedClientId ? [{ id: 'pz-saved-assets', label: 'Saved Assets' }] : []),
+          { id: 'pz-content', label: 'Business' },
+          { id: 'pz-prompt', label: 'Prompt' },
+          ...(!isPromptOnly ? [{ id: 'pz-output', label: 'Output' }] : []),
+          ...(showModes ? [{ id: 'pz-mode', label: 'Mode' }] : []),
+          { id: 'pz-engine', label: 'Engine' },
+        ].map((chip) => (
+          <a
+            key={chip.id}
+            href={`#${chip.id}`}
+            style={{
+              padding: '5px 10px',
+              borderRadius: 999,
+              border: `1px solid ${C.border}`,
+              background: 'rgba(255,255,255,.03)',
+              color: C.muted,
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '.04em',
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {chip.label}
+          </a>
+        ))}
+      </nav>
+
+      {/* ── TWO-COLUMN BODY (xl+) ──────────────────────────────────────
+          CSS multi-column keeps DOM/reading/tab order intact while roughly
+          halving vertical scroll depth on wide viewports. Below `xl` the
+          content collapses back to the original single column.            */}
+      <div className="xl:columns-2 xl:gap-x-7">
+
       {/* ── DISCOVERED ASSETS REVIEW ────────────────────────────────── */}
       {discoveryStatus === 'reviewing' && discoveredAssets.length > 0 && (
-        <section style={{ padding: '26px 0', borderBottom: `1px solid ${C.border}` }}>
+        <section id="pz-discovered" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
           <div className="flex items-center justify-between flex-wrap gap-3" style={{ marginBottom: 16 }}>
             <div>
               <h2 style={{ margin: 0, fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>Discovered Assets</h2>
@@ -2985,7 +3040,7 @@ function ConfigurationView(props: any) {
       )}
 
       {/* ── CLIENT ASSETS (full width, 6 numbered cards) ──────────── */}
-      <section style={{ padding: '26px 0', borderBottom: `1px solid ${C.border}` }}>
+      <section id="pz-client-assets" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
         <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>STEP 2 — CLIENT ASSETS</h2>
         <p style={{ margin: '6px 0 18px', color: C.muted, fontSize: 12, lineHeight: 1.5 }}>
           Add the people, products, branding and visual references SmartVideo should use when personalizing this demo.
@@ -3001,7 +3056,7 @@ function ConfigurationView(props: any) {
             onDragLeave={(e) => handleSectionDragLeave('person', e)}
             onDrop={(e) => handleSectionDrop('person', e)}
             style={{
-              minHeight: 280,
+              minHeight: 250,
               padding: 18,
               background: dragOverSection === 'person' ? 'rgba(41,211,242,.04)' : C.panelSoft,
               border: dragOverSection === 'person' ? `1px solid ${C.cyanBorder}` : `1px solid ${C.border}`,
@@ -3076,7 +3131,7 @@ function ConfigurationView(props: any) {
             onDragOver={(e) => handleSectionDragOver('logo', e)}
             onDragLeave={(e) => handleSectionDragLeave('logo', e)}
             onDrop={(e) => handleSectionDrop('logo', e)}
-            style={{ minHeight: 280, padding: 18, background: dragOverSection === 'logo' ? 'rgba(41,211,242,.04)' : C.panelSoft, border: dragOverSection === 'logo' ? `1px solid ${C.cyanBorder}` : `1px solid ${C.border}`, borderRadius: 16, transition: 'border-color .15s, background .15s' }}
+            style={{ minHeight: 250, padding: 18, background: dragOverSection === 'logo' ? 'rgba(41,211,242,.04)' : C.panelSoft, border: dragOverSection === 'logo' ? `1px solid ${C.cyanBorder}` : `1px solid ${C.border}`, borderRadius: 16, transition: 'border-color .15s, background .15s' }}
           >
             <div className="flex gap-2.5 items-start" style={{ marginBottom: 14 }}>
               <div className="w-[35px] h-[35px] rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: C.cyanSoft, color: C.cyan, fontSize: 16 }}>🏷</div>
@@ -3192,7 +3247,7 @@ function ConfigurationView(props: any) {
             onDragOver={(e) => handleSectionDragOver('products', e)}
             onDragLeave={(e) => handleSectionDragLeave('products', e)}
             onDrop={(e) => handleSectionDrop('products', e)}
-            style={{ minHeight: 280, padding: 18, background: dragOverSection === 'products' ? 'rgba(41,211,242,.04)' : C.panelSoft, border: dragOverSection === 'products' ? `1px solid ${C.cyanBorder}` : `1px solid ${C.border}`, borderRadius: 16, transition: 'border-color .15s, background .15s' }}
+            style={{ minHeight: 250, padding: 18, background: dragOverSection === 'products' ? 'rgba(41,211,242,.04)' : C.panelSoft, border: dragOverSection === 'products' ? `1px solid ${C.cyanBorder}` : `1px solid ${C.border}`, borderRadius: 16, transition: 'border-color .15s, background .15s' }}
           >
             <div className="flex gap-2.5 items-start" style={{ marginBottom: 14 }}>
               <div className="w-[35px] h-[35px] rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: C.cyanSoft, color: C.cyan, fontSize: 16 }}>📦</div>
@@ -3251,7 +3306,7 @@ function ConfigurationView(props: any) {
             onDragOver={(e) => handleSectionDragOver('brand', e)}
             onDragLeave={(e) => handleSectionDragLeave('brand', e)}
             onDrop={(e) => handleSectionDrop('brand', e)}
-            style={{ minHeight: 280, padding: 18, background: dragOverSection === 'brand' ? 'rgba(41,211,242,.04)' : C.panelSoft, border: dragOverSection === 'brand' ? `1px solid ${C.cyanBorder}` : `1px solid ${C.border}`, borderRadius: 16, transition: 'border-color .15s, background .15s' }}
+            style={{ minHeight: 250, padding: 18, background: dragOverSection === 'brand' ? 'rgba(41,211,242,.04)' : C.panelSoft, border: dragOverSection === 'brand' ? `1px solid ${C.cyanBorder}` : `1px solid ${C.border}`, borderRadius: 16, transition: 'border-color .15s, background .15s' }}
           >
             <div className="flex gap-2.5 items-start" style={{ marginBottom: 14 }}>
               <div className="w-[35px] h-[35px] rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: C.cyanSoft, color: C.cyan, fontSize: 16 }}>🏢</div>
@@ -3310,7 +3365,7 @@ function ConfigurationView(props: any) {
             onDragOver={(e) => handleSectionDragOver('firstFrame', e)}
             onDragLeave={(e) => handleSectionDragLeave('firstFrame', e)}
             onDrop={(e) => handleSectionDrop('firstFrame', e)}
-            style={{ minHeight: 280, padding: 18, background: dragOverSection === 'firstFrame' ? 'rgba(41,211,242,.04)' : C.panelSoft, border: dragOverSection === 'firstFrame' ? `1px solid ${C.cyanBorder}` : `1px solid ${C.border}`, borderRadius: 16, transition: 'border-color .15s, background .15s' }}
+            style={{ minHeight: 250, padding: 18, background: dragOverSection === 'firstFrame' ? 'rgba(41,211,242,.04)' : C.panelSoft, border: dragOverSection === 'firstFrame' ? `1px solid ${C.cyanBorder}` : `1px solid ${C.border}`, borderRadius: 16, transition: 'border-color .15s, background .15s' }}
           >
             <div className="flex gap-2.5 items-start" style={{ marginBottom: 14 }}>
               <div className="w-[35px] h-[35px] rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: C.cyanSoft, color: C.cyan, fontSize: 16 }}>🎬</div>
@@ -3413,7 +3468,7 @@ function ConfigurationView(props: any) {
             onDragOver={(e) => handleSectionDragOver('lastFrame', e)}
             onDragLeave={(e) => handleSectionDragLeave('lastFrame', e)}
             onDrop={(e) => handleSectionDrop('lastFrame', e)}
-            style={{ minHeight: 280, padding: 18, background: dragOverSection === 'lastFrame' ? 'rgba(41,211,242,.04)' : C.panelSoft, border: dragOverSection === 'lastFrame' ? `1px solid ${C.cyanBorder}` : `1px solid ${C.border}`, borderRadius: 16, transition: 'border-color .15s, background .15s' }}
+            style={{ minHeight: 250, padding: 18, background: dragOverSection === 'lastFrame' ? 'rgba(41,211,242,.04)' : C.panelSoft, border: dragOverSection === 'lastFrame' ? `1px solid ${C.cyanBorder}` : `1px solid ${C.border}`, borderRadius: 16, transition: 'border-color .15s, background .15s' }}
           >
             <div className="flex gap-2.5 items-start" style={{ marginBottom: 14 }}>
               <div className="w-[35px] h-[35px] rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: C.cyanSoft, color: C.cyan, fontSize: 16 }}>🎯</div>
@@ -3513,7 +3568,7 @@ function ConfigurationView(props: any) {
 
       {/* ── SAVED CLIENT ASSETS ───────────────────────────────────── */}
       {selectedClientId && (
-        <section style={{ padding: '26px 0', borderBottom: `1px solid ${C.border}` }}>
+        <section id="pz-saved-assets" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
           <div className="flex items-center justify-between flex-wrap gap-3" style={{ marginBottom: 14 }}>
             <div>
               <h2 style={{ margin: 0, fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>SAVED CLIENT ASSETS</h2>
@@ -3651,7 +3706,7 @@ function ConfigurationView(props: any) {
       )}
 
       {/* ── CTA & BUSINESS CONTENT ────────────────────────────── */}
-      <section style={{ padding: '26px 0', borderBottom: `1px solid ${C.border}` }}>
+      <section id="pz-content" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
         <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>CTA & BUSINESS CONTENT</h2>
         <div className="grid grid-cols-1 md:grid-cols-2" style={{ marginTop: 18, gap: 12 }}>
           <Field label="Product / Service" value={clientForm.productService} placeholder="Residential Roof Replacement" onChange={(v) => updateClientForm({ ...clientForm, productService: v })} />
@@ -3708,7 +3763,7 @@ function ConfigurationView(props: any) {
       </section>
 
       {/* ── PERSONALIZE THE PROMPT ──────────────────────────── */}
-      <section style={{ padding: '26px 0', borderBottom: `1px solid ${C.border}` }}>
+      <section id="pz-prompt" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
         <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>STEP 3 — PERSONALIZE THE PROMPT</h2>
         <div className="grid grid-cols-1 md:grid-cols-2" style={{ marginTop: 18, gap: 14 }}>
           <div className="prompt-box" style={{ minHeight: 150, border: `1px solid ${C.border}`, borderRadius: 12, background: C.field, padding: 14 }}>
@@ -3767,7 +3822,7 @@ function ConfigurationView(props: any) {
 
       {/* ── OUTPUT ────────────────────────────────────────── */}
       {!isPromptOnly && (
-        <section style={{ padding: '26px 0', borderBottom: `1px solid ${C.border}` }}>
+        <section id="pz-output" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
           <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>STEP 4 — CREATE</h2>
           <div className="grid grid-cols-1 md:grid-cols-3" style={{ marginTop: 18, gap: 12 }}>
             {outputOptions.map(({ key, label, description }: any) => {
@@ -3799,7 +3854,7 @@ function ConfigurationView(props: any) {
 
       {/* ── PERSONALIZATION MODE ────────────────────────────── */}
       {showModes && (
-        <section style={{ padding: '26px 0', borderBottom: `1px solid ${C.border}` }}>
+        <section id="pz-mode" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
           <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>HOW SHOULD THIS BE PERSONALIZED?</h2>
           <div className="grid grid-cols-1 md:grid-cols-2" style={{ marginTop: 18, gap: 12 }}>
             {eligibleModes.map((m: any) => {
@@ -3838,7 +3893,7 @@ function ConfigurationView(props: any) {
       )}
 
       {/* ── ENGINE: SmartVideo Recommended ────────────────────── */}
-      <section style={{ padding: '26px 0', borderBottom: `1px solid ${C.border}` }}>
+      <section id="pz-engine" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
         <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>SMARTVIDEO ENGINE</h2>
         <div
           className="flex items-center justify-between gap-5"
@@ -3985,6 +4040,8 @@ function ConfigurationView(props: any) {
           </label>
         )}
       </section>
+
+      </div>
     </div>
   )
 }

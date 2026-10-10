@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = "force-dynamic";
+
 const isProduction = process.env.NODE_ENV === 'production';
 
 export async function GET(request: Request) {

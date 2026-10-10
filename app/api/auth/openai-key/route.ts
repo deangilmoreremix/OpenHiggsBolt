@@ -205,6 +205,8 @@ export function buildHandlers(deps: {
 
 // Production handlers — use the real Clerk + Supabase implementations.
 import { getSupabaseAdmin as realGetSupabaseAdmin } from '@/src/lib/supabaseServer';
+
+export const dynamic = "force-dynamic";
 const handlers = buildHandlers({ auth: clerkAuth, getSupabaseAdmin: realGetSupabaseAdmin });
 export const GET = handlers.GET;
 export const POST = handlers.POST;

@@ -4,6 +4,8 @@ import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/ap
 import { ENTITLEMENTS } from '@/access/entitlements';
 import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer';
 
+export const dynamic = 'force-dynamic';
+
 const BASE = 'https://api.openai.com/v1';
 
 async function resolveUserAndKey(req: NextRequest) {

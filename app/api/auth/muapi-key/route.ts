@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin as realGetSupabaseAdmin } from '../../../../src/lib/supabaseServer';
 import { encryptMuapiKey, decryptMuapiKey } from '../../../../src/lib/muapiKeyCrypto';
 
+export const dynamic = "force-dynamic";
+
 export const runtime = 'nodejs';
 
 // Dependencies are injected so the handlers can be unit-tested without a live

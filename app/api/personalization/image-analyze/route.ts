@@ -7,6 +7,8 @@ import { rateLimit, rateLimit429 } from '@/lib/rateLimit'
 import { IMAGE_EDIT_OPERATIONS } from '@/src/shared/personalization/image-editor/imageEditRegistry'
 import type { DiscoveredAssetCategory } from '@/src/shared/personalization/types'
 
+export const dynamic = "force-dynamic";
+
 export const runtime = 'nodejs'
 export const maxDuration = 120
 

@@ -1,0 +1,14 @@
+packages:
+  - packages/studio
+  - packages/Vibe-Workflow/packages/workflow-builder
+  - packages/Open-Poe-AI/packages/agents
+  - apps/cutai/frontend
+allowBuilds:
+  electron: true
+  esbuild: true
+  sharp: true
+  unrs-resolver: true
+overrides:
+  react-konva: 19.2.4
+patchedDependencies:
+  html-encoding-sniffer@6.0.0: patches/html-encoding-sniffer@6.0.0.patch

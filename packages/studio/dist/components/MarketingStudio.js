@@ -6,14 +6,22 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports["default"] = MarketingStudio;
 var _react = require("react");
+var _reactHotToast = _interopRequireWildcard(require("react-hot-toast"));
 var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
 var _AiAssistantProvider = require("../../../../components/AiAssistantProvider");
 var _muapi = require("../muapi.js");
 var _useTemplateData2 = require("../hooks/useTemplateData");
 var _TemplateBanner = _interopRequireDefault(require("./TemplateBanner"));
 var _storyboardHandoff = require("../storyboardHandoff.js");
+var _skillStore = require("../lib/skillStore");
+var _registry = _interopRequireDefault(require("../skills/registry.json"));
+var _promptRecipes = require("../lib/promptRecipes");
+var _marketingStudio = _interopRequireDefault(require("../messages/en/marketingStudio.json"));
+var _marketingStudio2 = _interopRequireDefault(require("../messages/zh/marketingStudio.json"));
+var _i18nUtils = require("../i18nUtils");
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
+function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function _interopRequireWildcard(e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, "default": e }; if (null === e || "object" != _typeof(e) && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (var _t6 in e) "default" !== _t6 && {}.hasOwnProperty.call(e, _t6) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, _t6)) && (i.get || i.set) ? o(f, _t6, i) : f[_t6] = e[_t6]); return f; })(e, t); }
 function _regeneratorValues(e) { if (null != e) { var t = e["function" == typeof Symbol && Symbol.iterator || "@@iterator"], r = 0; if (t) return t.call(e); if ("function" == typeof e.next) return e; if (!isNaN(e.length)) return { next: function next() { return e && r >= e.length && (e = void 0), { value: e && e[r++], done: !e }; } }; } throw new TypeError(_typeof(e) + " is not iterable"); }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
@@ -388,7 +396,10 @@ function MarketingStudio(_ref4) {
   var apiKey = _ref4.apiKey,
     droppedFiles = _ref4.droppedFiles,
     onFilesHandled = _ref4.onFilesHandled,
-    templateData = _ref4.templateData;
+    templateData = _ref4.templateData,
+    _ref4$locale = _ref4.locale,
+    locale = _ref4$locale === void 0 ? "en" : _ref4$locale;
+  var copy = (0, _i18nUtils.resolveCopy)(_marketingStudio["default"], _marketingStudio2["default"], locale);
   var PERSIST_KEY = "hg_marketing_studio_persistent";
   var _useState = (0, _react.useState)(""),
     _useState2 = _slicedToArray(_useState, 2),
@@ -444,12 +455,12 @@ function MarketingStudio(_ref4) {
 
   // ── Apply pending Skills recipe (set by SkillsBrowser) ────────────────────
   (0, _react.useEffect)(function () {
-    var pending = getPendingRecipe("marketing");
+    var pending = (0, _skillStore.getPendingRecipe)("marketing");
     if (!pending) return;
-    var skill = registry.skills.find(function (s) {
+    var skill = _registry["default"].skills.find(function (s) {
       return s.slug === pending;
     });
-    clearPendingRecipe("marketing");
+    (0, _skillStore.clearPendingRecipe)("marketing");
     if (!skill) return;
     applyRecipe(skill);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -490,7 +501,7 @@ function MarketingStudio(_ref4) {
     (skill.inputs || []).forEach(function (i) {
       vals[i.name] = "";
     });
-    setPrompt(fillTemplate(step0.prompt || skill.description || "", vals));
+    setPrompt((0, _promptRecipes.fillTemplate)(step0.prompt || skill.description || "", vals));
   }
 
   // ── Persistence ───────────────────────────────────────────────────────────
@@ -651,7 +662,7 @@ function MarketingStudio(_ref4) {
                   case 3:
                     _context2.p = 3;
                     _t2 = _context2.v;
-                    alert(_t2.message);
+                    _reactHotToast["default"].error(_t2.message);
                   case 4:
                     return _context2.a(2);
                 }
@@ -722,7 +733,7 @@ function MarketingStudio(_ref4) {
               _context4.n = 1;
               break;
             }
-            return _context4.a(2, alert("Please enter an ad script."));
+            return _context4.a(2, _reactHotToast["default"].error("Please enter an ad script."));
           case 1:
             if (productImage) {
               _context4.n = 2;
@@ -761,7 +772,7 @@ function MarketingStudio(_ref4) {
           case 5:
             _context4.p = 5;
             _t5 = _context4.v;
-            alert("Generation failed: " + _t5.message);
+            _reactHotToast["default"].error("Generation failed: " + _t5.message);
           case 6:
             _context4.p = 6;
             setIsGenerating(false);
@@ -785,7 +796,12 @@ function MarketingStudio(_ref4) {
 
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     className: "w-full h-full flex flex-col items-center justify-center bg-app-bg relative p-4 md:p-6 overflow-hidden",
-    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("style", {
+    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_reactHotToast.Toaster, {
+      position: "top-right",
+      containerStyle: {
+        zIndex: 99999
+      }
+    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("style", {
       children: SCROLLBAR_STYLE
     }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
       className: "flex-1 overflow-y-auto custom-scrollbar p-6 pb-40",

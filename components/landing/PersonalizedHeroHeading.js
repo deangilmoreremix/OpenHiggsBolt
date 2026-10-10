@@ -1,5 +1,6 @@
 'use client';
 
+import { useUser } from '@clerk/nextjs';
 import AnimatedHeadline from './AnimatedHeadline';
 import {
   HERO_ANIMATED_CREATION_TYPES,

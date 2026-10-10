@@ -3,6 +3,8 @@ import { getServerVFXClient } from '@/api/vfx'
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
 import { ENTITLEMENTS } from '@/access/entitlements'
 
+export const dynamic = "force-dynamic";
+
 /**
  * Cancel endpoint.
  *

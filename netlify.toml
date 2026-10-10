@@ -3,7 +3,7 @@
   # generated before the root Next.js build can resolve them.
   command = "pwd && ls -la && rm -rf node_modules/electron/dist && set -x && npm run build:metadata && npm run build:packages && npm run build"
   publish = ".next"
-  exclude = ["electron/dist/**", "playwright/**"]
+  exclude = ["electron/dist/**", "playwright/**", "src/**", "index.html", "vite.svg", "public/vite.svg", "electron/**", "*.md", "!public/**", ".next/cache/**"]
 
   [build.environment]
     # Ensure build-time dependencies (tailwindcss, autoprefixer, jsdom, babel, etc.)
@@ -15,6 +15,15 @@
     ELECTRON_SKIP_BINARY_DOWNLOAD = "1"
     # Match local development Node version.
     NODE_VERSION = "22"
+    # Allow pnpm to run ignored build scripts for electron, esbuild, sharp, unrs-resolver
+    PNPM_ALLOW_BUILD_SCRIPTS = "electron,esbuild,sharp,unrs-resolver"
+    PNPM_IGNORE_BUILDS = "false"
+    # Use shallow submodule clones (depth=1) to avoid fetching historical commits
+    # that reference invalid submodule commits (e.g., 36bdba26ae36a5cc73e6c2cb8e5ec5759d98f741)
+    GIT_SUBMODULE_DEPTH = "1"
+
+[site]
+  site_id = "76f606a3-8546-440f-8469-33a0236a8a23"
 
 [[headers]]
   for = "/*"

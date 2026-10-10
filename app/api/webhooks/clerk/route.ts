@@ -5,6 +5,8 @@ import { getSupabaseAdmin } from '../../../../src/lib/supabaseServer';
 import { grantEntitlement } from '@/access/resolveAccess';
 import { ENTITLEMENTS } from '@/access/entitlements';
 
+export const dynamic = "force-dynamic";
+
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { brands, type Brand } from '@/shared/brandStore'
 import { apiError } from '@/lib/apiError'
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   const id = new URL(req.url).searchParams.get('id')
   if (!id) return apiError('bad_request', 'id required', 400)

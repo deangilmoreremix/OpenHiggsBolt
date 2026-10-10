@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveSmartVideoAccess } from '@/access/resolveAccess';
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const result = await resolveSmartVideoAccess();

@@ -13,19 +13,29 @@ require("react-toastify/dist/ReactToastify.css");
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function _interopRequireWildcard(e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, "default": e }; if (null === e || "object" != _typeof(e) && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (var _t in e) "default" !== _t && {}.hasOwnProperty.call(e, _t) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, _t)) && (i.get || i.set) ? o(f, _t, i) : f[_t] = e[_t]); return f; })(e, t); }
 var WorkflowUI = function WorkflowUI(_ref) {
-  var workflowId = _ref.workflowId,
+  var apiKey = _ref.apiKey,
+    workflowId = _ref.workflowId,
     initialNodeSchemas = _ref.initialNodeSchemas,
-    initialWorkflowData = _ref.initialWorkflowData;
+    initialWorkflowData = _ref.initialWorkflowData,
+    onGenerationStart = _ref.onGenerationStart,
+    onGenerationEnd = _ref.onGenerationEnd,
+    onGenerationComplete = _ref.onGenerationComplete,
+    onGenerationError = _ref.onGenerationError;
   (0, _react.useEffect)(function () {
     sessionStorage.setItem("fromWorkflowBuilder", "true");
   }, []);
   return /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
     className: "w-full h-full bg-black",
     children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_workflowBuilder.WorkflowBuilder, {
+      apiKey: apiKey,
       workflowId: workflowId,
       initialNodeSchemas: initialNodeSchemas,
       initialWorkflowData: initialWorkflowData,
-      costType: "dollars"
+      costType: "dollars",
+      onGenerationStart: onGenerationStart,
+      onGenerationEnd: onGenerationEnd,
+      onGenerationComplete: onGenerationComplete,
+      onGenerationError: onGenerationError
     })
   });
 };

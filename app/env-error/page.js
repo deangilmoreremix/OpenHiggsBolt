@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 export default function EnvErrorPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#050505] px-4">
