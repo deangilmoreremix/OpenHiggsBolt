@@ -10,7 +10,7 @@ describe('AppsStudio', () => {
 
   it('renders the SmartVideo GO AI Apps heading', () => {
     render(<AppsStudio />);
-    expect(screen.getByText('AI Apps')).toBeDefined();
+    expect(screen.getByText('LAUNCH AN AI APP.')).toBeDefined();
   });
 
   it('renders SmartVideo GO AI branding', () => {
@@ -23,9 +23,33 @@ describe('AppsStudio', () => {
     expect(screen.queryByText(/SmartVisual/i)).toBeNull();
   });
 
+  it('renders the Revenue-Ready Templates badge', () => {
+    render(<AppsStudio />);
+    expect(screen.getByText('Revenue-Ready Templates')).toBeDefined();
+  });
+
+  it('renders the second headline line', () => {
+    render(<AppsStudio />);
+    expect(screen.getByText('START EARNING TODAY.')).toBeDefined();
+  });
+
+  it('renders all three revenue steps', () => {
+    render(<AppsStudio />);
+    expect(screen.getByText('Deploy in Minutes')).toBeDefined();
+    expect(screen.getByText('Collect Payments')).toBeDefined();
+    expect(screen.getByText('Keep the Revenue')).toBeDefined();
+  });
+
+  it('renders the step numerals', () => {
+    render(<AppsStudio />);
+    expect(screen.getByText('Step 01')).toBeDefined();
+    expect(screen.getByText('Step 02')).toBeDefined();
+    expect(screen.getByText('Step 03')).toBeDefined();
+  });
+
   it('renders the supporting copy', () => {
     render(<AppsStudio />);
-    expect(screen.getByText(/Explore a collection of available AI applications/i)).toBeDefined();
+    expect(screen.getByText(/fully-functional, Stripe-integrated AI SaaS/i)).toBeDefined();
   });
 
   it('renders exactly 38 verified app cards', () => {
@@ -95,11 +119,13 @@ describe('AppsStudio', () => {
     expect(screen.getByText('Nano Banana Studio')).toBeDefined();
   });
 
-  it('filters apps by search query', () => {
+  it('filters apps by search query', async () => {
     render(<AppsStudio />);
     const searchInputs = screen.getAllByPlaceholderText('Search SmartVideo GO AI Apps...');
     const searchInput = searchInputs[0];
     fireEvent.change(searchInput, { target: { value: 'headshot' } });
+    // Wait for debounce (300ms) + rendering
+    await new Promise(resolve => setTimeout(resolve, 400));
     expect(screen.getByText('AI Headshot Studio')).toBeDefined();
     expect(screen.queryByText('AI Clipping Studio')).toBeNull();
   });
@@ -126,13 +152,16 @@ describe('AppsStudio', () => {
     expect(cards.length).toBe(38);
   });
 
-  it('clears search when input is cleared', () => {
+  it('clears search when input is cleared', async () => {
     render(<AppsStudio />);
     const searchInputs = screen.getAllByPlaceholderText('Search SmartVideo GO AI Apps...');
     const searchInput = searchInputs[0];
     fireEvent.change(searchInput, { target: { value: 'headshot' } });
+    // Wait for debounce
+    await new Promise(resolve => setTimeout(resolve, 400));
     expect(screen.queryByText('AI Clipping Studio')).toBeNull();
     fireEvent.change(searchInput, { target: { value: '' } });
+    await new Promise(resolve => setTimeout(resolve, 400));
     const cards = screen.getAllByRole('heading', { level: 3 });
     expect(cards.length).toBe(38);
   });
@@ -166,11 +195,13 @@ describe('AppsStudio', () => {
     expect(screen.getAllByText('Business').length).toBeGreaterThan(0);
   });
 
-  it('shows empty state when no apps match', () => {
+  it('shows empty state when no apps match', async () => {
     render(<AppsStudio />);
     const searchInputs = screen.getAllByPlaceholderText('Search SmartVideo GO AI Apps...');
     const searchInput = searchInputs[0];
     fireEvent.change(searchInput, { target: { value: 'xyznonexistent' } });
+    // Wait for debounce
+    await new Promise(resolve => setTimeout(resolve, 400));
     expect(screen.getByText('No apps found matching your criteria.')).toBeDefined();
   });
 });

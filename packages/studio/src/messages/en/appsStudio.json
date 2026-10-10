@@ -1,9 +1,23 @@
 {
   "hero": {
-    "badge": "AI Apps",
-    "titleLine1": "SmartVideo GO AI Apps",
-    "titleLine2": "",
-    "subtitle": "Explore a collection of available AI applications, tools, and open-source experiences for creative, business, image, video, and productivity workflows."
+    "badge": "Revenue-Ready Templates",
+    "titleLine1": "LAUNCH AN AI APP.",
+    "titleLine2": "START EARNING TODAY.",
+    "subtitle": "Each template is a fully-functional, Stripe-integrated AI SaaS you can deploy to Vercel in minutes. Charge your users, keep the revenue — Muapi handles the AI infrastructure."
+  },
+  "steps": {
+    "step1": {
+      "title": "Deploy in Minutes",
+      "description": "Fork the open-source template, add your Muapi key, and push to Vercel. No backend setup needed."
+    },
+    "step2": {
+      "title": "Collect Payments",
+      "description": "Stripe is pre-wired. Set your own pricing — one-time credits, subscriptions, or pay-per-use."
+    },
+    "step3": {
+      "title": "Keep the Revenue",
+      "description": "Payments go straight to your Stripe account. You own the product, the brand, and the profits."
+    }
   },
   "card": {
     "github": "GitHub",
@@ -15,6 +29,19 @@
   },
   "filter": {
     "all": "All"
+  },
+  "categories": {
+    "all": "All",
+    "image": "Image",
+    "video": "Video",
+    "business": "Business",
+    "productivity": "Productivity",
+    "audio": "Audio",
+    "creative": "Creative",
+    "realEstate": "Real Estate",
+    "design": "Design",
+    "lifestyle": "Lifestyle",
+    "marketing": "Marketing"
   },
   "empty": {
     "noResults": "No apps found matching your criteria."
