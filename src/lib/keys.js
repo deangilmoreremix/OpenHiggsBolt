@@ -7,7 +7,11 @@
  * empty for end users, so OpenAI image generation always failed with an auth
  * error. Centralizing resolution here guarantees every endpoint category
  * (image / video / social / openai) pulls the key from the same user-supplied
- * source, with a safe env-var fallback for server/SSR builds.
+ * source.
+ *
+ * BYOK note: the MuAPI key has NO env fallback. A server-side MuAPI key would
+ * let an upstream call bill the operator instead of the requesting user, so a
+ * missing key resolves to '' and the UI prompts the user to add it in Settings.
  */
 
 export const MUAPI_KEY_STORAGE = 'muapi_key';
@@ -30,24 +34,25 @@ function readStorage(key) {
 
 /**
  * Resolve the MuAPI key.
- * Priority: explicit arg > window.__MUAPI_KEY__ > localStorage > env.
+ * Priority: explicit arg > window.__MUAPI_KEY__ > localStorage.
+ * No server-side env fallback (BYOK): with nothing configured this returns ''
+ * and the caller prompts the user to add their key in Settings.
  */
 export function resolveMuapiKey(explicitKey) {
   if (explicitKey && String(explicitKey).trim()) return String(explicitKey).trim();
   if (typeof window !== 'undefined' && window.__MUAPI_KEY__) return window.__MUAPI_KEY__;
   const stored = readStorage(MUAPI_KEY_STORAGE);
   if (stored && stored.trim()) return stored.trim();
-  const env =
-    (typeof process !== 'undefined' && process.env && (process.env.MUAPI_API_KEY || process.env.MUAPI_KEY)) ||
-    '';
-  return env ? String(env).trim() : '';
+  return '';
 }
 
 /**
  * Resolve the OpenAI key.
  * Priority: explicit arg > localStorage > build-time env var.
- * NOTE: env fallback is only meaningful for server-side builds; for browser
- * users the key MUST come from localStorage set via the Settings popup.
+ * NOTE: the env fallback is the user-supplied `NEXT_PUBLIC_OPENAI_API_KEY`
+ * (public, baked into the client bundle by the user's own build) — never a
+ * server secret. For browser users the key comes from localStorage set via
+ * the Settings popup.
  */
 export function resolveOpenAIKey(explicitKey) {
   if (explicitKey && String(explicitKey).trim()) return String(explicitKey).trim();
