@@ -1,34 +1,70 @@
 {
   "hero": {
-    "badge": "Revenue-Ready Templates",
-    "titleLine1": "LAUNCH AN AI APP.",
-    "titleLine2": "START EARNING TODAY.",
-    "subtitle": "Each template is a fully-functional, Stripe-integrated AI SaaS you can deploy to Vercel in minutes. Charge your users, keep the revenue — Muapi handles the AI infrastructure."
+    "badge": "SMARTVIDEO AI APPS RESELLER PROGRAM",
+    "titleLine1": "Your Apps.",
+    "titleLine2": "Your Brand.",
+    "titleLine3": "Your Business.",
+    "subtitle": "Discover AI applications you can customize, brand, and launch. Build independently or learn step by step with our guided training package."
+  },
+  "packages": {
+    "heading": "Choose How You Build",
+    "subheading": "Two ways to get the full application collection.",
+    "diy": {
+      "name": "DIY App Builder",
+      "price": "$197",
+      "priceLabel": "one-time",
+      "positioning": "Get the apps and create your own AI software business at your own pace.",
+      "feature1": "Every application in the reseller collection",
+      "feature2": "Included source files and setup documentation",
+      "feature3": "Deployment and customization resources",
+      "feature4": "Self-guided: no instructor-led training",
+      "cta": "Get All Apps"
+    },
+    "training": {
+      "name": "Apps + Training",
+      "price": "$597",
+      "priceLabel": "one-time",
+      "positioning": "Get the apps and learn directly how to build, customize, and launch them.",
+      "feature1": "Everything in the DIY App Builder package",
+      "feature2": "Instructor-led training on the applications",
+      "feature3": "Guided implementation and customization lessons",
+      "feature4": "Deployment and launch walkthroughs",
+      "cta": "Get All Apps + Training"
+    },
+    "upgrade": "Upgrade from DIY App Builder to Apps + Training for a $400 difference.",
+    "checkoutPending": "Checkout is not configured yet. Purchases stay unavailable until verified Stripe products are linked.",
+    "recommended": "Most complete"
   },
   "steps": {
+    "heading": "How It Works",
     "step1": {
-      "title": "Deploy in Minutes",
-      "description": "Fork the open-source template, add your Muapi key, and push to Vercel. No backend setup needed."
+      "title": "Choose Your App",
+      "description": "Explore the included AI application collection and preview working examples."
     },
     "step2": {
-      "title": "Collect Payments",
-      "description": "Stripe is pre-wired. Set your own pricing — one-time credits, subscriptions, or pay-per-use."
+      "title": "Customize & Build",
+      "description": "Access the included application files and learn how to configure, brand, and deploy the software."
     },
     "step3": {
-      "title": "Keep the Revenue",
-      "description": "Payments go straight to your Stripe account. You own the product, the brand, and the profits."
+      "title": "Launch Your Business",
+      "description": "Follow the launch resources to prepare your product, configure payments, and market your service."
     }
   },
   "card": {
     "github": "GitHub",
-    "demo": "Live Demo",
-    "templateFallback": "App"
+    "demo": "Try Live Demo",
+    "details": "View App Details",
+    "templateFallback": "App",
+    "thumbnailLoading": "Loading preview",
+    "thumbnailFailed": "Preview unavailable"
   },
   "search": {
     "placeholder": "Search SmartVideo GO AI Apps..."
   },
   "filter": {
-    "all": "All"
+    "all": "All",
+    "label": "Filter applications by category",
+    "results": "Showing {count} of {total} applications"
   },
   "categories": {
     "all": "All",
@@ -45,5 +81,9 @@
   },
   "empty": {
     "noResults": "No apps found matching your criteria."
+  },
+  "gallery": {
+    "heading": "The Application Collection",
+    "subheading": "Every application included in the reseller package."
   }
 }

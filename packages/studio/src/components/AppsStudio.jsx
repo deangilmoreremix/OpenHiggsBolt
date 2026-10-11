@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { FaGithub, FaExternalLinkAlt, FaSearch } from "react-icons/fa";
+import { FaGithub, FaExternalLinkAlt, FaSearch, FaCheck } from "react-icons/fa";
 import en from "../messages/en/appsStudio.json";
 import zh from "../messages/zh/appsStudio.json";
 import { resolveCopy } from "../i18nUtils";
@@ -377,6 +377,9 @@ export default function AppsStudio({ locale = "en" }) {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [failedImages, setFailedImages] = useState(new Set());
+  // Thumbnails are hotlinked from a CDN, so each one resolves asynchronously;
+  // track which have loaded so the skeleton can be replaced by the image.
+  const [loadedImages, setLoadedImages] = useState(new Set());
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -404,57 +407,139 @@ export default function AppsStudio({ locale = "en" }) {
   }, [debouncedSearchQuery, selectedCategory, copy]);
 
   return (
-    <div className="h-full w-full flex flex-col items-center bg-[#030303] overflow-y-auto custom-scrollbar relative">
-      <div className="flex flex-col gap-10 items-center w-full max-w-7xl pt-12 pb-24 px-6">
-        
-        {/* Marketing Header */}
-        <div className="text-center space-y-6 max-w-4xl">
+    <div className="w-full h-full flex flex-col items-center bg-app-bg relative overflow-hidden">
+      <main className="flex-1 w-full max-w-7xl mx-auto overflow-y-auto custom-scrollbar pb-40 lg:pb-32 px-4 md:px-6 pt-10 md:pt-14">
+
+        {/* ── Hero ─────────────────────────────────────────────────────── */}
+        <header className="text-center space-y-5 max-w-4xl mx-auto">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#22d3ee]/10 border border-[#22d3ee]/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#22d3ee]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#22d3ee]" aria-hidden="true" />
             <span className="text-[11px] font-bold uppercase tracking-widest text-[#22d3ee]">
               {copy.hero.badge}
             </span>
           </div>
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-black text-white tracking-tighter leading-[0.95]">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-tighter leading-[0.95]">
             <span className="block">{copy.hero.titleLine1}</span>
-            <span className="block text-[#22d3ee]">{copy.hero.titleLine2}</span>
+            <span className="block">{copy.hero.titleLine2}</span>
+            <span className="block text-[#22d3ee]">{copy.hero.titleLine3}</span>
           </h1>
-          <p className="text-white/40 text-sm md:text-base font-medium leading-relaxed max-w-2xl mx-auto">
+          <p className="text-white/60 text-sm md:text-base font-medium leading-relaxed max-w-2xl mx-auto">
             {copy.hero.subtitle}
           </p>
-        </div>
+        </header>
 
-        {/* Steps Section */}
-        <div className="w-full max-w-5xl">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* ── Reseller packages ────────────────────────────────────────── */}
+        <section aria-labelledby="packages-heading" className="w-full max-w-5xl mx-auto pt-10 md:pt-14 space-y-5">
+          <div className="text-center space-y-1.5">
+            <h2 id="packages-heading" className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              {copy.packages.heading}
+            </h2>
+            <p className="text-white/60 text-xs sm:text-sm font-medium">{copy.packages.subheading}</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
-              { id: "step1", num: "01" },
-              { id: "step2", num: "02" },
-              { id: "step3", num: "03" },
+              { key: 'diy', featured: false },
+              { key: 'training', featured: true },
+            ].map(({ key, featured }) => {
+              const pkg = copy.packages[key];
+              return (
+                <article
+                  key={key}
+                  aria-labelledby={`package-${key}-name`}
+                  className={`relative flex flex-col rounded-lg border bg-[#0a0a0a] p-6 transition-all duration-300 ${
+                    featured
+                      ? 'border-[#22d3ee]/40 shadow-xl shadow-[#22d3ee]/10'
+                      : 'border-white/10 hover:border-white/20'
+                  }`}
+                >
+                  {featured && (
+                    <span className="absolute -top-2.5 left-6 inline-flex items-center rounded-full bg-[#22d3ee] px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-black">
+                      {copy.packages.recommended}
+                    </span>
+                  )}
+                  <h3 id={`package-${key}-name`} className="text-sm font-black uppercase tracking-widest text-[#22d3ee]">
+                    {pkg.name}
+                  </h3>
+                  <div className="mt-3 flex items-baseline gap-2">
+                    <span className="text-3xl sm:text-4xl font-black tracking-tighter text-white">{pkg.price}</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-white/50">{pkg.priceLabel}</span>
+                  </div>
+                  <p className="mt-3 text-xs sm:text-sm text-white/60 leading-relaxed font-medium">{pkg.positioning}</p>
+                  <ul className="mt-5 flex-1 space-y-2.5">
+                    {['feature1', 'feature2', 'feature3', 'feature4'].map((f) => (
+                      <li key={f} className="flex items-start gap-2.5 text-xs text-white/70 leading-relaxed">
+                        <FaCheck
+                          aria-hidden="true"
+                          focusable="false"
+                          className={`mt-0.5 shrink-0 text-[10px] ${featured ? 'text-[#22d3ee]' : 'text-white/40'}`}
+                        />
+                        <span>{pkg[f]}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-6 space-y-2.5">
+                    {/* Purchases stay unavailable until a verified Stripe
+                        destination is configured, so this is a disabled
+                        control rather than a link. */}
+                    <button
+                      type="button"
+                      disabled
+                      aria-disabled="true"
+                      className={`w-full rounded-full px-6 py-3 text-sm font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed ${
+                        featured
+                          ? 'bg-[#22d3ee] text-black'
+                          : 'bg-white/5 text-white/60 border border-white/10'
+                      }`}
+                    >
+                      {pkg.cta}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          <p className="text-center text-xs text-white/60 font-medium leading-relaxed max-w-2xl mx-auto">
+            {copy.packages.upgrade}
+          </p>
+          <p role="status" className="text-center text-[11px] text-white/50 font-medium leading-relaxed max-w-2xl mx-auto">
+            {copy.packages.checkoutPending}
+          </p>
+        </section>
+
+        {/* ── How it works ─────────────────────────────────────────────── */}
+        <section aria-labelledby="steps-heading" className="w-full max-w-5xl mx-auto pt-10 md:pt-14 space-y-5">
+          <div className="text-center space-y-1.5">
+            <h2 id="steps-heading" className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              {copy.steps.heading}
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[
+              { id: 'step1', num: '01' },
+              { id: 'step2', num: '02' },
+              { id: 'step3', num: '03' },
             ].map((step) => (
               <div
                 key={step.id}
-                className="relative overflow-hidden bg-white/[0.02] border border-white/10 rounded-2xl p-6 flex flex-col gap-3 transition-all duration-300 hover:border-[#22d3ee]/20 hover:bg-white/[0.04] hover:shadow-lg hover:shadow-cyan-500/5 hover:-translate-y-1"
+                className="relative overflow-hidden bg-white/[0.02] border border-white/10 rounded-lg p-6 flex flex-col gap-3 transition-all duration-300 hover:border-[#22d3ee]/20 hover:bg-white/[0.04]"
               >
-                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#22d3ee]/40 to-transparent" />
-                <span className="text-3xl md:text-4xl font-black tracking-tighter text-[#22d3ee]/50 leading-none">
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#22d3ee]/40 to-transparent" aria-hidden="true" />
+                <span className="text-3xl md:text-4xl font-black tracking-tighter text-[#22d3ee]/70 leading-none">
                   Step {step.num}
                 </span>
-                <h2 className="text-sm font-bold text-white uppercase tracking-tight">
-                  {copy.steps[step.id].title}
-                </h2>
-                <p className="text-xs text-white/40 leading-relaxed font-medium">
-                  {copy.steps[step.id].description}
-                </p>
+                <h3 className="text-base font-bold text-white tracking-tight">{copy.steps[step.id].title}</h3>
+                <p className="text-xs text-white/60 leading-relaxed font-medium">{copy.steps[step.id].description}</p>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Search and Filter */}
-        <div className="w-full max-w-3xl space-y-4">
+        {/* ── Search + filters ─────────────────────────────────────────── */}
+        <nav aria-label={copy.filter.label} className="w-full max-w-3xl mx-auto pt-10 md:pt-14 space-y-4">
           <div className="relative">
-            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm" />
+            <FaSearch aria-hidden="true" focusable="false" className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 text-sm" />
             <label htmlFor="search-apps" className="sr-only">
               {copy.search.placeholder}
             </label>
@@ -464,111 +549,181 @@ export default function AppsStudio({ locale = "en" }) {
               placeholder={copy.search.placeholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 transition-colors"
+              className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-sm text-white placeholder:text-white/50 focus:outline-none focus-visible:border-[#22d3ee] focus-visible:ring-1 focus-visible:ring-[#22d3ee]/30 transition-colors"
             />
           </div>
-          <div className="flex flex-wrap gap-2">
-            {CATEGORIES.map(category => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                  selectedCategory === category
-                    ? 'bg-[#22d3ee]/10 text-[#22d3ee] border border-[#22d3ee]/20'
-                    : 'bg-white/5 text-white/50 border border-white/5 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                {categoryLabel(category, copy)}
-              </button>
-            ))}
+          <div className="flex flex-wrap gap-2" role="group" aria-label={copy.filter.label}>
+            {CATEGORIES.map(category => {
+              const isActive = selectedCategory === category;
+              return (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => setSelectedCategory(category)}
+                  aria-pressed={isActive}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all border focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40 ${
+                    isActive
+                      ? 'bg-[#22d3ee]/15 text-[#22d3ee] border-[#22d3ee]/30'
+                      : 'bg-white/[0.02] text-white/50 border-white/[0.04] hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  {isActive && <FaCheck aria-hidden="true" focusable="false" className="inline mr-1.5 text-[9px]" />}
+                  {categoryLabel(category, copy)}
+                </button>
+              );
+            })}
           </div>
-        </div>
+        </nav>
 
-        {/* Apps Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full">
-          {filteredApps.map((app, index) => (
-            <div 
-              key={app.id}
-              className="group bg-[#0a0a0a] border border-white/5 rounded-lg flex flex-col overflow-hidden transition-all duration-300 hover:border-white/10 hover:bg-[#0f0f0f] hover:shadow-2xl hover:shadow-blue-500/5 hover:-translate-y-1"
-            >
-              {/* Thumbnail Section */}
-              <div className="relative h-44 w-full overflow-hidden bg-white/5">
-                {app.hosted && (
-                  <a
-                    href={app.hosted}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`Open live demo for ${app.name}`}
-                    className="absolute inset-0 z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
-                  />
-                )}
-                {app.thumbnail && !failedImages.has(app.name) ? (
-                  <img
-                    src={app.thumbnail}
-                    alt={app.name}
-                    loading="lazy"
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    onError={() => {
-                    setFailedImages(prev => {
-                      const next = new Set(prev);
-                      next.add(app.name);
-                      return next;
-                    });
-                  }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-600/20 to-indigo-600/20 transition-colors">
-                    <div className="text-4xl opacity-20 text-white group-hover:opacity-40 transition-opacity">
-                      {app.name?.[0] || '?'}
-                    </div>
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
-              </div>
+        {/* ── Application gallery ──────────────────────────────────────── */}
+        <section aria-labelledby="gallery-heading" className="w-full pt-10 md:pt-14 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+            <div className="space-y-1">
+              <h2 id="gallery-heading" className="text-lg sm:text-xl font-black text-white tracking-tight">
+                {copy.gallery.heading}
+              </h2>
+              <p className="text-xs text-white/60 font-medium tracking-wide">{copy.gallery.subheading}</p>
+            </div>
+            <p role="status" aria-live="polite" className="text-xs text-white/60 font-medium tracking-wide">
+              {copy.filter.results
+                .replace('{count}', String(filteredApps.length))
+                .replace('{total}', String(APPS.length))}
+            </p>
+          </div>
 
-              {/* Content Section */}
-              <div className="p-5 flex flex-col flex-1 space-y-4">
-                <div className="flex-1">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-tight mb-1 truncate">{app.name}</h3>
-                  <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-2">{categoryLabel(app.category, copy)}</p>
-                  <p className="text-xs text-white/50 leading-relaxed font-medium line-clamp-2 min-h-[2.5rem]">{app.description}</p>
-                </div>
-                
-                {/* Action Buttons */}
-                <div className="flex items-center gap-2 pt-2">
-                  <a
-                    href={app.repo}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 py-2 bg-white/5 text-white rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/10 transition-all border border-white/5 active:scale-95"
-                  >
-                    <FaGithub className="text-xs" />
-                    {copy.card.github}
-                  </a>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
+            {filteredApps.map(app => (
+              <article
+                key={app.id}
+                className="group bg-[#0a0a0a] border border-white/10 rounded-lg flex flex-col overflow-hidden transition-all duration-300 hover:border-[#22d3ee]/40 hover:shadow-xl hover:shadow-[#22d3ee]/10 hover:-translate-y-1"
+              >
+                {/* Thumbnail — consistent 16:10 aspect at every breakpoint */}
+                <div className="relative aspect-[16/10] w-full overflow-hidden bg-white/5">
                   {app.hosted && (
                     <a
                       href={app.hosted}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 py-2 bg-[#22d3ee]/10 text-[#22d3ee] rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[#22d3ee]/20 transition-all border border-[#22d3ee]/20 active:scale-95"
-                    >
-                      <FaExternalLinkAlt className="text-[9px]" />
-                      {copy.card.demo}
-                    </a>
+                      aria-label={`Open live demo for ${app.name}`}
+                      className="absolute inset-0 z-10 rounded-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#22d3ee]"
+                    />
                   )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+                  {app.thumbnail && !failedImages.has(app.id) ? (
+                    <img
+                      src={app.thumbnail}
+                      alt={`${app.name} preview`}
+                      width={320}
+                      height={200}
+                      loading="lazy"
+                      sizes="(max-width: 767px) 100vw, (max-width: 1023px) 50vw, 25vw"
+                      className={`h-full w-full object-cover transition-all duration-500 group-hover:scale-110 ${
+                        loadedImages.has(app.id) ? 'opacity-100' : 'opacity-0'
+                      }`}
+                      onLoad={() => {
+                        setLoadedImages(prev => {
+                          const next = new Set(prev);
+                          next.add(app.id);
+                          return next;
+                        });
+                      }}
+                      onError={() => {
+                        setFailedImages(prev => {
+                          const next = new Set(prev);
+                          next.add(app.id);
+                          return next;
+                        });
+                      }}
+                    />
+                  ) : (
+                    <div
+                      role="img"
+                      aria-label={copy.card.thumbnailFailed}
+                      className="h-full w-full flex items-center justify-center bg-gradient-to-br from-[#22d3ee]/20 to-transparent"
+                    >
+                      <span className="text-5xl font-black text-white opacity-60 group-hover:opacity-80 transition-opacity">
+                        {app.name?.[0] || '?'}
+                      </span>
+                    </div>
+                  )}
 
-        {/* Empty State */}
+                  {/* Real loading skeleton: CDN thumbnails fetch asynchronously */}
+                  {app.thumbnail && !failedImages.has(app.id) && !loadedImages.has(app.id) && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a0a]" role="status">
+                      <span
+                        aria-hidden="true"
+                        className="h-6 w-6 rounded-full border-2 border-white/10 border-t-[#22d3ee] animate-spin"
+                      />
+                      <span className="sr-only">{copy.card.thumbnailLoading}</span>
+                    </div>
+                  )}
+
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden="true" />
+                </div>
+
+                {/* Content */}
+                <div className="p-5 flex flex-col flex-1 space-y-4">
+                  <div className="flex-1">
+                    <h3 className="text-base font-extrabold text-white tracking-tight mb-1" title={app.name}>
+                      {app.name}
+                    </h3>
+                    <p className="text-[11px] text-white/60 font-bold uppercase tracking-widest mb-2">
+                      {categoryLabel(app.category, copy)}
+                    </p>
+                    <p className="text-xs text-white/60 leading-relaxed font-medium line-clamp-2 min-h-[2.5rem]">
+                      {app.description}
+                    </p>
+                  </div>
+
+                  {/* Actions: demo is primary, details secondary, GitHub tertiary */}
+                  <div className="flex flex-col gap-2 pt-1">
+                    {app.hosted ? (
+                      <a
+                        href={app.hosted}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 rounded-full bg-[#22d3ee] px-4 py-2 text-xs font-bold text-black transition-all hover:opacity-95 active:scale-[0.98] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40"
+                      >
+                        <FaExternalLinkAlt aria-hidden="true" focusable="false" className="text-[9px]" />
+                        {copy.card.demo}
+                      </a>
+                    ) : null}
+                    <a
+                      href={app.repo}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 rounded-full bg-white/5 px-4 py-2 text-xs font-bold text-white border border-white/10 transition-all hover:bg-white/10 active:scale-[0.98] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40"
+                    >
+                      {copy.card.details}
+                    </a>
+                  </div>
+                </div>
+
+                {/* GitHub attribution stays reachable but is not the primary action */}
+                <div className="border-t border-white/5 bg-black/40 px-5 py-3">
+                  <a
+                    href={app.repo}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${copy.card.github} — ${app.name}`}
+                    className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-white/50 transition-colors hover:text-[#22d3ee] focus:outline-none focus-visible:text-[#22d3ee] focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40 rounded"
+                  >
+                    <FaGithub aria-hidden="true" focusable="false" className="text-sm" />
+                    {copy.card.github}
+                  </a>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Empty state ──────────────────────────────────────────────── */}
         {filteredApps.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-white/30 text-sm font-medium">{copy.empty.noResults}</p>
+          <div className="py-16 flex flex-col items-center gap-3" role="status">
+            <FaSearch aria-hidden="true" focusable="false" className="text-secondary text-2xl" />
+            <p className="text-white/60 text-sm font-medium">{copy.empty.noResults}</p>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }
