@@ -102,21 +102,22 @@ function isLikelyJunk(url) {
   return false
 }
 
-async function collectBrowserCandidates(baseUrl, pages, pageTelemetry) {
-  const browser = await chromium.launch({
+async function collectBrowserCandidates(baseUrl, pages, pageTelemetry, existingBrowser) {
+  const ownsBrowser = !existingBrowser
+  const browser = existingBrowser || await chromium.launch({
     executablePath: await getChromiumExecutablePath(),
     args: await getBrowserArgs(),
   })
 
-  const context = await browser.newContext({
-    userAgent: 'Mozilla/5.0 (compatible; AssetDiscovery/1.0; +https://example.com/bot)',
-    viewport: { width: 1280, height: 900 },
-  })
-
+  let context = null
   let pagesCrawled = 0
   const allCandidates = []
 
   try {
+    context = await browser.newContext({
+      userAgent: 'Mozilla/5.0 (compatible; AssetDiscovery/1.0; +https://example.com/bot)',
+      viewport: { width: 1280, height: 900 },
+    })
     await context.route('**/*', async (route, request) => {
       const resourceType = request.resourceType()
       const url = request.url()
@@ -255,9 +256,18 @@ async function collectBrowserCandidates(baseUrl, pages, pageTelemetry) {
     }
   } finally {
     try {
-      await context.close()
+      if (context) {
+        await context.close()
+      }
     } catch {
       // ignore context close errors
+    }
+    if (ownsBrowser) {
+      try {
+        await browser.close()
+      } catch {
+        // ignore browser close errors
+      }
     }
   }
 
@@ -371,8 +381,9 @@ async function handler(event) {
     let finalResult = null
     const pageTelemetry = []
 
+    let browser = null
     try {
-      const browser = await chromium.launch({
+      browser = await chromium.launch({
         executablePath: browserExecutableResolved !== 'playwright-managed' ? browserExecutableResolved : undefined,
         args: await getBrowserArgs(),
       })
@@ -382,7 +393,7 @@ async function handler(event) {
         ? priorityPages.slice(0, 4)
         : [websiteUrl]
 
-      const { candidates, pagesCrawled } = await collectBrowserCandidates(websiteUrl, pages, pageTelemetry)
+      const { candidates, pagesCrawled } = await collectBrowserCandidates(websiteUrl, pages, pageTelemetry, browser)
 
       browserCandidates = candidates.length
       browserOnlyCandidates = candidates.length
@@ -455,12 +466,12 @@ async function handler(event) {
         })
         .eq('id', jobId)
     } finally {
-      try {
-        if (typeof browser !== 'undefined' && browser !== null) {
+      if (browser) {
+        try {
           await browser.close()
+        } catch {
+          // ignore
         }
-      } catch {
-        // ignore
       }
     }
 

@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
-import { ENTITLEMENTS } from '@/access/entitlements'
 import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer'
 import { rateLimit, rateLimit429 } from '@/lib/rateLimit'
 
@@ -54,14 +52,6 @@ function validImageReference(value: unknown): value is string {
 export async function POST(req: NextRequest) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
-
-  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
-  if (!entitlementCheck.allowed) {
-    if (entitlementCheck.status === 401) {
-      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
-    }
-    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO)
-  }
 
   const limit = rateLimit(`personalization-smart-edit:${userId}`, { windowMs: 60_000, max: 10 })
   if (!limit.allowed) return rateLimit429(limit.retryAfterMs)
