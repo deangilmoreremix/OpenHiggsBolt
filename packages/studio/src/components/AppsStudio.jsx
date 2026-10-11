@@ -13,7 +13,7 @@ const APPS = [
     description: "Professional AI headshot generator for LinkedIn, team portraits, and personal branding.",
     category: "Image",
     repo: "https://github.com/SamurAIGPT/ai-headshot-generator",
-    hosted: "https://ai-headshot-generator.vercel.app/",
+    hosted: "https://ai-headshot-generator-xi.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/d9c39378f60e48098f6b6ce657dc18b5.png"
   },
   {
@@ -201,6 +201,7 @@ const APPS = [
     description: "Seamlessly combine individual portraits into a high-fidelity group photo.",
     category: "Creative",
     repo: "https://github.com/SamurAIGPT/ai-group-photo",
+    hosted: "https://ai-group-photo-mocha.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/AI_Group_Photo.webp"
   },
   {
@@ -335,7 +336,7 @@ const APPS = [
     description: "Audit landing page AI search visibility and citation potential for ChatGPT, Perplexity, and Gemini.",
     category: "Business",
     repo: "https://github.com/SamurAIGPT/geo-checker",
-    hosted: "https://geo-checker.vercel.app/",
+    hosted: "https://geo-checker-silk.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/GEO_Checker.webp"
   },
   {
