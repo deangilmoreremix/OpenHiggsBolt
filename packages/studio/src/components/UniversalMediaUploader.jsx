@@ -3,16 +3,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { uploadFile } from "../muapi.js";
+import { UPLOAD_LIMITS, getUploadLimit, isAllowedUploadMimeType, formatUploadLimit } from "../uploadContract.js";
 import { formatErrorMessage } from "../utils/formatError.js";
 import { scopedPersistKey } from "../persistKey.js";
 
 const HISTORY_KEY_BASE = "smartvideo_media_upload_history_v1";
 const DRAFT_KEY_BASE = "smartvideo_media_slot_drafts_v1";
 const HISTORY_LIMIT = 40;
+// Ceilings come from the shared upload contract (MuAPI spec: images/audio/others
+// 10MB, video 50MB). Displaying anything looser than what uploadFile() enforces
+// lets a user pick an oversize file and only fail after selecting it.
 const DEFAULT_MAX_BYTES = {
-  image: 20 * 1024 * 1024,
-  video: 100 * 1024 * 1024,
-  audio: 50 * 1024 * 1024,
+  image: UPLOAD_LIMITS.image,
+  video: UPLOAD_LIMITS.video,
+  audio: UPLOAD_LIMITS.audio,
+  other: UPLOAD_LIMITS.other,
 };
 
 function readHistory(historyKey) {
@@ -57,7 +62,14 @@ function writeDraft(storageKey, slotKey, urls) {
 }
 
 function matchesMediaType(file, mediaType) {
-  return Boolean(file?.type?.startsWith(`${mediaType}/`));
+  if (!file?.type) return false;
+  // Delegate to the authoritative allowlist rather than a bare prefix match:
+  // otherwise `image/*` lets heic/gif/bmp/tiff through and they are rejected
+  // only after selection.
+  if (isAllowedUploadMimeType(file, mediaType)) return true;
+  // `other` has no media-type prefix to match on.
+  if (mediaType === 'other') return isAllowedUploadMimeType(file, 'other');
+  return false;
 }
 
 function Preview({ type, url }) {

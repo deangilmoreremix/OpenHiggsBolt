@@ -3,28 +3,57 @@ import { safeApiJson, upstreamErrorResponse } from '@/lib/safeApiResponse';
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
 import { ENTITLEMENTS } from '@/access/entitlements';
 import { getApiKeyFromRequest, isBlockedFileType } from '@/lib/uploadProxyTarget';
+import { getUploadLimit, isAllowedUploadMimeType, formatUploadLimit, ALLOWED_UPLOAD_MIME_TYPES } from '@/lib/uploadConfig';
 
 const MUAPI_UPLOAD_URL = 'https://api.muapi.ai/api/v1/upload_file';
 
-// Mirrors the MuAPI File Upload API contract (https://muapi.ai/docs/file-upload):
-//   Images  10MB  .jpg .png .webp
-//   Videos  50MB  .mp4 .mov
-//   Others  10MB  .zip .pdf .json
-const ALLOWED_UPLOAD_MIME_TYPES = new Set([
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/webp',
-  'video/mp4',
-  'video/webm',
-  'video/quicktime',
-  'audio/mpeg',
-  'audio/wav',
-  'audio/webm',
-  'application/zip',
-  'application/pdf',
-  'application/json',
-]);
+// Size limits and the MIME allowlist are imported from the single authoritative
+// upload contract (packages/studio/src/uploadContract.js). Never re-declare
+// them here — that is how this route previously drifted from the clients.
+// Mirrors https://muapi.ai/docs/file-upload:
+//   Images 10MB .jpg .png .webp | Videos 50MB .mp4 .mov | Others 10MB .zip .pdf .json
+
+// This route is the retry authority for uploads: the browser sends exactly one
+// request and waits longer than this worst case (see the client's policy in
+// packages/studio/src/muapi.js). Keep the client budget in sync if changed:
+//   worst case = UPLOAD_MAX_RETRIES * UPLOAD_ATTEMPT_TIMEOUT_MS + backoff
+const UPLOAD_ATTEMPT_TIMEOUT_MS = 120_000;
+// ── Structured failure classification ────────────────────────────────────────
+// Every upload failure returns a machine-readable `code` plus a human message.
+// The client can branch on `code` without parsing prose; logs get the diagnostic
+// detail. NEVER log or return the api key, the raw upstream body, or the user's
+// original filename (file metadata can itself be sensitive).
+
+export type UploadFailureCode =
+  | 'REJECTED_MULTIPART'
+  | 'REJECTED_NO_FILE'
+  | 'REJECTED_MIME_TYPE'
+  | 'REJECTED_BLOCKED_TYPE'
+  | 'REJECTED_TOO_LARGE'
+  | 'UNAUTHENTICATED'
+  | 'UPSTREAM_UNREACHABLE'
+  | 'UPSTREAM_UNAVAILABLE'
+  | 'UPSTREAM_REJECTED'
+  | 'UPSTREAM_NO_URL'
+  | 'INTERNAL';
+
+function fail(code: UploadFailureCode, message: string, status: number) {
+  return NextResponse.json({ error: message, code }, { status });
+}
+
+/** Extension only — never the full filename. */
+function safeExtension(file: File): string {
+  const dot = file.name.lastIndexOf('.');
+  return dot === -1 ? '(none)' : file.name.slice(dot + 1).toLowerCase().slice(0, 12);
+}
+
+/**
+ * Server-side diagnostic line. Deliberately excludes the api key, the upstream
+ * response body, and the user's filename.
+ */
+function logUploadFailure(code: UploadFailureCode, detail: Record<string, unknown>) {
+  console.warn(`[upload_file] ${code}`, JSON.stringify(detail));
+}
 
 const UPLOAD_MAX_RETRIES = 3;
 const UPLOAD_BASE_DELAY_MS = 1_000;
@@ -34,7 +63,7 @@ async function attemptMuApiUpload(apiKey: string, formData: FormData): Promise<R
     method: 'POST',
     headers: { 'x-api-key': apiKey },
     body: formData,
-    signal: AbortSignal.timeout(120_000),
+    signal: AbortSignal.timeout(UPLOAD_ATTEMPT_TIMEOUT_MS),
   });
 }
 
@@ -81,41 +110,46 @@ export async function POST(request: NextRequest) {
   try {
     const contentType = request.headers.get('content-type') || '';
     if (!contentType.includes('multipart/form-data')) {
-      return NextResponse.json({ error: 'Request must be multipart/form-data' }, { status: 400 });
+      logUploadFailure('REJECTED_MULTIPART', { contentType: contentType.slice(0, 80) });
+      return fail('REJECTED_MULTIPART', 'Request must be multipart/form-data', 400);
     }
 
     const formData = await request.formData();
     const file = formData.get('file');
 
     if (!(file instanceof File)) {
-      return NextResponse.json({ error: 'file is required' }, { status: 400 });
+      logUploadFailure('REJECTED_NO_FILE', { formFields: [...formData.keys()].slice(0, 20) });
+      return fail('REJECTED_NO_FILE', 'file is required', 400);
     }
 
-    if (!ALLOWED_UPLOAD_MIME_TYPES.has(file.type)) {
-      return NextResponse.json(
-        { error: `Invalid file type: ${file.type}. Allowed: ${[...ALLOWED_UPLOAD_MIME_TYPES].join(', ')}` },
-        { status: 400 }
+    if (!isAllowedUploadMimeType(file)) {
+      logUploadFailure('REJECTED_MIME_TYPE', { mime: file.type || '(empty)', ext: safeExtension(file), bytes: file.size });
+      return fail(
+        'REJECTED_MIME_TYPE',
+        `Invalid file type: ${file.type || 'unknown'}. Allowed: ${[...ALLOWED_UPLOAD_MIME_TYPES].join(', ')}`,
+        400
       );
     }
 
     if (isBlockedFileType(file.name, file.type)) {
-      return NextResponse.json(
-        { error: `Blocked file extension or MIME type: ${file.name}` },
-        { status: 400 }
-      );
+      logUploadFailure('REJECTED_BLOCKED_TYPE', { ext: safeExtension(file), mime: file.type || '(empty)' });
+      return fail('REJECTED_BLOCKED_TYPE', 'File type is not permitted', 400);
     }
 
-    const maxBytes = file.type.startsWith('video/') ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+    const maxBytes = getUploadLimit(file);
     if (file.size > maxBytes) {
-      return NextResponse.json(
-        { error: `File too large: ${(file.size / 1024 / 1024).toFixed(1)} MB. Maximum: ${file.type.startsWith('video/') ? '50 MB' : '10 MB'}` },
-        { status: 400 }
+      logUploadFailure('REJECTED_TOO_LARGE', { bytes: file.size, limit: maxBytes, mime: file.type || '(empty)' });
+      return fail(
+        'REJECTED_TOO_LARGE',
+        `File too large: ${(file.size / 1024 / 1024).toFixed(1)} MB. Maximum: ${formatUploadLimit(maxBytes)}`,
+        400
       );
     }
 
     const apiKey = getApiKeyFromRequest(request);
     if (!apiKey) {
-      return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 });
+      logUploadFailure('UNAUTHENTICATED', { reason: 'missing_api_key' });
+      return fail('UNAUTHENTICATED', 'Unauthorized: Missing API key', 401);
     }
 
     const uploadForm = new FormData();
@@ -125,30 +159,35 @@ export async function POST(request: NextRequest) {
     try {
       response = await uploadWithRetry(apiKey, uploadForm);
     } catch (error) {
-      console.error('MuAPI upload failed after retries:', error);
-      
-      if (error instanceof TypeError) {
-        return NextResponse.json(
-          { error: 'Unable to reach MuAPI. Please check your connection and try again.' },
-          { status: 502 }
-        );
-      }
-      
       const message = error instanceof Error ? error.message : '';
-      if (/MuAPI upload failed with status 5\d\d/.test(message)) {
-        return NextResponse.json(
-          { error: 'MuAPI is temporarily unavailable. Please try again in a moment.' },
-          { status: 502 }
-        );
-      }
 
-      // Never echo `message` back: the retry layer embeds the raw upstream body
-      // in the Error text, and that body can contain upstream identifiers.
-      // The exact cause is logged server-side for debugging instead.
-      return NextResponse.json(
-        { error: 'MuAPI upload failed. Please try again.' },
-        { status: 502 }
-      );
+      // Distinguish "never connected" from "connected then rejected" so the
+      // client can decide whether retrying later is worthwhile.
+      const isNetwork = error instanceof TypeError || /fetch failed|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|socket hang up/i.test(message);
+      const code: UploadFailureCode = isNetwork
+        ? 'UPSTREAM_UNREACHABLE'
+        : /status 5\d\d/.test(message)
+          ? 'UPSTREAM_UNAVAILABLE'
+          : 'UPSTREAM_REJECTED';
+
+      // The retry layer's message embeds the raw upstream body, so it is logged
+      // to the server only and never returned to the client.
+      logUploadFailure(code, {
+        attempts: UPLOAD_MAX_RETRIES,
+        mime: file.type,
+        bytes: file.size,
+        upstreamStatus: (message.match(/status (\d{3})/) || [])[1] ?? null,
+        errorClass: error instanceof Error ? error.constructor.name : typeof error,
+      });
+      console.error('[upload_file] upstream detail (server-side only):', message);
+
+      if (isNetwork) {
+        return fail('UPSTREAM_UNREACHABLE', 'Unable to reach MuAPI. Please check your connection and try again.', 502);
+      }
+      if (code === 'UPSTREAM_UNAVAILABLE') {
+        return fail('UPSTREAM_UNAVAILABLE', 'MuAPI is temporarily unavailable. Please try again in a moment.', 502);
+      }
+      return fail('UPSTREAM_REJECTED', 'MuAPI upload failed. Please try again.', 502);
     }
 
     const parsed = await safeApiJson(response);
@@ -159,7 +198,8 @@ export async function POST(request: NextRequest) {
         : undefined;
 
       if (!url || typeof url !== 'string') {
-        return NextResponse.json({ error: 'No URL returned from file upload' }, { status: 502 });
+        logUploadFailure('UPSTREAM_NO_URL', { upstreamStatus: response.status });
+        return fail('UPSTREAM_NO_URL', 'No URL returned from file upload', 502);
       }
 
       return NextResponse.json({

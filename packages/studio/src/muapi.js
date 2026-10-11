@@ -8,6 +8,7 @@ import { buildImageInputPayload, getImageInputValidationError, normalizePrimaryI
 import { pollForGenerationResult } from './utils/generationLifecycle.js';
 import { mapReferenceParams } from './modelCapabilities.js';
 import { buildSupplementalInputPayload } from './modelParameters.js';
+import { getUploadLimit, isAllowedUploadMimeType, formatUploadLimit } from './uploadContract.js';
 
 // In an http(s) browser we route through the host app's proxy (Next.js routes
 // under /api/* re-issue the call server-side) so api.muapi.ai CORS is bypassed.
@@ -16,13 +17,17 @@ const BASE_URL = (typeof window !== 'undefined' && window.location?.protocol?.st
     ? '/api'
     : 'https://api.muapi.ai';
 const PROXY_WF_BASE = '/api/workflow';
-// Server timeout is the source of truth for uploads. app/api/v1/upload_file/route.ts
-// uses AbortSignal.timeout(120_000), so we match that here to avoid premature
-// client-side aborts before the server has had a chance to respond.
-const FILE_UPLOAD_TIMEOUT_MS = 120_000;
+// ── Upload timeout / retry policy ───────────────────────────────────────────
+// The SERVER route (app/api/v1/upload_file/route.ts) is the retry authority:
+// it makes up to 3 attempts, each with a 120s upstream timeout plus exponential
+// backoff, so its worst case is ~366s.
+//
+// The browser therefore makes exactly ONE attempt and waits longer than that
+// server budget. Retrying here would multiply upstream POSTs (up to 3×3) and,
+// worse, abandon still-in-flight server uploads that can succeed afterwards and
+// get duplicated.
+const FILE_UPLOAD_TIMEOUT_MS = 420_000;
 const FILE_UPLOAD_PENDING_PROGRESS = 99;
-const FILE_UPLOAD_MAX_RETRIES = 3;
-const FILE_UPLOAD_BASE_DELAY_MS = 1_000;
 
 function notifyAuthRequired(status, detail) {
     if (typeof window === 'undefined') return;
@@ -322,28 +327,22 @@ export async function generateAudio(apiKey, params) {
 export function uploadFile(apiKey, file, onProgress) {
     return new Promise((resolve, reject) => {
         if (!file) return reject(new Error('No file provided'));
-        // Mirrors the MuAPI File Upload API contract (https://muapi.ai/docs/file-upload):
-        //   Images 10MB .jpg .png .webp | Videos 50MB .mp4 .mov | Others 10MB .zip .pdf .json
-        // Note: this package cannot import src/lib/uploadConfig.ts (separate npm
-        // package), so the allowlist is duplicated here. Keep both in sync.
-        const ALLOWED_MIME_TYPES = new Set([
-            'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
-            'video/mp4', 'video/webm', 'video/quicktime',
-            'audio/mpeg', 'audio/wav', 'audio/webm',
-            'application/zip', 'application/pdf', 'application/json',
-        ]);
-        const normalizedType = file.type === 'image/jpg' ? 'image/jpeg' : file.type;
-        if (!ALLOWED_MIME_TYPES.has(normalizedType)) {
-            return reject(new Error(`Invalid file type: ${file.type}`));
+
+        // Limits and MIME allowlist come from the shared contract — this package
+        // cannot import the host's TypeScript config, so the canonical contract
+        // lives in ./uploadContract.js and is re-exported to the app as
+        // src/lib/uploadConfig.ts. Do not hardcode sizes here.
+        if (!isAllowedUploadMimeType(file)) {
+            return reject(new Error(`Invalid file type: ${file.type || 'unknown'}`));
         }
-        const MAX_FILE_SIZE = file.type.startsWith('video/') ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+        const MAX_FILE_SIZE = getUploadLimit(file);
         if (file.size > MAX_FILE_SIZE) {
-            return reject(new Error(`File too large: ${(file.size/1024/1024).toFixed(1)} MB. Maximum: ${MAX_FILE_SIZE/1024/1024} MB`));
+            return reject(new Error(`File too large: ${(file.size/1024/1024).toFixed(1)} MB. Maximum: ${formatUploadLimit(MAX_FILE_SIZE)}`));
         }
 
         const url = `${BASE_URL}/api/v1/upload_file`;
 
-        async function attemptUpload() {
+        function attemptUpload() {
             const formData = new FormData();
             formData.append('file', file);
 
@@ -372,25 +371,10 @@ export function uploadFile(apiKey, file, onProgress) {
             });
         }
 
-        async function retryableUpload() {
-            let lastError;
-            for (let attempt = 0; attempt < FILE_UPLOAD_MAX_RETRIES; attempt++) {
-                if (attempt > 0) {
-                    const delay = FILE_UPLOAD_BASE_DELAY_MS * attempt;
-                    await new Promise(r => setTimeout(r, delay));
-                }
-
-                try {
-                    const xhr = await attemptUpload();
-                    return xhr;
-                } catch (error) {
-                    lastError = error;
-                }
-            }
-            throw lastError;
-        }
-
-        retryableUpload().then(xhr => {
+        // Single attempt: the server route owns retry (see the timeout policy
+        // comment above). A client-side retry would multiply upstream POSTs and
+        // orphan in-flight server uploads.
+        attemptUpload().then(xhr => {
             if (xhr.status >= 200 && xhr.status < 300) {
                 try {
                     const data = JSON.parse(xhr.responseText);
