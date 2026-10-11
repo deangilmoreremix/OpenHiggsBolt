@@ -13,7 +13,7 @@ const APPS = [
     description: "Professional AI headshot generator for LinkedIn, team portraits, and personal branding.",
     category: "Image",
     repo: "https://github.com/SamurAIGPT/ai-headshot-generator",
-    hosted: "https://ai-headshot-generator-xi.vercel.app/",
+    hosted: "https://ai-headshot-generator.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/d9c39378f60e48098f6b6ce657dc18b5.png"
   },
   {
@@ -22,7 +22,7 @@ const APPS = [
     description: "AI image generation platform with text-to-image and multi-image reference editing.",
     category: "Image",
     repo: "https://github.com/SamurAIGPT/nano-banana-generator",
-    hosted: "https://nano-banana-generator-psi.vercel.app",
+    hosted: "https://nano-banana-generator.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/data/2/874086171651/Screenshot_2026-04-15_103743.png"
   },
   {
@@ -66,6 +66,7 @@ const APPS = [
     description: "AI pet product ad generator that places pet products into stunning lifestyle scenes.",
     category: "Business",
     repo: "https://github.com/SamurAIGPT/pet-product-studio",
+    hosted: "https://pet-product-studio.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/Pet_Product_Studio.jpg"
   },
   {
@@ -74,6 +75,7 @@ const APPS = [
     description: "AI product photo studio for resellers. Swap backgrounds and enhance listing photos.",
     category: "Business",
     repo: "https://github.com/SamurAIGPT/resale-photo-enhancer",
+    hosted: "https://resale-photo-enhancer.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/Resale_Photo_Enhancer.png"
   },
   {
@@ -82,6 +84,7 @@ const APPS = [
     description: "AI-powered blog writer and SEO content management system with rich text editor.",
     category: "Business",
     repo: "https://github.com/SamurAIGPT/blogger-cms",
+    hosted: "https://blogger-cms-psi.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/Blogger_CMS.png"
   },
   {
@@ -90,6 +93,7 @@ const APPS = [
     description: "AI product photography studio for Amazon sellers with multi-image reference and scene presets.",
     category: "Business",
     repo: "https://github.com/SamurAIGPT/amazon-product-studio",
+    hosted: "https://amazon-product-studio.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/Amazon_Product_Studio.webp"
   },
   {
@@ -98,6 +102,7 @@ const APPS = [
     description: "AI digital business card generator with QR sharing, templates, and visitor chatbot.",
     category: "Business",
     repo: "https://github.com/SamurAIGPT/ai-business-card",
+    hosted: "https://ai-business-card-ten.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/AI_Business_Card.webp"
   },
   {
@@ -106,6 +111,7 @@ const APPS = [
     description: "AI email composer and cold outreach assistant with template presets and tone controls.",
     category: "Productivity",
     repo: "https://github.com/SamurAIGPT/mail-wise",
+    hosted: "https://mail-wise-khaki.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/MailWise.png"
   },
   {
@@ -114,6 +120,7 @@ const APPS = [
     description: "AI voiceover and podcast narration studio with fine-grained voice controls.",
     category: "Audio",
     repo: "https://github.com/SamurAIGPT/my-podcast",
+    hosted: "https://my-podcast.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/My_Podcast.webp"
   },
   {
@@ -122,6 +129,7 @@ const APPS = [
     description: "Custom AI knowledge base and chatbot builder with RAG, document upload, and embeddable widgets.",
     category: "Business",
     repo: "https://github.com/SamurAIGPT/ai-knowledge-base",
+    hosted: "https://ai-knowledge-base-six.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/AI_Knowledge_Base.png"
   },
   {
@@ -130,6 +138,7 @@ const APPS = [
     description: "Transform photos into 18th-century royal oil paintings and artistic portrait styles.",
     category: "Creative",
     repo: "https://github.com/SamurAIGPT/ai-royal-portrait",
+    hosted: "https://ai-royal-portrait.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/AI_Royal_Portrait.png"
   },
   {
@@ -138,6 +147,7 @@ const APPS = [
     description: "Viral-ready meme generation based on trending topics with multi-model AI support.",
     category: "Creative",
     repo: "https://github.com/SamurAIGPT/ai-meme-generator",
+    hosted: "https://ai-meme-generator.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/AI_MEME.png"
   },
   {
@@ -146,6 +156,7 @@ const APPS = [
     description: "Virtually furnish and stage empty homes for sale with photorealistic AI staging.",
     category: "Real Estate",
     repo: "https://github.com/SamurAIGPT/ai-real-estate-stager",
+    hosted: "https://ai-real-estate-stager.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/AI_Real_Estate_Stager.webp"
   },
   {
@@ -154,6 +165,7 @@ const APPS = [
     description: "Dynamic brand identity and logo generator with text-to-logo and sketch-to-logo modes.",
     category: "Design",
     repo: "https://github.com/SamurAIGPT/ai-logo-studio",
+    hosted: "https://ai-logo-studio.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/AI_Logo.png"
   },
   {
@@ -162,6 +174,7 @@ const APPS = [
     description: "Restore, colorize, and sharpen vintage family photos with AI.",
     category: "Creative",
     repo: "https://github.com/SamurAIGPT/old-photo-restore",
+    hosted: "https://old-photo-restore.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/OldPhoto.png"
   },
   {
@@ -170,6 +183,7 @@ const APPS = [
     description: "Virtual fitting room for fashion brands. Fit garments onto any person photo with AI.",
     category: "Lifestyle",
     repo: "https://github.com/SamurAIGPT/ai-tryon",
+    hosted: "https://ai-tryon-smoky.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/AITryOn.png"
   },
   {
@@ -178,6 +192,7 @@ const APPS = [
     description: "Try on hundreds of professional makeup looks virtually before buying.",
     category: "Lifestyle",
     repo: "https://github.com/SamurAIGPT/ai-professional-makeup-generator",
+    hosted: "https://ai-professional-makeup-generator.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/AI_Professional_Makeup_Generator.webp"
   },
   {
@@ -194,6 +209,7 @@ const APPS = [
     description: "Visualize tattoos on your body before getting inked with photorealistic AI.",
     category: "Lifestyle",
     repo: "https://github.com/SamurAIGPT/ai-tattoo-try-on",
+    hosted: "https://ai-tattoo-try-on.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/AI_Tattoo_Try_On.webp"
   },
   {
@@ -202,6 +218,7 @@ const APPS = [
     description: "Try on new haircuts and colors with zero commitment using AI.",
     category: "Lifestyle",
     repo: "https://github.com/SamurAIGPT/ai-hair-style-simulator",
+    hosted: "https://ai-hair-style-simulator.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/AI_Hair_Style_Simulator.webp"
   },
   {
@@ -210,6 +227,7 @@ const APPS = [
     description: "Visualize how a child will look as an adult with high-fidelity age progression.",
     category: "Creative",
     repo: "https://github.com/SamurAIGPT/ai-kid-to-adult-prediction",
+    hosted: "https://ai-kid-to-adult-prediction.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/AI_Kids_to_Adult_Prediction.webp"
   },
   {
@@ -218,6 +236,7 @@ const APPS = [
     description: "Instantly clean up messy room photos for listings and virtual staging.",
     category: "Real Estate",
     repo: "https://github.com/SamurAIGPT/ai-room-declutter",
+    hosted: "https://ai-room-declutter.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/AI_Room_Declutter.webp"
   },
   {
@@ -226,6 +245,7 @@ const APPS = [
     description: "Visualize your fitness goals on your own body with photorealistic AI transformation.",
     category: "Lifestyle",
     repo: "https://github.com/SamurAIGPT/ai-fitness-body-simulator",
+    hosted: "https://ai-fitness-body-simulator.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/AI_Fitness_Body_Simulator.webp"
   },
   {
@@ -234,6 +254,7 @@ const APPS = [
     description: "Transform pet photos into oil paintings, royal portraits, and art masterpieces.",
     category: "Lifestyle",
     repo: "https://github.com/SamurAIGPT/ai-pet-portrait",
+    hosted: "https://ai-pet-portrait.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/AI_Pet_Portrait.webp"
   },
   {
@@ -242,6 +263,7 @@ const APPS = [
     description: "Merge two portrait photos into a romantic AI kissing video with multi-model support.",
     category: "Video",
     repo: "https://github.com/SamurAIGPT/ai-kissing-video-generator",
+    hosted: "https://ai-kissing-video-generator-amber.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/AI_Kissing_Video_Generator.webp"
   },
   {
@@ -250,6 +272,7 @@ const APPS = [
     description: "Place yourself into iconic travel destinations worldwide with photorealistic AI.",
     category: "Creative",
     repo: "https://github.com/SamurAIGPT/ai-travel-studio",
+    hosted: "https://ai-travel-studio.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/AI_Travel_Studio.png"
   },
   {
@@ -258,6 +281,7 @@ const APPS = [
     description: "Refine and optimize complex prompts for high-tier AI models with conversational refinement.",
     category: "Productivity",
     repo: "https://github.com/SamurAIGPT/prompt-architect",
+    hosted: "https://prompt-architect-one-nu.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/Prompt_Architect.webp"
   },
   {
@@ -266,6 +290,7 @@ const APPS = [
     description: "Remove watermarks, logos, stamps, and text overlays from images in seconds.",
     category: "Business",
     repo: "https://github.com/SamurAIGPT/clearmark-ai",
+    hosted: "https://clearmark-ai.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/ClearMark_AI.webp"
   },
   {
@@ -274,6 +299,7 @@ const APPS = [
     description: "Generate dreamy, photorealistic wedding photos from any portrait with scene templates.",
     category: "Creative",
     repo: "https://github.com/SamurAIGPT/ai-wedding-photo",
+    hosted: "https://ai-wedding-photo.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/AI_Wedding_Photo.png"
   },
   {
@@ -282,6 +308,7 @@ const APPS = [
     description: "AI social media post generator with live platform mockups for LinkedIn, X, Instagram, and more.",
     category: "Marketing",
     repo: "https://github.com/SamurAIGPT/social-post",
+    hosted: "https://social-post-woad.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/Social_Post.webp"
   },
   {
@@ -290,6 +317,7 @@ const APPS = [
     description: "Transform any selfie into oil paintings, watercolors, anime, and digital art.",
     category: "Creative",
     repo: "https://github.com/SamurAIGPT/magicself-ai",
+    hosted: "https://magicself-ai.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/MagicSelf_AI.webp"
   },
   {
@@ -298,6 +326,7 @@ const APPS = [
     description: "Generate professional, ATS-optimized resumes with AI in seconds.",
     category: "Productivity",
     repo: "https://github.com/SamurAIGPT/ai-resume-builder",
+    hosted: "https://ai-resume-builder.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/AI_Resume_Builder.webp"
   },
   {
@@ -306,6 +335,7 @@ const APPS = [
     description: "Audit landing page AI search visibility and citation potential for ChatGPT, Perplexity, and Gemini.",
     category: "Business",
     repo: "https://github.com/SamurAIGPT/geo-checker",
+    hosted: "https://geo-checker.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/GEO_Checker.webp"
   },
   {
@@ -314,6 +344,7 @@ const APPS = [
     description: "Create custom AI character portraits and engage in interactive conversational personas.",
     category: "Creative",
     repo: "https://github.com/SamurAIGPT/ai-character-studio",
+    hosted: "https://ai-character-studio-beta.vercel.app/",
     thumbnail: "https://cdn.muapi.ai/apps/AI_Character_Studio.webp"
   }
 ];
@@ -442,6 +473,15 @@ export default function AppsStudio({ locale = "en" }) {
             >
               {/* Thumbnail Section */}
               <div className="relative h-44 w-full overflow-hidden bg-white/5">
+                {app.hosted && (
+                  <a
+                    href={app.hosted}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Open live demo for ${app.name}`}
+                    className="absolute inset-0 z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
+                  />
+                )}
                 {app.thumbnail && !failedImages.has(app.name) ? (
                   <img
                     src={app.thumbnail}
