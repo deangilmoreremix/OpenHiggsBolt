@@ -1,0 +1,49 @@
+{
+  "hero": {
+    "badge": "可即时变现的模板",
+    "titleLine1": "启动 AI 应用。",
+    "titleLine2": "即刻开始赚钱。",
+    "subtitle": "每个模板都是一个功能完整、集成 Stripe 的 AI SaaS，可在几分钟内部署到 Vercel。向用户收费，保留收入 — Muapi 负责 AI 基础设施。"
+  },
+  "steps": {
+    "step1": {
+      "title": "几分钟内部署",
+      "description": "Fork 开源模板，添加你的 Muapi 密钥，推送到 Vercel。无需后端设置。"
+    },
+    "step2": {
+      "title": "收取付款",
+      "description": "Stripe 预先集成。设置你自己的定价 — 一次性积分、订阅或按使用付费。"
+    },
+    "step3": {
+      "title": "保留收入",
+      "description": "付款直接进入你的 Stripe 账户。你拥有产品、品牌和利润。"
+    }
+  },
+  "card": {
+    "github": "GitHub",
+    "demo": "在线演示",
+    "templateFallback": "应用"
+  },
+  "search": {
+    "placeholder": "搜索 SmartVideo GO AI 应用..."
+  },
+  "filter": {
+    "all": "全部"
+  },
+  "categories": {
+    "all": "全部",
+    "image": "图像",
+    "video": "视频",
+    "business": "商业",
+    "productivity": "生产力",
+    "audio": "音频",
+    "creative": "创意",
+    "realEstate": "房地产",
+    "design": "设计",
+    "lifestyle": "生活方式",
+    "marketing": "营销"
+  },
+  "empty": {
+    "noResults": "未找到匹配的应用。"
+  }
+}
