@@ -123,30 +123,151 @@ export function getGenerationAssetUrl(asset: PersonalizationAsset | null | undef
   if (!url || typeof url !== 'string' || url.startsWith('blob:')) return undefined
   return url
 }
-function revokeAssetUrl(asset: PersonalizationAsset | null | undefined) {
-  if (!asset) return
-  const url = asset.url
-  const uploaded = asset.uploadedUrl
-
-  if (url && typeof url === 'string' && url.startsWith('blob:')) {
-    URL.revokeObjectURL(url)
-  }
-  if (uploaded && typeof uploaded === 'string' && uploaded.startsWith('blob:') && uploaded !== url) {
-    URL.revokeObjectURL(uploaded)
-  }
+function isBlobUrl(value: unknown): value is string {
+  return typeof value === 'string' && value.startsWith('blob:')
 }
 
 /**
- * Revoke a blob URL that was created locally for a file that has just been
- * uploaded, where `replacementUrl` is the durable URL that took its place.
- *
- * Only `blob:` URLs are ever revoked (never CDN/uploaded URLs) and only when
- * the blob is no longer the URL in use, which keeps double-revokes out.
+ * Every blob URL an asset still depends on — its preview plus the original
+ * kept for revert.  Only `blob:` URLs are ever returned: durable HTTPS
+ * (Supabase storage) URLs must never be revoked.
  */
-function revokeLocalBlobUrl(localUrl: string | null | undefined, replacementUrl?: string | null) {
-  if (!localUrl || !localUrl.startsWith('blob:')) return
-  if (replacementUrl && replacementUrl === localUrl) return
-  URL.revokeObjectURL(localUrl)
+function assetBlobUrls(asset: PersonalizationAsset | null | undefined): string[] {
+  if (!asset) return []
+  const urls = new Set<string>()
+  for (const url of [asset.url, asset.uploadedUrl, asset.originalUrl]) {
+    if (isBlobUrl(url)) urls.add(url)
+  }
+  return Array.from(urls)
+}
+
+/**
+ * Counts how many assets of a library still reference each blob URL.
+ * Accepts partial libraries (e.g. the saved-client library, which has no
+ * frame/audio/saved-reference sections) — missing sections count as zero.
+ */
+function countBlobUrlReferences(library: Partial<AssetLibrary> | null | undefined): Map<string, number> {
+  const counts = new Map<string, number>()
+  const bump = (asset: PersonalizationAsset | null | undefined) => {
+    for (const url of assetBlobUrls(asset)) {
+      counts.set(url, (counts.get(url) ?? 0) + 1)
+    }
+  }
+  if (!library) return counts
+  library.identities?.forEach(bump)
+  library.logos?.forEach(bump)
+  library.products?.forEach(bump)
+  library.brandReferences?.forEach(bump)
+  bump(library.firstFrame)
+  bump(library.lastFrame)
+  bump(library.ctaGraphic)
+  library.audio?.forEach(bump)
+  library.savedReferences?.forEach(bump)
+  return counts
+}
+
+function findAssetInLibrary(library: AssetLibrary, id: string): PersonalizationAsset | null {
+  const all = [
+    ...library.identities,
+    ...library.logos,
+    ...library.products,
+    ...library.brandReferences,
+    library.firstFrame,
+    library.lastFrame,
+    library.ctaGraphic,
+    ...library.audio,
+    ...library.savedReferences,
+  ].filter(Boolean) as PersonalizationAsset[]
+  return all.find((a) => a.id === id) ?? null
+}
+
+/** Revokes a blob URL at most once for the lifetime of the provider. */
+function revokeBlobUrlOnce(revokedUrls: Set<string>, url: string | null | undefined): boolean {
+  if (!isBlobUrl(url)) return false
+  if (revokedUrls.has(url)) return false
+  revokedUrls.add(url)
+  URL.revokeObjectURL(url)
+  return true
+}
+
+/**
+ * Releases the blob URLs owned by `assetId`.
+ *
+ * Ownership is tracked independently of React state (see `ownedJobBlobUrlsRef`),
+ * so this still finds the blob when an upload resolves before React commits the
+ * asset that created it.  A URL is revoked only when no live entry in EITHER
+ * library references it any more: URLs replaced by the pending change
+ * (`superseded`) count as dead, as does the revert `originalUrl` when the asset
+ * itself is destroyed (`dropOriginal`).  Anything still referenced — including
+ * by a saved-client library entry that shares the blob — is left alone:
+ * correctness over eagerness.
+ */
+function releaseOwnedBlobUrls(
+  ownedByAsset: Map<string, Set<string>>,
+  revokedUrls: Set<string>,
+  assetId: string,
+  liveCounts: Map<string, number>,
+  asset: PersonalizationAsset | null | undefined,
+  current: PersonalizationAsset | null | undefined,
+  opts: { superseded?: (string | null | undefined)[]; dropOriginal?: boolean } = {},
+): number {
+  const owned = ownedByAsset.get(assetId)
+  if (!owned || owned.size === 0) return 0
+
+  // Race guard: a newer version of this asset is already live with different
+  // URLs (an edit was applied, or a second upload completed first).  This
+  // completion is stale — leave bookkeeping untouched so a URL owned by the
+  // newer asset is never revoked.
+  if (asset && current && current.url !== asset.url) return 0
+
+  const live = liveCounts
+  // One release removes exactly ONE asset's worth of references: the asset's
+  // own URLs and the URLs the caller marks superseded describe the same
+  // entry being replaced, so they are deduped together.  Dropping the same
+  // URL twice would under-count references still held by the saved library
+  // and revoke a blob that is still rendered.
+  const removed = new Set<string>()
+  const mark = (url: string | null | undefined) => {
+    if (isBlobUrl(url)) removed.add(url)
+  }
+  if (asset) {
+    mark(asset.url)
+    mark(asset.uploadedUrl)
+    if (opts.dropOriginal) mark(asset.originalUrl)
+  }
+  for (const url of opts.superseded ?? []) mark(url)
+  for (const url of removed) {
+    const next = (live.get(url) ?? 0) - 1
+    if (next > 0) live.set(url, next)
+    else live.delete(url)
+  }
+
+  let released = 0
+  for (const url of owned) {
+    if (live.has(url)) continue
+    owned.delete(url)
+    if (revokeBlobUrlOnce(revokedUrls, url)) released += 1
+  }
+  if (owned.size === 0) ownedByAsset.delete(assetId)
+  return released
+}
+
+/** Releases every owned blob URL that `live` does not still reference. */
+function releaseAllOwnedBlobUrls(
+  ownedByAsset: Map<string, Set<string>>,
+  revokedUrls: Set<string>,
+  live: Map<string, number>,
+): number {
+  let released = 0
+  for (const [assetId, owned] of ownedByAsset) {
+    for (const url of owned) {
+      if (live.has(url)) continue
+      owned.delete(url)
+      if (revokeBlobUrlOnce(revokedUrls, url)) released += 1
+    }
+    if (owned.size === 0) ownedByAsset.delete(assetId)
+  }
+  return released
 }
 
 // ── Context ──────────────────────────────────────────────────────────────────
@@ -522,6 +643,117 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
   // Assets
   const [assets, setAssets] = useState<AssetLibrary>({ ...EMPTY_ASSET_LIBRARY })
+  const assetsRef = useRef(assets)
+  useEffect(() => { assetsRef.current = assets }, [assets])
+
+  // The saved-client library is a second source of live blob references: an
+  // entry copied into a client library keeps referencing its blob URL even
+  // after the job-library copy is removed, so blob releases must consult both.
+  const savedClientAssetsRef = useRef(savedClientAssets)
+  useEffect(() => { savedClientAssetsRef.current = savedClientAssets }, [savedClientAssets])
+
+  /** Blob URLs still referenced by any live entry (job + saved libraries). */
+  const liveBlobUrlCounts = useCallback((): Map<string, number> => {
+    const counts = countBlobUrlReferences(assetsRef.current)
+    const savedCounts = countBlobUrlReferences(savedClientAssetsRef.current)
+    for (const [url, count] of savedCounts) {
+      counts.set(url, (counts.get(url) ?? 0) + count)
+    }
+    return counts
+  }, [])
+
+  /**
+   * Live references while the JOB library is being discarded entirely
+   * (source reset / modal close).  The job library is emptied by this change,
+   * so its current references must not keep a blob alive — but saved-client
+   * entries legitimately still render theirs.
+   */
+  const savedOnlyBlobUrlCounts = useCallback((): Map<string, number> =>
+    countBlobUrlReferences(savedClientAssetsRef.current), [])
+
+  // ── Object URL ownership ───────────────────────────────────────────────────
+  // Blob URLs are created outside React's state flow, so ownership is tracked
+  // in refs keyed by asset id and captured synchronously at creation, instead
+  // of read back from `assetsRef` (which only syncs once React commits).  This
+  // keeps a blob revocable when its upload resolves before that commit, and
+  // `revokedBlobUrls` makes every release idempotent.
+  const ownedJobBlobUrlsRef = useRef<Map<string, Set<string>>>(new Map())
+  const ownedSavedBlobUrlsRef = useRef<Map<string, Set<string>>>(new Map())
+  const revokedBlobUrlsRef = useRef<Set<string>>(new Set())
+
+  /** Records the blob URL created for a job-library asset. */
+  const registerOwnedBlobUrl = useCallback((assetId: string, url: string | null | undefined) => {
+    if (!isBlobUrl(url)) return
+    const owned = ownedJobBlobUrlsRef.current.get(assetId)
+    if (owned) owned.add(url)
+    else ownedJobBlobUrlsRef.current.set(assetId, new Set([url]))
+  }, [])
+
+  /** Records the blob URL created for a saved-client library asset. */
+  const registerOwnedSavedBlobUrl = useCallback((assetId: string, url: string | null | undefined) => {
+    if (!isBlobUrl(url)) return
+    const owned = ownedSavedBlobUrlsRef.current.get(assetId)
+    if (owned) owned.add(url)
+    else ownedSavedBlobUrlsRef.current.set(assetId, new Set([url]))
+  }, [])
+
+  /** Creates a job asset and takes ownership of its blob URL immediately. */
+  const createOwnedAsset = useCallback((
+    file: File | Blob,
+    role: PersonalizationAsset['role'],
+    opts: Partial<PersonalizationAsset> = {},
+  ): PersonalizationAsset => {
+    const asset = createAsset(file, role, opts)
+    registerOwnedBlobUrl(asset.id, asset.url)
+    return asset
+  }, [registerOwnedBlobUrl])
+
+  const releaseJobBlobUrls = useCallback((
+    assetId: string,
+    asset: PersonalizationAsset | null | undefined,
+    opts: { superseded?: (string | null | undefined)[]; dropOriginal?: boolean } = {},
+  ) => releaseOwnedBlobUrls(
+    ownedJobBlobUrlsRef.current,
+    revokedBlobUrlsRef.current,
+    assetId,
+    liveBlobUrlCounts(),
+    asset,
+    findAssetInLibrary(assetsRef.current, assetId),
+    opts,
+  ), [liveBlobUrlCounts])
+
+  const releaseSavedBlobUrls = useCallback((
+    assetId: string,
+    asset: PersonalizationAsset | null | undefined,
+    opts: { superseded?: (string | null | undefined)[]; dropOriginal?: boolean } = {},
+  ) => releaseOwnedBlobUrls(
+    ownedSavedBlobUrlsRef.current,
+    revokedBlobUrlsRef.current,
+    assetId,
+    liveBlobUrlCounts(),
+    asset,
+    findAssetInLibrary(assetsRef.current, assetId),
+    opts,
+  ), [liveBlobUrlCounts])
+
+  /**
+   * Releases every job blob URL that no live entry still references (used when
+   * the library is reset/closed).  Blobs a saved-client entry points at stay
+   * alive — those entries outlive the job library.
+   */
+  const releaseAllJobBlobUrls = useCallback(() => {
+    releaseAllOwnedBlobUrls(
+      ownedJobBlobUrlsRef.current,
+      revokedBlobUrlsRef.current,
+      savedOnlyBlobUrlCounts(),
+    )
+  }, [savedOnlyBlobUrlCounts])
+
+  /** Releases every blob URL the provider still owns (job + saved client). */
+  const releaseAllBlobUrls = useCallback(() => {
+    releaseAllOwnedBlobUrls(ownedJobBlobUrlsRef.current, revokedBlobUrlsRef.current, new Map())
+    releaseAllOwnedBlobUrls(ownedSavedBlobUrlsRef.current, revokedBlobUrlsRef.current, new Map())
+  }, [])
 
   // Discovered assets (temporary review state — NOT part of permanent AssetLibrary)
   const [discoveredAssets, setDiscoveredAssetsState] = useState<DiscoveredAsset[]>([])
@@ -609,22 +841,10 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
   useEffect(() => {
     if (!source) return
-    // Revoke any outstanding blob URLs before resetting state
-    setAssets((prev) => {
-      const all = [
-        ...prev.identities,
-        ...prev.logos,
-        ...prev.products,
-        ...prev.brandReferences,
-        prev.firstFrame,
-        prev.lastFrame,
-        prev.ctaGraphic,
-        ...prev.audio,
-        ...prev.savedReferences,
-      ]
-      all.forEach((a) => { if (a) revokeAssetUrl(a) })
-      return { ...EMPTY_ASSET_LIBRARY }
-    })
+    // Release any outstanding blob URLs before resetting state (outside the
+    // state updater — updaters must stay pure for Strict Mode replay).
+    releaseAllJobBlobUrls()
+    setAssets({ ...EMPTY_ASSET_LIBRARY })
     setPromptState({
       original: source.originalPrompt || source.fullPrompt || source.shortPrompt || '',
       personalized: '',
@@ -664,65 +884,15 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     selectedClientId,
   ])
 
-  // Debounced Supabase project persistence
+  // Orphan reap: once the saved library has committed (its ref is fresh),
+  // release owned blobs that JUST lost their last live reference — e.g. a
+  // mirror that replaced a saved entry's URL, or a saved entry removed while
+  // its job copy was already gone.  Runs outside any state updater and is a
+  // no-op whenever everything owned is still referenced.
   useEffect(() => {
-    if (!source) return
-    projectPersistence.current.persist({
-      originStudio: 'demo-personalization',
-      sourceType: source.sourceType,
-      sourceDemoId: source.id,
-      sourceDemoSlug: (source as { slug?: string }).slug ?? null,
-      sourceMedia: source.sourceMedia,
-      sourceUrl: source.sourceUrl ?? null,
-      personalizationMode: mode || null,
-      model: source.model || genOptions.model || null,
-      originalPrompt: promptState.original,
-      personalizedPrompt: promptState.personalized || promptState.edited,
-      identityAssetIds: assets.identities.map((i) => i.id),
-      logoAssetIds: assets.logos.map((l) => l.id),
-      productAssetIds: assets.products.map((p) => p.id),
-      brandReferenceAssetIds: assets.brandReferences.map((b) => b.id),
-      firstFrameAssetId: assets.firstFrame?.id || null,
-      lastFrameAssetId: assets.lastFrame?.id || null,
-      outputUrls: result?.urls || (result?.url ? [result.url] : []),
-      outputType,
-      clientId: selectedClientId || null,
-      status: generation.status === 'complete' ? 'complete' : 'draft',
-      ctaHeadline: clientForm.ctaHeadline || null,
-      callToAction: clientForm.callToAction || null,
-      generationSettings: {
-        engine: genOptions.engine,
-        preserveAudio: genOptions.preserveAudio,
-        exactLogoHandling: genOptions.exactLogoHandling,
-        exactCtaHandling: genOptions.exactCtaHandling,
-        firstFrameMode: genOptions.firstFrameMode,
-        lastFrameMode: genOptions.lastFrameMode,
-        advancedModel: genOptions.advancedModel || null,
-        aspectRatio: genOptions.aspectRatio || null,
-        duration: genOptions.duration || null,
-        resolution: genOptions.resolution || null,
-        quality: genOptions.quality || null,
-        consentGiven: genOptions.consentGiven,
-      },
-      aiAssistState: {},
-    })
-  }, [
-    source?.id,
-    source,
-    mode,
-    promptState.original,
-    promptState.personalized,
-    promptState.edited,
-    assets,
-    outputType,
-    selectedClientId,
-    generation.status,
-    result?.url,
-    result?.urls,
-    clientForm.ctaHeadline,
-    clientForm.callToAction,
-    genOptions,
-  ])
+    releaseAllOwnedBlobUrls(ownedJobBlobUrlsRef.current, revokedBlobUrlsRef.current, liveBlobUrlCounts())
+    releaseAllOwnedBlobUrls(ownedSavedBlobUrlsRef.current, revokedBlobUrlsRef.current, liveBlobUrlCounts())
+  }, [savedClientAssets, liveBlobUrlCounts])
 
   // Debounced Supabase project persistence
   useEffect(() => {
@@ -784,12 +954,74 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     genOptions,
   ])
 
-  // Cancel pending project persistence on unmount
+  // Debounced Supabase project persistence
+  useEffect(() => {
+    if (!source) return
+    projectPersistence.current.persist({
+      originStudio: 'demo-personalization',
+      sourceType: source.sourceType,
+      sourceDemoId: source.id,
+      sourceDemoSlug: (source as { slug?: string }).slug ?? null,
+      sourceMedia: source.sourceMedia,
+      sourceUrl: source.sourceUrl ?? null,
+      personalizationMode: mode || null,
+      model: source.model || genOptions.model || null,
+      originalPrompt: promptState.original,
+      personalizedPrompt: promptState.personalized || promptState.edited,
+      identityAssetIds: assets.identities.map((i) => i.id),
+      logoAssetIds: assets.logos.map((l) => l.id),
+      productAssetIds: assets.products.map((p) => p.id),
+      brandReferenceAssetIds: assets.brandReferences.map((b) => b.id),
+      firstFrameAssetId: assets.firstFrame?.id || null,
+      lastFrameAssetId: assets.lastFrame?.id || null,
+      outputUrls: result?.urls || (result?.url ? [result.url] : []),
+      outputType,
+      clientId: selectedClientId || null,
+      status: generation.status === 'complete' ? 'complete' : 'draft',
+      ctaHeadline: clientForm.ctaHeadline || null,
+      callToAction: clientForm.callToAction || null,
+      generationSettings: {
+        engine: genOptions.engine,
+        preserveAudio: genOptions.preserveAudio,
+        exactLogoHandling: genOptions.exactLogoHandling,
+        exactCtaHandling: genOptions.exactCtaHandling,
+        firstFrameMode: genOptions.firstFrameMode,
+        lastFrameMode: genOptions.lastFrameMode,
+        advancedModel: genOptions.advancedModel || null,
+        aspectRatio: genOptions.aspectRatio || null,
+        duration: genOptions.duration || null,
+        resolution: genOptions.resolution || null,
+        quality: genOptions.quality || null,
+        consentGiven: genOptions.consentGiven,
+      },
+      aiAssistState: {},
+    })
+  }, [
+    source?.id,
+    source,
+    mode,
+    promptState.original,
+    promptState.personalized,
+    promptState.edited,
+    assets,
+    outputType,
+    selectedClientId,
+    generation.status,
+    result?.url,
+    result?.urls,
+    clientForm.ctaHeadline,
+    clientForm.callToAction,
+    genOptions,
+  ])
+
+  // Cancel pending project persistence and release every still-owned blob URL
+  // on unmount
   useEffect(() => {
     return () => {
       projectPersistence.current.cancel()
+      releaseAllBlobUrls()
     }
-  }, [])
+  }, [releaseAllBlobUrls])
 
   // ── Project restore (Phase 14) ──────────────────────────────────────────────
   // When the modal opens with a source, attempt to load the most-recently-saved
@@ -980,22 +1212,9 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   }, [])
 
   const closePersonalize = useCallback(() => {
-    // Revoke outstanding blob URLs
-    setAssets((prev) => {
-      const all = [
-        ...prev.identities,
-        ...prev.logos,
-        ...prev.products,
-        ...prev.brandReferences,
-        prev.firstFrame,
-        prev.lastFrame,
-        prev.ctaGraphic,
-        ...prev.audio,
-        ...prev.savedReferences,
-      ]
-      all.forEach((a) => { if (a) revokeAssetUrl(a) })
-      return prev
-    })
+    // Revoke outstanding blob URLs (outside the state updater — updaters must
+    // stay pure for Strict Mode replay)
+    releaseAllJobBlobUrls()
     setIsOpen(false)
     setSource(null)
     setSourceTypeLabel(undefined)
@@ -1003,7 +1222,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     setGeneration({ ...EMPTY_GENERATION_STATE })
     triggerRef.current?.focus()
     triggerRef.current = null
-  }, [])
+  }, [releaseAllJobBlobUrls])
 
   // ── Client actions ─────────────────────────────────────────────────────────
 
@@ -1071,6 +1290,17 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   }, [selectClient])
 
   const deleteSavedClient = useCallback((id: string) => {
+    // Release the blobs owned by this client's saved entries before the
+    // library is dropped.  Job copies sharing a URL survive via the liveness
+    // check inside the release helper.
+    const doomed = loadClientAssets(id)
+    const doomedAssets = [
+      ...doomed.identities,
+      ...doomed.logos,
+      ...doomed.products,
+      ...doomed.brandReferences,
+    ].filter(Boolean) as PersonalizationAsset[]
+    doomedAssets.forEach((asset) => releaseSavedBlobUrls(asset.id, asset, { dropOriginal: true }))
     deleteClientAssets(id)
     setSavedClientAssets({ ...EMPTY_CLIENT_ASSET_LIBRARY })
     setClients((prev) => prev.filter((c) => c.id !== id))
@@ -1085,7 +1315,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       }
       return prev
     })
-  }, [])
+  }, [releaseSavedBlobUrls])
 
   const selectSavedAsset = useCallback((asset: PersonalizationAsset) => {
     setAssets((prev) => updateAssetInLibrary(prev, asset))
@@ -1099,9 +1329,29 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
   const removeSavedAsset = useCallback((assetId: string) => {
     if (!selectedClientId) return
+    // Release the saved entry's own ownership of its blob URLs before the
+    // entry is dropped.  A job-library copy sharing the same URLs stays alive
+    // through the liveness check inside the release helper.
+    const savedAsset = [
+      ...savedClientAssets.identities,
+      ...savedClientAssets.logos,
+      ...savedClientAssets.products,
+      ...savedClientAssets.brandReferences,
+    ].filter(Boolean).find((a) => a?.id === assetId)
+    if (savedAsset) releaseSavedBlobUrls(savedAsset.id, savedAsset, { dropOriginal: true })
     const next = removeAssetFromClientLibrary(selectedClientId, assetId)
     setSavedClientAssets(next)
     // Also remove from current job if present
+    const jobAsset = [
+      ...assets.identities,
+      ...assets.logos,
+      ...assets.products,
+      ...assets.brandReferences,
+      assets.firstFrame,
+      assets.lastFrame,
+      assets.ctaGraphic,
+    ].filter(Boolean).find((a) => a?.id === assetId)
+    if (jobAsset) releaseJobBlobUrls(jobAsset.id, jobAsset, { dropOriginal: true })
     setAssets((prev) => {
       const all = [
         ...prev.identities,
@@ -1119,7 +1369,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       }
       return rebuilt
     })
-  }, [selectedClientId])
+  }, [selectedClientId, savedClientAssets, releaseSavedBlobUrls, releaseJobBlobUrls])
 
   // ── Asset upload helpers ───────────────────────────────────────────────────
 
@@ -1180,15 +1430,26 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   const uploadAsset = useCallback(async (asset: PersonalizationAsset): Promise<string> => {
     if (!apiKey) throw new Error('Missing API key')
 
-    // Capture the local blob URL from the asset object this upload was started
-    // with. Revoking it must never depend on a ref mirror of the asset library:
-    // such a mirror is only synced inside an effect, so when an upload resolves
-    // in the same tick the asset was added, the mirror still points at the
-    // previous library, the by-id lookup finds nothing, revocation silently
-    // no-ops and the blob URL leaks for good once `url` is overwritten with the
-    // durable URL below. The asset object itself is never mutated, so the URL
-    // captured here is always the pre-upload one.
-    const localBlobUrl = asset.url && asset.url.startsWith('blob:') ? asset.url : null
+    // Swaps the local preview for a durable URL and releases the blob URL that
+    // was captured for this asset when it was created — independent of
+    // `assetsRef`, so this is correct even when the upload resolves before
+    // React commits the asset.  Kept outside the `setAssets` updater.
+    const commitDurableUrl = (durableUrl: string) => {
+      releaseJobBlobUrls(asset.id, asset, { superseded: [asset.url, asset.uploadedUrl] })
+      setAssets((prev) => {
+        const updater = (list: PersonalizationAsset[]) => list.map((a) => (a.id === asset.id ? { ...a, url: durableUrl, uploadedUrl: durableUrl } : a))
+        return {
+          ...prev,
+          identities: updater(prev.identities),
+          logos: updater(prev.logos),
+          products: updater(prev.products),
+          brandReferences: updater(prev.brandReferences),
+          firstFrame: prev.firstFrame?.id === asset.id ? { ...prev.firstFrame, url: durableUrl, uploadedUrl: durableUrl } : prev.firstFrame,
+          lastFrame: prev.lastFrame?.id === asset.id ? { ...prev.lastFrame, url: durableUrl, uploadedUrl: durableUrl } : prev.lastFrame,
+          ctaGraphic: prev.ctaGraphic?.id === asset.id ? { ...prev.ctaGraphic, url: durableUrl, uploadedUrl: durableUrl } : prev.ctaGraphic,
+        }
+      })
+    }
 
     // Test-only bypass: avoid real network uploads in test mode with the placeholder key.
     if (
@@ -1198,20 +1459,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     ) {
       const fakeUrl = 'https://example.com/test-uploaded-asset.png'
       setAssetUploadStatus(asset.id, 'ready', null)
-      setAssets((prev) => {
-        const updater = (list: PersonalizationAsset[]) => list.map((a) => (a.id === asset.id ? { ...a, url: fakeUrl, uploadedUrl: fakeUrl } : a))
-        return {
-          ...prev,
-          identities: updater(prev.identities),
-          logos: updater(prev.logos),
-          products: updater(prev.products),
-          brandReferences: updater(prev.brandReferences),
-          firstFrame: prev.firstFrame?.id === asset.id ? { ...prev.firstFrame, url: fakeUrl, uploadedUrl: fakeUrl } : prev.firstFrame,
-          lastFrame: prev.lastFrame?.id === asset.id ? { ...prev.lastFrame, url: fakeUrl, uploadedUrl: fakeUrl } : prev.lastFrame,
-          ctaGraphic: prev.ctaGraphic?.id === asset.id ? { ...prev.ctaGraphic, url: fakeUrl, uploadedUrl: fakeUrl } : prev.ctaGraphic,
-        }
-      })
-      revokeLocalBlobUrl(localBlobUrl, fakeUrl)
+      commitDurableUrl(fakeUrl)
       return fakeUrl
     }
 
@@ -1223,32 +1471,17 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         file: asset.file as File,
       })
       setAssetUploadStatus(asset.id, 'ready', null)
-      // The local blob is being replaced by the durable CDN URL, so free it.
-      setAssets((prev) => {
-        const updater = (list: PersonalizationAsset[]) => list.map((a) => (a.id === asset.id ? { ...a, url, uploadedUrl: url } : a))
-        return {
-          ...prev,
-          identities: updater(prev.identities),
-          logos: updater(prev.logos),
-          products: updater(prev.products),
-          brandReferences: updater(prev.brandReferences),
-          firstFrame: prev.firstFrame?.id === asset.id ? { ...prev.firstFrame, url, uploadedUrl: url } : prev.firstFrame,
-          lastFrame: prev.lastFrame?.id === asset.id ? { ...prev.lastFrame, url, uploadedUrl: url } : prev.lastFrame,
-          ctaGraphic: prev.ctaGraphic?.id === asset.id ? { ...prev.ctaGraphic, url, uploadedUrl: url } : prev.ctaGraphic,
-        }
-      })
-      revokeLocalBlobUrl(localBlobUrl, url)
+      // Update URL to durable uploaded URL and release the local preview blob
+      commitDurableUrl(url)
       return url
     } catch (error) {
-      // On failure the blob URL stays the asset's live `url` (the user sees a
-      // preview plus a retry affordance), so it must NOT be revoked here — it
-      // is still released by removeLogo()/removeProduct()/removeIdentity()/…
-      // when the asset is dropped.
+      // Failure keeps the local blob alive so the asset can still preview and
+      // be retried — nothing is revoked here.
       const message = error instanceof Error ? error.message : 'Upload failed'
       setAssetUploadStatus(asset.id, 'error', message)
       throw error
     }
-  }, [apiKey, setAssetUploadStatus, testMode])
+  }, [apiKey, setAssetUploadStatus, testMode, releaseJobBlobUrls])
 
   const retryAssetUpload = useCallback(async (id: string) => {
     const all = [
@@ -1311,6 +1544,9 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     const baseName = (target.name || 'edited-image').replace(/\.[^.]+$/, '')
     const file = new File([blob], baseName + '-edited.' + extension, { type: blob.type || 'image/png' })
     const localUrl = URL.createObjectURL(file)
+    // Take ownership of the edited preview blob synchronously, before it is
+    // committed to state.
+    registerOwnedBlobUrl(target.id, localUrl)
     const originalUrl = target.originalUrl || target.uploadedUrl || target.url
 
     const editedAsset: PersonalizationAsset = {
@@ -1381,19 +1617,13 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
       if (persistResult.ok && persistResult.publicUrl) {
         supabaseUrl = persistResult.publicUrl
+        // The durable URL replaces the local preview blob — release the blob
+        // captured for this edit (the revert `originalUrl` stays referenced, so
+        // it is left alone).  Done outside the state updater.
+        releaseJobBlobUrls(editedAsset.id, editedAsset, { superseded: [editedAsset.url, editedAsset.uploadedUrl] })
         setAssets((prev) => {
           const updater = (list: PersonalizationAsset[]) =>
             list.map((a) => (a.id === editedAsset.id ? { ...a, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : a))
-          const old = [
-            ...prev.identities,
-            ...prev.logos,
-            ...prev.products,
-            ...prev.brandReferences,
-            prev.firstFrame,
-            prev.lastFrame,
-            prev.ctaGraphic,
-          ].find((a) => a?.id === editedAsset.id)
-          if (old) revokeAssetUrl(old)
           return {
             ...prev,
             identities: updater(prev.identities),
@@ -1413,7 +1643,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     if (!supabaseUrl) {
       await uploadAsset(editedAsset)
     }
-  }, [assets, uploadAsset, selectedClientId])
+  }, [assets, uploadAsset, selectedClientId, registerOwnedBlobUrl, releaseJobBlobUrls])
 
   const applyEditedSavedClientAsset = useCallback(async (
     clientId: string,
@@ -1454,12 +1684,17 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     const extension = blob.type === 'image/webp' ? 'webp' : 'png'
     const baseName = (savedTarget.name || 'edited-image').replace(/\.[^.]+$/, '')
     const file = new File([blob], baseName + '-edited.' + extension, { type: blob.type || 'image/png' })
+    const localUrl = URL.createObjectURL(file)
+    // Take ownership of the edited preview blob synchronously: the saved
+    // library entry owns it, and so does the job library copy when the same
+    // asset is currently assigned to this job.
+    registerOwnedSavedBlobUrl(savedTarget.id, localUrl)
     const originalUrl = savedTarget.originalUrl || savedTarget.uploadedUrl || savedTarget.url
 
     const editedAsset: PersonalizationAsset = {
       ...savedTarget,
       name: file.name,
-      url: URL.createObjectURL(file),
+      url: localUrl,
       uploadedUrl: undefined,
       file,
       mimeType: file.type,
@@ -1499,6 +1734,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     ].filter((a): a is PersonalizationAsset => Boolean(a)).find((a) => a.id === assetId)
 
     if (currentJobTarget) {
+      registerOwnedBlobUrl(editedAsset.id, localUrl)
       setAssets((prev) => replaceAssetInLibrary(prev, editedAsset))
     }
 
@@ -1547,7 +1783,11 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         updateAssetInClientLibrary(clientId, finalSavedAsset)
         setSavedClientAssets(updateAssetInClientLibrary(clientId, finalSavedAsset))
 
+        // The durable URL replaces the local preview blob — release the blob
+        // captured for this edit (idempotent across the job + saved entries).
+        releaseSavedBlobUrls(editedAsset.id, editedAsset, { superseded: [editedAsset.url, editedAsset.uploadedUrl] })
         if (currentJobTarget) {
+          releaseJobBlobUrls(editedAsset.id, editedAsset, { superseded: [editedAsset.url, editedAsset.uploadedUrl] })
           setAssets((prev) => {
             const updater = (list: PersonalizationAsset[]) =>
               list.map((a) => (a.id === editedAsset.id ? { ...a, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : a))
@@ -1569,9 +1809,25 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     }
 
     if (!supabaseUrl) {
-      await uploadAsset(editedAsset)
+      // MuAPI fallback: `uploadAsset` swaps the job-library copy for the
+      // durable URL and releases the job-side ownership of the edit blob.
+      const durableUrl = await uploadAsset(editedAsset)
+      const finalSavedAsset: PersonalizationAsset = {
+        ...editedAsset,
+        url: durableUrl,
+        uploadedUrl: durableUrl,
+        uploadStatus: 'ready',
+      }
+      updateAssetInClientLibrary(clientId, finalSavedAsset)
+      setSavedClientAssets(updateAssetInClientLibrary(clientId, finalSavedAsset))
+      // The saved library entry owned its own reference to the edit blob —
+      // release it too so the saved entry never keeps (and renders) a URL the
+      // job-side release already revoked.  Idempotent via `revokedBlobUrls`.
+      releaseSavedBlobUrls(editedAsset.id, editedAsset, {
+        superseded: [editedAsset.url, editedAsset.uploadedUrl],
+      })
     }
-  }, [assets, uploadAsset])
+  }, [assets, uploadAsset, registerOwnedSavedBlobUrl, registerOwnedBlobUrl, releaseSavedBlobUrls, releaseJobBlobUrls])
 
   // ── Asset actions ──────────────────────────────────────────────────────────
 
@@ -1585,14 +1841,14 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     const filesToAdd = imageFiles.slice(0, Math.max(0, remaining))
     if (filesToAdd.length === 0) return
 
-    const newAssets = filesToAdd.map((file) => createAsset(file, 'presenter_identity', {
+    const newAssets = filesToAdd.map((file) => createOwnedAsset(file, 'presenter_identity', {
       isPrimary: assets.identities.length === 0,
     }))
     newAssets.forEach((asset) => {
       setAssets((prev) => updateAssetInLibrary(prev, asset))
       uploadAsset(asset).catch((error) => { console.error('Upload failed:', error) })
     })
-  }, [assets.identities.length, uploadAsset, source, genOptions])
+  }, [assets.identities.length, uploadAsset, source, genOptions, createOwnedAsset])
 
   const addIdentityUrl = useCallback((url: string) => {
     const asset = createAssetFromUrl(url, 'presenter_identity', {
@@ -1603,13 +1859,13 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
   const removeIdentity = useCallback((id: string) => {
     const asset = assets.identities.find((a) => a.id === id) || assets.primaryIdentity
-    if (asset) revokeAssetUrl(asset)
+    if (asset) releaseJobBlobUrls(asset.id, asset, { dropOriginal: true })
     setAssets((prev) => ({
       ...prev,
       identities: prev.identities.filter((a) => a.id !== id),
       primaryIdentity: prev.primaryIdentity?.id === id ? null : prev.primaryIdentity,
     }))
-  }, [assets])
+  }, [assets, releaseJobBlobUrls])
 
   const setPrimaryIdentity = useCallback((id: string) => {
     setAssets((prev) => ({
@@ -1628,14 +1884,14 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     const filesToAdd = imageFiles.slice(0, Math.max(0, remaining))
     if (filesToAdd.length === 0) return
 
-    const newAssets = filesToAdd.map((file) => createAsset(file, 'logo', {
+    const newAssets = filesToAdd.map((file) => createOwnedAsset(file, 'logo', {
       isPrimary: assets.logos.length === 0,
     }))
     newAssets.forEach((asset) => {
       setAssets((prev) => updateAssetInLibrary(prev, asset))
       uploadAsset(asset).catch((error) => { console.error('Upload failed:', error) })
     })
-  }, [assets.logos.length, uploadAsset])
+  }, [assets.logos.length, uploadAsset, createOwnedAsset])
 
   const addLogoUrl = useCallback((url: string) => {
     const asset = createAssetFromUrl(url, 'logo', {
@@ -1646,7 +1902,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
   const removeLogo = useCallback((id: string) => {
     const asset = assets.logos.find((a) => a.id === id) || assets.primaryLogo
-    if (asset) revokeAssetUrl(asset)
+    if (asset) releaseJobBlobUrls(asset.id, asset, { dropOriginal: true })
     setAssets((prev) => {
       return {
         ...prev,
@@ -1654,7 +1910,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         primaryLogo: prev.primaryLogo?.id === id ? null : prev.primaryLogo,
       }
     })
-  }, [assets])
+  }, [assets, releaseJobBlobUrls])
 
   const setPrimaryLogo = useCallback((id: string) => {
     setAssets((prev) => ({
@@ -1673,12 +1929,12 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     const filesToAdd = validFiles.slice(0, Math.max(0, remaining))
     if (filesToAdd.length === 0) return
 
-    const newAssets = filesToAdd.map((file) => createAsset(file, 'product_reference'))
+    const newAssets = filesToAdd.map((file) => createOwnedAsset(file, 'product_reference'))
     newAssets.forEach((asset) => {
       setAssets((prev) => updateAssetInLibrary(prev, asset))
       uploadAsset(asset).catch((error) => { console.error('Upload failed:', error) })
     })
-  }, [assets.products.length, uploadAsset])
+  }, [assets.products.length, uploadAsset, createOwnedAsset])
 
   const addProductUrl = useCallback((url: string) => {
     const asset = createAssetFromUrl(url, 'product_reference')
@@ -1687,12 +1943,12 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
   const removeProduct = useCallback((id: string) => {
     const asset = assets.products.find((a) => a.id === id)
-    if (asset) revokeAssetUrl(asset)
+    if (asset) releaseJobBlobUrls(asset.id, asset, { dropOriginal: true })
     setAssets((prev) => ({
       ...prev,
       products: prev.products.filter((a) => a.id !== id),
     }))
-  }, [assets])
+  }, [assets, releaseJobBlobUrls])
 
   const addBrandReferenceFiles = useCallback((files: FileList | null) => {
     if (!files) return
@@ -1703,12 +1959,12 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     const filesToAdd = validFiles.slice(0, Math.max(0, remaining))
     if (filesToAdd.length === 0) return
 
-    const newAssets = filesToAdd.map((file) => createAsset(file, 'brand_reference'))
+    const newAssets = filesToAdd.map((file) => createOwnedAsset(file, 'brand_reference'))
     newAssets.forEach((asset) => {
       setAssets((prev) => updateAssetInLibrary(prev, asset))
       uploadAsset(asset).catch((error) => { console.error('Upload failed:', error) })
     })
-  }, [assets.brandReferences.length, uploadAsset])
+  }, [assets.brandReferences.length, uploadAsset, createOwnedAsset])
 
   const addBrandReferenceUrl = useCallback((url: string) => {
     const asset = createAssetFromUrl(url, 'brand_reference')
@@ -1717,76 +1973,103 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
   const removeBrandReference = useCallback((id: string) => {
     const asset = assets.brandReferences.find((a) => a.id === id)
-    if (asset) revokeAssetUrl(asset)
+    if (asset) releaseJobBlobUrls(asset.id, asset, { dropOriginal: true })
     setAssets((prev) => ({
       ...prev,
       brandReferences: prev.brandReferences.filter((a) => a.id !== id),
     }))
-  }, [assets])
+  }, [assets, releaseJobBlobUrls])
+
+  /** Releases the blob URL of a single-slot asset that is being displaced. */
+  const releaseDisplacedFrameBlob = useCallback((
+    slot: 'firstFrame' | 'lastFrame' | 'ctaGraphic',
+    replacedAssetId?: string,
+  ) => {
+    const current = slot === 'firstFrame'
+      ? assetsRef.current.firstFrame
+      : slot === 'lastFrame'
+        ? assetsRef.current.lastFrame
+        : assetsRef.current.ctaGraphic
+    if (!current || current.id === replacedAssetId) return
+    releaseJobBlobUrls(current.id, current, { dropOriginal: true })
+  }, [releaseJobBlobUrls])
 
   const setFirstFrameFile = useCallback((file: File | null) => {
     if (!file) {
+      releaseDisplacedFrameBlob('firstFrame')
       setAssets((prev) => ({ ...prev, firstFrame: null }))
       return
     }
-    const asset = createAsset(file, 'first_frame', { isPrimary: true })
+    releaseDisplacedFrameBlob('firstFrame')
+    const asset = createOwnedAsset(file, 'first_frame', { isPrimary: true })
     setAssets((prev) => ({ ...prev, firstFrame: asset }))
     uploadAsset(asset).catch((error) => { console.error('Upload failed:', error) })
-  }, [uploadAsset])
+  }, [uploadAsset, createOwnedAsset, releaseDisplacedFrameBlob])
 
   const setFirstFrameUrl = useCallback((url: string) => {
+    releaseDisplacedFrameBlob('firstFrame')
     const asset = createAssetFromUrl(url, 'first_frame', { isPrimary: true })
     setAssets((prev) => ({ ...prev, firstFrame: asset }))
-  }, [])
+  }, [releaseDisplacedFrameBlob])
 
   const removeFirstFrame = useCallback(() => {
-    if (assets.firstFrame) revokeAssetUrl(assets.firstFrame)
+    if (assets.firstFrame) releaseJobBlobUrls(assets.firstFrame.id, assets.firstFrame, { dropOriginal: true })
     setAssets((prev) => ({ ...prev, firstFrame: null }))
-  }, [assets.firstFrame])
+  }, [assets.firstFrame, releaseJobBlobUrls])
 
   const setLastFrameFile = useCallback((file: File | null) => {
     if (!file) {
+      releaseDisplacedFrameBlob('lastFrame')
       setAssets((prev) => ({ ...prev, lastFrame: null }))
       return
     }
-    const asset = createAsset(file, 'last_frame', { isPrimary: true })
+    releaseDisplacedFrameBlob('lastFrame')
+    const asset = createOwnedAsset(file, 'last_frame', { isPrimary: true })
     setAssets((prev) => ({ ...prev, lastFrame: asset }))
     uploadAsset(asset).catch((error) => { console.error('Upload failed:', error) })
-  }, [uploadAsset])
+  }, [uploadAsset, createOwnedAsset, releaseDisplacedFrameBlob])
 
   const setLastFrameUrl = useCallback((url: string) => {
+    releaseDisplacedFrameBlob('lastFrame')
     const asset = createAssetFromUrl(url, 'last_frame', { isPrimary: true })
     setAssets((prev) => ({ ...prev, lastFrame: asset }))
-  }, [])
+  }, [releaseDisplacedFrameBlob])
 
   const removeLastFrame = useCallback(() => {
-    if (assets.lastFrame) revokeAssetUrl(assets.lastFrame)
+    if (assets.lastFrame) releaseJobBlobUrls(assets.lastFrame.id, assets.lastFrame, { dropOriginal: true })
     setAssets((prev) => ({ ...prev, lastFrame: null }))
-  }, [assets.lastFrame])
+  }, [assets.lastFrame, releaseJobBlobUrls])
 
   const setCtaGraphicFile = useCallback((file: File | null) => {
     if (!file) {
+      releaseDisplacedFrameBlob('ctaGraphic')
       setAssets((prev) => ({ ...prev, ctaGraphic: null }))
       return
     }
-    const asset = createAsset(file, 'cta_graphic', { isPrimary: true })
+    releaseDisplacedFrameBlob('ctaGraphic')
+    const asset = createOwnedAsset(file, 'cta_graphic', { isPrimary: true })
     setAssets((prev) => ({ ...prev, ctaGraphic: asset }))
     uploadAsset(asset).catch((error) => { console.error('Upload failed:', error) })
-  }, [uploadAsset])
+  }, [uploadAsset, createOwnedAsset, releaseDisplacedFrameBlob])
 
   const setCtaGraphicUrl = useCallback((url: string) => {
+    releaseDisplacedFrameBlob('ctaGraphic')
     const asset = createAssetFromUrl(url, 'cta_graphic', { isPrimary: true })
     setAssets((prev) => ({ ...prev, ctaGraphic: asset }))
-  }, [])
+  }, [releaseDisplacedFrameBlob])
 
   const removeCtaGraphic = useCallback(() => {
-    if (assets.ctaGraphic) revokeAssetUrl(assets.ctaGraphic)
+    if (assets.ctaGraphic) releaseJobBlobUrls(assets.ctaGraphic.id, assets.ctaGraphic, { dropOriginal: true })
     setAssets((prev) => ({ ...prev, ctaGraphic: null }))
-  }, [assets.ctaGraphic])
+  }, [assets.ctaGraphic, releaseJobBlobUrls])
 
   // ── Library asset move / remove / delete ────────────────────────────────────
 
   const moveLibraryAssetToSection = useCallback((assetId: string, section: AssignedSection) => {
+    // Single-slot destinations displace the asset that currently occupies them.
+    if (section === 'firstFrame' || section === 'lastFrame' || section === 'ctaGraphic') {
+      releaseDisplacedFrameBlob(section, assetId)
+    }
     setAssets((prev) => {
       const all = [
         ...prev.identities,
@@ -1892,7 +2175,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
           return next
       }
     })
-  }, [])
+  }, [releaseDisplacedFrameBlob])
 
   const removeLibraryAssetFromSection = useCallback((assetId: string) => {
     const all = [
@@ -1907,7 +2190,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       ...assets.savedReferences,
     ].filter(Boolean) as PersonalizationAsset[]
     const asset = all.find((a) => a.id === assetId)
-    if (asset) revokeAssetUrl(asset)
+    if (asset) releaseJobBlobUrls(asset.id, asset, { dropOriginal: true })
     setAssets((prev) => ({
       ...prev,
       identities: prev.identities.filter((a) => a.id !== assetId),
@@ -1922,7 +2205,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       primaryIdentity: prev.primaryIdentity?.id === assetId ? null : prev.primaryIdentity,
       primaryLogo: prev.primaryLogo?.id === assetId ? null : prev.primaryLogo,
     }))
-  }, [assets])
+  }, [assets, releaseJobBlobUrls])
 
   const deleteLibraryAsset = useCallback((assetId: string) => {
     const all = [
@@ -1937,7 +2220,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       ...assets.savedReferences,
     ].filter(Boolean) as PersonalizationAsset[]
     const asset = all.find((a) => a.id === assetId)
-    if (asset) revokeAssetUrl(asset)
+    if (asset) releaseJobBlobUrls(asset.id, asset, { dropOriginal: true })
     setAssets((prev) => ({
       ...prev,
       identities: prev.identities.filter((a) => a.id !== assetId),
@@ -1952,7 +2235,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       primaryIdentity: prev.primaryIdentity?.id === assetId ? null : prev.primaryIdentity,
       primaryLogo: prev.primaryLogo?.id === assetId ? null : prev.primaryLogo,
     }))
-  }, [assets])
+  }, [assets, releaseJobBlobUrls])
 
   const revertLibraryAssetToOriginal = useCallback((assetId: string) => {
     const all = [
@@ -1971,7 +2254,9 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       setAssets((prev) => prev)
       return
     }
-    revokeAssetUrl(target)
+    // Release the edited preview blob, but keep `originalUrl` alive — the
+    // reverted asset now renders from it.
+    releaseJobBlobUrls(target.id, target, { superseded: [target.url, target.uploadedUrl] })
     const reverted: PersonalizationAsset = {
       ...target,
       url: target.originalUrl,
@@ -1988,7 +2273,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       name: target.name.replace('-edited.', '.').replace('_edited.', '.') || target.name,
     }
     setAssets((prev) => replaceAssetInLibrary(prev, reverted))
-  }, [assets])
+  }, [assets, releaseJobBlobUrls])
 
   // ── Discovered assets actions ───────────────────────────────────────────────
 
@@ -2177,7 +2462,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     // 3. Build asset objects before updating library so upload can reference them.
     const createdAssets: PersonalizationAsset[] = []
     for (const { item, blob, role, isPrimary } of assetsToCreate) {
-      const asset = createAsset(blob, role, {
+      const asset = createOwnedAsset(blob, role, {
         isPrimary,
         name: `discovered_${Date.now()}`,
         originalUrl: item.originalPreviewUrl || item.previewUrl,
@@ -2237,7 +2522,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       failedCount: uploadErrors.length,
       clientName: clientForm.businessName || clientForm.name || undefined,
     })
-  }, [discoveredAssets, setAssets, uploadAsset, clientForm])
+  }, [discoveredAssets, setAssets, uploadAsset, clientForm, createOwnedAsset])
 
   const cancelDiscovery = useCallback(() => {
     setDiscoveredAssetsState([])
