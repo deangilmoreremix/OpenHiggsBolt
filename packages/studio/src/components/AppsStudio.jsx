@@ -351,8 +351,23 @@ const APPS = [
 
 const CATEGORIES = ["All", ...Array.from(new Set(APPS.map(app => app.category)))];
 
+/**
+ * Map a raw app category to its i18n bundle key.
+ *
+ * Must produce camelCase keys ("Real Estate" -> "realEstate") because that is
+ * the naming used by the `categories` block in both the en and zh bundles.
+ * Lowercasing and stripping whitespace ("realestate") silently misses those
+ * keys, so the filter button falls back to raw English even under `zh`.
+ */
 function categoryKey(category) {
-  return category.toLowerCase().replace(/\s+/g, '');
+  return category
+    .toLowerCase()
+    .replace(/\s+(\w)/g, (_, chr) => chr.toUpperCase());
+}
+
+/** Localized label for a raw app category, falling back to the raw value. */
+function categoryLabel(category, copy) {
+  return copy.categories[categoryKey(category)] || category;
 }
 
 export default function AppsStudio({ locale = "en" }) {
@@ -371,17 +386,21 @@ export default function AppsStudio({ locale = "en" }) {
   }, [searchQuery]);
 
   const filteredApps = useMemo(() => {
+    const normalizedQuery = debouncedSearchQuery.trim().toLowerCase();
     return APPS.filter(app => {
-      const matchesSearch = !debouncedSearchQuery || 
-        app.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-        app.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-        app.category.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
-      
+      const localizedCategory = categoryLabel(app.category, copy);
+
+      const matchesSearch = !normalizedQuery ||
+        app.name.toLowerCase().includes(normalizedQuery) ||
+        app.description.toLowerCase().includes(normalizedQuery) ||
+        app.category.toLowerCase().includes(normalizedQuery) ||
+        localizedCategory.toLowerCase().includes(normalizedQuery);
+
       const matchesCategory = selectedCategory === "All" || app.category.toLowerCase() === selectedCategory.toLowerCase();
-      
+
       return matchesSearch && matchesCategory;
     });
-  }, [debouncedSearchQuery, selectedCategory]);
+  }, [debouncedSearchQuery, selectedCategory, copy]);
 
   return (
     <div className="h-full w-full flex flex-col items-center bg-[#030303] overflow-y-auto custom-scrollbar relative">
@@ -458,7 +477,7 @@ export default function AppsStudio({ locale = "en" }) {
                     : 'bg-white/5 text-white/50 border border-white/5 hover:text-white hover:bg-white/10'
                 }`}
               >
-                {copy.categories[categoryKey(category)] || category}
+                {categoryLabel(category, copy)}
               </button>
             ))}
           </div>
@@ -510,7 +529,7 @@ export default function AppsStudio({ locale = "en" }) {
               <div className="p-5 flex flex-col flex-1 space-y-4">
                 <div className="flex-1">
                   <h3 className="text-sm font-bold text-white uppercase tracking-tight mb-1 truncate">{app.name}</h3>
-                  <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-2">{app.category}</p>
+                  <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-2">{categoryLabel(app.category, copy)}</p>
                   <p className="text-xs text-white/50 leading-relaxed font-medium line-clamp-2 min-h-[2.5rem]">{app.description}</p>
                 </div>
                 

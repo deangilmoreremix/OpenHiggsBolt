@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import AppsStudio from '@/packages/studio/src/components/AppsStudio';
 
 describe('AppsStudio', () => {
@@ -124,10 +124,12 @@ describe('AppsStudio', () => {
     const searchInputs = screen.getAllByPlaceholderText('Search SmartVideo GO AI Apps...');
     const searchInput = searchInputs[0];
     fireEvent.change(searchInput, { target: { value: 'headshot' } });
-    // Wait for debounce (300ms) + rendering
-    await new Promise(resolve => setTimeout(resolve, 400));
-    expect(screen.getByText('AI Headshot Studio')).toBeDefined();
-    expect(screen.queryByText('AI Clipping Studio')).toBeNull();
+    // The input is debounced (300ms); poll rather than sleeping a fixed
+    // duration, which is flaky under CI load.
+    await waitFor(() => {
+      expect(screen.queryByText('AI Headshot Studio')).toBeDefined();
+      expect(screen.queryByText('AI Clipping Studio')).toBeNull();
+    });
   });
 
   it('filters apps by category', () => {
@@ -157,13 +159,13 @@ describe('AppsStudio', () => {
     const searchInputs = screen.getAllByPlaceholderText('Search SmartVideo GO AI Apps...');
     const searchInput = searchInputs[0];
     fireEvent.change(searchInput, { target: { value: 'headshot' } });
-    // Wait for debounce
-    await new Promise(resolve => setTimeout(resolve, 400));
-    expect(screen.queryByText('AI Clipping Studio')).toBeNull();
+    await waitFor(() => {
+      expect(screen.queryByText('AI Clipping Studio')).toBeNull();
+    });
     fireEvent.change(searchInput, { target: { value: '' } });
-    await new Promise(resolve => setTimeout(resolve, 400));
-    const cards = screen.getAllByRole('heading', { level: 3 });
-    expect(cards.length).toBe(38);
+    await waitFor(() => {
+      expect(screen.getAllByRole('heading', { level: 3 }).length).toBe(38);
+    });
   });
 
   it('opens GitHub links in a new tab with safe rel attributes', () => {
@@ -200,8 +202,63 @@ describe('AppsStudio', () => {
     const searchInputs = screen.getAllByPlaceholderText('Search SmartVideo GO AI Apps...');
     const searchInput = searchInputs[0];
     fireEvent.change(searchInput, { target: { value: 'xyznonexistent' } });
-    // Wait for debounce
-    await new Promise(resolve => setTimeout(resolve, 400));
-    expect(screen.getByText('No apps found matching your criteria.')).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByText('No apps found matching your criteria.')).toBeDefined();
+    });
+  });
+
+  // ── Chinese locale ────────────────────────────────────────────────────────
+  // These cover the localization paths that are otherwise silently broken:
+  // categoryKey must produce camelCase bundle keys ("Real Estate" ->
+  // "realEstate"), card badges must use the localized label rather than the
+  // raw English category, and search must match localized category names.
+
+  it('localizes the hero marketing copy under zh', () => {
+    render(<AppsStudio locale="zh" />);
+    // The badge stays English on purpose: en and zh both define it as
+    // "Revenue-Ready Templates", so assert the zh-only lines localize.
+    expect(screen.getByText('启动 AI 应用。')).toBeDefined();
+    expect(screen.getByText('即刻开始赚钱。')).toBeDefined();
+    expect(screen.getByText(/Muapi 负责 AI 基础设施/)).toBeDefined();
+  });
+
+  it('localizes every category filter button under zh', () => {
+    render(<AppsStudio locale="zh" />);
+    // Real Estate is the regression case: the raw key is "realestate" unless
+    // categoryKey camelCases it, so this button falls back to English.
+    // Several elements carry the label (filter button plus app card badges),
+    // so match the whole set rather than a single node.
+    expect(screen.getAllByText('房地产').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('图像').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('视频').length).toBeGreaterThan(0);
+    // Exact match only: no element may render the raw English category.
+    expect(screen.queryAllByText('Real Estate', { exact: true })).toHaveLength(0);
+    expect(screen.queryAllByText('Image', { exact: true })).toHaveLength(0);
+  });
+
+  it('localizes app card category badges under zh', () => {
+    render(<AppsStudio locale="zh" />);
+    // Badges must use the localized label, not the raw English category.
+    // Exact match excludes app names such as "AI Real Estate Stager".
+    expect(screen.getAllByText('房地产').length).toBeGreaterThan(0);
+    expect(screen.queryAllByText('Real Estate', { exact: true })).toHaveLength(0);
+  });
+
+  it('matches search queries against localized category names under zh', async () => {
+    render(<AppsStudio locale="zh" />);
+    const searchInput = screen.getAllByPlaceholderText('搜索 SmartVideo GO AI 应用...')[0];
+    fireEvent.change(searchInput, { target: { value: '房地产' } });
+    await waitFor(() => {
+      expect(screen.getByText('AI Real Estate Stager')).toBeDefined();
+    });
+  });
+
+  it('renders the localized empty state under zh', async () => {
+    render(<AppsStudio locale="zh" />);
+    const searchInput = screen.getAllByPlaceholderText('搜索 SmartVideo GO AI 应用...')[0];
+    fireEvent.change(searchInput, { target: { value: 'xyznonexistent' } });
+    await waitFor(() => {
+      expect(screen.getByText('未找到匹配的应用。')).toBeDefined();
+    });
   });
 });
