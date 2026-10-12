@@ -4,7 +4,8 @@
     "titleLine1": "Your Apps.",
     "titleLine2": "Your Brand.",
     "titleLine3": "Your Business.",
-    "subtitle": "Discover AI applications you can customize, brand, and launch. Build independently or learn step by step with our guided training package."
+    "subtitle": "Discover AI applications you can customize, brand, and launch. Build independently or learn step by step with our guided training package.",
+    "deploymentCenterCta": "Open the Reseller Deployment Center"
   },
   "packages": {
     "heading": "Choose How You Build",
@@ -32,7 +33,14 @@
       "cta": "Get All Apps + Training"
     },
     "upgrade": "Upgrade from DIY App Builder to Apps + Training for a $400 difference.",
+    "upgradeCta": "Upgrade to Apps + Training for $400",
+    "upgradeAlreadyTraining": "You already have the Apps + Training package, so there is nothing to upgrade.",
+    "upgradeNotEligible": "This upgrade is only available to owners of the DIY App Builder package. If you already purchased, sign in with the same account and try again.",
+    "upgradeError": "The upgrade could not be started. Please try again in a moment.",
+    "redirecting": "Redirecting to secure checkout…",
     "checkoutPending": "Checkout is not configured yet. Purchases stay unavailable until verified Stripe products are linked.",
+    "checkoutPendingMissing": "Pending Stripe configuration: {missing}.",
+    "checkoutError": "Checkout could not be started. Please try again in a moment.",
     "recommended": "Most complete"
   },
   "steps": {
@@ -53,6 +61,10 @@
   "card": {
     "github": "GitHub",
     "demo": "Try Live Demo",
+    "deploymentGuide": "Deployment Guide",
+    "deploymentGuideLabel": "Deployment guide for {app} — opens the Reseller Deployment Center",
+    "sourceCode": "Source Code",
+    "vercelDeploy": "Deploy on Vercel",
     "details": "View App Details",
     "templateFallback": "App",
     "thumbnailLoading": "Loading preview",

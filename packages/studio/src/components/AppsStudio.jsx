@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { FaGithub, FaExternalLinkAlt, FaSearch, FaCheck } from "react-icons/fa";
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { FaGithub, FaExternalLinkAlt, FaSearch, FaCheck, FaBook, FaCode, FaRocket } from "react-icons/fa";
 import en from "../messages/en/appsStudio.json";
 import zh from "../messages/zh/appsStudio.json";
 import { resolveCopy } from "../i18nUtils";
@@ -353,6 +353,49 @@ const APPS = [
 const CATEGORIES = ["All", ...Array.from(new Set(APPS.map(app => app.category)))];
 
 /**
+ * Customer-facing deployment documentation. Every card's "Deployment Guide"
+ * action deep-links to this page, so the URL is defined once here and reused
+ * by the Reseller Deployment Center anchors.
+ */
+export const RESELLER_DEPLOYMENT_URL = "/reseller/deployment";
+
+/** Deep link into the Deployment Center for one app's instructions. */
+export function deploymentGuideUrl(appId) {
+  return `${RESELLER_DEPLOYMENT_URL}#app-${appId}`;
+}
+
+/**
+ * Vercel's official project-import flow for a public GitHub repository. Only
+ * ever built from an app's real source URL — no destination is invented, and
+ * apps without a documented repo get no button.
+ */
+export function vercelImportUrl(repo) {
+  if (!repo || !/^https:\/\/github\.com\//.test(repo)) return null;
+  return `https://vercel.com/new/import?repository-url=${encodeURIComponent(repo)}`;
+}
+
+/** Single source of truth for the reseller app catalog (also used by the docs page). */
+export const RESELLER_APPS = APPS;
+
+function redirectToUrl(url) {
+  if (typeof window === "undefined" || !url) return;
+  try {
+    if (typeof window.location?.assign === "function") {
+      window.location.assign(url);
+    } else {
+      window.location.href = url;
+    }
+  } catch {
+    // Navigation can throw in sandboxed contexts (jsdom, embedded webviews).
+    try {
+      window.location.href = url;
+    } catch {
+      /* nowhere left to navigate — leave the status message on screen */
+    }
+  }
+}
+
+/**
  * Map a raw app category to its i18n bundle key.
  *
  * Must produce camelCase keys ("Real Estate" -> "realEstate") because that is
@@ -380,6 +423,14 @@ export default function AppsStudio({ locale = "en" }) {
   // Thumbnails are hotlinked from a CDN, so each one resolves asynchronously;
   // track which have loaded so the skeleton can be replaced by the image.
   const [loadedImages, setLoadedImages] = useState(new Set());
+  // Marketplace purchase state per key: "diy", "training", "upgrade".
+  // Every status is rendered inline on the package card, so a failed or
+  // pending endpoint never leaves the gallery without feedback.
+  const [purchase, setPurchase] = useState({});
+
+  const setPurchaseStatus = useCallback((key, status) => {
+    setPurchase((prev) => ({ ...prev, [key]: { ...prev[key], ...status } }));
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -388,6 +439,113 @@ export default function AppsStudio({ locale = "en" }) {
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  // Read a JSON error/status body without throwing on non-JSON responses
+  // (a missing API route answers with HTML, an aborted body with nothing).
+  const readJsonSafely = useCallback(async (response) => {
+    try {
+      return await response.json();
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const isRedirectableUrl = (url) => typeof url === "string" && /^https:\/\//.test(url);
+
+  /**
+   * POST /api/reseller/checkout { package } and hand the browser to the
+   * Stripe-hosted session URL the route returns.
+   *
+   * A 503/RESELLER_STRIPE_NOT_CONFIGURED answer keeps the CTA disabled and
+   * explains that Stripe configuration is pending, so the marketplace never
+   * fakes a checkout. Any other failure (including an endpoint that does not
+   * exist yet) only shows a retryable message — the page keeps rendering.
+   */
+  const startCheckout = useCallback(async (packageKey) => {
+    const current = purchase[packageKey];
+    if (current && (current.status === "pending" || current.status === "redirecting" || current.status === "unavailable")) {
+      return;
+    }
+    setPurchaseStatus(packageKey, { status: "pending", message: "", missing: [] });
+    try {
+      const res = await fetch("/api/reseller/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ package: packageKey }),
+      });
+      if (res.status === 503) {
+        const data = await readJsonSafely(res);
+        setPurchaseStatus(packageKey, {
+          status: "unavailable",
+          missing: Array.isArray(data?.missing) ? data.missing : [],
+        });
+        return;
+      }
+      if (!res.ok) {
+        const data = await readJsonSafely(res);
+        setPurchaseStatus(packageKey, { status: "error", message: data?.error || copy.packages.checkoutError });
+        return;
+      }
+      const data = await readJsonSafely(res);
+      if (!isRedirectableUrl(data?.url)) {
+        setPurchaseStatus(packageKey, { status: "error", message: copy.packages.checkoutError });
+        return;
+      }
+      setPurchaseStatus(packageKey, { status: "redirecting" });
+      redirectToUrl(data.url);
+    } catch {
+      setPurchaseStatus(packageKey, { status: "error", message: copy.packages.checkoutError });
+    }
+  }, [copy, purchase, readJsonSafely, setPurchaseStatus]);
+
+  /**
+   * POST /api/reseller/upgrade — the $400 path from DIY App Builder to
+   * Apps + Training. The route answers 409 ALREADY_TRAINING, 402
+   * UPGRADE_NOT_ELIGIBLE, or 503 while Stripe is unconfigured; each is
+   * explained in plain language instead of surfacing a raw error code.
+   */
+  const startUpgrade = useCallback(async () => {
+    const current = purchase.upgrade;
+    if (current && (current.status === "pending" || current.status === "redirecting" || current.status === "unavailable")) {
+      return;
+    }
+    setPurchaseStatus("upgrade", { status: "pending", message: "" });
+    try {
+      const res = await fetch("/api/reseller/upgrade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+      });
+      if (res.status === 503) {
+        setPurchaseStatus("upgrade", { status: "unavailable" });
+        return;
+      }
+      if (!res.ok) {
+        // 409 ALREADY_TRAINING and 402 UPGRADE_NOT_ELIGIBLE are expected
+        // answers with dedicated copy; any other failure is retryable.
+        const data = await readJsonSafely(res);
+        const code = String(data?.error || "");
+        if (code === "ALREADY_TRAINING") {
+          setPurchaseStatus("upgrade", { status: "already-training" });
+        } else if (code === "UPGRADE_NOT_ELIGIBLE") {
+          setPurchaseStatus("upgrade", { status: "not-eligible" });
+        } else {
+          setPurchaseStatus("upgrade", { status: "error", message: copy.packages.upgradeError });
+        }
+        return;
+      }
+      const data = await readJsonSafely(res);
+      if (!isRedirectableUrl(data?.url)) {
+        setPurchaseStatus("upgrade", { status: "error", message: copy.packages.upgradeError });
+        return;
+      }
+      setPurchaseStatus("upgrade", { status: "redirecting" });
+      redirectToUrl(data.url);
+    } catch {
+      setPurchaseStatus("upgrade", { status: "error", message: copy.packages.upgradeError });
+    }
+  }, [copy, purchase.upgrade, readJsonSafely, setPurchaseStatus]);
 
   const filteredApps = useMemo(() => {
     const normalizedQuery = debouncedSearchQuery.trim().toLowerCase();
@@ -426,6 +584,15 @@ export default function AppsStudio({ locale = "en" }) {
           <p className="text-white/60 text-sm md:text-base font-medium leading-relaxed max-w-2xl mx-auto">
             {copy.hero.subtitle}
           </p>
+          <div className="pt-2">
+            <a
+              href={RESELLER_DEPLOYMENT_URL}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-2 text-xs font-bold text-white/80 transition-all hover:border-[#22d3ee]/40 hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40"
+            >
+              <FaBook aria-hidden="true" focusable="false" className="text-[11px] text-[#22d3ee]" />
+              {copy.hero.deploymentCenterCta}
+            </a>
+          </div>
         </header>
 
         {/* ── Reseller packages ────────────────────────────────────────── */}
@@ -443,6 +610,9 @@ export default function AppsStudio({ locale = "en" }) {
               { key: 'training', featured: true },
             ].map(({ key, featured }) => {
               const pkg = copy.packages[key];
+              const state = purchase[key] || { status: 'idle' };
+              const busy = state.status === 'pending' || state.status === 'redirecting';
+              const locked = busy || state.status === 'unavailable';
               return (
                 <article
                   key={key}
@@ -479,33 +649,100 @@ export default function AppsStudio({ locale = "en" }) {
                     ))}
                   </ul>
                   <div className="mt-6 space-y-2.5">
-                    {/* Purchases stay unavailable until a verified Stripe
-                        destination is configured, so this is a disabled
-                        control rather than a link. */}
+                    {/* Purchases open the real Stripe-hosted checkout returned by
+                        POST /api/reseller/checkout. Until Stripe is configured the
+                        route answers 503 and this stays a disabled control rather
+                        than a link, so nothing looks like a working fake checkout. */}
                     <button
                       type="button"
-                      disabled
-                      aria-disabled="true"
+                      onClick={() => startCheckout(key)}
+                      disabled={locked}
+                      aria-disabled={locked ? 'true' : undefined}
+                      data-package={key}
+                      data-status={state.status}
                       className={`w-full rounded-full px-6 py-3 text-sm font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed ${
                         featured
                           ? 'bg-[#22d3ee] text-black'
                           : 'bg-white/5 text-white/60 border border-white/10'
+                      } ${
+                        locked
+                          ? ''
+                          : 'hover:opacity-95 active:scale-[0.98] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40'
                       }`}
                     >
-                      {pkg.cta}
+                      {busy ? copy.packages.redirecting : pkg.cta}
                     </button>
+                    {state.status === 'unavailable' && (
+                      <div role="status" className="space-y-1">
+                        <p className="text-[11px] text-amber-300/90 font-medium leading-relaxed">
+                          {copy.packages.checkoutPending}
+                        </p>
+                        {Array.isArray(state.missing) && state.missing.length > 0 && (
+                          <p className="text-[11px] text-white/50 font-medium leading-relaxed">
+                            {copy.packages.checkoutPendingMissing.replace('{missing}', state.missing.join(', '))}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {state.status === 'error' && state.message && (
+                      <p role="alert" className="text-[11px] text-red-400 font-medium leading-relaxed">
+                        {state.message}
+                      </p>
+                    )}
                   </div>
                 </article>
               );
             })}
           </div>
 
-          <p className="text-center text-xs text-white/60 font-medium leading-relaxed max-w-2xl mx-auto">
-            {copy.packages.upgrade}
-          </p>
-          <p role="status" className="text-center text-[11px] text-white/50 font-medium leading-relaxed max-w-2xl mx-auto">
-            {copy.packages.checkoutPending}
-          </p>
+          {/* ── $400 upgrade path ─────────────────────────────────────── */}
+          <div className="flex flex-col items-center gap-2.5">
+            <p className="text-center text-xs text-white/60 font-medium leading-relaxed max-w-2xl mx-auto">
+              {copy.packages.upgrade}
+            </p>
+            {(() => {
+              const state = purchase.upgrade || { status: 'idle' };
+              const busy = state.status === 'pending' || state.status === 'redirecting';
+              const locked = busy || state.status === 'unavailable';
+              return (
+                <>
+                  <button
+                    type="button"
+                    onClick={startUpgrade}
+                    disabled={locked}
+                    aria-disabled={locked ? 'true' : undefined}
+                    data-package="upgrade"
+                    data-status={state.status}
+                    className={`rounded-full border border-[#22d3ee]/40 bg-[#22d3ee]/10 px-6 py-2.5 text-xs font-bold text-[#22d3ee] transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                      locked ? '' : 'hover:bg-[#22d3ee]/20 active:scale-[0.98] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40'
+                    }`}
+                  >
+                    {busy ? copy.packages.redirecting : copy.packages.upgradeCta}
+                  </button>
+                  {state.status === 'unavailable' && (
+                    <p role="status" className="text-center text-[11px] text-amber-300/90 font-medium leading-relaxed max-w-2xl">
+                      {copy.packages.checkoutPending}
+                    </p>
+                  )}
+                  {state.status === 'already-training' && (
+                    <p role="status" className="text-center text-[11px] text-white/60 font-medium leading-relaxed max-w-2xl">
+                      {copy.packages.upgradeAlreadyTraining}
+                    </p>
+                  )}
+                  {state.status === 'not-eligible' && (
+                    <p role="status" className="text-center text-[11px] text-white/60 font-medium leading-relaxed max-w-2xl">
+                      {copy.packages.upgradeNotEligible}
+                    </p>
+                  )}
+                  {state.status === 'error' && state.message && (
+                    <p role="alert" className="text-center text-[11px] text-red-400 font-medium leading-relaxed max-w-2xl">
+                      {state.message}
+                    </p>
+                  )}
+                </>
+              );
+            })()}
+          </div>
         </section>
 
         {/* ── How it works ─────────────────────────────────────────────── */}
@@ -674,7 +911,8 @@ export default function AppsStudio({ locale = "en" }) {
                     </p>
                   </div>
 
-                  {/* Actions: demo is primary, details secondary, GitHub tertiary */}
+                  {/* Actions, in order: live demo (primary, only when hosted),
+                      deployment guide, source code, Vercel import. */}
                   <div className="flex flex-col gap-2 pt-1">
                     {app.hosted ? (
                       <a
@@ -688,13 +926,36 @@ export default function AppsStudio({ locale = "en" }) {
                       </a>
                     ) : null}
                     <a
+                      href={deploymentGuideUrl(app.id)}
+                      aria-label={copy.card.deploymentGuideLabel.replace('{app}', app.name)}
+                      className="flex items-center justify-center gap-2 rounded-full bg-white/5 px-4 py-2 text-xs font-bold text-white border border-white/10 transition-all hover:bg-white/10 active:scale-[0.98] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40"
+                    >
+                      <FaBook aria-hidden="true" focusable="false" className="text-[10px]" />
+                      {copy.card.deploymentGuide}
+                    </a>
+                    <a
                       href={app.repo}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center justify-center gap-2 rounded-full bg-white/5 px-4 py-2 text-xs font-bold text-white border border-white/10 transition-all hover:bg-white/10 active:scale-[0.98] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40"
                     >
-                      {copy.card.details}
+                      <FaCode aria-hidden="true" focusable="false" className="text-[10px]" />
+                      {copy.card.sourceCode}
                     </a>
+                    {/* Vercel import uses the real source repository as the
+                        destination, so nothing is invented for apps that do
+                        not have a documented repo. */}
+                    {vercelImportUrl(app.repo) && (
+                      <a
+                        href={vercelImportUrl(app.repo)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 rounded-full bg-transparent px-4 py-2 text-xs font-bold text-white/50 border border-white/10 transition-all hover:border-[#22d3ee]/30 hover:text-white active:scale-[0.98] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40"
+                      >
+                        <FaRocket aria-hidden="true" focusable="false" className="text-[10px]" />
+                        {copy.card.vercelDeploy}
+                      </a>
+                    )}
                   </div>
                 </div>
 

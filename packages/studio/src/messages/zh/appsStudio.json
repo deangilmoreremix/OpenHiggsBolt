@@ -4,7 +4,8 @@
     "titleLine1": "你的应用。",
     "titleLine2": "你的品牌。",
     "titleLine3": "你的生意。",
-    "subtitle": "发现可以自定义、品牌化并上线的 AI 应用。独立构建，或通过我们的引导式培训套餐逐步学习。"
+    "subtitle": "发现可以自定义、品牌化并上线的 AI 应用。独立构建，或通过我们的引导式培训套餐逐步学习。",
+    "deploymentCenterCta": "打开转售部署中心"
   },
   "packages": {
     "heading": "选择你的构建方式",
@@ -32,7 +33,14 @@
       "cta": "获取全部应用 + 培训"
     },
     "upgrade": "从自助应用构建包升级至应用 + 培训，差价 $400。",
+    "upgradeCta": "升级至「应用 + 培训」，差价 $400",
+    "upgradeAlreadyTraining": "你已拥有「应用 + 培训」套餐，无需升级。",
+    "upgradeNotEligible": "此升级仅向「自助应用构建包」所有者开放。如果你已购买，请使用同一账户登录后重试。",
+    "upgradeError": "无法启动升级，请稍后重试。",
+    "redirecting": "正在跳转至安全结账页面…",
     "checkoutPending": "结账尚未配置。在接入经过验证的 Stripe 产品前，购买功能不可用。",
+    "checkoutPendingMissing": "Stripe 配置待完成：{missing}。",
+    "checkoutError": "无法启动结账，请稍后重试。",
     "recommended": "最完整"
   },
   "steps": {
@@ -53,6 +61,10 @@
   "card": {
     "github": "GitHub",
     "demo": "在线试用",
+    "deploymentGuide": "部署指南",
+    "deploymentGuideLabel": "{app} 的部署指南 — 打开转售部署中心",
+    "sourceCode": "源代码",
+    "vercelDeploy": "部署到 Vercel",
     "details": "查看应用详情",
     "templateFallback": "应用",
     "thumbnailLoading": "预览加载中",
