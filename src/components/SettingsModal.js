@@ -5,11 +5,8 @@ import {
   OPENAI_KEY_STORAGE,
   isValidKeyFormat,
   MUAPI_KEY_API_ENDPOINT,
-  MUAPI_KEY_COOKIE,
-  OPENAI_KEY_COOKIE,
   cleanApiKey,
 } from '../lib/keys.js';
-import { buildCookie } from '../lib/authConfig.ts';
 import { t } from '../lib/i18n.js';
 
 // Canonical OpenAI key API endpoint for the Vite SPA.
@@ -215,9 +212,6 @@ export function SettingsModal(onClose) {
           } catch {
               // ignore localStorage write errors (private mode, etc.)
           }
-
-          document.cookie = buildCookie(MUAPI_KEY_COOKIE, cleanMuapi);
-          document.cookie = buildCookie(OPENAI_KEY_COOKIE, cleanOpenai);
 
           // Success feedback. Preserve any OpenAI provider warning instead of
           // overwriting it with a generic success message.
