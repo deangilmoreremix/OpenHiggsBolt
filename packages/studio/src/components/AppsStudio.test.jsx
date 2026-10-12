@@ -425,6 +425,98 @@ describe('AppsStudio', () => {
     });
   });
 
+  it('clears the loading skeleton for images that load before React attaches handlers', () => {
+    // Regression: cached / above-the-fold lazy images can fire load BEFORE
+    // React attaches onLoad, leaving the spinner up forever. Simulate the
+    // browser's pre-hydration completion state on the prototype.
+    const completeDesc = Object.getOwnPropertyDescriptor(
+      HTMLImageElement.prototype,
+      'complete'
+    );
+    const naturalWidthDesc = Object.getOwnPropertyDescriptor(
+      HTMLImageElement.prototype,
+      'naturalWidth'
+    );
+    Object.defineProperty(HTMLImageElement.prototype, 'complete', {
+      configurable: true,
+      get: () => true,
+    });
+    Object.defineProperty(HTMLImageElement.prototype, 'naturalWidth', {
+      configurable: true,
+      get: () => 320,
+    });
+
+    try {
+      render(<AppsStudio />);
+      const images = Array.from(document.querySelectorAll('img'));
+      expect(images.length).toBe(38);
+      // Every image must be revealed rather than stuck under the skeleton.
+      images.forEach(img => {
+        expect(img.className).toContain('opacity-100');
+        expect(img.className).not.toContain('opacity-0');
+      });
+      // No thumbnail may remain in the loading state. Scope to the card
+      // media area: the Stripe-pending notice also uses role="status".
+      expect(
+        document.querySelectorAll('article > div:first-child [role="status"]')
+          .length
+      ).toBe(0);
+    } finally {
+      if (completeDesc) {
+        Object.defineProperty(HTMLImageElement.prototype, 'complete', completeDesc);
+      }
+      if (naturalWidthDesc) {
+        Object.defineProperty(
+          HTMLImageElement.prototype,
+          'naturalWidth',
+          naturalWidthDesc
+        );
+      }
+    }
+  });
+
+  it('falls back to the letter tile for images that failed before React attached handlers', () => {
+    // Same pre-hydration race on the error side: complete + zero width.
+    const completeDesc = Object.getOwnPropertyDescriptor(
+      HTMLImageElement.prototype,
+      'complete'
+    );
+    const naturalWidthDesc = Object.getOwnPropertyDescriptor(
+      HTMLImageElement.prototype,
+      'naturalWidth'
+    );
+    Object.defineProperty(HTMLImageElement.prototype, 'complete', {
+      configurable: true,
+      get: () => true,
+    });
+    Object.defineProperty(HTMLImageElement.prototype, 'naturalWidth', {
+      configurable: true,
+      get: () => 0,
+    });
+
+    try {
+      render(<AppsStudio />);
+      const images = Array.from(document.querySelectorAll('img'));
+      // Failed thumbnails must be replaced by the accessible letter tile,
+      // never left behind a loading spinner.
+      images.forEach(img => expect(img.className).not.toContain('opacity-0'));
+      const tiles = Array.from(document.querySelectorAll('[role="img"]'));
+      expect(tiles.length).toBeGreaterThan(0);
+      tiles.forEach(tile => expect(tile.getAttribute('aria-label')).toBeTruthy());
+    } finally {
+      if (completeDesc) {
+        Object.defineProperty(HTMLImageElement.prototype, 'complete', completeDesc);
+      }
+      if (naturalWidthDesc) {
+        Object.defineProperty(
+          HTMLImageElement.prototype,
+          'naturalWidth',
+          naturalWidthDesc
+        );
+      }
+    }
+  });
+
   it('uses a responsive four-column gallery that reaches four columns at lg', () => {
     render(<AppsStudio />);
     const grid = document.querySelector('section[aria-labelledby="gallery-heading"] .grid');
@@ -660,7 +752,9 @@ describe('AppsStudio', () => {
     } finally {
       vi.unstubAllGlobals();
     }
-  });
+    // Async debounce + fetch + state settle needs more than the 5s default
+    // under load; this is a timing budget, not a behaviour assertion.
+  }, 20000);
 
   it('keeps rendering when the reseller endpoints are entirely unavailable', async () => {
     render(<AppsStudio />);

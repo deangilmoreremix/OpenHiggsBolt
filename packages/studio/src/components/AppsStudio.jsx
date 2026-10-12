@@ -853,6 +853,24 @@ export default function AppsStudio({ locale = "en" }) {
                       height={200}
                       loading="lazy"
                       sizes="(max-width: 767px) 100vw, (max-width: 1023px) 50vw, 25vw"
+                      ref={(el) => {
+                        // Cached (or above-the-fold lazy) images can fire
+                        // load/error BEFORE React attaches the handlers —
+                        // the pre-hydration race that left the skeleton
+                        // spinning forever. Resolve their state from the
+                        // element synchronously. No-op while still loading;
+                        // onLoad/onError cover the normal path.
+                        if (!el || !el.complete) return;
+                        if (el.naturalWidth > 0) {
+                          setLoadedImages(prev =>
+                            prev.has(app.id) ? prev : new Set(prev).add(app.id)
+                          );
+                        } else {
+                          setFailedImages(prev =>
+                            prev.has(app.id) ? prev : new Set(prev).add(app.id)
+                          );
+                        }
+                      }}
                       className={`h-full w-full object-cover transition-all duration-500 group-hover:scale-110 ${
                         loadedImages.has(app.id) ? 'opacity-100' : 'opacity-0'
                       }`}
