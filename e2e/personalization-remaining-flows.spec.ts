@@ -35,6 +35,79 @@ function mockMuApi(page: Page) {
   });
 }
 
+function mockBusinessFinderApis(page: Page) {
+  // Lead-finder search: mocked so the test never reaches Nominatim / Overpass.
+  page.route('**/api/personalization/find-businesses', async (route: Route) => {
+    if (route.request().method() !== 'POST') {
+      await route.fulfill({
+        status: 405,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Method not allowed' }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      // Shape mirrors the real route's success payload
+      // (app/api/personalization/find-businesses/route.ts).
+      body: JSON.stringify({
+        ok: true,
+        query: { niche: 'Real Estate', location: 'Tampa, FL', radiusMiles: 15 },
+        count: 1,
+        businesses: [{
+          id: 'osm-1',
+          source: 'OPENSTREETMAP',
+          name: 'Sunset Realty',
+          category: 'Real Estate',
+          city: 'Tampa',
+          region: 'FL',
+          phone: '555-1234',
+          websiteStatus: 'unknown',
+          verificationStatus: 'unverified',
+          leadScore: 80,
+        }],
+        providerUsed: 'OPENSTREETMAP',
+      }),
+    });
+  });
+
+  // Business research: mocked so no external website is ever fetched.
+  page.route('**/api/personalization/research-business', async (route: Route) => {
+    if (route.request().method() !== 'POST') {
+      await route.fulfill({
+        status: 405,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Method not allowed' }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      // Shape mirrors the real route's success payload
+      // (app/api/personalization/research-business/route.ts → researchProvider).
+      body: JSON.stringify({
+        ok: true,
+        research: {
+          canonicalUrl: 'https://sunsetrealty.example.com',
+          finalUrl: 'https://sunsetrealty.example.com',
+          reachable: true,
+          statusCode: 200,
+          title: 'Sunset Realty — Tampa Real Estate',
+          description: 'Sunset Realty helps Tampa families buy and sell homes.',
+          logoUrl: 'https://sunsetrealty.example.com/logo.png',
+          socialLinks: {},
+          jsonLd: [],
+          openGraph: {},
+          twitterCard: {},
+          contactInfo: { phones: ['555-1234'], emails: [], addresses: [] },
+        },
+      }),
+    });
+  });
+}
+
 async function openPersonalization(page: Page) {
   await page.goto('/personalization-demo');
   await page.waitForTimeout(1000);
@@ -58,29 +131,65 @@ test.describe('Personalization Remaining Flows — Live Verification', () => {
     await openPersonalization(page);
   });
 
-  test('BUSINESS FINDER: search, select, cancel, and profile replacement', async ({ page }) => {
+  test('BUSINESS FINDER: search, select, and research a lead', async ({ page }) => {
+    // The lead-finder entry flow needs THREE clicks before the search form renders:
+    // (1) the "Client" audience button in STEP 1 — WHO IS THIS FOR?,
+    // (2) "Find Local Business" in the "How would you like to add this client?" chooser,
+    // (3) only then do #business-niche / #business-location exist.
+    mockBusinessFinderApis(page);
+
     const clientButton = page.getByRole('button', { name: /Client/i }).first();
     await expect(clientButton).toBeVisible();
     await clientButton.click();
 
+    const findLocalBusinessBtn = page.getByRole('button', { name: /Find Local Business/i });
+    await expect(findLocalBusinessBtn).toBeVisible();
+    await findLocalBusinessBtn.click();
+
     const nicheSelect = page.locator('#business-niche');
     const locationInput = page.locator('#business-location');
+    await expect(nicheSelect).toBeVisible();
+    await expect(locationInput).toBeVisible();
 
-    if (await nicheSelect.count() > 0 && await locationInput.count() > 0) {
-      await nicheSelect.selectOption('Roofing');
-      await locationInput.fill('Tampa, FL');
+    // Niche values are the BUSINESS_NICHES keys (e.g. 'real-estate');
+    // labels are human-readable and mirror NICHE_MAPPINGS on the server.
+    await expect(nicheSelect.locator('option[value="real-estate"]')).toHaveText('Real Estate');
+    await nicheSelect.selectOption('real-estate');
+    await locationInput.fill('Tampa, FL');
 
-      const findBtn = page.getByRole('button', { name: /Find Businesses/i }).first();
-      if (await findBtn.count() > 0 && await findBtn.isVisible().catch(() => false)) {
-        await findBtn.click();
-        await page.waitForTimeout(3000);
+    const findBtn = page.getByRole('button', { name: /Find Businesses/i }).first();
+    await expect(findBtn).toBeEnabled();
+    await findBtn.click();
 
-        const results = page.getByText(/result|business|company/i).first();
-        if (await results.count() > 0) {
-          await page.screenshot({ path: '/tmp/personalization-business-finder-results.png', fullPage: true });
-        }
-      }
-    }
+    // Results panel — asserted against the mocked find-businesses payload.
+    await expect(page.getByText(/1 businesses? found for Real Estate near Tampa, FL/i).first()).toBeVisible();
+    await expect(page.getByText('Sunset Realty', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('80% match').first()).toBeVisible();
+
+    const useBtn = page.getByRole('button', { name: /Use This Business/i }).first();
+    await expect(useBtn).toBeVisible();
+    await useBtn.click();
+
+    await expect(page.getByText(/Selected:\s*Sunset Realty/i)).toBeVisible();
+
+    // The mocked lead has no website, so the Website field in the selected-business
+    // summary must be supplied before research can run.
+    const selectedWebsite = page.getByPlaceholder('https://corrected-website.com', { exact: true });
+    await expect(selectedWebsite).toBeVisible();
+    await selectedWebsite.fill('https://sunsetrealty.example.com');
+
+    const researchBtn = page.getByRole('button', { name: /^Research Business$/i });
+    await expect(researchBtn).toBeEnabled();
+    await researchBtn.click();
+
+    // Research result — asserted against the mocked research-business payload.
+    await expect(page.getByText(/Title:/i).first()).toBeVisible();
+    await expect(page.getByText(/Description:/i).first()).toBeVisible();
+    await expect(page.getByText(/Logo:/i).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Found' })).toBeVisible();
+    await expect(page.getByText(/Website reachable:/i).first()).toBeVisible();
+
+    await page.screenshot({ path: '/tmp/personalization-business-finder-results.png', fullPage: true });
   });
 
   test('AUTO PLACEMENT: verify forbidden sections remain user-controlled', async ({ page }) => {
