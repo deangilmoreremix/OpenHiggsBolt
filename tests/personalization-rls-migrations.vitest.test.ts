@@ -164,14 +164,59 @@ describe('H6 fix migration (personalization_projects RLS)', () => {
   })
 
   it('enables RLS guarded on table existence', () => {
-    expect(sql).toMatch(/alter table if exists public\.personalization_projects enable row level security/i)
+    // RLS is enabled by a conditional `execute` inside the DO block, after
+    // both guards, so it only runs when the table exists AND carries the
+    // owner column.
+    expect(sql).toContain("execute 'alter table public.personalization_projects enable row level security';")
+
+    const enableAt = sql.search(/alter table public\.personalization_projects enable row level security/)
+    const doStartAt = sql.search(/do \$\$/)
+    const doEndAt = sql.search(/end\s*\$\$;/)
+    const tableGuardAt = sql.search(/relname = 'personalization_projects'/)
+    const noticeAt = sql.search(/raise notice/)
+    const returnAt = sql.search(/\breturn;/)
+    const columnGuardAt = sql.search(/attname = 'clerk_user_id'/)
+    const exceptionAt = sql.search(/raise exception/)
+
+    // the enable lives inside the DO block that holds both guards
+    expect(doStartAt).toBeGreaterThan(-1)
+    expect(doEndAt).toBeGreaterThan(-1)
+    expect(enableAt).toBeGreaterThan(doStartAt)
+    expect(enableAt).toBeLessThan(doEndAt)
+
+    // table-existence guard: an absent table raises a notice and returns
+    // before the enable is reached, so the refuse path changes nothing
+    expect(tableGuardAt).toBeGreaterThan(-1)
+    expect(tableGuardAt).toBeLessThan(enableAt)
+    expect(noticeAt).toBeGreaterThan(-1)
+    expect(returnAt).toBeGreaterThan(noticeAt)
+    expect(returnAt).toBeLessThan(enableAt)
+
+    // clerk_user_id guard: a table without the owner column aborts the whole
+    // migration (single transaction) before RLS is enabled
+    expect(columnGuardAt).toBeGreaterThan(-1)
+    expect(columnGuardAt).toBeLessThan(enableAt)
+    expect(exceptionAt).toBeGreaterThan(columnGuardAt)
+    expect(exceptionAt).toBeLessThan(enableAt)
   })
 
   it('guards policy creation on the table and clerk_user_id column existing (fails safe)', () => {
     expect(sql).toContain("attname = 'clerk_user_id'")
     expect(sql).toContain('raise notice')
-    // re-runnable: policies are dropped if present before being created
-    expect(countOf(sql, 'drop policy if exists')).toBe(4)
+    // A table that exists but lacks clerk_user_id now FAILS LOUD: the guard
+    // raises a hard exception, which aborts the whole migration (migrations
+    // apply in a single transaction), so the refuse path changes nothing.
+    expect(sql).toContain('raise exception')
+    expect(sql).toMatch(/raise exception 'H6 REFUSING TO RUN/)
+    // exactly one of each: the missing-column path is the loud one, the
+    // absent-table path stays a notice-only no-op
+    expect(countOf(sql, 'raise exception')).toBe(1)
+    expect(countOf(sql, 'raise notice')).toBe(1)
+    // re-runnable: policies are dropped if present before being created, and
+    // the fifth drop removes the inert live `Users can manage own projects`
+    // policy so the happy path converges.
+    expect(sql).toContain('drop policy if exists "Users can manage own projects" on public.personalization_projects')
+    expect(countOf(sql, 'drop policy if exists')).toBe(5)
   })
 
   it('creates select/insert/update/delete policies with the Clerk idiom (5 predicates)', () => {
@@ -191,8 +236,20 @@ describe('idempotency: applying the migrations twice is a no-op', () => {
     // Every create policy is preceded by its own drop policy if exists, so a
     // second application converges instead of erroring on a duplicate name.
     expect(countOf(sql, 'create policy')).toBe(BRAND_TABLES.length * 4)
-    // Each table drops its legacy public policy plus its four owner policies.
-    expect(countOf(sql, 'drop policy if exists')).toBe(BRAND_TABLES.length * 5)
+    // Each table drops its `public all {table}` policy, the four LIVE legacy
+    // `{table}_{select,insert,update,delete}` policies, and its own four
+    // owner policies: 9 drops per table, so a second run converges on any
+    // database in either state.
+    expect(countOf(sql, 'drop policy if exists')).toBe(BRAND_TABLES.length * 9)
+    // Pin the defect the correction fixed: the four live out-of-band legacy
+    // policy names must be dropped for every table. Postgres ORs per-command
+    // permissive policies together, so leaving them in place would keep
+    // granting every workspace member access to every row of the workspace.
+    for (const table of BRAND_TABLES) {
+      for (const command of ['select', 'insert', 'update', 'delete']) {
+        expect(sql).toContain(`drop policy if exists "${table}_${command}" on ${table};`)
+      }
+    }
   })
 
   it('H5 fix migration re-runs via drop policy if exists + no-op enable', () => {
@@ -202,10 +259,29 @@ describe('idempotency: applying the migrations twice is a no-op', () => {
     expect(countOf(sql, 'enable row level security')).toBe(1)
   })
 
-  it('H6 fix migration re-runs via drop policy if exists and an if-exists alter table', () => {
+  it('H6 fix migration re-runs via drop policy if exists and a no-op enable', () => {
     const sql = readSql(H6_MIGRATION)
-    expect(countOf(sql, 'drop policy if exists')).toBe(countOf(sql, 'create policy'))
-    expect(countOf(sql, 'alter table if exists')).toBe(1)
+    // Every recreated policy is dropped by its exact name before it is created,
+    // so a second application converges instead of erroring on a duplicate.
+    for (const name of [
+      'Users can view own personalization projects',
+      'Users can insert own personalization projects',
+      'Users can update own personalization projects',
+      'Users can delete own personalization projects',
+    ]) {
+      expect(sql).toContain(`drop policy if exists "${name}" on public.personalization_projects`)
+      expect(sql).toContain(`create policy "${name}"`)
+    }
+    expect(countOf(sql, 'create policy')).toBe(4)
+    // The fifth drop removes the inert live `Users can manage own projects`
+    // policy (FOR ALL, auth.uid() = user_id); extra `drop ... if exists`
+    // statements are no-ops on a database that never had it.
+    expect(countOf(sql, 'drop policy if exists')).toBe(5)
+    expect(countOf(sql, 'drop policy if exists')).toBeGreaterThanOrEqual(countOf(sql, 'create policy'))
+    // `enable row level security` is a no-op once RLS is on. It is a guarded
+    // `execute` inside the DO block, not a top-level `alter table if exists`.
+    expect(countOf(sql, 'enable row level security')).toBe(1)
+    expect(countOf(sql, 'alter table if exists')).toBe(0)
   })
 })
 
