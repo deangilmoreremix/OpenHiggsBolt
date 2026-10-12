@@ -1,34 +1,84 @@
 {
   "hero": {
-    "badge": "可即时变现的模板",
-    "titleLine1": "启动 AI 应用。",
-    "titleLine2": "即刻开始赚钱。",
-    "subtitle": "每个模板都是一个功能完整、集成 Stripe 的 AI SaaS，可在几分钟内部署到 Vercel。向用户收费，保留收入 — Muapi 负责 AI 基础设施。"
+    "badge": "SMARTVIDEO AI APPS 转售计划",
+    "titleLine1": "你的应用。",
+    "titleLine2": "你的品牌。",
+    "titleLine3": "你的生意。",
+    "subtitle": "发现可以自定义、品牌化并上线的 AI 应用。独立构建，或通过我们的引导式培训套餐逐步学习。",
+    "deploymentCenterCta": "打开转售部署中心"
+  },
+  "packages": {
+    "heading": "选择你的构建方式",
+    "subheading": "获得完整应用合集的两种方式。",
+    "diy": {
+      "name": "自助应用构建包",
+      "price": "$197",
+      "priceLabel": "一次性付款",
+      "positioning": "获得应用，按自己的节奏创建自己的 AI 软件生意。",
+      "feature1": "转售合集中的全部应用",
+      "feature2": "包含的源代码文件与配置文档",
+      "feature3": "部署与自定义资源",
+      "feature4": "自助学习：不含讲师指导培训",
+      "cta": "获取全部应用"
+    },
+    "training": {
+      "name": "应用 + 培训",
+      "price": "$597",
+      "priceLabel": "一次性付款",
+      "positioning": "获得应用，并直接学习如何构建、自定义与上线它们。",
+      "feature1": "包含自助应用构建包的全部内容",
+      "feature2": "应用的讲师指导培训",
+      "feature3": "引导式实施与自定义课程",
+      "feature4": "部署与上线演练",
+      "cta": "获取全部应用 + 培训"
+    },
+    "upgrade": "从自助应用构建包升级至应用 + 培训，差价 $400。",
+    "upgradeCta": "升级至「应用 + 培训」，差价 $400",
+    "upgradeAlreadyTraining": "你已拥有「应用 + 培训」套餐，无需升级。",
+    "upgradeNotEligible": "此升级仅向「自助应用构建包」所有者开放。如果你已购买，请使用同一账户登录后重试。",
+    "upgradeError": "无法启动升级，请稍后重试。",
+    "redirecting": "正在跳转至安全结账页面…",
+    "checkoutPending": "结账尚未配置。在接入经过验证的 Stripe 产品前，购买功能不可用。",
+    "checkoutPendingMissing": "Stripe 配置待完成：{missing}。",
+    "checkoutError": "无法启动结账，请稍后重试。",
+    "recommended": "最完整"
   },
   "steps": {
+    "heading": "运作方式",
     "step1": {
-      "title": "几分钟内部署",
-      "description": "Fork 开源模板，添加你的 Muapi 密钥，推送到 Vercel。无需后端设置。"
+      "title": "选择你的应用",
+      "description": "浏览包含的 AI 应用合集，并预览可用的示例。"
     },
     "step2": {
-      "title": "收取付款",
-      "description": "Stripe 预先集成。设置你自己的定价 — 一次性积分、订阅或按使用付费。"
+      "title": "自定义并构建",
+      "description": "访问包含的应用文件，学习如何配置、品牌化并部署这款软件。"
     },
     "step3": {
-      "title": "保留收入",
-      "description": "付款直接进入你的 Stripe 账户。你拥有产品、品牌和利润。"
+      "title": "上线你的生意",
+      "description": "按照上线资源准备你的产品、配置支付方式并推广你的服务。"
     }
   },
   "card": {
     "github": "GitHub",
-    "demo": "在线演示",
-    "templateFallback": "应用"
+    "demo": "在线试用",
+    "deploymentGuide": "部署指南",
+    "deploymentGuideLabel": "{app} 的部署指南 — 打开转售部署中心",
+    "sourceCode": "源代码",
+    "vercelDeploy": "部署到 Vercel",
+    "repoUnpublished": "仓库尚未发布",
+    "vercelDeployUnavailable": "暂不支持部署 — 此应用的源代码仓库尚未作为可部署模板发布。",
+    "details": "查看应用详情",
+    "templateFallback": "应用",
+    "thumbnailLoading": "预览加载中",
+    "thumbnailFailed": "预览不可用"
   },
   "search": {
     "placeholder": "搜索 SmartVideo GO AI 应用..."
   },
   "filter": {
-    "all": "全部"
+    "all": "全部",
+    "label": "按分类筛选应用",
+    "results": "显示 {count} / {total} 个应用"
   },
   "categories": {
     "all": "全部",
@@ -45,5 +95,9 @@
   },
   "empty": {
     "noResults": "未找到匹配的应用。"
+  },
+  "gallery": {
+    "heading": "应用合集",
+    "subheading": "转售套餐中包含的全部应用。"
   }
 }
