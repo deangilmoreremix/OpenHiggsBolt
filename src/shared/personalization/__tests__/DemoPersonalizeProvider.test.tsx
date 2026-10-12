@@ -174,7 +174,7 @@ describe('DemoPersonalizeProvider durable uploads', () => {
 
   it('uploads identity files and stores durable URL', async () => {
     const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
-    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded-identity.jpg')
+    mockUploadPersonalizationAsset.mockResolvedValue({ url: 'https://example.com/uploaded-identity.jpg' })
 
     await renderProvider()
     await openSource()
@@ -198,7 +198,7 @@ describe('DemoPersonalizeProvider durable uploads', () => {
 
   it('uploads logo files and stores durable URL', async () => {
     const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
-    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded-logo.png')
+    mockUploadPersonalizationAsset.mockResolvedValue({ url: 'https://example.com/uploaded-logo.png' })
 
     await renderProvider()
     await openSource()
@@ -222,7 +222,7 @@ describe('DemoPersonalizeProvider durable uploads', () => {
 
   it('uploads product files and stores durable URL', async () => {
     const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
-    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded-product.png')
+    mockUploadPersonalizationAsset.mockResolvedValue({ url: 'https://example.com/uploaded-product.png' })
 
     await renderProvider()
     await openSource()
@@ -246,7 +246,7 @@ describe('DemoPersonalizeProvider durable uploads', () => {
 
   it('uploads brand reference files and stores durable URL', async () => {
     const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
-    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded-brand.png')
+    mockUploadPersonalizationAsset.mockResolvedValue({ url: 'https://example.com/uploaded-brand.png' })
 
     await renderProvider()
     await openSource()
@@ -270,7 +270,7 @@ describe('DemoPersonalizeProvider durable uploads', () => {
 
   it('uploads first frame and stores durable URL', async () => {
     const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
-    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded-first.png')
+    mockUploadPersonalizationAsset.mockResolvedValue({ url: 'https://example.com/uploaded-first.png' })
 
     await renderProvider()
     await openSource()
@@ -294,7 +294,7 @@ describe('DemoPersonalizeProvider durable uploads', () => {
 
   it('uploads last frame and stores durable URL', async () => {
     const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
-    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded-last.png')
+    mockUploadPersonalizationAsset.mockResolvedValue({ url: 'https://example.com/uploaded-last.png' })
 
     await renderProvider()
     await openSource()
@@ -318,7 +318,7 @@ describe('DemoPersonalizeProvider durable uploads', () => {
 
   it('uploads CTA graphic and stores durable URL', async () => {
     const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
-    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded-cta.png')
+    mockUploadPersonalizationAsset.mockResolvedValue({ url: 'https://example.com/uploaded-cta.png' })
 
     await renderProvider()
     await openSource()
@@ -379,7 +379,7 @@ describe('DemoPersonalizeProvider durable uploads', () => {
     const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
     mockUploadPersonalizationAsset
       .mockRejectedValueOnce(new Error('Network error'))
-      .mockResolvedValueOnce('https://example.com/retried-logo.png')
+      .mockResolvedValueOnce({ url: 'https://example.com/retried-logo.png' })
 
     await renderProvider()
     await openSource()
@@ -443,9 +443,9 @@ describe('DemoPersonalizeProvider durable uploads', () => {
 
   it('supports multiple concurrent product uploads', async () => {
     const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
-    mockUploadPersonalizationAsset.mockImplementation((opts: { apiKey: string, file: File }) => {
-      return new Promise<string>((resolve) => {
-        setTimeout(() => resolve(`https://example.com/uploaded-${opts.file.name}`), Math.random() * 50 + 10)
+    mockUploadPersonalizationAsset.mockImplementation((_apiKey: string, { file }: { file: File }) => {
+      return new Promise<{ url: string }>((resolve) => {
+        setTimeout(() => resolve({ url: `https://example.com/uploaded-${file.name}` }), Math.random() * 50 + 10)
       })
     })
 
@@ -474,9 +474,9 @@ describe('DemoPersonalizeProvider durable uploads', () => {
 
   it('supports multiple concurrent brand reference uploads', async () => {
     const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
-    mockUploadPersonalizationAsset.mockImplementation((opts: { apiKey: string, file: File }) => {
-      return new Promise<string>((resolve) => {
-        setTimeout(() => resolve(`https://example.com/uploaded-${opts.file.name}`), Math.random() * 50 + 10)
+    mockUploadPersonalizationAsset.mockImplementation((_apiKey: string, { file }: { file: File }) => {
+      return new Promise<{ url: string }>((resolve) => {
+        setTimeout(() => resolve({ url: `https://example.com/uploaded-${file.name}` }), Math.random() * 50 + 10)
       })
     })
 
@@ -500,9 +500,9 @@ describe('DemoPersonalizeProvider durable uploads', () => {
 
   it('keeps primary identity correct during async uploads', async () => {
     const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
-    mockUploadPersonalizationAsset.mockImplementation((opts: { apiKey: string, file: File }) => {
-      return new Promise<string>((resolve) => {
-        setTimeout(() => resolve(`https://example.com/uploaded-${opts.file.name}`), Math.random() * 100 + 20)
+    mockUploadPersonalizationAsset.mockImplementation((_apiKey: string, { file }: { file: File }) => {
+      return new Promise<{ url: string }>((resolve) => {
+        setTimeout(() => resolve({ url: `https://example.com/uploaded-${file.name}` }), Math.random() * 100 + 20)
       })
     })
 
@@ -527,9 +527,9 @@ describe('DemoPersonalizeProvider durable uploads', () => {
 
   it('keeps primary logo correct during async uploads', async () => {
     const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
-    mockUploadPersonalizationAsset.mockImplementation((opts: { apiKey: string, file: File }) => {
-      return new Promise<string>((resolve) => {
-        setTimeout(() => resolve(`https://example.com/uploaded-${opts.file.name}`), Math.random() * 100 + 20)
+    mockUploadPersonalizationAsset.mockImplementation((_apiKey: string, { file }: { file: File }) => {
+      return new Promise<{ url: string }>((resolve) => {
+        setTimeout(() => resolve({ url: `https://example.com/uploaded-${file.name}` }), Math.random() * 100 + 20)
       })
     })
 
@@ -1623,7 +1623,7 @@ describe('DemoPersonalizeProvider saved-client edited asset regression', () => {
 
   it('propagates edited saved-client logo to current job with uploaded URL', async () => {
     const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
-    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded-logo.png')
+    mockUploadPersonalizationAsset.mockResolvedValue({ url: 'https://example.com/uploaded-logo.png' })
 
     await renderProvider()
     await openSource()
@@ -1688,7 +1688,7 @@ describe('DemoPersonalizeProvider saved-client edited asset regression', () => {
 
   it('propagates edited saved-client brand reference to current job with uploaded URL', async () => {
     const mockUploadPersonalizationAsset = uploadPersonalizationAsset as any
-    mockUploadPersonalizationAsset.mockResolvedValue('https://example.com/uploaded-brand.png')
+    mockUploadPersonalizationAsset.mockResolvedValue({ url: 'https://example.com/uploaded-brand.png' })
 
     await renderProvider()
     await openSource()
@@ -1942,7 +1942,7 @@ describe('DemoPersonalizeProvider edit persistence fallback', () => {
     const mockPersist = persistEditedPersonalizationAsset as any
     mockPersist.mockResolvedValue({ ok: false })
     const mockUpload = uploadPersonalizationAsset as any
-    mockUpload.mockResolvedValue('https://example.com/uploaded.png')
+    mockUpload.mockResolvedValue({ url: 'https://example.com/uploaded.png' })
 
     await renderProvider()
     await openSource()
@@ -1989,7 +1989,7 @@ describe('DemoPersonalizeProvider edit persistence fallback', () => {
     const mockPersist = persistEditedPersonalizationAsset as any
     mockPersist.mockResolvedValue({ ok: false })
     const mockUpload = uploadPersonalizationAsset as any
-    mockUpload.mockResolvedValue('https://example.com/uploaded-saved.png')
+    mockUpload.mockResolvedValue({ url: 'https://example.com/uploaded-saved.png' })
 
     await renderProvider()
     await openSource()
@@ -2051,9 +2051,9 @@ describe('DemoPersonalizeProvider edit persistence fallback', () => {
 
   it('applyEditedPersonalizationAsset uses Supabase URL when persistence succeeds', async () => {
     const mockPersist = persistEditedPersonalizationAsset as any
-    mockPersist.mockResolvedValue({ ok: true, url: 'https://example.com/persisted.png' })
+    mockPersist.mockResolvedValue({ ok: true, publicUrl: 'https://example.com/persisted.png' })
     const mockUpload = uploadPersonalizationAsset as any
-    mockUpload.mockResolvedValue('https://example.com/uploaded.png')
+    mockUpload.mockResolvedValue({ url: 'https://example.com/uploaded.png' })
 
     await renderProvider()
     await openSource()
@@ -2105,9 +2105,9 @@ describe('DemoPersonalizeProvider edit persistence fallback', () => {
 
   it('applyEditedSavedClientAsset uses Supabase URL when persistence succeeds', async () => {
     const mockPersist = persistEditedPersonalizationAsset as any
-    mockPersist.mockResolvedValue({ ok: true, url: 'https://example.com/persisted-saved.png' })
+    mockPersist.mockResolvedValue({ ok: true, publicUrl: 'https://example.com/persisted-saved.png' })
     const mockUpload = uploadPersonalizationAsset as any
-    mockUpload.mockResolvedValue('https://example.com/uploaded-saved.png')
+    mockUpload.mockResolvedValue({ url: 'https://example.com/uploaded-saved.png' })
 
     await renderProvider()
     await openSource()
