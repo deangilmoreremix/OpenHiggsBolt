@@ -1,4 +1,4 @@
-import { describe, it, before, after } from 'node:test'
+import { describe, it, beforeAll, afterAll } from 'vitest'
 import assert from 'node:assert/strict'
 import { MuAPIVFXClient } from '../src/shared/api/vfx.ts'
 
@@ -18,12 +18,12 @@ describe('MuAPIVFXClient', () => {
   let originalFetch
   let originalXHR
 
-  before(() => {
+  beforeAll(() => {
     originalFetch = global.fetch
     originalXHR = global.XMLHttpRequest
   })
 
-  after(() => {
+  afterAll(() => {
     global.fetch = originalFetch
     global.XMLHttpRequest = originalXHR
   })
