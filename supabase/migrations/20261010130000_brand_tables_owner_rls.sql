@@ -1,10 +1,33 @@
 -- =====================================================================
 -- Brand Studio owner-scoped RLS (closes CRITICAL C1)
 --
--- BEFORE: 20260620121513_create_brand_tables.sql:87-91 granted
---   `for all using (true) with check (true)` on all five brand_* tables.
---   The Supabase ANON key ships in the browser bundle (src/lib/supabase.ts),
---   so any visitor could read / write / DELETE every tenant's brand data.
+-- VERIFIED LIVE STATE BEFORE THIS MIGRATION (2026-10-12, project
+-- bzxohkrxcwodllketcpz, Postgres 17.6.1.084): all five brand_* tables
+-- existed with RLS already enabled and exactly four policies each —
+-- `brand_dna_select`/`brand_dna_insert`/`brand_dna_update`/
+-- `brand_dna_delete` (and the same four names per sibling table) — every
+-- one defined as `is_workspace_member(workspace_id)`. Those policies were
+-- created OUT-OF-BAND (Supabase dashboard / psql); they are NOT from any
+-- migration in this repo. In particular the `public all {table}`
+-- (`for all using (true) with check (true)`) policies that
+-- 20260620121513_create_brand_tables.sql:87-91 creates are NOT live: they
+-- were evidently replaced by the out-of-band workspace policies above.
+--
+-- WHY THE DROP LIST TARGETS THOSE NAMES: Postgres ORs per-command
+-- permissive policies together. Dropping only the `public all {table}`
+-- names (which no longer exist) would leave the 20 out-of-band
+-- `{table}_{select,insert,update,delete}` policies in place, OR'd
+-- alongside the new `*_owner_*` policies below — so a workspace member
+-- would STILL see every row of the workspace and the owner scoping would
+-- never take effect. Each table therefore also drops its four live
+-- legacy policies by their exact verified names.
+--
+-- The four legacy policies per table are superseded by the per-user
+-- (`clerk_user_id`) ownership model that the Netlify functions
+-- (netlify/functions/*) and the Next.js brand routes actually enforce:
+-- `is_workspace_member(workspace_id)` grants every member of a workspace
+-- access to every workspace row, which is not the ownership boundary the
+-- application implements.
 --
 -- AFTER: every brand_* row carries the owning Clerk user id and RLS only
 --   exposes rows where `clerk_user_id` matches the request's
@@ -16,7 +39,10 @@
 -- DESIGN DECISION — BACKFILL (option (a): leave legacy rows NULL).
 --   None of these tables had an owner column, so there is no legitimate
 --   owner source for rows that already exist: the creating session/caller
---   identity was never recorded. We therefore DO NOT invent an owner
+--   identity was never recorded. (Verified row counts when this migration
+--   was written: brand_dna 2 — one of them with NULL workspace_id —,
+--   brand_campaigns 1, brand_assets 0, brand_photoshoots 0,
+--   brand_animations 0.) We therefore DO NOT invent an owner
 --   (no shared 'admin'/'system' user, no copying from app_users).
 --   Pre-existing rows keep `clerk_user_id IS NULL` and become invisible to
 --   every anon/authenticated client: NULL never equals
@@ -71,9 +97,13 @@ create index if not exists brand_animations_clerk_user_id_idx
   on brand_animations(clerk_user_id);
 
 -- ---------------------------------------------------------------------
--- 3. Replace the `using (true) with check (true)` policies with
---    owner-scoped ones. The policies are named for the operation they
---    cover so they can be dropped/replaced individually.
+-- 3. Replace the LIVE owner policies. Per table the live set is exactly
+--    `{table}_select` / `{table}_insert` / `{table}_update` /
+--    `{table}_delete` (all `is_workspace_member(workspace_id)`, created
+--    out-of-band — see the header). They are dropped here under those
+--    exact names so they cannot OR with the new owner policies; the
+--    `public all {table}` and `{table}_owner_*` drops are kept so the
+--    file converges and stays re-runnable on a database in either state.
 --
 --    Reads and the `using` side of writes compare against
 --    current_setting('app.clerk_user_id', true): when the setting is unset
@@ -85,6 +115,10 @@ create index if not exists brand_animations_clerk_user_id_idx
 
 -- brand_dna ------------------------------------------------------------
 drop policy if exists "public all brand_dna" on brand_dna;
+drop policy if exists "brand_dna_select" on brand_dna;
+drop policy if exists "brand_dna_insert" on brand_dna;
+drop policy if exists "brand_dna_update" on brand_dna;
+drop policy if exists "brand_dna_delete" on brand_dna;
 drop policy if exists "brand_dna_owner_select" on brand_dna;
 drop policy if exists "brand_dna_owner_insert" on brand_dna;
 drop policy if exists "brand_dna_owner_update" on brand_dna;
@@ -109,6 +143,10 @@ create policy "brand_dna_owner_delete" on brand_dna
 
 -- brand_campaigns -------------------------------------------------------
 drop policy if exists "public all brand_campaigns" on brand_campaigns;
+drop policy if exists "brand_campaigns_select" on brand_campaigns;
+drop policy if exists "brand_campaigns_insert" on brand_campaigns;
+drop policy if exists "brand_campaigns_update" on brand_campaigns;
+drop policy if exists "brand_campaigns_delete" on brand_campaigns;
 drop policy if exists "brand_campaigns_owner_select" on brand_campaigns;
 drop policy if exists "brand_campaigns_owner_insert" on brand_campaigns;
 drop policy if exists "brand_campaigns_owner_update" on brand_campaigns;
@@ -133,6 +171,10 @@ create policy "brand_campaigns_owner_delete" on brand_campaigns
 
 -- brand_assets ----------------------------------------------------------
 drop policy if exists "public all brand_assets" on brand_assets;
+drop policy if exists "brand_assets_select" on brand_assets;
+drop policy if exists "brand_assets_insert" on brand_assets;
+drop policy if exists "brand_assets_update" on brand_assets;
+drop policy if exists "brand_assets_delete" on brand_assets;
 drop policy if exists "brand_assets_owner_select" on brand_assets;
 drop policy if exists "brand_assets_owner_insert" on brand_assets;
 drop policy if exists "brand_assets_owner_update" on brand_assets;
@@ -157,6 +199,10 @@ create policy "brand_assets_owner_delete" on brand_assets
 
 -- brand_photoshoots -----------------------------------------------------
 drop policy if exists "public all brand_photoshoots" on brand_photoshoots;
+drop policy if exists "brand_photoshoots_select" on brand_photoshoots;
+drop policy if exists "brand_photoshoots_insert" on brand_photoshoots;
+drop policy if exists "brand_photoshoots_update" on brand_photoshoots;
+drop policy if exists "brand_photoshoots_delete" on brand_photoshoots;
 drop policy if exists "brand_photoshoots_owner_select" on brand_photoshoots;
 drop policy if exists "brand_photoshoots_owner_insert" on brand_photoshoots;
 drop policy if exists "brand_photoshoots_owner_update" on brand_photoshoots;
@@ -181,6 +227,10 @@ create policy "brand_photoshoots_owner_delete" on brand_photoshoots
 
 -- brand_animations ------------------------------------------------------
 drop policy if exists "public all brand_animations" on brand_animations;
+drop policy if exists "brand_animations_select" on brand_animations;
+drop policy if exists "brand_animations_insert" on brand_animations;
+drop policy if exists "brand_animations_update" on brand_animations;
+drop policy if exists "brand_animations_delete" on brand_animations;
 drop policy if exists "brand_animations_owner_select" on brand_animations;
 drop policy if exists "brand_animations_owner_insert" on brand_animations;
 drop policy if exists "brand_animations_owner_update" on brand_animations;
