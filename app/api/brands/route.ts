@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { brands, getBrandsForUser, type Brand } from '@/shared/brandStore'
 import { ok, apiError } from '@/lib/apiError'
-import { assertSafeUrlString as assertSafeUrl } from '@/lib/networkSafety'
+import { checkDestination, createPinnedFetch } from '@/lib/networkSafety'
 
 const MAX_BYTES = 1_000_000
 const FETCH_TIMEOUT_MS = 5000
@@ -70,13 +70,34 @@ export async function POST(req: NextRequest) {
 
   let brand_name: string | undefined
   let tagline: string | undefined
+  // SSRF guard: resolve the host, validate every returned address, and refuse
+  // any destination that is a literal/encoded private / metadata / loopback /
+  // CGNAT / IPv6 ULA / link-local / IPv4-mapped / unspecified address (or a
+  // hostname that resolves to one). dns_resolution_failed is treated as
+  // "unreachable" and falls through to the fetch try/catch (brand_name = url)
+  // so the route stays graceful for genuinely dead public sites.
+  const ssrfCheck = await checkDestination(url, {})
+  if (!ssrfCheck.ok && (ssrfCheck.reason === 'blocked_host' || ssrfCheck.reason === 'resolved_to_blocked_ip' || ssrfCheck.reason === 'invalid_url')) {
+    return apiError('bad_request', `Blocked URL: ${ssrfCheck.reason} is not allowed`, 400)
+  }
   try {
-    const safe = await assertSafeUrl(url)
-    const res = await fetch(safe.toString(), {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      redirect: 'manual',
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    })
+    let res: Response
+    if (ssrfCheck.ok) {
+      const pinnedFetch = createPinnedFetch(ssrfCheck)
+      res = (await pinnedFetch(ssrfCheck.url, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        redirect: 'manual',
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      })) as Response
+    } else {
+      // Unreachable: the host did not resolve, so no pin was built. Fall
+      // through to a plain fetch; the timeout will resolve to brand_name=url.
+      res = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        redirect: 'manual',
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      })
+    }
     if (res.status >= 300 && res.status < 400) {
     } else if (res.ok) {
       const buf = Buffer.from(await res.arrayBuffer())
