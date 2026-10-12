@@ -74,7 +74,7 @@ From the UNCOMMITTED lead-finder work (absent on main):
 | L5 | `e2e/personalization-remaining-flows.spec.ts` — niche fix (`'Roofing'` → `'real-estate'`) + BUSINESS FINDER test rewrite (+126/−17). **This is the 8/8 browser E2E spec** |
 | L6 | Missing test files: `src/server/businessDiscovery/__tests__/{businessCache,researchProviderSsrf}.test.ts`, `src/server/__tests__/{findBusinessesRoute,researchBusinessRoute,discoveryCertifiedBaseline}.test.ts`, `tests/{personalization-project,discover-assets-status-auth,proxy-openai-enhance,proxy-openai-image}.vitest.test.ts` |
 | L7 | `app/api/personalization/project/route.ts` (absent on main) |
-| L8 | `e2e/provider-routing.spec.ts` (11 tests, absent on main) |
+| L8 | `e2e/provider-routing.spec.ts` (2 tests, absent on main) |
 | L9 | Evaluate & integrate only genuinely-missing deltas from uncommitted `PersonalizationModal.tsx` / `DemoPersonalizeProvider.tsx` — main already contains the lead-finder UI fixes and is a feature superset; **preserve** main's 12 `dragOverSection` refs, `onRevert`, asset summaries and image editing |
 | L10 | Evaluate uncommitted modifications to `app/api/personalization/discover-assets/status/route.ts`, `src/server/__tests__/personalizationDiscovery.test.ts`, `src/server/businessDiscovery/__tests__/businessDiscovery.test.ts` |
 
