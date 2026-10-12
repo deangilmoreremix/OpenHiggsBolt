@@ -670,6 +670,212 @@ export function createPinnedAgent(destination) {
   return destination.protocol === 'https:' ? new https.Agent(options) : new http.Agent(options)
 }
 
+// ---------------------------------------------------------------------------
+// Pinned request: one connection, bound to the address that was validated
+// ---------------------------------------------------------------------------
+
+/** Statuses the fetch contract requires to be built with a null body. */
+const NULL_BODY_STATUSES = new Set([101, 204, 205, 304])
+
+/** Strips the brackets a URL keeps around an IPv6 literal. */
+function bareHostname(hostname) {
+  return String(hostname || '').replace(/^\[+/, '').replace(/\]+$/, '')
+}
+
+/** True when a host field is an IP literal rather than a DNS name. */
+function isIpLiteralHostname(hostname) {
+  const bare = bareHostname(hostname)
+  if (bare.indexOf(':') !== -1) return true
+  return Boolean(parseIpv4(bare))
+}
+
+/**
+ * Builds an agent whose lookup can only ever return `address`, so the socket
+ * is opened to a peer this process has already validated.
+ */
+function pinnedNodeAgent(useHttps, address) {
+  const options = { lookup: createPinnedLookup([address]), keepAlive: false }
+  return useHttps ? new https.Agent(options) : new http.Agent(options)
+}
+
+/** Accepts a plain object, a `Headers` or a `Map` and returns a plain object. */
+function toPlainHeaders(headers) {
+  if (!headers) return {}
+  if (typeof headers.forEach === 'function' && typeof headers.keys === 'function') {
+    const plain = {}
+    headers.forEach((value, key) => {
+      plain[String(key)] = value
+    })
+    return plain
+  }
+  return { ...headers }
+}
+
+/** Encodes the body shapes a server-side caller may hand to the pin. */
+function encodeRequestBody(body) {
+  if (body === undefined || body === null) return null
+  if (typeof body === 'string') return Buffer.from(body)
+  if (Buffer.isBuffer(body)) return body
+  if (body instanceof Uint8Array) return Buffer.from(body)
+  if (body instanceof ArrayBuffer) return Buffer.from(new Uint8Array(body))
+  if (typeof body === 'object' && typeof FormData !== 'undefined' && body instanceof FormData) {
+    // A form cannot be written raw — `String(formData)` would silently send
+    // "[object FormData]". Callers serialize it first; see
+    // `createUploadProxyPinnedFetch` in src/lib/uploadProxyTarget.js.
+    throw new NetworkSafetyError('unsupported_body')
+  }
+  return body
+}
+
+function isStreamLike(body) {
+  return Boolean(body) && typeof body.pipe === 'function'
+}
+
+/**
+ * Builds a fetch-compatible request function whose single connection target is
+ * the address `destination` was validated for. This is the half that closes
+ * the TOCTOU / DNS-rebinding window for callers that use the platform `fetch`:
+ * a plain `fetch(url)` re-resolves DNS between the check and the connect, so a
+ * record that flips to 169.254.169.254 can win. The function returned here
+ * never resolves a name at connect time — the pinned lookup hands back the
+ * pre-validated address and nothing else.
+ *
+ * Guarantees:
+ *   - TLS still verifies the *hostname*: SNI and the certificate identity are
+ *     taken from the validated host, never from the pinned IP, so pinning the
+ *     peer address cannot downgrade certificate checking.
+ *   - The `Host` header keeps the original host (with port when non-default).
+ *   - No redirect is ever followed: a 3xx is returned to the caller, exactly
+ *     like `maxRedirects: 0` in axios.
+ *   - Only the exact origin that was validated can be requested; any other
+ *     URL is refused rather than resolved again.
+ */
+export function createPinnedFetch(destination) {
+  const validatedUrl = destination && destination.url ? String(destination.url) : ''
+  let base
+  try {
+    base = new URL(validatedUrl)
+  } catch {
+    return function refusedPinnedFetch() {
+      return Promise.reject(new NetworkSafetyError('invalid_url'))
+    }
+  }
+
+  const pinned = pickPinnedAddress(destination)
+  if (!pinned) {
+    return function refusedPinnedFetch() {
+      return Promise.reject(new NetworkSafetyError('no_validated_address'))
+    }
+  }
+
+  const useHttps = base.protocol === 'https:'
+  const hostname = bareHostname(base.hostname)
+  const port = Number(base.port) || (useHttps ? 443 : 80)
+  const agent = pinnedNodeAgent(useHttps, pinned)
+  // An IP literal must not be sent as SNI (RFC 6066 forbids it and Node warns),
+  // and a literal hostname has no certificate name to verify anyway.
+  const servername = useHttps && !isIpLiteralHostname(hostname) ? hostname : undefined
+
+  return async function pinnedFetch(requestUrl, init) {
+    const options = init || {}
+
+    let target
+    try {
+      target = new URL(String(requestUrl), base)
+    } catch {
+      throw new NetworkSafetyError('invalid_url')
+    }
+
+    const targetPort = Number(target.port) || (target.protocol === 'https:' ? 443 : 80)
+    if (
+      target.protocol !== base.protocol ||
+      bareHostname(target.hostname) !== hostname ||
+      targetPort !== port
+    ) {
+      throw new NetworkSafetyError('pinned_fetch_refused_origin')
+    }
+
+    const method = String(options.method || 'GET').toUpperCase()
+    const headers = toPlainHeaders(options.headers)
+    // Host is taken from the validated url (host plus port when non-default)
+    // unless the caller already set it in any casing.
+    if (!Object.keys(headers).some((key) => key.toLowerCase() === 'host')) {
+      headers.host = target.host
+    }
+
+    return await new Promise((resolve, reject) => {
+      const finish = (res) => {
+        const chunks = [Buffer.alloc(0)]
+        res.on('data', (chunk) => chunks.push(Buffer.from(chunk)))
+        res.on('end', () => {
+          const body = Buffer.concat(chunks)
+          const status = res.statusCode || 502
+
+          const responseHeaders = new Headers()
+          const rawHeaders = res.headers || {}
+          for (const [key, value] of Object.entries(rawHeaders)) {
+            if (Array.isArray(value)) {
+              for (const item of value) responseHeaders.append(key, String(item))
+            } else if (value !== undefined) {
+              responseHeaders.append(key, String(value))
+            }
+          }
+
+          // A real Response, so every caller keeps `ok`, `status`,
+          // `headers.entries()`, `text()` and `json()`.
+          const nullBody = NULL_BODY_STATUSES.has(status) || body.length === 0
+          resolve(
+            new Response(nullBody ? null : body, {
+              status,
+              statusText: res.statusMessage || '',
+              headers: responseHeaders,
+            }),
+          )
+        })
+        res.on('error', reject)
+      }
+
+      const requestOptions = {
+        protocol: base.protocol,
+        hostname: base.hostname,
+        port,
+        path: `${target.pathname}${target.search}`,
+        method,
+        headers,
+        agent,
+        ...(servername ? { servername } : {}),
+      }
+
+      // The transport is chosen here rather than aliased above, so each call
+      // goes through the real http/https module function directly.
+      const request = useHttps
+        ? https.request(requestOptions, finish)
+        : http.request(requestOptions, finish)
+
+      request.on('error', reject)
+
+      const signal = options.signal
+      if (signal && typeof signal.addEventListener === 'function') {
+        if (signal.aborted) {
+          request.destroy(new NetworkSafetyError('aborted'))
+        } else {
+          const onAbort = () => request.destroy(new NetworkSafetyError('aborted'))
+          signal.addEventListener('abort', onAbort, { once: true })
+          request.on('close', () => signal.removeEventListener('abort', onAbort))
+        }
+      }
+
+      const body = encodeRequestBody(options.body)
+      if (isStreamLike(body)) {
+        body.pipe(request)
+      } else if (body) {
+        request.write(body)
+      }
+      request.end()
+    })
+  }
+}
+
 /** Per-request defaults that disable implicit redirect following. */
 export function safeRequestDefaults() {
   return { maxRedirects: 0 }

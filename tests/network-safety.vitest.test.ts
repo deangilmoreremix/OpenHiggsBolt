@@ -33,6 +33,7 @@ import {
   SSRF_BLOCKED_MESSAGE,
   NetworkSafetyError,
   checkDestination,
+  createPinnedFetch,
   createPinnedLookup,
   isBlockedHostname,
   isBlockedIpAddress,
@@ -880,7 +881,7 @@ describe('networkSafety stays a plain-JS-consumable module', () => {
         } else if (/\.(js|jsx|ts|tsx)$/.test(entry.name)) {
           const code = fs.readFileSync(full, 'utf8')
           if (/from\s+['"][^'"]*src\/lib\//.test(code) || /networkSafety/.test(code)) {
-            offenders.push(path.relative(process.cwd(), full))
+            offenders.push(path.join(path.relative(process.cwd(), full)))
           }
         }
       }
@@ -888,5 +889,99 @@ describe('networkSafety stays a plain-JS-consumable module', () => {
 
     walk(studioRoot)
     expect(offenders).toEqual([])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 10. createPinnedFetch: the pin-bound request primitive
+//
+// The socket-level behaviour (a real listener on 127.0.0.1, TLS SNI/certificate
+// verification, multipart S3 bodies) is covered by
+// tests/s3-dns-pinning.vitest.test.ts. What is asserted here is the API
+// contract of the primitive itself: what it refuses to build, and which
+// destination fields it trusts.
+// ---------------------------------------------------------------------------
+
+describe('networkSafety.createPinnedFetch', () => {
+  it('refuses a destination with no usable URL', async () => {
+    for (const destination of [{}, { url: '' }, { url: 'not a url' }]) {
+      const fetch2 = createPinnedFetch(destination as { url: string })
+      await expect(fetch2('not a url')).rejects.toThrow(NetworkSafetyError)
+    }
+  })
+
+  it('refuses a destination with no validated address', async () => {
+    const fetch2 = createPinnedFetch({
+      url: 'https://example.com/upload',
+      hostname: 'example.com',
+      addresses: [],
+    })
+    // The machine-readable code lives on `reason`; the message is the stable
+    // SSRF string every caller of this module already reports.
+    await expect(fetch2('https://example.com/upload')).rejects.toMatchObject({
+      reason: 'no_validated_address',
+    })
+  })
+
+  it('refuses to write a FormData body raw (it must be serialized first)', async () => {
+    const fetch2 = createPinnedFetch({
+      url: 'https://example.com/upload',
+      hostname: 'example.com',
+      addresses: [PUBLIC_IP],
+    })
+    const formData = new FormData()
+    formData.append('key', 'value')
+    await expect(fetch2('https://example.com/upload', { method: 'POST', body: formData })).rejects.toMatchObject({
+      reason: 'unsupported_body',
+    })
+  })
+
+  it('refuses a request to any origin other than the validated destination', async () => {
+    const fetch2 = createPinnedFetch({
+      url: 'https://example.com/upload',
+      hostname: 'example.com',
+      addresses: [PUBLIC_IP],
+    })
+
+    for (const target of [
+      'https://evil.example.com/upload',
+      'http://example.com/upload',
+      'https://example.com:8443/upload',
+    ]) {
+      await expect(fetch2(target), target).rejects.toMatchObject({
+        reason: 'pinned_fetch_refused_origin',
+      })
+    }
+  })
+
+  it('trusts only the address list it was given, not the resolver', async () => {
+    // The pin is closed over at factory time, so a DNS answer that changes
+    // afterwards cannot move the connection target.
+    const destination = { url: 'https://example.com/upload', hostname: 'example.com', addresses: [PUBLIC_IP] }
+    createPinnedFetch(destination)
+    resolveNames({ 'example.com': [METADATA_IP] })
+
+    const lookup = createPinnedLookup(destination.addresses)
+    const resolved = await new Promise<string>((resolve) => {
+      lookup('example.com', {}, (_err, address) => resolve(address))
+    })
+    expect(resolved).toBe(PUBLIC_IP)
+  })
+
+  it('builds its lookup for the address the destination validated', async () => {
+    const destination = {
+      url: 'https://example.com/upload',
+      hostname: 'example.com',
+      addresses: [PUBLIC_IP_ALT, PUBLIC_IP],
+    }
+    createPinnedFetch(destination)
+
+    const resolved = await new Promise<{ address: string; family: number }>((resolve) => {
+      createPinnedLookup(destination.addresses)('example.com', {}, (_err, address, family) =>
+        resolve({ address, family }),
+      )
+    })
+    expect(resolved.address).toBe(PUBLIC_IP_ALT)
+    expect(resolved.family).toBe(4)
   })
 })

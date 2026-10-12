@@ -5,10 +5,15 @@
  * insufficient. It keeps browser resources bounded and preserves the
  * existing security model.
  *
- * SSRF posture (see `tests/browser-discovery-ssrf.vitest.test.ts`):
- * every destination the browser is asked to touch clears one shared gate
- * before a socket is opened — the page that is navigated to, any host a
- * redirect lands on, and every subresource the page itself requests.
+ * SSRF posture (see `tests/browser-discovery-ssrf.vitest.test.ts` and
+ * `tests/discovery-proxy-failclosed.vitest.test.ts`): the destination the
+ * browser is navigated to, every subresource the page requests and every
+ * redirect the browser wants to follow clear one shared gate. The gate is
+ * applied twice — by the `context.route` interceptor, which is the layer that
+ * sees subresources, and by a mandatory local allowlist proxy, which is the
+ * only layer that sees *every* socket the browser opens (the interceptor is
+ * not called for redirect targets or service-worker fetches). A discovery run
+ * that cannot start its proxy fails closed instead of running with one layer.
  */
 
 import { isIPv6 } from 'node:net'
@@ -1077,8 +1082,9 @@ async function acquireBrowser(pins: BrowserPin[], proxyUrl?: string): Promise<{ 
 //     `context.route()` interceptor is kept as well (defence in depth, not
 //     redundancy).
 //   * Chromium resolves nothing itself when an explicit proxy is configured,
-//     so `--host-resolver-rules` remains useful only for the fallback path
-//     where the proxy could not be started.
+//     so `--host-resolver-rules` remains a second binding on top of the proxy
+//     rather than a substitute for it. There is deliberately no proxy-less
+//     fallback path any more: a run that cannot start its proxy fails closed.
 // ---------------------------------------------------------------------------
 
 export interface AllowlistProxy {
@@ -1100,8 +1106,22 @@ function pinnedAddressFor(destination: ValidatedBrowserUrl): string | null {
   return isIpLiteralHost(destination.hostname) ? destination.hostname : null
 }
 
-/** True when the allowlist proxy should be used for this process. */
+/**
+ * True when the allowlist proxy should be used for this run.
+ *
+ * Decision, documented per the security review: the environment escape hatch
+ * `BROWSER_DISCOVERY_ALLOWLIST_PROXY=0` is a *development* affordance only. In
+ * production it is ignored outright, because silently running without the
+ * network-level layer would leave nothing but `context.route()` between a page
+ * and an internal address, and that interceptor is not consulted for redirect
+ * targets or service-worker fetches. An operator who really needs the old
+ * behaviour in production must fail loudly and knowingly, not through an env
+ * var that reads like a config switch — so production always uses the proxy,
+ * and a proxy that cannot start fails the run (fail closed).
+ */
 export function shouldUseAllowlistProxy(): boolean {
+  // Production is never allowed to switch the network layer off.
+  if (process.env.NODE_ENV === 'production') return true
   if (process.env.BROWSER_DISCOVERY_ALLOWLIST_PROXY === '0') return false
   // Under Vitest the browser is replaced at the module boundary, so Chromium
   // never opens a socket and a listener would have no client to protect.
@@ -1338,21 +1358,15 @@ async function collectBrowserCandidates(
   let allowlistProxy: AllowlistProxy | null = null
 
   try {
-    // Network-level half of the guard: every socket the browser opens is
-    // forced through a local proxy that re-validates the destination. If it
-    // cannot be started the run continues with the request-level interceptor
-    // plus the `--host-resolver-rules` pin below.
+    // Network-level half of the guard: every socket the browser opens is forced
+    // through a local proxy that re-validates the destination. This layer is
+    // mandatory, because `context.route()` is not called for redirect targets
+    // or service-worker fetches, so it cannot be the only thing that stands
+    // between a page and an internal address. If the proxy cannot be started
+    // the run is aborted (fail closed) rather than continued with the weaker
+    // request-level interceptor plus the `--host-resolver-rules` pin.
     if (shouldUseAllowlistProxy()) {
-      try {
-        allowlistProxy = await startAllowlistProxy(guard)
-      } catch (err) {
-        console.warn(
-          `[browser-discovery] allowlist proxy unavailable, falling back to resolver pinning only: ${
-            err instanceof Error ? err.message : String(err)
-          }`,
-        )
-        allowlistProxy = null
-      }
+      allowlistProxy = await startAllowlistProxy(guard)
     }
 
     const { browser: launched, owned } = await acquireBrowser(
@@ -1367,6 +1381,11 @@ async function collectBrowserCandidates(
     context = await browser.newContext({
       userAgent: 'Mozilla/5.0 (compatible; AssetDiscovery/1.0; +https://example.com/bot)',
       viewport: { width: 1280, height: 900 },
+      // A registered service worker issues its own `fetch`es in a worker scope
+      // that `context.route()` never sees. Blocking them closes the bypass: the
+      // first page can no longer cache a worker that keeps talking to an
+      // internal address after the run's checks are over.
+      serviceWorkers: 'block',
     })
 
     let inflightRequests = 0
@@ -1387,17 +1406,22 @@ async function collectBrowserCandidates(
         return route.abort()
       }
 
-      // Redirects are re-validated hop by hop. A public page may 30x to an
-      // internal host and the browser would happily follow it. The counter is
+      // Redirect hops are counted here as a cheap budget, not as a guarantee:
+      // Playwright does not invoke this interceptor for every hop of every
+      // navigation (and not at all for service-worker fetches), so this counter
+      // cannot be the thing that stops a public page 30x-ing into an internal
+      // host. That is exactly why the allowlist proxy is mandatory — it is the
+      // only layer that sees every socket the browser opens. The counter is
       // cycle-safe, so a chain that never terminates is refused as well.
       if (exceedsRedirectHopLimit(request)) {
         blockedSubrequests++
         return route.abort()
       }
 
-      // The full destination gate for this hop. `currentUrl` is where the
-      // browser is coming from, which is what makes this a *redirect*
-      // re-validation rather than a plain URL check.
+      // The full destination gate for this request. `currentUrl` is where the
+      // browser is coming from, which is what makes this a redirect-aware check
+      // rather than a plain URL check. Treat it as the best-effort layer; the
+      // proxy re-runs the same gate per socket.
       if (!(await guard.isResourceRequestAllowed(url, redirectedFromUrl(request)))) {
         blockedSubrequests++
         return route.abort()
@@ -1441,10 +1465,11 @@ async function collectBrowserCandidates(
         })
         navCompletedAt = new Date().toISOString()
 
-        // Every redirect in the chain was re-validated by the route
-        // interceptor; re-check the URL the browser actually ended up on as
-        // well, so a redirect that slipped past (or a DNS answer that changed
-        // mid-flight) cannot yield an internal destination.
+        // The route interceptor above is best effort: it is not invoked for
+        // every redirect hop, so re-check the URL the browser actually ended up
+        // on as well. Together with the allowlist proxy, which re-validates
+        // every socket, this stops a redirect that slipped past (or a DNS answer
+        // that changed mid-flight) from yielding an internal destination.
         const currentUrl = page.url()
         const finalTarget = await guard.validateNavigationTarget(currentUrl)
         if (finalTarget.hostname !== baseTarget.hostname) {

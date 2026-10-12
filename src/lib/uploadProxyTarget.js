@@ -1,4 +1,4 @@
-import { checkDestination, isBlockedHostname, isIpLiteral } from './networkSafety';
+import { checkDestination, isBlockedHostname, isIpLiteral, createPinnedFetch, isBlockedIpAddress, pickPinnedAddress } from './networkSafety';
 
 // NOTE: isBlockedFileType() is used by legacy proxy routes but not by the
 // direct upload route. The direct upload route (/api/v1/upload_file) uses
@@ -116,9 +116,13 @@ export function isBlockedFileType(filename = '', contentType = '') {
  *   4. EVERY address the hostname currently resolves to must be public
  *      (this is what closes the DNS-rebinding / resolves-to-private-IP hole)
  *
- * Returns `{ ok: true, url, hostname, addresses }` on success. Callers that
- * want to pin the connection to the validated address can use
- * `createPinnedLookup(addresses)` from ./networkSafety.
+ * Returns `{ ok: true, url, hostname, addresses, pinnedAddress, pinnedFetch }`
+ * on success. Callers MUST perform the upload through `pinnedFetch(url, init)`
+ * instead of the platform `fetch`: a plain `fetch(url)` re-resolves DNS between
+ * this check and the connect, which reopens the DNS-rebinding window the check
+ * just closed. `pinnedFetch` is fetch-compatible (same `(url, init)` shape,
+ * returns a `Response`) but binds the connection to `pinnedAddress`, keeps TLS
+ * verifying the hostname, and never follows a redirect.
  */
 export async function validateUploadProxyTarget(rawTarget, { env = process.env } = {}) {
     if (typeof rawTarget !== 'string' || rawTarget.trim() === '') {
@@ -158,10 +162,138 @@ export async function validateUploadProxyTarget(rawTarget, { env = process.env }
         return { ok: false, reason };
     }
 
-    return {
+    const validated = {
         ok: true,
         url: destination.url,
         hostname,
         addresses: destination.addresses,
+    };
+
+    const pinnedAddress = pickPinnedAddress({ hostname, addresses: destination.addresses });
+    return {
+        ...validated,
+        pinnedAddress,
+        pinnedFetch: createUploadProxyPinnedFetch(validated, pinnedAddress),
+    };
+}
+
+/** True when a FormData value is a file/blob part rather than a plain field. */
+function isFilePartValue(value) {
+    return Boolean(value) && typeof value === 'object' && typeof value.arrayBuffer === 'function';
+}
+
+function escapeMultipartToken(value) {
+    return String(value).replace(/[\r\n"]/g, (character) =>
+        character === '"' ? '%22' : `%${character.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0')}`,
+    );
+}
+
+/**
+ * Serializes the S3 POST form into a multipart body.
+ *
+ * S3 requires the file field to be the LAST field of the form, so file parts
+ * are moved after every plain field regardless of insertion order. The
+ * `content-type` of each part is preserved so S3 stores the object under the
+ * type the uploader asked for.
+ *
+ * Exported so the encoding can be asserted directly; production callers use it
+ * through `createUploadProxyPinnedFetch`.
+ */
+export async function encodeS3FormData(formData) {
+    const fieldParts = [];
+    const fileParts = [];
+
+    for (const [key, value] of formData.entries()) {
+        if (isFilePartValue(value)) {
+            fileParts.push([key, value]);
+        } else {
+            fieldParts.push([key, value]);
+        }
+    }
+
+    const boundary = `----openhiggsbolt-upload-proxy-${randomBoundaryToken()}`;
+    const chunks = [];
+
+    const pushPart = (headers, payload) => {
+        chunks.push(Buffer.from(`--${boundary}\r\n${headers}\r\n\r\n`));
+        chunks.push(payload);
+        chunks.push(Buffer.from('\r\n'));
+    };
+
+    for (const [key, value] of fieldParts) {
+        pushPart(
+            `Content-Disposition: form-data; name="${escapeMultipartToken(key)}"`,
+            Buffer.from(String(value)),
+        );
+    }
+
+    for (const [key, value] of fileParts) {
+        const filename = escapeMultipartToken(value.name || 'file');
+        const partHeaders =
+            `Content-Disposition: form-data; name="${escapeMultipartToken(key)}"; filename="${filename}"\r\n` +
+            `Content-Type: ${value.type || 'application/octet-stream'}`;
+        pushPart(partHeaders, Buffer.from(await value.arrayBuffer()));
+    }
+
+    chunks.push(Buffer.from(`--${boundary}--\r\n`));
+
+    return {
+        body: Buffer.concat(chunks),
+        contentType: `multipart/form-data; boundary=${boundary}`,
+    };
+}
+
+function randomBoundaryToken() {
+    try {
+        const bytes = new Uint8Array(12);
+        crypto.getRandomValues(bytes);
+        return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+    } catch {
+        return Math.random().toString(16).slice(2).padEnd(24, '0');
+    }
+}
+
+/**
+ * Wraps the networkSafety pin into a fetch-compatible upload call.
+ *
+ * Defence in depth on top of `validateUploadProxyTarget`: the pin that this
+ * fetch would connect to must still be a public address, and the caller may
+ * only request the exact host that was validated.
+ */
+export function createUploadProxyPinnedFetch(validatedTarget, pinnedAddress) {
+    if (!validatedTarget || validatedTarget.ok !== true || !validatedTarget.url) {
+        throw new Error('createUploadProxyPinnedFetch requires a validated upload target');
+    }
+
+    const pin = pinnedAddress || pickPinnedAddress(validatedTarget);
+    if (!pin || isBlockedIpAddress(pin)) {
+        throw new Error('networkSafety: upload proxy refused a non-public pin address');
+    }
+
+    const pinnedFetch = createPinnedFetch({
+        url: validatedTarget.url,
+        hostname: validatedTarget.hostname,
+        addresses: validatedTarget.addresses,
+    });
+
+    return async function uploadProxyPinnedFetch(requestUrl, init = {}) {
+        let body = init.body;
+        const headers = { ...(init.headers || {}) };
+
+        if (
+            body &&
+            typeof body === 'object' &&
+            typeof body.entries === 'function' &&
+            typeof FormData !== 'undefined' &&
+            body instanceof FormData
+        ) {
+            const encoded = await encodeS3FormData(body);
+            body = encoded.body;
+            if (!headers['content-type'] && !headers['Content-Type']) {
+                headers['content-type'] = encoded.contentType;
+            }
+        }
+
+        return pinnedFetch(requestUrl, { ...init, body, headers });
     };
 }
