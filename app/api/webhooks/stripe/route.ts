@@ -3,6 +3,8 @@ import Stripe from 'stripe';
 import { getSupabaseAdmin } from '@/src/lib/supabaseServer';
 import { grantEntitlement } from '@/access/resolveAccess';
 import { ENTITLEMENTS } from '@/access/entitlements';
+import { getResellerPackageIdForPriceId } from '@/lib/reseller/packages';
+import { applyResellerPurchase } from '@/lib/reseller/entitlements';
 
 export const dynamic = "force-dynamic";
 
@@ -47,17 +49,23 @@ export function resolveEntitlementFromSession(session: Stripe.Checkout.Session):
   return '';
 }
 
-async function resolveEntitlementFromSessionId(sessionId: string): Promise<string> {
+function getSessionPriceId(session: Stripe.Checkout.Session): string {
+  return session.line_items?.data?.[0]?.price?.id || '';
+}
+
+async function resolveSessionPriceId(session: Stripe.Checkout.Session): Promise<string> {
+  const direct = getSessionPriceId(session);
+  if (direct) return direct;
+
   if (!stripe) {
     return '';
   }
 
   try {
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+    const retrieved = await stripe.checkout.sessions.retrieve(session.id, {
       expand: ['line_items'],
     });
-
-    return resolveEntitlementFromSession(session);
+    return getSessionPriceId(retrieved);
   } catch (err) {
     console.error('[stripe webhook] failed to retrieve session line items:', err);
     return '';
@@ -111,17 +119,43 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No customer email' }, { status: 400 });
   }
 
-  let entitlementKey = resolveEntitlementFromSession(session);
-  if (!entitlementKey) {
-    entitlementKey = await resolveEntitlementFromSessionId(session.id);
+  const normalizedEmail = customerEmail.toLowerCase().trim();
+  const sessionPriceId = await resolveSessionPriceId(session);
+
+  // ── Reseller commerce (ADDITIVE) ──────────────────────────────────────────
+  // Reseller packages (apps_studio_diy / apps_studio_training) are sold with
+  // their own Stripe price IDs, configured via RESELLER_STRIPE_PRICE_* env
+  // vars (see src/lib/reseller/packages.ts). When a completed checkout matches
+  // a reseller price, grant the reseller entitlement(s) and record the
+  // purchase in reseller_purchases, then stop. Non-reseller prices fall
+  // through to the existing STRIPE_PRODUCT_MAP handling below, unchanged.
+  const resellerPackageId = getResellerPackageIdForPriceId(sessionPriceId);
+  if (resellerPackageId) {
+    try {
+      await applyResellerPurchase({
+        clerkUserId: clerkUserId || null,
+        email: normalizedEmail,
+        packageId: resellerPackageId,
+        stripeSessionId: session.id,
+        stripeCustomerId: customerId,
+        amountTotal: session.amount_total ?? null,
+        currency: session.currency ?? null,
+      });
+    } catch (err: any) {
+      console.error('[stripe webhook] reseller purchase failed:', err?.message || err);
+      return NextResponse.json({ error: 'Failed to apply reseller purchase' }, { status: 500 });
+    }
+    return NextResponse.json({ received: true });
   }
+  // ── End reseller commerce (ADDITIVE) ──────────────────────────────────────
+
+  const entitlementKey = sessionPriceId ? getStripeProductMap()[sessionPriceId] || '' : '';
 
   if (!entitlementKey) {
     console.warn('[stripe webhook] unmapped price for session:', session.id);
     return NextResponse.json({ received: true });
   }
 
-  const normalizedEmail = customerEmail.toLowerCase().trim();
   const supabase = getSupabaseAdmin();
 
   if (clerkUserId) {
