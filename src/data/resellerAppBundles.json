@@ -9,7 +9,7 @@
       "id": "ai-headshot-studio",
       "name": "AI Headshot Studio",
       "category": "Image",
-      "repo": "https://github.com/SamurAIGPT/ai-headshot-generator",
+      "repo": "https://github.com/deangilmoreremix/ai-headshot-generator",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -31,7 +31,7 @@
       "id": "nano-banana-studio",
       "name": "Nano Banana Studio",
       "category": "Image",
-      "repo": "https://github.com/SamurAIGPT/nano-banana-generator",
+      "repo": "https://github.com/deangilmoreremix/nano-banana-generator",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -53,7 +53,7 @@
       "id": "seedance-v2-studio",
       "name": "Seedance V2 Studio",
       "category": "Video",
-      "repo": "https://github.com/SamurAIGPT/seedance-2-generator",
+      "repo": "https://github.com/deangilmoreremix/seedance-2-generator",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -75,7 +75,7 @@
       "id": "ai-clipping-studio",
       "name": "AI Clipping Studio",
       "category": "Video",
-      "repo": "https://github.com/SamurAIGPT/ai-clipping-generator",
+      "repo": "https://github.com/deangilmoreremix/ai-clipping-generator",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -97,7 +97,7 @@
       "id": "ai-youtube-shorts-generator",
       "name": "AI YouTube Shorts Generator",
       "category": "Video",
-      "repo": "https://github.com/SamurAIGPT/AI-Youtube-Shorts-Generator",
+      "repo": "https://github.com/deangilmoreremix/AI-Youtube-Shorts-Generator",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -119,7 +119,7 @@
       "id": "easyveo-studio",
       "name": "EasyVeo Studio",
       "category": "Video",
-      "repo": "https://github.com/SamurAIGPT/veo4-video-generator",
+      "repo": "https://github.com/deangilmoreremix/veo4-video-generator",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -141,7 +141,7 @@
       "id": "pet-product-studio",
       "name": "Pet Product Studio",
       "category": "Business",
-      "repo": "https://github.com/SamurAIGPT/pet-product-studio",
+      "repo": "https://github.com/deangilmoreremix/pet-product-studio",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -163,7 +163,7 @@
       "id": "resale-photo-enhancer",
       "name": "Resale Photo Enhancer",
       "category": "Business",
-      "repo": "https://github.com/SamurAIGPT/resale-photo-enhancer",
+      "repo": "https://github.com/deangilmoreremix/resale-photo-enhancer",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -185,7 +185,7 @@
       "id": "blogger-cms",
       "name": "Blogger CMS",
       "category": "Business",
-      "repo": "https://github.com/SamurAIGPT/blogger-cms",
+      "repo": "https://github.com/deangilmoreremix/blogger-cms",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -207,7 +207,7 @@
       "id": "amazon-product-studio",
       "name": "Amazon Product Studio",
       "category": "Business",
-      "repo": "https://github.com/SamurAIGPT/amazon-product-studio",
+      "repo": "https://github.com/deangilmoreremix/amazon-product-studio",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -229,7 +229,7 @@
       "id": "ai-business-card",
       "name": "AI Business Card",
       "category": "Business",
-      "repo": "https://github.com/SamurAIGPT/ai-business-card",
+      "repo": "https://github.com/deangilmoreremix/ai-business-card",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -251,7 +251,7 @@
       "id": "mailwise",
       "name": "MailWise",
       "category": "Productivity",
-      "repo": "https://github.com/SamurAIGPT/mail-wise",
+      "repo": "https://github.com/deangilmoreremix/mail-wise",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -273,7 +273,7 @@
       "id": "my-podcast",
       "name": "My Podcast",
       "category": "Audio",
-      "repo": "https://github.com/SamurAIGPT/my-podcast",
+      "repo": "https://github.com/deangilmoreremix/my-podcast",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -295,7 +295,7 @@
       "id": "ai-knowledge-base",
       "name": "AI Knowledge Base",
       "category": "Business",
-      "repo": "https://github.com/SamurAIGPT/ai-knowledge-base",
+      "repo": "https://github.com/deangilmoreremix/ai-knowledge-base",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -317,7 +317,7 @@
       "id": "ai-royal-portrait",
       "name": "AI Royal Portrait",
       "category": "Creative",
-      "repo": "https://github.com/SamurAIGPT/ai-royal-portrait",
+      "repo": "https://github.com/deangilmoreremix/ai-royal-portrait",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -339,7 +339,7 @@
       "id": "ai-meme",
       "name": "AI MEME",
       "category": "Creative",
-      "repo": "https://github.com/SamurAIGPT/ai-meme-generator",
+      "repo": "https://github.com/deangilmoreremix/ai-meme-generator",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -361,7 +361,7 @@
       "id": "ai-real-estate-stager",
       "name": "AI Real Estate Stager",
       "category": "Real Estate",
-      "repo": "https://github.com/SamurAIGPT/ai-real-estate-stager",
+      "repo": "https://github.com/deangilmoreremix/ai-real-estate-stager",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -383,7 +383,7 @@
       "id": "ai-logo",
       "name": "AI Logo",
       "category": "Design",
-      "repo": "https://github.com/SamurAIGPT/ai-logo-studio",
+      "repo": "https://github.com/deangilmoreremix/ai-logo-studio",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -405,7 +405,7 @@
       "id": "oldphoto",
       "name": "OldPhoto",
       "category": "Creative",
-      "repo": "https://github.com/SamurAIGPT/old-photo-restore",
+      "repo": "https://github.com/deangilmoreremix/old-photo-restore",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -427,7 +427,7 @@
       "id": "aitryon",
       "name": "AITryOn",
       "category": "Lifestyle",
-      "repo": "https://github.com/SamurAIGPT/ai-tryon",
+      "repo": "https://github.com/deangilmoreremix/ai-tryon",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -449,7 +449,7 @@
       "id": "ai-professional-makeup-generator",
       "name": "AI Professional Makeup Generator",
       "category": "Lifestyle",
-      "repo": "https://github.com/SamurAIGPT/ai-professional-makeup-generator",
+      "repo": "https://github.com/deangilmoreremix/ai-professional-makeup-generator",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -471,7 +471,7 @@
       "id": "ai-group-photo",
       "name": "AI Group Photo",
       "category": "Creative",
-      "repo": "https://github.com/SamurAIGPT/ai-group-photo",
+      "repo": "https://github.com/deangilmoreremix/ai-group-photo",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -493,7 +493,7 @@
       "id": "ai-tattoo-try-on",
       "name": "AI Tattoo Try-On",
       "category": "Lifestyle",
-      "repo": "https://github.com/SamurAIGPT/ai-tattoo-try-on",
+      "repo": "https://github.com/deangilmoreremix/ai-tattoo-try-on",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -515,7 +515,7 @@
       "id": "ai-hair-style-simulator",
       "name": "AI Hair Style Simulator",
       "category": "Lifestyle",
-      "repo": "https://github.com/SamurAIGPT/ai-hair-style-simulator",
+      "repo": "https://github.com/deangilmoreremix/ai-hair-style-simulator",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -537,7 +537,7 @@
       "id": "ai-kids-to-adult-prediction",
       "name": "AI Kids-to-Adult Prediction",
       "category": "Creative",
-      "repo": "https://github.com/SamurAIGPT/ai-kid-to-adult-prediction",
+      "repo": "https://github.com/deangilmoreremix/ai-kid-to-adult-prediction",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -559,7 +559,7 @@
       "id": "ai-room-declutter",
       "name": "AI Room Declutter",
       "category": "Real Estate",
-      "repo": "https://github.com/SamurAIGPT/ai-room-declutter",
+      "repo": "https://github.com/deangilmoreremix/ai-room-declutter",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -581,7 +581,7 @@
       "id": "ai-fitness-body-simulator",
       "name": "AI Fitness Body Simulator",
       "category": "Lifestyle",
-      "repo": "https://github.com/SamurAIGPT/ai-fitness-body-simulator",
+      "repo": "https://github.com/deangilmoreremix/ai-fitness-body-simulator",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -603,7 +603,7 @@
       "id": "ai-pet-portrait",
       "name": "AI Pet Portrait",
       "category": "Lifestyle",
-      "repo": "https://github.com/SamurAIGPT/ai-pet-portrait",
+      "repo": "https://github.com/deangilmoreremix/ai-pet-portrait",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -625,7 +625,7 @@
       "id": "ai-kissing-video-generator",
       "name": "AI Kissing Video Generator",
       "category": "Video",
-      "repo": "https://github.com/SamurAIGPT/ai-kissing-video-generator",
+      "repo": "https://github.com/deangilmoreremix/ai-kissing-video-generator",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -647,7 +647,7 @@
       "id": "ai-travel-studio",
       "name": "AI Travel Studio",
       "category": "Creative",
-      "repo": "https://github.com/SamurAIGPT/ai-travel-studio",
+      "repo": "https://github.com/deangilmoreremix/ai-travel-studio",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -669,7 +669,7 @@
       "id": "prompt-architect",
       "name": "Prompt Architect",
       "category": "Productivity",
-      "repo": "https://github.com/SamurAIGPT/prompt-architect",
+      "repo": "https://github.com/deangilmoreremix/prompt-architect",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -691,7 +691,7 @@
       "id": "clearmark-ai",
       "name": "ClearMark AI",
       "category": "Business",
-      "repo": "https://github.com/SamurAIGPT/clearmark-ai",
+      "repo": "https://github.com/deangilmoreremix/clearmark-ai",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -713,7 +713,7 @@
       "id": "ai-wedding-photo",
       "name": "AI Wedding Photo",
       "category": "Creative",
-      "repo": "https://github.com/SamurAIGPT/ai-wedding-photo",
+      "repo": "https://github.com/deangilmoreremix/ai-wedding-photo",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -735,7 +735,7 @@
       "id": "social-post",
       "name": "Social Post",
       "category": "Marketing",
-      "repo": "https://github.com/SamurAIGPT/social-post",
+      "repo": "https://github.com/deangilmoreremix/social-post",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -757,7 +757,7 @@
       "id": "magicself-ai",
       "name": "MagicSelf AI",
       "category": "Creative",
-      "repo": "https://github.com/SamurAIGPT/magicself-ai",
+      "repo": "https://github.com/deangilmoreremix/magicself-ai",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -779,7 +779,7 @@
       "id": "ai-resume-builder",
       "name": "AI Resume Builder",
       "category": "Productivity",
-      "repo": "https://github.com/SamurAIGPT/ai-resume-builder",
+      "repo": null,
       "artifacts": [
         {
           "kind": "source-zip",
@@ -801,7 +801,7 @@
       "id": "geo-checker",
       "name": "GEO Checker",
       "category": "Business",
-      "repo": "https://github.com/SamurAIGPT/geo-checker",
+      "repo": "https://github.com/deangilmoreremix/geo-checker",
       "artifacts": [
         {
           "kind": "source-zip",
@@ -823,7 +823,7 @@
       "id": "ai-character-studio",
       "name": "AI Character Studio",
       "category": "Creative",
-      "repo": "https://github.com/SamurAIGPT/ai-character-studio",
+      "repo": "https://github.com/deangilmoreremix/ai-character-studio",
       "artifacts": [
         {
           "kind": "source-zip",

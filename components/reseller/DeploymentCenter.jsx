@@ -433,11 +433,23 @@ export default function DeploymentCenter() {
                   <dd className="font-mono text-white/70 break-all">/api/reseller/download?app={app.id}</dd>
                 </dl>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1">
-                  <ExternalLink href={app.repo}>Source repository ↗</ExternalLink>
+                  {app.repo ? (
+                    <ExternalLink href={app.repo}>Source repository ↗</ExternalLink>
+                  ) : (
+                    <span
+                      aria-disabled="true"
+                      title="Repository not yet published"
+                      className="inline-flex items-center gap-1.5 text-[11px] font-bold text-white/50 rounded"
+                    >
+                      Source repository ↗
+                    </span>
+                  )}
                   {app.hosted && <ExternalLink href={app.hosted}>Live demo ↗</ExternalLink>}
-                  <ExternalLink href={`https://vercel.com/new/import?repository-url=${encodeURIComponent(app.repo)}`}>
-                    Deploy on Vercel ↗
-                  </ExternalLink>
+                  {app.repo && (
+                    <ExternalLink href={`https://vercel.com/new/import?repository-url=${encodeURIComponent(app.repo)}`}>
+                      Deploy on Vercel ↗
+                    </ExternalLink>
+                  )}
                 </div>
               </article>
             ))}

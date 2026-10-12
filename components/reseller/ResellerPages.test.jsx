@@ -57,6 +57,25 @@ describe('Reseller surfaces', () => {
         expect(/^https:\/\//.test(href) || href.startsWith('/')).toBe(true);
       });
     });
+
+    it('renders no SamurAIGPT repo link and deactivates repo+deploy for ai-resume-builder', () => {
+      render(<DeploymentCenter />);
+      expect(
+        Array.from(document.querySelectorAll('article[id^="app-"] a')).some((a) =>
+          /SamurAIGPT/.test(a.getAttribute('href') || ''),
+        ),
+      ).toBe(false);
+      const card = document.getElementById('app-ai-resume-builder');
+      expect(card).not.toBeNull();
+      expect(
+        card.querySelector('[aria-disabled="true"][title="Repository not yet published"]'),
+      ).not.toBeNull();
+      const hrefs = Array.from(card.querySelectorAll('a')).map((a) => a.getAttribute('href') || '');
+      expect(hrefs.some((href) => /github\.com/.test(href))).toBe(false);
+      expect(hrefs.some((href) => /vercel\.com\/new\/import/.test(href))).toBe(false);
+      expect(hrefs).toContain('https://ai-resume-builder.vercel.app/');
+      expect(hrefs.some((href) => /repository-url=null/.test(href))).toBe(false);
+    });
   });
 
   describe('ResellerAcademyView', () => {
