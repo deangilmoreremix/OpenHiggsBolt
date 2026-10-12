@@ -3,43 +3,17 @@
  *
  * This module is the single source of truth for MuAPI and OpenAI keys.
  * All studios, modals, and API clients should read/write keys through
- * this module instead of accessing localStorage or cookies directly.
+ * this module instead of accessing localStorage directly.
+ *
+ * SECURITY (CWE-522): keys are persisted ONLY to localStorage. They are
+ * NEVER written to a cookie — a non-HttpOnly cookie is readable by any
+ * script running on the page, which turns a transient XSS into durable
+ * exfiltration of a live billing key. Server-side persistence uses the
+ * encrypted store behind /api/auth/muapi-key instead.
  */
 
 import React from 'react';
 import { resolveMuapiKey as resolveMuapiKeyFromStorage, resolveOpenAIKey as resolveOpenAIKeyFromStorage, isValidKeyFormat, MUAPI_KEY_STORAGE, OPENAI_KEY_STORAGE, cleanApiKey } from './keys';
-
-export const MUAPI_KEY_COOKIE = 'muapi_key';
-export const OPENAI_KEY_COOKIE = 'openai_key';
-
-// ── Cookie helpers ─────────────────────────────────────────────────────────
-export function buildCookie(name: string, value: string): string {
-  const isHttps =
-    typeof window !== 'undefined' &&
-    window.location &&
-    window.location.protocol === 'https:';
-  const secure = isHttps ? '; Secure' : '';
-  if (value) {
-    return `${name}=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax${secure}`;
-  }
-  return `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secure}`;
-}
-
-export function setCookie(name: string, value: string | null | undefined): void {
-  if (typeof window === 'undefined') return;
-  document.cookie = buildCookie(name, value || '');
-}
-
-export function getCookie(name: string): string | null {
-  if (typeof document === 'undefined') return null;
-  const match = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()\[\]\\\/+^])/g, '\\$1') + '=([^;]*)'));
-  const value = match ? match[1] : null;
-  try {
-    return value ? decodeURIComponent(value) : null;
-  } catch {
-    return value;
-  }
-}
 
 // ── Key sanitization ───────────────────────────────────────────────────────
 // cleanApiKey is imported from ./keys as the single source of truth.
@@ -65,19 +39,6 @@ let openaiKey = '';
 if (typeof window !== 'undefined') {
   muapiKey = cleanApiKey(resolveMuapiKeyFromStorage());
   openaiKey = cleanApiKey(resolveOpenAIKeyFromStorage());
-  // If localStorage is empty, fall back to the cookie so the key survives
-  // page reloads even when raw localStorage persistence is disabled.
-  if (!muapiKey) {
-    const cookieKey = getCookie(MUAPI_KEY_COOKIE);
-    if (cookieKey) muapiKey = cleanApiKey(cookieKey);
-  }
-  if (!openaiKey) {
-    const cookieKey = getCookie(OPENAI_KEY_COOKIE);
-    if (cookieKey) openaiKey = cleanApiKey(cookieKey);
-  }
-  // Sync pre-existing keys to cookies so server-side routes can read them.
-  if (muapiKey) setCookie(MUAPI_KEY_COOKIE, muapiKey);
-  if (openaiKey) setCookie(OPENAI_KEY_COOKIE, openaiKey);
 }
 
 // Test-only reset: clears in-memory state and re-reads from localStorage.
@@ -87,9 +48,6 @@ export function __resetAuthConfigForTests(): void {
   if (typeof window !== 'undefined') {
     muapiKey = cleanApiKey(resolveMuapiKeyFromStorage());
     openaiKey = cleanApiKey(resolveOpenAIKeyFromStorage());
-    // Sync pre-existing keys to cookies so tests can verify cookie initialization.
-    if (muapiKey) setCookie(MUAPI_KEY_COOKIE, muapiKey);
-    if (openaiKey) setCookie(OPENAI_KEY_COOKIE, openaiKey);
   }
 }
 
@@ -102,7 +60,7 @@ export function getOpenAiKey(): string {
   return openaiKey;
 }
 
-// ── Setters (sync to localStorage + cookies + notify React) ────────────────
+// ── Setters (sync to localStorage + notify React) ─────────────────────────
 export function setApiKey(key: string | null | undefined): void {
   const cleaned = cleanApiKey(key);
   muapiKey = cleaned;
@@ -117,7 +75,6 @@ export function setApiKey(key: string | null | undefined): void {
   } catch {
     // ignore
   }
-  setCookie(MUAPI_KEY_COOKIE, cleaned);
   notifyListeners();
 }
 
@@ -135,7 +92,6 @@ export function setOpenAiKey(key: string | null | undefined): void {
   } catch {
     // ignore
   }
-  setCookie(OPENAI_KEY_COOKIE, cleaned);
   notifyListeners();
 }
 
@@ -178,12 +134,7 @@ export function useAuthConfig() {
   };
 }
 
-// ── Initialize cookies on module load if keys are already present ───────────
-if (typeof window !== 'undefined') {
-  if (muapiKey) {
-    setCookie(MUAPI_KEY_COOKIE, muapiKey);
-  }
-  if (openaiKey) {
-    setCookie(OPENAI_KEY_COOKIE, openaiKey);
-  }
-}
+// NOTE: keys are persisted to localStorage only. The pre-CWE-522 module-load
+// cookie initialisation (writing the resolved keys into non-HttpOnly cookies
+// so server routes could read them) has been removed. Server-side persistence
+// goes through /api/auth/muapi-key instead. See the SECURITY note above.

@@ -61,9 +61,14 @@ export default clerkMiddleware(async (auth, request) => {
   // ── End production-env guard ──────────────────────────────────────────
 
   // Test-only auth bypass for personalization discovery verification.
-  // Only honored on the exact discovery route and only when the explicit
-  // test header is present. Does not bypass auth for any other route.
-  if (request.headers.get('x-personalization-test-auth') === 'allow' && request.nextUrl.pathname === '/api/personalization/discover-assets') {
+  // Only honored on the exact discovery route, only when the explicit
+  // test header is present, and NEVER in production — mirroring the
+  // `__e2e_auth_bypass` gating below. Does not bypass auth for any other route.
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    request.headers.get('x-personalization-test-auth') === 'allow' &&
+    request.nextUrl.pathname === '/api/personalization/discover-assets'
+  ) {
     return NextResponse.next();
   }
 
