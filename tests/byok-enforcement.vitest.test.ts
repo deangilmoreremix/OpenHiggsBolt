@@ -479,12 +479,23 @@ describe('BYOK: stored keys are scoped to the authenticated clerk user id', () =
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. Source scan: no code path under src/, app/, lib/ resolves a MuAPI/OpenAI
-//    key from process.env (regex-based, robust to formatting).
+// 4. Source scan: no code path under src/, app/, lib/ or supabase/functions/
+//    resolves a MuAPI/OpenAI key from a server env var (regex-based, robust to
+//    formatting).
 // ─────────────────────────────────────────────────────────────────────────────
-describe('BYOK: source scan — no process.env key resolution', () => {
+describe('BYOK: source scan — no server env key resolution', () => {
+  // Note: this set was previously scanned only under src/, app/, lib/. The
+  // Supabase Edge runtime uses `Deno.env.get(...)` rather than `process.env`,
+  // so the platform-key fallback that lived in
+  // supabase/functions/_shared/openai.ts was invisible to the scan. Both the
+  // runtime dir and the Deno accessor are now covered.
+  //
+  // NEXT_PUBLIC_* variants are deliberately NOT in this set: they are public,
+  // build-time, client-bundle values (no server secret is exposed) and the
+  // client-side suite below explicitly blesses them as acceptable user-supplied
+  // values. Only genuine server-side secrets are forbidden here.
   const FORBIDDEN_ENV_VARS = new Set(['MUAPI_API_KEY', 'MUAPI_KEY', 'OPENAI_API_KEY'])
-  const SCAN_DIRS = ['src', 'app', 'lib']
+  const SCAN_DIRS = ['src', 'app', 'lib', 'supabase/functions']
   const SCAN_EXTS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'])
   const SKIP_DIRS = new Set(['node_modules', '.next', 'dist', '__tests__'])
 
@@ -504,6 +515,12 @@ describe('BYOK: source scan — no process.env key resolution', () => {
     let m: RegExpExecArray | null
     while ((m = access.exec(src)) !== null) {
       names.push(m[1] ?? m[2] ?? m[3] ?? m[4])
+    }
+
+    // Deno.env.get("NAME") | Deno.env.get('NAME')  (Supabase Edge runtime)
+    const denoAccess = /Deno\s*\.\s*env\s*\.\s*(?:get\s*\(\s*|\[\s*)['"`]([^'"`]+)['"`]/g
+    while ((m = denoAccess.exec(src)) !== null) {
+      names.push(m[1])
     }
 
     // const { NAME, OTHER: alias } = process.env
@@ -532,7 +549,7 @@ describe('BYOK: source scan — no process.env key resolution', () => {
     }
   }
 
-  it('nothing under src/, app/, lib/ reads a server MuAPI/OpenAI key from process.env', () => {
+  it('nothing under src/, app/, lib/ or supabase/functions/ reads a server MuAPI/OpenAI key from an env var', () => {
     const violations: string[] = []
     let scanned = 0
 
@@ -551,6 +568,47 @@ describe('BYOK: source scan — no process.env key resolution', () => {
     // Sanity: the scan must actually have looked at the codebase.
     expect(scanned).toBeGreaterThan(50)
     expect(violations).toEqual([])
+  })
+
+  // Regression guard for the Supabase Edge runtime, which the scan above now
+  // covers but which previously escaped it because it uses Deno.env rather than
+  // process.env. Before the fix, resolveOpenAiKey() fell back to the platform
+  // OPENAI_API_KEY, so an unauthenticated caller's generation silently billed
+  // the operator and the "add your key in Settings" error was unreachable.
+  //
+  // This is a SOURCE-LEVEL guard (the module imports `npm:openai`, a Deno-only
+  // specifier, so it cannot be imported under vitest). It asserts both the
+  // generic scan and the specific absence of the fallback expression.
+  it('the Supabase edge OpenAI helper resolves the user key only, with no platform fallback', () => {
+    const rel = 'supabase/functions/_shared/openai.ts'
+    const code = fs.readFileSync(path.join(process.cwd(), rel), 'utf8')
+
+    // 1. No server-side OpenAI key read of any kind.
+    expect(findForbiddenEnvReads(code), `${rel} must not read a server OpenAI key`).toEqual([])
+
+    // 2. The exact fallback that was removed must not reappear.
+    const src = stripComments(code)
+    expect(src).not.toMatch(/Deno\s*\.\s*env\s*\.\s*get/)
+    expect(src).not.toMatch(/OPENAI_API_KEY/)
+
+    // 3. The BYOK contract must still be documented, so a future edit that
+    //    reintroduces a fallback has to delete the rationale too.
+    expect(src).toMatch(/x-openai-key/)
+    expect(src).toMatch(/MissingOpenAiKeyError/)
+
+    // 4. Every consumer must still translate a missing key into the Settings
+    //    prompt rather than crashing with an unconfigured client.
+    const consumers = [
+      'supabase/functions/asset-generate/index.ts',
+      'supabase/functions/brand-analyze/index.ts',
+      'supabase/functions/campaign-generate/index.ts',
+      'supabase/functions/enhance-prompt/index.ts',
+      'supabase/functions/photo-studio/index.ts',
+    ]
+    for (const consumer of consumers) {
+      const ccode = fs.readFileSync(path.join(process.cwd(), consumer), 'utf8')
+      expect(ccode, `${consumer} must handle MissingOpenAiKeyError`).toMatch(/MissingOpenAiKeyError/)
+    }
   })
 
   it('the VFX routes themselves contain no env key resolution', async () => {
