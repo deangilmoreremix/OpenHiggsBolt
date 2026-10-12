@@ -65,6 +65,8 @@
     "deploymentGuideLabel": "{app} 的部署指南 — 打开转售部署中心",
     "sourceCode": "源代码",
     "vercelDeploy": "部署到 Vercel",
+    "repoUnpublished": "仓库尚未发布",
+    "vercelDeployUnavailable": "暂不支持部署 — 此应用的源代码仓库尚未作为可部署模板发布。",
     "details": "查看应用详情",
     "templateFallback": "应用",
     "thumbnailLoading": "预览加载中",

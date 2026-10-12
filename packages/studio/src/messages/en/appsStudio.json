@@ -65,6 +65,8 @@
     "deploymentGuideLabel": "Deployment guide for {app} — opens the Reseller Deployment Center",
     "sourceCode": "Source Code",
     "vercelDeploy": "Deploy on Vercel",
+    "repoUnpublished": "Repository not yet published",
+    "vercelDeployUnavailable": "Deploy unavailable — this app's source repository is not published as a deployable template.",
     "details": "View App Details",
     "templateFallback": "App",
     "thumbnailLoading": "Loading preview",

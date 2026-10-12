@@ -12,7 +12,14 @@
       "collision": 0,
       "total": 38
     },
-    "generatedAt": "2026-10-12T14:18:27.019Z"
+    "generatedAt": "2026-10-12T14:18:27.019Z",
+    "vercelDeployGate": {
+      "description": "Per-app Vercel deploy eligibility. \"template\" means the destination repo was verified in docs/vercel-deployment-verification.md as deployable-public-template (public repo WITH full source), so a Vercel git-template import is honest. \"unavailable\" means the repo is attribution-only README/NOTICE, a Python CLI, the wrong project, or missing, so no working Deploy-to-Vercel action may be offered.",
+      "sourceOfTruth": "docs/vercel-deployment-verification.md",
+      "template": 13,
+      "unavailable": 25,
+      "countsAsOf": "2026-10-12"
+    }
   },
   "destinations": {
     "ai-headshot-studio": {
@@ -30,7 +37,8 @@
       },
       "hostedDemoUrl": "https://ai-headshot-generator-xi.vercel.app/",
       "downloadAppId": "ai-headshot-studio",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
     },
     "nano-banana-studio": {
       "repoUrl": "https://github.com/deangilmoreremix/nano-banana-generator",
@@ -47,7 +55,8 @@
       },
       "hostedDemoUrl": "https://nano-banana-generator.vercel.app/",
       "downloadAppId": "nano-banana-studio",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
     },
     "seedance-v2-studio": {
       "repoUrl": "https://github.com/deangilmoreremix/seedance-2-generator",
@@ -64,7 +73,8 @@
       },
       "hostedDemoUrl": "https://seedance-2-generator.vercel.app/",
       "downloadAppId": "seedance-v2-studio",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
     },
     "ai-clipping-studio": {
       "repoUrl": "https://github.com/deangilmoreremix/ai-clipping-generator",
@@ -81,7 +91,8 @@
       },
       "hostedDemoUrl": "https://ai-clipping-generator.vercel.app/",
       "downloadAppId": "ai-clipping-studio",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
     },
     "ai-youtube-shorts-generator": {
       "repoUrl": "https://github.com/deangilmoreremix/AI-Youtube-Shorts-Generator",
@@ -99,7 +110,8 @@
       },
       "hostedDemoUrl": null,
       "downloadAppId": "ai-youtube-shorts-generator",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "easyveo-studio": {
       "repoUrl": "https://github.com/deangilmoreremix/veo4-video-generator",
@@ -116,7 +128,8 @@
       },
       "hostedDemoUrl": "https://veo4-video-generator.vercel.app/",
       "downloadAppId": "easyveo-studio",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
     },
     "pet-product-studio": {
       "repoUrl": "https://github.com/deangilmoreremix/pet-product-studio",
@@ -133,7 +146,8 @@
       },
       "hostedDemoUrl": "https://pet-product-studio.vercel.app/",
       "downloadAppId": "pet-product-studio",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
     },
     "resale-photo-enhancer": {
       "repoUrl": "https://github.com/deangilmoreremix/resale-photo-enhancer",
@@ -150,7 +164,8 @@
       },
       "hostedDemoUrl": "https://resale-photo-enhancer.vercel.app/",
       "downloadAppId": "resale-photo-enhancer",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
     },
     "blogger-cms": {
       "repoUrl": "https://github.com/deangilmoreremix/blogger-cms",
@@ -167,7 +182,8 @@
       },
       "hostedDemoUrl": "https://blogger-cms-psi.vercel.app/",
       "downloadAppId": "blogger-cms",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
     },
     "amazon-product-studio": {
       "repoUrl": "https://github.com/deangilmoreremix/amazon-product-studio",
@@ -184,7 +200,8 @@
       },
       "hostedDemoUrl": "https://amazon-product-studio.vercel.app/",
       "downloadAppId": "amazon-product-studio",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "ai-business-card": {
       "repoUrl": "https://github.com/deangilmoreremix/ai-business-card",
@@ -201,7 +218,8 @@
       },
       "hostedDemoUrl": "https://ai-business-card-ten.vercel.app/",
       "downloadAppId": "ai-business-card",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
     },
     "mailwise": {
       "repoUrl": "https://github.com/deangilmoreremix/mail-wise",
@@ -218,7 +236,8 @@
       },
       "hostedDemoUrl": "https://mail-wise-khaki.vercel.app/",
       "downloadAppId": "mailwise",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "my-podcast": {
       "repoUrl": "https://github.com/deangilmoreremix/my-podcast",
@@ -235,7 +254,8 @@
       },
       "hostedDemoUrl": "https://my-podcast.vercel.app/",
       "downloadAppId": "my-podcast",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "ai-knowledge-base": {
       "repoUrl": "https://github.com/deangilmoreremix/ai-knowledge-base",
@@ -252,7 +272,8 @@
       },
       "hostedDemoUrl": "https://ai-knowledge-base-six.vercel.app/",
       "downloadAppId": "ai-knowledge-base",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "ai-royal-portrait": {
       "repoUrl": "https://github.com/deangilmoreremix/ai-royal-portrait",
@@ -269,7 +290,8 @@
       },
       "hostedDemoUrl": "https://ai-royal-portrait.vercel.app/",
       "downloadAppId": "ai-royal-portrait",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "ai-meme": {
       "repoUrl": "https://github.com/deangilmoreremix/ai-meme-generator",
@@ -286,7 +308,8 @@
       },
       "hostedDemoUrl": "https://ai-meme-generator.vercel.app/",
       "downloadAppId": "ai-meme",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "ai-real-estate-stager": {
       "repoUrl": "https://github.com/deangilmoreremix/ai-real-estate-stager",
@@ -303,7 +326,8 @@
       },
       "hostedDemoUrl": "https://ai-real-estate-stager.vercel.app/",
       "downloadAppId": "ai-real-estate-stager",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
     },
     "ai-logo": {
       "repoUrl": "https://github.com/deangilmoreremix/ai-logo-studio",
@@ -320,7 +344,8 @@
       },
       "hostedDemoUrl": "https://ai-logo-studio.vercel.app/",
       "downloadAppId": "ai-logo",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
     },
     "oldphoto": {
       "repoUrl": "https://github.com/deangilmoreremix/old-photo-restore",
@@ -337,7 +362,8 @@
       },
       "hostedDemoUrl": "https://old-photo-restore.vercel.app/",
       "downloadAppId": "oldphoto",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "aitryon": {
       "repoUrl": "https://github.com/deangilmoreremix/ai-tryon",
@@ -354,7 +380,8 @@
       },
       "hostedDemoUrl": "https://ai-tryon-smoky.vercel.app/",
       "downloadAppId": "aitryon",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "ai-professional-makeup-generator": {
       "repoUrl": "https://github.com/deangilmoreremix/ai-professional-makeup-generator",
@@ -371,7 +398,8 @@
       },
       "hostedDemoUrl": "https://ai-professional-makeup-generator.vercel.app/",
       "downloadAppId": "ai-professional-makeup-generator",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "ai-group-photo": {
       "repoUrl": "https://github.com/deangilmoreremix/ai-group-photo",
@@ -389,7 +417,8 @@
       },
       "hostedDemoUrl": "https://ai-group-photo-mocha.vercel.app/",
       "downloadAppId": "ai-group-photo",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "ai-tattoo-try-on": {
       "repoUrl": "https://github.com/deangilmoreremix/ai-tattoo-try-on",
@@ -406,7 +435,8 @@
       },
       "hostedDemoUrl": "https://ai-tattoo-try-on.vercel.app/",
       "downloadAppId": "ai-tattoo-try-on",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "ai-hair-style-simulator": {
       "repoUrl": "https://github.com/deangilmoreremix/ai-hair-style-simulator",
@@ -423,7 +453,8 @@
       },
       "hostedDemoUrl": "https://ai-hair-style-simulator.vercel.app/",
       "downloadAppId": "ai-hair-style-simulator",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "ai-kids-to-adult-prediction": {
       "repoUrl": "https://github.com/deangilmoreremix/ai-kid-to-adult-prediction",
@@ -440,7 +471,8 @@
       },
       "hostedDemoUrl": "https://ai-kid-to-adult-prediction.vercel.app/",
       "downloadAppId": "ai-kids-to-adult-prediction",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "ai-room-declutter": {
       "repoUrl": "https://github.com/deangilmoreremix/ai-room-declutter",
@@ -457,7 +489,8 @@
       },
       "hostedDemoUrl": "https://ai-room-declutter.vercel.app/",
       "downloadAppId": "ai-room-declutter",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "ai-fitness-body-simulator": {
       "repoUrl": "https://github.com/deangilmoreremix/ai-fitness-body-simulator",
@@ -474,7 +507,8 @@
       },
       "hostedDemoUrl": "https://ai-fitness-body-simulator.vercel.app/",
       "downloadAppId": "ai-fitness-body-simulator",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "ai-pet-portrait": {
       "repoUrl": "https://github.com/deangilmoreremix/ai-pet-portrait",
@@ -491,7 +525,8 @@
       },
       "hostedDemoUrl": "https://ai-pet-portrait.vercel.app/",
       "downloadAppId": "ai-pet-portrait",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "ai-kissing-video-generator": {
       "repoUrl": "https://github.com/deangilmoreremix/ai-kissing-video-generator",
@@ -508,7 +543,8 @@
       },
       "hostedDemoUrl": "https://ai-kissing-video-generator-amber.vercel.app/",
       "downloadAppId": "ai-kissing-video-generator",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
     },
     "ai-travel-studio": {
       "repoUrl": "https://github.com/deangilmoreremix/ai-travel-studio",
@@ -525,7 +561,8 @@
       },
       "hostedDemoUrl": "https://ai-travel-studio.vercel.app/",
       "downloadAppId": "ai-travel-studio",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "prompt-architect": {
       "repoUrl": "https://github.com/deangilmoreremix/prompt-architect",
@@ -542,7 +579,8 @@
       },
       "hostedDemoUrl": "https://prompt-architect-one-nu.vercel.app/",
       "downloadAppId": "prompt-architect",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "clearmark-ai": {
       "repoUrl": "https://github.com/deangilmoreremix/clearmark-ai",
@@ -559,7 +597,8 @@
       },
       "hostedDemoUrl": "https://clearmark-ai.vercel.app/",
       "downloadAppId": "clearmark-ai",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "ai-wedding-photo": {
       "repoUrl": "https://github.com/deangilmoreremix/ai-wedding-photo",
@@ -576,7 +615,8 @@
       },
       "hostedDemoUrl": "https://ai-wedding-photo.vercel.app/",
       "downloadAppId": "ai-wedding-photo",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "social-post": {
       "repoUrl": "https://github.com/deangilmoreremix/social-post",
@@ -593,7 +633,8 @@
       },
       "hostedDemoUrl": "https://social-post-woad.vercel.app/",
       "downloadAppId": "social-post",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
     },
     "magicself-ai": {
       "repoUrl": "https://github.com/deangilmoreremix/magicself-ai",
@@ -610,7 +651,8 @@
       },
       "hostedDemoUrl": "https://magicself-ai.vercel.app/",
       "downloadAppId": "magicself-ai",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "ai-resume-builder": {
       "repoUrl": null,
@@ -635,7 +677,8 @@
       },
       "hostedDemoUrl": "https://ai-resume-builder.vercel.app/",
       "downloadAppId": "ai-resume-builder",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "geo-checker": {
       "repoUrl": "https://github.com/deangilmoreremix/geo-checker",
@@ -652,7 +695,8 @@
       },
       "hostedDemoUrl": "https://geo-checker-silk.vercel.app/",
       "downloadAppId": "geo-checker",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     },
     "ai-character-studio": {
       "repoUrl": "https://github.com/deangilmoreremix/ai-character-studio",
@@ -669,7 +713,8 @@
       },
       "hostedDemoUrl": "https://ai-character-studio-beta.vercel.app/",
       "downloadAppId": "ai-character-studio",
-      "vercelProjectUrl": null
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
     }
   }
 }

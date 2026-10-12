@@ -3,6 +3,9 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import DeploymentCenter from './DeploymentCenter';
 import ResellerAcademyView from './ResellerAcademyView';
+import { RESELLER_APPS } from '@/packages/studio/src/components/AppsStudio';
+import enAppsStudio from '@/packages/studio/src/messages/en/appsStudio.json';
+import resellerDestinations from '@/src/data/resellerDestinations.json';
 
 /**
  * The Reseller Deployment Center (/reseller/deployment) and the gated
@@ -13,6 +16,15 @@ import ResellerAcademyView from './ResellerAcademyView';
  */
 describe('Reseller surfaces', () => {
   beforeEach(() => cleanup());
+
+  /** Per-app instruction cards, keyed by the app id in their anchor id. */
+  const cardsById = () => {
+    const map = new Map();
+    Array.from(document.querySelectorAll('article[id^="app-"]')).forEach((card) => {
+      map.set(card.id.replace(/^app-/, ''), card);
+    });
+    return map;
+  };
 
   describe('DeploymentCenter', () => {
     it('renders the deployment center heading and package pricing', () => {
@@ -75,6 +87,79 @@ describe('Reseller surfaces', () => {
       expect(hrefs.some((href) => /vercel\.com\/new\/import/.test(href))).toBe(false);
       expect(hrefs).toContain('https://ai-resume-builder.vercel.app/');
       expect(hrefs.some((href) => /repository-url=null/.test(href))).toBe(false);
+    });
+
+    it('gates every per-app deploy link on a verified deployable-template repo', () => {
+      render(<DeploymentCenter />);
+      const templates = new Set(
+        Object.entries(resellerDestinations.destinations)
+          .filter(([, entry]) => entry.vercelDeploy === 'template')
+          .map(([id]) => id),
+      );
+      const byId = cardsById();
+      RESELLER_APPS.forEach((app) => {
+        const card = byId.get(app.id);
+        expect(card).toBeDefined();
+        const importLink = Array.from(card.querySelectorAll('a')).find((a) =>
+          a.getAttribute('href')?.startsWith('https://vercel.com/new/import'),
+        );
+        const disabled = Array.from(card.querySelectorAll('span[aria-disabled="true"]'))
+          .find((el) => el.textContent === 'Deploy on Vercel ↗');
+        if (templates.has(app.id) && app.repo) {
+          // Working action: Vercel's real import flow for the verified repo.
+          expect(importLink).toBeDefined();
+          expect(importLink.getAttribute('href')).toBe(
+            `https://vercel.com/new/import?repository-url=${encodeURIComponent(app.repo)}`,
+          );
+          expect(disabled).toBeUndefined();
+        } else {
+          // Attribution-only README/NOTICE repo, Python CLI, wrong project,
+          // or no repo at all: an honest disabled control, not a link.
+          expect(importLink).toBeUndefined();
+          expect(disabled).toBeDefined();
+          expect(disabled.getAttribute('title')).toBe(enAppsStudio.card.vercelDeployUnavailable);
+        }
+      });
+      // Exactly the 13 verified template apps offer a deploy link.
+      const deployLinks = Array.from(
+        document.querySelectorAll('article[id^="app-"] a'),
+      ).filter((a) => (a.getAttribute('href') || '').startsWith('https://vercel.com/new/import'));
+      expect(deployLinks.length).toBe(13);
+      deployLinks.forEach((link) => {
+        const href = decodeURIComponent(link.getAttribute('href') || '');
+        expect(href).not.toContain('null');
+        expect(href).not.toContain('undefined');
+        expect(href).not.toContain('SamurAIGPT');
+      });
+    });
+
+    it('links every repository to the verified deangilmoreremix destination', () => {
+      render(<DeploymentCenter />);
+      const repoLinks = Array.from(document.querySelectorAll('article[id^="app-"] a'))
+        .filter((a) => /Source repository ↗/.test(a.textContent || ''));
+      expect(repoLinks.length).toBe(37);
+      repoLinks.forEach((link) => {
+        const href = link.getAttribute('href') || '';
+        expect(href.startsWith('https://github.com/deangilmoreremix/')).toBe(true);
+        expect(href).not.toContain('SamurAIGPT');
+        // The href must be the mapping's verified repoUrl for some app.
+        const mapped = Object.values(resellerDestinations.destinations)
+          .some((entry) => entry.repoUrl === href);
+        expect(mapped).toBe(true);
+      });
+    });
+
+    it('keeps every download reference on the authorized reseller route', () => {
+      render(<DeploymentCenter />);
+      const byId = cardsById();
+      RESELLER_APPS.forEach((app) => {
+        const card = byId.get(app.id);
+        const download = Array.from(card.querySelectorAll('dd'))
+          .find((dd) => /^\/api\/reseller\/download\?app=/.test(dd.textContent || ''));
+        expect(download?.textContent).toBe(`/api/reseller/download?app=${app.id}`);
+        // The id must stay the one the download route's allowlist accepts.
+        expect(resellerDestinations.destinations[app.id]?.downloadAppId).toBe(app.id);
+      });
     });
   });
 

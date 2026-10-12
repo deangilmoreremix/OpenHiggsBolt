@@ -5,6 +5,7 @@ import { FaGithub, FaExternalLinkAlt, FaSearch, FaCheck, FaBook, FaCode, FaRocke
 import en from "../messages/en/appsStudio.json";
 import zh from "../messages/zh/appsStudio.json";
 import { resolveCopy } from "../i18nUtils";
+import destinations from "../../../../src/data/resellerDestinations.json";
 
 const APPS = [
   {
@@ -372,6 +373,24 @@ export function deploymentGuideUrl(appId) {
 export function vercelImportUrl(repo) {
   if (!repo || !/^https:\/\/github\.com\//.test(repo)) return null;
   return `https://vercel.com/new/import?repository-url=${encodeURIComponent(repo)}`;
+}
+
+/**
+ * Per-app Vercel deploy eligibility, read from the canonical destination
+ * mapping (src/data/resellerDestinations.json) rather than hardcoded here.
+ *
+ * Only apps whose repository was verified as `deployable-public-template` in
+ * docs/vercel-deployment-verification.md — a public repo WITH full source —
+ * offer the Deploy-on-Vercel action. Everything else is `unavailable`: the
+ * repo is an attribution-only README/NOTICE, a Python CLI, the wrong project,
+ * or missing entirely, so an import link would be a broken destination.
+ *
+ * An unknown app id is treated as unavailable: the gate fails closed.
+ */
+export function vercelDeployEligibility(appId) {
+  return destinations?.destinations?.[appId]?.vercelDeploy === "template"
+    ? "template"
+    : "unavailable";
 }
 
 /** Single source of truth for the reseller app catalog (also used by the docs page). */
@@ -967,7 +986,7 @@ export default function AppsStudio({ locale = "en" }) {
                       // dead link.
                       <span
                         aria-disabled="true"
-                        title="Repository not yet published"
+                        title={copy.card.repoUnpublished}
                         className="flex items-center justify-center gap-2 rounded-full bg-white/5 px-4 py-2 text-xs font-bold text-white/50 border border-white/10"
                       >
                         <FaCode aria-hidden="true" focusable="false" className="text-[10px]" />
@@ -976,8 +995,13 @@ export default function AppsStudio({ locale = "en" }) {
                     )}
                     {/* Vercel import uses the real source repository as the
                         destination, so nothing is invented for apps that do
-                        not have a documented repo. */}
-                    {vercelImportUrl(app.repo) && (
+                        not have a documented repo. The action is additionally
+                        gated on the verified deployable-template status in the
+                        destination mapping: an attribution-only README/NOTICE
+                        repo, a Python CLI, or the wrong project imports into
+                        Vercel but never builds, so those cards explain the
+                        unavailability instead of offering a broken flow. */}
+                    {vercelDeployEligibility(app.id) === "template" && vercelImportUrl(app.repo) ? (
                       <a
                         href={vercelImportUrl(app.repo)}
                         target="_blank"
@@ -987,6 +1011,15 @@ export default function AppsStudio({ locale = "en" }) {
                         <FaRocket aria-hidden="true" focusable="false" className="text-[10px]" />
                         {copy.card.vercelDeploy}
                       </a>
+                    ) : (
+                      <span
+                        aria-disabled="true"
+                        title={copy.card.vercelDeployUnavailable}
+                        className="flex items-center justify-center gap-2 rounded-full bg-white/5 px-4 py-2 text-xs font-bold text-white/50 border border-white/10"
+                      >
+                        <FaRocket aria-hidden="true" focusable="false" className="text-[10px]" />
+                        {copy.card.vercelDeploy}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -1007,7 +1040,7 @@ export default function AppsStudio({ locale = "en" }) {
                   ) : (
                     <span
                       aria-disabled="true"
-                      title="Repository not yet published"
+                      title={copy.card.repoUnpublished}
                       className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-white/50 rounded"
                     >
                       <FaGithub aria-hidden="true" focusable="false" className="text-sm" />

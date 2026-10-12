@@ -1,6 +1,7 @@
 'use client';
 
-import { RESELLER_APPS } from '@/packages/studio/src/components/AppsStudio';
+import { RESELLER_APPS, vercelDeployEligibility } from '@/packages/studio/src/components/AppsStudio';
+import enAppsStudio from '@/packages/studio/src/messages/en/appsStudio.json';
 
 /**
  * Academy training destination for the $597 package.
@@ -16,6 +17,18 @@ const ACADEMY_TRAINING_HAS_DEDICATED_ROUTE = false;
 /** Postgres schema name for an app id: kebab-case is quoted in SQL, so normalize it. */
 function schemaFor(appId) {
   return appId.replace(/-/g, '_');
+}
+
+/**
+ * Deploy-on-Vercel eligibility for one app, gated on the same verified
+ * destination mapping the studio cards use. Only repos confirmed as
+ * deployable-public-template in docs/vercel-deployment-verification.md get a
+ * working import link; every other app (attribution-only README/NOTICE repo,
+ * Python CLI, wrong project, or no repo at all) is shown as unavailable
+ * rather than pointed at an import that can never build.
+ */
+function canDeployToVercel(app) {
+  return Boolean(app.repo) && vercelDeployEligibility(app.id) === "template";
 }
 
 const ENV_CLIENT = `NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
@@ -340,14 +353,18 @@ export default function DeploymentCenter() {
         {/* ── Vercel deployment ──────────────────────────────────────────── */}
         <section aria-labelledby="vercel-deploy" className="space-y-5">
           <SectionHeading id="vercel-deploy" eyebrow="Step 5" title="Deploy to Vercel">
-            Every app deploys from its own source repository to your own Vercel account. The
-            &ldquo;Deploy on Vercel&rdquo; button on each card starts Vercel&apos;s official import flow for
-            that repository — nothing is deployed on your behalf.
+            Every app deploys from its own source repository to your own Vercel account. Where the
+            source repository is published as a deployable template, the &ldquo;Deploy on
+            Vercel&rdquo; action starts Vercel&apos;s official import flow for that repository —
+            nothing is deployed on your behalf. Apps whose source is not published as a deployable
+            template show that action as unavailable: deploy their download archive as a new Vercel
+            project instead.
           </SectionHeading>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Step num="01" title="Import the repository">
               Use the Deploy on Vercel action on the app card (or New Project → Import Git Repository)
-              and import that app&apos;s repository into your Vercel account.
+              and import that app&apos;s repository into your Vercel account. For an app without a
+              published deployable template, deploy its download archive as a new project instead.
             </Step>
             <Step num="02" title="Add environment variables">
               Paste the Supabase keys from your project plus any app keys the repository README asks
@@ -438,17 +455,25 @@ export default function DeploymentCenter() {
                   ) : (
                     <span
                       aria-disabled="true"
-                      title="Repository not yet published"
+                      title={enAppsStudio.card.repoUnpublished}
                       className="inline-flex items-center gap-1.5 text-[11px] font-bold text-white/50 rounded"
                     >
                       Source repository ↗
                     </span>
                   )}
                   {app.hosted && <ExternalLink href={app.hosted}>Live demo ↗</ExternalLink>}
-                  {app.repo && (
+                  {canDeployToVercel(app) ? (
                     <ExternalLink href={`https://vercel.com/new/import?repository-url=${encodeURIComponent(app.repo)}`}>
                       Deploy on Vercel ↗
                     </ExternalLink>
+                  ) : (
+                    <span
+                      aria-disabled="true"
+                      title={enAppsStudio.card.vercelDeployUnavailable}
+                      className="inline-flex items-center gap-1.5 text-[11px] font-bold text-white/50 rounded"
+                    >
+                      Deploy on Vercel ↗
+                    </span>
                   )}
                 </div>
               </article>
