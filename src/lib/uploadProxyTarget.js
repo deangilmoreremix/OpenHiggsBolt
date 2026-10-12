@@ -1,23 +1,16 @@
-import dns from 'dns';
-import { promisify } from 'util';
+import { checkDestination, isBlockedHostname, isIpLiteral } from './networkSafety';
 
 // NOTE: isBlockedFileType() is used by legacy proxy routes but not by the
 // direct upload route. The direct upload route (/api/v1/upload_file) uses
 // its own MIME allowlist (ALLOWED_UPLOAD_MIME_TYPES) instead of relying on
 // this blocked-file check.
-
-const resolve4 = promisify(dns.resolve4);
+//
+// Every IP / hostname / DNS-rebinding rule now lives in the single shared
+// module ./networkSafety, so the upload proxy cannot drift away from the
+// discovery path. This file owns only the S3 destination allowlist and the
+// upload-specific file rules.
 
 const DEFAULT_S3_REGION_PATTERN = /^[a-z0-9-]+$/;
-
-const BLOCKED_IP_RANGES = [
-  { start: Buffer.from('0A000000', 'hex'), end: Buffer.from('0AFFFFFF', 'hex') },       // 10.0.0.0/8
-  { start: Buffer.from('AC100000', 'hex'), end: Buffer.from('AC1FFFFFF', 'hex') },      // 172.16.0.0/12
-  { start: Buffer.from('C0A80000', 'hex'), end: Buffer.from('C0A8FFFF', 'hex') },       // 192.168.0.0/16
-  { start: Buffer.from('A9FE0000', 'hex'), end: Buffer.from('A9FEFFFF', 'hex') },       // 169.254.0.0/16
-  { start: Buffer.from('7F000000', 'hex'), end: Buffer.from('7FFFFFFF', 'hex') },       // 127.0.0.0/8
-  { start: Buffer.from('00000000000000000000000000000001', 'hex'), end: Buffer.from('00000000000000000000000000000001', 'hex') }, // ::1
-];
 
 function normalizeHostname(hostname) {
     return hostname.toLowerCase().replace(/\.$/, '');
@@ -30,50 +23,10 @@ function parseAllowedHosts(env) {
         .filter(Boolean);
 }
 
-function parseIpV4(hostname) {
-    const parts = hostname.split('.');
-    if (parts.length !== 4 || parts.some((part) => !/^\d+$/.test(part))) {
-        return null;
-    }
-
-    const octets = parts.map((part) => Number(part));
-    if (octets.some((octet) => octet < 0 || octet > 255)) {
-        return null;
-    }
-
-    return octets;
-}
-
-function isIpLiteral(hostname) {
-    return Boolean(parseIpV4(hostname)) || hostname.includes(':');
-}
-
-function isBlockedIpV4(hostname) {
-    const octets = parseIpV4(hostname);
-    if (!octets) {
-        return false;
-    }
-
-    const [first, second] = octets;
-    return (
-        first === 0 ||
-        first === 10 ||
-        first === 127 ||
-        (first === 169 && second === 254) ||
-        (first === 172 && second >= 16 && second <= 31) ||
-        (first === 192 && second === 168)
-    );
-}
-
 function isBlockedHost(hostname) {
     const normalized = normalizeHostname(hostname).replace(/^\[|\]$/g, '');
 
-    return (
-        normalized === 'localhost' ||
-        normalized === '::1' ||
-        isIpLiteral(normalized) ||
-        isBlockedIpV4(normalized)
-    );
+    return isBlockedHostname(normalized) || isIpLiteral(normalized);
 }
 
 function isAllowedS3Host(hostname, allowedHosts = []) {
@@ -87,11 +40,15 @@ function isAllowedS3Host(hostname, allowedHosts = []) {
         return true;
     }
 
-    // Exact S3 regional patterns:
-    // bucket.s3.amazonaws.com (global endpoint)
-    // bucket.s3-<region>.amazonaws.com (regional endpoint)
-    // bucket.s3.<region>.amazonaws.com (dualstack endpoint)
-    if (/^[a-z0-9][a-z0-9\-\.]*[a-z0-9]\.s3(-[a-z0-9][a-z0-9\-]*[a-z0-9])?(\.[a-z0-9][a-z0-9\-]*[a-z0-9])?\.amazonaws\.com$/.test(hostname)) {
+    // Exact S3 endpoint shapes (bucket names permit a single character):
+    //   bucket.s3.amazonaws.com                       global
+    //   bucket.s3-<region>.amazonaws.com              regional
+    //   bucket.s3.<region>.amazonaws.com              regional / dualstack
+    //   bucket.s3.<region>.dualstack.amazonaws.com    dualstack tail
+    //   bucket.s3.dualstack.<region>.amazonaws.com    dualstack prefix
+    // Anchored at both ends so a lookalike host (e.g. s3.amazonaws.com.evil.tld)
+    // cannot match.
+    if (/^[a-z0-9](?:[a-z0-9.\-]*[a-z0-9])?\.s3(?:[.-][a-z0-9-]+){0,4}\.amazonaws\.com$/.test(hostname)) {
         return true;
     }
 
@@ -149,19 +106,20 @@ export function isBlockedFileType(filename = '', contentType = '') {
     return false;
 }
 
-function isBlockedIp(ip) {
-  if (!ip || typeof ip !== 'string') return true;
-  const parts = ip.split('.').map(Number);
-  if (parts.length !== 4 || parts.some(p => isNaN(p) || p < 0 || p > 255)) return true;
-  const buf = Buffer.from(parts);
-  for (const range of BLOCKED_IP_RANGES) {
-    if (buf.length === range.start.length && buf >= range.start && buf <= range.end) {
-      return true;
-    }
-  }
-  return false;
-}
-
+/**
+ * Validates an upload/proxy destination.
+ *
+ * Order of the gates:
+ *   1. protocol must be https
+ *   2. hostname must not be a private/reserved literal or a local name
+ *   3. hostname must be on the S3 allowlist
+ *   4. EVERY address the hostname currently resolves to must be public
+ *      (this is what closes the DNS-rebinding / resolves-to-private-IP hole)
+ *
+ * Returns `{ ok: true, url, hostname, addresses }` on success. Callers that
+ * want to pin the connection to the validated address can use
+ * `createPinnedLookup(addresses)` from ./networkSafety.
+ */
 export async function validateUploadProxyTarget(rawTarget, { env = process.env } = {}) {
     if (typeof rawTarget !== 'string' || rawTarget.trim() === '') {
         return { ok: false, reason: 'missing_target' };
@@ -188,15 +146,22 @@ export async function validateUploadProxyTarget(rawTarget, { env = process.env }
         return { ok: false, reason: 'host_not_allowed' };
     }
 
-    // Resolve hostname to prevent SSRF via DNS rebinding
-    try {
-        const addresses = await resolve4(hostname);
-        if (addresses.some(addr => isBlockedIp(addr))) {
-            return { ok: false, reason: 'resolved_to_blocked_ip' };
-        }
-    } catch {
-        return { ok: false, reason: 'dns_resolution_failed' };
+    // Resolve + validate every address. checkDestination re-runs the hostname
+    // gates, resolves A *and* AAAA records and rejects the destination if any
+    // resolved address is private/loopback/link-local/CGNAT/IPv4-mapped.
+    const destination = await checkDestination(url.toString());
+    if (!destination.ok) {
+        // A name that does not resolve is not a rebinding, it is a typo or a
+        // dangling record; report it distinctly from a blocked address.
+        const reason =
+            destination.reason === 'invalid_url' ? 'invalid_url' : destination.reason;
+        return { ok: false, reason };
     }
 
-    return { ok: true, url: url.toString() };
+    return {
+        ok: true,
+        url: destination.url,
+        hostname,
+        addresses: destination.addresses,
+    };
 }
