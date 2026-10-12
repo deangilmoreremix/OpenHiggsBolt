@@ -185,7 +185,7 @@ describe('AppsStudio', () => {
     render(<AppsStudio />);
     expect(screen.getByText('AI YouTube Shorts Generator')).toBeDefined();
     const githubLinks = screen.getAllByRole('link', { name: /GitHub/i });
-    const shortsLink = githubLinks.find(link => link.getAttribute('href') === 'https://github.com/SamurAIGPT/AI-Youtube-Shorts-Generator');
+    const shortsLink = githubLinks.find(link => link.getAttribute('href') === 'https://github.com/deangilmoreremix/AI-Youtube-Shorts-Generator');
     expect(shortsLink).not.toBeUndefined();
   });
 
