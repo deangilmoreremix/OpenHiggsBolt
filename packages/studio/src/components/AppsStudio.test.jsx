@@ -1,7 +1,17 @@
-// @vitest-environment jsdom
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
-import AppsStudio from '@/packages/studio/src/components/AppsStudio';
+  // @vitest-environment jsdom
+  import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+  import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+  import AppsStudio, { RESELLER_APPS } from '@/packages/studio/src/components/AppsStudio';
+  import enAppsStudio from '@/packages/studio/src/messages/en/appsStudio.json';
+  import zhAppsStudio from '@/packages/studio/src/messages/zh/appsStudio.json';
+
+  /** Minimal fetch Response stand-in — works in jsdom without Node globals. */
+  const makeResponse = (overrides) => ({
+    ok: true,
+    status: 200,
+    json: async () => ({}),
+    ...overrides,
+  });
 
 describe('AppsStudio', () => {
   beforeEach(() => {
@@ -78,27 +88,25 @@ describe('AppsStudio', () => {
     expect(screen.getByText(/Upgrade from DIY App Builder to Apps \+ Training for a \$400 difference\./)).toBeDefined();
   });
 
-  it('does not render functioning purchase buttons before Stripe is configured', () => {
+  it('renders purchase CTAs that call the checkout endpoint (never fake links)', () => {
     render(<AppsStudio />);
-    // Purchases must stay unavailable until a verified Stripe destination is
-    // configured, so both package CTAs are disabled controls, never links.
+    // Purchases open the real Stripe session returned by
+    // POST /api/reseller/checkout, so both package CTAs are live buttons.
     const purchaseButtons = screen
       .getAllByRole('button')
       .filter(btn => /^Get All Apps/.test(btn.textContent || ''));
     expect(purchaseButtons.length).toBe(2);
     purchaseButtons.forEach(btn => {
-      expect(btn.hasAttribute('disabled')).toBe(true);
-      expect(btn.getAttribute('aria-disabled')).toBe('true');
       expect(btn.tagName).toBe('BUTTON');
-      // A real checkout would be an anchor with an href; assert there is none.
+      // A live CTA is not a link, so nothing pretends to be a checkout page.
       expect(btn.getAttribute('href')).toBeNull();
+      expect(btn.hasAttribute('disabled')).toBe(false);
     });
     // And no anchor anywhere on the page points at a fake checkout destination.
     const purchaseLinks = screen
       .getAllByRole('link')
       .filter(a => /checkout|buy\.stripe|pay\.stripe|purchase/i.test(a.getAttribute('href') || ''));
     expect(purchaseLinks.length).toBe(0);
-    expect(screen.getByText(/Checkout is not configured yet/i)).toBeDefined();
   });
 
   it('renders exactly 38 verified app cards', () => {
@@ -140,9 +148,9 @@ describe('AppsStudio', () => {
     expect(demoButtons.length).toBe(37);
   });
 
-  it('renders View App Details buttons for all apps', () => {
+  it('renders Source Code buttons for all apps', () => {
     render(<AppsStudio />);
-    expect(screen.getAllByText('View App Details').length).toBe(38);
+    expect(screen.getAllByText('Source Code').length).toBe(38);
   });
 
   it('leaves AI YouTube Shorts Generator without a Live Demo button', () => {
@@ -294,11 +302,11 @@ describe('AppsStudio', () => {
     // Demo is the primary action and appears above the details CTA.
     expect(card.querySelector('a[href^="https://ai-headshot-generator-xi"]')).not.toBeNull();
     // GitHub is selected by its aria-label: the repo href is shared with the
-    // "View App Details" CTA, so an href selector would match the wrong node.
+    // "Source Code" CTA, so an href selector would match the wrong node.
     const github = card.querySelector('a[aria-label^="GitHub — "]');
     expect(github).not.toBeNull();
     const details = Array.from(card.querySelectorAll('a')).find(
-      a => a.textContent === 'View App Details'
+      a => a.textContent === 'Source Code'
     );
     expect(details).not.toBeUndefined();
     // The GitHub link must not precede the details CTA in the card DOM.
@@ -338,23 +346,43 @@ describe('AppsStudio', () => {
     expect(screen.getByText(/自定义、品牌化并上线/)).toBeDefined();
   });
 
-  it('localizes the reseller packages under zh', () => {
+  it('localizes the reseller packages under zh', async () => {
     render(<AppsStudio locale="zh" />);
     expect(screen.getByText('自助应用构建包')).toBeDefined();
     expect(screen.getByText('应用 + 培训')).toBeDefined();
     expect(screen.getByText('获取全部应用')).toBeDefined();
     expect(screen.getByText('获取全部应用 + 培训')).toBeDefined();
-    expect(screen.getByText(/差价 \$400/)).toBeDefined();
-    expect(screen.getByText(/结账尚未配置/)).toBeDefined();
+    // Scoped to the unique explanatory paragraph: the upgrade CTA carries the
+    // same "$400" figure, so a bare /差价 \$400/ matches multiple elements.
+    expect(screen.getByText(/从自助应用构建包升级至应用 \+ 培训，差价 \$400。/)).toBeDefined();
+    // The Stripe-pending note is reactive: it appears once checkout answers 503.
+    const fetchMock = vi.fn().mockResolvedValue(makeResponse({
+      status: 503,
+      ok: false,
+      json: async () => ({ error: 'RESELLER_STRIPE_NOT_CONFIGURED', missing: ['STRIPE_SECRET_KEY'] }),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    fireEvent.click(screen.getByRole('button', { name: '获取全部应用' }));
+    await waitFor(() => {
+      expect(screen.getByText(/结账尚未配置/)).toBeDefined();
+      expect(screen.getByRole('button', { name: '获取全部应用' }).hasAttribute('disabled')).toBe(true);
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/Stripe 配置待完成/)).toBeDefined();
+    });
+    vi.unstubAllGlobals();
   });
 
   it('localizes the card actions under zh', () => {
     render(<AppsStudio locale="zh" />);
     // Every hosted app carries these labels, so match the whole set.
     expect(screen.getAllByText('在线试用').length).toBe(37);
-    expect(screen.getAllByText('查看应用详情').length).toBe(38);
+    expect(screen.getAllByText('部署指南').length).toBe(38);
+    expect(screen.getAllByText('源代码').length).toBe(38);
+    expect(screen.getAllByText('部署到 Vercel').length).toBe(38);
     expect(screen.queryAllByText('Try Live Demo', { exact: true })).toHaveLength(0);
-    expect(screen.queryAllByText('View App Details', { exact: true })).toHaveLength(0);
+    expect(screen.queryAllByText('Source Code', { exact: true })).toHaveLength(0);
+    expect(screen.queryAllByText('Deployment Guide', { exact: true })).toHaveLength(0);
   });
 
   // ── Accessibility and responsive structure ───────────────────────────────
@@ -457,6 +485,231 @@ describe('AppsStudio', () => {
     fireEvent.change(searchInput, { target: { value: 'xyznonexistent' } });
     await waitFor(() => {
       expect(screen.getByText('未找到匹配的应用。')).toBeDefined();
+    });
+  });
+
+  // ── Purchase CTAs against the concurrent reseller endpoints ─────────────
+  // The checkout/upgrade routes are owned by another agent; these tests pin
+  // the UI contract: real POSTs, Stripe redirects, and graceful 503/409/402
+  // degradation that never fakes a purchase.
+
+  /** Collect every leaf path of a nested JSON bundle, for key parity. */
+  const collectKeys = (value, prefix = '') => {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return Object.keys(value).flatMap((key) =>
+        collectKeys(value[key], prefix ? `${prefix}.${key}` : key)
+      );
+    }
+    return prefix ? [prefix] : [];
+  };
+
+  /** Replace window.location with a stub for the duration of a redirect test. */
+  const stubWindowLocation = () => {
+    const original = window.location;
+    const assign = vi.fn();
+    // jsdom's location properties are non-configurable, so swap the whole
+    // object (the component only reads location.assign / location.href).
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...original, assign, href: '' },
+    });
+    return {
+      assign,
+      restore: () => {
+        Object.defineProperty(window, 'location', {
+          configurable: true,
+          value: original,
+        });
+      },
+    };
+  };
+
+  it('keeps the DIY CTA disabled with a Stripe-pending note when checkout answers 503', async () => {
+    render(<AppsStudio />);
+    const fetchMock = vi.fn().mockResolvedValue(makeResponse({
+      status: 503,
+      ok: false,
+      json: async () => ({ error: 'RESELLER_STRIPE_NOT_CONFIGURED', missing: ['STRIPE_SECRET_KEY'] }),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const cta = screen.getByRole('button', { name: 'Get All Apps' });
+      expect(cta.hasAttribute('disabled')).toBe(false);
+      fireEvent.click(cta);
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledWith(
+          '/api/reseller/checkout',
+          expect.objectContaining({ method: 'POST' }),
+        );
+        // The posted body must carry the package key the route expects.
+        const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+        expect(body).toEqual({ package: 'diy' });
+        // The control stays disabled — never a fake checkout link.
+        expect(screen.getByRole('button', { name: 'Get All Apps' }).hasAttribute('disabled')).toBe(true);
+      });
+      // An accessible status note explains that Stripe configuration is pending.
+      expect(screen.getByText(/Checkout is not configured yet/)).toBeDefined();
+      expect(screen.getByText(/Pending Stripe configuration: STRIPE_SECRET_KEY/)).toBeDefined();
+      expect(document.querySelector('[role="status"]')).not.toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('hands the browser to the Stripe session URL returned for the training package', async () => {
+    const locationStub = stubWindowLocation();
+    render(<AppsStudio />);
+    const fetchMock = vi.fn().mockResolvedValue(makeResponse({
+      status: 200,
+      ok: true,
+      json: async () => ({ url: 'https://checkout.stripe.com/c/pay/cs_test_123' }),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Get All Apps + Training' }));
+      await waitFor(() => {
+        expect(locationStub.assign).toHaveBeenCalledWith('https://checkout.stripe.com/c/pay/cs_test_123');
+      });
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(body).toEqual({ package: 'training' });
+    } finally {
+      vi.unstubAllGlobals();
+      locationStub.restore();
+    }
+  });
+
+  it('redirects only to https URLs the checkout route actually returned', async () => {
+    const locationStub = stubWindowLocation();
+    render(<AppsStudio />);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(makeResponse({
+      status: 200,
+      ok: true,
+      // A deceptive redirect target must never be followed.
+      json: async () => ({ url: 'javascript:alert(1)' }),
+    })));
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Get All Apps' }));
+      await waitFor(() => {
+        expect(screen.getByText(/Checkout could not be started/)).toBeDefined();
+      });
+      expect(locationStub.assign).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+      locationStub.restore();
+    }
+  });
+
+  it('explains a 409 ALREADY_TRAINING upgrade answer in plain language', async () => {
+    render(<AppsStudio />);
+    const fetchMock = vi.fn().mockResolvedValue(makeResponse({
+      status: 409,
+      ok: false,
+      json: async () => ({ error: 'ALREADY_TRAINING' }),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Upgrade to Apps + Training for $400' }));
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledWith(
+          '/api/reseller/upgrade',
+          expect.objectContaining({ method: 'POST' }),
+        );
+        expect(
+          screen.getByText('You already have the Apps + Training package, so there is nothing to upgrade.')
+        ).toBeDefined();
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('explains a 402 UPGRADE_NOT_ELIGIBLE upgrade answer in plain language', async () => {
+    render(<AppsStudio />);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(makeResponse({
+      status: 402,
+      ok: false,
+      json: async () => ({ error: 'UPGRADE_NOT_ELIGIBLE' }),
+    })));
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Upgrade to Apps + Training for $400' }));
+      await waitFor(() => {
+        expect(
+          screen.getByText(/This upgrade is only available to owners of the DIY App Builder package/)
+        ).toBeDefined();
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('keeps the upgrade CTA disabled with a Stripe-pending note on 503', async () => {
+    render(<AppsStudio />);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(makeResponse({
+      status: 503,
+      ok: false,
+      json: async () => ({ error: 'RESELLER_STRIPE_NOT_CONFIGURED', missing: ['STRIPE_PRICE_UPGRADE'] }),
+    })));
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Upgrade to Apps + Training for $400' }));
+      await waitFor(() => {
+        expect(
+          screen.getByRole('button', { name: 'Upgrade to Apps + Training for $400' }).hasAttribute('disabled')
+        ).toBe(true);
+      });
+      expect(screen.getByText(/Checkout is not configured yet/)).toBeDefined();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('keeps rendering when the reseller endpoints are entirely unavailable', async () => {
+    render(<AppsStudio />);
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Get All Apps' }));
+      await waitFor(() => {
+        expect(screen.getByText(/Checkout could not be started/)).toBeDefined();
+      });
+      // The gallery itself never disappears on an endpoint failure.
+      expect(getCardHeadings().length).toBe(38);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  // ── Card actions ─────────────────────────────────────────────────────────
+
+  it('links every card to its anchor in the Reseller Deployment Center', () => {
+    render(<AppsStudio />);
+    const guideLinks = screen
+      .getAllByRole('link')
+      .filter(a => /^\/reseller\/deployment#app-/.test(a.getAttribute('href') || ''));
+    expect(guideLinks.length).toBe(38);
+    // Every catalog app has a matching Deployment Center anchor target.
+    const expected = new Set(RESELLER_APPS.map(app => `/reseller/deployment#app-${app.id}`));
+    const actual = new Set(guideLinks.map(a => a.getAttribute('href')));
+    expect(actual).toEqual(expected);
+    // The guides are internal links, so they must not open a new tab.
+    guideLinks.forEach(link => {
+      expect(link.getAttribute('target')).toBeNull();
+    });
+  });
+
+  it('keeps the en and zh appsStudio bundles structurally identical', () => {
+    const enKeys = collectKeys(enAppsStudio).sort();
+    const zhKeys = collectKeys(zhAppsStudio).sort();
+    expect(zhKeys).toEqual(enKeys);
+    // Every Chinese leaf value is a real, non-empty translation.
+    const leafValues = (value) =>
+      value && typeof value === 'object'
+        ? Object.values(value).flatMap(leafValues)
+        : [value];
+    const zhValues = leafValues(zhAppsStudio).filter(v => typeof v === 'string');
+    expect(zhValues.length).toBe(enKeys.length);
+    zhValues.forEach((value) => {
+      expect(value.trim().length).toBeGreaterThan(0);
+      expect(value).not.toMatch(/TODO|FIXME|\bplaceholder\b/i);
+      expect(value).not.toMatch(/^ ?\{[a-z]+\} ?$/); // bare, unreplaced token
     });
   });
 });
