@@ -1,41 +1,47 @@
--- H6 (High, suspected): personalization_projects RLS state unverifiable from source.
+-- H6 (High): personalization_projects RLS state unverifiable from source.
 --
--- No migration in supabase/migrations/ creates public.personalization_projects
--- or its policies. The table exists only as an out-of-band object (created
--- directly in the Supabase dashboard / console when the persistence feature was
--- built; the older docs/personalization-mismatch-classification-report.md:299
--- still lists "Introduce a personalization_projects Supabase table" as a
--- recommendation), and the live RLS state cannot be audited from this repo.
+-- VERIFIED LIVE SCHEMA MISMATCH — READ BEFORE APPLYING (verified 2026-10-12
+-- against project bzxohkrxcwodllketcpz, Postgres 17.6.1.084):
+--   * public.personalization_projects EXISTS with RLS DISABLED. Its live
+--     columns are: id (uuid), user_id (uuid NOT NULL), app_id (text NOT
+--     NULL), mode (text NOT NULL), target_name (text NOT NULL),
+--     target_company, manual_notes, scan_id (uuid), status, created_at,
+--     updated_at. There is NO `clerk_user_id` column. Its one live policy
+--     `Users can manage own projects` (FOR ALL, `auth.uid() = user_id`) is
+--     inert under Clerk because auth.uid() is always NULL.
+--   * The app route app/api/personalization/project/route.ts selects and
+--     writes `clerk_user_id, source, client, assets, prompt, output_type,
+--     generation, error_message` — NONE of those columns exist on the live
+--     table — so the route is ALREADY failing in production today with
+--     PostgREST 42703 "column does not exist".
 --
--- The risk: the API route app/api/personalization/project/route.ts filters by
--- clerk_user_id, but the browser bundles the public anon key
--- (src/lib/supabase.ts -> NEXT_PUBLIC_SUPABASE_ANON_KEY). If the table lacks
--- Row Level Security in the live database, that anon key grants full table
--- access to anyone (read, insert, overwrite, delete every user's projects).
+-- CONSEQUENCE: this migration MUST NOT be applied until the route and the
+-- table are reconciled. Reconciling them (rename user_id to clerk_user_id,
+-- keep user_id and add clerk_user_id, or reshape both) is an app/schema
+-- redesign decision for the repo owner and is deliberately NOT attempted
+-- here — this file never creates or alters the table and never adds or
+-- drops a column.
 --
--- SAFETY — this migration deliberately does NOT create or alter the table:
---   * No `create table`: the live shape may have drifted from what the route
---     expects (route reads columns id, clerk_user_id, source, client, assets,
---     prompt, output_type, mode, status, error_message, created_at, updated_at)
---     and inventing a guessed schema could break a live table.
---   * No column is altered or dropped.
---   * The `alter table` below uses `if exists`, so it is a safe no-op when the
---     table is absent.
---   * Policy creation is wrapped in a DO block that only runs when the table
---     AND its clerk_user_id column both exist; otherwise it raises a notice
---     and skips. When the table exists but the guard skips policies, RLS is
---     still enabled with zero policies, which denies all access (fail closed)
---     instead of failing open.
---   * Each policy is dropped with `drop policy if exists` before creation, so
---     the migration is re-runnable and converges on the Clerk owner-scoped
---     idiom, even if an out-of-band policy with the same name already exists.
+-- WHAT THIS FILE DOES NOW: it REFUSES TO RUN on the current live schema.
+-- When the table exists WITHOUT `clerk_user_id`, the DO block below raises
+-- a hard EXCEPTION naming the missing column. Because migrations are
+-- applied inside a single transaction, the exception aborts this migration
+-- before any statement takes effect: the live table keeps its
+-- RLS-disabled state, its one legacy policy, and its current columns —
+-- i.e. applying this file changes NOTHING and cannot silently enable RLS
+-- with zero policies (the old, silent behaviour) on a table whose shape
+-- the route does not match. When the table does not exist at all, the
+-- file remains a no-op (notice only — nothing to protect). Only when the
+-- table exists AND has `clerk_user_id` does the file enable RLS and
+-- create the owner-scoped policies.
 --
--- The idiom matches 20260905000000_create_personalization_outputs.sql: identity
--- comes from Clerk via set_config('app.clerk_user_id', userId, true)
--- (src/lib/supabaseServer.ts:19-39), so `auth.uid()` is never used — it is
--- always NULL under Clerk and would make policies inert.
-
-alter table if exists public.personalization_projects enable row level security;
+-- IDEMPOTENT: every drop uses `if exists`, the enable is a no-op when RLS
+--   is already on, and the guard re-checks the schema on every run, so the
+--   file is re-runnable and converges on the Clerk owner-scoped idiom used
+--   by 20260905000000_create_personalization_outputs.sql: identity comes
+--   from Clerk via set_config('app.clerk_user_id', userId, true)
+--   (src/lib/supabaseServer.ts), so `auth.uid()` is never used — it is
+--   always NULL under Clerk and would make policies inert.
 
 do $$
 begin
@@ -46,7 +52,7 @@ begin
     where n.nspname = 'public'
       and c.relname = 'personalization_projects'
   ) then
-    raise notice 'H6: table public.personalization_projects does not exist; RLS guard skipped (nothing to protect).';
+    raise notice 'H6: table public.personalization_projects does not exist; nothing to protect, migration is a no-op.';
     return;
   end if;
 
@@ -58,10 +64,12 @@ begin
       and a.attnum > 0
       and not a.attisdropped
   ) then
-    raise notice 'H6: public.personalization_projects exists but has no clerk_user_id column; owner-scoped policies skipped (RLS enabled with no policies = deny all, fail closed).';
-    return;
+    raise exception 'H6 REFUSING TO RUN: public.personalization_projects exists but has NO clerk_user_id column (live columns: id, user_id, app_id, mode, target_name, target_company, manual_notes, scan_id, status, created_at, updated_at). The route app/api/personalization/project/route.ts already fails with PostgREST 42703 because it references clerk_user_id, source, client, assets, prompt, output_type, generation and error_message, none of which exist. Reconcile the route and the table first (an app/schema redesign decision for the repo owner), then re-run this migration. No changes were made to the database.';
   end if;
 
+  execute 'alter table public.personalization_projects enable row level security';
+
+  execute 'drop policy if exists "Users can manage own projects" on public.personalization_projects';
   execute 'drop policy if exists "Users can view own personalization projects" on public.personalization_projects';
   execute 'drop policy if exists "Users can insert own personalization projects" on public.personalization_projects';
   execute 'drop policy if exists "Users can update own personalization projects" on public.personalization_projects';
