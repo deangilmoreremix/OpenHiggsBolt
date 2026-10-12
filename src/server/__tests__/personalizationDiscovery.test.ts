@@ -18,6 +18,18 @@ vi.mock('studio/src/muapi', () => ({
   uploadFile: vi.fn(),
 }))
 
+// Crawlee persists its request-queue lock to <storage>/request_queues/default/
+// *.json.lock. Under vitest's parallel workers, every test file shares the same
+// default ./storage dir, so two CheerioCrawler instances race on the same lock
+// and mkdir ENOENTs when the directory does not yet exist. Point Crawlee at a
+// unique per-file temp storage dir so the lock is isolated. Crawlee resolves the
+// storage dir lazily when the crawler runs, so setting it here (before any
+// crawl) is sufficient. This does NOT weaken the crawler behavior under test.
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+process.env.CRAWLEE_STORAGE_DIR = mkdtempSync(join(tmpdir(), 'crawlee-discovery-'))
+
 import axios from 'axios'
 import { orchestrateDiscovery } from '../discoveryOrchestrator'
 import { discoverSitemapUrls } from '../sitemapDiscovery'

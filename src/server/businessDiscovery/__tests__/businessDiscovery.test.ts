@@ -413,6 +413,27 @@ describe('Research provider', () => {
     expect(result.canonicalUrl).toBe('https://doesnotexist.example/') // sanitizeUrl normalizes
   })
 
+  it('follows redirects manually with per-hop validation', async () => {
+    vi.spyOn(axios, 'get')
+      .mockResolvedValueOnce({
+        status: 302,
+        headers: { location: 'https://example.com/home' },
+        data: '',
+        request: {},
+      } as any)
+      .mockResolvedValueOnce({
+        status: 200,
+        headers: { 'content-type': 'text/html' },
+        data: '<html><head><title>Test Business</title></head></html>',
+        request: {},
+      } as any)
+
+    const result = await researchBusiness('https://example.com')
+    expect(result.reachable).toBe(true)
+    expect(result.finalUrl).toBe('https://example.com/home')
+    expect(result.title).toBe('Test Business')
+  })
+
   it('extracts structured data from reachable website', async () => {
     const html = `
       <html>
