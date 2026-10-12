@@ -60,7 +60,12 @@ function checkRateLimit(key: string): { allowed: boolean; remaining: number; res
 }
 
 function sanitizeWebsiteUrl(url: string): string {
-  const trimmed = url.trim().slice(0, MAX_WEBSITE_URL_LENGTH)
+  const trimmed = url.trim()
+  // Reject instead of silently truncating: a truncated URL is a DIFFERENT URL
+  // than the caller asked for, and must never be the one we fetch.
+  if (trimmed.length > MAX_WEBSITE_URL_LENGTH) {
+    throw new Error('Website URL exceeds maximum length')
+  }
   try {
     const parsed = new URL(trimmed)
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
@@ -108,6 +113,21 @@ export async function POST(req: NextRequest) {
     }
 
     const { userId } = await auth()
+    // S7: anonymous callers used to fall through to `clerkUserId: userId || 'anon'`,
+    // which persisted discovery jobs under a single shared anonymous identity.
+    // Discovery is an authenticated feature: no session, no job.
+    if (!userId) {
+      clearTimeout(timeoutId)
+      logPersonalization({
+        route: '/api/personalization/discover-assets',
+        stage: 'auth',
+        httpStatus: 401,
+        safeErrorCode: 'UNAUTHORIZED',
+        safeMessage: 'Missing authenticated session',
+        correlationId,
+      })
+      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
+    }
     const body = await req.json().catch(() => ({}))
     const rawWebsiteUrl = typeof body?.websiteUrl === 'string' ? body.websiteUrl : ''
     const requestedTestMode = typeof body?.testMode === 'boolean' ? body.testMode : false
