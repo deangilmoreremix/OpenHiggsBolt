@@ -2019,6 +2019,25 @@ function ConfigurationView(props: any) {
 
   const searchFormReady = Boolean(searchNiche && searchLocation.trim())
 
+  // `businessSearchMode === 'searching'` doubles as "the search form is open"
+  // and "a search request is in flight" (the provider sets it before the fetch
+  // and flips to results/error afterwards), so a separate flag marks the moment
+  // a search was actually fired and blocks duplicate submissions.
+  const [businessSearchInFlight, setBusinessSearchInFlight] = useState(false)
+  // Ref mirror of the flag so duplicate submissions are rejected even when two
+  // click handlers fire in the same tick, before the state update has flushed.
+  const businessSearchInFlightRef = useRef(false)
+
+  const isSearchingBusinesses = businessSearchInFlight && businessSearchMode === 'searching'
+
+  // Once the provider reports back (results or error) the form is no longer busy.
+  useEffect(() => {
+    if (businessSearchMode !== 'searching') {
+      businessSearchInFlightRef.current = false
+      setBusinessSearchInFlight(false)
+    }
+  }, [businessSearchMode])
+
   const handleClientEntryDismiss = useCallback(() => setClientEntryDismissed(true), [])
 
   // Re-arm the chooser whenever the audience changes, so the entry decision is
@@ -2029,6 +2048,9 @@ function ConfigurationView(props: any) {
 
   const runBusinessSearch = useCallback((radiusMiles: number) => {
     if (!searchNiche || !searchLocation.trim()) return
+    if (businessSearchInFlightRef.current) return
+    businessSearchInFlightRef.current = true
+    setBusinessSearchInFlight(true)
     setSearchRadius(radiusMiles)
     findBusinesses(searchNiche, searchLocation.trim(), radiusMiles)
   }, [findBusinesses, searchLocation, searchNiche])
@@ -2384,7 +2406,7 @@ function ConfigurationView(props: any) {
                       key={miles}
                       type="button"
                       onClick={() => runBusinessSearch(miles)}
-                      disabled={!searchFormReady}
+                      disabled={!searchFormReady || isSearchingBusinesses}
                       className="rounded-lg text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
                       style={{
                         minHeight: 34,
@@ -2402,7 +2424,7 @@ function ConfigurationView(props: any) {
               <button
                 type="button"
                 onClick={() => runBusinessSearch(searchRadius)}
-                disabled={!searchFormReady}
+                disabled={!searchFormReady || isSearchingBusinesses}
                 className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   minHeight: 42,
