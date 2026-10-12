@@ -29,7 +29,7 @@ const mockResolve4 = vi.hoisted(() => vi.fn())
 const mockResolve6 = vi.hoisted(() => vi.fn())
 
 vi.mock('node:dns', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('dns')>()
+  const actual = (await importOriginal()) as typeof import('dns') & { default: { promises: { resolve4: typeof import('dns').promises.resolve4; resolve6: typeof import('dns').promises.resolve6 } } }
   const promises = {
     ...actual.default.promises,
     resolve4: mockResolve4,
