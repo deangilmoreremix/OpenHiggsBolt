@@ -6,7 +6,8 @@
  * Supabase is the durable backing store.
  */
 
-import type { ClientProfile, AssetLibrary, PersonalizationSource, GenerationOptions, GenerationState, PromptState, OutputType, VideoPersonalizationMode, ImagePersonalizationMode } from './types'
+import type { ClientProfile, AssetLibrary, PersonalizationSource, GenerationOptions, GenerationState, PromptState, OutputType, VideoPersonalizationMode, ImagePersonalizationMode, PersonalizationViewMode } from './types'
+import type { PersonalizationPreviewSettings, PreviewVideoRef } from './preview/types'
 
 export interface PersonalizationProjectState {
   id?: string
@@ -36,6 +37,12 @@ export interface PersonalizationProjectState {
   callToAction?: string | null
   generationSettings?: Record<string, unknown>
   aiAssistState?: Record<string, unknown>
+  // Guided Simple Mode + free Remotion preview (optional so projects saved
+  // before the preview existed restore with defaults instead of failing).
+  previewSettings?: PersonalizationPreviewSettings | null
+  previewVideo?: PreviewVideoRef | null
+  guidedStep?: number
+  viewMode?: PersonalizationViewMode
 }
 
 const API_ROUTE = '/api/personalization/project'

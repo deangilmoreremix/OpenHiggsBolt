@@ -314,9 +314,19 @@ async function mountModal(options: { access?: 'anonymous' | 'authenticated'; sou
 
   await act(async () => {
     ctx().openPersonalize({ source, access })
-  })
-  await flush(30)
-  return container
+  });
+  await flush(30);
+  // Simple Mode is the default customer presentation; these tests exercise the
+  // full Advanced Editing surface, so opt into it for video sources (a
+  // prompt-only source already renders the configuration view).
+  if (source.mediaType === 'video') {
+    await act(async () => {
+      const button = screen.queryByRole('button', { name: /advanced editing/i });
+      if (button) fireEvent.click(button);
+    });
+    await flush(10);
+  }
+  return container;
 }
 
 function ContextExposer() {

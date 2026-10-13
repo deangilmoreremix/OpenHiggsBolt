@@ -100,6 +100,15 @@ async function openModal() {
     });
   });
 
+  // Simple Mode is the default customer presentation; these layout guards
+  // assert the full Advanced Editing layout, so opt into it after opening.
+  await act(async () => {
+    const button = Array.from(container.querySelectorAll('button')).find((candidate) =>
+      /advanced editing/i.test(candidate.textContent || ''),
+    );
+    button?.click();
+  });
+
   return container;
 }
 

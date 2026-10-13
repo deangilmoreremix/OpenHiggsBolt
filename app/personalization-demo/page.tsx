@@ -9,17 +9,17 @@ export const dynamic = "force-dynamic";
 
 const SAMPLE_SOURCE = {
   id: 'demo-roofing-1',
-  title: 'Viral Roofing Demo — Storm Damage',
+  title: 'Luxury Perfume Commercial',
   mediaType: 'video' as const,
-  sourceMedia: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-  poster: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg',
-  shortPrompt: 'Dramatic storm clouds over a suburban home, cinematic lighting.',
+  sourceMedia: '/media/minimax-h3/videos/luxury-perfume-commercial.webm',
+  poster: '/media/minimax-h3/previews/luxury-perfume-commercial.svg',
+  shortPrompt: 'A luxury perfume commercial, cinematic lighting on a glass bottle.',
   fullPrompt:
-    'A dramatic cinematic shot of storm clouds rolling over a suburban home. Lightning flashes in the background. The camera slowly pushes in toward a damaged roof. Rain pours. Wind howls. The mood is tense and urgent.',
+    'A cinematic luxury perfume commercial. A glass perfume bottle rotates slowly on a reflective surface, surrounded by soft golden light and drifting particles. The camera glides around the bottle as light refracts through the glass. Elegant, minimal, high-end.',
   originalPrompt:
-    'A dramatic cinematic shot of storm clouds rolling over a suburban home. Lightning flashes in the background. The camera slowly pushes in toward a damaged roof. Rain pours. Wind howls. The mood is tense and urgent.',
-  category: 'Roofing',
-  aspectRatio: '9:16',
+    'A cinematic luxury perfume commercial. A glass perfume bottle rotates slowly on a reflective surface, surrounded by soft golden light and drifting particles. The camera glides around the bottle as light refracts through the glass. Elegant, minimal, high-end.',
+  category: 'Product',
+  aspectRatio: '16:9',
   durationLabel: '15s',
   modelName: 'Seedance 2.0',
   sourceType: 'landing-demo' as const,
@@ -85,7 +85,7 @@ export default function PersonalizationDemoPage() {
           </p>
         )}
         <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
-          The modal will open automatically with the sample &quot;Viral Roofing Demo&quot; source.
+          The modal will open automatically with the sample &quot;Luxury Perfume Commercial&quot; source.
         </p>
         <AutoOpener />
       </div>

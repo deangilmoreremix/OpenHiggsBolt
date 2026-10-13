@@ -40,9 +40,10 @@ import {
   Trash2,
   AlertTriangle,
   Share2,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { useDemoPersonalize } from './DemoPersonalizeProvider'
-import type { PersonalizationAsset, DiscoveredAsset, DiscoveredAssetCategory, AssignedSection, AssetRole, PersonalizationVisionAnalysis, BusinessDiscoveryRecord } from './types'
+import type { PersonalizationAsset, DiscoveredAsset, DiscoveredAssetCategory, AssignedSection, AssetRole, PersonalizationVisionAnalysis, BusinessDiscoveryRecord, PersonalizationSource } from './types'
 import { resolveModelCapabilities, FACE_SWAP_MODEL, FULL_BODY_MODEL, DEFAULT_T2V_MODEL, DEFAULT_I2I_MODEL } from './modelCapabilityResolver'
 import { getModelById, getVideoModelById } from '@/packages/studio/src/models.js'
 import { NICHE_CONTENT } from '@/data/nicheContent'
@@ -53,6 +54,10 @@ import ImageEditorModal, {
 } from './image-editor/ImageEditorModal'
 import { makeDiscoveredAssetVideoReady } from './image-editor/batchVideoReady'
 import { isImageEditSupported } from './image-editor/imageEditSupport'
+import { SimpleModeWizard } from './guided/SimpleModeWizard'
+import { OverlayEditor } from './guided/OverlayEditor'
+import { buildPreviewInput } from './guided/buildPreviewInput'
+import { BeforeAfterPreview } from './preview/BeforeAfterPreview'
 
 // ── Design tokens (mirror the approved HTML CSS variables) ──────────────────
 
@@ -809,6 +814,20 @@ export default function PersonalizationModal() {
     sharedMediaEntries,
   } = ctx
 
+  // Guided Simple Mode is the default presentation whenever the provider
+  // exposes the guided API (always in production). A partial context (unit-test
+  // mocks) falls back to the full ConfigurationView unchanged.
+  const guidedApiAvailable =
+    typeof (ctx as { setGuidedStep?: unknown }).setGuidedStep === 'function' &&
+    Boolean((ctx as { previewSettings?: unknown }).previewSettings)
+  const [localViewMode, setLocalViewMode] = useState<'simple' | 'advanced'>('simple')
+  const viewMode: 'simple' | 'advanced' = guidedApiAvailable && ctx.viewMode ? ctx.viewMode : localViewMode
+  const setViewMode: (mode: 'simple' | 'advanced') => void =
+    guidedApiAvailable && ctx.setViewMode ? ctx.setViewMode : setLocalViewMode
+  // Simple Mode shows the four guided steps; prompt-only sources keep the
+  // existing configuration view (there is no video to preview or brand).
+  const simpleModeActive = viewMode === 'simple' && guidedApiAvailable && source?.mediaType !== 'prompt-only'
+
   // Access mode for this session ('anonymous' on the free landing surface).
   // The server remains the authority; this decides which paid/AI affordances
   // the modal renders at all — never which endpoint grants permission.
@@ -1492,6 +1511,24 @@ export default function PersonalizationModal() {
           >
             ×
           </button>
+          {guidedApiAvailable && (
+            <button
+              type="button"
+              onClick={() => setViewMode(viewMode === 'simple' ? 'advanced' : 'simple')}
+              disabled={personalizationInProgress}
+              className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide flex items-center gap-1.5 transition-colors disabled:opacity-50 flex-shrink-0"
+              style={{
+                minHeight: 38,
+                padding: '0 13px',
+                border: `1px solid ${C.border}`,
+                background: 'transparent',
+                color: C.muted,
+              }}
+            >
+              <SlidersHorizontal size={13} />
+              {viewMode === 'simple' ? 'Advanced Editing' : 'Simple Mode'}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setIsFullscreen((prev) => !prev)}
@@ -1543,6 +1580,8 @@ export default function PersonalizationModal() {
               progress={generation.progress}
               message={generation.progressMessage}
             />
+          ) : simpleModeActive ? (
+            <SimpleModeWizard />
           ) : (
             <ConfigurationView
               source={source}
@@ -1674,7 +1713,8 @@ export default function PersonalizationModal() {
 
         {/* ── STICKY FOOTER ────────────────────────────────────────── */}
         {/* Anonymous sessions never generate: no footer action is offered. */}
-        {!isAnonymous && !personalizationInProgress && generation.status !== 'complete' && generation.status !== 'error' && (
+        {/* Simple Mode replaces the footer with the wizard's own step navigation. */}
+        {!isAnonymous && !personalizationInProgress && !simpleModeActive && generation.status !== 'complete' && generation.status !== 'error' && (
           <footer
             className="flex justify-end gap-2.5 flex-shrink-0"
             style={{
@@ -3101,6 +3141,9 @@ function ConfigurationView(props: any) {
             : []),
           { id: 'pz-client-assets', label: 'Client Assets' },
           ...(!isAnonymous && selectedClientId ? [{ id: 'pz-saved-assets', label: 'Saved Assets' }] : []),
+          ...(source?.mediaType === 'video' || source?.mediaType === 'image'
+            ? [{ id: 'pz-onvideo-overlays', label: 'Preview' }]
+            : []),
           { id: 'pz-content', label: 'Business' },
           { id: 'pz-prompt', label: 'Prompt' },
           ...(!isPromptOnly && !isAnonymous ? [{ id: 'pz-output', label: 'Output' }] : []),
@@ -3974,6 +4017,14 @@ function ConfigurationView(props: any) {
         </section>
       )}
 
+      {/* ── PREVIEW & ON-VIDEO OVERLAYS (guided preview, shared state) ──
+          Free browser-based Remotion preview of the personalized composition
+          plus the direct on-video overlay editor. Renders only for video and
+          image sources, and only when the provider exposes the guided API. */}
+      {(source?.mediaType === 'video' || source?.mediaType === 'image') && (
+        <AdvancedOverlaySection source={source} />
+      )}
+
       {/* ── CTA & BUSINESS CONTENT ────────────────────────────── */}
       <section id="pz-content" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
         <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>CTA & BUSINESS CONTENT</h2>
@@ -4323,5 +4374,49 @@ function ConfigurationView(props: any) {
 
       </div>
     </div>
+  )
+}
+
+// ── Advanced Editing: preview & on-video overlays ────────────────────────────
+// A section inside the existing ConfigurationView that mounts the same free
+// Remotion preview and the same on-video overlay editor Simple Mode uses, over
+// the same provider state. It renders nothing when the guided preview API is
+// unavailable, so partially-wired contexts keep the previous behavior.
+
+function AdvancedOverlaySection({ source }: { source: PersonalizationSource | null }) {
+  const ctx = useDemoPersonalize()
+  const guidedAvailable =
+    typeof (ctx as { setGuidedStep?: unknown }).setGuidedStep === 'function' &&
+    Boolean((ctx as { previewSettings?: unknown }).previewSettings)
+  if (!guidedAvailable || !ctx.previewSettings) return null
+
+  const inputProps = buildPreviewInput({
+    source,
+    previewSettings: ctx.previewSettings,
+    previewVideo: ctx.previewVideo ?? null,
+    clientForm: ctx.clientForm || {},
+    assets: ctx.assets,
+  })
+
+  return (
+    <section
+      id="pz-onvideo-overlays"
+      className="break-inside-avoid"
+      style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}
+    >
+      <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>
+        Preview &amp; On-Video Overlays
+      </h2>
+      <p className="mt-1.5 max-w-[900px] text-[12px] leading-[1.55]" style={{ color: C.muted }}>
+        A free, browser-based preview of your branding placed directly on the video — before and after, side by
+        side. Drag, resize and edit every layer on the video itself. Nothing here is generated or charged.
+      </p>
+      <div style={{ marginTop: 16 }}>
+        <BeforeAfterPreview inputProps={inputProps} defaultMode="split" />
+      </div>
+      <div style={{ marginTop: 16 }}>
+        <OverlayEditor inputProps={inputProps} />
+      </div>
+    </section>
   )
 }

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { useEffect } from 'react';
 import { render, screen, act, configure } from '@testing-library/react';
 import { createRoot } from 'react-dom/client';
 import PersonalizationModal from '../PersonalizationModal';
@@ -153,14 +154,30 @@ function installFastStyleAccessors(): void {
 installFastStyleAccessors()
 
 function TestOpener({ source, onMounted }: { source: any; onMounted: (open: (opts: any) => void) => void }) {
-  const { openPersonalize } = useDemoPersonalize();
+  const { openPersonalize, isOpen } = useDemoPersonalize();
   onMounted(openPersonalize);
+  // Simple Mode is the default customer presentation of the modal. These tests
+  // exercise the full Advanced Editing surface, so opt into it whenever the
+  // modal opens — the underlying provider state is shared by both views.
+  useEffect(() => {
+    if (!isOpen) return;
+    const button = screen.queryByRole('button', { name: /advanced editing/i });
+    if (button) button.click();
+  }, [isOpen]);
   return null;
 }
 
 function ContextExposer() {
   const ctx = useDemoPersonalize()
   ;(window as any).__personalizationCtx = ctx
+  // See TestOpener: Simple Mode is the default customer presentation, so these
+  // Advanced Editing tests opt into it whenever the modal opens.
+  const isOpen = ctx.isOpen
+  useEffect(() => {
+    if (!isOpen) return;
+    const button = screen.queryByRole('button', { name: /advanced editing/i });
+    if (button) button.click();
+  }, [isOpen]);
   return null
 }
 
