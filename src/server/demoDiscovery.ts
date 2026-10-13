@@ -59,12 +59,12 @@ export const DEMO_MIN_IMAGE_DIMENSION = 100
 /** How long a successful demo result is shared across instances. */
 export const DEMO_CACHE_TTL_MS = 6 * 60 * 60 * 1000
 
-/** Shared-cache RPCs (see the migration); `demo_consume_quota` lives in demoRateLimit.ts. */
-export const DEMO_CACHE_GET_RPC = 'demo_discovery_cache_get'
-export const DEMO_CACHE_PUT_RPC = 'demo_discovery_cache_put'
+/** Shared-cache RPCs (see the migration); `personalization_demo_consume_quota` lives in demoRateLimit.ts. */
+export const DEMO_CACHE_GET_RPC = 'personalization_demo_discovery_cache_get'
+export const DEMO_CACHE_PUT_RPC = 'personalization_demo_discovery_cache_put'
 
 /** Table backing the cache RPCs; the route never touches it directly. */
-export const DEMO_CACHE_TABLE = 'demo_discovery_cache'
+export const DEMO_CACHE_TABLE = 'personalization_demo_discovery_cache'
 
 /**
  * Reasons from `checkDestination` that mean the caller is never allowed to

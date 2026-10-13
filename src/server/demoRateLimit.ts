@@ -10,7 +10,7 @@
  *
  * This module therefore keeps its counters in Supabase and moves the whole
  * "may this caller proceed?" decision into one atomic RPC
- * (`demo_consume_quota`, see
+ * (`personalization_demo_consume_quota`, see
  * supabase/migrations/20261014000000_demo_discovery_limits.sql), so two
  * concurrent invocations cannot both read the old count and both pass.
  *
@@ -30,10 +30,10 @@ export const DEMO_RATE_LIMIT_MAX_REQUESTS = 10
 export const DEMO_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000
 
 /** The single atomic quota RPC. */
-export const DEMO_QUOTA_RPC = 'demo_consume_quota'
+export const DEMO_QUOTA_RPC = 'personalization_demo_consume_quota'
 
 /** Table backing the RPC (documentational; the route never touches it directly). */
-export const DEMO_QUOTA_TABLE = 'demo_discovery_limits'
+export const DEMO_QUOTA_TABLE = 'personalization_demo_discovery_limits'
 
 export interface DemoQuotaOptions {
   max?: number

@@ -6,7 +6,7 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
  * unusable-quota condition raises `DemoQuotaStoreError` (the route answers 503)
  * rather than letting anonymous outbound crawling through unmeasured.
  *
- * The fake RPC below mirrors `demo_consume_quota` from
+ * The fake RPC below mirrors `personalization_demo_consume_quota` from
  * supabase/migrations/20261014000000_demo_discovery_limits.sql: one atomic
  * increment per call, a window that restarts once it has expired, and a
  * `retry_after_ms` of 0 only while the caller is still allowed.
@@ -18,7 +18,7 @@ let createServerClientImpl: () => unknown = () => {
 
 let rpcCalls: Array<{ name: string; args: Record<string, unknown> }> = []
 
-const DEMO_QUOTA_RPC = 'demo_consume_quota'
+const DEMO_QUOTA_RPC = 'personalization_demo_consume_quota'
 const DEMO_RATE_LIMIT_MAX_REQUESTS = 10
 const DEMO_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000
 
@@ -75,7 +75,7 @@ function createFakeQuotaStore() {
   }
 }
 
-describe('demo_consume_quota: the shared, cross-instance limiter', () => {
+describe('personalization_demo_consume_quota: the shared, cross-instance limiter', () => {
   it('allows up to the named limit', async () => {
     const store = createFakeQuotaStore()
     createServerClientImpl = () => ({ rpc: store.rpc })
@@ -152,7 +152,7 @@ describe('demo_consume_quota: the shared, cross-instance limiter', () => {
     await consumeDemoQuota('198.51.100.12')
 
     expect(rpcCalls).toHaveLength(1)
-    expect(rpcCalls[0].name).toBe('demo_consume_quota')
+    expect(rpcCalls[0].name).toBe('personalization_demo_consume_quota')
     expect(rpcCalls[0].args).toMatchObject({
       p_key: '198.51.100.12',
       p_max: DEMO_RATE_LIMIT_MAX_REQUESTS,

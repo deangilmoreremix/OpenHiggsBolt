@@ -251,8 +251,8 @@ afterEach(() => {
 // PostgREST table, personalization or otherwise.
 const rpcRouter = async (name: string, args?: Record<string, unknown>) => {
   rpcCalls.push({ name, args: args || {} })
-  if (name === 'demo_consume_quota') return quotaRpcImpl(name, args)
-  if (name === 'demo_discovery_cache_get' || name === 'demo_discovery_cache_put') {
+  if (name === 'personalization_demo_consume_quota') return quotaRpcImpl(name, args)
+  if (name === 'personalization_demo_discovery_cache_get' || name === 'personalization_demo_discovery_cache_put') {
     return cacheRpcImpl(name, args)
   }
   return { data: null, error: { message: `unexpected rpc ${name}` } }
@@ -460,7 +460,7 @@ describe('POST /api/demo/discover', () => {
     const { POST } = await loadRoute()
     await POST(createRequest(LANDING_URL, '203.0.113.9'))
 
-    const quotaCall = rpcCalls.find((call) => call.name === 'demo_consume_quota')
+    const quotaCall = rpcCalls.find((call) => call.name === 'personalization_demo_consume_quota')
     expect(quotaCall).toBeDefined()
     expect(quotaCall?.args).toMatchObject({
       p_key: '203.0.113.9',
@@ -487,7 +487,7 @@ describe('POST /api/demo/discover', () => {
   })
 
   it('fails closed with 503 when the quota RPC errors', async () => {
-    quotaRpcImpl = async () => ({ data: null, error: { message: 'relation demo_discovery_limits does not exist' } })
+    quotaRpcImpl = async () => ({ data: null, error: { message: 'relation personalization_demo_discovery_limits does not exist' } })
 
     const { POST } = await loadRoute()
     const response = await POST(createRequest(LANDING_URL))
@@ -505,7 +505,7 @@ describe('POST /api/demo/discover', () => {
       assets: [{ kind: 'logo', url: 'https://cdn.demo.example.com/logo.svg', source: 'jsonld' }],
     }
     cacheRpcImpl = async (name: string) =>
-      name === 'demo_discovery_cache_get' ? { data: cached, error: null } : { data: null, error: null }
+      name === 'personalization_demo_discovery_cache_get' ? { data: cached, error: null } : { data: null, error: null }
 
     const { POST } = await loadRoute()
     const response = await POST(createRequest(LANDING_URL))
@@ -517,7 +517,7 @@ describe('POST /api/demo/discover', () => {
     expect(payload.assets).toHaveLength(1)
     expect(researchBusinessCalls).toEqual([])
     expect(axiosGetCalls).toEqual([])
-    expect(rpcCalls.some((call) => call.name === 'demo_consume_quota')).toBe(false)
+    expect(rpcCalls.some((call) => call.name === 'personalization_demo_consume_quota')).toBe(false)
   })
 
   it('still answers from a cache hit when the quota store is down', async () => {
@@ -529,10 +529,10 @@ describe('POST /api/demo/discover', () => {
       assets: [],
     }
     cacheRpcImpl = async (name: string) =>
-      name === 'demo_discovery_cache_get' ? { data: cached, error: null } : { data: null, error: null }
+      name === 'personalization_demo_discovery_cache_get' ? { data: cached, error: null } : { data: null, error: null }
     createServerClientImpl = () => ({
       rpc: async (name: string) => {
-        if (name === 'demo_discovery_cache_get') return { data: cached, error: null }
+        if (name === 'personalization_demo_discovery_cache_get') return { data: cached, error: null }
         throw new Error('quota store down')
       },
     })
@@ -546,7 +546,7 @@ describe('POST /api/demo/discover', () => {
 
   it('stays available when the cache read fails but the crawl succeeds', async () => {
     cacheRpcImpl = async (name: string) => {
-      if (name === 'demo_discovery_cache_get') return { data: null, error: { message: 'cache down' } }
+      if (name === 'personalization_demo_discovery_cache_get') return { data: null, error: { message: 'cache down' } }
       return { data: { allowed: true, remaining: 9, retry_after_ms: 0 }, error: null }
     }
 
@@ -560,7 +560,7 @@ describe('POST /api/demo/discover', () => {
 
   it('re-validates a cached row instead of trusting it', async () => {
     cacheRpcImpl = async (name: string) =>
-      name === 'demo_discovery_cache_get'
+      name === 'personalization_demo_discovery_cache_get'
         ? {
             data: {
               url: LANDING_URL,
@@ -592,7 +592,7 @@ describe('POST /api/demo/discover', () => {
 
   it('discards a cached row whose own URL is blocked rather than serving it', async () => {
     cacheRpcImpl = async (name: string) =>
-      name === 'demo_discovery_cache_get'
+      name === 'personalization_demo_discovery_cache_get'
         ? {
             data: {
               url: 'http://169.254.169.254/',
@@ -651,10 +651,14 @@ describe('POST /api/demo/discover', () => {
 
     expect(fromCalls).toEqual([])
     for (const call of rpcCalls) {
-      expect(call.name).not.toMatch(/^personalization_/)
-      expect(call.name).not.toMatch(/discovery_jobs|saved_projects/)
+      // Customer personalization tables must never be reached. This app's own
+      // quota/cache objects are legitimately namespaced `personalization_demo_*`
+      // (the database is shared by several applications), so only the non-demo
+      // `personalization_*` family is forbidden.
+      expect(call.name).not.toMatch(/^personalization_(?!demo_)/)
+      expect(call.name).not.toMatch(/discovery_jobs|saved_projects|personalization_projects/)
     }
-    expect(JSON.stringify(rpcCalls)).not.toMatch(/personalization_/)
+    expect(JSON.stringify(rpcCalls)).not.toMatch(/^personalization_(?!demo_)/)
 
     const payload = await (await POST(createRequest(LANDING_URL))).json()
     expect(payload.jobId).toBeUndefined()
