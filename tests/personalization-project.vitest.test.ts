@@ -94,7 +94,7 @@ beforeEach(() => {
     }
     return {
       createServerClient: vi.fn(() => ({
-        rpc: vi.fn(async () => ({ data: null, error: null })),
+        rpc: createRpcMock(),
         from: vi.fn(createSupabaseFrom),
       })),
     }
@@ -115,6 +115,33 @@ afterEach(() => {
   vi.restoreAllMocks()
   vi.clearAllMocks()
 })
+
+// The route talks to the database exclusively through the four
+// personalization_saved_projects_* SECURITY DEFINER RPCs, which own the
+// transaction-local identity GUC. Mock those instead of the PostgREST builder.
+function createRpcMock() {
+  return vi.fn(async (fnName: string, args?: { p_id?: string | null }) => {
+    switch (fnName) {
+      case 'personalization_saved_projects_list':
+        return { data: supabaseMockState.listData || [], error: null }
+      case 'personalization_saved_projects_get':
+        return {
+          data: supabaseMockState.projectData ? [supabaseMockState.projectData] : [],
+          error: null,
+        }
+      case 'personalization_saved_projects_upsert':
+        // a null p_id means INSERT, a present one means UPDATE
+        return {
+          data: args?.p_id ? supabaseMockState.updateData : supabaseMockState.insertData,
+          error: null,
+        }
+      case 'personalization_saved_projects_delete':
+        return { data: supabaseMockState.deleteError ? null : true, error: supabaseMockState.deleteError || null }
+      default:
+        return { data: null, error: null }
+    }
+  })
+}
 
 function createRequest(overrides: Record<string, string> = {}): NextRequest {
   const url = new URL(overrides.url || 'http://localhost/api/personalization/project', 'http://localhost')
@@ -179,7 +206,7 @@ describe('GET /api/personalization/project', () => {
 
     const { createServerClient } = await import('@/lib/supabase')
     vi.mocked(createServerClient).mockReturnValue({
-      rpc: vi.fn(async () => ({ data: null, error: null })),
+      rpc: vi.fn(async () => ({ data: [], error: null })),
       from: vi.fn(() => {
         const terminal = async () => ({ data: null, error: { code: 'PGRST116', message: 'Not found' } })
         const eq = vi.fn(() => chain)
@@ -205,7 +232,7 @@ describe('GET /api/personalization/project', () => {
 
     const { createServerClient } = await import('@/lib/supabase')
     vi.mocked(createServerClient).mockReturnValue({
-      rpc: vi.fn(async () => ({ data: null, error: null })),
+      rpc: createRpcMock(),
       from: vi.fn(() => {
         const makeChain = (terminal: () => Promise<{ data: unknown; error: unknown }>) => {
           const eq = vi.fn(() => chain)
@@ -273,7 +300,7 @@ describe('POST /api/personalization/project', () => {
 
     const { createServerClient } = await import('@/lib/supabase')
     vi.mocked(createServerClient).mockReturnValue({
-      rpc: vi.fn(async () => ({ data: null, error: null })),
+      rpc: createRpcMock(),
       from: vi.fn(() => {
         const makeChain = (terminal: () => Promise<{ data: unknown; error: unknown }>) => {
           const eq = vi.fn(() => chain)
@@ -311,6 +338,44 @@ describe('POST /api/personalization/project', () => {
     const data = JSON.parse(text)
     expect(data.ok).toBe(true)
     expect(data.project.id).toBe('existing-id')
+  })
+
+  it('returns 404 when the database reports the row is owned by someone else', async () => {
+    // The SECURITY DEFINER upsert re-asserts ownership in-database and raises
+    // 42501 when the caller does not own the row. The route must map that to
+    // 404, not 500 and not 403, so a caller probing another user's id cannot
+    // distinguish "exists but not yours" from "absent".
+    const { createServerClient } = await import('@/lib/supabase')
+    vi.mocked(createServerClient).mockReturnValue({
+      rpc: vi.fn(async () => ({
+        data: null,
+        error: { code: '42501', message: 'project not owned by caller' },
+      })),
+    } as unknown as ReturnType<typeof createServerClient>)
+
+    const { POST } = await import('@/app/api/personalization/project/route')
+    const response = await POST(createRequest({
+      method: 'POST',
+      body: { project: { id: 'someone-elses-project', source: {}, client: {}, assets: {}, prompt: {} } },
+    }))
+
+    expect(response.status).toBe(404)
+    const data = await response.json()
+    expect(data.error).toBe('Project not found')
+  })
+
+  it('returns 404 when a delete matches no owned row', async () => {
+    const { createServerClient } = await import('@/lib/supabase')
+    vi.mocked(createServerClient).mockReturnValue({
+      rpc: vi.fn(async () => ({ data: false, error: null })),
+    } as unknown as ReturnType<typeof createServerClient>)
+
+    const { DELETE } = await import('@/app/api/personalization/project/route')
+    const response = await DELETE(createRequest({ method: 'DELETE', id: 'someone-elses-project' }))
+
+    expect(response.status).toBe(404)
+    const data = await response.json()
+    expect(data.error).toBe('Project not found')
   })
 })
 
