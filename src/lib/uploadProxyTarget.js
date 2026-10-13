@@ -1,23 +1,16 @@
-import dns from 'dns';
-import { promisify } from 'util';
+import { checkDestination, isBlockedHostname, isIpLiteral, createPinnedFetch, isBlockedIpAddress, pickPinnedAddress } from './networkSafety';
 
 // NOTE: isBlockedFileType() is used by legacy proxy routes but not by the
 // direct upload route. The direct upload route (/api/v1/upload_file) uses
 // its own MIME allowlist (ALLOWED_UPLOAD_MIME_TYPES) instead of relying on
 // this blocked-file check.
-
-const resolve4 = promisify(dns.resolve4);
+//
+// Every IP / hostname / DNS-rebinding rule now lives in the single shared
+// module ./networkSafety, so the upload proxy cannot drift away from the
+// discovery path. This file owns only the S3 destination allowlist and the
+// upload-specific file rules.
 
 const DEFAULT_S3_REGION_PATTERN = /^[a-z0-9-]+$/;
-
-const BLOCKED_IP_RANGES = [
-  { start: Buffer.from('0A000000', 'hex'), end: Buffer.from('0AFFFFFF', 'hex') },       // 10.0.0.0/8
-  { start: Buffer.from('AC100000', 'hex'), end: Buffer.from('AC1FFFFFF', 'hex') },      // 172.16.0.0/12
-  { start: Buffer.from('C0A80000', 'hex'), end: Buffer.from('C0A8FFFF', 'hex') },       // 192.168.0.0/16
-  { start: Buffer.from('A9FE0000', 'hex'), end: Buffer.from('A9FEFFFF', 'hex') },       // 169.254.0.0/16
-  { start: Buffer.from('7F000000', 'hex'), end: Buffer.from('7FFFFFFF', 'hex') },       // 127.0.0.0/8
-  { start: Buffer.from('00000000000000000000000000000001', 'hex'), end: Buffer.from('00000000000000000000000000000001', 'hex') }, // ::1
-];
 
 function normalizeHostname(hostname) {
     return hostname.toLowerCase().replace(/\.$/, '');
@@ -30,50 +23,10 @@ function parseAllowedHosts(env) {
         .filter(Boolean);
 }
 
-function parseIpV4(hostname) {
-    const parts = hostname.split('.');
-    if (parts.length !== 4 || parts.some((part) => !/^\d+$/.test(part))) {
-        return null;
-    }
-
-    const octets = parts.map((part) => Number(part));
-    if (octets.some((octet) => octet < 0 || octet > 255)) {
-        return null;
-    }
-
-    return octets;
-}
-
-function isIpLiteral(hostname) {
-    return Boolean(parseIpV4(hostname)) || hostname.includes(':');
-}
-
-function isBlockedIpV4(hostname) {
-    const octets = parseIpV4(hostname);
-    if (!octets) {
-        return false;
-    }
-
-    const [first, second] = octets;
-    return (
-        first === 0 ||
-        first === 10 ||
-        first === 127 ||
-        (first === 169 && second === 254) ||
-        (first === 172 && second >= 16 && second <= 31) ||
-        (first === 192 && second === 168)
-    );
-}
-
 function isBlockedHost(hostname) {
     const normalized = normalizeHostname(hostname).replace(/^\[|\]$/g, '');
 
-    return (
-        normalized === 'localhost' ||
-        normalized === '::1' ||
-        isIpLiteral(normalized) ||
-        isBlockedIpV4(normalized)
-    );
+    return isBlockedHostname(normalized) || isIpLiteral(normalized);
 }
 
 function isAllowedS3Host(hostname, allowedHosts = []) {
@@ -87,11 +40,15 @@ function isAllowedS3Host(hostname, allowedHosts = []) {
         return true;
     }
 
-    // Exact S3 regional patterns:
-    // bucket.s3.amazonaws.com (global endpoint)
-    // bucket.s3-<region>.amazonaws.com (regional endpoint)
-    // bucket.s3.<region>.amazonaws.com (dualstack endpoint)
-    if (/^[a-z0-9][a-z0-9\-\.]*[a-z0-9]\.s3(-[a-z0-9][a-z0-9\-]*[a-z0-9])?(\.[a-z0-9][a-z0-9\-]*[a-z0-9])?\.amazonaws\.com$/.test(hostname)) {
+    // Exact S3 endpoint shapes (bucket names permit a single character):
+    //   bucket.s3.amazonaws.com                       global
+    //   bucket.s3-<region>.amazonaws.com              regional
+    //   bucket.s3.<region>.amazonaws.com              regional / dualstack
+    //   bucket.s3.<region>.dualstack.amazonaws.com    dualstack tail
+    //   bucket.s3.dualstack.<region>.amazonaws.com    dualstack prefix
+    // Anchored at both ends so a lookalike host (e.g. s3.amazonaws.com.evil.tld)
+    // cannot match.
+    if (/^[a-z0-9](?:[a-z0-9.\-]*[a-z0-9])?\.s3(?:[.-][a-z0-9-]+){0,4}\.amazonaws\.com$/.test(hostname)) {
         return true;
     }
 
@@ -149,19 +106,24 @@ export function isBlockedFileType(filename = '', contentType = '') {
     return false;
 }
 
-function isBlockedIp(ip) {
-  if (!ip || typeof ip !== 'string') return true;
-  const parts = ip.split('.').map(Number);
-  if (parts.length !== 4 || parts.some(p => isNaN(p) || p < 0 || p > 255)) return true;
-  const buf = Buffer.from(parts);
-  for (const range of BLOCKED_IP_RANGES) {
-    if (buf.length === range.start.length && buf >= range.start && buf <= range.end) {
-      return true;
-    }
-  }
-  return false;
-}
-
+/**
+ * Validates an upload/proxy destination.
+ *
+ * Order of the gates:
+ *   1. protocol must be https
+ *   2. hostname must not be a private/reserved literal or a local name
+ *   3. hostname must be on the S3 allowlist
+ *   4. EVERY address the hostname currently resolves to must be public
+ *      (this is what closes the DNS-rebinding / resolves-to-private-IP hole)
+ *
+ * Returns `{ ok: true, url, hostname, addresses, pinnedAddress, pinnedFetch }`
+ * on success. Callers MUST perform the upload through `pinnedFetch(url, init)`
+ * instead of the platform `fetch`: a plain `fetch(url)` re-resolves DNS between
+ * this check and the connect, which reopens the DNS-rebinding window the check
+ * just closed. `pinnedFetch` is fetch-compatible (same `(url, init)` shape,
+ * returns a `Response`) but binds the connection to `pinnedAddress`, keeps TLS
+ * verifying the hostname, and never follows a redirect.
+ */
 export async function validateUploadProxyTarget(rawTarget, { env = process.env } = {}) {
     if (typeof rawTarget !== 'string' || rawTarget.trim() === '') {
         return { ok: false, reason: 'missing_target' };
@@ -188,15 +150,150 @@ export async function validateUploadProxyTarget(rawTarget, { env = process.env }
         return { ok: false, reason: 'host_not_allowed' };
     }
 
-    // Resolve hostname to prevent SSRF via DNS rebinding
-    try {
-        const addresses = await resolve4(hostname);
-        if (addresses.some(addr => isBlockedIp(addr))) {
-            return { ok: false, reason: 'resolved_to_blocked_ip' };
-        }
-    } catch {
-        return { ok: false, reason: 'dns_resolution_failed' };
+    // Resolve + validate every address. checkDestination re-runs the hostname
+    // gates, resolves A *and* AAAA records and rejects the destination if any
+    // resolved address is private/loopback/link-local/CGNAT/IPv4-mapped.
+    const destination = await checkDestination(url.toString());
+    if (!destination.ok) {
+        // A name that does not resolve is not a rebinding, it is a typo or a
+        // dangling record; report it distinctly from a blocked address.
+        const reason =
+            destination.reason === 'invalid_url' ? 'invalid_url' : destination.reason;
+        return { ok: false, reason };
     }
 
-    return { ok: true, url: url.toString() };
+    const validated = {
+        ok: true,
+        url: destination.url,
+        hostname,
+        addresses: destination.addresses,
+    };
+
+    const pinnedAddress = pickPinnedAddress({ hostname, addresses: destination.addresses });
+    return {
+        ...validated,
+        pinnedAddress,
+        pinnedFetch: createUploadProxyPinnedFetch(validated, pinnedAddress),
+    };
+}
+
+/** True when a FormData value is a file/blob part rather than a plain field. */
+function isFilePartValue(value) {
+    return Boolean(value) && typeof value === 'object' && typeof value.arrayBuffer === 'function';
+}
+
+function escapeMultipartToken(value) {
+    return String(value).replace(/[\r\n"]/g, (character) =>
+        character === '"' ? '%22' : `%${character.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0')}`,
+    );
+}
+
+/**
+ * Serializes the S3 POST form into a multipart body.
+ *
+ * S3 requires the file field to be the LAST field of the form, so file parts
+ * are moved after every plain field regardless of insertion order. The
+ * `content-type` of each part is preserved so S3 stores the object under the
+ * type the uploader asked for.
+ *
+ * Exported so the encoding can be asserted directly; production callers use it
+ * through `createUploadProxyPinnedFetch`.
+ */
+export async function encodeS3FormData(formData) {
+    const fieldParts = [];
+    const fileParts = [];
+
+    for (const [key, value] of formData.entries()) {
+        if (isFilePartValue(value)) {
+            fileParts.push([key, value]);
+        } else {
+            fieldParts.push([key, value]);
+        }
+    }
+
+    const boundary = `----openhiggsbolt-upload-proxy-${randomBoundaryToken()}`;
+    const chunks = [];
+
+    const pushPart = (headers, payload) => {
+        chunks.push(Buffer.from(`--${boundary}\r\n${headers}\r\n\r\n`));
+        chunks.push(payload);
+        chunks.push(Buffer.from('\r\n'));
+    };
+
+    for (const [key, value] of fieldParts) {
+        pushPart(
+            `Content-Disposition: form-data; name="${escapeMultipartToken(key)}"`,
+            Buffer.from(String(value)),
+        );
+    }
+
+    for (const [key, value] of fileParts) {
+        const filename = escapeMultipartToken(value.name || 'file');
+        const partHeaders =
+            `Content-Disposition: form-data; name="${escapeMultipartToken(key)}"; filename="${filename}"\r\n` +
+            `Content-Type: ${value.type || 'application/octet-stream'}`;
+        pushPart(partHeaders, Buffer.from(await value.arrayBuffer()));
+    }
+
+    chunks.push(Buffer.from(`--${boundary}--\r\n`));
+
+    return {
+        body: Buffer.concat(chunks),
+        contentType: `multipart/form-data; boundary=${boundary}`,
+    };
+}
+
+function randomBoundaryToken() {
+    try {
+        const bytes = new Uint8Array(12);
+        crypto.getRandomValues(bytes);
+        return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+    } catch {
+        return Math.random().toString(16).slice(2).padEnd(24, '0');
+    }
+}
+
+/**
+ * Wraps the networkSafety pin into a fetch-compatible upload call.
+ *
+ * Defence in depth on top of `validateUploadProxyTarget`: the pin that this
+ * fetch would connect to must still be a public address, and the caller may
+ * only request the exact host that was validated.
+ */
+export function createUploadProxyPinnedFetch(validatedTarget, pinnedAddress) {
+    if (!validatedTarget || validatedTarget.ok !== true || !validatedTarget.url) {
+        throw new Error('createUploadProxyPinnedFetch requires a validated upload target');
+    }
+
+    const pin = pinnedAddress || pickPinnedAddress(validatedTarget);
+    if (!pin || isBlockedIpAddress(pin)) {
+        throw new Error('networkSafety: upload proxy refused a non-public pin address');
+    }
+
+    const pinnedFetch = createPinnedFetch({
+        url: validatedTarget.url,
+        hostname: validatedTarget.hostname,
+        addresses: validatedTarget.addresses,
+    });
+
+    return async function uploadProxyPinnedFetch(requestUrl, init = {}) {
+        let body = init.body;
+        const headers = { ...(init.headers || {}) };
+
+        if (
+            body &&
+            typeof body === 'object' &&
+            typeof body.entries === 'function' &&
+            typeof FormData !== 'undefined' &&
+            body instanceof FormData
+        ) {
+            const encoded = await encodeS3FormData(body);
+            body = encoded.body;
+            if (!headers['content-type'] && !headers['Content-Type']) {
+                headers['content-type'] = encoded.contentType;
+            }
+        }
+
+        return pinnedFetch(requestUrl, { ...init, body, headers });
+    };
 }

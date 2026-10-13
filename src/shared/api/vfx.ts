@@ -19,6 +19,16 @@ const DEFAULT_POLL_INTERVAL_MS = 5000
 const DEFAULT_MAX_POLL_ATTEMPTS = 180 // ~15 minutes
 const CANCEL_PROBE_TIMEOUT_MS = 8000
 
+/**
+ * The single missing-key message used by every MuAPI surface.
+ *
+ * There is deliberately no server-side MuAPI key: an upstream call must bill
+ * the user who requested it, so a missing key is a user-action problem (add
+ * the key in Settings) — never an operator-billed request and never a 500.
+ */
+export const MUAPI_KEY_MISSING_ERROR =
+  'Add your MuAPI API key in Settings to use this feature.'
+
 type MuAPIStatusResponse = {
   request_id?: string
   id?: string
@@ -87,7 +97,7 @@ export class MuAPIVFXClient {
     this.abortController = null
 
     if (!this.apiKey) {
-      throw new Error('MuAPI key is required. Set MUAPI_API_KEY or pass apiKey.')
+      throw new Error(`MuAPI key is required. ${MUAPI_KEY_MISSING_ERROR}`)
     }
   }
 
@@ -331,12 +341,17 @@ export class MuAPIVFXClient {
 }
 
 /**
- * Convenience singleton used by server-side routes.
+ * Builds a VFX client bound to ONE caller's OWN MuAPI key.
+ *
+ * BYOK: `apiKey` is mandatory and is the ONLY key source. There is no
+ * server-side MuAPI key to fall back to, so an empty key throws the
+ * Settings-directed error instead of silently issuing an operator-billed
+ * request with a server key.
  */
-export function getServerVFXClient(apiKey?: string): MuAPIVFXClient {
-  const key = apiKey || process.env.MUAPI_API_KEY || process.env.MUAPI_KEY || ''
+export function getServerVFXClient(apiKey: string): MuAPIVFXClient {
+  const key = cleanApiKey(apiKey ?? '')
   if (!key) {
-    throw new Error('MUAPI_API_KEY is not configured')
+    throw new Error(MUAPI_KEY_MISSING_ERROR)
   }
   return new MuAPIVFXClient({ apiKey: key })
 }

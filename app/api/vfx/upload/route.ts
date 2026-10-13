@@ -1,9 +1,11 @@
 import { safeApiJson } from '@/lib/safeApiResponse';
 import { NextRequest, NextResponse } from 'next/server'
-import { validateMuAPIKey } from '../_helpers'
+import { auth } from '@clerk/nextjs/server'
+import { validateMuAPIKey, isMuapiKeyMissingError } from '../_helpers'
 import { validateUploadFile } from '../_validation'
+import { MUAPI_KEY_MISSING_ERROR } from '@/api/vfx'
 import { createClient } from '@supabase/supabase-js'
-import { rateLimit, rateLimit429 } from '@/lib/rateLimit'
+import { rateLimit, rateLimit429, resolveRateLimitKey } from '@/lib/rateLimit'
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
 import { ENTITLEMENTS } from '@/access/entitlements'
 
@@ -31,13 +33,23 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Rate-limit key: env key OR client-provided x-api-key (do NOT call the
-    // async cookie helper here just for the limit key — the route resolves the
-    // real key via validateMuAPIKey() below).
-    const clientKey = req.headers.get('x-api-key')?.trim()
-    const limitKey =
-      clientKey || process.env.MUAPI_API_KEY || process.env.MUAPI_KEY || ''
-    const limit = rateLimit(limitKey, { windowMs: RATE_LIMIT_WINDOW_MS, max: RATE_LIMIT_MAX })
+    // BYOK: resolve the caller's OWN MuAPI key (request header first, then the
+    // Clerk session's stored key) before anything else. There is no server
+    // fallback — a user with no key gets a 400 naming Settings instead of an
+    // operator-billed upload.
+    const apiKey = await validateMuAPIKey(req)
+
+    // Per-key rate limit keyed by authenticated identity, never by
+    // client-supplied key material (a caller could rotate keys to evade it).
+    const { userId } = await auth()
+    const clientIp =
+      req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+      req.headers.get('x-real-ip') ||
+      undefined
+    const limit = rateLimit(resolveRateLimitKey(userId, clientIp), {
+      windowMs: RATE_LIMIT_WINDOW_MS,
+      max: RATE_LIMIT_MAX,
+    })
     if (!limit.allowed) {
       return rateLimit429(limit.retryAfterMs)
     }
@@ -58,8 +70,6 @@ export async function POST(req: NextRequest) {
     if (validationError) {
       return NextResponse.json({ error: validationError }, { status: 400 })
     }
-
-    const apiKey = await validateMuAPIKey(req)
 
     // Try MuAPI upload first
     const muapiForm = new FormData()
@@ -140,6 +150,10 @@ export async function POST(req: NextRequest) {
       type: file.type,
     })
   } catch (err: unknown) {
+    // Missing user key is user-actionable (400), not an internal failure.
+    if (isMuapiKeyMissingError(err)) {
+      return NextResponse.json({ error: MUAPI_KEY_MISSING_ERROR }, { status: 400 })
+    }
     const message = err instanceof Error ? err.message : 'Unknown error'
     console.error('[VFX upload exception]', message)
     return NextResponse.json({ error: message }, { status: 500 })

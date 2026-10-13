@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { downloadImageAsDataUrl } from '@/server/downloadImage'
+import { downloadImageAsDataUrl, BlockedTargetError } from '@/server/downloadImage'
+import { assertSafeUrlString } from '@/lib/networkSafety'
 import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
 import { validatePersonalizationEnv } from '@/server/envValidation'
 
@@ -174,12 +175,39 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // S8 pre-flight: reject any URL whose literal form or hostname is
+    // private, link-local, metadata, CGNAT, ULA, unspecified, IPv4-mapped or
+    // an alternate IP encoding BEFORE a single byte is fetched. The async
+    // DNS-resolving gate + per-hop revalidation live in downloadImageAsDataUrl.
+    for (const url of sanitizedUrls) {
+      try {
+        assertSafeUrlString(url)
+      } catch {
+        clearTimeout(timeoutId)
+        logPersonalization({
+          route: '/api/personalization/download-image',
+          stage: 'ssrf',
+          httpStatus: 400,
+          safeErrorCode: 'BLOCKED_URL',
+          safeMessage: `Blocked URL: ${url.slice(0, 100)} is not allowed`,
+          correlationId,
+        })
+        return NextResponse.json(
+          { error: `Blocked URL: ${url.slice(0, 100)} is not allowed` },
+          { status: 400 },
+        )
+      }
+    }
+
     const results = await Promise.all(
       sanitizedUrls.map(async (url) => {
         try {
           const dataUrl = await downloadImageAsDataUrl(url, 5 * 1024 * 1024)
           return { url, dataUrl, ok: true }
         } catch (err) {
+          // A blocked redirect hop is a rejected request (→ 400 for the whole
+          // batch), not a per-image failure.
+          if (err instanceof BlockedTargetError) throw err
           const message = err instanceof Error ? err.message : 'Download failed'
           return { url, error: message, ok: false }
         }
@@ -204,6 +232,19 @@ export async function POST(req: NextRequest) {
     })
   } catch (err) {
     clearTimeout(timeoutId)
+    // A blocked destination (including a redirect hop that resolves to a
+    // private address) is a rejected request, never an internal failure.
+    if (err instanceof BlockedTargetError) {
+      logPersonalization({
+        route: '/api/personalization/download-image',
+        stage: 'ssrf',
+        httpStatus: 400,
+        safeErrorCode: 'BLOCKED_URL',
+        safeMessage: err.message,
+        correlationId,
+      })
+      return NextResponse.json({ error: err.message }, { status: 400 })
+    }
     if (err instanceof Error && err.name === 'AbortError') {
       logPersonalization({
         route: '/api/personalization/download-image',

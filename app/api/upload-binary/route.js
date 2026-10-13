@@ -85,7 +85,10 @@ export async function POST(request) {
             }
         }
 
-        const s3Response = await fetch(validatedTarget.url, {
+        // Route the upload through the pin-bound fetch so the connection goes to
+        // the DNS address that was already validated. A plain fetch() would
+        // re-resolve here and reopen the rebinding window.
+        const s3Response = await validatedTarget.pinnedFetch(validatedTarget.url, {
             method: 'POST',
             body: s3FormData,
             signal: AbortSignal.timeout(120000),

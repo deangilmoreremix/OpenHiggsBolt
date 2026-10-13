@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { getDiscoveryJobForUser, getDiscoveryJobById } from '@/server/discoveryJobs'
+import { getDiscoveryJobForUser } from '@/server/discoveryJobs'
 
 export const dynamic = "force-dynamic";
 
@@ -15,9 +15,14 @@ export async function GET(req: NextRequest) {
 
   const { userId } = await auth()
 
-  const job = userId
-    ? await getDiscoveryJobForUser(jobId, userId)
-    : await getDiscoveryJobById(jobId)
+  if (!userId) {
+    // Security: require an authenticated session. Previously this route fell
+    // back to getDiscoveryJobById(jobId) with no ownership check, allowing any
+    // unauthenticated caller to read any discovery job (audit Finding 4.1).
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const job = await getDiscoveryJobForUser(jobId, userId)
 
   if (!job) {
     return NextResponse.json({ error: 'Job not found' }, { status: 404 })

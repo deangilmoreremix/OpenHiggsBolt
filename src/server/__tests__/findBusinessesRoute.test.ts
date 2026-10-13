@@ -1,0 +1,458 @@
+/**
+ * Unit tests for app/api/personalization/find-businesses/route.ts.
+ *
+ * Fully offline and deterministic. Mocking/isolation approach:
+ * - '@/server/businessDiscovery' is mocked at the module boundary. The real
+ *   getNicheMapping/getSupportedNiches are kept (re-exported from the
+ *   dependency-free nicheMappings module) so niche-validation tests exercise
+ *   the real supported list; every network-touching export (geocodeLocation,
+ *   discoverBusinesses, deduplicateBusinesses, enrichBusinessRecord,
+ *   scoreAndSort, createCacheKey, businessDiscoveryCache) is a controllable
+ *   mock.
+ * - '@/server/personalizationLog' and '@/server/envValidation' are mocked.
+ * - '@/lib/rateLimit' lives at the repo-root lib/ directory and does NOT
+ *   resolve under vitest (the @/lib/* alias points at /src/lib), so the
+ *   limiter module is stubbed — the same idiom as
+ *   tests/vfx-rate-limit-keying.vitest.test.ts. The stub re-implements the
+ *   only two behaviors the route depends on (`userId || ip || 'anon'` key
+ *   normalization and per-key counting) backed by a hoisted hits Map that the
+ *   beforeEach reset clears, so in-process limiter state can never leak
+ *   between tests or between route test files sharing a worker. The stub is
+ *   spy-wrapped so tests can also assert exactly which key/max the route used.
+ *
+ * These tests live in src/server/__tests__/ rather than next to the route
+ * because that is the existing convention for personalization route unit
+ * tests (see downloadImageRoute.test.ts) and the only location matched by
+ * this suite's vitest include patterns.
+ */
+
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { NextRequest, NextResponse } from 'next/server'
+
+vi.mock('@/server/personalizationLog', () => ({
+  logPersonalization: vi.fn(),
+  createCorrelationId: vi.fn(),
+  sanitizeForLog: vi.fn((s: unknown) => s),
+}))
+
+vi.mock('@/server/envValidation', () => ({
+  validatePersonalizationEnv: vi.fn(),
+}))
+
+// Rate-limiter stub. resolveRateLimitKey mirrors lib/rateLimit.ts
+// (`userId || clientIp || 'anon'`); rateLimit/rateLimit429 are spies whose
+// counting implementation is installed in beforeEach against a per-test
+// reset Map (see the header comment).
+const rateLimitMocks = vi.hoisted(() => ({
+  hits: new Map<string, number>(),
+  rateLimit: vi.fn(),
+  rateLimit429: vi.fn(),
+}))
+
+vi.mock('@/lib/rateLimit', () => ({
+  resolveRateLimitKey: (userId?: string | null, clientIp?: string | null) =>
+    userId || clientIp || 'anon',
+  rateLimit: rateLimitMocks.rateLimit,
+  rateLimit429: rateLimitMocks.rateLimit429,
+}))
+
+vi.mock('@/server/businessDiscovery', async () => {
+  // Real niche lookups come from the dependency-free nicheMappings module so
+  // no part of the network graph (nominatim/overpass/research providers) is
+  // ever loaded.
+  const nicheMappings = await import('@/server/businessDiscovery/nicheMappings')
+  return {
+    getNicheMapping: nicheMappings.getNicheMapping,
+    getSupportedNiches: nicheMappings.getSupportedNiches,
+    geocodeLocation: vi.fn(),
+    discoverBusinesses: vi.fn(),
+    deduplicateBusinesses: vi.fn(),
+    enrichBusinessRecord: vi.fn(),
+    scoreAndSort: vi.fn(),
+    createCacheKey: vi.fn(),
+    businessDiscoveryCache: { get: vi.fn(), set: vi.fn() },
+  }
+})
+
+// Import after mocks are registered
+import { POST } from '@/app/api/personalization/find-businesses/route'
+import {
+  geocodeLocation,
+  discoverBusinesses,
+  deduplicateBusinesses,
+  enrichBusinessRecord,
+  scoreAndSort,
+  createCacheKey,
+  businessDiscoveryCache,
+  getSupportedNiches,
+} from '@/server/businessDiscovery'
+import { logPersonalization, createCorrelationId } from '@/server/personalizationLog'
+import { validatePersonalizationEnv } from '@/server/envValidation'
+
+const NICHE = 'restaurants-food'
+const LOCATION = 'Austin, TX'
+
+function rawRecord(id: string) {
+  return { id, name: `Business ${id}`, latitude: 30.26, longitude: -97.74 } as any
+}
+
+function post(body: unknown, headers: Record<string, string> = {}) {
+  const req = new NextRequest('http://localhost/api/personalization/find-businesses', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(body),
+  })
+  return POST(req)
+}
+
+beforeEach(() => {
+  vi.resetAllMocks()
+  // Reset the limiter stub's per-key counters (the isolation mechanism).
+  rateLimitMocks.hits.clear()
+
+  vi.mocked(createCorrelationId).mockReturnValue('test-correlation-id')
+  vi.mocked(validatePersonalizationEnv).mockReturnValue({ valid: true, missingRequired: [] } as any)
+
+  vi.mocked(geocodeLocation).mockResolvedValue({
+    latitude: 30.2672,
+    longitude: -97.7431,
+    displayName: 'Austin, Texas, USA',
+  } as any)
+  vi.mocked(discoverBusinesses).mockResolvedValue([rawRecord('one'), rawRecord('two')] as any)
+  vi.mocked(deduplicateBusinesses).mockImplementation((items: any) => items)
+  vi.mocked(scoreAndSort).mockImplementation((items: any) => items)
+  vi.mocked(enrichBusinessRecord).mockImplementation((record: any) => record)
+  vi.mocked(createCacheKey).mockImplementation(
+    (niche: string, location: string, radiusMiles: number) =>
+      `${niche}|${location}|${radiusMiles}`,
+  )
+  vi.mocked(businessDiscoveryCache.get).mockReturnValue(null)
+
+  // Counting limiter with the same allow/deny semantics as lib/rateLimit.ts:
+  // the (max+1)-th hit inside the window is denied with a 60s retry-after.
+  rateLimitMocks.rateLimit.mockImplementation((key: string, opts?: { max?: number }) => {
+    const max = opts?.max ?? 10
+    const count = (rateLimitMocks.hits.get(key) ?? 0) + 1
+    rateLimitMocks.hits.set(key, count)
+    if (count > max) return { allowed: false, remaining: 0, retryAfterMs: 60_000 }
+    return { allowed: true, remaining: max - count, retryAfterMs: 0 }
+  })
+  rateLimitMocks.rateLimit429.mockImplementation((retryAfterMs: number) =>
+    NextResponse.json(
+      { error: 'Rate limit exceeded. Please wait before retrying.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(retryAfterMs / 1000)) } },
+    ),
+  )
+})
+
+// ---------------------------------------------------------------------------
+// 400 validation
+// ---------------------------------------------------------------------------
+
+describe('find-businesses route — validation 400s', () => {
+  it('400 when niche is missing', async () => {
+    const res = await post({ location: LOCATION })
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toBe('niche is required')
+    expect(geocodeLocation).not.toHaveBeenCalled()
+  })
+
+  it('400 when location is missing', async () => {
+    const res = await post({ niche: NICHE })
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toBe('location is required')
+    expect(geocodeLocation).not.toHaveBeenCalled()
+  })
+
+  it('400 when location exceeds 200 characters', async () => {
+    const res = await post({ niche: NICHE, location: 'x'.repeat(201) })
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toBe('location must be at most 200 characters')
+    expect(geocodeLocation).not.toHaveBeenCalled()
+  })
+
+  it('400 for an unsupported niche does NOT echo user input in the body (static message + supported list only)', async () => {
+    const evilNiche = '<script>alert(1)</script>'
+    const res = await post({ niche: evilNiche, location: LOCATION })
+    expect(res.status).toBe(400)
+
+    const body = await res.json()
+    // No raw user input reflected back to the caller.
+    expect(body.error).not.toContain('<script>')
+    expect(body.error).not.toContain('alert')
+    expect(body.error).not.toContain(evilNiche)
+    // Static message listing every supported niche.
+    for (const supported of getSupportedNiches()) {
+      expect(body.error).toContain(supported)
+    }
+
+    // The server-side log keeps the input for support correlation.
+    expect(logPersonalization).toHaveBeenCalledWith(
+      expect.objectContaining({
+        route: '/api/personalization/find-businesses',
+        stage: 'validation',
+        httpStatus: 400,
+        safeErrorCode: 'UNSUPPORTED_NICHE',
+        safeMessage: expect.stringContaining(evilNiche),
+      }),
+    )
+    expect(geocodeLocation).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// radius / limit fallback + clamping
+// ---------------------------------------------------------------------------
+
+describe('find-businesses route — radius/limit bounds', () => {
+  it('falls back to radius 15 for a non-numeric radius and limit 30 for a non-numeric limit', async () => {
+    const res = await post({ niche: NICHE, location: LOCATION, radiusMiles: 'NaN', limit: 'many' })
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.query.radiusMiles).toBe(15)
+    expect(discoverBusinesses).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 90, radiusMiles: 15 }),
+    )
+  })
+
+  it('clamps radius 9999 down to 50', async () => {
+    const res = await post({ niche: NICHE, location: LOCATION, radiusMiles: 9999 })
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.query.radiusMiles).toBe(50)
+    expect(createCacheKey).toHaveBeenCalledWith(NICHE, LOCATION, 50)
+  })
+
+  it('clamps radius 0.4 up to 1', async () => {
+    const res = await post({ niche: NICHE, location: LOCATION, radiusMiles: 0.4 })
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.query.radiusMiles).toBe(1)
+  })
+
+  it('clamps limit 9999 down to 50 and limit 0 up to 1', async () => {
+    const over = await post({ niche: NICHE, location: LOCATION, limit: 9999 })
+    expect(over.status).toBe(200)
+    expect(discoverBusinesses).toHaveBeenLastCalledWith(
+      expect.objectContaining({ limit: 150 }),
+    )
+
+    const under = await post({ niche: NICHE, location: LOCATION, limit: 0 })
+    expect(under.status).toBe(200)
+    expect(discoverBusinesses).toHaveBeenLastCalledWith(
+      expect.objectContaining({ limit: 3 }),
+    )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 200 happy path + cache
+// ---------------------------------------------------------------------------
+
+describe('find-businesses route — success flow', () => {
+  it('200 happy path runs geocode → discover → dedupe → score → enrich and returns businesses', async () => {
+    const res = await post({ niche: NICHE, location: LOCATION })
+    expect(res.status).toBe(200)
+
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.count).toBe(2)
+    expect(body.businesses).toHaveLength(2)
+    expect(body.providerUsed).toBe('OPENSTREETMAP')
+    expect(body.query).toEqual({ niche: 'Restaurants / Food', location: LOCATION, radiusMiles: 15 })
+    expect(body.cached).toBeUndefined()
+    expect(typeof body.durationMs).toBe('number')
+
+    // Full pipeline invoked in order against the mocked dependencies.
+    expect(geocodeLocation).toHaveBeenCalledWith(LOCATION)
+    expect(discoverBusinesses).toHaveBeenCalledWith(
+      expect.objectContaining({
+        niche: NICHE,
+        latitude: 30.2672,
+        longitude: -97.7431,
+        radiusMiles: 15,
+        limit: 90, // default limit 30 * 3 (extra headroom for dedupe)
+      }),
+    )
+    expect(deduplicateBusinesses).toHaveBeenCalledTimes(1)
+    expect(scoreAndSort).toHaveBeenCalledTimes(1)
+    expect(enrichBusinessRecord).toHaveBeenCalledTimes(2)
+    // Results are cached with the 1h TTL.
+    expect(businessDiscoveryCache.set).toHaveBeenCalledWith(
+      `${NICHE}|${LOCATION}|15`,
+      expect.any(Array),
+      60 * 60 * 1000,
+    )
+  })
+
+  it('cache hit returns the cached businesses with cached: true and skips geocode/discover', async () => {
+    const cached = [rawRecord('cached-1'), rawRecord('cached-2'), rawRecord('cached-3')]
+    vi.mocked(businessDiscoveryCache.get).mockReturnValue(cached)
+
+    const res = await post({ niche: NICHE, location: LOCATION })
+    expect(res.status).toBe(200)
+
+    const body = await res.json()
+    expect(body.cached).toBe(true)
+    expect(body.count).toBe(3)
+    expect(body.businesses).toEqual(cached)
+    expect(geocodeLocation).not.toHaveBeenCalled()
+    expect(discoverBusinesses).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Upstream (502) vs caller (400) errors
+// ---------------------------------------------------------------------------
+
+describe('find-businesses route — geocode failure mapping', () => {
+  it('502 with GENERIC body + correlationId + x-correlation-id header when Nominatim returns HTTP 503', async () => {
+    vi.mocked(geocodeLocation).mockRejectedValue(
+      new Error('Nominatim geocoding failed: HTTP 503'),
+    )
+
+    const res = await post({ niche: NICHE, location: LOCATION })
+    expect(res.status).toBe(502)
+
+    const body = await res.json()
+    expect(body.error).toBe('Unable to look up the location right now. Please try again shortly.')
+    // No upstream internals leaked to the caller.
+    expect(body.error).not.toMatch(/nominatim|503/i)
+    expect(body.correlationId).toBe('test-correlation-id')
+    expect(res.headers.get('x-correlation-id')).toBe('test-correlation-id')
+
+    expect(logPersonalization).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stage: 'geocode',
+        httpStatus: 502,
+        safeMessage: 'Nominatim geocoding failed: HTTP 503',
+      }),
+    )
+  })
+
+  it("400 (not 502) for 'Location not found: X'", async () => {
+    vi.mocked(geocodeLocation).mockRejectedValue(new Error('Location not found: Atlantis'))
+
+    const res = await post({ niche: NICHE, location: LOCATION })
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toBe('Location not found: Atlantis')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Unexpected failure
+// ---------------------------------------------------------------------------
+
+describe('find-businesses route — unexpected failure', () => {
+  it('500 with a generic body and correlationId when the pipeline throws', async () => {
+    vi.mocked(deduplicateBusinesses).mockImplementation(() => {
+      throw new Error('boom: internal detail')
+    })
+
+    const res = await post({ niche: NICHE, location: LOCATION })
+    expect(res.status).toBe(500)
+    const body = await res.json()
+    expect(body.error).toBe('Unable to complete the business search. Please try again shortly.')
+    expect(body.error).not.toContain('boom')
+    expect(body.correlationId).toBe('test-correlation-id')
+    expect(res.headers.get('x-correlation-id')).toBe('test-correlation-id')
+  })
+
+  it('500 when personalization env validation fails', async () => {
+    vi.mocked(validatePersonalizationEnv).mockReturnValue({
+      valid: false,
+      missingRequired: ['SOME_KEY'],
+    } as any)
+
+    const res = await post({ niche: NICHE, location: LOCATION })
+    expect(res.status).toBe(500)
+    const body = await res.json()
+    expect(body.error).toBe('Server configuration error')
+    expect(body.correlationId).toBe('test-correlation-id')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Rate limiting: key derivation (x-real-ip first, LAST x-forwarded-for hop,
+// anon fallback) and per-IP buckets
+// ---------------------------------------------------------------------------
+
+describe('find-businesses route — rate-limit key derivation', () => {
+  it('prefers x-real-ip over the x-forwarded-for hops', async () => {
+    await post({ niche: NICHE, location: LOCATION }, {
+      'x-real-ip': '8.8.8.8',
+      'x-forwarded-for': '1.2.3.4, 9.9.9.9',
+    })
+    expect(rateLimitMocks.rateLimit).toHaveBeenCalledWith('8.8.8.8', {
+      windowMs: 60_000,
+      max: 10,
+    })
+  })
+
+  it('uses the LAST x-forwarded-for hop (the one appended by the nearest proxy), not the client-controlled first hop', async () => {
+    await post({ niche: NICHE, location: LOCATION }, {
+      'x-forwarded-for': '1.2.3.4, 203.0.113.7',
+    })
+    expect(rateLimitMocks.rateLimit).toHaveBeenCalledWith('203.0.113.7', {
+      windowMs: 60_000,
+      max: 10,
+    })
+  })
+
+  it('still keys on the single hop when x-forwarded-for has one entry', async () => {
+    await post({ niche: NICHE, location: LOCATION }, { 'x-forwarded-for': '203.0.113.8' })
+    expect(rateLimitMocks.rateLimit).toHaveBeenCalledWith('203.0.113.8', {
+      windowMs: 60_000,
+      max: 10,
+    })
+  })
+
+  it('rotating the client-controlled first XFF hop does NOT mint a fresh bucket', async () => {
+    await post({ niche: NICHE, location: LOCATION }, { 'x-forwarded-for': '9.9.9.1, 203.0.113.5' })
+    await post({ niche: NICHE, location: LOCATION }, { 'x-forwarded-for': '9.9.9.2, 203.0.113.5' })
+    await post({ niche: NICHE, location: LOCATION }, { 'x-forwarded-for': '9.9.9.3, 203.0.113.5' })
+    const keys = rateLimitMocks.rateLimit.mock.calls.map((c) => c[0])
+    // Same proxy-appended bucket for all three spoofed first hops.
+    expect(keys).toEqual(['203.0.113.5', '203.0.113.5', '203.0.113.5'])
+  })
+
+  it("falls back to the shared 'anon' bucket with a much higher max (100/min) when no proxy headers exist", async () => {
+    // 11 anonymous requests all succeed: the shared bucket degrades
+    // gracefully instead of every anonymous caller sharing 10/min.
+    for (let i = 0; i < 11; i++) {
+      const res = await post({ niche: NICHE, location: LOCATION })
+      expect(res.status).toBe(200)
+    }
+    expect(rateLimitMocks.rateLimit).toHaveBeenCalledWith('anon', {
+      windowMs: 60_000,
+      max: 100,
+    })
+  })
+})
+
+describe('find-businesses route — rate limiting behavior', () => {
+  it('429 with Retry-After after 10 requests for one IP, while a different x-real-ip is not limited', async () => {
+    const ipA = { 'x-real-ip': '203.0.113.10' }
+    for (let i = 0; i < 10; i++) {
+      const res = await post({ niche: NICHE, location: LOCATION }, ipA)
+      expect(res.status).toBe(200)
+    }
+
+    const blocked = await post({ niche: NICHE, location: LOCATION }, ipA)
+    expect(blocked.status).toBe(429)
+    expect(blocked.headers.get('retry-after')).toBe('60')
+    const body = await blocked.json()
+    expect(body.error).toMatch(/rate limit exceeded/i)
+    expect(rateLimitMocks.rateLimit429).toHaveBeenCalledWith(60_000)
+
+    // A different x-real-ip derives a different key → its own bucket.
+    const otherIp = await post({ niche: NICHE, location: LOCATION }, {
+      'x-real-ip': '198.51.100.99',
+    })
+    expect(otherIp.status).toBe(200)
+  })
+})

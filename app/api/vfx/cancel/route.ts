@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerVFXClient } from '@/api/vfx'
+import { resolveMuAPIKey } from '../_helpers'
 import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
 import { ENTITLEMENTS } from '@/access/entitlements'
 
@@ -49,11 +50,11 @@ export async function POST(req: NextRequest) {
     if (requestId) {
       cancelledRequestIds.add(requestId)
 
-      // Best-effort server-side stop. MuAPI has no documented prediction
-      // cancel endpoint; we probe the two plausible shapes and ignore any
-      // 404/405 so this never fails the cancel request.
-      const clientKey = req.headers.get('x-api-key')?.trim()
-      const apiKey = clientKey || process.env.MUAPI_API_KEY || process.env.MUAPI_KEY || ''
+      // Best-effort server-side stop. BYOK: the probe uses the caller's OWN
+      // MuAPI key only (header, then the Clerk session's stored key) — the
+      // server has no key of its own, so without a user key there is simply
+      // nothing to probe with and the local cancellation above stands.
+      const apiKey = await resolveMuAPIKey(req)
       if (apiKey) {
         try {
           const client = getServerVFXClient(apiKey)

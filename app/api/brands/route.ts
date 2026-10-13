@@ -1,52 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import dns from 'node:dns/promises'
-import { brands, type Brand } from '@/shared/brandStore'
+import { auth } from '@clerk/nextjs/server'
+import { brands, getBrandsForUser, type Brand } from '@/shared/brandStore'
 import { ok, apiError } from '@/lib/apiError'
-
-export const dynamic = "force-dynamic";
+import { checkDestination, createPinnedFetch } from '@/lib/networkSafety'
 
 const MAX_BYTES = 1_000_000
 const FETCH_TIMEOUT_MS = 5000
 const DEFAULT_PAGE_SIZE = 20
 const MAX_PAGE_SIZE = 100
-
-function isPrivateIp(ip: string): boolean {
-  if (ip.includes(':')) {
-    if (ip === '::1' || ip.startsWith('fc') || ip.startsWith('fd') || ip.startsWith('fe80')) return true
-    return false
-  }
-  const p = ip.split('.').map(Number)
-  if (p.length !== 4 || p.some((n) => Number.isNaN(n))) return true
-  if (p[0] === 10) return true
-  if (p[0] === 127) return true
-  if (p[0] === 169 && p[1] === 254) return true
-  if (p[0] === 172 && p[1] >= 16 && p[1] <= 31) return true
-  if (p[0] === 192 && p[1] === 168) return true
-  return false
-}
-
-async function assertSafeUrl(raw: string): Promise<URL> {
-  let u: URL
-  try {
-    u = new URL(raw)
-  } catch {
-    throw new Error('Invalid URL')
-  }
-  if (u.protocol !== 'http:' && u.protocol !== 'https:') {
-    throw new Error('Only http(s) URLs are allowed')
-  }
-  let addrs: { address: string }[]
-  try {
-    addrs = await dns.lookup(u.hostname, { all: true })
-  } catch {
-    throw new Error('DNS resolution failed')
-  }
-  if (addrs.length === 0) throw new Error('DNS resolution failed')
-  for (const a of addrs) {
-    if (isPrivateIp(a.address)) throw new Error('Blocked address (private/loopback/link-local)')
-  }
-  return u
-}
 
 function meta(name: string, html: string): string | undefined {
   const a = html.match(new RegExp(`<meta[^>]+(?:property|name)=["']${name}["'][^>]+content=["']([^"']*)["']`, 'i'))
@@ -54,13 +15,29 @@ function meta(name: string, html: string): string | undefined {
   return (a || b)?.[1]?.trim()
 }
 
+/**
+ * H4: both handlers used to be fully unauthenticated while reading and
+ * writing a module-level store shared by every user of the instance.
+ */
+async function requireUserId(): Promise<{ userId: string } | { response: NextResponse }> {
+  const { userId } = await auth()
+  if (!userId) {
+    return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+  }
+  return { userId }
+}
+
 export async function GET(req: NextRequest) {
+  const session = await requireUserId()
+  if ('response' in session) return session.response
+
   const { searchParams } = new URL(req.url)
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
   const rawPageSize = parseInt(searchParams.get('pageSize') || String(DEFAULT_PAGE_SIZE), 10) || DEFAULT_PAGE_SIZE
   const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, rawPageSize))
 
-  const all = [...brands.values()].map((b) => ({
+  // H4: only the caller's own brands are listed.
+  const all = getBrandsForUser(session.userId).map((b) => ({
     id: b.id,
     url: b.url,
     brand_name: b.brand_name || '',
@@ -78,6 +55,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // H4: brand creation used to be anonymous and unscoped.
+  const session = await requireUserId()
+  if ('response' in session) return session.response
+
   let body: any = {}
   try {
     body = await req.json()
@@ -89,13 +70,34 @@ export async function POST(req: NextRequest) {
 
   let brand_name: string | undefined
   let tagline: string | undefined
+  // SSRF guard: resolve the host, validate every returned address, and refuse
+  // any destination that is a literal/encoded private / metadata / loopback /
+  // CGNAT / IPv6 ULA / link-local / IPv4-mapped / unspecified address (or a
+  // hostname that resolves to one). dns_resolution_failed is treated as
+  // "unreachable" and falls through to the fetch try/catch (brand_name = url)
+  // so the route stays graceful for genuinely dead public sites.
+  const ssrfCheck = await checkDestination(url, {})
+  if (!ssrfCheck.ok && (ssrfCheck.reason === 'blocked_host' || ssrfCheck.reason === 'resolved_to_blocked_ip' || ssrfCheck.reason === 'invalid_url')) {
+    return apiError('bad_request', `Blocked URL: ${ssrfCheck.reason} is not allowed`, 400)
+  }
   try {
-    const safe = await assertSafeUrl(url)
-    const res = await fetch(safe.toString(), {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      redirect: 'manual',
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    })
+    let res: Response
+    if (ssrfCheck.ok) {
+      const pinnedFetch = createPinnedFetch(ssrfCheck)
+      res = (await pinnedFetch(ssrfCheck.url, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        redirect: 'manual',
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      })) as Response
+    } else {
+      // Unreachable: the host did not resolve, so no pin was built. Fall
+      // through to a plain fetch; the timeout will resolve to brand_name=url.
+      res = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        redirect: 'manual',
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      })
+    }
     if (res.status >= 300 && res.status < 400) {
     } else if (res.ok) {
       const buf = Buffer.from(await res.arrayBuffer())
@@ -114,6 +116,8 @@ export async function POST(req: NextRequest) {
   const brand: Brand = {
     id,
     url,
+    // H4: the entry is owned by the authenticated caller.
+    owner: session.userId,
     brand_name,
     tagline,
     created_at: new Date().toISOString(),

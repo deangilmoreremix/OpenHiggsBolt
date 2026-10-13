@@ -1,0 +1,201 @@
+/**
+ * Negative auth tests for POST /api/personalization/discover-assets.
+ *
+ * Proves:
+ * - Unauthenticated requests (userId = null/undefined/'') are rejected with 401
+ * - An 'anon' clerkUserId can never reach createDiscoveryJob
+ * - Auth failure is logged before any business logic runs
+ * - An oversized websiteUrl is rejected (400) instead of silently truncated
+ */
+
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+vi.mock('@clerk/nextjs/server', () => ({
+  auth: vi.fn(),
+}))
+
+vi.mock('@/server/personalizationLog', () => ({
+  logPersonalization: vi.fn(),
+  createCorrelationId: vi.fn(() => 'test-correlation-id'),
+  sanitizeForLog: vi.fn((s: unknown) => s),
+}))
+
+vi.mock('@/server/envValidation', () => ({
+  validatePersonalizationEnv: vi.fn(),
+}))
+
+vi.mock('@/server/discoveryOrchestrator', () => ({
+  runFastDiscovery: vi.fn(),
+}))
+
+vi.mock('@/server/discoveryJobs', () => ({
+  createDiscoveryJob: vi.fn(),
+  getDiscoveryJobForUser: vi.fn(),
+}))
+
+// Import after mocks are registered
+import { POST } from '@/app/api/personalization/discover-assets/route'
+import { NextRequest } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
+import { validatePersonalizationEnv } from '@/server/envValidation'
+import { createDiscoveryJob } from '@/server/discoveryJobs'
+import { runFastDiscovery } from '@/server/discoveryOrchestrator'
+
+describe('POST /api/personalization/discover-assets auth', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(validatePersonalizationEnv).mockReturnValue({ valid: true } as any)
+    vi.mocked(runFastDiscovery).mockResolvedValue({
+      result: {
+        providerUsed: 'STATIC_FALLBACK',
+        providerAttempted: 'STATIC_FALLBACK',
+        candidates: [],
+        pagesCrawled: 0,
+        rawCandidates: 0,
+        duration: 0,
+        socialProfiles: [],
+        discoveredAssets: [],
+        firecrawlUsed: false,
+        providerAttempts: ['STATIC_FALLBACK'],
+      },
+      fastAssets: [],
+      usefulAssetCount: 0,
+      providerAttempts: ['STATIC_FALLBACK'],
+      needsBrowser: false,
+    })
+    vi.mocked(createDiscoveryJob).mockResolvedValue({
+      id: 'job-1',
+      clerk_user_id: 'user-1',
+      website_url: 'https://example.com',
+      status: 'queued',
+      fast_result_json: null,
+      browser_result_json: null,
+      final_result_json: null,
+      telemetry_json: null,
+      error_code: null,
+      error_message: null,
+      created_at: '2024-01-01T00:00:00Z',
+      started_at: null,
+      completed_at: null,
+      expires_at: '2024-01-02T00:00:00Z',
+    })
+  })
+
+  async function post(websiteUrl: unknown) {
+    const req = new NextRequest('http://localhost/api/personalization/discover-assets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ websiteUrl }),
+    })
+    return await POST(req)
+  }
+
+  // -------------------------------------------------------------------------
+  // Unauthenticated: userId is null
+  // -------------------------------------------------------------------------
+
+  it('MUST REJECT with 401 when auth returns userId = null', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: null } as any)
+
+    const res = await post('https://example.com')
+    expect(res.status).toBe(401)
+    const body = await res.json()
+    expect(body.error).toBe('UNAUTHENTICATED')
+
+    // No discovery job should be created
+    expect(createDiscoveryJob).not.toHaveBeenCalled()
+    expect(runFastDiscovery).not.toHaveBeenCalled()
+  })
+
+  // -------------------------------------------------------------------------
+  // Unauthenticated: userId is undefined
+  // -------------------------------------------------------------------------
+
+  it('MUST REJECT with 401 when auth returns userId = undefined', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: undefined } as any)
+
+    const res = await post('https://example.com')
+    expect(res.status).toBe(401)
+    const body = await res.json()
+    expect(body.error).toBe('UNAUTHENTICATED')
+
+    expect(createDiscoveryJob).not.toHaveBeenCalled()
+    expect(runFastDiscovery).not.toHaveBeenCalled()
+  })
+
+  // -------------------------------------------------------------------------
+  // Unauthenticated: auth returns empty string userId
+  // -------------------------------------------------------------------------
+
+  it('MUST REJECT with 401 when auth returns an empty string userId', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: '' } as any)
+
+    const res = await post('https://example.com')
+    expect(res.status).toBe(401)
+    const body = await res.json()
+    expect(body.error).toBe('UNAUTHENTICATED')
+
+    expect(createDiscoveryJob).not.toHaveBeenCalled()
+    expect(runFastDiscovery).not.toHaveBeenCalled()
+  })
+
+  // -------------------------------------------------------------------------
+  // Authenticated: request proceeds normally and the job is owner-scoped
+  // -------------------------------------------------------------------------
+
+  it('MUST ALLOW discovery when userId is present', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: 'user-123' } as any)
+
+    const res = await post('https://example.com')
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.cached).toBe(false)
+
+    // Discovery pipeline must have run
+    expect(runFastDiscovery).toHaveBeenCalledTimes(1)
+    expect(createDiscoveryJob).toHaveBeenCalledTimes(1)
+
+    // jobId must be present in the response
+    expect(body.jobId).toBeDefined()
+
+    // The persisted job is owned by the authenticated caller — never 'anon'.
+    const jobArg = vi.mocked(createDiscoveryJob).mock.calls[0][0] as { clerkUserId: string }
+    expect(jobArg.clerkUserId).toBe('user-123')
+    expect(jobArg.clerkUserId).not.toBe('anon')
+  })
+
+  // -------------------------------------------------------------------------
+  // URL length cap: reject instead of silently truncating
+  // -------------------------------------------------------------------------
+
+  it('MUST REJECT a websiteUrl longer than MAX_WEBSITE_URL_LENGTH with 400', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: 'user-123' } as any)
+
+    const oversized = `https://example.com/${'a'.repeat(2100)}`
+    const res = await post(oversized)
+
+    expect(res.status).toBe(400)
+    expect(createDiscoveryJob).not.toHaveBeenCalled()
+    expect(runFastDiscovery).not.toHaveBeenCalled()
+  })
+
+  // -------------------------------------------------------------------------
+  // Auth failure is logged before business logic
+  // -------------------------------------------------------------------------
+
+  it('logs unauthorized attempts at the auth stage', async () => {
+    const { logPersonalization } = await import('@/server/personalizationLog')
+    vi.mocked(auth).mockResolvedValue({ userId: null } as any)
+
+    await post('https://example.com')
+
+    // The log call for auth stage must exist
+    const authCalls = (logPersonalization as any).mock.calls.filter(
+      (call: any) => call[0].stage === 'auth',
+    )
+    expect(authCalls.length).toBeGreaterThanOrEqual(1)
+    expect(authCalls[0][0].httpStatus).toBe(401)
+    expect(authCalls[0][0].safeErrorCode).toBe('UNAUTHORIZED')
+  })
+})

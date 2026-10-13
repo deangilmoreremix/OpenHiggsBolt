@@ -8,15 +8,207 @@
  * 4. Enriches the client profile
  *
  * Uses inexpensive static HTTP first. No browser, no Firecrawl.
+ *
+ * SSRF: this module backs a public, unauthenticated route that fetches a
+ * user-supplied URL. Every URL — the initial one and every redirect hop — is
+ * validated against the centralized `src/lib/networkSafety.ts` gate
+ * (protocol allowlist, hostname literal checks for every private / metadata /
+ * ULA / link-local / unspecified form, and DNS resolution that validates
+ * EVERY address the host currently resolves to, so DNS rebinding is
+ * rejected). The validated address is then pinned to the outbound connection
+ * via `safeRequestConfig`, so a DNS answer that flips between validation and
+ * connect cannot redirect the socket to a private peer. Rejected targets
+ * throw a `BlockedTargetError`; the public route maps those to HTTP 400.
+ *
+ * A `dns_resolution_failed` reason is treated as an unreachable host rather
+ * than a security violation: the fetch is allowed to attempt the connection
+ * and any resulting network failure is reported as `reachable: false`. This
+ * preserves the public route's contract for genuinely dead public sites
+ * (the caller is not malicious; the site is just down) while every literal,
+ * metadata, private, CGNAT, ULA, link-local, IPv4-mapped and unspecified
+ * destination, and every hostname that resolves to one, is still rejected
+ * up front.
+ *
+ * Redirects are followed manually so every hop pays the same validation +
+ * pinning price. axios' own redirect following is disabled
+ * (`maxRedirects: 0`).
  */
 
-import axios from 'axios'
+import axios, { type AxiosResponse } from 'axios'
 import * as cheerio from 'cheerio'
 import { sanitizeUrl } from '../discoverAssets'
+import {
+  checkDestination,
+  safeRequestConfig,
+  REDIRECT_STATUSES,
+  MAX_REDIRECT_HOPS,
+  NetworkSafetyError,
+  SSRF_BLOCKED_MESSAGE,
+} from '@/lib/networkSafety'
 import type { BusinessDiscoveryRecord } from './types'
 
 const REQUEST_TIMEOUT = 15_000
 const MAX_HTML_BYTES = 2_000_000
+
+/**
+ * `/api/personalization/research-business` maps a thrown error message to an
+ * HTTP status with `/not allowed|Private|Invalid/i` (→ 400) before it falls
+ * back to 500, so every blocked target carries one of those substrings:
+ * an unsafe URL is a caller mistake, never an internal failure.
+ */
+const BLOCKED_URL_MESSAGE = 'Blocked URL: private/unsafe target'
+
+class BlockedTargetError extends Error {
+  readonly blockedTarget = true
+}
+
+function blockedTargetError(reason: string): BlockedTargetError {
+  return new BlockedTargetError(`${BLOCKED_URL_MESSAGE} (${reason}) is not allowed`)
+}
+
+function reasonOf(err: unknown): string {
+  if (err instanceof NetworkSafetyError) return err.reason || 'blocked'
+  return err instanceof Error ? err.message : String(err)
+}
+
+/**
+ * Reasons from `checkDestination` that mean the URL points at a destination
+ * a caller is never allowed to reach. They become `BlockedTargetError`
+ * (→ HTTP 400). `dns_resolution_failed` is intentionally excluded: a
+ * hostname that does not resolve is "unreachable", not "blocked", and the
+ * public route's contract is to report it as `reachable: false` so the UI
+ * can show "couldn't reach site" instead of an error.
+ */
+const BLOCK_REASONS = new Set(['blocked_host', 'resolved_to_blocked_ip', 'invalid_url'])
+
+/**
+ * `networkSafety` already blocks `0.0.0.0` and `::` via the IPv4 `0/8` and
+ * IPv6 "unspecified" rules, but keeping this pre-check makes the intent
+ * explicit and protects against any future regression in those rules.
+ */
+function isUnspecifiedAddress(hostname: string): boolean {
+  const bare = hostname.startsWith('[') && hostname.endsWith(']')
+    ? hostname.slice(1, -1)
+    : hostname
+  return bare === '0.0.0.0' || bare === '::'
+}
+
+/**
+ * Full SSRF validation of an already-absolute URL. Resolves the host and
+ * validates every returned address so DNS-rebinding (public hostname whose
+ * A-record flips to a private IP) is caught. Throws `BlockedTargetError`
+ * for prohibited destinations and a plain `Error` for unreachable hosts.
+ */
+async function assertUrlSafe(rawUrl: string): Promise<void> {
+  const result = await checkDestination(rawUrl, {})
+  if (!result.ok) {
+    const reason = result.reason || 'blocked'
+    if (BLOCK_REASONS.has(reason)) {
+      throw blockedTargetError(reason)
+    }
+    // Unresolvable hostnames and other "unreachable" outcomes propagate as
+    // plain errors so the fetch's try/catch surfaces `reachable: false`.
+    throw new Error(`Unreachable: ${reason}`)
+  }
+  if (isUnspecifiedAddress(result.hostname)) {
+    throw new Error(`${SSRF_BLOCKED_MESSAGE} (unspecified address 0.0.0.0/[::]) is not allowed`)
+  }
+}
+
+/**
+ * Re-throws a `BlockedTargetError` unchanged (→ HTTP 400 via the public
+ * route). A plain `Error` (unreachable host, etc.) is allowed to propagate
+ * so the caller's outer try/catch downgrades it to `reachable: false`.
+ */
+async function guardUrl(rawUrl: string): Promise<string> {
+  await assertUrlSafe(rawUrl)
+  return rawUrl
+}
+
+/**
+ * Normalises the caller-supplied URL and validates it before any network
+ * call. Throws (BlockedTargetError) for unsafe targets.
+ */
+async function validateResearchTarget(websiteUrl: string): Promise<string> {
+  let normalized: string
+  try {
+    normalized = sanitizeUrl(websiteUrl)
+  } catch (err) {
+    throw blockedTargetError(reasonOf(err))
+  }
+  return guardUrl(normalized)
+}
+
+function redirectLocationOf(response: AxiosResponse): string {
+  if (!response || !REDIRECT_STATUSES.includes(response.status)) return ''
+  const rawLocation: unknown = response.headers?.location
+  return typeof rawLocation === 'string' ? rawLocation.trim() : ''
+}
+
+/**
+ * Fetches `startUrl` with axios' redirect following disabled and each hop
+ * re-validated. Only blocked redirect targets throw; every fetch-level
+ * failure (DNS, connect, timeout, non-2xx/3xx status) propagates as an axios
+ * error for the caller to downgrade to `reachable: false`.
+ *
+ * The connection is pinned to the address the gate validated, so a DNS
+ * answer that changes between the check and the connect (the rebinding
+ * window) cannot move the socket to a private peer.
+ */
+async function fetchWithValidatedRedirects(startUrl: string): Promise<{
+  response: AxiosResponse
+  finalUrl: string
+}> {
+  let currentUrl = startUrl
+
+  for (let redirects = 0; redirects <= MAX_REDIRECT_HOPS; redirects++) {
+    // Re-validate every hop and pin the connection to the validated address.
+    const destination = await checkDestination(currentUrl, {})
+    if (!destination.ok) {
+      const reason = destination.reason || 'blocked'
+      if (BLOCK_REASONS.has(reason)) {
+        throw blockedTargetError(`redirect to ${reason}`)
+      }
+      // Unreachable redirect target: let the caller's try/catch surface
+      // reachable: false rather than a 400.
+      throw new Error(`Unreachable redirect: ${reason}`)
+    }
+    if (isUnspecifiedAddress(destination.hostname)) {
+      throw new Error(`${SSRF_BLOCKED_MESSAGE} (unspecified address 0.0.0.0/[::]) is not allowed`)
+    }
+    const pin = safeRequestConfig(destination)
+
+    const response = await axios.get(currentUrl, {
+      timeout: REQUEST_TIMEOUT,
+      maxContentLength: MAX_HTML_BYTES,
+      headers: {
+        'User-Agent': 'SmartVideoGO-AI/1.0 (https://go.smartvid.app)',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+      validateStatus: (s) => s >= 200 && s < 400,
+      ...pin,
+    })
+
+    const location = redirectLocationOf(response)
+    if (!location) {
+      return { response, finalUrl: currentUrl }
+    }
+    if (redirects === MAX_REDIRECT_HOPS) {
+      throw blockedTargetError('too many redirects')
+    }
+
+    let nextUrl: string
+    try {
+      nextUrl = new URL(location, currentUrl).toString()
+    } catch {
+      throw blockedTargetError('malformed redirect Location header')
+    }
+    // guardUrl re-validates the next hop up front and pins the next request.
+    currentUrl = await guardUrl(nextUrl)
+  }
+
+  throw blockedTargetError('too many redirects')
+}
 
 interface BusinessResearchResult {
   canonicalUrl: string
@@ -165,10 +357,20 @@ function extractContactInfo(html: string, _baseUrl: string): BusinessResearchRes
 }
 
 export async function researchBusiness(websiteUrl: string): Promise<BusinessResearchResult> {
-  const sanitized = sanitizeUrl(websiteUrl)
+  // Normalise up front so an unreachable or blocked caller still gets a
+  // well-formed `canonicalUrl` back (the public route's contract is to
+  // report `reachable: false` with the normalised URL for unreachable
+  // sites and a 400 for unsafe destinations).
+  let normalized: string
+  try {
+    normalized = sanitizeUrl(websiteUrl)
+  } catch (err) {
+    throw blockedTargetError(reasonOf(err))
+  }
+
   const result: BusinessResearchResult = {
-    canonicalUrl: sanitized,
-    finalUrl: sanitized,
+    canonicalUrl: normalized,
+    finalUrl: normalized,
     reachable: false,
     socialLinks: {},
     jsonLd: [],
@@ -178,18 +380,16 @@ export async function researchBusiness(websiteUrl: string): Promise<BusinessRese
   }
 
   try {
-    const response = await axios.get(sanitized, {
-      timeout: REQUEST_TIMEOUT,
-      maxRedirects: 5,
-      maxContentLength: MAX_HTML_BYTES,
-      headers: {
-        'User-Agent': 'SmartVideoGO-AI/1.0 (https://go.smartvid.app)',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
-      validateStatus: (s) => s >= 200 && s < 400,
-    })
+    // SSRF validation: rejects unsafe targets with a BlockedTargetError
+    // (→ HTTP 400 via the public route). Unreachable hosts raise a plain
+    // Error which the catch below downgrades to `reachable: false`.
+    const canonicalUrl = await guardUrl(normalized)
 
-    result.finalUrl = response.request?.res?.responseUrl || sanitized
+    const { response, finalUrl } = await fetchWithValidatedRedirects(canonicalUrl)
+
+    // finalUrl is always the last URL this module validated and requested, so
+    // it is never a value reported by the server/adapter.
+    result.finalUrl = finalUrl
     result.reachable = true
     result.statusCode = response.status
     result.contentType = String(response.headers['content-type'] || '')
@@ -211,7 +411,7 @@ export async function researchBusiness(websiteUrl: string): Promise<BusinessRese
       if (ogImage) result.logoUrl = ogImage[1]
 
       if (!result.logoUrl) {
-        const jsonLd = extractJsonLd(html, sanitized)
+        const jsonLd = extractJsonLd(html, canonicalUrl)
         for (const item of jsonLd) {
           if (item.logo && typeof item.logo === 'string') {
             result.logoUrl = item.logo
@@ -224,13 +424,17 @@ export async function researchBusiness(websiteUrl: string): Promise<BusinessRese
         }
       }
 
-      result.socialLinks = extractSocialLinks(html, sanitized)
-      result.jsonLd = extractJsonLd(html, sanitized)
-      result.openGraph = extractOpenGraph(html, sanitized)
-      result.twitterCard = extractTwitterCard(html, sanitized)
-      result.contactInfo = extractContactInfo(html, sanitized)
+      result.socialLinks = extractSocialLinks(html, canonicalUrl)
+      result.jsonLd = extractJsonLd(html, canonicalUrl)
+      result.openGraph = extractOpenGraph(html, canonicalUrl)
+      result.twitterCard = extractTwitterCard(html, canonicalUrl)
+      result.contactInfo = extractContactInfo(html, canonicalUrl)
     }
   } catch (err) {
+    // A blocked redirect target is a rejected request, not an upstream
+    // failure — it must stay a throw so the route can answer 400.
+    if (err instanceof BlockedTargetError) throw err
+
     result.reachable = false
     result.statusCode = err instanceof Error && 'response' in err && (err as any).response?.status
       ? (err as any).response.status

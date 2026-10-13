@@ -16,6 +16,15 @@ import axios from 'axios'
 import * as cheerio from 'cheerio'
 import OpenAI from 'openai'
 import { getBusinessAssetClassificationModel } from './discoveryClassificationConfig'
+import {
+  assertSafeUrlString,
+  checkDestination,
+  isBlockedHostname,
+  isRedirectStatus,
+  NetworkSafetyError,
+  safeRequestConfig,
+  validateRedirect,
+} from '../lib/networkSafety'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -95,66 +104,125 @@ const SOCIAL_DOMAINS = [
 // SSRF / URL validation
 // ---------------------------------------------------------------------------
 
+/**
+ * @deprecated Kept only so the historical name still resolves. The real
+ * predicate lives in `src/lib/networkSafety.ts` (shared with the upload
+ * proxy) and covers the four legacy ranges *plus* 169.254/16 link-local,
+ * 100.64/10 CGNAT, 0.0.0.0/8, TEST-NET/multicast/reserved IPv4, ::1,
+ * fc00::/7, fe80::/10, ::ffff: IPv4-mapped IPv6 and every decimal / hex /
+ * octal / short-hand IPv4 spelling.
+ */
 function isPrivateIp(hostname: string): boolean {
-  const parts = hostname.split('.').map(Number)
-  if (parts[0] === 10) return true
-  if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true
-  if (parts[0] === 192 && parts[1] === 168) return true
-  if (parts[0] === 127) return true
-  if (hostname === 'localhost' || hostname === '::1') return true
-  return false
+  return isBlockedHostname(hostname)
 }
 
+/**
+ * Synchronous gate: protocol, hostname literals and reserved local names.
+ * Throws the historical messages so existing callers keep working.
+ *
+ * NOTE: this is intentionally NOT sufficient on its own. A hostname that is a
+ * real DNS name can still resolve to a private address, so every request also
+ * goes through `checkDestination()` (which resolves and validates) and then
+ * connects to a pinned address (see `safeRequestConfig`).
+ */
 function sanitizeUrl(input: string): string {
-  let trimmed = input.trim()
-
-  // Reject non-HTTP/HTTPS protocols before URL parsing
-  if (/^[a-z][a-z0-9+.-]*:\//i.test(trimmed) && !/^https?:\/\//i.test(trimmed)) {
-    throw new Error('Only http/https protocols are allowed')
-  }
-
-  if (!/^https?:\/\//i.test(trimmed)) {
-    trimmed = 'https://' + trimmed
-  }
-  const url = new URL(trimmed)
-  const hostname = url.hostname.toLowerCase()
-
-  if (isPrivateIp(hostname)) {
-    throw new Error('Private network addresses are not allowed')
-  }
-
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
-    throw new Error('Only http/https protocols are allowed')
-  }
-
-  return url.toString()
+  return assertSafeUrlString(input)
 }
 
 export { sanitizeUrl }
 
 // ---------------------------------------------------------------------------
-// Page fetching
+// Destination-validated requests
 // ---------------------------------------------------------------------------
 
-async function fetchPage(url: string): Promise<string | null> {
+type SimpleResponse = {
+  status: number
+  headers: Record<string, unknown>
+  data: unknown
+}
+
+type SimpleRequest = (url: string, config: Record<string, unknown>) => Promise<SimpleResponse>
+
+/**
+ * Issues one request, re-validating the destination at every hop.
+ *
+ * This is the TOCTOU / redirect fix for the discovery crawl:
+ *
+ * 1. `checkDestination()` resolves the host and rejects the request unless
+ *    EVERY resolved address is public (closes "public name -> 127.0.0.1").
+ * 2. `safeRequestConfig()` hands axios a `lookup` that can only return the
+ *    address we just validated, so the resolver cannot be re-queried between
+ *    validation and connect (closes the classic rebind window).
+ * 3. `maxRedirects: 0` plus an explicit loop means every 30x Location is
+ *    validated as a brand new destination before we follow it (closes
+ *    "public URL 302 -> http://169.254.169.254/").
+ */
+async function requestWithValidatedRedirects(
+  initialUrl: string,
+  request: SimpleRequest,
+  maxRedirects: number,
+): Promise<SimpleResponse> {
+  let current = initialUrl
+
+  for (let hop = 0; hop <= maxRedirects; hop += 1) {
+    const destination = await checkDestination(current, {})
+    if (!destination.ok) {
+      throw new NetworkSafetyError(destination.reason)
+    }
+
+    const response = await request(current, safeRequestConfig(destination))
+
+    if (!isRedirectStatus(response.status)) {
+      return response
+    }
+
+    const rawLocation = response.headers?.location
+    const location = Array.isArray(rawLocation) ? rawLocation[0] : rawLocation
+    const next = await validateRedirect(String(location || ''), current)
+    if (!next) {
+      throw new NetworkSafetyError('unsafe_redirect')
+    }
+    current = next.url
+  }
+
+  throw new NetworkSafetyError('too_many_redirects')
+}
+
+const PAGE_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (compatible; AssetDiscovery/1.0; +https://example.com/bot)',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+}
+
+const IMAGE_HEADERS = { 'User-Agent': 'Mozilla/5.0 (compatible; AssetDiscovery/1.0)' }
+
+/**
+ * Fetches a page, following only redirects whose destination passes the full
+ * validation. Exported so the SSRF regression tests can drive it directly.
+ */
+export async function fetchPage(url: string): Promise<string | null> {
   try {
-    const response = await axios.get(url, {
-      timeout: REQUEST_TIMEOUT,
-      maxRedirects: REDIRECT_LIMIT,
-      responseType: 'arraybuffer',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; AssetDiscovery/1.0; +https://example.com/bot)',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
-      validateStatus: (s) => s >= 200 && s < 300,
-    })
+    const response = await requestWithValidatedRedirects(
+      url,
+      (target, config) =>
+        axios.get(target, {
+          ...config,
+          timeout: REQUEST_TIMEOUT,
+          responseType: 'arraybuffer',
+          headers: PAGE_HEADERS,
+          validateStatus: (s: number) => s >= 200 && s < 400,
+        }),
+      REDIRECT_LIMIT,
+    )
+
     const contentType = String(response.headers['content-type'] || '')
     if (!contentType.includes('text/html') && !contentType.includes('application/xhtml')) {
       return null
     }
-    const buffer = Buffer.from(response.data)
+    const buffer = Buffer.from(response.data as ArrayBuffer)
     return buffer.toString('utf-8')
-  } catch {
+  } catch (err) {
+    const reason = err instanceof NetworkSafetyError ? err.reason : null
+    console.log(`[fetchPage] ${url} -> refused${reason ? ` (${reason})` : ''}`)
     return null
   }
 }
@@ -290,12 +358,17 @@ function extractImages(baseUrl: string, html: string, pageUrl: string): ImageCan
 
 export async function validateImage(url: string): Promise<{ valid: boolean; mime?: string }> {
   try {
-    const response = await axios.head(url, {
-      timeout: REQUEST_TIMEOUT,
-      maxRedirects: REDIRECT_LIMIT,
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AssetDiscovery/1.0)' },
-      validateStatus: (s) => s >= 200 && s < 500,
-    })
+    const response = await requestWithValidatedRedirects(
+      url,
+      (target, config) =>
+        axios.head(target, {
+          ...config,
+          timeout: REQUEST_TIMEOUT,
+          headers: IMAGE_HEADERS,
+          validateStatus: (s: number) => s >= 200 && s < 500,
+        }),
+      REDIRECT_LIMIT,
+    )
 
     if (response.status < 200 || response.status >= 300) {
       return fallbackBoundedGetValidation(url)
@@ -313,21 +386,31 @@ export async function validateImage(url: string): Promise<{ valid: boolean; mime
       console.log(`[validateImage] ${url} -> error status=${axiosError.response.status}`)
       return fallbackBoundedGetValidation(url)
     }
-    console.log(`[validateImage] ${url} -> error: ${err instanceof Error ? err.message : err}`)
+    const reason = err instanceof NetworkSafetyError ? err.reason : null
+    console.log(
+      `[validateImage] ${url} -> error${reason ? ` (${reason})` : ''}: ${
+        err instanceof Error ? err.message : err
+      }`,
+    )
     return { valid: false }
   }
 }
 
 async function fallbackBoundedGetValidation(url: string): Promise<{ valid: boolean; mime?: string }> {
   try {
-    const response = await axios.get(url, {
-      timeout: REQUEST_TIMEOUT,
-      maxRedirects: REDIRECT_LIMIT,
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AssetDiscovery/1.0)' },
-      responseType: 'arraybuffer',
-      maxContentLength: MAX_IMAGE_BYTES,
-      validateStatus: (s) => s >= 200 && s < 300,
-    })
+    const response = await requestWithValidatedRedirects(
+      url,
+      (target, config) =>
+        axios.get(target, {
+          ...config,
+          timeout: REQUEST_TIMEOUT,
+          headers: IMAGE_HEADERS,
+          responseType: 'arraybuffer',
+          maxContentLength: MAX_IMAGE_BYTES,
+          validateStatus: (s: number) => s >= 200 && s < 300,
+        }),
+      REDIRECT_LIMIT,
+    )
 
     const contentType = String(response.headers['content-type'] || '')
     console.log(`[validateImage:fallback] ${url} -> status=${response.status} type=${contentType}`)

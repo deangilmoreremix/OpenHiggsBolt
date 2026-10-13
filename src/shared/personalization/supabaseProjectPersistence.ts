@@ -75,12 +75,16 @@ export function createProjectPersistence(opts: ProjectPersistenceOptions = {}) {
   }
 
   function save(state: PersonalizationProjectState): Promise<{ ok: boolean; error?: string }> {
-    return fetch(API_ROUTE, {
+    const response = fetch(API_ROUTE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ entry: state }),
       credentials: 'same-origin',
-    }).then(async (res) => {
+    })
+    if (!response || typeof (response as Promise<Response>).then !== 'function') {
+      return Promise.resolve({ ok: false, error: 'fetch unavailable' })
+    }
+    return response.then(async (res) => {
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         return { ok: false, error: data?.error || `HTTP ${res.status}` }
