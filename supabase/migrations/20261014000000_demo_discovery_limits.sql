@@ -43,7 +43,7 @@ create table if not exists public.personalization_demo_discovery_limits (
   window_expires_at timestamptz not null default now(),
   request_count     integer not null default 1,
   updated_at        timestamptz not null default now(),
-  constraint personalization_demo_discovery_limits_request_count_non_negative
+  constraint pz_demo_limits_request_count_non_negative
     check (request_count >= 0)
 );
 
