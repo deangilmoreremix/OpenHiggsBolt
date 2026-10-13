@@ -3,6 +3,8 @@ import { auth } from '@clerk/nextjs/server'
 import { brands, getBrandsForUser, type Brand } from '@/shared/brandStore'
 import { ok, apiError } from '@/lib/apiError'
 import { checkDestination, createPinnedFetch } from '@/lib/networkSafety'
+import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
+import { ENTITLEMENTS } from '@/access/entitlements'
 
 const MAX_BYTES = 1_000_000
 const FETCH_TIMEOUT_MS = 5000
@@ -58,6 +60,14 @@ export async function POST(req: NextRequest) {
   // H4: brand creation used to be anonymous and unscoped.
   const session = await requireUserId()
   if ('response' in session) return session.response
+
+  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
+  if (!entitlementCheck.allowed) {
+    if (entitlementCheck.status === 401) {
+      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
+    }
+    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO)
+  }
 
   let body: any = {}
   try {

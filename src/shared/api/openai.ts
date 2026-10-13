@@ -58,6 +58,38 @@ export async function callOpenAIChat(
 }
 
 /**
+ * Call the OpenAI Responses API directly using the server-side API key.
+ * The client never receives or persists raw API keys.
+ */
+export async function callOpenAIResponses(input: any[]): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is not configured on the server')
+  }
+
+  const response = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      input,
+      max_output_tokens: 3000,
+    }),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+    throw new Error(errorData.error || `OpenAI error: ${response.status}`)
+  }
+
+  const result = await response.json()
+  return result.output?.[0]?.content?.[0]?.text || result.output_text || ''
+}
+
+/**
  * Enhance a video prompt using AI
  */
 export async function enhancePrompt(prompt: string): Promise<string> {

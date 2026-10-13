@@ -10,6 +10,7 @@
 
 const crypto = require('node:crypto');
 const { createClient } = require('@supabase/supabase-js');
+const { requirePaidEntitlement, entitlementErrorResponse } = require('./shared/entitlementAuth');
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -397,6 +398,11 @@ module.exports = { handler: async (event) => {
     }
 
     if (method === 'DELETE') {
+      // Entitlement guard (mirrors requireApiEntitlement): 401 AUTH_REQUIRED /
+      // 403 PAYMENT_REQUIRED before any DB write.
+      const guard = await requirePaidEntitlement(event, { supabase });
+      if (!guard.ok) return entitlementErrorResponse(guard, cors);
+
       const { error } = await supabase
         .from(BRAND_TABLE)
         .delete()
@@ -421,6 +427,11 @@ module.exports = { handler: async (event) => {
     for (const key of allowedFields) {
       if (patch[key] !== undefined) whitelisted[key] = patch[key];
     }
+
+    // Entitlement guard (mirrors requireApiEntitlement): 401 AUTH_REQUIRED /
+    // 403 PAYMENT_REQUIRED before any DB write.
+    const patchGuard = await requirePaidEntitlement(event, { supabase });
+    if (!patchGuard.ok) return entitlementErrorResponse(patchGuard, cors);
     if (whitelisted.tone_of_voice !== undefined) whitelisted.tone_of_voice = toStringArray(whitelisted.tone_of_voice).join(', ');
     if (whitelisted.brand_personality !== undefined) whitelisted.brand_personality = toStringArray(whitelisted.brand_personality).join(', ');
     if (whitelisted.key_messages !== undefined) whitelisted.key_messages = toStringArray(whitelisted.key_messages).join(', ');
