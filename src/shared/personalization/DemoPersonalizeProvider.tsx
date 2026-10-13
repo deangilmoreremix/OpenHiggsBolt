@@ -45,6 +45,7 @@ import type {
   PersonalizationVisionAnalysis,
   PersonalizationVisionValidation,
   BusinessResearchResult,
+  PersonalizationAccessMode,
 } from './types'
 import { EMPTY_GENERATION_STATE } from './types'
 import { normalizePersonalizationSource, getEligibility } from './sourceNormalizer'
@@ -154,6 +155,13 @@ function revokeLocalBlobUrl(localUrl: string | null | undefined, replacementUrl?
 type OpenPersonalizeOptions = {
   source: unknown
   trigger?: HTMLElement | null
+  /**
+   * Which backend the modal may call. Chosen by the caller that opens the
+   * modal (the landing page asks for 'anonymous'), never inferred by the modal
+   * and always re-checked server-side. Defaults to 'authenticated' so every
+   * existing entry point keeps the full pipeline unchanged.
+   */
+  access?: PersonalizationAccessMode
 }
 
 export type DemoPersonalizeContextValue = {
@@ -163,6 +171,19 @@ export type DemoPersonalizeContextValue = {
   sourceTypeLabel?: string
   openPersonalize: (opts: OpenPersonalizeOptions) => void
   closePersonalize: () => void
+
+  // Access mode (which discovery endpoint this session may call)
+  access: PersonalizationAccessMode
+
+  // Automated "Find My Brand" workflow: one call that populates the client
+  // form (through the existing selectBusiness mapping), runs the shared
+  // research path and then asset discovery for one website URL. `options.business`
+  // is the OpenStreetMap record when the visitor picked a search result; without
+  // it a minimal record is derived from the URL itself.
+  runDiscoveryWorkflow: (
+    websiteUrl: string,
+    options?: { business?: BusinessDiscoveryRecord },
+  ) => Promise<void>
 
   // Client
   clients: ClientProfile[]
@@ -371,6 +392,28 @@ export function useDemoPersonalize(): DemoPersonalizeContextValue {
 interface DemoPersonalizeProviderProps {
   children: ReactNode
   testMode?: boolean
+  /**
+   * Access mode for this mount. The public landing surface mounts the provider
+   * with `access="anonymous"` (free discovery only); every existing entry point
+   * omits it and keeps the full authenticated pipeline. The server remains the
+   * authority on every request — this only selects which endpoint the client
+   * calls and which UI the modal offers.
+   */
+  access?: PersonalizationAccessMode
+}
+
+/**
+ * The `?demo=1` landing-page flag: lets a public entry point open the shared
+ * modal in anonymous mode by URL alone, without prop wiring. It selects the
+ * client-side endpoint/UI only; each endpoint still enforces its own rules.
+ */
+function detectAnonymousAccessFlag(): PersonalizationAccessMode | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return new URLSearchParams(window.location.search).get('demo') === '1' ? 'anonymous' : null
+  } catch {
+    return null
+  }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -496,9 +539,174 @@ function replaceAssetInLibrary(library: AssetLibrary, asset: PersonalizationAsse
   }
 }
 
+// ── Business → client form mapping (the ONLY one) ────────────────────────────
+//
+// `selectBusiness()` is the existing mapping used by the lead-finder result
+// cards. The automated "Find My Brand" workflow must populate exactly the same
+// fields with exactly the same values, so the mapping lives here once and both
+// paths call it — there is no second implementation to drift.
+
+/** Maps a business record onto the client profile fields, as `selectBusiness` does. */
+export function clientFormFromBusiness(business: BusinessDiscoveryRecord): Partial<ClientProfile> {
+  return {
+    businessName: business.name,
+    industry: business.category,
+    location: [business.city, business.region].filter(Boolean).join(', ') || undefined,
+    phone: business.phone,
+    website: business.website,
+  }
+}
+
+/** Hostname without `www.`, used to name a business before research resolves a title. */
+function hostnameOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return url
+  }
+}
+
+/** Adds a scheme when the visitor pasted a bare `example.com`. */
+export function normalizeWebsiteInput(value: string): string {
+  const trimmed = (value || '').trim()
+  if (!trimmed) return ''
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return trimmed
+  return `https://${trimmed}`
+}
+
+// ── Free (anonymous) discovery payload mapping ───────────────────────────────
+//
+// Structural subset of `POST /api/demo/discover`. Declared here instead of
+// importing the server module so the client bundle never pulls the discovery
+// pipeline (axios/cheerio/networkSafety) in, and so every field is validated
+// the same defensive way the endpoint's own consumer expects.
+
+interface DemoDiscoveryAssetPayload {
+  kind?: unknown
+  url?: unknown
+  source?: unknown
+}
+
+interface DemoDiscoveryResponse {
+  ok?: unknown
+  cached?: unknown
+  url?: unknown
+  title?: unknown
+  description?: unknown
+  logo?: unknown
+  assets?: unknown
+}
+
+/**
+ * `/api/demo/discover` asset kind → the shared `DiscoveredAssetCategory`.
+ *
+ * The free pipeline has no vision model, so the section an asset is OFFERED in
+ * comes from the pipeline's own signal:
+ *   logo   → Logo (the page's declared brand mark)
+ *   product→ Products (a JSON-LD/og product shot)
+ *   photo  → Person (the page's own photos are the only free signal for a
+ *            presenter/person shot; the visitor reviews and can re-categorise
+ *            or move it, exactly like a paid discovery result)
+ *   brand  → Brand (card/microdata brand imagery)
+ */
+const DEMO_ASSET_KIND_TO_CATEGORY: Record<string, DiscoveredAssetCategory> = {
+  logo: 'logo',
+  product: 'product',
+  photo: 'person',
+  brand: 'brand',
+}
+
+/** The client-asset section each demo kind is offered in. */
+const DEMO_ASSET_KIND_TO_SECTION: Record<string, AssignedSection> = {
+  logo: 'logo',
+  product: 'products',
+  photo: 'person',
+  brand: 'brand',
+}
+
+function demoAssetId(index: number): string {
+  return `demo_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 8)}`
+}
+
+/**
+ * Maps the free discovery payload onto the SAME `DiscoveredAsset` list the paid
+ * pipeline produces, so the shared review UI, section assignment, re-category
+ * and drag-and-drop behave identically in both modes.
+ */
+export function demoAssetsToDiscoveredAssets(payload: DemoDiscoveryResponse): DiscoveredAsset[] {
+  const rawAssets = Array.isArray(payload.assets) ? payload.assets : []
+  const mapped: DiscoveredAsset[] = []
+
+  for (let index = 0; index < rawAssets.length; index += 1) {
+    const raw = rawAssets[index] as DemoDiscoveryAssetPayload | null
+    if (!raw || typeof raw !== 'object') continue
+    const url = typeof raw.url === 'string' ? raw.url.trim() : ''
+    if (!url) continue
+    const kind = typeof raw.kind === 'string' ? raw.kind : ''
+    const category = DEMO_ASSET_KIND_TO_CATEGORY[kind]
+    if (!category) continue
+    mapped.push({
+      id: demoAssetId(index),
+      sourceUrl: url,
+      previewUrl: url,
+      sourceType: 'WEBSITE',
+      category,
+      selected: true,
+      recommended: true,
+      rejected: false,
+      assignedSection: DEMO_ASSET_KIND_TO_SECTION[kind] ?? null,
+      autoAssigned: true,
+    })
+  }
+
+  return mapped
+}
+
+/**
+ * URL-only entry: the smallest business record the shared `selectBusiness`
+ * mapping accepts. The hostname names the business until research resolves a
+ * page title; every other field stays undefined rather than guessing.
+ */
+function businessRecordFromWebsite(website: string): BusinessDiscoveryRecord {
+  return {
+    id: `url:${website}`,
+    source: 'OPENSTREETMAP',
+    name: hostnameOf(website),
+    category: '',
+    website,
+    websiteStatus: 'unknown',
+    verificationStatus: 'verified',
+  }
+}
+
+/**
+ * Reuses the existing `BusinessResearchResult` shape (rendered by the Selected
+ * Business Summary panel) so a free discovery result is displayed by the very
+ * same research UI instead of a second results surface.
+ */
+function businessResearchFromDemoPayload(payload: DemoDiscoveryResponse): BusinessResearchResult {
+  const website = typeof payload.url === 'string' && payload.url.trim() ? payload.url.trim() : ''
+  const logo = typeof payload.logo === 'string' && payload.logo.trim() ? payload.logo.trim() : ''
+  const assets = Array.isArray(payload.assets) ? payload.assets : []
+  return {
+    canonicalUrl: website,
+    finalUrl: website,
+    reachable: assets.length > 0 || Boolean(logo),
+    title: typeof payload.title === 'string' && payload.title.trim() ? payload.title.trim() : undefined,
+    description: typeof payload.description === 'string' && payload.description.trim() ? payload.description.trim() : undefined,
+    logoUrl: logo || undefined,
+    socialLinks: {},
+    jsonLd: [],
+    openGraph: {},
+    twitterCard: {},
+    contactInfo: { phones: [], emails: [], addresses: [] },
+  }
+}
+
+/** Turns a shared research result into the business-record shape the mapping consumes. */
 // ── Provider ─────────────────────────────────────────────────────────────────
 
-export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeProviderProps) {
+export function DemoPersonalizeProvider({ children, testMode, access: accessProp }: DemoPersonalizeProviderProps) {
   // Navigation & publish integration
   const router = useRouter()
   const socialPublish = useOptionalSocialPublish()
@@ -507,6 +715,13 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   const [isOpen, setIsOpen] = useState(false)
   const [source, setSource] = useState<PersonalizationSource | null>(null)
   const [sourceTypeLabel, setSourceTypeLabel] = useState<string | undefined>(undefined)
+  // Which discovery backend this session may call. Seeded from the mount prop
+  // (or the ?demo=1 landing flag) and re-set by the caller of openPersonalize;
+  // never inferred here and never used to grant permission on its own (every
+  // endpoint enforces its own rules, and the 401 path below is unchanged).
+  const [access, setAccess] = useState<PersonalizationAccessMode>(
+    () => accessProp || detectAnonymousAccessFlag() || 'authenticated',
+  )
   const triggerRef = useRef<HTMLElement | null>(null)
 
   // Client
@@ -666,7 +881,9 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
   // Debounced Supabase project persistence
   useEffect(() => {
-    if (!source) return
+    // Anonymous sessions persist nothing: the free discovery run writes no
+    // project row, no identity and no saved asset.
+    if (!source || access !== 'authenticated') return
     projectPersistence.current.persist({
       originStudio: 'demo-personalization',
       sourceType: source.sourceType,
@@ -722,11 +939,14 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     clientForm.ctaHeadline,
     clientForm.callToAction,
     genOptions,
+    access,
   ])
 
   // Debounced Supabase project persistence
   useEffect(() => {
-    if (!source) return
+    // Anonymous sessions persist nothing: the free discovery run writes no
+    // project row, no identity and no saved asset.
+    if (!source || access !== 'authenticated') return
     projectPersistence.current.persist({
       originStudio: 'demo-personalization',
       sourceType: source.sourceType,
@@ -782,6 +1002,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     clientForm.ctaHeadline,
     clientForm.callToAction,
     genOptions,
+    access,
   ])
 
   // Cancel pending project persistence on unmount
@@ -944,9 +1165,11 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
   // Hydrate state from Supabase whenever the modal opens with a source.
   // The reset-on-source-change effect (above) runs first, clearing state;
-  // this effect then fills it back in from durable storage.
+  // this effect then fills it back in from durable storage. Anonymous sessions
+  // have no durable storage to hydrate from (and issue no authenticated
+  // request), so the free run always starts from a clean slate.
   useEffect(() => {
-    if (!source?.id || !isOpen) return
+    if (!source?.id || !isOpen || access !== 'authenticated') return
     let cancelled = false
     setRestoring(true)
     setLoadedProject(null)
@@ -958,7 +1181,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     return () => {
       cancelled = true
     }
-  }, [source?.id, isOpen, restoreProject])
+  }, [source?.id, isOpen, restoreProject, access])
 
   // ── Modal actions ──────────────────────────────────────────────────────────
 
@@ -970,6 +1193,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
           ? 'GO AI Viral'
           : undefined
       setSourceTypeLabel(label)
+      setAccess(opts.access || accessProp || 'authenticated')
       // Set source BEFORE isOpen so the restore effect (which watches
       // source?.id && isOpen) runs in the same render cycle as the modal
       // appearing — and AFTER the reset-on-source-change effect clears state.
@@ -977,7 +1201,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       setIsOpen(true)
       triggerRef.current = opts.trigger || null
     }
-  }, [])
+  }, [accessProp])
 
   const closePersonalize = useCallback(() => {
     // Revoke outstanding blob URLs
@@ -999,11 +1223,12 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     setIsOpen(false)
     setSource(null)
     setSourceTypeLabel(undefined)
+    setAccess(accessProp || 'authenticated')
     setResult(null)
     setGeneration({ ...EMPTY_GENERATION_STATE })
     triggerRef.current?.focus()
     triggerRef.current = null
-  }, [])
+  }, [accessProp])
 
   // ── Client actions ─────────────────────────────────────────────────────────
 
@@ -1060,6 +1285,32 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
   const updateClientForm = useCallback((patch: Partial<ClientProfile>) => {
     setClientForm((prev) => ({ ...prev, ...patch }))
+  }, [])
+
+  /**
+   * Additive research merge.
+   *
+   * Research results fill ONLY empty client-form fields: a value the visitor
+   * edited is never overwritten, and a missing research value never clobbers
+   * an existing one. The canonical URL therefore no longer replaces a
+   * hand-corrected website — the visitor's value always wins.
+   */
+  const mergeResearchIntoClientForm = useCallback((research: BusinessResearchResult) => {
+    setClientForm((prev) => {
+      const next: Partial<ClientProfile> = { ...prev }
+      const fill = (key: keyof ClientProfile, value: unknown) => {
+        if (typeof value !== 'string') return
+        const trimmed = value.trim()
+        if (!trimmed) return
+        const current = next[key]
+        if (typeof current === 'string' && current.trim()) return
+        ;(next as Record<string, unknown>)[key] = trimmed
+      }
+      fill('website', research.canonicalUrl || research.finalUrl)
+      fill('brandDescription', research.description)
+      fill('phone', research.contactInfo?.phones?.[0])
+      return next
+    })
   }, [])
 
   // ── Saved client assets actions ─────────────────────────────────────────────
@@ -2247,141 +2498,6 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     setVisionError(null)
   }, [])
 
-  const discoverAssets = useCallback(async (websiteUrl: string) => {
-    setDiscoveryError(null)
-    setVisionError(null)
-    setVisionStatus('idle')
-    setDiscoveryStatus('discovering')
-
-    try {
-      const res = await fetch('/api/personalization/discover-assets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ websiteUrl, testMode }),
-        credentials: 'same-origin',
-      })
-
-      if (!res.ok) {
-        let data: Record<string, unknown>
-        try {
-          data = await res.json()
-        } catch {
-          data = {}
-        }
-        const status = res.status
-        if (status === 401) {
-          throw new Error('Authentication required. Please sign in to continue.')
-        }
-        if (status === 403) {
-          throw new Error('You do not have access to this feature. Contact your administrator.')
-        }
-        throw new Error(typeof data?.error === 'string' ? data.error : `Discovery failed (HTTP ${status})`)
-      }
-
-      const data = await res.json()
-      const discoveredAssets: DiscoveredAsset[] = Array.isArray(data?.discoveredAssets) ? data.discoveredAssets : []
-      const providerUsed = typeof data?.providerUsed === 'string' ? data.providerUsed : 'UNKNOWN'
-      const jobId = typeof data?.jobId === 'string' ? data.jobId : null
-      const browserQueued = Boolean(data?.browserQueued)
-      const responseStatus = typeof data?.status === 'string' ? data.status : (res.status === 202 ? 'processing' : 'complete')
-
-      // If background discovery is queued, show fast assets and poll for completion
-      if (jobId && (responseStatus === 'processing' || browserQueued)) {
-        if (discoveredAssets.length > 0) {
-          setDiscoveredAssetsState(discoveredAssets)
-          setDiscoveryStatus('reviewing')
-        } else {
-          setDiscoveryStatus('discovering')
-        }
-
-        // Poll status endpoint until complete
-        let pollCount = 0
-        const maxPolls = 60
-        const pollInterval = 2000
-
-        const pollStatus = async (): Promise<void> => {
-          while (pollCount < maxPolls) {
-            await new Promise((resolve) => setTimeout(resolve, pollInterval))
-            pollCount++
-
-            try {
-              const statusRes = await fetch(`/api/personalization/discover-assets/status?jobId=${encodeURIComponent(jobId)}`, {
-                credentials: 'same-origin',
-              })
-
-              if (!statusRes.ok) {
-                let statusData: Record<string, unknown>
-                try {
-                  statusData = await statusRes.json()
-                } catch {
-                  statusData = {}
-                }
-                throw new Error(typeof statusData?.error === 'string' ? statusData.error : `Status lookup failed (HTTP ${statusRes.status})`)
-              }
-
-              const statusData = await statusRes.json()
-              const jobStatus = typeof statusData?.status === 'string' ? statusData.status : 'unknown'
-
-              if (jobStatus === 'complete') {
-                const finalAssets: DiscoveredAsset[] = Array.isArray(statusData?.result?.discoveredAssets)
-                  ? statusData.result.discoveredAssets
-                  : []
-
-                if (finalAssets.length > 0) {
-                  setDiscoveredAssetsState(finalAssets)
-                  setDiscoveryStatus('reviewing')
-                  setDiscoveryError(null)
-                } else {
-                  setDiscoveryError('No useful assets were found on that website.')
-                  setDiscoveryStatus('idle')
-                }
-                return
-              }
-
-              if (jobStatus === 'error') {
-                const errorMessage = typeof statusData?.errorMessage === 'string'
-                  ? statusData.errorMessage
-                  : typeof statusData?.error === 'string'
-                    ? statusData.error
-                    : 'Discovery job failed'
-                setDiscoveryError(errorMessage)
-                setDiscoveryStatus('idle')
-                return
-              }
-
-              // Still running; continue polling
-            } catch {
-              setDiscoveryError('Failed to check discovery status. Please try again.')
-              setDiscoveryStatus('idle')
-              return
-            }
-          }
-
-          setDiscoveryError('Discovery timed out. Please try again.')
-          setDiscoveryStatus('idle')
-        }
-
-        pollStatus()
-        return
-      }
-
-      // Immediate complete response
-      if (discoveredAssets.length === 0) {
-        setDiscoveryError('No useful assets were found on that website.')
-        setDiscoveryStatus('idle')
-        return
-      }
-
-      setDiscoveredAssetsState(discoveredAssets)
-      setDiscoveryStatus('reviewing')
-      console.log(`[discovery] completed via ${providerUsed}: ${discoveredAssets.length} assets`)
-    } catch (error) {
-      setDiscoveryError(error instanceof Error ? error.message : 'Discovery failed')
-      setDiscoveryStatus('idle')
-    }
-  }, [setDiscoveredAssetsState, setDiscoveryError, setDiscoveryStatus, testMode])
-
-
   const analyzeDiscoveredAssets = useCallback(async () => {
     if (discoveredAssets.length === 0) {
       setVisionStatus('complete')
@@ -2581,35 +2697,119 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     setBusinessSearchMode('selected')
     setBusinessResearch({ status: 'idle' })
 
-    // Populate client form from business
-    const clientFormPatch: Partial<ClientProfile> = {
-      businessName: business.name,
-      industry: business.category,
-      location: [business.city, business.region].filter(Boolean).join(', ') || undefined,
-      phone: business.phone,
-      website: business.website,
-    }
+    // Populate client form from business, through the single shared mapping
+    // (see `clientFormFromBusiness`) that the automated "Find My Brand"
+    // workflow uses too.
+    updateClientForm(clientFormFromBusiness(business))
 
-    updateClientForm(clientFormPatch)
-
-    // Do NOT auto-trigger asset discovery here.
-    // User must explicitly click "Research Business" then "Find Business Assets".
+    // Asset discovery is NOT triggered here: the caller decides. The
+    // "Find My Brand" workflow calls `runDiscoveryWorkflow` (which performs the
+    // research + discovery run for a selected business or a pasted URL), and
+    // the manual "Find Business Assets" button remains for the step-by-step
+    // path.
   }, [updateClientForm])
 
-  const researchBusiness = useCallback(async () => {
-    const website = clientForm.website || selectedBusiness?.website
-    if (!website) {
-      setBusinessResearch({ status: 'error', error: 'No website available to research.' })
+  /**
+   * Free-tier discovery: the restricted anonymous pipeline behind
+   * `POST /api/demo/discover`. It performs its own SSRF-gated research plus the
+   * capped static asset extraction server-side, so the client makes exactly
+   * one request and never touches an authenticated endpoint or a paid model.
+   */
+  const discoverDemoAssets = useCallback(async (rawWebsiteUrl: string): Promise<void> => {
+    const websiteUrl = (rawWebsiteUrl || '').trim()
+    setDiscoveryError(null)
+    setVisionError(null)
+    setVisionStatus('idle')
+    setDiscoveryStatus('discovering')
+
+    const fail = (message: string) => {
+      setDiscoveryError(message)
+      setDiscoveryStatus('idle')
+    }
+
+    if (!websiteUrl) {
+      fail('Enter a business website URL to find your brand assets.')
       return
     }
 
-    setBusinessResearch({ status: 'researching' })
-
+    let response: Response
     try {
-      const res = await fetch('/api/personalization/research-business', {
+      response = await fetch('/api/demo/discover', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ websiteUrl: website }),
+        body: JSON.stringify({ websiteUrl }),
+        credentials: 'same-origin',
+      })
+    } catch {
+      fail('Website research failed. Please try again.')
+      return
+    }
+
+    if (!response.ok) {
+      let data: Record<string, unknown> = {}
+      try {
+        data = await response.json()
+      } catch {
+        data = {}
+      }
+      const serverMessage = typeof data?.error === 'string' ? data.error.trim() : ''
+      if (response.status === 429) {
+        fail(`The free demo is rate limited right now. Please try again later.${serverMessage ? ` ${serverMessage}` : ''}`)
+        return
+      }
+      fail(serverMessage || `Website research failed (HTTP ${response.status}). Please try again.`)
+      return
+    }
+
+    let data: DemoDiscoveryResponse
+    try {
+      data = await response.json()
+    } catch {
+      data = {}
+    }
+    // Contract guard: a 200 with a different shape must surface the safe
+    // message rather than render junk.
+    if (!data || data.ok !== true || !Array.isArray(data.assets)) {
+      fail('Website research returned an unexpected response. Please try again later.')
+      return
+    }
+
+    const assets = demoAssetsToDiscoveredAssets(data)
+    if (assets.length === 0) {
+      fail('No assets were found on that website. Try a different business or paste another URL.')
+      return
+    }
+
+    // (b) Show the research result in the existing summary panel and merge it
+    //     into the form ADDITIVELY: only empty fields are filled, so the value
+    //     selectBusiness already wrote (business name, industry, location,
+    //     phone, website) and anything the visitor edited are never clobbered.
+    const research = businessResearchFromDemoPayload(data)
+    mergeResearchIntoClientForm(research)
+    setBusinessResearch({ status: 'done', result: research })
+
+    // (c) The same reviewable DiscoveredAsset list the paid pipeline produces.
+    setDiscoveredAssetsState(assets)
+    setDiscoveryStatus('reviewing')
+  }, [mergeResearchIntoClientForm])
+
+  const discoverAssets = useCallback(async (websiteUrl: string) => {
+    // The access mode — not the modal — decides which endpoint is used.
+    if (access === 'anonymous') {
+      await discoverDemoAssets(websiteUrl)
+      return
+    }
+
+    setDiscoveryError(null)
+    setVisionError(null)
+    setVisionStatus('idle')
+    setDiscoveryStatus('discovering')
+
+    try {
+      const res = await fetch('/api/personalization/discover-assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ websiteUrl, testMode }),
         credentials: 'same-origin',
       })
 
@@ -2620,15 +2820,166 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         } catch {
           data = {}
         }
-        throw new Error(typeof data?.error === 'string' ? data.error : `Research failed (HTTP ${res.status})`)
+        const status = res.status
+        if (status === 401) {
+          throw new Error('Authentication required. Please sign in to continue.')
+        }
+        if (status === 403) {
+          throw new Error('You do not have access to this feature. Contact your administrator.')
+        }
+        throw new Error(typeof data?.error === 'string' ? data.error : `Discovery failed (HTTP ${status})`)
       }
 
-      const data = await res.json() as { research: BusinessResearchResult }
-      const research = data.research
+      const data = await res.json()
+      const discoveredAssets: DiscoveredAsset[] = Array.isArray(data?.discoveredAssets) ? data.discoveredAssets : []
+      const providerUsed = typeof data?.providerUsed === 'string' ? data.providerUsed : 'UNKNOWN'
+      const jobId = typeof data?.jobId === 'string' ? data.jobId : null
+      const browserQueued = Boolean(data?.browserQueued)
+      const responseStatus = typeof data?.status === 'string' ? data.status : (res.status === 202 ? 'processing' : 'complete')
 
-      if (!research || !research.finalUrl) {
-        throw new Error('No research data returned')
+      // If background discovery is queued, show fast assets and poll for completion
+      if (jobId && (responseStatus === 'processing' || browserQueued)) {
+        if (discoveredAssets.length > 0) {
+          setDiscoveredAssetsState(discoveredAssets)
+          setDiscoveryStatus('reviewing')
+        } else {
+          setDiscoveryStatus('discovering')
+        }
+
+        // Poll status endpoint until complete
+        let pollCount = 0
+        const maxPolls = 60
+        const pollInterval = 2000
+
+        const pollStatus = async (): Promise<void> => {
+          while (pollCount < maxPolls) {
+            await new Promise((resolve) => setTimeout(resolve, pollInterval))
+            pollCount++
+
+            try {
+              const statusRes = await fetch(`/api/personalization/discover-assets/status?jobId=${encodeURIComponent(jobId)}`, {
+                credentials: 'same-origin',
+              })
+
+              if (!statusRes.ok) {
+                let statusData: Record<string, unknown>
+                try {
+                  statusData = await statusRes.json()
+                } catch {
+                  statusData = {}
+                }
+                throw new Error(typeof statusData?.error === 'string' ? statusData.error : `Status lookup failed (HTTP ${statusRes.status})`)
+              }
+
+              const statusData = await statusRes.json()
+              const jobStatus = typeof statusData?.status === 'string' ? statusData.status : 'unknown'
+
+              if (jobStatus === 'complete') {
+                const finalAssets: DiscoveredAsset[] = Array.isArray(statusData?.result?.discoveredAssets)
+                  ? statusData.result.discoveredAssets
+                  : []
+
+                if (finalAssets.length > 0) {
+                  setDiscoveredAssetsState(finalAssets)
+                  setDiscoveryStatus('reviewing')
+                  setDiscoveryError(null)
+                } else {
+                  setDiscoveryError('No useful assets were found on that website.')
+                  setDiscoveryStatus('idle')
+                }
+                return
+              }
+
+              if (jobStatus === 'error') {
+                const errorMessage = typeof statusData?.errorMessage === 'string'
+                  ? statusData.errorMessage
+                  : typeof statusData?.error === 'string'
+                    ? statusData.error
+                    : 'Discovery job failed'
+                setDiscoveryError(errorMessage)
+                setDiscoveryStatus('idle')
+                return
+              }
+
+              // Still running; continue polling
+            } catch {
+              setDiscoveryError('Failed to check discovery status. Please try again.')
+              setDiscoveryStatus('idle')
+              return
+            }
+          }
+
+          setDiscoveryError('Discovery timed out. Please try again.')
+          setDiscoveryStatus('idle')
+        }
+
+        pollStatus()
+        return
       }
+
+      // Immediate complete response
+      if (discoveredAssets.length === 0) {
+        setDiscoveryError('No useful assets were found on that website.')
+        setDiscoveryStatus('idle')
+        return
+      }
+
+      setDiscoveredAssetsState(discoveredAssets)
+      setDiscoveryStatus('reviewing')
+      console.log(`[discovery] completed via ${providerUsed}: ${discoveredAssets.length} assets`)
+    } catch (error) {
+      setDiscoveryError(error instanceof Error ? error.message : 'Discovery failed')
+      setDiscoveryStatus('idle')
+    }
+  }, [access, discoverDemoAssets, setDiscoveredAssetsState, setDiscoveryError, setDiscoveryStatus, testMode])
+
+
+  /**
+   * Shared website-research path: one request to the existing
+   * `/api/personalization/research-business` route that returns the parsed
+   * result. Both the manual "Research Business" button and the automated
+   * "Find My Brand" workflow run through this — there is no second research
+   * implementation.
+   */
+  const fetchBusinessResearch = useCallback(async (website: string): Promise<BusinessResearchResult> => {
+    const res = await fetch('/api/personalization/research-business', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ websiteUrl: website }),
+      credentials: 'same-origin',
+    })
+
+    if (!res.ok) {
+      let data: Record<string, unknown>
+      try {
+        data = await res.json()
+      } catch {
+        data = {}
+      }
+      throw new Error(typeof data?.error === 'string' ? data.error : `Research failed (HTTP ${res.status})`)
+    }
+
+    const data = await res.json() as { research: BusinessResearchResult }
+    const research = data.research
+
+    if (!research || !research.finalUrl) {
+      throw new Error('No research data returned')
+    }
+
+    return research
+  }, [])
+
+  const researchBusiness = useCallback(async (overrideUrl?: string) => {
+    const website = overrideUrl || clientForm.website || selectedBusiness?.website
+    if (!website) {
+      setBusinessResearch({ status: 'error', error: 'No website available to research.' })
+      return
+    }
+
+    setBusinessResearch({ status: 'researching' })
+
+    try {
+      const research = await fetchBusinessResearch(website)
 
       // Update business research state
       setBusinessResearch({
@@ -2636,15 +2987,74 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
         result: research,
       })
 
-      // Update website field with canonical URL if different
-      if (research.canonicalUrl && research.canonicalUrl !== clientForm.website) {
-        updateClientForm({ website: research.canonicalUrl })
-      }
+      // Additive merge: fill only empty client fields, never overwrite a value
+      // the visitor edited and never clobber when the research value is
+      // missing (this replaces the old canonical-URL overwrite).
+      mergeResearchIntoClientForm(research)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Research failed'
       setBusinessResearch({ status: 'error', error: message })
     }
-  }, [clientForm.website, selectedBusiness, updateClientForm])
+  }, [clientForm.website, fetchBusinessResearch, mergeResearchIntoClientForm, selectedBusiness])
+
+  /**
+   * The automated "Find My Brand" workflow.
+   *
+   * One call that, for a single website URL, (a) populates the client form
+   * through the existing `selectBusiness` mapping, (b) runs the shared research
+   * path and (c) runs asset discovery, leaving the visitor with one reviewable
+   * result inside the same modal. Nothing is re-entered and no second screen is
+   * opened.
+   *
+   * Which endpoint is used is decided by `access`, never by the UI:
+   *   anonymous     → `POST /api/demo/discover` (restricted free pipeline)
+   *   authenticated → the shared research path + `discover-assets`
+   */
+  const runDiscoveryWorkflow = useCallback(async (
+    rawWebsiteUrl: string,
+    options?: { business?: BusinessDiscoveryRecord },
+  ) => {
+    const website = normalizeWebsiteInput(rawWebsiteUrl)
+    if (!website) {
+      setDiscoveryError('Enter a business website URL to find your brand assets.')
+      return
+    }
+
+    // (a) Populate the form through the EXISTING selectBusiness mapping — from
+    //     the OpenStreetMap record when the visitor picked a business, or from
+    //     the pasted URL itself when they arrived with one. There is no second
+    //     mapping, so both paths fill the same fields with the same rules.
+    selectBusiness(options?.business || businessRecordFromWebsite(website))
+
+    setDiscoveryError(null)
+    setVisionError(null)
+    setVisionStatus('idle')
+    setDiscoveryStatus('discovering')
+
+    if (access === 'anonymous') {
+      // The free pipeline performs its own research + capped discovery in one
+      // server round trip, so this single call covers research + discovery.
+      await discoverDemoAssets(website)
+      return
+    }
+
+    try {
+      const research = await fetchBusinessResearch(website)
+      // (b) Research summary in the existing panel + additive form merge
+      //     (only empty fields are filled; edited values always win).
+      setBusinessResearch({ status: 'done', result: research })
+      mergeResearchIntoClientForm(research)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Research failed'
+      setBusinessResearch({ status: 'error', error: message })
+      setDiscoveryError(message)
+      setDiscoveryStatus('idle')
+      return
+    }
+
+    // (c) Existing discovery run for the same URL.
+    await discoverAssets(website)
+  }, [access, discoverAssets, discoverDemoAssets, fetchBusinessResearch, mergeResearchIntoClientForm, selectBusiness, setDiscoveryError, setDiscoveryStatus, setVisionError, setVisionStatus])
 
   const clearBusinessSearch = useCallback(() => {
     setBusinessSearchMode('idle')
@@ -3051,6 +3461,10 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     selectSavedAsset,
     setPrimarySavedAsset,
     removeSavedAsset,
+
+    // Access mode + automated discovery workflow
+    access,
+    runDiscoveryWorkflow,
 
     // Assets
     assets,
