@@ -1,9 +1,25 @@
 import { NextResponse } from 'next/server';
 import { safeApiJson } from '@/lib/safeApiResponse';
+import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
+import { ENTITLEMENTS } from '@/access/entitlements';
 
 export const dynamic = "force-dynamic";
 
 const MUAPI_BASE = 'https://api.muapi.ai';
+
+// Server-side entitlement guard (same as other paid routes): 401 when
+// unauthenticated, 403 {error:'PAYMENT_REQUIRED', upgradeRequired:true} when
+// authenticated without SmartVideo GO access. Runs BEFORE the BYOK key check.
+async function requireAuthAndEntitlement(request) {
+    const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
+    if (!entitlementCheck.allowed) {
+        if (entitlementCheck.status === 401) {
+            return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+        }
+        return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
+    }
+    return null;
+}
 
 function getApiKey(request) {
     const headerKey = request.headers.get('x-api-key');
@@ -23,6 +39,9 @@ function cleanHeaders(request) {
 }
 
 export async function GET(request) {
+    const entitlementError = await requireAuthAndEntitlement(request);
+    if (entitlementError) return entitlementError;
+
     const apiKey = getApiKey(request);
     if (!apiKey) {
         return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 });

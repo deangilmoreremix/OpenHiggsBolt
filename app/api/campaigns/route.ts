@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/src/lib/supabaseServer'
 import { generateCampaign } from '@/lib/campaignGenerator'
 import { ok, apiError } from '@/lib/apiError'
+import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
+import { ENTITLEMENTS } from '@/access/entitlements'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -21,6 +23,14 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
+  if (!entitlementCheck.allowed) {
+    if (entitlementCheck.status === 401) {
+      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
+    }
+    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO)
+  }
+
   let body: any = {}
   try { body = await req.json() } catch {}
   const { brand_id, goal, direction } = body

@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
-import { validateUploadProxyTarget, getApiKeyFromRequest } from '@/lib/uploadProxyTarget';
+import { validateUploadProxyTarget, getApiKeyFromRequest, isBlockedFileType } from '@/lib/uploadProxyTarget';
 import { resolveMuAPIKey } from '../vfx/_helpers';
 import { safeApiJson, upstreamErrorResponse } from '@/lib/safeApiResponse';
+import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
+import { ENTITLEMENTS } from '@/access/entitlements';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +37,24 @@ const ALLOWED_S3_FORM_FIELDS = new Set([
   'Content-Disposition',
 ]);
 
+// Server-side entitlement guard (same as other paid routes): 401 when
+// unauthenticated, 403 {error:'PAYMENT_REQUIRED', upgradeRequired:true} when
+// authenticated without SmartVideo GO access. Runs BEFORE the BYOK key check.
+async function requireAuthAndEntitlement(request) {
+    const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
+    if (!entitlementCheck.allowed) {
+        if (entitlementCheck.status === 401) {
+            return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+        }
+        return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
+    }
+    return null;
+}
+
 export async function POST(request) {
+    const entitlementError = await requireAuthAndEntitlement(request);
+    if (entitlementError) return entitlementError;
+
     try {
         const apiKey = getApiKeyFromRequest(request);
         if (!apiKey) {

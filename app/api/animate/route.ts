@@ -2,8 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/src/lib/supabaseServer'
 import { createAnimation, pollAnimation } from '@/lib/animate'
 import { ok, apiError } from '@/lib/apiError'
+import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
+import { ENTITLEMENTS } from '@/access/entitlements'
 
 export async function POST(req: NextRequest) {
+  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
+  if (!entitlementCheck.allowed) {
+    if (entitlementCheck.status === 401) {
+      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
+    }
+    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO)
+  }
+
   const { userId } = await (await import('@clerk/nextjs/server')).auth()
   if (!userId) return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
 
@@ -24,6 +34,14 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
+  if (!entitlementCheck.allowed) {
+    if (entitlementCheck.status === 401) {
+      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
+    }
+    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO)
+  }
+
   const { userId } = await (await import('@clerk/nextjs/server')).auth()
   if (!userId) return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
 

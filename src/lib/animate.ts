@@ -1,5 +1,5 @@
 import { getSupabaseAdmin } from '@/src/lib/supabaseServer'
-import muapi from '@/lib/muapi'
+import { muapi } from '@/lib/muapi'
 
 interface MuapiPrediction {
   request_id?: string

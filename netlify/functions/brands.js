@@ -12,6 +12,7 @@
 
 const crypto = require('node:crypto');
 const { createClient } = require('@supabase/supabase-js');
+const { requirePaidEntitlement, entitlementErrorResponse } = require('./shared/entitlementAuth');
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -401,6 +402,11 @@ module.exports = { handler: async (event) => {
       if (error) throw error;
       return jsonResponse(200, data || [], cors);
     }
+
+    // Entitlement guard (mirrors requireApiEntitlement): 401 AUTH_REQUIRED /
+    // 403 PAYMENT_REQUIRED before any paid analysis work.
+    const guard = await requirePaidEntitlement(event, { supabase });
+    if (!guard.ok) return entitlementErrorResponse(guard, cors);
 
     const body = parseJsonBody(event);
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
