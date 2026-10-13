@@ -79,37 +79,49 @@ interface OverpassResult {
   elements: OverpassElement[]
 }
 
-function buildOverpassQuery(options: OverpassQueryOptions): string {
+/**
+ * Build the Overpass QL query for a niche's tag tuples.
+ *
+ * Each tuple becomes its OWN selector and the selectors are OR'd by the
+ * surrounding union block. Overpass ANDs filters inside a single selector, so
+ * the tuples must never be merged into one filter list.
+ *
+ * The previous implementation grouped the tuples by key and joined them into a
+ * single filter chain, which produced e.g.
+ *
+ *   node["office"~"^(estate_agent|insurance)$"]["shop"="real_estate"](bbox)
+ *
+ * — an element carrying BOTH an office and a shop tag. No real business does
+ * that, so every niche that spans more than one tag key (real-estate,
+ * restaurants-food, ecommerce, beauty, wellness-fitness, …) returned zero
+ * results and Lead Finder searches came back empty. See the regression test in
+ * `src/server/businessDiscovery/__tests__/overpassQuery.test.ts`.
+ */
+export function buildOverpassQuery(options: OverpassQueryOptions): string {
   const { south, west, north, east, tags, limit = RESULT_LIMIT } = options
-
-  // Group tags by key so we can use a single regex filter per key.
-  // Overpass chained filters are AND, but we need OR for alternative values.
-  const grouped = new Map<string, string[]>()
-  for (const [k, v] of tags) {
-    const arr = grouped.get(k) || []
-    arr.push(v)
-    grouped.set(k, arr)
-  }
-
-  const tagFilters = Array.from(grouped.entries())
-    .map(([k, values]) => {
-      const unique = Array.from(new Set(values))
-      if (unique.length === 1) {
-        return `["${k}"="${unique[0]}"]`
-      }
-      const escaped = unique.map((v) => v.replace(/"/g, '\\"'))
-      return `["${k}"~"^(${escaped.join('|')})$"]`
-    })
-    .join('')
 
   const bbox = `(${south},${west},${north},${east})`
 
-  // Query for nodes, ways, and relations.
-  const nodeQuery = `node${tagFilters}${bbox};`
-  const wayQuery = `way${tagFilters}${bbox};(._;>;);`
-  const relationQuery = `relation${tagFilters}${bbox};`
+  // Dedupe: a niche may list the same tuple twice (e.g. `spa` in both beauty
+  // and wellness), and repeating a selector only duplicates rows.
+  const selectors = Array.from(
+    new Set(tags.map(([key, value]) => `["${key}"="${value.replace(/"/g, '\\"')}"]`)),
+  )
 
-  return `[out:json][timeout:25];(${nodeQuery}${wayQuery}${relationQuery});out body ${limit};`
+  if (selectors.length === 0) {
+    return `[out:json][timeout:25];();out body ${limit};`
+  }
+
+  const parts: string[] = []
+  for (const selector of selectors) {
+    parts.push(`node${selector}${bbox};`)
+    parts.push(`way${selector}${bbox};`)
+    parts.push(`relation${selector}${bbox};`)
+  }
+
+  // The trailing `(._;>;)` expands each way/relation into its member nodes so
+  // the normalizer sees real coordinates instead of only a way id.
+  return `[out:json][timeout:25];(${parts.join('')}(._;>;););out body ${limit};`
 }
 
 function isClosed(tags: Record<string, string> | undefined): boolean {
