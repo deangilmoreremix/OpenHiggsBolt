@@ -6,6 +6,44 @@
  * Supabase is the durable backing store.
  */
 
+/**
+ * Strip session-scoped blob URLs from a project state before it is serialized
+ * to durable storage (Supabase or localStorage).
+ *
+ * `URL.createObjectURL` produces object URLs that are valid only for the
+ * current browser tab session. If persisted, a page reload yields a dead link
+ * that cannot be loaded. We therefore replace every blob URL with `null` so the
+ * restore path falls back to source defaults instead of embedding a dead link.
+ */
+export function stripSessionScopedUrls(state: PersonalizationProjectState): PersonalizationProjectState {
+  const isBlobUrl = (url: string | null | undefined): boolean =>
+    typeof url === 'string' && url.startsWith('blob:')
+
+  return {
+    ...state,
+    outputUrls: Array.isArray(state.outputUrls)
+      ? state.outputUrls.filter((u) => typeof u === 'string' && !u.startsWith('blob:'))
+      : [],
+    previewVideo:
+      state.previewVideo && typeof state.previewVideo === 'object' && 'url' in state.previewVideo
+        ? isBlobUrl((state.previewVideo as PreviewVideoRef).url)
+          ? null
+          : (state.previewVideo as PreviewVideoRef)
+        : null,
+    previewSettings: state.previewSettings
+      ? {
+          ...state.previewSettings,
+          layers: Array.isArray(state.previewSettings.layers)
+            ? state.previewSettings.layers.map((layer) => ({
+                ...layer,
+                imageUrl: isBlobUrl(layer.imageUrl) ? undefined : layer.imageUrl,
+              }))
+            : state.previewSettings.layers,
+        }
+      : state.previewSettings,
+  }
+}
+
 import type { ClientProfile, AssetLibrary, PersonalizationSource, GenerationOptions, GenerationState, PromptState, OutputType, VideoPersonalizationMode, ImagePersonalizationMode, PersonalizationViewMode } from './types'
 import type { PersonalizationPreviewSettings, PreviewVideoRef } from './preview/types'
 
@@ -82,10 +120,11 @@ export function createProjectPersistence(opts: ProjectPersistenceOptions = {}) {
   }
 
   function save(state: PersonalizationProjectState): Promise<{ ok: boolean; error?: string }> {
+    const sanitized = stripSessionScopedUrls(state)
     const response = fetch(API_ROUTE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entry: state }),
+      body: JSON.stringify({ entry: sanitized }),
       credentials: 'same-origin',
     })
     if (!response || typeof (response as Promise<Response>).then !== 'function') {
@@ -187,10 +226,11 @@ export async function loadProject(opts: LoadProjectOptions = {}): Promise<LoadPr
 export type SavedProject = PersonalizationProjectState
 
 export async function saveProject(state: PersonalizationProjectState): Promise<{ ok: boolean; error?: string }> {
+  const sanitized = stripSessionScopedUrls(state)
   return fetch(API_ROUTE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ entry: state }),
+    body: JSON.stringify({ entry: sanitized }),
     credentials: 'same-origin',
   }).then(async (res) => {
     if (!res.ok) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Eye, EyeOff, Move, RotateCcw } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import {
@@ -9,7 +9,6 @@ import {
   PREVIEW_POSITIONS,
   fontStackById,
   isImageLayerKind,
-  toBox,
 } from '../preview/presets'
 import type {
   PersonalizationPreviewSettings,
@@ -17,7 +16,21 @@ import type {
   PreviewLayer,
   PreviewLayerKind,
 } from '../preview/types'
-import { C, chipStyle, hintStyle, inputStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
+import {
+  MAX_LAYER_SCALE,
+  MIN_LAYER_SCALE,
+  SAFE_AREA_MARGIN,
+  clampLayerToBounds,
+  imageAssetDefaultLabel,
+  imageAssetOptions,
+  nudgeDeltaForKey,
+  offsetLayer,
+  resolveCompositionSize,
+  scaleLayerTo,
+  stageScaleFactor,
+  toStageBox,
+} from './overlayGeometry'
+import { C, chipStyle, hintStyle, inputStyle, labelStyle, panelStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
 
 const LAYER_LABELS: Record<PreviewLayerKind, string> = {
   logo: 'Logo',
@@ -33,6 +46,10 @@ const LAYER_LABELS: Record<PreviewLayerKind, string> = {
 
 const TEXT_KINDS: PreviewLayerKind[] = ['businessName', 'headline', 'offer', 'cta', 'tagline']
 
+/** Corner-handle keyboard step: 2% of the frame per press, 10% with Shift. */
+const RESIZE_KEYBOARD_STEP = 0.02
+const RESIZE_KEYBOARD_STEP_LARGE = 0.1
+
 function layerText(layer: PreviewLayer, brand: PreviewInputProps['brand']): string {
   if (typeof layer.text === 'string' && layer.text.trim()) return layer.text
   if (layer.kind === 'businessName') return brand.businessName
@@ -43,11 +60,15 @@ function layerText(layer: PreviewLayer, brand: PreviewInputProps['brand']): stri
   return ''
 }
 
+/**
+ * Image fallback chain — mirrors the composition's own resolution order so the
+ * stage never shows an empty box the render would fill (and vice versa).
+ */
 function layerImageUrl(layer: PreviewLayer, brand: PreviewInputProps['brand']): string {
   if (layer.imageUrl) return layer.imageUrl
   if (layer.kind === 'logo') return brand.logoUrl || ''
-  if (layer.kind === 'productImage') return brand.productUrl || ''
-  if (layer.kind === 'serviceImage') return brand.serviceUrl || ''
+  if (layer.kind === 'productImage') return brand.productUrl || brand.serviceUrl || ''
+  if (layer.kind === 'serviceImage') return brand.serviceUrl || brand.productUrl || ''
   return ''
 }
 
@@ -72,12 +93,11 @@ function useStageWidth(ref: React.RefObject<HTMLDivElement | null>): number {
 
 interface DragState {
   layerId: string
-  pointerId: number
+  pointerId: number | null
   startX: number
   startY: number
-  originX: number
-  originY: number
-  originScale: number
+  /** Safe-area-clamped snapshot taken when the drag started (no jump). */
+  origin: PreviewLayer
   mode: 'move' | 'resize'
 }
 
@@ -92,6 +112,14 @@ export interface OverlayEditorProps {
  * on top of it at the same normalized coordinates the Remotion composition
  * uses, so dragging here is exactly what the preview renders. Used both in
  * Simple Mode step 4 and in the modal's Advanced Editing section.
+ *
+ * All layer state lives in the provider: this component never keeps a second
+ * copy of it — it reads `previewSettings` from context and writes through
+ * `updatePreviewLayer`. Only `selectedId` is local (which layer is selected),
+ * so switching between Simple Mode and Advanced Editing keeps every edit.
+ *
+ * Geometry (cross-aspect mapping, safe-area clamping, keyboard nudges and the
+ * image-asset option mapping) lives in `./overlayGeometry`.
  */
 export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Element {
   const ctx = useDemoPersonalize()
@@ -103,43 +131,64 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
     assets,
   } = ctx
   const settings: PersonalizationPreviewSettings = previewSettings
+  const fieldPrefix = useId()
   const stageRef = useRef<HTMLDivElement>(null)
   const stageWidth = useStageWidth(stageRef)
   const [selectedId, setSelectedId] = useState<string>(() => settings.layers[0]?.id || '')
   const dragRef = useRef<DragState | null>(null)
 
   const brand = inputProps.brand
-  const compW = settings.width || 1920
-  const compH = settings.height || 1080
-  const factor = stageWidth > 0 ? stageWidth / compW : 0
-  const stageHeight = Math.round(stageWidth * (compH / compW))
+  const { width: compW, height: compH } = resolveCompositionSize(settings.width, settings.height)
+  // One factor for both axes: stagePx = compositionPx * (stageWidth / compW).
+  const factor = stageScaleFactor(stageWidth, compW)
 
+  const editableLayers = settings.layers.filter((layer) => layer.kind !== 'endCard')
   const selected = settings.layers.find((layer) => layer.id === selectedId) || settings.layers[0] || null
+
+  const controlId = (name: string) => `${fieldPrefix}-${name}`
+  const round = (value: number) => Number(value.toFixed(4))
+
+  const commitPosition = useCallback(
+    (layerId: string, next: PreviewLayer) => {
+      updatePreviewLayer(layerId, { x: round(next.x), y: round(next.y) })
+    },
+    [updatePreviewLayer],
+  )
+
+  const commitScale = useCallback(
+    (layerId: string, next: PreviewLayer) => {
+      // A resize can also pull a layer back inside the safe area.
+      updatePreviewLayer(layerId, { x: round(next.x), y: round(next.y), scale: round(next.scale) })
+    },
+    [updatePreviewLayer],
+  )
 
   const onPointerMove = useCallback(
     (event: PointerEvent) => {
       const drag = dragRef.current
       if (!drag || !stageRef.current) return
+      if (drag.pointerId !== null && event.pointerId !== drag.pointerId) return
       const rect = stageRef.current.getBoundingClientRect()
       if (rect.width === 0 || rect.height === 0) return
       const dx = (event.clientX - drag.startX) / rect.width
       const dy = (event.clientY - drag.startY) / rect.height
       if (drag.mode === 'move') {
-        const nextX = Math.min(1, Math.max(0, drag.originX + dx))
-        const nextY = Math.min(1, Math.max(0, drag.originY + dy))
-        updatePreviewLayer(drag.layerId, { x: Number(nextX.toFixed(4)), y: Number(nextY.toFixed(4)) })
+        commitPosition(drag.layerId, offsetLayer(drag.origin, dx, dy, compW, compH))
       } else {
-        const nextScale = Math.min(2, Math.max(0.05, drag.originScale * (1 + dx * 2)))
-        updatePreviewLayer(drag.layerId, { scale: Number(nextScale.toFixed(4)) })
+        const nextScale = drag.origin.scale * (1 + dx * 2)
+        commitScale(drag.layerId, scaleLayerTo(drag.origin, nextScale, compW, compH))
       }
     },
-    [updatePreviewLayer],
+    [commitPosition, commitScale, compW, compH],
   )
 
   const endDrag = useCallback(() => {
     dragRef.current = null
   }, [])
 
+  // Window-level listeners: a drag that leaves the stage (or the window)
+  // keeps tracking until the pointer is released, and touch never scrolls
+  // because the stage sets `touch-action: none`.
   useEffect(() => {
     window.addEventListener('pointermove', onPointerMove)
     window.addEventListener('pointerup', endDrag)
@@ -151,31 +200,69 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
     }
   }, [onPointerMove, endDrag])
 
+  // A layout switch can remove the selected layer: fall back to the first
+  // layer instead of leaving a stale id behind.
+  useEffect(() => {
+    if (selectedId && settings.layers.some((layer) => layer.id === selectedId)) return
+    setSelectedId(settings.layers[0]?.id || '')
+  }, [selectedId, settings.layers])
+
   const startDrag = (event: React.PointerEvent, layer: PreviewLayer, mode: 'move' | 'resize') => {
     event.preventDefault()
     event.stopPropagation()
     setSelectedId(layer.id)
     dragRef.current = {
       layerId: layer.id,
-      pointerId: event.pointerId,
+      pointerId: typeof event.pointerId === 'number' ? event.pointerId : null,
       startX: event.clientX,
       startY: event.clientY,
-      originX: layer.x,
-      originY: layer.y,
-      originScale: layer.scale,
+      // Snapshot the bounded geometry so the layer follows the pointer from
+      // exactly where the customer sees it, even if the saved values were
+      // out of the safe area.
+      origin: clampLayerToBounds(layer, compW, compH),
       mode,
+    }
+    if (mode === 'move') {
+      // Keep focus on the dragged box so arrow keys nudge straight after a drag.
+      const target = event.currentTarget as HTMLElement | null
+      target?.focus?.({ preventScroll: true })
     }
   }
 
-  const imageOptions = (layer: PreviewLayer): { value: string; label: string }[] => {
-    const pool = layer.kind === 'logo' ? assets?.logos || [] : assets?.products || []
-    return pool.map((asset, index) => ({
-      value: asset.uploadedUrl || asset.url,
-      label: asset.name || `${LAYER_LABELS[layer.kind]} ${index + 1}`,
-    }))
+  /** Arrow keys nudge (1% / Shift 5%), Delete/Backspace hides the layer. */
+  const onLayerKeyDown = (event: React.KeyboardEvent, layer: PreviewLayer) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      setSelectedId(layer.id)
+      return
+    }
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      event.preventDefault()
+      updatePreviewLayer(layer.id, { visible: false })
+      return
+    }
+    const delta = nudgeDeltaForKey(event.key, event.shiftKey)
+    if (!delta) return
+    event.preventDefault()
+    setSelectedId(layer.id)
+    commitPosition(layer.id, offsetLayer(layer, delta.dx, delta.dy, compW, compH))
   }
 
-  const editableLayers = settings.layers.filter((layer) => layer.kind !== 'endCard')
+  /** Arrow keys on the corner handle resize by 2% (Shift 10%). */
+  const onHandleKeyDown = (event: React.KeyboardEvent, layer: PreviewLayer) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      return
+    }
+    const delta = nudgeDeltaForKey(event.key, event.shiftKey)
+    if (!delta) return
+    event.preventDefault()
+    const grows = delta.dx > 0 || delta.dy > 0
+    const factor = event.shiftKey ? 1 + RESIZE_KEYBOARD_STEP_LARGE : 1 + RESIZE_KEYBOARD_STEP
+    commitScale(layer.id, scaleLayerTo(layer, grows ? layer.scale * factor : layer.scale / factor, compW, compH))
+  }
+
+  const imageOptions = (layer: PreviewLayer) => imageAssetOptions(layer, assets)
 
   return (
     <div style={panelStyle}>
@@ -187,19 +274,24 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
         <button
           type="button"
           onClick={() => resetPreviewLayout()}
+          aria-label="Restore default layout"
           style={{ ...secondaryButtonStyle, minHeight: 30, marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
           <RotateCcw size={11} /> Restore default layout
         </button>
       </div>
       <p style={hintStyle}>
-        Drag any layer on the video to move it, or use its corner handle to resize. Positions are saved with your project.
+        Drag any layer on the video to move it, or use its corner handle to resize. Arrow keys nudge the
+        selected layer by 1% (Shift for 5%), Delete hides it. Layers stay inside the 2% safe area of the
+        frame, and positions are saved with your project.
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 14, marginTop: 12 }} className="guided-overlay-grid">
         {/* ── Stage ─────────────────────────────────────────────────────── */}
         <div
           ref={stageRef}
+          role="group"
+          aria-label="Video overlay stage"
           style={{
             position: 'relative',
             width: '100%',
@@ -223,13 +315,21 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
             </div>
           )}
           <div style={{ position: 'absolute', inset: 0, background: '#000', opacity: settings.brandColors.backgroundDim, pointerEvents: 'none' }} />
+          {/* Safe-area guide: the same 2% inset the clamp enforces. */}
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              inset: `${SAFE_AREA_MARGIN * 100}%`,
+              border: '1px dashed rgba(255,255,255,.22)',
+              borderRadius: 8,
+              pointerEvents: 'none',
+            }}
+          />
 
           {factor > 0 &&
             editableLayers.filter((layer) => layer.visible).map((layer) => {
-              const box = toBox(layer, compW, compH)
-              const left = box.leftPx * factor
-              const top = box.topPx * factor
-              const width = box.widthPx * factor
+              const box = toStageBox(layer, compW, compH, stageWidth)
               const text = layerText(layer, brand)
               const imageUrl = layerImageUrl(layer, brand)
               if (!isImageLayerKind(layer.kind) && !text.trim()) return null
@@ -243,20 +343,20 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                   role="button"
                   tabIndex={0}
                   aria-label={`Move ${LAYER_LABELS[layer.kind]}`}
+                  aria-pressed={isSelected}
                   onPointerDown={(event) => startDrag(event, layer, 'move')}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') setSelectedId(layer.id)
-                  }}
+                  onKeyDown={(event) => onLayerKeyDown(event, layer)}
                   style={{
                     position: 'absolute',
-                    left,
-                    top,
-                    width,
-                    height: isImageLayerKind(layer.kind) ? width : undefined,
+                    left: box.left,
+                    top: box.top,
+                    width: box.width,
+                    height: box.height,
                     cursor: 'move',
                     outline: isSelected ? `2px dashed ${C.cyan}` : 'none',
                     outlineOffset: 2,
                     opacity: layer.opacity,
+                    userSelect: 'none',
                   }}
                 >
                   {isImageLayerKind(layer.kind) ? (
@@ -271,7 +371,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                           borderRadius: 999,
                           display: 'inline-block',
                           fontFamily: fontStackById(layer.fontFamily),
-                          fontSize: box.fontSizePx * factor,
+                          fontSize: box.fontSize,
                           fontWeight: 800,
                           pointerEvents: 'none',
                         }}
@@ -284,7 +384,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                       style={{
                         fontFamily: fontStackById(layer.fontFamily),
                         color,
-                        fontSize: box.fontSizePx * factor,
+                        fontSize: box.fontSize,
                         fontWeight: layer.kind === 'businessName' ? 800 : 600,
                         lineHeight: 1.15,
                         textAlign: 'center',
@@ -302,9 +402,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                       tabIndex={0}
                       aria-label={`Resize ${LAYER_LABELS[layer.kind]}`}
                       onPointerDown={(event) => startDrag(event, layer, 'resize')}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') event.preventDefault()
-                      }}
+                      onKeyDown={(event) => onHandleKeyDown(event, layer)}
                       style={{
                         position: 'absolute',
                         right: -7,
@@ -329,6 +427,17 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
           {settings.layers.map((layer) => (
             <div
               key={layer.id}
+              role="button"
+              tabIndex={0}
+              aria-label={`Select ${LAYER_LABELS[layer.kind]}`}
+              aria-pressed={selected?.id === layer.id}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  setSelectedId(layer.id)
+                }
+              }}
+              onClick={() => setSelectedId(layer.id)}
               style={{
                 ...softPanelStyle,
                 display: 'flex',
@@ -337,7 +446,6 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                 border: `1px solid ${selected?.id === layer.id ? C.cyanBorder : C.border}`,
                 cursor: 'pointer',
               }}
-              onClick={() => setSelectedId(layer.id)}
             >
               <span style={{ color: C.text, fontSize: 12, fontWeight: 700, flex: 1 }}>{LAYER_LABELS[layer.kind]}</span>
               {layer.kind === 'endCard' ? (
@@ -366,9 +474,10 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
               {TEXT_KINDS.includes(selected.kind) && (
                 <>
                   <div>
-                    <label style={labelStyle} htmlFor="overlay-layer-text">Text</label>
+                    <label style={labelStyle} htmlFor={controlId('text')}>Text</label>
                     <textarea
-                      id="overlay-layer-text"
+                      id={controlId('text')}
+                      aria-label="Layer text"
                       value={selected.text ?? ''}
                       onChange={(event) => updatePreviewLayer(selected.id, { text: event.target.value })}
                       rows={2}
@@ -377,19 +486,21 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                   </div>
                   <div className="grid grid-cols-2" style={{ gap: 8 }}>
                     <div>
-                      <label style={labelStyle} htmlFor="overlay-layer-color">Color</label>
+                      <label style={labelStyle} htmlFor={controlId('color')}>Color</label>
                       <input
-                        id="overlay-layer-color"
+                        id={controlId('color')}
                         type="color"
+                        aria-label="Text color"
                         value={selected.color || settings.brandColors.text}
                         onChange={(event) => updatePreviewLayer(selected.id, { color: event.target.value })}
                         style={{ width: '100%', height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: C.field }}
                       />
                     </div>
                     <div>
-                      <label style={labelStyle} htmlFor="overlay-layer-font">Font</label>
+                      <label style={labelStyle} htmlFor={controlId('font')}>Font</label>
                       <select
-                        id="overlay-layer-font"
+                        id={controlId('font')}
+                        aria-label="Font"
                         value={selected.fontFamily || ''}
                         onChange={(event) => updatePreviewLayer(selected.id, { fontFamily: event.target.value || undefined })}
                         style={{ ...inputStyle, minHeight: 34 }}
@@ -406,40 +517,46 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
 
               {isImageLayerKind(selected.kind) && (
                 <div>
-                  <label style={labelStyle} htmlFor="overlay-layer-image">Image</label>
+                  <label style={labelStyle} htmlFor={controlId('image')}>Image</label>
                   <select
-                    id="overlay-layer-image"
+                    id={controlId('image')}
+                    aria-label="Layer image"
                     value={selected.imageUrl || ''}
                     onChange={(event) => updatePreviewLayer(selected.id, { imageUrl: event.target.value || undefined })}
                     style={inputStyle}
                   >
-                    <option value="">Use your {selected.kind === 'logo' ? 'logo' : 'photo'}</option>
-                    {imageOptions(selected).map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
+                    <option value="">{imageAssetDefaultLabel(selected.kind)}</option>
+                    {imageOptions(selected).map((option, index) => (
+                      <option key={`${index}-${option.value}`} value={option.value}>{option.label}</option>
                     ))}
                   </select>
                 </div>
               )}
 
               <div>
-                <label style={labelStyle} htmlFor="overlay-layer-scale">Size</label>
+                <label style={labelStyle} htmlFor={controlId('scale')}>Size</label>
                 <input
-                  id="overlay-layer-scale"
+                  id={controlId('scale')}
                   type="range"
-                  min={0.05}
-                  max={2}
+                  aria-label="Layer size"
+                  min={MIN_LAYER_SCALE}
+                  max={MAX_LAYER_SCALE}
                   step={0.01}
                   value={selected.scale}
-                  onChange={(event) => updatePreviewLayer(selected.id, { scale: Number(event.target.value) })}
+                  onChange={(event) => {
+                    const next = scaleLayerTo(selected, Number(event.target.value), compW, compH)
+                    commitScale(selected.id, next)
+                  }}
                   style={{ width: '100%', accentColor: C.cyan }}
                 />
               </div>
 
               <div>
-                <label style={labelStyle} htmlFor="overlay-layer-opacity">Opacity</label>
+                <label style={labelStyle} htmlFor={controlId('opacity')}>Opacity</label>
                 <input
-                  id="overlay-layer-opacity"
+                  id={controlId('opacity')}
                   type="range"
+                  aria-label="Layer opacity"
                   min={0.1}
                   max={1}
                   step={0.05}
@@ -450,9 +567,10 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
               </div>
 
               <div>
-                <label style={labelStyle} htmlFor="overlay-layer-animation">Animation</label>
+                <label style={labelStyle} htmlFor={controlId('animation')}>Animation</label>
                 <select
-                  id="overlay-layer-animation"
+                  id={controlId('animation')}
+                  aria-label="Layer animation"
                   value={selected.animation}
                   onChange={(event) =>
                     updatePreviewLayer(selected.id, { animation: event.target.value as PreviewLayer['animation'] })
@@ -467,10 +585,11 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
 
               <div className="grid grid-cols-2" style={{ gap: 8 }}>
                 <div>
-                  <label style={labelStyle} htmlFor="overlay-layer-delay">Appear after (frames)</label>
+                  <label style={labelStyle} htmlFor={controlId('delay')}>Appear after (frames)</label>
                   <input
-                    id="overlay-layer-delay"
+                    id={controlId('delay')}
                     type="number"
+                    aria-label="Appear after frames"
                     min={0}
                     max={Math.max(0, settings.durationInFrames)}
                     value={selected.animationDelay}
@@ -479,10 +598,11 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                   />
                 </div>
                 <div>
-                  <label style={labelStyle} htmlFor="overlay-layer-start">Show from (frames)</label>
+                  <label style={labelStyle} htmlFor={controlId('start')}>Show from (frames)</label>
                   <input
-                    id="overlay-layer-start"
+                    id={controlId('start')}
                     type="number"
+                    aria-label="Show from frames"
                     min={0}
                     max={Math.max(0, settings.durationInFrames)}
                     value={selected.startFrame}
@@ -499,13 +619,22 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                     <button
                       key={position.id}
                       type="button"
-                      onClick={() => updatePreviewLayer(selected.id, { x: position.x, y: position.y })}
+                      aria-label={`Move layer to ${position.label}`}
+                      onClick={() => {
+                        const next = clampLayerToBounds({ ...selected, x: position.x, y: position.y }, compW, compH)
+                        commitPosition(selected.id, next)
+                      }}
                       style={{ ...chipStyle(false), minHeight: 28, fontSize: 10 }}
                     >
                       {position.label}
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div style={{ color: C.muted, fontSize: 10 }}>
+                Position {Math.round(selected.x * 100)}% / {Math.round(selected.y * 100)}% · Size{' '}
+                {Math.round(selected.scale * 100)}% · kept inside the {Math.round(SAFE_AREA_MARGIN * 100)}% safe area
               </div>
             </div>
           )}
@@ -516,6 +645,7 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
               <p style={hintStyle}>Shows your logo, contact details and final call to action at the end of the video.</p>
               <button
                 type="button"
+                aria-label={settings.showEndCard ? 'Turn off end card' : 'Turn on end card'}
                 onClick={() => updatePreviewComposition({ showEndCard: !settings.showEndCard })}
                 style={{ ...secondaryButtonStyle, minHeight: 30, marginTop: 8 }}
               >

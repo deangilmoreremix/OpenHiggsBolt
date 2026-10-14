@@ -17,28 +17,16 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { useDemoPersonalize } from '@/shared/personalization/DemoPersonalizeProvider'
+import { buildFreeDiscoverySource } from '@/shared/personalization/demoSources'
 
 /**
- * Synthetic source for the free run. `mediaType: 'prompt-only'` keeps the modal
- * on its prompt surface (no media to personalize — this is a discovery demo),
- * and `sourceMetadata.freeDiscovery` marks the session for the modal so paid
- * affordances stay hidden. `originalPrompt` is what the visitor reads first.
+ * The free-discovery source stays prompt-only by design: there is no demo media
+ * to personalize on this surface — the visitor pastes a business website and the
+ * free pipeline reads the assets already on it. The shape itself lives in the
+ * shared mapping module (`buildFreeDiscoverySource`) so this entry point owns no
+ * source literal of its own; `sourceMetadata.freeDiscovery` keeps paid
+ * affordances hidden and `originalPrompt` is what the visitor reads first.
  */
-const FREE_DISCOVERY_SOURCE = {
-  id: 'free-discovery',
-  title: 'Find My Brand',
-  mediaType: 'prompt-only',
-  sourceMedia: null,
-  poster: null,
-  shortPrompt:
-    'Find My Brand — paste a business website and see the real logos, photos, products and branding already on it.',
-  fullPrompt:
-    'Find My Brand — paste a business website and see the real logos, photos, products and branding already on it. Nothing is generated and nothing is charged.',
-  originalPrompt:
-    'Find My Brand — paste a business website and see the real logos, photos, products and branding already on it. Nothing is generated and nothing is charged.',
-  sourceType: 'landing-demo',
-  sourceMetadata: { freeDiscovery: true },
-} as const
 
 export default function FreeDiscoveryDemo() {
   const { openPersonalize, isOpen } = useDemoPersonalize()
@@ -49,11 +37,11 @@ export default function FreeDiscoveryDemo() {
   useEffect(() => {
     if (autoOpenedRef.current) return
     autoOpenedRef.current = true
-    openPersonalize({ source: FREE_DISCOVERY_SOURCE, access: 'anonymous' })
+    openPersonalize({ source: buildFreeDiscoverySource(), access: 'anonymous' })
   }, [openPersonalize])
 
   const openModal = useCallback(() => {
-    openPersonalize({ source: FREE_DISCOVERY_SOURCE, access: 'anonymous' })
+    openPersonalize({ source: buildFreeDiscoverySource(), access: 'anonymous' })
   }, [openPersonalize])
 
   return (
@@ -81,8 +69,8 @@ export default function FreeDiscoveryDemo() {
           marginBottom: 14,
         }}
       >
-        SmartVideo GO — Free Discovery
-      </span>
+         SmartVideo GO AI — Free Discovery
+       </span>
       <h1 style={{ margin: '0 0 14px', fontSize: 'clamp(28px, 5vw, 46px)', lineHeight: 1.1, fontWeight: 850 }}>
         Find My Brand
       </h1>

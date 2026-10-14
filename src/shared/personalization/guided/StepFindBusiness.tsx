@@ -116,8 +116,8 @@ export function StepFindBusiness(): React.JSX.Element {
       <div>
         <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.text }}>Find your business</h2>
         <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 12, lineHeight: 1.55 }}>
-          Search for your business, enter its website, or pick a saved profile. We use what your business
-          already has — logo, photos and details — to brand your video.
+          Search for your business, enter its website, or pick a saved profile. SmartVideo GO AI uses what your
+          business already has — logo, photos and details — to brand your video.
         </p>
       </div>
 

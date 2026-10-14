@@ -5,14 +5,18 @@ import {
   Img,
   interpolate,
   Internals,
-  OffthreadVideo,
   Sequence,
   spring,
   useCurrentFrame,
-  Video,
   useVideoConfig,
 } from 'remotion'
+import { Video } from '@remotion/media'
 import { fontStackById, isImageLayerKind, toBox } from './presets'
+import {
+  clearPreviewMediaFailure,
+  emitPreviewMediaFailure,
+  previewMediaLabel,
+} from './previewMediaEvents'
 import type {
   PreviewAnimationId,
   PreviewInputProps,
@@ -120,14 +124,6 @@ function resolveLayerImageUrl(
   if (layer.kind === 'productImage') return brand.productUrl ?? brand.serviceUrl ?? ''
   if (layer.kind === 'logo') return brand.logoUrl ?? ''
   return ''
-}
-
-function isRelativeOrSameOrigin(url: string): boolean {
-  if (url.startsWith('/')) return true
-  if (typeof window === 'undefined' || !window.location) return false
-  const origin = window.location.origin
-  if (!origin) return false
-  return url.startsWith(origin)
 }
 
 const EndCard: React.FC<{
@@ -238,16 +234,30 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
 
   // A browser media element that cannot be decoded/loaded (codec, network or
   // CORS restrictions on unusual remote URLs) would otherwise surface as an
-  // unhandled error from remotion's <Video>/<OffthreadVideo>. Record it and
-  // render the same static fallback used when no video is selected.
-  const handleMediaError = useCallback(() => {
+  // unhandled error from the media component. Record it and render the same
+  // static fallback used when no video is selected. `'fallback'` is the
+  // component's own default action (it may retry through its HTML fallback);
+  // during a web-renderer export the same failure cancels the render with an
+  // actionable error instead of silently producing a broken video.
+  const handleMediaError = useCallback((): 'fallback' => {
     setMediaFailed(true)
-  }, [])
+    // Report the failure on the module-level channel so the player wrapper can
+    // show an actionable message instead of a silent placeholder. The local
+    // `mediaFailed` state above still drives the poster fallback.
+    emitPreviewMediaFailure({
+      videoUrl: videoUrl ?? null,
+      posterUrl: posterUrl ?? null,
+      label: previewMediaLabel(videoUrl ?? null),
+      reason: 'MEDIA_ELEMENT_ERROR',
+    })
+    return 'fallback'
+  }, [videoUrl, posterUrl])
 
   // Switching videos in the wizard must clear a failure recorded for the
-  // previously selected source.
+  // previously selected source, in the composition and on the shared channel.
   useEffect(() => {
     setMediaFailed(false)
+    clearPreviewMediaFailure()
   }, [videoUrl])
 
   const renderBackground = () => {
@@ -261,20 +271,16 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
       )
     }
     if (videoUrl && !mediaFailed) {
-      if (isRelativeOrSameOrigin(videoUrl)) {
-        return (
-          <OffthreadVideo
-            src={videoUrl}
-            muted={false}
-            onError={handleMediaError}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          />
-        )
-      }
+      // One code path for same-origin and remote sources. `@remotion/media`'s
+      // <Video> decodes the source with the browser's own media stack, so it is
+      // the component the web renderer can also extract frames AND audio from
+      // (OffthreadVideo is not supported there). `muted={false}` keeps the
+      // source video's audio track in the composition so it survives export;
+      // playback muting stays a Player-level concern.
       return (
         <Video
           src={videoUrl}
-          muted
+          muted={false}
           onError={handleMediaError}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />

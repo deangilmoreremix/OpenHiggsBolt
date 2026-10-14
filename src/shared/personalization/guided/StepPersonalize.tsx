@@ -1,11 +1,12 @@
 'use client'
 
-import { Palette, Sparkles } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { LayoutTemplate, Palette } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { PREVIEW_LAYOUTS } from '../preview/presets'
-import { C, hintStyle, inputStyle, labelStyle, panelStyle, primaryButtonStyle, softPanelStyle, tileStyle } from './tokens'
+import { C, chipStyle, hintStyle, inputStyle, labelStyle, panelStyle, primaryButtonStyle, softPanelStyle } from './tokens'
 import type { ClientProfile } from '../types'
-import type { PreviewLayerKind } from '../preview/types'
+import type { PreviewLayerKind, PreviewLayoutId } from '../preview/types'
 
 const LAYER_LABELS: Record<PreviewLayerKind, string> = {
   logo: 'Logo',
@@ -20,12 +21,43 @@ const LAYER_LABELS: Record<PreviewLayerKind, string> = {
 }
 
 /**
- * Simple Mode step 3 — pick a ready-made layout and review what will be placed.
+ * The layout SmartVideo GO AI applies for the customer when they have not
+ * picked one. Derived only from what actually exists:
+ *   • a logo          → 'business-introduction' (leads with the brand mark)
+ *   • product images  → 'product-showcase'
+ *   • neither         → 'service-promotion'
  *
- * Every visible field is editable; nothing is invented (an empty Offer stays
- * empty rather than being filled with a made-up promotion).
+ * With nothing at all the provider's own neutral 'business-introduction'
+ * default still applies, so a compatible layout always exists.
  */
-export function StepPersonalize(): React.JSX.Element {
+function preferredLayout(options: { hasLogo: boolean; hasProductImages: boolean }): PreviewLayoutId {
+  if (options.hasLogo) return 'business-introduction'
+  if (options.hasProductImages) return 'product-showcase'
+  return 'service-promotion'
+}
+
+/**
+ * Simple Mode step 3 — personalize the selected video.
+ *
+ * Layout choice is NEVER a gate: SmartVideo GO AI applies a compatible layout
+ * automatically from what already exists, and the visitor may change it in the
+ * optional strip below. Every visible field is editable; nothing is invented
+ * (an empty Offer stays empty rather than being filled with a made-up promo).
+ */
+export interface StepPersonalizeProps {
+  /**
+   * Set once the visitor picks a layout chip. Held by the wizard so the choice
+   * survives leaving and returning to step 3 (whose component unmounts).
+   */
+  layoutChosenByUser?: boolean
+  /** Called when the visitor picks a layout chip, so the wizard can remember it. */
+  onChooseLayout?: () => void
+}
+
+export function StepPersonalize({
+  layoutChosenByUser: chosenByWizard,
+  onChooseLayout,
+}: StepPersonalizeProps = {}): React.JSX.Element {
   const ctx = useDemoPersonalize()
   const {
     clientForm = {},
@@ -39,9 +71,55 @@ export function StepPersonalize(): React.JSX.Element {
     setGuidedStep,
   } = ctx
 
+  // LOCAL-only marker: once the visitor picks a layout chip, the auto-apply
+  // below stops overriding their choice for the rest of this visit. Falls back
+  // to local state when the component is used outside the wizard.
+  const [localChosenByUser, setLocalChosenByUser] = useState(false)
+  const layoutChosenByUser = chosenByWizard || localChosenByUser
+
   const layers = previewSettings.layers
   const logoAvailable = Boolean(assets?.primaryLogo)
   const productAvailable = (assets?.products?.length || 0) > 0
+  const taglineLayer = layers.find((item) => item.kind === 'tagline')
+  const activeLayout = PREVIEW_LAYOUTS.find((layout) => layout.id === previewSettings.layout) || PREVIEW_LAYOUTS[0]
+
+  const chooseLayout = (layoutId: PreviewLayoutId) => {
+    setLocalChosenByUser(true)
+    onChooseLayout?.()
+    setPreviewLayout(layoutId)
+  }
+
+  // Auto-apply a compatible layout on mount, and again while nothing was chosen
+  // explicitly (e.g. a product photo imported later). The ref guard keeps it to
+  // one call per source, so it can never loop.
+  const autoAppliedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (layoutChosenByUser) return
+    const next = preferredLayout({ hasLogo: logoAvailable, hasProductImages: productAvailable })
+    if (previewSettings.layout === next) {
+      autoAppliedRef.current = previewSettings.layout
+      return
+    }
+    if (autoAppliedRef.current === next) return
+    autoAppliedRef.current = next
+    setPreviewLayout(next)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: keyed on availability, not the settings object
+  }, [logoAvailable, productAvailable, previewSettings.layout, layoutChosenByUser, setPreviewLayout])
+
+  // Keep the tagline layer in sync with the Tagline field whenever the active
+  // layout has one — e.g. the customer typed a tagline under a layout without
+  // a tagline layer and then switched. A non-empty field value is pushed onto
+  // the layer; an empty field never wipes text the customer did not type.
+  const taglineSyncRef = useRef<string>('')
+  useEffect(() => {
+    const fieldText = clientForm.brandDescription || ''
+    const key = `${taglineLayer?.id ?? ''}|${taglineLayer?.text ?? ''}|${fieldText}`
+    if (taglineSyncRef.current === key) return
+    taglineSyncRef.current = key
+    if (!fieldText || !taglineLayer) return
+    if ((taglineLayer.text || '') === fieldText) return
+    updatePreviewLayer(taglineLayer.id, { text: fieldText })
+  }, [clientForm.brandDescription, taglineLayer?.id, taglineLayer?.text, updatePreviewLayer])
 
   /** Update a client field AND the matching layer text so both stay in sync. */
   const setField = (field: keyof ClientProfile, value: string, layerKind: PreviewLayerKind) => {
@@ -50,54 +128,42 @@ export function StepPersonalize(): React.JSX.Element {
     if (layer) updatePreviewLayer(layer.id, { text: value })
   }
 
-  const layoutUses = (layoutId: string): string[] => {
-    const kinds: PreviewLayerKind[] =
-      layoutId === 'business-introduction'
-        ? ['logo', 'businessName', 'headline']
-        : layoutId === 'product-showcase'
-          ? ['logo', 'productImage', 'headline', 'offer']
-          : layoutId === 'service-promotion'
-            ? ['logo', 'serviceImage', 'headline', 'tagline']
-            : layoutId === 'special-offer'
-              ? ['headline', 'offer', 'cta']
-              : ['logo', 'businessName', 'cta', 'endCard']
-    return kinds.map((kind) => LAYER_LABELS[kind])
-  }
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div>
         <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.text }}>Personalize automatically</h2>
         <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 12, lineHeight: 1.55 }}>
-          Pick a ready-made layout. We place your real logo, photos and details automatically — edit anything you see.
+          SmartVideo GO AI places your real logo, photos and details on your video — edit anything you see.
         </p>
       </div>
 
-      {/* ── Layout picker ───────────────────────────────────────────────── */}
-      <div style={panelStyle}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <Sparkles size={15} color={C.cyan} />
-          <h3 style={{ margin: 0, fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', color: C.text }}>
-            Choose a layout
-          </h3>
+      {/* ── Auto-applied layout (optional, never a step gate) ───────────── */}
+      <div style={softPanelStyle}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <LayoutTemplate size={15} color={C.cyan} />
+          <span style={{ margin: 0, fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', color: C.text }}>
+            Layout (optional)
+          </span>
+          <span style={{ marginLeft: 'auto', color: C.muted2, fontSize: 10 }}>
+            {layoutChosenByUser ? 'Your choice' : 'Chosen for you'}
+          </span>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3" style={{ gap: 10 }}>
-          {PREVIEW_LAYOUTS.map((layout) => {
-            const active = previewSettings.layout === layout.id
-            return (
-              <button key={layout.id} type="button" onClick={() => setPreviewLayout(layout.id)} style={tileStyle(active)}>
-                <div style={{ color: C.text, fontSize: 13, fontWeight: 800 }}>{layout.name}</div>
-                <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 11, lineHeight: 1.5 }}>{layout.description}</p>
-                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 8 }}>
-                  {layoutUses(layout.id).map((label) => (
-                    <span key={label} style={{ ...softPanelStyle, padding: '2px 7px', fontSize: 9, color: C.muted, borderRadius: 999 }}>
-                      {label}
-                    </span>
-                  ))}
-                </div>
-              </button>
-            )
-          })}
+        <p style={{ ...hintStyle, marginTop: 6 }}>
+          We applied <strong style={{ color: C.text }}>{activeLayout.name}</strong> for you — {activeLayout.description} You
+          can switch to another at any time; nothing is required to continue.
+        </p>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+          {PREVIEW_LAYOUTS.map((layout) => (
+            <button
+              key={layout.id}
+              type="button"
+              onClick={() => chooseLayout(layout.id)}
+              aria-pressed={previewSettings.layout === layout.id}
+              style={chipStyle(previewSettings.layout === layout.id)}
+            >
+              {layout.name}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -126,6 +192,17 @@ export function StepPersonalize(): React.JSX.Element {
               placeholder={clientForm.businessName || clientForm.name || 'A short opening line'}
               style={inputStyle}
             />
+          </div>
+          <div>
+            <label style={labelStyle} htmlFor="guided-tagline">Tagline (optional)</label>
+            <input
+              id="guided-tagline"
+              value={clientForm.brandDescription || ''}
+              onChange={(event) => setField('brandDescription', event.target.value, 'tagline')}
+              placeholder="A short line about what makes your business different"
+              style={inputStyle}
+            />
+            <p style={hintStyle}>Optional — leave it empty if you would rather not show one.</p>
           </div>
           <div>
             <label style={labelStyle} htmlFor="guided-offer">Offer (optional)</label>
@@ -210,6 +287,9 @@ export function StepPersonalize(): React.JSX.Element {
         <h3 style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', color: C.text }}>
           What will be placed on your video
         </h3>
+        <p style={{ ...hintStyle, marginTop: 0, marginBottom: 10 }}>
+          Based on the {activeLayout.name} layout — the preview updates as you edit.
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 8 }}>
           {layers.map((layer) => {
             const isImageLayer = layer.kind === 'logo' || layer.kind === 'productImage' || layer.kind === 'serviceImage'
@@ -256,7 +336,7 @@ export function StepPersonalize(): React.JSX.Element {
 
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <button type="button" onClick={() => setGuidedStep(4)} style={primaryButtonStyle}>
-          Apply and preview
+          Preview my video
         </button>
       </div>
     </div>

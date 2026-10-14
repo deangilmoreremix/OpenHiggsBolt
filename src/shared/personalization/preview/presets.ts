@@ -487,7 +487,8 @@ function normalizeLayer(raw: unknown): PreviewLayer | null {
   const fontFamily = nonEmptyString(raw.fontFamily)
   if (fontFamily) normalized.fontFamily = fontFamily
   const imageUrl = nonEmptyString(raw.imageUrl)
-  if (imageUrl) normalized.imageUrl = imageUrl
+  // Reject session-scoped blob URLs: they are dead after a page reload.
+  if (imageUrl && !imageUrl.startsWith('blob:')) normalized.imageUrl = imageUrl
   return normalized
 }
 

@@ -3,10 +3,10 @@
  * Media-failure resilience for the shared personalization preview composition.
  *
  * Unusual remote video URLs (codec/network/CORS restrictions) make the browser
- * fire a MEDIA_ELEMENT_ERROR on the underlying <video> element. The composition
- * must catch that through remotion's onError prop and degrade to the same
- * static fallback used when no video is selected — never throwing, and never
- * dropping the branding overlays rendered on top of the background.
+ * fire a MEDIA_ELEMENT_ERROR on the underlying media element. The composition
+ * must catch that through the media component's onError prop and degrade to the
+ * same static fallback used when no video is selected — never throwing, and
+ * never dropping the branding overlays rendered on top of the background.
  */
 import React from 'react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
@@ -24,13 +24,17 @@ const REMOTE_GOOD_VIDEO = 'https://cdn.example.com/good-video.mp4'
 const SAME_ORIGIN_BAD_VIDEO = '/uploads/bad-clip.mp4'
 const POSTER_URL = 'https://cdn.example.com/poster.jpg'
 
-vi.mock('remotion', async () => {
-  const { useEffect } = await import('react')
+/**
+ * `@remotion/media`'s <Video> renders the background for BOTH same-origin and
+ * remote sources — one code path, which is also what makes it exportable by the
+ * web renderer. URLs containing "bad" fail; anything else loads fine.
+ */
+vi.mock('@remotion/media', () => {
+  const { useEffect } = require('react') as typeof import('react')
 
   /**
    * Mirrors the browser: media failures arrive asynchronously, after the
-   * composition's mount effects have already run. URLs containing "bad"
-   * fail; anything else loads fine.
+   * composition's mount effects have already run.
    */
   const scheduleMediaError = (
     onError: ((err: Error) => void) | undefined,
@@ -43,34 +47,21 @@ vi.mock('remotion', async () => {
   }
 
   return {
-    AbsoluteFill: ({ children }: { children?: React.ReactNode }) => (
-      <div>{children}</div>
-    ),
-    Img: ({ src }: { src: string }) => <img src={src} alt="" />,
-    Video: ({
-      src,
-      onError,
-    }: {
-      src: string
-      onError?: (err: Error) => void
-    }) => {
+    Video: ({ src, onError }: { src: string; onError?: (err: Error) => void }) => {
       useEffect(() => {
         scheduleMediaError(onError, src)
       }, [onError, src])
       return <div data-testid="media-video" />
     },
-    OffthreadVideo: ({
-      src,
-      onError,
-    }: {
-      src: string
-      onError?: (err: Error) => void
-    }) => {
-      useEffect(() => {
-        scheduleMediaError(onError, src)
-      }, [onError, src])
-      return <div data-testid="media-offthread" />
-    },
+  }
+})
+
+vi.mock('remotion', async () => {
+  return {
+    AbsoluteFill: ({ children }: { children?: React.ReactNode }) => (
+      <div>{children}</div>
+    ),
+    Img: ({ src }: { src: string }) => <img src={src} alt="" />,
     Sequence: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
     Internals: {
       SequenceManager: {
@@ -173,7 +164,7 @@ describe('PersonalizationComposition media failure', () => {
     expect(view.container.textContent).toContain('Roofing done right')
   })
 
-  it('falls back to the neutral placeholder panel when the same-origin <OffthreadVideo> errors without a poster', async () => {
+  it('falls back to the neutral placeholder panel when a same-origin video errors without a poster', async () => {
     const view = mountComposition(
       makeInputProps({
         videoUrl: SAME_ORIGIN_BAD_VIDEO,
@@ -181,13 +172,13 @@ describe('PersonalizationComposition media failure', () => {
       }),
     )
     expect(
-      view.container.querySelector('[data-testid="media-offthread"]'),
+      view.container.querySelector('[data-testid="media-video"]'),
     ).not.toBeNull()
 
     await flushMediaError()
 
     expect(
-      view.container.querySelector('[data-testid="media-offthread"]'),
+      view.container.querySelector('[data-testid="media-video"]'),
     ).toBeNull()
     expect(view.container.textContent).toContain(
       'Select a video or image to preview your branding',

@@ -31,8 +31,11 @@ const nextConfig = {
     'workflow-builder',
     'design-agent',
     // Remotion ships untranspiled ESM; the Personalization Modal preview
-    // (Player + composition) is imported by client components, so the
-    // packages must go through the Next.js compiler.
+    // (Player + composition) is imported by client components, so the packages
+    // must go through the Next.js compiler.
+    // `@remotion/web-renderer` is deliberately NOT listed and NOT externalized:
+    // it is dynamically imported from a client component only, so it is code
+    // split out of the main bundle by the client boundary instead.
     'remotion',
     '@remotion/player',
   ],

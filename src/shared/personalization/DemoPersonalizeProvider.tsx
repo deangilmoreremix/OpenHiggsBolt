@@ -87,10 +87,13 @@ import { resolveModelCapabilities, resolveAssetsForModel } from './modelCapabili
 import { applyPostProcessing, generateEndCardImage } from './postProcessor'
 import type { BusinessDiscoveryRecord } from './types'
 import { uploadPersonalizationAsset } from './assetUploadService'
+import { cancelActiveExport } from './webExport'
 import { persistEditedPersonalizationAsset } from './editedAssetPersistence'
 
 import { normalizeUrl, TRACKING_PARAMS } from './urlNormalizer'
 import { createProjectPersistence, loadProject, type LoadProjectResult, type PersonalizationProjectState } from './supabaseProjectPersistence'
+import { buildPreviewInput } from './guided/buildPreviewInput'
+import { chooseFinalOutputPath } from './finalOutput'
 import {
   createDefaultPreviewSettings,
   applyLayoutPreset,
@@ -499,11 +502,13 @@ export type DemoPersonalizeContextValue = {
   setPreviewLayout: (layout: PreviewLayoutId) => void
   updatePreviewLayer: (layerId: string, patch: Partial<PreviewLayer>) => void
   updatePreviewBrandColors: (patch: Partial<PreviewBrandColors>) => void
-  updatePreviewComposition: (patch: Partial<Pick<PersonalizationPreviewSettings, 'aspectRatio' | 'fps' | 'durationInFrames' | 'showEndCard'>>) => void
-  resetPreviewLayout: () => void
-  previewApproved: boolean
-  approvePersonalization: () => void
-  createFinalVideo: () => Promise<void>
+   updatePreviewComposition: (patch: Partial<Pick<PersonalizationPreviewSettings, 'aspectRatio' | 'fps' | 'durationInFrames' | 'showEndCard'>>) => void
+   resetPreviewLayout: () => void
+   previewApproved: boolean
+   approvePersonalization: () => void
+   createFinalVideo: () => Promise<void>
+   cancelExport: () => void
+   apiKey: string
 }
 
 const PersonalizationContext = createContext<DemoPersonalizeContextValue | null>(null)
@@ -1112,7 +1117,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     },
     aiAssistState: {},
     previewSettings,
-    previewVideo,
+    previewVideo: previewVideo && previewVideo.url && !previewVideo.url.startsWith('blob:') ? previewVideo : null,
     guidedStep,
     viewMode,
   }), [
@@ -1204,7 +1209,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     const timer = setTimeout(() => {
       writePreviewStorage(source.id, {
         previewSettings,
-        previewVideo,
+        previewVideo: previewVideo && previewVideo.url && !previewVideo.url.startsWith('blob:') ? previewVideo : null,
         guidedStep,
         viewMode,
       })
@@ -1344,7 +1349,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setPreviewVideo(
       storedVideo &&
       typeof storedVideo === 'object' &&
-      typeof (storedVideo as PreviewVideoRef).url === 'string'
+      typeof (storedVideo as PreviewVideoRef).url === 'string' &&
+      !(storedVideo as PreviewVideoRef).url.startsWith('blob:')
         ? (storedVideo as PreviewVideoRef)
         : null,
     )
@@ -1436,7 +1442,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     if (normalized) {
       const label =
         normalized.sourceType === 'go-ai-viral-prompt' || normalized.sourceType === 'go-ai-viral-video'
-          ? 'GO AI Viral'
+          ? 'SmartVideo GO AI'
           : undefined
       setSourceTypeLabel(label)
       setAccess(opts.access || accessProp || 'authenticated')
@@ -3641,40 +3647,169 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }, [source, access, buildProjectPayload])
 
   const createFinalVideo = useCallback(async () => {
-    const hasLogo = previewSettings.layers.some(
-      (layer) => layer.kind === 'logo' && layer.visible && Boolean(layer.imageUrl || previewSeed.logoUrl),
-    )
-    const hasCta = previewSettings.layers.some((layer) => layer.kind === 'cta' && layer.visible)
+    // Overlay-only personalizations (branding on the EXISTING selected video)
+    // export through the local Remotion render pipeline — never through MuAPI
+    // generation. Personalizations that genuinely need AI-generated imagery or
+    // video keep the existing generate() flow exactly.
+    if (access !== 'authenticated') return
+    const finalPath = chooseFinalOutputPath({ personalizationMode: mode || null })
 
-    // Sync the approved preview into the existing generation options.
-    setGenOptions((prev) => ({
-      ...prev,
-      aspectRatio: previewSettings.aspectRatio,
-      duration: Math.max(1, Math.round(previewSettings.durationInFrames / previewSettings.fps)),
-      exactLogoHandling: hasLogo ? 'final-overlay' : prev.exactLogoHandling,
-      exactCtaHandling: hasCta ? 'final-end-card' : prev.exactCtaHandling,
-    }))
-
-    // A selected preview video replaces the source media. The source update and
-    // generate() cannot share a tick (generate would read the stale source), so
-    // the pending ref lets the effect below run generate on the next commit.
-    if (previewVideo && source && previewVideo.url !== source.sourceMedia) {
-      setSource((prev) =>
-        prev
-          ? {
-              ...prev,
-              sourceMedia: previewVideo.url,
-              poster: previewVideo.poster ?? prev.poster,
-              title: previewVideo.title || prev.title,
-            }
-          : prev,
+    if (finalPath === 'ai-generation') {
+      const hasLogo = previewSettings.layers.some(
+        (layer) => layer.kind === 'logo' && layer.visible && Boolean(layer.imageUrl || previewSeed.logoUrl),
       )
-      pendingFinalGenerateRef.current = true
+      const hasCta = previewSettings.layers.some((layer) => layer.kind === 'cta' && layer.visible)
+
+      // Sync the approved preview into the existing generation options.
+      setGenOptions((prev) => ({
+        ...prev,
+        aspectRatio: previewSettings.aspectRatio,
+        duration: Math.max(1, Math.round(previewSettings.durationInFrames / previewSettings.fps)),
+        exactLogoHandling: hasLogo ? 'final-overlay' : prev.exactLogoHandling,
+        exactCtaHandling: hasCta ? 'final-end-card' : prev.exactCtaHandling,
+      }))
+
+      // A selected preview video replaces the source media. The source update and
+      // generate() cannot share a tick (generate would read the stale source), so
+      // the pending ref lets the effect below run generate on the next commit.
+      if (previewVideo && source && previewVideo.url !== source.sourceMedia) {
+        setSource((prev) =>
+          prev
+            ? {
+                ...prev,
+                sourceMedia: previewVideo.url,
+                poster: previewVideo.poster ?? prev.poster,
+                title: previewVideo.title || prev.title,
+              }
+            : prev,
+        )
+        pendingFinalGenerateRef.current = true
+        return
+      }
+
+      await generate()
       return
     }
 
-    await generate()
-  }, [previewSettings, previewSeed, previewVideo, source, generate])
+    // ── branded-render: in-browser render of the approved composition ────────
+    //
+    // The overlay-only final video is produced entirely in the browser by
+    // @remotion/web-renderer — no server, no worker, no storage upload. The
+    // flow requires an approved preview first, and the approved state is
+    // snapshotted at call time so later edits cannot leak into the export.
+    if (!previewApproved) {
+      setGeneration({
+        ...EMPTY_GENERATION_STATE,
+        status: 'error',
+        errorMessage: 'Approve the preview first so we render exactly the layout you signed off on, then render your branded video.',
+      })
+      return
+    }
+
+    // Snapshot the approved composition: the user may keep editing while the
+    // render runs, and the export must stay the approved one.
+    const frozenSettings = previewSettings
+    const frozenVideo = previewVideo
+    const frozenClientForm = clientForm
+    const frozenAssets = assets
+    const frozenSource = source
+    const inputProps = buildPreviewInput({
+      source: frozenSource,
+      previewSettings: frozenSettings,
+      previewVideo: frozenVideo,
+      clientForm: frozenClientForm,
+      assets: frozenAssets,
+    })
+
+    setGeneration({
+      ...EMPTY_GENERATION_STATE,
+      status: 'generating',
+      progress: 5,
+      progressMessage: 'Preparing your branded video…',
+    })
+    setResult(null)
+    setResultTab('prompt')
+
+    try {
+      // Loaded lazily so the renderer never lands in the main bundle.
+      const { exportPersonalizedVideo, downloadWebExportBlob } = await import('./webExport')
+
+      const exported = await exportPersonalizedVideo({
+        inputProps,
+        onProgress: (progress) => {
+          // Real render progress from the web renderer, mapped into the
+          // existing generation state (10..95%) so the UI stays a plain bar.
+          const percent = Math.round(Math.min(1, Math.max(0, progress)) * 100)
+          setGeneration((prev) => ({
+            ...prev,
+            status: 'processing',
+            progress: Math.max(10, Math.min(95, percent)),
+            progressMessage: `Rendering your branded video… ${percent}%`,
+          }))
+        },
+      })
+
+      if (!exported.ok) {
+        if (exported.reason === 'cancelled') {
+          setGeneration({ ...EMPTY_GENERATION_STATE, status: 'idle' })
+          return
+        }
+        setGeneration({
+          ...EMPTY_GENERATION_STATE,
+          status: 'error',
+          errorMessage: exported.error,
+        })
+        return
+      }
+
+      if (exported.warning) {
+        // Non-fatal: e.g. the browser could not encode an audio codec.
+        setGeneration((prev) => ({
+          ...prev,
+          progressMessage: `${prev.progressMessage || 'Rendering your branded video…'} ${exported.warning}`,
+        }))
+      }
+
+      const fileName = `personalized-${Date.now().toString(36)}.${exported.extension}`
+      const objectUrl = URL.createObjectURL(exported.blob)
+
+      // Direct download: the file is handed to the user's device immediately,
+      // so there is no storage cap and nothing is retained on a server.
+      downloadWebExportBlob(exported.blob, fileName)
+
+      const brandedResult: GenerationResult = {
+        type: 'video',
+        url: objectUrl,
+        metadata: {
+          source: 'branded-render',
+          compositionId: 'PersonalizationComposition',
+          container: exported.mimeType,
+          extension: exported.extension,
+          fileName,
+          ...(exported.warning ? { warning: exported.warning } : {}),
+        },
+      }
+      lastResultRef.current = brandedResult
+      setResult(brandedResult)
+      setResultTab('videos')
+      setGeneration({
+        ...EMPTY_GENERATION_STATE,
+        status: 'complete',
+        progress: 100,
+        progressMessage: 'Branded video ready',
+      })
+    } catch (error) {
+      setGeneration({
+        ...EMPTY_GENERATION_STATE,
+        status: 'error',
+        errorMessage: error instanceof Error ? error.message : 'Branded render failed',
+      })
+    }
+  }, [previewSettings, previewSeed, previewVideo, source, generate, mode, access, apiKey, clientForm, assets, previewApproved])
+
+  const cancelExport = useCallback(() => {
+    cancelActiveExport()
+  }, [])
 
   // Hands off to the existing generate() path once the patched source (selected
   // preview video) has committed.
@@ -3698,7 +3833,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     const handoff = {
       version: 1 as const,
       target: 'image' as const,
-      from: 'storyboard' as const,
+      from: 'demo-personalization' as const,
       projectName: project.source.title || 'Personalized Image',
       aspectRatio: (project.source.aspectRatio as '16:9' | '9:16' | '1:1' | null) || '1:1',
       episodeDuration: 0,
@@ -3735,7 +3870,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     const handoff = {
       version: 1 as const,
       target: 'video' as const,
-      from: 'storyboard' as const,
+      from: 'demo-personalization' as const,
       projectName: project.source.title || 'Personalized Video',
       aspectRatio: (project.source.aspectRatio as '16:9' | '9:16' | '1:1' | null) || '16:9',
       episodeDuration: project.source.duration || 0,
@@ -3938,8 +4073,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     resetPreviewLayout,
     previewApproved,
     approvePersonalization,
-    createFinalVideo,
-  }
+     createFinalVideo,
+     cancelExport,
+     apiKey,
+   }
 
   return (
     <PersonalizationContext.Provider value={ctxValue}>

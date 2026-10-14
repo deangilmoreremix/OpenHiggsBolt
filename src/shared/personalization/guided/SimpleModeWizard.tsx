@@ -1,6 +1,7 @@
 'use client'
 
 import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { useState } from 'react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { StepFindBusiness } from './StepFindBusiness'
 import { StepChooseVideo } from './StepChooseVideo'
@@ -10,8 +11,8 @@ import { C, badgeStyle, primaryButtonStyle, secondaryButtonStyle } from './token
 
 const STEPS = [
   { step: 1 as const, label: 'Find your business' },
-  { step: 2 as const, label: 'Choose your video' },
-  { step: 3 as const, label: 'Personalize automatically' },
+  { step: 2 as const, label: 'Your video' },
+  { step: 3 as const, label: 'Personalize' },
   { step: 4 as const, label: 'Preview and approve' },
 ]
 
@@ -20,6 +21,10 @@ const STEPS = [
  * modal: four numbered steps over the same provider state the full Advanced
  * Editing view uses. Switching to Advanced Editing never discards selections,
  * because both presentations read and write the same context.
+ *
+ * Nothing here gates on a design preset: SmartVideo GO AI applies a compatible
+ * layout automatically in step 3, so the only real gates are a business on
+ * step 1 and a video on step 2.
  */
 export function SimpleModeWizard(): React.JSX.Element {
   const ctx = useDemoPersonalize()
@@ -36,11 +41,17 @@ export function SimpleModeWizard(): React.JSX.Element {
   const hasBusiness = Boolean(clientForm.businessName || clientForm.name)
   const hasVideo = Boolean(previewVideo?.url || source?.sourceMedia)
 
+  // The only genuinely missing data: step 1 needs a business, step 2 needs a
+  // video. A layout is NEVER required — one is applied automatically.
   const stepHint = (step: number): string | null => {
     if (step === 1 && !hasBusiness) return 'Pick or enter your business to continue.'
     if (step === 2 && !hasVideo) return 'Choose a video to brand.'
     return null
   }
+
+  // Kept here (not inside step 3) so an explicit layout choice survives moving
+  // between the Personalize and Preview steps, whose component unmounts.
+  const [layoutChosenByUser, setLayoutChosenByUser] = useState(false)
 
   const stepNumber = (index: number) => STEPS[index].step
 
@@ -107,7 +118,9 @@ export function SimpleModeWizard(): React.JSX.Element {
       <div style={{ minHeight: 380 }}>
         {currentStep === 1 && <StepFindBusiness />}
         {currentStep === 2 && <StepChooseVideo />}
-        {currentStep === 3 && <StepPersonalize />}
+        {currentStep === 3 && (
+          <StepPersonalize layoutChosenByUser={layoutChosenByUser} onChooseLayout={() => setLayoutChosenByUser(true)} />
+        )}
         {currentStep === 4 && <StepPreviewApprove />}
       </div>
 
@@ -130,7 +143,12 @@ export function SimpleModeWizard(): React.JSX.Element {
             </button>
           )}
           <span style={{ color: C.muted, fontSize: 11, marginRight: 'auto' }}>
-            {stepHint(currentStep) || (previewApproved && currentStep === 3 ? 'Approved layout ready to preview.' : '')}
+            {stepHint(currentStep) ||
+              (currentStep === 3
+                ? previewApproved
+                  ? 'Approved — preview it any time.'
+                  : 'SmartVideo GO AI applies a layout for you — change it any time or just continue.'
+                : '')}
           </span>
           <button
             type="button"
@@ -147,7 +165,7 @@ export function SimpleModeWizard(): React.JSX.Element {
         <div style={{ display: 'flex', justifyContent: 'flex-start', borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
           <button type="button" onClick={() => setGuidedStep(3)} style={secondaryButtonStyle}>
             <ArrowLeft size={13} style={{ verticalAlign: '-2px', marginRight: 6 }} />
-            Back to layout
+            Back to personalization
           </button>
           {previewApproved && <span style={{ ...badgeStyle('green'), marginLeft: 12, alignSelf: 'center' }}>Approved</span>}
         </div>

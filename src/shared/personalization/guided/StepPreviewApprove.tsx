@@ -1,19 +1,25 @@
 'use client'
 
-import { CheckCircle2, Loader2, PlayCircle, ShieldCheck } from 'lucide-react'
+import { useState } from 'react'
+import { CheckCircle2, Download, Loader2, PlayCircle, ShieldCheck, Sparkles, Upload, X } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
+import { uploadPersonalizationAsset } from '../assetUploadService'
 import { BeforeAfterPreview } from '../preview/BeforeAfterPreview'
 import { buildPreviewInput } from './buildPreviewInput'
 import { OverlayEditor } from './OverlayEditor'
 import { C, badgeStyle, chipStyle, hintStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
 import { PREVIEW_ASPECT_RATIOS } from '../preview/types'
 import { PREVIEW_LAYOUTS } from '../preview/presets'
+import { chooseFinalOutputPath } from '../finalOutput'
 
 /**
  * Simple Mode step 4 — free Before/After preview, direct on-video overlay
- * editing, approval and handoff to the existing final-generation workflow.
+ * editing, approval and handoff to one of two clearly different final-video
+ * paths: a local branded render (overlays baked onto the selected video, no AI
+ * credits) or the existing AI generation flow (changes that need new imagery).
  *
- * Nothing here calls MuAPI or OpenAI: the preview is 100% browser-local.
+ * The branded render and AI generation are separate operations and the UI never
+ * implies otherwise. Nothing in the preview itself calls MuAPI or OpenAI.
  */
 export function StepPreviewApprove(): React.JSX.Element {
   const ctx = useDemoPersonalize()
@@ -29,12 +35,25 @@ export function StepPreviewApprove(): React.JSX.Element {
     previewApproved,
     approvePersonalization,
     createFinalVideo,
+    cancelExport,
+    apiKey,
     generation,
+    result,
+    mode,
   } = ctx
 
   const isAnonymous = access !== 'authenticated'
   const generating = generation?.status === 'generating' || generation?.status === 'personalizing-prompt'
   const inputProps = buildPreviewInput({ source, previewSettings, previewVideo, clientForm, assets })
+  // Overlay-only personalizations render locally; AI modes keep the generation
+  // pipeline. The active path is the primary action; the other stays visible
+  // (and disabled) so the two operations are never conflated.
+  const finalPath = chooseFinalOutputPath({ personalizationMode: mode || null })
+  const isBrandedPath = finalPath === 'branded-render'
+
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [uploadSuccess, setUploadSuccess] = useState(false)
 
   const handleCreate = async () => {
     if (generating) return
@@ -42,6 +61,36 @@ export function StepPreviewApprove(): React.JSX.Element {
       await createFinalVideo()
     } catch {
       /* generation errors surface through the existing generation state */
+    }
+  }
+
+  const handleDownload = () => {
+    if (!result?.url) return
+    const link = document.createElement('a')
+    link.href = result.url
+    link.download = (result.metadata?.fileName as string) || 'personalized-video.mp4'
+    link.rel = 'noopener'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+  }
+
+  const handleUpload = async () => {
+    if (!result?.url || !apiKey) return
+    setIsUploading(true)
+    setUploadError(null)
+    setUploadSuccess(false)
+    try {
+      const response = await fetch(result.url)
+      const blob = await response.blob()
+      const fileName = (result.metadata?.fileName as string) || `personalized-video.${blob.type.replace('video/', '')}`
+      const file = new File([blob], fileName, { type: blob.type })
+      await uploadPersonalizationAsset(apiKey, { file })
+      setUploadSuccess(true)
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Upload failed')
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -146,8 +195,9 @@ export function StepPreviewApprove(): React.JSX.Element {
           {previewApproved && <span style={badgeStyle('green')}><CheckCircle2 size={10} /> Approved</span>}
         </div>
         <p style={{ ...hintStyle, marginBottom: 12 }}>
-          Approving saves your layout, colors and overlay positions. Creating the final video renders it with your
-          account&apos;s generation workflow — the preview itself never charges anything.
+          Approving saves your layout, colors and overlay positions. Previews are always free — choose
+          how the final video is produced below: a branded render bakes your approved overlays onto the
+          selected video, while AI generation is only for changes that need new imagery.
         </p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <button
@@ -163,19 +213,103 @@ export function StepPreviewApprove(): React.JSX.Element {
               Sign in to create your final video — the preview is always free.
             </span>
           ) : (
-            <button
-              type="button"
-              onClick={handleCreate}
-              disabled={generating}
-              style={{ ...primaryButtonStyle, display: 'inline-flex', alignItems: 'center', gap: 8, opacity: generating ? 0.6 : 1 }}
-            >
-              {generating ? <Loader2 size={14} className="animate-spin" /> : <PlayCircle size={14} />}
-              {generating ? `Creating… ${generation?.progress || 0}%` : 'Create final video'}
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={handleCreate}
+                  disabled={generating || !isBrandedPath}
+                  aria-pressed={isBrandedPath}
+                  style={{
+                    ...(isBrandedPath ? primaryButtonStyle : secondaryButtonStyle),
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    opacity: generating ? 0.6 : isBrandedPath ? 1 : 0.5,
+                  }}
+                >
+                  {generating && isBrandedPath ? <Loader2 size={14} className="animate-spin" /> : <PlayCircle size={14} />}
+                  {generating && isBrandedPath
+                    ? `Rendering… ${generation?.progress || 0}%`
+                    : 'Render branded video'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreate}
+                  disabled={generating || isBrandedPath}
+                  aria-pressed={!isBrandedPath}
+                  style={{
+                    ...(isBrandedPath ? secondaryButtonStyle : primaryButtonStyle),
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    opacity: generating ? 0.6 : isBrandedPath ? 0.5 : 1,
+                  }}
+                >
+                  {generating && !isBrandedPath ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                  {generating && !isBrandedPath
+                    ? `Generating… ${generation?.progress || 0}%`
+                    : 'Generate with AI'}
+                </button>
+              </div>
+              <p style={{ ...hintStyle, color: isBrandedPath ? C.cyan : C.muted }}>
+                <strong style={{ fontWeight: 800 }}>Render branded video</strong> bakes your approved
+                overlays (logo, text, CTA, end card) onto the selected video — no AI credits used.
+              </p>
+              <p style={{ ...hintStyle, color: isBrandedPath ? C.muted : C.cyan }}>
+                <strong style={{ fontWeight: 800 }}>Generate with AI</strong> uses your account&apos;s AI
+                generation for changes that need new imagery or footage.
+              </p>
+              {generating && isBrandedPath && (
+                <button
+                  type="button"
+                  onClick={() => cancelExport()}
+                  style={{
+                    ...secondaryButtonStyle,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    marginTop: 4,
+                    border: `1px solid ${C.danger}`,
+                    color: C.danger,
+                    background: 'rgba(239,91,103,.10)',
+                  }}
+                >
+                  <X size={14} />
+                  Cancel render
+                </button>
+              )}
+            </div>
           )}
         </div>
         {generating && generation?.progressMessage && (
           <p style={{ ...hintStyle, marginTop: 8, color: C.cyan }}>{generation.progressMessage}</p>
+        )}
+        {generation?.status === 'error' && generation?.errorMessage && (
+          <p style={{ ...hintStyle, marginTop: 8, color: C.danger }}>{generation.errorMessage}</p>
+        )}
+        {generation?.status === 'complete' && result?.type === 'video' && (
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
+            <button
+              type="button"
+              onClick={handleDownload}
+              style={{ ...primaryButtonStyle, display: 'inline-flex', alignItems: 'center', gap: 8 }}
+            >
+              <Download size={14} />
+              Download video
+            </button>
+            <button
+              type="button"
+              onClick={handleUpload}
+              disabled={isUploading || uploadSuccess}
+              style={{ ...secondaryButtonStyle, display: 'inline-flex', alignItems: 'center', gap: 8 }}
+            >
+              {isUploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+              {isUploading ? 'Uploading…' : uploadSuccess ? 'Uploaded' : 'Upload to Asset Library'}
+            </button>
+            {uploadError && <p style={{ ...hintStyle, color: C.danger }}>{uploadError}</p>}
+            {uploadSuccess && <p style={{ ...hintStyle, color: C.green }}>Uploaded to Asset Library</p>}
+          </div>
         )}
       </div>
     </div>

@@ -5,6 +5,7 @@ import { findDemoBySlug } from '@/data/demoLookup';
 import type { VideoDemo } from '@/data/types';
 import { VideoCreateTargetPicker } from '@/components/landing/VideoCreateTargetPicker';
 import { DemoPersonalizeProvider, useDemoPersonalize } from '@/shared/personalization';
+import { buildDemoPersonalizeSource } from '@/shared/personalization/demoSources';
 import LazyVideo from '@/components/landing/LazyVideo';
 import { MINIMAX_H3_DEMOS } from '@/data/minimaxH3Demos';
 import { SEEDANCE_25_DEMOS } from '@/data/seedance25Demos';
@@ -56,7 +57,11 @@ function DemoDetailPageInner() {
   const handlePersonalize = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     if (!demo) return;
-    openPersonalize({ source: demo, trigger: event.currentTarget });
+    // `demo` is the single demo this page resolved from `slug` and renders above
+    // (the same `demo.videoSrc` / `demo.posterSrc` the player shows), so the
+    // handoff carries that demo's exact media. A demo with no videoSrc keeps
+    // sourceMedia null + the mediaPending flag — never a substituted demo.
+    openPersonalize({ source: buildDemoPersonalizeSource(demo), trigger: event.currentTarget });
   }, [demo, openPersonalize]);
 
   const copyPrompt = useCallback(async () => {
