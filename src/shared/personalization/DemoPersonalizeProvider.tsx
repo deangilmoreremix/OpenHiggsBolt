@@ -97,6 +97,7 @@ import { chooseFinalOutputPath } from './finalOutput'
 import {
   createDefaultPreviewSettings,
   applyLayoutPreset,
+  resetLayoutToDefaults,
   normalizePreviewSettings,
   getCompositionDimensions,
 } from './preview/presets'
@@ -969,6 +970,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const previewSeed = useMemo(() => ({
     businessName: clientForm.businessName || clientForm.name || '',
     headline: clientForm.businessName ? `${clientForm.businessName}` : '',
+    tagline: clientForm.brandDescription || '',
     offer: clientForm.offer || '',
     cta: clientForm.callToAction || (clientForm.website ? `Visit ${clientForm.website}` : ''),
     phone: clientForm.phone || '',
@@ -984,6 +986,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   }), [
     clientForm.businessName,
     clientForm.name,
+    clientForm.brandDescription,
     clientForm.offer,
     clientForm.callToAction,
     clientForm.phone,
@@ -3634,7 +3637,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   )
 
   const resetPreviewLayout = useCallback(() => {
-    setPreviewSettings((prev) => applyLayoutPreset(prev, prev.layout, previewSeedRef.current))
+    // "Restore default layout" must undo per-layer position/scale/visibility
+    // edits, not only re-seed layers that are missing from the layout. Brand
+    // content stays — it is re-derived from the form/asset seed below.
+    setPreviewSettings((prev) => resetLayoutToDefaults(prev, prev.layout, previewSeedRef.current))
   }, [])
 
   const approvePersonalization = useCallback(() => {

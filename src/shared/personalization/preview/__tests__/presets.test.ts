@@ -11,6 +11,7 @@ import {
   positionForLayer,
   PREVIEW_LAYOUTS,
   PREVIEW_POSITIONS,
+  resetLayoutToDefaults,
   toBox,
 } from '../presets'
 import { DEFAULT_PREVIEW_BRAND_COLORS } from '../types'
@@ -211,6 +212,118 @@ describe('applyLayoutPreset', () => {
     })
     expect(next.layers.find((layer) => layer.kind === 'headline')?.text).toBeUndefined()
     expect(next.layers.find((layer) => layer.kind === 'offer')?.text).toBeUndefined()
+  })
+})
+
+describe('resetLayoutToDefaults', () => {
+  it('restores default geometry for layers the user edited', () => {
+    const settings = createDefaultPreviewSettings()
+    const defaults = createDefaultPreviewSettings()
+    const logoDefaults = defaults.layers.find((layer) => layer.kind === 'logo')
+
+    // The customer dragged the logo, resized it, hid a layer and changed the
+    // animation — "Restore default layout" must undo all of that.
+    settings.layers = settings.layers.map((layer) =>
+      layer.kind === 'logo'
+        ? { ...layer, x: 0.5, y: 0.5, scale: 1.4, visible: false, animation: 'none' }
+        : layer,
+    )
+
+    const next = resetLayoutToDefaults(settings, settings.layout)
+    const logo = next.layers.find((layer) => layer.kind === 'logo')
+
+    expect(logo?.x).toBe(logoDefaults?.x)
+    expect(logo?.y).toBe(logoDefaults?.y)
+    expect(logo?.scale).toBe(logoDefaults?.scale)
+    expect(logo?.visible).toBe(true)
+    expect(logo?.animation).toBe(logoDefaults?.animation)
+    expect(next.layout).toBe('business-introduction')
+  })
+
+  it('re-seeds every layer id the layout expects', () => {
+    const settings = createDefaultPreviewSettings()
+    // A user deleted a layer id from the list entirely.
+    settings.layers = settings.layers.filter((layer) => layer.kind !== 'headline')
+
+    const next = resetLayoutToDefaults(settings, settings.layout)
+    const kinds = LAYER_IDS_BY_LAYOUT['business-introduction']
+    expect(next.layers.map((layer) => layer.kind)).toEqual([...kinds])
+  })
+
+  it('keeps brand content while dropping positional edits (business-introduction)', () => {
+    const settings = createDefaultPreviewSettings()
+    settings.layers = settings.layers.map((layer) =>
+      layer.kind === 'headline' ? { ...layer, text: 'Typed By The Customer', x: 0.9 } : layer,
+    )
+
+    const next = resetLayoutToDefaults(settings, settings.layout, {
+      businessName: 'Acme Roofing',
+      headline: 'The friendly neighborhood roofers',
+      logoUrl: 'https://cdn.example.com/logo.png',
+    })
+
+    // Content comes from the form/asset seed, not from the mangled layer…
+    expect(next.layers.find((layer) => layer.kind === 'headline')?.text).toBe(
+      'The friendly neighborhood roofers',
+    )
+    expect(next.layers.find((layer) => layer.kind === 'businessName')?.text).toBe('Acme Roofing')
+    expect(next.layers.find((layer) => layer.kind === 'logo')?.imageUrl).toBe(
+      'https://cdn.example.com/logo.png',
+    )
+    // …while position is back to the layout default, not the customer's.
+    expect(next.layers.find((layer) => layer.kind === 'headline')?.x).toBe(
+      createLayer('headline').x,
+    )
+    expect(next.layers.find((layer) => layer.kind === 'logo')?.x).toBe(createLayer('logo').x)
+  })
+
+  it('re-seeds tagline and serviceImage for the service-promotion layout', () => {
+    const settings = createDefaultPreviewSettings({ layout: 'service-promotion' })
+    const next = resetLayoutToDefaults(settings, 'service-promotion', {
+      headline: 'Fast roof repairs',
+      tagline: 'We fix roofs fast',
+      serviceUrl: 'https://cdn.example.com/service.png',
+    })
+
+    expect(next.layers.map((layer) => layer.kind)).toEqual([
+      'logo',
+      'serviceImage',
+      'headline',
+      'tagline',
+    ])
+    expect(next.layers.find((layer) => layer.kind === 'tagline')?.text).toBe('We fix roofs fast')
+    expect(next.layers.find((layer) => layer.kind === 'serviceImage')?.imageUrl).toBe(
+      'https://cdn.example.com/service.png',
+    )
+    expect(next.layers.find((layer) => layer.kind === 'headline')?.text).toBe('Fast roof repairs')
+  })
+
+  it('preserves brand colors, aspect ratio, fps and duration and falls back for unknown ids', () => {
+    const settings = createDefaultPreviewSettings({
+      brandColors: {
+        primary: '#111111',
+        accent: '#222222',
+        text: '#333333',
+        backgroundDim: 0.4,
+      },
+      aspectRatio: '9:16',
+      fps: 24,
+      durationInFrames: 90,
+    })
+
+    const next = resetLayoutToDefaults(
+      settings,
+      'not-a-layout' as unknown as (typeof PREVIEW_LAYOUTS)[number]['id'],
+    )
+    expect(next.layout).toBe('not-a-layout')
+    expect(next.brandColors.primary).toBe('#111111')
+    expect(next.aspectRatio).toBe('9:16')
+    expect(next.fps).toBe(24)
+    expect(next.durationInFrames).toBe(90)
+    expect(next.layers.map((layer) => layer.kind)).toEqual([
+      ...LAYER_IDS_BY_LAYOUT['business-introduction'],
+    ])
+    expect(DEFAULT_PREVIEW_BRAND_COLORS.accent).not.toBe('#222222')
   })
 })
 

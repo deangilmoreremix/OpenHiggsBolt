@@ -380,6 +380,12 @@ function createSeededLayer(kind: PreviewLayerKind, ctx?: ApplyLayoutContext): Pr
   } else if (kind === 'serviceImage') {
     const imageUrl = nonEmptyString(ctx?.serviceUrl)
     if (imageUrl) overrides.imageUrl = imageUrl
+  } else if (kind === 'logo') {
+    // The logo imageUrl is the customer's brand asset — it must survive a
+    // "Restore default layout" so the user does not lose their uploaded logo
+    // just because they dragged the layer and then reset geometry.
+    const imageUrl = nonEmptyString(ctx?.logoUrl)
+    if (imageUrl) overrides.imageUrl = imageUrl
   }
   return createLayer(kind, overrides)
 }
@@ -403,6 +409,32 @@ export function applyLayoutPreset(
     if (kept) return clampLayer({ ...kept })
     return createSeededLayer(kind, ctx)
   })
+  return {
+    ...settings,
+    layout: layoutId,
+    layers,
+    brandColors: { ...settings.brandColors },
+  }
+}
+
+/**
+ * Rebuilds a layout's layers from scratch so "Restore default layout" restores
+ * default geometry: every layer goes back to the layout's default position,
+ * scale, font size and visibility, and only the brand CONTENT (headline, offer,
+ * CTA, tagline, phone, logo/product/service images) is re-seeded from ctx.
+ *
+ * This is deliberately different from `applyLayoutPreset`, which preserves the
+ * user's per-layer edits so switching layouts never throws their work away.
+ * Restoring defaults must throw that work away — otherwise the control cannot
+ * undo a layout the user mangled.
+ */
+export function resetLayoutToDefaults(
+  settings: PersonalizationPreviewSettings,
+  layoutId: PreviewLayoutId,
+  ctx?: ApplyLayoutContext,
+): PersonalizationPreviewSettings {
+  const kinds = LAYER_IDS_BY_LAYOUT[layoutId] ?? LAYER_IDS_BY_LAYOUT['business-introduction']
+  const layers = kinds.map((kind) => createSeededLayer(kind, ctx))
   return {
     ...settings,
     layout: layoutId,
