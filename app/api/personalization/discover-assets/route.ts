@@ -5,7 +5,7 @@ import type { DiscoveredAsset } from '@/server/discoverAssets'
 import { getFixture } from '@/src/server/fixtures/discoveryFixtures'
 import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
 import { validatePersonalizationEnv } from '@/server/envValidation'
-import { createDiscoveryJob, getDiscoveryJobForUser } from '@/server/discoveryJobs'
+import { createDiscoveryJob, getDiscoveryJobForUser, updateDiscoveryJob } from '@/server/discoveryJobs'
 import { runFastDiscovery } from '@/server/discoveryOrchestrator'
 
 export const dynamic = "force-dynamic";
@@ -238,7 +238,7 @@ export async function POST(req: NextRequest) {
     }
 
     const job = await createDiscoveryJob({
-      clerkUserId: userId || 'anon',
+      clerkUserId: userId,
       websiteUrl,
       fastResult,
       telemetry: {
@@ -250,6 +250,17 @@ export async function POST(req: NextRequest) {
     })
 
     const browserQueued = needsBrowser
+    const startedAt = new Date().toISOString()
+    const completedAt = browserQueued ? null : new Date().toISOString()
+
+    await updateDiscoveryJob(job.id, {
+      status: browserQueued ? 'running' : 'complete',
+      startedAt,
+      completedAt: completedAt ?? undefined,
+      finalResult: fastResult,
+    }).catch((persistErr) => {
+      console.error('[discover-assets] Failed to persist job state:', persistErr)
+    })
 
     if (browserQueued) {
       const netlifyFnUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/.netlify/functions/personalization-browser-discovery`

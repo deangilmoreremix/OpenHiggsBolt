@@ -427,6 +427,11 @@ export function applyLayoutPreset(
  * user's per-layer edits so switching layouts never throws their work away.
  * Restoring defaults must throw that work away — otherwise the control cannot
  * undo a layout the user mangled.
+ *
+ * Brand content the seed does not cover (e.g. a logo imageUrl when ctx.logoUrl
+ * is missing because the asset has not been uploaded yet) is carried over from
+ * the previous layer of the same kind, so the customer does not lose their
+ * brand asset just because the seed is incomplete.
  */
 export function resetLayoutToDefaults(
   settings: PersonalizationPreviewSettings,
@@ -434,7 +439,26 @@ export function resetLayoutToDefaults(
   ctx?: ApplyLayoutContext,
 ): PersonalizationPreviewSettings {
   const kinds = LAYER_IDS_BY_LAYOUT[layoutId] ?? LAYER_IDS_BY_LAYOUT['business-introduction']
-  const layers = kinds.map((kind) => createSeededLayer(kind, ctx))
+  const previousByKind = new Map<string, PreviewLayer>()
+  for (const layer of Array.isArray(settings.layers) ? settings.layers : []) {
+    if (layer && typeof layer.kind === 'string') previousByKind.set(layer.kind, layer)
+  }
+  const layers = kinds.map((kind) => {
+    const seeded = createSeededLayer(kind, ctx)
+    const previous = previousByKind.get(kind)
+    if (!previous) return seeded
+    // Carry over brand content the seed did not provide. The seed wins when
+    // it sets a value; otherwise the previous layer's text/imageUrl survives.
+    const carry: Partial<PreviewLayer> = {}
+    if (typeof seeded.text !== 'string' && typeof previous.text === 'string') {
+      carry.text = previous.text
+    }
+    if (typeof seeded.imageUrl !== 'string' && typeof previous.imageUrl === 'string') {
+      carry.imageUrl = previous.imageUrl
+    }
+    if (Object.keys(carry).length === 0) return seeded
+    return { ...seeded, ...carry }
+  })
   return {
     ...settings,
     layout: layoutId,

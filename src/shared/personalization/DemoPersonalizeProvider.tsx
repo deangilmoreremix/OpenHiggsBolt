@@ -1330,6 +1330,12 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         consentGiven: gs.consentGiven === true,
       }))
     }
+    // Top-level `model` field is the durable record of which model the user
+    // picked; `generationSettings` does not carry it, so restore it separately
+    // and let an explicit generationSettings value (older payloads) win.
+    if (typeof entry.model === 'string' && entry.model) {
+      setGenOptions((prev) => (prev.model === entry.model ? prev : { ...prev, model: entry.model! }))
+    }
 
     // ── Restore guided Simple Mode + free preview ────────────────────────────
     // Supabase wins; the localStorage mirror is only consulted when the saved
@@ -2951,6 +2957,16 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setSelectedBusiness(business)
     setBusinessSearchMode('selected')
     setBusinessResearch({ status: 'idle' })
+
+    // Any prior discovery reviewable state belongs to the previously selected
+    // business's website. Clearing it here keeps the review UI honest: stale
+    // assets cannot leak into the new business's import, and the research
+    // panel never shows a summary from a different website. The
+    // `runDiscoveryWorkflow` path resets the same state itself, so this is a
+    // no-op on the anonymous automated path.
+    setDiscoveredAssetsState([])
+    setDiscoveryStatus('idle')
+    setDiscoveryError(null)
 
     // Populate client form from business, through the single shared mapping
     // (see `clientFormFromBusiness`) that the automated "Find My Brand"

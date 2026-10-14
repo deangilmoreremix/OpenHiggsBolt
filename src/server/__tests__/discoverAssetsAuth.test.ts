@@ -31,6 +31,7 @@ vi.mock('@/server/discoveryOrchestrator', () => ({
 vi.mock('@/server/discoveryJobs', () => ({
   createDiscoveryJob: vi.fn(),
   getDiscoveryJobForUser: vi.fn(),
+  updateDiscoveryJob: vi.fn(),
 }))
 
 // Import after mocks are registered
@@ -38,7 +39,7 @@ import { POST } from '@/app/api/personalization/discover-assets/route'
 import { NextRequest } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { validatePersonalizationEnv } from '@/server/envValidation'
-import { createDiscoveryJob } from '@/server/discoveryJobs'
+import { createDiscoveryJob, updateDiscoveryJob } from '@/server/discoveryJobs'
 import { runFastDiscovery } from '@/server/discoveryOrchestrator'
 
 describe('POST /api/personalization/discover-assets auth', () => {
@@ -77,6 +78,22 @@ describe('POST /api/personalization/discover-assets auth', () => {
       created_at: '2024-01-01T00:00:00Z',
       started_at: null,
       completed_at: null,
+      expires_at: '2024-01-02T00:00:00Z',
+    })
+    vi.mocked(updateDiscoveryJob).mockResolvedValue({
+      id: 'job-1',
+      clerk_user_id: 'user-1',
+      website_url: 'https://example.com',
+      status: 'complete',
+      fast_result_json: null,
+      browser_result_json: null,
+      final_result_json: null,
+      telemetry_json: null,
+      error_code: null,
+      error_message: null,
+      created_at: '2024-01-01T00:00:00Z',
+      started_at: '2024-01-01T00:00:00Z',
+      completed_at: '2024-01-01T00:00:00Z',
       expires_at: '2024-01-02T00:00:00Z',
     })
   })

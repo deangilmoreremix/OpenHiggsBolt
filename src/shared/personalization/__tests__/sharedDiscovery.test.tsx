@@ -769,6 +769,46 @@ describe('research merges additively into the client form', () => {
     // …and the research result is still shown for review.
     expect(ctx().businessResearch.result.title).toBe('Sunset Realty — Hollywood FL Homes')
   })
+
+  it('selecting a new business clears the prior business reviewable discoveries', async () => {
+    const container = await mountModal({ access: 'authenticated' })
+    await selectAuthenticatedBusiness(container)
+
+    // First discovery run fills the reviewable list with business A's assets.
+    await act(async () => {
+      fireEvent.click(screen.getByText('Research Business'))
+    })
+    await flush(30)
+    await act(async () => {
+      fireEvent.click(screen.getByText('Find Business Assets'))
+    })
+    await flush(30)
+    expect(ctx().discoveredAssets.length).toBeGreaterThan(0)
+    expect(ctx().discoveryStatus).toBe('reviewing')
+
+    // Selecting the same business again would still be a no-op (the search
+    // results surface is hidden after selection in this branch). Drive the
+    // internal `selectBusiness` directly to simulate a fresh search → pick a
+    // different business.
+    await act(async () => {
+      ctx().selectBusiness({
+        ...BUSINESS_SEARCH_RESPONSE.businesses[0],
+        id: 'osm-2',
+        name: 'Different Business',
+        website: 'https://different.example.com',
+      })
+    })
+    await flush(10)
+
+    // The prior business's reviewable assets must not leak into the new one.
+    expect(ctx().discoveredAssets.length).toBe(0)
+    expect(ctx().discoveryStatus).toBe('idle')
+    expect(ctx().discoveryError).toBeNull()
+    // …and the new business's fields replaced the old ones through the
+    // shared mapping (no stale canonical URL, no stale name).
+    expect(ctx().clientForm.businessName).toBe('Different Business')
+    expect(ctx().clientForm.website).toBe('https://different.example.com')
+  })
 })
 
 // ── 4. Responsive containment ────────────────────────────────────────────────

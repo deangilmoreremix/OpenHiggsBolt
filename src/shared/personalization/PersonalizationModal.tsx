@@ -2229,26 +2229,26 @@ function ConfigurationView(props: any) {
   // ── What SmartVideo Will Use summary ─────────────────────────────────────
 
   const assetSummary = useMemo(() => {
-    const items: { section: string; name: string; url: string }[] = []
+    const items: { id: string; section: string; name: string; url: string }[] = []
     if (assets.primaryIdentity) {
-      items.push({ section: 'Person', name: assets.primaryIdentity.name, url: assets.primaryIdentity.uploadedUrl || assets.primaryIdentity.url })
+      items.push({ id: assets.primaryIdentity.id, section: 'Person', name: assets.primaryIdentity.name, url: assets.primaryIdentity.uploadedUrl || assets.primaryIdentity.url })
     }
     assets.identities.forEach((a) => {
       if (a.id === assets.primaryIdentity?.id) return
-      items.push({ section: 'Person', name: a.name, url: a.uploadedUrl || a.url })
+      items.push({ id: a.id, section: 'Person', name: a.name, url: a.uploadedUrl || a.url })
     })
     if (assets.primaryLogo) {
-      items.push({ section: 'Logo', name: assets.primaryLogo.name, url: assets.primaryLogo.uploadedUrl || assets.primaryLogo.url })
+      items.push({ id: assets.primaryLogo.id, section: 'Logo', name: assets.primaryLogo.name, url: assets.primaryLogo.uploadedUrl || assets.primaryLogo.url })
     }
     assets.logos.forEach((a) => {
       if (a.id === assets.primaryLogo?.id) return
-      items.push({ section: 'Logo', name: a.name, url: a.uploadedUrl || a.url })
+      items.push({ id: a.id, section: 'Logo', name: a.name, url: a.uploadedUrl || a.url })
     })
-    assets.products.forEach((a) => items.push({ section: 'Products', name: a.name, url: a.uploadedUrl || a.url }))
-    assets.brandReferences.forEach((a) => items.push({ section: 'Brand', name: a.name, url: a.uploadedUrl || a.url }))
-    if (assets.firstFrame) items.push({ section: 'First Frame', name: assets.firstFrame.name, url: assets.firstFrame.uploadedUrl || assets.firstFrame.url })
-    if (assets.lastFrame) items.push({ section: 'Last Frame', name: assets.lastFrame.name, url: assets.lastFrame.uploadedUrl || assets.lastFrame.url })
-    if (assets.ctaGraphic) items.push({ section: 'CTA', name: assets.ctaGraphic.name, url: assets.ctaGraphic.uploadedUrl || assets.ctaGraphic.url })
+    assets.products.forEach((a) => items.push({ id: a.id, section: 'Products', name: a.name, url: a.uploadedUrl || a.url }))
+    assets.brandReferences.forEach((a) => items.push({ id: a.id, section: 'Brand', name: a.name, url: a.uploadedUrl || a.url }))
+    if (assets.firstFrame) items.push({ id: assets.firstFrame.id, section: 'First Frame', name: assets.firstFrame.name, url: assets.firstFrame.uploadedUrl || assets.firstFrame.url })
+    if (assets.lastFrame) items.push({ id: assets.lastFrame.id, section: 'Last Frame', name: assets.lastFrame.name, url: assets.lastFrame.uploadedUrl || assets.lastFrame.url })
+    if (assets.ctaGraphic) items.push({ id: assets.ctaGraphic.id, section: 'CTA', name: assets.ctaGraphic.name, url: assets.ctaGraphic.uploadedUrl || assets.ctaGraphic.url })
     return items
   }, [assets])
 
@@ -2356,7 +2356,7 @@ function ConfigurationView(props: any) {
          <div className="flex flex-wrap gap-2">
            {assetSummary.map((item) => (
              <div
-               key={`${item.section}-${item.url}`}
+               key={item.id}
                className="flex items-center gap-1.5 rounded-lg px-2 py-1"
                style={{ background: 'rgba(41,211,242,.06)', border: `1px solid rgba(41,211,242,.18)` }}
              >

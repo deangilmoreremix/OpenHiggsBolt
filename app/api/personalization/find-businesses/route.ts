@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { geocodeLocation, discoverBusinesses, deduplicateBusinesses, enrichBusinessRecord, scoreAndSort, createCacheKey, businessDiscoveryCache } from '@/server/businessDiscovery'
 import { getNicheMapping, getSupportedNiches } from '@/server/businessDiscovery'
 import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
-import { validatePersonalizationEnv } from '@/server/envValidation'
 import { rateLimit, rateLimit429, resolveRateLimitKey } from '@/lib/rateLimit'
 
 export const dynamic = "force-dynamic";
@@ -85,22 +84,6 @@ export async function POST(req: NextRequest) {
   if (!rateLimitResult.allowed) return rateLimit429(rateLimitResult.retryAfterMs)
 
   try {
-    const envCheck = validatePersonalizationEnv()
-    if (!envCheck.valid) {
-      logPersonalization({
-        route: '/api/personalization/find-businesses',
-        stage: 'env-validation',
-        httpStatus: 500,
-        safeErrorCode: 'ENV_MISSING',
-        safeMessage: `Missing required env vars: ${envCheck.missingRequired.join(', ')}`,
-        correlationId,
-      })
-      return NextResponse.json(
-        { error: 'Server configuration error', correlationId },
-        { status: 500, headers: { 'x-correlation-id': correlationId } },
-      )
-    }
-
     const body = await req.json().catch(() => ({}))
     const niche = typeof body?.niche === 'string' ? body.niche.trim() : ''
     const location = typeof body?.location === 'string' ? body.location.trim() : ''
