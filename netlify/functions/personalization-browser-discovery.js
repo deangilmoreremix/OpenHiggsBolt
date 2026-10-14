@@ -1,18 +1,32 @@
-const { createClient } = require('@supabase/supabase-js')
-
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
 const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-// The Supabase client is created lazily so that importing this module never
-// throws on a deployment with no Supabase env (and so the handler can be
-// constructed in unit tests without a database).
+// @supabase/supabase-js is loaded lazily inside a try/catch: a bundling or
+// module-resolution problem in its dependency tree (observed in production as
+// Runtime.ImportModuleError on a missing transitive @supabase/functions-js)
+// must not crash the function at cold start before any handler logic runs.
+// Never throws: returns null when unavailable, so the handler can answer with
+// a logged error instead of an import-time hard crash.
+//
+// The module is pulled in with a lazy `require` (like playwright-core and
+// @clerk/backend below) rather than a dynamic `import()`: the unit tests
+// substitute this dependency through Node's `require.cache`, which a dynamic
+// import bypasses under the test runner. Either spelling contains the failure
+// the same way — the dependency is only touched when the handler first needs
+// a client, inside this try/catch.
 let supabaseClient = null
 
-function getSupabase() {
-  if (!supabaseClient) {
+async function getSupabase() {
+  if (supabaseClient) return supabaseClient
+  try {
+    // eslint-disable-next-line global-require
+    const { createClient } = require('@supabase/supabase-js')
     supabaseClient = createClient(supabaseUrl, serviceRole)
+    return supabaseClient
+  } catch (err) {
+    console.error('supabase-js unavailable:', err?.message || err)
+    return null
   }
-  return supabaseClient
 }
 
 // ---------------------------------------------------------------------------
@@ -1606,7 +1620,7 @@ function createBrowserDiscoveryHandler(overrides = {}) {
       ? priorityPages.slice(0, BROWSER_FALLBACK_MAX_PAGES)
       : [websiteUrl]
 
-    const supabase = deps.getSupabase()
+    const supabase = await deps.getSupabase()
 
     try {
       const { data: job, error: fetchError } = await supabase
