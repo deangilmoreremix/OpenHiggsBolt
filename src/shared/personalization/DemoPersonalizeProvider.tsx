@@ -13,6 +13,7 @@ import {
   useState,
   useEffect,
   useRef,
+  useMemo,
   type ReactNode,
 } from 'react'
 import { useRouter } from 'next/navigation'
@@ -46,6 +47,14 @@ import type {
   PersonalizationVisionValidation,
   BusinessResearchResult,
   PersonalizationAccessMode,
+  GuidedStep,
+  PersonalizationViewMode,
+  PersonalizationPreviewSettings,
+  PreviewLayer,
+  PreviewVideoRef,
+  PreviewLayoutId,
+  PreviewBrandColors,
+  PreviewAspectRatio,
 } from './types'
 import { EMPTY_GENERATION_STATE } from './types'
 import { normalizePersonalizationSource, getEligibility } from './sourceNormalizer'
@@ -78,10 +87,20 @@ import { resolveModelCapabilities, resolveAssetsForModel } from './modelCapabili
 import { applyPostProcessing, generateEndCardImage } from './postProcessor'
 import type { BusinessDiscoveryRecord } from './types'
 import { uploadPersonalizationAsset } from './assetUploadService'
+import { cancelActiveExport } from './webExport'
 import { persistEditedPersonalizationAsset } from './editedAssetPersistence'
 
 import { normalizeUrl, TRACKING_PARAMS } from './urlNormalizer'
-import { createProjectPersistence, loadProject, type LoadProjectResult } from './supabaseProjectPersistence'
+import { createProjectPersistence, loadProject, type LoadProjectResult, type PersonalizationProjectState } from './supabaseProjectPersistence'
+import { buildPreviewInput } from './guided/buildPreviewInput'
+import { chooseFinalOutputPath } from './finalOutput'
+import {
+  createDefaultPreviewSettings,
+  applyLayoutPreset,
+  resetLayoutToDefaults,
+  normalizePreviewSettings,
+  getCompositionDimensions,
+} from './preview/presets'
 
 const EMPTY_ASSET_LIBRARY: AssetLibrary = {
   identities: [],
@@ -114,6 +133,99 @@ const EMPTY_GENERATION_OPTIONS: GenerationOptions = {
 }
 
 const MAX_REFERENCE_UPLOADS = 10
+
+// ── Guided Simple Mode + free preview helpers ────────────────────────────────
+//
+// The preview is a free, local Remotion composition: it never calls MuAPI or
+// OpenAI. Everything below only derives/clamps settings and reads/writes the
+// browser mirror used when Supabase has no saved state.
+
+function clampPreviewNumber(value: unknown, min: number, max: number, fallback: number): number {
+  const n = typeof value === 'number' && Number.isFinite(value) ? value : fallback
+  return Math.min(max, Math.max(min, n))
+}
+
+function clampPreviewFrame(value: unknown, fallback: number): number {
+  const n = typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : fallback
+  return Math.max(0, n)
+}
+
+/** Keeps layer geometry/opacity/timing inside the ranges the renderer supports. */
+function clampPreviewLayer(layer: PreviewLayer): PreviewLayer {
+  return {
+    ...layer,
+    x: clampPreviewNumber(layer.x, 0, 1, 0),
+    y: clampPreviewNumber(layer.y, 0, 1, 0),
+    scale: clampPreviewNumber(layer.scale, 0.02, 2, 1),
+    opacity: clampPreviewNumber(layer.opacity, 0, 1, 1),
+    animationDelay: clampPreviewFrame(layer.animationDelay, 0),
+    startFrame: clampPreviewFrame(layer.startFrame, 0),
+    endFrame:
+      typeof layer.endFrame === 'number' && Number.isFinite(layer.endFrame)
+        ? clampPreviewFrame(layer.endFrame, clampPreviewFrame(layer.startFrame, 0))
+        : undefined,
+  }
+}
+
+/** The demo's own aspect ratio when it is one the preview can render. */
+function sourceAspectRatio(source: PersonalizationSource): PreviewAspectRatio {
+  const ratio = source.aspectRatio
+  return ratio === '9:16' || ratio === '1:1' || ratio === '4:5' ? ratio : '16:9'
+}
+
+/** Default preview composition seeded from a freshly opened source. */
+function sourcePreviewDefaults(source: PersonalizationSource): PersonalizationPreviewSettings {
+  const aspectRatio = sourceAspectRatio(source)
+  const { width, height } = getCompositionDimensions(aspectRatio)
+  const seconds =
+    typeof source.duration === 'number' && Number.isFinite(source.duration) && source.duration > 0
+      ? source.duration
+      : 5
+  const fps = createDefaultPreviewSettings().fps
+  return createDefaultPreviewSettings({
+    aspectRatio,
+    width,
+    height,
+    durationInFrames: Math.max(1, Math.round(fps * seconds)),
+  })
+}
+
+interface PersistedPreviewState {
+  previewSettings?: unknown
+  previewVideo?: unknown
+  guidedStep?: unknown
+  viewMode?: unknown
+}
+
+const PREVIEW_STORAGE_PREFIX = 'smartvideo_preview_state_'
+
+function previewStorageKey(sourceId: string): string {
+  return `${PREVIEW_STORAGE_PREFIX}${sourceId}`
+}
+
+/** Defensive localStorage read — never throws and never returns garbage. */
+function readPreviewStorage(sourceId: string): PersistedPreviewState | null {
+  if (typeof window === 'undefined' || !sourceId) return null
+  try {
+    const raw = localStorage.getItem(previewStorageKey(sourceId))
+    if (!raw) return null
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+    return parsed as PersistedPreviewState
+  } catch {
+    return null
+  }
+}
+
+/** Defensive localStorage write — best-effort, never throws. */
+function writePreviewStorage(sourceId: string, state: PersistedPreviewState): void {
+  if (typeof window === 'undefined' || !sourceId) return
+  try {
+    localStorage.setItem(previewStorageKey(sourceId), JSON.stringify(state))
+  } catch {
+    /* best-effort; do not throw */
+  }
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -379,6 +491,25 @@ export type DemoPersonalizeContextValue = {
     updatedAt: string
   } | null
   restoring: boolean
+
+  // Guided Simple Mode + free Remotion preview
+  viewMode: PersonalizationViewMode
+  setViewMode: (mode: PersonalizationViewMode) => void
+  guidedStep: GuidedStep
+  setGuidedStep: (step: GuidedStep) => void
+  previewSettings: PersonalizationPreviewSettings
+  previewVideo: PreviewVideoRef | null
+  setPreviewVideo: (video: PreviewVideoRef | null) => void
+  setPreviewLayout: (layout: PreviewLayoutId) => void
+  updatePreviewLayer: (layerId: string, patch: Partial<PreviewLayer>) => void
+  updatePreviewBrandColors: (patch: Partial<PreviewBrandColors>) => void
+   updatePreviewComposition: (patch: Partial<Pick<PersonalizationPreviewSettings, 'aspectRatio' | 'fps' | 'durationInFrames' | 'showEndCard'>>) => void
+   resetPreviewLayout: () => void
+   previewApproved: boolean
+   approvePersonalization: () => void
+   createFinalVideo: () => Promise<void>
+   cancelExport: () => void
+   apiKey: string
 }
 
 const PersonalizationContext = createContext<DemoPersonalizeContextValue | null>(null)
@@ -803,6 +934,18 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   } | null>(null)
   const [restoring, setRestoring] = useState(false)
 
+  // Guided Simple Mode + free Remotion preview
+  const [viewMode, setViewMode] = useState<PersonalizationViewMode>('simple')
+  const [guidedStep, setGuidedStepState] = useState<GuidedStep>(1)
+  const [previewSettings, setPreviewSettings] = useState<PersonalizationPreviewSettings>(() =>
+    createDefaultPreviewSettings(),
+  )
+  const [previewVideo, setPreviewVideo] = useState<PreviewVideoRef | null>(null)
+  const [previewApproved, setPreviewApproved] = useState(false)
+  // Set when the preview hands off to the existing generate() path after the
+  // source has been patched with the selected preview video.
+  const pendingFinalGenerateRef = useRef(false)
+
   // Refs for studio handoff persistence
   const lastResultRef = useRef<GenerationResult | null>(null)
   const lastProjectRef = useRef<{
@@ -820,10 +963,58 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
   const _currentClient = clients.find((c) => c.id === selectedClientId) || null
 
+  // Seed context for the free preview layout presets: the client form and asset
+  // library the visitor already filled in, so the preview matches the run
+  // without any extra network call. URLs stay `undefined` (not null) so the
+  // context stays assignable to the layout-preset context.
+  const previewSeed = useMemo(() => ({
+    businessName: clientForm.businessName || clientForm.name || '',
+    headline: clientForm.businessName ? `${clientForm.businessName}` : '',
+    tagline: clientForm.brandDescription || '',
+    offer: clientForm.offer || '',
+    cta: clientForm.callToAction || (clientForm.website ? `Visit ${clientForm.website}` : ''),
+    phone: clientForm.phone || '',
+    website: clientForm.website || '',
+    logoUrl: assets.primaryLogo?.uploadedUrl || assets.primaryLogo?.url || undefined,
+    productUrl: assets.products[0]?.uploadedUrl || assets.products[0]?.url || undefined,
+    serviceUrl:
+      assets.products[1]?.uploadedUrl ||
+      assets.products[1]?.url ||
+      assets.products[0]?.uploadedUrl ||
+      assets.products[0]?.url ||
+      undefined,
+  }), [
+    clientForm.businessName,
+    clientForm.name,
+    clientForm.brandDescription,
+    clientForm.offer,
+    clientForm.callToAction,
+    clientForm.phone,
+    clientForm.website,
+    assets.primaryLogo,
+    assets.products,
+  ])
+
+  // Ref mirror so preview actions always see the freshest seed without
+  // re-creating the callbacks on every form keystroke.
+  const previewSeedRef = useRef(previewSeed)
+  useEffect(() => {
+    previewSeedRef.current = previewSeed
+  }, [previewSeed])
+
   // ── Reset on source change ─────────────────────────────────────────────────
+
+  // Tracks the id the reset last ran for. `createFinalVideo` patches the
+  // source object in place (same id, new media) to hand the selected video to
+  // the generation workflow — that is NOT a source change and must not wipe the
+  // in-progress project, so the reset only runs when the id actually changes.
+  const resetSourceIdRef = useRef<string | null | undefined>(undefined)
 
   useEffect(() => {
     if (!source) return
+    const nextId = source.id ?? null
+    if (resetSourceIdRef.current === nextId) return
+    resetSourceIdRef.current = nextId
     // Revoke any outstanding blob URLs before resetting state
     setAssets((prev) => {
       const all = [
@@ -854,6 +1045,14 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setResultTab('prompt')
     setClientForm({})
     setEligibility(getEligibility(source))
+    // Guided Simple Mode + preview reset happens here, BEFORE the restore
+    // effect (below) hydrates anything durable, so a saved project always wins.
+    // The view mode is intentionally NOT reset: an explicit Advanced Editing
+    // choice is a session preference and survives opening another source.
+    setGuidedStepState(1)
+    setPreviewSettings(sourcePreviewDefaults(source))
+    setPreviewVideo(null)
+    setPreviewApproved(false)
   }, [source?.id, source])
 
   // Persist current reusable assets to saved client library whenever they change
@@ -879,52 +1078,52 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     selectedClientId,
   ])
 
-  // Debounced Supabase project persistence
-  useEffect(() => {
-    // Anonymous sessions persist nothing: the free discovery run writes no
-    // project row, no identity and no saved asset.
-    if (!source || access !== 'authenticated') return
-    projectPersistence.current.persist({
-      originStudio: 'demo-personalization',
-      sourceType: source.sourceType,
-      sourceDemoId: source.id,
-      sourceDemoSlug: (source as { slug?: string }).slug ?? null,
-      sourceMedia: source.sourceMedia,
-      sourceUrl: source.sourceUrl ?? null,
-      personalizationMode: mode || null,
-      model: source.model || genOptions.model || null,
-      originalPrompt: promptState.original,
-      personalizedPrompt: promptState.personalized || promptState.edited,
-      identityAssetIds: assets.identities.map((i) => i.id),
-      logoAssetIds: assets.logos.map((l) => l.id),
-      productAssetIds: assets.products.map((p) => p.id),
-      brandReferenceAssetIds: assets.brandReferences.map((b) => b.id),
-      firstFrameAssetId: assets.firstFrame?.id || null,
-      lastFrameAssetId: assets.lastFrame?.id || null,
-      outputUrls: result?.urls || (result?.url ? [result.url] : []),
-      outputType,
-      clientId: selectedClientId || null,
-      status: generation.status === 'complete' ? 'complete' : 'draft',
-      ctaHeadline: clientForm.ctaHeadline || null,
-      callToAction: clientForm.callToAction || null,
-      generationSettings: {
-        engine: genOptions.engine,
-        preserveAudio: genOptions.preserveAudio,
-        exactLogoHandling: genOptions.exactLogoHandling,
-        exactCtaHandling: genOptions.exactCtaHandling,
-        firstFrameMode: genOptions.firstFrameMode,
-        lastFrameMode: genOptions.lastFrameMode,
-        advancedModel: genOptions.advancedModel || null,
-        aspectRatio: genOptions.aspectRatio || null,
-        duration: genOptions.duration || null,
-        resolution: genOptions.resolution || null,
-        quality: genOptions.quality || null,
-        consentGiven: genOptions.consentGiven,
-      },
-      aiAssistState: {},
-    })
-  }, [
-    source?.id,
+  // Single builder for the persisted project payload, shared by both debounced
+  // persist effects below and by the immediate flush on approval so they can
+  // never drift. The payload is purely additive over the previous fields.
+  const buildProjectPayload = useCallback((): PersonalizationProjectState => ({
+    originStudio: 'demo-personalization',
+    sourceType: source!.sourceType,
+    sourceDemoId: source!.id,
+    sourceDemoSlug: (source as { slug?: string }).slug ?? null,
+    sourceMedia: source!.sourceMedia,
+    sourceUrl: source!.sourceUrl ?? null,
+    personalizationMode: mode || null,
+    model: source!.model || genOptions.model || null,
+    originalPrompt: promptState.original,
+    personalizedPrompt: promptState.personalized || promptState.edited,
+    identityAssetIds: assets.identities.map((i) => i.id),
+    logoAssetIds: assets.logos.map((l) => l.id),
+    productAssetIds: assets.products.map((p) => p.id),
+    brandReferenceAssetIds: assets.brandReferences.map((b) => b.id),
+    firstFrameAssetId: assets.firstFrame?.id || null,
+    lastFrameAssetId: assets.lastFrame?.id || null,
+    outputUrls: result?.urls || (result?.url ? [result.url] : []),
+    outputType,
+    clientId: selectedClientId || null,
+    status: generation.status === 'complete' ? 'complete' : 'draft',
+    ctaHeadline: clientForm.ctaHeadline || null,
+    callToAction: clientForm.callToAction || null,
+    generationSettings: {
+      engine: genOptions.engine,
+      preserveAudio: genOptions.preserveAudio,
+      exactLogoHandling: genOptions.exactLogoHandling,
+      exactCtaHandling: genOptions.exactCtaHandling,
+      firstFrameMode: genOptions.firstFrameMode,
+      lastFrameMode: genOptions.lastFrameMode,
+      advancedModel: genOptions.advancedModel || null,
+      aspectRatio: genOptions.aspectRatio || null,
+      duration: genOptions.duration || null,
+      resolution: genOptions.resolution || null,
+      quality: genOptions.quality || null,
+      consentGiven: genOptions.consentGiven,
+    },
+    aiAssistState: {},
+    previewSettings,
+    previewVideo: previewVideo && previewVideo.url && !previewVideo.url.startsWith('blob:') ? previewVideo : null,
+    guidedStep,
+    viewMode,
+  }), [
     source,
     mode,
     promptState.original,
@@ -939,7 +1138,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     clientForm.ctaHeadline,
     clientForm.callToAction,
     genOptions,
-    access,
+    previewSettings,
+    previewVideo,
+    guidedStep,
+    viewMode,
   ])
 
   // Debounced Supabase project persistence
@@ -947,45 +1149,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // Anonymous sessions persist nothing: the free discovery run writes no
     // project row, no identity and no saved asset.
     if (!source || access !== 'authenticated') return
-    projectPersistence.current.persist({
-      originStudio: 'demo-personalization',
-      sourceType: source.sourceType,
-      sourceDemoId: source.id,
-      sourceDemoSlug: (source as { slug?: string }).slug ?? null,
-      sourceMedia: source.sourceMedia,
-      sourceUrl: source.sourceUrl ?? null,
-      personalizationMode: mode || null,
-      model: source.model || genOptions.model || null,
-      originalPrompt: promptState.original,
-      personalizedPrompt: promptState.personalized || promptState.edited,
-      identityAssetIds: assets.identities.map((i) => i.id),
-      logoAssetIds: assets.logos.map((l) => l.id),
-      productAssetIds: assets.products.map((p) => p.id),
-      brandReferenceAssetIds: assets.brandReferences.map((b) => b.id),
-      firstFrameAssetId: assets.firstFrame?.id || null,
-      lastFrameAssetId: assets.lastFrame?.id || null,
-      outputUrls: result?.urls || (result?.url ? [result.url] : []),
-      outputType,
-      clientId: selectedClientId || null,
-      status: generation.status === 'complete' ? 'complete' : 'draft',
-      ctaHeadline: clientForm.ctaHeadline || null,
-      callToAction: clientForm.callToAction || null,
-      generationSettings: {
-        engine: genOptions.engine,
-        preserveAudio: genOptions.preserveAudio,
-        exactLogoHandling: genOptions.exactLogoHandling,
-        exactCtaHandling: genOptions.exactCtaHandling,
-        firstFrameMode: genOptions.firstFrameMode,
-        lastFrameMode: genOptions.lastFrameMode,
-        advancedModel: genOptions.advancedModel || null,
-        aspectRatio: genOptions.aspectRatio || null,
-        duration: genOptions.duration || null,
-        resolution: genOptions.resolution || null,
-        quality: genOptions.quality || null,
-        consentGiven: genOptions.consentGiven,
-      },
-      aiAssistState: {},
-    })
+    projectPersistence.current.persist(buildProjectPayload())
   }, [
     source?.id,
     source,
@@ -1002,8 +1166,59 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     clientForm.ctaHeadline,
     clientForm.callToAction,
     genOptions,
+    previewSettings,
+    previewVideo,
+    guidedStep,
+    viewMode,
     access,
+    buildProjectPayload,
   ])
+
+  // Debounced Supabase project persistence
+  useEffect(() => {
+    // Anonymous sessions persist nothing: the free discovery run writes no
+    // project row, no identity and no saved asset.
+    if (!source || access !== 'authenticated') return
+    projectPersistence.current.persist(buildProjectPayload())
+  }, [
+    source?.id,
+    source,
+    mode,
+    promptState.original,
+    promptState.personalized,
+    promptState.edited,
+    assets,
+    outputType,
+    selectedClientId,
+    generation.status,
+    result?.url,
+    result?.urls,
+    clientForm.ctaHeadline,
+    clientForm.callToAction,
+    genOptions,
+    previewSettings,
+    previewVideo,
+    guidedStep,
+    viewMode,
+    access,
+    buildProjectPayload,
+  ])
+
+  // Local mirror of the guided/preview state, so save/restore works in the
+  // browser even when Supabase has no row for this source (same rule as the
+  // project persistence above: anonymous sessions write nothing).
+  useEffect(() => {
+    if (!source?.id || access !== 'authenticated') return
+    const timer = setTimeout(() => {
+      writePreviewStorage(source.id, {
+        previewSettings,
+        previewVideo: previewVideo && previewVideo.url && !previewVideo.url.startsWith('blob:') ? previewVideo : null,
+        guidedStep,
+        viewMode,
+      })
+    }, 800)
+    return () => clearTimeout(timer)
+  }, [previewSettings, previewVideo, guidedStep, viewMode, source?.id, access])
 
   // Cancel pending project persistence on unmount
   useEffect(() => {
@@ -1115,6 +1330,52 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         consentGiven: gs.consentGiven === true,
       }))
     }
+    // Top-level `model` field is the durable record of which model the user
+    // picked; `generationSettings` does not carry it, so restore it separately
+    // and let an explicit generationSettings value (older payloads) win.
+    if (typeof entry.model === 'string' && entry.model) {
+      setGenOptions((prev) => (prev.model === entry.model ? prev : { ...prev, model: entry.model! }))
+    }
+
+    // ── Restore guided Simple Mode + free preview ────────────────────────────
+    // Supabase wins; the localStorage mirror is only consulted when the saved
+    // project predates the preview (or has no preview state of its own), so
+    // older projects fall back to the defaults the reset effect seeded.
+    const stored = readPreviewStorage(src.id)
+    const storedSettings =
+      entry.previewSettings !== undefined && entry.previewSettings !== null
+        ? entry.previewSettings
+        : stored?.previewSettings
+    setPreviewSettings(
+      storedSettings === undefined || storedSettings === null
+        ? normalizePreviewSettings(undefined)
+        : normalizePreviewSettings(storedSettings),
+    )
+    const storedVideo =
+      entry.previewVideo !== undefined && entry.previewVideo !== null
+        ? entry.previewVideo
+        : stored?.previewVideo
+    setPreviewVideo(
+      storedVideo &&
+      typeof storedVideo === 'object' &&
+      typeof (storedVideo as PreviewVideoRef).url === 'string' &&
+      !(storedVideo as PreviewVideoRef).url.startsWith('blob:')
+        ? (storedVideo as PreviewVideoRef)
+        : null,
+    )
+    const storedStep =
+      typeof entry.guidedStep === 'number' ? entry.guidedStep : stored?.guidedStep
+    setGuidedStepState(
+      typeof storedStep === 'number' && storedStep >= 1 && storedStep <= 4
+        ? (storedStep as GuidedStep)
+        : 1,
+    )
+    const storedViewMode =
+      entry.viewMode !== undefined && entry.viewMode !== null
+        ? entry.viewMode
+        : stored?.viewMode
+    setViewMode(storedViewMode === 'advanced' ? 'advanced' : 'simple')
+    setPreviewApproved(false)
 
     // ── Restore output type ──────────────────────────────────────────────────
     if (entry.outputType && ['prompt', 'image', 'video', 'everything'].includes(entry.outputType)) {
@@ -1190,7 +1451,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     if (normalized) {
       const label =
         normalized.sourceType === 'go-ai-viral-prompt' || normalized.sourceType === 'go-ai-viral-video'
-          ? 'GO AI Viral'
+          ? 'SmartVideo GO AI'
           : undefined
       setSourceTypeLabel(label)
       setAccess(opts.access || accessProp || 'authenticated')
@@ -2697,6 +2958,16 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setBusinessSearchMode('selected')
     setBusinessResearch({ status: 'idle' })
 
+    // Any prior discovery reviewable state belongs to the previously selected
+    // business's website. Clearing it here keeps the review UI honest: stale
+    // assets cannot leak into the new business's import, and the research
+    // panel never shows a summary from a different website. The
+    // `runDiscoveryWorkflow` path resets the same state itself, so this is a
+    // no-op on the anonymous automated path.
+    setDiscoveredAssetsState([])
+    setDiscoveryStatus('idle')
+    setDiscoveryError(null)
+
     // Populate client form from business, through the single shared mapping
     // (see `clientFormFromBusiness`) that the automated "Find My Brand"
     // workflow uses too.
@@ -3335,6 +3606,241 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     }
   }, [apiKey])
 
+  // ── Guided Simple Mode + free preview actions ──────────────────────────────
+  //
+  // The preview is entirely local: these actions only manipulate the
+  // PersonalizationPreviewSettings composition. `createFinalVideo` is the only
+  // place that hands off to the existing generate() pipeline.
+
+  const setGuidedStep = useCallback((step: GuidedStep) => {
+    const clamped = Math.min(4, Math.max(1, Math.round(step))) as GuidedStep
+    setGuidedStepState(clamped)
+  }, [])
+
+  const setPreviewLayout = useCallback((layout: PreviewLayoutId) => {
+    setPreviewSettings((prev) => applyLayoutPreset(prev, layout, previewSeedRef.current))
+  }, [])
+
+  const updatePreviewLayer = useCallback((layerId: string, patch: Partial<PreviewLayer>) => {
+    setPreviewSettings((prev) => ({
+      ...prev,
+      layers: prev.layers.map((layer) =>
+        layer.id === layerId ? clampPreviewLayer({ ...layer, ...patch }) : layer,
+      ),
+    }))
+  }, [])
+
+  const updatePreviewBrandColors = useCallback((patch: Partial<PreviewBrandColors>) => {
+    setPreviewSettings((prev) => ({
+      ...prev,
+      brandColors: { ...prev.brandColors, ...patch },
+    }))
+  }, [])
+
+  const updatePreviewComposition = useCallback(
+    (patch: Partial<Pick<PersonalizationPreviewSettings, 'aspectRatio' | 'fps' | 'durationInFrames' | 'showEndCard'>>) => {
+      setPreviewSettings((prev) => {
+        const next = { ...prev, ...patch }
+        if (patch.aspectRatio) {
+          const dimensions = getCompositionDimensions(patch.aspectRatio)
+          next.width = dimensions.width
+          next.height = dimensions.height
+        }
+        return next
+      })
+    },
+    [],
+  )
+
+  const resetPreviewLayout = useCallback(() => {
+    // "Restore default layout" must undo per-layer position/scale/visibility
+    // edits, not only re-seed layers that are missing from the layout. Brand
+    // content stays — it is re-derived from the form/asset seed below.
+    setPreviewSettings((prev) => resetLayoutToDefaults(prev, prev.layout, previewSeedRef.current))
+  }, [])
+
+  const approvePersonalization = useCallback(() => {
+    setPreviewApproved(true)
+    // Write the approved preview through immediately instead of waiting for the
+    // debounce window, so the durable project row matches what was approved.
+    // Anonymous sessions keep this in memory only.
+    if (!source || access !== 'authenticated') return
+    projectPersistence.current.flush(buildProjectPayload())
+  }, [source, access, buildProjectPayload])
+
+  const createFinalVideo = useCallback(async () => {
+    // Overlay-only personalizations (branding on the EXISTING selected video)
+    // export through the local Remotion render pipeline — never through MuAPI
+    // generation. Personalizations that genuinely need AI-generated imagery or
+    // video keep the existing generate() flow exactly.
+    if (access !== 'authenticated') return
+    const finalPath = chooseFinalOutputPath({ personalizationMode: mode || null })
+
+    if (finalPath === 'ai-generation') {
+      const hasLogo = previewSettings.layers.some(
+        (layer) => layer.kind === 'logo' && layer.visible && Boolean(layer.imageUrl || previewSeed.logoUrl),
+      )
+      const hasCta = previewSettings.layers.some((layer) => layer.kind === 'cta' && layer.visible)
+
+      // Sync the approved preview into the existing generation options.
+      setGenOptions((prev) => ({
+        ...prev,
+        aspectRatio: previewSettings.aspectRatio,
+        duration: Math.max(1, Math.round(previewSettings.durationInFrames / previewSettings.fps)),
+        exactLogoHandling: hasLogo ? 'final-overlay' : prev.exactLogoHandling,
+        exactCtaHandling: hasCta ? 'final-end-card' : prev.exactCtaHandling,
+      }))
+
+      // A selected preview video replaces the source media. The source update and
+      // generate() cannot share a tick (generate would read the stale source), so
+      // the pending ref lets the effect below run generate on the next commit.
+      if (previewVideo && source && previewVideo.url !== source.sourceMedia) {
+        setSource((prev) =>
+          prev
+            ? {
+                ...prev,
+                sourceMedia: previewVideo.url,
+                poster: previewVideo.poster ?? prev.poster,
+                title: previewVideo.title || prev.title,
+              }
+            : prev,
+        )
+        pendingFinalGenerateRef.current = true
+        return
+      }
+
+      await generate()
+      return
+    }
+
+    // ── branded-render: in-browser render of the approved composition ────────
+    //
+    // The overlay-only final video is produced entirely in the browser by
+    // @remotion/web-renderer — no server, no worker, no storage upload. The
+    // flow requires an approved preview first, and the approved state is
+    // snapshotted at call time so later edits cannot leak into the export.
+    if (!previewApproved) {
+      setGeneration({
+        ...EMPTY_GENERATION_STATE,
+        status: 'error',
+        errorMessage: 'Approve the preview first so we render exactly the layout you signed off on, then render your branded video.',
+      })
+      return
+    }
+
+    // Snapshot the approved composition: the user may keep editing while the
+    // render runs, and the export must stay the approved one.
+    const frozenSettings = previewSettings
+    const frozenVideo = previewVideo
+    const frozenClientForm = clientForm
+    const frozenAssets = assets
+    const frozenSource = source
+    const inputProps = buildPreviewInput({
+      source: frozenSource,
+      previewSettings: frozenSettings,
+      previewVideo: frozenVideo,
+      clientForm: frozenClientForm,
+      assets: frozenAssets,
+    })
+
+    setGeneration({
+      ...EMPTY_GENERATION_STATE,
+      status: 'generating',
+      progress: 5,
+      progressMessage: 'Preparing your branded video…',
+    })
+    setResult(null)
+    setResultTab('prompt')
+
+    try {
+      // Loaded lazily so the renderer never lands in the main bundle.
+      const { exportPersonalizedVideo, downloadWebExportBlob } = await import('./webExport')
+
+      const exported = await exportPersonalizedVideo({
+        inputProps,
+        onProgress: (progress) => {
+          // Real render progress from the web renderer, mapped into the
+          // existing generation state (10..95%) so the UI stays a plain bar.
+          const percent = Math.round(Math.min(1, Math.max(0, progress)) * 100)
+          setGeneration((prev) => ({
+            ...prev,
+            status: 'processing',
+            progress: Math.max(10, Math.min(95, percent)),
+            progressMessage: `Rendering your branded video… ${percent}%`,
+          }))
+        },
+      })
+
+      if (!exported.ok) {
+        if (exported.reason === 'cancelled') {
+          setGeneration({ ...EMPTY_GENERATION_STATE, status: 'idle' })
+          return
+        }
+        setGeneration({
+          ...EMPTY_GENERATION_STATE,
+          status: 'error',
+          errorMessage: exported.error,
+        })
+        return
+      }
+
+      if (exported.warning) {
+        // Non-fatal: e.g. the browser could not encode an audio codec.
+        setGeneration((prev) => ({
+          ...prev,
+          progressMessage: `${prev.progressMessage || 'Rendering your branded video…'} ${exported.warning}`,
+        }))
+      }
+
+      const fileName = `personalized-${Date.now().toString(36)}.${exported.extension}`
+      const objectUrl = URL.createObjectURL(exported.blob)
+
+      // Direct download: the file is handed to the user's device immediately,
+      // so there is no storage cap and nothing is retained on a server.
+      downloadWebExportBlob(exported.blob, fileName)
+
+      const brandedResult: GenerationResult = {
+        type: 'video',
+        url: objectUrl,
+        metadata: {
+          source: 'branded-render',
+          compositionId: 'PersonalizationComposition',
+          container: exported.mimeType,
+          extension: exported.extension,
+          fileName,
+          ...(exported.warning ? { warning: exported.warning } : {}),
+        },
+      }
+      lastResultRef.current = brandedResult
+      setResult(brandedResult)
+      setResultTab('videos')
+      setGeneration({
+        ...EMPTY_GENERATION_STATE,
+        status: 'complete',
+        progress: 100,
+        progressMessage: 'Branded video ready',
+      })
+    } catch (error) {
+      setGeneration({
+        ...EMPTY_GENERATION_STATE,
+        status: 'error',
+        errorMessage: error instanceof Error ? error.message : 'Branded render failed',
+      })
+    }
+  }, [previewSettings, previewSeed, previewVideo, source, generate, mode, access, apiKey, clientForm, assets, previewApproved])
+
+  const cancelExport = useCallback(() => {
+    cancelActiveExport()
+  }, [])
+
+  // Hands off to the existing generate() path once the patched source (selected
+  // preview video) has committed.
+  useEffect(() => {
+    if (!pendingFinalGenerateRef.current) return
+    pendingFinalGenerateRef.current = false
+    void generate()
+  }, [generate])
+
   // ── Result actions ─────────────────────────────────────────────────────────
 
   const editInImageStudio = useCallback(() => {
@@ -3349,7 +3855,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     const handoff = {
       version: 1 as const,
       target: 'image' as const,
-      from: 'storyboard' as const,
+      from: 'demo-personalization' as const,
       projectName: project.source.title || 'Personalized Image',
       aspectRatio: (project.source.aspectRatio as '16:9' | '9:16' | '1:1' | null) || '1:1',
       episodeDuration: 0,
@@ -3386,7 +3892,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     const handoff = {
       version: 1 as const,
       target: 'video' as const,
-      from: 'storyboard' as const,
+      from: 'demo-personalization' as const,
       projectName: project.source.title || 'Personalized Video',
       aspectRatio: (project.source.aspectRatio as '16:9' | '9:16' | '1:1' | null) || '16:9',
       episodeDuration: project.source.duration || 0,
@@ -3573,7 +4079,26 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     // Project restore (Phase 14)
     loadedProject,
     restoring,
-  }
+
+    // Guided Simple Mode + free Remotion preview
+    viewMode,
+    setViewMode,
+    guidedStep,
+    setGuidedStep,
+    previewSettings,
+    previewVideo,
+    setPreviewVideo,
+    setPreviewLayout,
+    updatePreviewLayer,
+    updatePreviewBrandColors,
+    updatePreviewComposition,
+    resetPreviewLayout,
+    previewApproved,
+    approvePersonalization,
+     createFinalVideo,
+     cancelExport,
+     apiKey,
+   }
 
   return (
     <PersonalizationContext.Provider value={ctxValue}>

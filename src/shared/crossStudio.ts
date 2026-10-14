@@ -38,7 +38,7 @@ export interface StudioHandoff {
   /** Which studio should receive this payload. */
   target: StudioTarget
   /** Source studio identifier, for diagnostics. */
-  from: 'storyboard' | 'go-ai-viral'
+  from: 'storyboard' | 'go-ai-viral' | 'demo-personalization'
   projectName: string
   aspectRatio: '16:9' | '9:16' | '1:1' | null
   episodeDuration: number

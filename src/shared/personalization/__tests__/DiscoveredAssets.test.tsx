@@ -226,6 +226,12 @@ describe('Discovered Assets Integration', () => {
     await act(async () => {
       await new Promise((r) => setTimeout(r, 50))
     })
+    // Simple Mode is the default customer presentation; these tests exercise
+    // the full Advanced Editing surface, so opt into it after opening.
+    await act(async () => {
+      const button = screen.queryByRole('button', { name: /advanced editing/i });
+      if (button) (button as HTMLButtonElement).click();
+    })
   }
 
   it('renders the Find Business Assets button', async () => {

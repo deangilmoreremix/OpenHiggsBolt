@@ -534,3 +534,21 @@ export interface AIAssistStructuredResponse {
   readiness: AIAssistReadiness
   generationPlan?: GenerationPlan
 }
+
+// ── Guided Simple Mode + free Remotion preview ─────────────────────────────────
+
+export type {
+  PreviewLayoutId,
+  PreviewLayerKind,
+  PreviewAnimationId,
+  PreviewPositionId,
+  PreviewAspectRatio,
+  PreviewLayer,
+  PreviewBrandColors,
+  PreviewVideoRef,
+  PersonalizationPreviewSettings,
+} from './preview/types'
+
+export type GuidedStep = 1 | 2 | 3 | 4
+
+export type PersonalizationViewMode = 'simple' | 'advanced'
