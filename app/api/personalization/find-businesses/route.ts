@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { geocodeLocation, discoverBusinesses, deduplicateBusinesses, enrichBusinessRecord, scoreAndSort, createCacheKey, businessDiscoveryCache } from '@/server/businessDiscovery'
+import { geocodeLocation, discoverBusinesses, AllOverpassProvidersFailed, deduplicateBusinesses, enrichBusinessRecord, scoreAndSort, createCacheKey, businessDiscoveryCache } from '@/server/businessDiscovery'
 import { getNicheMapping, getSupportedNiches } from '@/server/businessDiscovery'
 import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
 import { rateLimit, rateLimit429, resolveRateLimitKey } from '@/lib/rateLimit'
@@ -56,12 +56,19 @@ function isUpstreamProviderError(message: string): boolean {
   )
 }
 
+// Free-path actionable copy: when every Overpass mirror is down the caller
+// cannot get businesses from search but can still paste a website URL into
+// the research step. Keep it provider-internals free.
+const ALL_OVERPASS_FAILED_USER_MESSAGE =
+  'Local business search is temporarily busy. Please try again in a moment or enter a business website manually to continue.'
+
 function serverErrorResponse(
   error: string,
   correlationId: string,
+  extras: Record<string, unknown> = {},
 ): NextResponse {
   return NextResponse.json(
-    { error, correlationId },
+    { error, correlationId, ...extras },
     { status: 502, headers: { 'x-correlation-id': correlationId } },
   )
 }
@@ -230,19 +237,35 @@ export async function POST(req: NextRequest) {
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Business discovery failed'
+      const isAllOverpassFailed = err instanceof AllOverpassProvidersFailed
       logPersonalization({
         route: '/api/personalization/find-businesses',
         stage: 'discover',
         provider: 'OPENSTREETMAP',
         httpStatus: 502,
-        safeErrorCode: 'DISCOVERY_UPSTREAM_FAILED',
+        safeErrorCode: isAllOverpassFailed ? 'OVERPASS_ALL_MIRRORS_FAILED' : 'DISCOVERY_UPSTREAM_FAILED',
         safeMessage: message,
         correlationId,
         durationMs: Date.now() - startTime,
       })
+      // Partial result: Nominatim succeeded — hand the resolved coordinates
+      // back so the UI can keep them in context, but surface a clear 502
+      // with actionable copy (try again OR enter a website manually). We
+      // never fabricate businesses.
       return serverErrorResponse(
-        'Unable to fetch local businesses right now. Please try again shortly.',
+        isAllOverpassFailed ? ALL_OVERPASS_FAILED_USER_MESSAGE : 'Unable to fetch local businesses right now. Please try again shortly.',
         correlationId,
+        isAllOverpassFailed
+          ? {
+              partial: {
+                geocode: {
+                  latitude: geocodeResult.latitude,
+                  longitude: geocodeResult.longitude,
+                  displayName: geocodeResult.displayName,
+                },
+              },
+            }
+          : {},
       )
     }
 

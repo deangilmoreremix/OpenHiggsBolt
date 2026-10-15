@@ -43,7 +43,7 @@ export function StepPreviewApprove(): React.JSX.Element {
   } = ctx
 
   const isAnonymous = access !== 'authenticated'
-  const generating = generation?.status === 'generating' || generation?.status === 'personalizing-prompt'
+  const generating = generation?.status === 'generating' || generation?.status === 'processing' || generation?.status === 'personalizing-prompt'
   const inputProps = buildPreviewInput({ source, previewSettings, previewVideo, clientForm, assets })
   // Overlay-only personalizations render locally; AI modes keep the generation
   // pipeline. The active path is the primary action; the other stays visible

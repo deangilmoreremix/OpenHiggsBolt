@@ -10,6 +10,7 @@ export {
 
 export {
   discoverBusinesses,
+  AllOverpassProvidersFailed,
 } from './overpassProvider'
 
 export {
