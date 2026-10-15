@@ -100,7 +100,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
   const params = useParams();
   const router = useRouter();
   const pathname = usePathname();
-  const isSignedIn = useIsSignedIn();
+  const isSignedIn = useAuth().isSignedIn;
   const auth = useAuthConfig();
   const slug = params?.slug || []; 
   const idFromParams = params?.id;

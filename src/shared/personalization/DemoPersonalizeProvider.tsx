@@ -199,29 +199,53 @@ interface PersistedPreviewState {
 
 const PREVIEW_STORAGE_PREFIX = 'smartvideo_preview_state_'
 
-function previewStorageKey(sourceId: string): string {
-  return `${PREVIEW_STORAGE_PREFIX}${sourceId}`
+/**
+ * Build the localStorage key for the preview mirror. The key is scoped to the
+ * current user so two visitors sharing a browser never see each other's
+ * in-progress preview state — and so the restore path can refuse to rehydrate
+ * another user's mirror. The `userScope` is opaque; the provider receives it
+ * via a prop or derives it from the per-user MuAPI key.
+ */
+function previewStorageKey(sourceId: string, userScope: string): string {
+  return `${PREVIEW_STORAGE_PREFIX}${userScope}_${sourceId}`
 }
 
 /** Defensive localStorage read — never throws and never returns garbage. */
-function readPreviewStorage(sourceId: string): PersistedPreviewState | null {
-  if (typeof window === 'undefined' || !sourceId) return null
+function readPreviewStorage(sourceId: string, userScope: string): PersistedPreviewState | null {
+  if (typeof window === 'undefined' || !sourceId || !userScope) return null
   try {
-    const raw = localStorage.getItem(previewStorageKey(sourceId))
-    if (!raw) return null
-    const parsed: unknown = JSON.parse(raw)
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
-    return parsed as PersistedPreviewState
+    // Primary key: user-scoped, so two visitors sharing a browser never see
+    // each other's in-progress preview state.
+    const raw = localStorage.getItem(previewStorageKey(sourceId, userScope))
+    if (raw) {
+      const parsed: unknown = JSON.parse(raw)
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as PersistedPreviewState
+      }
+    }
+    // Backward-compat fallback: the pre-fix key was `${prefix}${sourceId}`
+    // with no user scope. Only honor it when the current scope is anonymous,
+    // so authenticated users never restore another user's stale mirror.
+    if (userScope === 'anonymous') {
+      const legacyRaw = localStorage.getItem(`${PREVIEW_STORAGE_PREFIX}${sourceId}`)
+      if (legacyRaw) {
+        const parsed: unknown = JSON.parse(legacyRaw)
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          return parsed as PersistedPreviewState
+        }
+      }
+    }
+    return null
   } catch {
     return null
   }
 }
 
 /** Defensive localStorage write — best-effort, never throws. */
-function writePreviewStorage(sourceId: string, state: PersistedPreviewState): void {
-  if (typeof window === 'undefined' || !sourceId) return
+function writePreviewStorage(sourceId: string, userScope: string, state: PersistedPreviewState): void {
+  if (typeof window === 'undefined' || !sourceId || !userScope) return
   try {
-    localStorage.setItem(previewStorageKey(sourceId), JSON.stringify(state))
+    localStorage.setItem(previewStorageKey(sourceId, userScope), JSON.stringify(state))
   } catch {
     /* best-effort; do not throw */
   }
@@ -531,6 +555,14 @@ interface DemoPersonalizeProviderProps {
    * calls and which UI the modal offers.
    */
   access?: PersonalizationAccessMode
+  /**
+   * Stable per-user identifier used to scope the localStorage preview mirror
+   * so two visitors sharing a browser never see each other's in-progress
+   * preview state. The orchestrator typically passes the Clerk user id; if
+   * omitted, the provider falls back to the per-user MuAPI key (which is
+   * already unique per user) and finally to the literal `'anonymous'`.
+   */
+  userScope?: string
 }
 
 /**
@@ -837,7 +869,7 @@ function businessResearchFromDemoPayload(payload: DemoDiscoveryResponse): Busine
 /** Turns a shared research result into the business-record shape the mapping consumes. */
 // ── Provider ─────────────────────────────────────────────────────────────────
 
-export function DemoPersonalizeProvider({ children, testMode, access: accessProp }: DemoPersonalizeProviderProps) {
+export function DemoPersonalizeProvider({ children, testMode, access: accessProp, userScope: userScopeProp }: DemoPersonalizeProviderProps) {
   // Navigation & publish integration
   const router = useRouter()
   const socialPublish = useOptionalSocialPublish()
@@ -955,6 +987,12 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     mode: VideoPersonalizationMode | ImagePersonalizationMode | null
     personalizedPrompt?: string
   } | null>(null)
+
+  // Stable per-user scope for the localStorage preview mirror. The prop wins
+  // (orchestrators pass the Clerk user id); the per-user MuAPI key is a safe
+  // fallback because each user has their own; the literal `'anonymous'`
+  // keeps unauthenticated mounts from cross-contaminating the mirror.
+  const previewUserScope = userScopeProp || apiKey || 'anonymous'
 
   // Debounced Supabase project persistence
   const projectPersistence = useRef(createProjectPersistence({ debounceMs: 1500 }))
@@ -1210,7 +1248,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   useEffect(() => {
     if (!source?.id || access !== 'authenticated') return
     const timer = setTimeout(() => {
-      writePreviewStorage(source.id, {
+      writePreviewStorage(source.id, previewUserScope, {
         previewSettings,
         previewVideo: previewVideo && previewVideo.url && !previewVideo.url.startsWith('blob:') ? previewVideo : null,
         guidedStep,
@@ -1218,7 +1256,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       })
     }, 800)
     return () => clearTimeout(timer)
-  }, [previewSettings, previewVideo, guidedStep, viewMode, source?.id, access])
+  }, [previewSettings, previewVideo, guidedStep, viewMode, source?.id, access, previewUserScope])
 
   // Cancel pending project persistence on unmount
   useEffect(() => {
@@ -1232,6 +1270,45 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // project for that source from Supabase.  The debounced-persist effect above
   // will write state changes back; localStorage is left as a fast local cache
   // but Supabase is the durable source of truth.
+  //
+  // When Supabase has no row for the source (fresh row, RLS filter, source-id
+  // mismatch, or a transient fetch error), the per-user localStorage mirror is
+  // applied so the visitor's in-progress preview still survives a reload. The
+  // mirror is user-scoped so two visitors sharing a browser never see each
+  // other's preview; the localStorage read is still defensive against blob:
+  // URLs and missing layers via the existing helpers.
+
+  // Apply the per-user localStorage preview mirror to the live state. Used
+  // when Supabase has no row (the Supabase-miss fall-through) AND as the
+  // "field missing on entry" fall-through inside the entry-driven path.
+  // "field missing on entry" fall-through inside the entry-driven path.
+  const applyLocalPreviewState = useCallback((srcId: string) => {
+    const stored = readPreviewStorage(srcId, previewUserScope)
+    if (!stored) return
+    setPreviewSettings(
+      stored.previewSettings === undefined || stored.previewSettings === null
+        ? normalizePreviewSettings(undefined)
+        : normalizePreviewSettings(stored.previewSettings),
+    )
+    const storedVideo = stored.previewVideo
+    setPreviewVideo(
+      storedVideo &&
+      typeof storedVideo === 'object' &&
+      typeof (storedVideo as PreviewVideoRef).url === 'string' &&
+      !(storedVideo as PreviewVideoRef).url.startsWith('blob:')
+        ? (storedVideo as PreviewVideoRef)
+        : null,
+    )
+    const storedStep = stored.guidedStep
+    setGuidedStepState(
+      typeof storedStep === 'number' && storedStep >= 1 && storedStep <= 4
+        ? (storedStep as GuidedStep)
+        : 1,
+    )
+    const storedViewMode = stored.viewMode
+    setViewMode(storedViewMode === 'advanced' ? 'advanced' : 'simple')
+    setPreviewApproved(false)
+  }, [previewUserScope])
 
   const restoreProject = useCallback(async (src: PersonalizationSource): Promise<void> => {
     if (!src?.id) return
@@ -1241,10 +1318,19 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     try {
       result = await loadProject({ sourceId: src.id })
     } catch {
+      // Network/parse failure: Supabase is unreachable but the visitor's
+      // per-user localStorage mirror may still have their in-progress
+      // preview, so fall through to it instead of abandoning the session.
+      applyLocalPreviewState(src.id)
       return
     }
 
-    if (!result.ok || !result.data) return
+    if (!result.ok || !result.data) {
+      // Supabase returned no durable row for this source. The localStorage
+      // mirror is authoritative for the visitor's preview in this branch.
+      applyLocalPreviewState(src.id)
+      return
+    }
 
     const entry = result.data
 
@@ -1338,10 +1424,12 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     }
 
     // ── Restore guided Simple Mode + free preview ────────────────────────────
-    // Supabase wins; the localStorage mirror is only consulted when the saved
-    // project predates the preview (or has no preview state of its own), so
-    // older projects fall back to the defaults the reset effect seeded.
-    const stored = readPreviewStorage(src.id)
+    // Supabase wins; the per-user localStorage mirror is only consulted when
+    // the saved project predates the preview (or has no preview state of its
+    // own), so older projects fall back to the mirror's values for the same
+    // user. Other users' mirrors are skipped automatically because the key is
+    // user-scoped.
+    const stored = readPreviewStorage(src.id, previewUserScope)
     const storedSettings =
       entry.previewSettings !== undefined && entry.previewSettings !== null
         ? entry.previewSettings
@@ -1422,7 +1510,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       status: entry.status || 'draft',
       updatedAt: new Date().toISOString(),
     })
-  }, [clients])
+  }, [clients, previewUserScope, applyLocalPreviewState])
 
   // Hydrate state from Supabase whenever the modal opens with a source.
   // The reset-on-source-change effect (above) runs first, clearing state;

@@ -859,7 +859,7 @@ export default function PersonalizationModal() {
   const previousActiveElementRef = useRef<HTMLElement | null>(null)
 
   const personalizationInProgress =
-    generation.status === 'generating' || generation.status === 'personalizing-prompt'
+    generation.status === 'generating' || generation.status === 'processing' || generation.status === 'personalizing-prompt'
 
   // ── Drag and drop handlers ──────────────────────────────────────────────────
 

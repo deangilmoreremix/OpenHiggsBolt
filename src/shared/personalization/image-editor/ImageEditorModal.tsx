@@ -186,12 +186,15 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   })
 }
 
-function loadImage(dataUrl: string): Promise<HTMLImageElement> {
+function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => resolve(img)
     img.onerror = () => reject(new Error('Unable to load image'))
-    img.src = dataUrl
+    if (/^https?:\/\//i.test(url)) {
+      img.crossOrigin = 'anonymous'
+    }
+    img.src = url
   })
 }
 
@@ -696,8 +699,21 @@ export default function ImageEditorModal({ open, asset, onClose, onApply, onDrop
     setError(null)
     setBusyLabel('Applying local edit')
     try {
-      const source = await prepareDataUrl(displayUrl)
-      const image = await loadImage(source)
+      // Try the fast path first: load the source image directly. data: /
+      // blob: URLs are same-origin so they always succeed; remote http(s)
+      // URLs go through crossOrigin='anonymous' and succeed when the
+      // remote server returns permissive CORS headers. If the remote
+      // server doesn't, fall through to the existing same-origin
+      // /api/personalization/download-image proxy (which performs SSRF,
+      // MIME, size and timeout checks) and load the data URL it returns.
+      let source = displayUrl
+      let image: HTMLImageElement
+      try {
+        image = await loadImage(displayUrl)
+      } catch {
+        source = await prepareDataUrl(displayUrl)
+        image = await loadImage(source)
+      }
       let canvasWidth = image.naturalWidth
       let canvasHeight = image.naturalHeight
       if (aspectRatio !== 'original') [canvasWidth, canvasHeight] = aspectCanvas[aspectRatio]
