@@ -6,6 +6,11 @@ import { checkDestination, isBlockedHostname, isIpLiteral, createPinnedFetch, is
 // they enforce their own copy of the allowlist. validateUploadProxyTarget() is
 // likewise only used by those legacy proxies; the direct route posts to a
 // hardcoded upstream URL, so SSRF is not applicable to it.
+//
+// Every IP / hostname / DNS-rebinding rule now lives in the single shared
+// module ./networkSafety, so the upload proxy cannot drift away from the
+// discovery path. This file owns only the S3 destination allowlist and the
+// upload-specific file rules.
 
 const DEFAULT_S3_REGION_PATTERN = /^[a-z0-9-]+$/;
 

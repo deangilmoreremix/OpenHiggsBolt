@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
-import { ENTITLEMENTS } from '@/access/entitlements'
 import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer'
 import { rateLimit, rateLimit429 } from '@/lib/rateLimit'
 import { IMAGE_EDIT_OPERATIONS, type EditorOperationId } from '@/src/shared/personalization/image-editor/imageEditRegistry'
@@ -51,14 +49,6 @@ function isAllowedSize(size: string) {
 export async function POST(req: NextRequest) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
-
-  const entitlement = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
-  if (!entitlement.allowed) {
-    if (entitlement.status === 401) {
-      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
-    }
-    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO)
-  }
 
   const limit = rateLimit('personalization-image-edit:' + userId, {
     windowMs: RATE_WINDOW_MS,

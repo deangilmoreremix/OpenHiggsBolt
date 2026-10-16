@@ -232,6 +232,16 @@ function mockPersistResolvesAfter(publicUrl: string, ms = 25): void {
   )
 }
 
+/** Mock asset upload to resolve on a macrotask, like a real network round-trip. */
+function mockUploadResolvesAfter(url: string, ms = 30): void {
+  vi.mocked(uploadPersonalizationAsset).mockImplementation(
+    () =>
+      new Promise((resolve) =>
+        setTimeout(() => resolve({ url }), ms),
+      ),
+  )
+}
+
 const renderProvider = async (opts: { testMode?: boolean } = {}): Promise<Root> => {
   const container = document.createElement('div')
   document.body.appendChild(container)
@@ -684,6 +694,128 @@ describe('DemoPersonalizeProvider blob-URL lifecycle', () => {
     expect(revokedHttpCount()).toBe(0)
   })
 
+  it('a saved entry keeps its blob alive when its job copy finishes uploading', async () => {
+    // Long delay so the "saved while upload in flight" state is stable across
+    // act() flushes even on a loaded machine.
+    mockUploadResolvesAfter('https://example.com/uploaded-logo.png', 200)
+    await renderProvider()
+    await openSource()
+
+    await act(async () => {
+      window.__personalizationCtx.addLogoFiles(createFileList([createFile('logo.png')]))
+    })
+
+    // Save the client while the upload is still in flight: the saved entry
+    // mirrors the local (blob) preview.
+    await act(async () => {
+      window.__personalizationCtx.saveClient()
+    })
+
+    const logoId = window.__personalizationCtx.assets.logos[0].id
+    const uploadBlob = blobFor('logo.png')
+    expect(uploadBlob).toBeTruthy()
+    expect(window.__personalizationCtx.savedClientAssets.logos.some((l: SavedClientAssetEntry) => l.id === logoId)).toBe(true)
+    const savedBefore = window.__personalizationCtx.savedClientAssets.logos.find((l: SavedClientAssetEntry) => l.id === logoId)!
+    expect(savedBefore.url).toBe(uploadBlob)
+
+    // Deselect the client so the mirror effect can no longer repair the saved
+    // entry, then let the upload finish.
+    await act(async () => {
+      window.__personalizationCtx.selectClient('')
+    })
+    await waitFor(() => window.__personalizationCtx.assets.logos[0]?.uploadStatus === 'ready')
+
+    // The job copy now holds the durable URL, but the saved entry still renders
+    // its blob preview: that blob must NOT have been revoked.
+    const saved = window.__personalizationCtx.savedClientAssets.logos.find((l: SavedClientAssetEntry) => l.id === logoId)!
+    expect(saved).toBeTruthy()
+    expect(saved.url).toBe(uploadBlob)
+    expect(countRevoked(uploadBlob!)).toBe(0)
+    expect(revokedHttpCount()).toBe(0)
+  })
+
+  it('saved-client edit fallback replaces the saved entry blob with the durable URL', async () => {
+    mockUploadResolvesAfter('https://example.com/uploaded-logo.png')
+    vi.mocked(uploadPersonalizationAsset)
+      .mockResolvedValueOnce({ url: 'https://example.com/uploaded-logo.png' })
+      .mockResolvedValueOnce({ url: 'https://example.com/uploaded-saved.png' })
+    vi.mocked(persistEditedPersonalizationAsset).mockResolvedValue({
+      ok: false,
+      assetId: 'edited-asset',
+      publicUrl: '',
+      hasTransparency: false,
+      transparentPixelCount: 0,
+      totalPixelCount: 0,
+      error: 'persistence unavailable',
+    })
+
+    await renderProvider()
+    await openSource()
+
+    await act(async () => {
+      window.__personalizationCtx.addLogoFiles(createFileList([createFile('logo.png')]))
+    })
+    await act(async () => {
+      window.__personalizationCtx.saveClient()
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20))
+    })
+    await waitFor(() => window.__personalizationCtx.assets.logos[0]?.uploadStatus === 'ready')
+
+    const clientId = window.__personalizationCtx.selectedClientId
+    const logoId = window.__personalizationCtx.assets.logos[0].id
+
+    // Deselect the client so only the saved library references the edit
+    // result — the mirror effect cannot repair the entry in this scenario.
+    await act(async () => {
+      window.__personalizationCtx.selectClient('')
+    })
+
+    const applyPromise = (() => {
+      let p!: Promise<void>
+      act(() => {
+        p = window.__personalizationCtx.applyEditedSavedClientAsset(clientId, logoId, TEST_DATA_URL, {
+          operation: 'remove-background',
+          prompt: 'remove background',
+          model: 'test-model',
+          quality: 'high',
+          transparent: true,
+          videoReady: false,
+        })
+      })
+      return p
+    })()
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 40))
+    })
+    await act(async () => {
+      await applyPromise
+    })
+
+    // The saved entry must end up on the durable fallback URL — never on the
+    // edit preview blob that the upload release revoked.
+    await waitFor(() => {
+      const s = window.__personalizationCtx.savedClientAssets.logos.find((l: SavedClientAssetEntry) => l.id === logoId)
+      return s?.url === 'https://example.com/uploaded-saved.png' && s?.uploadStatus === 'ready'
+    })
+
+    const savedLogo = window.__personalizationCtx.savedClientAssets.logos.find((l: SavedClientAssetEntry) => l.id === logoId)!
+    expect(savedLogo.edited).toBe(true)
+    expect(savedLogo.editMetadata?.operation).toBe('remove-background')
+    expect(savedLogo.uploadedUrl).toBe('https://example.com/uploaded-saved.png')
+    expect(String(savedLogo.url).startsWith('blob:')).toBe(false)
+
+    // The edit blob is released exactly once; the original upload blob is
+    // released exactly once (it lost its last saved reference when the edit
+    // replaced it); no durable URL is ever revoked.
+    const editBlob = blobFor('logo-edited.png')
+    expect(editBlob).toBeTruthy()
+    expect(countRevoked(editBlob!)).toBe(1)
+    expect(countRevoked(blobFor('logo.png')!)).toBe(1)
+    expect(revokedHttpCount()).toBe(0)
+  })
   it('test-mode bypass swaps the blob for a fake durable URL and revokes the original', async () => {
     authState.apiKey = 'test-mode-key'
     vi.mocked(uploadPersonalizationAsset).mockResolvedValue({ url: 'https://example.com/SHOULD-NOT-BE-USED.png' })
@@ -709,13 +841,21 @@ describe('DemoPersonalizeProvider blob-URL lifecycle', () => {
   })
 
   it('unmounting the provider releases remaining owned blob URLs', async () => {
+    // Hold the uploads in flight until this test releases them. A wall-clock
+    // delay (e.g. 200ms) is not a safe "still uploading" window here: under
+    // full-suite CPU contention the provider's own render can be delayed past
+    // it, so the uploads would already be `ready` when the assertions run.
+    // Gating them keeps the "unmounted while uploads are pending" scenario
+    // deterministic without changing what is asserted.
+    let releaseUploads!: () => void
+    const uploadsPending = new Promise<void>((resolve) => {
+      releaseUploads = resolve
+    })
     let uploadResolved = 0
     vi.mocked(uploadPersonalizationAsset).mockImplementation((_key: string, { file }: { file: File }) =>
-      new Promise<{ url: string }>((resolve) => {
-        setTimeout(() => {
-          uploadResolved += 1
-          resolve({ url: `https://example.com/uploaded-${file.name}` })
-        }, 200)
+      uploadsPending.then(() => {
+        uploadResolved += 1
+        return { url: `https://example.com/uploaded-${file.name}` }
       }),
     )
 
@@ -724,6 +864,12 @@ describe('DemoPersonalizeProvider blob-URL lifecycle', () => {
 
     await act(async () => {
       window.__personalizationCtx.addLogoFiles(createFileList([createFile('a.png'), createFile('b.png')]))
+    })
+
+    // Both assets are registered as `uploading` before any upload completes.
+    await waitFor(() => {
+      const logos = window.__personalizationCtx.assets.logos
+      return logos.length === 2 && logos.every((l: PersonalizationAssetEntry) => l.uploadStatus === 'uploading')
     })
 
     const logos = window.__personalizationCtx.assets.logos
@@ -745,6 +891,7 @@ describe('DemoPersonalizeProvider blob-URL lifecycle', () => {
 
     // Let the still-pending uploads settle so their timers do not leak and no
     // rejection is produced from the completed-but-unmounted uploads.
+    releaseUploads()
     await settle(() => uploadResolved >= 2)
 
     expect(countRevoked(blobA!)).toBe(1)
