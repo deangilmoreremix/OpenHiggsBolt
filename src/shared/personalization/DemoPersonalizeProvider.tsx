@@ -141,8 +141,12 @@ function assetBlobUrls(asset: PersonalizationAsset | null | undefined): string[]
   return Array.from(urls)
 }
 
-/** Counts how many assets of a library still reference each blob URL. */
-function countBlobUrlReferences(library: AssetLibrary | null | undefined): Map<string, number> {
+/**
+ * Counts how many assets of a library still reference each blob URL.
+ * Accepts partial libraries (e.g. the saved-client library, which has no
+ * frame/audio/saved-reference sections) — missing sections count as zero.
+ */
+function countBlobUrlReferences(library: Partial<AssetLibrary> | null | undefined): Map<string, number> {
   const counts = new Map<string, number>()
   const bump = (asset: PersonalizationAsset | null | undefined) => {
     for (const url of assetBlobUrls(asset)) {
@@ -150,29 +154,16 @@ function countBlobUrlReferences(library: AssetLibrary | null | undefined): Map<s
     }
   }
   if (!library) return counts
-  library.identities.forEach(bump)
-  library.logos.forEach(bump)
-  library.products.forEach(bump)
-  library.brandReferences.forEach(bump)
+  library.identities?.forEach(bump)
+  library.logos?.forEach(bump)
+  library.products?.forEach(bump)
+  library.brandReferences?.forEach(bump)
   bump(library.firstFrame)
   bump(library.lastFrame)
   bump(library.ctaGraphic)
-  library.audio.forEach(bump)
-  library.savedReferences.forEach(bump)
+  library.audio?.forEach(bump)
+  library.savedReferences?.forEach(bump)
   return counts
-}
-
-/** Drops the references that a pending state change removes. */
-function dropBlobUrlReferences(
-  counts: Map<string, number>,
-  urls: (string | null | undefined)[],
-): void {
-  for (const url of urls) {
-    if (!isBlobUrl(url)) continue
-    const next = (counts.get(url) ?? 0) - 1
-    if (next > 0) counts.set(url, next)
-    else counts.delete(url)
-  }
 }
 
 function findAssetInLibrary(library: AssetLibrary, id: string): PersonalizationAsset | null {
@@ -204,18 +195,20 @@ function revokeBlobUrlOnce(revokedUrls: Set<string>, url: string | null | undefi
  *
  * Ownership is tracked independently of React state (see `ownedJobBlobUrlsRef`),
  * so this still finds the blob when an upload resolves before React commits the
- * asset that created it.  A URL is revoked only when no live asset references
- * it any more: URLs replaced by the pending change (`superseded`) count as
- * dead, as does the revert `originalUrl` when the asset itself is destroyed
- * (`dropOriginal`).  Anything still referenced is left alone — correctness over
- * eagerness.
+ * asset that created it.  A URL is revoked only when no live entry in EITHER
+ * library references it any more: URLs replaced by the pending change
+ * (`superseded`) count as dead, as does the revert `originalUrl` when the asset
+ * itself is destroyed (`dropOriginal`).  Anything still referenced — including
+ * by a saved-client library entry that shares the blob — is left alone:
+ * correctness over eagerness.
  */
 function releaseOwnedBlobUrls(
   ownedByAsset: Map<string, Set<string>>,
   revokedUrls: Set<string>,
   assetId: string,
-  library: AssetLibrary,
+  liveCounts: Map<string, number>,
   asset: PersonalizationAsset | null | undefined,
+  current: PersonalizationAsset | null | undefined,
   opts: { superseded?: (string | null | undefined)[]; dropOriginal?: boolean } = {},
 ): number {
   const owned = ownedByAsset.get(assetId)
@@ -225,15 +218,29 @@ function releaseOwnedBlobUrls(
   // URLs (an edit was applied, or a second upload completed first).  This
   // completion is stale — leave bookkeeping untouched so a URL owned by the
   // newer asset is never revoked.
-  const current = findAssetInLibrary(library, assetId)
   if (asset && current && current.url !== asset.url) return 0
 
-  const live = countBlobUrlReferences(library)
-  if (asset) {
-    dropBlobUrlReferences(live, [asset.url, asset.uploadedUrl])
-    if (opts.dropOriginal) dropBlobUrlReferences(live, [asset.originalUrl])
+  const live = liveCounts
+  // One release removes exactly ONE asset's worth of references: the asset's
+  // own URLs and the URLs the caller marks superseded describe the same
+  // entry being replaced, so they are deduped together.  Dropping the same
+  // URL twice would under-count references still held by the saved library
+  // and revoke a blob that is still rendered.
+  const removed = new Set<string>()
+  const mark = (url: string | null | undefined) => {
+    if (isBlobUrl(url)) removed.add(url)
   }
-  dropBlobUrlReferences(live, opts.superseded ?? [])
+  if (asset) {
+    mark(asset.url)
+    mark(asset.uploadedUrl)
+    if (opts.dropOriginal) mark(asset.originalUrl)
+  }
+  for (const url of opts.superseded ?? []) mark(url)
+  for (const url of removed) {
+    const next = (live.get(url) ?? 0) - 1
+    if (next > 0) live.set(url, next)
+    else live.delete(url)
+  }
 
   let released = 0
   for (const url of owned) {
@@ -639,6 +646,31 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   const assetsRef = useRef(assets)
   useEffect(() => { assetsRef.current = assets }, [assets])
 
+  // The saved-client library is a second source of live blob references: an
+  // entry copied into a client library keeps referencing its blob URL even
+  // after the job-library copy is removed, so blob releases must consult both.
+  const savedClientAssetsRef = useRef(savedClientAssets)
+  useEffect(() => { savedClientAssetsRef.current = savedClientAssets }, [savedClientAssets])
+
+  /** Blob URLs still referenced by any live entry (job + saved libraries). */
+  const liveBlobUrlCounts = useCallback((): Map<string, number> => {
+    const counts = countBlobUrlReferences(assetsRef.current)
+    const savedCounts = countBlobUrlReferences(savedClientAssetsRef.current)
+    for (const [url, count] of savedCounts) {
+      counts.set(url, (counts.get(url) ?? 0) + count)
+    }
+    return counts
+  }, [])
+
+  /**
+   * Live references while the JOB library is being discarded entirely
+   * (source reset / modal close).  The job library is emptied by this change,
+   * so its current references must not keep a blob alive — but saved-client
+   * entries legitimately still render theirs.
+   */
+  const savedOnlyBlobUrlCounts = useCallback((): Map<string, number> =>
+    countBlobUrlReferences(savedClientAssetsRef.current), [])
+
   // ── Object URL ownership ───────────────────────────────────────────────────
   // Blob URLs are created outside React's state flow, so ownership is tracked
   // in refs keyed by asset id and captured synchronously at creation, instead
@@ -684,10 +716,11 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     ownedJobBlobUrlsRef.current,
     revokedBlobUrlsRef.current,
     assetId,
-    assetsRef.current,
+    liveBlobUrlCounts(),
     asset,
+    findAssetInLibrary(assetsRef.current, assetId),
     opts,
-  ), [])
+  ), [liveBlobUrlCounts])
 
   const releaseSavedBlobUrls = useCallback((
     assetId: string,
@@ -697,21 +730,24 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     ownedSavedBlobUrlsRef.current,
     revokedBlobUrlsRef.current,
     assetId,
-    assetsRef.current,
+    liveBlobUrlCounts(),
     asset,
+    findAssetInLibrary(assetsRef.current, assetId),
     opts,
-  ), [])
+  ), [liveBlobUrlCounts])
 
-  /** Releases every job blob URL (used when the library is reset/closed). */
+  /**
+   * Releases every job blob URL that no live entry still references (used when
+   * the library is reset/closed).  Blobs a saved-client entry points at stay
+   * alive — those entries outlive the job library.
+   */
   const releaseAllJobBlobUrls = useCallback(() => {
-    // The job library is being discarded, so no live reference can keep one of
-    // its blobs alive.
     releaseAllOwnedBlobUrls(
       ownedJobBlobUrlsRef.current,
       revokedBlobUrlsRef.current,
-      new Map(),
+      savedOnlyBlobUrlCounts(),
     )
-  }, [])
+  }, [savedOnlyBlobUrlCounts])
 
   /** Releases every blob URL the provider still owns (job + saved client). */
   const releaseAllBlobUrls = useCallback(() => {
@@ -847,6 +883,16 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     assets.brandReferences,
     selectedClientId,
   ])
+
+  // Orphan reap: once the saved library has committed (its ref is fresh),
+  // release owned blobs that JUST lost their last live reference — e.g. a
+  // mirror that replaced a saved entry's URL, or a saved entry removed while
+  // its job copy was already gone.  Runs outside any state updater and is a
+  // no-op whenever everything owned is still referenced.
+  useEffect(() => {
+    releaseAllOwnedBlobUrls(ownedJobBlobUrlsRef.current, revokedBlobUrlsRef.current, liveBlobUrlCounts())
+    releaseAllOwnedBlobUrls(ownedSavedBlobUrlsRef.current, revokedBlobUrlsRef.current, liveBlobUrlCounts())
+  }, [savedClientAssets, liveBlobUrlCounts])
 
   // Debounced Supabase project persistence
   useEffect(() => {
@@ -1244,6 +1290,17 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   }, [selectClient])
 
   const deleteSavedClient = useCallback((id: string) => {
+    // Release the blobs owned by this client's saved entries before the
+    // library is dropped.  Job copies sharing a URL survive via the liveness
+    // check inside the release helper.
+    const doomed = loadClientAssets(id)
+    const doomedAssets = [
+      ...doomed.identities,
+      ...doomed.logos,
+      ...doomed.products,
+      ...doomed.brandReferences,
+    ].filter(Boolean) as PersonalizationAsset[]
+    doomedAssets.forEach((asset) => releaseSavedBlobUrls(asset.id, asset, { dropOriginal: true }))
     deleteClientAssets(id)
     setSavedClientAssets({ ...EMPTY_CLIENT_ASSET_LIBRARY })
     setClients((prev) => prev.filter((c) => c.id !== id))
@@ -1258,7 +1315,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       }
       return prev
     })
-  }, [])
+  }, [releaseSavedBlobUrls])
 
   const selectSavedAsset = useCallback((asset: PersonalizationAsset) => {
     setAssets((prev) => updateAssetInLibrary(prev, asset))
@@ -1272,6 +1329,16 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
 
   const removeSavedAsset = useCallback((assetId: string) => {
     if (!selectedClientId) return
+    // Release the saved entry's own ownership of its blob URLs before the
+    // entry is dropped.  A job-library copy sharing the same URLs stays alive
+    // through the liveness check inside the release helper.
+    const savedAsset = [
+      ...savedClientAssets.identities,
+      ...savedClientAssets.logos,
+      ...savedClientAssets.products,
+      ...savedClientAssets.brandReferences,
+    ].filter(Boolean).find((a) => a?.id === assetId)
+    if (savedAsset) releaseSavedBlobUrls(savedAsset.id, savedAsset, { dropOriginal: true })
     const next = removeAssetFromClientLibrary(selectedClientId, assetId)
     setSavedClientAssets(next)
     // Also remove from current job if present
@@ -1302,7 +1369,7 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
       }
       return rebuilt
     })
-  }, [selectedClientId, releaseJobBlobUrls])
+  }, [selectedClientId, savedClientAssets, releaseSavedBlobUrls, releaseJobBlobUrls])
 
   // ── Asset upload helpers ───────────────────────────────────────────────────
 
@@ -1742,7 +1809,23 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     }
 
     if (!supabaseUrl) {
-      await uploadAsset(editedAsset)
+      // MuAPI fallback: `uploadAsset` swaps the job-library copy for the
+      // durable URL and releases the job-side ownership of the edit blob.
+      const durableUrl = await uploadAsset(editedAsset)
+      const finalSavedAsset: PersonalizationAsset = {
+        ...editedAsset,
+        url: durableUrl,
+        uploadedUrl: durableUrl,
+        uploadStatus: 'ready',
+      }
+      updateAssetInClientLibrary(clientId, finalSavedAsset)
+      setSavedClientAssets(updateAssetInClientLibrary(clientId, finalSavedAsset))
+      // The saved library entry owned its own reference to the edit blob —
+      // release it too so the saved entry never keeps (and renders) a URL the
+      // job-side release already revoked.  Idempotent via `revokedBlobUrls`.
+      releaseSavedBlobUrls(editedAsset.id, editedAsset, {
+        superseded: [editedAsset.url, editedAsset.uploadedUrl],
+      })
     }
   }, [assets, uploadAsset, registerOwnedSavedBlobUrl, registerOwnedBlobUrl, releaseSavedBlobUrls, releaseJobBlobUrls])
 

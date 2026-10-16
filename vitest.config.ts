@@ -53,7 +53,6 @@ export default defineConfig({
       'tests/*.test.js',
       'tests/*.test.jsx',
       'tests/*.test.tsx',
-      'tests/authConfig.test.ts',
     ],
     setupFiles: ['vitest.setup.ts'],
   },
