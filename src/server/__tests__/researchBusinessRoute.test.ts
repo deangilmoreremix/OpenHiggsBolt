@@ -37,6 +37,20 @@ vi.mock('@/server/envValidation', () => ({
   validatePersonalizationEnv: vi.fn(),
 }))
 
+// The route is now gated by requireApiEntitlement, which pulls in the real
+// server-only Clerk auth() and the Supabase-backed
+// resolveSmartVideoAccessForUser. Stub both seams at the module boundary (the
+// tests/proxy-routes.vitest.test.ts idiom) so the entitled path is exercised
+// without a Clerk session or Supabase env; the entitlement-gate case flips
+// resolveSmartVideoAccessForUser to hasSmartVideoGo:false to assert the 403.
+vi.mock('@clerk/nextjs/server', () => ({
+  auth: vi.fn(async () => ({ userId: 'test-user' })),
+}))
+
+vi.mock('@/access/resolveAccess', () => ({
+  resolveSmartVideoAccessForUser: vi.fn(async () => ({ hasSmartVideoGo: true })),
+}))
+
 // The provider is mocked at the module boundary only: researchBusiness (and
 // its sibling export for API parity) are controllable spies.
 vi.mock('@/server/businessDiscovery/researchProvider', () => ({
@@ -63,6 +77,8 @@ vi.mock('@/lib/rateLimit', () => ({
 
 // Import after mocks are registered
 import { POST } from '@/app/api/personalization/research-business/route'
+import { auth } from '@clerk/nextjs/server'
+import { resolveSmartVideoAccessForUser } from '@/access/resolveAccess'
 import { researchBusiness } from '@/server/businessDiscovery/researchProvider'
 import { logPersonalization, createCorrelationId } from '@/server/personalizationLog'
 import { validatePersonalizationEnv } from '@/server/envValidation'
@@ -107,6 +123,11 @@ beforeEach(() => {
   // Reset the limiter stub's per-key counters (the isolation mechanism).
   rateLimitMocks.hits.clear()
 
+  // Default: an authenticated, entitled caller so the gate opens and every
+  // pre-existing case exercises the handler's own logic.
+  vi.mocked(auth).mockResolvedValue({ userId: 'test-user' } as any)
+  vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: true } as any)
+
   vi.mocked(createCorrelationId).mockReturnValue('test-correlation-id')
   vi.mocked(validatePersonalizationEnv).mockReturnValue({ valid: true, missingRequired: [] } as any)
   vi.mocked(researchBusiness).mockResolvedValue(RESEARCH_PAYLOAD as any)
@@ -126,6 +147,34 @@ beforeEach(() => {
       { status: 429, headers: { 'Retry-After': String(Math.ceil(retryAfterMs / 1000)) } },
     ),
   )
+})
+
+// ---------------------------------------------------------------------------
+// Entitlement gate (requireApiEntitlement)
+// ---------------------------------------------------------------------------
+
+describe('research-business route — entitlement gate', () => {
+  it('403 PAYMENT_REQUIRED when the caller is authenticated but unentitled', async () => {
+    vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: false } as any)
+
+    const res = await post({ websiteUrl: 'https://example.com' })
+    expect(res.status).toBe(403)
+    const body = await res.json()
+    expect(body.error).toBe('PAYMENT_REQUIRED')
+    expect(body.upgradeRequired).toBe(true)
+    // The gate rejects before the provider is ever reached.
+    expect(researchBusiness).not.toHaveBeenCalled()
+  })
+
+  it('401 UNAUTHENTICATED when the caller has no session', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: null } as any)
+
+    const res = await post({ websiteUrl: 'https://example.com' })
+    expect(res.status).toBe(401)
+    const body = await res.json()
+    expect(body.error).toBe('UNAUTHENTICATED')
+    expect(researchBusiness).not.toHaveBeenCalled()
+  })
 })
 
 // ---------------------------------------------------------------------------

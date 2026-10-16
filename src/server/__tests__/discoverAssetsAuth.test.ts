@@ -14,6 +14,14 @@ vi.mock('@clerk/nextjs/server', () => ({
   auth: vi.fn(),
 }))
 
+// The route is now gated by requireApiEntitlement, which calls the
+// Supabase-backed resolveSmartVideoAccessForUser. Stub it at the module
+// boundary (the tests/proxy-routes.vitest.test.ts idiom) so tests can drive
+// the gate entitled/unentitled without a Supabase env.
+vi.mock('@/access/resolveAccess', () => ({
+  resolveSmartVideoAccessForUser: vi.fn(async () => ({ hasSmartVideoGo: true })),
+}))
+
 vi.mock('@/server/personalizationLog', () => ({
   logPersonalization: vi.fn(),
   createCorrelationId: vi.fn(() => 'test-correlation-id'),
@@ -37,6 +45,7 @@ vi.mock('@/server/discoveryJobs', () => ({
 import { POST } from '@/app/api/personalization/discover-assets/route'
 import { NextRequest } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { resolveSmartVideoAccessForUser } from '@/access/resolveAccess'
 import { validatePersonalizationEnv } from '@/server/envValidation'
 import { createDiscoveryJob } from '@/server/discoveryJobs'
 import { runFastDiscovery } from '@/server/discoveryOrchestrator'
@@ -44,6 +53,10 @@ import { runFastDiscovery } from '@/server/discoveryOrchestrator'
 describe('POST /api/personalization/discover-assets auth', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Default: an entitled caller so only the cases that flip it exercise the
+    // unentitled path (clearAllMocks keeps implementations, so re-seed here to
+    // undo any prior test's hasSmartVideoGo:false override).
+    vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: true } as any)
     vi.mocked(validatePersonalizationEnv).mockReturnValue({ valid: true } as any)
     vi.mocked(runFastDiscovery).mockResolvedValue({
       result: {
@@ -181,21 +194,49 @@ describe('POST /api/personalization/discover-assets auth', () => {
   })
 
   // -------------------------------------------------------------------------
-  // Auth failure is logged before business logic
+  // The entitlement gate owns the unauthenticated rejection now: it returns 401
+  // BEFORE the route's own auth stage, so re-point the historical "logs at the
+  // auth stage" assertion at the gate's observable behavior — a 401 body and no
+  // crawler/discovery side effects. The route's own auth-stage log no longer
+  // fires for these requests because requireApiEntitlement short-circuits first.
   // -------------------------------------------------------------------------
 
-  it('logs unauthorized attempts at the auth stage', async () => {
+  it('returns 401 UNAUTHENTICATED at the entitlement gate, with no crawler/discovery side effects', async () => {
     const { logPersonalization } = await import('@/server/personalizationLog')
     vi.mocked(auth).mockResolvedValue({ userId: null } as any)
 
-    await post('https://example.com')
+    const res = await post('https://example.com')
+    expect(res.status).toBe(401)
+    const body = await res.json()
+    expect(body.error).toBe('UNAUTHENTICATED')
 
-    // The log call for auth stage must exist
+    // The gate rejects before any discovery machinery or route logging runs.
+    expect(createDiscoveryJob).not.toHaveBeenCalled()
+    expect(runFastDiscovery).not.toHaveBeenCalled()
     const authCalls = (logPersonalization as any).mock.calls.filter(
-      (call: any) => call[0].stage === 'auth',
+      (call: any) => call[0]?.stage === 'auth',
     )
-    expect(authCalls.length).toBeGreaterThanOrEqual(1)
-    expect(authCalls[0][0].httpStatus).toBe(401)
-    expect(authCalls[0][0].safeErrorCode).toBe('UNAUTHORIZED')
+    // The gate, not the route's auth stage, produced this 401 — so the route's
+    // own 'auth'-stage log must NOT have fired.
+    expect(authCalls).toHaveLength(0)
+  })
+
+  // -------------------------------------------------------------------------
+  // Entitlement gate: authenticated but unentitled → 403
+  // -------------------------------------------------------------------------
+
+  it('MUST REJECT with 403 PAYMENT_REQUIRED when authenticated but unentitled (entitlement gate)', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: 'user-123' } as any)
+    vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: false } as any)
+
+    const res = await post('https://example.com')
+    expect(res.status).toBe(403)
+    const body = await res.json()
+    expect(body.error).toBe('PAYMENT_REQUIRED')
+    expect(body.upgradeRequired).toBe(true)
+
+    // The gate rejects before any crawler/discovery runs.
+    expect(createDiscoveryJob).not.toHaveBeenCalled()
+    expect(runFastDiscovery).not.toHaveBeenCalled()
   })
 })

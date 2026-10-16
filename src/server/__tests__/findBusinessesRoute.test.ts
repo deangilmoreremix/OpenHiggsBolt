@@ -56,6 +56,20 @@ vi.mock('@/lib/rateLimit', () => ({
   rateLimit429: rateLimitMocks.rateLimit429,
 }))
 
+// The route is now gated by requireApiEntitlement, which pulls in the real
+// server-only Clerk auth() and the Supabase-backed
+// resolveSmartVideoAccessForUser. Stub both seams at the module boundary (the
+// tests/proxy-routes.vitest.test.ts idiom) so the entitled path is exercised
+// without a Clerk session or Supabase env; the entitlement-gate case flips
+// resolveSmartVideoAccessForUser to hasSmartVideoGo:false to assert the 403.
+vi.mock('@clerk/nextjs/server', () => ({
+  auth: vi.fn(async () => ({ userId: 'test-user' })),
+}))
+
+vi.mock('@/access/resolveAccess', () => ({
+  resolveSmartVideoAccessForUser: vi.fn(async () => ({ hasSmartVideoGo: true })),
+}))
+
 vi.mock('@/server/businessDiscovery', async () => {
   // Real niche lookups come from the dependency-free nicheMappings module so
   // no part of the network graph (nominatim/overpass/research providers) is
@@ -76,6 +90,8 @@ vi.mock('@/server/businessDiscovery', async () => {
 
 // Import after mocks are registered
 import { POST } from '@/app/api/personalization/find-businesses/route'
+import { auth } from '@clerk/nextjs/server'
+import { resolveSmartVideoAccessForUser } from '@/access/resolveAccess'
 import {
   geocodeLocation,
   discoverBusinesses,
@@ -109,6 +125,11 @@ beforeEach(() => {
   vi.resetAllMocks()
   // Reset the limiter stub's per-key counters (the isolation mechanism).
   rateLimitMocks.hits.clear()
+
+  // Default: an authenticated, entitled caller so the gate opens and every
+  // pre-existing case exercises the handler's own logic.
+  vi.mocked(auth).mockResolvedValue({ userId: 'test-user' } as any)
+  vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: true } as any)
 
   vi.mocked(createCorrelationId).mockReturnValue('test-correlation-id')
   vi.mocked(validatePersonalizationEnv).mockReturnValue({ valid: true, missingRequired: [] } as any)
@@ -199,6 +220,35 @@ describe('find-businesses route — validation 400s', () => {
         safeMessage: expect.stringContaining(evilNiche),
       }),
     )
+    expect(geocodeLocation).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Entitlement gate (requireApiEntitlement)
+// ---------------------------------------------------------------------------
+
+describe('find-businesses route — entitlement gate', () => {
+  it('403 PAYMENT_REQUIRED when the caller is authenticated but unentitled', async () => {
+    vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: false } as any)
+
+    const res = await post({ niche: NICHE, location: LOCATION })
+    expect(res.status).toBe(403)
+    const body = await res.json()
+    expect(body.error).toBe('PAYMENT_REQUIRED')
+    expect(body.upgradeRequired).toBe(true)
+    // The gate rejects before any discovery machinery runs.
+    expect(geocodeLocation).not.toHaveBeenCalled()
+    expect(discoverBusinesses).not.toHaveBeenCalled()
+  })
+
+  it('401 UNAUTHENTICATED when the caller has no session', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: null } as any)
+
+    const res = await post({ niche: NICHE, location: LOCATION })
+    expect(res.status).toBe(401)
+    const body = await res.json()
+    expect(body.error).toBe('UNAUTHENTICATED')
     expect(geocodeLocation).not.toHaveBeenCalled()
   })
 })

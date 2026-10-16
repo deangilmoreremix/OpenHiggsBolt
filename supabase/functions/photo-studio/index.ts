@@ -122,8 +122,31 @@ function csvToArray(value: unknown): string[] {
   return [];
 }
 
+// Internal service-to-service auth. This function runs with the Supabase
+// service-role key and is only ever called by the Netlify functions, which
+// present the shared INTERNAL_FUNCTION_SECRET in `x-internal-service-token`.
+// JWT verification stays off (no Supabase JWT is issued for this call), so this
+// token is the whole contract: a missing/mismatched header — or an unset
+// secret — is rejected before any work.
+function isInternalCaller(req: Request): boolean {
+  const expected = Deno.env.get("INTERNAL_FUNCTION_SECRET");
+  if (!expected) return false;
+  const provided = req.headers.get("x-internal-service-token");
+  if (!provided) return false;
+  if (provided.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i += 1) {
+    diff |= provided.charCodeAt(i) ^ expected.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return handleCors();
+
+  if (!isInternalCaller(req)) {
+    return jsonResponse({ error: "UNAUTHORIZED" }, 401);
+  }
 
   try {
     const body = await readJson(req);

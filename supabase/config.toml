@@ -13,14 +13,30 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.brand-analyze]
-# Called from the Brand Studio frontend without a Supabase JWT.
+# Called server-to-server by netlify/functions/brands.js (never from the
+# browser). No Supabase JWT is ever issued for this call, so JWT verification
+# is off; access is gated instead by the shared internal service token — the
+# function requires `x-internal-service-token` to equal INTERNAL_FUNCTION_SECRET
+# and returns 401 UNAUTHORIZED otherwise. Direct public calls are rejected.
 verify_jwt = false
 
 [functions.campaign-generate]
+# Called server-to-server by netlify/functions/campaigns.js. No Supabase JWT
+# is issued for this call; access is gated by the shared internal service token
+# (`x-internal-service-token` = INTERNAL_FUNCTION_SECRET, 401 UNAUTHORIZED
+# otherwise). Direct public calls are rejected.
 verify_jwt = false
 
 [functions.asset-generate]
+# Called server-to-server by netlify/functions/assets.js. No Supabase JWT is
+# issued for this call; access is gated by the shared internal service token
+# (`x-internal-service-token` = INTERNAL_FUNCTION_SECRET, 401 UNAUTHORIZED
+# otherwise). Direct public calls are rejected.
 verify_jwt = false
 
 [functions.photo-studio]
+# Called server-to-server by netlify/functions/photo-studio.js. No Supabase JWT
+# is issued for this call; access is gated by the shared internal service token
+# (`x-internal-service-token` = INTERNAL_FUNCTION_SECRET, 401 UNAUTHORIZED
+# otherwise). Direct public calls are rejected.
 verify_jwt = false

@@ -4,6 +4,8 @@ import { getNicheMapping, getSupportedNiches } from '@/server/businessDiscovery'
 import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
 import { validatePersonalizationEnv } from '@/server/envValidation'
 import { rateLimit, rateLimit429, resolveRateLimitKey } from '@/lib/rateLimit'
+import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
+import { ENTITLEMENTS } from '@/access/entitlements'
 
 export const dynamic = "force-dynamic";
 
@@ -67,7 +69,26 @@ function serverErrorResponse(
   )
 }
 
+// Playwright offline-test bypass (mirrors middleware.js and
+// app/api/v1/[...slug]/route.ts): never honored in production, and only for
+// the exact cookie value the dev-login route sets. Clerk itself is skipped by
+// middleware in that case, so the entitlement gate must skip it too.
+function isDevBypass(req: NextRequest): boolean {
+  if (process.env.NODE_ENV === 'production') return false
+  return req.cookies.get('__e2e_auth_bypass')?.value === '1'
+}
+
 export async function POST(req: NextRequest) {
+  if (!isDevBypass(req)) {
+    const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
+    if (!entitlementCheck.allowed) {
+      if (entitlementCheck.status === 401) {
+        return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
+      }
+      return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO)
+    }
+  }
+
   const correlationId = createCorrelationId(req)
   const startTime = Date.now()
 
