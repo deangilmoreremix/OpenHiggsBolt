@@ -5,6 +5,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
 import TemplateBanner from "./TemplateBanner";
 import { runClipping, uploadFile } from "../muapi.js";
+import { getUploadLimit, formatUploadLimit } from "../uploadContract.js";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
 import registry from "../skills/registry.json";
@@ -378,8 +379,8 @@ export default function ClippingStudio({
   const handleVideoFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 100 * 1024 * 1024) {
-      alert("Video exceeds 100MB limit.");
+    if (file.size > getUploadLimit(file)) {
+      alert(`Video exceeds the ${formatUploadLimit(getUploadLimit(file))} limit.`);
       return;
     }
     setVideoUploading(true);
