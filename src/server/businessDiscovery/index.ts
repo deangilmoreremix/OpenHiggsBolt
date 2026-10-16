@@ -10,6 +10,7 @@ export {
 
 export {
   discoverBusinesses,
+  AllOverpassProvidersFailed,
 } from './overpassProvider'
 
 export {
@@ -34,6 +35,15 @@ export {
   researchBusiness,
   enrichClientProfileFromResearch,
 } from './researchProvider'
+
+export {
+  searchBusinessesViaNominatim,
+  NominatimSearchUnavailable,
+} from './nominatimSearchProvider'
+
+export type {
+  NominatimSearchOptions,
+} from './nominatimSearchProvider'
 
 export {
   NICHE_MAPPINGS,

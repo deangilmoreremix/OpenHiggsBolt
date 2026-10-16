@@ -624,6 +624,35 @@ export class MuapiClient {
         }
     }
 
+    async post(path, payload) {
+        const key = this.getKey();
+        const url = `${this.baseUrl}${path.startsWith('/') ? '' : '/api/v1/'}${path}`;
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': key },
+            body: JSON.stringify(payload || {}),
+        });
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`MuAPI POST Failed: ${response.status} - ${errText.slice(0, 200)}`);
+        }
+        return response.json();
+    }
+
+    async get(path) {
+        const key = this.getKey();
+        const url = `${this.baseUrl}${path.startsWith('/') ? '' : '/api/v1/'}${path}`;
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': key },
+        });
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`MuAPI GET Failed: ${response.status} - ${errText.slice(0, 200)}`);
+        }
+        return response.json();
+    }
+
     getDimensionsFromAR(ar) {
         // Base unit 1024 (Flux standard)
         switch (ar) {

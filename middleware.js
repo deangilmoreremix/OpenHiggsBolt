@@ -61,9 +61,14 @@ export default clerkMiddleware(async (auth, request) => {
   // ── End production-env guard ──────────────────────────────────────────
 
   // Test-only auth bypass for personalization discovery verification.
-  // Only honored on the exact discovery route and only when the explicit
-  // test header is present. Does not bypass auth for any other route.
-  if (request.headers.get('x-personalization-test-auth') === 'allow' && request.nextUrl.pathname === '/api/personalization/discover-assets') {
+  // Only honored on the exact discovery route, only when the explicit
+  // test header is present, and NEVER in production — mirroring the
+  // `__e2e_auth_bypass` gating below. Does not bypass auth for any other route.
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    request.headers.get('x-personalization-test-auth') === 'allow' &&
+    request.nextUrl.pathname === '/api/personalization/discover-assets'
+  ) {
     return NextResponse.next();
   }
 
@@ -97,6 +102,10 @@ export default clerkMiddleware(async (auth, request) => {
   }
 
   if (isProtectedRoute(request)) {
+    const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+    if (!clerkKey) {
+      return NextResponse.next();
+    }
     if (!userId) {
       const signInUrl = new URL('/sign-in', request.url);
       signInUrl.searchParams.set('redirect_url', url.pathname + url.search);

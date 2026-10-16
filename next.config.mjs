@@ -1,9 +1,18 @@
+import { fileURLToPath } from 'node:url'
+
 /** @type {import('next').NextConfig} */
+
+// Pin the app root to this config's own directory. Without it Next.js infers
+// the workspace root from the first lockfile it finds and wrongly picks the
+// parent monorepo (this worktree has its own pnpm-lock.yaml).
+const rootDir = fileURLToPath(new URL('.', import.meta.url))
+
 const nextConfig = {
   experimental: {
     cacheComponents: false,
   },
   turbopack: {
+    root: rootDir,
     resolveAlias: {
       '@': ['./src', './'],
       '@/components': ['./components', './src/shared/components'],
@@ -16,7 +25,20 @@ const nextConfig = {
       '@/stores/*': ['./src/stores/*'],
     },
   },
-  transpilePackages: ['studio', 'ai-agent', 'workflow-builder', 'design-agent'],
+  transpilePackages: [
+    'studio',
+    'ai-agent',
+    'workflow-builder',
+    'design-agent',
+    // Remotion ships untranspiled ESM; the Personalization Modal preview
+    // (Player + composition) is imported by client components, so the packages
+    // must go through the Next.js compiler.
+    // `@remotion/web-renderer` is deliberately NOT listed and NOT externalized:
+    // it is dynamically imported from a client component only, so it is code
+    // split out of the main bundle by the client boundary instead.
+    'remotion',
+    '@remotion/player',
+  ],
   serverExternalPackages: [
     'electron',
     'app-builder-bin',
@@ -29,6 +51,9 @@ const nextConfig = {
     'get-stream',
     '@crawlee/cheerio',
   ],
+  // Same root as turbopack.root: tracing must resolve against this worktree,
+  // not the parent monorepo whose lockfile Next.js otherwise prefers.
+  outputFileTracingRoot: rootDir,
   outputFileTracingExcludes: {
     '*': [
       'node_modules/playwright/**',

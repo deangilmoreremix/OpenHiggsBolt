@@ -1,6 +1,6 @@
 'use client'
 /**
- * GO-Viral Studio — Visual Prompt Feed Browser
+ * SmartVideo GO AI — Visual Prompt Feed Browser
  *
  * A continuously-refreshed public feed of AI image and video prompts discovered
  * from public X (Twitter) posts. Every record preserves the original author,
@@ -29,6 +29,7 @@ import { buttons, semantic, tabStyle, optionStyle, appWrapper, iconBadge } from 
 import type { PromptRecord, FeedStats } from '@/types/go-ai-viral/prompt'
 import type { SeedancePrompt, SeedanceStats } from '@/types/go-ai-viral/seedance'
 import { useDemoPersonalize } from '@/shared/personalization'
+import { buildViralPersonalizeSource } from '@/shared/personalization/demoSources'
 import { createViralHandoff, emitSendTo, VIDEO_DEMO_CREATE_TARGETS, TARGET_LABEL, VIRAL_TARGETS_BY_MEDIA, type StudioTarget, type ViralSourceMedia } from '@/shared/crossStudio'
 import { StudioTargetPicker } from './StudioTargetPicker'
 import { DemoTemplateActions, type DemoActionHandlers } from '@/shared/demo-actions'
@@ -150,7 +151,9 @@ export function PromptCard({ record, isSelected, onSelect }: PromptCardProps) {
     },
     onPersonalize: (event) => {
       event.stopPropagation()
-      openPersonalize({ source: record, trigger: event.currentTarget })
+      // Feed record: its own resolved video URL when it has video media,
+      // otherwise its own image URL. Never a URL borrowed from another record.
+      openPersonalize({ source: buildViralPersonalizeSource(record), trigger: event.currentTarget })
     },
     onCreateStyle: (event) => {
       event.stopPropagation()
@@ -323,7 +326,9 @@ export function VideoPromptCard({ record, onSelect }: VideoPromptCardProps) {
     },
     onPersonalize: (event) => {
       event.stopPropagation()
-      openPersonalize({ source: record, trigger: event.currentTarget })
+      // Seedance video record: the record's own outputUrl as the playable
+      // source and its own thumbnail as poster, untouched.
+      openPersonalize({ source: buildViralPersonalizeSource(record), trigger: event.currentTarget })
     },
     onCreateStyle: (event) => {
       event.stopPropagation()
@@ -1297,7 +1302,7 @@ export default function GoAiViralStudio({ apiKey }: { apiKey?: string }) {
           >
             <Video size={13} className="text-black" />
           </div>
-          <span className="text-sm font-semibold tracking-tight">GO-Viral</span>
+          <span className="text-sm font-semibold tracking-tight">SmartVideo GO AI</span>
           <span
             className="text-xs px-2 py-0.5 rounded-full"
             style={{ background: 'rgba(34,211,238,0.1)', color: 'var(--color-primary)' }}

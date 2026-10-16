@@ -31,6 +31,23 @@ export interface PersonalizationSource {
 
 export type AudienceType = 'me' | 'my-business' | 'customer'
 
+/**
+ * Which Personalization backend the shared modal is allowed to call.
+ *
+ * `authenticated` — the existing full pipeline: `/api/personalization/
+ * research-business` + `/api/personalization/discover-assets` (Clerk session,
+ * full crawl depth, vision analysis, persisted jobs, saved clients).
+ *
+ * `anonymous` — the restricted free pipeline behind `POST /api/demo/discover`:
+ * depth 1, ≤12 assets, cross-instance rate limit, shared cache, no paid
+ * provider calls and no persisted jobs.
+ *
+ * This is chosen by the caller that opens the modal (the landing page asks for
+ * `anonymous`, the app opens it with the signed-in user's permissions). The
+ * modal never infers it, and the server re-checks it on every request.
+ */
+export type PersonalizationAccessMode = 'anonymous' | 'authenticated'
+
 export interface BusinessDiscoveryRecord {
   id: string
   source: 'OPENSTREETMAP'
@@ -517,3 +534,21 @@ export interface AIAssistStructuredResponse {
   readiness: AIAssistReadiness
   generationPlan?: GenerationPlan
 }
+
+// ── Guided Simple Mode + free Remotion preview ─────────────────────────────────
+
+export type {
+  PreviewLayoutId,
+  PreviewLayerKind,
+  PreviewAnimationId,
+  PreviewPositionId,
+  PreviewAspectRatio,
+  PreviewLayer,
+  PreviewBrandColors,
+  PreviewVideoRef,
+  PersonalizationPreviewSettings,
+} from './preview/types'
+
+export type GuidedStep = 1 | 2 | 3 | 4
+
+export type PersonalizationViewMode = 'simple' | 'advanced'

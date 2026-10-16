@@ -4,9 +4,18 @@
  * Shared media types and utilities for the personalization system.
  */
 
+/**
+ * Stable origin identifier for media entries created by the SmartVideo
+ * Personalization demo flow. This value is a compile-time constant — never a
+ * session-scoped blob URL or dynamic runtime value — so it is safe to persist
+ * to localStorage and to the Supabase shared-media table for cross-device
+ * deduplication and provenance tracking.
+ */
+export const PERSONALIZATION_ORIGIN = 'demo-personalization' as const
+
 export interface SharedMediaEntry {
   id: string
-  originStudio: 'demo-personalization'
+  originStudio: typeof PERSONALIZATION_ORIGIN
   sourceType: string
   sourceDemoId?: string
   sourceDemoSlug?: string
@@ -53,7 +62,7 @@ export function getSharedMedia(): SharedMediaEntry[] {
 export function registerSharedMedia(entry: Partial<SharedMediaEntry>): SharedMediaEntry {
   const full: SharedMediaEntry = {
     id: `sm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    originStudio: 'demo-personalization',
+    originStudio: PERSONALIZATION_ORIGIN,
     sourceType: entry.sourceType || 'unknown',
     sourceMedia: entry.sourceMedia || null,
     sourceUrl: entry.sourceUrl || null,

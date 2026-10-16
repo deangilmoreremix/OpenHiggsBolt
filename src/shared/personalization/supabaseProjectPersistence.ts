@@ -6,7 +6,53 @@
  * Supabase is the durable backing store.
  */
 
-import type { ClientProfile, AssetLibrary, PersonalizationSource, GenerationOptions, GenerationState, PromptState, OutputType, VideoPersonalizationMode, ImagePersonalizationMode } from './types'
+/**
+ * Strip session-scoped blob URLs from a project state before it is serialized
+ * to durable storage (Supabase or localStorage).
+ *
+ * `URL.createObjectURL` produces object URLs that are valid only for the
+ * current browser tab session. If persisted, a page reload yields a dead link
+ * that cannot be loaded. We therefore replace every blob URL with `null` so the
+ * restore path falls back to source defaults instead of embedding a dead link.
+ */
+export function stripSessionScopedUrls(state: PersonalizationProjectState): PersonalizationProjectState {
+  const isBlobUrl = (url: string | null | undefined): boolean =>
+    typeof url === 'string' && url.startsWith('blob:')
+
+  return {
+    ...state,
+    outputUrls: Array.isArray(state.outputUrls)
+      ? state.outputUrls.filter((u) => typeof u === 'string' && !u.startsWith('blob:'))
+      : [],
+    previewVideo:
+      state.previewVideo && typeof state.previewVideo === 'object' && 'url' in state.previewVideo
+        ? isBlobUrl((state.previewVideo as PreviewVideoRef).url)
+          ? null
+          : (state.previewVideo as PreviewVideoRef)
+        : null,
+     previewSettings: state.previewSettings
+       ? {
+           ...state.previewSettings,
+           layers: Array.isArray(state.previewSettings.layers)
+             ? state.previewSettings.layers.map((layer) => ({
+                 ...layer,
+                 imageUrl: isBlobUrl(layer.imageUrl) ? undefined : layer.imageUrl,
+               }))
+             : state.previewSettings.layers,
+           audio:
+             state.previewSettings.audio &&
+             typeof state.previewSettings.audio === 'object' &&
+             typeof state.previewSettings.audio.url === 'string' &&
+             isBlobUrl(state.previewSettings.audio.url)
+               ? null
+               : state.previewSettings.audio,
+         }
+       : state.previewSettings,
+  }
+}
+
+import type { ClientProfile, AssetLibrary, PersonalizationSource, GenerationOptions, GenerationState, PromptState, OutputType, VideoPersonalizationMode, ImagePersonalizationMode, PersonalizationViewMode } from './types'
+import type { PersonalizationPreviewSettings, PreviewVideoRef } from './preview/types'
 
 export interface PersonalizationProjectState {
   id?: string
@@ -36,6 +82,12 @@ export interface PersonalizationProjectState {
   callToAction?: string | null
   generationSettings?: Record<string, unknown>
   aiAssistState?: Record<string, unknown>
+  // Guided Simple Mode + free Remotion preview (optional so projects saved
+  // before the preview existed restore with defaults instead of failing).
+  previewSettings?: PersonalizationPreviewSettings | null
+  previewVideo?: PreviewVideoRef | null
+  guidedStep?: number
+  viewMode?: PersonalizationViewMode
 }
 
 const API_ROUTE = '/api/personalization/project'
@@ -75,31 +127,25 @@ export function createProjectPersistence(opts: ProjectPersistenceOptions = {}) {
   }
 
   function save(state: PersonalizationProjectState): Promise<{ ok: boolean; error?: string }> {
-    // Route the fetch through a promise step so a synchronous throw (e.g. fetch
-    // missing after environment teardown) or a non-thenable return (e.g. a mock
-    // returning undefined) becomes an ordinary rejected-promise flow handled by
-    // the terminal `.catch` below instead of an uncaught exception inside the
-    // debounce timer callback.
-    return Promise.resolve()
-      .then(() =>
-        fetch(API_ROUTE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ entry: state }),
-          credentials: 'same-origin',
-        })
-      )
-      .then(async (res) => {
-        if (!res) return { ok: false, error: 'No response from server' }
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}))
-          return { ok: false, error: data?.error || `HTTP ${res.status}` }
-        }
-        return { ok: true }
-      })
-      .catch((error) => {
-        return { ok: false, error: error instanceof Error ? error.message : 'Unknown error' }
-      })
+    const sanitized = stripSessionScopedUrls(state)
+    const response = fetch(API_ROUTE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entry: sanitized }),
+      credentials: 'same-origin',
+    })
+    if (!response || typeof (response as Promise<Response>).then !== 'function') {
+      return Promise.resolve({ ok: false, error: 'fetch unavailable' })
+    }
+    return response.then(async (res) => {
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        return { ok: false, error: data?.error || `HTTP ${res.status}` }
+      }
+      return { ok: true }
+    }).catch((error) => {
+      return { ok: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    })
   }
 
   return {
@@ -187,29 +233,21 @@ export async function loadProject(opts: LoadProjectOptions = {}): Promise<LoadPr
 export type SavedProject = PersonalizationProjectState
 
 export async function saveProject(state: PersonalizationProjectState): Promise<{ ok: boolean; error?: string }> {
-  // Same hardening as `save` above: a synchronous throw or non-thenable return
-  // from fetch becomes a handled `{ ok: false, error }` result rather than an
-  // uncaught exception.
-  return Promise.resolve()
-    .then(() =>
-      fetch(API_ROUTE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entry: state }),
-        credentials: 'same-origin',
-      })
-    )
-    .then(async (res) => {
-      if (!res) return { ok: false, error: 'No response from server' }
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        return { ok: false, error: data?.error || `HTTP ${res.status}` }
-      }
-      return { ok: true }
-    })
-    .catch((error) => {
-      return { ok: false, error: error instanceof Error ? error.message : 'Unknown error' }
-    })
+  const sanitized = stripSessionScopedUrls(state)
+  return fetch(API_ROUTE, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ entry: sanitized }),
+    credentials: 'same-origin',
+  }).then(async (res) => {
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      return { ok: false, error: data?.error || `HTTP ${res.status}` }
+    }
+    return { ok: true }
+  }).catch((error) => {
+    return { ok: false, error: error instanceof Error ? error.message : 'Unknown error' }
+  })
 }
 
 export async function listProjects(): Promise<PersonalizationProjectState[]> {

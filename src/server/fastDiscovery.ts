@@ -12,6 +12,23 @@ import {
   FREE_DISCOVERY_MIN_USEFUL,
 } from './discoveryPolicy'
 
+/**
+ * Floor applied to a useful (recommended) asset's confidence right before
+ * the auto-placement engine sees it. `heuristicFallback` emits values in
+ * the 40-70 band (logo=70, irrelevant=80, service=55, brand fallback=40,
+ * etc.). The engine's default `minConfidence` is 70, so without this
+ * normalization only `logo` ever cleared the gate, leaving the review
+ * panel reporting "0 assets assigned across 0 blocks" for typical
+ * discoveries. Once an asset has been accepted as `recommended: true`,
+ * the engine should decide the section — not reject it on a number that
+ * only described the URL-keyword match's relative strength. The engine
+ * still gates by category, section availability, per-section limits,
+ * and the NEVER_AUTO_ASSIGN list; this floor only changes which
+ * candidates reach the gate. Irrelevant / deselected assets keep their
+ * raw confidence and are filtered upstream as before.
+ */
+const AUTO_ASSIGN_CONFIDENCE_FLOOR = 70
+
 export interface OrchestratedDiscoveryResult {
   providerUsed: string
   providerAttempted: string
@@ -199,6 +216,10 @@ export async function buildDiscoveredAssetsFromCandidates(
       continue
     }
 
+    const classificationConfidence = classification.recommended
+      ? Math.max(classification.confidence, AUTO_ASSIGN_CONFIDENCE_FLOOR)
+      : classification.confidence
+
     discoveredAssets.push({
       id: `disc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       sourceUrl: normalizedUrl,
@@ -206,9 +227,9 @@ export async function buildDiscoveredAssetsFromCandidates(
       sourceType: candidate.sourceType || 'WEBSITE',
       socialProfileUrl: candidate.socialProfileUrl,
       category: classification.category,
-      confidence: classification.confidence,
-      qualityScore: classification.confidence,
-      relevanceScore: classification.confidence,
+      confidence: classificationConfidence,
+      qualityScore: classificationConfidence,
+      relevanceScore: classificationConfidence,
       selected: classification.recommended,
       recommended: classification.recommended,
       rejected: false,

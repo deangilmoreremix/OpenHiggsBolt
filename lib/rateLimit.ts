@@ -1,5 +1,23 @@
 import { NextResponse } from 'next/server'
 
+/**
+ * Compute a per-caller rate-limit key from the authenticated Clerk userId,
+ * falling back to the client IP. Mirrors the `userId || clientIp || 'anon'`
+ * idiom already used across the personalization API routes.
+ *
+ * Security: the key MUST NOT be derived from a client-supplied API key/header
+ * (e.g. the rotatable `x-api-key`) — a caller could mint a fresh bucket on
+ * every request and bypass the limit. Also remember this limiter is in-process
+ * only (see the caveat above): not shared across serverless instances, so a
+ * caller that can reach several instances gets one bucket per instance.
+ */
+export function resolveRateLimitKey(
+  userId?: string | null,
+  clientIp?: string | null,
+): string {
+  return userId || clientIp || 'anon'
+}
+
 export function rateLimit429(retryAfterMs: number) {
   return NextResponse.json(
     { error: 'Rate limit exceeded. Please wait before retrying.' },

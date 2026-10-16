@@ -5,11 +5,8 @@ import {
   OPENAI_KEY_STORAGE,
   isValidKeyFormat,
   MUAPI_KEY_API_ENDPOINT,
-  MUAPI_KEY_COOKIE,
-  OPENAI_KEY_COOKIE,
   cleanApiKey,
 } from '../lib/keys.js';
-import { buildCookie } from '../lib/authConfig.ts';
 import { t } from '../lib/i18n.js';
 
 // Canonical OpenAI key API endpoint for the Vite SPA.
@@ -198,7 +195,7 @@ export function SettingsModal(onClose) {
               }
           }
 
-          // ── Server accepted: now update localStorage + cookies ─────────────────
+          // ── Server accepted: now update localStorage ────────────────────────
           try {
               if (typeof window !== 'undefined' && window.localStorage) {
                   if (cleanMuapi) {
@@ -216,8 +213,10 @@ export function SettingsModal(onClose) {
               // ignore localStorage write errors (private mode, etc.)
           }
 
-          document.cookie = buildCookie(MUAPI_KEY_COOKIE, cleanMuapi);
-          document.cookie = buildCookie(OPENAI_KEY_COOKIE, cleanOpenai);
+          // SECURITY: keys are intentionally NOT written to cookies. A
+          // non-HttpOnly cookie is readable by any script on the page
+          // (CWE-522), so a single XSS would exfiltrate a live billing key.
+          // localStorage is the only browser-side persistence BYOK needs.
 
           // Success feedback. Preserve any OpenAI provider warning instead of
           // overwriting it with a generic success message.

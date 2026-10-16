@@ -5,7 +5,7 @@ import type { DiscoveredAsset } from '@/server/discoverAssets'
 import { getFixture } from '@/src/server/fixtures/discoveryFixtures'
 import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
 import { validatePersonalizationEnv } from '@/server/envValidation'
-import { createDiscoveryJob, getDiscoveryJobForUser } from '@/server/discoveryJobs'
+import { createDiscoveryJob, getDiscoveryJobForUser, updateDiscoveryJob } from '@/server/discoveryJobs'
 import { runFastDiscovery } from '@/server/discoveryOrchestrator'
 
 export const dynamic = "force-dynamic";
@@ -60,7 +60,12 @@ function checkRateLimit(key: string): { allowed: boolean; remaining: number; res
 }
 
 function sanitizeWebsiteUrl(url: string): string {
-  const trimmed = url.trim().slice(0, MAX_WEBSITE_URL_LENGTH)
+  const trimmed = url.trim()
+  // Reject instead of silently truncating: a truncated URL is a DIFFERENT URL
+  // than the caller asked for, and must never be the one we fetch.
+  if (trimmed.length > MAX_WEBSITE_URL_LENGTH) {
+    throw new Error('Website URL exceeds maximum length')
+  }
   try {
     const parsed = new URL(trimmed)
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
@@ -108,6 +113,21 @@ export async function POST(req: NextRequest) {
     }
 
     const { userId } = await auth()
+    // S7: anonymous callers used to fall through to `clerkUserId: userId || 'anon'`,
+    // which persisted discovery jobs under a single shared anonymous identity.
+    // Discovery is an authenticated feature: no session, no job.
+    if (!userId) {
+      clearTimeout(timeoutId)
+      logPersonalization({
+        route: '/api/personalization/discover-assets',
+        stage: 'auth',
+        httpStatus: 401,
+        safeErrorCode: 'UNAUTHORIZED',
+        safeMessage: 'Missing authenticated session',
+        correlationId,
+      })
+      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
+    }
     const body = await req.json().catch(() => ({}))
     const rawWebsiteUrl = typeof body?.websiteUrl === 'string' ? body.websiteUrl : ''
     const requestedTestMode = typeof body?.testMode === 'boolean' ? body.testMode : false
@@ -218,7 +238,7 @@ export async function POST(req: NextRequest) {
     }
 
     const job = await createDiscoveryJob({
-      clerkUserId: userId || 'anon',
+      clerkUserId: userId,
       websiteUrl,
       fastResult,
       telemetry: {
@@ -230,6 +250,17 @@ export async function POST(req: NextRequest) {
     })
 
     const browserQueued = needsBrowser
+    const startedAt = new Date().toISOString()
+    const completedAt = browserQueued ? null : new Date().toISOString()
+
+    await updateDiscoveryJob(job.id, {
+      status: browserQueued ? 'running' : 'complete',
+      startedAt,
+      completedAt: completedAt ?? undefined,
+      finalResult: fastResult,
+    }).catch((persistErr) => {
+      console.error('[discover-assets] Failed to persist job state:', persistErr)
+    })
 
     if (browserQueued) {
       const netlifyFnUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/.netlify/functions/personalization-browser-discovery`

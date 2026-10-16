@@ -6,6 +6,10 @@ import { getApiKeyFromRequest, isBlockedFileType } from '@/lib/uploadProxyTarget
 
 const MUAPI_UPLOAD_URL = 'https://api.muapi.ai/api/v1/upload_file';
 
+// Mirrors the MuAPI File Upload API contract (https://muapi.ai/docs/file-upload):
+//   Images  10MB  .jpg .png .webp
+//   Videos  50MB  .mp4 .mov
+//   Others  10MB  .zip .pdf .json
 const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   'image/jpeg',
   'image/jpg',
@@ -13,9 +17,13 @@ const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   'image/webp',
   'video/mp4',
   'video/webm',
+  'video/quicktime',
   'audio/mpeg',
   'audio/wav',
   'audio/webm',
+  'application/zip',
+  'application/pdf',
+  'application/json',
 ]);
 
 const UPLOAD_MAX_RETRIES = 3;
@@ -34,7 +42,9 @@ async function uploadWithRetry(apiKey: string, formData: FormData): Promise<Resp
   let lastError: Error | null = null;
   for (let attempt = 0; attempt < UPLOAD_MAX_RETRIES; attempt++) {
     if (attempt > 0) {
-      const delay = UPLOAD_BASE_DELAY_MS * attempt;
+      // Exponential backoff with a small deterministic jitter, capped so the
+      // total added delay stays bounded.
+      const delay = Math.min(UPLOAD_BASE_DELAY_MS * 2 ** (attempt - 1), 8000);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
 
@@ -124,16 +134,19 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = error instanceof Error ? error.message : '';
       if (/MuAPI upload failed with status 5\d\d/.test(message)) {
         return NextResponse.json(
           { error: 'MuAPI is temporarily unavailable. Please try again in a moment.' },
           { status: 502 }
         );
       }
-      
+
+      // Never echo `message` back: the retry layer embeds the raw upstream body
+      // in the Error text, and that body can contain upstream identifiers.
+      // The exact cause is logged server-side for debugging instead.
       return NextResponse.json(
-        { error: message || 'MuAPI upload failed. Please try again.' },
+        { error: 'MuAPI upload failed. Please try again.' },
         { status: 502 }
       );
     }

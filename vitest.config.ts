@@ -40,6 +40,7 @@ export default defineConfig({
       'components/**/*.test.{js,jsx,ts,tsx}',
       'packages/**/*.test.{js,jsx,ts,tsx}',
       'src/apps/**/__tests__/*.{js,jsx,ts,tsx}',
+      'tests/**/*.test.{js,jsx,ts,tsx}',
       'tests/**/*.vitest.test.{js,jsx,ts,tsx}',
     ],
     exclude: [
@@ -49,9 +50,6 @@ export default defineConfig({
       '.kilo/**',
       'packages/*/dist/**',
       'packages/**/dist/**',
-      'tests/*.test.js',
-      'tests/*.test.jsx',
-      'tests/*.test.tsx',
       'tests/authConfig.test.ts',
     ],
     setupFiles: ['vitest.setup.ts'],

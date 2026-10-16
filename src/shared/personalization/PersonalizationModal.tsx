@@ -40,9 +40,10 @@ import {
   Trash2,
   AlertTriangle,
   Share2,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { useDemoPersonalize } from './DemoPersonalizeProvider'
-import type { PersonalizationAsset, DiscoveredAsset, DiscoveredAssetCategory, AssignedSection, AssetRole, PersonalizationVisionAnalysis } from './types'
+import type { PersonalizationAsset, DiscoveredAsset, DiscoveredAssetCategory, AssignedSection, AssetRole, PersonalizationVisionAnalysis, BusinessDiscoveryRecord, PersonalizationSource } from './types'
 import { resolveModelCapabilities, FACE_SWAP_MODEL, FULL_BODY_MODEL, DEFAULT_T2V_MODEL, DEFAULT_I2I_MODEL } from './modelCapabilityResolver'
 import { getModelById, getVideoModelById } from '@/packages/studio/src/models.js'
 import { NICHE_CONTENT } from '@/data/nicheContent'
@@ -53,6 +54,10 @@ import ImageEditorModal, {
 } from './image-editor/ImageEditorModal'
 import { makeDiscoveredAssetVideoReady } from './image-editor/batchVideoReady'
 import { isImageEditSupported } from './image-editor/imageEditSupport'
+import { SimpleModeWizard } from './guided/SimpleModeWizard'
+import { OverlayEditor } from './guided/OverlayEditor'
+import { buildPreviewInput } from './guided/buildPreviewInput'
+import { BeforeAfterPreview } from './preview/BeforeAfterPreview'
 
 // ── Design tokens (mirror the approved HTML CSS variables) ──────────────────
 
@@ -705,6 +710,7 @@ export default function PersonalizationModal() {
     source,
     closePersonalize,
     sourceTypeLabel,
+    access,
     clients,
     selectedClientId,
     clientForm,
@@ -762,6 +768,7 @@ export default function PersonalizationModal() {
     importDiscoveredAssets,
     cancelDiscovery,
     discoverAssets,
+    runDiscoveryWorkflow,
     visionStatus,
     visionError,
     analyzeDiscoveredAssets,
@@ -807,6 +814,25 @@ export default function PersonalizationModal() {
     sharedMediaEntries,
   } = ctx
 
+  // Guided Simple Mode is the default presentation whenever the provider
+  // exposes the guided API (always in production). A partial context (unit-test
+  // mocks) falls back to the full ConfigurationView unchanged.
+  const guidedApiAvailable =
+    typeof (ctx as { setGuidedStep?: unknown }).setGuidedStep === 'function' &&
+    Boolean((ctx as { previewSettings?: unknown }).previewSettings)
+  const [localViewMode, setLocalViewMode] = useState<'simple' | 'advanced'>('simple')
+  const viewMode: 'simple' | 'advanced' = guidedApiAvailable && ctx.viewMode ? ctx.viewMode : localViewMode
+  const setViewMode: (mode: 'simple' | 'advanced') => void =
+    guidedApiAvailable && ctx.setViewMode ? ctx.setViewMode : setLocalViewMode
+  // Simple Mode shows the four guided steps; prompt-only sources keep the
+  // existing configuration view (there is no video to preview or brand).
+  const simpleModeActive = viewMode === 'simple' && guidedApiAvailable && source?.mediaType !== 'prompt-only'
+
+  // Access mode for this session ('anonymous' on the free landing surface).
+  // The server remains the authority; this decides which paid/AI affordances
+  // the modal renders at all — never which endpoint grants permission.
+  const isAnonymous = access !== 'authenticated'
+
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [copiedPrompt, setCopiedPrompt] = useState(false)
   const [isPersonalizing, setIsPersonalizing] = useState(false)
@@ -833,7 +859,7 @@ export default function PersonalizationModal() {
   const previousActiveElementRef = useRef<HTMLElement | null>(null)
 
   const personalizationInProgress =
-    generation.status === 'generating' || generation.status === 'personalizing-prompt'
+    generation.status === 'generating' || generation.status === 'processing' || generation.status === 'personalizing-prompt'
 
   // ── Drag and drop handlers ──────────────────────────────────────────────────
 
@@ -1257,6 +1283,16 @@ export default function PersonalizationModal() {
     })
   }, [applyEditedPersonalizationAsset, discoveredAssets, imageEditorAsset, setDiscoveredAssets])
 
+  // NOTE: these memo hooks live ABOVE the early return below on purpose, so the
+  // hook order is identical whether or not the modal is open. The provider
+  // mounts the modal only while it is open; keeping the hook list stable also
+  // makes an unconditional mount safe.
+  const niche = useMemo(() => {
+    const nicheId = source?.sourceMetadata?.nicheId
+    if (!nicheId) return undefined
+    return NICHE_CONTENT.find((n) => n.id === nicheId)
+  }, [source?.sourceMetadata?.nicheId])
+
   if (!isOpen || !source) return null
 
   const isVideo = source.mediaType === 'video'
@@ -1279,12 +1315,6 @@ export default function PersonalizationModal() {
       : DEFAULT_I2I_MODEL)
 
   const capabilities = resolveModelCapabilities(source, { ...genOptions, model: effectiveModelId })
-
-  const niche = useMemo(() => {
-    const nicheId = source?.sourceMetadata?.nicheId
-    if (!nicheId) return undefined
-    return NICHE_CONTENT.find((n) => n.id === nicheId)
-  }, [source?.sourceMetadata?.nicheId])
 
   // ── Auto model recommendation based on duration ─────────────────────────────
   const recommendedModelId = useMemo(() => {
@@ -1451,7 +1481,7 @@ export default function PersonalizationModal() {
                   className="text-[19px] leading-[1.1] tracking-tight font-bold m-0"
                   style={{ color: C.text }}
                 >
-                  {niche ? niche.ctaHeading : 'Personalize this demo'}
+                  {niche ? niche.ctaHeading : source.sourceMetadata?.freeDiscovery ? 'Find My Brand' : 'Personalize this demo'}
                 </h1>
                 {niche ? (
                   <p
@@ -1464,7 +1494,9 @@ export default function PersonalizationModal() {
                     className="mt-1.5 max-w-[900px] text-[13px] leading-[1.55]"
                     style={{ color: C.muted }}
                   >
-                    Turn this demo into a custom version for yourself, your business, or a customer. Personalize the person, branding, products, prompt, offer and CTA.
+                    {isAnonymous
+                      ? 'Find My Brand: paste your business website — or search for a business — and we surface the logos, photos, products and branding its page already has, for you to review and arrange below. Nothing is generated and nothing is charged.'
+                      : 'Turn this demo into a custom version for yourself, your business, or a customer. Personalize the person, branding, products, prompt, offer and CTA.'}
                   </p>
                 )}
               </div>
@@ -1479,6 +1511,24 @@ export default function PersonalizationModal() {
           >
             ×
           </button>
+          {guidedApiAvailable && (
+            <button
+              type="button"
+              onClick={() => setViewMode(viewMode === 'simple' ? 'advanced' : 'simple')}
+              disabled={personalizationInProgress}
+              className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide flex items-center gap-1.5 transition-colors disabled:opacity-50 flex-shrink-0"
+              style={{
+                minHeight: 38,
+                padding: '0 13px',
+                border: `1px solid ${C.border}`,
+                background: 'transparent',
+                color: C.muted,
+              }}
+            >
+              <SlidersHorizontal size={13} />
+              {viewMode === 'simple' ? 'Advanced Editing' : 'Simple Mode'}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setIsFullscreen((prev) => !prev)}
@@ -1530,6 +1580,8 @@ export default function PersonalizationModal() {
               progress={generation.progress}
               message={generation.progressMessage}
             />
+          ) : simpleModeActive ? (
+            <SimpleModeWizard />
           ) : (
             <ConfigurationView
               source={source}
@@ -1626,6 +1678,8 @@ export default function PersonalizationModal() {
               visionStatus={visionStatus}
               visionError={visionError}
               analyzeDiscoveredAssets={analyzeDiscoveredAssets}
+              access={access}
+              runDiscoveryWorkflow={runDiscoveryWorkflow}
               // Business search
               businessSearchMode={businessSearchMode}
               businessSearchResults={businessSearchResults}
@@ -1658,7 +1712,9 @@ export default function PersonalizationModal() {
         </main>
 
         {/* ── STICKY FOOTER ────────────────────────────────────────── */}
-        {!personalizationInProgress && generation.status !== 'complete' && generation.status !== 'error' && (
+        {/* Anonymous sessions never generate: no footer action is offered. */}
+        {/* Simple Mode replaces the footer with the wizard's own step navigation. */}
+        {!isAnonymous && !personalizationInProgress && !simpleModeActive && generation.status !== 'complete' && generation.status !== 'error' && (
           <footer
             className="flex justify-end gap-2.5 flex-shrink-0"
             style={{
@@ -1964,6 +2020,7 @@ function ConfigurationView(props: any) {
     discoveredAssets,
     discoveryStatus,
     discoveryError,
+    setDiscoveryError,
     importConfirmation,
     setDiscoveredAssets,
     toggleDiscoveredAssetSelection,
@@ -1989,6 +2046,8 @@ function ConfigurationView(props: any) {
     findBusinesses,
     selectBusiness,
     researchBusiness,
+    runDiscoveryWorkflow,
+    access,
     clearBusinessSearch,
     setBusinessSearchMode,
     dragPayload,
@@ -2007,6 +2066,17 @@ function ConfigurationView(props: any) {
     revertDiscoveredAssetEdit,
   } = props
 
+  // ── Access mode ────────────────────────────────────────────────────────────
+  // The access mode is chosen by the caller of openPersonalize (the landing page
+  // asks for 'anonymous'), never inferred here, and every endpoint re-checks it
+  // server-side. It decides which discovery endpoint is used and which paid/AI
+  // affordances exist — the modal never renders a paid action the server has not
+  // granted.
+  const isAnonymous = access !== 'authenticated'
+  const isFreeDiscovery = isAnonymous && source?.sourceMetadata?.freeDiscovery === true
+  // Generation config/output sections only exist for entitled users.
+  const showGenerationSections = !isAnonymous && !isPromptOnly
+
   // ── Find Local Business (lead finder) entry flow ───────────────────────────
   // The chooser/how-to-enter panel and the search form are local UI state: the
   // chooser is dismissed once the client decides how to enter their profile,
@@ -2019,6 +2089,25 @@ function ConfigurationView(props: any) {
 
   const searchFormReady = Boolean(searchNiche && searchLocation.trim())
 
+  // `businessSearchMode === 'searching'` doubles as "the search form is open"
+  // and "a search request is in flight" (the provider sets it before the fetch
+  // and flips to results/error afterwards), so a separate flag marks the moment
+  // a search was actually fired and blocks duplicate submissions.
+  const [businessSearchInFlight, setBusinessSearchInFlight] = useState(false)
+  // Ref mirror of the flag so duplicate submissions are rejected even when two
+  // click handlers fire in the same tick, before the state update has flushed.
+  const businessSearchInFlightRef = useRef(false)
+
+  const isSearchingBusinesses = businessSearchInFlight && businessSearchMode === 'searching'
+
+  // Once the provider reports back (results or error) the form is no longer busy.
+  useEffect(() => {
+    if (businessSearchMode !== 'searching') {
+      businessSearchInFlightRef.current = false
+      setBusinessSearchInFlight(false)
+    }
+  }, [businessSearchMode])
+
   const handleClientEntryDismiss = useCallback(() => setClientEntryDismissed(true), [])
 
   // Re-arm the chooser whenever the audience changes, so the entry decision is
@@ -2029,9 +2118,87 @@ function ConfigurationView(props: any) {
 
   const runBusinessSearch = useCallback((radiusMiles: number) => {
     if (!searchNiche || !searchLocation.trim()) return
+    if (businessSearchInFlightRef.current) return
+    businessSearchInFlightRef.current = true
+    setBusinessSearchInFlight(true)
     setSearchRadius(radiusMiles)
     findBusinesses(searchNiche, searchLocation.trim(), radiusMiles)
   }, [findBusinesses, searchLocation, searchNiche])
+
+  // ── Find My Brand (the automated workflow) ────────────────────────────────
+  // ONE starting action that accepts a website URL or opens the existing
+  // niche/location search. Submitting runs the provider's `runDiscoveryWorkflow`,
+  // which populates the client form via the existing `selectBusiness` mapping,
+  // runs the shared research path and then asset discovery — for both a URL
+  // submission and a search-result selection. Nothing is re-entered and the
+  // visitor never leaves this modal.
+  const [findMyBrandUrl, setFindMyBrandUrl] = useState('')
+  const [brandRunInFlight, setBrandRunInFlight] = useState(false)
+  const brandRunInFlightRef = useRef(false)
+
+  const handleFindMyBrand = useCallback(async () => {
+    const website = findMyBrandUrl.trim()
+    if (!website || brandRunInFlightRef.current) return
+    brandRunInFlightRef.current = true
+    setBrandRunInFlight(true)
+    try {
+      await runDiscoveryWorkflow(website)
+    } finally {
+      brandRunInFlightRef.current = false
+      setBrandRunInFlight(false)
+    }
+  }, [findMyBrandUrl, runDiscoveryWorkflow])
+
+  // Selecting a business from the (existing) search results. In anonymous
+  // (free) mode the selection IS the Find My Brand submit: it runs the very
+  // same automated workflow instead of leaving the visitor to click through the
+  // manual research + discovery steps. The OpenStreetMap record is passed
+  // through so its category/city/region populate the form (a) via the same
+  // mapping as any other selection.
+  //
+  // Authenticated mode keeps exactly today's behaviour: select the business
+  // only, and let the visitor drive the manual steps.
+  const handleSelectBusiness = useCallback((business: BusinessDiscoveryRecord) => {
+    if (isAnonymous) {
+      if (!business.website || !business.website.trim()) {
+        setDiscoveryError('No website is listed for this business. Paste one in the Website field and use Find My Brand.')
+        return
+      }
+      // (a) + (b) + (c): populate, research and discover in one automated run
+      void runDiscoveryWorkflow(business.website.trim(), { business })
+      return
+    }
+    selectBusiness(business)
+  }, [isAnonymous, runDiscoveryWorkflow, selectBusiness, setDiscoveryError])
+
+  const handleOpenBusinessSearch = useCallback(() => {
+    // The existing niche/location search form is gated on the customer
+    // audience, so ask for it explicitly: the same form now doubles as the
+    // "or search for my business instead" branch of Find My Brand.
+    updateClientForm({ audience: 'customer' })
+    setBusinessSearchMode('searching')
+  }, [setBusinessSearchMode, updateClientForm])
+
+  // A single progress indicator covers the whole run: research and discovery in
+  // anonymous mode are one server round trip, and in authenticated mode the
+  // indicator stays lit across both phases.
+  const showBrandRunProgress = brandRunInFlight || discoveryStatus === 'discovering'
+  const brandRunProgressMessage = isAnonymous
+    ? 'Reading the website and finding the brand assets already on it…'
+    : 'Researching the business and finding its brand assets…'
+
+  // ── Paid AI affordances (never offered to free visitors) ───────────────────
+  // The server refuses image edits / vision / generation for anonymous
+  // sessions, so the matching "Edit with AI" affordances are not rendered at
+  // all instead of failing after the click.
+  //
+  // Extension point: transparent-logo generation and advanced categorisation
+  // both plug in ON TOP of these handlers (same discovered-asset thumb, same
+  // section assignment) — they never need a second results surface or a second
+  // modal, so the free surface gains them by re-enabling these affordances for
+  // the entitlement that grants them.
+  const onEditDiscovered = isAnonymous ? null : openDiscoveredImageEditor
+  const onEditLibrary = isAnonymous ? null : openLibraryImageEditor
 
   const identityInputRef = useRef<HTMLInputElement>(null)
   const logoInputRef = useRef<HTMLInputElement>(null)
@@ -2062,26 +2229,26 @@ function ConfigurationView(props: any) {
   // ── What SmartVideo Will Use summary ─────────────────────────────────────
 
   const assetSummary = useMemo(() => {
-    const items: { section: string; name: string; url: string }[] = []
+    const items: { id: string; section: string; name: string; url: string }[] = []
     if (assets.primaryIdentity) {
-      items.push({ section: 'Person', name: assets.primaryIdentity.name, url: assets.primaryIdentity.uploadedUrl || assets.primaryIdentity.url })
+      items.push({ id: assets.primaryIdentity.id, section: 'Person', name: assets.primaryIdentity.name, url: assets.primaryIdentity.uploadedUrl || assets.primaryIdentity.url })
     }
     assets.identities.forEach((a) => {
       if (a.id === assets.primaryIdentity?.id) return
-      items.push({ section: 'Person', name: a.name, url: a.uploadedUrl || a.url })
+      items.push({ id: a.id, section: 'Person', name: a.name, url: a.uploadedUrl || a.url })
     })
     if (assets.primaryLogo) {
-      items.push({ section: 'Logo', name: assets.primaryLogo.name, url: assets.primaryLogo.uploadedUrl || assets.primaryLogo.url })
+      items.push({ id: assets.primaryLogo.id, section: 'Logo', name: assets.primaryLogo.name, url: assets.primaryLogo.uploadedUrl || assets.primaryLogo.url })
     }
     assets.logos.forEach((a) => {
       if (a.id === assets.primaryLogo?.id) return
-      items.push({ section: 'Logo', name: a.name, url: a.uploadedUrl || a.url })
+      items.push({ id: a.id, section: 'Logo', name: a.name, url: a.uploadedUrl || a.url })
     })
-    assets.products.forEach((a) => items.push({ section: 'Products', name: a.name, url: a.uploadedUrl || a.url }))
-    assets.brandReferences.forEach((a) => items.push({ section: 'Brand', name: a.name, url: a.uploadedUrl || a.url }))
-    if (assets.firstFrame) items.push({ section: 'First Frame', name: assets.firstFrame.name, url: assets.firstFrame.uploadedUrl || assets.firstFrame.url })
-    if (assets.lastFrame) items.push({ section: 'Last Frame', name: assets.lastFrame.name, url: assets.lastFrame.uploadedUrl || assets.lastFrame.url })
-    if (assets.ctaGraphic) items.push({ section: 'CTA', name: assets.ctaGraphic.name, url: assets.ctaGraphic.uploadedUrl || assets.ctaGraphic.url })
+    assets.products.forEach((a) => items.push({ id: a.id, section: 'Products', name: a.name, url: a.uploadedUrl || a.url }))
+    assets.brandReferences.forEach((a) => items.push({ id: a.id, section: 'Brand', name: a.name, url: a.uploadedUrl || a.url }))
+    if (assets.firstFrame) items.push({ id: assets.firstFrame.id, section: 'First Frame', name: assets.firstFrame.name, url: assets.firstFrame.uploadedUrl || assets.firstFrame.url })
+    if (assets.lastFrame) items.push({ id: assets.lastFrame.id, section: 'Last Frame', name: assets.lastFrame.name, url: assets.lastFrame.uploadedUrl || assets.lastFrame.url })
+    if (assets.ctaGraphic) items.push({ id: assets.ctaGraphic.id, section: 'CTA', name: assets.ctaGraphic.name, url: assets.ctaGraphic.uploadedUrl || assets.ctaGraphic.url })
     return items
   }, [assets])
 
@@ -2189,7 +2356,7 @@ function ConfigurationView(props: any) {
          <div className="flex flex-wrap gap-2">
            {assetSummary.map((item) => (
              <div
-               key={`${item.section}-${item.url}`}
+               key={item.id}
                className="flex items-center gap-1.5 rounded-lg px-2 py-1"
                style={{ background: 'rgba(41,211,242,.06)', border: `1px solid rgba(41,211,242,.18)` }}
              >
@@ -2243,6 +2410,20 @@ function ConfigurationView(props: any) {
                 className="w-full h-full"
                 style={{ maxHeight: '50vh', objectFit: 'contain' }}
               />
+            ) : isFreeDiscovery ? (
+              /* Free landing surface: there is no media to preview — the run
+                 reads the visitor's own website. Kept inside the shared Source
+                 Demo panel so the layout is identical in both modes. The
+                 branded-preview enhancement plugs in here later. */
+              <div className="flex flex-col items-center justify-center w-full h-full gap-2 p-6 text-center">
+                <span style={{ fontSize: 26, color: C.cyan }}>✦</span>
+                <span className="text-[12px] font-extrabold uppercase tracking-wide" style={{ color: C.text }}>
+                  Your website is the source
+                </span>
+                <span className="text-[11px] leading-5" style={{ color: C.muted }}>
+                  Paste it above and we show the brand assets it already has.
+                </span>
+              </div>
             ) : (
               <div className="flex items-center justify-center w-full h-full">
                 <button
@@ -2257,13 +2438,114 @@ function ConfigurationView(props: any) {
           </div>
           <div className="mt-3 text-base font-bold">{source.title}</div>
           <div className="mt-1 text-[11px] uppercase" style={{ color: C.muted }}>
-            {source.mediaType?.toUpperCase()} {source.aspectRatio ? `• ${source.aspectRatio}` : ''}
+            {isFreeDiscovery ? 'Free discovery' : source.mediaType?.toUpperCase()} {source.aspectRatio ? `• ${source.aspectRatio}` : ''}
           </div>
         </div>
 
         {/* Client Profile */}
         <div className="panel" style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18 }}>
           <h2 style={{ margin: '0 0 13px', fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>STEP 1 — WHO IS THIS FOR?</h2>
+
+          {/* ── FIND MY BRAND — the single primary starting action ───────────
+              Anonymous (free landing) mode only, so the authenticated surface
+              keeps rendering exactly as today. The access mode decides which
+              discovery endpoint the workflow calls and which paid/AI
+              affordances render — never which starting action is offered.     */}
+          {isAnonymous && (
+          <div
+            id="pz-find-my-brand"
+            data-testid="find-my-brand"
+            style={{
+              marginBottom: 18,
+              padding: 14,
+              border: `1px solid ${C.cyan}`,
+              borderRadius: 10,
+              background: 'rgba(41,211,242,.05)',
+            }}
+          >
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: C.cyan, marginBottom: 6, letterSpacing: '.04em' }}>
+              Find My Brand
+            </div>
+            <p style={{ margin: '0 0 10px', color: C.muted, fontSize: 11, lineHeight: 1.5 }}>
+              {isAnonymous
+                ? 'Paste a business website. We read the page it already has and show the logos, photos, products and branding found on it — nothing is generated and nothing is charged.'
+                : 'Paste a business website. We research it and find its brand assets for you, in one step.'}
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                id="find-my-brand-url"
+                type="url"
+                inputMode="url"
+                autoComplete="url"
+                placeholder="https://yourbusiness.com"
+                value={findMyBrandUrl}
+                onChange={(e) => setFindMyBrandUrl(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleFindMyBrand() } }}
+                disabled={brandRunInFlight}
+                className="w-full min-w-0 outline-none disabled:opacity-60"
+                style={{
+                  minHeight: 42,
+                  padding: '0 12px',
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 10,
+                  background: C.field,
+                  color: C.text,
+                  fontSize: 12,
+                }}
+              />
+              <button
+                type="button"
+                id="find-my-brand-submit"
+                data-testid="find-my-brand-submit"
+                onClick={() => void handleFindMyBrand()}
+                disabled={brandRunInFlight || !findMyBrandUrl.trim()}
+                className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  minHeight: 42,
+                  padding: '0 18px',
+                  whiteSpace: 'nowrap',
+                  border: `1px solid ${C.cyan}`,
+                  background: C.cyan,
+                  color: '#041014',
+                }}
+              >
+                {brandRunInFlight ? 'Finding…' : '✦ Find My Brand'}
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={handleOpenBusinessSearch}
+              disabled={brandRunInFlight}
+              className="mt-2 rounded-lg text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
+              style={{ minHeight: 30, padding: '0 10px', border: `1px solid ${C.border}`, background: 'transparent', color: C.cyan }}
+            >
+              Or find a local business by niche &amp; location
+            </button>
+
+            {/* One progress indicator for the whole run: research + discovery. */}
+            {showBrandRunProgress && (
+              <div
+                data-testid="find-my-brand-progress"
+                role="status"
+                aria-live="polite"
+                style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: C.text }}
+              >
+                <Loader2 size={14} className="animate-spin" aria-hidden="true" style={{ color: C.cyan }} />
+                <span>{brandRunProgressMessage}</span>
+              </div>
+            )}
+            {discoveryError && (
+              <p
+                role="alert"
+                data-testid="find-my-brand-error"
+                style={{ marginTop: 10, fontSize: 11, lineHeight: 1.5, color: C.danger }}
+              >
+                {discoveryError}
+              </p>
+            )}
+          </div>
+          )}
+
           <div className="grid grid-cols-3" style={{ gap: 8, marginBottom: 18 }}>
             {[
               { key: 'me', label: 'Me' },
@@ -2384,7 +2666,7 @@ function ConfigurationView(props: any) {
                       key={miles}
                       type="button"
                       onClick={() => runBusinessSearch(miles)}
-                      disabled={!searchFormReady}
+                      disabled={!searchFormReady || isSearchingBusinesses}
                       className="rounded-lg text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
                       style={{
                         minHeight: 34,
@@ -2402,7 +2684,7 @@ function ConfigurationView(props: any) {
               <button
                 type="button"
                 onClick={() => runBusinessSearch(searchRadius)}
-                disabled={!searchFormReady}
+                disabled={!searchFormReady || isSearchingBusinesses}
                 className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   minHeight: 42,
@@ -2486,7 +2768,7 @@ function ConfigurationView(props: any) {
                       background: selectedBusiness?.id === business.id ? 'rgba(41,211,242,.06)' : '#11161b',
                       cursor: 'pointer',
                     }}
-                    onClick={() => selectBusiness(business)}
+                    onClick={() => handleSelectBusiness(business)}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                       <div style={{ flex: 1 }}>
@@ -2522,7 +2804,7 @@ function ConfigurationView(props: any) {
                         </div>
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); selectBusiness(business) }}
+                          onClick={(e) => { e.stopPropagation(); handleSelectBusiness(business) }}
                           className="rounded-lg text-[10px] font-extrabold uppercase tracking-wide"
                           style={{
                             minHeight: 32,
@@ -2545,8 +2827,9 @@ function ConfigurationView(props: any) {
             </div>
           )}
 
-          {/* Selected Business Summary */}
-          {clientForm.audience === 'customer' && businessSearchMode === 'selected' && selectedBusiness && (
+          {/* Selected Business Summary — also shown for the Find My Brand
+              workflow, whose result arrives here rather than on a second screen. */}
+          {businessSearchMode === 'selected' && selectedBusiness && (
             <div style={{ marginBottom: 18, padding: 14, border: `1px solid ${C.cyan}`, borderRadius: 10, background: 'rgba(41,211,242,.06)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                 <span style={{ color: C.cyan, fontSize: 14 }}>✓</span>
@@ -2576,21 +2859,23 @@ function ConfigurationView(props: any) {
                 </div>
               </div>
               <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={() => researchBusiness()}
-                  disabled={businessResearch.status === 'researching'}
-                  className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
-                  style={{
-                    minHeight: 38,
-                    padding: '0 16px',
-                    border: `1px solid ${C.cyan}`,
-                    background: businessResearch.status === 'done' ? '#041014' : C.cyan,
-                    color: businessResearch.status === 'done' ? C.cyan : '#041014',
-                  }}
-                >
-                  {businessResearch.status === 'researching' ? 'Researching...' : businessResearch.status === 'done' ? 'Research Complete' : 'Research Business'}
-                </button>
+                {!isAnonymous && (
+                  <button
+                    type="button"
+                    onClick={() => researchBusiness()}
+                    disabled={businessResearch.status === 'researching'}
+                    className="rounded-[10px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
+                    style={{
+                      minHeight: 38,
+                      padding: '0 16px',
+                      border: `1px solid ${C.cyan}`,
+                      background: businessResearch.status === 'done' ? '#041014' : C.cyan,
+                      color: businessResearch.status === 'done' ? C.cyan : '#041014',
+                    }}
+                  >
+                    {businessResearch.status === 'researching' ? 'Researching...' : businessResearch.status === 'done' ? 'Research Complete' : 'Research Business'}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => clearBusinessSearch()}
@@ -2651,21 +2936,24 @@ function ConfigurationView(props: any) {
               {businessResearch.status === 'error' && businessResearch.error && (
                 <div style={{ marginTop: 8, padding: 10, border: `1px solid ${C.danger}`, borderRadius: 8, background: 'rgba(239,91,103,.08)' }}>
                   <div style={{ fontSize: 10, color: C.danger }}>Research failed: {businessResearch.error}</div>
-                  <button
-                    type="button"
-                    onClick={() => researchBusiness()}
-                    className="mt-2 rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide"
-                    style={{ minHeight: 30, padding: '0 10px', border: `1px solid ${C.danger}`, background: C.danger, color: '#fff' }}
-                  >
-                    Retry
-                  </button>
+                  {!isAnonymous && (
+                    <button
+                      type="button"
+                      onClick={() => researchBusiness()}
+                      className="mt-2 rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide"
+                      style={{ minHeight: 30, padding: '0 10px', border: `1px solid ${C.danger}`, background: C.danger, color: '#fff' }}
+                    >
+                      Retry
+                    </button>
+                  )}
                 </div>
               )}
             </div>
           )}
 
-          {/* Saved Clients */}
-          {clientForm.audience === 'customer' && clients.length > 0 && (
+          {/* Saved Clients — entitlement-gated: free visitors have no saved
+              profiles, so the control is not offered at all. */}
+          {!isAnonymous && clientForm.audience === 'customer' && clients.length > 0 && (
             <div style={{ marginBottom: 18 }}>
               <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Saved Clients</div>
               <div className="flex flex-wrap gap-2">
@@ -2761,57 +3049,61 @@ function ConfigurationView(props: any) {
                 </div>
               )}
             </div>
-            <div className="col-span-full">
-              <label style={{ display: 'block', marginBottom: 6, color: C.muted, fontSize: 10 }}>Select Existing Client</label>
-              <div className="flex gap-2">
-                <select
-                  value={selectedClientId}
-                  onChange={(e) => selectClient(e.target.value)}
-                  className="flex-1 outline-none"
-                  style={{
-                    minHeight: 40,
-                    padding: '0 11px',
-                    border: `1px solid ${C.border}`,
-                    borderRadius: 8,
-                    background: C.field,
-                    color: C.text,
-                  }}
-                >
-                  <option value="">Select Existing Client</option>
-                  {clients?.map?.((c: any) => (
-                    <option key={c.id} value={c.id}>{c.businessName || c.name || c.id}</option>
-                  ))}
-                </select>
-                <button
-                  onClick={() => { selectClient(''); updateClientForm({ ...clientForm, id: '', name: '', businessName: '' }) }}
-                  className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white/70 hover:bg-white/10"
-                >
-                  New
-                </button>
+            {!isAnonymous && (
+              <div className="col-span-full">
+                <label style={{ display: 'block', marginBottom: 6, color: C.muted, fontSize: 10 }}>Select Existing Client</label>
+                <div className="flex gap-2">
+                  <select
+                    value={selectedClientId}
+                    onChange={(e) => selectClient(e.target.value)}
+                    className="flex-1 outline-none"
+                    style={{
+                      minHeight: 40,
+                      padding: '0 11px',
+                      border: `1px solid ${C.border}`,
+                      borderRadius: 8,
+                      background: C.field,
+                      color: C.text,
+                    }}
+                  >
+                    <option value="">Select Existing Client</option>
+                    {clients?.map?.((c: any) => (
+                      <option key={c.id} value={c.id}>{c.businessName || c.name || c.id}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => { selectClient(''); updateClientForm({ ...clientForm, id: '', name: '', businessName: '' }) }}
+                    className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white/70 hover:bg-white/10"
+                  >
+                    New
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
             <Field label="Business Name" value={clientForm.businessName} placeholder="ABC Roofing" onChange={(v) => updateClientForm({ ...clientForm, businessName: v })} />
             <Field label="Industry" value={clientForm.industry} placeholder="Roofing" onChange={(v) => updateClientForm({ ...clientForm, industry: v })} />
             <Field label="Location" value={clientForm.location} placeholder="Tampa, Florida" onChange={(v) => updateClientForm({ ...clientForm, location: v })} />
             <Field label="Phone" value={clientForm.phone} placeholder="555-555-5555" onChange={(v) => updateClientForm({ ...clientForm, phone: v })} />
-            <div className="col-span-full flex gap-2">
-              <button
-                onClick={saveClient}
-                className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold"
-                style={{ background: 'rgba(41,211,242,.12)', border: `1px solid ${C.cyanBorder}`, color: C.cyan }}
-              >
-                <Save size={14} /> {selectedClientId ? 'Update Client' : 'Save Client'}
-              </button>
-              {selectedClientId && (
+            {!isAnonymous && (
+              <div className="col-span-full flex gap-2">
                 <button
-                  onClick={() => deleteClient(selectedClientId)}
-                  className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium border"
-                  style={{ color: C.danger, borderColor: 'rgba(239,91,103,.25)' }}
+                  onClick={saveClient}
+                  className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold"
+                  style={{ background: 'rgba(41,211,242,.12)', border: `1px solid ${C.cyanBorder}`, color: C.cyan }}
                 >
-                  <Trash2 size={14} /> Delete
+                  <Save size={14} /> {selectedClientId ? 'Update Client' : 'Save Client'}
                 </button>
-              )}
-            </div>
+                {selectedClientId && (
+                  <button
+                    onClick={() => deleteClient(selectedClientId)}
+                    className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium border"
+                    style={{ color: C.danger, borderColor: 'rgba(239,91,103,.25)' }}
+                  >
+                    <Trash2 size={14} /> Delete
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -2848,12 +3140,15 @@ function ConfigurationView(props: any) {
             ? [{ id: 'pz-discovered', label: 'Discovered' }]
             : []),
           { id: 'pz-client-assets', label: 'Client Assets' },
-          ...(selectedClientId ? [{ id: 'pz-saved-assets', label: 'Saved Assets' }] : []),
+          ...(!isAnonymous && selectedClientId ? [{ id: 'pz-saved-assets', label: 'Saved Assets' }] : []),
+          ...(source?.mediaType === 'video' || source?.mediaType === 'image'
+            ? [{ id: 'pz-onvideo-overlays', label: 'Preview' }]
+            : []),
           { id: 'pz-content', label: 'Business' },
           { id: 'pz-prompt', label: 'Prompt' },
-          ...(!isPromptOnly ? [{ id: 'pz-output', label: 'Output' }] : []),
-          ...(showModes ? [{ id: 'pz-mode', label: 'Mode' }] : []),
-          { id: 'pz-engine', label: 'Engine' },
+          ...(!isPromptOnly && !isAnonymous ? [{ id: 'pz-output', label: 'Output' }] : []),
+          ...(showModes && !isAnonymous ? [{ id: 'pz-mode', label: 'Mode' }] : []),
+          ...(!isAnonymous ? [{ id: 'pz-engine', label: 'Engine' }] : []),
         ].map((chip) => (
           <a
             key={chip.id}
@@ -2892,47 +3187,53 @@ function ConfigurationView(props: any) {
                 Found {discoveredAssets.filter((a) => !a.rejected).length} potential assets — {discoveredAssets.filter((a) => a.selected && !a.rejected).length} selected
               </p>
             </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={analyzeDiscoveredAssets}
-                disabled={visionStatus === 'analyzing'}
-                className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
-                style={{ minHeight: 36, padding: '0 14px', border: '1px solid rgba(168,85,247,.45)', background: 'rgba(168,85,247,.10)', color: '#c4b5fd' }}
-              >
-                {visionStatus === 'analyzing' ? 'Analyzing…' : visionStatus === 'complete' ? '✓ Vision Analyzed' : '✦ Analyze with GO Vision'}
-              </button>
-              <button
-                type="button"
-                onClick={selectRecommendedDiscoveredAssets}
-                className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide"
-                style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.border}`, background: C.panel, color: 'white' }}
-              >
-                Select Recommended
-              </button>
-              <button
-                type="button"
-                onClick={handleBatchMakeVideoReady}
-                disabled={
-                  batchVideoReady.running ||
-                  discoveredAssets.filter((a) => a.selected && !a.rejected && a.category !== 'irrelevant' && !a.videoReady).length === 0
-                }
-                className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
-                style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.cyanBorder}`, background: C.cyanSoft, color: C.cyan }}
-              >
-                {batchVideoReady.running
-                  ? `Preparing ${batchVideoReady.current}/${batchVideoReady.total}…`
-                  : '✨ Make Selected Video Ready'}
-              </button>
-              <button
-                type="button"
-                onClick={importDiscoveredAssets}
-                disabled={batchVideoReady.running || discoveredAssets.filter((a) => a.selected && !a.rejected).length === 0}
-                className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
-                style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.cyan}`, background: C.cyan, color: '#041014' }}
-              >
-                Use Selected Assets
-              </button>
+            <div className="flex gap-2 flex-wrap">
+              {/* Paid/AI affordances are never offered to free visitors — the
+                  server refuses them, so the UI does not surface them at all. */}
+              {!isAnonymous && (
+                <>
+                  <button
+                    type="button"
+                    onClick={analyzeDiscoveredAssets}
+                    disabled={visionStatus === 'analyzing'}
+                    className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
+                    style={{ minHeight: 36, padding: '0 14px', border: '1px solid rgba(168,85,247,.45)', background: 'rgba(168,85,247,.10)', color: '#c4b5fd' }}
+                  >
+                    {visionStatus === 'analyzing' ? 'Analyzing…' : visionStatus === 'complete' ? '✓ Vision Analyzed' : '✦ Analyze with GO Vision'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={selectRecommendedDiscoveredAssets}
+                    className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide"
+                    style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.border}`, background: C.panel, color: 'white' }}
+                  >
+                    Select Recommended
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBatchMakeVideoReady}
+                    disabled={
+                      batchVideoReady.running ||
+                      discoveredAssets.filter((a) => a.selected && !a.rejected && a.category !== 'irrelevant' && !a.videoReady).length === 0
+                    }
+                    className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
+                    style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.cyanBorder}`, background: C.cyanSoft, color: C.cyan }}
+                  >
+                    {batchVideoReady.running
+                      ? `Preparing ${batchVideoReady.current}/${batchVideoReady.total}…`
+                      : '✨ Make Selected Video Ready'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={importDiscoveredAssets}
+                    disabled={batchVideoReady.running || discoveredAssets.filter((a) => a.selected && !a.rejected).length === 0}
+                    className="rounded-[10px] text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
+                    style={{ minHeight: 36, padding: '0 14px', border: `1px solid ${C.cyan}`, background: C.cyan, color: '#041014' }}
+                  >
+                    Use Selected Assets
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 onClick={cancelDiscovery}
@@ -2943,6 +3244,16 @@ function ConfigurationView(props: any) {
               </button>
             </div>
           </div>
+
+          {/* Free run: the sign-up / deferred-enhancement plug-in point. Branded
+              preview, transparent-logo generation and one-click AI Assist all
+              land here or immediately above, without a second results screen. */}
+          {isAnonymous && (
+            <p style={{ margin: '0 0 16px', color: C.muted, fontSize: 11, lineHeight: 1.5 }}>
+              Review the assets below — drag any of them into the section you want it in. Sign in to import
+              them and generate personalized videos with them.
+            </p>
+          )}
 
           {(visionStatus === 'analyzing' || visionStatus === 'complete' || visionError) && (
             <div
@@ -3000,7 +3311,7 @@ function ConfigurationView(props: any) {
                        onToggle={() => toggleDiscoveredAssetSelection(asset.id)}
                        onRemove={() => rejectDiscoveredAsset(asset.id)}
                        onCategoryChange={(newCat) => updateDiscoveredAssetCategory(asset.id, newCat)}
-                       onEdit={() => openDiscoveredImageEditor(asset)}
+                       onEdit={onEditDiscovered ? () => onEditDiscovered(asset) : undefined}
                         onRevert={() => revertDiscoveredAssetEdit(asset.id)}
                        onRemoveFromSection={() => removeDiscoveredAssetFromSection(asset.id)}
                        onMoveToSection={(section) => moveDiscoveredAssetToSection(asset.id, section)}
@@ -3088,7 +3399,7 @@ function ConfigurationView(props: any) {
                     label={asset.name?.split('.')?.[0]?.toUpperCase()?.slice(0, 8) || 'PHOTO'}
                     onRemove={() => removeIdentity(asset.id)}
                     onRetry={() => retryAssetUpload(asset.id)}
-                    onEdit={() => openLibraryImageEditor(asset)}
+                    onEdit={onEditLibrary ? () => onEditLibrary(asset) : undefined}
                     onRevert={() => revertLibraryAssetToOriginal(asset.id)}
                     draggable
                     onDragStart={(e) => handleAssetDragStart({
@@ -3209,7 +3520,7 @@ function ConfigurationView(props: any) {
                    label={asset.name?.split('.')?.[0]?.toUpperCase()?.slice(0, 8) || 'LOGO'}
                    onRemove={() => removeLogo(asset.id)}
                    onRetry={() => retryAssetUpload(asset.id)}
-                   onEdit={() => openLibraryImageEditor(asset)}
+                   onEdit={onEditLibrary ? () => onEditLibrary(asset) : undefined}
                    onRevert={() => revertLibraryAssetToOriginal(asset.id)}
                    draggable
                    onDragStart={(e) => handleAssetDragStart({
@@ -3267,7 +3578,7 @@ function ConfigurationView(props: any) {
                    label={String(i + 1)}
                    onRemove={() => removeProduct(asset.id)}
                    onRetry={() => retryAssetUpload(asset.id)}
-                   onEdit={() => openLibraryImageEditor(asset)}
+                   onEdit={onEditLibrary ? () => onEditLibrary(asset) : undefined}
                    onRevert={() => revertLibraryAssetToOriginal(asset.id)}
                    draggable
                    onDragStart={(e) => handleAssetDragStart({
@@ -3326,7 +3637,7 @@ function ConfigurationView(props: any) {
                    label={asset.name?.split('.')?.[0]?.toUpperCase()?.slice(0, 10) || 'BRAND'}
                    onRemove={() => removeBrandReference(asset.id)}
                    onRetry={() => retryAssetUpload(asset.id)}
-                   onEdit={() => openLibraryImageEditor(asset)}
+                   onEdit={onEditLibrary ? () => onEditLibrary(asset) : undefined}
                    onRevert={() => revertLibraryAssetToOriginal(asset.id)}
                    draggable
                    onDragStart={(e) => handleAssetDragStart({
@@ -3566,8 +3877,9 @@ function ConfigurationView(props: any) {
         </div>
       </section>
 
-      {/* ── SAVED CLIENT ASSETS ───────────────────────────────────── */}
-      {selectedClientId && (
+      {/* ── SAVED CLIENT ASSETS ─────────────────────────────────────
+          Saved-profile controls are never offered to free visitors.        */}
+      {!isAnonymous && selectedClientId && (
         <section id="pz-saved-assets" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
           <div className="flex items-center justify-between flex-wrap gap-3" style={{ marginBottom: 14 }}>
             <div>
@@ -3705,6 +4017,14 @@ function ConfigurationView(props: any) {
         </section>
       )}
 
+      {/* ── PREVIEW & ON-VIDEO OVERLAYS (guided preview, shared state) ──
+          Free browser-based Remotion preview of the personalized composition
+          plus the direct on-video overlay editor. Renders only for video and
+          image sources, and only when the provider exposes the guided API. */}
+      {(source?.mediaType === 'video' || source?.mediaType === 'image') && (
+        <AdvancedOverlaySection source={source} />
+      )}
+
       {/* ── CTA & BUSINESS CONTENT ────────────────────────────── */}
       <section id="pz-content" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
         <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>CTA & BUSINESS CONTENT</h2>
@@ -3738,7 +4058,7 @@ function ConfigurationView(props: any) {
                 asset={assets.ctaGraphic}
                 onRemove={removeCtaGraphic}
                 onRetry={() => assets.ctaGraphic && retryAssetUpload(assets.ctaGraphic.id)}
-                onEdit={() => assets.ctaGraphic && openLibraryImageEditor(assets.ctaGraphic)}
+                onEdit={onEditLibrary ? () => onEditLibrary(assets.ctaGraphic!) : undefined}
                 onRevert={() => assets.ctaGraphic && revertLibraryAssetToOriginal(assets.ctaGraphic.id)}
                 draggable
                 onDragStart={(e) => assets.ctaGraphic && handleAssetDragStart({
@@ -3784,44 +4104,50 @@ function ConfigurationView(props: any) {
             />
           </div>
         </div>
-        <div className="flex flex-wrap gap-2 justify-end" style={{ marginTop: 12 }}>
-          <button
-            onClick={handlePersonalize}
-            disabled={!canPersonalize || isPersonalizing}
-            className="rounded-[9px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
-            style={{ minHeight: 38, padding: '0 15px', border: `1px solid ${C.cyan}`, background: C.cyan, color: '#051014' }}
-          >
-            {isPersonalizing ? <Loader2 size={12} className="animate-spin inline" /> : '✦'} Personalize Prompt
-          </button>
-          <button
-            onClick={handleRegenerate}
-            disabled={!canPersonalize || isRegenerating || !promptState.personalized}
-            className="rounded-[9px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
-            style={{ minHeight: 38, padding: '0 15px', border: `1px solid ${C.border}`, background: C.panel, color: 'white' }}
-          >
-            Regenerate
-          </button>
-          <button
-            onClick={handleCopyPrompt}
-            disabled={!promptState.personalized}
-            className="rounded-[9px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
-            style={{ minHeight: 38, padding: '0 15px', border: `1px solid ${C.border}`, background: C.panel, color: 'white' }}
-          >
-            {copiedPrompt ? 'Copied!' : 'Copy'}
-          </button>
-          <button
-            onClick={resetPrompt}
-            disabled={!promptState.personalized}
-            className="rounded-[9px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
-            style={{ minHeight: 38, padding: '0 15px', border: `1px solid ${C.border}`, background: C.panel, color: 'white' }}
-          >
-            Reset
-          </button>
-        </div>
+        {/* AI prompt actions are entitlement-gated: free visitors are never
+            offered a paid model call. Deferred one-click AI Assist plugs in
+            here for entitled users. */}
+        {!isAnonymous && (
+          <div className="flex flex-wrap gap-2 justify-end" style={{ marginTop: 12 }}>
+            <button
+              onClick={handlePersonalize}
+              disabled={!canPersonalize || isPersonalizing}
+              className="rounded-[9px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
+              style={{ minHeight: 38, padding: '0 15px', border: `1px solid ${C.cyan}`, background: C.cyan, color: '#051014' }}
+            >
+              {isPersonalizing ? <Loader2 size={12} className="animate-spin inline" /> : '✦'} Personalize Prompt
+            </button>
+            <button
+              onClick={handleRegenerate}
+              disabled={!canPersonalize || isRegenerating || !promptState.personalized}
+              className="rounded-[9px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
+              style={{ minHeight: 38, padding: '0 15px', border: `1px solid ${C.border}`, background: C.panel, color: 'white' }}
+            >
+              Regenerate
+            </button>
+            <button
+              onClick={handleCopyPrompt}
+              disabled={!promptState.personalized}
+              className="rounded-[9px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
+              style={{ minHeight: 38, padding: '0 15px', border: `1px solid ${C.border}`, background: C.panel, color: 'white' }}
+            >
+              {copiedPrompt ? 'Copied!' : 'Copy'}
+            </button>
+            <button
+              onClick={resetPrompt}
+              disabled={!promptState.personalized}
+              className="rounded-[9px] text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50"
+              style={{ minHeight: 38, padding: '0 15px', border: `1px solid ${C.border}`, background: C.panel, color: 'white' }}
+            >
+              Reset
+            </button>
+          </div>
+        )}
       </section>
 
-      {/* ── OUTPUT ────────────────────────────────────────── */}
-      {!isPromptOnly && (
+      {/* ── OUTPUT ──────────────────────────────────────────
+          Generation configuration only exists for entitled users. */}
+      {!isPromptOnly && !isAnonymous && (
         <section id="pz-output" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
           <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>STEP 4 — CREATE</h2>
           <div className="grid grid-cols-1 md:grid-cols-3" style={{ marginTop: 18, gap: 12 }}>
@@ -3852,8 +4178,9 @@ function ConfigurationView(props: any) {
         </section>
       )}
 
-      {/* ── PERSONALIZATION MODE ────────────────────────────── */}
-      {showModes && (
+      {/* ── PERSONALIZATION MODE ──────────────────────────────
+          Same entitlement gate as the output selector above. */}
+      {showModes && !isAnonymous && (
         <section id="pz-mode" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
           <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>HOW SHOULD THIS BE PERSONALIZED?</h2>
           <div className="grid grid-cols-1 md:grid-cols-2" style={{ marginTop: 18, gap: 12 }}>
@@ -3892,7 +4219,10 @@ function ConfigurationView(props: any) {
         </section>
       )}
 
-      {/* ── ENGINE: SmartVideo Recommended ────────────────────── */}
+      {/* ── ENGINE: SmartVideo Recommended ──────────────────────
+          Engine/advanced settings configure paid generation, so the whole
+          section is entitlement-gated. */}
+      {!isAnonymous && (
       <section id="pz-engine" className="break-inside-avoid" style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}>
         <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>SMARTVIDEO ENGINE</h2>
         <div
@@ -4040,8 +4370,53 @@ function ConfigurationView(props: any) {
           </label>
         )}
       </section>
+      )}
 
       </div>
     </div>
+  )
+}
+
+// ── Advanced Editing: preview & on-video overlays ────────────────────────────
+// A section inside the existing ConfigurationView that mounts the same free
+// Remotion preview and the same on-video overlay editor Simple Mode uses, over
+// the same provider state. It renders nothing when the guided preview API is
+// unavailable, so partially-wired contexts keep the previous behavior.
+
+function AdvancedOverlaySection({ source }: { source: PersonalizationSource | null }) {
+  const ctx = useDemoPersonalize()
+  const guidedAvailable =
+    typeof (ctx as { setGuidedStep?: unknown }).setGuidedStep === 'function' &&
+    Boolean((ctx as { previewSettings?: unknown }).previewSettings)
+  if (!guidedAvailable || !ctx.previewSettings) return null
+
+  const inputProps = buildPreviewInput({
+    source,
+    previewSettings: ctx.previewSettings,
+    previewVideo: ctx.previewVideo ?? null,
+    clientForm: ctx.clientForm || {},
+    assets: ctx.assets,
+  })
+
+  return (
+    <section
+      id="pz-onvideo-overlays"
+      className="break-inside-avoid"
+      style={{ padding: '20px 0', scrollMarginTop: 64, borderBottom: `1px solid ${C.border}` }}
+    >
+      <h2 style={{ margin: 0, fontSize: 13, letterSpacing: '.05em', fontWeight: 800, textTransform: 'uppercase' }}>
+        Preview &amp; On-Video Overlays
+      </h2>
+      <p className="mt-1.5 max-w-[900px] text-[12px] leading-[1.55]" style={{ color: C.muted }}>
+        A free, browser-based preview of your branding placed directly on the video — before and after, side by
+        side. Drag, resize and edit every layer on the video itself. Nothing here is generated or charged.
+      </p>
+      <div style={{ marginTop: 16 }}>
+        <BeforeAfterPreview inputProps={inputProps} defaultMode="split" />
+      </div>
+      <div style={{ marginTop: 16 }}>
+        <OverlayEditor inputProps={inputProps} />
+      </div>
+    </section>
   )
 }

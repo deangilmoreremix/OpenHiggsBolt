@@ -3,23 +3,44 @@
  *
  * Queries Overpass to find businesses matching specific tags within a
  * geographic bounding box derived from a center point + radius.
+ *
+ * Resilience (Lead Finder free path, Phase 3):
+ *  - Per-request timeout is bounded (PER_REQUEST_TIMEOUT_MS) so a single slow
+ *    mirror cannot dominate the user-visible latency. The chained mirrors ×
+ *    retries stay under a known cap.
+ *  - Retries use exponential backoff with jitter.
+ *  - A per-mirror circuit breaker opens a mirror for COOLDOWN_MS after
+ *    FAILURE_THRESHOLD consecutive failures and short-circuits subsequent
+ *    calls to that mirror until the cooldown expires, so one bad mirror
+ *    cannot block the route indefinitely.
+ *  - When every mirror is unavailable, throws an `AllOverpassProvidersFailed`
+ *    error carrying a public-safe message; the public route translates it
+ *    to a clear "service temporarily busy — try again or enter a business
+ *    website manually" 502 (no provider internals leak).
  */
 
 import type { BusinessDiscoveryRecord, OverpassQueryOptions } from './types'
 import { getNicheMapping, getSupportedNiches } from './nicheMappings'
 
-const OVERPASS_ENDPOINTS = [
+const DEFAULT_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
   'https://lz4.overpass-api.de/api/interpreter',
   'https://z.overpass-api.de/api/interpreter',
 ]
 
 const USER_AGENT = 'SmartVideoGO-AI/1.0 (https://go.smartvid.app)'
-const REQUEST_TIMEOUT = 30_000
+// Per-mirror request timeout. Bounded so a single stuck mirror cannot
+// dominate (was 30s × 3 mirrors × 2 retries = up to ~180s).
+const PER_REQUEST_TIMEOUT_MS = 15_000
 const MAX_RETRIES = 2
 const RESULT_LIMIT = 50
+// Exponential backoff base (ms). attempt N waits base * 2^N + jitter.
+const BACKOFF_BASE_MS = 400
+// Per-mirror circuit breaker thresholds.
+const FAILURE_THRESHOLD = 3
+const COOLDOWN_MS = 60_000
 
-async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = REQUEST_TIMEOUT): Promise<Response> {
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = PER_REQUEST_TIMEOUT_MS): Promise<Response> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
   try {
@@ -27,6 +48,86 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
   } finally {
     clearTimeout(timeout)
   }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+// ── Circuit breaker (per mirror, module-scoped) ──────────────────────────────
+// State is module-internal so it survives across calls within a single Node
+// process (mirroring the upstream Overpass mirror outages we saw). Tests
+// reset it via `__resetOverpassCircuitBreakerForTests`.
+
+interface MirrorCircuit {
+  consecutiveFailures: number
+  openUntil: number // epoch ms; while Date.now < openUntil the mirror is skipped
+}
+
+const circuitByEndpoint: Map<string, MirrorCircuit> = new Map()
+
+function recordSuccess(endpoint: string): void {
+  const c = circuitByEndpoint.get(endpoint)
+  if (!c) return
+  c.consecutiveFailures = 0
+  c.openUntil = 0
+}
+
+function recordFailure(endpoint: string): void {
+  const c = circuitByEndpoint.get(endpoint) || { consecutiveFailures: 0, openUntil: 0 }
+  c.consecutiveFailures += 1
+  if (c.consecutiveFailures >= FAILURE_THRESHOLD) {
+    c.openUntil = Date.now() + COOLDOWN_MS
+  }
+  circuitByEndpoint.set(endpoint, c)
+}
+
+function isOpen(endpoint: string): boolean {
+  const c = circuitByEndpoint.get(endpoint)
+  if (!c) return false
+  if (c.openUntil === 0) return false
+  if (Date.now() >= c.openUntil) {
+    // Cooldown expired: half-open — reset and allow one probe.
+    c.openUntil = 0
+    c.consecutiveFailures = 0
+    return false
+  }
+  return true
+}
+
+/**
+ * Marker error for "every Overpass mirror failed". The public route reads
+ * `.userMessage` (a static, provider-internals-free copy) and translates it
+ * to a 502. Carrying the marker on the error class lets the route stay
+ * generic for unrelated throws without false positives.
+ */
+export class AllOverpassProvidersFailed extends Error {
+  readonly userMessage =
+    'Local business search is temporarily busy. Please try again in a moment or enter a business website manually to continue.'
+  constructor(message: string) {
+    super(message)
+    this.name = 'AllOverpassProvidersFailed'
+  }
+}
+
+/**
+ * Test-only helper. Resets the per-mirror circuit breaker state so a fresh
+ * test starts with all mirrors available. Not part of the public API.
+ */
+export function __resetOverpassCircuitBreakerForTests(): void {
+  circuitByEndpoint.clear()
+}
+
+/**
+ * Test-only helper. Returns a shallow snapshot of the per-mirror circuit
+ * state (failures + openUntil epoch). Not part of the public API.
+ */
+export function __overpassCircuitStateForTests(): Record<string, { consecutiveFailures: number; openUntil: number }> {
+  const out: Record<string, { consecutiveFailures: number; openUntil: number }> = {}
+  for (const [endpoint, c] of circuitByEndpoint.entries()) {
+    out[endpoint] = { consecutiveFailures: c.consecutiveFailures, openUntil: c.openUntil }
+  }
+  return out
 }
 
 // OSM tags that indicate a business is closed or not operational.
@@ -79,37 +180,49 @@ interface OverpassResult {
   elements: OverpassElement[]
 }
 
-function buildOverpassQuery(options: OverpassQueryOptions): string {
+/**
+ * Build the Overpass QL query for a niche's tag tuples.
+ *
+ * Each tuple becomes its OWN selector and the selectors are OR'd by the
+ * surrounding union block. Overpass ANDs filters inside a single selector, so
+ * the tuples must never be merged into one filter list.
+ *
+ * The previous implementation grouped the tuples by key and joined them into a
+ * single filter chain, which produced e.g.
+ *
+ *   node["office"~"^(estate_agent|insurance)$"]["shop"="real_estate"](bbox)
+ *
+ * — an element carrying BOTH an office and a shop tag. No real business does
+ * that, so every niche that spans more than one tag key (real-estate,
+ * restaurants-food, ecommerce, beauty, wellness-fitness, …) returned zero
+ * results and Lead Finder searches came back empty. See the regression test in
+ * `src/server/businessDiscovery/__tests__/overpassQuery.test.ts`.
+ */
+export function buildOverpassQuery(options: OverpassQueryOptions): string {
   const { south, west, north, east, tags, limit = RESULT_LIMIT } = options
-
-  // Group tags by key so we can use a single regex filter per key.
-  // Overpass chained filters are AND, but we need OR for alternative values.
-  const grouped = new Map<string, string[]>()
-  for (const [k, v] of tags) {
-    const arr = grouped.get(k) || []
-    arr.push(v)
-    grouped.set(k, arr)
-  }
-
-  const tagFilters = Array.from(grouped.entries())
-    .map(([k, values]) => {
-      const unique = Array.from(new Set(values))
-      if (unique.length === 1) {
-        return `["${k}"="${unique[0]}"]`
-      }
-      const escaped = unique.map((v) => v.replace(/"/g, '\\"'))
-      return `["${k}"~"^(${escaped.join('|')})$"]`
-    })
-    .join('')
 
   const bbox = `(${south},${west},${north},${east})`
 
-  // Query for nodes, ways, and relations.
-  const nodeQuery = `node${tagFilters}${bbox};`
-  const wayQuery = `way${tagFilters}${bbox};(._;>;);`
-  const relationQuery = `relation${tagFilters}${bbox};`
+  // Dedupe: a niche may list the same tuple twice (e.g. `spa` in both beauty
+  // and wellness), and repeating a selector only duplicates rows.
+  const selectors = Array.from(
+    new Set(tags.map(([key, value]) => `["${key}"="${value.replace(/"/g, '\\"')}"]`)),
+  )
 
-  return `[out:json][timeout:25];(${nodeQuery}${wayQuery}${relationQuery});out body ${limit};`
+  if (selectors.length === 0) {
+    return `[out:json][timeout:25];();out body ${limit};`
+  }
+
+  const parts: string[] = []
+  for (const selector of selectors) {
+    parts.push(`node${selector}${bbox};`)
+    parts.push(`way${selector}${bbox};`)
+    parts.push(`relation${selector}${bbox};`)
+  }
+
+  // The trailing `(._;>;)` expands each way/relation into its member nodes so
+  // the normalizer sees real coordinates instead of only a way id.
+  return `[out:json][timeout:25];(${parts.join('')}(._;>;););out body ${limit};`
 }
 
 function isClosed(tags: Record<string, string> | undefined): boolean {
@@ -253,14 +366,22 @@ function buildBoundingBox(
   return { south, west, north, east }
 }
 
-export async function discoverBusinesses(options: {
+export interface DiscoverBusinessesOptions {
   niche: string
   latitude: number
   longitude: number
   radiusMiles: number
   limit?: number
-}): Promise<BusinessDiscoveryRecord[]> {
-  const { niche, latitude, longitude, radiusMiles, limit = 30 } = options
+  /**
+   * Test/operator override. Allows injecting a custom list of Overpass
+   * mirrors (e.g. a loopback URL in tests). Defaults to the public mirrors.
+   * Not part of the public API surface — callers should not rely on it.
+   */
+  __endpoints?: string[]
+}
+
+export async function discoverBusinesses(options: DiscoverBusinessesOptions): Promise<BusinessDiscoveryRecord[]> {
+  const { niche, latitude, longitude, radiusMiles, limit = 30, __endpoints } = options
 
   const mapping = getNicheMapping(niche)
   if (!mapping) {
@@ -277,10 +398,12 @@ export async function discoverBusinesses(options: {
     limit: Math.min(limit * 3, RESULT_LIMIT),
   })
 
+  const endpoints = __endpoints ?? DEFAULT_ENDPOINTS
   let lastError: Error | null = null
   let result: OverpassResult | null = null
 
-  for (const endpoint of OVERPASS_ENDPOINTS) {
+  for (const endpoint of endpoints) {
+    if (isOpen(endpoint)) continue
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
         const response = await fetchWithTimeout(endpoint, {
@@ -290,7 +413,6 @@ export async function discoverBusinesses(options: {
             'User-Agent': USER_AGENT,
           },
           body: `data=${encodeURIComponent(query)}`,
-          signal: AbortSignal.timeout(REQUEST_TIMEOUT),
         })
 
         if (!response.ok) {
@@ -299,12 +421,15 @@ export async function discoverBusinesses(options: {
 
         result = (await response.json()) as OverpassResult
         lastError = null
+        recordSuccess(endpoint)
         break
       } catch (err) {
         lastError = err instanceof Error ? err : new Error(String(err))
-        // Wait briefly before retrying the same endpoint
+        recordFailure(endpoint)
+        // Exponential backoff with jitter between retries on the SAME mirror.
         if (attempt < MAX_RETRIES - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 500))
+          const backoff = BACKOFF_BASE_MS * Math.pow(2, attempt) + Math.floor(Math.random() * 100)
+          await sleep(backoff)
         }
       }
     }
@@ -313,10 +438,10 @@ export async function discoverBusinesses(options: {
   }
 
   if (!result || !result.elements) {
-    throw new Error(
+    throw new AllOverpassProvidersFailed(
       lastError
         ? `All Overpass providers failed: ${lastError.message}`
-        : 'No results from Overpass'
+        : 'All Overpass providers failed',
     )
   }
 

@@ -221,7 +221,9 @@ export class MuAPIImageClient {
   async uploadImage(file: File, onProgress?: (percent: number) => void): Promise<string> {
     if (!file) throw new Error('No file provided')
     const normalizedType = normalizeImageMimeType(file.type)
-    if (!isAllowedUploadMimeType(file)) {
+    // Image-only client: restrict to the image category so a PDF/zip (which
+    // MuAPI accepts under its "others" category) is still rejected here.
+    if (!isAllowedUploadMimeType(file, 'image')) {
       throw new Error(`Invalid file type: ${file.type}. Use JPG, PNG or WebP.`)
     }
     const maxBytes = getUploadLimit(file)

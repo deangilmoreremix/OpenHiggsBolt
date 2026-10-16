@@ -137,6 +137,78 @@ export async function grantEntitlement(
   }
 }
 
+export interface RevokeEntitlementLocator {
+  clerkUserId?: string;
+  email?: string;
+  stripeCustomerId?: string;
+}
+
+export interface RevokeEntitlementResult {
+  revoked: boolean;
+  matched: number;
+  reason: string;
+}
+
+// Revocation is a status flip, never a delete: the row (and the entitlements the
+// user originally bought) is kept for history, while `status: 'inactive'` makes
+// hasSmartVideoGo() resolve false for every paid check.
+export async function revokeEntitlement(
+  locator: RevokeEntitlementLocator,
+  options: { reason?: string } = {}
+): Promise<RevokeEntitlementResult> {
+  const supabase = getSupabaseAdmin();
+  const reason = options.reason || 'revoked';
+
+  const matches = new Map<string, { id: string }>();
+
+  const collect = (rows: { id: string }[] | null) => {
+    for (const row of rows || []) {
+      if (row?.id) matches.set(String(row.id), row);
+    }
+  };
+
+  if (locator.clerkUserId) {
+    const { data } = await supabase
+      .from('user_entitlements')
+      .select('id')
+      .eq('clerk_user_id', locator.clerkUserId);
+    collect(data);
+  }
+
+  if (locator.email) {
+    const { data } = await supabase
+      .from('user_entitlements')
+      .select('id')
+      .eq('email', locator.email.toLowerCase().trim());
+    collect(data);
+  }
+
+  if (locator.stripeCustomerId) {
+    const { data } = await supabase
+      .from('user_entitlements')
+      .select('id')
+      .eq('stripe_customer_id', locator.stripeCustomerId);
+    collect(data);
+  }
+
+  const ids = Array.from(matches.keys());
+  if (ids.length === 0) {
+    return { revoked: false, matched: 0, reason };
+  }
+
+  const { error } = await supabase
+    .from('user_entitlements')
+    .update({ status: 'inactive', updated_at: new Date().toISOString() })
+    .in('id', ids);
+
+  if (error) {
+    console.error('[revokeEntitlement] failed:', error);
+    throw new Error('Failed to revoke entitlement');
+  }
+
+  return { revoked: true, matched: ids.length, reason };
+}
+
 function getUserVerifiedEmails(userId: string): string[] {
   // This function is used only in server contexts where Clerk's auth() is available.
   // It returns verified email addresses for the authenticated user.
