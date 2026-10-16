@@ -49,6 +49,22 @@ vi.mock('@/server/envValidation', () => ({
   validatePersonalizationEnv: vi.fn(),
 }))
 
+// Hoisted entitlement mocks. vi.clearAllMocks() in beforeEach() would wipe
+// `mockResolvedValue` set in a factory, so the mock is hoisted and the
+// allow/deny return value is configured via the hoisted allow helper.
+const entitlementMocks = vi.hoisted(() => ({
+  allowed: true as boolean,
+}))
+
+vi.mock('@/access/apiRequireEntitlement', () => ({
+  requireApiEntitlement: vi.fn(async () =>
+    entitlementMocks.allowed ? { allowed: true } : { allowed: false, status: 403 }
+  ),
+  entitlementForbiddenResponse: vi.fn().mockReturnValue(
+    new Response(JSON.stringify({ error: 'PAYMENT_REQUIRED' }), { status: 403 })
+  ),
+}))
+
 // Real route + REAL downloadImage + REAL networkSafety: only DNS, axios,
 // Clerk and the logging/env seams are mocked.
 import { POST } from '@/app/api/personalization/download-image/route'
@@ -93,6 +109,9 @@ describe('download-image route SSRF regression', () => {
     // Default: every hostname resolves to a public address.
     mockResolve4.mockResolvedValue(['93.184.216.34'])
     mockResolve6.mockResolvedValue([])
+    // Default: every test in this file is a paid user. The free-user tests
+    // flip entitlementMocks.allowed to false for the duration of one test.
+    entitlementMocks.allowed = true
     vi.mocked(validatePersonalizationEnv).mockReturnValue({ valid: true } as any)
     axiosGet = vi.spyOn(axios, 'get').mockReset()
     axiosGet.mockResolvedValue(imageResponse())

@@ -44,6 +44,22 @@ vi.mock('@/server/envValidation', () => ({
   validatePersonalizationEnv: vi.fn(),
 }))
 
+// Hoisted entitlement mocks. vi.clearAllMocks() in beforeEach() would wipe
+// `mockResolvedValue` set in a factory, so the mock is hoisted and the
+// allow/deny return value is configured via the hoisted allow helper.
+const entitlementMocks = vi.hoisted(() => ({
+  allowed: true as boolean,
+}))
+
+vi.mock('@/access/apiRequireEntitlement', () => ({
+  requireApiEntitlement: vi.fn(async () =>
+    entitlementMocks.allowed ? { allowed: true } : { allowed: false, status: 403 }
+  ),
+  entitlementForbiddenResponse: vi.fn().mockReturnValue(
+    new Response(JSON.stringify({ error: 'PAYMENT_REQUIRED' }), { status: 403 })
+  ),
+}))
+
 const rateLimitMocks = vi.hoisted(() => ({
   rateLimit: vi.fn(() => ({ allowed: true, retryAfterMs: 0 })),
   rateLimit429: vi.fn(),
@@ -85,6 +101,7 @@ vi.mock('@/server/businessDiscovery', async () => {
 })
 
 import { POST } from '@/app/api/personalization/find-businesses/route'
+import { validatePersonalizationEnv } from '@/server/envValidation'
 import { geocodeLocation, discoverBusinesses as discoverBusinessesMock, AllOverpassProvidersFailed as MockedAllOverpassProvidersFailed } from '@/server/businessDiscovery'
 
 const SAMPLE_GEOCODE = {
@@ -100,6 +117,9 @@ beforeEach(() => {
   ;(discoverBusinessesMock as unknown as ReturnType<typeof vi.fn>).mockReset()
   ;(geocodeLocation as unknown as ReturnType<typeof vi.fn>).mockReset()
   rateLimitMocks.rateLimit.mockReturnValue({ allowed: true, retryAfterMs: 0 })
+  // Default: every test in this file is a paid user and env validation passes.
+  entitlementMocks.allowed = true
+  vi.mocked(validatePersonalizationEnv).mockReturnValue({ valid: true, missingRequired: [] } as any)
 })
 
 // ── 1. Per-mirror timeout is bounded ───────────────────────────────────────

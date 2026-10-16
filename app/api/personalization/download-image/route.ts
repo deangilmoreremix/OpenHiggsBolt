@@ -4,6 +4,8 @@ import { downloadImageAsDataUrl, BlockedTargetError } from '@/server/downloadIma
 import { assertSafeUrlString } from '@/lib/networkSafety'
 import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
 import { validatePersonalizationEnv } from '@/server/envValidation'
+import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
+import { ENTITLEMENTS } from '@/access/entitlements'
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +81,18 @@ export async function POST(req: NextRequest) {
         correlationId,
       })
       return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
+    }
+
+    // Server-side entitlement gate: download-image is a paid action (the
+    // server fetches the URL on the caller's behalf and can be used as a
+    // free proxy). Free users get 403.
+    const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
+    if (!entitlementCheck.allowed) {
+      clearTimeout(timeoutId)
+      if (entitlementCheck.status === 401) {
+        return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
+      }
+      return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO)
     }
 
     const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.headers.get('x-real-ip') || undefined
