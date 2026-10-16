@@ -982,6 +982,17 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // source has been patched with the selected preview video.
   const pendingFinalGenerateRef = useRef(false)
 
+  // Ref mirror of the current asset library, so cleanup effects (e.g. unmount)
+  // always revoke the latest snapshot of blob URLs rather than a stale closure.
+  const assetsRef = useRef(assets)
+  useEffect(() => {
+    assetsRef.current = assets
+  }, [assets])
+
+  // Guards async uploads against writing state (and revoking blobs) after the
+  // provider has unmounted, which would double-revoke blobs released on unmount.
+  const mountedRef = useRef(true)
+
   // Refs for studio handoff persistence
   const lastResultRef = useRef<GenerationResult | null>(null)
   const lastProjectRef = useRef<{
@@ -1262,9 +1273,22 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     return () => clearTimeout(timer)
   }, [previewSettings, previewVideo, guidedStep, viewMode, source?.id, access, previewUserScope])
 
-  // Cancel pending project persistence on unmount
+  // Release owned blob URLs and cancel pending persistence on unmount
   useEffect(() => {
     return () => {
+      mountedRef.current = false
+      const all = [
+        ...assetsRef.current.identities,
+        ...assetsRef.current.logos,
+        ...assetsRef.current.products,
+        ...assetsRef.current.brandReferences,
+        assetsRef.current.firstFrame,
+        assetsRef.current.lastFrame,
+        assetsRef.current.ctaGraphic,
+        ...assetsRef.current.audio,
+        ...assetsRef.current.savedReferences,
+      ].filter(Boolean) as PersonalizationAsset[]
+      all.forEach((a) => revokeAssetUrl(a))
       projectPersistence.current.cancel()
     }
   }, [])
@@ -1826,9 +1850,26 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       const { url } = await uploadPersonalizationAsset(apiKey, {
         file: asset.file as File,
       })
+      if (!mountedRef.current) return url
       setAssetUploadStatus(asset.id, 'ready', null)
-      // The local blob is being replaced by the durable CDN URL, so free it.
+      // The local blob is being replaced by the durable CDN URL, so free it —
+      // but only when the asset is still present. If it was removed (or the
+      // provider unmounted) the blob was already released by the removal or
+      // unmount path, so revoking again would double-revoke.
       setAssets((prev) => {
+        const all = [
+          ...prev.identities,
+          ...prev.logos,
+          ...prev.products,
+          ...prev.brandReferences,
+          prev.firstFrame,
+          prev.lastFrame,
+          prev.ctaGraphic,
+          ...prev.audio,
+          ...prev.savedReferences,
+        ].filter(Boolean) as PersonalizationAsset[]
+        if (!all.some((a) => a.id === asset.id)) return prev
+        revokeLocalBlobUrl(localBlobUrl, url)
         const updater = (list: PersonalizationAsset[]) => list.map((a) => (a.id === asset.id ? { ...a, url, uploadedUrl: url } : a))
         return {
           ...prev,
@@ -1841,13 +1882,13 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           ctaGraphic: prev.ctaGraphic?.id === asset.id ? { ...prev.ctaGraphic, url, uploadedUrl: url } : prev.ctaGraphic,
         }
       })
-      revokeLocalBlobUrl(localBlobUrl, url)
       return url
     } catch (error) {
       // On failure the blob URL stays the asset's live `url` (the user sees a
       // preview plus a retry affordance), so it must NOT be revoked here — it
       // is still released by removeLogo()/removeProduct()/removeIdentity()/…
       // when the asset is dropped.
+      if (!mountedRef.current) throw error
       const message = error instanceof Error ? error.message : 'Upload failed'
       setAssetUploadStatus(asset.id, 'error', message)
       throw error
@@ -2155,6 +2196,16 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           setAssets((prev) => {
             const updater = (list: PersonalizationAsset[]) =>
               list.map((a) => (a.id === editedAsset.id ? { ...a, url: supabaseUrl!, uploadedUrl: supabaseUrl!, uploadStatus: 'ready' as const } : a))
+            const old = [
+              ...prev.identities,
+              ...prev.logos,
+              ...prev.products,
+              ...prev.brandReferences,
+              prev.firstFrame,
+              prev.lastFrame,
+              prev.ctaGraphic,
+            ].find((a) => a?.id === editedAsset.id)
+            if (old) revokeAssetUrl(old)
             return {
               ...prev,
               identities: updater(prev.identities),
