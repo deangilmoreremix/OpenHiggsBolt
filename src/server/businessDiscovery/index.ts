@@ -37,6 +37,15 @@ export {
 } from './researchProvider'
 
 export {
+  searchBusinessesViaNominatim,
+  NominatimSearchUnavailable,
+} from './nominatimSearchProvider'
+
+export type {
+  NominatimSearchOptions,
+} from './nominatimSearchProvider'
+
+export {
   NICHE_MAPPINGS,
   getSupportedNiches,
   getNicheMapping,

@@ -52,6 +52,7 @@ export function buildPreviewInput(
     videoUrl: previewVideo?.url || source?.sourceMedia || null,
     posterUrl: previewVideo?.poster || source?.poster || null,
     isImageSource: source?.mediaType === 'image',
+    audioUrl: previewSettings.audio?.url ?? null,
     settings: previewSettings,
     brand: {
       // The headline text itself lives on the layers; this is only the fallback

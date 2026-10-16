@@ -14,6 +14,7 @@ export function makeInputProps(overrides: Partial<PreviewInputProps> = {}): Prev
     videoUrl: '/media/demo.mp4',
     posterUrl: null,
     isImageSource: false,
+    audioUrl: null,
     settings: createDefaultPreviewSettings(),
     brand: {
       businessName: 'Acme Roofing',

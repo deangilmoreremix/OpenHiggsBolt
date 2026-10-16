@@ -30,17 +30,24 @@ export function stripSessionScopedUrls(state: PersonalizationProjectState): Pers
           ? null
           : (state.previewVideo as PreviewVideoRef)
         : null,
-    previewSettings: state.previewSettings
-      ? {
-          ...state.previewSettings,
-          layers: Array.isArray(state.previewSettings.layers)
-            ? state.previewSettings.layers.map((layer) => ({
-                ...layer,
-                imageUrl: isBlobUrl(layer.imageUrl) ? undefined : layer.imageUrl,
-              }))
-            : state.previewSettings.layers,
-        }
-      : state.previewSettings,
+     previewSettings: state.previewSettings
+       ? {
+           ...state.previewSettings,
+           layers: Array.isArray(state.previewSettings.layers)
+             ? state.previewSettings.layers.map((layer) => ({
+                 ...layer,
+                 imageUrl: isBlobUrl(layer.imageUrl) ? undefined : layer.imageUrl,
+               }))
+             : state.previewSettings.layers,
+           audio:
+             state.previewSettings.audio &&
+             typeof state.previewSettings.audio === 'object' &&
+             typeof state.previewSettings.audio.url === 'string' &&
+             isBlobUrl(state.previewSettings.audio.url)
+               ? null
+               : state.previewSettings.audio,
+         }
+       : state.previewSettings,
   }
 }
 

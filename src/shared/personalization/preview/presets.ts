@@ -10,6 +10,7 @@ import type {
   PersonalizationPreviewSettings,
   PreviewAnimationId,
   PreviewAspectRatio,
+  PreviewAudioSelection,
   PreviewBrandColors,
   PreviewLayer,
   PreviewLayerKind,
@@ -325,6 +326,7 @@ export function createDefaultPreviewSettings(
     showEndCard: true,
     width,
     height,
+    audio: null,
   }
   if (!overrides) return base
   const merged: PersonalizationPreviewSettings = {
@@ -549,6 +551,22 @@ function normalizeLayer(raw: unknown): PreviewLayer | null {
 }
 
 /**
+ * Normalize a stored audio selection back into a usable form.
+ *
+ * Session-scoped blob/data URLs are dead after a reload, so they are refused:
+ * the caller falls back to "no audio" instead of persisting a broken link.
+ * A durable URL is kept as-is; everything else yields `null`.
+ */
+export function normalizePreviewAudio(raw: unknown): PreviewAudioSelection | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const rec = raw as Record<string, unknown>
+  const url = typeof rec.url === 'string' ? rec.url.trim() : ''
+  if (!url || url.startsWith('blob:') || url.startsWith('data:')) return null
+  const name = typeof rec.name === 'string' && rec.name.trim().length > 0 ? rec.name : ''
+  return { url, name }
+}
+
+/**
  * Defensive normalization for missing, invalid or older persisted settings.
  * Never throws: any unusable value falls back to a safe default.
  */
@@ -632,13 +650,15 @@ export function normalizePreviewSettings(raw: unknown): PersonalizationPreviewSe
         seen.add(id)
         layers.push(clampLayer({ ...normalized, id }))
       }
-      out.layers =
-        layers.length > 0
-          ? layers
-          : LAYER_IDS_BY_LAYOUT[out.layout].map((kind) => createLayer(kind))
-    }
+       out.layers =
+         layers.length > 0
+           ? layers
+           : LAYER_IDS_BY_LAYOUT[out.layout].map((kind) => createLayer(kind))
+   }
 
-    return out
+   out.audio = normalizePreviewAudio(raw.audio) ?? null
+
+   return out
   } catch {
     return createDefaultPreviewSettings()
   }

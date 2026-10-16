@@ -10,7 +10,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion'
-import { Video } from '@remotion/media'
+import { Video, Audio } from '@remotion/media'
 import { fontStackById, isImageLayerKind, toBox } from './presets'
 import {
   clearPreviewMediaFailure,
@@ -223,6 +223,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
   videoUrl,
   posterUrl,
   isImageSource,
+  audioUrl,
   settings,
   brand,
 }) => {
@@ -346,9 +347,10 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
 
   return (
     <Internals.SequenceManager.Provider value={NOOP_SEQUENCE_MANAGER}>
-      <AbsoluteFill style={{ background: '#05070a' }}>
-        {renderBackground()}
-        <AbsoluteFill
+    <AbsoluteFill style={{ background: '#05070a' }}>
+      {renderBackground()}
+      {audioUrl ? <Audio src={audioUrl} /> : null}
+      <AbsoluteFill
           style={{
             background: '#000',
             opacity: settings.brandColors.backgroundDim,

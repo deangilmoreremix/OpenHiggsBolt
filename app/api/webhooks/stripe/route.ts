@@ -212,6 +212,35 @@ function subscriptionRevocationTarget(subscription: Stripe.Subscription): Revoke
 }
 
 async function revokeForCharge(event: Stripe.Event): Promise<void> {
+  if (event.type === 'charge.dispute.created') {
+    const dispute = event.data.object as Stripe.Dispute;
+    const chargeRef = dispute.charge;
+
+    if (typeof chargeRef !== 'string' || !chargeRef) {
+      console.warn(`[stripe webhook] dispute ${dispute.id} has no charge reference`);
+      return;
+    }
+
+    if (!stripe) {
+      console.warn('[stripe webhook] stripe client unavailable for dispute charge lookup');
+      return;
+    }
+
+    let charge: Stripe.Charge;
+    try {
+      charge = await stripe.charges.retrieve(chargeRef);
+    } catch (err: any) {
+      console.warn(
+        `[stripe webhook] failed to retrieve charge for dispute ${dispute.id}:`,
+        err?.message || err
+      );
+      return;
+    }
+
+    await revokeForTarget(chargeRevocationTarget(charge), charge.id, event.type);
+    return;
+  }
+
   const charge = event.data.object as Stripe.Charge;
   await revokeForTarget(chargeRevocationTarget(charge), charge.id, event.type);
 }

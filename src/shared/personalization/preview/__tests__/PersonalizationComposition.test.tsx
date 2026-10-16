@@ -94,6 +94,7 @@ function makeInputProps(
     videoUrl: REMOTE_BAD_VIDEO,
     posterUrl: POSTER_URL,
     isImageSource: false,
+    audioUrl: null,
     settings: createDefaultPreviewSettings(),
     brand: {
       businessName: 'Acme Roofing',

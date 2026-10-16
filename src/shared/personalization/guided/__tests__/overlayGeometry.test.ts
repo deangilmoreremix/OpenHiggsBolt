@@ -354,6 +354,7 @@ const INPUT_PROPS: PreviewInputProps = {
   videoUrl: null,
   posterUrl: null,
   isImageSource: false,
+  audioUrl: null,
   settings: createDefaultPreviewSettings(),
   brand: {
     businessName: 'Acme Roofing',

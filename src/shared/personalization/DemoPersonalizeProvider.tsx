@@ -534,7 +534,10 @@ export type DemoPersonalizeContextValue = {
    createFinalVideo: () => Promise<void>
    cancelExport: () => void
    apiKey: string
-}
+   setPreviewAudio: (file: File) => Promise<void>
+   removePreviewAudio: () => void
+   previewAudioError: string | null
+ }
 
 const PersonalizationContext = createContext<DemoPersonalizeContextValue | null>(null)
 
@@ -974,6 +977,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   )
   const [previewVideo, setPreviewVideo] = useState<PreviewVideoRef | null>(null)
   const [previewApproved, setPreviewApproved] = useState(false)
+  const [previewAudioError, setPreviewAudioError] = useState<string | null>(null)
   // Set when the preview hands off to the existing generate() path after the
   // source has been patched with the selected preview video.
   const pendingFinalGenerateRef = useRef(false)
@@ -3921,6 +3925,62 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     cancelActiveExport()
   }, [])
 
+  const setPreviewAudio = useCallback(async (file: File) => {
+    setPreviewAudioError(null)
+
+    const blobUrl = URL.createObjectURL(file)
+    const name = file.name
+    const audioAsset: PersonalizationAsset = {
+      id: `asset_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      role: 'audio_reference',
+      name,
+      url: blobUrl,
+      isPrimary: false,
+      mimeType: file.type || '',
+      createdAt: new Date().toISOString(),
+      uploadStatus: 'local',
+      uploadError: null,
+      file,
+    }
+
+    setAssets((prev) => ({ ...prev, audio: [...prev.audio, audioAsset] }))
+    setPreviewSettings((prev) => ({ ...prev, audio: { url: blobUrl, name } }))
+
+    try {
+      const { url: durableUrl } = await uploadPersonalizationAsset(apiKey, { file })
+      setAssets((prev) => ({
+        ...prev,
+        audio: prev.audio.map((a) =>
+          a.id === audioAsset.id
+            ? { ...a, uploadedUrl: durableUrl, uploadStatus: 'ready' as const, url: durableUrl }
+            : a,
+        ),
+      }))
+      setPreviewSettings((prev) => ({ ...prev, audio: { url: durableUrl, name } }))
+      revokeLocalBlobUrl(blobUrl, durableUrl)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Upload failed'
+      setPreviewAudioError(message)
+      setAssets((prev) => ({
+        ...prev,
+        audio: prev.audio.map((a) =>
+          a.id === audioAsset.id
+            ? { ...a, uploadStatus: 'error' as const, uploadError: message }
+            : a,
+        ),
+      }))
+    }
+  }, [apiKey])
+
+  const removePreviewAudio = useCallback(() => {
+    setAssets((prev) => {
+      prev.audio.forEach((a) => revokeAssetUrl(a))
+      return { ...prev, audio: [] }
+    })
+    setPreviewSettings((prev) => ({ ...prev, audio: null }))
+    setPreviewAudioError(null)
+  }, [])
+
   // Hands off to the existing generate() path once the patched source (selected
   // preview video) has committed.
   useEffect(() => {
@@ -4186,7 +4246,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
      createFinalVideo,
      cancelExport,
      apiKey,
-   }
+     setPreviewAudio,
+     removePreviewAudio,
+     previewAudioError,
+    }
 
   return (
     <PersonalizationContext.Provider value={ctxValue}>

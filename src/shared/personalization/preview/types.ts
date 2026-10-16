@@ -71,6 +71,12 @@ export interface PreviewVideoRef {
   demoId?: string
 }
 
+/** Optional customer audio track applied to the personalized preview. */
+export interface PreviewAudioSelection {
+  url: string
+  name: string
+}
+
 export interface PersonalizationPreviewSettings {
   layout: PreviewLayoutId
   layers: PreviewLayer[]
@@ -83,6 +89,8 @@ export interface PersonalizationPreviewSettings {
   width: number
   /** Composition height in px. */
   height: number
+  /** Customer-selected audio track, or null when none is chosen. */
+  audio: PreviewAudioSelection | null
 }
 
 /** Everything the composition needs to render one frame-accurate scene. */
@@ -103,6 +111,8 @@ export interface PreviewInputProps {
     productUrl: string | null
     serviceUrl: string | null
   }
+  /** Durable audio track to mix into the composition, or null. */
+  audioUrl: string | null
 }
 
 export const DEFAULT_PREVIEW_FPS = 30

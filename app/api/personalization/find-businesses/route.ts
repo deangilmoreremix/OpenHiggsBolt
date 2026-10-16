@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { geocodeLocation, discoverBusinesses, AllOverpassProvidersFailed, deduplicateBusinesses, enrichBusinessRecord, scoreAndSort, createCacheKey, businessDiscoveryCache } from '@/server/businessDiscovery'
+import { geocodeLocation, discoverBusinesses, AllOverpassProvidersFailed, searchBusinessesViaNominatim, deduplicateBusinesses, enrichBusinessRecord, scoreAndSort, createCacheKey, businessDiscoveryCache } from '@/server/businessDiscovery'
 import { getNicheMapping, getSupportedNiches } from '@/server/businessDiscovery'
 import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
 import { rateLimit, rateLimit429, resolveRateLimitKey } from '@/lib/rateLimit'
@@ -248,24 +248,89 @@ export async function POST(req: NextRequest) {
         correlationId,
         durationMs: Date.now() - startTime,
       })
-      // Partial result: Nominatim succeeded — hand the resolved coordinates
-      // back so the UI can keep them in context, but surface a clear 502
-      // with actionable copy (try again OR enter a website manually). We
-      // never fabricate businesses.
+
+      // When every Overpass mirror failed, try the Nominatim search fallback
+      // before giving up. Other discovery errors are upstream failures, not
+      // caller mistakes, so they surface as a 502 without retrying.
+      if (isAllOverpassFailed) {
+        let fallbackResults
+        let fallbackError: Error | null = null
+        try {
+          fallbackResults = await searchBusinessesViaNominatim({
+            niche,
+            latitude: geocodeResult.latitude,
+            longitude: geocodeResult.longitude,
+            radiusMiles: boundedRadius,
+            location,
+            limit,
+          })
+        } catch (nominatimErr) {
+          fallbackError =
+            nominatimErr instanceof Error ? nominatimErr : new Error(String(nominatimErr))
+        }
+
+        const partialGeocode = {
+          geocode: {
+            latitude: geocodeResult.latitude,
+            longitude: geocodeResult.longitude,
+            displayName: geocodeResult.displayName,
+          },
+        }
+
+        // Nominatim itself is unavailable — return 502 with actionable copy
+        // and the partial geocode so the UI keeps the resolved location.
+        if (fallbackError || !fallbackResults || fallbackResults.length === 0) {
+          logPersonalization({
+            route: '/api/personalization/find-businesses',
+            stage: 'discover',
+            provider: 'NOMINATIM_SEARCH',
+            httpStatus: 502,
+            safeErrorCode: fallbackError
+              ? 'NOMINATIM_SEARCH_FAILED'
+              : 'NOMINATIM_SEARCH_EMPTY',
+            safeMessage: fallbackError ? fallbackError.message : 'Nominatim search returned no results',
+            correlationId,
+            durationMs: Date.now() - startTime,
+          })
+          return serverErrorResponse(
+            ALL_OVERPASS_FAILED_USER_MESSAGE,
+            correlationId,
+            { partial: partialGeocode },
+          )
+        }
+
+        // Nominatim succeeded — return real businesses with the fallback marker
+        // so the path is traceable rather than silently identical to Overpass.
+        const deduplicated = deduplicateBusinesses(fallbackResults)
+        const scored = scoreAndSort(deduplicated)
+        const enriched = scored.map(enrichBusinessRecord)
+        const limitedFallback = enriched.slice(0, limit)
+
+        businessDiscoveryCache.set(cacheKey, limitedFallback, CACHE_TTL_MS)
+
+        logPersonalization({
+          route: '/api/personalization/find-businesses',
+          stage: 'discover',
+          provider: 'NOMINATIM_SEARCH',
+          httpStatus: 200,
+          correlationId,
+          durationMs: Date.now() - startTime,
+        })
+
+        return NextResponse.json({
+          ok: true,
+          query: { niche: mapping.label, location, radiusMiles: boundedRadius },
+          count: limitedFallback.length,
+          businesses: limitedFallback,
+          providerUsed: 'NOMINATIM_SEARCH',
+          durationMs: Date.now() - startTime,
+        })
+      }
+
+      // Non-Overpass discovery failure — upstream error, surface as 502.
       return serverErrorResponse(
-        isAllOverpassFailed ? ALL_OVERPASS_FAILED_USER_MESSAGE : 'Unable to fetch local businesses right now. Please try again shortly.',
+        'Unable to fetch local businesses right now. Please try again shortly.',
         correlationId,
-        isAllOverpassFailed
-          ? {
-              partial: {
-                geocode: {
-                  latitude: geocodeResult.latitude,
-                  longitude: geocodeResult.longitude,
-                  displayName: geocodeResult.displayName,
-                },
-              },
-            }
-          : {},
       )
     }
 
