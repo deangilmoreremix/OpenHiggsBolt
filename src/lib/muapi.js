@@ -646,8 +646,52 @@ export class MuapiClient {
             case '3:2': return [1216, 832];
             case '21:9': return [1536, 640];
             default: return [1024, 1024];
-        }
     }
+  }
+
+  /**
+   * GET a JSON resource from the MuAPI backend.
+   * @param {string} path - API path, e.g. '/predictions/abc/result'
+   */
+  async get(path) {
+    const key = this.getKey();
+    const url = `${this.baseUrl}/api/v1${path}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+      },
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`MuAPI GET ${path} failed with status ${response.status}: ${errText.slice(0, 200)}`);
+    }
+    return response.json();
+  }
+
+  /**
+   * POST a JSON body to the MuAPI backend.
+   * @param {string} path - API path, e.g. '/seedance-lite-i2v'
+   * @param {Object} body - JSON-serializable request body
+   */
+  async post(path, body) {
+    const key = this.getKey();
+    const url = `${this.baseUrl}/api/v1${path}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`MuAPI POST ${path} failed with status ${response.status}: ${errText.slice(0, 200)}`);
+    }
+    return response.json();
+  }
 }
 
 export const muapi = new MuapiClient();
