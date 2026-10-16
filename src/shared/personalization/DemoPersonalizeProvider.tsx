@@ -418,141 +418,7 @@ function releaseAllOwnedBlobUrls(
 // removing or editing one asset never invalidates blob URLs still referenced
 // by another asset.
 
-function isBlobUrl(value: unknown): value is string {
-  return typeof value === 'string' && value.startsWith('blob:')
-}
-
-/** Every blob URL an asset still depends on — preview plus original for revert. */
-function assetBlobUrls(asset: PersonalizationAsset | null | undefined): string[] {
-  if (!asset) return []
-  const urls = new Set<string>()
-  for (const url of [asset.url, asset.uploadedUrl, asset.originalUrl]) {
-    if (isBlobUrl(url)) urls.add(url)
-  }
-  return Array.from(urls)
-}
-
-/** Counts how many assets of a library still reference each blob URL. */
-function countBlobUrlReferences(library: AssetLibrary | null | undefined): Map<string, number> {
-  const counts = new Map<string, number>()
-  const bump = (asset: PersonalizationAsset | null | undefined) => {
-    for (const url of assetBlobUrls(asset)) {
-      counts.set(url, (counts.get(url) ?? 0) + 1)
-    }
-  }
-  if (!library) return counts
-  library.identities.forEach(bump)
-  library.logos.forEach(bump)
-  library.products.forEach(bump)
-  library.brandReferences.forEach(bump)
-  bump(library.firstFrame)
-  bump(library.lastFrame)
-  bump(library.ctaGraphic)
-  library.audio.forEach(bump)
-  library.savedReferences.forEach(bump)
-  return counts
-}
-
-/** Drops the references that a pending state change removes. */
-function dropBlobUrlReferences(
-  counts: Map<string, number>,
-  urls: (string | null | undefined)[],
-): void {
-  for (const url of urls) {
-    if (!isBlobUrl(url)) continue
-    const next = (counts.get(url) ?? 0) - 1
-    if (next > 0) counts.set(url, next)
-    else counts.delete(url)
-  }
-}
-
-function findAssetInLibrary(library: AssetLibrary, id: string): PersonalizationAsset | null {
-  const all = [
-    ...library.identities,
-    ...library.logos,
-    ...library.products,
-    ...library.brandReferences,
-    library.firstFrame,
-    library.lastFrame,
-    library.ctaGraphic,
-    ...library.audio,
-    ...library.savedReferences,
-  ].filter(Boolean) as PersonalizationAsset[]
-  return all.find((a) => a.id === id) ?? null
-}
-
-/** Revokes a blob URL at most once for the lifetime of the provider. */
-function revokeBlobUrlOnce(revokedUrls: Set<string>, url: string | null | undefined): boolean {
-  if (!isBlobUrl(url)) return false
-  if (revokedUrls.has(url)) return false
-  revokedUrls.add(url)
-  URL.revokeObjectURL(url)
-  return true
-}
-
-/**
- * Releases the blob URLs owned by `assetId`.  Ownership is tracked
- * independently of React state, so this still finds the blob when an upload
- * resolves before React commits the asset that created it.  A URL is revoked
- * only when no live asset references it any more: URLs replaced by the pending
- * change (`superseded`) count as dead, as does the revert `originalUrl` when
- * the asset itself is destroyed (`dropOriginal`).
- */
-function releaseOwnedBlobUrls(
-  ownedByAsset: Map<string, Set<string>>,
-  revokedUrls: Set<string>,
-  assetId: string,
-  library: AssetLibrary,
-  asset: PersonalizationAsset | null | undefined,
-  opts: { superseded?: (string | null | undefined)[]; dropOriginal?: boolean } = {},
-): number {
-  const owned = ownedByAsset.get(assetId)
-  if (!owned || owned.size === 0) return 0
-
-  // Race guard: a newer version of this asset is already live with different
-  // URLs (an edit was applied, or a second upload completed first).  This
-  // completion is stale — leave bookkeeping untouched so a URL owned by the
-  // newer asset is never revoked.
-  const current = findAssetInLibrary(library, assetId)
-  if (asset && current && current.url !== asset.url) return 0
-
-  const live = countBlobUrlReferences(library)
-  if (asset) {
-    dropBlobUrlReferences(live, [asset.url, asset.uploadedUrl])
-    if (opts.dropOriginal) dropBlobUrlReferences(live, [asset.originalUrl])
-  }
-  dropBlobUrlReferences(live, opts.superseded ?? [])
-
-  let released = 0
-  for (const url of owned) {
-    if (live.has(url)) continue
-    owned.delete(url)
-    if (revokeBlobUrlOnce(revokedUrls, url)) released += 1
-  }
-  if (owned.size === 0) ownedByAsset.delete(assetId)
-  return released
-}
-
-/** Releases every owned blob URL that `live` does not still reference. */
-function releaseAllOwnedBlobUrls(
-  ownedByAsset: Map<string, Set<string>>,
-  revokedUrls: Set<string>,
-  live: Map<string, number>,
-): number {
-  let released = 0
-  for (const [assetId, owned] of ownedByAsset) {
-    for (const url of owned) {
-      if (live.has(url)) continue
-      owned.delete(url)
-      if (revokeBlobUrlOnce(revokedUrls, url)) released += 1
-    }
-    if (owned.size === 0) ownedByAsset.delete(assetId)
-  }
-  return released
-}
-
 // ── Context ──────────────────────────────────────────────────────────────────
-
 type OpenPersonalizeOptions = {
   source: unknown
   trigger?: HTMLElement | null
@@ -1358,94 +1224,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // source has been patched with the selected preview video.
   const pendingFinalGenerateRef = useRef(false)
 
-  // Ref mirror of the current asset library, so cleanup effects (e.g. unmount)
-  // always revoke the latest snapshot of blob URLs rather than a stale closure.
-  const assetsRef = useRef(assets)
-  useEffect(() => {
-    assetsRef.current = assets
-  }, [assets])
-
   // Guards async uploads against writing state (and revoking blobs) after the
   // provider has unmounted, which would double-revoke blobs released on unmount.
   const mountedRef = useRef(true)
-
-  // ── Object URL ownership ───────────────────────────────────────────────────
-  // Blob URLs are created outside React's state flow, so ownership is tracked
-  // in refs keyed by asset id and captured synchronously at creation, instead
-  // of read back from `assetsRef` (which only syncs once React commits).  This
-  // keeps a blob revocable when its upload resolves before that commit, and
-  // `revokedBlobUrlsRef` makes every release idempotent.
-  const ownedJobBlobUrlsRef = useRef<Map<string, Set<string>>>(new Map())
-  const ownedSavedBlobUrlsRef = useRef<Map<string, Set<string>>>(new Map())
-  const revokedBlobUrlsRef = useRef<Set<string>>(new Set())
-
-  /** Records the blob URL created for a job-library asset. */
-  const registerOwnedBlobUrl = useCallback((assetId: string, url: string | null | undefined) => {
-    if (!isBlobUrl(url)) return
-    const owned = ownedJobBlobUrlsRef.current.get(assetId)
-    if (owned) owned.add(url)
-    else ownedJobBlobUrlsRef.current.set(assetId, new Set([url]))
-  }, [])
-
-  /** Records the blob URL created for a saved-client library asset. */
-  const registerOwnedSavedBlobUrl = useCallback((assetId: string, url: string | null | undefined) => {
-    if (!isBlobUrl(url)) return
-    const owned = ownedSavedBlobUrlsRef.current.get(assetId)
-    if (owned) owned.add(url)
-    else ownedSavedBlobUrlsRef.current.set(assetId, new Set([url]))
-  }, [])
-
-  /** Creates a job asset and takes ownership of its blob URL immediately. */
-  const createOwnedAsset = useCallback((
-    file: File | Blob,
-    role: PersonalizationAsset['role'],
-    opts: Partial<PersonalizationAsset> = {},
-  ): PersonalizationAsset => {
-    const asset = createAsset(file, role, opts)
-    registerOwnedBlobUrl(asset.id, asset.url)
-    return asset
-  }, [registerOwnedBlobUrl])
-
-  const releaseJobBlobUrls = useCallback((
-    assetId: string,
-    asset: PersonalizationAsset | null | undefined,
-    opts: { superseded?: (string | null | undefined)[]; dropOriginal?: boolean } = {},
-  ) => releaseOwnedBlobUrls(
-    ownedJobBlobUrlsRef.current,
-    revokedBlobUrlsRef.current,
-    assetId,
-    assetsRef.current,
-    asset,
-    opts,
-  ), [assetsRef])
-
-  const releaseSavedBlobUrls = useCallback((
-    assetId: string,
-    asset: PersonalizationAsset | null | undefined,
-    opts: { superseded?: (string | null | undefined)[]; dropOriginal?: boolean } = {},
-  ) => releaseOwnedBlobUrls(
-    ownedSavedBlobUrlsRef.current,
-    revokedBlobUrlsRef.current,
-    assetId,
-    assetsRef.current,
-    asset,
-    opts,
-  ), [assetsRef])
-
-  /** Releases every job blob URL (used when the library is reset/closed). */
-  const releaseAllJobBlobUrls = useCallback(() => {
-    releaseAllOwnedBlobUrls(
-      ownedJobBlobUrlsRef.current,
-      revokedBlobUrlsRef.current,
-      new Map(),
-    )
-  }, [])
-
-  /** Releases every blob URL the provider still owns (job + saved client). */
-  const releaseAllBlobUrls = useCallback(() => {
-    releaseAllOwnedBlobUrls(ownedJobBlobUrlsRef.current, revokedBlobUrlsRef.current, new Map())
-    releaseAllOwnedBlobUrls(ownedSavedBlobUrlsRef.current, revokedBlobUrlsRef.current, new Map())
-  }, [])
 
   // Refs for studio handoff persistence
   const lastResultRef = useRef<GenerationResult | null>(null)
@@ -2854,8 +2635,6 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       setAssets((prev) => ({ ...prev, firstFrame: null }))
       return
     }
-    const asset = createOwnedAsset(file, 'first_frame', { isPrimary: true })
-    setAssets((prev) => ({ ...prev, firstFrame: asset }))
     releaseDisplacedFrameBlob('firstFrame')
     const asset = createOwnedAsset(file, 'first_frame', { isPrimary: true })
     setAssets((prev) => ({ ...prev, firstFrame: asset }))
