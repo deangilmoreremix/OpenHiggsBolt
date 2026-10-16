@@ -370,17 +370,25 @@ async function handleDurableResolveRequest(request: NextRequest): Promise<NextRe
 function muAPIUnavailableResponse(error: unknown): NextResponse {
   console.error('MuAPI upload failed after retries:', error);
 
+  const message = error instanceof Error ? error.message : '';
+
   if (error instanceof TypeError) {
     return NextResponse.json(
-      { error: 'Unable to reach MuAPI. Please check your connection and try again.' },
+      { error: 'MuAPI upload failed. Unable to reach MuAPI. Please check your connection and try again.', code: 'UPSTREAM_UNREACHABLE' },
       { status: 502 }
     );
   }
 
-  const message = error instanceof Error ? error.message : '';
+  if (/MuAPI upload failed with status 4\d\d/.test(message)) {
+    return NextResponse.json(
+      { error: 'MuAPI upload failed. MuAPI rejected the upload. Please try again.', code: 'UPSTREAM_REJECTED' },
+      { status: 502 }
+    );
+  }
+
   if (/MuAPI upload failed with status 5\d\d/.test(message)) {
     return NextResponse.json(
-      { error: 'MuAPI is temporarily unavailable. Please try again in a moment.' },
+      { error: 'MuAPI upload failed. MuAPI is temporarily unavailable. Please try again in a moment.', code: 'UPSTREAM_UNAVAILABLE' },
       { status: 502 }
     );
   }
@@ -389,7 +397,7 @@ function muAPIUnavailableResponse(error: unknown): NextResponse {
   // in the Error text, and that body can contain upstream identifiers.
   // The exact cause is logged server-side for debugging instead.
   return NextResponse.json(
-    { error: 'MuAPI upload failed. Please try again.' },
+    { error: 'MuAPI upload failed. Please try again.', code: 'UPSTREAM_FAILED' },
     { status: 502 }
   );
 }
