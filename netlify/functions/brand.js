@@ -9,30 +9,12 @@
  */
 
 const crypto = require('node:crypto');
-const { requirePaidEntitlement, entitlementErrorResponse } = require('./shared/entitlementAuth');
+const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-let supabase = null;
-
-// @supabase/supabase-js is loaded lazily inside a try/catch: a bundling or
-// module-resolution problem in its dependency tree (observed in production as
-// Runtime.ImportModuleError on a missing transitive @supabase/functions-js)
-// must not crash the function at cold start before any handler logic runs.
-// Never throws: returns null when unavailable, so the handler can answer with
-// a logged error instead of an import-time hard crash.
-async function getSupabase() {
-  if (supabase) return supabase;
-  try {
-    const { createClient } = await import('@supabase/supabase-js');
-    supabase = createClient(supabaseUrl || '', serviceRole || '');
-    return supabase;
-  } catch (err) {
-    console.error('supabase-js unavailable:', err?.message || err);
-    return null;
-  }
-}
+const supabase = createClient(supabaseUrl || '', serviceRole || '');
 
 const JWKS_TTL_MS = 10 * 60 * 1000;
 const CLOCK_SKEW_SECONDS = 30;
@@ -359,10 +341,6 @@ async function claimUnownedRowForUser(table, id, userId) {
 }
 
 module.exports = { handler: async (event) => {
-  // Lazy client construction: a supabase-js bundling failure must not crash
-  // cold start before the auth and entitlement gates run.
-  supabase = await getSupabase();
-
   const cors = corsHeadersFor(event);
 
   if (event.httpMethod === 'OPTIONS') {
@@ -419,11 +397,6 @@ module.exports = { handler: async (event) => {
     }
 
     if (method === 'DELETE') {
-      // Entitlement guard (mirrors requireApiEntitlement): 401 AUTH_REQUIRED /
-      // 403 PAYMENT_REQUIRED before any DB write.
-      const guard = await requirePaidEntitlement(event, { supabase });
-      if (!guard.ok) return entitlementErrorResponse(guard, cors);
-
       const { error } = await supabase
         .from(BRAND_TABLE)
         .delete()
@@ -448,11 +421,6 @@ module.exports = { handler: async (event) => {
     for (const key of allowedFields) {
       if (patch[key] !== undefined) whitelisted[key] = patch[key];
     }
-
-    // Entitlement guard (mirrors requireApiEntitlement): 401 AUTH_REQUIRED /
-    // 403 PAYMENT_REQUIRED before any DB write.
-    const patchGuard = await requirePaidEntitlement(event, { supabase });
-    if (!patchGuard.ok) return entitlementErrorResponse(patchGuard, cors);
     if (whitelisted.tone_of_voice !== undefined) whitelisted.tone_of_voice = toStringArray(whitelisted.tone_of_voice).join(', ');
     if (whitelisted.brand_personality !== undefined) whitelisted.brand_personality = toStringArray(whitelisted.brand_personality).join(', ');
     if (whitelisted.key_messages !== undefined) whitelisted.key_messages = toStringArray(whitelisted.key_messages).join(', ');

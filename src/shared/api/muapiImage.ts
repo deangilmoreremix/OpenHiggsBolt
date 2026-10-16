@@ -275,14 +275,13 @@ export class MuAPIImageClient {
    */
   async uploadMask(file: Blob | File, onProgress?: (percent: number) => void): Promise<string> {
     if (!file) throw new Error('No mask provided')
-    const ALLOWED = new Set([
-      'image/png', 'image/jpeg', 'image/jpg', 'image/webp',
-    ])
+    // Mask is image-only: reuse the shared image allowlist and limit rather
+    // than a local copy, which is how this drifted from the contract before.
     const type = (file as File).type
-    if (type && !ALLOWED.has(type)) {
+    if (type && !isAllowedUploadMimeType(file as File, 'image')) {
       throw new Error(`Invalid mask type: ${type}. Use PNG, JPG or WebP.`)
     }
-    const maxBytes = 10 * 1024 * 1024
+    const maxBytes = UPLOAD_LIMITS.image
     if (typeof (file as Blob).size === 'number' && (file as Blob).size > maxBytes) {
       throw new Error(`Mask too large: ${((file as Blob).size / 1024 / 1024).toFixed(1)} MB. Max 10 MB.`)
     }

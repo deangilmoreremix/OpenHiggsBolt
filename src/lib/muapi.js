@@ -4,6 +4,11 @@ import { getStableUserId } from '../shared/auth/stableUserId';
 import { getApiKey } from './authConfig.ts';
 import { cleanApiKey } from './keys.js';
 import { UPLOAD_LIMITS, UPLOAD_MIME_TYPES, getUploadLimit, isAllowedUploadMimeType, normalizeImageMimeType } from './uploadConfig.ts';
+import {
+  handleMuAPIUploadError,
+  uploadImageToMuAPI,
+  uploadVideoToMuAPI,
+} from './muapiUpload.ts';
 
 // Marks an error as terminal so the polling loop rethrows instead of retrying.
 function fatal(message) {
@@ -455,52 +460,59 @@ export class MuapiClient {
 
     /**
      * Uploads a file to muapi and returns the hosted URL.
-     * @param {File} file - The image file to upload
+     *
+     * Delegates to the shared adapter in ./muapiUpload, which owns the
+     * size/MIME contract, the server-side key hop and the one-hour URL
+     * lifetime. This wrapper deliberately keeps the original shape: one
+     * attempt per call (no retry loop here), the same return value (the URL
+     * string), and the same thrown-Error contract its callers already handle.
+     *
+     * @param {File} file - The image or video file to upload
+     * @param {Object} [options]
+     * @param {(percent: number) => void} [options.onProgress] - Optional
+     *   progress hook. Upload progress is reported by the transport, so this
+     *   is only invoked at the terminal 0/100 boundaries today; it exists to
+     *   keep existing call sites that pass a callback compiling.
      * @returns {Promise<string>} The hosted URL of the uploaded file
      */
-    async uploadFile(file) {
-        const key = this.getKey();
-
+    async uploadFile(file, options = {}) {
         if (!file) throw new Error('No file provided');
-        const normalizedType = normalizeImageMimeType(file.type);
-        if (!isAllowedUploadMimeType(file)) {
-            throw new Error(`Invalid file type: ${file.type}. Allowed: ${[...UPLOAD_MIME_TYPES.image, ...UPLOAD_MIME_TYPES.video, ...UPLOAD_MIME_TYPES.audio].join(', ')}`);
-        }
-        const maxBytes = getUploadLimit(file);
-        if (file.size > maxBytes) {
-            const limitMB = maxBytes / 1024 / 1024;
-            throw new Error(`File too large: ${(file.size/1024/1024).toFixed(1)} MB. Maximum: ${limitMB} MB`);
-        }
 
-        const url = `${this.baseUrl}/api/v1/upload_file`;
-
-        const formData = new FormData();
-        formData.append('file', file);
+        const key = this.getKey();
+        const onProgress = typeof options === 'function' ? options : options?.onProgress;
 
         console.log('[Muapi] Uploading file:', file.name);
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'x-api-key': key },
-            body: formData
-        });
+        const isVideo = String(file.type || '').startsWith('video/');
+        const upload = isVideo ? uploadVideoToMuAPI : uploadImageToMuAPI;
 
-        const errText = await response.text().catch(() => 'Upload failed');
-
-        if (!response.ok) {
-            const detail = (() => {
-                try { return JSON.parse(errText).detail || JSON.parse(errText).error || errText.slice(0,200); }
-                catch { try { return JSON.parse(errText).error || errText.slice(0,200); } catch { return errText.slice(0,200); } }
-            })();
-            throw new Error(`File upload failed: ${response.status} - ${detail}`);
+        let result;
+        try {
+            result = await upload(file, {
+                // The workspace is the caller's own authorized identity; the
+                // adapter never derives or stores a key beyond the one handed
+                // to it here.
+                workspaceId: getStableUserId(),
+                apiKey: key,
+                // Only override the endpoint when this client was built
+                // without a same-origin proxy (Electron file:// renderer).
+                ...(this.baseUrl && this.baseUrl !== ''
+                    ? { uploadEndpoint: `${this.baseUrl}/api/v1/upload_file` }
+                    : {}),
+            });
+        } catch (error) {
+            // Normalise onto the adapter's user-facing message so callers see
+            // one consistent string set regardless of entry point.
+            const info = handleMuAPIUploadError(error);
+            const failure = new Error(info.message);
+            failure.uploadErrorClass = info.class;
+            failure.retryable = info.retryable;
+            if (onProgress) onProgress(0);
+            throw failure;
         }
 
-        const data = JSON.parse(errText);
-        console.log('[Muapi] Upload response:', data);
-
-        const fileUrl = data.url || data.file_url || data.data?.url;
-        if (!fileUrl) throw new Error('No URL returned from file upload');
-        return fileUrl;
+        if (onProgress) onProgress(100);
+        return result.url;
     }
 
     /**
@@ -624,35 +636,6 @@ export class MuapiClient {
         }
     }
 
-    async post(path, payload) {
-        const key = this.getKey();
-        const url = `${this.baseUrl}${path.startsWith('/') ? '' : '/api/v1/'}${path}`;
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-api-key': key },
-            body: JSON.stringify(payload || {}),
-        });
-        if (!response.ok) {
-            const errText = await response.text();
-            throw new Error(`MuAPI POST Failed: ${response.status} - ${errText.slice(0, 200)}`);
-        }
-        return response.json();
-    }
-
-    async get(path) {
-        const key = this.getKey();
-        const url = `${this.baseUrl}${path.startsWith('/') ? '' : '/api/v1/'}${path}`;
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json', 'x-api-key': key },
-        });
-        if (!response.ok) {
-            const errText = await response.text();
-            throw new Error(`MuAPI GET Failed: ${response.status} - ${errText.slice(0, 200)}`);
-        }
-        return response.json();
-    }
-
     getDimensionsFromAR(ar) {
         // Base unit 1024 (Flux standard)
         switch (ar) {
@@ -663,8 +646,52 @@ export class MuapiClient {
             case '3:2': return [1216, 832];
             case '21:9': return [1536, 640];
             default: return [1024, 1024];
-        }
     }
+  }
+
+  /**
+   * GET a JSON resource from the MuAPI backend.
+   * @param {string} path - API path, e.g. '/predictions/abc/result'
+   */
+  async get(path) {
+    const key = this.getKey();
+    const url = `${this.baseUrl}/api/v1${path}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+      },
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`MuAPI GET ${path} failed with status ${response.status}: ${errText.slice(0, 200)}`);
+    }
+    return response.json();
+  }
+
+  /**
+   * POST a JSON body to the MuAPI backend.
+   * @param {string} path - API path, e.g. '/seedance-lite-i2v'
+   * @param {Object} body - JSON-serializable request body
+   */
+  async post(path, body) {
+    const key = this.getKey();
+    const url = `${this.baseUrl}/api/v1${path}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`MuAPI POST ${path} failed with status ${response.status}: ${errText.slice(0, 200)}`);
+    }
+    return response.json();
+  }
 }
 
 export const muapi = new MuapiClient();

@@ -10,6 +10,7 @@ import {
   removeBackground,
   expandImage,
 } from "../muapi.js";
+import { getUploadLimit, formatUploadLimit } from "../uploadContract.js";
 import { formatErrorMessage } from "../utils/formatError.js";
 import en from "../messages/en/layersStudio.json";
 import { resolveCopy } from "../i18nUtils";
@@ -303,7 +304,8 @@ export default function LayersStudio({
     const fileList = Array.from(files || []);
     if (fileList.length === 0) return;
 
-    const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB
+    // Limit comes from the shared upload contract (MuAPI spec: images 10MB).
+    const MAX_IMAGE_SIZE = getUploadLimit({ type: 'image/jpeg' });
     const file = fileList.find((f) => f.type.startsWith("image/")) || fileList[0];
     if (!file) return;
 

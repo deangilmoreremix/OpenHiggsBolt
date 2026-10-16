@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
-import { ENTITLEMENTS } from '@/access/entitlements'
 import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer'
 import { rateLimit, rateLimit429 } from '@/lib/rateLimit'
 import { IMAGE_EDIT_OPERATIONS } from '@/src/shared/personalization/image-editor/imageEditRegistry'
@@ -196,14 +194,6 @@ export async function POST(req: NextRequest) {
   const { userId } = await auth()
   if (!userId) {
     return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
-  }
-
-  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
-  if (!entitlementCheck.allowed) {
-    if (entitlementCheck.status === 401) {
-      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
-    }
-    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO)
   }
 
   const limit = rateLimit(`personalization-vision:${userId}`, { windowMs: 60_000, max: 12 })

@@ -1,9 +1,11 @@
 import { checkDestination, isBlockedHostname, isIpLiteral, createPinnedFetch, isBlockedIpAddress, pickPinnedAddress } from './networkSafety';
 
-// NOTE: isBlockedFileType() is used by legacy proxy routes but not by the
-// direct upload route. The direct upload route (/api/v1/upload_file) uses
-// its own MIME allowlist (ALLOWED_UPLOAD_MIME_TYPES) instead of relying on
-// this blocked-file check.
+// NOTE: isBlockedFileType() is a denylist used by the DIRECT upload route
+// (app/api/v1/upload_file/route.ts) as defence-in-depth on top of the MIME
+// allowlist. The legacy /api/*\/upload-binary S3 proxy routes do NOT call it —
+// they enforce their own copy of the allowlist. validateUploadProxyTarget() is
+// likewise only used by those legacy proxies; the direct route posts to a
+// hardcoded upstream URL, so SSRF is not applicable to it.
 //
 // Every IP / hostname / DNS-rebinding rule now lives in the single shared
 // module ./networkSafety, so the upload proxy cannot drift away from the

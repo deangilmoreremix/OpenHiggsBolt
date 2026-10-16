@@ -128,24 +128,31 @@ export function createProjectPersistence(opts: ProjectPersistenceOptions = {}) {
 
   function save(state: PersonalizationProjectState): Promise<{ ok: boolean; error?: string }> {
     const sanitized = stripSessionScopedUrls(state)
-    const response = fetch(API_ROUTE, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entry: sanitized }),
-      credentials: 'same-origin',
-    })
-    if (!response || typeof (response as Promise<Response>).then !== 'function') {
-      return Promise.resolve({ ok: false, error: 'fetch unavailable' })
-    }
-    return response.then(async (res) => {
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        return { ok: false, error: data?.error || `HTTP ${res.status}` }
-      }
-      return { ok: true }
-    }).catch((error) => {
-      return { ok: false, error: error instanceof Error ? error.message : 'Unknown error' }
-    })
+    // Route the fetch through a promise step so a synchronous throw (e.g. fetch
+    // missing after environment teardown) or a non-thenable return (e.g. a mock
+    // returning undefined) becomes an ordinary rejected-promise flow handled by
+    // the terminal `.catch` below instead of an uncaught exception inside the
+    // debounce timer callback.
+    return Promise.resolve()
+      .then(() =>
+        fetch(API_ROUTE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entry: sanitized }),
+          credentials: 'same-origin',
+        })
+      )
+      .then(async (res) => {
+        if (!res) return { ok: false, error: 'No response from server' }
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          return { ok: false, error: data?.error || `HTTP ${res.status}` }
+        }
+        return { ok: true }
+      })
+      .catch((error) => {
+        return { ok: false, error: error instanceof Error ? error.message : 'Unknown error' }
+      })
   }
 
   return {
@@ -234,20 +241,29 @@ export type SavedProject = PersonalizationProjectState
 
 export async function saveProject(state: PersonalizationProjectState): Promise<{ ok: boolean; error?: string }> {
   const sanitized = stripSessionScopedUrls(state)
-  return fetch(API_ROUTE, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ entry: sanitized }),
-    credentials: 'same-origin',
-  }).then(async (res) => {
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      return { ok: false, error: data?.error || `HTTP ${res.status}` }
-    }
-    return { ok: true }
-  }).catch((error) => {
-    return { ok: false, error: error instanceof Error ? error.message : 'Unknown error' }
-  })
+  // Same hardening as `save` above: a synchronous throw or non-thenable return
+  // from fetch becomes a handled `{ ok: false, error }` result rather than an
+  // uncaught exception.
+  return Promise.resolve()
+    .then(() =>
+      fetch(API_ROUTE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entry: sanitized }),
+        credentials: 'same-origin',
+      })
+    )
+    .then(async (res) => {
+      if (!res) return { ok: false, error: 'No response from server' }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        return { ok: false, error: data?.error || `HTTP ${res.status}` }
+      }
+      return { ok: true }
+    })
+    .catch((error) => {
+      return { ok: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    })
 }
 
 export async function listProjects(): Promise<PersonalizationProjectState[]> {

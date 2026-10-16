@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useTemplateData } from "../hooks/useTemplateData";
 import TemplateBanner from "./TemplateBanner";
 import { generateAudio, uploadFile } from "../muapi.js";
+import { getUploadLimit, formatUploadLimit } from "../uploadContract.js";
 import { audioModels, getAudioModelById } from "../models.js";
 import CostEstimator from "./CostEstimator.jsx";
 import en from "../messages/en/audioStudio.json";
@@ -93,7 +94,7 @@ function AudioFileUploader({ label, value, onChange, apiKey, copy = en }) {
     const file = files?.[0];
     if (!file) return;
 
-    if (file.size > 20 * 1024 * 1024) {
+    if (file.size > getUploadLimit(file)) {
       alert(copy.uploader.sizeLimitError);
       return;
     }
