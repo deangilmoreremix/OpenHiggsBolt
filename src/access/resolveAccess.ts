@@ -1,10 +1,22 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { getSupabaseAdmin } from '@/lib/supabaseServer';
-import { ENTITLEMENTS, type AccessState, type AccessResult, type UserEntitlements } from './entitlements';
+import { ENTITLEMENTS, isQualifyingStatus, type AccessState, type AccessResult, type EntitlementStatus, type UserEntitlements } from './entitlements';
+
+export const EMAIL_ONLY_CLERK_ID_PREFIX = 'email:';
+
+export function emailOnlyClerkId(email: string): string {
+  return `${EMAIL_ONLY_CLERK_ID_PREFIX}${email.toLowerCase().trim()}`;
+}
+
+export function isEmailOnlyClerkId(clerkUserId: string | null | undefined): boolean {
+  return typeof clerkUserId === 'string' && clerkUserId.startsWith(EMAIL_ONLY_CLERK_ID_PREFIX);
+}
 
 function hasSmartVideoGo(entitlements: UserEntitlements, status?: string): boolean {
-  const isActive = status === 'active' || status === undefined || status === '';
-  return isActive && (entitlements.smartvideo_go === true || entitlements.founders === true);
+  if (!isQualifyingStatus(status)) {
+    return false;
+  }
+  return entitlements.smartvideo_go === true || entitlements.founders === true;
 }
 
 async function getVerifiedEmailsForUser(userId: string): Promise<string[]> {
@@ -127,6 +139,54 @@ export async function grantEntitlement(
   if (metadata?.stripe_customer_id) payload.stripe_customer_id = metadata.stripe_customer_id;
   if (metadata?.stripe_subscription_id) payload.stripe_subscription_id = metadata.stripe_subscription_id;
 
+  if (existing) {
+    const { error } = await supabase
+      .from('user_entitlements')
+      .upsert(payload, { onConflict: 'clerk_user_id' });
+
+    if (error) {
+      console.error('[grantEntitlement] failed:', error);
+      throw new Error('Failed to grant entitlement');
+    }
+    return;
+  }
+
+  // No row keyed by this clerk id. If the buyer previously purchased without a
+  // Clerk account, the email-keyed placeholder row (`email:<email>`) already
+  // exists: adopt it instead of inserting a second row for the same email.
+  const { data: emailRow } = await supabase
+    .from('user_entitlements')
+    .select('*')
+    .eq('email', normalizedEmail)
+    .maybeSingle();
+
+  if (emailRow && isEmailOnlyClerkId(emailRow.clerk_user_id)) {
+    const merged = (emailRow.entitlements || {}) as Record<string, boolean>;
+    merged[entitlementKey] = true;
+
+    const adoptPayload: any = {
+      clerk_user_id: clerkUserId,
+      email: normalizedEmail,
+      entitlements: merged,
+      status: 'active',
+      source,
+      updated_at: new Date().toISOString(),
+    };
+    if (payload.stripe_customer_id) adoptPayload.stripe_customer_id = payload.stripe_customer_id;
+    if (payload.stripe_subscription_id) adoptPayload.stripe_subscription_id = payload.stripe_subscription_id;
+
+    const { error } = await supabase
+      .from('user_entitlements')
+      .update(adoptPayload)
+      .eq('id', emailRow.id);
+
+    if (error) {
+      console.error('[grantEntitlement] adopt failed:', error);
+      throw new Error('Failed to grant entitlement');
+    }
+    return;
+  }
+
   const { error } = await supabase
     .from('user_entitlements')
     .upsert(payload, { onConflict: 'clerk_user_id' });
@@ -209,12 +269,56 @@ export async function revokeEntitlement(
   return { revoked: true, matched: ids.length, reason };
 }
 
+/**
+ * Records a verified purchase for a buyer that has no Clerk account match.
+ *
+ * Writes (or merges into) the `email:<normalizedEmail>` placeholder row so the
+ * purchase is durable and `restoreAccessByEmail` can adopt it once the buyer
+ * signs in with the verified email. The placeholder key can never satisfy
+ * access for a real Clerk user — see EMAIL_ONLY_CLERK_ID_PREFIX.
+ */
+export async function recordEmailOnlyPurchase(
+  email: string,
+  entitlementKey: string,
+  metadata?: Record<string, any>
+): Promise<void> {
+  await grantEntitlement(
+    emailOnlyClerkId(email),
+    email,
+    entitlementKey,
+    metadata?.source || 'stripe',
+    metadata
+  );
+}
+
+/** Sets the lifecycle status of an entitlement row (idempotent). */
+export async function setEntitlementStatus(
+  clerkUserId: string,
+  status: EntitlementStatus
+): Promise<void> {
+  const supabase = getSupabaseAdmin();
+
+  const { error } = await supabase
+    .from('user_entitlements')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('clerk_user_id', clerkUserId);
+
+  if (error) {
+    console.error('[setEntitlementStatus] failed:', error);
+    throw new Error('Failed to update entitlement status');
+  }
+}
+
 function getUserVerifiedEmails(userId: string): string[] {
-  // This function is used only in server contexts where Clerk's auth() is available.
-  // It returns verified email addresses for the authenticated user.
-  // The actual implementation depends on the Clerk SDK version and API.
-  // For now, we'll use a simple approach that validates the email matches the user's primary email.
   return [];
+}
+
+function rowQualifies(row: any): boolean {
+  const entitlements = (row?.entitlements || {}) as Record<string, boolean>;
+  return (
+    isQualifyingStatus(row?.status) &&
+    (entitlements.smartvideo_go === true || entitlements.founders === true)
+  );
 }
 
 export async function restoreAccessByEmail(clerkUserId: string, email: string): Promise<{
@@ -224,7 +328,6 @@ export async function restoreAccessByEmail(clerkUserId: string, email: string): 
   const supabase = getSupabaseAdmin();
   const normalizedEmail = email.toLowerCase().trim();
 
-  // Get the authenticated user's verified emails from Clerk
   const { userId } = await auth();
   if (!userId || userId !== clerkUserId) {
     return { status: 'error', message: 'Unauthorized.' };
@@ -236,24 +339,55 @@ export async function restoreAccessByEmail(clerkUserId: string, email: string): 
     return { status: 'error', message: 'You can only restore access for one of your own verified emails.' };
   }
 
-  const { data: purchaser } = await supabase
+  const { data: ownRow } = await supabase
+    .from('user_entitlements')
+    .select('*')
+    .eq('clerk_user_id', clerkUserId)
+    .maybeSingle();
+
+  if (ownRow && rowQualifies(ownRow)) {
+    return { status: 'already_active', message: 'Access already active.' };
+  }
+
+  const { data: purchaser, error: purchaserError } = await supabase
     .from('user_entitlements')
     .select('*')
     .eq('email', normalizedEmail)
-    .eq('status', 'active')
+    .order('updated_at', { ascending: false })
+    .limit(1)
     .maybeSingle();
+
+  if (purchaserError) {
+    console.error('[restoreAccessByEmail] lookup failed:', purchaserError);
+    return { status: 'error', message: 'Failed to look up purchase.' };
+  }
 
   if (!purchaser) {
     return { status: 'not_found', message: 'No qualifying purchase found for this email.' };
   }
 
-  const entitlements = purchaser.entitlements as Record<string, boolean>;
-  if (entitlements.smartvideo_go) {
-    await supabase
-      .from('user_entitlements')
-      .update({ clerk_user_id: clerkUserId, updated_at: new Date().toISOString() })
-      .eq('id', purchaser.id);
+  const alreadyGranted =
+    ((purchaser.entitlements || {}) as Record<string, boolean>).smartvideo_go === true ||
+    ((purchaser.entitlements || {}) as Record<string, boolean>).founders === true;
 
+  if (ownRow) {
+    await grantEntitlement(clerkUserId, email, ENTITLEMENTS.SMARTVIDEO_GO, 'founders');
+    return alreadyGranted
+      ? { status: 'already_active', message: 'Access already active.' }
+      : { status: 'restored', message: 'Access restored successfully.' };
+  }
+
+  const { error: adoptError } = await supabase
+    .from('user_entitlements')
+    .update({ clerk_user_id: clerkUserId, updated_at: new Date().toISOString() })
+    .eq('id', purchaser.id);
+
+  if (adoptError) {
+    console.error('[restoreAccessByEmail] adopt failed:', adoptError);
+    return { status: 'error', message: 'Failed to restore access.' };
+  }
+
+  if (alreadyGranted) {
     return { status: 'already_active', message: 'Access already active.' };
   }
 

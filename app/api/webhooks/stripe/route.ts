@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getSupabaseAdmin } from '@/src/lib/supabaseServer';
-import { grantEntitlement, revokeEntitlement } from '@/access/resolveAccess';
-import { ENTITLEMENTS } from '@/access/entitlements';
+import {
+  emailOnlyClerkId,
+  grantEntitlement,
+  recordEmailOnlyPurchase,
+  revokeEntitlement,
+  setEntitlementStatus,
+} from '@/access/resolveAccess';
+import { ENTITLEMENTS, type EntitlementStatus } from '@/access/entitlements';
 
 export const dynamic = "force-dynamic";
 
@@ -29,8 +35,10 @@ const HANDLED_EVENTS = new Set<string>([
   'checkout.session.completed',
   'charge.refunded',
   'charge.dispute.created',
-  'customer.subscription.deleted',
+  'refund.created',
+  'customer.subscription.created',
   'customer.subscription.updated',
+  'customer.subscription.deleted',
 ]);
 
 interface RevokeTarget {
@@ -46,6 +54,16 @@ class WebhookStatusError extends Error {
     super(message);
     this.status = status;
   }
+}
+
+function normalizeEmail(email: string): string {
+  return email.toLowerCase().trim();
+}
+
+function idOf(value: any): string {
+  if (typeof value === 'string') return value;
+  if (value && typeof value === 'object' && typeof value.id === 'string') return value.id;
+  return '';
 }
 
 export function getStripeProductMap(): Record<string, string> {
@@ -77,9 +95,6 @@ export function resolveEntitlementFromSession(session: Stripe.Checkout.Session):
   return '';
 }
 
-// Fallback used when the price map has no entry for the purchased price. Only
-// values that are real entitlement keys are accepted; `plan` metadata (e.g.
-// pro_lifetime) is display data, never an entitlement key.
 export function resolveEntitlementFromMetadata(session: Stripe.Checkout.Session): string {
   const metadata = (session?.metadata || {}) as Record<string, unknown>;
   const value = typeof metadata.entitlement === 'string' ? metadata.entitlement.trim() : '';
@@ -105,12 +120,61 @@ async function resolveEntitlementFromSessionId(sessionId: string): Promise<strin
   }
 }
 
+// ---------------------------------------------------------------------------
+// Activation is webhook-only.
+//
+// The checkout success URL (`/?purchase=success&session_id=...`) grants NOTHING.
+// It is a landing page anybody can visit or guess, so paid functionality must
+// never be unlocked merely because someone landed on it. Every entitlement
+// change in this repo is driven exclusively by the signature-verified Stripe
+// events handled below, which means a purchase only becomes durable once
+// Stripe has actually confirmed it (and refunds/disputes revoke it).
+// ---------------------------------------------------------------------------
+
+async function recordPurchase(params: {
+  sessionId: string;
+  clerkUserId: string | null;
+  email: string;
+  customerId: string;
+  paymentIntentId: string;
+  priceId: string;
+  entitlementKey: string;
+  amountTotal: number | null;
+  currency: string | null;
+  livemode: boolean;
+  metadata: Record<string, any>;
+}): Promise<void> {
+  const supabase = getSupabaseAdmin();
+
+  const { error } = await supabase
+    .from('user_purchases')
+    .upsert(
+      {
+        clerk_user_id: params.clerkUserId,
+        email: params.email,
+        stripe_session_id: params.sessionId,
+        stripe_customer_id: params.customerId || null,
+        stripe_payment_intent_id: params.paymentIntentId || null,
+        stripe_price_id: params.priceId || null,
+        entitlement_key: params.entitlementKey || null,
+        amount_total: params.amountTotal,
+        currency: params.currency,
+        purchase_status: 'paid',
+        livemode: params.livemode,
+        metadata: params.metadata || {},
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'stripe_session_id' }
+    );
+
+  if (error) {
+    console.error('[stripe webhook] failed to record purchase:', error);
+    throw new Error('Failed to record purchase');
+  }
+}
+
 type EventClaim = 'claimed' | 'duplicate' | 'unavailable';
 
-// Claims a Stripe event id before any mutation. A duplicate claim means the
-// event was already processed (or is in flight) and must be skipped. Insert
-// failures (e.g. a ledger table that has not been migrated yet) are best
-// effort: they never block grants or revocations.
 async function claimWebhookEvent(event: Stripe.Event): Promise<EventClaim> {
   try {
     const supabase = getSupabaseAdmin();
@@ -137,8 +201,6 @@ async function claimWebhookEvent(event: Stripe.Event): Promise<EventClaim> {
   }
 }
 
-// Releases a claim so a failed delivery can be retried by Stripe instead of
-// being permanently treated as processed.
 async function releaseWebhookEvent(event: Stripe.Event): Promise<void> {
   try {
     const supabase = getSupabaseAdmin();
@@ -150,14 +212,19 @@ async function releaseWebhookEvent(event: Stripe.Event): Promise<void> {
 
 async function handleCheckoutSessionCompleted(event: Stripe.Event): Promise<void> {
   const session = event.data.object as Stripe.Checkout.Session;
-  const customerEmail = session.customer_details?.email || session.customer_email;
-  const customerId = session.customer as string | undefined;
+  const customerEmail = session.customer_details?.email || session.customer_email || '';
+  const customerId = idOf(session.customer);
   const metadata = (session.metadata || {}) as Record<string, string>;
-  const clerkUserId = metadata.clerk_user_id;
+  const clerkUserId = metadata.clerk_user_id || '';
+  const subscriptionId =
+    metadata.stripe_subscription_id || idOf(session.subscription) || '';
+  const paymentIntentId = idOf(session.payment_intent);
 
   if (!customerEmail) {
     throw new WebhookStatusError(400, 'No customer email');
   }
+
+  const normalizedEmail = normalizeEmail(customerEmail);
 
   let entitlementKey = resolveEntitlementFromSession(session);
   if (!entitlementKey) {
@@ -172,28 +239,58 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event): Promise<void
     return;
   }
 
-  const normalizedEmail = customerEmail.toLowerCase().trim();
-  const supabase = getSupabaseAdmin();
+  // (a) Record the verified purchase first: it must never be dropped.
+  await recordPurchase({
+    sessionId: session.id,
+    clerkUserId: clerkUserId || null,
+    email: normalizedEmail,
+    customerId,
+    paymentIntentId,
+    priceId: session.line_items?.data?.[0]?.price?.id || '',
+    entitlementKey,
+    amountTotal: session.amount_total ?? null,
+    currency: session.currency ?? null,
+    livemode: Boolean(session.livemode),
+    metadata: {
+      checkout_mode: session.mode || null,
+      payment_status: session.payment_status || null,
+      stripe_subscription_id: subscriptionId || null,
+    },
+  });
 
+  const grantOpts: any = {
+    stripe_customer_id: customerId || undefined,
+    stripe_subscription_id: subscriptionId || undefined,
+  };
+
+  // (b) Grant by the Clerk id captured at checkout when there is one.
   if (clerkUserId) {
-    await grantEntitlement(clerkUserId, normalizedEmail, entitlementKey, 'stripe', {
-      stripe_customer_id: customerId,
-      stripe_subscription_id: metadata.stripe_subscription_id,
-    });
-  } else {
-    const { data: existingUser } = await supabase
-      .from('user_entitlements')
-      .select('clerk_user_id')
-      .eq('email', normalizedEmail)
-      .maybeSingle();
-
-    if (existingUser?.clerk_user_id) {
-      await grantEntitlement(existingUser.clerk_user_id, normalizedEmail, entitlementKey, 'stripe', {
-        stripe_customer_id: customerId,
-        stripe_subscription_id: metadata.stripe_subscription_id,
-      });
-    }
+    await grantEntitlement(clerkUserId, normalizedEmail, entitlementKey, 'stripe', grantOpts);
+    return;
   }
+
+  // (c) Otherwise match an existing row for the buyer's email.
+  const supabase = getSupabaseAdmin();
+  const { data: existingUser } = await supabase
+    .from('user_entitlements')
+    .select('clerk_user_id')
+    .eq('email', normalizedEmail)
+    .maybeSingle();
+
+  if (existingUser?.clerk_user_id) {
+    await grantEntitlement(existingUser.clerk_user_id, normalizedEmail, entitlementKey, 'stripe', grantOpts);
+    return;
+  }
+
+  // (d) No Clerk account and no existing row: record an email-keyed row so the
+  // purchase is never dropped. `restoreAccessByEmail` adopts it later once the
+  // buyer signs in with the verified email. The placeholder key can never
+  // satisfy hasSmartVideoGo for a real Clerk user.
+  await recordEmailOnlyPurchase(normalizedEmail, entitlementKey, {
+    stripe_customer_id: customerId || undefined,
+    stripe_subscription_id: subscriptionId || undefined,
+    source: 'stripe',
+  });
 }
 
 function chargeRevocationTarget(charge: Stripe.Charge): RevokeTarget {
@@ -245,6 +342,190 @@ async function revokeForCharge(event: Stripe.Event): Promise<void> {
   await revokeForTarget(chargeRevocationTarget(charge), charge.id, event.type);
 }
 
+/**
+ * Refund / dispute handling: mark the ledger purchase and revoke the matching
+ * entitlement row(s). Matching is by stripe payment intent, stripe customer id
+ * and email, so both real Clerk rows and email-only placeholder rows are
+ * revoked. Repeated events are no-ops.
+ */
+async function handleRefundLike(
+  object: any,
+  purchaseStatus: 'refunded' | 'disputed',
+  reason: string
+): Promise<void> {
+  const supabase = getSupabaseAdmin();
+  const paymentIntentId = idOf(object.payment_intent);
+  const customerId = idOf(object.customer);
+  const objectEmail = object.receipt_email || object.billing_details?.email || '';
+
+  const clerkUserIds = new Set<string>();
+  const emails = new Set<string>();
+  const customerIds = new Set<string>();
+
+  if (paymentIntentId) {
+    const { data: purchases, error } = await supabase
+      .from('user_purchases')
+      .select('*')
+      .eq('stripe_payment_intent_id', paymentIntentId);
+
+    if (error) {
+      console.error('[stripe webhook] purchase lookup failed:', error);
+      throw new Error('Failed to look up purchase');
+    }
+
+    const matched = purchases || [];
+    if (matched.length > 0) {
+      const { error: updateError } = await supabase
+        .from('user_purchases')
+        .update({ purchase_status: purchaseStatus, updated_at: new Date().toISOString() })
+        .eq('stripe_payment_intent_id', paymentIntentId);
+
+      if (updateError) {
+        console.error(`[stripe webhook] failed to mark purchase ${purchaseStatus}:`, updateError);
+        throw new Error('Failed to update purchase status');
+      }
+    }
+
+    for (const purchase of matched) {
+      if (purchase.clerk_user_id) clerkUserIds.add(String(purchase.clerk_user_id));
+      if (purchase.email) emails.add(normalizeEmail(String(purchase.email)));
+      if (purchase.stripe_customer_id) customerIds.add(String(purchase.stripe_customer_id));
+    }
+  }
+
+  if (objectEmail) emails.add(normalizeEmail(String(objectEmail)));
+  if (customerId) customerIds.add(customerId);
+
+  for (const id of customerIds) {
+    const { data: rows } = await supabase
+      .from('user_entitlements')
+      .select('clerk_user_id')
+      .eq('stripe_customer_id', id);
+
+    for (const row of rows || []) {
+      if (row.clerk_user_id) clerkUserIds.add(String(row.clerk_user_id));
+    }
+  }
+
+  for (const email of emails) {
+    const { data: rows } = await supabase
+      .from('user_entitlements')
+      .select('clerk_user_id')
+      .eq('email', email);
+
+    for (const row of rows || []) {
+      if (row.clerk_user_id) clerkUserIds.add(String(row.clerk_user_id));
+    }
+  }
+
+  for (const clerkUserId of clerkUserIds) {
+    await setEntitlementStatus(clerkUserId, 'revoked');
+    // Also record the revocation reason so the audit trail is searchable.
+    const { error: reasonError } = await supabase
+      .from('user_entitlements')
+      .update({ revoked_reason: reason, updated_at: new Date().toISOString() })
+      .eq('clerk_user_id', clerkUserId);
+    if (reasonError) {
+      console.warn('[stripe webhook] failed to record revoked_reason:', reasonError.message);
+    }
+  }
+}
+
+function mapSubscriptionStatus(status?: string | null): EntitlementStatus {
+  switch (status) {
+    case 'active':
+    case 'trialing':
+      return 'active';
+    case 'canceled':
+    case 'unpaid':
+    case 'incomplete_expired':
+    case 'past_due':
+      return 'expired';
+    default:
+      return 'pending';
+  }
+}
+
+async function handleSubscriptionEvent(subscription: any): Promise<void> {
+  const priceId = subscription?.items?.data?.[0]?.price?.id || '';
+  const entitlementKey = priceId ? getStripeProductMap()[priceId] || '' : '';
+
+  if (!entitlementKey) {
+    console.warn('[stripe webhook] unmapped subscription price:', priceId || '(none)');
+    return;
+  }
+
+  const status = mapSubscriptionStatus(subscription?.status);
+  const customerId = idOf(subscription?.customer);
+  const subscriptionId = idOf(subscription?.id) || '';
+  const clerkUserIdFromMetadata = String(subscription?.metadata?.clerk_user_id || '');
+  const supabase = getSupabaseAdmin();
+
+  let targetClerkUserId = '';
+  let targetEmail = '';
+
+  if (customerId) {
+    const { data: row } = await supabase
+      .from('user_entitlements')
+      .select('clerk_user_id, email')
+      .eq('stripe_customer_id', customerId)
+      .limit(1)
+      .maybeSingle();
+
+    if (row?.clerk_user_id) {
+      targetClerkUserId = String(row.clerk_user_id);
+      targetEmail = String(row.email || '');
+    }
+  }
+
+  if (!targetClerkUserId && !targetEmail && customerId) {
+    const { data: purchase } = await supabase
+      .from('user_purchases')
+      .select('clerk_user_id, email')
+      .eq('stripe_customer_id', customerId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (purchase) {
+      targetClerkUserId = String(purchase.clerk_user_id || '');
+      targetEmail = purchase.email ? normalizeEmail(String(purchase.email)) : '';
+    }
+  }
+
+  if (!targetClerkUserId && !targetEmail && clerkUserIdFromMetadata) {
+    targetClerkUserId = clerkUserIdFromMetadata;
+  }
+
+  if (!targetClerkUserId && !targetEmail) {
+    console.warn('[stripe webhook] no entitlement target for subscription:', subscriptionId);
+    return;
+  }
+
+  const grantOpts: any = {
+    stripe_customer_id: customerId || undefined,
+    stripe_subscription_id: subscriptionId || undefined,
+  };
+
+  if (status === 'active') {
+    if (targetClerkUserId) {
+      await grantEntitlement(targetClerkUserId, targetEmail, entitlementKey, 'stripe', grantOpts);
+    } else {
+      await recordEmailOnlyPurchase(targetEmail, entitlementKey, {
+        ...grantOpts,
+        source: 'stripe',
+      });
+    }
+    return;
+  }
+
+  if (targetClerkUserId) {
+    await setEntitlementStatus(targetClerkUserId, status);
+  } else {
+    await setEntitlementStatus(emailOnlyClerkId(targetEmail), status);
+  }
+}
+
 async function revokeForSubscription(event: Stripe.Event): Promise<void> {
   const subscription = event.data.object as Stripe.Subscription;
 
@@ -284,12 +565,18 @@ async function routeEvent(event: Stripe.Event): Promise<void> {
       await handleCheckoutSessionCompleted(event);
       return;
     case 'charge.refunded':
+    case 'refund.created':
+      await handleRefundLike(event.data.object, 'refunded', `${event.type}:${event.id}`);
+      return;
     case 'charge.dispute.created':
-      await revokeForCharge(event);
+      await handleRefundLike(event.data.object, 'disputed', `${event.type}:${event.id}`);
+      return;
+    case 'customer.subscription.created':
+    case 'customer.subscription.updated':
+      await handleSubscriptionEvent(event.data.object as any);
       return;
     case 'customer.subscription.deleted':
-    case 'customer.subscription.updated':
-      await revokeForSubscription(event);
+      await handleSubscriptionEvent(event.data.object as any);
       return;
     default:
       return;

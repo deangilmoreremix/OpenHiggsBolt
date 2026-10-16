@@ -7,8 +7,6 @@ import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/serve
 import { validatePersonalizationEnv } from '@/server/envValidation'
 import { createDiscoveryJob, getDiscoveryJobForUser, updateDiscoveryJob } from '@/server/discoveryJobs'
 import { runFastDiscovery } from '@/server/discoveryOrchestrator'
-import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
-import { ENTITLEMENTS } from '@/access/entitlements'
 
 export const dynamic = "force-dynamic";
 
@@ -130,18 +128,6 @@ export async function POST(req: NextRequest) {
       })
       return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
     }
-
-    // Server-side entitlement gate: discover-assets is a paid action (fires
-    // Firecrawl/Crawlee/MuAPI at the operator's expense). Free users get 403.
-    const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
-    if (!entitlementCheck.allowed) {
-      clearTimeout(timeoutId)
-      if (entitlementCheck.status === 401) {
-        return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
-      }
-      return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO)
-    }
-
     const body = await req.json().catch(() => ({}))
     const rawWebsiteUrl = typeof body?.websiteUrl === 'string' ? body.websiteUrl : ''
     const requestedTestMode = typeof body?.testMode === 'boolean' ? body.testMode : false
@@ -376,17 +362,6 @@ export async function GET(req: NextRequest) {
   const { userId } = await auth()
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  // Server-side entitlement gate: discover-assets status is a paid action
-  // (the persisted job contains the full discovered-asset payload). Free
-  // users get 403 even if they own a jobId.
-  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
-  if (!entitlementCheck.allowed) {
-    if (entitlementCheck.status === 401) {
-      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
-    }
-    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO)
   }
 
   const job = await getDiscoveryJobForUser(jobId, userId)

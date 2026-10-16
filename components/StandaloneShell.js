@@ -14,7 +14,9 @@ import { useAuthConfig } from '@/lib/authConfig';
 import { isValidKeyFormat } from '@/lib/keys';
 import { saveOpenAIKey, deleteOpenAIKey } from '@/shared/api/openaiKey';
 import { DemoPersonalizeProvider } from '@/shared/personalization';
+import { useSmartVideoAccess } from '@/access/SmartVideoAccessProvider';
 import UpgradeModal from '@/access/UpgradeModal';
+import PreviewModeBadge from '@/access/PreviewModeBadge';
 
 // Lazily load the heavy `studio` package so its many studio modules are not
 // part of the initial bundle for /, /studio and /workflow. Each export is only
@@ -101,6 +103,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
   const router = useRouter();
   const pathname = usePathname();
   const isSignedIn = useAuth().isSignedIn;
+  const { openUpgradeModal } = useSmartVideoAccess();
   const auth = useAuthConfig();
   const slug = params?.slug || []; 
   const idFromParams = params?.id;
@@ -405,7 +408,35 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
     delete axios.defaults.headers.common['x-api-key'];
     delete axios.defaults.headers.common['x-openai-key'];
 
-    if (!apiKey && !openaiKey) return;
+    const paymentResponseInterceptor = axios.interceptors.response.use(undefined, (error) => {
+      if (error?.response?.status === 403 && error?.response?.data?.error === 'PAYMENT_REQUIRED') {
+        openUpgradeModal(error.response.data.entitlement || 'default');
+      }
+      return Promise.reject(error);
+    });
+
+    const FETCH_PATCH_FLAG = Symbol.for('smartvideo.paymentRequiredFetchPatch');
+    if (typeof window !== 'undefined' && !window[FETCH_PATCH_FLAG]) {
+      window[FETCH_PATCH_FLAG] = true;
+      const originalFetch = window.fetch.bind(window);
+      window.fetch = async (input, init) => {
+        const response = await originalFetch(input, init);
+        if (response.status === 403) {
+          try {
+            const data = await response.clone().json();
+            if (data?.error === 'PAYMENT_REQUIRED') {
+              openUpgradeModal(data.entitlement || 'default');
+            }
+          } catch {
+          }
+        }
+        return response;
+      };
+    }
+
+    if (!apiKey && !openaiKey) return () => {
+      axios.interceptors.response.eject(paymentResponseInterceptor);
+    };
 
     const interceptorId = axios.interceptors.request.use((config) => {
       // Check if URL is local/proxied
@@ -422,8 +453,9 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
 
     return () => {
       axios.interceptors.request.eject(interceptorId);
+      axios.interceptors.response.eject(paymentResponseInterceptor);
     };
-  }, [apiKey, openaiKey]);
+  }, [apiKey, openaiKey, openUpgradeModal]);
 
   // Poll for balance every 30 seconds if key is present
   useEffect(() => {
@@ -601,6 +633,8 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
                 </span>
               </div>
             </div>
+
+            <PreviewModeBadge />
 
             {!demoMode && (
               <button
