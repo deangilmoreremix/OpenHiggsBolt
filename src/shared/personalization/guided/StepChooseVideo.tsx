@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Check, Film, FolderOpen, Upload, Video } from 'lucide-react'
+import { Check, Film, FolderOpen, Sparkles, Upload, Video } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { GUIDED_DEMO_VIDEOS, demoDurationInFrames } from './curatedDemos'
-import { C, badgeStyle, hintStyle, labelStyle, panelStyle, softPanelStyle, tileStyle } from './tokens'
+import { C, badgeStyle, chipStyle, hintStyle, labelStyle, panelStyle, softPanelStyle, tileStyle } from './tokens'
+import { TemplateBrowser } from './TemplateBrowser'
 import type { SharedMediaEntry } from '../types'
 import type { PreviewVideoRef } from '../preview/types'
 
@@ -32,6 +33,7 @@ export function StepChooseVideo(): React.JSX.Element {
   const { source, previewVideo, setPreviewVideo, previewSettings, updatePreviewComposition, sharedMediaEntries = [] } = ctx
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadNote, setUploadNote] = useState(false)
+  const [activeTab, setActiveTab] = useState<'source' | 'demos' | 'motion' | 'upload'>('source')
 
   const fps = previewSettings?.fps || 30
 
@@ -77,15 +79,47 @@ export function StepChooseVideo(): React.JSX.Element {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div>
-        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.text }}>Your video is ready</h2>
+        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.text }}>Choose a video to personalize</h2>
         <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 12, lineHeight: 1.55 }}>
-          We selected the video you opened for you. Keep it, or pick a different one below — your business details and
-          edits stay either way.
+          Pick the video you opened, an AI demo, a Motion Studio recipe, or upload your own — your business
+          details and edits stay either way.
         </p>
       </div>
 
+      {/* ── Source / Demos / Motion Studio / Upload tabs ─────────────────── */}
+      <div
+        role="tablist"
+        aria-label="Step 2 video source"
+        style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}
+      >
+        <TabButton
+          label="Your video"
+          icon={Video}
+          active={activeTab === 'source'}
+          onClick={() => setActiveTab('source')}
+        />
+        <TabButton
+          label="AI Demos"
+          icon={Film}
+          active={activeTab === 'demos'}
+          onClick={() => setActiveTab('demos')}
+        />
+        <TabButton
+          label="Motion Studio"
+          icon={Sparkles}
+          active={activeTab === 'motion'}
+          onClick={() => setActiveTab('motion')}
+        />
+        <TabButton
+          label="Upload"
+          icon={Upload}
+          active={activeTab === 'upload'}
+          onClick={() => setActiveTab('upload')}
+        />
+      </div>
+
       {/* ── Current video (preselected automatically) ───────────────────── */}
-      {source?.sourceMedia && (
+      {activeTab === 'source' && source?.sourceMedia && (
         <div style={panelStyle}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
             <Video size={15} color={C.cyan} />
@@ -126,6 +160,7 @@ export function StepChooseVideo(): React.JSX.Element {
       )}
 
       {/* ── Demo library (optional) ─────────────────────────────────────── */}
+      {activeTab === 'demos' && (
       <div style={panelStyle}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
           <Film size={15} color={C.cyan} />
@@ -168,9 +203,15 @@ export function StepChooseVideo(): React.JSX.Element {
           </>
         )}
       </div>
+      )}
+
+      {/* ── Motion Studio (full library: 124 cards / 150 shots / 10 categories) ── */}
+      {activeTab === 'motion' && (
+        <TemplateBrowser />
+      )}
 
       {/* ── Saved / previously generated videos ─────────────────────────── */}
-      {savedVideos.length > 0 && (
+      {activeTab === 'source' && savedVideos.length > 0 && (
         <div style={panelStyle}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
             <FolderOpen size={15} color={C.cyan} />
@@ -202,6 +243,7 @@ export function StepChooseVideo(): React.JSX.Element {
       )}
 
       {/* ── Upload (optional) ───────────────────────────────────────────── */}
+      {activeTab === 'upload' && (
       <div style={panelStyle}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <Upload size={15} color={C.cyan} />
@@ -225,6 +267,38 @@ export function StepChooseVideo(): React.JSX.Element {
           <p style={hintStyle}>Uploaded videos stay in this browser preview — nothing is uploaded to a server.</p>
         )}
       </div>
+      )}
     </div>
+  )
+}
+
+/**
+ * Tab button used by Step 2's source picker. Renders an icon + label and
+ * applies the active/cyan accent when `active` is true.
+ */
+function TabButton({
+  label,
+  icon: Icon,
+  active,
+  onClick,
+}: {
+  label: string
+  icon: React.ComponentType<{ size?: number; color?: string }>
+  active: boolean
+  onClick: () => void
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      style={chipStyle(active)}
+    >
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <Icon size={12} color={active ? C.cyan : C.muted} />
+        {label}
+      </span>
+    </button>
   )
 }
