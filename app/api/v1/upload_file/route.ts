@@ -4,6 +4,7 @@ import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/ap
 import { ENTITLEMENTS } from '@/access/entitlements';
 import { getApiKeyFromRequest, isBlockedFileType } from '@/lib/uploadProxyTarget';
 import { getUploadLimit, isAllowedUploadMimeType, formatUploadLimit, ALLOWED_UPLOAD_MIME_TYPES } from '@/lib/uploadConfig';
+import { auth } from '@clerk/nextjs/server';
 
 const MUAPI_UPLOAD_URL = 'https://api.muapi.ai/api/v1/upload_file';
 
@@ -18,6 +19,7 @@ const MUAPI_UPLOAD_URL = 'https://api.muapi.ai/api/v1/upload_file';
 // packages/studio/src/muapi.js). Keep the client budget in sync if changed:
 //   worst case = UPLOAD_MAX_RETRIES * UPLOAD_ATTEMPT_TIMEOUT_MS + backoff
 const UPLOAD_ATTEMPT_TIMEOUT_MS = 120_000;
+
 // ── Structured failure classification ────────────────────────────────────────
 // Every upload failure returns a machine-readable `code` plus a human message.
 // The client can branch on `code` without parsing prose; logs get the diagnostic
@@ -57,6 +59,110 @@ function logUploadFailure(code: UploadFailureCode, detail: Record<string, unknow
 
 const UPLOAD_MAX_RETRIES = 3;
 const UPLOAD_BASE_DELAY_MS = 1_000;
+
+// ── Durable storage ─────────────────────────────────────────────────────────
+// MuAPI upload URLs expire after one hour, so the URL this route returns is
+// TEMPORARY by construction and must never be an asset's permanent
+// identifier. The permanent identifier is a Supabase Storage object under a
+// workspace-scoped prefix, and the way to get a fresh MuAPI URL after an hour
+// is to re-upload that object from here.
+//
+// This is also what makes a 50 MB video survivable: Netlify Functions cap a
+// buffered function request payload at 6 MB (binary bodies are Base64-encoded,
+// so ~4.5 MB in practice). A file that large is written straight to storage by
+// the browser, and this route re-uploads it storage → MuAPI, so the only thing
+// that crosses the function boundary is an asset id.
+const DURABLE_BUCKET = 'personalization-assets';
+const ASSET_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+
+function sanitizeSegment(value: string, fallback = 'x'): string {
+  const cleaned = String(value)
+    .replace(/[^A-Za-z0-9._-]/g, '-')
+    .replace(/^[.-]+/, '')
+    .slice(0, 96);
+  return cleaned || fallback;
+}
+
+function durableObjectPath(workspaceId: string, assetId: string, name: string): string {
+  // Workspace first: the object path itself carries the authorization scope,
+  // so a read for another workspace's asset resolves to a different prefix.
+  return `${sanitizeSegment(workspaceId)}/${sanitizeSegment(assetId)}/${sanitizeSegment(name, 'file')}`;
+}
+
+/**
+ * The caller's AUTHORIZED workspace, taken from the verified session and
+ * never from anything in the request. Returns null when there is no session.
+ */
+async function resolveAuthorizedWorkspace(): Promise<string | null> {
+  try {
+    const { userId } = await auth();
+    return userId ? String(userId) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function createDurableStorageClient() {
+  const { createServerClient } = await import('@/lib/supabase');
+  return createServerClient();
+}
+
+/** Durably store an original under the caller's workspace prefix. */
+async function storeDurableOriginal(params: {
+  workspaceId: string;
+  assetId: string;
+  file: File;
+}): Promise<{ durableRef: string; durableUrl: string | null }> {
+  const durableRef = durableObjectPath(params.workspaceId, params.assetId, params.file.name);
+  const storage = (await createDurableStorageClient()).storage.from(DURABLE_BUCKET);
+  const { error } = await storage.upload(durableRef, params.file, {
+    upsert: true,
+    contentType: params.file.type || 'application/octet-stream',
+  });
+  if (error) {
+    throw new Error(`durable storage upload failed: ${error.message}`);
+  }
+  const { data } = storage.getPublicUrl(durableRef);
+  return { durableRef, durableUrl: data?.publicUrl ?? null };
+}
+
+/**
+ * Locate the durable original stored for one asset inside the caller's
+ * workspace prefix.
+ *
+ * The workspace prefix is built from the SESSION workspace, never from the
+ * request, so looking up an asset that lives in another workspace resolves to
+ * a different prefix and simply finds nothing — indistinguishable from an
+ * asset that does not exist. The object's own filename is discovered by
+ * listing the prefix, so a caller cannot request an arbitrary path.
+ */
+async function findDurableOriginal(
+  workspaceId: string,
+  assetId: string,
+): Promise<{ objectPath: string; name: string; size: number } | null> {
+  const prefix = `${sanitizeSegment(workspaceId)}/${sanitizeSegment(assetId)}`;
+  const storage = (await createDurableStorageClient()).storage.from(DURABLE_BUCKET);
+  const { data, error } = await storage.list(prefix, {
+    limit: 20,
+    sortBy: { column: 'name', order: 'asc' },
+  });
+  if (error) {
+    throw new Error(`durable storage list failed: ${error.message}`);
+  }
+  const entries = (Array.isArray(data) ? data : []) as Array<{
+    name?: unknown;
+    metadata?: { size?: unknown } | null;
+  }>;
+  const entry = entries.find(
+    (candidate) => typeof candidate?.name === 'string' && candidate.name.length > 0,
+  );
+  if (!entry) return null;
+  return {
+    objectPath: `${prefix}/${String(entry.name)}`,
+    name: String(entry.name),
+    size: Number(entry.metadata?.size ?? 0),
+  };
+}
 
 async function attemptMuApiUpload(apiKey: string, formData: FormData): Promise<Response> {
   return fetch(MUAPI_UPLOAD_URL, {
@@ -98,7 +204,220 @@ async function uploadWithRetry(apiKey: string, formData: FormData): Promise<Resp
   throw lastError || new Error('MuAPI upload failed after retries');
 }
 
+/** Forward an upstream upload response, translating its body into ours. */
+async function forwardMuAPIResponse(response: Response): Promise<NextResponse> {
+  const parsed = await safeApiJson(response);
+
+  if (response.ok) {
+    const url = typeof parsed === 'object' && parsed !== null
+      ? (parsed as any).url || (parsed as any).file_url || (parsed as any).data?.url
+      : undefined;
+
+    if (!url || typeof url !== 'string') {
+      return NextResponse.json({ error: 'No URL returned from file upload' }, { status: 502 });
+    }
+
+    return NextResponse.json({
+      url,
+      name: (parsed as any)?.name,
+      size: (parsed as any)?.size,
+      type: (parsed as any)?.type,
+    });
+  }
+
+  return upstreamErrorResponse(response, parsed);
+}
+
+/**
+ * `GET /api/v1/upload_file?durable_asset_id=<id>`
+ *
+ * Durable-record lookup, scoped to the session workspace. A caller asking for
+ * another workspace's asset gets an indistinguishable 404, never a leak.
+ */
+async function handleDurableRecordRequest(request: NextRequest): Promise<NextResponse> {
+  const workspaceId = await resolveAuthorizedWorkspace();
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+  }
+
+  const assetId = new URL(request.url).searchParams.get('durable_asset_id') || '';
+  if (!ASSET_ID_PATTERN.test(assetId)) {
+    return NextResponse.json({ error: 'Invalid durable asset id' }, { status: 400 });
+  }
+
+  const found = await findDurableOriginal(workspaceId, assetId);
+  if (!found) {
+    return NextResponse.json({ error: 'Durable asset not found' }, { status: 404 });
+  }
+
+  const storage = (await createDurableStorageClient()).storage.from(DURABLE_BUCKET);
+  const { data: publicUrl } = storage.getPublicUrl(found.objectPath);
+
+  return NextResponse.json({
+    assetId,
+    workspaceId,
+    durableRef: found.objectPath,
+    durableUrl: publicUrl?.publicUrl ?? null,
+    name: found.name,
+    size: found.size,
+  });
+}
+
+/**
+ * `POST /api/v1/upload_file?durable=resolve` with a JSON `{ durable_asset_id }`.
+ *
+ * Re-uploads the DURABLE ORIGINAL to MuAPI and returns a fresh temporary URL.
+ * This is the only sanctioned way to obtain a new URL once the previous one has
+ * passed its one-hour lifetime: the bytes come from authorized storage, so the
+ * request body stays a few hundred bytes even for a 50 MB video.
+ */
+async function handleDurableResolveRequest(request: NextRequest): Promise<NextResponse> {
+  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
+  if (!entitlementCheck.allowed) {
+    if (entitlementCheck.status === 401) {
+      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+    }
+    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
+  }
+
+  const workspaceId = await resolveAuthorizedWorkspace();
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+  }
+
+  let assetId = '';
+  try {
+    const payload = await request.json();
+    assetId = String(payload?.durable_asset_id ?? payload?.durable_assetId ?? '');
+  } catch {
+    return NextResponse.json({ error: 'Request must be JSON' }, { status: 400 });
+  }
+
+  if (!ASSET_ID_PATTERN.test(assetId)) {
+    return NextResponse.json({ error: 'Invalid durable asset id' }, { status: 400 });
+  }
+
+  const apiKey = getApiKeyFromRequest(request);
+  if (!apiKey) {
+    return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 });
+  }
+
+  let original: File | null = null;
+  let durableRef = '';
+  try {
+    const found = await findDurableOriginal(workspaceId, assetId);
+    if (found) {
+      durableRef = found.objectPath;
+      const storage = (await createDurableStorageClient()).storage.from(DURABLE_BUCKET);
+      const downloaded = await storage.download(found.objectPath);
+      if (!downloaded.error && downloaded.data) {
+        original = new File([downloaded.data], found.name, {
+          type: downloaded.data.type || 'application/octet-stream',
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Durable original load failed:', error);
+    return NextResponse.json(
+      { error: 'Unable to load the stored original. Please upload the file again.' },
+      { status: 502 },
+    );
+  }
+
+  if (!original) {
+    return NextResponse.json(
+      { error: 'Durable asset not found in this workspace' },
+      { status: 404 },
+    );
+  }
+
+  const uploadForm = new FormData();
+  uploadForm.append('file', original);
+
+  let response: Response;
+  try {
+    response = await uploadWithRetry(apiKey, uploadForm);
+  } catch (error) {
+    return muAPIUnavailableResponse(error);
+  }
+
+  const parsed = await safeApiJson(response);
+  if (response.ok) {
+    const url = typeof parsed === 'object' && parsed !== null
+      ? (parsed as any).url || (parsed as any).file_url || (parsed as any).data?.url
+      : undefined;
+
+    if (!url || typeof url !== 'string') {
+      return NextResponse.json({ error: 'No URL returned from file upload' }, { status: 502 });
+    }
+
+    return NextResponse.json({
+      url,
+      name: original.name,
+      size: original.size,
+      type: original.type,
+      source: 'durable',
+      durableRef,
+      uploadedAt: Date.now(),
+      expiresAt: Date.now() + 60 * 60 * 1000,
+    });
+  }
+
+  return upstreamErrorResponse(response, parsed);
+}
+
+/** Map an upstream upload failure onto a safe, non-echoing response. */
+function muAPIUnavailableResponse(error: unknown): NextResponse {
+  console.error('MuAPI upload failed after retries:', error);
+
+  if (error instanceof TypeError) {
+    return NextResponse.json(
+      { error: 'Unable to reach MuAPI. Please check your connection and try again.' },
+      { status: 502 }
+    );
+  }
+
+  const message = error instanceof Error ? error.message : '';
+  if (/MuAPI upload failed with status 5\d\d/.test(message)) {
+    return NextResponse.json(
+      { error: 'MuAPI is temporarily unavailable. Please try again in a moment.' },
+      { status: 502 }
+    );
+  }
+
+  // Never echo `message` back: the retry layer embeds the raw upstream body
+  // in the Error text, and that body can contain upstream identifiers.
+  // The exact cause is logged server-side for debugging instead.
+  return NextResponse.json(
+    { error: 'MuAPI upload failed. Please try again.' },
+    { status: 502 }
+  );
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    if (!new URL(request.url).searchParams.has('durable_asset_id')) {
+      return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
+    }
+    return await handleDurableRecordRequest(request);
+  } catch (error) {
+    console.error('Upload file exception:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function POST(request: NextRequest) {
+  // The durable-resolve hop is the only body-light path; it is a JSON request
+  // so a plain multipart POST keeps its existing contract untouched.
+  if (new URL(request.url).searchParams.get('durable') === 'resolve') {
+    try {
+      return await handleDurableResolveRequest(request);
+    } catch (error) {
+      console.error('Upload file exception:', error);
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+  }
+
   const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
   if (!entitlementCheck.allowed) {
     if (entitlementCheck.status === 401) {
@@ -152,6 +471,34 @@ export async function POST(request: NextRequest) {
       return fail('UNAUTHENTICATED', 'Unauthorized: Missing API key', 401);
     }
 
+    // Optional durable mirror: the original is written to authorized storage
+    // BEFORE it is forwarded to MuAPI, so the asset's permanent identifier is
+    // a durable reference even on the small-file path. The workspace comes
+    // from the session, never from the request.
+    const durableAssetId = typeof formData.get('durable_asset_id') === 'string'
+      ? String(formData.get('durable_asset_id'))
+      : '';
+    let durableRef: string | null = null;
+    let durableUrl: string | null = null;
+
+    if (durableAssetId && ASSET_ID_PATTERN.test(durableAssetId)) {
+      const workspaceId = await resolveAuthorizedWorkspace();
+      if (!workspaceId) {
+        return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
+      }
+      try {
+        const stored = await storeDurableOriginal({ workspaceId, assetId: durableAssetId, file });
+        durableRef = stored.durableRef;
+        durableUrl = stored.durableUrl;
+      } catch (error) {
+        console.error('Durable original store failed:', error);
+        return NextResponse.json(
+          { error: 'Unable to save the original to durable storage.' },
+          { status: 502 }
+        );
+      }
+    }
+
     const uploadForm = new FormData();
     uploadForm.append('file', file);
 
@@ -159,35 +506,7 @@ export async function POST(request: NextRequest) {
     try {
       response = await uploadWithRetry(apiKey, uploadForm);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '';
-
-      // Distinguish "never connected" from "connected then rejected" so the
-      // client can decide whether retrying later is worthwhile.
-      const isNetwork = error instanceof TypeError || /fetch failed|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|socket hang up/i.test(message);
-      const code: UploadFailureCode = isNetwork
-        ? 'UPSTREAM_UNREACHABLE'
-        : /status 5\d\d/.test(message)
-          ? 'UPSTREAM_UNAVAILABLE'
-          : 'UPSTREAM_REJECTED';
-
-      // The retry layer's message embeds the raw upstream body, so it is logged
-      // to the server only and never returned to the client.
-      logUploadFailure(code, {
-        attempts: UPLOAD_MAX_RETRIES,
-        mime: file.type,
-        bytes: file.size,
-        upstreamStatus: (message.match(/status (\d{3})/) || [])[1] ?? null,
-        errorClass: error instanceof Error ? error.constructor.name : typeof error,
-      });
-      console.error('[upload_file] upstream detail (server-side only):', message);
-
-      if (isNetwork) {
-        return fail('UPSTREAM_UNREACHABLE', 'Unable to reach MuAPI. Please check your connection and try again.', 502);
-      }
-      if (code === 'UPSTREAM_UNAVAILABLE') {
-        return fail('UPSTREAM_UNAVAILABLE', 'MuAPI is temporarily unavailable. Please try again in a moment.', 502);
-      }
-      return fail('UPSTREAM_REJECTED', 'MuAPI upload failed. Please try again.', 502);
+      return muAPIUnavailableResponse(error);
     }
 
     const parsed = await safeApiJson(response);
@@ -207,6 +526,11 @@ export async function POST(request: NextRequest) {
         name: file.name,
         size: file.size,
         type: file.type,
+        uploadedAt: Date.now(),
+        expiresAt: Date.now() + 60 * 60 * 1000,
+        source: durableRef ? 'durable' : 'bytes',
+        durableRef,
+        durableUrl,
       });
     }
 
