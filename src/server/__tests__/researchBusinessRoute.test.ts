@@ -37,6 +37,22 @@ vi.mock('@/server/envValidation', () => ({
   validatePersonalizationEnv: vi.fn(),
 }))
 
+// Hoisted entitlement mocks. vi.resetAllMocks() in beforeEach() would wipe
+// `mockResolvedValue` set in a factory, so the mock is hoisted and the
+// allow/deny return value is configured via the hoisted allow helper.
+const entitlementMocks = vi.hoisted(() => ({
+  allowed: true as boolean,
+}))
+
+vi.mock('@/access/apiRequireEntitlement', () => ({
+  requireApiEntitlement: vi.fn(async () =>
+    entitlementMocks.allowed ? { allowed: true } : { allowed: false, status: 403 }
+  ),
+  entitlementForbiddenResponse: vi.fn().mockReturnValue(
+    new Response(JSON.stringify({ error: 'PAYMENT_REQUIRED' }), { status: 403 })
+  ),
+}))
+
 // The provider is mocked at the module boundary only: researchBusiness (and
 // its sibling export for API parity) are controllable spies.
 vi.mock('@/server/businessDiscovery/researchProvider', () => ({
@@ -106,6 +122,9 @@ beforeEach(() => {
   vi.resetAllMocks()
   // Reset the limiter stub's per-key counters (the isolation mechanism).
   rateLimitMocks.hits.clear()
+  // Default: every test in this file is a paid user. The free-user tests
+  // flip entitlementMocks.allowed to false for the duration of one test.
+  entitlementMocks.allowed = true
 
   vi.mocked(createCorrelationId).mockReturnValue('test-correlation-id')
   vi.mocked(validatePersonalizationEnv).mockReturnValue({ valid: true, missingRequired: [] } as any)

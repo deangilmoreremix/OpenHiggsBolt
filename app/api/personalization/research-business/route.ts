@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
 import { validatePersonalizationEnv } from '@/server/envValidation'
 import { rateLimit, rateLimit429, resolveRateLimitKey } from '@/lib/rateLimit'
+import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
+import { ENTITLEMENTS } from '@/access/entitlements'
 
 export const dynamic = "force-dynamic";
 
@@ -104,6 +106,16 @@ function classifyFailureStatus(message: string, nodeCode?: string): number {
 export async function POST(req: NextRequest) {
   const correlationId = createCorrelationId(req)
   const startTime = Date.now()
+
+  // Server-side entitlement gate: research-business is a paid action. Free
+  // users get 401 (not signed in) or 403 (signed in, no entitlement).
+  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
+  if (!entitlementCheck.allowed) {
+    if (entitlementCheck.status === 401) {
+      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
+    }
+    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO)
+  }
 
   // Per-IP rate limit (unauthenticated public-proxy route); protects the
   // upstream target site and this server from fetch abuse.

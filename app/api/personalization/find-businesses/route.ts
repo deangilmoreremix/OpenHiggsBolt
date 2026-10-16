@@ -3,6 +3,9 @@ import { geocodeLocation, discoverBusinesses, AllOverpassProvidersFailed, search
 import { getNicheMapping, getSupportedNiches } from '@/server/businessDiscovery'
 import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
 import { rateLimit, rateLimit429, resolveRateLimitKey } from '@/lib/rateLimit'
+import { validatePersonalizationEnv } from '@/server/envValidation'
+import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
+import { ENTITLEMENTS } from '@/access/entitlements'
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +80,16 @@ export async function POST(req: NextRequest) {
   const correlationId = createCorrelationId(req)
   const startTime = Date.now()
 
+  // Server-side entitlement gate: find-businesses is a paid action (queries
+  // Nominatim/Overpass at the operator's expense). Free users get 401/403.
+  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
+  if (!entitlementCheck.allowed) {
+    if (entitlementCheck.status === 401) {
+      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
+    }
+    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO)
+  }
+
   // Per-IP rate limit (unauthenticated public-proxy route). The limiter is
   // in-process only (see lib/rateLimit.ts), matching the other personalization
   // routes; it exists to protect the upstream Nominatim/Overpass quota.
@@ -89,6 +102,25 @@ export async function POST(req: NextRequest) {
   const rateLimitMax = rateLimitKey === 'anon' ? ANON_RATE_LIMIT_MAX : RATE_LIMIT_MAX
   const rateLimitResult = rateLimit(rateLimitKey, { windowMs: RATE_LIMIT_WINDOW_MS, max: rateLimitMax })
   if (!rateLimitResult.allowed) return rateLimit429(rateLimitResult.retryAfterMs)
+
+  // Environment validation — missing provider keys or misconfigured env vars
+  // would otherwise surface as opaque downstream 502s. Fail fast with a 500
+  // and a generic message (details go to the log only).
+  const envCheck = validatePersonalizationEnv()
+  if (!envCheck.valid) {
+    logPersonalization({
+      route: '/api/personalization/find-businesses',
+      stage: 'env-validation',
+      httpStatus: 500,
+      safeErrorCode: 'ENV_MISSING',
+      safeMessage: `Missing required env vars: ${envCheck.missingRequired.join(', ')}`,
+      correlationId,
+    })
+    return NextResponse.json(
+      { error: 'Server configuration error', correlationId },
+      { status: 500, headers: { 'x-correlation-id': correlationId } },
+    )
+  }
 
   try {
     const body = await req.json().catch(() => ({}))

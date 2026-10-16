@@ -34,6 +34,22 @@ vi.mock('@/server/discoveryJobs', () => ({
   updateDiscoveryJob: vi.fn(),
 }))
 
+// Hoisted entitlement mocks. vi.clearAllMocks() in beforeEach() would wipe
+// `mockResolvedValue` set in a factory, so the mock is hoisted and the
+// allow/deny return value is configured via the hoisted allow helper.
+const entitlementMocks = vi.hoisted(() => ({
+  allowed: true as boolean,
+}))
+
+vi.mock('@/access/apiRequireEntitlement', () => ({
+  requireApiEntitlement: vi.fn(async () =>
+    entitlementMocks.allowed ? { allowed: true } : { allowed: false, status: 403 }
+  ),
+  entitlementForbiddenResponse: vi.fn().mockReturnValue(
+    new Response(JSON.stringify({ error: 'PAYMENT_REQUIRED' }), { status: 403 })
+  ),
+}))
+
 // Import after mocks are registered
 import { POST } from '@/app/api/personalization/discover-assets/route'
 import { NextRequest } from 'next/server'
@@ -45,6 +61,9 @@ import { runFastDiscovery } from '@/server/discoveryOrchestrator'
 describe('POST /api/personalization/discover-assets auth', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Default: every test in this file is a paid user. The free-user tests
+    // flip entitlementMocks.allowed to false for the duration of one test.
+    entitlementMocks.allowed = true
     vi.mocked(validatePersonalizationEnv).mockReturnValue({ valid: true } as any)
     vi.mocked(runFastDiscovery).mockResolvedValue({
       result: {
