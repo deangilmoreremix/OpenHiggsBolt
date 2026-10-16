@@ -59,15 +59,15 @@ const PAID_PATHS: string[] = [
   'app/api/v1/upload_file/route.ts',
   'app/api/v1/upload-binary/route.js',
   'app/api/v1/get_upload_url/route.js',
-  // personalization (POST/DELETE-gated; project/route.ts gates POST+DELETE, GET stays open)
-  'app/api/personalization/image-edit/route.ts',
-  'app/api/personalization/image-smart-edit/route.ts',
-  'app/api/personalization/image-analyze/route.ts',
-  'app/api/personalization/find-businesses/route.ts',
-  'app/api/personalization/research-business/route.ts',
-  'app/api/personalization/download-image/route.ts',
-  'app/api/personalization/discover-assets/route.ts',
-  'app/api/personalization/project/route.ts',
+  // paid studio surfaces
+  'app/api/animate/route.ts',
+  'app/api/assets/route.ts',
+  'app/api/brand/analyze/route.ts',
+  'app/api/campaigns/route.ts',
+  // personalization routes are FREE for the demo experience
+  // (find-businesses, research-business, discover-assets, download-image,
+  //  project GET, image-edit, image-smart-edit, image-analyze)
+  // (see ALLOWLIST_PATHS below)
   // canonical upload
   'app/api/upload-binary/route.js',
 ]
@@ -97,6 +97,15 @@ const ALLOWLIST_PATHS: string[] = [
   // webhooks/*
   'app/api/webhooks/clerk/route.ts',
   'app/api/webhooks/stripe/route.ts',
+  // personalization (free for the demo experience)
+  'app/api/personalization/image-edit/route.ts',
+  'app/api/personalization/image-smart-edit/route.ts',
+  'app/api/personalization/image-analyze/route.ts',
+  'app/api/personalization/find-businesses/route.ts',
+  'app/api/personalization/research-business/route.ts',
+  'app/api/personalization/download-image/route.ts',
+  'app/api/personalization/discover-assets/route.ts',
+  'app/api/personalization/project/route.ts',
 ]
 
 function walkRouteFiles(dir: string): string[] {

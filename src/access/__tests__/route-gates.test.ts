@@ -176,48 +176,7 @@ const GATED: Array<{ id: string; call: (headers?: Record<string, string>) => Pro
       return GET(req('http://localhost/api/v1/get_upload_url', { method: 'GET', headers: { 'x-api-key': 'k', ...headers } }))
     },
   },
-  {
-    id: 'POST /api/personalization/find-businesses',
-    call: async (headers) => {
-      const { POST } = await import('@/app/api/personalization/find-businesses/route')
-      return POST(req('http://localhost/api/personalization/find-businesses', { method: 'POST', headers, body: { niche: 'restaurants-food', location: 'Austin, TX' } }))
-    },
-  },
-  {
-    id: 'POST /api/personalization/research-business',
-    call: async (headers) => {
-      const { POST } = await import('@/app/api/personalization/research-business/route')
-      return POST(req('http://localhost/api/personalization/research-business', { method: 'POST', headers, body: { websiteUrl: 'https://example.com' } }))
-    },
-  },
-  {
-    id: 'POST /api/personalization/download-image',
-    call: async (headers) => {
-      const { POST } = await import('@/app/api/personalization/download-image/route')
-      return POST(req('http://localhost/api/personalization/download-image', { method: 'POST', headers, body: { urls: ['https://example.com/x.png'] } }))
-    },
-  },
-  {
-    id: 'POST /api/personalization/discover-assets',
-    call: async (headers) => {
-      const { POST } = await import('@/app/api/personalization/discover-assets/route')
-      return POST(req('http://localhost/api/personalization/discover-assets', { method: 'POST', headers, body: { websiteUrl: 'https://example.com' } }))
-    },
-  },
-  {
-    id: 'POST /api/personalization/project',
-    call: async (headers) => {
-      const { POST } = await import('@/app/api/personalization/project/route')
-      return POST(req('http://localhost/api/personalization/project', { method: 'POST', headers, body: { project: { source: {} } } }))
-    },
-  },
-  {
-    id: 'DELETE /api/personalization/project',
-    call: async (headers) => {
-      const { DELETE } = await import('@/app/api/personalization/project/route')
-      return DELETE(req('http://localhost/api/personalization/project?id=proj-123', { method: 'DELETE', headers }))
-    },
-  },
+  // personalization routes are FREE for the demo experience — no gate
 ]
 
 describe('newly gated route handlers — entitlement gate outcomes', () => {
@@ -305,6 +264,15 @@ describe('read-only preview routes import no entitlement gate (static source che
     'app/api/thumbnail/route.js',
     'app/api/version/route.ts',
     'app/api/academy/content/route.ts',
+    // personalization routes are free for the demo experience
+    'app/api/personalization/find-businesses/route.ts',
+    'app/api/personalization/research-business/route.ts',
+    'app/api/personalization/discover-assets/route.ts',
+    'app/api/personalization/download-image/route.ts',
+    'app/api/personalization/project/route.ts',
+    'app/api/personalization/image-edit/route.ts',
+    'app/api/personalization/image-smart-edit/route.ts',
+    'app/api/personalization/image-analyze/route.ts',
   ]
 
   for (const rel of READ_ONLY_PREVIEW) {
