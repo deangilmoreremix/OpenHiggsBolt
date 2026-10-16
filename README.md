@@ -689,3 +689,4 @@ Built with [Muapi.ai](https://muapi.ai?utm_source=github&utm_medium=readme&utm_c
 
 ---
 *Looking for a free, open-source AI Video Platform? SmartVideo GO is an open-source AI image and video generation studio — with no content filters that you can self-host, customize, and extend.*
+# Netlify deploy trigger
