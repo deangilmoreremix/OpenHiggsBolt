@@ -41,7 +41,8 @@
     "checkoutPending": "结账尚未配置。在接入经过验证的 Stripe 产品前，购买功能不可用。",
     "checkoutPendingMissing": "Stripe 配置待完成：{missing}。",
     "checkoutError": "无法启动结账，请稍后重试。",
-    "recommended": "最完整"
+    "recommended": "最完整",
+    "opensStripeCheckout": "在新标签页中打开 Stripe 结账。在授予访问权限前，购买会在服务器端进行验证。"
   },
   "steps": {
     "heading": "运作方式",

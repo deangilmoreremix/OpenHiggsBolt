@@ -41,7 +41,8 @@
     "checkoutPending": "Checkout is not configured yet. Purchases stay unavailable until verified Stripe products are linked.",
     "checkoutPendingMissing": "Pending Stripe configuration: {missing}.",
     "checkoutError": "Checkout could not be started. Please try again in a moment.",
-    "recommended": "Most complete"
+    "recommended": "Most complete",
+    "opensStripeCheckout": "Opens Stripe Checkout in a new tab. Your purchase is verified server-side before access is granted."
   },
   "steps": {
     "heading": "How It Works",

@@ -7,6 +7,16 @@ import zh from "../messages/zh/appsStudio.json";
 import { resolveCopy } from "../i18nUtils";
 import destinations from "../../../../src/data/resellerDestinations.json";
 
+// Live Stripe Checkout links for the reseller packages. Each link opens the
+// corresponding buy.stripe.com Checkout session. Payment is verified server-side
+// by the Stripe webhook (checkout.session.completed) before any entitlement is
+// granted — a customer simply reaching the success page is never treated as
+// proof of purchase.
+const STRIPE_CHECKOUT_LINKS = {
+  diy: 'https://buy.stripe.com/3cI5kC74Ed6w8m95Ac5Rm0s',
+  training: 'https://buy.stripe.com/7sY00igFefeEdGt4w85Rm0r',
+};
+
 const APPS = [
   {
     id: "ai-headshot-studio",
@@ -472,53 +482,6 @@ export default function AppsStudio({ locale = "en" }) {
   const isRedirectableUrl = (url) => typeof url === "string" && /^https:\/\//.test(url);
 
   /**
-   * POST /api/reseller/checkout { package } and hand the browser to the
-   * Stripe-hosted session URL the route returns.
-   *
-   * A 503/RESELLER_STRIPE_NOT_CONFIGURED answer keeps the CTA disabled and
-   * explains that Stripe configuration is pending, so the marketplace never
-   * fakes a checkout. Any other failure (including an endpoint that does not
-   * exist yet) only shows a retryable message — the page keeps rendering.
-   */
-  const startCheckout = useCallback(async (packageKey) => {
-    const current = purchase[packageKey];
-    if (current && (current.status === "pending" || current.status === "redirecting" || current.status === "unavailable")) {
-      return;
-    }
-    setPurchaseStatus(packageKey, { status: "pending", message: "", missing: [] });
-    try {
-      const res = await fetch("/api/reseller/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({ package: packageKey }),
-      });
-      if (res.status === 503) {
-        const data = await readJsonSafely(res);
-        setPurchaseStatus(packageKey, {
-          status: "unavailable",
-          missing: Array.isArray(data?.missing) ? data.missing : [],
-        });
-        return;
-      }
-      if (!res.ok) {
-        const data = await readJsonSafely(res);
-        setPurchaseStatus(packageKey, { status: "error", message: data?.error || copy.packages.checkoutError });
-        return;
-      }
-      const data = await readJsonSafely(res);
-      if (!isRedirectableUrl(data?.url)) {
-        setPurchaseStatus(packageKey, { status: "error", message: copy.packages.checkoutError });
-        return;
-      }
-      setPurchaseStatus(packageKey, { status: "redirecting" });
-      redirectToUrl(data.url);
-    } catch {
-      setPurchaseStatus(packageKey, { status: "error", message: copy.packages.checkoutError });
-    }
-  }, [copy, purchase, readJsonSafely, setPurchaseStatus]);
-
-  /**
    * POST /api/reseller/upgrade — the $400 path from DIY App Builder to
    * Apps + Training. The route answers 409 ALREADY_TRAINING, 402
    * UPGRADE_NOT_ELIGIBLE, or 503 while Stripe is unconfigured; each is
@@ -629,9 +592,6 @@ export default function AppsStudio({ locale = "en" }) {
               { key: 'training', featured: true },
             ].map(({ key, featured }) => {
               const pkg = copy.packages[key];
-              const state = purchase[key] || { status: 'idle' };
-              const busy = state.status === 'pending' || state.status === 'redirecting';
-              const locked = busy || state.status === 'unavailable';
               return (
                 <article
                   key={key}
@@ -668,46 +628,28 @@ export default function AppsStudio({ locale = "en" }) {
                     ))}
                   </ul>
                   <div className="mt-6 space-y-2.5">
-                    {/* Purchases open the real Stripe-hosted checkout returned by
-                        POST /api/reseller/checkout. Until Stripe is configured the
-                        route answers 503 and this stays a disabled control rather
-                        than a link, so nothing looks like a working fake checkout. */}
-                    <button
-                      type="button"
-                      onClick={() => startCheckout(key)}
-                      disabled={locked}
-                      aria-disabled={locked ? 'true' : undefined}
+                    {/* Purchases open the live Stripe Checkout hosted by buy.stripe.com.
+                        Payment is verified server-side by the Stripe webhook
+                        (checkout.session.completed) before any reseller entitlement
+                        is granted. A customer simply reaching the success page is
+                        never treated as proof of purchase. */}
+                    <a
+                      href={STRIPE_CHECKOUT_LINKS[key]}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       data-package={key}
-                      data-status={state.status}
-                      className={`w-full rounded-full px-6 py-3 text-sm font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed ${
+                      data-status="ready"
+                      className={`w-full rounded-full px-6 py-3 text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                         featured
-                          ? 'bg-[#22d3ee] text-black'
-                          : 'bg-white/5 text-white/60 border border-white/10'
-                      } ${
-                        locked
-                          ? ''
-                          : 'hover:opacity-95 active:scale-[0.98] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40'
-                      }`}
+                          ? 'bg-[#22d3ee] text-black hover:bg-[#22d3ee]/90 active:scale-[0.98]'
+                          : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 hover:text-white'
+                      } focus:outline-none focus-visible:ring-1 focus-visible:ring-[#22d3ee]/40`}
                     >
-                      {busy ? copy.packages.redirecting : pkg.cta}
-                    </button>
-                    {state.status === 'unavailable' && (
-                      <div role="status" className="space-y-1">
-                        <p className="text-[11px] text-amber-300/90 font-medium leading-relaxed">
-                          {copy.packages.checkoutPending}
-                        </p>
-                        {Array.isArray(state.missing) && state.missing.length > 0 && (
-                          <p className="text-[11px] text-white/50 font-medium leading-relaxed">
-                            {copy.packages.checkoutPendingMissing.replace('{missing}', state.missing.join(', '))}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                    {state.status === 'error' && state.message && (
-                      <p role="alert" className="text-[11px] text-red-400 font-medium leading-relaxed">
-                        {state.message}
-                      </p>
-                    )}
+                      {pkg.cta}
+                    </a>
+                    <p role="status" className="text-[11px] text-white/50 font-medium leading-relaxed">
+                      {copy.packages.opensStripeCheckout}
+                    </p>
                   </div>
                 </article>
               );
