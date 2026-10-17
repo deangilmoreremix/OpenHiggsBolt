@@ -9,6 +9,8 @@ import {
   setEntitlementStatus,
 } from '@/access/resolveAccess';
 import { ENTITLEMENTS, type EntitlementStatus } from '@/access/entitlements';
+import { getResellerPackageIdForPriceId } from '@/lib/reseller/packages';
+import { applyResellerPurchase } from '@/lib/reseller/entitlements';
 
 export const dynamic = "force-dynamic";
 
@@ -225,6 +227,35 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event): Promise<void
   }
 
   const normalizedEmail = normalizeEmail(customerEmail);
+
+  // ── Reseller commerce (ADDITIVE) ──────────────────────────────────────────
+  // Reseller packages (apps_studio_diy / apps_studio_training) are sold with
+  // their own Stripe price IDs, configured via RESELLER_STRIPE_PRICE_* env
+  // vars. When a completed checkout matches a reseller price, grant the
+  // reseller entitlement(s) via applyResellerPurchase (which falls back to
+  // email-based Clerk id lookup) and record the purchase in
+  // reseller_purchases, then stop. Non-reseller prices fall through to the
+  // existing entitlement handling below, unchanged.
+  const sessionPriceId = session.line_items?.data?.[0]?.price?.id || '';
+  const resellerPackageId = getResellerPackageIdForPriceId(sessionPriceId);
+  if (resellerPackageId) {
+    try {
+      await applyResellerPurchase({
+        clerkUserId: clerkUserId || null,
+        email: normalizedEmail,
+        packageId: resellerPackageId,
+        stripeSessionId: session.id,
+        stripeCustomerId: customerId,
+        amountTotal: session.amount_total ?? null,
+        currency: session.currency ?? null,
+      });
+    } catch (err: any) {
+      console.error('[stripe webhook] reseller purchase failed:', err?.message || err);
+      throw err;
+    }
+    return;
+  }
+  // ── End reseller commerce (ADDITIVE) ──────────────────────────────────────
 
   let entitlementKey = resolveEntitlementFromSession(session);
   if (!entitlementKey) {

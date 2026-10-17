@@ -41,6 +41,7 @@ export default defineConfig({
       'packages/**/*.test.{js,jsx,ts,tsx}',
       'src/apps/**/__tests__/*.{js,jsx,ts,tsx}',
       'tests/**/*.test.{js,jsx,ts,tsx}',
+      'app/api/reseller/**/*.test.{js,jsx,ts,tsx}',
       'tests/**/*.vitest.test.{js,jsx,ts,tsx}',
     ],
     exclude: [
