@@ -178,7 +178,7 @@ describe.each([
 
   it('passes the guard and the BYOK check, then fails on the missing proxy target', async () => {
     const form = new FormData()
-    form.append('key', 'file.png')
+    form.append('file', new File(['test'], 'file.png', { type: 'image/png' }))
     const res = await (await import(modulePath)).POST(
       makeRequest(`http://localhost${path}`, {
         method: 'POST',
