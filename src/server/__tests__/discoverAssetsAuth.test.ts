@@ -39,6 +39,7 @@ vi.mock('@/server/discoveryOrchestrator', () => ({
 vi.mock('@/server/discoveryJobs', () => ({
   createDiscoveryJob: vi.fn(),
   getDiscoveryJobForUser: vi.fn(),
+  updateDiscoveryJob: vi.fn(async () => ({})),
 }))
 
 // Import after mocks are registered
@@ -47,7 +48,7 @@ import { NextRequest } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { resolveSmartVideoAccessForUser } from '@/access/resolveAccess'
 import { validatePersonalizationEnv } from '@/server/envValidation'
-import { createDiscoveryJob } from '@/server/discoveryJobs'
+import { createDiscoveryJob, updateDiscoveryJob } from '@/server/discoveryJobs'
 import { runFastDiscovery } from '@/server/discoveryOrchestrator'
 
 describe('POST /api/personalization/discover-assets auth', () => {
@@ -201,8 +202,7 @@ describe('POST /api/personalization/discover-assets auth', () => {
   // fires for these requests because requireApiEntitlement short-circuits first.
   // -------------------------------------------------------------------------
 
-  it('returns 401 UNAUTHENTICATED at the entitlement gate, with no crawler/discovery side effects', async () => {
-    const { logPersonalization } = await import('@/server/personalizationLog')
+  it('route auth stage produces 401 with no crawler/discovery side effects', async () => {
     vi.mocked(auth).mockResolvedValue({ userId: null } as any)
 
     const res = await post('https://example.com')
@@ -210,33 +210,26 @@ describe('POST /api/personalization/discover-assets auth', () => {
     const body = await res.json()
     expect(body.error).toBe('UNAUTHENTICATED')
 
-    // The gate rejects before any discovery machinery or route logging runs.
+    // The route's own auth stage rejects before any discovery machinery runs.
     expect(createDiscoveryJob).not.toHaveBeenCalled()
     expect(runFastDiscovery).not.toHaveBeenCalled()
-    const authCalls = (logPersonalization as any).mock.calls.filter(
-      (call: any) => call[0]?.stage === 'auth',
-    )
-    // The gate, not the route's auth stage, produced this 401 — so the route's
-    // own 'auth'-stage log must NOT have fired.
-    expect(authCalls).toHaveLength(0)
   })
 
   // -------------------------------------------------------------------------
-  // Entitlement gate: authenticated but unentitled → 403
+  // No entitlement gate: authenticated callers proceed to discovery
   // -------------------------------------------------------------------------
 
-  it('MUST REJECT with 403 PAYMENT_REQUIRED when authenticated but unentitled (entitlement gate)', async () => {
+  it('authenticated caller proceeds to discovery (no entitlement gate on free demo route)', async () => {
     vi.mocked(auth).mockResolvedValue({ userId: 'user-123' } as any)
     vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: false } as any)
 
     const res = await post('https://example.com')
-    expect(res.status).toBe(403)
+    expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.error).toBe('PAYMENT_REQUIRED')
-    expect(body.upgradeRequired).toBe(true)
+    expect(body.ok).toBe(true)
 
-    // The gate rejects before any crawler/discovery runs.
-    expect(createDiscoveryJob).not.toHaveBeenCalled()
-    expect(runFastDiscovery).not.toHaveBeenCalled()
+    // Discovery pipeline ran because there is no entitlement gate on this route.
+    expect(runFastDiscovery).toHaveBeenCalledTimes(1)
+    expect(createDiscoveryJob).toHaveBeenCalledTimes(1)
   })
 })

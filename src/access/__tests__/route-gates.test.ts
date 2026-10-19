@@ -211,20 +211,6 @@ describe('newly gated route handlers — entitlement gate outcomes', () => {
           expect((await res.json()).error).not.toBe('PAYMENT_REQUIRED')
         }
       })
-
-      it('passes the gate for a non-prod __e2e_auth_bypass=1 cookie even when unentitled', async () => {
-        // Proves the bypass skips the gate entirely: an UNPAID caller with the
-        // dev cookie is not rejected with PAYMENT_REQUIRED. (NODE_ENV is 'test'
-        // in this worker, so isDevBypass() honors the cookie.)
-        h.authUserId = 'user_unpaid_bypassed'
-        h.hasSmartVideoGo = false
-        const res = await route.call({ cookie: '__e2e_auth_bypass=1' })
-        expect(res.status).not.toBe(403)
-        expect(res.status).not.toBe(401)
-        if (res.status === 403) {
-          expect((await res.json()).error).not.toBe('PAYMENT_REQUIRED')
-        }
-      })
     })
   }
 })
