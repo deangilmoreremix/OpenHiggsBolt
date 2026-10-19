@@ -332,7 +332,7 @@ describe('stripe webhook lifecycle', () => {
     expect(entitlements[0]).toMatchObject({
       clerk_user_id: 'user_existing',
       email: 'buyer@example.com',
-      status: 'active',
+      status: 'lifetime',
       entitlements: { smartvideo_go: true },
     });
   });
@@ -642,7 +642,7 @@ describe('stripe webhook lifecycle', () => {
     expect(entitlements[0]).toMatchObject({
       clerk_user_id: 'user_buyer',
       entitlements: { smartvideo_go: true },
-      status: 'active',
+      status: 'lifetime',
     });
   });
 
@@ -740,5 +740,143 @@ describe('stripe webhook lifecycle', () => {
     seedWebhook(piEvent);
     res = await POST(makeRequest(piEvent));
     expect(res.status).toBe(200);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Phase 8: Lifetime / subscription interaction scenarios
+  // ---------------------------------------------------------------------------
+
+  it('one-time purchase receives lifetime status', async () => {
+    h.supabase.current = createFakeSupabase();
+    const { POST } = await loadWebhook();
+    seedWebhook(
+      stripeEvent('checkout.session.completed',
+        checkoutSession({ metadata: { clerk_user_id: 'user_lifetime' } }))
+    );
+
+    const res = await POST(makeRequest({ id: 'evt_lifetime', type: 'checkout.session.completed' }));
+    expect(res.status).toBe(200);
+
+    const row = h.supabase.current.tables.user_entitlements[0];
+    expect(row.status).toBe('lifetime');
+    expect(row.entitlements).toEqual({ smartvideo_go: true });
+
+    const { resolveSmartVideoAccessForUser } = await import('@/access/resolveAccess');
+    const access = await resolveSmartVideoAccessForUser('user_lifetime');
+    expect(access!.hasSmartVideoGo).toBe(true);
+  });
+
+  it('subscription purchase receives active (not lifetime) status', async () => {
+    h.supabase.current = createFakeSupabase();
+    const { POST } = await loadWebhook();
+    const session = checkoutSession({
+      mode: 'subscription',
+      metadata: { clerk_user_id: 'user_sub', stripe_subscription_id: 'sub_test_123' },
+    });
+    seedWebhook(stripeEvent('checkout.session.completed', session));
+
+    const res = await POST(makeRequest({ id: 'evt_sub', type: 'checkout.session.completed' }));
+    expect(res.status).toBe(200);
+
+    const row = h.supabase.current.tables.user_entitlements[0];
+    expect(row.status).toBe('active');
+  });
+
+  it('subscription cancellation does NOT revoke a lifetime entitlement', async () => {
+    h.supabase.current = createFakeSupabase({
+      user_entitlements: [
+        {
+          id: 'ent_lt',
+          clerk_user_id: 'user_mixed',
+          email: 'buyer@example.com',
+          entitlements: { smartvideo_go: true },
+          status: 'lifetime',
+          source: 'stripe',
+          stripe_customer_id: 'cus_mixed',
+        },
+      ],
+      user_purchases: [],
+    });
+    const { POST } = await loadWebhook();
+    const deleted = stripeEvent('customer.subscription.deleted', subscription({
+      status: 'canceled',
+      customer: 'cus_mixed',
+    }));
+    seedWebhook(deleted);
+
+    const res = await POST(makeRequest(deleted));
+    expect(res.status).toBe(200);
+
+    // The lifetime status must survive the subscription deletion.
+    const row = h.supabase.current.tables.user_entitlements[0];
+    expect(row.status).toBe('lifetime');
+
+    const { resolveSmartVideoAccessForUser } = await import('@/access/resolveAccess');
+    const access = await resolveSmartVideoAccessForUser('user_mixed');
+    expect(access!.hasSmartVideoGo).toBe(true);
+  });
+
+  it('subscription cancellation DOES expire a non-lifetime entitlement', async () => {
+    h.supabase.current = createFakeSupabase({
+      user_entitlements: [
+        {
+          id: 'ent_1',
+          clerk_user_id: 'user_sub',
+          email: 'buyer@example.com',
+          entitlements: { smartvideo_go: true },
+          status: 'active',
+          source: 'stripe',
+          stripe_customer_id: 'cus_sub_123',
+        },
+      ],
+    });
+    const { POST } = await loadWebhook();
+    const deleted = stripeEvent('customer.subscription.deleted', subscription({ status: 'canceled' }));
+    seedWebhook(deleted);
+
+    const res = await POST(makeRequest(deleted));
+    expect(res.status).toBe(200);
+
+    const row = h.supabase.current.tables.user_entitlements[0];
+    expect(row.status).toBe('expired');
+  });
+
+  it('founders entitlement survives even when status is non-qualifying', async () => {
+    h.supabase.current = createFakeSupabase({
+      user_entitlements: [
+        {
+          id: 'ent_founder',
+          clerk_user_id: 'user_founder',
+          email: 'founder@example.com',
+          entitlements: { smartvideo_go: true, founders: true },
+          status: 'expired', // subscription canceled, but founders grant survives
+          source: 'manual',
+        },
+      ],
+    });
+
+    const { resolveSmartVideoAccessForUser } = await import('@/access/resolveAccess');
+    const access = await resolveSmartVideoAccessForUser('user_founder');
+    expect(access!.hasSmartVideoGo).toBe(true);
+  });
+
+  it('lifetime status with smartvideo_go grants access', async () => {
+    h.supabase.current = createFakeSupabase({
+      user_entitlements: [
+        {
+          id: 'ent_l',
+          clerk_user_id: 'user_lt',
+          email: 'lt@example.com',
+          entitlements: { smartvideo_go: true },
+          status: 'lifetime',
+          source: 'stripe',
+        },
+      ],
+    });
+
+    const { resolveSmartVideoAccessForUser } = await import('@/access/resolveAccess');
+    const access = await resolveSmartVideoAccessForUser('user_lt');
+    expect(access!.hasSmartVideoGo).toBe(true);
+    expect(access!.status).toBe('lifetime');
   });
 });

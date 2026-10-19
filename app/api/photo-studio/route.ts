@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ok, apiError } from '@/lib/apiError'
-import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
-import { ENTITLEMENTS } from '@/access/entitlements'
 import { auth } from '@clerk/nextjs/server'
 import { getSupabaseAdmin } from '@/src/lib/supabaseServer'
 
@@ -47,14 +45,6 @@ export async function GET(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-  }
-
-  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
-  if (!entitlementCheck.allowed) {
-    if (entitlementCheck.status === 401) {
-      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-    }
-    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
   }
 
   const { searchParams } = new URL(req.url)
@@ -148,14 +138,6 @@ export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-  }
-
-  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
-  if (!entitlementCheck.allowed) {
-    if (entitlementCheck.status === 401) {
-      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-    }
-    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
   }
 
   const key = getKey(req)

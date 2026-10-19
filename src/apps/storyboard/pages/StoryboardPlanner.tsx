@@ -9,11 +9,9 @@ import {
   StoryboardEpisode,
 } from '@/api/storyboard'
 import { useStoryboard } from '../StoryboardContext'
-import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider'
 
 export default function StoryboardPlanner() {
-  const navigate = useNavigate()
-  const { requireEntitlement } = useSmartVideoAccess();
+  const navigate = useNavigate();
   const { setProject, addCharacter, setEpisode, projectId } = useStoryboard()
 
   const [projectName, setProjectName] = useState('')
@@ -35,98 +33,77 @@ export default function StoryboardPlanner() {
 
   const handleCreateProject = async () => {
     if (!projectName.trim() || !brief.trim()) return
-    requireEntitlement(
-      ENTITLEMENTS.SMARTVIDEO_GO,
-      async () => {
-        setIsGenerating(true)
-        setError(null)
-        try {
-          const res = await createProject({
-            name: projectName.trim(),
-            brief: brief.trim(),
-            style: style.trim(),
-          })
-          const id = res.id || res.data?.id || res.project?.id
-          if (!id) throw new Error('No project id returned from API')
-          setCreated((c) => ({ ...c, projectId: id }))
-          setProject({ projectId: id, projectName: projectName.trim(), brief: brief.trim() })
-          setStep('project')
-        } catch (err: any) {
-          setError(err?.message || 'Failed to create project')
-        } finally {
-          setIsGenerating(false)
-        }
-      }
-    )
+    setIsGenerating(true)
+    setError(null)
+    try {
+      const res = await createProject({
+        name: projectName.trim(),
+        brief: brief.trim(),
+        style: style.trim(),
+      })
+      const id = res.id || res.data?.id || res.project?.id
+      if (!id) throw new Error('No project id returned from API')
+      setCreated((c) => ({ ...c, projectId: id }))
+      setProject({ projectId: id, projectName: projectName.trim(), brief: brief.trim() })
+      setStep('project')
+    } catch (err: any) {
+      setError(err?.message || 'Failed to create project')
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   const handleCreateCharacter = async () => {
     if (!charName.trim() || !created.projectId) return
     const projectId = created.projectId;
-    requireEntitlement(
-      ENTITLEMENTS.SMARTVIDEO_GO,
-      async () => {
-        setIsGenerating(true)
-        setError(null)
-        try {
-          const payload: StoryboardCharacter = {
-            name: charName.trim(),
-            traits: charTraits.trim(),
-            outfit: charOutfit.trim(),
-          }
-          const refs = charRefs
-            .split(',')
-            .map((r) => r.trim())
-            .filter(Boolean)
-          if (refs.length) payload.reference_images = refs
-          const res = await createCharacter(projectId, payload)
-          const id = res.id || res.data?.id || res.character?.id
-          if (!id) throw new Error('No character id returned from API')
-          setCreated((c) => ({ ...c, characterId: id }))
-          addCharacter(id)
-          setStep('character')
-        } catch (err: any) {
-          setError(err?.message || 'Failed to create character')
-        } finally {
-          setIsGenerating(false)
-        }
-      },
-      () => {
-        setError('Payment required to create storyboard characters')
+    setIsGenerating(true)
+    setError(null)
+    try {
+      const payload: StoryboardCharacter = {
+        name: charName.trim(),
+        traits: charTraits.trim(),
+        outfit: charOutfit.trim(),
       }
-    )
+      const refs = charRefs
+        .split(',')
+        .map((r) => r.trim())
+        .filter(Boolean)
+      if (refs.length) payload.reference_images = refs
+      const res = await createCharacter(projectId, payload)
+      const id = res.id || res.data?.id || res.character?.id
+      if (!id) throw new Error('No character id returned from API')
+      setCreated((c) => ({ ...c, characterId: id }))
+      addCharacter(id)
+      setStep('character')
+    } catch (err: any) {
+      setError(err?.message || 'Failed to create character')
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   const handleCreateEpisode = async () => {
     if (!episodeTitle.trim() || !created.projectId) return
     const projectId = created.projectId;
-    requireEntitlement(
-      ENTITLEMENTS.SMARTVIDEO_GO,
-      async () => {
-        setIsGenerating(true)
-        setError(null)
-        try {
-          const payload: StoryboardEpisode = {
-            title: episodeTitle.trim(),
-            summary: episodeSummary.trim(),
-            project_id: projectId,
-          }
-          const res = await createEpisode(projectId, payload)
-          const id = res.id || res.data?.id || res.episode?.id
-          if (!id) throw new Error('No episode id returned from API')
-          setCreated((c) => ({ ...c, episodeId: id }))
-          setEpisode(id)
-          setStep('done')
-        } catch (err: any) {
-          setError(err?.message || 'Failed to create episode')
-        } finally {
-          setIsGenerating(false)
-        }
-      },
-      () => {
-        setError('Payment required to create storyboard episodes')
+    setIsGenerating(true)
+    setError(null)
+    try {
+      const payload: StoryboardEpisode = {
+        title: episodeTitle.trim(),
+        summary: episodeSummary.trim(),
+        project_id: projectId,
       }
-    )
+      const res = await createEpisode(projectId, payload)
+      const id = res.id || res.data?.id || res.episode?.id
+      if (!id) throw new Error('No episode id returned from API')
+      setCreated((c) => ({ ...c, episodeId: id }))
+      setEpisode(id)
+      setStep('done')
+    } catch (err: any) {
+      setError(err?.message || 'Failed to create episode')
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   return (

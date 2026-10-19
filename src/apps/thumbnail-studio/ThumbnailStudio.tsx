@@ -20,7 +20,6 @@ import { panels, buttons, semantic, tabStyle, optionStyle, appWrapper } from '@/
 import { supabase } from '@/shared/api/supabase'
 import { readStoryboardHandoff, clearStoryboardHandoff } from '@/shared/crossStudio'
 import { enhancePrompt } from '@/shared/api/openai'
-import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const SESSION_ID_KEY = 'thumbnail_studio_session_id'
@@ -256,8 +255,6 @@ function saveLocal(images: GeneratedImage[]) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function ThumbnailStudio({ apiKey, templateData }: { apiKey?: string; templateData?: { prompt?: string; tags?: string[]; [key: string]: any } }) {
-  const { requireEntitlement } = useSmartVideoAccess();
-
   // Tabs
   const [activeTab, setActiveTab] = useState<'generate' | 'mine' | 'community'>('generate')
 
@@ -398,31 +395,26 @@ export default function ThumbnailStudio({ apiKey, templateData }: { apiKey?: str
 
   const handleGenerate = () => {
     if (!prompt.trim()) return
-    requireEntitlement(
-      ENTITLEMENTS.SMARTVIDEO_GO,
-      () => {
-        setError('')
-        setIsGenerating(true)
+    setError('')
+    setIsGenerating(true)
 
-        const request: GenerationRequest = {
-          prompt: buildPrompt(),
-          model: selectedModel,
-          quality,
-          format,
-          compression: format !== 'png' ? compression : undefined,
-          size: selectedSize,
-          n: variations,
-          style: selectedStyle,
-          referenceImage: referenceImage || undefined,
-          mask: mask || undefined,
-          mode,
-          isPublic,
-          sessionId: sessionId.current,
-          apiKey,
-        }
-        setActiveRequest(request)
-      }
-    )
+    const request: GenerationRequest = {
+      prompt: buildPrompt(),
+      model: selectedModel,
+      quality,
+      format,
+      compression: format !== 'png' ? compression : undefined,
+      size: selectedSize,
+      n: variations,
+      style: selectedStyle,
+      referenceImage: referenceImage || undefined,
+      mask: mask || undefined,
+      mode,
+      isPublic,
+      sessionId: sessionId.current,
+      apiKey,
+    }
+    setActiveRequest(request)
   }
 
   const handleStreamComplete = useCallback(async (images: GeneratedImage[]) => {
@@ -455,22 +447,19 @@ export default function ThumbnailStudio({ apiKey, templateData }: { apiKey?: str
 
   const handleRefine = async () => {
     if (!refinePrompt.trim() || !lastImageUrl || !apiKey) return
-    requireEntitlement(
-      ENTITLEMENTS.SMARTVIDEO_GO,
-      async () => {
-        setError('')
-        setIsGenerating(true)
-        try {
-          const client = getImageClient(apiKey)
-          const results = await client.generate({
-            prompt: generateCTRPrompt(refinePrompt, selectedStyle),
-            model: DEFAULT_IMAGE_MODEL,
-            aspectRatio: selectedSize.ratio,
-            quality,
-            n: 1,
-            imageUrl: lastImageUrl,
-            strength: 0.5,
-          })
+    setError('')
+    setIsGenerating(true)
+    try {
+      const client = getImageClient(apiKey)
+      const results = await client.generate({
+        prompt: generateCTRPrompt(refinePrompt, selectedStyle),
+        model: DEFAULT_IMAGE_MODEL,
+        aspectRatio: selectedSize.ratio,
+        quality,
+        n: 1,
+        imageUrl: lastImageUrl,
+        strength: 0.5,
+      })
       if (results[0]?.url) {
         const img: GeneratedImage = {
           id: `${Date.now()}-refined`,
@@ -495,8 +484,7 @@ export default function ThumbnailStudio({ apiKey, templateData }: { apiKey?: str
     } finally {
       setIsGenerating(false)
     }
-  })
-}
+  }
   const handleDownload = useCallback(async (img: GeneratedImage) => {
     try {
       const res = await fetch(img.url)

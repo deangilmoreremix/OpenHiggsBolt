@@ -66,14 +66,6 @@ beforeEach(() => {
     getOpenAiKeyForUser: vi.fn(async () => 'sk-test-openai-key'),
   }))
 
-  vi.doMock('@/access/apiRequireEntitlement', () => ({
-    requireApiEntitlement: vi.fn(async () => ({ allowed: true })),
-    entitlementForbiddenResponse: vi.fn(() => new Response(JSON.stringify({ error: 'FORBIDDEN' }), { status: 403 })),
-  }))
-
-  vi.doMock('@/access/entitlements', () => ({
-    ENTITLEMENTS: { SMARTVIDEO_GO: 'smartvideo_go' },
-  }))
 })
 
 afterEach(() => {
@@ -356,27 +348,6 @@ describe('POST /api/proxy/openai-image', () => {
 
     expect(res.status).toBe(401)
     expect(json.error).toBe('UNAUTHENTICATED')
-    expect(fetchMock).not.toHaveBeenCalled()
-  })
-
-  it('returns 403 when SMARTVIDEO_GO entitlement is missing', async () => {
-    vi.doMock('@/access/apiRequireEntitlement', () => ({
-      requireApiEntitlement: vi.fn(async () => ({ allowed: false, status: 403 as const, entitlement: 'smartvideo_go' })),
-      entitlementForbiddenResponse: vi.fn(() => new Response(JSON.stringify({ error: 'PAYMENT_REQUIRED' }), { status: 403 })),
-    }))
-
-    const { POST } = await import('@/app/api/proxy/openai-image/route')
-
-    const req = new NextRequest('http://localhost/api/proxy/openai-image', {
-      method: 'POST',
-      body: JSON.stringify({ prompt: 'test' }),
-    })
-
-    const res = await POST(req)
-    const json = await res.json()
-
-    expect(res.status).toBe(403)
-    expect(json.error).toBe('PAYMENT_REQUIRED')
     expect(fetchMock).not.toHaveBeenCalled()
   })
 

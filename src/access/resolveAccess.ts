@@ -32,10 +32,18 @@ export function isEmailOnlyClerkId(clerkUserId: string | null | undefined): bool
 }
 
 function hasSmartVideoGo(entitlements: UserEntitlements, status?: string): boolean {
+  // Founders always retain access regardless of status transitions (e.g. a
+  // later subscription cancellation must not revoke a founders grant).
+  if (entitlements.founders === true) {
+    return true;
+  }
+  if (entitlements.smartvideo_go === true && status === 'lifetime') {
+    return true;
+  }
   if (!isQualifyingStatus(status)) {
     return false;
   }
-  return entitlements.smartvideo_go === true || entitlements.founders === true;
+  return entitlements.smartvideo_go === true;
 }
 
 async function getVerifiedEmailsForUser(userId: string): Promise<string[]> {
@@ -139,18 +147,26 @@ export async function grantEntitlement(
 
   const { data: existing } = await supabase
     .from('user_entitlements')
-    .select('*')
+    .select('status, entitlements')
     .eq('clerk_user_id', clerkUserId)
     .maybeSingle();
 
   const currentEntitlements = (existing?.entitlements || {}) as Record<string, boolean>;
   currentEntitlements[entitlementKey] = true;
 
+  // Respect an explicit status override (e.g. 'lifetime' for one-time purchases).
+  // Otherwise, preserve an existing 'lifetime' status so that a subscription
+  // lifecycle event (which calls grantEntitlement) cannot downgrade a lifetime
+  // purchase to plain 'active'. For all other cases default to 'active'.
+  const status: EntitlementStatus =
+    metadata?.entitlement_status ||
+    (existing?.status === 'lifetime' ? 'lifetime' : 'active');
+
   const payload: any = {
     clerk_user_id: clerkUserId,
     email: normalizedEmail,
     entitlements: currentEntitlements,
-    status: 'active',
+    status,
     source,
     updated_at: new Date().toISOString(),
   };
@@ -187,7 +203,7 @@ export async function grantEntitlement(
       clerk_user_id: clerkUserId,
       email: normalizedEmail,
       entitlements: merged,
-      status: 'active',
+      status,
       source,
       updated_at: new Date().toISOString(),
     };
@@ -348,11 +364,13 @@ export async function restoreAccessByEmail(clerkUserId: string, email: string): 
     ((purchaser.entitlements || {}) as Record<string, boolean>).smartvideo_go === true ||
     ((purchaser.entitlements || {}) as Record<string, boolean>).founders === true;
 
-  if (ownRow) {
+   if (ownRow) {
     // The caller owns a row that does not qualify (e.g. revoked or expired).
     // Merge the purchase into the caller's own row instead of moving a
     // different row (clerk_user_id is unique), then re-activate it.
-    await grantEntitlement(clerkUserId, email, ENTITLEMENTS.SMARTVIDEO_GO, 'founders');
+    await grantEntitlement(clerkUserId, email, ENTITLEMENTS.SMARTVIDEO_GO, 'founders', {
+      entitlement_status: 'lifetime',
+    });
     return alreadyGranted
       ? { status: 'already_active', message: 'Access already active.' }
       : { status: 'restored', message: 'Access restored successfully.' };
@@ -374,6 +392,8 @@ export async function restoreAccessByEmail(clerkUserId: string, email: string): 
     return { status: 'already_active', message: 'Access already active.' };
   }
 
-  await grantEntitlement(clerkUserId, email, ENTITLEMENTS.SMARTVIDEO_GO, 'founders');
+  await grantEntitlement(clerkUserId, email, ENTITLEMENTS.SMARTVIDEO_GO, 'founders', {
+    entitlement_status: 'lifetime',
+  });
   return { status: 'restored', message: 'Access restored successfully.' };
 }

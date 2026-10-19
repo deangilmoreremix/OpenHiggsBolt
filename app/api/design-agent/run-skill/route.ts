@@ -1,8 +1,6 @@
 import { safeApiJson } from '@/lib/safeApiResponse';
 import { NextRequest, NextResponse } from 'next/server'
 import { getDesignAgentApiKey } from '../lib/auth'
-import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
-import { ENTITLEMENTS } from '@/access/entitlements'
 import { auth } from '@clerk/nextjs/server'
 import { requireOwnership, recordOwnership } from '../lib/ownership'
 
@@ -45,14 +43,6 @@ async function resolvePrimaryInputKey(key: string, skillName: string) {
 // Directly invokes a named expert skill (bypasses the agent's intent detection).
 // https://muapi.ai/docs/design-agent-api
 export async function POST(req: NextRequest) {
-  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
-  if (!entitlementCheck.allowed) {
-    if (entitlementCheck.status === 401) {
-      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-    }
-    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
-  }
-
   try {
     const key = await getDesignAgentApiKey(req)
     const { sessionId, ...body } = await req.json()

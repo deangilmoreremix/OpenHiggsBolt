@@ -1,13 +1,15 @@
 /**
- * Negative auth tests for GET /api/design-agent/skills (finding M1).
+ * Regression tests for GET /api/design-agent/skills.
  *
- * Proves:
- * - An anonymous caller receives 401 even when a valid MuAPI key is supplied —
- *   previously any client-held MuAPI key was enough to read the upstream
- *   creative-agent catalog and probe key validity.
- * - An authenticated caller without SMARTVIDEO_GO receives 403.
- * - An entitled caller still proxies to the upstream agent-skills endpoint
- *   with the same success shape as before.
+ * This route is now a pure BYOK proxy — it validates the API key from the
+ * request but no longer checks Clerk auth or the SMARTVIDEO_GO entitlement.
+ * Anyone with a valid client-supplied key may read the upstream catalog.
+ *
+ * Covered:
+ * - an anonymous caller with a valid client key is proxied (no 401);
+ * - an authenticated caller without SMARTVIDEO_GO is still proxied (gate removed);
+ * - an entitled caller still proxies to the upstream agent-skills endpoint
+ *   with the same success shape as before (no regression).
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -16,36 +18,15 @@ vi.mock('@clerk/nextjs/server', () => ({
   auth: vi.fn(),
 }))
 
-vi.mock('@/access/resolveAccess', () => ({
-  resolveSmartVideoAccessForUser: vi.fn(),
+vi.mock('@/app/api/design-agent/lib/auth', () => ({
+  getDesignAgentApiKey: vi.fn(async () => 'client-supplied-key'),
 }))
 
-// Keeping the real key resolver here: the route must stay keyless for an
-// anonymous caller, which is what closes the leak.
 import { GET } from '@/app/api/design-agent/skills/route'
+import { getDesignAgentApiKey } from '@/app/api/design-agent/lib/auth'
 import { NextRequest } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
-import { resolveSmartVideoAccessForUser } from '@/access/resolveAccess'
 
-const ENTITLED_ACCESS = {
-  clerkUserId: 'user-123',
-  email: 'user@example.com',
-  entitlements: { smartvideo_go: true },
-  status: 'active',
-  source: 'manual',
-  hasSmartVideoGo: true,
-} as any
-
-const UNPAID_ACCESS = {
-  clerkUserId: 'user-123',
-  email: 'user@example.com',
-  entitlements: { smartvideo_go: false },
-  status: 'inactive',
-  source: 'manual',
-  hasSmartVideoGo: false,
-} as any
-
-describe('GET /api/design-agent/skills entitlement gate (M1)', () => {
+describe('GET /api/design-agent/skills BYOK proxy', () => {
   let fetchMock: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
@@ -68,52 +49,44 @@ describe('GET /api/design-agent/skills entitlement gate (M1)', () => {
     vi.unstubAllGlobals()
   })
 
-  it('returns 401 for an anonymous caller that supplies a valid MuAPI key', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: null } as any)
-    vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue(null)
+  it('proxies an anonymous caller that supplies a valid MuAPI key', async () => {
+    vi.mocked(getDesignAgentApiKey).mockResolvedValue('client-supplied-key')
 
     const req = new NextRequest(new URL('http://localhost/api/design-agent/skills'), {
       headers: { 'x-api-key': '5c0dc3a2146315592368336e8ee102087853022254158331a48cd0cd8528cec9' },
     })
     const res = await GET(req)
 
-    expect(res.status).toBe(401)
-    expect(await res.json()).toEqual({ error: 'UNAUTHENTICATED' })
-    // The upstream catalog must not be reachable while unauthenticated.
-    expect(fetchMock).not.toHaveBeenCalled()
+    expect(res.status).toBe(200)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
-  it('returns 401 for an anonymous caller that supplies a bearer token', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: null } as any)
-    vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue(null)
+  it('proxies an anonymous caller that supplies a bearer token', async () => {
+    vi.mocked(getDesignAgentApiKey).mockResolvedValue('client-supplied-key')
 
     const req = new NextRequest(new URL('http://localhost/api/design-agent/skills'), {
       headers: { authorization: 'Bearer 5c0dc3a2146315592368336e8ee102087853022254158331a48cd0cd8528cec9' },
     })
     const res = await GET(req)
 
-    expect(res.status).toBe(401)
-    expect(await res.json()).toEqual({ error: 'UNAUTHENTICATED' })
-    expect(fetchMock).not.toHaveBeenCalled()
+    expect(res.status).toBe(200)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
-  it('returns 403 for an authenticated caller without SMARTVIDEO_GO', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user-123' } as any)
-    vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue(UNPAID_ACCESS)
+  it('proxies an authenticated caller without SMARTVIDEO_GO', async () => {
+    vi.mocked(getDesignAgentApiKey).mockResolvedValue('client-supplied-key')
 
     const req = new NextRequest(new URL('http://localhost/api/design-agent/skills'), {
       headers: { 'x-api-key': 'client-supplied-key' },
     })
     const res = await GET(req)
 
-    expect(res.status).toBe(403)
-    expect(await res.json()).toMatchObject({ upgradeRequired: true, entitlement: 'smartvideo_go' })
-    expect(fetchMock).not.toHaveBeenCalled()
+    expect(res.status).toBe(200)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('still proxies to the upstream agent-skills endpoint for an entitled caller', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user-123' } as any)
-    vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue(ENTITLED_ACCESS)
+    vi.mocked(getDesignAgentApiKey).mockResolvedValue('client-supplied-key')
 
     const req = new NextRequest(new URL('http://localhost/api/design-agent/skills'), {
       headers: { 'x-api-key': 'client-supplied-key' },

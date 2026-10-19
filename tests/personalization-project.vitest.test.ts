@@ -3,12 +3,6 @@ import { NextRequest } from 'next/server'
 
 let authUserId: string | null = 'user-123'
 
-// POST/DELETE are gated by requireApiEntitlement → resolveSmartVideoAccessForUser.
-// A hoisted handle lets each test drive the entitled/unentitled path while the
-// beforeEach doMock re-registers a fresh spy against the reset module graph
-// (the tests/proxy-routes.vitest.test.ts idiom).
-const projectAccess = vi.hoisted(() => ({ resolveSmartVideoAccessForUser: vi.fn() }))
-
 type SupabaseMockState = {
   projectData: Record<string, unknown> | null
   listData: Record<string, unknown>[]
@@ -71,15 +65,6 @@ beforeEach(() => {
   vi.doMock('@clerk/nextjs/server', () => ({
     auth: vi.fn(async () => ({ userId: authUserId })),
   }))
-
-  // Default: entitled caller so POST/DELETE pass the entitlement gate and reach
-  // their own logic. (clearAllMocks keeps implementations, so re-seed here to
-  // undo any prior test's hasSmartVideoGo:false override.)
-  vi.doMock('@/access/resolveAccess', () => ({
-    resolveSmartVideoAccessForUser: projectAccess.resolveSmartVideoAccessForUser,
-  }))
-  projectAccess.resolveSmartVideoAccessForUser.mockReset()
-  projectAccess.resolveSmartVideoAccessForUser.mockResolvedValue({ hasSmartVideoGo: true } as any)
 
   vi.doMock('@/lib/supabase', () => {
     const createEqChain = (terminal: () => Promise<{ data: unknown; error: unknown }>) => {
@@ -283,17 +268,6 @@ describe('POST /api/personalization/project', () => {
     expect(data.error).toBe('UNAUTHENTICATED')
   })
 
-  it('returns 403 PAYMENT_REQUIRED (entitlement gate) when authenticated but unentitled', async () => {
-    projectAccess.resolveSmartVideoAccessForUser.mockResolvedValue({ hasSmartVideoGo: false } as any)
-    const { POST } = await import('@/app/api/personalization/project/route')
-
-    const response = await POST(createRequest({ method: 'POST', body: { project: { source: {} } } }))
-    expect(response.status).toBe(403)
-    const data = await response.json()
-    expect(data.error).toBe('PAYMENT_REQUIRED')
-    expect(data.upgradeRequired).toBe(true)
-  })
-
   it('creates a new project and returns id', async () => {
     supabaseMockState.insertData = { id: 'new-proj-123', created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
 
@@ -414,17 +388,6 @@ describe('DELETE /api/personalization/project', () => {
     expect(response.status).toBe(401)
     const data = await response.json()
     expect(data.error).toBe('UNAUTHENTICATED')
-  })
-
-  it('returns 403 PAYMENT_REQUIRED (entitlement gate) when authenticated but unentitled', async () => {
-    projectAccess.resolveSmartVideoAccessForUser.mockResolvedValue({ hasSmartVideoGo: false } as any)
-    const { DELETE } = await import('@/app/api/personalization/project/route')
-
-    const response = await DELETE(createRequest({ method: 'DELETE', id: 'proj-123' }))
-    expect(response.status).toBe(403)
-    const data = await response.json()
-    expect(data.error).toBe('PAYMENT_REQUIRED')
-    expect(data.upgradeRequired).toBe(true)
   })
 
   it('returns 400 when missing project id', async () => {

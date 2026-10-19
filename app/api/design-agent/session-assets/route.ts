@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDesignAgentApiKey } from '../lib/auth'
 import { safeJson } from '../lib/response'
-import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
-import { ENTITLEMENTS } from '@/access/entitlements'
 import { requireOwnership } from '../lib/ownership'
 
 export const dynamic = "force-dynamic";
@@ -10,14 +8,6 @@ export const dynamic = "force-dynamic";
 const BASE = 'https://api.muapi.ai/api/v1/creative-agent'
 
 export async function POST(req: NextRequest) {
-  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
-  if (!entitlementCheck.allowed) {
-    if (entitlementCheck.status === 401) {
-      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-    }
-    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
-  }
-
   try {
     const key = await getDesignAgentApiKey(req)
     const { sessionId, url, kind } = await req.json()

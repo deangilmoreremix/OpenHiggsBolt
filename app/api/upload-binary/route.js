@@ -1,16 +1,9 @@
 import { NextResponse } from 'next/server';
-import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
-import { ENTITLEMENTS } from '@/access/entitlements';
 import { validateUploadProxyTarget, getApiKeyFromRequest } from '@/lib/uploadProxyTarget';
 import { resolveMuAPIKey } from '../vfx/_helpers';
 import { safeApiJson, upstreamErrorResponse } from '@/lib/safeApiResponse';
 
 export const dynamic = 'force-dynamic';
-
-function isDevBypass(request) {
-    if (process.env.NODE_ENV === 'production') return false;
-    return request.cookies.get('__e2e_auth_bypass')?.value === '1';
-}
 
 const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   'image/jpeg',
@@ -44,16 +37,6 @@ const ALLOWED_S3_FORM_FIELDS = new Set([
 
 export async function POST(request) {
     try {
-        if (!isDevBypass(request)) {
-            const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
-            if (!entitlementCheck.allowed) {
-                if (entitlementCheck.status === 401) {
-                    return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-                }
-                return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
-            }
-        }
-
         const apiKey = getApiKeyFromRequest(request);
         if (!apiKey) {
             return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 });

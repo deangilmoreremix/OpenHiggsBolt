@@ -24,15 +24,6 @@ beforeEach(() => {
   fetchMock = makeFetchMock()
   vi.spyOn(globalThis, 'fetch').mockImplementation(fetchMock)
 
-  vi.doMock('@/access/apiRequireEntitlement', () => ({
-    requireApiEntitlement: vi.fn(async () => ({ allowed: true })),
-    entitlementForbiddenResponse: vi.fn(() => new Response(JSON.stringify({ error: 'PAYMENT_REQUIRED' }), { status: 403 })),
-  }))
-
-  vi.doMock('@/access/entitlements', () => ({
-    ENTITLEMENTS: { SMARTVIDEO_GO: 'smartvideo_go' },
-  }))
-
   vi.doMock('@/lib/uploadProxyTarget', () => ({
     getApiKeyFromRequest: vi.fn(() => 'test-api-key'),
     isBlockedFileType: vi.fn(() => false),
@@ -74,29 +65,6 @@ describe('POST /api/v1/upload_file', () => {
     expect(res.status).toBe(401)
     const json = await res.json()
     expect(json.error).toMatch(/Unauthorized/i)
-  })
-
-  it('returns 403 when entitlement is missing', async () => {
-    vi.doMock('@/access/apiRequireEntitlement', () => ({
-      requireApiEntitlement: vi.fn(async () => ({ allowed: false, status: 403, entitlement: 'smartvideo_go' })),
-      entitlementForbiddenResponse: vi.fn(() => new Response(JSON.stringify({ error: 'PAYMENT_REQUIRED' }), { status: 403 })),
-    }))
-
-    const { POST } = await import('@/app/api/v1/upload_file/route')
-
-    const formData = new FormData()
-    formData.append('file', new File(['test'], 'test.jpg', { type: 'image/jpeg' }))
-
-    const res = await POST(
-      new NextRequest('http://localhost/api/v1/upload_file', {
-        method: 'POST',
-        body: formData,
-      })
-    )
-
-    expect(res.status).toBe(403)
-    const json = await res.json()
-    expect(json.error).toMatch(/PAYMENT_REQUIRED/i)
   })
 
   it('returns 400 for non-multipart content type', async () => {

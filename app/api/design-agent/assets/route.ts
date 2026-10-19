@@ -1,8 +1,6 @@
 import { safeApiJson } from '@/lib/safeApiResponse';
 import { NextRequest, NextResponse } from 'next/server'
 import { getDesignAgentApiKey } from '../lib/auth'
-import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
-import { ENTITLEMENTS } from '@/access/entitlements'
 import { auth } from '@clerk/nextjs/server'
 import { requireOwnership } from '../lib/ownership'
 
@@ -15,14 +13,6 @@ export async function GET(req: NextRequest) {
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-    }
-
-    const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
-    if (!entitlementCheck.allowed) {
-      if (entitlementCheck.status === 401) {
-        return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-      }
-      return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
     }
 
     const key = await getDesignAgentApiKey(req)

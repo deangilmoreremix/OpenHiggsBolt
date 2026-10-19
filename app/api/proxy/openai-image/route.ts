@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
-import { ENTITLEMENTS } from '@/access/entitlements';
 import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer';
 
 export const dynamic = 'force-dynamic';
@@ -24,14 +22,6 @@ export async function POST(req: NextRequest) {
   const { userId, key, status } = await resolveUserAndKey(req);
   if (!userId) {
     return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status });
-  }
-
-  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
-  if (!entitlementCheck.allowed) {
-    if (entitlementCheck.status === 401) {
-      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-    }
-    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
   }
 
   try {

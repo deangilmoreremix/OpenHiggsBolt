@@ -1,42 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getMuApiKeyFromRequest } from '../lib/auth'
-import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
-import { ENTITLEMENTS } from '@/access/entitlements'
 import { safeApiJson } from '@/lib/safeApiResponse'
 
 export const dynamic = "force-dynamic";
 
-const GENERATION_GET_PATTERNS = [
-  /\/gpt-image-2$/,
-  /\/text-to-video$/,
-  /\/image-generation$/,
-  /\/video-generation$/,
-  /\/predictions\/[^/]+\/result$/,
-]
-
-function isGenerationGet(path: string): boolean {
-  return GENERATION_GET_PATTERNS.some((re) => re.test(path))
-}
-
 const BASE = 'https://api.muapi.ai/api/v1'
-
-function isDevBypass(req: NextRequest): boolean {
-  if (process.env.NODE_ENV === 'production') return false
-  return req.cookies.get('__e2e_auth_bypass')?.value === '1'
-}
 
 export async function GET(req: NextRequest, { params }: { params: { slug: string[] } }) {
   const path = '/' + (params.slug || []).join('/')
-
-  if (isGenerationGet(path) && !isDevBypass(req)) {
-    const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
-    if (!entitlementCheck.allowed) {
-      if (entitlementCheck.status === 401) {
-        return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-      }
-      return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
-    }
-  }
 
   try {
     let key: string
@@ -66,16 +37,6 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
 
 export async function POST(req: NextRequest, { params }: { params: { slug: string[] } }) {
   const path = '/' + (params.slug || []).join('/')
-
-  if (!isDevBypass(req)) {
-    const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
-    if (!entitlementCheck.allowed) {
-      if (entitlementCheck.status === 401) {
-        return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-      }
-      return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
-    }
-  }
 
   try {
     let key: string

@@ -153,12 +153,10 @@ beforeEach(() => {
     },
   }))
 
-  vi.doMock('@/access/apiRequireEntitlement', () => ({
-    requireApiEntitlement: vi.fn(async () => ({ allowed: true })),
-    entitlementForbiddenResponse: vi.fn(
-      () => new Response(JSON.stringify({ error: 'PAYMENT_REQUIRED' }), { status: 403 })
-    ),
-  }))
+  // VFX routes are pure BYOK (user's own MuAPI key) and no longer import the
+  // entitlement gate, so no entitlement mock is needed here. The gate is tested
+  // separately in src/access/__tests__/route-gates.test.ts for the routes that
+  // still enforce it (personalization business-discovery routes).
 
   // The real limiter lives in lib/rateLimit.ts (a root-level module the VFX
   // routes import). It is mocked only to observe the limiter key and verdict;

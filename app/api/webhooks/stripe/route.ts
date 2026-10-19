@@ -187,14 +187,18 @@ async function handleCheckoutSessionCompleted(
     },
   });
 
-  // (b) Grant by the Clerk id captured at checkout when there is one.
-  if (clerkUserId) {
-    await grantEntitlement(clerkUserId, normalizedEmail, entitlementKey, 'stripe', {
-      stripe_customer_id: customerId,
-      stripe_subscription_id: subscriptionId || undefined,
-    });
-    return NextResponse.json({ received: true });
-  }
+   // (b) Grant by the Clerk id captured at checkout when there is one.
+   // One-time purchases (mode === 'payment') receive 'lifetime' status so a
+   // later subscription lifecycle event can never downgrade them to 'expired'.
+   const isOneTime = session.mode === 'payment' && !subscriptionId;
+   if (clerkUserId) {
+     await grantEntitlement(clerkUserId, normalizedEmail, entitlementKey, 'stripe', {
+       stripe_customer_id: customerId,
+       stripe_subscription_id: subscriptionId || undefined,
+       ...(isOneTime ? { entitlement_status: 'lifetime' } : {}),
+     });
+     return NextResponse.json({ received: true });
+   }
 
   // (c) Otherwise match an existing row for the buyer's email.
   const supabase = getSupabaseAdmin();
@@ -208,6 +212,7 @@ async function handleCheckoutSessionCompleted(
     await grantEntitlement(existingUser.clerk_user_id, normalizedEmail, entitlementKey, 'stripe', {
       stripe_customer_id: customerId,
       stripe_subscription_id: subscriptionId || undefined,
+      ...(isOneTime ? { entitlement_status: 'lifetime' } : {}),
     });
     return NextResponse.json({ received: true });
   }
@@ -397,11 +402,20 @@ async function handleSubscriptionEvent(subscription: any): Promise<void> {
     return;
   }
 
-  if (targetClerkUserId) {
-    await setEntitlementStatus(targetClerkUserId, status);
-  } else {
-    await setEntitlementStatus(emailOnlyClerkId(targetEmail), status);
-  }
+   if (targetClerkUserId) {
+     // Never downgrade a lifetime entitlement to 'expired' / 'revoked' when a
+     // separate subscription lapses — the lifetime grant must survive.
+     const { data: row } = await supabase
+       .from('user_entitlements')
+       .select('status')
+       .eq('clerk_user_id', targetClerkUserId)
+       .maybeSingle();
+     if (row?.status !== 'lifetime') {
+       await setEntitlementStatus(targetClerkUserId, status);
+     }
+   } else {
+     await setEntitlementStatus(emailOnlyClerkId(targetEmail), status);
+   }
 }
 
 export async function POST(req: NextRequest) {

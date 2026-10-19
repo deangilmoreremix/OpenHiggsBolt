@@ -22,54 +22,27 @@ const API_ROOT = join(repoRoot, 'app', 'api')
 const GATE_SYMBOL = 'requireApiEntitlement'
 
 // ---------------------------------------------------------------------------
-// The paid surface. Explicit (including catch-all segment dirs) so the walk
-// diff below catches a NEW gated route that is not yet listed here.
+// The paid surface — routes that use server-side resources (not pure BYOK)
+// and therefore remain gated for quota/monetization protection.
+//
+// BYOK routes (VFX, proxy/*, photo-studio, design-agent/*, upload routes,
+// personalization image-* and project) have been moved OUT of this list
+// because they validate the user's own API key and must remain free.
 // ---------------------------------------------------------------------------
 const PAID_PATHS: string[] = [
-  // vfx/*
-  'app/api/vfx/cancel/route.ts',
-  'app/api/vfx/generate/route.ts',
-  'app/api/vfx/status/route.ts',
-  'app/api/vfx/upload/route.ts',
-  // photo-studio
-  'app/api/photo-studio/route.ts',
-  // proxy/*
-  'app/api/proxy/openai-image/route.ts',
-  'app/api/proxy/openai-enhance/route.ts',
-  'app/api/proxy/thumbnail-generate/route.ts',
-  // design-agent/*
-  'app/api/design-agent/approve/route.ts',
-  'app/api/design-agent/assets/route.ts',
-  'app/api/design-agent/chat/route.ts',
-  'app/api/design-agent/jobs/route.ts',
-  'app/api/design-agent/reject/route.ts',
-  'app/api/design-agent/run-skill/route.ts',
-  'app/api/design-agent/session-assets/route.ts',
-  'app/api/design-agent/sessions/route.ts',
-  'app/api/design-agent/skills/route.ts',
   // storyboard / agents / workflow / app catch-alls
   'app/api/storyboard/[[...path]]/route.ts',
   'app/api/agents/[[...path]]/route.js',
   'app/api/workflow/[[...path]]/route.js',
   'app/api/app/[[...path]]/route.js',
-  // v1 surface
+  // v1 surface (server-side proxy routes that are not pure BYOK)
   'app/api/api/v1/[[...path]]/route.js',
-  'app/api/v1/[...slug]/route.ts',
   'app/api/v1/creative-agent/[[...path]]/route.js',
-  'app/api/v1/upload_file/route.ts',
-  'app/api/v1/upload-binary/route.js',
-  'app/api/v1/get_upload_url/route.js',
-  // personalization (POST/DELETE-gated; project/route.ts gates POST+DELETE, GET stays open)
-  'app/api/personalization/image-edit/route.ts',
-  'app/api/personalization/image-smart-edit/route.ts',
-  'app/api/personalization/image-analyze/route.ts',
+  // personalization (server-side resource routes; gated for quota protection)
   'app/api/personalization/find-businesses/route.ts',
   'app/api/personalization/research-business/route.ts',
   'app/api/personalization/download-image/route.ts',
   'app/api/personalization/discover-assets/route.ts',
-  'app/api/personalization/project/route.ts',
-  // canonical upload
-  'app/api/upload-binary/route.js',
 ]
 
 // ---------------------------------------------------------------------------

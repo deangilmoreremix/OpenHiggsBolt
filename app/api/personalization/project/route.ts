@@ -3,8 +3,6 @@ import { auth } from '@clerk/nextjs/server'
 import { createServerClient } from '@/lib/supabase'
 import { logPersonalization, createCorrelationId } from '@/server/personalizationLog'
 import { requirePersonalizationEnv } from '@/server/envValidation'
-import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
-import { ENTITLEMENTS } from '@/access/entitlements'
 
 export const runtime = 'nodejs'
 
@@ -26,15 +24,6 @@ function sanitizeValue(value: unknown, maxLength = MAX_STRING_LENGTH): unknown {
     return sanitized
   }
   return value
-}
-
-// Playwright offline-test bypass (mirrors middleware.js and
-// app/api/v1/[...slug]/route.ts): never honored in production, and only for
-// the exact cookie value the dev-login route sets. Clerk itself is skipped by
-// middleware in that case, so the entitlement gate must skip it too.
-function isDevBypass(req: NextRequest): boolean {
-  if (process.env.NODE_ENV === 'production') return false
-  return req.cookies.get('__e2e_auth_bypass')?.value === '1'
 }
 
 export async function GET(req: NextRequest) {
@@ -206,16 +195,6 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isDevBypass(req)) {
-    const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
-    if (!entitlementCheck.allowed) {
-      if (entitlementCheck.status === 401) {
-        return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
-      }
-      return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO)
-    }
-  }
-
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 30_000)
   const correlationId = createCorrelationId(req)
@@ -387,16 +366,6 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!isDevBypass(req)) {
-    const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
-    if (!entitlementCheck.allowed) {
-      if (entitlementCheck.status === 401) {
-        return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
-      }
-      return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO)
-    }
-  }
-
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 30_000)
   const correlationId = createCorrelationId(req)

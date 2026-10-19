@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { safeApiJson, upstreamErrorResponse } from '@/lib/safeApiResponse';
-import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
-import { ENTITLEMENTS } from '@/access/entitlements';
 import { getApiKeyFromRequest, isBlockedFileType } from '@/lib/uploadProxyTarget';
 
 const MUAPI_UPLOAD_URL = 'https://api.muapi.ai/api/v1/upload_file';
@@ -70,14 +68,6 @@ async function uploadWithRetry(apiKey: string, formData: FormData): Promise<Resp
 }
 
 export async function POST(request: NextRequest) {
-  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
-  if (!entitlementCheck.allowed) {
-    if (entitlementCheck.status === 401) {
-      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-    }
-    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
-  }
-
   try {
     const contentType = request.headers.get('content-type') || '';
     if (!contentType.includes('multipart/form-data')) {

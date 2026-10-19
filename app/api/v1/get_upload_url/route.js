@@ -1,16 +1,9 @@
 import { NextResponse } from 'next/server';
-import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
-import { ENTITLEMENTS } from '@/access/entitlements';
 import { safeApiJson } from '@/lib/safeApiResponse';
 
 export const dynamic = "force-dynamic";
 
 const MUAPI_BASE = 'https://api.muapi.ai';
-
-function isDevBypass(request) {
-    if (process.env.NODE_ENV === 'production') return false;
-    return request.cookies.get('__e2e_auth_bypass')?.value === '1';
-}
 
 function getApiKey(request) {
     const headerKey = request.headers.get('x-api-key');
@@ -30,16 +23,6 @@ function cleanHeaders(request) {
 }
 
 export async function GET(request) {
-    if (!isDevBypass(request)) {
-        const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
-        if (!entitlementCheck.allowed) {
-            if (entitlementCheck.status === 401) {
-                return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-            }
-            return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
-        }
-    }
-
     const apiKey = getApiKey(request);
     if (!apiKey) {
         return NextResponse.json({ error: 'Unauthorized: Missing API key' }, { status: 401 });

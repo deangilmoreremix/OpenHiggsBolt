@@ -15,20 +15,22 @@ vi.mock('@/access/resolveAccess', () => ({
 
 // Mock supabase server to avoid module resolution issues in tests
 vi.mock('@/src/lib/supabaseServer', () => {
-  const upsertMock = vi.fn(() => Promise.resolve({ data: null, error: null }));
-  const selectMock = vi.fn(() => ({
-    eq: vi.fn(() => ({
-      maybeSingle: vi.fn(() => Promise.resolve({ data: { muapi_key: 'encrypted-key' }, error: null })),
-    })),
-  }));
-
   return {
-    getSupabaseAdmin: vi.fn(() => ({
-      from: vi.fn(() => ({
-        select: selectMock,
+    getSupabaseAdmin: vi.fn(() => {
+      const upsertMock = vi.fn(() => Promise.resolve({ data: null, error: null }));
+      const self: any = {
+        eq: vi.fn(() => self),
+        order: vi.fn(() => self),
+        select: vi.fn(() => self),
+        range: vi.fn(async () => ({ data: [], count: 0, error: null })),
+        maybeSingle: vi.fn(async () => ({ data: { muapi_key: 'encrypted-key' }, error: null })),
         upsert: upsertMock,
-      })),
-    })),
+      };
+      return {
+        from: vi.fn(() => self),
+        upsert: upsertMock,
+      };
+    }),
   };
 });
 
@@ -69,14 +71,13 @@ describe('Security: Photo Studio ownership', () => {
     expect(res.status).toBe(401);
   });
 
-  it('authenticated unpaid GET /api/photo-studio returns 403', async () => {
+  it('authenticated GET /api/photo-studio returns 200 (entitlement gate removed)', async () => {
     mockAuth.mockResolvedValue({ userId: 'user-1' });
-    mockResolveAccess.mockResolvedValue({ hasSmartVideoGo: false });
 
     const req = new NextRequest(new URL('http://localhost/api/photo-studio'));
     const mod = await import('@/app/api/photo-studio/route');
     const res = await mod.GET(req);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
   });
 });
 

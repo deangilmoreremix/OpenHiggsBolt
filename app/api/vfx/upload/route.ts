@@ -6,8 +6,6 @@ import { validateUploadFile } from '../_validation'
 import { MUAPI_KEY_MISSING_ERROR } from '@/api/vfx'
 import { createClient } from '@supabase/supabase-js'
 import { rateLimit, rateLimit429, resolveRateLimitKey } from '@/lib/rateLimit'
-import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
-import { ENTITLEMENTS } from '@/access/entitlements'
 
 export const dynamic = 'force-dynamic';
 
@@ -24,14 +22,6 @@ const RATE_LIMIT_WINDOW_MS = 60_000
 const VFX_UPLOAD_BUCKET = process.env.VFX_UPLOAD_BUCKET || 'vfx-uploads'
 
 export async function POST(req: NextRequest) {
-  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
-  if (!entitlementCheck.allowed) {
-    if (entitlementCheck.status === 401) {
-      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-    }
-    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
-  }
-
   try {
     // BYOK: resolve the caller's OWN MuAPI key (request header first, then the
     // Clerk session's stored key) before anything else. There is no server

@@ -154,28 +154,12 @@ afterEach(() => {
 
 // Each entry imports its route lazily (after the beforeEach doMocks) and
 // invokes the gated export with a request built from `headers`.
+//
+// Only routes that still enforce the SMARTVIDEO_GO entitlement gate are listed
+// here. BYOK routes (upload, v1/[...slug], vfx/*, proxy/*, photo-studio,
+// design-agent/*, personalization image-*, project POST/DELETE) have been
+// ungated because they validate the user's own API key.
 const GATED: Array<{ id: string; call: (headers?: Record<string, string>) => Promise<Response> }> = [
-  {
-    id: 'POST /api/upload-binary',
-    call: async (headers) => {
-      const { POST } = await import('@/app/api/upload-binary/route')
-      return POST(req('http://localhost/api/upload-binary', { method: 'POST', headers: { 'x-api-key': 'proxy-key', ...headers } }))
-    },
-  },
-  {
-    id: 'POST /api/v1/upload-binary',
-    call: async (headers) => {
-      const { POST } = await import('@/app/api/v1/upload-binary/route')
-      return POST(req('http://localhost/api/v1/upload-binary', { method: 'POST', headers: { 'x-api-key': 'proxy-key', ...headers } }))
-    },
-  },
-  {
-    id: 'GET /api/v1/get_upload_url',
-    call: async (headers) => {
-      const { GET } = await import('@/app/api/v1/get_upload_url/route')
-      return GET(req('http://localhost/api/v1/get_upload_url', { method: 'GET', headers: { 'x-api-key': 'k', ...headers } }))
-    },
-  },
   {
     id: 'POST /api/personalization/find-businesses',
     call: async (headers) => {
@@ -202,20 +186,6 @@ const GATED: Array<{ id: string; call: (headers?: Record<string, string>) => Pro
     call: async (headers) => {
       const { POST } = await import('@/app/api/personalization/discover-assets/route')
       return POST(req('http://localhost/api/personalization/discover-assets', { method: 'POST', headers, body: { websiteUrl: 'https://example.com' } }))
-    },
-  },
-  {
-    id: 'POST /api/personalization/project',
-    call: async (headers) => {
-      const { POST } = await import('@/app/api/personalization/project/route')
-      return POST(req('http://localhost/api/personalization/project', { method: 'POST', headers, body: { project: { source: {} } } }))
-    },
-  },
-  {
-    id: 'DELETE /api/personalization/project',
-    call: async (headers) => {
-      const { DELETE } = await import('@/app/api/personalization/project/route')
-      return DELETE(req('http://localhost/api/personalization/project?id=proj-123', { method: 'DELETE', headers }))
     },
   },
 ]
@@ -271,7 +241,8 @@ describe('newly gated route handlers — entitlement gate outcomes', () => {
 })
 
 // ---------------------------------------------------------------------------
-// personalization/project GET is NOT entitlement-gated (only POST/DELETE are).
+// personalization/project is fully open (GET, POST, DELETE all BYOK — just
+// Clerk auth + RLS, no paid gate).
 // ---------------------------------------------------------------------------
 
 describe('personalization/project GET is open (no paid gate)', () => {

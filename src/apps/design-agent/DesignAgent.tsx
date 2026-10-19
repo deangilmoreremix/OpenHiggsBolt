@@ -7,7 +7,6 @@ import { semantic, appWrapper } from '@/shared/styles/designTokens'
 import DesignAgentErrorBoundary from './ErrorBoundary'
 import { PublishStep } from '@/components/SocialPublishProvider'
 import { AssistStep } from '@/components/AiAssistantProvider'
-import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider'
 import { getUploadLimit, isAllowedUploadMimeType } from '@/lib/uploadConfig'
 
 type AgentMode = 'agent' | 'generate' | 'edit'
@@ -360,7 +359,6 @@ function PlanCard({ plan, onApprove, onReject, busy }: { plan: PendingPlan; onAp
 }
 
 export default function DesignAgent({ apiKey: propApiKey, onRequestApiKey, templateData }: { apiKey?: string; onRequestApiKey?: () => void; templateData?: { prompt?: string; slug?: string; [key: string]: any } }) {
-  const { requireEntitlement } = useSmartVideoAccess();
   const apiKey = propApiKey || ''
   const [projects, setProjects] = useState<Project[]>(loadProjects)
   const [activeProject, setActiveProject] = useState<Project | null>(null)
@@ -423,36 +421,28 @@ export default function DesignAgent({ apiKey: propApiKey, onRequestApiKey, templ
   const createNewProject = useCallback(async (): Promise<Project | null> => {
     if (!apiKey) { onRequestApiKey?.(); return null }
     let project: Project | null = null
-    await requireEntitlement(
-      ENTITLEMENTS.SMARTVIDEO_GO,
-      async () => {
-        try {
-          const session = await apiCall('/api/design-agent/sessions', {
-            method: 'POST',
-            body: JSON.stringify({ name: `Project ${projects.length + 1}` }),
-          }, apiKey)
-          project = {
-            id: session.id || session.session_id || Date.now().toString(),
-            name: session.name || `Project ${projects.length + 1}`,
-            createdAt: new Date().toISOString(),
-            messageCount: 0,
-          }
-          const newProject = project as Project;
-          setProjects(previous => [newProject, ...previous])
-          setActiveProject(newProject)
-          setMessages([])
-          setActivity([])
-          setPendingPlan(null)
-        } catch (error: any) {
-          setActivity([{ label: error?.message || 'Could not create a Design Agent project', status: 'error' }])
-        }
-      },
-      () => {
-        setActivity([{ label: 'Payment required to create Design Agent projects', status: 'error' }])
+    try {
+      const session = await apiCall('/api/design-agent/sessions', {
+        method: 'POST',
+        body: JSON.stringify({ name: `Project ${projects.length + 1}` }),
+      }, apiKey)
+      project = {
+        id: session.id || session.session_id || Date.now().toString(),
+        name: session.name || `Project ${projects.length + 1}`,
+        createdAt: new Date().toISOString(),
+        messageCount: 0,
       }
-    )
+      const newProject = project as Project;
+      setProjects(previous => [newProject, ...previous])
+      setActiveProject(newProject)
+      setMessages([])
+      setActivity([])
+      setPendingPlan(null)
+    } catch (error: any) {
+      setActivity([{ label: error?.message || 'Could not create a Design Agent project', status: 'error' }])
+    }
     return project
-  }, [apiKey, onRequestApiKey, projects.length, requireEntitlement])
+  }, [apiKey, onRequestApiKey, projects.length])
 
   const handleAttachmentFiles = useCallback(async (fileList: FileList | null) => {
     if (!apiKey) { onRequestApiKey?.(); return }
@@ -466,54 +456,44 @@ export default function DesignAgent({ apiKey: propApiKey, onRequestApiKey, templ
 
     setUploading(true)
     setUploadProgress(0)
-    await requireEntitlement(
-      ENTITLEMENTS.SMARTVIDEO_GO,
-      async () => {
-        try {
-          for (const file of files) {
-            const supported = isAllowedUploadMimeType(file)
-            if (!supported) continue
-            const maxBytes = getUploadLimit(file)
-            if (file.size > maxBytes) throw new Error(`${file.name} exceeds the ${maxBytes / 1024 / 1024}MB upload limit`)
+    try {
+      for (const file of files) {
+        const supported = isAllowedUploadMimeType(file)
+        if (!supported) continue
+        const maxBytes = getUploadLimit(file)
+        if (file.size > maxBytes) throw new Error(`${file.name} exceeds the ${maxBytes / 1024 / 1024}MB upload limit`)
 
-            const kind: AgentAttachment['kind'] = file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : 'image'
-            const uploadForm = new FormData()
-            uploadForm.append('file', file)
-            const sign = await axios.post('/api/v1/upload_file', uploadForm, {
-              headers: { 'Content-Type': 'multipart/form-data', 'x-api-key': apiKey },
-              onUploadProgress: event => {
-                if (event.total) setUploadProgress(Math.round((event.loaded * 100) / event.total))
-              },
-              timeout: 120_000,
-            })
-            const uploadedUrl = sign.data?.url
-            if (!uploadedUrl) throw new Error('MuAPI did not return an upload URL')
-            const registered = await apiCall('/api/design-agent/session-assets', {
-              method: 'POST',
-              body: JSON.stringify({ sessionId: project.id, url: uploadedUrl, kind }),
-            }, apiKey)
-            const attachment: AgentAttachment = {
-              asset_label: registered.asset_label || registered.id || `asset_${Date.now()}`,
-              url: uploadedUrl,
-              kind,
-            }
-            setAttachments(previous => [...previous, attachment].slice(0, MAX_ATTACHMENTS))
-          }
-          setActivity(previous => upsertActivity(previous, 'Reference media ready', 'done'))
-        } catch (error: any) {
-          setActivity(previous => upsertActivity(previous, error?.message || 'Reference upload failed', 'error'))
-        } finally {
-          setUploading(false)
-          setUploadProgress(0)
+        const kind: AgentAttachment['kind'] = file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : 'image'
+        const uploadForm = new FormData()
+        uploadForm.append('file', file)
+        const sign = await axios.post('/api/v1/upload_file', uploadForm, {
+          headers: { 'Content-Type': 'multipart/form-data', 'x-api-key': apiKey },
+          onUploadProgress: event => {
+            if (event.total) setUploadProgress(Math.round((event.loaded * 100) / event.total))
+          },
+          timeout: 120_000,
+        })
+        const uploadedUrl = sign.data?.url
+        if (!uploadedUrl) throw new Error('MuAPI did not return an upload URL')
+        const registered = await apiCall('/api/design-agent/session-assets', {
+          method: 'POST',
+          body: JSON.stringify({ sessionId: project.id, url: uploadedUrl, kind }),
+        }, apiKey)
+        const attachment: AgentAttachment = {
+          asset_label: registered.asset_label || registered.id || `asset_${Date.now()}`,
+          url: uploadedUrl,
+          kind,
         }
-      },
-      () => {
-        setUploading(false)
-        setUploadProgress(0)
-        setActivity([{ label: 'Payment required to upload references', status: 'error' }])
+        setAttachments(previous => [...previous, attachment].slice(0, MAX_ATTACHMENTS))
       }
-    )
-  }, [activeProject, apiKey, attachments.length, createNewProject, onRequestApiKey, requireEntitlement])
+      setActivity(previous => upsertActivity(previous, 'Reference media ready', 'done'))
+    } catch (error: any) {
+      setActivity(previous => upsertActivity(previous, error?.message || 'Reference upload failed', 'error'))
+    } finally {
+      setUploading(false)
+      setUploadProgress(0)
+    }
+  }, [activeProject, apiKey, attachments.length, createNewProject, onRequestApiKey])
 
   const removeAttachment = useCallback((label: string) => {
     setAttachments(previous => previous.filter(item => item.asset_label !== label))
@@ -640,100 +620,82 @@ export default function DesignAgent({ apiKey: propApiKey, onRequestApiKey, templ
     setActivity([{ label: 'Go-AI is planning', status: 'running' }])
     setIsLoading(true)
 
-    await requireEntitlement(
-      ENTITLEMENTS.SMARTVIDEO_GO,
-      async () => {
-        try {
-          let response: any
-          const currentSnapshot = [...prior, { role: 'user', content: agentContent, ...(attachmentSnapshot.length ? { attachments: attachmentSnapshot } : {}) }]
-          if (selectedTemplate) {
-            response = await apiCall('/api/design-agent/run-skill', {
-              method: 'POST',
-              body: JSON.stringify({
-                sessionId: project.id,
-                skill_name: selectedTemplate.id,
-                messages_snapshot: currentSnapshot,
-              }),
-            }, apiKey)
-          } else {
-            response = await apiCall('/api/design-agent/chat', {
-              method: 'POST',
-              body: JSON.stringify({
-                sessionId: project.id,
-                message: agentContent,
-                messages_snapshot: currentSnapshot,
-              }),
-            }, apiKey)
-          }
-
-          if (response?.job_id) {
-            await pollJob(response.job_id, project.id)
-          } else {
-            setMessages(previous => [...previous, {
-              id: (Date.now() + 1).toString(),
-              role: 'assistant',
-              content: response?.message || response?.response || 'Done.',
-              createdAt: new Date().toISOString(),
-            }])
-            setActivity(previous => upsertActivity(previous, 'Generation complete', 'done'))
-          }
-        } catch (error: any) {
-          setMessages(previous => [...previous, {
-            id: (Date.now() + 1).toString(),
-            role: 'assistant',
-            content: `Error: ${error?.message || 'Request failed'}. Please check your API key.`,
-            createdAt: new Date().toISOString(),
-          }])
-          setActivity(previous => upsertActivity(previous, error?.message || 'Request failed', 'error'))
-        } finally {
-          setIsLoading(false)
-        }
-      },
-      () => {
-        setIsLoading(false)
-        setActivity(previous => upsertActivity(previous, 'Payment required to use Design Agent', 'error'))
+    try {
+      let response: any
+      const currentSnapshot = [...prior, { role: 'user', content: agentContent, ...(attachmentSnapshot.length ? { attachments: attachmentSnapshot } : {}) }]
+      if (selectedTemplate) {
+        response = await apiCall('/api/design-agent/run-skill', {
+          method: 'POST',
+          body: JSON.stringify({
+            sessionId: project.id,
+            skill_name: selectedTemplate.id,
+            messages_snapshot: currentSnapshot,
+          }),
+        }, apiKey)
+      } else {
+        response = await apiCall('/api/design-agent/chat', {
+          method: 'POST',
+          body: JSON.stringify({
+            sessionId: project.id,
+            message: agentContent,
+            messages_snapshot: currentSnapshot,
+          }),
+        }, apiKey)
       }
-    )
-  }, [activeProject, agentMode, apiKey, attachments, brandKit, createNewProject, input, messages, onRequestApiKey, pollJob, selectedTemplate, requireEntitlement])
+
+      if (response?.job_id) {
+        await pollJob(response.job_id, project.id)
+      } else {
+        setMessages(previous => [...previous, {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: response?.message || response?.response || 'Done.',
+          createdAt: new Date().toISOString(),
+        }])
+        setActivity(previous => upsertActivity(previous, 'Generation complete', 'done'))
+      }
+    } catch (error: any) {
+      setMessages(previous => [...previous, {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: `Error: ${error?.message || 'Request failed'}. Please check your API key.`,
+        createdAt: new Date().toISOString(),
+      }])
+      setActivity(previous => upsertActivity(previous, error?.message || 'Request failed', 'error'))
+    } finally {
+      setIsLoading(false)
+    }
+  }, [activeProject, agentMode, apiKey, attachments, brandKit, createNewProject, input, messages, onRequestApiKey, pollJob, selectedTemplate])
 
   const handlePlanAction = useCallback(async (action: 'approve' | 'reject') => {
     if (!pendingPlan) return
     const plan = pendingPlan
     setIsLoading(true)
-    await requireEntitlement(
-      ENTITLEMENTS.SMARTVIDEO_GO,
-      async () => {
-        try {
-          if (action === 'approve') {
-            await apiCall('/api/design-agent/approve', {
-              method: 'POST',
-              body: JSON.stringify({ jobId: plan.jobId }),
-            }, apiKey)
-            approvedJobsRef.current.add(plan.jobId)
-            setPendingPlan(null)
-            setActivity(previous => upsertActivity(previous, 'Plan approved — executing', 'running'))
-            await pollJob(plan.jobId, plan.sessionId, plan.cursor)
-          } else {
-            await apiCall('/api/design-agent/reject', {
-              method: 'POST',
-              body: JSON.stringify({ jobId: plan.jobId }),
-            }, apiKey)
-            setPendingPlan(null)
-            setActivity(previous => upsertActivity(previous, 'Plan rejected — ready for revisions', 'done'))
-            setInput('Revise the plan: ')
-          }
-        } catch (error: any) {
-          setActivity(previous => upsertActivity(previous, error?.message || `Could not ${action} plan`, 'error'))
-        } finally {
-          setIsLoading(false)
-        }
-      },
-      () => {
-        setIsLoading(false)
-        setActivity(previous => upsertActivity(previous, 'Payment required to approve or reject plans', 'error'))
+    try {
+      if (action === 'approve') {
+        await apiCall('/api/design-agent/approve', {
+          method: 'POST',
+          body: JSON.stringify({ jobId: plan.jobId }),
+        }, apiKey)
+        approvedJobsRef.current.add(plan.jobId)
+        setPendingPlan(null)
+        setActivity(previous => upsertActivity(previous, 'Plan approved — executing', 'running'))
+        await pollJob(plan.jobId, plan.sessionId, plan.cursor)
+      } else {
+        await apiCall('/api/design-agent/reject', {
+          method: 'POST',
+          body: JSON.stringify({ jobId: plan.jobId }),
+        }, apiKey)
+        setPendingPlan(null)
+        setActivity(previous => upsertActivity(previous, 'Plan rejected — ready for revisions', 'done'))
+        setInput('Revise the plan: ')
       }
-    )
-  }, [apiKey, pendingPlan, pollJob, requireEntitlement])
+    } catch (error: any) {
+      setActivity(previous => upsertActivity(previous, error?.message || `Could not ${action} plan`, 'error'))
+    } finally {
+      setIsLoading(false)
+    }
+  }, [apiKey, pendingPlan, pollJob])
 
   const handleAssetAction = useCallback((action: AssetAction, asset: Asset) => {
     if (asset.type !== 'image') return

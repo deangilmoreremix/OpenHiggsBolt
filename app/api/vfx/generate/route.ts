@@ -4,8 +4,6 @@ import { getServerVFXClient, MUAPI_KEY_MISSING_ERROR } from '@/api/vfx'
 import { validateGenerationInput } from '../_validation'
 import { validateMuAPIKey, isMuapiKeyMissingError } from '../_helpers'
 import { rateLimit, rateLimit429, resolveRateLimitKey } from '@/lib/rateLimit'
-import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
-import { ENTITLEMENTS } from '@/access/entitlements'
 
 export const dynamic = "force-dynamic";
 
@@ -15,14 +13,6 @@ const RATE_LIMIT_MAX = 10
 const RATE_LIMIT_WINDOW_MS = 60_000
 
 export async function POST(req: NextRequest) {
-  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
-  if (!entitlementCheck.allowed) {
-    if (entitlementCheck.status === 401) {
-      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-    }
-    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
-  }
-
   try {
     const body = await req.json()
     const validationErrors = validateGenerationInput(body)

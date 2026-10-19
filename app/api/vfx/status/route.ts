@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerVFXClient, MUAPI_KEY_MISSING_ERROR } from '@/api/vfx'
 import { isRequestCancelled } from '../cancel/route'
 import { validateMuAPIKey, isMuapiKeyMissingError } from '../_helpers'
-import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
-import { ENTITLEMENTS } from '@/access/entitlements'
 
 export const dynamic = "force-dynamic";
 
@@ -12,14 +10,6 @@ function cancelledResponse(id: string) {
 }
 
 export async function GET(req: NextRequest) {
-  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
-  if (!entitlementCheck.allowed) {
-    if (entitlementCheck.status === 401) {
-      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-    }
-    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
-  }
-
   try {
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
