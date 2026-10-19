@@ -1,15 +1,19 @@
 export const ENTITLEMENTS = {
   SMARTVIDEO_GO: 'smartvideo_go',
   SMARTVIDEO_AI: 'smartvideo_ai',
+  SMARTVIDEO_VIRAL: 'smartvideo_viral',
+  SMARTVIDEO_APPS: 'smartvideo_apps',
   FOUNDERS: 'founders',
-} as const;
+} as const
 
-export type EntitlementKey = typeof ENTITLEMENTS[keyof typeof ENTITLEMENTS];
+export type EntitlementKey = typeof ENTITLEMENTS[keyof typeof ENTITLEMENTS]
 
 export interface UserEntitlements {
-  smartvideo_go: boolean;
-  smartvideo_ai?: boolean;
-  founders?: boolean;
+  smartvideo_go: boolean
+  smartvideo_ai?: boolean
+  smartvideo_viral?: boolean
+  smartvideo_apps?: boolean
+  founders?: boolean
 }
 
 /**

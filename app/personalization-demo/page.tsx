@@ -43,6 +43,7 @@ export default function PersonalizationDemoPage() {
   const { apiKey, hasApiKey, setApiKey } = useAuthConfig()
   const [mounted, setMounted] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [demoToken, setDemoToken] = useState<string | null>(null)
   const searchParams = useSearchParams()
 
   useEffect(() => {
@@ -57,6 +58,45 @@ export default function PersonalizationDemoPage() {
     }
   }, [isTestMode, apiKey, setApiKey])
 
+  // Obtain a server-validated landing_demo_personalization session so the free
+  // demo can perform Lead Finder, business search, import, customize, preview
+  // and render without a purchase. Not required in test mode (BYOK or UI-only).
+  useEffect(() => {
+    if (isTestMode || apiKey) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/demo/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            templateId: SAMPLE_SOURCE.id,
+            actions: [
+              'lead-finder',
+              'business-search',
+              'import',
+              'customize',
+              'preview',
+              'render',
+            ],
+          }),
+        })
+        if (cancelled) return
+        if (res.ok) {
+          const json = await res.json()
+          setDemoToken(json.token || null)
+        } else {
+          console.warn('[demo] session creation failed:', res.status)
+        }
+      } catch {
+        // Demo session is optional; the modal still opens in UI-only mode.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isTestMode, apiKey])
+
   if (!mounted) {
     return (
       <div style={{ minHeight: '100vh', background: '#0a0a0b', color: 'white', padding: 20 }}>
@@ -67,7 +107,7 @@ export default function PersonalizationDemoPage() {
   }
 
   return (
-    <DemoPersonalizeProvider testMode={isTestMode}>
+    <DemoPersonalizeProvider testMode={isTestMode} demoToken={demoToken}>
       <div
         style={{
           minHeight: '100vh',

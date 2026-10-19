@@ -424,6 +424,13 @@ export type DemoPersonalizeContextValue = {
   retryBranding: () => Promise<void>
   generation: GenerationState
 
+  // Landing-page demo permission (server-validated landing_demo_personalization).
+  // Grants the demo template + actions scope only; never paid studio access.
+  demoToken: string | null
+  demoActions: string[]
+  setDemoToken: (token: string | null) => void
+  validateDemoToken: (action: string) => Promise<boolean>
+
   // Result
   result: GenerationResult | null
   resultTab: 'prompt' | 'images' | 'videos'
@@ -485,6 +492,7 @@ export function useDemoPersonalize(): DemoPersonalizeContextValue {
 interface DemoPersonalizeProviderProps {
   children: ReactNode
   testMode?: boolean
+  demoToken?: string | null
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -612,7 +620,7 @@ function replaceAssetInLibrary(library: AssetLibrary, asset: PersonalizationAsse
 
 // ── Provider ─────────────────────────────────────────────────────────────────
 
-export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeProviderProps) {
+export function DemoPersonalizeProvider({ children, testMode, demoToken }: DemoPersonalizeProviderProps) {
   // Navigation & publish integration
   const router = useRouter()
   const socialPublish = useOptionalSocialPublish()
@@ -772,6 +780,35 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     imageModes: [],
     recommendedMode: undefined,
   })
+
+  // Landing-page demo session token (server-validated landing_demo_personalization).
+  const [demoSessionToken, setDemoSessionToken] = useState<string | null>(demoToken ?? null)
+  const [demoActions, setDemoActions] = useState<string[]>([])
+  const [demoValidated, setDemoValidated] = useState<Record<string, boolean>>({})
+
+  const validateDemoToken = useCallback(
+    async (action: string): Promise<boolean> => {
+      // Test mode and a real MuAPI key (BYOK) always permit render.
+      if (testMode || apiKey) return true
+      if (!demoSessionToken) return false
+      if (demoValidated[action] === true) return true
+      try {
+        const res = await fetch(
+          `/api/demo/validate?token=${encodeURIComponent(demoSessionToken)}&action=${encodeURIComponent(action)}`,
+        )
+        if (!res.ok) return false
+        const json = await res.json()
+        if (json.valid === true) {
+          setDemoValidated((prev) => ({ ...prev, [action]: true }))
+          return true
+        }
+        return false
+      } catch {
+        return false
+      }
+    },
+    [demoSessionToken, testMode, apiKey, demoValidated],
+  )
 
   // Project restore (Phase 14)
   const [loadedProject, setLoadedProject] = useState<{
@@ -2901,7 +2938,26 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
   // ── Generation actions ─────────────────────────────────────────────────────
 
   const generate = useCallback(async () => {
-    if (!source || !apiKey) return
+    if (!source) return
+
+    // A real MuAPI key (BYOK) or test mode always permits render.
+    if (apiKey || testMode) {
+      // fall through to generation
+    } else {
+      // Free landing-page demo: render is only allowed under a server-validated
+      // landing_demo_personalization session with the 'render' action. This is
+      // NOT an entitlement and never unlocks paid studios.
+      const canRender = await validateDemoToken('render')
+      if (!canRender) {
+        setGeneration({
+          ...EMPTY_GENERATION_STATE,
+          status: 'error',
+          errorMessage:
+            'Demo render requires a valid demo session. Please start the demo from the landing page.',
+        })
+        return
+      }
+    }
 
     // Guard: block blob URLs from reaching generation
     const allAssets: PersonalizationAsset[] = [
@@ -3344,6 +3400,12 @@ export function DemoPersonalizeProvider({ children, testMode }: DemoPersonalizeP
     generateAgain,
     retryBranding,
     generation,
+
+    // Landing-page demo permission
+    demoToken: demoSessionToken,
+    demoActions,
+    setDemoToken: setDemoSessionToken,
+    validateDemoToken,
 
     // Result
     result,
