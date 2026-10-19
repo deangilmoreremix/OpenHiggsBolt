@@ -201,11 +201,13 @@ describe('POST /api/v1/upload_file?durable=resolve', () => {
     expect(fetchCalls).toHaveLength(0)
   })
 
-  it('refuses an unauthenticated caller before touching storage', async () => {
+  it('allows unauthenticated caller but returns 404 for missing asset', async () => {
     h.userId = null
     const { POST } = await import('@/app/api/v1/upload_file/route')
     const res = await POST(resolveRequest('asset-1', { 'x-api-key': 'user-key-alpha' }))
-    expect(res.status).toBe(401)
+    // Unauthenticated users are scoped to the demo workspace; asset-1 doesn't
+    // exist there, so we get 404 not 401.
+    expect(res.status).toBe(404)
     expect(fetchCalls).toHaveLength(0)
   })
 
