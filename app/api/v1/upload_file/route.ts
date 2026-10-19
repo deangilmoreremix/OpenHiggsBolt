@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { safeApiJson, upstreamErrorResponse } from '@/lib/safeApiResponse';
-import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement';
-import { ENTITLEMENTS } from '@/access/entitlements';
 import { getApiKeyFromRequest, isBlockedFileType } from '@/lib/uploadProxyTarget';
 import { getUploadLimit, isAllowedUploadMimeType, formatUploadLimit, ALLOWED_UPLOAD_MIME_TYPES } from '@/lib/uploadConfig';
 import { auth } from '@clerk/nextjs/server';
@@ -272,14 +270,6 @@ async function handleDurableRecordRequest(request: NextRequest): Promise<NextRes
  * request body stays a few hundred bytes even for a 50 MB video.
  */
 async function handleDurableResolveRequest(request: NextRequest): Promise<NextResponse> {
-  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
-  if (!entitlementCheck.allowed) {
-    if (entitlementCheck.status === 401) {
-      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-    }
-    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
-  }
-
   const workspaceId = await resolveAuthorizedWorkspace();
   if (!workspaceId) {
     return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
@@ -424,14 +414,6 @@ export async function POST(request: NextRequest) {
       console.error('Upload file exception:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  }
-
-  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO);
-  if (!entitlementCheck.allowed) {
-    if (entitlementCheck.status === 401) {
-      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-    }
-    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO);
   }
 
   try {

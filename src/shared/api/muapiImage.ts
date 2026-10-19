@@ -196,6 +196,19 @@ function parseError(text: string): string {
   }
 }
 
+/** Parse the error response body into an object, for structured error classification. */
+function parseErrorJson(text: string): { code?: string; error?: string; detail?: string } | null {
+  try {
+    const parsed = JSON.parse(text)
+    if (parsed && typeof parsed === 'object') {
+      return parsed as { code?: string; error?: string; detail?: string }
+    }
+  } catch {
+    // ignore
+  }
+  return null
+}
+
 export class MuAPIImageClient {
   private apiKey: string
   private baseUrl: string
@@ -246,11 +259,18 @@ export class MuAPIImageClient {
       }
       xhr.onload = () => {
         if (xhr.status < 200 || xhr.status >= 300) {
-          const detail = parseError(xhr.responseText)
-          if (xhr.status === 401 || xhr.status === 403) {
-            return reject(new Error('Invalid MuAPI key. Please check your key in Settings.'))
-          }
-          return reject(new Error(`Image upload failed: ${xhr.status} - ${detail}`))
+            const parsed = parseErrorJson(xhr.responseText)
+            if (xhr.status === 401 || xhr.status === 403) {
+                const code = parsed?.code
+                if (code === 'ENTITLEMENT_REQUIRED' || code === 'PAYMENT_REQUIRED') {
+                    return reject(new Error('This upload requires a paid plan. Please upgrade to continue.'))
+                }
+                if (code === 'UNAUTHENTICATED' || xhr.status === 401) {
+                    return reject(new Error('Authentication required. Please sign in and try again.'))
+                }
+                return reject(new Error('Invalid MuAPI key. Please check your key in Settings.'))
+            }
+            return reject(new Error(`Image upload failed: ${xhr.status} - ${parsed?.error || parseError(xhr.responseText)}`))
         }
         try {
           const data = JSON.parse(xhr.responseText)
@@ -301,8 +321,16 @@ export class MuAPIImageClient {
       }
       xhr.onload = () => {
         if (xhr.status < 200 || xhr.status >= 300) {
-          const detail = parseError(xhr.responseText)
+          const parsed = parseErrorJson(xhr.responseText)
+          const detail = parsed?.error || parseError(xhr.responseText)
           if (xhr.status === 401 || xhr.status === 403) {
+            const code = parsed?.code
+            if (code === 'ENTITLEMENT_REQUIRED' || code === 'PAYMENT_REQUIRED') {
+              return reject(new Error('This upload requires a paid plan. Please upgrade to continue.'))
+            }
+            if (code === 'UNAUTHENTICATED' || xhr.status === 401) {
+              return reject(new Error('Authentication required. Please sign in and try again.'))
+            }
             return reject(new Error('Invalid MuAPI key. Please check your key in Settings.'))
           }
           return reject(new Error(`Mask upload failed: ${xhr.status} - ${detail}`))

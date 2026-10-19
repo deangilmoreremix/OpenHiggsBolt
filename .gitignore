@@ -70,3 +70,5 @@ playwright/marketing-artifacts/
 .sync-backups/
 monitoring/
 .kilo/openhiggsbolt-personalization-fix/
+storage/key_value_stores/
+storage/request_queues/
