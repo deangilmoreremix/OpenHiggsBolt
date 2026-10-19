@@ -4437,7 +4437,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         : `/${template.preview}`
       : null
     setPreviewVideo({
-      url: '',
+      url: template.preview || '',
       poster,
       title: template.nameEn || template.name,
       kind: 'motion-template',

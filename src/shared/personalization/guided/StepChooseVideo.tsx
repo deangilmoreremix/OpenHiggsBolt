@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Check, Film, FolderOpen, Sparkles, Upload, Video } from 'lucide-react'
+import { Check, Film, FolderOpen, Play, Sparkles, Upload, Video } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { GUIDED_DEMO_VIDEOS, demoDurationInFrames } from './curatedDemos'
 import { C, badgeStyle, chipStyle, hintStyle, labelStyle, panelStyle, softPanelStyle, tileStyle } from './tokens'
@@ -33,6 +33,7 @@ export function StepChooseVideo(): React.JSX.Element {
   const { source, previewVideo, setPreviewVideo, previewSettings, updatePreviewComposition, sharedMediaEntries = [] } = ctx
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadNote, setUploadNote] = useState(false)
+  const [hoveredDemoId, setHoveredDemoId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'source' | 'demos' | 'motion' | 'upload'>('source')
 
   const fps = previewSettings?.fps || 30
@@ -63,6 +64,11 @@ export function StepChooseVideo(): React.JSX.Element {
   const pick = (video: PreviewVideoRef) => setPreviewVideo(video)
 
   const pickDemo = (demo: (typeof GUIDED_DEMO_VIDEOS)[number]) => {
+    // A demo without a playable videoSrc must not be selected and must never
+    // silently substitute another demo. Show an unavailable state instead.
+    if (!demo.videoSrc) {
+      return
+    }
     pick({ url: demo.videoSrc, poster: demo.posterSrc || null, title: demo.title, kind: 'demo', demoId: String(demo.id) })
     updatePreviewComposition({ durationInFrames: demoDurationInFrames(demo, fps) })
   }
@@ -188,11 +194,36 @@ export function StepChooseVideo(): React.JSX.Element {
                         loading="lazy"
                         style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 8, display: 'block', background: '#000' }}
                       />
+                      {/* Play overlay — makes the card clearly a playable video, not a static image. */}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); pickDemo(demo) }}
+                        onMouseEnter={() => setHoveredDemoId(String(demo.id))}
+                        onMouseLeave={() => setHoveredDemoId(null)}
+                        aria-label={`Play ${demo.title}`}
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: 'rgba(0,0,0,.35)',
+                          border: 'none',
+                          color: 'white',
+                          cursor: 'pointer',
+                          borderRadius: 8,
+                          opacity: hoveredDemoId === String(demo.id) ? 1 : 0,
+                          transition: 'opacity .15s ease',
+                        }}
+                      >
+                        <Play size={26} color="#fff" />
+                      </button>
                       {active && (
                         <span style={{ ...badgeStyle('green'), position: 'absolute', top: 6, right: 6 }}>
                           <Check size={10} /> Selected
                         </span>
                       )}
+                      <span style={{ position: 'absolute', bottom: 6, left: 6, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', color: '#fff', background: 'rgba(0,0,0,.55)', padding: '2px 6px', borderRadius: 4 }}>VIDEO</span>
                     </div>
                     <div style={{ color: C.text, fontSize: 12, fontWeight: 700, marginTop: 8, lineHeight: 1.35 }}>{demo.title}</div>
                     {demo.durationLabel && <div style={{ color: C.muted2, fontSize: 10, marginTop: 2 }}>{demo.durationLabel}</div>}
@@ -200,6 +231,32 @@ export function StepChooseVideo(): React.JSX.Element {
                 )
               })}
             </div>
+
+            {/* ── Playable preview of the selected demo ──────────────────────── */}
+            {previewVideo?.kind === 'demo' && previewVideo.url && (
+              <div style={panelStyle}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <Video size={15} color={C.cyan} />
+                  <h3 style={{ margin: 0, fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', color: C.text }}>
+                    Selected demo preview
+                  </h3>
+                </div>
+                <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', background: '#000', borderRadius: 8, overflow: 'hidden' }}>
+                  <video
+                    src={previewVideo.url}
+                    poster={previewVideo.poster || undefined}
+                    controls
+                    muted
+                    playsInline
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                  />
+                </div>
+                <div style={{ color: C.text, fontSize: 12, fontWeight: 700, marginTop: 8 }}>{previewVideo.title}</div>
+                <p style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>
+                  Playing the real demo video source ({previewVideo.poster ? 'poster shown before play' : 'no poster available'}).
+                </p>
+              </div>
+            )}
           </>
         )}
       </div>
