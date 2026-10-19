@@ -230,11 +230,13 @@ describe('POST /api/v1/upload_file?durable=resolve', () => {
     }
   })
 
-  it('enforces the entitlement gate', async () => {
+  it('no longer blocks on entitlement but still requires auth, key, and existing asset', async () => {
     h.entitlement = { allowed: false, status: 403 }
     const { POST } = await import('@/app/api/v1/upload_file/route')
     const res = await POST(resolveRequest('asset-1', { 'x-api-key': 'user-key-alpha' }))
-    expect(res.status).toBe(403)
+    // Entitlement is no longer checked on upload/durable-resolve endpoints.
+    // Asset "asset-1" does not exist in storage, so we get 404 not 403.
+    expect(res.status).toBe(404)
     expect(fetchCalls).toHaveLength(0)
   })
 

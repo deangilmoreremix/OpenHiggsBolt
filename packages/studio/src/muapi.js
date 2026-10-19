@@ -29,10 +29,10 @@ const PROXY_WF_BASE = '/api/workflow';
 const FILE_UPLOAD_TIMEOUT_MS = 420_000;
 const FILE_UPLOAD_PENDING_PROGRESS = 99;
 
-function notifyAuthRequired(status, detail) {
+function notifyAuthRequired(status, detail, code) {
     if (typeof window === 'undefined') return;
     if (status !== 401 && status !== 403) return;
-    window.dispatchEvent(new CustomEvent('muapi:auth-required', { detail: { status, message: detail } }));
+    window.dispatchEvent(new CustomEvent('muapi:auth-required', { detail: { status, message: detail, code } }));
 }
 
 function assertRequiredPrompt(model, params) {
@@ -340,7 +340,7 @@ export function uploadFile(apiKey, file, onProgress) {
             return reject(new Error(`File too large: ${(file.size/1024/1024).toFixed(1)} MB. Maximum: ${formatUploadLimit(MAX_FILE_SIZE)}`));
         }
 
-        const url = `${BASE_URL}/api/v1/upload_file`;
+        const url = '/api/v1/upload_file';
 
         function attemptUpload() {
             const formData = new FormData();
@@ -390,13 +390,15 @@ export function uploadFile(apiKey, file, onProgress) {
                 }
             } else {
                 let detail = xhr.statusText;
+                let code = null;
                 try {
                     const errObj = JSON.parse(xhr.responseText);
-                    detail = errObj.detail || detail;
+                    detail = errObj.error || errObj.detail || detail;
+                    code = errObj.code || null;
                 } catch (e) {
                     // fallback to statusText
                 }
-                notifyAuthRequired(xhr.status, detail);
+                notifyAuthRequired(xhr.status, detail, code);
                 reject(new Error(`File upload failed: ${xhr.status} - ${detail}`));
             }
         }).catch(reject);
