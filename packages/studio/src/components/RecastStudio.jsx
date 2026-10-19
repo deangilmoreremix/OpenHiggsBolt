@@ -303,6 +303,98 @@ export default function RecastStudio({
   // ── Prompt ────────────────────────────────────────────────────────────────
   const [prompt, setPrompt] = useState("");
 
+  // ── Character orientation (image/video) ───────────────────────────────────
+  const [characterOrientation, setCharacterOrientation] = useState("image");
+
+  // ── Asset Library Storage ─────────────────────────────────────────────────
+  const [assetVideos, setAssetVideos] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("hg_recast_assets");
+        if (stored) return JSON.parse(stored).videos || [];
+      } catch {}
+    }
+    return [];
+  });
+
+  const [assetImages, setAssetImages] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("hg_recast_assets");
+        if (stored) return JSON.parse(stored).images || [];
+      } catch {}
+    }
+    return [];
+  });
+
+  const [assetResults, setAssetResults] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("hg_recast_assets");
+        if (stored) return JSON.parse(stored).results || [];
+      } catch {}
+    }
+    return [];
+  });
+
+  const saveRecastAssets = (v, i, r) => {
+    try {
+      localStorage.setItem(
+        "hg_recast_assets",
+        JSON.stringify({ videos: v, images: i, results: r })
+      );
+    } catch {}
+  };
+
+  const handleAddVideoAsset = (url, name) => {
+    setAssetVideos((prev) => {
+      if (prev.some((a) => a.url === url)) return prev;
+      const updated = [{ url, name, timestamp: Date.now() }, ...prev];
+      saveRecastAssets(updated, assetImages, assetResults);
+      return updated;
+    });
+  };
+
+  const handleAddImageAsset = (url, name) => {
+    setAssetImages((prev) => {
+      if (prev.some((a) => a.url === url)) return prev;
+      const updated = [{ url, name, timestamp: Date.now() }, ...prev];
+      saveRecastAssets(assetVideos, updated, assetResults);
+      return updated;
+    });
+  };
+
+  const handleAddResultAsset = (url, name) => {
+    setAssetResults((prev) => {
+      if (prev.some((a) => a.url === url)) return prev;
+      const updated = [{ url, name, timestamp: Date.now() }, ...prev];
+      saveRecastAssets(assetVideos, assetImages, updated);
+      return updated;
+    });
+  };
+
+  const handleDeleteAsset = (type, url) => {
+    if (type === "videos") {
+      setAssetVideos((prev) => {
+        const u = prev.filter((a) => a.url !== url);
+        saveRecastAssets(u, assetImages, assetResults);
+        return u;
+      });
+    } else if (type === "images") {
+      setAssetImages((prev) => {
+        const u = prev.filter((a) => a.url !== url);
+        saveRecastAssets(assetVideos, u, assetResults);
+        return u;
+      });
+    } else {
+      setAssetResults((prev) => {
+        const u = prev.filter((a) => a.url !== url);
+        saveRecastAssets(assetVideos, assetImages, u);
+        return u;
+      });
+    }
+  };
+
   // ── Generation / UI state ─────────────────────────────────────────────────
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(null);
@@ -313,9 +405,11 @@ export default function RecastStudio({
   const history = historyItems ?? internalHistory;
 
   // ── Dropdown state ────────────────────────────────────────────────────────
-  const [openDropdown, setOpenDropdown] = useState(null); // 'model' | 'aspect' | null
+  const [openDropdown, setOpenDropdown] = useState(null); // 'model' | 'aspect' | 'orientation' | 'assets' | null
   const modelBtnRef = useRef(null);
   const aspectBtnRef = useRef(null);
+  const orientationBtnRef = useRef(null);
+  const assetsBtnRef = useRef(null);
   const textareaRef = useRef(null);
   const hasRestored = useRef(false);
 
@@ -374,6 +468,7 @@ export default function RecastStudio({
         const data = JSON.parse(stored);
         if (data.selectedModelId) setSelectedModelId(data.selectedModelId);
         if (data.selectedAspectRatio) setSelectedAspectRatio(data.selectedAspectRatio);
+        if (data.characterOrientation) setCharacterOrientation(data.characterOrientation);
         if (data.videoUrl) {
           setVideoUrl(data.videoUrl);
           setVideoState(UPLOAD_STATE.READY);
@@ -403,6 +498,7 @@ export default function RecastStudio({
           JSON.stringify({
             selectedModelId,
             selectedAspectRatio,
+            characterOrientation,
             videoUrl,
             videoName,
             imageUrl,
@@ -560,6 +656,7 @@ export default function RecastStudio({
         model: selectedModelId,
         video_url: videoUrl,
         image_url: imageUrl,
+        character_orientation: characterOrientation,
       };
       if (showAspect) params.aspect_ratio = selectedAspectRatio;
       if (prompt && selectedModel?.hasPrompt) params.prompt = prompt;
@@ -882,6 +979,101 @@ export default function RecastStudio({
               )}
             </div>
 
+              {/* Orientation selector */}
+              <div className="relative">
+                <button
+                  ref={orientationBtnRef}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenDropdown(openDropdown === "orientation" ? null : "orientation");
+                  }}
+                  className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+                >
+                  <span className="text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors">
+                    {copy.labels.orientationPrefix} {characterOrientation === "image" ? copy.dropdowns.orientationImage : copy.dropdowns.orientationVideo}
+                  </span>
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    className="opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                  >
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+                <Dropdown
+                  isOpen={openDropdown === "orientation"}
+                  items={[
+                    { id: "image", name: copy.dropdowns.orientationImage, description: copy.dropdowns.orientationImageDesc },
+                    { id: "video", name: copy.dropdowns.orientationVideo, description: copy.dropdowns.orientationVideoDesc },
+                  ]}
+                  selectedId={characterOrientation}
+                  onSelect={(item) => setCharacterOrientation(item.id)}
+                  onClose={() => setOpenDropdown(null)}
+                  anchorRef={orientationBtnRef}
+                />
+              </div>
+
+              {/* Assets Library button */}
+              <div className="relative">
+                <button
+                  ref={assetsBtnRef}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenDropdown(openDropdown === "assets" ? null : "assets");
+                  }}
+                  className="h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/50 group-hover:text-[#22d3ee] transition-colors">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                  </svg>
+                  <span className="text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors">
+                    {copy.labels.library}
+                  </span>
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    className="opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                  >
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+                {openDropdown === "assets" && (
+                  <AssetsDropdown
+                    videos={assetVideos}
+                    images={assetImages}
+                    results={assetResults}
+                    onSelectVideo={(url, name) => {
+                      setVideoUrl(url);
+                      setVideoName(name);
+                      setVideoState(UPLOAD_STATE.READY);
+                      setOpenDropdown(null);
+                    }}
+                    onSelectImage={(url, name) => {
+                      setImageUrl(url);
+                      setImageName(name);
+                      setImageState(UPLOAD_STATE.READY);
+                      setOpenDropdown(null);
+                    }}
+                    onDeleteAsset={handleDeleteAsset}
+                    setFullscreenUrl={setFullscreenUrl}
+                    onClose={() => setOpenDropdown(null)}
+                    anchorRef={assetsBtnRef}
+                    copy={copy}
+                  />
+                )}
+              </div>
+
             {/* Generate button */}
             <button
               type="button"
@@ -933,6 +1125,161 @@ export default function RecastStudio({
           />
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Asset Library Dropdown ──────────────────────────────────────────────────
+function AssetsDropdown({
+  videos,
+  images,
+  results,
+  onSelectVideo,
+  onSelectImage,
+  onDeleteAsset,
+  setFullscreenUrl,
+  onClose,
+  anchorRef,
+  copy,
+}) {
+  const [activeTab, setActiveTab] = useState("videos");
+  const dropRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (!dropRef.current?.contains(e.target) && !anchorRef?.current?.contains(e.target)) {
+        onClose();
+      }
+    };
+    window.addEventListener("click", handler);
+    return () => window.removeEventListener("click", handler);
+  }, [onClose, anchorRef]);
+
+  const items = activeTab === "videos" ? videos : activeTab === "images" ? images : results;
+
+  return (
+    <div
+      ref={dropRef}
+      className="absolute z-50 w-80 sm:w-96 max-w-[calc(100vw-2rem)] max-h-96 overflow-hidden flex flex-col bg-[#0a0a0a] border border-white/10 rounded-xl shadow-2xl p-3"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="flex items-center justify-between border-b border-white/10 pb-1.5 mb-2">
+        <span className="text-xs font-bold text-white">{copy.assetLibrary.header}</span>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-[11px] font-bold text-[#22d3ee] hover:underline"
+        >
+          Done
+        </button>
+      </div>
+
+      {/* Styled Tabs */}
+      <div className="flex bg-white/[0.04] p-1 rounded-xl gap-1 border border-white/[0.06] mb-2">
+        {["videos", "images", "results"].map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 py-1 text-xs font-bold rounded-lg capitalize transition-all ${
+              activeTab === tab
+                ? "bg-[#22d3ee] text-black shadow-sm"
+                : "text-white/50 hover:text-white hover:bg-white/[0.04]"
+            }`}
+          >
+            {copy.assetLibrary.tabs[tab]}
+          </button>
+        ))}
+      </div>
+
+      {/* Items list */}
+      <div className="overflow-y-auto custom-scrollbar flex-1 flex flex-col gap-2 min-h-[160px] max-h-64 pr-1">
+        {items.length === 0 ? (
+          <div className="flex flex-col items-center justify-center flex-1 py-10 text-xs text-white/30">
+            {copy.assetLibrary.empty}
+          </div>
+        ) : (
+          items.map((item, idx) => (
+            <div
+              key={idx}
+              className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.05] hover:border-white/10 transition-all gap-2.5 group/item"
+            >
+              <div className="w-11 h-11 rounded-lg overflow-hidden bg-white/5 flex-shrink-0 relative border border-white/10">
+                {activeTab === "images" ? (
+                  <img src={item.url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <video src={item.url} className="w-full h-full object-cover" muted playsInline loop />
+                )}
+                <button
+                  type="button"
+                  title={copy.titles.enlargePreview}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFullscreenUrl(item.url);
+                    onClose();
+                  }}
+                  className="absolute inset-0 bg-black/60 opacity-0 group-hover/item:opacity-100 flex items-center justify-center transition-opacity text-white hover:text-[#22d3ee]"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="flex-1 min-w-0 flex flex-col">
+                <span className="text-xs text-white/95 font-semibold truncate" title={item.name}>
+                  {item.name}
+                </span>
+                <span className="text-[10px] text-white/40 truncate mt-0.5">
+                  {new Date(item.timestamp || Date.now()).toLocaleDateString()}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {activeTab === "images" ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectImage(item.url, item.name);
+                    }}
+                    className="text-[11px] text-black font-black px-2.5 py-1 bg-[#22d3ee] rounded-md hover:bg-[#22d3ee]/90 transition-colors whitespace-nowrap shadow-sm"
+                  >
+                    {copy.buttons.useAsImage}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectVideo(item.url, item.name);
+                    }}
+                    className="text-[11px] text-black font-black px-2.5 py-1 bg-[#22d3ee] rounded-md hover:bg-[#22d3ee]/90 transition-colors whitespace-nowrap shadow-sm"
+                  >
+                    {copy.buttons.useAsImage}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  title={copy.titles.deleteFromLibrary}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteAsset(activeTab, item.url);
+                  }}
+                  className="p-1.5 text-white/30 hover:text-red-400 rounded-md hover:bg-white/5 transition-colors"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }

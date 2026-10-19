@@ -33,20 +33,76 @@ const WorkflowUI = dynamic(() => import("./WorkflowUI"), {
 
 function WorkflowCard({ workflow, onClick, activeTab, onRename, onDelete }) {
   const [showOptions, setShowOptions] = useState(false);
-  const [imgError, setImgError] = useState(false);
+  const [imgExhausted, setImgExhausted] = useState(false);
+  const [candidateIndex, setCandidateIndex] = useState(0);
 
-  // If the local/proxied thumbnail fails, fall back to the original raw URL.
-  const handleImgError = (e) => {
-    const src = e.currentTarget.src;
-    // If this is already the proxy fallback, give up and show the placeholder.
-    if (src.includes('/api/thumbnail')) {
-      setImgError(true);
+  // Known filename corrections: remote URL filename -> local file filename.
+  // The CDN sometimes serves `…__1_.jpg` while the local copy is `…-1.jpg`.
+  const THUMBNAIL_FILENAME_CORRECTIONS = {
+    '9d1e5efced63471e84c721bc56f3b5e7__1_.jpg': '9d1e5efced63471e84c721bc56f3b5e7-1.jpg',
+  };
+
+  // Hosts allowed by the same-origin thumbnail proxy (app/api/thumbnail/route.js).
+  const ALLOWED_PROXY_HOSTS = new Set([
+    'cdn.muapi.ai',
+    'd3adwkbyhxyrtq.cloudfront.net',
+    'muapi.ai',
+  ]);
+
+  // Build the ordered candidate list for this workflow's thumbnail.
+  // Preference: verified original URL → verified local image → same-origin proxy → placeholder.
+  const candidates = useMemo(() => {
+    const list = [];
+    const remoteUrl = workflow.thumbnail || null;
+
+    // 1. Verified original image URL (when accessible directly).
+    if (remoteUrl) list.push({ url: remoteUrl, kind: 'remote' });
+
+    // 2. Verified local image mapped to this workflow.
+    if (remoteUrl) {
+      const fileName = remoteUrl.split('/').pop();
+      if (fileName) {
+        const localName = THUMBNAIL_FILENAME_CORRECTIONS[fileName] || fileName;
+        list.push({ url: `/thumbnails/workflows/${localName}`, kind: 'local' });
+      }
+    }
+
+    // 3. Secure same-origin proxy for supported remote hosts.
+    if (remoteUrl) {
+      try {
+        const parsed = new URL(remoteUrl);
+        if (
+          parsed.protocol === 'https:' &&
+          ALLOWED_PROXY_HOSTS.has(parsed.hostname)
+        ) {
+          list.push({
+            url: `/api/thumbnail?url=${encodeURIComponent(remoteUrl)}`,
+            kind: 'proxy',
+          });
+        }
+      } catch {
+        // Invalid URL — skip proxy candidate.
+      }
+    }
+
+    return list;
+  }, [workflow.thumbnail]);
+
+  const current = candidates[candidateIndex];
+
+  // Reset image error state when the workflow or thumbnail URL changes.
+  useEffect(() => {
+    setImgExhausted(false);
+    setCandidateIndex(0);
+  }, [workflow.id, workflow.thumbnail]);
+
+  const handleImgError = () => {
+    // Prevent infinite retry loops: only advance while candidates remain.
+    if (candidateIndex >= candidates.length - 1) {
+      setImgExhausted(true);
       return;
     }
-    // Prefer the app's same-origin proxy (works even when the CDN asset is
-    // missing/unreachable), otherwise fall back to the raw CDN url.
-    const viaProxy = `/api/thumbnail?url=${encodeURIComponent(workflow.thumbnail || src)}`;
-    e.currentTarget.src = viaProxy;
+    setCandidateIndex((prev) => prev + 1);
   };
 
   return (
@@ -54,13 +110,13 @@ function WorkflowCard({ workflow, onClick, activeTab, onRename, onDelete }) {
       onClick={() => onClick(workflow)}
       className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer border border-white/5 bg-[#0a0a0a] transition-all hover:border-[#22d3ee]/30 hover:scale-[1.02] shadow-2xl"
     >
-      {workflow.thumbnail && !imgError ? (
-          <img
-            src={workflow.thumbnail}
-            alt={workflow.name}
-            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-            onError={handleImgError}
-          />
+      {current && !imgExhausted ? (
+        <img
+          src={current.url}
+          alt={workflow.name}
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+          onError={handleImgError}
+        />
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center">
           <svg
