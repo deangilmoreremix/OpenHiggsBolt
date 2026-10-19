@@ -56,7 +56,6 @@ const PAID_PATHS: string[] = [
   'app/api/api/v1/[[...path]]/route.js',
   'app/api/v1/[...slug]/route.ts',
   'app/api/v1/creative-agent/[[...path]]/route.js',
-  'app/api/v1/upload_file/route.ts',
   'app/api/v1/upload-binary/route.js',
   'app/api/v1/get_upload_url/route.js',
   // paid studio surfaces

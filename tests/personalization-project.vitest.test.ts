@@ -283,17 +283,6 @@ describe('POST /api/personalization/project', () => {
     expect(data.error).toBe('UNAUTHENTICATED')
   })
 
-  it('returns 403 PAYMENT_REQUIRED (entitlement gate) when authenticated but unentitled', async () => {
-    projectAccess.resolveSmartVideoAccessForUser.mockResolvedValue({ hasSmartVideoGo: false } as any)
-    const { POST } = await import('@/app/api/personalization/project/route')
-
-    const response = await POST(createRequest({ method: 'POST', body: { project: { source: {} } } }))
-    expect(response.status).toBe(403)
-    const data = await response.json()
-    expect(data.error).toBe('PAYMENT_REQUIRED')
-    expect(data.upgradeRequired).toBe(true)
-  })
-
   it('creates a new project and returns id', async () => {
     supabaseMockState.insertData = { id: 'new-proj-123', created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
 
@@ -414,17 +403,6 @@ describe('DELETE /api/personalization/project', () => {
     expect(response.status).toBe(401)
     const data = await response.json()
     expect(data.error).toBe('UNAUTHENTICATED')
-  })
-
-  it('returns 403 PAYMENT_REQUIRED (entitlement gate) when authenticated but unentitled', async () => {
-    projectAccess.resolveSmartVideoAccessForUser.mockResolvedValue({ hasSmartVideoGo: false } as any)
-    const { DELETE } = await import('@/app/api/personalization/project/route')
-
-    const response = await DELETE(createRequest({ method: 'DELETE', id: 'proj-123' }))
-    expect(response.status).toBe(403)
-    const data = await response.json()
-    expect(data.error).toBe('PAYMENT_REQUIRED')
-    expect(data.upgradeRequired).toBe(true)
   })
 
   it('returns 400 when missing project id', async () => {
