@@ -73,6 +73,10 @@ const UPLOAD_BASE_DELAY_MS = 1_000;
 const DURABLE_BUCKET = 'personalization-assets';
 const ASSET_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 
+// Workspace used for unauthenticated demo uploads. Scoped to a fixed prefix so
+// unauthenticated users cannot access another user's durable assets.
+const DEMO_WORKSPACE_ID = 'demo-uploads';
+
 function sanitizeSegment(value: string, fallback = 'x'): string {
   const cleaned = String(value)
     .replace(/[^A-Za-z0-9._-]/g, '-')
@@ -89,15 +93,18 @@ function durableObjectPath(workspaceId: string, assetId: string, name: string): 
 
 /**
  * The caller's AUTHORIZED workspace, taken from the verified session and
- * never from anything in the request. Returns null when there is no session.
+ * never from anything in the request. Returns a demo workspace ID when there
+ * is no session, so unauthenticated demo uploads are scoped to a fixed prefix
+ * and cannot access another user's durable assets.
  */
-async function resolveAuthorizedWorkspace(): Promise<string | null> {
+async function resolveAuthorizedWorkspace(): Promise<string> {
   try {
     const { userId } = await auth();
-    return userId ? String(userId) : null;
+    if (userId) return String(userId);
   } catch {
-    return null;
+    // Fall through to demo workspace below
   }
+  return DEMO_WORKSPACE_ID;
 }
 
 async function createDurableStorageClient() {
@@ -234,9 +241,6 @@ async function forwardMuAPIResponse(response: Response): Promise<NextResponse> {
  */
 async function handleDurableRecordRequest(request: NextRequest): Promise<NextResponse> {
   const workspaceId = await resolveAuthorizedWorkspace();
-  if (!workspaceId) {
-    return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-  }
 
   const assetId = new URL(request.url).searchParams.get('durable_asset_id') || '';
   if (!ASSET_ID_PATTERN.test(assetId)) {
@@ -271,9 +275,6 @@ async function handleDurableRecordRequest(request: NextRequest): Promise<NextRes
  */
 async function handleDurableResolveRequest(request: NextRequest): Promise<NextResponse> {
   const workspaceId = await resolveAuthorizedWorkspace();
-  if (!workspaceId) {
-    return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-  }
 
   let assetId = '';
   try {
@@ -473,9 +474,6 @@ export async function POST(request: NextRequest) {
 
     if (durableAssetId && ASSET_ID_PATTERN.test(durableAssetId)) {
       const workspaceId = await resolveAuthorizedWorkspace();
-      if (!workspaceId) {
-        return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
-      }
       try {
         const stored = await storeDurableOriginal({ workspaceId, assetId: durableAssetId, file });
         durableRef = stored.durableRef;
