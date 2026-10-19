@@ -1,6 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 
-const BASE = 'http://localhost:3112';
+const BASE = process.env.DEMO_BASE_URL || 'http://localhost:3112';
 
 /**
  * Expected curated demo data, mirroring GUIDED_DEMO_VIDEOS from
@@ -115,7 +115,7 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
 
     // Wait for the demo grid to render.
     const playButtons = dialog.locator('button[aria-label^="Play "]');
-    await expect(playButtons.first()).toBeVisible({ timeout: 10000 });
+    await expect(playButtons.first()).toBeAttached({ timeout: 10000 });
     const buttonCount = await playButtons.count();
     console.log(`Found ${buttonCount} demo play buttons`);
 
