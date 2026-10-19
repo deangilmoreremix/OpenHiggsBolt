@@ -482,7 +482,7 @@ describe('MuAPIImageClient.uploadImage', () => {
     ).rejects.toThrow(/File too large/)
   })
 
-  it('rejects with "Invalid MuAPI key" on HTTP 401', async () => {
+  it('rejects with "Authentication required" on HTTP 401', async () => {
     class FailingXHR extends MockXHR {
       override send() {
         this.status = 401
@@ -492,7 +492,7 @@ describe('MuAPIImageClient.uploadImage', () => {
     }
     global.XMLHttpRequest = FailingXHR as unknown as typeof XMLHttpRequest
     const client = new MuAPIImageClient({ apiKey: 'k' })
-    await expect(client.uploadImage(makeFile('image/png', 10))).rejects.toThrow(/Invalid MuAPI key/)
+    await expect(client.uploadImage(makeFile('image/png', 10))).rejects.toThrow(/Authentication required/)
   })
 })
 
