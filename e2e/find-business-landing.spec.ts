@@ -56,7 +56,7 @@ const DISCOVERY_CASES = [
 // check runs at module scope because Playwright creates the browser context
 // (and would raise a bare ENOENT) before any beforeEach hook runs.
 function assertAuthStatePresent(): void {
-  const authStatePath = resolveDemoAuthStatePath();
+  const authStatePath = resolveDemoAuthStatePath(BASE);
   if (fs.existsSync(authStatePath)) return;
   throw new Error(
     [

@@ -25,7 +25,7 @@ const TARGET_BASE_URL = resolveTargetBaseURL();
 // The storage state is optional so that a missing file is reported by the
 // spec's own guard (which names the path and the fix) instead of aborting
 // the whole run with a bare ENOENT from Playwright.
-const authStatePath = resolveDemoAuthStatePath();
+const authStatePath = resolveDemoAuthStatePath(TARGET_BASE_URL);
 const storageState = fs.existsSync(authStatePath) ? authStatePath : undefined;
 
 export default defineConfig({

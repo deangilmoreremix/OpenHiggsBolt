@@ -43,8 +43,12 @@ export function isLocalDevTarget(baseURL: string): boolean {
   }
 }
 
-export function resolveDemoAuthStatePath(): string {
-  const origin = new URL(resolveDemoBaseURL()).origin;
+export function resolveDemoAuthStatePath(baseURL?: string): string {
+  // A caller that targets a specific origin MUST pass it, otherwise the state
+  // file is resolved for a different origin than the one under test and the
+  // Clerk session silently does not apply (the route handlers call Clerk's
+  // `auth()` themselves, so a mismatched state shows up as a 401).
+  const origin = new URL(baseURL || resolveDemoBaseURL()).origin;
   const safe = origin.replace(/[^a-z0-9]+/gi, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
   return path.join(process.cwd(), 'playwright/.clerk', `smartvideo-demo-${safe}.json`);
 }
