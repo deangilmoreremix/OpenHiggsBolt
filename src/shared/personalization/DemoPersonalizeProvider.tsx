@@ -4431,13 +4431,20 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const useMotionTemplate = useCallback((template: MotionTemplate) => {
     if (!template || !template.componentName) return
     setMotionTemplate(template)
-    const poster = template.preview
-      ? template.preview.startsWith('/')
-        ? template.preview
-        : `/${template.preview}`
+    // `template.preview` is the real ShotCraft MP4 clip (an absolute URL);
+    // `template.poster` is the optional still frame. They are distinct
+    // assets — building the poster from `preview` would hand the pipeline an
+    // MP4 as a poster image.
+    const clip = template.preview || ''
+    const poster = template.poster
+      ? template.poster.startsWith('http://') || template.poster.startsWith('https://')
+        ? template.poster
+        : template.poster.startsWith('/')
+          ? template.poster
+          : `/${template.poster}`
       : null
     setPreviewVideo({
-      url: template.preview || '',
+      url: clip,
       poster,
       title: template.nameEn || template.name,
       kind: 'motion-template',

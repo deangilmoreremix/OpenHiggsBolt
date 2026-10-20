@@ -51,13 +51,15 @@ async function clickViaElement(locator: Locator) {
   await el.evaluate((e) => e.click());
 }
 
-async function waitForVideoMetadata(page: Page, videoSelector: string, timeoutMs = 10000): Promise<boolean> {
+async function waitForVideoMetadata(page: Page, videoSelector: string, timeoutMs = 20000): Promise<boolean> {
   return page.evaluate(async ({ selector, timeoutMs }) => {
     const video = document.querySelector(selector) as HTMLVideoElement | null;
     if (!video) return false;
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
       if (video.readyState >= HTMLMediaElement.HAVE_METADATA) return true;
+      // A failed first range request is not retried by the browser on its own.
+      if (video.error) video.load();
       await new Promise((r) => setTimeout(r, 100));
     }
     return false;
@@ -82,6 +84,8 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
   test('all curated demo videos play successfully in the Personalization Modal', async ({ page }) => {
     const consoleErrors: string[] = [];
     const networkErrors: string[] = [];
+    /** Status codes of the demo clip responses (the Step 4 proof). */
+    const clipResponses: number[] = [];
 
     page.on('console', (msg) => {
       if (msg.type() === 'error') consoleErrors.push(msg.text());
@@ -92,6 +96,9 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
     page.on('requestfailed', (request) => {
       networkErrors.push(request.url());
     });
+    page.on('response', (res) => {
+      if (/\.(mp4|webm|mov|m4v)(\?|$)/i.test(res.url())) clipResponses.push(res.status());
+    });
 
     // ── Open the personalization demo page ─────────────────────────────
     await page.goto(`${BASE}/personalization-demo?test=true`, { waitUntil: 'domcontentloaded' });
@@ -100,9 +107,14 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
     const dialog = page.getByRole('dialog', { name: 'Personalize this demo' });
     await expect(dialog).toBeVisible({ timeout: 20000 });
 
+    // The clicks below are synthetic (`element.click()`), which is a no-op until
+    // React has hydrated. On a cold dev server the bundle is still compiling,
+    // so wait for the network to settle first.
+    await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+
     // ── Step 1 → Step 2: click Continue ────────────────────────────────
     const continueBtn = dialog.getByRole('button', { name: /Continue/i });
-    await expect(continueBtn).toBeVisible({ timeout: 10000 });
+    await expect(continueBtn).toBeVisible({ timeout: 20000 });
     await clickViaElement(continueBtn);
 
     // Wait for Step 2: the video source picker tabs appear.
@@ -290,15 +302,53 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
         console.log('  Before/After toggle visible: true');
       }
 
-      // Verify the Remotion player renders a video element with the same source.
-      // Remotion Player renders a <video> internally.
-      const step4Video = page.locator('video').last();
-      if (await step4Video.isVisible({ timeout: 5000 })) {
-        const step4Src = await step4Video.getAttribute('src');
-        step4VideoMatch = Boolean(step4Src && step4Src.includes(step4Demo.videoSrc));
-        console.log(`  Step 4 video src: ${step4Src}, matches expected: ${step4VideoMatch}`);
+      // The Step 4 player starts paused (autoPlay=false) and is driven by the
+      // custom preview controls — press "Play preview" so frames are drawn.
+      const playPreview = page.getByRole('button', { name: /Play preview/i });
+      if (await playPreview.first().isVisible({ timeout: 5000 })) {
+        await clickViaElement(playPreview.first());
+        await page.waitForTimeout(1500);
+      }
+
+      // The Step 4 before/after preview is a Remotion <Player>, which renders
+      // into a <canvas> — there is no DOM <video> element to read a `src` from.
+      // The clip is proven to be loaded and playing by two signals:
+      //   1. the demo clip was served with a 200/206 response, and
+      //   2. the composition canvas changes between two samples once the
+      //      preview is playing (frames are actually being drawn).
+      const demoClipServed = clipResponses.some((s) => s === 200 || s === 206);
+      const probe = await page.evaluate(async () => {
+        const canvas = document.querySelector('canvas');
+        if (!canvas) return { found: false as const };
+        const sample = () => {
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return null;
+          const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+          let sum = 0;
+          for (let i = 0; i < data.length; i += 400) sum += data[i] + data[i + 1] + data[i + 2];
+          return sum;
+        };
+        // Poll until the composition advances — the first load of the clip can
+        // be slow, so a fixed short window can miss the very first frames.
+        const deadline = Date.now() + 25000;
+        const first = sample();
+        let second = first;
+        while (Date.now() < deadline) {
+          await new Promise((r) => setTimeout(r, 500));
+          second = sample();
+          if (first !== null && second !== null && first !== second) break;
+        }
+        return { found: true as const, first, second };
+      });
+
+      if (probe.found) {
+        step4VideoMatch =
+          demoClipServed && probe.first !== null && probe.second !== null && probe.first !== probe.second;
+        console.log(
+          `  Step 4 clip served: ${demoClipServed}, canvas advanced: ${probe.first !== probe.second}, match: ${step4VideoMatch}`,
+        );
       } else {
-        console.log('  No video element found in Step 4 preview');
+        console.log('  No composition canvas found in Step 4 preview');
       }
     } catch (e) {
       console.log(`  Step 4 verification error: ${e}`);
@@ -331,5 +381,131 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
 
     expect(buttonCount).toBeGreaterThan(0);
     expect(failed).toBe(0);
+  });
+
+  /**
+   * Focused regression test for the reported bug: the SELECTED demo card in
+   * step 2 rendered a still `<img>` poster, so the customer kept seeing
+   * images instead of playing videos. The selected card must host a real
+   * `<video>` element instead.
+   */
+  test('the selected demo card renders a playing <video> instead of a still poster', async ({ page }) => {
+    const consoleErrors: string[] = [];
+
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') consoleErrors.push(msg.text());
+    });
+    page.on('pageerror', (err) => {
+      consoleErrors.push(err.message);
+    });
+
+    await page.goto(`${BASE}/personalization-demo?test=true`, { waitUntil: 'domcontentloaded' });
+
+    const dialog = page.getByRole('dialog', { name: 'Personalize this demo' });
+    await expect(dialog).toBeVisible({ timeout: 20000 });
+
+    // Synthetic clicks are no-ops until React has hydrated.
+    await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+
+    // Step 1 → Step 2.
+    const continueBtn = dialog.getByRole('button', { name: /Continue/i });
+    await expect(continueBtn).toBeVisible({ timeout: 20000 });
+    await clickViaElement(continueBtn);
+
+    // Open the AI Demos tab.
+    const aiDemosTab = dialog.getByRole('tab', { name: /AI Demos/i });
+    await expect(aiDemosTab).toBeVisible({ timeout: 10000 });
+    await clickViaElement(aiDemosTab);
+
+    // Pick a demo that is NOT the pre-selected source video, so the test
+    // covers a real selection change (the page's source is the first demo).
+    const demo = {
+      id: 14,
+      slug: 'luxury-skincare-storyboard-commercial',
+      title: 'Luxury Skincare Storyboard Commercial',
+      videoSrc: '/media/minimax-h3/videos/luxury-skincare-storyboard-commercial.webm',
+      posterSrc: '/media/minimax-h3/previews/luxury-skincare-storyboard-commercial.svg',
+    };
+
+    const card = dialog.getByTestId(`demo-card-${demo.id}-${demo.slug}`);
+    await expect(card).toBeVisible({ timeout: 10000 });
+
+    // Before selecting: a still poster thumbnail, no player.
+    await expect(card.locator('img')).toHaveCount(1);
+    await expect(card.locator('[data-testid="demo-player"]')).toHaveCount(0);
+
+    // Select the demo.
+    const playButton = dialog.locator(`button[aria-label="Play ${demo.title}"]`);
+    await expect(playButton.first()).toBeAttached({ timeout: 5000 });
+    await clickViaElement(playButton.first());
+
+    // The card itself now hosts the player...
+    const player = card.locator('[data-testid="demo-player"]');
+    await expect(player).toHaveCount(1, { timeout: 10000 });
+
+    // ...and the still thumbnail is gone (never both mounted at once).
+    await expect(card.locator('img')).toHaveCount(0);
+
+    // Exactly one card in the whole grid carries a player.
+    await expect(dialog.locator('[data-testid="demo-player"]')).toHaveCount(1);
+
+    // The player points at the demo's real video source; the poster stays a poster.
+    const src = await player.getAttribute('src');
+    expect(src).toContain(demo.videoSrc);
+    const poster = await player.getAttribute('poster');
+    expect(poster).toContain(demo.posterSrc);
+
+    // It is configured for inline autoplay.
+    const flags = await player.evaluate((v: HTMLVideoElement) => ({
+      autoplay: v.autoplay,
+      muted: v.muted,
+      loop: v.loop,
+      controls: v.controls,
+      playsInline: v.playsInline,
+    }));
+    expect(flags).toEqual({ autoplay: true, muted: true, loop: true, controls: true, playsInline: true });
+
+    // It really decodes and plays: metadata, dimensions, advancing currentTime.
+    await player.evaluate((v: HTMLVideoElement) => v.play());
+    const dims = await player.evaluate((v: HTMLVideoElement) => ({ w: v.videoWidth, h: v.videoHeight }));
+    expect(dims.w).toBeGreaterThan(0);
+    expect(dims.h).toBeGreaterThan(0);
+
+    const playback = await player.evaluate(async (v: HTMLVideoElement) => {
+      const start = v.currentTime;
+      const deadline = Date.now() + 8000;
+      while (Date.now() < deadline) {
+        if (v.currentTime > start + 0.05) {
+          return { advanced: true, start, end: v.currentTime, paused: v.paused, error: v.error?.message ?? null };
+        }
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      return { advanced: false, start, end: v.currentTime, paused: v.paused, error: v.error?.message ?? null };
+    });
+    console.log(`  card player playback: ${JSON.stringify(playback)}`);
+    expect(playback.error).toBeNull();
+    expect(playback.advanced).toBe(true);
+    expect(playback.paused).toBe(false);
+
+    // Switching the selection remounts the player — the old clip must not
+    // keep playing, and only the new card may carry a player.
+    const otherDemo = EXPECTED_DEMOS[2];
+    const otherPlayButton = dialog.locator(`button[aria-label="Play ${otherDemo.title}"]`);
+    await clickViaElement(otherPlayButton.first());
+
+    const otherCard = dialog.getByTestId(`demo-card-${otherDemo.id}-${otherDemo.slug}`);
+    const otherPlayer = otherCard.locator('[data-testid="demo-player"]');
+    await expect(otherPlayer).toHaveCount(1, { timeout: 10000 });
+    await expect(dialog.locator('[data-testid="demo-player"]')).toHaveCount(1);
+    await expect(card.locator('[data-testid="demo-player"]')).toHaveCount(0);
+    await expect(card.locator('img')).toHaveCount(1);
+
+    const otherSrc = await otherPlayer.getAttribute('src');
+    expect(otherSrc).toContain(otherDemo.videoSrc);
+
+    // The nested-button hydration error is gone (the card is a
+    // <div role="button">, so the play overlay <button> is valid HTML).
+    const nestedButtonErrors = consoleErrors.filter((err) => /cannot contain a nested/i.test(err));
+    expect(nestedButtonErrors).toEqual([]);
   });
 });

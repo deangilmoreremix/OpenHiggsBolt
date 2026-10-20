@@ -13,7 +13,7 @@
  * action hands off to the canonical `/studio/motion-studio` route.
  */
 
-import { useMemo, useState, useCallback, useId, type CSSProperties } from 'react'
+import { useMemo, useState, useCallback, useEffect, useId, useRef, type CSSProperties } from 'react'
 import {
   Image as ImageIcon,
   Search,
@@ -89,17 +89,25 @@ const ASSET_ICONS: Array<{ key: keyof MotionTemplate['assets']; label: string; i
 ]
 
 /**
- * Compose a stable poster URL for a template card. The catalog stores either
- * a `/public/...` path or a bare relative path; this normalises both to a
- * URL the `<img>` element can load.
+ * Normalise a catalog media reference into a URL a `<video>`/`<img>` element
+ * can load. The catalog stores absolute URLs (the upstream ShotCraft release
+ * / repository), a `/public/...` path, or a bare relative path.
  */
+function resolveMediaUrl(value: string | undefined): string | null {
+  if (!value) return null
+  if (value.startsWith('http://') || value.startsWith('https://')) return value
+  if (value.startsWith('/')) return value
+  return `/${value}`
+}
+
+/** The MP4 clip for a template, or null when upstream published no clip. */
+function previewVideoUrl(template: MotionTemplate): string | null {
+  return resolveMediaUrl(template.preview)
+}
+
+/** The still poster frame for a template, or null when upstream has none. */
 function posterUrl(template: MotionTemplate): string | null {
-  if (!template.preview) return null
-  if (template.preview.startsWith('http://') || template.preview.startsWith('https://')) {
-    return template.preview
-  }
-  if (template.preview.startsWith('/')) return template.preview
-  return `/${template.preview}`
+  return resolveMediaUrl(template.poster)
 }
 
 /** Inline SVG placeholder used when a card has no poster image. Renders a
@@ -107,8 +115,10 @@ function posterUrl(template: MotionTemplate): string | null {
  *  grid is visually complete even before previews are fetched. */
 function TemplatePosterPlaceholder({ template }: { template: MotionTemplate }): React.JSX.Element {
   const Icon = CATEGORY_ICONS[template.category] ?? Box
+  const unavailable = !template.preview
   return (
     <div
+      data-testid="motion-template-placeholder"
       style={{
         width: '100%',
         aspectRatio: '16 / 9',
@@ -116,6 +126,8 @@ function TemplatePosterPlaceholder({ template }: { template: MotionTemplate }): 
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        flexDirection: 'column',
+        gap: 6,
         background:
           `radial-gradient(circle at 30% 20%, ${C.cyanSoft}, transparent 60%),` +
           `linear-gradient(135deg, ${C.panelSoft}, ${C.field})`,
@@ -123,6 +135,11 @@ function TemplatePosterPlaceholder({ template }: { template: MotionTemplate }): 
       }}
     >
       <Icon size={36} color={C.cyan} />
+      {unavailable && (
+        <span style={{ color: C.muted2, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }}>
+          Preview unavailable
+        </span>
+      )}
     </div>
   )
 }
@@ -351,8 +368,12 @@ function TemplateCard({
   onLaunch: (template: MotionTemplate) => void
 }): React.JSX.Element {
   const poster = posterUrl(template)
+  const clip = previewVideoUrl(template)
   const supportedAssets = ASSET_ICONS.filter((entry) => template.assets[entry.key])
   const durationLabel = template.durationSec > 0 ? `${template.durationSec.toFixed(1)}s` : null
+  // The SELECTED card hosts the real, playing clip. Unselected cards keep the
+  // still poster so the grid stays cheap — only one clip is ever fetched.
+  const showPlayer = active && Boolean(clip)
 
   return (
     <div
@@ -360,7 +381,9 @@ function TemplateCard({
       data-template-id={template.id}
       style={{ ...tileStyle(active), display: 'flex', flexDirection: 'column', gap: 8 }}
     >
-      {poster ? (
+      {showPlayer ? (
+        <MotionTemplatePlayer template={template} src={clip!} poster={poster} />
+      ) : poster ? (
         <img
           src={poster}
           alt=""
@@ -455,5 +478,56 @@ function TemplateCard({
         </button>
       </div>
     </div>
+  )
+}
+
+/**
+ * The playing preview for the SELECTED Motion Studio shot.
+ *
+ * Renders the real upstream ShotCraft clip (an MP4 published in the
+ * `gallery-media` GitHub release) instead of the still poster, so the user
+ * sees the actual motion rather than a picture of it. `muted` + `playsInline`
+ * let the browser autoplay the clip; the explicit `play()` call is the
+ * fallback for browsers that still refuse the first attempt.
+ */
+function MotionTemplatePlayer({
+  template,
+  src,
+  poster,
+}: {
+  template: MotionTemplate
+  src: string
+  poster: string | null
+}): React.JSX.Element {
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  useEffect(() => {
+    const el = videoRef.current
+    if (!el) return
+    const attempt = el.play()
+    if (attempt && typeof attempt.catch === 'function') attempt.catch(() => {})
+  }, [src])
+
+  return (
+    <video
+      ref={videoRef}
+      data-testid="motion-template-player"
+      data-template-id={template.id}
+      src={src}
+      poster={poster ?? undefined}
+      muted
+      playsInline
+      loop
+      autoPlay
+      controls
+      style={{
+        width: '100%',
+        aspectRatio: '16 / 9',
+        objectFit: 'contain',
+        borderRadius: 8,
+        display: 'block',
+        background: '#000',
+      }}
+    />
   )
 }
