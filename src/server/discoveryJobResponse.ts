@@ -42,6 +42,18 @@ function assetsOf(value: unknown): any[] {
  *
  * The fast assets come first: they were found by a plain HTTP crawl, so they
  * are the ones the caller is guaranteed to be able to download.
+ *
+ * A stored job can hold an asset in either shape:
+ *
+ *   - a BUILT asset — `{ id, sourceUrl, previewUrl, category, ... }`
+ *   - a RAW image candidate — `{ url, sourcePage, altText, ogContext }`
+ *
+ * Both occur in practice: the static layer persists its built assets, while
+ * the browser layer persists the candidates it collected. Reading only
+ * `sourceUrl` silently dropped every candidate-shaped asset, so the asset
+ * list could come back empty even though the job had found real images.
+ * The asset object itself is passed through untouched, so the caller sees
+ * exactly what was stored.
  */
 export function mergeDiscoveredAssets(
   fastResult: unknown,
@@ -52,9 +64,16 @@ export function mergeDiscoveredAssets(
 
   for (const asset of [...assetsOf(fastResult), ...assetsOf(finalResult)]) {
     if (!asset || typeof asset !== 'object') continue
-    const url = typeof asset.sourceUrl === 'string' ? asset.sourceUrl : ''
-    if (!url) continue
-    const key = normalizeAssetUrl(url)
+    // A built asset carries `sourceUrl`; a raw image candidate carries `url`.
+    // Both are real assets and neither may be dropped.
+    const rawUrl =
+      typeof asset.sourceUrl === 'string' && asset.sourceUrl
+        ? asset.sourceUrl
+        : typeof asset.url === 'string'
+          ? asset.url
+          : ''
+    if (!rawUrl) continue
+    const key = normalizeAssetUrl(rawUrl)
     if (!key || seen.has(key)) continue
     seen.add(key)
     merged.push(asset)
@@ -109,10 +128,13 @@ export function buildDiscoveryJobResponse(job: DiscoveryJobRow): DiscoveryJobRes
       || (fastResult && typeof fastResult === 'object' ? fastResult : null)
 
     if (base || mergedAssets.length > 0) {
+      // `result` keeps the shape it had before: the stored result with the
+      // merged asset list in it. Nothing is added to it, so a caller that
+      // reads `result.discoveredAssets` — and a caller that compares the
+      // whole object — both see the same contract as before.
       response.result = {
         ...(base || {}),
         discoveredAssets: mergedAssets,
-        count: mergedAssets.length,
       }
     }
   } else if (job.status === 'running') {

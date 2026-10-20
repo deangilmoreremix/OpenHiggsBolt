@@ -71,10 +71,42 @@ Every discovered `sourceUrl` re-fetched: **HTTP 200** with valid `image/jpeg` / 
 **Async contract:** POST `/api/personalization/discover-assets` → **202 + jobId**; `GET …/status?jobId=…` → **200** with the job state; long scrapes run out of band and the initial response is never blocked (verified in the local E2E run: 202 → poll → 200 → import).
 **Isolation:** another user's `jobId` → **404** (no leak) — verified in the production Clerk run.
 
-## IN PROGRESS
+## PHASE 5 — Regression & release verification: DONE
 
-- **Phase 5** — regression / release verification.
-- **Phase 6** — candidate deploy (NOT published; production stays locked).
+- `npx tsc --noEmit` → clean.
+- Unit: **408 pass / 427** across `src/server/__tests__` + `src/access/__tests__` (29 files). The **19 failures are pre-existing** Stripe entitlement-status vocabulary failures (`'revoked'` vs `'inactive'`) in `stripe-webhook-gates.test.ts` + `zz-stripe-webhook-entitlements.test.ts` — reproduced on a clean tree earlier via `git stash`; unrelated to this work, no file they touch was modified.
+- Production build: `next build` → **BUILD_ID `oFKmjjgVRQVPba2v3QIRq`**, compiled successfully in 73 s.
+- E2E against the **production build** (`next build` + `next start`, real OSM data, real business sites, no stubs) — run one file at a time because the machine is memory-starved:
+  | Suite | Result |
+  |---|---|
+  | `find-business-landing.spec.ts` | **7 passed** |
+  | `find-business-go-viral.spec.ts` | **4 passed** |
+  | `find-business-assets-landing.spec.ts` | **6 passed** |
+  | `find-business-assets-go-viral.spec.ts` | **5 passed** |
+  Every acceptance search returned **30 businesses**; asset discovery returned **202 + jobId** with **20 real assets**, which were selected and imported.
+
+## PHASE 6 — Candidate deploy (NOT published) — IN PROGRESS
+
+**Blocker found:** the Netlify build command runs `npm run build:packages` → `npm run build -w workflow-builder`, and `packages/Vibe-Workflow` is a **git submodule** that is NOT initialised in the worktree (`No workspaces found: --workspace=workflow-builder`). The **parent repo** has all submodules + workspace links, so the candidate must be built there.
+
+**Safety facts established:**
+- Netlify site `76f606a3-8546-440f-8469-33a0236a8a23` has **`repo: None`** → **not GitHub-linked → a git push or a local merge publishes nothing**. Only an explicit `netlify deploy --prod` publishes.
+- `scripts/release.mjs` is the established pipeline: `--preview` ⇒ `netlify deploy --build --site <id>` (no `--prod` ⇒ DRAFT), `--approve-production` ⇒ the only path that publishes.
+- Production deploy to remain untouched: **`6ad7720c160ce82c7d6109e6`** (the rollback target).
+
+## WORKFLOW (multi-agent, remaining work)
+
+| Agent | Role | Scope | Handoff |
+|---|---|---|---|
+| **A — Release Engineer** | Build + publish a **draft** candidate | parent repo, candidate branch, `netlify deploy --build --site …` (**never `--prod`**) | `/tmp/candidate.json` {deployId, url, sha} + `/tmp/agent-release.md` |
+| **C — Regression Auditor** | Independent re-verification | tsc, unit, build, pre-existing-vs-new failure separation | `/tmp/agent-regression.md` |
+| **B — Verification Engineer** | Playwright the candidate | 4 suites against the candidate URL + a candidate-origin Clerk state | `/tmp/agent-verify.md` |
+| **D — Coordinator (me)** | Integration + final report | matrix, root causes, readiness | final response |
+
+A → B (candidate URL is B's input). C runs parallel to A. D consumes all three.
+
+### Environment constraint (the real bottleneck)
+The shared machine is **memory-starved**: swap 9.6 GB used of 11 GB, free RAM ~19 MB. Under load the dev server took 50–80 s to compile a route and the production server was OOM-killed mid-suite. **Run one Playwright file at a time, never all four together, and never run a build concurrently with a suite.** This also explains the earlier "Turbopack compilation hangs": it was swap thrash, not a code fault.
 
 ## OUTSTANDING
 
