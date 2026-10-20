@@ -53,6 +53,12 @@ export interface StudioHandoff {
   combinedPrompt: string
   /** First frame URL, used as a reference image in image-driven studios. */
   firstFrameUrl: string | null
+  /**
+   * Optional free-form payload from the sender. Used by the Personalization
+   * modal to carry the originating studio and the caller's own return
+   * payload. Ignored by every existing producer and consumer.
+   */
+  metadata?: Record<string, unknown>
   createdAt: string
 }
 

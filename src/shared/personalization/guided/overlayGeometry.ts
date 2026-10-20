@@ -89,6 +89,8 @@ export interface LayerBoxMetrics {
   anchorHeightPx: number
   fontSizePx: number
   isImage: boolean
+  /** Design layers have an explicit box (the video's own shape, scaled). */
+  isDesign: boolean
 }
 
 export interface StageBoxPx {
@@ -151,6 +153,21 @@ export function estimateTextLineCount(text: string, fontSizePx: number, boxWidth
 export function layerBoxMetrics(layer: PreviewLayer, compW: number, compH: number): LayerBoxMetrics {
   const { width, height } = resolveCompositionSize(compW, compH)
   const box = toBox(layer, width, height)
+  if (layer.kind === 'design') {
+    // A design owns an explicit box: the video's own shape scaled down, so
+    // the design keeps the composition's proportions wherever it sits.
+    const heightPx = box.heightPx ?? height
+    return {
+      leftPx: box.leftPx,
+      topPx: box.topPx,
+      widthPx: box.widthPx,
+      heightPx,
+      anchorHeightPx: heightPx,
+      fontSizePx: 0,
+      isImage: false,
+      isDesign: true,
+    }
+  }
   if (isImageLayerKind(layer.kind)) {
     return {
       leftPx: box.leftPx,
@@ -160,6 +177,7 @@ export function layerBoxMetrics(layer: PreviewLayer, compW: number, compH: numbe
       anchorHeightPx: box.widthPx,
       fontSizePx: 0,
       isImage: true,
+      isDesign: false,
     }
   }
   // Same width estimate toBox makes, kept unrounded so the wrap count is exact.
@@ -174,6 +192,7 @@ export function layerBoxMetrics(layer: PreviewLayer, compW: number, compH: numbe
     anchorHeightPx: box.fontSizePx,
     fontSizePx: box.fontSizePx,
     isImage: false,
+    isDesign: false,
   }
 }
 
@@ -324,7 +343,11 @@ export function toStageBox(layer: PreviewLayer, compW: number, compH: number, st
     left: box.leftPx * factor,
     top: box.topPx * factor,
     width: box.widthPx * factor,
-    height: box.isImage ? box.widthPx * factor : undefined,
+    height: box.isImage
+      ? box.widthPx * factor
+      : box.isDesign
+        ? box.heightPx * factor
+        : undefined,
     fontSize: box.fontSizePx * factor,
   }
 }
