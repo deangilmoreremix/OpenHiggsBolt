@@ -61,3 +61,17 @@
   from = "/api/photo-studio"
   to = "/.netlify/functions/photo-studio"
   status = 200
+
+# Every server-rendered route is served by the Next.js server handler
+# function. Netlify's platform-level Next.js Runtime does not register that
+# handler for deploys produced by the Netlify CLI, so without this rule the
+# server-rendered pages (and the app's API route handlers) 404 while static
+# assets under `public/` keep working.
+#
+# This must stay LAST: Netlify applies the first matching rule, and existing
+# static files always win over a redirect. The more specific rules above
+# therefore keep taking precedence.
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/___netlify-server-handler"
+  status = 200
