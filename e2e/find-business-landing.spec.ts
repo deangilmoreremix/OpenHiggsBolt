@@ -199,9 +199,50 @@ type SearchOutcome = {
   count: number;
   httpStatus: number | null;
   summary: string;
+  /** Retry-After the route reported for a 429, in milliseconds. */
+  retryAfterMs?: number;
 };
 
+/**
+ * The free Lead Finder allows 10 searches per minute per client, so a full
+ * E2E run trips the limit. A 429 is therefore EXPECTED here and is retried
+ * after the window the route itself reports, instead of failing the test.
+ * Only the rate limit is retried: an upstream error still fails the test.
+ */
+const RATE_LIMIT_MAX_ATTEMPTS = 8;
+
 async function runBusinessSearch(
+  page: Page,
+  dialog: Locator,
+  niche: string,
+  location: string,
+  radius: string,
+): Promise<SearchOutcome> {
+  let last: SearchOutcome | null = null;
+
+  for (let attempt = 0; attempt < RATE_LIMIT_MAX_ATTEMPTS; attempt++) {
+    last = await runBusinessSearchOnce(page, dialog, niche, location, radius);
+    if (last.httpStatus !== 429) return last;
+
+    const waitMs = Math.min(90_000, Math.max(15_000, last.retryAfterMs ?? 0) + 2_000);
+    console.log(
+      `[rate-limit] search for ${niche} @ ${location} was rate limited (attempt ${attempt + 1}); ` +
+        `waiting ${Math.round(waitMs / 1000)}s`,
+    );
+    await page.waitForTimeout(waitMs);
+
+    const tryAgain = dialog.getByRole('button', { name: 'Try Again', exact: true });
+    if (await tryAgain.isVisible().catch(() => false)) {
+      await tryAgain.click();
+      await dialog.locator('#business-niche').selectOption(niche).catch(() => {});
+      await dialog.locator('#business-location').fill(location).catch(() => {});
+    }
+  }
+
+  return last as SearchOutcome;
+}
+
+async function runBusinessSearchOnce(
   page: Page,
   dialog: Locator,
   niche: string,
@@ -221,6 +262,13 @@ async function runBusinessSearch(
 
   const response = await responsePromise;
   const httpStatus = response ? response.status() : null;
+  const retryAfterMs = (() => {
+    // Playwright exposes the response headers as a plain object with
+    // lower-cased keys, not as a Headers instance.
+    const header = response?.headers()?.['retry-after'];
+    const seconds = header ? Number(header) : Number.NaN;
+    return Number.isFinite(seconds) ? seconds * 1000 : undefined;
+  })();
 
   const resultsSummary = dialog.getByText(/businesses found for/i);
   const errorBanner = dialog.getByText(/Business Search Failed/i);
@@ -239,13 +287,13 @@ async function runBusinessSearch(
   if (outcome === 'results') {
     const summary = (await resultsSummary.first().textContent()) ?? '';
     const match = summary.match(/(\d+)\s+businesses\s+found\s+for/i);
-    return { kind: 'results', count: match ? Number(match[1]) : 0, httpStatus, summary };
+    return { kind: 'results', count: match ? Number(match[1]) : 0, httpStatus, summary, retryAfterMs };
   }
 
   if (outcome === 'error') {
     const summary = await errorPanelText(errorBanner);
     const upstream = httpStatus !== null && httpStatus >= 500;
-    return { kind: upstream ? 'upstream-error' : 'no-results', count: 0, httpStatus, summary };
+    return { kind: upstream ? 'upstream-error' : 'no-results', count: 0, httpStatus, summary, retryAfterMs };
   }
 
   return { kind: 'no-outcome', count: 0, httpStatus, summary: '' };
