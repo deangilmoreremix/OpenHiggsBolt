@@ -334,10 +334,6 @@ Object.assign(VIDEO_TOOL_OVERRIDES, {
     estimateCost: true,
     inputs: {
       duration: {
-        title: "Extend duration",
-        type: "integer",
-        enum: Array.from({ length: 20 }, (_, index) => index + 1),
-        default: 5,
         configurable: true,
       },
     },
@@ -404,35 +400,19 @@ Object.assign(VIDEO_TOOL_OVERRIDES, {
     ...VIDEO_TOOL_OVERRIDES["pixverse-v6-extend"],
     inputs: {
       resolution: {
-        title: "Resolution",
-        type: "string",
-        enum: ["360p", "540p", "720p", "1080p"],
-        default: "720p",
         configurable: true,
       },
       duration: {
-        title: "Duration",
-        type: "integer",
-        enum: Array.from({ length: 15 }, (_, index) => index + 1),
-        default: 5,
         configurable: true,
       },
       generate_audio_switch: {
-        title: "Generate audio",
-        type: "boolean",
-        default: false,
         configurable: true,
       },
       negative_prompt: {
-        title: "Negative prompt",
-        type: "string",
         configurable: true,
         optional: true,
       },
       style: {
-        title: "Style",
-        type: "string",
-        enum: ["anime", "3d_animation", "clay", "comic", "cyberpunk"],
         configurable: true,
         optional: true,
       },
@@ -440,16 +420,18 @@ Object.assign(VIDEO_TOOL_OVERRIDES, {
   },
 });
 
-VIDEO_TOOL_OVERRIDES["seedance-v1.5-pro-video-extend"] = {
-  ...VIDEO_TOOL_OVERRIDES["seedance-v1.5-pro-video-extend"],
-  estimateCost: true,
-  payloadDefaults: {
-    resolution: "720p",
-    duration: 5,
-    generate_audio: true,
-    camera_fixed: false,
-  },
-};
+for (const id of ["seedance-v1.5-pro-video-extend", "seedance-v1.5-pro-video-extend-fast"]) {
+  VIDEO_TOOL_OVERRIDES[id] = {
+    ...VIDEO_TOOL_OVERRIDES[id],
+    estimateCost: id === "seedance-v1.5-pro-video-extend",
+    inputs: {
+      resolution: { configurable: true },
+      duration: { configurable: true },
+      generate_audio: { configurable: true },
+      camera_fixed: { configurable: true },
+    },
+  };
+}
 
 for (const id of HAPPY_HORSE_EDIT_TOOL_IDS) {
   VIDEO_TOOL_OVERRIDES[id] = {
@@ -483,6 +465,8 @@ const CONTINUATION_FAMILIES = Object.freeze({
     sourceModelIds: Object.freeze([
       "seedance-v2.0-t2v",
       "seedance-v2.0-i2v",
+      "seedance-2-t2v",
+      "seedance-2-i2v",
       "seedance-v2.0-extend",
       "seedance-2-extend",
       "seedance-2-vip-extend",
@@ -538,6 +522,18 @@ const CONTINUATION_TARGETS = Object.freeze({
   },
   "grok-imagine-extend": { family: "grok" },
 });
+
+const continuationSourceModelIds = new Map(
+  Object.entries(CONTINUATION_FAMILIES).map(([family, config]) => [
+    family, new Set(config.sourceModelIds),
+  ]),
+);
+
+export function isContinuationSourceModel(modelOrId, sourceModelId) {
+  const modelId = typeof modelOrId === "string" ? modelOrId : modelOrId?.id;
+  const family = CONTINUATION_TARGETS[modelId]?.family;
+  return continuationSourceModelIds.get(family)?.has(sourceModelId) || false;
+}
 
 const MIN_CLIENT_TIMESTAMP = Date.UTC(2000, 0, 1);
 const MAX_CLIENT_TIMESTAMP = Date.UTC(2101, 0, 1);
@@ -731,11 +727,10 @@ function resolveContinuationRequestId(entry) {
 export function getCompatibleContinuationSources(modelOrId, history = []) {
   const config = getContinuationConfig(modelOrId);
   if (!config) return [];
-  const compatibleModelIds = new Set(config.sourceModelIds);
   const sources = [];
 
   for (const entry of history) {
-    if (!entry?.url || !compatibleModelIds.has(entry.model)) continue;
+    if (!entry?.url || !isContinuationSourceModel(modelOrId, entry.model)) continue;
     const requestId = resolveContinuationRequestId(entry);
     if (!requestId) continue;
     if (config.requiredSourceResolution) {

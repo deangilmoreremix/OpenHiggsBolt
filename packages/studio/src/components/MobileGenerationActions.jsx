@@ -265,7 +265,7 @@ function ActionIcon({ kind }) {
   );
 }
 
-export function MobileGenerationActions({
+export default function MobileGenerationActions({
   actions = [],
   prompt,
   imageUrl,
@@ -373,5 +373,3 @@ export function MobileGenerationActions({
     </div>
   );
 }
-
-export default MobileGenerationActions;

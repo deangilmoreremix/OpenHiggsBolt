@@ -3,6 +3,12 @@ import {
   videoModelCatalog,
   videoModelPickerEntryByVariantId,
 } from "./modelFamilies.js";
+import { getSeedanceConfiguration } from "./seedanceModels.js";
+import {
+  GROUPED_VIDEO_WORKFLOW_VARIANTS,
+  getGroupedVideoConfiguration,
+  resolveGroupedVideoVariant,
+} from "./groupedVideoModels.js";
 
 export const VIDEO_WORKFLOW_IDS = Object.freeze([
   "animate_image",
@@ -47,203 +53,12 @@ const WORKFLOW_REQUIRED_MEDIA = Object.freeze({
 
 // Opt-in only: models outside this registry retain their existing behavior.
 export const VIDEO_WORKFLOW_VARIANTS = Object.freeze({
-  "kling-v3": {
-    animate_image: [
-      "kling-v3-turbo-pro-image-to-video",
-      "kling-v3-turbo-standard-image-to-video",
-      "kling-v3.0-4k-image-to-video",
-      "kling-v3.0-standard-image-to-video",
-      "kling-v3.0-pro-image-to-video",
-    ],
-    keyframes: [
-      "kling-v3.0-4k-image-to-video",
-      "kling-v3.0-standard-image-to-video",
-      "kling-v3.0-pro-image-to-video",
-    ],
-    references: [
-      "kling-v3.0-omni-4k-image-to-video",
-      "kling-v3.0-omni-pro-image-to-video",
-      "kling-v3.0-omni-standard-image-to-video",
-    ],
-    motion_transfer: [
-      "kling-v3.0-pro-motion-control",
-      "kling-v3.0-std-motion-control",
-    ],
-  },
-  "minimax-h3": {
-    animate_image: ["minimax-h3-open-image-to-video", "minimax-h3-image-to-video"],
-    keyframes: ["minimax-h3-open-image-to-video", "minimax-h3-image-to-video"],
-    references: [
-      "minimax-h3-open-reference-to-video",
-      "minimax-h3-reference-to-video",
-    ],
-  },
-  "seedance-2": {
-    animate_image: [
-      "seedance-2-i2v",
-      "seedance-2-i2v-480p",
-      "seedance-2-image-to-video",
-      "seedance-2-image-to-video-fast",
-      "seedance-2-vip-image-to-video",
-      "seedance-2-vip-image-to-video-fast",
-      "seedance-2-vip-image-to-video-1080p",
-      "seedance-2-vip-image-to-video-fast-1080p",
-      "seedance-2-vip-image-to-video-4k",
-      "seedance-2-mini-image-to-video",
-      "seedance-2-spicy-image-to-video",
-      "seedance-2-spicy-image-to-video-fast",
-      "seedance-2-mini-spicy-image-to-video",
-    ],
-    keyframes: [
-      "seedance-2-new-first-last",
-      "seedance-2-first-last-frame",
-      "seedance-2-first-last-frame-fast",
-      "seedance-2-vip-first-last-frame",
-      "seedance-2-vip-first-last-frame-fast",
-      "seedance-2-vip-first-last-frame-1080p",
-      "seedance-2-vip-first-last-frame-4k",
-    ],
-    references: [
-      "seedance-2-new-omni",
-      "seedance-2-omni-reference",
-      "seedance-2-omni-reference-480p",
-      "seedance-2-omni-reference-no-video",
-      "seedance-2-omni-reference-no-video-fast",
-      "seedance-2-vip-omni-reference",
-      "seedance-2-vip-omni-reference-fast",
-      "seedance-2-vip-omni-reference-1080p",
-      "seedance-2-vip-omni-reference-fast-1080p",
-      "seedance-2-vip-omni-reference-4k",
-      "seedance-2-mini-omni-reference",
-    ],
-  },
   "gemini-omni": {
     animate_image: ["gemini-omni-image-to-video"],
     references: ["gemini-omni-image-to-video"],
     edit_video: ["gemini-omni-video-edit"],
   },
-  "grok-imagine-video": {
-    animate_image: ["grok-imagine-video-1-5-preview"],
-    references: ["grok-imagine-image-to-video"],
-  },
-  "veo-3.1": {
-    animate_image: [
-      "veo3.1-image-to-video",
-      "veo3.1-fast-image-to-video",
-      "veo3.1-lite-image-to-video",
-    ],
-    keyframes: [
-      "veo3.1-image-to-video",
-      "veo3.1-fast-image-to-video",
-      "veo3.1-lite-image-to-video",
-    ],
-    references: ["veo3.1-reference-to-video"],
-  },
-  "wan-2.7": {
-    animate_image: ["wan2.7-image-to-video"],
-    keyframes: ["wan2.7-image-to-video"],
-    references: ["wan2.7-reference-to-video"],
-    edit_video: ["wan2.7-video-edit"],
-    extend_uploaded_video: ["wan2.7-video-extend"],
-  },
-  "vidu-q3": {
-    animate_image: ["vidu-q3-turbo-image-to-video", "vidu-q3-pro-image-to-video"],
-    keyframes: ["vidu-q3-turbo-first-last-frames", "vidu-q3-pro-first-last-frames"],
-  },
-  "vidu-q2": {
-    animate_image: ["vidu-q2-turbo-image-to-video", "vidu-q2-pro-image-to-video"],
-    keyframes: ["vidu-q2-pro-start-end-video", "vidu-q2-turbo-start-end-video"],
-    references: ["vidu-q2-reference"],
-  },
-  "pixverse-6": {
-    animate_image: ["pixverse-v6-i2v"],
-    keyframes: ["pixverse-v6-transition"],
-  },
-  "kling-o1": {
-    animate_image: ["kling-o1-standard-image-to-video", "kling-o1-image-to-video"],
-    keyframes: ["kling-o1-standard-image-to-video", "kling-o1-image-to-video"],
-    references: ["kling-o1-standard-reference-to-video", "kling-o1-reference-to-video"],
-    edit_video: [
-      "kling-o1-standard-video-edit",
-      "kling-o1-video-edit-fast",
-      "kling-o1-video-edit",
-    ],
-  },
-  "happy-horse-1": {
-    animate_image: [
-      "happy-horse-1-image-to-video-720p",
-      "happy-horse-1-image-to-video-1080p",
-    ],
-    references: [
-      "happy-horse-1-reference-to-video-720p",
-      "happy-horse-1-reference-to-video-1080p",
-    ],
-    edit_video: [
-      "happy-horse-1-video-edit-720p",
-      "happy-horse-1-video-edit-1080p",
-    ],
-  },
-  "happy-horse-1.1": {
-    animate_image: [
-      "happy-horse-1.1-image-to-video-720p",
-      "happy-horse-1.1-image-to-video-1080p",
-    ],
-    references: [
-      "happy-horse-1.1-reference-to-video-720p",
-      "happy-horse-1.1-reference-to-video-1080p",
-    ],
-  },
-  "kling-v2.6": {
-    animate_image: ["kling-v2.6-pro-i2v"],
-    motion_transfer: ["kling-v2.6-pro-motion-control", "kling-v2.6-std-motion-control"],
-  },
-  "ltx-2.3": {
-    animate_image: ["ltx-2.3-image-to-video"],
-    extend_uploaded_video: ["ltx-2.3-video-extend"],
-  },
-  "seedance-1.5": {
-    animate_image: ["seedance-v1.5-pro-i2v-fast", "seedance-v1.5-pro-i2v"],
-    keyframes: ["seedance-v1.5-pro-i2v-fast", "seedance-v1.5-pro-i2v"],
-    extend_uploaded_video: [
-      "seedance-v1.5-pro-video-extend-fast",
-      "seedance-v1.5-pro-video-extend",
-    ],
-  },
-  "wan-2.2": {
-    animate_image: ["wan2.2-spicy-image-to-video", "wan2.2-image-to-video"],
-    keyframes: ["wan2.2-image-to-video"],
-    edit_video: ["wan2.2-edit-video"],
-    extend_uploaded_video: ["wan2.2-spicy-video-extend"],
-  },
-  "wan-2.1": {
-    animate_image: ["wan2.1-image-to-video"],
-    references: ["wan2.1-reference-video"],
-  },
-  "seedance-lite": {
-    animate_image: ["seedance-lite-i2v"],
-    keyframes: ["seedance-lite-i2v"],
-    references: ["seedance-lite-reference-video"],
-  },
-  "minimax-hailuo-02": {
-    animate_image: ["minimax-hailuo-02-pro-i2v", "minimax-hailuo-02-standard-i2v"],
-    keyframes: ["minimax-hailuo-02-pro-i2v", "minimax-hailuo-02-standard-i2v"],
-  },
-  "kling-v2.1": {
-    animate_image: [
-      "kling-v2.1-pro-i2v",
-      "kling-v2.1-standard-i2v",
-      "kling-v2.1-master-i2v",
-    ],
-    keyframes: ["kling-v2.1-pro-i2v"],
-  },
-});
-
-const TECHNICAL_EXCLUDED_VARIANTS = Object.freeze({
-  "kling-v3": new Set([
-    "kling-v3.0-omni-4k-text-to-video",
-    "kling-v3.0-omni-pro-text-to-video",
-    "kling-v3.0-omni-standard-text-to-video",
-  ]),
+  ...GROUPED_VIDEO_WORKFLOW_VARIANTS,
 });
 
 function createVariantGroup(variants) {
@@ -297,12 +112,10 @@ function createWorkflowCatalog() {
       }
     }
 
-    const excluded = TECHNICAL_EXCLUDED_VARIANTS[familyId] || new Set();
     const base = createVariantGroup(
       family.variants.t2v.filter(
         (variant) =>
           !workflowVariantIds.has(variant.model.id) &&
-          !excluded.has(variant.model.id) &&
           !variant.model.requiresRequestId,
       ),
     );
@@ -315,7 +128,6 @@ function createWorkflowCatalog() {
           (variant) =>
             !base.variantIds.has(variant.model.id) &&
             !workflowVariantIds.has(variant.model.id) &&
-            !excluded.has(variant.model.id) &&
             !variant.model.requiresRequestId,
         ),
       );
@@ -355,7 +167,10 @@ export function getVideoWorkflowControlState(workflowFamilyOrId, variantId = nul
     : workflowFamilyOrId;
   if (!workflowFamily) return { kind: "hidden", workflow: null };
 
-  if (variantId && workflowFamily.unmanagedVariantIds?.has(variantId)) {
+  if (variantId && (
+    videoModelCatalog.variantById.get(variantId)?.model.requiresRequestId ||
+    workflowFamily.unmanagedVariantIds?.has(variantId)
+  )) {
     return { kind: "hidden", workflow: null };
   }
 
@@ -461,6 +276,38 @@ function sameFamilyVariantId(familyId, variantId) {
     : null;
 }
 
+function resolveGroupedWorkflowVariant(
+  familyId,
+  workflowId,
+  group,
+  currentVariantId,
+  preferredVariantId,
+) {
+  const current = getGroupedVideoConfiguration(currentVariantId);
+  const preferred = getGroupedVideoConfiguration(preferredVariantId);
+  const hasCurrent = current?.familyId === familyId;
+  const hasPreferred = preferred?.familyId === familyId;
+  // Remembering a workflow must not silently change a selected service,
+  // speed, or endpoint resolution when the user changes its source mode.
+  const canRestorePreferred = hasPreferred && (!hasCurrent || (
+    current.profile === preferred.profile &&
+    current.speed === preferred.speed &&
+    current.resolution === preferred.resolution
+  ));
+  if (canRestorePreferred) {
+    const remembered = variantForId(group, preferredVariantId);
+    if (remembered) return remembered;
+  }
+  const variantId = resolveGroupedVideoVariant({
+    familyId,
+    workflowId,
+    currentModelId: hasCurrent
+      ? currentVariantId
+      : hasPreferred ? preferredVariantId : null,
+  });
+  return variantForId(group, variantId);
+}
+
 export function resolveVideoWorkflowVariant(
   familyId,
   workflowId,
@@ -469,6 +316,11 @@ export function resolveVideoWorkflowVariant(
 ) {
   const group = getVideoWorkflowGroup(familyId, workflowId);
   if (!group) return null;
+  if (GROUPED_VIDEO_WORKFLOW_VARIANTS[familyId]) {
+    return resolveGroupedWorkflowVariant(
+      familyId, workflowId, group, currentVariantId, preferredVariantId,
+    );
+  }
   return resolveVariantFromGroup(
     group,
     sameFamilyVariantId(familyId, currentVariantId),
@@ -483,6 +335,11 @@ export function resolveVideoBaseVariant(
 ) {
   const group = getVideoWorkflowGroup(familyId, null);
   if (!group) return null;
+  if (GROUPED_VIDEO_WORKFLOW_VARIANTS[familyId]) {
+    return resolveGroupedWorkflowVariant(
+      familyId, null, group, currentVariantId, preferredVariantId,
+    );
+  }
   return resolveVariantFromGroup(
     group,
     sameFamilyVariantId(familyId, currentVariantId),
@@ -493,9 +350,10 @@ export function resolveVideoBaseVariant(
 export function inferVideoWorkflowId(
   familyId,
   variantId,
-  { hasEndFrame = false } = {},
+  { hasEndFrame = false, preferredWorkflowId = null } = {},
 ) {
   const ids = getVideoWorkflowFamily(familyId)?.workflowIdsByVariantId.get(variantId) || [];
+  if (ids.includes(preferredWorkflowId)) return preferredWorkflowId;
   if (hasEndFrame && ids.includes("keyframes")) return "keyframes";
   if (ids.includes("animate_image")) return "animate_image";
   return ids[0] || null;
@@ -509,7 +367,7 @@ export function resolvePersistedVideoWorkflowSelection(
   const family = videoModelCatalog.familyByVariantId.get(variantId) || null;
   const variant = videoModelCatalog.variantById.get(variantId) || null;
   const workflowFamily = family ? getVideoWorkflowFamily(family.id) : null;
-  if (!family || !variant || !workflowFamily) {
+  if (!family || !variant || !workflowFamily || variant.model.requiresRequestId) {
     return { family, variant, workflowId: null };
   }
 
@@ -573,6 +431,10 @@ export function getVideoWorkflowMediaConfig(model, workflowId) {
   if (workflowId === "edit_video" || workflowId === "extend_uploaded_video") {
     return {
       ...config,
+      imageLimit: workflowId === "extend_uploaded_video" &&
+        getSeedanceConfiguration(model?.id)?.familyId === "seedance-2.5"
+        ? Math.min(config.imageLimit, 1)
+        : config.imageLimit,
       videoLimit: Math.min(config.videoLimit, 1),
       separateEndImage: false,
     };
@@ -615,34 +477,6 @@ function mediaSlot(
   });
 }
 
-export function getVideoWorkflowMediaAdjustments(currentModel, nextModel, workflowId, media) {
-  const current = projectVideoWorkflowMedia(currentModel, workflowId, media);
-  const next = projectVideoWorkflowMedia(nextModel, workflowId, media);
-  const counts = {};
-  for (const slot of getVideoWorkflowMediaSlots(currentModel, workflowId)) {
-    const count = counts[slot.mediaType] ||= { from: 0, to: 0 };
-    count.from += current[slot.id]?.length || 0;
-    count.to += next[slot.id]?.length || 0;
-  }
-  return Object.entries(counts)
-    .filter(([, { from, to }]) => from > to)
-    .map(([type, { from, to }]) => ({
-      key: `${type}${to === 0 ? "Unused" : "Count"}`, from, to,
-    }));
-}
-
-export function migrateVideoWorkflowMediaDrafts(drafts) {
-  const migrated = { ...drafts };
-  for (const [from, to] of [
-    ["kling-v3:references", "kling-v3-omni:references"],
-    ["grok-imagine-video:animate_image", "grok-imagine-video-1.5:animate_image"],
-  ]) {
-    if (drafts[from] && !Object.hasOwn(migrated, to)) migrated[to] = drafts[from];
-    delete migrated[from];
-  }
-  return migrated;
-}
-
 const VISUAL_REFERENCE_SLOT_IDS = Object.freeze([
   "referenceImages",
   "referenceVideos",
@@ -661,13 +495,12 @@ const WAN_REFERENCE_CONSTRAINT = Object.freeze({
 const MINIMAX_H3_REFERENCE_CONSTRAINT = Object.freeze({
   combinedSlotIds: MULTIMODAL_REFERENCE_SLOT_IDS,
   combinedLimit: 12,
-  requiredSlotIds: VISUAL_REFERENCE_SLOT_IDS,
   combinedLimitMessage: "MiniMax H3 supports up to 12 references in total.",
 });
-
 const KLING_O1_REFERENCE_CONSTRAINT = Object.freeze({
   combinedSlotIds: VISUAL_REFERENCE_SLOT_IDS,
   combinedLimit: 7,
+  // A video reduces the image allowance from seven to four.
   slotWeights: Object.freeze({ referenceVideos: 3 }),
   requiredSlotIds: VISUAL_REFERENCE_SLOT_IDS,
   combinedLimitMessage: "Kling O1 supports up to 4 reference images when a video is included.",
@@ -707,7 +540,8 @@ export function getVideoWorkflowMediaSlots(model, workflowId) {
   }
   if (workflowId === "keyframes") {
     if (!imageField) return [];
-    const sharedArrayField = capabilities.image.isArray && !lastImageField;
+    const sharedArrayField = capabilities.image.isArray &&
+      (!lastImageField || lastImageField === imageField);
     return [
       createMediaSlot(
         "startFrame",
@@ -740,7 +574,7 @@ export function getVideoWorkflowMediaSlots(model, workflowId) {
       ),
     ].filter((slot) => slot?.field);
   }
-   if (workflowId === "references") {
+  if (workflowId === "references") {
     if (familyId === "wan-2.7") {
       return [
         createMediaSlot(
@@ -774,7 +608,9 @@ export function getVideoWorkflowMediaSlots(model, workflowId) {
     }
     const minimaxReferenceConstraint = familyId === "minimax-h3" ? {
       ...MINIMAX_H3_REFERENCE_CONSTRAINT,
-      requiredSlotIds: VISUAL_REFERENCE_SLOT_IDS,
+      // Open H3 and LoRA support standalone audio references.
+      requiredSlotIds: getGroupedVideoConfiguration(model.id)?.service === "official"
+        ? VISUAL_REFERENCE_SLOT_IDS : MULTIMODAL_REFERENCE_SLOT_IDS,
     } : {};
     return [
       imageField && createMediaSlot(
@@ -786,8 +622,14 @@ export function getVideoWorkflowMediaSlots(model, workflowId) {
         Math.max(capabilities.image.maxItems, 1),
         {
           isArray: capabilities.image.isArray,
-          ...(model.inputs?.[capabilities.image.field]?.minItems > 0
-            ? { required: true, minItems: model.inputs?.[capabilities.image.field]?.minItems || 1, requiredMessage: "Please add a reference image." }
+          ...((getGroupedVideoConfiguration(model.id) &&
+            model.inputs?.[capabilities.image.field]?.minItems > 0) ||
+            model.id === "veo3.1-reference-to-video"
+            ? {
+              required: true,
+              minItems: model.inputs?.[capabilities.image.field]?.minItems || 1,
+              requiredMessage: "Please add a reference image.",
+            }
             : {}),
           ...minimaxReferenceConstraint,
           ...(familyId === "kling-o1" && videoField
@@ -866,6 +708,14 @@ export function getVideoWorkflowMediaSlots(model, workflowId) {
         1,
         { isArray: capabilities.video.isArray },
       ),
+      familyId === "seedance-2.5" && lastImageField && createMediaSlot(
+        "endFrame",
+        "image",
+        lastImageField,
+        "End",
+        "Optional target frame for the continuation",
+        1,
+      ),
       audioField && createMediaSlot(
         "referenceAudios",
         "audio",
@@ -904,6 +754,19 @@ export function getVideoWorkflowMediaSlots(model, workflowId) {
 
 export function getVideoWorkflowDraftKey(familyId, workflowId) {
   return `${familyId}:${workflowId}`;
+}
+
+export function migrateVideoWorkflowMediaDrafts(drafts) {
+  // Preserve uploads when a model becomes a separate family.
+  const migrated = { ...drafts };
+  for (const [from, to] of [
+    ["kling-v3:references", "kling-v3-omni:references"],
+    ["grok-imagine-video:animate_image", "grok-imagine-video-1.5:animate_image"],
+  ]) {
+    if (drafts[from] && !Object.hasOwn(migrated, to)) migrated[to] = drafts[from];
+    delete migrated[from];
+  }
+  return migrated;
 }
 
 export function appendVideoWorkflowMedia(
@@ -975,6 +838,22 @@ export function projectVideoWorkflowMedia(model, workflowId, media = {}) {
   return projected;
 }
 
+export function getVideoWorkflowMediaAdjustments(currentModel, nextModel, workflowId, media) {
+  const current = projectVideoWorkflowMedia(currentModel, workflowId, media);
+  const next = projectVideoWorkflowMedia(nextModel, workflowId, media);
+  const counts = {};
+  for (const slot of getVideoWorkflowMediaSlots(currentModel, workflowId)) {
+    const count = counts[slot.mediaType] ||= { from: 0, to: 0 };
+    count.from += current[slot.id]?.length || 0;
+    count.to += next[slot.id]?.length || 0;
+  }
+  return Object.entries(counts)
+    .filter(([, { from, to }]) => from > to)
+    .map(([type, { from, to }]) => ({
+      key: `${type}${to === 0 ? "Unused" : "Count"}`, from, to,
+    }));
+}
+
 export function getVideoWorkflowSlotRemaining(slot, media = {}) {
   if (!slot) return 0;
   const ownRemaining = Math.max(
@@ -982,10 +861,10 @@ export function getVideoWorkflowSlotRemaining(slot, media = {}) {
     0,
   );
   if (!slot.combinedLimit || !slot.combinedSlotIds) return ownRemaining;
-  const combinedCount = combinedMediaCount(media, slot.combinedSlotIds);
+  const combinedCount = combinedMediaCount(media, slot.combinedSlotIds, slot.slotWeights);
   return Math.min(
     ownRemaining,
-    Math.max(slot.combinedLimit - combinedCount, 0),
+    Math.max(Math.floor((slot.combinedLimit - combinedCount) / (slot.slotWeights?.[slot.id] || 1)), 0),
   );
 }
 
@@ -1002,10 +881,9 @@ function mediaCount(media, slotId) {
   return mediaValues(media, slotId).length;
 }
 
-function combinedMediaCount(media, slotIds, excludedSlotId = null) {
+function combinedMediaCount(media, slotIds, slotWeights) {
   return slotIds.reduce(
-    (total, slotId) =>
-      slotId === excludedSlotId ? total : total + mediaCount(media, slotId),
+    (total, slotId) => total + mediaCount(media, slotId) * (slotWeights?.[slotId] || 1),
     0,
   );
 }
@@ -1020,6 +898,11 @@ export function validateVideoWorkflowMedia(workflowId, media = {}, model = null)
   )) {
     if (mediaCount(activeMedia, slotId) === 0) {
       return { valid: false, message };
+    }
+  }
+  for (const slot of slots) {
+    if (slot.minItems && mediaCount(activeMedia, slot.id) < slot.minItems) {
+      return { valid: false, message: slot.requiredMessage };
     }
   }
 
@@ -1040,6 +923,7 @@ export function validateVideoWorkflowMedia(workflowId, media = {}, model = null)
       const combinedCount = combinedMediaCount(
         activeMedia,
         combinedConstraint.combinedSlotIds,
+        combinedConstraint.slotWeights,
       );
       if (combinedCount > combinedConstraint.combinedLimit) {
         return {
