@@ -96,6 +96,11 @@ vi.mock('@/server/businessDiscovery', async () => {
     getSupportedNiches: nicheMappings.getSupportedNiches,
     geocodeLocation: vi.fn(),
     discoverBusinesses: vi.fn(),
+    // The route races the Overpass provider against the Nominatim business
+    // search, so both are part of the mocked module surface. The Nominatim
+    // search contributes no records here, which leaves the Overpass result
+    // as the winner.
+    searchBusinessesViaNominatim: vi.fn(async () => []),
     deduplicateBusinesses: vi.fn(),
     enrichBusinessRecord: vi.fn(),
     scoreAndSort: vi.fn(),
@@ -339,7 +344,12 @@ describe('find-businesses route — success flow', () => {
     expect(typeof body.durationMs).toBe('number')
 
     // Full pipeline invoked in order against the mocked dependencies.
-    expect(geocodeLocation).toHaveBeenCalledWith(LOCATION)
+    // The geocoder receives the request budget's abort signal so a stalled
+    // upstream is cancelled instead of lingering.
+    expect(geocodeLocation).toHaveBeenCalledWith(
+      LOCATION,
+      expect.objectContaining({ signal: expect.anything() }),
+    )
     expect(discoverBusinesses).toHaveBeenCalledWith(
       expect.objectContaining({
         niche: NICHE,

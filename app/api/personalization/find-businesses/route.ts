@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { geocodeLocation, discoverBusinesses, AllOverpassProvidersFailed, searchBusinessesViaNominatim, deduplicateBusinesses, enrichBusinessRecord, scoreAndSort, createCacheKey, businessDiscoveryCache } from '@/server/businessDiscovery'
+import { geocodeLocation, discoverBusinesses, searchBusinessesViaNominatim, deduplicateBusinesses, enrichBusinessRecord, scoreAndSort, createCacheKey, businessDiscoveryCache } from '@/server/businessDiscovery'
 import { getNicheMapping, getSupportedNiches } from '@/server/businessDiscovery'
-import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
+import { createStageDeadline, withDeadline, DeadlineExceededError, ROUTE_DEADLINE_MS } from '@/server/businessDiscovery/deadline'
+import { logPersonalization, createCorrelationId } from '@/server/personalizationLog'
 import { rateLimit, rateLimit429, resolveRateLimitKey } from '@/lib/rateLimit'
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,25 @@ const RATE_LIMIT_WINDOW_MS = 60_000
 const RATE_LIMIT_MAX = 10
 // Higher ceiling for the shared 'anon' fallback bucket (see below).
 const ANON_RATE_LIMIT_MAX = 100
+
+/**
+ * Hard budget for the whole request lives in
+ * `@/server/businessDiscovery/deadline` (`ROUTE_DEADLINE_MS`) so the route and
+ * the budget regression test read the same numbers.
+ *
+ * The route runs behind a proxy that aborts a request which has not produced
+ * any bytes for ~30s and answers the client with an HTML "Inactivity Timeout"
+ * page — the exact failure this route kept hitting. A JSON body produced
+ * inside this budget is strictly better than that HTML page, so the deadline
+ * is the last line of defence and is deliberately well under the platform
+ * ceiling.
+ */
+
+/**
+ * Public-safe message for a request that ran out of budget.
+ */
+const SEARCH_TIMEOUT_MESSAGE =
+  'Business search timed out. Please try a smaller radius or a different location.'
 
 // Proxy-trust assumption:
 // - `x-real-ip` is stamped by the trusted reverse proxy (nginx
@@ -56,6 +76,18 @@ function isUpstreamProviderError(message: string): boolean {
   )
 }
 
+/**
+ * True when the failure is the request budget running out.
+ *
+ * The budget aborts the in-flight upstream request, so the provider surfaces
+ * an `AbortError` rather than the budget's own error. Both mean "we ran out
+ * of time", which is a 504, not an upstream outage.
+ */
+function isBudgetExhausted(err: unknown): boolean {
+  if (err instanceof DeadlineExceededError) return true
+  return err instanceof Error && err.name === 'AbortError'
+}
+
 // Free-path actionable copy: when every Overpass mirror is down the caller
 // cannot get businesses from search but can still paste a website URL into
 // the research step. Keep it provider-internals free.
@@ -71,6 +103,79 @@ function serverErrorResponse(
     { error, correlationId, ...extras },
     { status: 502, headers: { 'x-correlation-id': correlationId } },
   )
+}
+
+/**
+ * JSON answer for a request that ran out of budget.
+ *
+ * A JSON body with a stable `code` is strictly better than the platform's
+ * HTML "Inactivity Timeout" page: the client can render it, the banner shows
+ * an actionable message, and the response is machine-readable.
+ */
+function searchTimeoutResponse(
+  correlationId: string,
+  extras: Record<string, unknown> = {},
+): NextResponse {
+  return NextResponse.json(
+    { error: SEARCH_TIMEOUT_MESSAGE, code: 'SEARCH_TIMEOUT', correlationId, ...extras },
+    { status: 504, headers: { 'x-correlation-id': correlationId } },
+  )
+}
+
+type ProviderOutcome<T> = {
+  source: 'OPENSTREETMAP' | 'NOMINATIM_SEARCH'
+  records?: T[]
+  error?: Error
+}
+
+/**
+ * Resolves with the first provider that produced records.
+ *
+ * A provider that fails (or finds nothing) never stops the others. When the
+ * first provider to answer produced FEWER records than the caller asked for,
+ * the remaining provider is awaited too (bounded by the caller's deadline)
+ * and the richer result set wins — a thin answer from a fast provider never
+ * silently starves the response.
+ */
+function raceProviders<T>(
+  providers: Array<Promise<ProviderOutcome<T>>>,
+  wanted: number,
+): Promise<{ winner: ProviderOutcome<T> | null; outcomes: ProviderOutcome<T>[] }> {
+  return new Promise((resolve) => {
+    const outcomes: ProviderOutcome<T>[] = []
+    let pending = providers.length
+    let settled = false
+
+    if (pending === 0) {
+      resolve({ winner: null, outcomes })
+      return
+    }
+
+    const settle = (winner: ProviderOutcome<T> | null) => {
+      if (settled) return
+      settled = true
+      resolve({ winner, outcomes })
+    }
+
+    for (const provider of providers) {
+      provider.then((outcome) => {
+        outcomes.push(outcome)
+        pending -= 1
+        const count = outcome.records?.length ?? 0
+        // A complete answer ends the race immediately.
+        if (count > 0 && count >= wanted) {
+          settle(outcome)
+          return
+        }
+        if (pending === 0) {
+          const best = outcomes
+            .filter((o) => (o.records?.length ?? 0) > 0)
+            .sort((a, b) => (b.records?.length ?? 0) - (a.records?.length ?? 0))[0]
+          settle(best ?? null)
+        }
+      })
+    }
+  })
 }
 
 export async function POST(req: NextRequest) {
@@ -188,11 +293,33 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    // ── Request budget ───────────────────────────────────────────────────
+    // The route answers with JSON inside this budget. A response that arrives
+    // later would be replaced by the platform's HTML "Inactivity Timeout"
+    // page, which no client can use.
+    const deadline = createStageDeadline('find-businesses', ROUTE_DEADLINE_MS)
+
     // Geocode the location
     let geocodeResult
     try {
-      geocodeResult = await geocodeLocation(location)
+      geocodeResult = await withDeadline(
+        geocodeLocation(location, { signal: deadline.signal }),
+        deadline,
+      )
     } catch (err) {
+      if (isBudgetExhausted(err)) {
+        logPersonalization({
+          route: '/api/personalization/find-businesses',
+          stage: 'geocode',
+          provider: 'NOMINATIM',
+          httpStatus: 504,
+          safeErrorCode: 'SEARCH_TIMEOUT',
+          safeMessage: 'Request budget exhausted during geocoding',
+          correlationId,
+          durationMs: Date.now() - startTime,
+        })
+        return searchTimeoutResponse(correlationId)
+      }
       const message = err instanceof Error ? err.message : 'Geocoding failed'
       if (isUpstreamProviderError(message)) {
         logPersonalization({
@@ -225,117 +352,113 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    // Discover businesses
-    let rawBusinesses
+    // ── Discover businesses ──────────────────────────────────────────────
+    // The Overpass mirrors and the Nominatim business-list search run
+    // CONCURRENTLY. They are two independent OSM query paths, so the request
+    // costs the fastest provider that has real records instead of the sum of
+    // both. This is what keeps the free path inside the function budget:
+    // chaining them meant a degraded Overpass (measured at 27-39s for a
+    // 15-mile radius) pushed the whole request past the platform's timeout
+    // even though Nominatim could have answered in ~4s.
+    //
+    // Both providers carry their own stage budget (Overpass 9s, Nominatim
+    // 7s), so neither can outrun the request.
+    const overpassOutcome = discoverBusinesses({
+      niche,
+      latitude: geocodeResult.latitude,
+      longitude: geocodeResult.longitude,
+      radiusMiles: boundedRadius,
+      limit: limit * 3, // Get extra for deduplication
+    }).then(
+      (records) => ({ source: 'OPENSTREETMAP' as const, records }),
+      (error: Error) => ({ source: 'OPENSTREETMAP' as const, error }),
+    )
+
+    // The Nominatim search is scoped by the geocoded viewbox; the raw
+    // location string is accepted for API compatibility but is deliberately
+    // NOT part of the query: appending it made Nominatim parse the search as
+    // an address lookup and return nothing.
+    const nominatimOutcome = searchBusinessesViaNominatim({
+      niche,
+      latitude: geocodeResult.latitude,
+      longitude: geocodeResult.longitude,
+      radiusMiles: boundedRadius,
+      location,
+      limit: limit * 3, // Get extra for deduplication
+    }).then(
+      (records) => ({ source: 'NOMINATIM_SEARCH' as const, records }),
+      (error: Error) => ({ source: 'NOMINATIM_SEARCH' as const, error }),
+    )
+
+    let race: { winner: ProviderOutcome<unknown> | null; outcomes: ProviderOutcome<unknown>[] }
     try {
-      rawBusinesses = await discoverBusinesses({
-        niche,
-        latitude: geocodeResult.latitude,
-        longitude: geocodeResult.longitude,
-        radiusMiles: boundedRadius,
-        limit: limit * 3, // Get extra for deduplication
-      })
+      race = await withDeadline(
+        raceProviders([overpassOutcome, nominatimOutcome], limit),
+        deadline,
+      )
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Business discovery failed'
-      const isAllOverpassFailed = err instanceof AllOverpassProvidersFailed
+      if (isBudgetExhausted(err)) {
+        logPersonalization({
+          route: '/api/personalization/find-businesses',
+          stage: 'discover',
+          provider: 'OPENSTREETMAP',
+          httpStatus: 504,
+          safeErrorCode: 'SEARCH_TIMEOUT',
+          safeMessage: 'Request budget exhausted during business discovery',
+          correlationId,
+          durationMs: Date.now() - startTime,
+        })
+        return searchTimeoutResponse(correlationId, {
+          partial: {
+            geocode: {
+              latitude: geocodeResult.latitude,
+              longitude: geocodeResult.longitude,
+              displayName: geocodeResult.displayName,
+            },
+          },
+        })
+      }
+      throw err
+    }
+
+    const winner = race.winner
+
+    if (!winner || !winner.records || winner.records.length === 0) {
+      // Neither provider produced a business. Report the honest upstream
+      // failure (502) with the resolved location so the UI keeps it.
+      const overpassError = race.outcomes.find((o) => o.source === 'OPENSTREETMAP')?.error
+      const nominatimError = race.outcomes.find((o) => o.source === 'NOMINATIM_SEARCH')?.error
+      const safeMessage =
+        overpassError?.message ||
+        nominatimError?.message ||
+        'No businesses found for this niche and location'
+
       logPersonalization({
         route: '/api/personalization/find-businesses',
         stage: 'discover',
         provider: 'OPENSTREETMAP',
         httpStatus: 502,
-        safeErrorCode: isAllOverpassFailed ? 'OVERPASS_ALL_MIRRORS_FAILED' : 'DISCOVERY_UPSTREAM_FAILED',
-        safeMessage: message,
+        safeErrorCode: overpassError
+          ? 'OVERPASS_ALL_MIRRORS_FAILED'
+          : 'DISCOVERY_UPSTREAM_FAILED',
+        safeMessage,
         correlationId,
         durationMs: Date.now() - startTime,
       })
 
-      // When every Overpass mirror failed, try the Nominatim search fallback
-      // before giving up. Other discovery errors are upstream failures, not
-      // caller mistakes, so they surface as a 502 without retrying.
-      if (isAllOverpassFailed) {
-        let fallbackResults
-        let fallbackError: Error | null = null
-        try {
-          fallbackResults = await searchBusinessesViaNominatim({
-            niche,
-            latitude: geocodeResult.latitude,
-            longitude: geocodeResult.longitude,
-            radiusMiles: boundedRadius,
-            location,
-            limit,
-          })
-        } catch (nominatimErr) {
-          fallbackError =
-            nominatimErr instanceof Error ? nominatimErr : new Error(String(nominatimErr))
-        }
-
-        const partialGeocode = {
+      return serverErrorResponse(ALL_OVERPASS_FAILED_USER_MESSAGE, correlationId, {
+        partial: {
           geocode: {
             latitude: geocodeResult.latitude,
             longitude: geocodeResult.longitude,
             displayName: geocodeResult.displayName,
           },
-        }
-
-        // Nominatim itself is unavailable — return 502 with actionable copy
-        // and the partial geocode so the UI keeps the resolved location.
-        if (fallbackError || !fallbackResults || fallbackResults.length === 0) {
-          logPersonalization({
-            route: '/api/personalization/find-businesses',
-            stage: 'discover',
-            provider: 'NOMINATIM_SEARCH',
-            httpStatus: 502,
-            safeErrorCode: fallbackError
-              ? 'NOMINATIM_SEARCH_FAILED'
-              : 'NOMINATIM_SEARCH_EMPTY',
-            safeMessage: fallbackError ? fallbackError.message : 'Nominatim search returned no results',
-            correlationId,
-            durationMs: Date.now() - startTime,
-          })
-          return serverErrorResponse(
-            ALL_OVERPASS_FAILED_USER_MESSAGE,
-            correlationId,
-            { partial: partialGeocode },
-          )
-        }
-
-        // Nominatim succeeded — return real businesses with the fallback marker
-        // so the path is traceable rather than silently identical to Overpass.
-        const deduplicated = deduplicateBusinesses(fallbackResults)
-        const scored = scoreAndSort(deduplicated)
-        const enriched = scored.map(enrichBusinessRecord)
-        const limitedFallback = enriched.slice(0, limit)
-
-        businessDiscoveryCache.set(cacheKey, limitedFallback, CACHE_TTL_MS)
-
-        logPersonalization({
-          route: '/api/personalization/find-businesses',
-          stage: 'discover',
-          provider: 'NOMINATIM_SEARCH',
-          httpStatus: 200,
-          correlationId,
-          durationMs: Date.now() - startTime,
-        })
-
-        return NextResponse.json({
-          ok: true,
-          query: { niche: mapping.label, location, radiusMiles: boundedRadius },
-          count: limitedFallback.length,
-          businesses: limitedFallback,
-          providerUsed: 'NOMINATIM_SEARCH',
-          durationMs: Date.now() - startTime,
-        })
-      }
-
-      // Non-Overpass discovery failure — upstream error, surface as 502.
-      return serverErrorResponse(
-        'Unable to fetch local businesses right now. Please try again shortly.',
-        correlationId,
-      )
+        },
+      })
     }
 
     // Deduplicate
-    const deduplicated = deduplicateBusinesses(rawBusinesses)
+    const deduplicated = deduplicateBusinesses(winner.records as any[])
 
     // Score and sort
     const scored = scoreAndSort(deduplicated)
@@ -354,7 +477,7 @@ export async function POST(req: NextRequest) {
     logPersonalization({
       route: '/api/personalization/find-businesses',
       stage: 'discover',
-      provider: 'OPENSTREETMAP',
+      provider: winner.source,
       httpStatus: 200,
       correlationId,
       durationMs,
@@ -365,10 +488,23 @@ export async function POST(req: NextRequest) {
       query: { niche: mapping.label, location, radiusMiles: boundedRadius },
       count: limited.length,
       businesses: limited,
-      providerUsed: 'OPENSTREETMAP',
+      providerUsed: winner.source,
       durationMs,
     })
   } catch (err) {
+    if (isBudgetExhausted(err)) {
+      logPersonalization({
+        route: '/api/personalization/find-businesses',
+        stage: 'unhandled',
+        provider: 'OPENSTREETMAP',
+        httpStatus: 504,
+        safeErrorCode: 'SEARCH_TIMEOUT',
+        safeMessage: 'Request budget exhausted',
+        correlationId,
+        durationMs: Date.now() - startTime,
+      })
+      return searchTimeoutResponse(correlationId)
+    }
     const message = err instanceof Error ? err.message : 'Unknown error'
     // SSRF/networkSafety rejections are caller mistakes (400); everything else
     // here is unexpected and must stay generic (details go to the log only).

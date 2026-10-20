@@ -1,114 +1,854 @@
-import { test, expect } from '@playwright/test';
+/**
+ * Find Business Assets — Landing page (production).
+ *
+ * Target: https://go.smartvid.app
+ *   NOT https://smartvid.app — that is a different product ("Remix New Editor")
+ *   and answers 404 for every /api/personalization/* call.
+ *
+ * Auth: /api/personalization/discover-assets and /api/personalization/
+ *   download-image are Clerk-gated, so the run relies on the Playwright
+ *   `storageState` produced by the auth-state generator for the
+ *   https://go.smartvid.app origin. No auth-bypass cookie is used: the
+ *   production deployment never honours it.
+ *
+ * Presentation: the personalization modal opens in Simple Mode (the guided
+ *   wizard). The asset-discovery surface asserted here — "Find Business
+ *   Assets", the Discovered Assets review, "Use Selected Assets" — lives in
+ *   the Advanced Editing (ConfigurationView) presentation, so every test
+ *   switches to it before asserting.
+ *
+ * Honesty rules baked into this file:
+ *   - A missing dialog, a missing control, an empty asset list or a
+ *     discovery that ends in an error is a FAILURE with a named reason.
+ *   - `expect(true).toBe(true)` is never used as an assertion.
+ */
 
-const BASE = 'http://localhost:3111';
+import { test, expect, type Locator, type Page } from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
+import { resolveDemoAuthStatePath } from '../playwright.shared';
 
-test.describe('Find Business Assets — Landing Page', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.context().addCookies([
-      { name: '__e2e_auth_bypass', value: '1', url: BASE },
-    ]);
+const BASE = 'https://go.smartvid.app';
+const LANDING_URL = `${BASE}/personalization-demo?test=true`;
+/**
+ * The public free-discovery landing surface. It mounts the shared provider with
+ * access="anonymous", so the modal opens in the "Find My Brand" mode instead of
+ * the signed-in "Find Business Assets" mode.
+ */
+const ANONYMOUS_LANDING_URL = `${BASE}/demo`;
+
+const PRODUCTION_AUTH_STATE_PATH = path.join(
+  process.cwd(),
+  'playwright/.clerk',
+  'smartvideo-demo-https_go_smartvid_app.json',
+);
+
+const DIALOG_TIMEOUT_MS = 45_000;
+const SEARCH_TIMEOUT_MS = 90_000;
+/** The discovery route aborts after 120s and the client then polls for a job. */
+const DISCOVERY_TIMEOUT_MS = 180_000;
+
+// ── Clerk storage-state guard ───────────────────────────────────────────────
+// A missing storage state is a setup failure, never a reason to skip. The
+// check runs at module scope because Playwright creates the browser context
+// (and would raise a bare ENOENT) before any beforeEach hook runs.
+function assertAuthStatePresent(): void {
+  const authStatePath = resolveDemoAuthStatePath();
+  if (fs.existsSync(authStatePath)) return;
+  throw new Error(
+    [
+      'Clerk storage state is missing, so the Clerk-gated personalization APIs cannot be called.',
+      `Resolved storage state path : ${authStatePath}`,
+      `Production auth state file  : ${PRODUCTION_AUTH_STATE_PATH}`,
+      `Run the auth-state generator for ${BASE} (DEMO_BASE_URL=${BASE}) before running this spec.`,
+    ].join('\n'),
+  );
+}
+
+assertAuthStatePresent();
+
+// ── Diagnostics ─────────────────────────────────────────────────────────────
+interface Diagnostics {
+  consoleErrors: string[];
+  pageErrors: string[];
+  failedRequests: string[];
+  apiResponses: string[];
+}
+
+function collectDiagnostics(page: Page): Diagnostics {
+  const diagnostics: Diagnostics = {
+    consoleErrors: [],
+    pageErrors: [],
+    failedRequests: [],
+    apiResponses: [],
+  };
+
+  page.on('console', (message) => {
+    if (message.type() === 'error') diagnostics.consoleErrors.push(message.text());
+  });
+  page.on('pageerror', (error) => diagnostics.pageErrors.push(error.message));
+  page.on('requestfailed', (request) => {
+    diagnostics.failedRequests.push(
+      `${request.method()} ${request.url()} — ${request.failure()?.errorText ?? 'unknown failure'}`,
+    );
+  });
+  page.on('response', (response) => {
+    if (response.url().includes('/api/personalization/')) {
+      diagnostics.apiResponses.push(`${response.status()} ${response.url()}`);
+    }
   });
 
-  async function openAssetDiscovery(page: any) {
-    await page.goto('/personalization-demo?test=true');
+  return diagnostics;
+}
 
-    const dialog = page.getByRole('dialog', { name: 'Personalize this demo' });
-    await expect(dialog).toBeVisible();
+function formatDiagnostics(diagnostics: Diagnostics): string {
+  return [
+    `console errors (${diagnostics.consoleErrors.length}): ${diagnostics.consoleErrors.slice(0, 8).join(' || ') || 'none'}`,
+    `page errors (${diagnostics.pageErrors.length}): ${diagnostics.pageErrors.slice(0, 8).join(' || ') || 'none'}`,
+    `failed requests (${diagnostics.failedRequests.length}): ${diagnostics.failedRequests.slice(0, 8).join(' || ') || 'none'}`,
+    `personalization API responses (${diagnostics.apiResponses.length}): ${diagnostics.apiResponses.slice(0, 12).join(' || ') || 'none'}`,
+  ].join('\n');
+}
 
-    // Select "Client" audience
-    await dialog.getByRole('button', { name: 'Client' }).click();
+/**
+ * Returns the full text of the error panel (heading + upstream message) that
+ * contains the given banner, so failures can name the upstream error instead
+ * of only the "Business Search Failed" heading.
+ */
+async function errorPanelText(banner: Locator): Promise<string> {
+  const panel = banner.first().locator('xpath=ancestor::div[.//p][1]');
+  if ((await panel.count()) === 0) {
+    return ((await banner.first().textContent()) ?? '').trim();
+  }
+  return ((await panel.first().textContent()) ?? '').trim();
+}
 
-    // Find a business first (needed for the asset discovery flow)
-    await dialog.getByRole('button', { name: /Find Local Business/i }).click();
-    await dialog.selectOption('#business-niche', 'restaurants-food');
-    await dialog.locator('#business-location').fill('Miami, Florida');
-    await dialog.getByRole('button', { name: '15 mi' }).click();
+// ── Modal helpers ───────────────────────────────────────────────────────────
+async function openPersonalizationDialog(page: Page, url = LANDING_URL): Promise<Locator> {
+  await page.goto(url);
+  await page.waitForLoadState('domcontentloaded');
 
-    await expect(dialog.getByText(/businesses found for/i)).toBeVisible({ timeout: 60000 });
+  const dialogs = page.getByRole('dialog');
+  await expect(
+    dialogs.first(),
+    `The personalization dialog never opened on ${url}. It is rendered by the personalization provider ` +
+      '(role="dialog" + aria-labelledby="personalize-title"); if it stays hidden the client bundle failed to hydrate.',
+  ).toBeVisible({ timeout: DIALOG_TIMEOUT_MS });
 
-    const resultCards = dialog.locator('[role="button"]').filter({ hasText: /Use This Business/i });
-    expect(await resultCards.count()).toBeGreaterThan(0);
-    await resultCards.first().click();
-
-    await expect(dialog.getByText(/Selected:/i)).toBeVisible({ timeout: 10000 });
-
-    return dialog;
+  if ((await dialogs.count()) > 1) {
+    const labelled = page.locator('[role="dialog"][aria-labelledby="personalize-title"]');
+    await expect(
+      labelled,
+      `Expected exactly one personalization dialog on ${url}.`,
+    ).toHaveCount(1, { timeout: 15_000 });
+    return labelled.first();
   }
 
-  test('Select a business with a website, discover assets, and import to Personalization', async ({ page }) => {
-    const dialog = await openAssetDiscovery(page);
+  const dialog = dialogs.first();
+  await expect(
+    dialog,
+    'The visible dialog is not the personalization dialog (aria-labelledby="personalize-title" is missing).',
+  ).toHaveAttribute('aria-labelledby', 'personalize-title', { timeout: 15_000 });
 
-    // Look for the website field - should be pre-filled from selected business
-    const websiteInput = dialog.getByPlaceholder(/https?:\/\//i);
-    const websiteValue = await websiteInput.inputValue();
+  return dialog;
+}
 
-    if (websiteValue && websiteValue.startsWith('http')) {
-      // Website exists - proceed with asset discovery
-      await dialog.getByRole('button', { name: /Find Business Assets/i }).click();
+/** Switches the modal from Simple Mode to the Advanced Editing configuration view. */
+async function openAdvancedConfiguration(dialog: Locator): Promise<void> {
+  const advancedToggle = dialog.getByRole('button', { name: /advanced editing/i });
+  if ((await advancedToggle.count()) > 0) {
+    await advancedToggle.first().click();
+  }
 
-      // Wait for discovery to start/complete
-      await expect(dialog.getByText(/Discovered Assets|discovery|scanning/i)).toBeVisible({ timeout: 60000 });
+  await expect(
+    dialog.getByRole('button', { name: 'Client', exact: true }),
+    'The Advanced Editing configuration view did not render the Client Profile audience buttons ' +
+      '("Me" / "My Business" / "Client").',
+  ).toBeVisible({ timeout: 20_000 });
+}
 
-      // Check for discovered assets
-      const assetCheckboxes = dialog.locator('input[type="checkbox"]');
-      const assetCount = await assetCheckboxes.count();
-      console.log(`Discovered asset count: ${assetCount}`);
+/** Picks the "Client" audience and opens the niche/location search form. */
+async function openBusinessSearchForm(dialog: Locator): Promise<void> {
+  const clientButton = dialog.getByRole('button', { name: 'Client', exact: true });
+  await expect(
+    clientButton,
+    'The "Client" audience button is missing, so the Find Local Business entry point can never be reached.',
+  ).toBeVisible({ timeout: 20_000 });
+  await clientButton.click();
 
-      if (assetCount > 0) {
-        // Select first asset
-        await assetCheckboxes.first().click();
+  const findLocalBusiness = dialog.getByRole('button', { name: 'Find Local Business', exact: true });
+  await expect(
+    findLocalBusiness,
+    'The "Find Local Business" button did not appear after selecting the "Client" audience.',
+  ).toBeVisible({ timeout: 20_000 });
+  await findLocalBusiness.click();
 
-        // Look for import button
-        const importButtons = dialog.getByRole('button').filter({ hasText: /Import|Add to Personalization|Use Asset/i });
-        if ((await importButtons.count()) > 0) {
-          await importButtons.first().click();
-          await expect(dialog.getByText(/imported|added|personalization/i)).toBeVisible({ timeout: 15000 });
-        }
+  await expect(
+    dialog.locator('#business-niche'),
+    'The business search form did not open (no #business-niche select).',
+  ).toBeVisible({ timeout: 20_000 });
+}
+
+// ── Search helpers ──────────────────────────────────────────────────────────
+type SearchOutcome = {
+  kind: 'results' | 'upstream-error' | 'no-results' | 'no-outcome';
+  count: number;
+  httpStatus: number | null;
+  summary: string;
+};
+
+async function runBusinessSearch(
+  page: Page,
+  dialog: Locator,
+  niche: string,
+  location: string,
+  radius: string,
+): Promise<SearchOutcome> {
+  await dialog.locator('#business-niche').selectOption(niche);
+  await dialog.locator('#business-location').fill(location);
+
+  const responsePromise = page
+    .waitForResponse((response) => response.url().includes('/api/personalization/find-businesses'), {
+      timeout: SEARCH_TIMEOUT_MS,
+    })
+    .catch(() => null);
+
+  await dialog.getByRole('button', { name: radius, exact: true }).click();
+
+  const response = await responsePromise;
+  const httpStatus = response ? response.status() : null;
+
+  const resultsSummary = dialog.getByText(/businesses found for/i);
+  const errorBanner = dialog.getByText(/Business Search Failed/i);
+
+  const outcome = await Promise.race([
+    resultsSummary
+      .first()
+      .waitFor({ state: 'visible', timeout: 30_000 })
+      .then(() => 'results' as const, () => 'none' as const),
+    errorBanner
+      .first()
+      .waitFor({ state: 'visible', timeout: 30_000 })
+      .then(() => 'error' as const, () => 'none' as const),
+  ]);
+
+  if (outcome === 'results') {
+    const summary = (await resultsSummary.first().textContent()) ?? '';
+    const match = summary.match(/(\d+)\s+businesses\s+found\s+for/i);
+    return { kind: 'results', count: match ? Number(match[1]) : 0, httpStatus, summary };
+  }
+
+  if (outcome === 'error') {
+    const summary = await errorPanelText(errorBanner);
+    const upstream = httpStatus !== null && httpStatus >= 500;
+    return { kind: upstream ? 'upstream-error' : 'no-results', count: 0, httpStatus, summary };
+  }
+
+  return { kind: 'no-outcome', count: 0, httpStatus, summary: '' };
+}
+
+function assertSearchSucceeded(outcome: SearchOutcome, niche: string, location: string): void {
+  if (outcome.kind === 'upstream-error') {
+    throw new Error(
+      `Upstream business search failed for ${niche} in ${location}: ` +
+        `POST /api/personalization/find-businesses returned HTTP ${outcome.httpStatus}. ` +
+        `Error banner: "${outcome.summary.trim()}". This is an upstream failure and must not be reported as a pass.`,
+    );
+  }
+  if (outcome.kind === 'no-results') {
+    throw new Error(
+      `Business search returned no businesses for ${niche} in ${location} (HTTP ${outcome.httpStatus}). ` +
+        `Banner: "${outcome.summary.trim()}".`,
+    );
+  }
+  if (outcome.kind === 'no-outcome') {
+    throw new Error(
+      `Business search for ${niche} in ${location} produced neither results nor an error banner ` +
+        `(HTTP ${outcome.httpStatus}). The UI never reported the outcome of the search.`,
+    );
+  }
+}
+
+/** Finds the result card that carries the given OpenStreetMap badge and returns its "Use This Business" button. */
+function resultCardByBadge(dialog: Locator, badgeText: string): Locator {
+  const badge = dialog.getByText(badgeText, { exact: true }).first();
+  return badge.locator(
+    `xpath=ancestor::div[.//button[contains(normalize-space(.), "Use This Business")]][1]`,
+  );
+}
+
+// ── Asset discovery helpers ─────────────────────────────────────────────────
+type DiscoveryOutcome = {
+  kind: 'assets' | 'error' | 'no-outcome';
+  httpStatus: number | null;
+  assetCount: number;
+  message: string;
+};
+
+async function startAssetDiscovery(page: Page, dialog: Locator): Promise<DiscoveryOutcome> {
+  const findAssetsButton = dialog.getByRole('button', { name: 'Find Business Assets', exact: true });
+  await expect(
+    findAssetsButton,
+    'The "Find Business Assets" button is missing from the Client Profile step.',
+  ).toBeVisible({ timeout: 20_000 });
+
+  const responsePromise = page
+    .waitForResponse(
+      (response) =>
+        response.url().includes('/api/personalization/discover-assets') &&
+        !response.url().includes('/status'),
+      { timeout: DISCOVERY_TIMEOUT_MS },
+    )
+    .catch(() => null);
+
+  await findAssetsButton.click();
+
+  const response = await responsePromise;
+  const httpStatus = response ? response.status() : null;
+
+  const discoveredHeading = dialog.getByRole('heading', { name: 'Discovered Assets', exact: true });
+  const errorBanner = dialog.getByText(/couldn.t find business assets/i);
+
+  const outcome = await Promise.race([
+    discoveredHeading
+      .waitFor({ state: 'visible', timeout: DISCOVERY_TIMEOUT_MS })
+      .then(() => 'assets' as const, () => 'none' as const),
+    errorBanner
+      .waitFor({ state: 'visible', timeout: DISCOVERY_TIMEOUT_MS })
+      .then(() => 'error' as const, () => 'none' as const),
+  ]);
+
+  if (outcome === 'assets') {
+    const assetCount = await dialog.locator('#pz-discovered img').count();
+    return { kind: 'assets', httpStatus, assetCount, message: '' };
+  }
+
+  if (outcome === 'error') {
+    const message = await errorPanelText(errorBanner);
+    return { kind: 'error', httpStatus, assetCount: 0, message };
+  }
+
+  return { kind: 'no-outcome', httpStatus, assetCount: 0, message: '' };
+}
+
+function assertDiscoverySucceeded(outcome: DiscoveryOutcome, website: string): void {
+  if (outcome.kind === 'error') {
+    throw new Error(
+      `Asset discovery for ${website} ended in a terminal error ` +
+        `(POST /api/personalization/discover-assets -> HTTP ${outcome.httpStatus}): "${outcome.message}". ` +
+        'No assets could be reviewed or imported.',
+    );
+  }
+  if (outcome.kind === 'no-outcome') {
+    throw new Error(
+      `Asset discovery for ${website} reported neither a Discovered Assets list nor an error banner ` +
+        `(HTTP ${outcome.httpStatus}).`,
+    );
+  }
+}
+
+async function imageSources(locator: Locator): Promise<string[]> {
+  return locator.evaluateAll((elements) =>
+    elements.map((element) => (element as HTMLImageElement).getAttribute('src') || ''),
+  );
+}
+
+// ── Tests ───────────────────────────────────────────────────────────────────
+test.describe('Find Business Assets — Landing page', () => {
+  let diagnostics: Diagnostics;
+
+  test.beforeEach(async ({ page }) => {
+    assertAuthStatePresent();
+    diagnostics = collectDiagnostics(page);
+  });
+
+  test.afterEach(async ({ page }, testInfo) => {
+    if (testInfo.status === testInfo.expectedStatus) return;
+    const screenshotPath = testInfo.outputPath('failure.png');
+    await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => undefined);
+    console.error(
+      `[find-business-assets-landing failure] ${testInfo.titlePath.join(' > ')}\n` +
+        `screenshot: ${screenshotPath}\n${formatDiagnostics(diagnostics)}`,
+    );
+  });
+
+  test('discovers the assets of a business with a website and imports them into Personalization', async ({
+    page,
+  }) => {
+    test.setTimeout(300_000);
+
+    const dialog = await test.step('open the personalization dialog', () =>
+      openPersonalizationDialog(page),
+    );
+    await test.step('switch to the Advanced Editing configuration view', async () => {
+      await openAdvancedConfiguration(dialog);
+    });
+    await test.step('choose the "Client" audience and open the search form', async () => {
+      await openBusinessSearchForm(dialog);
+    });
+
+    const outcome = await test.step('search restaurants in Miami, Florida', () =>
+      runBusinessSearch(page, dialog, 'restaurants-food', 'Miami, Florida', '15 mi'),
+    );
+    console.log(
+      `[find-business-assets-landing] restaurants-food in Miami, Florida -> ${outcome.count} businesses ` +
+        `(HTTP ${outcome.httpStatus})`,
+    );
+
+    await test.step('assert the search produced selectable results', async () => {
+      assertSearchSucceeded(outcome, 'restaurants-food', 'Miami, Florida');
+      expect(outcome.count, 'No businesses were returned for restaurants in Miami, Florida.').toBeGreaterThan(0);
+    });
+
+    const website = await test.step('select a business that lists a website', async () => {
+      const card = resultCardByBadge(dialog, '✓ Website');
+      await expect(
+        card,
+        'None of the search results for restaurants in Miami, Florida lists a website in OpenStreetMap, ' +
+          'so the asset-discovery path cannot be exercised.',
+      ).toBeVisible({ timeout: 20_000 });
+
+      await card.getByRole('button', { name: 'Use This Business', exact: true }).click();
+
+      const selected = dialog.getByText(/^Selected:/);
+      await expect(
+        selected,
+        'The "Selected: <business>" summary did not appear after choosing a business.',
+      ).toBeVisible({ timeout: 20_000 });
+
+      const websiteField = dialog.getByPlaceholder('https://joesroofing.com');
+      await expect(
+        websiteField,
+        'The Website field of the client profile is missing.',
+      ).toBeVisible({ timeout: 15_000 });
+
+      const value = (await websiteField.inputValue()).trim();
+      expect(
+        /^https?:\/\//i.test(value),
+        `The selected business does not carry a usable website ("${value}").`,
+      ).toBe(true);
+      return value;
+    });
+
+    const discovery = await test.step('start asset discovery', () => startAssetDiscovery(page, dialog));
+    console.log(
+      `[find-business-assets-landing] asset discovery for ${website} -> ${discovery.kind} ` +
+        `(HTTP ${discovery.httpStatus}, ${discovery.assetCount} assets)`,
+    );
+
+    await test.step('assert the discovered assets are usable', async () => {
+      assertDiscoverySucceeded(discovery, website);
+      expect(discovery.assetCount, `No assets were discovered for ${website}.`).toBeGreaterThan(0);
+
+      const sources = await imageSources(dialog.locator('#pz-discovered img'));
+      expect(sources.length, 'The Discovered Assets section rendered no images.').toBeGreaterThan(0);
+
+      for (const source of sources) {
+        expect(source.length, `A discovered asset has an empty src ("${source}").`).toBeGreaterThan(0);
+        expect(
+          /^(https?:\/\/|data:image\/)/i.test(source),
+          `A discovered asset has an unusable src ("${source}").`,
+        ).toBe(true);
       }
-    } else {
-      // No website - verify the UI handles this gracefully
-      console.log('Selected business has no website - asset discovery not applicable');
-      expect(true).toBe(true);
-    }
+    });
+
+    await test.step('select an asset and import it into Personalization', async () => {
+      const selectButton = dialog.locator('#pz-discovered button[aria-label="Select"]').first();
+      await expect(
+        selectButton,
+        'The Discovered Assets section rendered no selectable asset.',
+      ).toBeVisible({ timeout: 20_000 });
+      await selectButton.click();
+
+      const useSelected = dialog.getByRole('button', { name: 'Use Selected Assets', exact: true });
+      await expect(
+        useSelected,
+        'The "Use Selected Assets" button is missing from the Discovered Assets section.',
+      ).toBeVisible({ timeout: 20_000 });
+      await expect(
+        useSelected,
+        'The "Use Selected Assets" button stayed disabled after selecting an asset.',
+      ).toBeEnabled({ timeout: 15_000 });
+      await useSelected.click();
+
+      const confirmation = dialog.getByText(/\d+ assets? added/i);
+      await expect(
+        confirmation,
+        'The import confirmation ("<n> assets added") never appeared.',
+      ).toBeVisible({ timeout: 30_000 });
+    });
+
+    await test.step('assert the imported asset persists across the personalization steps', async () => {
+      const clientAssetsImages = dialog.locator('#pz-client-assets img');
+      const before = await imageSources(clientAssetsImages);
+      expect(
+        before.filter((source) => source.length > 0).length,
+        'The imported asset did not appear in the Client Assets section.',
+      ).toBeGreaterThan(0);
+
+      const nav = dialog.getByRole('navigation', { name: 'Personalization sections' });
+      await expect(
+        nav,
+        'The personalization section navigation is missing.',
+      ).toBeVisible({ timeout: 15_000 });
+
+      await nav.getByRole('link', { name: 'Business', exact: true }).click();
+      await expect(dialog.locator('#pz-content'), 'The Business step did not open.').toBeVisible({
+        timeout: 15_000,
+      });
+
+      await nav.getByRole('link', { name: 'Client Assets', exact: true }).click();
+      await expect(
+        dialog.locator('#pz-client-assets'),
+        'The Client Assets step did not open.',
+      ).toBeVisible({ timeout: 15_000 });
+
+      const after = await imageSources(dialog.locator('#pz-client-assets img'));
+      expect(
+        after,
+        'The imported assets changed after navigating between the personalization steps.',
+      ).toEqual(before);
+      expect(
+        after.filter((source) => source.length > 0).length,
+        'The imported asset disappeared after navigating between the personalization steps.',
+      ).toBeGreaterThan(0);
+    });
   });
 
-  test('Business without website shows empty asset state gracefully', async ({ page }) => {
-    const dialog = await openAssetDiscovery(page);
+  test('a business without a website cannot start asset discovery', async ({ page }) => {
+    const dialog = await test.step('open the personalization dialog', () =>
+      openPersonalizationDialog(page),
+    );
+    await test.step('switch to the Advanced Editing configuration view', async () => {
+      await openAdvancedConfiguration(dialog);
+    });
+    await test.step('choose the "Client" audience and open the search form', async () => {
+      await openBusinessSearchForm(dialog);
+    });
 
-    const websiteInput = dialog.getByPlaceholder(/https?:\/\//i);
-    const websiteValue = await websiteInput.inputValue();
+    const outcome = await test.step('search restaurants in Miami, Florida', () =>
+      runBusinessSearch(page, dialog, 'restaurants-food', 'Miami, Florida', '15 mi'),
+    );
+    assertSearchSucceeded(outcome, 'restaurants-food', 'Miami, Florida');
+    expect(outcome.count, 'No businesses were returned for restaurants in Miami, Florida.').toBeGreaterThan(0);
 
-    if (!websiteValue || !websiteValue.startsWith('http')) {
-      // No website - click Find Business Assets should show empty state or error
-      await dialog.getByRole('button', { name: /Find Business Assets/i }).click();
-      await page.waitForTimeout(3000);
-      // Should not crash - empty state is valid
-      expect(true).toBe(true);
-    } else {
-      // Skip - this business has a website
-      expect(true).toBe(true);
-    }
+    await test.step('select a business without a website (or clear the website field)', async () => {
+      const noWebsiteCard = resultCardByBadge(dialog, 'Not listed in OpenStreetMap');
+      const websiteField = dialog.getByPlaceholder('https://joesroofing.com');
+
+      if ((await noWebsiteCard.count()) > 0 && (await noWebsiteCard.first().isVisible())) {
+        await noWebsiteCard
+          .first()
+          .getByRole('button', { name: 'Use This Business', exact: true })
+          .click();
+        console.log('[find-business-assets-landing] selected a business with no website listed in OpenStreetMap');
+      } else {
+        await dialog.getByRole('button', { name: 'Use This Business', exact: true }).first().click();
+        await websiteField.fill('');
+        console.log(
+          '[find-business-assets-landing] every result listed a website, so the website field was cleared instead',
+        );
+      }
+
+      await expect(
+        dialog.getByText(/^Selected:/),
+        'The "Selected: <business>" summary did not appear after choosing a business.',
+      ).toBeVisible({ timeout: 20_000 });
+    });
+
+    await test.step('assert the discovery button is disabled and fires no request', async () => {
+      const websiteField = dialog.getByPlaceholder('https://joesroofing.com');
+      const websiteValue = (await websiteField.inputValue()).trim();
+      if (websiteValue.length > 0) {
+        await websiteField.fill('');
+      }
+
+      const findAssetsButton = dialog.getByRole('button', { name: 'Find Business Assets', exact: true });
+      await expect(
+        findAssetsButton,
+        'The "Find Business Assets" button is missing from the Client Profile step.',
+      ).toBeVisible({ timeout: 20_000 });
+      await expect(
+        findAssetsButton,
+        'The "Find Business Assets" button must be disabled when no website is known.',
+      ).toBeDisabled({ timeout: 15_000 });
+
+      const requests: string[] = [];
+      const listener = (request: { url(): string }) => {
+        if (request.url().includes('/api/personalization/discover-assets')) requests.push(request.url());
+      };
+      page.on('request', listener);
+      await findAssetsButton.click({ force: true });
+      page.off('request', listener);
+
+      expect(
+        requests.length,
+        'A discover-assets request was fired even though no website is known.',
+      ).toBe(0);
+    });
   });
 
-  test('Empty website URL input shows validation error', async ({ page }) => {
-    const dialog = await openAssetDiscovery(page);
+  test('an empty website URL cannot start asset discovery', async ({ page }) => {
+    const dialog = await test.step('open the personalization dialog', () =>
+      openPersonalizationDialog(page),
+    );
+    await test.step('switch to the Advanced Editing configuration view', async () => {
+      await openAdvancedConfiguration(dialog);
+    });
+    await test.step('choose the "Client" audience and open the search form', async () => {
+      await openBusinessSearchForm(dialog);
+    });
 
-    const websiteInput = dialog.getByPlaceholder(/https?:\/\//i);
-    await websiteInput.fill('');
+    const outcome = await test.step('search restaurants in Miami, Florida', () =>
+      runBusinessSearch(page, dialog, 'restaurants-food', 'Miami, Florida', '15 mi'),
+    );
+    assertSearchSucceeded(outcome, 'restaurants-food', 'Miami, Florida');
+    expect(outcome.count, 'No businesses were returned for restaurants in Miami, Florida.').toBeGreaterThan(0);
 
-    await dialog.getByRole('button', { name: /Find Business Assets/i }).click();
+    await test.step('select a business and empty the website field', async () => {
+      await dialog.getByRole('button', { name: 'Use This Business', exact: true }).first().click();
+      await expect(
+        dialog.getByText(/^Selected:/),
+        'The "Selected: <business>" summary did not appear after choosing a business.',
+      ).toBeVisible({ timeout: 20_000 });
 
-    await expect(dialog.getByText(/website|URL|required|invalid/i)).toBeVisible({ timeout: 15000 });
+      const websiteField = dialog.getByPlaceholder('https://joesroofing.com');
+      await websiteField.fill('');
+      await expect(websiteField, 'The website field does not hold an empty value.').toHaveValue('', {
+        timeout: 15_000,
+      });
+    });
+
+    await test.step('assert the discovery button is disabled and no error is raised', async () => {
+      const findAssetsButton = dialog.getByRole('button', { name: 'Find Business Assets', exact: true });
+      await expect(
+        findAssetsButton,
+        'The "Find Business Assets" button is missing from the Client Profile step.',
+      ).toBeVisible({ timeout: 20_000 });
+      await expect(
+        findAssetsButton,
+        'The "Find Business Assets" button must be disabled for an empty website URL.',
+      ).toBeDisabled({ timeout: 15_000 });
+
+      await expect(
+        dialog.getByText(/couldn.t find business assets/i),
+        'An empty website URL produced a discovery error banner.',
+      ).toHaveCount(0, { timeout: 10_000 });
+    });
   });
 
-  test('Invalid website URL shows error', async ({ page }) => {
-    const dialog = await openAssetDiscovery(page);
+  test('an invalid website URL surfaces a clean terminal error', async ({ page }) => {
+    const dialog = await test.step('open the personalization dialog', () =>
+      openPersonalizationDialog(page),
+    );
+    await test.step('switch to the Advanced Editing configuration view', async () => {
+      await openAdvancedConfiguration(dialog);
+    });
+    await test.step('choose the "Client" audience and open the search form', async () => {
+      await openBusinessSearchForm(dialog);
+    });
 
-    const websiteInput = dialog.getByPlaceholder(/https?:\/\//i);
-    await websiteInput.fill('not-a-valid-url');
+    const outcome = await test.step('search restaurants in Miami, Florida', () =>
+      runBusinessSearch(page, dialog, 'restaurants-food', 'Miami, Florida', '15 mi'),
+    );
+    assertSearchSucceeded(outcome, 'restaurants-food', 'Miami, Florida');
+    expect(outcome.count, 'No businesses were returned for restaurants in Miami, Florida.').toBeGreaterThan(0);
 
-    await dialog.getByRole('button', { name: /Find Business Assets/i }).click();
+    await test.step('select a business and enter an invalid URL', async () => {
+      await dialog.getByRole('button', { name: 'Use This Business', exact: true }).first().click();
+      await expect(
+        dialog.getByText(/^Selected:/),
+        'The "Selected: <business>" summary did not appear after choosing a business.',
+      ).toBeVisible({ timeout: 20_000 });
 
-    await expect(dialog.getByText(/website|URL|required|invalid/i)).toBeVisible({ timeout: 15000 });
+      const websiteField = dialog.getByPlaceholder('https://joesroofing.com');
+      await websiteField.fill('not-a-valid-url');
+      await expect(websiteField, 'The website field does not hold the invalid URL.').toHaveValue(
+        'not-a-valid-url',
+        { timeout: 15_000 },
+      );
+    });
+
+    await test.step('assert the invalid URL is rejected with a terminal error', async () => {
+      const findAssetsButton = dialog.getByRole('button', { name: 'Find Business Assets', exact: true });
+      await expect(
+        findAssetsButton,
+        'The "Find Business Assets" button is missing from the Client Profile step.',
+      ).toBeVisible({ timeout: 20_000 });
+      await expect(
+        findAssetsButton,
+        'The "Find Business Assets" button must be enabled for a non-empty (even invalid) URL.',
+      ).toBeEnabled({ timeout: 15_000 });
+
+      const responsePromise = page
+        .waitForResponse(
+          (response) =>
+            response.url().includes('/api/personalization/discover-assets') &&
+            !response.url().includes('/status'),
+          { timeout: DISCOVERY_TIMEOUT_MS },
+        )
+        .catch(() => null);
+
+      await findAssetsButton.click();
+
+      const response = await responsePromise;
+      expect(
+        response,
+        'No request was sent to /api/personalization/discover-assets for the invalid URL.',
+      ).not.toBeNull();
+      expect(
+        response ? response.status() : null,
+        'The invalid website URL was not rejected with HTTP 400.',
+      ).toBe(400);
+
+      const errorBanner = dialog.getByText(/couldn.t find business assets/i);
+      await expect(
+        errorBanner,
+        'The invalid website URL did not produce the "We couldn\'t find business assets" error banner.',
+      ).toBeVisible({ timeout: 30_000 });
+
+      const bannerText = await errorPanelText(errorBanner);
+      expect(
+        /invalid website url/i.test(bannerText),
+        `The error banner does not name the invalid URL ("${bannerText}").`,
+      ).toBe(true);
+
+      await expect(
+        dialog.getByRole('heading', { name: 'Discovered Assets', exact: true }),
+        'The invalid website URL still produced a Discovered Assets list.',
+      ).toHaveCount(0, { timeout: 10_000 });
+    });
+  });
+
+  test('a repeated search returns fresh results and a second discovery run is refused while one is in flight', async ({
+    page,
+  }) => {
+    test.setTimeout(300_000);
+
+    const dialog = await test.step('open the personalization dialog', () =>
+      openPersonalizationDialog(page),
+    );
+    await test.step('switch to the Advanced Editing configuration view', async () => {
+      await openAdvancedConfiguration(dialog);
+    });
+    await test.step('choose the "Client" audience and open the search form', async () => {
+      await openBusinessSearchForm(dialog);
+    });
+
+    const first = await test.step('first search: restaurants in Miami, Florida', () =>
+      runBusinessSearch(page, dialog, 'restaurants-food', 'Miami, Florida', '15 mi'),
+    );
+    console.log(
+      `[find-business-assets-landing] first search restaurants-food in Miami, Florida -> ` +
+        `${first.count} businesses (HTTP ${first.httpStatus})`,
+    );
+    assertSearchSucceeded(first, 'restaurants-food', 'Miami, Florida');
+    expect(first.count, 'The first search returned no businesses.').toBeGreaterThan(0);
+
+    await test.step('reset with "New Search" and run a second search', async () => {
+      const newSearch = dialog.getByRole('button', { name: 'New Search', exact: true });
+      await expect(newSearch, 'The "New Search" button is missing from the result list.').toBeVisible({
+        timeout: 15_000,
+      });
+      await newSearch.click();
+
+      const findLocalBusiness = dialog.getByRole('button', { name: 'Find Local Business', exact: true });
+      await expect(
+        findLocalBusiness,
+        '"New Search" did not reset the lead finder back to its entry point.',
+      ).toBeVisible({ timeout: 20_000 });
+      await findLocalBusiness.click();
+      await expect(
+        dialog.locator('#business-niche'),
+        'The business search form did not reopen after "New Search".',
+      ).toBeVisible({ timeout: 20_000 });
+
+      const second = await runBusinessSearch(
+        page,
+        dialog,
+        'real-estate',
+        'Orlando, Florida',
+        '15 mi',
+      );
+      console.log(
+        `[find-business-assets-landing] second search real-estate in Orlando, Florida -> ` +
+          `${second.count} businesses (HTTP ${second.httpStatus})`,
+      );
+      assertSearchSucceeded(second, 'real-estate', 'Orlando, Florida');
+      expect(second.count, 'The repeated search returned no businesses.').toBeGreaterThan(0);
+    });
+
+    await test.step('select a business and start discovery', async () => {
+      await dialog.getByRole('button', { name: 'Use This Business', exact: true }).first().click();
+      await expect(
+        dialog.getByText(/^Selected:/),
+        'The "Selected: <business>" summary did not appear after choosing a business.',
+      ).toBeVisible({ timeout: 20_000 });
+
+      const websiteField = dialog.getByPlaceholder('https://joesroofing.com');
+      const website = (await websiteField.inputValue()).trim();
+      if (!/^https?:\/\//i.test(website)) {
+        await websiteField.fill('https://example.com');
+      }
+
+      const findAssetsButton = dialog.getByRole('button', { name: 'Find Business Assets', exact: true });
+      await expect(
+        findAssetsButton,
+        'The "Find Business Assets" button is missing from the Client Profile step.',
+      ).toBeVisible({ timeout: 20_000 });
+
+      await findAssetsButton.click();
+
+      const busyButton = dialog.getByRole('button', { name: 'Discovering...', exact: true });
+      await expect(
+        busyButton,
+        'The "Find Business Assets" button never switched to its "Discovering..." state.',
+      ).toBeVisible({ timeout: 30_000 });
+      await expect(
+        busyButton,
+        'The discovery control stayed enabled while a discovery run was in flight.',
+      ).toBeDisabled({ timeout: 15_000 });
+    });
+  });
+
+  test('the anonymous landing demo offers "Find my brand" and the signed-in path offers "Find Business Assets"', async ({
+    page,
+  }) => {
+    await test.step('the anonymous landing demo exposes the "Find my brand" entry point', async () => {
+      const anonymousDialog = await openPersonalizationDialog(page, ANONYMOUS_LANDING_URL);
+
+      const findMyBrand = anonymousDialog.getByRole('button', { name: /find my brand/i });
+      await expect(
+        findMyBrand,
+        'The anonymous landing demo does not offer the "Find my brand" starting action.',
+      ).toBeVisible({ timeout: 20_000 });
+
+      const brandInput = anonymousDialog.locator('#find-my-brand-url');
+      await expect(
+        brandInput,
+        'The "Find my brand" URL input is missing from the anonymous landing demo.',
+      ).toBeVisible({ timeout: 20_000 });
+      await expect(
+        findMyBrand,
+        'The "Find my brand" action must be disabled while the URL field is empty.',
+      ).toBeDisabled({ timeout: 15_000 });
+
+      await brandInput.fill('https://example.com');
+      await expect(
+        findMyBrand,
+        'The "Find my brand" action stayed disabled after a URL was entered.',
+      ).toBeEnabled({ timeout: 15_000 });
+    });
+
+    await test.step('the signed-in path exposes "Find Business Assets"', async () => {
+      const dialog = await openPersonalizationDialog(page, LANDING_URL);
+      await openAdvancedConfiguration(dialog);
+
+      const findAssetsButton = dialog.getByRole('button', { name: 'Find Business Assets', exact: true });
+      await expect(
+        findAssetsButton,
+        'The signed-in path does not offer the "Find Business Assets" action.',
+      ).toBeVisible({ timeout: 20_000 });
+    });
   });
 });

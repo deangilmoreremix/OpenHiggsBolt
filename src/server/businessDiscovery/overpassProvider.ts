@@ -6,8 +6,14 @@
  *
  * Resilience (Lead Finder free path, Phase 3):
  *  - Per-request timeout is bounded (PER_REQUEST_TIMEOUT_MS) so a single slow
- *    mirror cannot dominate the user-visible latency. The chained mirrors ×
- *    retries stay under a known cap.
+ *    mirror cannot dominate the user-visible latency.
+ *  - The whole stage is bounded by STAGE_DEADLINE_MS, so the provider can
+ *    never outrun the request budget the public route works with.
+ *  - The mirrors are RACED, not chained. The stage costs the SLOWEST mirror
+ *    instead of the SUM of all of them: the previous implementation walked
+ *    the mirror list one after another, so three slow mirrors cost
+ *    3 × PER_REQUEST_TIMEOUT_MS × MAX_RETRIES (up to ~90s) before any result
+ *    could exist — that is what produced the platform's HTML 504.
  *  - Retries use exponential backoff with jitter.
  *  - A per-mirror circuit breaker opens a mirror for COOLDOWN_MS after
  *    FAILURE_THRESHOLD consecutive failures and short-circuits subsequent
@@ -21,6 +27,7 @@
 
 import type { BusinessDiscoveryRecord, OverpassQueryOptions } from './types'
 import { getNicheMapping, getSupportedNiches } from './nicheMappings'
+import { createStageDeadline, withDeadline, type StageDeadline } from './deadline'
 
 const DEFAULT_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
@@ -31,7 +38,16 @@ const DEFAULT_ENDPOINTS = [
 const USER_AGENT = 'SmartVideoGO-AI/1.0 (https://go.smartvid.app)'
 // Per-mirror request timeout. Bounded so a single stuck mirror cannot
 // dominate (was 30s × 3 mirrors × 2 retries = up to ~180s).
-const PER_REQUEST_TIMEOUT_MS = 15_000
+const PER_REQUEST_TIMEOUT_MS = 6_000
+/**
+ * Hard budget for the whole Overpass stage, retries included.
+ *
+ * The mirrors race, so the stage normally costs one mirror's latency. This
+ * budget is the backstop for the case where EVERY mirror is slow: it caps
+ * the stage at 9s instead of letting the per-mirror timeouts and retries
+ * stack up.
+ */
+const STAGE_DEADLINE_MS = 9_000
 const MAX_RETRIES = 2
 const RESULT_LIMIT = 50
 // Exponential backoff base (ms). attempt N waits base * 2^N + jitter.
@@ -40,13 +56,28 @@ const BACKOFF_BASE_MS = 400
 const FAILURE_THRESHOLD = 3
 const COOLDOWN_MS = 60_000
 
-async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = PER_REQUEST_TIMEOUT_MS): Promise<Response> {
+/**
+ * Fetches with a bounded timeout. `externalSignal` cancels the request when
+ * the stage is over (for example when a racing mirror already won).
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit = {},
+  timeoutMs = PER_REQUEST_TIMEOUT_MS,
+  externalSignal?: AbortSignal,
+): Promise<Response> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  const onExternalAbort = () => controller.abort()
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort()
+    else externalSignal.addEventListener('abort', onExternalAbort)
+  }
   try {
     return await fetch(url, { ...options, signal: controller.signal })
   } finally {
     clearTimeout(timeout)
+    externalSignal?.removeEventListener('abort', onExternalAbort)
   }
 }
 
@@ -128,6 +159,22 @@ export function __overpassCircuitStateForTests(): Record<string, { consecutiveFa
     out[endpoint] = { consecutiveFailures: c.consecutiveFailures, openUntil: c.openUntil }
   }
   return out
+}
+
+/**
+ * Test-only helper. Exposes the stage budgets so tests can assert that the
+ * provider's worst case fits inside the route's request budget.
+ */
+export function __overpassBudgetForTests(): {
+  perRequestTimeoutMs: number
+  stageDeadlineMs: number
+  maxRetries: number
+} {
+  return {
+    perRequestTimeoutMs: PER_REQUEST_TIMEOUT_MS,
+    stageDeadlineMs: STAGE_DEADLINE_MS,
+    maxRetries: MAX_RETRIES,
+  }
 }
 
 // OSM tags that indicate a business is closed or not operational.
@@ -380,6 +427,92 @@ export interface DiscoverBusinessesOptions {
   __endpoints?: string[]
 }
 
+/**
+ * Runs one mirror's request loop (with retries) and resolves with its
+ * Overpass payload, or rejects with the last error it saw.
+ *
+ * A mirror that is cancelled because ANOTHER mirror already won the race
+ * must NOT be recorded as a failure: it did not misbehave, it simply lost.
+ * `raceSignal` distinguishes the two cases.
+ */
+async function attemptMirror(
+  endpoint: string,
+  query: string,
+  raceSignal: AbortSignal,
+  deadline: StageDeadline,
+): Promise<OverpassResult> {
+  let lastError: Error | null = null
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    if (deadline.expired()) break
+
+    const budgetLeft = deadline.remaining()
+    if (budgetLeft <= 0) break
+
+    try {
+      const response = await fetchWithTimeout(
+        endpoint,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': USER_AGENT,
+          },
+          body: `data=${encodeURIComponent(query)}`,
+        },
+        Math.min(PER_REQUEST_TIMEOUT_MS, budgetLeft),
+        raceSignal,
+      )
+
+      if (!response.ok) {
+        throw new Error(`Overpass HTTP ${response.status}`)
+      }
+
+      const result = (await response.json()) as OverpassResult
+      recordSuccess(endpoint)
+      return result
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err))
+
+      // The race was decided elsewhere (or the stage budget is spent): this
+      // mirror did not fail, it was cancelled. Do not poison the circuit
+      // breaker with a loss.
+      if (raceSignal.aborted || deadline.expired()) throw lastError
+
+      recordFailure(endpoint)
+
+      // Exponential backoff with jitter between retries on the SAME mirror,
+      // never sleeping past the stage budget.
+      if (attempt < MAX_RETRIES - 1) {
+        const backoff = BACKOFF_BASE_MS * Math.pow(2, attempt) + Math.floor(Math.random() * 100)
+        const sleepMs = Math.min(backoff, deadline.remaining())
+        if (sleepMs > 0) await sleep(sleepMs)
+      }
+    }
+  }
+
+  throw lastError ?? new Error(`Overpass mirror failed: ${endpoint}`)
+}
+
+/**
+ * Turns the rejection of `Promise.any` into an error that names what actually
+ * went wrong.
+ *
+ * `Promise.any` rejects with an `AggregateError` whose message is the useless
+ * "All promises were rejected". The individual mirror errors ("Overpass HTTP
+ * 502", "fetch failed", …) are what the route and the logs need, so they are
+ * flattened back into the message.
+ */
+function describeMirrorFailures(err: unknown): Error {
+  if (err instanceof AggregateError && err.errors.length > 0) {
+    const messages = err.errors
+      .map((e) => (e instanceof Error ? e.message : String(e)))
+      .filter(Boolean)
+    if (messages.length > 0) return new Error(messages.join('; '))
+  }
+  return err instanceof Error ? err : new Error(String(err))
+}
+
 export async function discoverBusinesses(options: DiscoverBusinessesOptions): Promise<BusinessDiscoveryRecord[]> {
   const { niche, latitude, longitude, radiusMiles, limit = 30, __endpoints } = options
 
@@ -398,43 +531,41 @@ export async function discoverBusinesses(options: DiscoverBusinessesOptions): Pr
     limit: Math.min(limit * 3, RESULT_LIMIT),
   })
 
-  const endpoints = __endpoints ?? DEFAULT_ENDPOINTS
-  let lastError: Error | null = null
+  const allEndpoints = __endpoints ?? DEFAULT_ENDPOINTS
+  // Mirrors whose circuit breaker is open are skipped entirely.
+  const endpoints = allEndpoints.filter((endpoint) => !isOpen(endpoint))
+
+  if (endpoints.length === 0) {
+    // Every mirror is in cooldown — fail fast instead of waiting on a stage
+    // that cannot produce anything.
+    throw new AllOverpassProvidersFailed(
+      'All Overpass providers failed: every mirror is temporarily disabled',
+    )
+  }
+
+  const deadline = createStageDeadline('overpass', STAGE_DEADLINE_MS)
+  // Aborted as soon as one mirror wins, so the losing mirrors stop burning
+  // upstream capacity and sockets.
+  const raceController = new AbortController()
+
+  const attempts = endpoints.map((endpoint) =>
+    attemptMirror(endpoint, query, raceController.signal, deadline).then((result) => {
+      raceController.abort()
+      return result
+    }),
+  )
+
   let result: OverpassResult | null = null
+  let lastError: Error | null = null
 
-  for (const endpoint of endpoints) {
-    if (isOpen(endpoint)) continue
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      try {
-        const response = await fetchWithTimeout(endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'User-Agent': USER_AGENT,
-          },
-          body: `data=${encodeURIComponent(query)}`,
-        })
-
-        if (!response.ok) {
-          throw new Error(`Overpass HTTP ${response.status}`)
-        }
-
-        result = (await response.json()) as OverpassResult
-        lastError = null
-        recordSuccess(endpoint)
-        break
-      } catch (err) {
-        lastError = err instanceof Error ? err : new Error(String(err))
-        recordFailure(endpoint)
-        // Exponential backoff with jitter between retries on the SAME mirror.
-        if (attempt < MAX_RETRIES - 1) {
-          const backoff = BACKOFF_BASE_MS * Math.pow(2, attempt) + Math.floor(Math.random() * 100)
-          await sleep(backoff)
-        }
-      }
-    }
-
-    if (result) break
+  try {
+    // `Promise.any` resolves with the FIRST mirror that succeeds — the stage
+    // costs the slowest successful mirror, never the sum of all of them.
+    result = await withDeadline(Promise.any(attempts), deadline)
+  } catch (err) {
+    lastError = describeMirrorFailures(err)
+  } finally {
+    raceController.abort()
   }
 
   if (!result || !result.elements) {

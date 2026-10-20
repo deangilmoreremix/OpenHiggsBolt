@@ -97,6 +97,10 @@ vi.mock('@/server/businessDiscovery', async () => {
     scoreAndSort: vi.fn(),
     createCacheKey: vi.fn(),
     businessDiscoveryCache: { get: vi.fn(), set: vi.fn() },
+    // The route races the Overpass provider against the Nominatim business
+    // search. It contributes no records here, so the Overpass failure is the
+    // only outcome the route has to report.
+    searchBusinessesViaNominatim: vi.fn(async () => []),
   }
 })
 

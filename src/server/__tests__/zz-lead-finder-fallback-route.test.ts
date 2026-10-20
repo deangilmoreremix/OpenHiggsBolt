@@ -216,6 +216,11 @@ describe('Lead Finder fallback — non-Overpass failures do not fall back', () =
 
     const body = await res.json()
     expect(body.providerUsed).toBe('OPENSTREETMAP')
-    expect(searchBusinessesViaNominatim).not.toHaveBeenCalled()
+    expect(body.businesses[0].name).toBe('Overpass Business')
+    // The two providers run CONCURRENTLY (that is what keeps the request
+    // inside the platform's function budget), so the Nominatim search IS
+    // contacted even when Overpass answers. What matters is that the
+    // Overpass result is the one that is returned.
+    expect(searchBusinessesViaNominatim).toHaveBeenCalled()
   })
 })

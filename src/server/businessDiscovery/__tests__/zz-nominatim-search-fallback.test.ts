@@ -95,18 +95,31 @@ afterEach(() => {
 })
 
 describe('buildNicheSearchTerms', () => {
-  it('maps OSM tag values to natural-language search keywords', () => {
+  it('queries the niche by its own OSM tags, so the fallback searches the same population as Overpass', () => {
     const terms = buildNicheSearchTerms('restaurants-food')
-    expect(terms).toContain('restaurant')
-    expect(terms).toContain('coffee shop') // amenity=cafe alias
-    expect(terms).toContain('fast food') // amenity=fast_food alias
-    expect(terms).not.toContain('ice_cream') // never emits raw OSM vocabulary
+    expect(terms).toContain('amenity=restaurant')
+    expect(terms).toContain('amenity=cafe')
+    expect(terms).toContain('amenity=fast_food')
+    // Never emits a generic "matches everything" tag.
+    expect(terms).not.toContain('shop=yes')
+    // Never emits the raw underscore vocabulary in a natural-language query.
+    expect(terms.every((term) => /^[a-z]+=[a-z_]+$/.test(term))).toBe(true)
   })
 
-  it('resolves service-style tag values into customer-facing words', () => {
+  it('maps deprecated OSM tags onto their modern equivalents', () => {
+    const terms = buildNicheSearchTerms('wellness-fitness')
+    // amenity=fitness_centre / amenity=gym were replaced by leisure=* in
+    // modern OSM data; querying the deprecated key returns nothing.
+    expect(terms).toContain('leisure=fitness_centre')
+    expect(terms).toContain('leisure=spa')
+    expect(terms).not.toContain('amenity=gym')
+    expect(terms).not.toContain('amenity=fitness_centre')
+  })
+
+  it('resolves service-style tag values into their OSM tags', () => {
     const terms = buildNicheSearchTerms('real-estate')
-    expect(terms).toContain('real estate') // office=estate_agent
-    expect(terms).toContain('insurance agency') // office=insurance
+    expect(terms).toContain('office=estate_agent') // real estate agents
+    expect(terms).toContain('office=insurance') // insurance agencies
   })
 
   it('de-duplicates terms and returns an empty list for an unsupported niche', () => {
@@ -439,5 +452,26 @@ describe('searchBusinessesViaNominatim — input validation', () => {
       expect(url).toContain('addressdetails=1')
       expect(url).toContain('format=jsonv2')
     }
+  })
+
+  it('queries by OSM tag so it matches the same businesses as the Overpass query', async () => {
+    const { calls } = stubFetch({ results: [] })
+
+    await searchBusinessesViaNominatim({
+      niche: 'restaurants-food',
+      latitude: 30.2672,
+      longitude: -97.7431,
+      radiusMiles: 15,
+      location: 'Austin, TX',
+      __baseUrl: BASE,
+    })
+
+    expect(calls.length).toBeGreaterThan(0)
+    for (const url of calls) {
+      // `[key=value]` is Nominatim's OSM tag syntax; a plain word would only
+      // match POI NAMES and miss the rest of the category.
+      expect(decodeURIComponent(url)).toMatch(/q=\[[a-z]+=[a-z_]+\]/)
+    }
+    expect(calls.map((url) => decodeURIComponent(url)).join(' ')).toContain('q=[amenity=restaurant]')
   })
 })
