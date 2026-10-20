@@ -27,6 +27,7 @@ const ImageStudio = loadStudio('ImageStudio');
 const VideoStudio = loadStudio('VideoStudio');
 const ClippingStudio = loadStudio('ClippingStudio');
 const VibeMotionStudio = loadStudio('VibeMotionStudio');
+const MotionControlStudio = loadStudio('MotionControlStudio');
 const LipSyncStudio = loadStudio('LipSyncStudio');
 const CinemaStudio = loadStudio('CinemaStudio');
 const AudioStudio = loadStudio('AudioStudio');
@@ -51,6 +52,7 @@ const TABS = [
   { id: 'audio',   label: 'Audio Studio' },
   { id: 'clipping', label: 'AI Clipping' },
   { id: 'vibe-motion', label: 'Vibe Motion' },
+  { id: 'motion-control', label: 'Motion Control' },
   { id: 'lipsync', label: 'Lip Sync' },
   { id: 'cinema',  label: 'Cinema Studio' },
   { id: 'storyboard', label: 'Storyboard' },
@@ -87,7 +89,7 @@ function SignOutButton() {
 // Maps every landing-page studio slug to the studio tab that renders it.
 const SLUG_TO_TAB = {
   image: 'image', 'brand-studio': 'brand-studio', video: 'video', audio: 'audio', clipping: 'clipping',
-  'vibe-motion': 'vibe-motion', lipsync: 'lipsync', cinema: 'cinema',
+  'vibe-motion': 'vibe-motion', 'motion-control': 'motion-control', lipsync: 'lipsync', cinema: 'cinema',
   storyboard: 'storyboard', marketing: 'marketing', recast: 'recast', layers: 'layers',
   workflows: 'workflows', agents: 'agents', 'design-agent': 'design-agent',
   'vfx-studio': 'vfx-studio',
@@ -664,6 +666,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
          {activeTab === 'video'   && <VideoStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
          {activeTab === 'clipping' && <ClippingStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
          {activeTab === 'vibe-motion' && <VibeMotionStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
+         {activeTab === 'motion-control' && <MotionControlStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} locale={locale} />}
          {activeTab === 'lipsync' && <LipSyncStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
          {activeTab === 'cinema'  && <CinemaStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
          {activeTab === 'audio'   && <AudioStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}

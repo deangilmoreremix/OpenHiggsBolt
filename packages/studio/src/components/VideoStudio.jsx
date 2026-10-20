@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, useId } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { generateVideo, generateI2V, processV2V, uploadFile } from "../muapi.js";
 import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
@@ -24,20 +24,28 @@ import {
   getMaxImagesForI2VModel,
 } from "../models.js";
 import { getAdvancedControlsForModel, buildAdvancedPayload } from "../videoAdvancedControls.js";
+import DrawModal from "./DrawModal.jsx";
+import ModelParameterControls from "./ModelParameterControls.jsx";
+import { VideoOptionControl, VideoSettingsControl } from "./VideoModelControls.jsx";
+import usePromptMenu from "./prompt/usePromptMenu.js";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 
 import {
   PROMPT_MEDIA_PREVIEW_CLASS,
+  PROMPT_CONTROL_LABEL_CLASS,
   PromptAction,
+  PromptAspectRatioIcon,
   PromptChevronIcon,
   PromptComposer,
   PromptControls,
+  PromptDurationIcon,
   PromptFooter,
   PromptMenuItem,
   PromptMenuList,
   PromptPopover,
   PromptPopoverHeader,
+  PromptQualityIcon,
   PromptTextarea,
   promptControlClassName,
   promptMediaButtonClassName,
@@ -858,6 +866,11 @@ export default function VideoStudio({
   const [videoUploading, setVideoUploading] = useState(false);
   const [uploadedVideoName, setUploadedVideoName] = useState(null);
 
+  // ── audio upload ───────────────────────────────────────────────────────────
+  const [uploadedAudioUrls, setUploadedAudioUrls] = useState([]);
+  const [audioUploading, setAudioUploading] = useState(false);
+  const [audioProgress, setAudioProgress] = useState(0);
+
   // ── generation / canvas ──
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(null);
@@ -867,6 +880,16 @@ export default function VideoStudio({
   const [showCanvas, setShowCanvas] = useState(false);
   const [lastGenerationId, setLastGenerationId] = useState(null);
   const [lastGenerationModel, setLastGenerationModel] = useState(null);
+
+  // ── generation sources (for Veo / Seedance continuation tracking) ──────────
+  const [generationSources, setGenerationSources] = useState({});
+  const [selectedVeoSourceId, setSelectedVeoSourceId] = useState("");
+
+  // ── draw modal ─────────────────────────────────────────────────────────────
+  const [isDrawModalOpen, setIsDrawModalOpen] = useState(false);
+
+  // ── model parameter controls (ModelParameterControls) ──────────────────────
+  const [modelParameterValues, setModelParameterValues] = useState({});
 
   // ── history ──
   const [localHistory, setLocalHistory] = useState([]);
@@ -890,6 +913,7 @@ export default function VideoStudio({
   const imageFileInputRef = useRef(null);
   const endImageFileInputRef = useRef(null);
   const videoFileInputRef = useRef(null);
+  const audioFileInputRef = useRef(null);
   const resultVideoRef = useRef(null);
   const hasRestored = useRef(false);
 
@@ -1133,6 +1157,10 @@ export default function VideoStudio({
         }
         if (data.uploadedVideoUrl) setUploadedVideoUrl(data.uploadedVideoUrl);
         if (data.uploadedVideoName) setUploadedVideoName(data.uploadedVideoName);
+        if (data.uploadedAudioUrls) setUploadedAudioUrls(data.uploadedAudioUrls);
+        if (data.isDrawModalOpen !== undefined) setIsDrawModalOpen(data.isDrawModalOpen);
+        if (data.modelParameterValues) setModelParameterValues(data.modelParameterValues);
+        if (data.selectedVeoSourceId) setSelectedVeoSourceId(data.selectedVeoSourceId);
         if (data.prompt) setPrompt(data.prompt);
         if (data.localHistory) setLocalHistory(data.localHistory);
 
@@ -1222,6 +1250,10 @@ export default function VideoStudio({
           uploadedImageUrls,
           uploadedVideoUrl,
           uploadedVideoName,
+          uploadedAudioUrls,
+          isDrawModalOpen,
+          modelParameterValues,
+          selectedVeoSourceId,
           prompt,
           localHistory,
         };
@@ -1246,6 +1278,10 @@ export default function VideoStudio({
     uploadedImageUrls,
     uploadedVideoUrl,
     uploadedVideoName,
+    uploadedAudioUrls,
+    isDrawModalOpen,
+    modelParameterValues,
+    selectedVeoSourceId,
     prompt,
     localHistory,
   ]);
@@ -1264,9 +1300,10 @@ export default function VideoStudio({
         setImageProgress(pct);
       });
       setUploadedImageUrl(url);
-      setUploadedVideoUrl(null);
-      setUploadedVideoName(null);
-      setV2vMode(false);
+    setUploadedVideoUrl(null);
+    setUploadedVideoName(null);
+    setUploadedAudioUrls([]);
+    setV2vMode(false);
 
       let targetModelId = selectedModel;
       if (!imageMode) {
@@ -1508,6 +1545,35 @@ export default function VideoStudio({
 
   const clearEndImage = () => setUploadedEndImageUrl(null);
 
+  // ── audio upload ───────────────────────────────────────────────────────────
+  const handleAudioFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) {
+      alert("Audio exceeds 50MB limit.");
+      return;
+    }
+    setAudioUploading(true);
+    setAudioProgress(0);
+    try {
+      const url = await uploadFile(apiKey, file, (pct) => {
+        setAudioProgress(pct);
+      });
+      setUploadedAudioUrls((prev) => {
+        if (prev.includes(url)) return prev;
+        return [...prev, url];
+      });
+    } catch (err) {
+      alert(`Audio upload failed: ${err.message}`);
+    } finally {
+      setAudioUploading(false);
+      setAudioProgress(0);
+      if (audioFileInputRef.current) audioFileInputRef.current.value = "";
+    }
+  };
+
+  const clearAudioUpload = () => setUploadedAudioUrls([]);
+
   // ── video upload ─────────────────────────────────────────────────────────
   const handleVideoFileChange = async (e) => {
     const file = e.target.files[0];
@@ -1619,6 +1685,18 @@ export default function VideoStudio({
     setShowCanvas(true);
   }, []);
 
+  // ── handle draw reference from DrawModal ──────────────────────────────────
+  const handleDrawReference = useCallback(
+    (entry) => {
+      if (!entry?.url) return;
+      setUploadedImageUrl(entry.url);
+      setUploadedImageUrls([entry.url]);
+      setImageMode(true);
+      setIsDrawModalOpen(false);
+    },
+    [],
+  );
+
   // ── generate ──────────────────────────────────────────────────────────────
   const handleGenerate = useCallback(async () => {
     const currentModel = getCurrentModel();
@@ -1691,6 +1769,9 @@ export default function VideoStudio({
         if (currentModel?.imageField && uploadedImageUrl) {
           v2vParams.image_url = uploadedImageUrl;
         }
+        if (uploadedAudioUrls.length > 0) {
+          v2vParams.audio_urls = uploadedAudioUrls;
+        }
         if (currentModel?.hasPrompt && trimmedPrompt) {
           v2vParams.prompt = trimmedPrompt;
         }
@@ -1738,6 +1819,9 @@ export default function VideoStudio({
         if (selectedQuality) i2vParams.quality = selectedQuality;
         if (selectedMode) i2vParams.mode = selectedMode;
         if (showEffect && selectedEffect) i2vParams.name = selectedEffect;
+        if (uploadedAudioUrls.length > 0) {
+          i2vParams.audio_urls = uploadedAudioUrls;
+        }
 
         res = await generateI2V(apiKey, i2vParams);
         if (!res?.url) throw new Error("No video URL returned by API");
@@ -1794,6 +1878,9 @@ export default function VideoStudio({
         if (resolutions.length > 0) params.resolution = selectedResolution;
         if (selectedQuality) params.quality = selectedQuality;
         if (selectedMode) params.mode = selectedMode;
+        if (uploadedAudioUrls.length > 0) {
+          params.audio_urls = uploadedAudioUrls;
+        }
 
         res = await generateVideo(apiKey, params);
         if (!res?.url) throw new Error("No video URL returned by API");
@@ -1854,6 +1941,7 @@ export default function VideoStudio({
     uploadedImageUrl,
     uploadedImageUrls,
     uploadedVideoUrl,
+    uploadedAudioUrls,
     lastGenerationId,
     getCurrentModel,
     addToLocalHistory,
@@ -1902,6 +1990,10 @@ export default function VideoStudio({
     canvasModel === "seedance-v2.0-t2v" || canvasModel === "seedance-v2.0-i2v";
   const currentModelObj = getCurrentModel();
   const isExtendMode = currentModelObj?.requiresRequestId;
+  const canUploadImageReference =
+    imageMode ||
+    (currentModelObj?.imageField && v2vMode) ||
+    currentModelObj?.inputs?.images_list;
 
   const promptPlaceholder = v2vMode
     ? currentModelObj?.imageField
@@ -2161,6 +2253,27 @@ export default function VideoStudio({
                 </div>
               )}
 
+              {/* Audio preview */}
+              {uploadedAudioUrls.length > 0 && (
+                <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-lg border border-white/10">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-white/40 group-hover:text-[#22d3ee] transition-colors">
+                    <path d="M9 18V5l10-2v13" />
+                    <circle cx="6" cy="18" r="3" />
+                    <circle cx="16" cy="16" r="3" />
+                  </svg>
+                  <span className="text-[9px] text-white/60 truncate max-w-[120px]">
+                    Audio ({uploadedAudioUrls.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearAudioUpload}
+                    className="text-[9px] font-semibold text-red-300/70 hover:text-red-300 px-1"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+
               {/* Multiple images layout if supported */}
               {imageMode && getMaxImagesForI2VModel(selectedModel) > 2 && (
                 <>
@@ -2371,6 +2484,51 @@ export default function VideoStudio({
                       >
                         <polygon points="23 7 16 12 23 17 23 7" fill="currentColor" />
                         <rect x="1" y="5" width="15" height="14" rx="2" ry="2" fill="currentColor" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Audio upload button */}
+              {!audioUploading && (
+                <div className="relative">
+                  <input
+                    ref={audioFileInputRef}
+                    type="file"
+                    accept="audio/*"
+                    className="hidden"
+                    onChange={handleAudioFileChange}
+                  />
+                  <button
+                    type="button"
+                    title="Upload audio"
+                    onClick={() => audioFileInputRef.current?.click()}
+                    className="w-12 h-12 shrink-0 rounded-xl border border-dashed border-white/10 hover:border-[#22d3ee]/40 bg-white/[0.02] hover:bg-white/5 transition-all flex items-center justify-center relative overflow-hidden group"
+                  >
+                    {audioUploading ? (
+                      <div className="flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]">
+                        <svg className="w-8 h-8 -rotate-90">
+                          <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2" fill="transparent" className="text-white/10" />
+                          <circle
+                            cx="16"
+                            cy="16"
+                            r="14"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            fill="transparent"
+                            strokeDasharray={88}
+                            strokeDashoffset={88 - (88 * audioProgress) / 100}
+                            className="text-[#22d3ee] transition-all duration-300"
+                          />
+                        </svg>
+                        <span className="absolute text-[9px] font-black text-[#22d3ee] leading-none">{audioProgress}%</span>
+                      </div>
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-white/40 group-hover:text-[#22d3ee] transition-colors">
+                        <path d="M9 18V5l10-2v13" />
+                        <circle cx="6" cy="18" r="3" />
+                        <circle cx="16" cy="16" r="3" />
                       </svg>
                     )}
                   </button>
@@ -2862,6 +3020,29 @@ export default function VideoStudio({
                 </div>
               )}
 
+              {/* Draw button */}
+              {canUploadImageReference && (
+                <button
+                  type="button"
+                  className={promptControlClassName()}
+                  onClick={() => setIsDrawModalOpen(true)}
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    className="opacity-40 text-white group-hover:text-[#22d3ee] transition-colors"
+                  >
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
+                  </svg>
+                  <span className={PROMPT_CONTROL_LABEL_CLASS}>Draw</span>
+                </button>
+              )}
+
             </div>
 
             {/* Generate button */}
@@ -2920,7 +3101,14 @@ export default function VideoStudio({
           />
          </div>
        )}
-       <Toaster position="top-right" containerStyle={{ zIndex: 99999 }} toastOptions={{ duration: 5000, style: { background: '#18181b', color: '#ffffff', border: '1px solid rgba(255,255,255,0.15)', fontSize: '13px', borderRadius: '12px', boxShadow: '0 10px 30px rgba(0,0,0,0.6)', maxWidth: '440px', wordBreak: 'break-word', whiteSpace: 'pre-wrap', padding: '12px 16px' } }} />
+       <DrawModal
+          isOpen={isDrawModalOpen}
+          onClose={() => setIsDrawModalOpen(false)}
+          apiKey={apiKey}
+          batchSize={1}
+          onAddHistoryItem={handleDrawReference}
+        />
+        <Toaster position="top-right" containerStyle={{ zIndex: 99999 }} toastOptions={{ duration: 5000, style: { background: '#18181b', color: '#ffffff', border: '1px solid rgba(255,255,255,0.15)', fontSize: '13px', borderRadius: '12px', boxShadow: '0 10px 30px rgba(0,0,0,0.6)', maxWidth: '440px', wordBreak: 'break-word', whiteSpace: 'pre-wrap', padding: '12px 16px' } }} />
     </div>
   );
 }

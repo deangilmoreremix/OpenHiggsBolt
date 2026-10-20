@@ -152,6 +152,17 @@ export const NICHE_MAPPINGS: Record<string, NicheMapping> = {
       ['amenity', 'restaurant'],
     ],
   },
+  'healthcare-medical': {
+    label: 'Healthcare / Medical',
+    tags: [
+      ['amenity', 'clinic'],
+      ['amenity', 'doctors'],
+      ['amenity', 'dentist'],
+      ['amenity', 'hospital'],
+      ['amenity', 'pharmacy'],
+      ['shop', 'chemist'],
+    ],
+  },
 }
 
 export function getSupportedNiches(): string[] {

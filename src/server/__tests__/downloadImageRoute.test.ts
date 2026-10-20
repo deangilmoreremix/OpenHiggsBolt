@@ -134,19 +134,17 @@ describe('download-image route SSRF regression', () => {
   })
 
   // -----------------------------------------------------------------------
-  // Entitlement gate (requireApiEntitlement)
+  // No entitlement gate: download-image is free for the demo experience
   // -----------------------------------------------------------------------
 
-  it('MUST REJECT with 403 PAYMENT_REQUIRED when authenticated but unentitled (entitlement gate)', async () => {
+  it('MUST NOT reject with PAYMENT_REQUIRED when authenticated but unentitled (free demo route)', async () => {
     vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: false } as any)
 
     const res = await post(['https://example.com/image.png'])
-    expect(res.status).toBe(403)
-    const body = await res.json()
-    expect(body.error).toBe('PAYMENT_REQUIRED')
-    expect(body.upgradeRequired).toBe(true)
-    // The gate rejects before any network request is issued.
-    expect(axiosGet).not.toHaveBeenCalled()
+    expect(res.status).not.toBe(403)
+    expect(res.status).not.toBe(401)
+    // Discovery/download machinery runs because there is no entitlement gate.
+    expect(axiosGet).toHaveBeenCalled()
   })
 
   // -----------------------------------------------------------------------

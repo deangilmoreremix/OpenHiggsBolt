@@ -150,30 +150,32 @@ beforeEach(() => {
 })
 
 // ---------------------------------------------------------------------------
-// Entitlement gate (requireApiEntitlement)
+// No entitlement gate: research-business is free for the demo experience
 // ---------------------------------------------------------------------------
 
-describe('research-business route — entitlement gate', () => {
-  it('403 PAYMENT_REQUIRED when the caller is authenticated but unentitled', async () => {
+describe('research-business route — no entitlement gate', () => {
+  it('200 when the caller is authenticated but unentitled (free demo route)', async () => {
     vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: false } as any)
 
     const res = await post({ websiteUrl: 'https://example.com' })
-    expect(res.status).toBe(403)
+    expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.error).toBe('PAYMENT_REQUIRED')
-    expect(body.upgradeRequired).toBe(true)
-    // The gate rejects before the provider is ever reached.
-    expect(researchBusiness).not.toHaveBeenCalled()
+    expect(body.ok).toBe(true)
+
+    // Discovery machinery runs because there is no entitlement gate.
+    expect(researchBusiness).toHaveBeenCalled()
   })
 
-  it('401 UNAUTHENTICATED when the caller has no session', async () => {
+  it('200 when the caller has no session (free demo route, unauthenticated OK)', async () => {
     vi.mocked(auth).mockResolvedValue({ userId: null } as any)
 
     const res = await post({ websiteUrl: 'https://example.com' })
-    expect(res.status).toBe(401)
+    expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.error).toBe('UNAUTHENTICATED')
-    expect(researchBusiness).not.toHaveBeenCalled()
+    expect(body.ok).toBe(true)
+
+    // Discovery machinery runs because there is no auth gate on this route.
+    expect(researchBusiness).toHaveBeenCalled()
   })
 })
 
