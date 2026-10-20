@@ -14,6 +14,33 @@
  * that schema is the authoritative source; otherwise the file heuristic is used.
  * All 150 demo components currently have empty schemas, so this file relies on
  * the file-scan heuristic exclusively.
+ *
+ * PREVIEW ASSETS (hand-maintained, not part of the extraction): `preview` is the
+ * real ShotCraft clip for the shot. The clip itself is published by the
+ * upstream `video-shotcraft` repository as a `gallery-media` GitHub release
+ * asset:
+ *   https://github.com/Vincentwei1021/video-shotcraft/releases/download/gallery-media/<styleKey>.mp4
+ * It is referenced through the same-origin proxy `/api/media/shotcraft/<styleKey>.mp4`
+ * (see `app/api/media/shotcraft/[styleKey]/route.ts`) because GitHub release
+ * assets send no CORS headers, which the Remotion player's range-slicing media
+ * loader requires. The bytes are the upstream MP4s — nothing is re-encoded.
+ * `poster` is the still frame from the upstream repository:
+ *   https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/<styleKey>.jpg
+ * Both were verified with a range GET (HTTP 206) and an MP4/JPEG magic-byte
+ * check. Styles upstream has not published keep `preview` unset.
+ *
+ * ⚠ RE-EXTRACTION CLOBBERS `preview` / `poster`: the extraction script does
+ * NOT emit these two fields, so re-running it over this file silently drops
+ * every clip and poster and the Motion Studio previews regress to
+ * placeholders. Either teach the extractor to re-apply them, or re-apply them
+ * by hand after every regeneration.
+ *
+ * ⚠ `preview` is keyed by the upstream ShotCraft STYLE key, which is NOT
+ * always the value of `styleKey`: for the multi-style cards `styleKey` holds
+ * the upstream CARD name (e.g. `type-assembly-moves`, whose three real styles
+ * are `split-text-stagger`, `drift-assembly` and `text-on-path`), and there is
+ * no `type-assembly-moves.mp4` upstream. Never regenerate `preview` from
+ * `styleKey` — always from the style key inside the URL.
  */
 
 export type MotionCategoryKey = 'opening'|'typography'|'ui-entrance'|'camera'|'data'|'interaction'|'transition'|'rhythm'|'effects'|'outro';
@@ -31,7 +58,17 @@ export interface MotionTemplate {
   durationInFrames: number;
   durationSec: number;
   sourceRepo: 'motion-studio';
+  /** Real ShotCraft preview clip (MP4) for this shot, served through the
+   *  same-origin `/api/media/shotcraft/<styleKey>.mp4` proxy (which streams the
+   *  upstream `gallery-media` GitHub release asset). The trailing key is the
+   *  upstream ShotCraft STYLE key, which for multi-style cards differs from
+   *  the `styleKey` field below. Absent when upstream has no published clip
+   *  for the style. */
   preview?: string;
+  /** Still poster frame (JPEG) for the shot, served from the upstream
+   *  ShotCraft repository. Optional — upstream only publishes posters for
+   *  a subset of the styles. */
+  poster?: string;
   styleKey?: string;
   assets: { logo: boolean; image: boolean; screenshot: boolean; product: boolean; text: boolean; cta: boolean };
 }
@@ -71,6 +108,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 7.5,
     sourceRepo: 'motion-studio',
     styleKey: 'basic-3d-scene',
+    preview: '/api/media/shotcraft/basic-3d-scene.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/basic-3d-scene.jpg',
     assets: { logo: false, image: false, screenshot: true, product: true, text: true, cta: false },
   },
   {
@@ -86,6 +125,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationInFrames: 126,
     durationSec: 4.2,
     sourceRepo: 'motion-studio',
+    preview: '/api/media/shotcraft/crash-zoom-punch.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -101,6 +141,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationInFrames: 132,
     durationSec: 4.4,
     sourceRepo: 'motion-studio',
+    preview: '/api/media/shotcraft/crash-zoom-punch.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -117,6 +158,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 8,
     sourceRepo: 'motion-studio',
     styleKey: 'cursor-flyover',
+    preview: '/api/media/shotcraft/cursor-flyover.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/cursor-flyover.jpg',
     assets: { logo: true, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -133,6 +176,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.5,
     sourceRepo: 'motion-studio',
     styleKey: 'multiplane',
+    preview: '/api/media/shotcraft/multiplane.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -149,6 +193,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'graze-face-tour',
+    preview: '/api/media/shotcraft/graze-face-tour.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/graze-face-tour.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -165,6 +211,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'overhead-tabletop-drop',
+    preview: '/api/media/shotcraft/overhead-tabletop-drop.mp4',
     assets: { logo: true, image: false, screenshot: true, product: true, text: true, cta: false },
   },
   {
@@ -181,6 +228,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4,
     sourceRepo: 'motion-studio',
     styleKey: 'tilt-reveal',
+    preview: '/api/media/shotcraft/tilt-reveal.mp4',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -197,6 +245,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 3.5,
     sourceRepo: 'motion-studio',
     styleKey: 'drone-dive-landing',
+    preview: '/api/media/shotcraft/drone-dive-landing.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -213,6 +262,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.667,
     sourceRepo: 'motion-studio',
     styleKey: 'exploded-view',
+    preview: '/api/media/shotcraft/exploded-view.mp4',
     assets: { logo: false, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -229,6 +279,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4,
     sourceRepo: 'motion-studio',
     styleKey: 'steep-tilt-glide',
+    preview: '/api/media/shotcraft/steep-tilt-glide.mp4',
     assets: { logo: true, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -245,6 +296,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.667,
     sourceRepo: 'motion-studio',
     styleKey: 'bullet-time-freeze-orbit',
+    preview: '/api/media/shotcraft/bullet-time-freeze-orbit.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -261,6 +313,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'pull-back-isolation',
+    preview: '/api/media/shotcraft/pull-back-isolation.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -277,6 +330,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 8.2,
     sourceRepo: 'motion-studio',
     styleKey: 'terminal-3d',
+    preview: '/api/media/shotcraft/terminal-3d.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/terminal-3d.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -293,6 +348,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'before-after-slider-scrub',
+    preview: '/api/media/shotcraft/before-after-slider-scrub.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/before-after-slider-scrub.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -308,6 +365,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationInFrames: 168,
     durationSec: 5.6,
     sourceRepo: 'motion-studio',
+    preview: '/api/media/shotcraft/axis-rescale-shock.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -323,6 +381,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationInFrames: 165,
     durationSec: 5.5,
     sourceRepo: 'motion-studio',
+    preview: '/api/media/shotcraft/oscilloscope-stream.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -338,6 +397,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationInFrames: 192,
     durationSec: 6.4,
     sourceRepo: 'motion-studio',
+    preview: '/api/media/shotcraft/unit-dot-swarm-regroup.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/unit-dot-swarm-regroup.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -354,6 +415,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'needle-sweep-selftest',
+    preview: '/api/media/shotcraft/needle-sweep-selftest.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -370,6 +432,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'tape-scroll-fixed-pointer',
+    preview: '/api/media/shotcraft/tape-scroll-fixed-pointer.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -386,6 +449,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 3,
     sourceRepo: 'motion-studio',
     styleKey: 'brake-reticle-lock',
+    preview: '/api/media/shotcraft/brake-reticle-lock.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -402,6 +466,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'changelog-scroll-brake',
+    preview: '/api/media/shotcraft/changelog-scroll-brake.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -418,6 +483,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.333,
     sourceRepo: 'motion-studio',
     styleKey: 'timeline-travel',
+    preview: '/api/media/shotcraft/timeline-travel.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -434,6 +500,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.6,
     sourceRepo: 'motion-studio',
     styleKey: 'assemble-then-type-flyin',
+    preview: '/api/media/shotcraft/assemble-then-type-flyin.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/assemble-then-type-flyin.jpg',
     assets: { logo: true, image: false, screenshot: true, product: true, text: true, cta: true },
   },
   {
@@ -450,6 +518,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.2,
     sourceRepo: 'motion-studio',
     styleKey: 'aurora-bloom-bg-flip',
+    preview: '/api/media/shotcraft/aurora-bloom-bg-flip.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/aurora-bloom-bg-flip.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -466,6 +536,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'brand-frame-snap',
+    preview: '/api/media/shotcraft/brand-frame-snap.mp4',
     assets: { logo: false, image: false, screenshot: true, product: true, text: false, cta: true },
   },
   {
@@ -482,6 +553,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 3,
     sourceRepo: 'motion-studio',
     styleKey: 'reticle-lock-on',
+    preview: '/api/media/shotcraft/reticle-lock-on.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -498,6 +570,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'flyline-arc',
+    preview: '/api/media/shotcraft/flyline-arc.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -514,6 +587,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.667,
     sourceRepo: 'motion-studio',
     styleKey: 'glow-orb-ambient',
+    preview: '/api/media/shotcraft/glow-orb-ambient.mp4',
     assets: { logo: false, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -530,6 +604,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.5,
     sourceRepo: 'motion-studio',
     styleKey: 'orb-flyline-relay',
+    preview: '/api/media/shotcraft/orb-flyline-relay.mp4',
     assets: { logo: false, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -546,6 +621,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.2,
     sourceRepo: 'motion-studio',
     styleKey: 'attention-bounce',
+    preview: '/api/media/shotcraft/attention-bounce.mp4',
     assets: { logo: true, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -562,6 +638,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4,
     sourceRepo: 'motion-studio',
     styleKey: 'anime-impact',
+    preview: '/api/media/shotcraft/anime-impact.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -578,6 +655,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.867,
     sourceRepo: 'motion-studio',
     styleKey: 'hit-counter',
+    preview: '/api/media/shotcraft/hit-counter.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -593,6 +671,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationInFrames: 150,
     durationSec: 5,
     sourceRepo: 'motion-studio',
+    preview: '/api/media/shotcraft/sheen-sweep.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: true },
   },
   {
@@ -608,6 +687,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationInFrames: 170,
     durationSec: 5.667,
     sourceRepo: 'motion-studio',
+    preview: '/api/media/shotcraft/spotlight-sweep.mp4',
     assets: { logo: false, image: false, screenshot: false, product: true, text: true, cta: false },
   },
   {
@@ -624,6 +704,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.6,
     sourceRepo: 'motion-studio',
     styleKey: 'radial-ripple-phone-chips',
+    preview: '/api/media/shotcraft/radial-ripple-phone-chips.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/radial-ripple-phone-chips.jpg',
     assets: { logo: true, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -640,6 +722,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4,
     sourceRepo: 'motion-studio',
     styleKey: 'misregistration-hit',
+    preview: '/api/media/shotcraft/misregistration-hit.mp4',
     assets: { logo: false, image: false, screenshot: true, product: true, text: true, cta: false },
   },
   {
@@ -656,6 +739,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'scan-bracket-sweep',
+    preview: '/api/media/shotcraft/scan-bracket-sweep.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/scan-bracket-sweep.jpg',
     assets: { logo: true, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -672,6 +757,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'scanline-annotate-focus',
+    preview: '/api/media/shotcraft/scanline-annotate-focus.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/scanline-annotate-focus.jpg',
     assets: { logo: true, image: false, screenshot: true, product: true, text: false, cta: true },
   },
   {
@@ -688,6 +775,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.2,
     sourceRepo: 'motion-studio',
     styleKey: 'scanline-assemble-flyin',
+    preview: '/api/media/shotcraft/scanline-assemble-flyin.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/scanline-assemble-flyin.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: true },
   },
   {
@@ -704,6 +793,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'impact-burst-kit',
+    preview: '/api/media/shotcraft/impact-burst-kit.mp4',
     assets: { logo: true, image: false, screenshot: true, product: true, text: false, cta: true },
   },
   {
@@ -720,6 +810,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4,
     sourceRepo: 'motion-studio',
     styleKey: 'kanada-perspective-snap',
+    preview: '/api/media/shotcraft/kanada-perspective-snap.mp4',
     assets: { logo: false, image: false, screenshot: true, product: true, text: true, cta: false },
   },
   {
@@ -736,6 +827,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.5,
     sourceRepo: 'motion-studio',
     styleKey: 'score-slam',
+    preview: '/api/media/shotcraft/score-slam.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -752,6 +844,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.333,
     sourceRepo: 'motion-studio',
     styleKey: 'corner-spotlight-reveal',
+    preview: '/api/media/shotcraft/corner-spotlight-reveal.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -768,6 +861,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'glow-wake-sleep-panel',
+    preview: '/api/media/shotcraft/glow-wake-sleep-panel.mp4',
     assets: { logo: true, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -784,6 +878,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.4,
     sourceRepo: 'motion-studio',
     styleKey: 'slide-spotlight-pan',
+    preview: '/api/media/shotcraft/slide-spotlight-pan.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/slide-spotlight-pan.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -800,6 +896,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'autolayout-gap-dial',
+    preview: '/api/media/shotcraft/autolayout-gap-dial.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/autolayout-gap-dial.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -815,6 +913,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationInFrames: 180,
     durationSec: 6,
     sourceRepo: 'motion-studio',
+    preview: '/api/media/shotcraft/diagram-cascade.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -830,6 +929,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationInFrames: 150,
     durationSec: 5,
     sourceRepo: 'motion-studio',
+    preview: '/api/media/shotcraft/panel-to-canvas.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -846,6 +946,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.5,
     sourceRepo: 'motion-studio',
     styleKey: 'chip-grid-single-select-blackout',
+    preview: '/api/media/shotcraft/chip-grid-single-select-blackout.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/chip-grid-single-select-blackout.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -862,6 +964,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.2,
     sourceRepo: 'motion-studio',
     styleKey: 'cast-ensemble',
+    preview: '/api/media/shotcraft/cast-ensemble.mp4',
     assets: { logo: true, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -878,6 +981,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 3.333,
     sourceRepo: 'motion-studio',
     styleKey: 'glass-pill-dictation-typing',
+    preview: '/api/media/shotcraft/glass-pill-dictation-typing.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/glass-pill-dictation-typing.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -894,6 +999,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4,
     sourceRepo: 'motion-studio',
     styleKey: 'hashtag-to-pill-materialize',
+    preview: '/api/media/shotcraft/hashtag-to-pill-materialize.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -910,6 +1016,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 3.6,
     sourceRepo: 'motion-studio',
     styleKey: 'picker-carousel-feature-cycle',
+    preview: '/api/media/shotcraft/picker-carousel-feature-cycle.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/picker-carousel-feature-cycle.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -926,6 +1034,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 3.667,
     sourceRepo: 'motion-studio',
     styleKey: 'segmented-thumb-hero',
+    preview: '/api/media/shotcraft/segmented-thumb-hero.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -942,6 +1051,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.2,
     sourceRepo: 'motion-studio',
     styleKey: 'palette-theme-ripple',
+    preview: '/api/media/shotcraft/palette-theme-ripple.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/palette-theme-ripple.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -958,6 +1069,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'theme-sweep-toggle',
+    preview: '/api/media/shotcraft/theme-sweep-toggle.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -974,6 +1086,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 2.433,
     sourceRepo: 'motion-studio',
     styleKey: 'type-and-filter',
+    preview: '/api/media/shotcraft/type-and-filter.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -990,6 +1103,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.733,
     sourceRepo: 'motion-studio',
     styleKey: 'voice-waveform-live',
+    preview: '/api/media/shotcraft/voice-waveform-live.mp4',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -1006,6 +1120,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.5,
     sourceRepo: 'motion-studio',
     styleKey: 'crane-rise-reveal',
+    preview: '/api/media/shotcraft/crane-rise-reveal.mp4',
     assets: { logo: true, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1022,6 +1137,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 3,
     sourceRepo: 'motion-studio',
     styleKey: 'dataviz-landscape-open',
+    preview: '/api/media/shotcraft/dataviz-landscape-open.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1038,6 +1154,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.2,
     sourceRepo: 'motion-studio',
     styleKey: 'fracture',
+    preview: '/api/media/shotcraft/fracture.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/fracture.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -1054,6 +1172,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.667,
     sourceRepo: 'motion-studio',
     styleKey: 'icon-field-colorize',
+    preview: '/api/media/shotcraft/icon-field-colorize.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1070,6 +1189,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 3.5,
     sourceRepo: 'motion-studio',
     styleKey: 'letterspace-materialize',
+    preview: '/api/media/shotcraft/letterspace-materialize.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -1086,6 +1206,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.2,
     sourceRepo: 'motion-studio',
     styleKey: 'magician-card-flourish',
+    preview: '/api/media/shotcraft/magician-card-flourish.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/magician-card-flourish.jpg',
     assets: { logo: false, image: false, screenshot: false, product: true, text: true, cta: false },
   },
   {
@@ -1102,6 +1224,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'orbit-ring-title-open',
+    preview: '/api/media/shotcraft/orbit-ring-title-open.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1118,6 +1241,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.733,
     sourceRepo: 'motion-studio',
     styleKey: 'spotlight-hero-card',
+    preview: '/api/media/shotcraft/spotlight-hero-card.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/spotlight-hero-card.jpg',
     assets: { logo: false, image: false, screenshot: true, product: true, text: false, cta: false },
   },
   {
@@ -1134,6 +1259,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.5,
     sourceRepo: 'motion-studio',
     styleKey: 'stroke-segment-build',
+    preview: '/api/media/shotcraft/stroke-segment-build.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -1150,6 +1276,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.5,
     sourceRepo: 'motion-studio',
     styleKey: 'text-as-mask',
+    preview: '/api/media/shotcraft/text-as-mask.mp4',
     assets: { logo: false, image: true, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1166,6 +1293,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 2,
     sourceRepo: 'motion-studio',
     styleKey: 'grain-dissolve',
+    preview: '/api/media/shotcraft/grain-dissolve.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/grain-dissolve.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -1182,6 +1311,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.4,
     sourceRepo: 'motion-studio',
     styleKey: 'logo-shrink-wordmark-lockup',
+    preview: '/api/media/shotcraft/logo-shrink-wordmark-lockup.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/logo-shrink-wordmark-lockup.jpg',
     assets: { logo: true, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -1198,6 +1329,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'neon-triple-marquee',
+    preview: '/api/media/shotcraft/neon-triple-marquee.mp4',
     assets: { logo: false, image: true, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1214,6 +1346,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.833,
     sourceRepo: 'motion-studio',
     styleKey: 'outro-group-photo-launch',
+    preview: '/api/media/shotcraft/outro-group-photo-launch.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1230,6 +1363,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.8,
     sourceRepo: 'motion-studio',
     styleKey: 'ui-strip-away-outro',
+    preview: '/api/media/shotcraft/ui-strip-away-outro.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/ui-strip-away-outro.jpg',
     assets: { logo: true, image: true, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1245,6 +1380,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationInFrames: 130,
     durationSec: 4.333,
     sourceRepo: 'motion-studio',
+    preview: '/api/media/shotcraft/icon-flip-bloom.mp4',
     assets: { logo: true, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -1260,6 +1396,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationInFrames: 168,
     durationSec: 5.6,
     sourceRepo: 'motion-studio',
+    preview: '/api/media/shotcraft/input-morph-assemble.mp4',
     assets: { logo: true, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1276,6 +1413,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'paparazzi-flash',
+    preview: '/api/media/shotcraft/paparazzi-flash.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -1292,6 +1430,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'beat-step-list-theme-cycle',
+    preview: '/api/media/shotcraft/beat-step-list-theme-cycle.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/beat-step-list-theme-cycle.jpg',
     assets: { logo: false, image: false, screenshot: true, product: true, text: true, cta: false },
   },
   {
@@ -1308,6 +1448,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.2,
     sourceRepo: 'motion-studio',
     styleKey: 'comic-panel-split',
+    preview: '/api/media/shotcraft/comic-panel-split.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/comic-panel-split.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1324,6 +1466,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 3,
     sourceRepo: 'motion-studio',
     styleKey: 'quad-split-parallel-scenes',
+    preview: '/api/media/shotcraft/quad-split-parallel-scenes.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/quad-split-parallel-scenes.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -1340,6 +1484,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.5,
     sourceRepo: 'motion-studio',
     styleKey: 'jump-cut-punch-in',
+    preview: '/api/media/shotcraft/jump-cut-punch-in.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -1356,6 +1501,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'sakuga-timing-shift',
+    preview: '/api/media/shotcraft/sakuga-timing-shift.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1372,6 +1518,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.267,
     sourceRepo: 'motion-studio',
     styleKey: 'freeze-annotate',
+    preview: '/api/media/shotcraft/freeze-annotate.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1388,6 +1535,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'trailer-bumper',
+    preview: '/api/media/shotcraft/trailer-bumper.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1404,6 +1552,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.667,
     sourceRepo: 'motion-studio',
     styleKey: 'bottom-push-stack-wipe',
+    preview: '/api/media/shotcraft/bottom-push-stack-wipe.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/bottom-push-stack-wipe.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1420,6 +1570,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'card-flip-reveal',
+    preview: '/api/media/shotcraft/card-flip-reveal.mp4',
     assets: { logo: true, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1436,6 +1587,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.5,
     sourceRepo: 'motion-studio',
     styleKey: 'card-flock-tumble',
+    preview: '/api/media/shotcraft/card-flock-tumble.mp4',
     assets: { logo: true, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1452,6 +1604,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.5,
     sourceRepo: 'motion-studio',
     styleKey: 'circle-match-iris',
+    preview: '/api/media/shotcraft/circle-match-iris.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/circle-match-iris.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -1468,6 +1622,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 6.667,
     sourceRepo: 'motion-studio',
     styleKey: 'gradient-transition',
+    preview: '/api/media/shotcraft/gradient-transition.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/gradient-transition.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -1484,6 +1640,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 6.333,
     sourceRepo: 'motion-studio',
     styleKey: 'line-carry-transition',
+    preview: '/api/media/shotcraft/line-carry-transition.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1500,6 +1657,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 7.133,
     sourceRepo: 'motion-studio',
     styleKey: 'mosaic-reframe',
+    preview: '/api/media/shotcraft/mosaic-reframe.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/mosaic-reframe.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1516,6 +1675,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'barn-door-split',
+    preview: '/api/media/shotcraft/barn-door-split.mp4',
     assets: { logo: false, image: false, screenshot: true, product: true, text: true, cta: false },
   },
   {
@@ -1532,6 +1692,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.333,
     sourceRepo: 'motion-studio',
     styleKey: 'ink-bleed-reveal',
+    preview: '/api/media/shotcraft/ink-bleed-reveal.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -1547,6 +1708,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationInFrames: 140,
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
+    preview: '/api/media/shotcraft/mask-wipe.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1562,6 +1724,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationInFrames: 130,
     durationSec: 4.333,
     sourceRepo: 'motion-studio',
+    preview: '/api/media/shotcraft/whip-pan.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -1578,6 +1741,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.5,
     sourceRepo: 'motion-studio',
     styleKey: 'glitch-displace',
+    preview: '/api/media/shotcraft/glitch-displace.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -1594,6 +1758,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 3.667,
     sourceRepo: 'motion-studio',
     styleKey: 'invisible-cut',
+    preview: '/api/media/shotcraft/invisible-cut.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -1610,6 +1775,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.333,
     sourceRepo: 'motion-studio',
     styleKey: 'light-leak-burn',
+    preview: '/api/media/shotcraft/light-leak-burn.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1626,6 +1792,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 3.5,
     sourceRepo: 'motion-studio',
     styleKey: 'versus-slam',
+    preview: '/api/media/shotcraft/versus-slam.mp4',
     assets: { logo: false, image: false, screenshot: true, product: true, text: true, cta: false },
   },
   {
@@ -1642,6 +1809,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'letterform-zoom',
+    preview: '/api/media/shotcraft/letterform-zoom.mp4',
     assets: { logo: false, image: false, screenshot: true, product: true, text: true, cta: false },
   },
   {
@@ -1658,6 +1826,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4,
     sourceRepo: 'motion-studio',
     styleKey: 'white-flash-logo-simplify-cut',
+    preview: '/api/media/shotcraft/white-flash-logo-simplify-cut.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/white-flash-logo-simplify-cut.jpg',
     assets: { logo: true, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1674,6 +1844,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.4,
     sourceRepo: 'motion-studio',
     styleKey: 'blinds-slice',
+    preview: '/api/media/shotcraft/blinds-slice.mp4',
     assets: { logo: false, image: false, screenshot: true, product: true, text: false, cta: false },
   },
   {
@@ -1690,6 +1861,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4,
     sourceRepo: 'motion-studio',
     styleKey: 'blur-slide',
+    preview: '/api/media/shotcraft/blur-slide.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/blur-slide.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1706,6 +1879,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4,
     sourceRepo: 'motion-studio',
     styleKey: 'brace-expand',
+    preview: '/api/media/shotcraft/brace-expand.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/brace-expand.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1722,6 +1897,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 3.467,
     sourceRepo: 'motion-studio',
     styleKey: 'brand-ink-open',
+    preview: '/api/media/shotcraft/brand-ink-open.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1738,6 +1914,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 3.333,
     sourceRepo: 'motion-studio',
     styleKey: 'countdown-arc-scatter',
+    preview: '/api/media/shotcraft/countdown-arc-scatter.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/countdown-arc-scatter.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1754,6 +1932,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 6,
     sourceRepo: 'motion-studio',
     styleKey: 'flying-words',
+    preview: '/api/media/shotcraft/flying-words.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/flying-words.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1770,6 +1950,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.6,
     sourceRepo: 'motion-studio',
     styleKey: 'glitch-cycle',
+    preview: '/api/media/shotcraft/glitch-cycle.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/glitch-cycle.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1786,6 +1968,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 3.5,
     sourceRepo: 'motion-studio',
     styleKey: 'gradient-word-sweep',
+    preview: '/api/media/shotcraft/gradient-word-sweep.mp4',
     assets: { logo: false, image: false, screenshot: true, product: true, text: true, cta: false },
   },
   {
@@ -1802,6 +1985,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 2.8,
     sourceRepo: 'motion-studio',
     styleKey: 'lead-word-zoom-assemble',
+    preview: '/api/media/shotcraft/lead-word-zoom-assemble.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1818,6 +2002,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 2.5,
     sourceRepo: 'motion-studio',
     styleKey: 'marker-underline-title',
+    preview: '/api/media/shotcraft/marker-underline-title.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1834,6 +2019,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 3,
     sourceRepo: 'motion-studio',
     styleKey: 'outline-word-fill',
+    preview: '/api/media/shotcraft/outline-word-fill.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/outline-word-fill.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1850,6 +2037,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 1.833,
     sourceRepo: 'motion-studio',
     styleKey: 'paper-title-card',
+    preview: '/api/media/shotcraft/paper-title-card.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/paper-title-card.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1866,6 +2055,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'pill-chip-slot-cycle-handled',
+    preview: '/api/media/shotcraft/pill-chip-slot-cycle-handled.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/pill-chip-slot-cycle-handled.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -1882,6 +2073,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 3,
     sourceRepo: 'motion-studio',
     styleKey: 'pill-slot-cycle',
+    preview: '/api/media/shotcraft/pill-slot-cycle.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -1898,6 +2090,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 6,
     sourceRepo: 'motion-studio',
     styleKey: 'text-column-converge',
+    preview: '/api/media/shotcraft/text-column-converge.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1914,6 +2107,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 8.2,
     sourceRepo: 'motion-studio',
     styleKey: 'title-demote-to-label',
+    preview: '/api/media/shotcraft/title-demote-to-label.mp4',
     assets: { logo: true, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1930,6 +2124,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'type-assembly-moves',
+    preview: '/api/media/shotcraft/drift-assembly.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -1946,6 +2141,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.333,
     sourceRepo: 'motion-studio',
     styleKey: 'split-text-stagger',
+    preview: '/api/media/shotcraft/split-text-stagger.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1962,6 +2158,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.333,
     sourceRepo: 'motion-studio',
     styleKey: 'text-on-path',
+    preview: '/api/media/shotcraft/text-on-path.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -1978,6 +2175,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'letter-drop-physics',
+    preview: '/api/media/shotcraft/letter-drop-physics.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -1994,6 +2192,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.5,
     sourceRepo: 'motion-studio',
     styleKey: 'font-weight-pump',
+    preview: '/api/media/shotcraft/font-weight-pump.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -2010,6 +2209,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'karaoke-fill-sync',
+    preview: '/api/media/shotcraft/karaoke-fill-sync.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -2026,6 +2226,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.333,
     sourceRepo: 'motion-studio',
     styleKey: 'error-retype',
+    preview: '/api/media/shotcraft/error-retype.mp4',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -2042,6 +2243,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'vertical-word-roll-blur-cycle',
+    preview: '/api/media/shotcraft/vertical-word-roll-blur-cycle.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/vertical-word-roll-blur-cycle.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -2058,6 +2261,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 6,
     sourceRepo: 'motion-studio',
     styleKey: 'word-relay-filmstrip',
+    preview: '/api/media/shotcraft/word-relay-filmstrip.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/word-relay-filmstrip.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -2074,6 +2279,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 6,
     sourceRepo: 'motion-studio',
     styleKey: 'word-relay-geometry',
+    preview: '/api/media/shotcraft/word-relay-geometry.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/word-relay-geometry.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -2090,6 +2297,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.2,
     sourceRepo: 'motion-studio',
     styleKey: 'avatar-bracket-carousel',
+    preview: '/api/media/shotcraft/avatar-bracket-carousel.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/avatar-bracket-carousel.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -2106,6 +2315,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.6,
     sourceRepo: 'motion-studio',
     styleKey: 'bezier-source-converge-merge',
+    preview: '/api/media/shotcraft/bezier-source-converge-merge.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/bezier-source-converge-merge.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -2122,6 +2333,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'card-stack',
+    preview: '/api/media/shotcraft/card-stack.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/card-stack.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -2138,6 +2351,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.6,
     sourceRepo: 'motion-studio',
     styleKey: 'carousel-3d',
+    preview: '/api/media/shotcraft/carousel-3d.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/carousel-3d.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -2154,6 +2369,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.6,
     sourceRepo: 'motion-studio',
     styleKey: 'cloner-depth-echo',
+    preview: '/api/media/shotcraft/cloner-depth-echo.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -2170,6 +2386,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'deck-deal-flyin',
+    preview: '/api/media/shotcraft/deck-deal-flyin.mp4',
     assets: { logo: false, image: true, screenshot: true, product: true, text: true, cta: false },
   },
   {
@@ -2186,6 +2403,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.8,
     sourceRepo: 'motion-studio',
     styleKey: 'doc-park-left-pill-deal',
+    preview: '/api/media/shotcraft/doc-park-left-pill-deal.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/doc-park-left-pill-deal.jpg',
     assets: { logo: true, image: false, screenshot: true, product: true, text: true, cta: false },
   },
   {
@@ -2202,6 +2421,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'document-typewriter-reveal',
+    preview: '/api/media/shotcraft/document-typewriter-reveal.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -2218,6 +2438,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.4,
     sourceRepo: 'motion-studio',
     styleKey: 'draw-svg-trace',
+    preview: '/api/media/shotcraft/draw-svg-trace.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -2234,6 +2455,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'contact-shadow-lift',
+    preview: '/api/media/shotcraft/contact-shadow-lift.mp4',
     assets: { logo: true, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -2250,6 +2472,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'integration-hub-map',
+    preview: '/api/media/shotcraft/integration-hub-map.mp4',
     assets: { logo: true, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -2266,6 +2489,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4,
     sourceRepo: 'motion-studio',
     styleKey: 'list-reveal',
+    preview: '/api/media/shotcraft/list-reveal.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/list-reveal.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -2282,6 +2507,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 2.933,
     sourceRepo: 'motion-studio',
     styleKey: 'list-stack-press',
+    preview: '/api/media/shotcraft/list-stack-press.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -2298,6 +2524,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'neon-frame-forerun',
+    preview: '/api/media/shotcraft/neon-frame-forerun.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -2314,6 +2541,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'neon-frame-orbit-drop',
+    preview: '/api/media/shotcraft/neon-frame-orbit-drop.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/neon-frame-orbit-drop.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -2330,6 +2559,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'page-waterfall-wall',
+    preview: '/api/media/shotcraft/page-waterfall-wall.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -2346,6 +2576,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5.733,
     sourceRepo: 'motion-studio',
     styleKey: 'product-card-progressive-assemble',
+    preview: '/api/media/shotcraft/product-card-progressive-assemble.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/product-card-progressive-assemble.jpg',
     assets: { logo: false, image: false, screenshot: true, product: true, text: true, cta: true },
   },
   {
@@ -2362,6 +2594,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 3.8,
     sourceRepo: 'motion-studio',
     styleKey: 'radial-wave',
+    preview: '/api/media/shotcraft/radial-wave.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/radial-wave.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -2378,6 +2612,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 4.8,
     sourceRepo: 'motion-studio',
     styleKey: 'research-card-stack-scroll',
+    preview: '/api/media/shotcraft/research-card-stack-scroll.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/research-card-stack-scroll.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -2394,6 +2630,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 2.267,
     sourceRepo: 'motion-studio',
     styleKey: 'row-embed',
+    preview: '/api/media/shotcraft/row-embed.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -2410,6 +2647,8 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'value-stagger-gradient',
+    preview: '/api/media/shotcraft/value-stagger-gradient.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/value-stagger-gradient.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -2426,6 +2665,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'bento-light-up',
+    preview: '/api/media/shotcraft/bento-light-up.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -2442,6 +2682,7 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'wireframe-draw-on',
+    preview: '/api/media/shotcraft/wireframe-draw-on.mp4',
     assets: { logo: true, image: false, screenshot: true, product: false, text: false, cta: false },
   },
 ];
@@ -2461,6 +2702,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 7.5,
     sourceRepo: 'motion-studio',
     styleKey: 'basic-3d-scene',
+    preview: '/api/media/shotcraft/basic-3d-scene.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/basic-3d-scene.jpg',
     assets: { logo: false, image: false, screenshot: true, product: true, text: true, cta: false },
   },
   {
@@ -2476,6 +2719,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationInFrames: 126,
     durationSec: 4.2,
     sourceRepo: 'motion-studio',
+    preview: '/api/media/shotcraft/crash-zoom-punch.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -2492,6 +2736,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 8,
     sourceRepo: 'motion-studio',
     styleKey: 'cursor-flyover',
+    preview: '/api/media/shotcraft/cursor-flyover.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/cursor-flyover.jpg',
     assets: { logo: true, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -2508,6 +2754,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.5,
     sourceRepo: 'motion-studio',
     styleKey: 'multiplane',
+    preview: '/api/media/shotcraft/multiplane.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -2524,6 +2771,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'graze-face-tour',
+    preview: '/api/media/shotcraft/graze-face-tour.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/graze-face-tour.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -2540,6 +2789,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'overhead-tabletop-drop',
+    preview: '/api/media/shotcraft/overhead-tabletop-drop.mp4',
     assets: { logo: true, image: false, screenshot: true, product: true, text: true, cta: false },
   },
   {
@@ -2556,6 +2806,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 3.5,
     sourceRepo: 'motion-studio',
     styleKey: 'drone-dive-landing',
+    preview: '/api/media/shotcraft/drone-dive-landing.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -2572,6 +2823,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4,
     sourceRepo: 'motion-studio',
     styleKey: 'steep-tilt-glide',
+    preview: '/api/media/shotcraft/steep-tilt-glide.mp4',
     assets: { logo: true, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -2588,6 +2840,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.667,
     sourceRepo: 'motion-studio',
     styleKey: 'bullet-time-freeze-orbit',
+    preview: '/api/media/shotcraft/bullet-time-freeze-orbit.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -2604,6 +2857,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 8.2,
     sourceRepo: 'motion-studio',
     styleKey: 'terminal-3d',
+    preview: '/api/media/shotcraft/terminal-3d.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/terminal-3d.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -2620,6 +2875,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'before-after-slider-scrub',
+    preview: '/api/media/shotcraft/before-after-slider-scrub.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/before-after-slider-scrub.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -2635,6 +2892,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationInFrames: 168,
     durationSec: 5.6,
     sourceRepo: 'motion-studio',
+    preview: '/api/media/shotcraft/oscilloscope-stream.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -2651,6 +2909,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'needle-sweep-selftest',
+    preview: '/api/media/shotcraft/needle-sweep-selftest.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -2667,6 +2926,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 3,
     sourceRepo: 'motion-studio',
     styleKey: 'brake-reticle-lock',
+    preview: '/api/media/shotcraft/brake-reticle-lock.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -2683,6 +2943,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.333,
     sourceRepo: 'motion-studio',
     styleKey: 'timeline-travel',
+    preview: '/api/media/shotcraft/timeline-travel.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -2699,6 +2960,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.6,
     sourceRepo: 'motion-studio',
     styleKey: 'assemble-then-type-flyin',
+    preview: '/api/media/shotcraft/assemble-then-type-flyin.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/assemble-then-type-flyin.jpg',
     assets: { logo: true, image: false, screenshot: true, product: true, text: true, cta: true },
   },
   {
@@ -2715,6 +2978,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.2,
     sourceRepo: 'motion-studio',
     styleKey: 'aurora-bloom-bg-flip',
+    preview: '/api/media/shotcraft/aurora-bloom-bg-flip.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/aurora-bloom-bg-flip.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -2731,6 +2996,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'brand-frame-snap',
+    preview: '/api/media/shotcraft/brand-frame-snap.mp4',
     assets: { logo: false, image: false, screenshot: true, product: true, text: false, cta: true },
   },
   {
@@ -2747,6 +3013,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 3,
     sourceRepo: 'motion-studio',
     styleKey: 'reticle-lock-on',
+    preview: '/api/media/shotcraft/reticle-lock-on.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -2763,6 +3030,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'flyline-arc',
+    preview: '/api/media/shotcraft/flyline-arc.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -2779,6 +3047,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.2,
     sourceRepo: 'motion-studio',
     styleKey: 'attention-bounce',
+    preview: '/api/media/shotcraft/attention-bounce.mp4',
     assets: { logo: true, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -2795,6 +3064,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4,
     sourceRepo: 'motion-studio',
     styleKey: 'anime-impact',
+    preview: '/api/media/shotcraft/anime-impact.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -2810,6 +3080,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationInFrames: 150,
     durationSec: 5,
     sourceRepo: 'motion-studio',
+    preview: '/api/media/shotcraft/spotlight-sweep.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: true },
   },
   {
@@ -2826,6 +3097,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.6,
     sourceRepo: 'motion-studio',
     styleKey: 'radial-ripple-phone-chips',
+    preview: '/api/media/shotcraft/radial-ripple-phone-chips.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/radial-ripple-phone-chips.jpg',
     assets: { logo: true, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -2842,6 +3115,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4,
     sourceRepo: 'motion-studio',
     styleKey: 'misregistration-hit',
+    preview: '/api/media/shotcraft/misregistration-hit.mp4',
     assets: { logo: false, image: false, screenshot: true, product: true, text: true, cta: false },
   },
   {
@@ -2858,6 +3132,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'scan-bracket-sweep',
+    preview: '/api/media/shotcraft/scan-bracket-sweep.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/scan-bracket-sweep.jpg',
     assets: { logo: true, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -2874,6 +3150,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'scanline-annotate-focus',
+    preview: '/api/media/shotcraft/scanline-annotate-focus.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/scanline-annotate-focus.jpg',
     assets: { logo: true, image: false, screenshot: true, product: true, text: false, cta: true },
   },
   {
@@ -2890,6 +3168,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.2,
     sourceRepo: 'motion-studio',
     styleKey: 'scanline-assemble-flyin',
+    preview: '/api/media/shotcraft/scanline-assemble-flyin.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/scanline-assemble-flyin.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: true },
   },
   {
@@ -2906,6 +3186,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'impact-burst-kit',
+    preview: '/api/media/shotcraft/impact-burst-kit.mp4',
     assets: { logo: true, image: false, screenshot: true, product: true, text: false, cta: true },
   },
   {
@@ -2922,6 +3203,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.333,
     sourceRepo: 'motion-studio',
     styleKey: 'corner-spotlight-reveal',
+    preview: '/api/media/shotcraft/corner-spotlight-reveal.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -2938,6 +3220,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'autolayout-gap-dial',
+    preview: '/api/media/shotcraft/autolayout-gap-dial.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/autolayout-gap-dial.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -2953,6 +3237,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationInFrames: 180,
     durationSec: 6,
     sourceRepo: 'motion-studio',
+    preview: '/api/media/shotcraft/panel-to-canvas.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -2969,6 +3254,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.5,
     sourceRepo: 'motion-studio',
     styleKey: 'chip-grid-single-select-blackout',
+    preview: '/api/media/shotcraft/chip-grid-single-select-blackout.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/chip-grid-single-select-blackout.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -2985,6 +3272,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.2,
     sourceRepo: 'motion-studio',
     styleKey: 'cast-ensemble',
+    preview: '/api/media/shotcraft/cast-ensemble.mp4',
     assets: { logo: true, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -3001,6 +3289,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 3.333,
     sourceRepo: 'motion-studio',
     styleKey: 'glass-pill-dictation-typing',
+    preview: '/api/media/shotcraft/glass-pill-dictation-typing.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/glass-pill-dictation-typing.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -3017,6 +3307,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4,
     sourceRepo: 'motion-studio',
     styleKey: 'hashtag-to-pill-materialize',
+    preview: '/api/media/shotcraft/hashtag-to-pill-materialize.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3033,6 +3324,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 3.6,
     sourceRepo: 'motion-studio',
     styleKey: 'picker-carousel-feature-cycle',
+    preview: '/api/media/shotcraft/picker-carousel-feature-cycle.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/picker-carousel-feature-cycle.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -3049,6 +3342,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 3.667,
     sourceRepo: 'motion-studio',
     styleKey: 'segmented-thumb-hero',
+    preview: '/api/media/shotcraft/segmented-thumb-hero.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -3065,6 +3359,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.2,
     sourceRepo: 'motion-studio',
     styleKey: 'palette-theme-ripple',
+    preview: '/api/media/shotcraft/palette-theme-ripple.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/palette-theme-ripple.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -3081,6 +3377,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 2.433,
     sourceRepo: 'motion-studio',
     styleKey: 'type-and-filter',
+    preview: '/api/media/shotcraft/type-and-filter.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3097,6 +3394,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.733,
     sourceRepo: 'motion-studio',
     styleKey: 'voice-waveform-live',
+    preview: '/api/media/shotcraft/voice-waveform-live.mp4',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -3113,6 +3411,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.5,
     sourceRepo: 'motion-studio',
     styleKey: 'crane-rise-reveal',
+    preview: '/api/media/shotcraft/crane-rise-reveal.mp4',
     assets: { logo: true, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3129,6 +3428,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 3,
     sourceRepo: 'motion-studio',
     styleKey: 'dataviz-landscape-open',
+    preview: '/api/media/shotcraft/dataviz-landscape-open.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3145,6 +3445,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.2,
     sourceRepo: 'motion-studio',
     styleKey: 'fracture',
+    preview: '/api/media/shotcraft/fracture.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/fracture.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -3161,6 +3463,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.667,
     sourceRepo: 'motion-studio',
     styleKey: 'icon-field-colorize',
+    preview: '/api/media/shotcraft/icon-field-colorize.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3177,6 +3480,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 3.5,
     sourceRepo: 'motion-studio',
     styleKey: 'letterspace-materialize',
+    preview: '/api/media/shotcraft/letterspace-materialize.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -3193,6 +3497,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.2,
     sourceRepo: 'motion-studio',
     styleKey: 'magician-card-flourish',
+    preview: '/api/media/shotcraft/magician-card-flourish.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/magician-card-flourish.jpg',
     assets: { logo: false, image: false, screenshot: false, product: true, text: true, cta: false },
   },
   {
@@ -3209,6 +3515,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'orbit-ring-title-open',
+    preview: '/api/media/shotcraft/orbit-ring-title-open.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3225,6 +3532,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.733,
     sourceRepo: 'motion-studio',
     styleKey: 'spotlight-hero-card',
+    preview: '/api/media/shotcraft/spotlight-hero-card.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/spotlight-hero-card.jpg',
     assets: { logo: false, image: false, screenshot: true, product: true, text: false, cta: false },
   },
   {
@@ -3241,6 +3550,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.5,
     sourceRepo: 'motion-studio',
     styleKey: 'stroke-segment-build',
+    preview: '/api/media/shotcraft/stroke-segment-build.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -3257,6 +3567,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.5,
     sourceRepo: 'motion-studio',
     styleKey: 'text-as-mask',
+    preview: '/api/media/shotcraft/text-as-mask.mp4',
     assets: { logo: false, image: true, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3273,6 +3584,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 2,
     sourceRepo: 'motion-studio',
     styleKey: 'grain-dissolve',
+    preview: '/api/media/shotcraft/grain-dissolve.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/grain-dissolve.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -3289,6 +3602,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.4,
     sourceRepo: 'motion-studio',
     styleKey: 'logo-shrink-wordmark-lockup',
+    preview: '/api/media/shotcraft/logo-shrink-wordmark-lockup.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/logo-shrink-wordmark-lockup.jpg',
     assets: { logo: true, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -3305,6 +3620,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'neon-triple-marquee',
+    preview: '/api/media/shotcraft/neon-triple-marquee.mp4',
     assets: { logo: false, image: true, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3321,6 +3637,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.833,
     sourceRepo: 'motion-studio',
     styleKey: 'outro-group-photo-launch',
+    preview: '/api/media/shotcraft/outro-group-photo-launch.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3337,6 +3654,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.8,
     sourceRepo: 'motion-studio',
     styleKey: 'ui-strip-away-outro',
+    preview: '/api/media/shotcraft/ui-strip-away-outro.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/ui-strip-away-outro.jpg',
     assets: { logo: true, image: true, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3352,6 +3671,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationInFrames: 130,
     durationSec: 4.333,
     sourceRepo: 'motion-studio',
+    preview: '/api/media/shotcraft/icon-flip-bloom.mp4',
     assets: { logo: true, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -3368,6 +3688,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'paparazzi-flash',
+    preview: '/api/media/shotcraft/paparazzi-flash.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -3384,6 +3705,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'beat-step-list-theme-cycle',
+    preview: '/api/media/shotcraft/beat-step-list-theme-cycle.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/beat-step-list-theme-cycle.jpg',
     assets: { logo: false, image: false, screenshot: true, product: true, text: true, cta: false },
   },
   {
@@ -3400,6 +3723,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.2,
     sourceRepo: 'motion-studio',
     styleKey: 'comic-panel-split',
+    preview: '/api/media/shotcraft/comic-panel-split.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/comic-panel-split.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3416,6 +3741,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 3,
     sourceRepo: 'motion-studio',
     styleKey: 'quad-split-parallel-scenes',
+    preview: '/api/media/shotcraft/quad-split-parallel-scenes.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/quad-split-parallel-scenes.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -3432,6 +3759,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.5,
     sourceRepo: 'motion-studio',
     styleKey: 'jump-cut-punch-in',
+    preview: '/api/media/shotcraft/jump-cut-punch-in.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -3448,6 +3776,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'sakuga-timing-shift',
+    preview: '/api/media/shotcraft/sakuga-timing-shift.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3464,6 +3793,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.267,
     sourceRepo: 'motion-studio',
     styleKey: 'freeze-annotate',
+    preview: '/api/media/shotcraft/freeze-annotate.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3480,6 +3810,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'trailer-bumper',
+    preview: '/api/media/shotcraft/trailer-bumper.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3496,6 +3827,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.667,
     sourceRepo: 'motion-studio',
     styleKey: 'bottom-push-stack-wipe',
+    preview: '/api/media/shotcraft/bottom-push-stack-wipe.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/bottom-push-stack-wipe.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3512,6 +3845,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'card-flip-reveal',
+    preview: '/api/media/shotcraft/card-flip-reveal.mp4',
     assets: { logo: true, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3528,6 +3862,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.5,
     sourceRepo: 'motion-studio',
     styleKey: 'card-flock-tumble',
+    preview: '/api/media/shotcraft/card-flock-tumble.mp4',
     assets: { logo: true, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3544,6 +3879,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.5,
     sourceRepo: 'motion-studio',
     styleKey: 'circle-match-iris',
+    preview: '/api/media/shotcraft/circle-match-iris.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/circle-match-iris.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -3560,6 +3897,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 6.667,
     sourceRepo: 'motion-studio',
     styleKey: 'gradient-transition',
+    preview: '/api/media/shotcraft/gradient-transition.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/gradient-transition.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -3576,6 +3915,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 6.333,
     sourceRepo: 'motion-studio',
     styleKey: 'line-carry-transition',
+    preview: '/api/media/shotcraft/line-carry-transition.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3592,6 +3932,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 7.133,
     sourceRepo: 'motion-studio',
     styleKey: 'mosaic-reframe',
+    preview: '/api/media/shotcraft/mosaic-reframe.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/mosaic-reframe.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3608,6 +3950,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'barn-door-split',
+    preview: '/api/media/shotcraft/barn-door-split.mp4',
     assets: { logo: false, image: false, screenshot: true, product: true, text: true, cta: false },
   },
   {
@@ -3624,6 +3967,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.333,
     sourceRepo: 'motion-studio',
     styleKey: 'ink-bleed-reveal',
+    preview: '/api/media/shotcraft/ink-bleed-reveal.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -3639,6 +3983,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationInFrames: 140,
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
+    preview: '/api/media/shotcraft/flash-cut.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3655,6 +4000,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.5,
     sourceRepo: 'motion-studio',
     styleKey: 'glitch-displace',
+    preview: '/api/media/shotcraft/glitch-displace.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -3671,6 +4017,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 3.667,
     sourceRepo: 'motion-studio',
     styleKey: 'invisible-cut',
+    preview: '/api/media/shotcraft/invisible-cut.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -3687,6 +4034,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'letterform-zoom',
+    preview: '/api/media/shotcraft/letterform-zoom.mp4',
     assets: { logo: false, image: false, screenshot: true, product: true, text: true, cta: false },
   },
   {
@@ -3703,6 +4051,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4,
     sourceRepo: 'motion-studio',
     styleKey: 'white-flash-logo-simplify-cut',
+    preview: '/api/media/shotcraft/white-flash-logo-simplify-cut.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/white-flash-logo-simplify-cut.jpg',
     assets: { logo: true, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3719,6 +4069,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.4,
     sourceRepo: 'motion-studio',
     styleKey: 'blinds-slice',
+    preview: '/api/media/shotcraft/blinds-slice.mp4',
     assets: { logo: false, image: false, screenshot: true, product: true, text: false, cta: false },
   },
   {
@@ -3735,6 +4086,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4,
     sourceRepo: 'motion-studio',
     styleKey: 'blur-slide',
+    preview: '/api/media/shotcraft/blur-slide.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/blur-slide.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3751,6 +4104,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4,
     sourceRepo: 'motion-studio',
     styleKey: 'brace-expand',
+    preview: '/api/media/shotcraft/brace-expand.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/brace-expand.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3767,6 +4122,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 3.467,
     sourceRepo: 'motion-studio',
     styleKey: 'brand-ink-open',
+    preview: '/api/media/shotcraft/brand-ink-open.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3783,6 +4139,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 3.333,
     sourceRepo: 'motion-studio',
     styleKey: 'countdown-arc-scatter',
+    preview: '/api/media/shotcraft/countdown-arc-scatter.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/countdown-arc-scatter.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3799,6 +4157,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 6,
     sourceRepo: 'motion-studio',
     styleKey: 'flying-words',
+    preview: '/api/media/shotcraft/flying-words.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/flying-words.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3815,6 +4175,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.6,
     sourceRepo: 'motion-studio',
     styleKey: 'glitch-cycle',
+    preview: '/api/media/shotcraft/glitch-cycle.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/glitch-cycle.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3831,6 +4193,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 3.5,
     sourceRepo: 'motion-studio',
     styleKey: 'gradient-word-sweep',
+    preview: '/api/media/shotcraft/gradient-word-sweep.mp4',
     assets: { logo: false, image: false, screenshot: true, product: true, text: true, cta: false },
   },
   {
@@ -3847,6 +4210,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 2.8,
     sourceRepo: 'motion-studio',
     styleKey: 'lead-word-zoom-assemble',
+    preview: '/api/media/shotcraft/lead-word-zoom-assemble.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3863,6 +4227,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 2.5,
     sourceRepo: 'motion-studio',
     styleKey: 'marker-underline-title',
+    preview: '/api/media/shotcraft/marker-underline-title.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3879,6 +4244,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 3,
     sourceRepo: 'motion-studio',
     styleKey: 'outline-word-fill',
+    preview: '/api/media/shotcraft/outline-word-fill.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/outline-word-fill.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3895,6 +4262,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 1.833,
     sourceRepo: 'motion-studio',
     styleKey: 'paper-title-card',
+    preview: '/api/media/shotcraft/paper-title-card.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/paper-title-card.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3911,6 +4280,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'pill-chip-slot-cycle-handled',
+    preview: '/api/media/shotcraft/pill-chip-slot-cycle-handled.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/pill-chip-slot-cycle-handled.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -3927,6 +4298,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 3,
     sourceRepo: 'motion-studio',
     styleKey: 'pill-slot-cycle',
+    preview: '/api/media/shotcraft/pill-slot-cycle.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -3943,6 +4315,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 6,
     sourceRepo: 'motion-studio',
     styleKey: 'text-column-converge',
+    preview: '/api/media/shotcraft/text-column-converge.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3959,6 +4332,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 8.2,
     sourceRepo: 'motion-studio',
     styleKey: 'title-demote-to-label',
+    preview: '/api/media/shotcraft/title-demote-to-label.mp4',
     assets: { logo: true, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -3975,6 +4349,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'type-assembly-moves',
+    preview: '/api/media/shotcraft/split-text-stagger.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -3991,6 +4366,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'letter-drop-physics',
+    preview: '/api/media/shotcraft/letter-drop-physics.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -4007,6 +4383,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.5,
     sourceRepo: 'motion-studio',
     styleKey: 'font-weight-pump',
+    preview: '/api/media/shotcraft/font-weight-pump.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -4023,6 +4400,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.333,
     sourceRepo: 'motion-studio',
     styleKey: 'error-retype',
+    preview: '/api/media/shotcraft/error-retype.mp4',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -4039,6 +4417,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'vertical-word-roll-blur-cycle',
+    preview: '/api/media/shotcraft/vertical-word-roll-blur-cycle.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/vertical-word-roll-blur-cycle.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -4055,6 +4435,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 6,
     sourceRepo: 'motion-studio',
     styleKey: 'word-relay-filmstrip',
+    preview: '/api/media/shotcraft/word-relay-filmstrip.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/word-relay-filmstrip.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -4071,6 +4453,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 6,
     sourceRepo: 'motion-studio',
     styleKey: 'word-relay-geometry',
+    preview: '/api/media/shotcraft/word-relay-geometry.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/word-relay-geometry.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -4087,6 +4471,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.2,
     sourceRepo: 'motion-studio',
     styleKey: 'avatar-bracket-carousel',
+    preview: '/api/media/shotcraft/avatar-bracket-carousel.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/avatar-bracket-carousel.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -4103,6 +4489,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.6,
     sourceRepo: 'motion-studio',
     styleKey: 'bezier-source-converge-merge',
+    preview: '/api/media/shotcraft/bezier-source-converge-merge.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/bezier-source-converge-merge.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -4119,6 +4507,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'card-stack',
+    preview: '/api/media/shotcraft/card-stack.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/card-stack.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -4135,6 +4525,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.6,
     sourceRepo: 'motion-studio',
     styleKey: 'carousel-3d',
+    preview: '/api/media/shotcraft/carousel-3d.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/carousel-3d.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -4151,6 +4543,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.6,
     sourceRepo: 'motion-studio',
     styleKey: 'cloner-depth-echo',
+    preview: '/api/media/shotcraft/cloner-depth-echo.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -4167,6 +4560,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'deck-deal-flyin',
+    preview: '/api/media/shotcraft/deck-deal-flyin.mp4',
     assets: { logo: false, image: true, screenshot: true, product: true, text: true, cta: false },
   },
   {
@@ -4183,6 +4577,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.8,
     sourceRepo: 'motion-studio',
     styleKey: 'doc-park-left-pill-deal',
+    preview: '/api/media/shotcraft/doc-park-left-pill-deal.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/doc-park-left-pill-deal.jpg',
     assets: { logo: true, image: false, screenshot: true, product: true, text: true, cta: false },
   },
   {
@@ -4199,6 +4595,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'document-typewriter-reveal',
+    preview: '/api/media/shotcraft/document-typewriter-reveal.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -4215,6 +4612,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.4,
     sourceRepo: 'motion-studio',
     styleKey: 'draw-svg-trace',
+    preview: '/api/media/shotcraft/draw-svg-trace.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -4231,6 +4629,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'contact-shadow-lift',
+    preview: '/api/media/shotcraft/contact-shadow-lift.mp4',
     assets: { logo: true, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -4247,6 +4646,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'integration-hub-map',
+    preview: '/api/media/shotcraft/integration-hub-map.mp4',
     assets: { logo: true, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -4263,6 +4663,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4,
     sourceRepo: 'motion-studio',
     styleKey: 'list-reveal',
+    preview: '/api/media/shotcraft/list-reveal.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/list-reveal.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -4279,6 +4681,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 2.933,
     sourceRepo: 'motion-studio',
     styleKey: 'list-stack-press',
+    preview: '/api/media/shotcraft/list-stack-press.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -4295,6 +4698,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'neon-frame-forerun',
+    preview: '/api/media/shotcraft/neon-frame-forerun.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -4311,6 +4715,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.667,
     sourceRepo: 'motion-studio',
     styleKey: 'neon-frame-orbit-drop',
+    preview: '/api/media/shotcraft/neon-frame-orbit-drop.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/neon-frame-orbit-drop.jpg',
     assets: { logo: false, image: false, screenshot: true, product: false, text: true, cta: false },
   },
   {
@@ -4327,6 +4733,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'page-waterfall-wall',
+    preview: '/api/media/shotcraft/page-waterfall-wall.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -4343,6 +4750,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5.733,
     sourceRepo: 'motion-studio',
     styleKey: 'product-card-progressive-assemble',
+    preview: '/api/media/shotcraft/product-card-progressive-assemble.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/product-card-progressive-assemble.jpg',
     assets: { logo: false, image: false, screenshot: true, product: true, text: true, cta: true },
   },
   {
@@ -4359,6 +4768,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 3.8,
     sourceRepo: 'motion-studio',
     styleKey: 'radial-wave',
+    preview: '/api/media/shotcraft/radial-wave.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/radial-wave.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -4375,6 +4786,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 4.8,
     sourceRepo: 'motion-studio',
     styleKey: 'research-card-stack-scroll',
+    preview: '/api/media/shotcraft/research-card-stack-scroll.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/research-card-stack-scroll.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: true, cta: false },
   },
   {
@@ -4391,6 +4804,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 2.267,
     sourceRepo: 'motion-studio',
     styleKey: 'row-embed',
+    preview: '/api/media/shotcraft/row-embed.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
@@ -4407,6 +4821,8 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'value-stagger-gradient',
+    preview: '/api/media/shotcraft/value-stagger-gradient.mp4',
+    poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/gallery/media/poster/value-stagger-gradient.jpg',
     assets: { logo: false, image: false, screenshot: false, product: false, text: false, cta: false },
   },
   {
@@ -4423,6 +4839,7 @@ export const MOTION_TEMPLATE_CARDS: readonly MotionTemplate[] = [
     durationSec: 5,
     sourceRepo: 'motion-studio',
     styleKey: 'bento-light-up',
+    preview: '/api/media/shotcraft/bento-light-up.mp4',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
 ];

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Check, Film, FolderOpen, Sparkles, Upload, Video } from 'lucide-react'
+import { Check, Film, FolderOpen, Play, Sparkles, Upload, Video } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { GUIDED_DEMO_VIDEOS, demoDurationInFrames } from './curatedDemos'
 import { C, badgeStyle, chipStyle, hintStyle, labelStyle, panelStyle, softPanelStyle, tileStyle } from './tokens'
@@ -33,6 +33,7 @@ export function StepChooseVideo(): React.JSX.Element {
   const { source, previewVideo, setPreviewVideo, previewSettings, updatePreviewComposition, sharedMediaEntries = [] } = ctx
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadNote, setUploadNote] = useState(false)
+  const [hoveredDemoKey, setHoveredDemoKey] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'source' | 'demos' | 'motion' | 'upload'>('source')
 
   const fps = previewSettings?.fps || 30
@@ -63,6 +64,11 @@ export function StepChooseVideo(): React.JSX.Element {
   const pick = (video: PreviewVideoRef) => setPreviewVideo(video)
 
   const pickDemo = (demo: (typeof GUIDED_DEMO_VIDEOS)[number]) => {
+    // A demo without a playable videoSrc must not be selected and must never
+    // silently substitute another demo. Show an unavailable state instead.
+    if (!demo.videoSrc) {
+      return
+    }
     pick({ url: demo.videoSrc, poster: demo.posterSrc || null, title: demo.title, kind: 'demo', demoId: String(demo.id) })
     updatePreviewComposition({ durationInFrames: demoDurationInFrames(demo, fps) })
   }
@@ -178,28 +184,115 @@ export function StepChooseVideo(): React.JSX.Element {
             </p>
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4" style={{ gap: 10 }}>
               {GUIDED_DEMO_VIDEOS.map((demo) => {
-                const active = previewVideo?.demoId === String(demo.id) || selectedUrl === demo.videoSrc
+                // Selection is matched on the video URL, never on the demo id:
+                // the minimax and seedance libraries reuse the same numeric ids,
+                // so an id match would light up (and mount a second player for)
+                // a different demo.
+                const active = selectedUrl === demo.videoSrc
                 return (
-                  <button key={`${demo.id}-${demo.slug}`} type="button" onClick={() => pickDemo(demo)} style={tileStyle(active)}>
+                  // A <div role="button"> rather than a real <button>: the card
+                  // contains a native <video controls> and a play overlay
+                  // <button>, and a button inside a button is invalid HTML that
+                  // React reports as a hydration error.
+                  <div
+                    key={`${demo.id}-${demo.slug}`}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={active}
+                    aria-label={`Select ${demo.title}`}
+                    data-testid={`demo-card-${demo.id}-${demo.slug}`}
+                    onClick={() => pickDemo(demo)}
+                    onKeyDown={(event) => {
+                      // Only react to keys pressed on the CARD itself. A key
+                      // pressed inside the nested `<video controls>` (Space
+                      // toggles playback, arrows seek) must reach the media
+                      // element — swallowing it here would break the native
+                      // player controls.
+                      if (event.target !== event.currentTarget) return
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        pickDemo(demo)
+                      }
+                    }}
+                    style={{
+                      ...tileStyle(active),
+                      // The selected card is the player, so it takes the whole
+                      // width of the grid and moves to the top — the customer
+                      // sees the demo playing without scrolling.
+                      ...(active ? { gridColumn: '1 / -1', order: -1 } : {}),
+                    }}
+                  >
                     <div style={{ position: 'relative' }}>
-                      <img
-                        src={demo.posterSrc}
-                        alt=""
-                        loading="lazy"
-                        style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 8, display: 'block', background: '#000' }}
-                      />
+                      {/* The selected card IS the player: a real, muted, looping
+                          <video> replaces the still thumbnail so the demo is
+                          visibly moving without any extra click. Unselected
+                          cards keep the poster as their thumbnail. Exactly one
+                          of the two is ever mounted. */}
+                      {active ? (
+                        <DemoCardPlayer key={`demo-player-${demo.id}-${demo.slug}`} demo={demo} />
+                      ) : (
+                        <img
+                          src={demo.posterSrc}
+                          alt=""
+                          loading="lazy"
+                          style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 8, display: 'block', background: '#000' }}
+                        />
+                      )}
+                      {/* Play overlay — makes the card clearly a playable video, not a static image.
+                          On the selected card it shrinks to a corner badge so it never
+                          covers the native video controls. */}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); pickDemo(demo) }}
+                        onMouseEnter={() => setHoveredDemoKey(`${demo.id}-${demo.slug}`)}
+                        onMouseLeave={() => setHoveredDemoKey(null)}
+                        aria-label={`Play ${demo.title}`}
+                        style={{
+                          position: 'absolute',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          cursor: 'pointer',
+                          opacity: active || hoveredDemoKey === `${demo.id}-${demo.slug}` ? 1 : 0,
+                          transition: 'opacity .15s ease',
+                          ...(active
+                            ? { top: 6, left: 6, width: 28, height: 28, borderRadius: 999, background: 'rgba(0,0,0,.6)', border: '1px solid rgba(255,255,255,.25)' }
+                            : { inset: 0, borderRadius: 8, background: 'rgba(0,0,0,.35)', border: 'none' }),
+                        }}
+                      >
+                        <Play size={active ? 13 : 26} color="#fff" />
+                      </button>
                       {active && (
                         <span style={{ ...badgeStyle('green'), position: 'absolute', top: 6, right: 6 }}>
                           <Check size={10} /> Selected
                         </span>
                       )}
+                      {/* The "VIDEO" chip sits bottom-left, where the native
+                          control bar's play button lives — it is hidden on the
+                          selected card so the two never overlap. */}
+                      {!active && (
+                        <span style={{ position: 'absolute', bottom: 6, left: 6, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', color: '#fff', background: 'rgba(0,0,0,.55)', padding: '2px 6px', borderRadius: 4 }}>VIDEO</span>
+                      )}
                     </div>
                     <div style={{ color: C.text, fontSize: 12, fontWeight: 700, marginTop: 8, lineHeight: 1.35 }}>{demo.title}</div>
                     {demo.durationLabel && <div style={{ color: C.muted2, fontSize: 10, marginTop: 2 }}>{demo.durationLabel}</div>}
-                  </button>
+                  </div>
                 )
               })}
             </div>
+
+            {/* ── Now playing ────────────────────────────────────────────────
+                The selected card already renders the real, playing video, so
+                this is a caption only — a second <video> here would only
+                duplicate the player (and make two elements load the same
+                clip). */}
+            {previewVideo?.kind === 'demo' && previewVideo.url && (
+              <p style={{ ...hintStyle, marginTop: 10, marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Video size={12} color={C.cyan} />
+                Playing the real demo video source ({previewVideo.poster ? 'poster shown before play' : 'no poster available'}).
+              </p>
+            )}
           </>
         )}
       </div>
@@ -269,6 +362,50 @@ export function StepChooseVideo(): React.JSX.Element {
       </div>
       )}
     </div>
+  )
+}
+
+/**
+ * Inline player for the demo card that is currently selected.
+ *
+ * The card is the player: the poster thumbnail is replaced by a real, muted,
+ * looping <video> so the customer immediately sees the demo moving. The
+ * player is mounted inside the card of the *selected* demo only, so React
+ * unmounts the previous player (and stops the previous clip) the moment the
+ * selection changes.
+ */
+function DemoCardPlayer({
+  demo,
+}: {
+  demo: (typeof GUIDED_DEMO_VIDEOS)[number]
+}): React.JSX.Element {
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  useEffect(() => {
+    const el = videoRef.current
+    if (!el) return
+    // `muted` already allows autoplay in every modern browser; this explicit
+    // call is the fallback for the cases where the browser still refuses
+    // (reduced data mode, backgrounded tab on first paint).
+    const attempt = el.play()
+    if (attempt && typeof attempt.catch === 'function') attempt.catch(() => {})
+  }, [demo.videoSrc])
+
+  return (
+    <video
+      ref={videoRef}
+      data-testid="demo-player"
+      src={demo.videoSrc}
+      poster={demo.posterSrc}
+      muted
+      playsInline
+      loop
+      autoPlay
+      controls
+      // Clicking the native controls must not re-trigger the card selection.
+      onClick={(event) => event.stopPropagation()}
+      style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'contain', maxHeight: 340, borderRadius: 8, display: 'block', background: '#000' }}
+    />
   )
 }
 
