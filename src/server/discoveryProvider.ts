@@ -9,6 +9,8 @@
  * Shared validation, dedupe, and classification live in the orchestrator.
  */
 
+import type { DiscoveredAssetCategory } from '../shared/personalization/types'
+
 export type SourceType =
   | 'WEBSITE'
   | 'INSTAGRAM'
@@ -37,6 +39,19 @@ export interface ImageCandidate {
   socialProfileUrl?: string
   sourcePageType?: string
   linkTarget?: string
+  /**
+   * True when the candidate is the image the site itself links to its home
+   * page with — i.e. the site's own logo, whatever the file is called.
+   */
+  isSiteLogo?: boolean
+  /**
+   * A classification the provider has already made (the static path runs
+   * OpenAI Vision). It is carried here so the shared asset builder does not
+   * throw it away and re-classify the image with the URL heuristic.
+   */
+  category?: DiscoveredAssetCategory
+  confidence?: number
+  recommended?: boolean
 }
 
 export interface DiscoveryResult {

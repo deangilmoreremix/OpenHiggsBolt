@@ -57,27 +57,36 @@ const FAILURE_THRESHOLD = 3
 const COOLDOWN_MS = 60_000
 
 /**
- * Fetches with a bounded timeout. `externalSignal` cancels the request when
- * the stage is over (for example when a racing mirror already won).
+ * Fetches with a bounded timeout.
+ *
+ * EVERY external signal cancels the request: the stage budget expiring, the
+ * caller's request budget expiring, and the race being decided by another
+ * mirror. A spent budget must cancel in-flight work instead of letting it
+ * linger on a socket.
  */
 async function fetchWithTimeout(
   url: string,
   options: RequestInit = {},
   timeoutMs = PER_REQUEST_TIMEOUT_MS,
-  externalSignal?: AbortSignal,
+  externalSignals: AbortSignal[] = [],
 ): Promise<Response> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
   const onExternalAbort = () => controller.abort()
-  if (externalSignal) {
-    if (externalSignal.aborted) controller.abort()
-    else externalSignal.addEventListener('abort', onExternalAbort)
+  const listeners: Array<() => void> = []
+  for (const signal of externalSignals) {
+    if (signal.aborted) {
+      controller.abort()
+      continue
+    }
+    signal.addEventListener('abort', onExternalAbort)
+    listeners.push(() => signal.removeEventListener('abort', onExternalAbort))
   }
   try {
     return await fetch(url, { ...options, signal: controller.signal })
   } finally {
     clearTimeout(timeout)
-    externalSignal?.removeEventListener('abort', onExternalAbort)
+    for (const remove of listeners) remove()
   }
 }
 
@@ -305,10 +314,24 @@ function extractFirst(tags: Record<string, string> | undefined, keys: string[]):
   return undefined
 }
 
-function normalizeElement(element: OverpassElement, category: string): BusinessDiscoveryRecord {
+/**
+ * Normalizes one OSM element into a business record.
+ *
+ * Returns `null` when the element cannot be a lead. An element without a
+ * name is NOT a business as far as the Lead Finder is concerned: emitting a
+ * placeholder ("Unnamed Business") would put a fabricated name in front of the
+ * user, which is exactly what the "no fabrication" contract forbids. The
+ * Nominatim fallback provider applies the same rule.
+ */
+function normalizeElement(
+  element: OverpassElement,
+  category: string,
+): BusinessDiscoveryRecord | null {
   const tags = element.tags || {}
 
   const name = extractFirst(tags, NAME_TAGS)
+  // Never fabricate a business: a POI without a usable name is not a lead.
+  if (!name) return null
   const phone = extractFirst(tags, PHONE_TAGS)
   const email = extractFirst(tags, EMAIL_TAGS)
 
@@ -369,7 +392,7 @@ function normalizeElement(element: OverpassElement, category: string): BusinessD
     source: 'OPENSTREETMAP',
     osmType,
     osmId,
-    name: name || 'Unnamed Business',
+    name,
     category,
     address,
     city,
@@ -420,6 +443,14 @@ export interface DiscoverBusinessesOptions {
   radiusMiles: number
   limit?: number
   /**
+   * The caller's abort signal (the route's request budget).
+   *
+   * When it fires, every in-flight mirror request is cancelled: a spent
+   * budget must cancel the upstream work instead of letting it linger on a
+   * socket after the caller has already been answered.
+   */
+  signal?: AbortSignal
+  /**
    * Test/operator override. Allows injecting a custom list of Overpass
    * mirrors (e.g. a loopback URL in tests). Defaults to the public mirrors.
    * Not part of the public API surface — callers should not rely on it.
@@ -438,6 +469,7 @@ export interface DiscoverBusinessesOptions {
 async function attemptMirror(
   endpoint: string,
   query: string,
+  signals: AbortSignal[],
   raceSignal: AbortSignal,
   deadline: StageDeadline,
 ): Promise<OverpassResult> {
@@ -461,7 +493,7 @@ async function attemptMirror(
           body: `data=${encodeURIComponent(query)}`,
         },
         Math.min(PER_REQUEST_TIMEOUT_MS, budgetLeft),
-        raceSignal,
+        signals,
       )
 
       if (!response.ok) {
@@ -474,10 +506,12 @@ async function attemptMirror(
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err))
 
-      // The race was decided elsewhere (or the stage budget is spent): this
-      // mirror did not fail, it was cancelled. Do not poison the circuit
-      // breaker with a loss.
-      if (raceSignal.aborted || deadline.expired()) throw lastError
+      // The race was decided elsewhere (or the stage budget is spent, or the
+      // caller's budget expired): this mirror did not fail, it was cancelled.
+      // Do not poison the circuit breaker with a loss.
+      if (raceSignal.aborted || deadline.expired() || signals.some((s) => s.aborted)) {
+        throw lastError
+      }
 
       recordFailure(endpoint)
 
@@ -495,13 +529,11 @@ async function attemptMirror(
 }
 
 /**
- * Turns the rejection of `Promise.any` into an error that names what actually
- * went wrong.
+ * Turns a rejection into an error that names what actually went wrong.
  *
- * `Promise.any` rejects with an `AggregateError` whose message is the useless
- * "All promises were rejected". The individual mirror errors ("Overpass HTTP
- * 502", "fetch failed", …) are what the route and the logs need, so they are
- * flattened back into the message.
+ * The individual mirror errors ("Overpass HTTP 502", "fetch failed", …) are
+ * what the route and the logs need, so they are flattened back into the
+ * message instead of the useless "All promises were rejected".
  */
 function describeMirrorFailures(err: unknown): Error {
   if (err instanceof AggregateError && err.errors.length > 0) {
@@ -514,7 +546,7 @@ function describeMirrorFailures(err: unknown): Error {
 }
 
 export async function discoverBusinesses(options: DiscoverBusinessesOptions): Promise<BusinessDiscoveryRecord[]> {
-  const { niche, latitude, longitude, radiusMiles, limit = 30, __endpoints } = options
+  const { niche, latitude, longitude, radiusMiles, limit = 30, __endpoints, signal } = options
 
   const mapping = getNicheMapping(niche)
   if (!mapping) {
@@ -547,28 +579,78 @@ export async function discoverBusinesses(options: DiscoverBusinessesOptions): Pr
   // Aborted as soon as one mirror wins, so the losing mirrors stop burning
   // upstream capacity and sockets.
   const raceController = new AbortController()
+  // The stage signal cancels every mirror request when ANY of these happens:
+  // the stage budget expires, the caller's request budget expires, or the
+  // race is decided by another mirror. A spent budget must cancel in-flight
+  // work rather than let it linger.
+  const stageController = new AbortController()
+  const abortStage = () => stageController.abort()
+  if (signal) {
+    if (signal.aborted) stageController.abort()
+    else signal.addEventListener('abort', abortStage, { once: true })
+  }
+  deadline.signal.addEventListener('abort', abortStage, { once: true })
 
   const attempts = endpoints.map((endpoint) =>
-    attemptMirror(endpoint, query, raceController.signal, deadline).then((result) => {
-      raceController.abort()
-      return result
-    }),
+    attemptMirror(
+      endpoint,
+      query,
+      [stageController.signal, raceController.signal],
+      raceController.signal,
+      deadline,
+    ).then(
+      (result) => ({ ok: true as const, result }),
+      (error: Error) => ({ ok: false as const, error }),
+    ),
   )
 
-  let result: OverpassResult | null = null
-  let lastError: Error | null = null
+  // NOTE: the explicit `as` unions keep the declared type — the assignments
+  // happen inside promise callbacks, which TypeScript's control-flow
+  // analysis does not track.
+  let result = null as OverpassResult | null
+  // A mirror that answered but had nothing for this bounding box. It is kept
+  // so an honest empty answer is never reported as "every mirror failed",
+  // but it does NOT win the race: a mirror with real elements does.
+  let emptyResult = null as OverpassResult | null
+  let lastError = null as Error | null
 
   try {
-    // `Promise.any` resolves with the FIRST mirror that succeeds — the stage
-    // costs the slowest successful mirror, never the sum of all of them.
-    result = await withDeadline(Promise.any(attempts), deadline)
+    // The mirrors race, so the stage costs the slowest mirror, never the sum
+    // of all of them. The race ends as soon as a mirror returns real
+    // elements; a mirror that answers with an EMPTY element list keeps the
+    // race alive so a slower mirror with data can still win.
+    await withDeadline(
+      new Promise<void>((resolve) => {
+        let pending = attempts.length
+        for (const attempt of attempts) {
+          attempt.then((outcome) => {
+            if (outcome.ok) {
+              const elements = outcome.result?.elements
+              if (elements && elements.length > 0) {
+                result = outcome.result
+                resolve()
+                return
+              }
+              if (!emptyResult) emptyResult = outcome.result
+            } else {
+              lastError = outcome.error
+            }
+            pending -= 1
+            if (pending === 0) resolve()
+          })
+        }
+      }),
+      deadline,
+    )
   } catch (err) {
     lastError = describeMirrorFailures(err)
   } finally {
     raceController.abort()
+    stageController.abort()
   }
 
-  if (!result || !result.elements) {
+  const chosen = result ?? emptyResult
+  if (!chosen || !chosen.elements) {
     throw new AllOverpassProvidersFailed(
       lastError
         ? `All Overpass providers failed: ${lastError.message}`
@@ -580,10 +662,12 @@ export async function discoverBusinesses(options: DiscoverBusinessesOptions): Pr
   const records: BusinessDiscoveryRecord[] = []
   const seen = new Set<string>()
 
-  for (const element of result.elements) {
+  for (const element of chosen.elements) {
     if (isClosed(element.tags)) continue
 
     const record = normalizeElement(element, mapping.label)
+    // A nameless OSM element is not a lead — never emit a placeholder name.
+    if (!record) continue
 
     // Deduplicate by normalized name + approximate location
     const dedupeKey = `${record.name.toLowerCase()}-${record.city || ''}-${record.region || ''}`.trim()

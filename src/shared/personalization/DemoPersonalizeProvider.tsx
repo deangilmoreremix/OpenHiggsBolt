@@ -3609,6 +3609,26 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
               }
 
               if (jobStatus === 'error') {
+                // A background phase can fail while the static crawl already
+                // produced real assets (a hosting runtime with no browser, a
+                // site that refuses to render). Those assets are still valid
+                // and still downloadable, so they are shown for review and the
+                // failure is reported as a warning rather than as a dead end.
+                const salvaged: DiscoveredAsset[] = Array.isArray(statusData?.result?.discoveredAssets)
+                  ? statusData.result.discoveredAssets
+                  : []
+
+                if (salvaged.length > 0) {
+                  setDiscoveredAssetsState(salvaged)
+                  setDiscoveryStatus('reviewing')
+                  setDiscoveryError(
+                    typeof statusData?.errorMessage === 'string'
+                      ? `Some assets could not be verified (${statusData.errorMessage}). ${salvaged.length} asset(s) are ready to review.`
+                      : `Some assets could not be verified. ${salvaged.length} asset(s) are ready to review.`,
+                  )
+                  return
+                }
+
                 const errorMessage = typeof statusData?.errorMessage === 'string'
                   ? statusData.errorMessage
                   : typeof statusData?.error === 'string'
@@ -3637,7 +3657,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
       // Immediate complete response
       if (discoveredAssets.length === 0) {
-        setDiscoveryError('No useful assets were found on that website.')
+        const serverError = typeof data?.error === 'string' ? data.error : ''
+        setDiscoveryError(
+          serverError || 'No useful assets were found on that website.',
+        )
         setDiscoveryStatus('idle')
         return
       }

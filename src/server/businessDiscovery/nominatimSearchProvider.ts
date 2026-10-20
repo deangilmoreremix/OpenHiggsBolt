@@ -228,20 +228,25 @@ async function fetchWithTimeout(
   url: string,
   options: RequestInit = {},
   timeoutMs = PER_REQUEST_TIMEOUT_MS,
-  externalSignal?: AbortSignal,
+  externalSignals: AbortSignal[] = [],
 ): Promise<Response> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
   const onExternalAbort = () => controller.abort()
-  if (externalSignal) {
-    if (externalSignal.aborted) controller.abort()
-    else externalSignal.addEventListener('abort', onExternalAbort)
+  const listeners: Array<() => void> = []
+  for (const signal of externalSignals) {
+    if (signal.aborted) {
+      controller.abort()
+      continue
+    }
+    signal.addEventListener('abort', onExternalAbort)
+    listeners.push(() => signal.removeEventListener('abort', onExternalAbort))
   }
   try {
     return await fetch(url, { ...options, signal: controller.signal })
   } finally {
     clearTimeout(timeout)
-    externalSignal?.removeEventListener('abort', onExternalAbort)
+    for (const remove of listeners) remove()
   }
 }
 
@@ -432,6 +437,14 @@ export interface NominatimSearchOptions {
    * Not part of the public API surface — callers should not rely on it.
    */
   __baseUrl?: string
+  /**
+   * The caller's abort signal (the route's request budget).
+   *
+   * When it fires, the in-flight Nominatim requests AND the queued rate-gate
+   * reservations are cancelled: a spent budget must cancel the upstream work
+   * instead of letting it linger after the caller has been answered.
+   */
+  signal?: AbortSignal
 }
 
 /**
@@ -471,7 +484,7 @@ interface QueryOutcome {
 export async function searchBusinessesViaNominatim(
   options: NominatimSearchOptions,
 ): Promise<BusinessDiscoveryRecord[]> {
-  const { niche, latitude, longitude, radiusMiles, limit = 30, __baseUrl } = options
+  const { niche, latitude, longitude, radiusMiles, limit = 30, __baseUrl, signal } = options
 
   const mapping = getNicheMapping(niche)
   if (!mapping) {
@@ -486,6 +499,18 @@ export async function searchBusinessesViaNominatim(
   const viewboxParam = `${viewbox.west},${viewbox.south},${viewbox.east},${viewbox.north}`
 
   const deadline = createStageDeadline('nominatim-search', STAGE_DEADLINE_MS)
+  // One signal cancels the whole stage: the stage budget expiring, the
+  // caller's request budget expiring, or the stage finishing. A spent budget
+  // must cancel the queued reservations and the in-flight requests instead of
+  // leaving them running after the caller has been answered.
+  const stageController = new AbortController()
+  const abortStage = () => stageController.abort()
+  if (signal) {
+    if (signal.aborted) stageController.abort()
+    else signal.addEventListener('abort', abortStage, { once: true })
+  }
+  deadline.signal.addEventListener('abort', abortStage, { once: true })
+  const stageSignal = stageController.signal
 
   const seen = new Set<string>()
   let providerError: Error | null = null
@@ -517,13 +542,16 @@ export async function searchBusinessesViaNominatim(
     url.searchParams.set('viewbox', viewboxParam)
     url.searchParams.set('bounded', '1')
 
-    await reserveNominatimStart(deadline.signal)
+    // The reservation is abortable, so a query that is still queued when the
+    // budget is spent releases its slot instead of waiting out the pacing
+    // interval.
+    await reserveNominatimStart(stageSignal)
 
     const response = await fetchWithTimeout(
       url.toString(),
       { headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' } },
       PER_REQUEST_TIMEOUT_MS,
-      deadline.signal,
+      [stageSignal],
     )
 
     if (!response.ok) {
@@ -558,13 +586,25 @@ export async function searchBusinessesViaNominatim(
     if (!(err instanceof Error) || err.name !== 'DeadlineExceededError') {
       providerError = providerError ?? (err instanceof Error ? err : new Error(String(err)))
     }
+  } finally {
+    // The stage is over: cancel whatever is still in flight (a query that
+    // outlived the stage deadline, or a query the caller no longer needs).
+    // Nothing may keep running after the stage returned.
+    stageController.abort()
   }
 
   // Circuit breaker bookkeeping: one call per query, in query order.
+  //
+  // A CANCELLED query (the stage budget expired, or the caller already had
+  // its answer and cancelled the loser) is NOT a provider failure: the
+  // provider did not misbehave, it was stopped. Counting those as failures
+  // would open the circuit after two healthy requests and silently disable
+  // the fallback for the cooldown window.
   let firstError: Error | null = null
   for (const outcome of outcomes) {
     if (!outcome) continue
     if (outcome.error) {
+      if (outcome.error.name === 'AbortError') continue
       recordFailure()
       if (!firstError) firstError = outcome.error
       continue
@@ -618,6 +658,13 @@ export async function searchBusinessesViaNominatim(
     throw cause instanceof NominatimSearchUnavailable
       ? cause
       : new NominatimSearchUnavailable(`Nominatim search failed: ${cause.message}`)
+  }
+
+  if (records.length === 0 && deadline.expired()) {
+    // The stage ran out of budget without producing anything. That is a
+    // provider failure (the route must report it as such), not an honest
+    // "nothing found".
+    throw new NominatimSearchUnavailable('Nominatim search timed out')
   }
 
   return records

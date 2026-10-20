@@ -161,9 +161,12 @@ describe('POST /api/personalization/discover-assets auth', () => {
     vi.mocked(auth).mockResolvedValue({ userId: 'user-123' } as any)
 
     const res = await post('https://example.com')
-    expect(res.status).toBe(200)
+    // The route always accepts a discovery JOB and answers 202 with the job
+    // id, so a long scrape can never block the initial response.
+    expect(res.status).toBe(202)
     const body = await res.json()
     expect(body.ok).toBe(true)
+    expect(typeof body.jobId).toBe('string')
     expect(body.cached).toBe(false)
 
     // Discovery pipeline must have run
@@ -224,9 +227,12 @@ describe('POST /api/personalization/discover-assets auth', () => {
     vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: false } as any)
 
     const res = await post('https://example.com')
-    expect(res.status).toBe(200)
+    // The route always accepts a discovery JOB and answers 202 with the job
+    // id, so a long scrape can never block the initial response.
+    expect(res.status).toBe(202)
     const body = await res.json()
     expect(body.ok).toBe(true)
+    expect(typeof body.jobId).toBe('string')
 
     // Discovery pipeline ran because there is no entitlement gate on this route.
     expect(runFastDiscovery).toHaveBeenCalledTimes(1)

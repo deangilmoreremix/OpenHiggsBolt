@@ -100,7 +100,7 @@ describe('Static discovery', () => {
       maxImages: 10,
     })
 
-    expect(result.providerUsed).toBe('SMARTVIDEO_STATIC')
+    expect(result.providerUsed).toBe('STATIC_FALLBACK')
     expect(result.candidates.length).toBeGreaterThanOrEqual(0)
   })
 
@@ -117,7 +117,7 @@ describe('Static discovery', () => {
       maxImages: 10,
     })
 
-    expect(result.providerUsed).toBe('SMARTVIDEO_STATIC')
+    expect(result.providerUsed).toBe('STATIC_FALLBACK')
   })
 
   it('deduplicates image URLs', async () => {
@@ -574,7 +574,7 @@ describe('Failure handling', () => {
       maxImages: 20,
     })
 
-    expect(result.providerUsed).toBe('SMARTVIDEO_STATIC')
+    expect(result.providerUsed).toBe('STATIC_FALLBACK')
   })
 
   it('returns clear error when all providers fail', async () => {

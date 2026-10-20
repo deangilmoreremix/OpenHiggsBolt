@@ -524,4 +524,26 @@ describe('find-businesses route — rate limiting behavior', () => {
     })
     expect(otherIp.status).toBe(200)
   })
+
+  it('429 answers with JSON carrying a stable code and the correlationId', async () => {
+    // The rate limiter is an error path of this route, so it must obey the
+    // same contract as every other error path: a JSON body a client can
+    // branch on, plus the id that correlates the answer with the log.
+    const ipA = { 'x-real-ip': '203.0.113.77' }
+    for (let i = 0; i < 10; i += 1) {
+      const res = await post({ niche: NICHE, location: LOCATION }, ipA)
+      expect(res.status).toBe(200)
+    }
+
+    const blocked = await post({ niche: NICHE, location: LOCATION }, ipA)
+    expect(blocked.status).toBe(429)
+    expect(blocked.headers.get('content-type')).toMatch(/application\/json/i)
+    expect(blocked.headers.get('retry-after')).toBe('60')
+    expect(blocked.headers.get('x-correlation-id')).toBe('test-correlation-id')
+
+    const body = await blocked.json()
+    expect(body.error).toMatch(/rate limit exceeded/i)
+    expect(body.code).toBe('RATE_LIMITED')
+    expect(body.correlationId).toBe('test-correlation-id')
+  })
 })

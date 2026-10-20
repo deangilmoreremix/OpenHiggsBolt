@@ -1,25 +1,24 @@
 /**
  * Discovery orchestrator that chooses between providers in priority order:
- * 1. Cache
- * 2. Static/HTTP (SmartVideo lightweight crawler)
- * 3. Structured data extraction
- * 4. Sitemap discovery
- * 5. Crawlee CheerioCrawler (free HTTP multi-page)
- * 6. Browser fallback (if enabled and previous layers insufficient)
- * 7. Firecrawl (optional last resort, only if explicitly enabled)
+ * 1. Static/HTTP (SmartVideo lightweight crawler)
+ * 2. Sitemap discovery (which also seeds the multi-page crawl)
+ * 3. Crawlee CheerioCrawler (free HTTP multi-page)
+ * 4. Browser fallback (if enabled and previous layers insufficient)
+ * 5. Firecrawl (optional last resort, only if explicitly enabled)
  *
- * Then runs the shared normalize/filter/classify pipeline.
+ * Layers 1-3 live in `fastDiscovery.ts` and are shared with the
+ * `/api/personalization/discover-assets` route, so the route and this
+ * orchestrator can never disagree about what the free pipeline does. This
+ * module adds the two optional layers on top.
  */
 
 import type { ImageCandidate, DiscoveryResult, SocialProfileSource } from './discoveryProvider'
 import { FirecrawlDiscoveryProvider } from './firecrawlDiscovery'
-import { StaticDiscoveryProvider } from './staticDiscovery'
-import { sanitizeUrl, classifyImage, heuristicFallback } from './discoverAssets'
+import { sanitizeUrl } from './discoverAssets'
 import { getBusinessAssetClassificationModel } from './discoveryClassificationConfig'
 import { autoPlaceAssets, DEFAULT_AUTO_PLACEMENT_CONFIG } from './autoPlacementEngine'
-import { discoverSitemapUrls } from './sitemapDiscovery'
 import { isBrowserDiscoveryAvailable } from './browserDiscovery'
-import { buildDiscoveredAssetsFromCandidates } from './fastDiscovery'
+import { buildDiscoveredAssetsFromCandidates, runFastDiscovery } from './fastDiscovery'
 import type { DiscoveredAsset, DiscoveredAssetCategory } from '../shared/personalization/types'
 import {
   USEFUL_CATEGORIES,
@@ -37,6 +36,7 @@ export interface OrchestratedDiscoveryOptions {
   enableFirecrawlFallback?: boolean
   enableBrowserFallback?: boolean
   minAcceptableAssets?: number
+  deadlineAt?: number
 }
 
 export interface OrchestratedDiscoveryResult {
@@ -128,6 +128,7 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
     enableFirecrawlFallback = false,
     enableBrowserFallback = false,
     minAcceptableAssets = MIN_ACCEPTABLE_ASSETS,
+    deadlineAt,
   } = options
 
   const baseUrl = sanitizeUrl(websiteUrl)
@@ -140,86 +141,46 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
   let crawleePagesCrawled = 0
   let sitemapFound = false
 
-  // 1. Try static/HTTP first (always)
-  providerAttempts.push('SMARTVIDEO_STATIC')
-  try {
-    const staticProvider = new StaticDiscoveryProvider()
-    result = await staticProvider.discover({
-      websiteUrl: baseUrl,
-      maxPages,
-      maxImages,
-      openAiKey,
-      openAiModel,
-    })
-    providerUsed = 'SMARTVIDEO_STATIC'
-  } catch (err) {
-    console.error('[discovery] Static failed:', err instanceof Error ? err.message : err)
-    result = null
+  // 1-3. Static, sitemap and Crawlee — the shared free pipeline.
+  const fast = await runFastDiscovery({
+    websiteUrl: baseUrl,
+    maxPages,
+    maxImages,
+    openAiKey,
+    openAiModel,
+    deadlineAt,
+  })
+
+  result = {
+    candidates: fast.result.candidates,
+    provider: fast.result.providerUsed,
+    pagesCrawled: fast.result.pagesCrawled,
+    rawCandidates: fast.result.rawCandidates,
+    socialProfiles: fast.result.socialProfiles,
+  }
+  let discoveredAssets: DiscoveredAsset[] = fast.fastAssets
+  let localUsefulAssetCount = discoveredAssets.filter((asset) => isUsefulCategory(asset.category)).length
+  crawleePagesCrawled = fast.result.crawleePagesCrawled || 0
+  sitemapFound = Boolean(fast.result.sitemapFound)
+
+  // The attempt list names the layers that RAN, not the layers that were
+  // entered. A provider that was tried and produced nothing is not
+  // "attempted" as far as the caller is concerned.
+  const attemptedProviders: string[] = ['SMARTVIDEO_STATIC']
+  providerUsed = fast.result.providerUsed || 'SMARTVIDEO_STATIC'
+  if (fast.providerAttempts.includes('CRAWLEE_CHEERIO_COMPLETED')) {
+    attemptedProviders.push('CRAWLEE_CHEERIO')
+    providerUsed = 'CRAWLEE_CHEERIO'
   }
 
-  // 2. Build initial discovered assets from static result and check usefulness
-  let discoveredAssets: DiscoveredAsset[] = []
-  let localUsefulAssetCount = 0
-
-  if (result?.candidates?.length) {
-    discoveredAssets = await buildDiscoveredAssetsFromCandidates(result.candidates, maxImages)
-    localUsefulAssetCount = discoveredAssets.filter((asset) => isUsefulCategory(asset.category)).length
-  }
-
-  const staticSufficient = hasEnoughUsefulAssets(discoveredAssets)
-
-  // 3. Sitemap discovery — find high-value pages
-  const sitemapCandidates: string[] = []
-  if (!staticSufficient) {
-    try {
-      sitemapCandidates.push(...(await discoverSitemapUrls(baseUrl)))
-      sitemapFound = sitemapCandidates.length > 0
-    } catch (err) {
-      console.error('[discovery] Sitemap discovery failed:', err instanceof Error ? err.message : err)
-    }
-  }
-
-  // 4. Crawlee CheerioCrawler — free HTTP multi-page discovery
-  if (!staticSufficient && sitemapCandidates.length > 0) {
-    providerAttempts.push('CRAWLEE_CHEERIO')
-    try {
-      const { discoverWithCrawlee } = await import('./crawleeProvider')
-      const crawleeResult = await discoverWithCrawlee(baseUrl)
-      if (crawleeResult.candidates.length > 0) {
-        const existingUrls = new Set(result?.candidates?.map((c) => c.url) || [])
-        const newCandidates = crawleeResult.candidates.filter((c) => !existingUrls.has(c.url))
-
-        if (result) {
-          result = {
-            ...result,
-            candidates: [...result.candidates, ...newCandidates],
-            rawCandidates: (result.rawCandidates || 0) + crawleeResult.rawCandidates,
-            pagesCrawled: (result.pagesCrawled || 0) + crawleeResult.pagesCrawled,
-          }
-        } else {
-          result = {
-            candidates: newCandidates,
-            provider: 'CRAWLEE_CHEERIO',
-            pagesCrawled: crawleeResult.pagesCrawled,
-            rawCandidates: crawleeResult.rawCandidates,
-            socialProfiles: crawleeResult.socialProfiles,
-          }
-        }
-
-        const crawleeAssets = await buildDiscoveredAssetsFromCandidates(newCandidates, maxImages)
-        discoveredAssets = [...discoveredAssets, ...crawleeAssets]
-        localUsefulAssetCount = discoveredAssets.filter((asset) => isUsefulCategory(asset.category)).length
-        crawleePagesCrawled = crawleeResult.pagesCrawled
-        providerUsed = 'CRAWLEE_CHEERIO'
-      }
-    } catch (err) {
-      console.error('[discovery] Crawlee fallback failed:', err instanceof Error ? err.message : err)
-    }
-  }
-
-  // 5. If still insufficient and browser fallback enabled, try browser
+  // 4. If still insufficient and browser fallback enabled, try browser.
+  //
+  // The browser layer only runs when the free layers did not produce enough
+  // usable assets — a site whose static crawl already found the assets never
+  // pays for a browser. On a runtime with no browser the layer is skipped
+  // and the free result stands.
   if (!hasEnoughUsefulAssets(discoveredAssets) && enableBrowserFallback) {
-    providerAttempts.push('SMARTVIDEO_BROWSER')
+    attemptedProviders.push('SMARTVIDEO_BROWSER')
     if (!isBrowserDiscoveryAvailable()) {
       console.warn('[discovery] Browser fallback skipped: Playwright is not available in this runtime.')
     } else {
@@ -250,7 +211,13 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
             }
           }
 
-          const browserAssets = await buildDiscoveredAssetsFromCandidates(newCandidates, maxImages)
+          // The browser phase is the out-of-band phase: it runs when the free
+          // layers were not enough, which is often BECAUSE the run deadline
+          // ran out. It is therefore not bound by the fast-phase deadline —
+          // each probe only pays the ordinary per-request timeout.
+          const browserAssets = await buildDiscoveredAssetsFromCandidates(newCandidates, maxImages, {
+            validate: true,
+          })
           discoveredAssets = [...discoveredAssets, ...browserAssets]
           localUsefulAssetCount = discoveredAssets.filter((asset) => isUsefulCategory(asset.category)).length
           providerUsed = 'SMARTVIDEO_BROWSER'
@@ -263,12 +230,12 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
 
   const firecrawlSkippedReason = getFirecrawlSkipReason(enableFirecrawlFallback, firecrawlApiKey, discoveredAssets)
 
-  // 6. If still insufficient and Firecrawl fallback enabled, try Firecrawl
+  // 5. If still insufficient and Firecrawl fallback enabled, try Firecrawl
   const useFirecrawl = enableFirecrawlFallback && firecrawlApiKey && !hasEnoughUsefulAssets(discoveredAssets)
 
   if (useFirecrawl) {
     firecrawlReason = getFirecrawlReason(discoveredAssets)
-    providerAttempts.push('FIRECRAWL')
+    attemptedProviders.push('FIRECRAWL')
     try {
       const firecrawl = new FirecrawlDiscoveryProvider(firecrawlApiKey)
       const firecrawlResult = await firecrawl.discover({
@@ -308,7 +275,7 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
 
   return {
     providerUsed,
-    providerAttempted: providerAttempts[providerAttempts.length - 1] || 'NONE',
+    providerAttempted: attemptedProviders[attemptedProviders.length - 1] || 'NONE',
     candidates: finalResult.candidates || [],
     pagesCrawled: finalResult.pagesCrawled || 0,
     rawCandidates: finalResult.rawCandidates || 0,
@@ -316,7 +283,7 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
     socialProfiles: finalResult.socialProfiles || [],
     discoveredAssets,
     firecrawlUsed,
-    providerAttempts,
+    providerAttempts: attemptedProviders,
     firecrawlReason,
     firecrawlSkippedReason,
     localUsefulAssetCount,

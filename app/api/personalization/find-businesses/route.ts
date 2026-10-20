@@ -39,6 +39,24 @@ const ANON_RATE_LIMIT_MAX = 100
 const SEARCH_TIMEOUT_MESSAGE =
   'Business search timed out. Please try a smaller radius or a different location.'
 
+// Stable, machine-readable error codes. Every error path of this route
+// answers with one of these plus the correlationId, so a client can branch
+// on the failure without parsing prose.
+const ERROR_CODES = {
+  MISSING_NICHE: 'MISSING_NICHE',
+  MISSING_LOCATION: 'MISSING_LOCATION',
+  LOCATION_TOO_LONG: 'LOCATION_TOO_LONG',
+  UNSUPPORTED_NICHE: 'UNSUPPORTED_NICHE',
+  GEOCODE_FAILED: 'GEOCODE_FAILED',
+  GEOCODE_UPSTREAM_FAILED: 'GEOCODE_UPSTREAM_FAILED',
+  SEARCH_TIMEOUT: 'SEARCH_TIMEOUT',
+  OVERPASS_ALL_MIRRORS_FAILED: 'OVERPASS_ALL_MIRRORS_FAILED',
+  DISCOVERY_UPSTREAM_FAILED: 'DISCOVERY_UPSTREAM_FAILED',
+  UNEXPECTED_ERROR: 'UNEXPECTED_ERROR',
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const
+
 // Proxy-trust assumption:
 // - `x-real-ip` is stamped by the trusted reverse proxy (nginx
 //   `proxy_set_header X-Real-IP $remote_addr`, or most load balancers) and is
@@ -94,14 +112,40 @@ function isBudgetExhausted(err: unknown): boolean {
 const ALL_OVERPASS_FAILED_USER_MESSAGE =
   'Local business search is temporarily busy. Please try again in a moment or enter a business website manually to continue.'
 
+/**
+ * JSON answer for an upstream (502) failure.
+ *
+ * The body always carries a stable `code` and the `correlationId`, so the
+ * client can branch on the failure and a support request can be correlated
+ * with the server-side log. Provider internals never leak into it.
+ */
 function serverErrorResponse(
   error: string,
   correlationId: string,
+  code: string,
   extras: Record<string, unknown> = {},
 ): NextResponse {
   return NextResponse.json(
-    { error, correlationId, ...extras },
+    { error, code, correlationId, ...extras },
     { status: 502, headers: { 'x-correlation-id': correlationId } },
+  )
+}
+
+/**
+ * JSON answer for a caller (400) error.
+ *
+ * Same contract as the 502/504 answers: a stable `code` and the
+ * `correlationId` are always present.
+ */
+function clientErrorResponse(
+  error: string,
+  correlationId: string,
+  code: string,
+  status = 400,
+): NextResponse {
+  return NextResponse.json(
+    { error, code, correlationId },
+    { status, headers: { 'x-correlation-id': correlationId } },
   )
 }
 
@@ -117,7 +161,7 @@ function searchTimeoutResponse(
   extras: Record<string, unknown> = {},
 ): NextResponse {
   return NextResponse.json(
-    { error: SEARCH_TIMEOUT_MESSAGE, code: 'SEARCH_TIMEOUT', correlationId, ...extras },
+    { error: SEARCH_TIMEOUT_MESSAGE, code: ERROR_CODES.SEARCH_TIMEOUT, correlationId, ...extras },
     { status: 504, headers: { 'x-correlation-id': correlationId } },
   )
 }
@@ -128,18 +172,31 @@ type ProviderOutcome<T> = {
   error?: Error
 }
 
+/** How a provider contributed to the answer. */
+type ProviderState = 'contributed' | 'failed' | 'empty' | 'cancelled'
+
 /**
- * Resolves with the first provider that produced records.
+ * Resolves with the first provider that produced REAL records.
  *
- * A provider that fails (or finds nothing) never stops the others. When the
- * first provider to answer produced FEWER records than the caller asked for,
- * the remaining provider is awaited too (bounded by the caller's deadline)
- * and the richer result set wins — a thin answer from a fast provider never
- * silently starves the response.
+ * The two providers are independent OSM query paths, so the request costs the
+ * fastest one that has data — never the sum of both. Concretely:
+ *
+ *  - The first provider that returns at least one record wins the race. The
+ *    Nominatim fallback therefore NEVER waits for the Overpass provider to
+ *    finish: a degraded Overpass (the production incident: every mirror
+ *    hanging) can no longer add its full stage deadline to the fallback's
+ *    latency.
+ *  - A provider that FAILS never stops the other one, and a provider that
+ *    fails is never a reason to discard a good sibling result.
+ *  - When both providers have already settled, the RICHER record set wins
+ *    (more businesses for the same request).
+ *  - `abort` is called as soon as the race is decided, so the losing
+ *    provider's in-flight upstream requests are cancelled instead of
+ *    lingering after the response was produced.
  */
 function raceProviders<T>(
   providers: Array<Promise<ProviderOutcome<T>>>,
-  wanted: number,
+  abort: () => void,
 ): Promise<{ winner: ProviderOutcome<T> | null; outcomes: ProviderOutcome<T>[] }> {
   return new Promise((resolve) => {
     const outcomes: ProviderOutcome<T>[] = []
@@ -154,24 +211,27 @@ function raceProviders<T>(
     const settle = (winner: ProviderOutcome<T> | null) => {
       if (settled) return
       settled = true
+      // The loser must stop working: cancel its in-flight upstream requests.
+      abort()
       resolve({ winner, outcomes })
     }
 
     for (const provider of providers) {
       provider.then((outcome) => {
+        if (settled) return
         outcomes.push(outcome)
         pending -= 1
         const count = outcome.records?.length ?? 0
-        // A complete answer ends the race immediately.
-        if (count > 0 && count >= wanted) {
-          settle(outcome)
-          return
-        }
-        if (pending === 0) {
+        if (count > 0) {
+          // Prefer an already-settled sibling that has MORE records.
           const best = outcomes
             .filter((o) => (o.records?.length ?? 0) > 0)
             .sort((a, b) => (b.records?.length ?? 0) - (a.records?.length ?? 0))[0]
-          settle(best ?? null)
+          settle(best)
+          return
+        }
+        if (pending === 0) {
+          settle(null)
         }
       })
     }
@@ -193,7 +253,42 @@ export async function POST(req: NextRequest) {
   // bucket; IP-keyed callers keep the strict per-IP limit.
   const rateLimitMax = rateLimitKey === 'anon' ? ANON_RATE_LIMIT_MAX : RATE_LIMIT_MAX
   const rateLimitResult = rateLimit(rateLimitKey, { windowMs: RATE_LIMIT_WINDOW_MS, max: rateLimitMax })
-  if (!rateLimitResult.allowed) return rateLimit429(rateLimitResult.retryAfterMs)
+  if (!rateLimitResult.allowed) {
+    logPersonalization({
+      route: '/api/personalization/find-businesses',
+      stage: 'rate-limit',
+      httpStatus: 429,
+      safeErrorCode: ERROR_CODES.RATE_LIMITED,
+      safeMessage: 'Rate limit exceeded',
+      correlationId,
+    })
+    // The shared limiter helper owns the user-facing copy and the Retry-After
+    // header; the route adds the stable `code` and the `correlationId` so
+    // EVERY error path of this route answers with the same JSON contract
+    // (a JSON body a client can branch on, never a bare string).
+    const limited = rateLimit429(rateLimitResult.retryAfterMs)
+    let limitedMessage = 'Rate limit exceeded. Please wait before retrying.'
+    try {
+      const limitedBody = (await limited.json()) as { error?: string }
+      if (typeof limitedBody?.error === 'string' && limitedBody.error.length > 0) {
+        limitedMessage = limitedBody.error
+      }
+    } catch {
+      // The helper answered with a non-JSON body: keep the local copy.
+    }
+    return NextResponse.json(
+      { error: limitedMessage, code: ERROR_CODES.RATE_LIMITED, correlationId },
+      {
+        status: 429,
+        headers: {
+          'Retry-After':
+            limited.headers.get('retry-after') ??
+            String(Math.ceil(rateLimitResult.retryAfterMs / 1000)),
+          'x-correlation-id': correlationId,
+        },
+      },
+    )
+  }
 
   try {
     const body = await req.json().catch(() => ({}))
@@ -215,35 +310,36 @@ export async function POST(req: NextRequest) {
         route: '/api/personalization/find-businesses',
         stage: 'validation',
         httpStatus: 400,
-        safeErrorCode: 'MISSING_NICHE',
+        safeErrorCode: ERROR_CODES.MISSING_NICHE,
         safeMessage: 'niche is required',
         correlationId,
       })
-      return NextResponse.json({ error: 'niche is required' }, { status: 400 })
+      return clientErrorResponse('niche is required', correlationId, ERROR_CODES.MISSING_NICHE)
     }
     if (!location) {
       logPersonalization({
         route: '/api/personalization/find-businesses',
         stage: 'validation',
         httpStatus: 400,
-        safeErrorCode: 'MISSING_LOCATION',
+        safeErrorCode: ERROR_CODES.MISSING_LOCATION,
         safeMessage: 'location is required',
         correlationId,
       })
-      return NextResponse.json({ error: 'location is required' }, { status: 400 })
+      return clientErrorResponse('location is required', correlationId, ERROR_CODES.MISSING_LOCATION)
     }
     if (location.length > MAX_LOCATION_LENGTH) {
       logPersonalization({
         route: '/api/personalization/find-businesses',
         stage: 'validation',
         httpStatus: 400,
-        safeErrorCode: 'LOCATION_TOO_LONG',
+        safeErrorCode: ERROR_CODES.LOCATION_TOO_LONG,
         safeMessage: `location exceeds ${MAX_LOCATION_LENGTH} characters`,
         correlationId,
       })
-      return NextResponse.json(
-        { error: `location must be at most ${MAX_LOCATION_LENGTH} characters` },
-        { status: 400 },
+      return clientErrorResponse(
+        `location must be at most ${MAX_LOCATION_LENGTH} characters`,
+        correlationId,
+        ERROR_CODES.LOCATION_TOO_LONG,
       )
     }
 
@@ -258,13 +354,15 @@ export async function POST(req: NextRequest) {
         stage: 'validation',
         provider: 'OPENSTREETMAP',
         httpStatus: 400,
-        safeErrorCode: 'UNSUPPORTED_NICHE',
+        safeErrorCode: ERROR_CODES.UNSUPPORTED_NICHE,
         safeMessage: `Unsupported niche: "${niche}". Supported: ${getSupportedNiches().join(', ')}`,
         correlationId,
       })
-      return NextResponse.json({
-        error: `Unsupported niche. Supported niches: ${getSupportedNiches().join(', ')}`,
-      }, { status: 400 })
+      return clientErrorResponse(
+        `Unsupported niche. Supported niches: ${getSupportedNiches().join(', ')}`,
+        correlationId,
+        ERROR_CODES.UNSUPPORTED_NICHE,
+      )
     }
 
     // Validate and bound radius
@@ -313,7 +411,7 @@ export async function POST(req: NextRequest) {
           stage: 'geocode',
           provider: 'NOMINATIM',
           httpStatus: 504,
-          safeErrorCode: 'SEARCH_TIMEOUT',
+          safeErrorCode: ERROR_CODES.SEARCH_TIMEOUT,
           safeMessage: 'Request budget exhausted during geocoding',
           correlationId,
           durationMs: Date.now() - startTime,
@@ -327,7 +425,7 @@ export async function POST(req: NextRequest) {
           stage: 'geocode',
           provider: 'NOMINATIM',
           httpStatus: 502,
-          safeErrorCode: 'GEOCODE_UPSTREAM_FAILED',
+          safeErrorCode: ERROR_CODES.GEOCODE_UPSTREAM_FAILED,
           safeMessage: message,
           correlationId,
           durationMs: Date.now() - startTime,
@@ -335,6 +433,7 @@ export async function POST(req: NextRequest) {
         return serverErrorResponse(
           'Unable to look up the location right now. Please try again shortly.',
           correlationId,
+          ERROR_CODES.GEOCODE_UPSTREAM_FAILED,
         )
       }
       logPersonalization({
@@ -342,14 +441,12 @@ export async function POST(req: NextRequest) {
         stage: 'geocode',
         provider: 'NOMINATIM',
         httpStatus: 400,
-        safeErrorCode: 'GEOCODE_FAILED',
+        safeErrorCode: ERROR_CODES.GEOCODE_FAILED,
         safeMessage: message,
         correlationId,
         durationMs: Date.now() - startTime,
       })
-      return NextResponse.json({
-        error: message,
-      }, { status: 400 })
+      return clientErrorResponse(message, correlationId, ERROR_CODES.GEOCODE_FAILED)
     }
 
     // ── Discover businesses ──────────────────────────────────────────────
@@ -363,12 +460,25 @@ export async function POST(req: NextRequest) {
     //
     // Both providers carry their own stage budget (Overpass 9s, Nominatim
     // 7s), so neither can outrun the request.
+    //
+    // The geocode is computed ONCE and its coordinates feed BOTH providers,
+    // so the location is never looked up twice.
+    //
+    // `providerAbort` is the request budget's cancellation handle for the
+    // discovery stage: it fires when the route budget expires AND when the
+    // race is decided, so the losing provider's upstream requests are
+    // cancelled instead of lingering after the answer was produced.
+    const providerAbort = new AbortController()
+    const abortProviders = () => providerAbort.abort()
+    deadline.signal.addEventListener('abort', abortProviders, { once: true })
+
     const overpassOutcome = discoverBusinesses({
       niche,
       latitude: geocodeResult.latitude,
       longitude: geocodeResult.longitude,
       radiusMiles: boundedRadius,
       limit: limit * 3, // Get extra for deduplication
+      signal: providerAbort.signal,
     }).then(
       (records) => ({ source: 'OPENSTREETMAP' as const, records }),
       (error: Error) => ({ source: 'OPENSTREETMAP' as const, error }),
@@ -385,6 +495,7 @@ export async function POST(req: NextRequest) {
       radiusMiles: boundedRadius,
       location,
       limit: limit * 3, // Get extra for deduplication
+      signal: providerAbort.signal,
     }).then(
       (records) => ({ source: 'NOMINATIM_SEARCH' as const, records }),
       (error: Error) => ({ source: 'NOMINATIM_SEARCH' as const, error }),
@@ -393,7 +504,9 @@ export async function POST(req: NextRequest) {
     let race: { winner: ProviderOutcome<unknown> | null; outcomes: ProviderOutcome<unknown>[] }
     try {
       race = await withDeadline(
-        raceProviders([overpassOutcome, nominatimOutcome], limit),
+        // The race is decided by the first provider with REAL records; the
+        // loser is cancelled the moment the race is decided.
+        raceProviders([overpassOutcome, nominatimOutcome], abortProviders),
         deadline,
       )
     } catch (err) {
@@ -403,7 +516,7 @@ export async function POST(req: NextRequest) {
           stage: 'discover',
           provider: 'OPENSTREETMAP',
           httpStatus: 504,
-          safeErrorCode: 'SEARCH_TIMEOUT',
+          safeErrorCode: ERROR_CODES.SEARCH_TIMEOUT,
           safeMessage: 'Request budget exhausted during business discovery',
           correlationId,
           durationMs: Date.now() - startTime,
@@ -419,9 +532,32 @@ export async function POST(req: NextRequest) {
         })
       }
       throw err
+    } finally {
+      // Whatever happened, the discovery stage is over: cancel the providers
+      // that are still working so nothing lingers behind the response.
+      abortProviders()
     }
 
     const winner = race.winner
+
+    // Per-provider contribution report. A provider that never settled was
+    // cancelled when the race was decided; it contributed nothing.
+    const providerStates: Record<string, ProviderState> = {}
+    for (const source of ['OPENSTREETMAP', 'NOMINATIM_SEARCH'] as const) {
+      const outcome = race.outcomes.find((o) => o.source === source)
+      if (!outcome) {
+        providerStates[source] = 'cancelled'
+      } else if (outcome.error) {
+        providerStates[source] = 'failed'
+      } else if ((outcome.records?.length ?? 0) > 0) {
+        providerStates[source] = 'contributed'
+      } else {
+        providerStates[source] = 'empty'
+      }
+    }
+    const contributingProviders = Object.values(providerStates).filter(
+      (state) => state === 'contributed',
+    ).length
 
     if (!winner || !winner.records || winner.records.length === 0) {
       // Neither provider produced a business. Report the honest upstream
@@ -439,22 +575,30 @@ export async function POST(req: NextRequest) {
         provider: 'OPENSTREETMAP',
         httpStatus: 502,
         safeErrorCode: overpassError
-          ? 'OVERPASS_ALL_MIRRORS_FAILED'
-          : 'DISCOVERY_UPSTREAM_FAILED',
+          ? ERROR_CODES.OVERPASS_ALL_MIRRORS_FAILED
+          : ERROR_CODES.DISCOVERY_UPSTREAM_FAILED,
         safeMessage,
         correlationId,
         durationMs: Date.now() - startTime,
       })
 
-      return serverErrorResponse(ALL_OVERPASS_FAILED_USER_MESSAGE, correlationId, {
-        partial: {
-          geocode: {
-            latitude: geocodeResult.latitude,
-            longitude: geocodeResult.longitude,
-            displayName: geocodeResult.displayName,
+      return serverErrorResponse(
+        ALL_OVERPASS_FAILED_USER_MESSAGE,
+        correlationId,
+        overpassError
+          ? ERROR_CODES.OVERPASS_ALL_MIRRORS_FAILED
+          : ERROR_CODES.DISCOVERY_UPSTREAM_FAILED,
+        {
+          partial: {
+            geocode: {
+              latitude: geocodeResult.latitude,
+              longitude: geocodeResult.longitude,
+              displayName: geocodeResult.displayName,
+            },
+            providers: providerStates,
           },
         },
-      })
+      )
     }
 
     // Deduplicate
@@ -483,14 +627,35 @@ export async function POST(req: NextRequest) {
       durationMs,
     })
 
-    return NextResponse.json({
-      ok: true,
-      query: { niche: mapping.label, location, radiusMiles: boundedRadius },
-      count: limited.length,
-      businesses: limited,
-      providerUsed: winner.source,
-      durationMs,
-    })
+    // `partial` is present when exactly ONE provider contributed the
+    // businesses: the answer is real and valid, but it came from a single
+    // source, so the client (and the support log) can tell a degraded
+    // answer from a full one.
+    const partial =
+      contributingProviders === 1
+        ? {
+            geocode: {
+              latitude: geocodeResult.latitude,
+              longitude: geocodeResult.longitude,
+              displayName: geocodeResult.displayName,
+            },
+            providers: providerStates,
+          }
+        : undefined
+
+    return NextResponse.json(
+      {
+        ok: true,
+        query: { niche: mapping.label, location, radiusMiles: boundedRadius },
+        count: limited.length,
+        businesses: limited,
+        providerUsed: winner.source,
+        durationMs,
+        correlationId,
+        ...(partial ? { partial } : {}),
+      },
+      { headers: { 'x-correlation-id': correlationId } },
+    )
   } catch (err) {
     if (isBudgetExhausted(err)) {
       logPersonalization({
@@ -498,7 +663,7 @@ export async function POST(req: NextRequest) {
         stage: 'unhandled',
         provider: 'OPENSTREETMAP',
         httpStatus: 504,
-        safeErrorCode: 'SEARCH_TIMEOUT',
+        safeErrorCode: ERROR_CODES.SEARCH_TIMEOUT,
         safeMessage: 'Request budget exhausted',
         correlationId,
         durationMs: Date.now() - startTime,
@@ -509,22 +674,27 @@ export async function POST(req: NextRequest) {
     // SSRF/networkSafety rejections are caller mistakes (400); everything else
     // here is unexpected and must stay generic (details go to the log only).
     const status = message.includes('not allowed') || message.includes('Private') ? 400 : 500
+    const code = status >= 500 ? ERROR_CODES.UNEXPECTED_ERROR : ERROR_CODES.VALIDATION_ERROR
     logPersonalization({
       route: '/api/personalization/find-businesses',
       stage: 'unhandled',
       provider: 'OPENSTREETMAP',
       httpStatus: status,
-      safeErrorCode: status >= 500 ? 'UNEXPECTED_ERROR' : 'VALIDATION_ERROR',
+      safeErrorCode: code,
       safeMessage: message,
       correlationId,
       durationMs: Date.now() - startTime,
     })
     if (status >= 500) {
       return NextResponse.json(
-        { error: 'Unable to complete the business search. Please try again shortly.', correlationId },
+        {
+          error: 'Unable to complete the business search. Please try again shortly.',
+          code,
+          correlationId,
+        },
         { status, headers: { 'x-correlation-id': correlationId } },
       )
     }
-    return NextResponse.json({ error: message }, { status })
+    return clientErrorResponse(message, correlationId, code, status)
   }
 }
