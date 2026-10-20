@@ -10,6 +10,7 @@ import {
   fontStackById,
   isImageLayerKind,
 } from '../preview/presets'
+import { getRemotionDesignTemplate } from '../templates'
 import type {
   PersonalizationPreviewSettings,
   PreviewInputProps,
@@ -42,9 +43,17 @@ const LAYER_LABELS: Record<PreviewLayerKind, string> = {
   serviceImage: 'Service image',
   tagline: 'Tagline',
   endCard: 'End card',
+  design: 'Design',
 }
 
-const TEXT_KINDS: PreviewLayerKind[] = ['businessName', 'headline', 'offer', 'cta', 'tagline']
+const TEXT_KINDS: PreviewLayerKind[] = [
+  'businessName',
+  'headline',
+  'offer',
+  'cta',
+  'tagline',
+  'design',
+]
 
 /** Corner-handle keyboard step: 2% of the frame per press, 10% with Shift. */
 const RESIZE_KEYBOARD_STEP = 0.02
@@ -57,6 +66,9 @@ function layerText(layer: PreviewLayer, brand: PreviewInputProps['brand']): stri
   if (layer.kind === 'offer') return brand.offer
   if (layer.kind === 'cta') return brand.cta
   if (layer.kind === 'tagline') return brand.headline
+  // A design's primary slot is fed by the headline unless the customer
+  // typed something on the layer.
+  if (layer.kind === 'design') return brand.headline
   return ''
 }
 
@@ -144,6 +156,13 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
 
   const editableLayers = settings.layers.filter((layer) => layer.kind !== 'endCard')
   const selected = settings.layers.find((layer) => layer.id === selectedId) || settings.layers[0] || null
+  const selectedDesign =
+    selected?.kind === 'design' && selected.designId
+      ? getRemotionDesignTemplate(selected.designId)
+      : undefined
+  // A design labels its primary text slot; the plain layers just say "Text".
+  const selectedTextLabel =
+    selectedDesign?.textSlots?.find((slot) => slot && slot.primary)?.label ?? 'Text'
 
   const controlId = (name: string) => `${fieldPrefix}-${name}`
   const round = (value: number) => Number(value.toFixed(4))
@@ -330,12 +349,14 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
           {factor > 0 &&
             editableLayers.filter((layer) => layer.visible).map((layer) => {
               const box = toStageBox(layer, compW, compH, stageWidth)
+              const isDesign = layer.kind === 'design'
               const text = layerText(layer, brand)
               const imageUrl = layerImageUrl(layer, brand)
-              if (!isImageLayerKind(layer.kind) && !text.trim()) return null
+              if (!isDesign && !isImageLayerKind(layer.kind) && !text.trim()) return null
               if (isImageLayerKind(layer.kind) && !imageUrl) return null
               const isSelected = selected?.id === layer.id
               const color = layer.color ?? (layer.kind === 'cta' ? settings.brandColors.accent : settings.brandColors.text)
+              const design = isDesign && layer.designId ? getRemotionDesignTemplate(layer.designId) : undefined
 
               return (
                 <div
@@ -361,6 +382,25 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                 >
                   {isImageLayerKind(layer.kind) ? (
                     <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+                  ) : isDesign ? (
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textAlign: 'center',
+                        color: settings.brandColors.text,
+                        fontSize: Math.max(10, Math.round(compH * 0.024)),
+                        fontWeight: 700,
+                        border: `1px dashed ${C.cyanBorder}`,
+                        borderRadius: 10,
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      {design ? design.name : 'Design'}
+                    </div>
                   ) : layer.kind === 'cta' ? (
                     <div style={{ width: '100%', textAlign: 'center' }}>
                       <span
@@ -471,10 +511,18 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
             <div style={{ ...softPanelStyle, display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
               <div style={{ color: C.text, fontSize: 12, fontWeight: 800 }}>{LAYER_LABELS[selected.kind]}</div>
 
+              {selected.kind === 'design' && (
+                <div style={{ color: C.muted, fontSize: 10 }}>
+                  {selectedDesign
+                    ? `${selectedDesign.name} — ${selectedDesign.description}`
+                    : 'This design is not registered, so it will not render.'}
+                </div>
+              )}
+
               {TEXT_KINDS.includes(selected.kind) && (
                 <>
                   <div>
-                    <label style={labelStyle} htmlFor={controlId('text')}>Text</label>
+                    <label style={labelStyle} htmlFor={controlId('text')}>{selectedTextLabel}</label>
                     <textarea
                       id={controlId('text')}
                       aria-label="Layer text"

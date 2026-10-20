@@ -32,6 +32,10 @@ export function StepPreviewApprove(): React.JSX.Element {
     previewVideo,
     updatePreviewComposition,
     setPreviewLayout,
+    remotionDesignTemplates = [],
+    activeRemotionDesignId = null,
+    setRemotionDesign = () => {},
+    remotionDesignError = null,
     previewApproved,
     approvePersonalization,
     createFinalVideo,
@@ -127,6 +131,28 @@ export function StepPreviewApprove(): React.JSX.Element {
             </button>
           ))}
         </div>
+        {remotionDesignTemplates.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ ...labelStyle, marginBottom: 6 }}>Designs</div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {remotionDesignTemplates.map((design) => (
+                <button
+                  key={design.id}
+                  type="button"
+                  onClick={() => setRemotionDesign(activeRemotionDesignId === design.id ? null : design.id)}
+                  aria-pressed={activeRemotionDesignId === design.id}
+                  title={design.description}
+                  style={chipStyle(activeRemotionDesignId === design.id)}
+                >
+                  {design.name}
+                </button>
+              ))}
+            </div>
+            {remotionDesignError ? (
+              <p style={{ ...hintStyle, color: C.danger, marginTop: 8 }}>{remotionDesignError}</p>
+            ) : null}
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: 12 }}>
           <div>
             <label style={labelStyle} htmlFor="guided-aspect">Video shape</label>

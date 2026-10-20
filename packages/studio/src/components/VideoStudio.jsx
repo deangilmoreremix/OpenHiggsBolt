@@ -30,6 +30,9 @@ import { VideoOptionControl, VideoSettingsControl } from "./VideoModelControls.j
 import usePromptMenu from "./prompt/usePromptMenu.js";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
+// Shared studio → Personalization Modal entry point. Relative (not `@/`) because
+// the `studio` package is published standalone and has no alias resolution.
+import { PersonalizeStep } from "../../../../src/shared/personalization/studioEntry";
 
 import {
   PROMPT_MEDIA_PREVIEW_CLASS,
@@ -901,6 +904,47 @@ export default function VideoStudio({
   // ── prompt ──
   const [prompt, setPrompt] = useState("");
   const [promptDisabled, setPromptDisabled] = useState(false);
+
+  // ── Personalization hand-off (Phase 1) ────────────────────────────────────
+  // The shared Personalization Modal keys its saved project on the source id,
+  // so the studio project id has to be unique per project AND stable while
+  // the project is unchanged. It is derived from the uploaded source clip plus
+  // the generation configuration — a new upload (or a different model /
+  // aspect ratio / duration) is a different project.
+  const studioPersonalizeOptions = useMemo(
+    () => ({
+      originStudio: "video",
+      studioProjectId: [
+        uploadedVideoName || "clip",
+        selectedModel,
+        selectedAr,
+        String(selectedDuration),
+      ].join(":"),
+      title: uploadedVideoName || "Video Studio clip",
+      media: {
+        mediaType: "video",
+        url: uploadedVideoUrl,
+        poster: null,
+        aspectRatio: selectedAr,
+        duration: selectedDuration,
+        durationLabel: `${selectedDuration}s`,
+      },
+      prompt: {
+        text: prompt,
+        model: selectedModel,
+        modelName: selectedModelName,
+      },
+    }),
+    [
+      uploadedVideoUrl,
+      uploadedVideoName,
+      selectedModel,
+      selectedModelName,
+      selectedAr,
+      selectedDuration,
+      prompt,
+    ],
+  );
 
   // ── Wave 1 recipe-driven state ──
   const [nativeAudio, setNativeAudio] = useState(false);
@@ -2252,6 +2296,15 @@ export default function VideoStudio({
                   </button>
                 </div>
               )}
+
+              {/* Personalize this clip in the shared Personalization Modal.
+                  Renders nothing without an uploaded source video. */}
+              <PersonalizeStep
+                options={studioPersonalizeOptions}
+                className="h-12 px-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-[10px] font-bold text-white/70 hover:text-white hover:border-[#22d3ee]/60 transition-colors"
+              >
+                Personalize
+              </PersonalizeStep>
 
               {/* Audio preview */}
               {uploadedAudioUrls.length > 0 && (
