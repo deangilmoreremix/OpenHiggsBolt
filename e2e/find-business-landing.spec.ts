@@ -26,9 +26,12 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
-import { resolveDemoAuthStatePath } from '../playwright.shared';
+import { resolveDemoAuthStatePath, resolveTargetBaseURL, isLocalDevTarget } from '../playwright.shared';
 
-const BASE = 'https://go.smartvid.app';
+const BASE = resolveTargetBaseURL();
+/** A local dev server honours the dev-only auth-bypass cookie; a
+ *  production target must authenticate with a real Clerk session. */
+const IS_LOCAL_DEV = isLocalDevTarget(BASE);
 const LANDING_URL = `${BASE}/personalization-demo?test=true`;
 
 const PRODUCTION_AUTH_STATE_PATH = path.join(
@@ -277,6 +280,13 @@ test.describe('Find Business — Landing page', () => {
 
   test.beforeEach(async ({ page }) => {
     assertAuthStatePresent();
+    if (IS_LOCAL_DEV) {
+      // Dev-only escape hatch, honoured by the local server and by no
+      // production deployment. Never sent to a production origin.
+      await page.context().addCookies([
+        { name: '__e2e_auth_bypass', value: '1', url: BASE },
+      ]);
+    }
     diagnostics = collectDiagnostics(page);
   });
 

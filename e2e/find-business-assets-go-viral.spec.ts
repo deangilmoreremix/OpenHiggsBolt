@@ -27,9 +27,12 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
-import { resolveDemoAuthStatePath } from '../playwright.shared';
+import { resolveDemoAuthStatePath, resolveTargetBaseURL, isLocalDevTarget } from '../playwright.shared';
 
-const BASE = 'https://go.smartvid.app';
+const BASE = resolveTargetBaseURL();
+/** A local dev server honours the dev-only auth-bypass cookie; a
+ *  production target must authenticate with a real Clerk session. */
+const IS_LOCAL_DEV = isLocalDevTarget(BASE);
 const STUDIO_URL = `${BASE}/studio/go-ai-viral`;
 
 const PRODUCTION_AUTH_STATE_PATH = path.join(
@@ -424,6 +427,13 @@ test.describe('Find Business Assets — Go-Viral Studio', () => {
 
   test.beforeEach(async ({ page }) => {
     assertAuthStatePresent();
+    if (IS_LOCAL_DEV) {
+      // Dev-only escape hatch, honoured by the local server and by no
+      // production deployment. Never sent to a production origin.
+      await page.context().addCookies([
+        { name: '__e2e_auth_bypass', value: '1', url: BASE },
+      ]);
+    }
     diagnostics = collectDiagnostics(page);
   });
 
@@ -518,12 +528,22 @@ test.describe('Find Business Assets — Go-Viral Studio', () => {
     });
 
     await test.step('select an asset and import it into Personalization', async () => {
-      const selectButton = dialog.locator('#pz-discovered button[aria-label="Select"]').first();
+      // An asset's toggle is labelled "Select" while it is unselected and
+      // "Deselect" once it is selected, and discovered assets can arrive
+      // pre-selected — so both labels have to be considered, and a toggle
+      // that already reads "Deselect" must NOT be clicked (that would undo
+      // the selection).
+      const unselectedToggle = dialog.locator('#pz-discovered button[aria-label="Select"]');
+      const selectedToggle = dialog.locator('#pz-discovered button[aria-label="Deselect"]');
+
       await expect(
-        selectButton,
-        'The Discovered Assets section rendered no selectable asset.',
+        unselectedToggle.or(selectedToggle).first(),
+        'The Discovered Assets section rendered no asset toggle.',
       ).toBeVisible({ timeout: 20_000 });
-      await selectButton.click();
+
+      if ((await unselectedToggle.count()) > 0) {
+        await unselectedToggle.first().click();
+      }
 
       const useSelected = dialog.getByRole('button', { name: 'Use Selected Assets', exact: true });
       await expect(

@@ -14,6 +14,35 @@ export function resolveDemoBaseURL(): string {
   return process.env.DEMO_BASE_URL || 'http://localhost:3111';
 }
 
+/**
+ * The base URL the E2E suites target.
+ *
+ * Defaults to the OpenHiggsBolt production domain. `https://smartvid.app` is
+ * deliberately NOT used: it is a different product ("Remix New Editor") that
+ * answers 404 for every `/api/personalization/*` call.
+ *
+ * Override it with `DEMO_BASE_URL` to point the same suites at a local server.
+ */
+export function resolveTargetBaseURL(): string {
+  return process.env.DEMO_BASE_URL || 'https://go.smartvid.app';
+}
+
+/**
+ * True when the target is a local dev server.
+ *
+ * A local server honours the `__e2e_auth_bypass` cookie (the dev-only escape
+ * hatch in the middleware), so a local run does not need a Clerk storage
+ * state. A production target must authenticate for real.
+ */
+export function isLocalDevTarget(baseURL: string): boolean {
+  try {
+    const host = new URL(baseURL).hostname;
+    return host === 'localhost' || host === '127.0.0.1';
+  } catch {
+    return false;
+  }
+}
+
 export function resolveDemoAuthStatePath(): string {
   const origin = new URL(resolveDemoBaseURL()).origin;
   const safe = origin.replace(/[^a-z0-9]+/gi, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
