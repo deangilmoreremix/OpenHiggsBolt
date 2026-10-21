@@ -29,7 +29,7 @@ Every gate was re-run on the rebased tree:
 | `npx vitest run src/shared/personalization` | **685 passed, 1 failed** (the same proven pre-existing failure) |
 | `npx playwright test` (all 4 specs) | **14 passed, 0 failed** — including *"every registered design exports to a real encoded MP4"* |
 
-**Commit SHA of this phase:** `34bbab22c0703872bc88ae8503960320fd361654`
+**Commit SHA of this phase:** `1840dee0aa8f8e4d94a67e92457553dd8956aa6c`
 **Production deployment:** ❌ **none.** Netlify remains locked. `origin/main` was not modified. No GitHub Actions workflow was added, edited or removed.
 
 ---
@@ -2556,7 +2556,7 @@ Ordered by how much they block a customer.
 |---|---|
 | **Branch** | `feature/remotion-personalization-phase-2` |
 | **Base / baseline commit** | `84a9d1586` — *"feat(personalization): add a shared Remotion design registry and five designs in Step 4"* (the Phase 1 commit) |
-| **Phase 2 commit SHA** | **`34bbab22c0703872bc88ae8503960320fd361654`** |
+| **Phase 2 commit SHA** | **`1840dee0aa8f8e4d94a67e92457553dd8956aa6c`** |
 | **Working tree** | all Phase 2 work is **uncommitted**, in the working tree |
 | **Diff vs the baseline (tracked files)** | 47 files changed, **+3046 / −503** |
 | **New (untracked) paths** | 51 `git status --porcelain` entries (untracked directories are collapsed into one entry each). They include the 14 new design adapters, the 14 new upstream copies, `public/fonts/`, the 3 new e2e specs, `docs/phase2/`, `docs/ci/`, `docs/screenshots/phase-2/`, `components/PersonalizeVideoAction.js`, this report and the R1 handoff. |
