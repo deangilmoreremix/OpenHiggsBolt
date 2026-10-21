@@ -1,28 +1,127 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
+import {
+  DEMO_LIBRARY_REGISTRY,
+  EXCLUDED_DEMO_COLLECTIONS,
+  demoCollections,
+  toVideoDemo,
+  type DemoLibraryEntry,
+} from '../src/data/demoLibraryRegistry';
+import {
+  ALL_DEMOS_CATEGORY_ID,
+  DEMO_CATEGORIES,
+  countDemosByCategory,
+  isCategoryActiveForDemo,
+} from '../src/shared/personalization/guided/demoCategories';
 
 const BASE = process.env.DEMO_BASE_URL || 'http://localhost:3112';
 
 /**
- * Expected curated demo data, mirroring GUIDED_DEMO_VIDEOS from
- * src/shared/personalization/guided/curatedDemos.ts (which concatenates
- * MINIMAX_H3_DEMOS then SEEDANCE_25_DEMOS, dropping entries missing media).
+ * Personalization Modal — demo video playback verification.
+ * ===================================================================
+ * There is no curated 12-slug allowlist any more: the Demos tab renders the
+ * demo library registry (`src/data/demoLibraryRegistry.ts`), built from the
+ * same source catalogs and probed-media facts the UI itself consumes. Every
+ * expectation in this spec is therefore DERIVED from that registry — the same
+ * approach `e2e/personalization-demo-library.spec.ts` takes for the browsing
+ * checks — so the tests cannot silently drift from the catalogue:
+ *
+ *   1. Catalogue parity: the registry must expose exactly the audited total
+ *      (123 eligible demos today: minimax-h3=30, promptfeed=29,
+ *      seedance-1=14, seedance-25=50), each entry must point at a local
+ *      `/media/<eligible-collection>/` file, and the excluded collections
+ *      must never leak in — `seedance-prompts` ships 9-byte "Not Found"
+ *      error bodies, not decodable media.
+ *
+ *   2. Sampled playback: a deterministic, bounded sample built from the
+ *      registry (at least 2 demos per collection, at least 1 demo per VISIBLE
+ *      category tab, topped up from registry order to ~24 entries) is played
+ *      in Step 2 of the Personalization Modal. Every sampled video must
+ *      expose the registry's /media/ path, reach HAVE_METADATA, report
+ *      positive dimensions, start playback via play(), advance currentTime by
+ *      more than 0.05s and raise no media error. Demos outside the first
+ *      window are made reachable through the "Show more" pagination
+ *      (`revealDemoCard`).
+ *
+ *   3. Step 4 parity: the before/after preview still receives the selected
+ *      demo's clip.
+ *
+ *   4. The original regression: the SELECTED demo card renders a real,
+ *      playing <video> instead of a still poster.
+ *
+ * The full-library browsing checks (totals, category badges, search, filters,
+ * pagination reachability, selection integrity) live in
+ * e2e/personalization-demo-library.spec.ts.
  */
-const EXPECTED_DEMOS: Array<{ id: number; slug: string; title: string; videoSrc: string; sourceRepo: string }> = [
-  { id: 2, slug: 'luxury-perfume-commercial', title: 'Luxury perfume commercial', videoSrc: '/media/minimax-h3/videos/luxury-perfume-commercial.webm', sourceRepo: 'minimax-h3' },
-  { id: 14, slug: 'luxury-skincare-storyboard-commercial', title: 'Luxury Skincare Storyboard Commercial', videoSrc: '/media/minimax-h3/videos/luxury-skincare-storyboard-commercial.webm', sourceRepo: 'minimax-h3' },
-  { id: 28, slug: 'emerald-bio-serum-product-film', title: 'Emerald Bio-Serum Product Film', videoSrc: '/media/minimax-h3/videos/emerald-bio-serum-product-film.webm', sourceRepo: 'minimax-h3' },
-  { id: 29, slug: 'black-and-gold-perfume-commercial', title: 'Black-and-Gold Perfume Commercial', videoSrc: '/media/minimax-h3/videos/black-and-gold-perfume-commercial.webm', sourceRepo: 'minimax-h3' },
-  { id: 18, slug: 'yellow-sunglasses-in-a-black-studio', title: 'Yellow Sunglasses in a Black Studio', videoSrc: '/media/minimax-h3/videos/yellow-sunglasses-in-a-black-studio.webm', sourceRepo: 'minimax-h3' },
-  { id: 12, slug: 'ramen-bowl-ugc-taste-test', title: 'Ramen Bowl UGC Taste Test', videoSrc: '/media/minimax-h3/videos/ramen-bowl-ugc-taste-test.webm', sourceRepo: 'minimax-h3' },
-  { id: 13, slug: 'gourmet-burger-ugc-taste-test', title: 'Gourmet Burger UGC Taste Test', videoSrc: '/media/minimax-h3/videos/gourmet-burger-ugc-taste-test.webm', sourceRepo: 'minimax-h3' },
-  { id: 23, slug: 'porto-francesinha-comedy-recipe', title: 'Porto Francesinha Comedy Recipe', videoSrc: '/media/minimax-h3/videos/porto-francesinha-comedy-recipe.webm', sourceRepo: 'minimax-h3' },
-  { id: 21, slug: 'strawberry-drink-transformation-commercial', title: 'Strawberry Drink Transformation Commercial', videoSrc: '/media/minimax-h3/videos/strawberry-drink-transformation-commercial.webm', sourceRepo: 'minimax-h3' },
-  { id: 19, slug: 'theme-park-memory-montage', title: 'Theme Park Memory Montage', videoSrc: '/media/minimax-h3/videos/theme-park-memory-montage.webm', sourceRepo: 'minimax-h3' },
-  { id: 16, slug: 'turkish-eggs-mini-dv-recipe-vlog-107610', title: 'Turkish Eggs Mini-DV Recipe Vlog', videoSrc: '/media/seedance-25/videos/video-2503ba98404071af.webm', sourceRepo: 'seedance-25' },
-  { id: 29, slug: 'product-commercial-study-309837', title: 'Product Commercial Study 309837', videoSrc: '/media/seedance-25/videos/video-32ba5442fa856d7c.webm', sourceRepo: 'seedance-25' },
-];
+
+// ---------------------------------------------------------------------------
+// Expected data, derived from the SAME source modules the UI uses
+// ---------------------------------------------------------------------------
+
+/** The audited catalogue total this suite snapshots. */
+const REGISTRY_TOTAL_EXPECTED = 123;
+
+/** The registry that drives every expectation below. */
+const REGISTRY = DEMO_LIBRARY_REGISTRY;
+
+const LIBRARY_DEMOS = REGISTRY.map(toVideoDemo);
+
+/** Counts over the WHOLE, unfiltered library — the tab badges' baseline. */
+const UNFILTERED_CATEGORY_COUNTS = countDemosByCategory(LIBRARY_DEMOS);
+
+/**
+ * The category ids whose tabs the Demos tab actually renders: 'all' plus
+ * every business niche that holds at least one demo (a niche with zero demos
+ * is never offered — an empty tab is a dead end).
+ */
+const VISIBLE_CATEGORY_IDS = DEMO_CATEGORIES.filter(
+  (category) =>
+    category.id === ALL_DEMOS_CATEGORY_ID ||
+    (UNFILTERED_CATEGORY_COUNTS[category.id] ?? 0) > 0,
+).map((category) => category.id);
+
+/** Registry paths must stay local and inside an eligible collection. */
+const ELIGIBLE_MEDIA_PREFIX = new RegExp(
+  `^/media/(${demoCollections.map((collection) => collection.id).join('|')})/`,
+);
+
+/** Bounded playback sample target: representative, yet fast enough per run. */
+const SAMPLE_SIZE_TARGET = 24;
+
+/**
+ * The deterministic playback sample, read from the registry itself (no magic
+ * slug lists):
+ *   (a) the first and the middle registry demos of every collection
+ *       (>= 2 per collection),
+ *   (b) the first registry demo of every VISIBLE category tab
+ *       (>= 1 per visible category),
+ *   (c) topped up from registry order to SAMPLE_SIZE_TARGET.
+ */
+function buildPlaybackSample(): DemoLibraryEntry[] {
+  const sample = new Map<string, DemoLibraryEntry>();
+  const add = (entry: DemoLibraryEntry | undefined) => {
+    if (entry) sample.set(entry.id, entry);
+  };
+  for (const collection of demoCollections) {
+    const inCollection = REGISTRY.filter((entry) => entry.collectionId === collection.id);
+    add(inCollection[0]);
+    add(inCollection[Math.floor(inCollection.length / 2)]);
+  }
+  for (const categoryId of VISIBLE_CATEGORY_IDS) {
+    if (categoryId === ALL_DEMOS_CATEGORY_ID) continue;
+    add(REGISTRY.find((entry) => isCategoryActiveForDemo(categoryId, toVideoDemo(entry))));
+  }
+  for (const entry of REGISTRY) {
+    if (sample.size >= SAMPLE_SIZE_TARGET) break;
+    add(entry);
+  }
+  return [...sample.values()];
+}
+
+const PLAYBACK_SAMPLE = buildPlaybackSample();
 
 interface DemoResult {
+  /** Stable, source-qualified registry id (`"<collection>:<slug>"`). */
+  registryId: string;
   id: number;
   slug: string;
   title: string;
@@ -52,7 +151,7 @@ async function clickViaElement(locator: Locator) {
 }
 
 /**
- * The Demos tab now renders the WHOLE registry (123 demos) and mounts its
+ * The Demos tab renders the WHOLE registry (123 demos) and mounts its
  * cards in windows — the first 12, then ten more per "Show more" click. A
  * demo outside the current window is simply not in the DOM, so every lookup
  * has to page to it first.
@@ -108,7 +207,71 @@ async function waitForCurrentTimeAdvance(page: Page, videoSelector: string, time
 }
 
 test.describe('Personalization Modal — Demo Video Playback', () => {
-  test('all curated demo videos play successfully in the Personalization Modal', async ({ page }) => {
+  test('registry-derived demo samples from every collection and category play in the Personalization Modal', async ({ page }) => {
+    test.setTimeout(20 * 60 * 1000);
+
+    // ── 1. Catalogue parity, straight from the registry modules ─────────
+    expect(
+      REGISTRY.length,
+      'the registry must expose exactly the audited 123 eligible demos',
+    ).toBe(REGISTRY_TOTAL_EXPECTED);
+    expect(
+      demoCollections.reduce((sum, collection) => sum + collection.count, 0),
+      'the collection counts must add up to the registry total',
+    ).toBe(REGISTRY_TOTAL_EXPECTED);
+    for (const collection of demoCollections) {
+      const inCollection = REGISTRY.filter((entry) => entry.collectionId === collection.id);
+      expect(inCollection.length, `collection ${collection.id}`).toBe(collection.count);
+      console.log(`[REGISTRY] collection ${collection.id}: ${inCollection.length} demos`);
+    }
+    // Every registered demo is a LOCAL file of an eligible collection.
+    for (const entry of REGISTRY) {
+      expect(entry.videoSrc, `entry ${entry.id} must use a local eligible /media/ path`).toMatch(
+        ELIGIBLE_MEDIA_PREFIX,
+      );
+    }
+    // The seedance-prompts exclusion stays documented and enforced: its
+    // on-disk mp4s are 9-byte "Not Found" bodies and must never be offered.
+    const seedancePromptsExclusion = EXCLUDED_DEMO_COLLECTIONS.find(
+      (exclusion) => exclusion.id === 'seedance-prompts',
+    );
+    expect(
+      seedancePromptsExclusion?.verifiedVideoCount,
+      'seedance-prompts must stay excluded as broken media',
+    ).toBe(0);
+    expect(
+      REGISTRY.filter((entry) => entry.videoSrc.startsWith('/media/seedance-prompts/')).length,
+      'no registry entry may reference the broken seedance-prompts media',
+    ).toBe(0);
+    console.log(
+      `[REGISTRY] total=${REGISTRY.length}, visible category tabs=${VISIBLE_CATEGORY_IDS.length}`,
+    );
+
+    // ── 2. The sample must be representative ────────────────────────────
+    expect(PLAYBACK_SAMPLE.length, 'sample must stay bounded (full 123 would be too slow)').toBeLessThanOrEqual(25);
+    expect(PLAYBACK_SAMPLE.length, 'sample must be non-trivial').toBeGreaterThanOrEqual(20);
+    expect(
+      new Set(PLAYBACK_SAMPLE.map((entry) => entry.id)).size,
+      'the sample must not repeat a demo',
+    ).toBe(PLAYBACK_SAMPLE.length);
+    for (const collection of demoCollections) {
+      expect(
+        PLAYBACK_SAMPLE.filter((entry) => entry.collectionId === collection.id).length,
+        `the sample must cover at least 2 demos of collection ${collection.id}`,
+      ).toBeGreaterThanOrEqual(2);
+    }
+    for (const categoryId of VISIBLE_CATEGORY_IDS) {
+      if (categoryId === ALL_DEMOS_CATEGORY_ID) continue;
+      expect(
+        PLAYBACK_SAMPLE.some((entry) => isCategoryActiveForDemo(categoryId, toVideoDemo(entry))),
+        `the sample must cover visible category "${categoryId}"`,
+      ).toBe(true);
+    }
+    console.log(
+      `[SAMPLE] ${PLAYBACK_SAMPLE.length} demo(s): ${PLAYBACK_SAMPLE.map((entry) => entry.id).join(', ')}`,
+    );
+
+    // ── Open the personalization demo page ─────────────────────────────
     const consoleErrors: string[] = [];
     const networkErrors: string[] = [];
     /** Status codes of the demo clip responses (the Step 4 proof). */
@@ -127,7 +290,6 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
       if (/\.(mp4|webm|mov|m4v)(\?|$)/i.test(res.url())) clipResponses.push(res.status());
     });
 
-    // ── Open the personalization demo page ─────────────────────────────
     await page.goto(`${BASE}/personalization-demo?test=true`, { waitUntil: 'domcontentloaded' });
 
     // Wait for the Personalization Modal dialog to open.
@@ -147,9 +309,14 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
     // Wait for Step 2: the video source picker tabs appear.
     await expect(dialog.getByRole('tab', { name: /Your video/i })).toBeVisible({ timeout: 10000 });
 
-    // Click the "AI Demos" tab.
+    // The AI Demos tab badge must equal the registry length (browsing parity).
     const aiDemosTab = dialog.getByRole('tab', { name: /AI Demos/i });
     await expect(aiDemosTab).toBeVisible({ timeout: 10000 });
+    const demosTabLabel = (await aiDemosTab.innerText()).trim();
+    console.log(`[DEMOS TAB] "${demosTabLabel}"`);
+    expect(demosTabLabel, 'the AI Demos tab badge must equal the registry length').toContain(
+      `(${REGISTRY.length})`,
+    );
     await clickViaElement(aiDemosTab);
 
     // Wait for the demo grid to render.
@@ -158,10 +325,11 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
     const buttonCount = await playButtons.count();
     console.log(`Found ${buttonCount} demo play buttons`);
 
-    // Test each demo.
-    for (const expected of EXPECTED_DEMOS) {
+    // Test each sampled demo.
+    for (const expected of PLAYBACK_SAMPLE) {
       const result: DemoResult = {
-        id: expected.id,
+        registryId: expected.id,
+        id: expected.legacyId,
         slug: expected.slug,
         title: expected.title,
         videoSrc: expected.videoSrc,
@@ -181,7 +349,7 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
         pass: false,
       };
 
-      console.log(`\n--- Testing demo: ${result.title} (${result.slug}) ---`);
+      console.log(`\n--- Testing demo: ${result.registryId} ("${result.title}") ---`);
 
       // Find the play button for this demo by its exact aria-label.
       // The overlay starts invisible (opacity 0) until hovered; locate by exact
@@ -189,7 +357,7 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
       // handle so the invisible overlay can still be activated.
       // The Demos tab mounts its cards in windows, so the card may not be in
       // the DOM yet: page to it first.
-      await revealDemoCard(dialog, expected);
+      await revealDemoCard(dialog, { id: expected.legacyId, slug: expected.slug });
       const playButton = dialog.locator(`button[aria-label="Play ${result.title}"]`);
       try {
         await expect(playButton.first()).toBeAttached({ timeout: 5000 });
@@ -239,7 +407,7 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
       const poster = await videoEl.getAttribute('poster');
       console.log(`  video poster: ${poster}`);
 
-      // Wait for metadata to load.
+      // Wait for metadata to load (readyState >= HAVE_METADATA).
       result.metadataLoaded = await waitForVideoMetadata(page, videoSelector, 10000);
 
       if (result.metadataLoaded) {
@@ -269,6 +437,7 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
 
       // Determine pass/fail.
       result.pass =
+        result.videoSrc.startsWith('/media/') &&
         result.buttonFound &&
         result.videoElementFound &&
         result.videoSrcCorrect &&
@@ -284,8 +453,8 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
     }
 
     // ── Step 4: select a demo, continue to Step 4, verify Before/After ──
-    const step4Demo = EXPECTED_DEMOS[0]; // luxury-perfume-commercial
-    console.log(`\n=== Step 4 verification with demo: ${step4Demo.title} ===`);
+    const step4Demo = REGISTRY[0]; // the first registry demo, in registry order
+    console.log(`\n=== Step 4 verification with demo: ${step4Demo.id} ("${step4Demo.title}") ===`);
 
     let step4Reached = false;
     let step4BeforeAfterVisible = false;
@@ -386,13 +555,14 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
 
     // ── Summary ──
     const passed = allResults.filter((r) => r.pass).length;
-    const failed = allResults.filter((r) => !r.pass).length;
+    const failedList = allResults.filter((r) => !r.pass);
+    const failed = failedList.length;
     console.log(`\n=== DEMO VIDEO PLAYBACK SUMMARY ===`);
     console.log(`Total: ${allResults.length}, Passed: ${passed}, Failed: ${failed}`);
-    console.log(`\n| Slug | Title | Video Src | Status |`);
+    console.log(`\n| Registry id | Title | Video Src | Status |`);
     console.log(`|------|-------|-----------|--------|`);
     for (const r of allResults) {
-      console.log(`| ${r.slug} | ${r.title} | ${r.videoSrc} | ${r.pass ? 'PASS' : 'FAIL'} |`);
+      console.log(`| ${r.registryId} | ${r.title} | ${r.videoSrc} | ${r.pass ? 'PASS' : 'FAIL'} |`);
     }
     console.log(`\nStep 4 — Reached: ${step4Reached}, Before/After visible: ${step4BeforeAfterVisible}, Video match: ${step4VideoMatch}`);
 
@@ -410,7 +580,10 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
     }
 
     expect(buttonCount).toBeGreaterThan(0);
-    expect(failed).toBe(0);
+    expect(
+      failed,
+      `failed demos: ${failedList.map((r) => `${r.registryId} (${r.videoError ?? 'see log'})`).join('; ')}`,
+    ).toBe(0);
   });
 
   /**
@@ -520,15 +693,23 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
     expect(playback.paused).toBe(false);
 
     // Switching the selection remounts the player — the old clip must not
-    // keep playing, and only the new card may carry a player.
-    const otherDemo = EXPECTED_DEMOS[2];
-    expect(await revealDemoCard(dialog, otherDemo), `card ${otherDemo.slug} must be reachable`).toBe(
-      true,
+    // keep playing, and only the new card may carry a player. The switch
+    // target is derived from the registry (previously it came from the removed
+    // 12-entry EXPECTED_DEMOS allowlist): the first registered demo of the
+    // SAME collection as the card above, excluding that card itself.
+    const demoCollectionId = demo.videoSrc.split('/')[2];
+    const otherDemo = REGISTRY.find(
+      (entry) => entry.collectionId === demoCollectionId && entry.slug !== demo.slug,
     );
-    const otherPlayButton = dialog.locator(`button[aria-label="Play ${otherDemo.title}"]`);
+    expect(otherDemo, `the registry must offer another ${demoCollectionId} demo`).toBeTruthy();
+    expect(
+      await revealDemoCard(dialog, { id: otherDemo!.legacyId, slug: otherDemo!.slug }),
+      `card ${otherDemo!.slug} must be reachable`,
+    ).toBe(true);
+    const otherPlayButton = dialog.locator(`button[aria-label="Play ${otherDemo!.title}"]`);
     await clickViaElement(otherPlayButton.first());
 
-    const otherCard = dialog.getByTestId(`demo-card-${otherDemo.id}-${otherDemo.slug}`);
+    const otherCard = dialog.getByTestId(`demo-card-${otherDemo!.legacyId}-${otherDemo!.slug}`);
     const otherPlayer = otherCard.locator('[data-testid="demo-player"]');
     await expect(otherPlayer).toHaveCount(1, { timeout: 10000 });
     await expect(dialog.locator('[data-testid="demo-player"]')).toHaveCount(1);
@@ -536,7 +717,7 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
     await expect(card.locator('img')).toHaveCount(1);
 
     const otherSrc = await otherPlayer.getAttribute('src');
-    expect(otherSrc).toContain(otherDemo.videoSrc);
+    expect(otherSrc).toContain(otherDemo!.videoSrc);
 
     // The nested-button hydration error is gone (the card is a
     // <div role="button">, so the play overlay <button> is valid HTML).

@@ -777,6 +777,9 @@ export function StepChooseVideo(): React.JSX.Element {
   )
 }
 
+/** Grace period before a selected card with no media metadata shows a hint. */
+const DEMO_PLAYER_METADATA_GRACE_MS = 8000
+
 /**
  * Inline player for the demo card that is currently selected.
  *
@@ -785,6 +788,15 @@ export function StepChooseVideo(): React.JSX.Element {
  * player is mounted inside the card of the *selected* demo only, so React
  * unmounts the previous player (and stops the previous clip) the moment the
  * selection changes.
+ *
+ * Robustness: a broken clip must never trap the customer in a broken card.
+ *   - On a media ERROR the player swaps back to the card's poster and shows a
+ *     small, non-blocking "Preview unavailable — try another video" note with
+ *     a Retry button that re-mounts the player.
+ *   - While the clip loads, a "Still loading…" hint appears after a grace
+ *     period without metadata (no silent, forever-empty player).
+ * Both states are captions within THIS card only: other demo cards stay
+ * selectable the whole time.
  */
 function DemoCardPlayer({
   demo,
@@ -792,6 +804,11 @@ function DemoCardPlayer({
   demo: DemoLibraryEntry
 }): React.JSX.Element {
   const videoRef = useRef<HTMLVideoElement>(null)
+  // Bumped by the Retry button to force a fresh <video> mount (a failed
+  // media load is not retried by the browser on its own).
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const [playbackFailed, setPlaybackFailed] = useState(false)
+  const [metadataSlow, setMetadataSlow] = useState(false)
 
   useEffect(() => {
     const el = videoRef.current
@@ -801,23 +818,74 @@ function DemoCardPlayer({
     // (reduced data mode, backgrounded tab on first paint).
     const attempt = el.play()
     if (attempt && typeof attempt.catch === 'function') attempt.catch(() => {})
-  }, [demo.videoSrc])
+  }, [demo.videoSrc, loadAttempt])
+
+  useEffect(() => {
+    // Every (re)mount starts clean: a demo change or a Retry re-arms the
+    // slow-metadata watch below.
+    setPlaybackFailed(false)
+    setMetadataSlow(false)
+    const timer = window.setTimeout(() => {
+      const el = videoRef.current
+      if (el && el.readyState < HTMLMediaElement.HAVE_METADATA && !el.error) setMetadataSlow(true)
+    }, DEMO_PLAYER_METADATA_GRACE_MS)
+    return () => window.clearTimeout(timer)
+  }, [demo.videoSrc, loadAttempt])
+
+  if (playbackFailed) {
+    return (
+      <div>
+        <img
+          src={demo.posterSrc}
+          alt=""
+          loading="lazy"
+          style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 8, display: 'block', background: '#000' }}
+        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+          <span style={{ color: C.muted, fontSize: 11 }}>Preview unavailable — try another video</span>
+          <button
+            type="button"
+            data-testid="demo-player-retry"
+            onClick={(event) => {
+              // Never re-trigger the card's own selection handler.
+              event.stopPropagation()
+              setLoadAttempt((attempt) => attempt + 1)
+            }}
+            style={secondaryButtonStyle}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <video
-      ref={videoRef}
-      data-testid="demo-player"
-      src={demo.videoSrc}
-      poster={demo.posterSrc}
-      muted
-      playsInline
-      loop
-      autoPlay
-      controls
-      // Clicking the native controls must not re-trigger the card selection.
-      onClick={(event) => event.stopPropagation()}
-      style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'contain', maxHeight: 340, borderRadius: 8, display: 'block', background: '#000' }}
-    />
+    <div>
+      <video
+        // The inner key re-mounts the element (and thus reloads the clip)
+        // without disturbing the parent-mounted player lifecycle.
+        key={`demo-player-clip-${demo.videoSrc}-${loadAttempt}`}
+        ref={videoRef}
+        data-testid="demo-player"
+        src={demo.videoSrc}
+        poster={demo.posterSrc}
+        muted
+        playsInline
+        loop
+        autoPlay
+        controls
+        // Clicking the native controls must not re-trigger the card selection.
+        onClick={(event) => event.stopPropagation()}
+        onError={() => setPlaybackFailed(true)}
+        onLoadedMetadata={() => setMetadataSlow(false)}
+        onCanPlay={() => setMetadataSlow(false)}
+        style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'contain', maxHeight: 340, borderRadius: 8, display: 'block', background: '#000' }}
+      />
+      {metadataSlow && (
+        <span style={{ color: C.muted2, fontSize: 10, marginTop: 4, display: 'block' }}>Still loading…</span>
+      )}
+    </div>
   )
 }
 
