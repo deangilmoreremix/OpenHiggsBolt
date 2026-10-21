@@ -91,6 +91,13 @@ const SIGNIN_ORIGIN = argValue('--signin-origin', 'https://go.smartvid.app');
 const TTL_SECONDS = Number(argValue('--ttl-seconds', '86400'));
 const COOKIE_TTL_DAYS = Number(argValue('--cookie-ttl-days', '7'));
 const EMAIL = argValue('--email', 'e2e-buyer@e2e.smartvid.app');
+/**
+ * When set, the script does NOT grant the SMARTVIDEO_GO entitlement to the
+ * account it signs in. It is used to mint a state for a SECOND, deliberately
+ * un-entitled user, so the owner-scoping of a discovery job can be verified
+ * against a foreign account.
+ */
+const SKIP_ENTITLEMENT = process.argv.includes('--skip-entitlement');
 // The directory the storage state is written to. It defaults to the shared
 // `playwright/.clerk/` directory (which is what `resolveDemoAuthStatePath()`
 // resolves), but it can be pointed elsewhere so a state for a SECOND origin
@@ -441,28 +448,53 @@ async function main(): Promise<void> {
   }
 
   // ── Account ───────────────────────────────────────────────────────────────
-  const users = await clerkApi<any[]>(
-    'GET',
-    `/users?email_address=${encodeURIComponent(EMAIL)}&limit=10`,
-  );
-  const user = (users || []).find((candidate) =>
-    (candidate.email_addresses || []).some(
-      (entry: any) => String(entry.email_address || '').toLowerCase() === EMAIL.toLowerCase(),
-    ),
-  );
+  // `--user-id` addresses the account directly; `--email` is the lookup path.
+  // The email lookup goes through Clerk's search index, which does not match
+  // every address on the instance (an address with a `+` tag is not always
+  // returned), so the id is the reliable path for a second account.
+  const USER_ID = argValue('--user-id', '');
+  let user: any = null;
+  if (USER_ID) {
+    user = await clerkApi<any>('GET', `/users/${encodeURIComponent(USER_ID)}`);
+    console.log(
+      `[clerk-preview] lookup          : user-id=${USER_ID} -> ${user?.id} ` +
+        `(${((user?.email_addresses || [])[0] || {}).email_address || 'no email'})`,
+    );
+  } else {
+    const users = await clerkApi<any[]>(
+      'GET',
+      `/users?email_address=${encodeURIComponent(EMAIL)}&limit=10`,
+    );
+    console.log(
+      `[clerk-preview] lookup          : email=${JSON.stringify(EMAIL)} matches=${(users || []).length}`,
+    );
+    user = (users || []).find((candidate) =>
+      (candidate.email_addresses || []).some(
+        (entry: any) => String(entry.email_address || '').toLowerCase() === EMAIL.toLowerCase(),
+      ),
+    );
+  }
   if (!user) throw new Error(`Clerk user ${EMAIL} does not exist on this instance.`);
 
   const password = `Sv9!goE2e-${crypto.randomBytes(18).toString('base64url').slice(0, 18)}`;
   await clerkApi('PATCH', `/users/${user.id}`, { password, skip_password_checks: true });
 
-  await grantEntitlement(user.id, EMAIL, ENTITLEMENTS.SMARTVIDEO_GO, 'manual');
-  const access = await resolveSmartVideoAccessForUser(user.id);
-  if (!access?.hasSmartVideoGo) {
-    throw new Error(`Entitlement grant for ${EMAIL} did not verify (hasSmartVideoGo=false).`);
+  if (SKIP_ENTITLEMENT) {
+    const access = await resolveSmartVideoAccessForUser(user.id);
+    console.log(
+      `[clerk-preview] account         : ${EMAIL} -> ${user.id} ` +
+        `(NO entitlement granted; hasSmartVideoGo=${Boolean(access?.hasSmartVideoGo)})`,
+    );
+  } else {
+    await grantEntitlement(user.id, EMAIL, ENTITLEMENTS.SMARTVIDEO_GO, 'manual');
+    const access = await resolveSmartVideoAccessForUser(user.id);
+    if (!access?.hasSmartVideoGo) {
+      throw new Error(`Entitlement grant for ${EMAIL} did not verify (hasSmartVideoGo=false).`);
+    }
+    console.log(
+      `[clerk-preview] account         : ${EMAIL} -> ${user.id} (entitlement ${ENTITLEMENTS.SMARTVIDEO_GO} active)`,
+    );
   }
-  console.log(
-    `[clerk-preview] account         : ${EMAIL} -> ${user.id} (entitlement ${ENTITLEMENTS.SMARTVIDEO_GO} active)`,
-  );
 
   const browser = await chromium.launch({ headless: true });
   try {

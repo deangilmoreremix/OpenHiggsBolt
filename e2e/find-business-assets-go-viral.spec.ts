@@ -405,6 +405,35 @@ function resultCardByBadge(dialog: Locator, badgeText: string): Locator {
 }
 
 /**
+ * Probes a candidate site and returns the HTTP status it answered with (0
+ * when the request itself failed).
+ *
+ * A site only counts as LIVE when it actually serves its content, i.e. a
+ * 2xx/3xx answer. Anything below 500 is NOT enough: a bot-challenge page
+ * (Cloudflare and friends) answers every request with 403, so neither the
+ * HTTP crawler nor the browser escalation can ever read it, and a discovery
+ * run against such a site can only ever end in "no assets". Accepting a 403
+ * therefore selected a site that could never satisfy the assertion.
+ *
+ * A site that rejects HEAD (405/501) is retried with a GET, because the
+ * discovery crawler fetches with GET.
+ */
+async function probeSiteStatus(page: Page, url: string): Promise<number> {
+  const servesContent = (status: number) => status >= 200 && status < 400;
+
+  const head = await page
+    .request.head(url, { timeout: 20_000, failOnStatusCode: false, maxRedirects: 5 })
+    .then((response) => response.status())
+    .catch(() => 0);
+  if (servesContent(head)) return head;
+
+  return page
+    .request.get(url, { timeout: 20_000, failOnStatusCode: false, maxRedirects: 5 })
+    .then((response) => response.status())
+    .catch(() => 0);
+}
+
+/**
  * Picks a search result whose website actually answers.
  *
  * A business directory lists the website a business had when it was mapped.
@@ -430,11 +459,11 @@ async function selectBusinessWithLiveWebsite(
   const probed: string[] = [];
   for (const candidate of candidates.slice(0, 8)) {
     const url = candidate.website as string;
-    const alive = await page
-      .request.head(url, { timeout: 20_000, failOnStatusCode: false })
-      .then((response) => response.status() < 500)
-      .catch(() => false);
-    probed.push(`${url} -> ${alive ? 'alive' : 'unreachable'}`);
+    const status = await probeSiteStatus(page, url);
+    const alive = status >= 200 && status < 400;
+    probed.push(
+      `${url} -> ${alive ? 'alive' : 'unreachable'} (HTTP ${status || 'no response'})`,
+    );
     if (!alive) continue;
 
     await dialog.getByText(candidate.name as string, { exact: true }).first().click();
