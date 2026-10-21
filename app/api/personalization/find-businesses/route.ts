@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { geocodeLocation, discoverBusinesses, AllOverpassProvidersFailed, searchBusinessesViaNominatim, deduplicateBusinesses, enrichBusinessRecord, scoreAndSort, createCacheKey, businessDiscoveryCache } from '@/server/businessDiscovery'
+import { geocodeLocation, discoverBusinesses, AllOverpassProvidersFailed, searchBusinessesViaNominatim, deduplicateBusinesses, enrichBusinessRecord, scoreAndSort, classifyRecords, excludeNationalChains, createCacheKey, businessDiscoveryCache } from '@/server/businessDiscovery'
+import type { BusinessDiscoveryRecord, OwnershipType } from '@/server/businessDiscovery'
 import { getNicheMapping, getSupportedNiches } from '@/server/businessDiscovery'
 import { logPersonalization, createCorrelationId, sanitizeForLog } from '@/server/personalizationLog'
 import { rateLimit, rateLimit429, resolveRateLimitKey } from '@/lib/rateLimit'
@@ -62,6 +63,53 @@ function isUpstreamProviderError(message: string): boolean {
 const ALL_OVERPASS_FAILED_USER_MESSAGE =
   'Local business search is temporarily busy. Please try again in a moment or enter a business website manually to continue.'
 
+// Ownership classification runs at the ROUTE level (after deduplication)
+// rather than inside the Overpass provider, because the local_multi_location
+// heuristic needs the full batch of names (allNamesInBatch) — something the
+// per-element normalizer cannot see. Big-box chains are excluded by default;
+// `includeChains: true` opts in to keeping them.
+interface DiscoveryStats {
+  discovered: number
+  independent: number
+  localMultiLocation: number
+  franchiseChain: number
+  nationalBigboxExcluded: number
+  unknownOwnership: number
+  withContact: number
+}
+
+function countOwnership(records: BusinessDiscoveryRecord[], ownership: OwnershipType): number {
+  return records.filter((r) => r.ownership === ownership).length
+}
+
+function buildStats(
+  classified: BusinessDiscoveryRecord[],
+  nationalBigboxExcluded: number,
+  pool: BusinessDiscoveryRecord[],
+): DiscoveryStats {
+  return {
+    discovered: classified.length,
+    independent: countOwnership(classified, 'independent'),
+    localMultiLocation: countOwnership(classified, 'local_multi_location'),
+    franchiseChain: countOwnership(classified, 'franchise_chain'),
+    nationalBigboxExcluded,
+    unknownOwnership: countOwnership(classified, 'unknown'),
+    withContact: pool.filter((r) => r.phone || r.email).length,
+  }
+}
+
+function processDiscoveryBatch(
+  results: BusinessDiscoveryRecord[],
+  includeChains: boolean,
+): { enriched: BusinessDiscoveryRecord[]; stats: DiscoveryStats } {
+  const classified = classifyRecords(deduplicateBusinesses(results))
+  const { kept, excluded } = excludeNationalChains(classified)
+  const pool = includeChains ? classified : kept
+  const scored = scoreAndSort(pool)
+  const enriched = scored.map(enrichBusinessRecord)
+  return { enriched, stats: buildStats(classified, excluded.length, pool) }
+}
+
 function serverErrorResponse(
   error: string,
   correlationId: string,
@@ -103,6 +151,7 @@ export async function POST(req: NextRequest) {
         ? body.limit
         : DEFAULT_LIMIT
     const limit = Math.max(1, Math.min(Math.floor(rawLimit), MAX_LIMIT))
+    const includeChains = body?.includeChains === true
 
     // Validate input
     if (!niche) {
@@ -301,12 +350,11 @@ export async function POST(req: NextRequest) {
 
         // Nominatim succeeded — return real businesses with the fallback marker
         // so the path is traceable rather than silently identical to Overpass.
-        const deduplicated = deduplicateBusinesses(fallbackResults)
-        const scored = scoreAndSort(deduplicated)
-        const enriched = scored.map(enrichBusinessRecord)
-        const limitedFallback = enriched.slice(0, limit)
+        const { enriched: limitedFallback, stats: fallbackStats } =
+          processDiscoveryBatch(fallbackResults, includeChains)
+        const limitedFallbackResults = limitedFallback.slice(0, limit)
 
-        businessDiscoveryCache.set(cacheKey, limitedFallback, CACHE_TTL_MS)
+        businessDiscoveryCache.set(cacheKey, limitedFallbackResults, CACHE_TTL_MS)
 
         logPersonalization({
           route: '/api/personalization/find-businesses',
@@ -320,8 +368,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
           ok: true,
           query: { niche: mapping.label, location, radiusMiles: boundedRadius },
-          count: limitedFallback.length,
-          businesses: limitedFallback,
+          count: limitedFallbackResults.length,
+          businesses: limitedFallbackResults,
+          stats: fallbackStats,
           providerUsed: 'NOMINATIM_SEARCH',
           durationMs: Date.now() - startTime,
         })
@@ -334,14 +383,10 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Deduplicate
-    const deduplicated = deduplicateBusinesses(rawBusinesses)
-
-    // Score and sort
-    const scored = scoreAndSort(deduplicated)
-
-    // Enrich
-    const enriched = scored.map(enrichBusinessRecord)
+    // Deduplicate, classify ownership, exclude big-box chains by default, then
+    // score and sort (classification needs the full batch of names, so it runs
+    // at the route level — see processDiscoveryBatch above).
+    const { enriched, stats } = processDiscoveryBatch(rawBusinesses, includeChains)
 
     // Limit results
     const limited = enriched.slice(0, limit)
@@ -365,6 +410,7 @@ export async function POST(req: NextRequest) {
       query: { niche: mapping.label, location, radiusMiles: boundedRadius },
       count: limited.length,
       businesses: limited,
+      stats,
       providerUsed: 'OPENSTREETMAP',
       durationMs,
     })

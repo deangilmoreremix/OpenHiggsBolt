@@ -43,7 +43,9 @@ import {
   SlidersHorizontal,
 } from 'lucide-react'
 import { useDemoPersonalize } from './DemoPersonalizeProvider'
-import type { PersonalizationAsset, DiscoveredAsset, DiscoveredAssetCategory, AssignedSection, AssetRole, PersonalizationVisionAnalysis, BusinessDiscoveryRecord, PersonalizationSource } from './types'
+import type { PersonalizationAsset, DiscoveredAsset, DiscoveredAssetCategory, AssignedSection, AssetRole, PersonalizationVisionAnalysis, BusinessDiscoveryRecord, BusinessOwnership, PersonalizationSource } from './types'
+import { LEAD_STAGES, isLeadStage } from './leadStages'
+import { ownershipBadgeStyle, ownershipLabel } from './ownershipBadge'
 import { resolveModelCapabilities, FACE_SWAP_MODEL, FULL_BODY_MODEL, DEFAULT_T2V_MODEL, DEFAULT_I2I_MODEL } from './modelCapabilityResolver'
 import { getModelById, getVideoModelById } from '@/packages/studio/src/models.js'
 import { NICHE_CONTENT } from '@/data/nicheContent'
@@ -124,6 +126,22 @@ const OUTPUT_OPTIONS_PROMPT = [
 ] as const
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * One-line scoring evidence for a result-card tooltip. Kept out of the card
+ * body because the full signal list is too noisy at this size.
+ */
+function businessOpportunityTitle(business: BusinessDiscoveryRecord): string | undefined {
+  const breakdown = business.scoreBreakdown
+  if (!breakdown) return undefined
+  const parts = [
+    `Video opportunity ${Math.round(breakdown.videoOpportunity)}`,
+    `Contactability ${Math.round(breakdown.contactability)}`,
+    ownershipLabel(breakdown.ownership),
+  ]
+  if (business.videoOpportunity?.signals?.length) parts.push(...business.videoOpportunity.signals)
+  return parts.join(' · ')
+}
 
 function classNames(...classes: (string | boolean | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ')
@@ -2125,6 +2143,117 @@ function ConfigurationView(props: any) {
     findBusinesses(searchNiche, searchLocation.trim(), radiusMiles)
   }, [findBusinesses, searchLocation, searchNiche])
 
+  // ── Saved Leads (lead finder shortlist) ────────────────────────────────────
+  // Per-user shortlist behind /api/personalization/leads (Clerk-authenticated).
+  // Anonymous sessions never render the save affordance or the panel: the API
+  // answers 401 for them, matching how the modal hides every other
+  // authenticated action (see isAnonymous handling below).
+  type LeadRecord = {
+    id: string
+    business: BusinessDiscoveryRecord
+    stage: string
+    notes: string | null
+    starred: boolean
+    niche?: string | null
+    location?: string | null
+  }
+  const [savedLeadsOpen, setSavedLeadsOpen] = useState(false)
+  const [savedLeads, setSavedLeads] = useState<LeadRecord[]>([])
+  const [savedLeadsLoaded, setSavedLeadsLoaded] = useState(false)
+  const [savedLeadsLoading, setSavedLeadsLoading] = useState(false)
+  const [savedLeadsError, setSavedLeadsError] = useState<string | null>(null)
+  // Per-business save state for the result cards: 'saving' | 'saved' | 'error'.
+  const [leadSaveState, setLeadSaveState] = useState<Record<string, 'saving' | 'saved' | 'error'>>({})
+
+  const fetchSavedLeads = useCallback(async () => {
+    setSavedLeadsLoading(true)
+    setSavedLeadsError(null)
+    try {
+      const res = await fetch('/api/personalization/leads', { credentials: 'same-origin' })
+      if (res.status === 401) {
+        setSavedLeads([])
+        setSavedLeadsError('Sign in to view your saved leads.')
+        setSavedLeadsLoaded(false)
+        return
+      }
+      if (!res.ok) throw new Error(`Could not load saved leads (HTTP ${res.status})`)
+      const data = await res.json()
+      setSavedLeads(Array.isArray(data?.leads) ? data.leads : [])
+      setSavedLeadsLoaded(true)
+    } catch (err) {
+      setSavedLeadsError(err instanceof Error ? err.message : 'Could not load saved leads')
+    } finally {
+      setSavedLeadsLoading(false)
+    }
+  }, [])
+
+  const toggleSavedLeads = useCallback(() => {
+    const next = !savedLeadsOpen
+    setSavedLeadsOpen(next)
+    if (next && !savedLeadsLoaded) void fetchSavedLeads()
+  }, [fetchSavedLeads, savedLeadsLoaded, savedLeadsOpen])
+
+  // Persist one field change (stage / notes / starred) to the API and merge the
+  // authoritative lead row back into the panel state.
+  const patchLead = useCallback(async (leadId: string, patch: Record<string, unknown>) => {
+    const res = await fetch(`/api/personalization/leads/${leadId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(patch),
+    })
+    if (!res.ok) {
+      const message = res.status === 401 ? 'Sign in to update saved leads.' : `Update failed (HTTP ${res.status})`
+      throw new Error(message)
+    }
+    const data = await res.json()
+    if (data?.lead) {
+      setSavedLeads(prev => prev.map((lead) => (lead.id === leadId ? (data.lead as LeadRecord) : lead)))
+    }
+  }, [])
+
+  const handleSaveLead = useCallback(async (business: BusinessDiscoveryRecord) => {
+    if (isAnonymous) return
+    setLeadSaveState(prev => ({ ...prev, [business.id]: 'saving' }))
+    try {
+      const res = await fetch('/api/personalization/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          business,
+          stage: 'New',
+          niche: businessSearchQuery?.niche || searchNiche || undefined,
+          location: businessSearchQuery?.location || searchLocation.trim() || undefined,
+        }),
+      })
+      if (!res.ok) {
+        throw new Error(res.status === 401 ? 'Sign in to save leads.' : `Save failed (HTTP ${res.status})`)
+      }
+      const data = await res.json()
+      if (data?.lead && savedLeadsLoaded) {
+        setSavedLeads(prev => [data.lead as LeadRecord, ...prev.filter((lead) => lead.id !== data.lead.id)])
+      }
+      setLeadSaveState(prev => ({ ...prev, [business.id]: 'saved' }))
+    } catch {
+      setLeadSaveState(prev => ({ ...prev, [business.id]: 'error' }))
+    }
+  }, [businessSearchQuery, isAnonymous, savedLeadsLoaded, searchLocation, searchNiche])
+
+  const handleDeleteLead = useCallback(async (leadId: string) => {
+    const res = await fetch(`/api/personalization/leads/${leadId}`, {
+      method: 'DELETE',
+      credentials: 'same-origin',
+    })
+    if (!res.ok) {
+      const message = res.status === 401 ? 'Sign in to delete saved leads.' : `Delete failed (HTTP ${res.status})`
+      setSavedLeadsError(message)
+      return
+    }
+    setSavedLeads(prev => prev.filter((lead) => lead.id !== leadId))
+  }, [])
+
+
   // ── Find My Brand (the automated workflow) ────────────────────────────────
   // ONE starting action that accepts a website URL or opens the existing
   // niche/location search. Submitting runs the provider's `runDiscoveryWorkflow`,
@@ -2170,6 +2299,13 @@ function ConfigurationView(props: any) {
     }
     selectBusiness(business)
   }, [isAnonymous, runDiscoveryWorkflow, selectBusiness, setDiscoveryError])
+
+  const handleOpenSavedLead = useCallback((lead: LeadRecord) => {
+    // Same selection path the result cards use, so the Personalization handoff
+    // (anonymous automated run or authenticated select) is identical.
+    setSavedLeadsOpen(false)
+    handleSelectBusiness(lead.business)
+  }, [handleSelectBusiness])
 
   const handleOpenBusinessSearch = useCallback(() => {
     // The existing niche/location search form is gated on the customer
@@ -2742,21 +2878,40 @@ function ConfigurationView(props: any) {
                     {businessSearchResults.length} businesses found for {businessSearchQuery?.niche} near {businessSearchQuery?.location}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => clearBusinessSearch()}
-                  className="rounded-lg text-[10px] font-extrabold uppercase tracking-wide"
-                  style={{
-                    minHeight: 32,
-                    padding: '0 12px',
-                    border: `1px solid ${C.border}`,
-                    background: C.panel,
-                    color: 'white',
-                  }}
-                >
-                  New Search
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {!isAnonymous && (
+                    <button
+                      type="button"
+                      onClick={toggleSavedLeads}
+                      className="rounded-lg text-[10px] font-extrabold uppercase tracking-wide"
+                      style={{
+                        minHeight: 32,
+                        padding: '0 12px',
+                        border: `1px solid ${savedLeadsOpen ? C.cyanBorder : C.border}`,
+                        background: savedLeadsOpen ? C.cyanSoft : C.panel,
+                        color: savedLeadsOpen ? C.cyan : 'white',
+                      }}
+                    >
+                      Saved Leads{savedLeadsLoaded ? ` (${savedLeads.length})` : ''}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => clearBusinessSearch()}
+                    className="rounded-lg text-[10px] font-extrabold uppercase tracking-wide"
+                    style={{
+                      minHeight: 32,
+                      padding: '0 12px',
+                      border: `1px solid ${C.border}`,
+                      background: C.panel,
+                      color: 'white',
+                    }}
+                  >
+                    New Search
+                  </button>
+                </div>
               </div>
+              {!savedLeadsOpen && (
               <div className="flex flex-col gap-2">
                 {businessSearchResults.map((business) => (
                   <div
@@ -2799,9 +2954,34 @@ function ConfigurationView(props: any) {
                         </div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                        <div style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', color: C.cyan }}>
-                          {Math.round(business.leadScore || 0)}% match
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          {business.ownership && (
+                            <span style={ownershipBadgeStyle(business.ownership)}>{ownershipLabel(business.ownership)}</span>
+                          )}
+                          <div
+                            style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', color: C.cyan }}
+                            title={businessOpportunityTitle(business)}
+                          >
+                            {Math.round(business.leadScore || 0)}% match
+                          </div>
                         </div>
+                        {!isAnonymous && (
+                          <button
+                            type="button"
+                            disabled={leadSaveState[business.id] === 'saving'}
+                            onClick={(e) => { e.stopPropagation(); void handleSaveLead(business) }}
+                            className="rounded-lg text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50"
+                            style={{
+                              minHeight: 32,
+                              padding: '0 12px',
+                              border: `1px solid ${leadSaveState[business.id] === 'saved' ? 'rgba(40,201,139,.45)' : leadSaveState[business.id] === 'error' ? C.danger : C.border}`,
+                              background: leadSaveState[business.id] === 'saved' ? 'rgba(40,201,139,.12)' : C.panel,
+                              color: leadSaveState[business.id] === 'saved' ? C.green : leadSaveState[business.id] === 'error' ? C.danger : 'white',
+                            }}
+                          >
+                            {leadSaveState[business.id] === 'saved' ? 'Saved ✓' : leadSaveState[business.id] === 'error' ? 'Save failed' : leadSaveState[business.id] === 'saving' ? 'Saving…' : 'Save Lead'}
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); handleSelectBusiness(business) }}
@@ -2821,9 +3001,155 @@ function ConfigurationView(props: any) {
                   </div>
                 ))}
               </div>
-              <p style={{ marginTop: 10, color: C.muted2, fontSize: 9, lineHeight: 1.4 }}>
-                © OpenStreetMap contributors. Website absence in OpenStreetMap does not mean the business has no website.
-              </p>
+              )}
+              {!savedLeadsOpen && (
+                <p style={{ marginTop: 10, color: C.muted2, fontSize: 9, lineHeight: 1.4 }}>
+                  © OpenStreetMap contributors. Website absence in OpenStreetMap does not mean the business has no website.
+                </p>
+              )}
+              {savedLeadsOpen && (
+                <div className="flex flex-col gap-2">
+                  {savedLeadsLoading && (
+                    <div style={{ padding: 12, fontSize: 11, color: C.muted }}>Loading saved leads…</div>
+                  )}
+                  {savedLeadsError && (
+                    <div style={{ padding: 12, fontSize: 11, color: C.danger }}>{savedLeadsError}</div>
+                  )}
+                  {!savedLeadsLoading && !savedLeadsError && savedLeads.length === 0 && (
+                    <div style={{ padding: 12, fontSize: 11, color: C.muted }}>
+                      No saved leads yet. Use “Save Lead” on a search result to build your shortlist.
+                    </div>
+                  )}
+                  {savedLeads.map((lead) => (
+                    <div
+                      key={lead.id}
+                      style={{
+                        padding: 12,
+                        border: `1px solid ${C.border}`,
+                        borderRadius: 10,
+                        background: '#11161b',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                        <div style={{ flex: 1, minWidth: 160 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                            <button
+                              type="button"
+                              aria-label={lead.starred ? 'Unstar lead' : 'Star lead'}
+                              onClick={() => {
+                                setSavedLeadsError(null)
+                                void patchLead(lead.id, { starred: !lead.starred }).catch((err: Error) => setSavedLeadsError(err.message))
+                              }}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: 14,
+                                lineHeight: 1,
+                                padding: 0,
+                                color: lead.starred ? '#f5b545' : C.muted2,
+                              }}
+                            >
+                              {lead.starred ? '★' : '☆'}
+                            </button>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>
+                              {lead.business?.name || 'Saved business'}
+                            </div>
+                          </div>
+                          <div style={{ fontSize: 10, color: C.muted, marginBottom: 6 }}>
+                            {[lead.business?.category, lead.business?.city].filter(Boolean).join(' · ')}
+                          </div>
+                          {lead.business?.ownership && (
+                            <span style={ownershipBadgeStyle(lead.business.ownership)}>
+                              {ownershipLabel(lead.business.ownership)}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <select
+                              aria-label="Lead stage"
+                              value={isLeadStage(lead.stage) ? lead.stage : LEAD_STAGES[0]}
+                              onChange={(e) => {
+                                const stage = e.target.value
+                                setSavedLeads(prev => prev.map((l) => (l.id === lead.id ? { ...l, stage } : l)))
+                                setSavedLeadsError(null)
+                                void patchLead(lead.id, { stage }).catch((err: Error) => setSavedLeadsError(err.message))
+                              }}
+                              className="rounded-lg outline-none"
+                              style={{
+                                minHeight: 32,
+                                padding: '0 8px',
+                                border: `1px solid ${C.border}`,
+                                borderRadius: 8,
+                                background: C.field,
+                                color: C.text,
+                                fontSize: 11,
+                              }}
+                            >
+                              {LEAD_STAGES.map((stage) => (
+                                <option key={stage} value={stage}>{stage}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Notes"
+                            defaultValue={lead.notes || ''}
+                            onBlur={(e) => {
+                              const notes = e.target.value
+                              if (notes === (lead.notes ?? '')) return
+                              setSavedLeadsError(null)
+                              void patchLead(lead.id, { notes }).catch((err: Error) => setSavedLeadsError(err.message))
+                            }}
+                            className="rounded-lg outline-none"
+                            style={{
+                              minHeight: 32,
+                              width: 200,
+                              padding: '0 8px',
+                              border: `1px solid ${C.border}`,
+                              borderRadius: 8,
+                              background: C.field,
+                              color: C.text,
+                              fontSize: 11,
+                            }}
+                          />
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenSavedLead(lead)}
+                              className="rounded-lg text-[10px] font-extrabold uppercase tracking-wide"
+                              style={{
+                                minHeight: 32,
+                                padding: '0 12px',
+                                border: `1px solid ${C.cyan}`,
+                                background: C.cyan,
+                                color: '#041014',
+                              }}
+                            >
+                              Open in Personalization
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleDeleteLead(lead.id)}
+                              className="rounded-lg text-[10px] font-extrabold uppercase tracking-wide"
+                              style={{
+                                minHeight: 32,
+                                padding: '0 12px',
+                                border: `1px solid ${C.border}`,
+                                background: C.panel,
+                                color: C.muted,
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

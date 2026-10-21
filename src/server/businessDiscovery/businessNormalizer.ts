@@ -48,10 +48,43 @@ function scoreRecord(record: BusinessDiscoveryRecord): number {
   return score
 }
 
+// Lifecycle tags that explicitly mark a business as closed. Mirrors the
+// CLOSED_LIFEcycle_TAGS check in overpassProvider but operates on already
+// normalized records (via rawSource) instead of raw OSM elements.
+const CLOSED_RAW_TAG_BASES = [
+  'closed',
+  'abandoned',
+  'disused',
+  'demolished',
+  'razed',
+  'removed',
+  'vacant',
+]
+
+function isExplicitlyClosed(record: BusinessDiscoveryRecord): boolean {
+  const raw = record.rawSource
+  if (!raw) return false
+  for (const key of Object.keys(raw)) {
+    const base = key.split(':')[0]
+    if (CLOSED_RAW_TAG_BASES.includes(base)) {
+      const value = raw[key]
+      if (value === 'yes' || value === '1' || value === true) return true
+    }
+  }
+  return false
+}
+
+/**
+ * Drops only records explicitly marked closed (OSM lifecycle tags on
+ * rawSource). Records with websiteStatus 'not_found_after_research' are
+ * RETAINED: a business whose website could not be found is still a reachable
+ * prospect, not a closed one. The route does not currently call this, but
+ * callers should apply it BEFORE scoring/enrichment.
+ */
 export function filterClosedBusinesses(
   businesses: BusinessDiscoveryRecord[],
 ): BusinessDiscoveryRecord[] {
-  return businesses.filter((b) => b.websiteStatus !== 'not_found_after_research')
+  return businesses.filter((b) => !isExplicitlyClosed(b))
 }
 
 export function enrichBusinessRecord(
