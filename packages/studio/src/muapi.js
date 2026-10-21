@@ -9,6 +9,7 @@ import { pollForGenerationResult } from './utils/generationLifecycle.js';
 import { getModelMediaCapabilities, mapReferenceParams } from './modelCapabilities.js';
 import { buildSupplementalInputPayload } from './modelParameters.js';
 import { getGroupedVideoConfiguration } from './groupedVideoModels.js';
+import { getUploadLimit, isAllowedUploadMimeType, formatUploadLimit } from './uploadContract.js';
 
 // In an http(s) browser we route through the host app's proxy (Next.js routes
 // under /api/* re-issue the call server-side) so api.muapi.ai CORS is bypassed.
@@ -290,6 +291,14 @@ export async function processRecast(apiKey, params) {
         payload.character_orientation = params.character_orientation;
     }
     return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900);
+}
+
+export function buildWorkflowApiSnippets(workflowId, inputs, options) {
+  return "";
+}
+
+export function generateCharacterVideo() {
+  return {};
 }
 
 export async function processMotionControl(apiKey, params) {
