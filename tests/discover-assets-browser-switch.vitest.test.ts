@@ -120,6 +120,32 @@ describe('discover-assets — the browser escalation switch', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('derives the worker URL from the request origin when NEXT_PUBLIC_SITE_URL is unset', async () => {
+    // The browser-discovery worker is a function on the SAME site, so the
+    // request's own origin is the right base. Relying on the env var alone
+    // meant the escalation silently could not run on a deployment that does
+    // not set it.
+    delete process.env.NEXT_PUBLIC_SITE_URL
+    freeLayersWereNotEnough()
+
+    const res = await post()
+    const body = await res.json()
+    expect(body.browserQueued).toBe(true)
+    expect(fetchMock).toHaveBeenCalled()
+    const workerUrl = String((fetchMock.mock.calls[0] as any[])[0])
+    expect(workerUrl).toContain('personalization-browser-discovery')
+    expect(workerUrl).toMatch(/^https?:\/\//)
+  })
+
+  it('prefers an explicitly configured site URL over the request origin', async () => {
+    process.env.NEXT_PUBLIC_SITE_URL = 'https://configured.example'
+    freeLayersWereNotEnough()
+
+    await post()
+    const workerUrl = String((fetchMock.mock.calls[0] as any[])[0])
+    expect(workerUrl.startsWith('https://configured.example/')).toBe(true)
+  })
+
   it('completes from the free layers when they were enough', async () => {
     delete process.env.ENABLE_BROWSER_DISCOVERY
     runFastDiscoveryMock.mockResolvedValue({

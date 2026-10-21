@@ -91,7 +91,11 @@ const SIGNIN_ORIGIN = argValue('--signin-origin', 'https://go.smartvid.app');
 const TTL_SECONDS = Number(argValue('--ttl-seconds', '86400'));
 const COOKIE_TTL_DAYS = Number(argValue('--cookie-ttl-days', '7'));
 const EMAIL = argValue('--email', 'e2e-buyer@e2e.smartvid.app');
-const CLERK_DIR = path.resolve(process.cwd(), 'playwright/.clerk');
+// The directory the storage state is written to. It defaults to the shared
+// `playwright/.clerk/` directory (which is what `resolveDemoAuthStatePath()`
+// resolves), but it can be pointed elsewhere so a state for a SECOND origin
+// can be minted without clobbering the state another tool is using.
+const CLERK_DIR = path.resolve(process.cwd(), argValue('--out-dir', 'playwright/.clerk'));
 
 if (!BASE_URL) {
   throw new Error('Missing --base-url <origin>. Example: --base-url https://abc--site.netlify.app');

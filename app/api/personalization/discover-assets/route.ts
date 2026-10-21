@@ -127,8 +127,15 @@ function extractClerkSessionToken(req: NextRequest): string | null {
  * `/.netlify/functions/...` in that case, the fetch threw, the error was
  * logged and the job was left in `running` for ever.
  */
-function backgroundWorkerUrl(): string | null {
-  const base = (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/+$/, '')
+function backgroundWorkerUrl(req: NextRequest): string | null {
+  // An explicit site URL wins. When it is not configured, the worker's URL is
+  // derived from the request that is asking for it: the browser-discovery
+  // worker is a function on the SAME site, so the request's own origin is
+  // always the right base. Relying on NEXT_PUBLIC_SITE_URL alone meant that
+  // on a deployment where that variable is not set the escalation could not
+  // run at all, and the job was terminated instead of being escalated.
+  const configured = (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/+$/, '')
+  const base = configured || req.nextUrl?.origin || ''
   if (!base) return null
   return `${base}/.netlify/functions/personalization-browser-discovery`
 }
@@ -146,7 +153,7 @@ async function dispatchBackgroundJob(
   websiteUrl: string,
   priorityPages: string[],
 ): Promise<{ dispatched: boolean; reason?: string }> {
-  const workerUrl = backgroundWorkerUrl()
+  const workerUrl = backgroundWorkerUrl(req)
   if (!workerUrl) {
     return { dispatched: false, reason: 'NO_BACKGROUND_WORKER_URL' }
   }
