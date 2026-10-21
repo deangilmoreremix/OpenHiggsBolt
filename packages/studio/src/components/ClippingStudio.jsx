@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
 import TemplateBanner from "./TemplateBanner";
@@ -106,6 +106,19 @@ export default function ClippingStudio({
   onFilesHandled,
   templateData,
   locale = "en",
+  /**
+   * Optional renderer for the shared Personalization Modal hand-off.
+   *
+   * The `studio` package is published standalone, so it MUST NOT import the
+   * app's `src/shared/personalization/studioEntry` module — the app root owns
+   * that wiring and passes the renderer in.
+   *
+   * The argument is a plain `StudioPersonalizeOptions` object:
+   *   { originStudio, studioProjectId, title,
+   *     media: { mediaType, url, poster, aspectRatio, duration, durationLabel },
+   *     prompt: { text, model, modelName } }
+   */
+  renderPersonalizeAction,
 }) {
   const copy = resolveCopy(en, zh, locale);
   const PERSIST_KEY = "hg_clipping_studio_persistent";
@@ -144,6 +157,34 @@ export default function ClippingStudio({
 
   // ── History State ────────────────────────────────────────────────────────
   const [history, setHistory] = useState([]);
+
+  // ── Personalization hand-off (Phase 2) ───────────────────────────────────
+  // The shared Personalization Modal keys its saved project on the source id,
+  // so the studio project id has to be unique per project AND stable while
+  // the project is unchanged. It is derived from the uploaded source video
+  // plus the clipping configuration — a new upload (or a different aspect
+  // ratio / highlight count) is a different project.
+  const studioPersonalizeOptions = useMemo(
+    () => ({
+      originStudio: "clipping",
+      studioProjectId: [
+        videoUrl ? videoUrl.split("/").pop() : "no-video",
+        aspectRatio,
+        String(numHighlights),
+      ].join(":"),
+      title: "AI Clipping source video",
+      media: {
+        mediaType: "video",
+        url: videoUrl || null,
+        poster: null,
+        aspectRatio,
+      },
+      prompt: {
+        text: prompt,
+      },
+    }),
+    [videoUrl, aspectRatio, numHighlights, prompt],
+  );
 
   const ASPECT_RATIOS = [
     { label: "9:16 (TikTok / Reels / Shorts)", value: "9:16" },
@@ -865,6 +906,12 @@ export default function ClippingStudio({
                   ×
                 </button>
               </div>
+
+              {/* Personalize this clip in the shared Personalization Modal.
+                  Renders nothing without an uploaded source video. */}
+              {studioPersonalizeOptions.media.url
+                ? renderPersonalizeAction?.(studioPersonalizeOptions)
+                : null}
             </div>
           )}
 

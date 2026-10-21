@@ -5,6 +5,18 @@
 // upstream src: src/components/logo-stroke-draw/LogoStrokeDraw.tsx
 // license     : MIT License — Copyright (c) 2026 Trimora Inc. (RenderComp). The MIT copyright notice and permission notice must be retained in all copies or substantial portions of the software.
 // Upstream code is reproduced verbatim apart from this header comment.
+// DEVIATION (Phase 2, A11):
+//   1. the module-level font stack now comes from the bundled deterministic
+//      typeface (`../../designs/fonts`) instead of the hard-coded system
+//      stack, so the export does not depend on the OS;
+//   2. the badge monogram is drawn as an HTML element instead of an SVG
+//      `<text>` element. The in-browser web renderer rasterises every `<svg>`
+//      by serialising it into a `data:image/svg+xml` document, and such an
+//      isolated document cannot load a document-level `@font-face` — so the
+//      monogram fell back to a system face inside the raster. The HTML
+//      monogram keeps the same position, size, weight, colour and opacity,
+//      and the shine sweep moved into a second `<svg>` so it still paints
+//      OVER the monogram (the original z-order).
 // ---------------------------------------------------------------------------
 // SPDX-FileCopyrightText: 2026 Trimora Inc.
 // SPDX-License-Identifier: MIT
@@ -16,6 +28,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
+import { DESIGN_FONT_STACK } from "../../designs/fonts";
 
 export const FPS = 30;
 export const DURATION_FRAMES = 110;
@@ -36,7 +49,7 @@ export const defaultLogoStrokeDrawProps: LogoStrokeDrawProps = {
   brandText: "ACME INC.",
 };
 
-const FONT = '-apple-system, "Segoe UI", Roboto, sans-serif';
+const FONT = DESIGN_FONT_STACK;
 
 export const LogoStrokeDraw: React.FC<LogoStrokeDrawProps> = ({
   backgroundColor,
@@ -100,6 +113,10 @@ export const LogoStrokeDraw: React.FC<LogoStrokeDrawProps> = ({
   // Shine sweep position (a bright diagonal band crossing the badge)
   const sweepX = interpolate(shine, [0, 1], [cx - R * 1.6, cx + R * 1.6]);
   const sweepW = R * 0.5;
+  const sweepActive = shine > 0.02 && shine < 0.98;
+
+  // The lockup's own scale, applied about the badge centre.
+  const lockupTransform = `translate(${cx} ${cy}) scale(${lockupScale}) translate(${-cx} ${-cy})`;
 
   return (
     <AbsoluteFill style={{ backgroundColor, overflow: "hidden" }}>
@@ -112,21 +129,14 @@ export const LogoStrokeDraw: React.FC<LogoStrokeDrawProps> = ({
       />
 
       <AbsoluteFill style={{ opacity: exitOpacity }}>
+        {/* The badge: the filled disc, the drawn ring and the pen-tip glow. */}
         <svg
           width={width}
           height={height}
           viewBox={`0 0 ${width} ${height}`}
           style={{ position: "absolute", top: 0, left: 0 }}
         >
-          <defs>
-            <clipPath id="lsd-shine-clip">
-              <circle cx={cx} cy={cy} r={R - strokeW / 2} />
-            </clipPath>
-          </defs>
-
-          <g
-            transform={`translate(${cx} ${cy}) scale(${lockupScale}) translate(${-cx} ${-cy})`}
-          >
+          <g transform={lockupTransform}>
             {/* Filled badge (fades in after the outline is mostly drawn) */}
             <circle
               cx={cx}
@@ -160,25 +170,56 @@ export const LogoStrokeDraw: React.FC<LogoStrokeDrawProps> = ({
                 opacity={0.9}
               />
             )}
+          </g>
+        </svg>
 
-            {/* Monogram letter inside the badge */}
-            <text
-              x={cx}
-              y={cy}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontFamily={FONT}
-              fontWeight={800}
-              fontSize={R * 1.15}
-              fill={accentColor}
-              opacity={fillIn}
-              letterSpacing="-0.02em"
-            >
-              {monogram}
-            </text>
+        {/* Monogram letter inside the badge.
+            It is an HTML element, not SVG `<text>`: the in-browser web
+            renderer rasterises an `<svg>` into an isolated
+            `data:image/svg+xml` document, which cannot load a document-level
+            `@font-face`, so an SVG glyph would fall back to a system face
+            while every other glyph in the design uses the bundled
+            typeface. Same position, size, weight, colour and opacity as the
+            original SVG text. */}
+        <div
+          data-lsd-monogram
+          style={{
+            position: "absolute",
+            left: cx,
+            top: cy,
+            transform: `translate(-50%, -50%) scale(${lockupScale})`,
+            transformOrigin: "center center",
+            fontFamily: FONT,
+            fontSize: R * 1.15,
+            fontWeight: 800,
+            lineHeight: 1,
+            color: accentColor,
+            opacity: fillIn,
+            letterSpacing: "-0.02em",
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+          }}
+        >
+          {monogram}
+        </div>
 
-            {/* Shine sweep band, clipped to the badge */}
-            {shine > 0.02 && shine < 0.98 && (
+        {/* Shine sweep band, clipped to the badge.
+            It lives in its own `<svg>` so it still paints OVER the monogram,
+            exactly as it did when the monogram was SVG text. */}
+        {sweepActive && (
+          <svg
+            width={width}
+            height={height}
+            viewBox={`0 0 ${width} ${height}`}
+            style={{ position: "absolute", top: 0, left: 0 }}
+          >
+            <defs>
+              <clipPath id="lsd-shine-clip">
+                <circle cx={cx} cy={cy} r={R - strokeW / 2} />
+              </clipPath>
+            </defs>
+
+            <g transform={lockupTransform}>
               <g clipPath="url(#lsd-shine-clip)">
                 <rect
                   x={sweepX - sweepW / 2}
@@ -190,9 +231,9 @@ export const LogoStrokeDraw: React.FC<LogoStrokeDrawProps> = ({
                   transform={`rotate(18 ${sweepX} ${cy})`}
                 />
               </g>
-            )}
-          </g>
-        </svg>
+            </g>
+          </svg>
+        )}
 
         {/* Brand wordmark */}
         <div

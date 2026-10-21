@@ -12,6 +12,9 @@ import {
 } from '../preview/presets'
 import { getRemotionDesignTemplate } from '../templates'
 import type {
+  RemotionDesignTextSlot,
+} from '../templates/types'
+import type {
   PersonalizationPreviewSettings,
   PreviewInputProps,
   PreviewLayer,
@@ -70,6 +73,48 @@ function layerText(layer: PreviewLayer, brand: PreviewInputProps['brand']): stri
   // typed something on the layer.
   if (layer.kind === 'design') return brand.headline
   return ''
+}
+
+/* ── Design text slots ─────────────────────────────────────────────────────── */
+
+/**
+ * The design-slot resolver lives in the `core` lane
+ * (`../preview/designSlots.ts`), because BOTH the inspector and the render
+ * path need it and the composition must not import from `guided/` (that would
+ * create the require cycle
+ * Composition -> OverlayEditor -> Provider -> Modal -> OverlayEditor).
+ *
+ * The helpers are re-exported here so every existing consumer of
+ * `guided/OverlayEditor` keeps working.
+ */
+export {
+  DESIGN_SLOT_OVERRIDES_FIELD,
+  brandSlotValue,
+  designSlotLabel,
+  designSlotOverrides,
+  isPrimaryDesignSlot,
+  resolveDesignSlotValues,
+} from '../preview/designSlots'
+
+import {
+  designSlotLabel,
+  designSlotOverrides,
+  isPrimaryDesignSlot,
+  resolveDesignSlotValues,
+} from '../preview/designSlots'
+
+/** The patch the inspector writes when a secondary slot changes. */
+function slotOverridesPatch(next: Record<string, string>): Partial<PreviewLayer> {
+  // `textSlotOverrides` is a field of `PreviewLayer`; the cast keeps the
+  // patch type-safe against the rest of the layer shape.
+  return { textSlotOverrides: next }
+}
+
+/** The optional character limit an adapter may put on a slot. */
+function slotMaxLength(slot: RemotionDesignTextSlot): number | undefined {
+  const raw = (slot as RemotionDesignTextSlot & { maxLength?: unknown }).maxLength
+  if (typeof raw !== 'number' || !Number.isFinite(raw) || raw <= 0) return undefined
+  return Math.floor(raw)
 }
 
 /**
@@ -163,9 +208,34 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
   // A design labels its primary text slot; the plain layers just say "Text".
   const selectedTextLabel =
     selectedDesign?.textSlots?.find((slot) => slot && slot.primary)?.label ?? 'Text'
+  // Every slot the selected design declares, with the value each one shows.
+  const selectedSlots: RemotionDesignTextSlot[] =
+    selectedDesign && Array.isArray(selectedDesign.textSlots) ? selectedDesign.textSlots : []
+  const selectedSlotValues: Record<string, string | undefined> =
+    selectedDesign && selected ? resolveDesignSlotValues(selectedDesign, selected, brand) : {}
 
   const controlId = (name: string) => `${fieldPrefix}-${name}`
   const round = (value: number) => Number(value.toFixed(4))
+
+  /**
+   * Writes one slot's new value.
+   *
+   * The primary slot keeps writing `layer.text` (the field the inspector has
+   * always written); every other slot writes its entry in the layer's
+   * per-slot override map. Clearing a secondary field drops the override so
+   * the slot falls back to its brand value again.
+   */
+  const onDesignSlotChange = (slot: RemotionDesignTextSlot, next: string) => {
+    if (!selected) return
+    if (isPrimaryDesignSlot(slot)) {
+      updatePreviewLayer(selected.id, { text: next })
+      return
+    }
+    const overrides = designSlotOverrides(selected)
+    if (next.trim()) overrides[slot.key] = next
+    else delete overrides[slot.key]
+    updatePreviewLayer(selected.id, slotOverridesPatch(overrides))
+  }
 
   const commitPosition = useCallback(
     (layerId: string, next: PreviewLayer) => {
@@ -464,48 +534,57 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
         {/* ── Layer list + controls ─────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
           <div style={labelStyle}>Layers</div>
-          {settings.layers.map((layer) => (
-            <div
-              key={layer.id}
-              role="button"
-              tabIndex={0}
-              aria-label={`Select ${LAYER_LABELS[layer.kind]}`}
-              aria-pressed={selected?.id === layer.id}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault()
-                  setSelectedId(layer.id)
-                }
-              }}
-              onClick={() => setSelectedId(layer.id)}
-              style={{
-                ...softPanelStyle,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                border: `1px solid ${selected?.id === layer.id ? C.cyanBorder : C.border}`,
-                cursor: 'pointer',
-              }}
-            >
-              <span style={{ color: C.text, fontSize: 12, fontWeight: 700, flex: 1 }}>{LAYER_LABELS[layer.kind]}</span>
-              {layer.kind === 'endCard' ? (
-                <span style={{ color: C.muted, fontSize: 10 }}>{settings.showEndCard ? 'On' : 'Off'}</span>
-              ) : (
-                <button
-                  type="button"
-                  aria-label={`${layer.visible ? 'Hide' : 'Show'} ${LAYER_LABELS[layer.kind]}`}
-                  aria-pressed={layer.visible}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    updatePreviewLayer(layer.id, { visible: !layer.visible })
-                  }}
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: layer.visible ? C.cyan : C.muted2, padding: 2 }}
-                >
-                  {layer.visible ? <Eye size={14} /> : <EyeOff size={14} />}
-                </button>
-              )}
-            </div>
-          ))}
+          {settings.layers.map((layer) => {
+            const layerDesign =
+              layer.kind === 'design' && layer.designId
+                ? getRemotionDesignTemplate(layer.designId)
+                : undefined
+            return (
+              <div
+                key={layer.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`Select ${LAYER_LABELS[layer.kind]}`}
+                aria-pressed={selected?.id === layer.id}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    setSelectedId(layer.id)
+                  }
+                }}
+                onClick={() => setSelectedId(layer.id)}
+                style={{
+                  ...softPanelStyle,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  border: `1px solid ${selected?.id === layer.id ? C.cyanBorder : C.border}`,
+                  cursor: 'pointer',
+                }}
+              >
+                <span style={{ color: C.text, fontSize: 12, fontWeight: 700, flex: 1 }}>{LAYER_LABELS[layer.kind]}</span>
+                {layerDesign ? (
+                  <span style={{ color: C.muted, fontSize: 10 }}>{layerDesign.name}</span>
+                ) : null}
+                {layer.kind === 'endCard' ? (
+                  <span style={{ color: C.muted, fontSize: 10 }}>{settings.showEndCard ? 'On' : 'Off'}</span>
+                ) : (
+                  <button
+                    type="button"
+                    aria-label={`${layer.visible ? 'Hide' : 'Show'} ${LAYER_LABELS[layer.kind]}`}
+                    aria-pressed={layer.visible}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      updatePreviewLayer(layer.id, { visible: !layer.visible })
+                    }}
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: layer.visible ? C.cyan : C.muted2, padding: 2 }}
+                  >
+                    {layer.visible ? <Eye size={14} /> : <EyeOff size={14} />}
+                  </button>
+                )}
+              </div>
+            )
+          })}
 
           {selected && selected.kind !== 'endCard' && (
             <div style={{ ...softPanelStyle, display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
@@ -521,17 +600,45 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
 
               {TEXT_KINDS.includes(selected.kind) && (
                 <>
-                  <div>
-                    <label style={labelStyle} htmlFor={controlId('text')}>{selectedTextLabel}</label>
-                    <textarea
-                      id={controlId('text')}
-                      aria-label="Layer text"
-                      value={selected.text ?? ''}
-                      onChange={(event) => updatePreviewLayer(selected.id, { text: event.target.value })}
-                      rows={2}
-                      style={{ ...inputStyle, padding: '8px 11px', resize: 'vertical' }}
-                    />
-                  </div>
+                  {selected.kind === 'design' && selectedDesign ? (
+                    selectedSlots.length > 0 ? (
+                      /* One editable field per slot the design declares. */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {selectedSlots.map((slot) => {
+                          const label = designSlotLabel(slot)
+                          const slotId = controlId(`slot-${slot.key}`)
+                          return (
+                            <div key={slot.key}>
+                              <label style={labelStyle} htmlFor={slotId}>{label}</label>
+                              <textarea
+                                id={slotId}
+                                aria-label={label}
+                                value={selectedSlotValues[slot.key] ?? ''}
+                                onChange={(event) => onDesignSlotChange(slot, event.target.value)}
+                                rows={2}
+                                maxLength={slotMaxLength(slot)}
+                                style={{ ...inputStyle, padding: '8px 11px', resize: 'vertical' }}
+                              />
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div style={{ color: C.muted, fontSize: 10 }}>This design has no editable text.</div>
+                    )
+                  ) : (
+                    <div>
+                      <label style={labelStyle} htmlFor={controlId('text')}>{selectedTextLabel}</label>
+                      <textarea
+                        id={controlId('text')}
+                        aria-label="Layer text"
+                        value={selected.text ?? ''}
+                        onChange={(event) => updatePreviewLayer(selected.id, { text: event.target.value })}
+                        rows={2}
+                        style={{ ...inputStyle, padding: '8px 11px', resize: 'vertical' }}
+                      />
+                    </div>
+                  )}
                   <div className="grid grid-cols-2" style={{ gap: 8 }}>
                     <div>
                       <label style={labelStyle} htmlFor={controlId('color')}>Color</label>

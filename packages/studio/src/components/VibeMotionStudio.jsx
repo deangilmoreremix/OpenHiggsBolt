@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
 import TemplateBanner from "./TemplateBanner";
@@ -59,7 +59,24 @@ function DropdownItem({ label, selected, onClick }) {
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function VibeMotionStudio({ apiKey, templateData, locale = "en" }) {
+export default function VibeMotionStudio({
+  apiKey,
+  templateData,
+  locale = "en",
+  /**
+   * Optional renderer for the shared Personalization Modal hand-off.
+   *
+   * The `studio` package is published standalone, so it MUST NOT import the
+   * app's `src/shared/personalization/studioEntry` module — the app root owns
+   * that wiring and passes the renderer in.
+   *
+   * The argument is a plain `StudioPersonalizeOptions` object:
+   *   { originStudio, studioProjectId, title,
+   *     media: { mediaType, url, poster, aspectRatio, duration, durationLabel },
+   *     prompt: { text, model, modelName } }
+   */
+  renderPersonalizeAction,
+}) {
   const copy = resolveCopy(en, zh, locale);
   const PERSIST_KEY = "hg_vibe_motion_studio_persistent";
 
@@ -90,6 +107,40 @@ export default function VibeMotionStudio({ apiKey, templateData, locale = "en" }
   // ── History ───────────────────────────────────────────────────────────────
   const [history, setHistory] = useState([]);
   const [fullscreenUrl, setFullscreenUrl] = useState(null);
+
+  // ── Personalization hand-off (Phase 2) ───────────────────────────────────
+  // Vibe Motion has no upload input — the studio's media IS its newest
+  // generation, so the most recent history entry is the single primary output
+  // that gets handed to the shared Personalization Modal.
+  // The Modal keys its saved project on the source id, so the studio project
+  // id has to be unique per project AND stable while the project is
+  // unchanged: the generation id plus the generation configuration.
+  const studioPersonalizeOptions = useMemo(
+    () => {
+      const latest = history[0] || null;
+      return {
+        originStudio: "vibe-motion",
+        studioProjectId: [
+          latest?.id || "no-generation",
+          latest?.aspectRatio || aspectRatio,
+          String(latest?.duration || duration),
+        ].join(":"),
+        title: "Vibe Motion graphic",
+        media: {
+          mediaType: "video",
+          url: latest?.url || null,
+          poster: null,
+          aspectRatio: latest?.aspectRatio || aspectRatio,
+          duration: latest?.duration || duration,
+          durationLabel: `${latest?.duration || duration}s`,
+        },
+        prompt: {
+          text: latest?.prompt || prompt,
+        },
+      };
+    },
+    [history, aspectRatio, duration, prompt],
+  );
 
   // ── Load from localStorage ─────────────────────────────────────────────────
   useEffect(() => {
@@ -617,6 +668,12 @@ export default function VibeMotionStudio({ apiKey, templateData, locale = "en" }
                 className="w-full bg-transparent border-none text-white text-sm placeholder:text-white/10 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar"
               />
             </div>
+
+            {/* Personalize the newest motion graphic in the shared
+                Personalization Modal. Renders nothing without a generation. */}
+            {studioPersonalizeOptions.media.url
+              ? renderPersonalizeAction?.(studioPersonalizeOptions)
+              : null}
           </div>
 
           {/* ── Error banner ── */}

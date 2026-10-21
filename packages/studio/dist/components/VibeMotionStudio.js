@@ -120,7 +120,8 @@ function VibeMotionStudio(_ref2) {
   var apiKey = _ref2.apiKey,
     templateData = _ref2.templateData,
     _ref2$locale = _ref2.locale,
-    locale = _ref2$locale === void 0 ? "en" : _ref2$locale;
+    locale = _ref2$locale === void 0 ? "en" : _ref2$locale,
+    renderPersonalizeAction = _ref2.renderPersonalizeAction;
   var copy = (0, _i18nUtils.resolveCopy)(_vibeMotionStudio["default"], _vibeMotionStudio2["default"], locale);
   var PERSIST_KEY = "hg_vibe_motion_studio_persistent";
 
@@ -187,6 +188,33 @@ function VibeMotionStudio(_ref2) {
     _useState22 = _slicedToArray(_useState21, 2),
     fullscreenUrl = _useState22[0],
     setFullscreenUrl = _useState22[1];
+
+  // ── Personalization hand-off (Phase 2) ───────────────────────────────────
+  // Vibe Motion has no upload input — the studio's media IS its newest
+  // generation, so the most recent history entry is the single primary output
+  // that gets handed to the shared Personalization Modal.
+  // The Modal keys its saved project on the source id, so the studio project
+  // id has to be unique per project AND stable while the project is
+  // unchanged: the generation id plus the generation configuration.
+  var studioPersonalizeOptions = (0, _react.useMemo)(function () {
+    var latest = history[0] || null;
+    return {
+      originStudio: "vibe-motion",
+      studioProjectId: [(latest === null || latest === void 0 ? void 0 : latest.id) || "no-generation", (latest === null || latest === void 0 ? void 0 : latest.aspectRatio) || aspectRatio, String((latest === null || latest === void 0 ? void 0 : latest.duration) || duration)].join(":"),
+      title: "Vibe Motion graphic",
+      media: {
+        mediaType: "video",
+        url: (latest === null || latest === void 0 ? void 0 : latest.url) || null,
+        poster: null,
+        aspectRatio: (latest === null || latest === void 0 ? void 0 : latest.aspectRatio) || aspectRatio,
+        duration: (latest === null || latest === void 0 ? void 0 : latest.duration) || duration,
+        durationLabel: "".concat((latest === null || latest === void 0 ? void 0 : latest.duration) || duration, "s")
+      },
+      prompt: {
+        text: (latest === null || latest === void 0 ? void 0 : latest.prompt) || prompt
+      }
+    };
+  }, [history, aspectRatio, duration, prompt]);
 
   // ── Load from localStorage ─────────────────────────────────────────────────
   (0, _react.useEffect)(function () {
@@ -883,7 +911,7 @@ function VibeMotionStudio(_ref2) {
               rows: 1,
               className: "w-full bg-transparent border-none text-white text-sm placeholder:text-white/10 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar"
             })]
-          })]
+          }), studioPersonalizeOptions.media.url ? renderPersonalizeAction === null || renderPersonalizeAction === void 0 ? void 0 : renderPersonalizeAction(studioPersonalizeOptions) : null]
         }), generateError && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
           className: "flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-xs",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {

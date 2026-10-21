@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { processMotionControl, uploadFile } from "../muapi.js";
 import { formatErrorMessage } from "../utils/formatError.js";
@@ -554,6 +554,19 @@ export default function MotionControlStudio({
   droppedFiles,
   onFilesHandled,
   locale = "en",
+  /**
+   * Optional renderer for the shared Personalization Modal hand-off.
+   *
+   * The `studio` package is published standalone, so it MUST NOT import the
+   * app's `src/shared/personalization/studioEntry` module — the app root owns
+   * that wiring and passes the renderer in.
+   *
+   * The argument is a plain `StudioPersonalizeOptions` object:
+   *   { originStudio, studioProjectId, title,
+   *     media: { mediaType, url, poster, aspectRatio, duration, durationLabel },
+   *     prompt: { text, model, modelName } }
+   */
+  renderPersonalizeAction,
 }) {
   const copy = resolveCopy(en, zh, locale);
   const LEGACY_PERSIST_KEY = "hg_motion_control_studio_persistent";
@@ -602,6 +615,41 @@ export default function MotionControlStudio({
   const [characterImages, setCharacterImages] = useState([]); // [{ url, name }]
   const [isImageUploading, setIsImageUploading] = useState(false);
   const [imageProgress, setImageProgress] = useState(0);
+
+  // ── Personalization hand-off (Phase 2) ───────────────────────────────────
+  // Motion Control composes several assets (a reference video plus up to 30
+  // character images), but the shared Personalization Modal takes ONE source
+  // media — the reference video is the primary asset, so it is the one handed
+  // over. The character images are deliberately NOT part of the hand-off.
+  // The Modal keys its saved project on the source id, so the studio project
+  // id has to be unique per project AND stable while the project is
+  // unchanged: the uploaded video name plus the generation configuration.
+  const studioPersonalizeOptions = useMemo(
+    () => ({
+      originStudio: "motion-control",
+      studioProjectId: [
+        videoName || (videoUrl ? videoUrl.split("/").pop() : "no-video"),
+        selectedModelId,
+        aspectRatio,
+        String(duration),
+      ].join(":"),
+      title: "Motion Control reference video",
+      media: {
+        mediaType: "video",
+        url: videoUrl || null,
+        poster: null,
+        aspectRatio,
+        duration,
+        durationLabel: `${duration}s`,
+      },
+      prompt: {
+        text: prompt,
+        model: selectedModelId,
+        modelName: selectedModel?.name,
+      },
+    }),
+    [videoUrl, videoName, selectedModelId, selectedModel, aspectRatio, duration, prompt],
+  );
 
   // ── Popovers & UI Refs ──────────────────────────────────────────────────────
   const [openDropdown, setOpenDropdown] = useState(null); // 'model' | 'aspect' | 'duration' | 'options' | 'assets'
@@ -1074,6 +1122,12 @@ export default function MotionControlStudio({
               previewUrl={videoUrl}
               copy={copy}
             />
+
+            {/* Personalize the reference video in the shared Personalization
+                Modal. Renders nothing without an uploaded source video. */}
+            {studioPersonalizeOptions.media.url
+              ? renderPersonalizeAction?.(studioPersonalizeOptions)
+              : null}
 
             {/* Character / Performer Multi-Image Button */}
             <CharacterImagesMediaButton

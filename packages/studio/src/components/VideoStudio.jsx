@@ -30,9 +30,12 @@ import { VideoOptionControl, VideoSettingsControl } from "./VideoModelControls.j
 import usePromptMenu from "./prompt/usePromptMenu.js";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
-// Shared studio → Personalization Modal entry point. Relative (not `@/`) because
-// the `studio` package is published standalone and has no alias resolution.
-import { PersonalizeStep } from "../../../../src/shared/personalization/studioEntry";
+// NOTE: the shared Personalization Modal hand-off is NOT imported here. This
+// package is published standalone (`main`/`module` = `src/index.js`, `files` =
+// ["src", "dist"]), so an import of `src/shared/personalization/studioEntry`
+// would ship into the published tarball pointing at a repo-only path. The app
+// root owns that module and injects the trigger through the
+// `renderPersonalizeAction` render prop instead.
 
 import {
   PROMPT_MEDIA_PREVIEW_CLASS,
@@ -815,6 +818,19 @@ export default function VideoStudio({
   onFilesHandled,
   templateData,
   locale = "en",
+  /**
+   * Optional renderer for the shared Personalization Modal hand-off.
+   *
+   * The `studio` package is published standalone, so it MUST NOT import the
+   * app's `src/shared/personalization/studioEntry` module — the app root owns
+   * that wiring and passes the renderer in.
+   *
+   * The argument is a plain `StudioPersonalizeOptions` object:
+   *   { originStudio, studioProjectId, title,
+   *     media: { mediaType, url, poster, aspectRatio, duration, durationLabel },
+   *     prompt: { text, model, modelName } }
+   */
+  renderPersonalizeAction,
 }) {
   const PERSIST_KEY = "hg_video_studio_persistent";
 
@@ -2298,13 +2314,9 @@ export default function VideoStudio({
               )}
 
               {/* Personalize this clip in the shared Personalization Modal.
-                  Renders nothing without an uploaded source video. */}
-              <PersonalizeStep
-                options={studioPersonalizeOptions}
-                className="h-12 px-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-[10px] font-bold text-white/70 hover:text-white hover:border-[#22d3ee]/60 transition-colors"
-              >
-                Personalize
-              </PersonalizeStep>
+                  The app root injects the trigger; it renders nothing without
+                  an uploaded source video. */}
+              {renderPersonalizeAction?.(studioPersonalizeOptions)}
 
               {/* Audio preview */}
               {uploadedAudioUrls.length > 0 && (

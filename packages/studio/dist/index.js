@@ -14,6 +14,7 @@ var _exportNames = {
   AudioStudio: true,
   MarketingStudio: true,
   RecastStudio: true,
+  MotionControlStudio: true,
   WorkflowStudio: true,
   AgentStudio: true,
   DesignAgentStudio: true,
@@ -87,6 +88,12 @@ Object.defineProperty(exports, "MarketingStudio", {
     return _MarketingStudio["default"];
   }
 });
+Object.defineProperty(exports, "MotionControlStudio", {
+  enumerable: true,
+  get: function get() {
+    return _MotionControlStudio["default"];
+  }
+});
 Object.defineProperty(exports, "RecastStudio", {
   enumerable: true,
   get: function get() {
@@ -120,6 +127,7 @@ var _CinemaStudio = _interopRequireDefault(require("./components/CinemaStudio"))
 var _AudioStudio = _interopRequireDefault(require("./components/AudioStudio"));
 var _MarketingStudio = _interopRequireDefault(require("./components/MarketingStudio"));
 var _RecastStudio = _interopRequireDefault(require("./components/RecastStudio"));
+var _MotionControlStudio = _interopRequireDefault(require("./components/MotionControlStudio"));
 var _WorkflowStudio = _interopRequireDefault(require("./components/WorkflowStudio"));
 var _AgentStudio = _interopRequireDefault(require("./components/AgentStudio"));
 var _DesignAgentStudio = _interopRequireDefault(require("./components/DesignAgentStudio"));

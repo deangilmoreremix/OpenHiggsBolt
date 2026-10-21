@@ -11,6 +11,7 @@ var _reactHotToast = _interopRequireWildcard(require("react-hot-toast"));
 var _useTemplateData2 = require("../hooks/useTemplateData");
 var _TemplateBanner = _interopRequireDefault(require("./TemplateBanner"));
 var _muapi = require("../muapi.js");
+var _uploadContract = require("../uploadContract.js");
 var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
 var _skillStore = require("../lib/skillStore");
 var _registry = _interopRequireDefault(require("../skills/registry.json"));
@@ -218,7 +219,8 @@ function ClippingStudio(_ref2) {
     onFilesHandled = _ref2.onFilesHandled,
     templateData = _ref2.templateData,
     _ref2$locale = _ref2.locale,
-    locale = _ref2$locale === void 0 ? "en" : _ref2$locale;
+    locale = _ref2$locale === void 0 ? "en" : _ref2$locale,
+    renderPersonalizeAction = _ref2.renderPersonalizeAction;
   var copy = (0, _i18nUtils.resolveCopy)(_clippingStudio["default"], _clippingStudio2["default"], locale);
   var PERSIST_KEY = "hg_clipping_studio_persistent";
 
@@ -304,6 +306,29 @@ function ClippingStudio(_ref2) {
     _useState30 = _slicedToArray(_useState29, 2),
     history = _useState30[0],
     setHistory = _useState30[1];
+
+  // ── Personalization hand-off (Phase 2) ───────────────────────────────────
+  // The shared Personalization Modal keys its saved project on the source id,
+  // so the studio project id has to be unique per project AND stable while
+  // the project is unchanged. It is derived from the uploaded source video
+  // plus the clipping configuration — a new upload (or a different aspect
+  // ratio / highlight count) is a different project.
+  var studioPersonalizeOptions = (0, _react.useMemo)(function () {
+    return {
+      originStudio: "clipping",
+      studioProjectId: [videoUrl ? videoUrl.split("/").pop() : "no-video", aspectRatio, String(numHighlights)].join(":"),
+      title: "AI Clipping source video",
+      media: {
+        mediaType: "video",
+        url: videoUrl || null,
+        poster: null,
+        aspectRatio: aspectRatio
+      },
+      prompt: {
+        text: prompt
+      }
+    };
+  }, [videoUrl, aspectRatio, numHighlights, prompt]);
   var ASPECT_RATIOS = [{
     label: "9:16 (TikTok / Reels / Shorts)",
     value: "9:16"
@@ -595,11 +620,11 @@ function ClippingStudio(_ref2) {
             }
             return _context2.a(2);
           case 1:
-            if (!(file.size > 100 * 1024 * 1024)) {
+            if (!(file.size > (0, _uploadContract.getUploadLimit)(file))) {
               _context2.n = 2;
               break;
             }
-            alert("Video exceeds 100MB limit.");
+            alert("Video exceeds the ".concat((0, _uploadContract.formatUploadLimit)((0, _uploadContract.getUploadLimit)(file)), " limit."));
             return _context2.a(2);
           case 2:
             setVideoUploading(true);
@@ -1127,9 +1152,9 @@ function ClippingStudio(_ref2) {
       },
       children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
         className: "w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]",
-        children: [videoUrl && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        children: [videoUrl && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
           className: "flex items-center gap-2.5 px-1 pb-1",
-          children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "relative w-12 h-12 rounded-xl border border-white/10 overflow-hidden shadow-md group",
             children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("video", {
               src: videoUrl,
@@ -1143,7 +1168,7 @@ function ClippingStudio(_ref2) {
               title: "Clear video",
               children: "\xD7"
             })]
-          })
+          }), studioPersonalizeOptions.media.url ? renderPersonalizeAction === null || renderPersonalizeAction === void 0 ? void 0 : renderPersonalizeAction(studioPersonalizeOptions) : null]
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
           className: "flex items-start gap-3 px-1",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {

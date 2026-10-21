@@ -62,6 +62,17 @@ export interface PreviewLayer {
    * registry existed still restore.
    */
   designId?: string
+  /**
+   * Per-slot text overrides for a `design` layer, keyed by
+   * `RemotionDesignTextSlot.key`.
+   *
+   * The PRIMARY slot is NOT stored here: it keeps using `layer.text`.
+   * Only the secondary slots appear in this map, so a design that declares
+   * no primary slot stores every slot here.
+   *
+   * Absent => the slot falls back to its brand field.
+   */
+  textSlotOverrides?: Record<string, string>
 }
 
 export interface PreviewBrandColors {

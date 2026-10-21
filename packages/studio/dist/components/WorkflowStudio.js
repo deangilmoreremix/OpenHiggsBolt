@@ -61,29 +61,86 @@ function WorkflowCard(_ref) {
     setShowOptions = _useState2[1];
   var _useState3 = (0, _react.useState)(false),
     _useState4 = _slicedToArray(_useState3, 2),
-    imgError = _useState4[0],
-    setImgError = _useState4[1];
+    imgExhausted = _useState4[0],
+    setImgExhausted = _useState4[1];
+  var _useState5 = (0, _react.useState)(0),
+    _useState6 = _slicedToArray(_useState5, 2),
+    candidateIndex = _useState6[0],
+    setCandidateIndex = _useState6[1];
 
-  // If the local/proxied thumbnail fails, fall back to the original raw URL.
-  var handleImgError = function handleImgError(e) {
-    var src = e.currentTarget.src;
-    // If this is already the proxy fallback, give up and show the placeholder.
-    if (src.includes('/api/thumbnail')) {
-      setImgError(true);
+  // Known filename corrections: remote URL filename -> local file filename.
+  // The CDN sometimes serves `…__1_.jpg` while the local copy is `…-1.jpg`.
+  var THUMBNAIL_FILENAME_CORRECTIONS = {
+    '9d1e5efced63471e84c721bc56f3b5e7__1_.jpg': '9d1e5efced63471e84c721bc56f3b5e7-1.jpg'
+  };
+
+  // Hosts allowed by the same-origin thumbnail proxy (app/api/thumbnail/route.js).
+  var ALLOWED_PROXY_HOSTS = new Set(['cdn.muapi.ai', 'd3adwkbyhxyrtq.cloudfront.net', 'muapi.ai']);
+
+  // Build the ordered candidate list for this workflow's thumbnail.
+  // Preference: verified original URL → verified local image → same-origin proxy → placeholder.
+  var candidates = (0, _react.useMemo)(function () {
+    var list = [];
+    var remoteUrl = workflow.thumbnail || null;
+
+    // 1. Verified original image URL (when accessible directly).
+    if (remoteUrl) list.push({
+      url: remoteUrl,
+      kind: 'remote'
+    });
+
+    // 2. Verified local image mapped to this workflow.
+    if (remoteUrl) {
+      var fileName = remoteUrl.split('/').pop();
+      if (fileName) {
+        var localName = THUMBNAIL_FILENAME_CORRECTIONS[fileName] || fileName;
+        list.push({
+          url: "/thumbnails/workflows/".concat(localName),
+          kind: 'local'
+        });
+      }
+    }
+
+    // 3. Secure same-origin proxy for supported remote hosts.
+    if (remoteUrl) {
+      try {
+        var parsed = new URL(remoteUrl);
+        if (parsed.protocol === 'https:' && ALLOWED_PROXY_HOSTS.has(parsed.hostname)) {
+          list.push({
+            url: "/api/thumbnail?url=".concat(encodeURIComponent(remoteUrl)),
+            kind: 'proxy'
+          });
+        }
+      } catch (_unused) {
+        // Invalid URL — skip proxy candidate.
+      }
+    }
+    return list;
+  }, [workflow.thumbnail]);
+  var current = candidates[candidateIndex];
+
+  // Reset image error state when the workflow or thumbnail URL changes.
+  (0, _react.useEffect)(function () {
+    setImgExhausted(false);
+    setCandidateIndex(0);
+  }, [workflow.id, workflow.thumbnail]);
+  var handleImgError = function handleImgError() {
+    // Prevent infinite retry loops: only advance while candidates remain.
+    if (candidateIndex >= candidates.length - 1) {
+      setImgExhausted(true);
       return;
     }
-    // Prefer the app's same-origin proxy (works even when the CDN asset is
-    // missing/unreachable), otherwise fall back to the raw CDN url.
-    var viaProxy = "/api/thumbnail?url=".concat(encodeURIComponent(workflow.thumbnail || src));
-    e.currentTarget.src = viaProxy;
+    setCandidateIndex(function (prev) {
+      return prev + 1;
+    });
   };
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     onClick: function onClick() {
       return _onClick(workflow);
     },
     className: "group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer border border-white/5 bg-[#0a0a0a] transition-all hover:border-[#22d3ee]/30 hover:scale-[1.02] shadow-2xl",
-    children: [workflow.thumbnail && !imgError ? /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
-      src: workflow.thumbnail,
+    children: [current && !imgExhausted ? /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+      src: current.url,
       alt: workflow.name,
       className: "absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110",
       onError: handleImgError
@@ -238,66 +295,66 @@ function WorkflowStudio(_ref2) {
   var _getWorkflowInfo = getWorkflowInfo(),
     urlWorkflowId = _getWorkflowInfo.id,
     urlTab = _getWorkflowInfo.tab;
-  var _useState5 = (0, _react.useState)([]),
-    _useState6 = _slicedToArray(_useState5, 2),
-    workflows = _useState6[0],
-    setWorkflows = _useState6[1];
-  var _useState7 = (0, _react.useState)(true),
+  var _useState7 = (0, _react.useState)([]),
     _useState8 = _slicedToArray(_useState7, 2),
-    loading = _useState8[0],
-    setLoading = _useState8[1];
-  var _useState9 = (0, _react.useState)(null),
+    workflows = _useState8[0],
+    setWorkflows = _useState8[1];
+  var _useState9 = (0, _react.useState)(true),
     _useState0 = _slicedToArray(_useState9, 2),
-    selectedWorkflow = _useState0[0],
-    setSelectedWorkflow = _useState0[1];
-  var _useState1 = (0, _react.useState)("playground"),
+    loading = _useState0[0],
+    setLoading = _useState0[1];
+  var _useState1 = (0, _react.useState)(null),
     _useState10 = _slicedToArray(_useState1, 2),
-    activeSubTab = _useState10[0],
-    setActiveSubTab = _useState10[1]; // 'playground' | 'builder'
-  var _useState11 = (0, _react.useState)("templates"),
+    selectedWorkflow = _useState10[0],
+    setSelectedWorkflow = _useState10[1];
+  var _useState11 = (0, _react.useState)("playground"),
     _useState12 = _slicedToArray(_useState11, 2),
-    activeMainTab = _useState12[0],
-    setActiveMainTab = _useState12[1]; // 'templates' | 'my-workflows' | 'published'
-  var _useState13 = (0, _react.useState)(null),
+    activeSubTab = _useState12[0],
+    setActiveSubTab = _useState12[1]; // 'playground' | 'builder'
+  var _useState13 = (0, _react.useState)("templates"),
     _useState14 = _slicedToArray(_useState13, 2),
-    renamingWorkflow = _useState14[0],
-    setRenamingWorkflow = _useState14[1];
-  var _useState15 = (0, _react.useState)(""),
+    activeMainTab = _useState14[0],
+    setActiveMainTab = _useState14[1]; // 'templates' | 'my-workflows' | 'published'
+  var _useState15 = (0, _react.useState)(null),
     _useState16 = _slicedToArray(_useState15, 2),
-    newWorkflowName = _useState16[0],
-    setNewWorkflowName = _useState16[1];
-  var _useState17 = (0, _react.useState)(null),
+    renamingWorkflow = _useState16[0],
+    setRenamingWorkflow = _useState16[1];
+  var _useState17 = (0, _react.useState)(""),
     _useState18 = _slicedToArray(_useState17, 2),
-    isDeletingId = _useState18[0],
-    setIsDeletingId = _useState18[1];
+    newWorkflowName = _useState18[0],
+    setNewWorkflowName = _useState18[1];
   var _useState19 = (0, _react.useState)(null),
     _useState20 = _slicedToArray(_useState19, 2),
-    inputSchema = _useState20[0],
-    setInputSchema = _useState20[1];
+    isDeletingId = _useState20[0],
+    setIsDeletingId = _useState20[1];
   var _useState21 = (0, _react.useState)(null),
     _useState22 = _slicedToArray(_useState21, 2),
-    nodeSchemas = _useState22[0],
-    setNodeSchemas = _useState22[1];
+    inputSchema = _useState22[0],
+    setInputSchema = _useState22[1];
   var _useState23 = (0, _react.useState)(null),
     _useState24 = _slicedToArray(_useState23, 2),
-    workflowDef = _useState24[0],
-    setWorkflowDef = _useState24[1];
-  var _useState25 = (0, _react.useState)({}),
+    nodeSchemas = _useState24[0],
+    setNodeSchemas = _useState24[1];
+  var _useState25 = (0, _react.useState)(null),
     _useState26 = _slicedToArray(_useState25, 2),
-    formData = _useState26[0],
-    setFormData = _useState26[1];
-  var _useState27 = (0, _react.useState)(false),
+    workflowDef = _useState26[0],
+    setWorkflowDef = _useState26[1];
+  var _useState27 = (0, _react.useState)({}),
     _useState28 = _slicedToArray(_useState27, 2),
-    isExecuting = _useState28[0],
-    setIsExecuting = _useState28[1];
-  var _useState29 = (0, _react.useState)(null),
+    formData = _useState28[0],
+    setFormData = _useState28[1];
+  var _useState29 = (0, _react.useState)(false),
     _useState30 = _slicedToArray(_useState29, 2),
-    result = _useState30[0],
-    setResult = _useState30[1];
+    isExecuting = _useState30[0],
+    setIsExecuting = _useState30[1];
   var _useState31 = (0, _react.useState)(null),
     _useState32 = _slicedToArray(_useState31, 2),
-    error = _useState32[0],
-    setError = _useState32[1];
+    result = _useState32[0],
+    setResult = _useState32[1];
+  var _useState33 = (0, _react.useState)(null),
+    _useState34 = _slicedToArray(_useState33, 2),
+    error = _useState34[0],
+    setError = _useState34[1];
 
   // ── Apply template data from landing page "Create This Style" ──────────────
   var templateApplied = (0, _react.useRef)(null);
@@ -312,26 +369,26 @@ function WorkflowStudio(_ref2) {
       });
     }
   }, [templateData]);
-  var _useState33 = (0, _react.useState)(""),
-    _useState34 = _slicedToArray(_useState33, 2),
-    webhookUrl = _useState34[0],
-    setWebhookUrl = _useState34[1];
-  var _useState35 = (0, _react.useState)("form"),
+  var _useState35 = (0, _react.useState)(""),
     _useState36 = _slicedToArray(_useState35, 2),
-    playgroundView = _useState36[0],
-    setPlaygroundView = _useState36[1]; // 'form' | 'api'
-  var _useState37 = (0, _react.useState)(null),
+    webhookUrl = _useState36[0],
+    setWebhookUrl = _useState36[1];
+  var _useState37 = (0, _react.useState)("form"),
     _useState38 = _slicedToArray(_useState37, 2),
-    rawResult = _useState38[0],
-    setRawResult = _useState38[1];
+    playgroundView = _useState38[0],
+    setPlaygroundView = _useState38[1]; // 'form' | 'api'
   var _useState39 = (0, _react.useState)(null),
     _useState40 = _slicedToArray(_useState39, 2),
-    copiedKey = _useState40[0],
-    setCopiedKey = _useState40[1];
-  var _useState41 = (0, _react.useState)(false),
+    rawResult = _useState40[0],
+    setRawResult = _useState40[1];
+  var _useState41 = (0, _react.useState)(null),
     _useState42 = _slicedToArray(_useState41, 2),
-    showRaw = _useState42[0],
-    setShowRaw = _useState42[1];
+    copiedKey = _useState42[0],
+    setCopiedKey = _useState42[1];
+  var _useState43 = (0, _react.useState)(false),
+    _useState44 = _slicedToArray(_useState43, 2),
+    showRaw = _useState44[0],
+    setShowRaw = _useState44[1];
 
   // Handlers defined early so they can be used in effects
   var handleSelectWorkflow = (0, _react.useCallback)(/*#__PURE__*/function () {

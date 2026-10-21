@@ -300,7 +300,8 @@ function RecastStudio(_ref6) {
     onFilesHandled = _ref6.onFilesHandled,
     templateData = _ref6.templateData,
     _ref6$locale = _ref6.locale,
-    locale = _ref6$locale === void 0 ? "en" : _ref6$locale;
+    locale = _ref6$locale === void 0 ? "en" : _ref6$locale,
+    renderPersonalizeAction = _ref6.renderPersonalizeAction;
   var copy = (0, _i18nUtils.resolveCopy)(_recastStudio["default"], _recastStudio2["default"], locale);
   var PERSIST_KEY = "hg_recast_studio_persistent";
 
@@ -355,34 +356,158 @@ function RecastStudio(_ref6) {
     prompt = _useState22[0],
     setPrompt = _useState22[1];
 
-  // ── Generation / UI state ─────────────────────────────────────────────────
-  var _useState23 = (0, _react.useState)(false),
+  // ── Character orientation (image/video) ───────────────────────────────────
+  var _useState23 = (0, _react.useState)("image"),
     _useState24 = _slicedToArray(_useState23, 2),
-    isGenerating = _useState24[0],
-    setIsGenerating = _useState24[1];
-  var _useState25 = (0, _react.useState)(null),
+    characterOrientation = _useState24[0],
+    setCharacterOrientation = _useState24[1];
+
+  // ── Asset Library Storage ─────────────────────────────────────────────────
+  var _useState25 = (0, _react.useState)(function () {
+      if (typeof window !== "undefined") {
+        try {
+          var stored = localStorage.getItem("hg_recast_assets");
+          if (stored) return JSON.parse(stored).videos || [];
+        } catch (_unused) {}
+      }
+      return [];
+    }),
     _useState26 = _slicedToArray(_useState25, 2),
-    generateError = _useState26[0],
-    setGenerateError = _useState26[1];
-  var _useState27 = (0, _react.useState)(null),
+    assetVideos = _useState26[0],
+    setAssetVideos = _useState26[1];
+  var _useState27 = (0, _react.useState)(function () {
+      if (typeof window !== "undefined") {
+        try {
+          var stored = localStorage.getItem("hg_recast_assets");
+          if (stored) return JSON.parse(stored).images || [];
+        } catch (_unused2) {}
+      }
+      return [];
+    }),
     _useState28 = _slicedToArray(_useState27, 2),
-    fullscreenUrl = _useState28[0],
-    setFullscreenUrl = _useState28[1];
+    assetImages = _useState28[0],
+    setAssetImages = _useState28[1];
+  var _useState29 = (0, _react.useState)(function () {
+      if (typeof window !== "undefined") {
+        try {
+          var stored = localStorage.getItem("hg_recast_assets");
+          if (stored) return JSON.parse(stored).results || [];
+        } catch (_unused3) {}
+      }
+      return [];
+    }),
+    _useState30 = _slicedToArray(_useState29, 2),
+    assetResults = _useState30[0],
+    setAssetResults = _useState30[1];
+  var saveRecastAssets = function saveRecastAssets(v, i, r) {
+    try {
+      localStorage.setItem("hg_recast_assets", JSON.stringify({
+        videos: v,
+        images: i,
+        results: r
+      }));
+    } catch (_unused4) {}
+  };
+  var handleAddVideoAsset = function handleAddVideoAsset(url, name) {
+    setAssetVideos(function (prev) {
+      if (prev.some(function (a) {
+        return a.url === url;
+      })) return prev;
+      var updated = [{
+        url: url,
+        name: name,
+        timestamp: Date.now()
+      }].concat(_toConsumableArray(prev));
+      saveRecastAssets(updated, assetImages, assetResults);
+      return updated;
+    });
+  };
+  var handleAddImageAsset = function handleAddImageAsset(url, name) {
+    setAssetImages(function (prev) {
+      if (prev.some(function (a) {
+        return a.url === url;
+      })) return prev;
+      var updated = [{
+        url: url,
+        name: name,
+        timestamp: Date.now()
+      }].concat(_toConsumableArray(prev));
+      saveRecastAssets(assetVideos, updated, assetResults);
+      return updated;
+    });
+  };
+  var handleAddResultAsset = function handleAddResultAsset(url, name) {
+    setAssetResults(function (prev) {
+      if (prev.some(function (a) {
+        return a.url === url;
+      })) return prev;
+      var updated = [{
+        url: url,
+        name: name,
+        timestamp: Date.now()
+      }].concat(_toConsumableArray(prev));
+      saveRecastAssets(assetVideos, assetImages, updated);
+      return updated;
+    });
+  };
+  var handleDeleteAsset = function handleDeleteAsset(type, url) {
+    if (type === "videos") {
+      setAssetVideos(function (prev) {
+        var u = prev.filter(function (a) {
+          return a.url !== url;
+        });
+        saveRecastAssets(u, assetImages, assetResults);
+        return u;
+      });
+    } else if (type === "images") {
+      setAssetImages(function (prev) {
+        var u = prev.filter(function (a) {
+          return a.url !== url;
+        });
+        saveRecastAssets(assetVideos, u, assetResults);
+        return u;
+      });
+    } else {
+      setAssetResults(function (prev) {
+        var u = prev.filter(function (a) {
+          return a.url !== url;
+        });
+        saveRecastAssets(assetVideos, assetImages, u);
+        return u;
+      });
+    }
+  };
+
+  // ── Generation / UI state ─────────────────────────────────────────────────
+  var _useState31 = (0, _react.useState)(false),
+    _useState32 = _slicedToArray(_useState31, 2),
+    isGenerating = _useState32[0],
+    setIsGenerating = _useState32[1];
+  var _useState33 = (0, _react.useState)(null),
+    _useState34 = _slicedToArray(_useState33, 2),
+    generateError = _useState34[0],
+    setGenerateError = _useState34[1];
+  var _useState35 = (0, _react.useState)(null),
+    _useState36 = _slicedToArray(_useState35, 2),
+    fullscreenUrl = _useState36[0],
+    setFullscreenUrl = _useState36[1];
 
   // ── History ───────────────────────────────────────────────────────────────
-  var _useState29 = (0, _react.useState)([]),
-    _useState30 = _slicedToArray(_useState29, 2),
-    internalHistory = _useState30[0],
-    setInternalHistory = _useState30[1];
+  var _useState37 = (0, _react.useState)([]),
+    _useState38 = _slicedToArray(_useState37, 2),
+    internalHistory = _useState38[0],
+    setInternalHistory = _useState38[1];
   var history = historyItems !== null && historyItems !== void 0 ? historyItems : internalHistory;
 
   // ── Dropdown state ────────────────────────────────────────────────────────
-  var _useState31 = (0, _react.useState)(null),
-    _useState32 = _slicedToArray(_useState31, 2),
-    openDropdown = _useState32[0],
-    setOpenDropdown = _useState32[1]; // 'model' | 'aspect' | null
+  var _useState39 = (0, _react.useState)(null),
+    _useState40 = _slicedToArray(_useState39, 2),
+    openDropdown = _useState40[0],
+    setOpenDropdown = _useState40[1]; // 'model' | 'aspect' | 'orientation' | 'assets' | null
   var modelBtnRef = (0, _react.useRef)(null);
   var aspectBtnRef = (0, _react.useRef)(null);
+  var orientationBtnRef = (0, _react.useRef)(null);
+  var assetsBtnRef = (0, _react.useRef)(null);
   var textareaRef = (0, _react.useRef)(null);
   var hasRestored = (0, _react.useRef)(false);
 
@@ -443,6 +568,7 @@ function RecastStudio(_ref6) {
         var data = JSON.parse(stored);
         if (data.selectedModelId) setSelectedModelId(data.selectedModelId);
         if (data.selectedAspectRatio) setSelectedAspectRatio(data.selectedAspectRatio);
+        if (data.characterOrientation) setCharacterOrientation(data.characterOrientation);
         if (data.videoUrl) {
           setVideoUrl(data.videoUrl);
           setVideoState(UPLOAD_STATE.READY);
@@ -470,6 +596,7 @@ function RecastStudio(_ref6) {
         localStorage.setItem(PERSIST_KEY, JSON.stringify({
           selectedModelId: selectedModelId,
           selectedAspectRatio: selectedAspectRatio,
+          characterOrientation: characterOrientation,
           videoUrl: videoUrl,
           videoName: videoName,
           imageUrl: imageUrl,
@@ -504,6 +631,33 @@ function RecastStudio(_ref6) {
   var aspectOptions = (0, _models.getAspectRatiosForRecastModel)(selectedModelId);
   var showAspect = aspectOptions.length > 0;
   var showPrompt = !!(selectedModel !== null && selectedModel !== void 0 && selectedModel.hasPrompt);
+
+  // ── Personalization hand-off (Phase 2) ───────────────────────────────────
+  // Recast (body swap) composes a source video plus a character image, but
+  // the shared Personalization Modal takes ONE source media — the source
+  // video is the primary asset, so it is the one handed over. The character
+  // image is deliberately NOT part of the hand-off.
+  // The Modal keys its saved project on the source id, so the studio project
+  // id has to be unique per project AND stable while the project is
+  // unchanged: the uploaded video name plus the model and aspect ratio.
+  var studioPersonalizeOptions = (0, _react.useMemo)(function () {
+    return {
+      originStudio: "recast",
+      studioProjectId: [videoName || (videoUrl ? videoUrl.split("/").pop() : "no-video"), selectedModelId, selectedAspectRatio].join(":"),
+      title: "Recast source video",
+      media: {
+        mediaType: "video",
+        url: videoUrl || null,
+        poster: null,
+        aspectRatio: selectedAspectRatio
+      },
+      prompt: {
+        text: prompt,
+        model: selectedModelId,
+        modelName: selectedModel === null || selectedModel === void 0 ? void 0 : selectedModel.name
+      }
+    };
+  }, [videoUrl, videoName, selectedModelId, selectedModel, selectedAspectRatio, prompt]);
 
   // ── Upload handlers ─────────────────────────────────────────────────────────
   var handleVideoPick = (0, _react.useCallback)(/*#__PURE__*/function () {
@@ -701,7 +855,8 @@ function RecastStudio(_ref6) {
             params = {
               model: selectedModelId,
               video_url: videoUrl,
-              image_url: imageUrl
+              image_url: imageUrl,
+              character_orientation: characterOrientation
             };
             if (showAspect) params.aspect_ratio = selectedAspectRatio;
             if (prompt && selectedModel !== null && selectedModel !== void 0 && selectedModel.hasPrompt) params.prompt = prompt;
@@ -999,7 +1154,7 @@ function RecastStudio(_ref6) {
               fileName: videoName,
               previewUrl: videoUrl,
               isVideo: true
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)(MediaPickerButton, {
+            }), studioPersonalizeOptions.media.url ? renderPersonalizeAction === null || renderPersonalizeAction === void 0 ? void 0 : renderPersonalizeAction(studioPersonalizeOptions) : null, /*#__PURE__*/(0, _jsxRuntime.jsx)(MediaPickerButton, {
               accept: "image/*",
               label: "Character image",
               icon: /*#__PURE__*/(0, _jsxRuntime.jsx)(ImageIcon, {
@@ -1103,6 +1258,113 @@ function RecastStudio(_ref6) {
                 anchorRef: aspectBtnRef
               })]
             })]
+          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            className: "relative",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+              ref: orientationBtnRef,
+              type: "button",
+              onClick: function onClick(e) {
+                e.stopPropagation();
+                setOpenDropdown(openDropdown === "orientation" ? null : "orientation");
+              },
+              className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
+                className: "text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
+                children: [copy.labels.orientationPrefix, " ", characterOrientation === "image" ? copy.dropdowns.orientationImage : copy.dropdowns.orientationVideo]
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
+                width: "10",
+                height: "10",
+                viewBox: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "4",
+                className: "opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0",
+                children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                  d: "M6 9l6 6 6-6"
+                })
+              })]
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)(Dropdown, {
+              isOpen: openDropdown === "orientation",
+              items: [{
+                id: "image",
+                name: copy.dropdowns.orientationImage,
+                description: copy.dropdowns.orientationImageDesc
+              }, {
+                id: "video",
+                name: copy.dropdowns.orientationVideo,
+                description: copy.dropdowns.orientationVideoDesc
+              }],
+              selectedId: characterOrientation,
+              onSelect: function onSelect(item) {
+                return setCharacterOrientation(item.id);
+              },
+              onClose: function onClose() {
+                return setOpenDropdown(null);
+              },
+              anchorRef: orientationBtnRef
+            })]
+          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            className: "relative",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+              ref: assetsBtnRef,
+              type: "button",
+              onClick: function onClick(e) {
+                e.stopPropagation();
+                setOpenDropdown(openDropdown === "assets" ? null : "assets");
+              },
+              className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                width: "14",
+                height: "14",
+                viewBox: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "2",
+                className: "text-white/50 group-hover:text-[#22d3ee] transition-colors",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                  d: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                  d: "M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"
+                })]
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                className: "text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
+                children: copy.labels.library
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
+                width: "10",
+                height: "10",
+                viewBox: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "4",
+                className: "opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0",
+                children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                  d: "M6 9l6 6 6-6"
+                })
+              })]
+            }), openDropdown === "assets" && /*#__PURE__*/(0, _jsxRuntime.jsx)(AssetsDropdown, {
+              videos: assetVideos,
+              images: assetImages,
+              results: assetResults,
+              onSelectVideo: function onSelectVideo(url, name) {
+                setVideoUrl(url);
+                setVideoName(name);
+                setVideoState(UPLOAD_STATE.READY);
+                setOpenDropdown(null);
+              },
+              onSelectImage: function onSelectImage(url, name) {
+                setImageUrl(url);
+                setImageName(name);
+                setImageState(UPLOAD_STATE.READY);
+                setOpenDropdown(null);
+              },
+              onDeleteAsset: handleDeleteAsset,
+              setFullscreenUrl: setFullscreenUrl,
+              onClose: function onClose() {
+                return setOpenDropdown(null);
+              },
+              anchorRef: assetsBtnRef,
+              copy: copy
+            })]
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
             type: "button",
             onClick: handleGenerate,
@@ -1162,6 +1424,170 @@ function RecastStudio(_ref6) {
           return e.stopPropagation();
         }
       })]
+    })]
+  });
+}
+
+// ── Asset Library Dropdown ──────────────────────────────────────────────────
+function AssetsDropdown(_ref1) {
+  var videos = _ref1.videos,
+    images = _ref1.images,
+    results = _ref1.results,
+    onSelectVideo = _ref1.onSelectVideo,
+    onSelectImage = _ref1.onSelectImage,
+    onDeleteAsset = _ref1.onDeleteAsset,
+    setFullscreenUrl = _ref1.setFullscreenUrl,
+    onClose = _ref1.onClose,
+    anchorRef = _ref1.anchorRef,
+    copy = _ref1.copy;
+  var _useState41 = (0, _react.useState)("videos"),
+    _useState42 = _slicedToArray(_useState41, 2),
+    activeTab = _useState42[0],
+    setActiveTab = _useState42[1];
+  var dropRef = (0, _react.useRef)(null);
+  (0, _react.useEffect)(function () {
+    var handler = function handler(e) {
+      var _dropRef$current2, _anchorRef$current2;
+      if (!((_dropRef$current2 = dropRef.current) !== null && _dropRef$current2 !== void 0 && _dropRef$current2.contains(e.target)) && !(anchorRef !== null && anchorRef !== void 0 && (_anchorRef$current2 = anchorRef.current) !== null && _anchorRef$current2 !== void 0 && _anchorRef$current2.contains(e.target))) {
+        onClose();
+      }
+    };
+    window.addEventListener("click", handler);
+    return function () {
+      return window.removeEventListener("click", handler);
+    };
+  }, [onClose, anchorRef]);
+  var items = activeTab === "videos" ? videos : activeTab === "images" ? images : results;
+  return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+    ref: dropRef,
+    className: "absolute z-50 w-80 sm:w-96 max-w-[calc(100vw-2rem)] max-h-96 overflow-hidden flex flex-col bg-[#0a0a0a] border border-white/10 rounded-xl shadow-2xl p-3",
+    onClick: function onClick(e) {
+      return e.stopPropagation();
+    },
+    children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+      className: "flex items-center justify-between border-b border-white/10 pb-1.5 mb-2",
+      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+        className: "text-xs font-bold text-white",
+        children: copy.assetLibrary.header
+      }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+        type: "button",
+        onClick: onClose,
+        className: "text-[11px] font-bold text-[#22d3ee] hover:underline",
+        children: "Done"
+      })]
+    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+      className: "flex bg-white/[0.04] p-1 rounded-xl gap-1 border border-white/[0.06] mb-2",
+      children: ["videos", "images", "results"].map(function (tab) {
+        return /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+          type: "button",
+          onClick: function onClick() {
+            return setActiveTab(tab);
+          },
+          className: "flex-1 py-1 text-xs font-bold rounded-lg capitalize transition-all ".concat(activeTab === tab ? "bg-[#22d3ee] text-black shadow-sm" : "text-white/50 hover:text-white hover:bg-white/[0.04]"),
+          children: copy.assetLibrary.tabs[tab]
+        }, tab);
+      })
+    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+      className: "overflow-y-auto custom-scrollbar flex-1 flex flex-col gap-2 min-h-[160px] max-h-64 pr-1",
+      children: items.length === 0 ? /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        className: "flex flex-col items-center justify-center flex-1 py-10 text-xs text-white/30",
+        children: copy.assetLibrary.empty
+      }) : items.map(function (item, idx) {
+        return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+          className: "flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.05] hover:border-white/10 transition-all gap-2.5 group/item",
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            className: "w-11 h-11 rounded-lg overflow-hidden bg-white/5 flex-shrink-0 relative border border-white/10",
+            children: [activeTab === "images" ? /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: item.url,
+              alt: "",
+              className: "w-full h-full object-cover"
+            }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("video", {
+              src: item.url,
+              className: "w-full h-full object-cover",
+              muted: true,
+              playsInline: true,
+              loop: true
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+              type: "button",
+              title: copy.titles.enlargePreview,
+              onClick: function onClick(e) {
+                e.stopPropagation();
+                setFullscreenUrl(item.url);
+                onClose();
+              },
+              className: "absolute inset-0 bg-black/60 opacity-0 group-hover/item:opacity-100 flex items-center justify-center transition-opacity text-white hover:text-[#22d3ee]",
+              children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                width: "12",
+                height: "12",
+                viewBox: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "2.5",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                  cx: "11",
+                  cy: "11",
+                  r: "8"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                  x1: "21",
+                  y1: "21",
+                  x2: "16.65",
+                  y2: "16.65"
+                })]
+              })
+            })]
+          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            className: "flex-1 min-w-0 flex flex-col",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+              className: "text-xs text-white/95 font-semibold truncate",
+              title: item.name,
+              children: item.name
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+              className: "text-[10px] text-white/40 truncate mt-0.5",
+              children: new Date(item.timestamp || Date.now()).toLocaleDateString()
+            })]
+          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            className: "flex items-center gap-1.5 flex-shrink-0",
+            children: [activeTab === "images" ? /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+              type: "button",
+              onClick: function onClick(e) {
+                e.stopPropagation();
+                onSelectImage(item.url, item.name);
+              },
+              className: "text-[11px] text-black font-black px-2.5 py-1 bg-[#22d3ee] rounded-md hover:bg-[#22d3ee]/90 transition-colors whitespace-nowrap shadow-sm",
+              children: copy.buttons.useAsImage
+            }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+              type: "button",
+              onClick: function onClick(e) {
+                e.stopPropagation();
+                onSelectVideo(item.url, item.name);
+              },
+              className: "text-[11px] text-black font-black px-2.5 py-1 bg-[#22d3ee] rounded-md hover:bg-[#22d3ee]/90 transition-colors whitespace-nowrap shadow-sm",
+              children: copy.buttons.useAsImage
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+              type: "button",
+              title: copy.titles.deleteFromLibrary,
+              onClick: function onClick(e) {
+                e.stopPropagation();
+                onDeleteAsset(activeTab, item.url);
+              },
+              className: "p-1.5 text-white/30 hover:text-red-400 rounded-md hover:bg-white/5 transition-colors",
+              children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                width: "12",
+                height: "12",
+                viewBox: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "2.5",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
+                  points: "3 6 5 6 21 6"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                  d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                })]
+              })
+            })]
+          })]
+        }, idx);
+      })
     })]
   });
 }

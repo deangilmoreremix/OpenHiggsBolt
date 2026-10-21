@@ -398,7 +398,8 @@ function MarketingStudio(_ref4) {
     onFilesHandled = _ref4.onFilesHandled,
     templateData = _ref4.templateData,
     _ref4$locale = _ref4.locale,
-    locale = _ref4$locale === void 0 ? "en" : _ref4$locale;
+    locale = _ref4$locale === void 0 ? "en" : _ref4$locale,
+    renderPersonalizeAction = _ref4.renderPersonalizeAction;
   var copy = (0, _i18nUtils.resolveCopy)(_marketingStudio["default"], _marketingStudio2["default"], locale);
   var PERSIST_KEY = "hg_marketing_studio_persistent";
   var _useState = (0, _react.useState)(""),
@@ -452,6 +453,37 @@ function MarketingStudio(_ref4) {
     fullscreenUrl = _useState18[0],
     setFullscreenUrl = _useState18[1];
   var textareaRef = (0, _react.useRef)(null);
+
+  // ── Personalization hand-off (Phase 2) ───────────────────────────────────
+  // Marketing Studio composes several assets (product image, avatar image and
+  // additional references), but the shared Personalization Modal takes ONE
+  // source media — the product image is the primary asset, so it is the one
+  // handed over. The avatar and reference images are deliberately NOT part of
+  // the hand-off.
+  // The Modal keys its saved project on the source id, so the studio project
+  // id has to be unique per project AND stable while the project is
+  // unchanged: the product image file name plus the ad configuration.
+  var studioPersonalizeOptions = (0, _react.useMemo)(function () {
+    var sourceUrl = productImage || avatarImage || additionalImages[0] || null;
+    return {
+      originStudio: "marketing",
+      studioProjectId: [sourceUrl ? sourceUrl.split("/").pop() : "no-product", params.ratio, String(params.duration)].join(":"),
+      title: "Marketing Studio ad",
+      media: {
+        mediaType: "image",
+        url: sourceUrl,
+        poster: null,
+        aspectRatio: params.ratio,
+        duration: params.duration,
+        durationLabel: "".concat(params.duration, "s")
+      },
+      prompt: {
+        text: prompt,
+        model: params.res === "1080p" ? "sd-2-vip-omni-reference-1080p" : "seedance-2-vip-omni-reference",
+        modelName: params.format
+      }
+    };
+  }, [productImage, avatarImage, additionalImages, params, prompt]);
 
   // ── Apply pending Skills recipe (set by SkillsBrowser) ────────────────────
   (0, _react.useEffect)(function () {
@@ -1033,7 +1065,7 @@ function MarketingStudio(_ref4) {
                 onClear: function onClear() {
                   return setProductImage(null);
                 }
-              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(UploadSlot, {
+              }), studioPersonalizeOptions.media.url ? renderPersonalizeAction === null || renderPersonalizeAction === void 0 ? void 0 : renderPersonalizeAction(studioPersonalizeOptions) : null, /*#__PURE__*/(0, _jsxRuntime.jsx)(UploadSlot, {
                 label: "Avatar",
                 icon: /*#__PURE__*/(0, _jsxRuntime.jsx)(AvatarIcon, {}),
                 url: avatarImage,

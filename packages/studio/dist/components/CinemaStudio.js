@@ -449,7 +449,8 @@ function CinemaStudio(_ref4) {
     historyItems = _ref4.historyItems,
     templateData = _ref4.templateData,
     _ref4$locale = _ref4.locale,
-    locale = _ref4$locale === void 0 ? "en" : _ref4$locale;
+    locale = _ref4$locale === void 0 ? "en" : _ref4$locale,
+    renderPersonalizeAction = _ref4.renderPersonalizeAction;
   var copy = (0, _i18nUtils.resolveCopy)(_cinemaStudio["default"], _cinemaStudio2["default"], locale);
   var PERSIST_KEY = (0, _persistKey.scopedPersistKey)("hg_cinema_studio_persistent", apiKey);
 
@@ -712,9 +713,39 @@ function CinemaStudio(_ref4) {
 
   // Derive effective history (prop wins over internal)
   var history = historyItems != null ? historyItems : internalHistory;
-  (0, _react.useEffect)(function () {
+
+  // ── Personalization hand-off (Phase 2) ───────────────────────────────────
+  // Cinema Studio generates IMAGES (it calls `generateImage`, not a video
+  // model), so the hand-off media type is 'image'.
+  // The reference image the user uploaded is the primary asset; when the
+  // studio was used as a pure text-to-image studio there is no upload, and
+  // the newest gallery entry (the shot that was actually generated) is the
+  // single primary output that gets handed over.
+  // The Modal keys its saved project on the source id, so the studio project
+  // id has to be unique per project AND stable while the project is
+  // unchanged: the media file name plus the camera settings.
+  var studioPersonalizeOptions = (0, _react.useMemo)(function () {
     var _history$;
-    setCanvasUrl(((_history$ = history[0]) === null || _history$ === void 0 ? void 0 : _history$.url) || null);
+    var sourceUrl = uploadedImage || ((_history$ = history[0]) === null || _history$ === void 0 ? void 0 : _history$.url) || null;
+    return {
+      originStudio: "cinema",
+      studioProjectId: [sourceUrl ? sourceUrl.split("/").pop() : "no-shot", settings.aspect_ratio, settings.camera].join(":"),
+      title: "Cinema Studio shot",
+      media: {
+        mediaType: "image",
+        url: sourceUrl,
+        poster: null,
+        aspectRatio: settings.aspect_ratio
+      },
+      prompt: {
+        text: settings.prompt,
+        model: uploadedImage ? "nano-banana-pro-edit" : "nano-banana-pro"
+      }
+    };
+  }, [uploadedImage, history, settings]);
+  (0, _react.useEffect)(function () {
+    var _history$2;
+    setCanvasUrl(((_history$2 = history[0]) === null || _history$2 === void 0 ? void 0 : _history$2.url) || null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [historyItems]);
   var formatSummaryValue = function formatSummaryValue() {
@@ -1244,7 +1275,7 @@ function CinemaStudio(_ref4) {
                 })]
               })
             })]
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
+          }), studioPersonalizeOptions.media.url ? renderPersonalizeAction === null || renderPersonalizeAction === void 0 ? void 0 : renderPersonalizeAction(studioPersonalizeOptions) : null, /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
             ref: textareaRef,
             value: settings.prompt,
             onChange: function onChange(e) {

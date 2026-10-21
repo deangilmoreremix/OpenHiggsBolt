@@ -1307,7 +1307,6 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // The design catalog registers itself on import, so the list of designs can
   // grow after the first render. The registry is observable, hence the
   // subscription.
-  const [remotionDesignRegistryVersion, setRemotionDesignRegistryVersion] = useState(0)
   const [remotionDesignError, setRemotionDesignError] = useState<string | null>(null)
   /** The design id the last failed `setRemotionDesign` call referred to. */
   const remotionDesignErrorIdRef = useRef<string | null>(null)
@@ -1340,18 +1339,18 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const previewUserScope = userScopeProp || apiKey || 'anonymous'
 
   // The catalog registers itself on import, which can happen after this
-  // provider mounted. Re-derive the design list whenever the registry changes.
+  // provider mounted. The registered list therefore lives in STATE and is
+  // re-derived from the registry whenever the registry announces a change.
+  const [remotionDesignTemplates, setRemotionDesignTemplates] = useState<
+    RemotionDesignTemplate[]
+  >(() => listRemotionDesignTemplates())
+
   useEffect(
     () =>
       subscribeRemotionDesignRegistry(() =>
-        setRemotionDesignRegistryVersion((version) => version + 1),
+        setRemotionDesignTemplates(listRemotionDesignTemplates()),
       ),
     [],
-  )
-
-  const remotionDesignTemplates = useMemo(
-    () => listRemotionDesignTemplates(),
-    [remotionDesignRegistryVersion],
   )
 
   // A design refused because its catalog had not registered yet becomes

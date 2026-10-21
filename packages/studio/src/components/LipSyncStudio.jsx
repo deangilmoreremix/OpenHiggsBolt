@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useTemplateData } from "../hooks/useTemplateData";
 import TemplateBanner from "./TemplateBanner";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
@@ -380,6 +380,19 @@ export default function LipSyncStudio({
   onFilesHandled,
   templateData,
   locale = "en",
+  /**
+   * Optional renderer for the shared Personalization Modal hand-off.
+   *
+   * The `studio` package is published standalone, so it MUST NOT import the
+   * app's `src/shared/personalization/studioEntry` module — the app root owns
+   * that wiring and passes the renderer in.
+   *
+   * The argument is a plain `StudioPersonalizeOptions` object:
+   *   { originStudio, studioProjectId, title,
+   *     media: { mediaType, url, poster, aspectRatio, duration, durationLabel },
+   *     prompt: { text, model, modelName } }
+   */
+  renderPersonalizeAction,
 }) {
   const copy = resolveCopy(en, zh, locale);
   const PERSIST_KEY = "hg_lipsync_studio_persistent";
@@ -432,6 +445,42 @@ export default function LipSyncStudio({
   const [internalHistory, setInternalHistory] = useState([]);
   const history = historyItems ?? internalHistory;
   const [activeHistoryIdx, setActiveHistoryIdx] = useState(0);
+
+  // ── Personalization hand-off (Phase 2) ───────────────────────────────────
+  // Lip Sync composes a subject (image OR video) plus an audio track, but the
+  // shared Personalization Modal takes ONE source media — the subject in the
+  // CURRENT input mode is the primary asset, so that is the one handed over.
+  // The audio track is deliberately NOT part of the hand-off.
+  // The Modal keys its saved project on the source id, so the studio project
+  // id has to be unique per project AND stable while the project is
+  // unchanged: the uploaded subject name plus the input mode and model.
+  const studioPersonalizeOptions = useMemo(
+    () => {
+      const isVideoMode = inputMode === "video";
+      const subjectUrl = isVideoMode ? videoUrl : imageUrl;
+      const subjectName = isVideoMode ? videoName : imageName;
+      return {
+        originStudio: "lipsync",
+        studioProjectId: [
+          subjectName || (subjectUrl ? subjectUrl.split("/").pop() : "no-subject"),
+          inputMode,
+          selectedModelId,
+        ].join(":"),
+        title: "Lip Sync subject",
+        media: {
+          mediaType: isVideoMode ? "video" : "image",
+          url: subjectUrl || null,
+          poster: null,
+        },
+        prompt: {
+          text: prompt,
+          model: selectedModelId,
+          modelName: firstModel?.name,
+        },
+      };
+    },
+    [inputMode, videoUrl, videoName, imageUrl, imageName, selectedModelId, firstModel, prompt],
+  );
 
   // ── Dropdown state ──────────────────────────────────────────────────────
   const [openDropdown, setOpenDropdown] = useState(null); // 'model' | 'resolution' | null
@@ -1167,6 +1216,13 @@ export default function LipSyncStudio({
                   apiKey={apiKey}
                 />
               )}
+
+              {/* Personalize the subject (image or video) in the shared
+                  Personalization Modal. Renders nothing without an uploaded
+                  source. */}
+              {studioPersonalizeOptions.media.url
+                ? renderPersonalizeAction?.(studioPersonalizeOptions)
+                : null}
 
               {/* Audio picker — always visible */}
               <MediaPickerButton

@@ -8,6 +8,7 @@ exports["default"] = UniversalMediaUploader;
 var _react = require("react");
 var _reactHotToast = _interopRequireDefault(require("react-hot-toast"));
 var _muapi = require("../muapi.js");
+var _uploadContract = require("../uploadContract.js");
 var _formatError = require("../utils/formatError.js");
 var _persistKey = require("../persistKey.js");
 var _jsxRuntime = require("react/jsx-runtime");
@@ -30,10 +31,14 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
 var HISTORY_KEY_BASE = "smartvideo_media_upload_history_v1";
 var DRAFT_KEY_BASE = "smartvideo_media_slot_drafts_v1";
 var HISTORY_LIMIT = 40;
+// Ceilings come from the shared upload contract (MuAPI spec: images/audio/others
+// 10MB, video 50MB). Displaying anything looser than what uploadFile() enforces
+// lets a user pick an oversize file and only fail after selecting it.
 var DEFAULT_MAX_BYTES = {
-  image: 20 * 1024 * 1024,
-  video: 100 * 1024 * 1024,
-  audio: 50 * 1024 * 1024
+  image: _uploadContract.UPLOAD_LIMITS.image,
+  video: _uploadContract.UPLOAD_LIMITS.video,
+  audio: _uploadContract.UPLOAD_LIMITS.audio,
+  other: _uploadContract.UPLOAD_LIMITS.other
 };
 function readHistory(historyKey) {
   if (typeof window === "undefined") return [];
@@ -72,8 +77,14 @@ function writeDraft(storageKey, slotKey, urls) {
   }
 }
 function matchesMediaType(file, mediaType) {
-  var _file$type;
-  return Boolean(file === null || file === void 0 || (_file$type = file.type) === null || _file$type === void 0 ? void 0 : _file$type.startsWith("".concat(mediaType, "/")));
+  if (!(file !== null && file !== void 0 && file.type)) return false;
+  // Delegate to the authoritative allowlist rather than a bare prefix match:
+  // otherwise `image/*` lets heic/gif/bmp/tiff through and they are rejected
+  // only after selection.
+  if ((0, _uploadContract.isAllowedUploadMimeType)(file, mediaType)) return true;
+  // `other` has no media-type prefix to match on.
+  if (mediaType === 'other') return (0, _uploadContract.isAllowedUploadMimeType)(file, 'other');
+  return false;
 }
 function Preview(_ref) {
   var type = _ref.type,

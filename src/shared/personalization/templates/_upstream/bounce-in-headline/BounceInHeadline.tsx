@@ -5,6 +5,10 @@
 // upstream src: src/components/bounce-in-headline/BounceInHeadline.tsx
 // license     : MIT License — Copyright (c) 2026 Trimora Inc. (RenderComp). The MIT copyright notice and permission notice must be retained in all copies or substantial portions of the software.
 // Upstream code is reproduced verbatim apart from this header comment.
+// DEVIATION (Phase 2, A11): the module-level font stack now comes from the
+// bundled deterministic typeface (`../../designs/fonts`) instead of the
+// hard-coded system stack, so the export does not depend on the OS. Only the
+// value of the constant changed; every use site is untouched.
 // ---------------------------------------------------------------------------
 // SPDX-FileCopyrightText: 2026 Trimora Inc.
 // SPDX-License-Identifier: MIT
@@ -14,8 +18,9 @@
  */
 import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
+import { DESIGN_FONT_STACK } from "../../designs/fonts";
 
-const FONT_SANS = '-apple-system, "Segoe UI", Roboto, sans-serif';
+const FONT_SANS = DESIGN_FONT_STACK;
 
 export const FPS = 30;
 export const DURATION_FRAMES = 120;

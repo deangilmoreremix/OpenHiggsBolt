@@ -147,6 +147,42 @@ describe('applyDesignTemplate', () => {
     expect(second.layers[0].text).toBe('Typed by the customer')
   })
 
+  it('keeps the per-slot overrides when the same design is re-applied', () => {
+    registerRemotionDesignTemplate(makeTemplate())
+    const first = applyDesignTemplate(createDefaultPreviewSettings(), 'demo-design', SEED)
+    const edited = {
+      ...first,
+      layers: first.layers.map((layer) => ({
+        ...layer,
+        textSlotOverrides: { business: 'Edited business name' },
+      })),
+    }
+
+    const second = applyDesignTemplate(edited, 'demo-design', SEED)
+
+    expect(second.layers[0].textSlotOverrides).toEqual({
+      business: 'Edited business name',
+    })
+  })
+
+  it('drops the per-slot overrides when a DIFFERENT design is applied', () => {
+    registerRemotionDesignTemplate(makeTemplate())
+    registerRemotionDesignTemplate(makeTemplate({ id: 'other-design' }))
+    const first = applyDesignTemplate(createDefaultPreviewSettings(), 'demo-design', SEED)
+    const edited = {
+      ...first,
+      layers: first.layers.map((layer) => ({
+        ...layer,
+        textSlotOverrides: { business: 'Edited business name' },
+      })),
+    }
+
+    const second = applyDesignTemplate(edited, 'other-design', SEED)
+
+    expect(second.layers[0].designId).toBe('other-design')
+    expect(second.layers[0].textSlotOverrides).toBeUndefined()
+  })
+
   it('is a no-op for an unknown design id', () => {
     const settings = createDefaultPreviewSettings()
     const next = applyDesignTemplate(settings, 'not-a-design', SEED)
@@ -255,5 +291,80 @@ describe('normalizePreviewSettings with designs', () => {
     expect(normalized.remotionDesignId).toBeNull()
     expect(normalized.layout).toBe('special-offer')
     expect(normalized.layers.map((layer) => layer.kind)).toEqual(['cta'])
+  })
+
+  it('round-trips the per-slot text overrides of a design layer', () => {
+    const normalized = normalizePreviewSettings({
+      remotionDesignId: 'demo-design',
+      layers: [
+        {
+          id: 'design',
+          kind: 'design',
+          designId: 'demo-design',
+          visible: true,
+          x: 0.5,
+          y: 0.5,
+          scale: 1,
+          opacity: 1,
+          animation: 'fade',
+          animationDelay: 0,
+          startFrame: 0,
+          text: 'A headline',
+          textSlotOverrides: { business: 'Edited business name' },
+        },
+      ],
+    })
+
+    expect(normalized.layers[0].textSlotOverrides).toEqual({
+      business: 'Edited business name',
+    })
+  })
+
+  it('drops the malformed per-slot text overrides on reload', () => {
+    const normalized = normalizePreviewSettings({
+      remotionDesignId: 'demo-design',
+      layers: [
+        {
+          id: 'design',
+          kind: 'design',
+          designId: 'demo-design',
+          visible: true,
+          x: 0.5,
+          y: 0.5,
+          scale: 1,
+          opacity: 1,
+          animation: 'fade',
+          animationDelay: 0,
+          startFrame: 0,
+          textSlotOverrides: { business: 42, offer: 'Kept' },
+        },
+      ],
+    })
+
+    expect(normalized.layers[0].textSlotOverrides).toEqual({ offer: 'Kept' })
+  })
+
+  it('drops an empty per-slot override map on reload', () => {
+    const normalized = normalizePreviewSettings({
+      remotionDesignId: 'demo-design',
+      layers: [
+        {
+          id: 'design',
+          kind: 'design',
+          designId: 'demo-design',
+          visible: true,
+          x: 0.5,
+          y: 0.5,
+          scale: 1,
+          opacity: 1,
+          animation: 'fade',
+          animationDelay: 0,
+          startFrame: 0,
+          textSlotOverrides: {},
+        },
+      ],
+    })
+
+    expect(normalized.layers[0].textSlotOverrides).toBeUndefined()
   })
 })

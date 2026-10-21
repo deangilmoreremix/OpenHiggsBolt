@@ -551,6 +551,13 @@ export function applyDesignTemplate(
         nonEmptyString(ctx?.[DESIGN_MEDIA_CONTEXT_KEYS[primaryMedia.role]]))
     : undefined
 
+  // The customer's edits to the SECONDARY text slots survive a re-apply of the
+  // same design: the layer is rebuilt from scratch, so the overrides have to
+  // be carried over explicitly (the primary slot is carried over through
+  // `existing.text` above).
+  const textSlotOverrides =
+    existing?.designId === design.id ? existing.textSlotOverrides : undefined
+
   const placement = design.placement
   const overrides: Partial<PreviewLayer> = {
     designId: design.id,
@@ -564,6 +571,7 @@ export function applyDesignTemplate(
   if (typeof placement?.opacity === 'number') overrides.opacity = placement.opacity
   if (text !== undefined) overrides.text = text
   if (imageUrl !== undefined) overrides.imageUrl = imageUrl
+  if (textSlotOverrides) overrides.textSlotOverrides = textSlotOverrides
 
   const layer = createLayer('design', overrides)
 
@@ -682,7 +690,32 @@ function normalizeLayer(raw: unknown): PreviewLayer | null {
   // A design layer carries the id of the registered design it renders.
   const designId = nonEmptyString(raw.designId)
   if (designId) normalized.designId = designId
+  // The per-slot text overrides of a design layer (the secondary slots). They
+  // are dropped when they are absent, malformed or empty, so a saved project
+  // keeps rendering the brand values for the slots the customer never edited.
+  const textSlotOverrides = normalizeTextSlotOverrides(raw.textSlotOverrides)
+  if (textSlotOverrides) normalized.textSlotOverrides = textSlotOverrides
   return normalized
+}
+
+/**
+ * Normalizes the per-slot text overrides of a design layer.
+ *
+ * Only string entries survive: a malformed value must never reach the render,
+ * and a blank entry is dropped by the resolver (which falls back to the brand
+ * value). An empty map is equivalent to an absent one, so `undefined` is
+ * returned for it.
+ */
+function normalizeTextSlotOverrides(raw: unknown): Record<string, string> | undefined {
+  if (!isRecord(raw)) return undefined
+  const out: Record<string, string> = {}
+  for (const key of Object.keys(raw)) {
+    if (typeof key !== 'string' || !key) continue
+    const value = raw[key]
+    if (typeof value !== 'string') continue
+    out[key] = value
+  }
+  return Object.keys(out).length > 0 ? out : undefined
 }
 
 /**

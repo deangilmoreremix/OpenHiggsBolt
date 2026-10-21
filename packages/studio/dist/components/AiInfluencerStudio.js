@@ -907,7 +907,8 @@ function AiInfluencerStudio(_ref2) {
     externalIsGenerating = _ref2.isGenerating,
     templateData = _ref2.templateData,
     _ref2$locale = _ref2.locale,
-    locale = _ref2$locale === void 0 ? "en" : _ref2$locale;
+    locale = _ref2$locale === void 0 ? "en" : _ref2$locale,
+    renderPersonalizeAction = _ref2.renderPersonalizeAction;
   var copy = (0, _i18nUtils.resolveCopy)(_aiInfluencerStudio["default"], _aiInfluencerStudio2["default"], locale);
   var _useState3 = (0, _react.useState)("face"),
     _useState4 = _slicedToArray(_useState3, 2),
@@ -1181,6 +1182,33 @@ function AiInfluencerStudio(_ref2) {
 
   // Preview image = selected history or current result
   var previewUrl = selectedHistoryIdx !== null && history[selectedHistoryIdx] ? history[selectedHistoryIdx].url : currentResult;
+
+  // ── Personalization hand-off (Phase 2) ───────────────────────────────────
+  // AI Influencer has no upload input — the studio's media IS the generated
+  // character, so the currently previewed image (the selected history entry,
+  // or the latest generation) is the single primary output that gets handed
+  // to the shared Personalization Modal.
+  // The Modal keys its saved project on the source id, so the studio project
+  // id has to be unique per project AND stable while the project is
+  // unchanged: the image file name plus the aspect ratio.
+  var studioPersonalizeOptions = (0, _react.useMemo)(function () {
+    return {
+      originStudio: "ai-influencer",
+      studioProjectId: [previewUrl ? previewUrl.split("/").pop() : "no-character", aspectRatio].join(":"),
+      title: "AI Influencer character",
+      media: {
+        mediaType: "image",
+        url: previewUrl || null,
+        poster: null,
+        aspectRatio: aspectRatio
+      },
+      prompt: {
+        text: buildPrompt(),
+        model: INFLUENCER_MODEL,
+        modelName: INFLUENCER_MODEL
+      }
+    };
+  }, [previewUrl, aspectRatio, buildPrompt]);
   var arMap = {
     "3:4": "3/4",
     "1:1": "1/1",
@@ -1389,7 +1417,7 @@ function AiInfluencerStudio(_ref2) {
                   d: "M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"
                 })
               })
-            })]
+            }), renderPersonalizeAction === null || renderPersonalizeAction === void 0 ? void 0 : renderPersonalizeAction(studioPersonalizeOptions)]
           }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "flex flex-col items-center gap-3 text-center px-8 py-12",
             children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {

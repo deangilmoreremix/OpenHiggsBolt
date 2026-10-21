@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { generateImage } from "../muapi.js";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
@@ -342,7 +342,26 @@ function HoverPill({ label, img, onClick }) {
 }
 
 // ─── Main Component ─────────────────────────────────────────────────────────
-export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: externalIsGenerating, templateData, locale = "en" }) {
+export default function AiInfluencerStudio({
+  apiKey,
+  onGenerate,
+  isGenerating: externalIsGenerating,
+  templateData,
+  locale = "en",
+  /**
+   * Optional renderer for the shared Personalization Modal hand-off.
+   *
+   * The `studio` package is published standalone, so it MUST NOT import the
+   * app's `src/shared/personalization/studioEntry` module — the app root owns
+   * that wiring and passes the renderer in.
+   *
+   * The argument is a plain `StudioPersonalizeOptions` object:
+   *   { originStudio, studioProjectId, title,
+   *     media: { mediaType, url, poster, aspectRatio, duration, durationLabel },
+   *     prompt: { text, model, modelName } }
+   */
+  renderPersonalizeAction,
+}) {
   const copy = resolveCopy(en, zh, locale);
   const [activeTab, setActiveTab] = useState("face");
 
@@ -517,6 +536,37 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
     selectedHistoryIdx !== null && history[selectedHistoryIdx]
       ? history[selectedHistoryIdx].url
       : currentResult;
+
+  // ── Personalization hand-off (Phase 2) ───────────────────────────────────
+  // AI Influencer has no upload input — the studio's media IS the generated
+  // character, so the currently previewed image (the selected history entry,
+  // or the latest generation) is the single primary output that gets handed
+  // to the shared Personalization Modal.
+  // The Modal keys its saved project on the source id, so the studio project
+  // id has to be unique per project AND stable while the project is
+  // unchanged: the image file name plus the aspect ratio.
+  const studioPersonalizeOptions = useMemo(
+    () => ({
+      originStudio: "ai-influencer",
+      studioProjectId: [
+        previewUrl ? previewUrl.split("/").pop() : "no-character",
+        aspectRatio,
+      ].join(":"),
+      title: "AI Influencer character",
+      media: {
+        mediaType: "image",
+        url: previewUrl || null,
+        poster: null,
+        aspectRatio,
+      },
+      prompt: {
+        text: buildPrompt(),
+        model: INFLUENCER_MODEL,
+        modelName: INFLUENCER_MODEL,
+      },
+    }),
+    [previewUrl, aspectRatio, buildPrompt],
+  );
 
   const arMap = { "3:4": "3/4", "1:1": "1/1", "9:16": "9/16", "16:9": "16/9" };
 
@@ -721,6 +771,10 @@ export default function AiInfluencerStudio({ apiKey, onGenerate, isGenerating: e
                     <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
                   </svg>
                 </AssistStep>
+                {/* Personalize this character in the shared Personalization
+                    Modal. Rendered inside the preview overlay, so the app root
+                    should give it an absolute positioning class. */}
+                {renderPersonalizeAction?.(studioPersonalizeOptions)}
               </>
             ) : (
               <div className="flex flex-col items-center gap-3 text-center px-8 py-12">

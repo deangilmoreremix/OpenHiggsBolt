@@ -71,6 +71,11 @@ export interface RemotionDesignTextSlot {
    * (`layer.text`). Exactly one slot should be primary.
    */
   primary?: boolean
+  /**
+   * OPTIONAL — Phase 2. Maximum number of characters the customer may type
+   * into this slot. The inspector applies it to the field's `maxLength`.
+   */
+  maxLength?: number
 }
 
 /** Binds a brand colour role to a colour the design paints with. */

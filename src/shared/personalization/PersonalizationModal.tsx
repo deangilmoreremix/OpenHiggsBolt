@@ -857,6 +857,14 @@ export default function PersonalizationModal() {
 
   const dialogRef = useRef<HTMLDivElement>(null)
   const previousActiveElementRef = useRef<HTMLElement | null>(null)
+  /**
+   * The inline `overflow` value the document body had *before* the modal locked
+   * scrolling. Restoring a hard-coded `''` on close silently destroyed any
+   * value the page (or an enclosing studio) had already set — e.g. `overflow:
+   * hidden` on a scrolled panel, or `overflow: auto`. The captured value is
+   * restored verbatim instead, including the empty string.
+   */
+  const previousBodyOverflowRef = useRef<string | null>(null)
 
   const personalizationInProgress =
     generation.status === 'generating' || generation.status === 'processing' || generation.status === 'personalizing-prompt'
@@ -1004,6 +1012,10 @@ export default function PersonalizationModal() {
   useEffect(() => {
     if (!isOpen) return
     previousActiveElementRef.current = document.activeElement as HTMLElement
+    // Capture the body's inline overflow *before* locking, so cleanup can put
+    // back exactly what was there (possibly '' / unset) instead of clobbering
+    // a value the page or an enclosing studio had already applied.
+    previousBodyOverflowRef.current = document.body.style.overflow
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !personalizationInProgress && !imageEditorAsset) closePersonalize()
     }
@@ -1011,7 +1023,8 @@ export default function PersonalizationModal() {
     document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = ''
+      document.body.style.overflow = previousBodyOverflowRef.current ?? ''
+      previousBodyOverflowRef.current = null
       previousActiveElementRef.current?.focus()
     }
   }, [isOpen, closePersonalize, personalizationInProgress, imageEditorAsset])
@@ -1435,7 +1448,7 @@ export default function PersonalizationModal() {
 
   return (
       <div
-        className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5"
+        className="fixed inset-0 z-[250] flex items-center justify-center p-3 sm:p-5"
         style={{
           background: 'radial-gradient(circle at top, rgba(41,211,242,.07), transparent 30%), #07090d',
         }}

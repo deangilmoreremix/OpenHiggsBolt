@@ -27,6 +27,10 @@ vi.mock('@remotion/media', () => ({
 vi.mock('remotion', async () => {
   return {
     AbsoluteFill: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+    // A stand-in for Remotion's `<Img/>`, which needs a registered composition.
+    // It is a plain `<img>` on purpose — the rule is disabled for this ONE
+    // line, not for the file and not for the project.
+    // eslint-disable-next-line @next/next/no-img-element
     Img: ({ src }: { src: string }) => <img src={src} alt="" />,
     Sequence: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
     Internals: {

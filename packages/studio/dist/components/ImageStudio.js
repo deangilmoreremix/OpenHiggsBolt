@@ -1206,7 +1206,8 @@ function ImageStudio(_ref8) {
     onFilesHandled = _ref8.onFilesHandled,
     templateData = _ref8.templateData,
     _ref8$locale = _ref8.locale,
-    locale = _ref8$locale === void 0 ? "en" : _ref8$locale;
+    locale = _ref8$locale === void 0 ? "en" : _ref8$locale,
+    renderPersonalizeAction = _ref8.renderPersonalizeAction;
   var copy = (0, _i18nUtils.resolveCopy)(_imageStudio["default"], _imageStudio2["default"], locale);
   var PERSIST_KEY = "hg_image_studio_persistent";
   var router = (0, _navigation.useRouter)();
@@ -1322,6 +1323,32 @@ function ImageStudio(_ref8) {
 
   // Use prop history if provided, otherwise local
   var history = historyItems !== null && historyItems !== void 0 ? historyItems : localHistory;
+
+  // ── Personalization hand-off (Phase 2) ───────────────────────────────────
+  // The shared Personalization Modal keys its saved project on the source id,
+  // so the studio project id has to be unique per project AND stable while
+  // the project is unchanged. It is derived from the first uploaded image plus
+  // the generation configuration — a new upload (or a different model / aspect
+  // ratio) is a different project.
+  var studioPersonalizeOptions = (0, _react.useMemo)(function () {
+    var _uploadedImageUrls$;
+    return {
+      originStudio: "image",
+      studioProjectId: [selectedModelId, selectedAr, uploadedImageUrls[0] ? uploadedImageUrls[0].split("/").pop() : "no-image"].join(":"),
+      title: "Image Studio image",
+      media: {
+        mediaType: "image",
+        url: (_uploadedImageUrls$ = uploadedImageUrls[0]) !== null && _uploadedImageUrls$ !== void 0 ? _uploadedImageUrls$ : null,
+        poster: null,
+        aspectRatio: selectedAr
+      },
+      prompt: {
+        text: prompt,
+        model: selectedModelId,
+        modelName: selectedModelName
+      }
+    };
+  }, [selectedModelId, selectedModelName, selectedAr, uploadedImageUrls, prompt]);
 
   // ── Refs ────────────────────────────────────────────────────────────────
   var textareaRef = (0, _react.useRef)(null);
@@ -2100,7 +2127,7 @@ function ImageStudio(_ref8) {
                   children: "\xD7"
                 })]
               }, idx);
-            }), uploadedImageUrls.length < maxImages && /*#__PURE__*/(0, _jsxRuntime.jsx)(UploadButton, {
+            }), studioPersonalizeOptions.media.url ? renderPersonalizeAction === null || renderPersonalizeAction === void 0 ? void 0 : renderPersonalizeAction(studioPersonalizeOptions) : null, uploadedImageUrls.length < maxImages && /*#__PURE__*/(0, _jsxRuntime.jsx)(UploadButton, {
               apiKey: apiKey,
               maxImages: maxImages,
               onSelect: handleUploadSelect,

@@ -23,6 +23,7 @@
 
 import React from 'react'
 import { AbsoluteFill } from 'remotion'
+import { DESIGN_CREDIT_FONT_STACK, useDesignFonts } from './fonts'
 import type { RemotionDesignComponentProps } from '../types'
 
 /**
@@ -176,7 +177,7 @@ export function DesignCreditLine(): React.ReactElement {
         position: 'absolute',
         right: 8,
         bottom: 6,
-        fontFamily: '-apple-system, "Segoe UI", Roboto, sans-serif',
+        fontFamily: DESIGN_CREDIT_FONT_STACK,
         fontSize: 10,
         lineHeight: 1.2,
         fontWeight: 500,
@@ -214,6 +215,12 @@ export function DesignStage({
   children: React.ReactNode
   stageStyle?: React.CSSProperties
 }): React.ReactElement {
+  // The frozen upstreams hardcode a system font stack, which makes the export
+  // depend on the machine it runs on. `useDesignFonts()` declares the bundled
+  // typeface, overrides the upstream's inline `font-family` inside the design
+  // stage, and holds the render open until the face is loaded.
+  useDesignFonts()
+
   const scaleX = props.box.widthPx / Math.max(1, props.width)
   const scaleY = props.box.heightPx / Math.max(1, props.height)
   const isIdentity = Math.abs(scaleX - 1) < 0.0001 && Math.abs(scaleY - 1) < 0.0001

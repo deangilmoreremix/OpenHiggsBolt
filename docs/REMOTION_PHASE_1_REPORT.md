@@ -728,3 +728,33 @@ working Remotion designs, the existing pill designs remain functional, live vide
 browser export pipeline both work, the Remotion template registry supports future expansion, and
 a shared entry-point contract exists for the other studios. No production deployment has
 occurred.*
+
+---
+
+## Phase 2 addendum
+
+**Phase 2 has been completed.** The full report — scope, the 19 designs, the rejected template
+libraries, the registry and file structure, the studio hand-off, the modal robustness fixes, the
+multi-slot inspector, the deterministic typography, the full 10-row verification matrix with raw
+output, the screenshots, the CI-outage analysis, the open defects and the Phase 3 backlog — is in:
+
+### → [`docs/REMOTION_PHASE_2_REPORT.md`](./REMOTION_PHASE_2_REPORT.md)
+
+**What changed since Phase 1, in one paragraph.** The design library grew from **5 to 19**
+designs across **two** upstream repositories (10 more from `free-remotion-templates`, 4 from the
+React Video Editor's `remotion-templates`); the shared studio hand-off grew from **1 studio to
+10** and was re-architected so `packages/studio` no longer imports across the package boundary
+(a render prop is injected from the app root instead); the two integration risks Phase 1 left open
+were fixed — the Personalization Modal's z-index moved from the colliding `z-[100]` to **`z-[250]`**,
+and the body scroll-lock now **restores the previous `overflow` value verbatim** instead of forcing
+`''`; every declared design text slot is now editable in the inspector and persisted through
+`textSlotOverrides`; the design layer's typography is now **deterministic and self-hosted**
+("Personalization Sans", the Inter variable Latin subset, SIL OFL 1.1, shipped with its licence);
+and the Phase 2 **lint delta is +0 errors** against the Phase 1 baseline of 1224 errors.
+
+**Nothing in this document above was changed.** This addendum is the only addition; the Phase 1
+text, its tables, its raw output and its conclusions are exactly as they were written.
+
+**Still true after Phase 2:** the five original Step 4 pills are unchanged and still selectable;
+the wizard layout is separate from the design library; the Personalization Modal's flow is
+unchanged; and no production deployment has occurred.

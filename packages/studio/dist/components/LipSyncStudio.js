@@ -412,7 +412,8 @@ function LipSyncStudio(_ref8) {
     onFilesHandled = _ref8.onFilesHandled,
     templateData = _ref8.templateData,
     _ref8$locale = _ref8.locale,
-    locale = _ref8$locale === void 0 ? "en" : _ref8$locale;
+    locale = _ref8$locale === void 0 ? "en" : _ref8$locale,
+    renderPersonalizeAction = _ref8.renderPersonalizeAction;
   var copy = (0, _i18nUtils.resolveCopy)(_lipSyncStudio["default"], _lipSyncStudio2["default"], locale);
   var PERSIST_KEY = "hg_lipsync_studio_persistent";
 
@@ -530,6 +531,35 @@ function LipSyncStudio(_ref8) {
     _useState48 = _slicedToArray(_useState47, 2),
     activeHistoryIdx = _useState48[0],
     setActiveHistoryIdx = _useState48[1];
+
+  // ── Personalization hand-off (Phase 2) ───────────────────────────────────
+  // Lip Sync composes a subject (image OR video) plus an audio track, but the
+  // shared Personalization Modal takes ONE source media — the subject in the
+  // CURRENT input mode is the primary asset, so that is the one handed over.
+  // The audio track is deliberately NOT part of the hand-off.
+  // The Modal keys its saved project on the source id, so the studio project
+  // id has to be unique per project AND stable while the project is
+  // unchanged: the uploaded subject name plus the input mode and model.
+  var studioPersonalizeOptions = (0, _react.useMemo)(function () {
+    var isVideoMode = inputMode === "video";
+    var subjectUrl = isVideoMode ? videoUrl : imageUrl;
+    var subjectName = isVideoMode ? videoName : imageName;
+    return {
+      originStudio: "lipsync",
+      studioProjectId: [subjectName || (subjectUrl ? subjectUrl.split("/").pop() : "no-subject"), inputMode, selectedModelId].join(":"),
+      title: "Lip Sync subject",
+      media: {
+        mediaType: isVideoMode ? "video" : "image",
+        url: subjectUrl || null,
+        poster: null
+      },
+      prompt: {
+        text: prompt,
+        model: selectedModelId,
+        modelName: firstModel === null || firstModel === void 0 ? void 0 : firstModel.name
+      }
+    };
+  }, [inputMode, videoUrl, videoName, imageUrl, imageName, selectedModelId, firstModel, prompt]);
 
   // ── Dropdown state ──────────────────────────────────────────────────────
   var _useState49 = (0, _react.useState)(null),
@@ -1415,7 +1445,7 @@ function LipSyncStudio(_ref8) {
             previewUrl: videoUrl,
             isVideo: true,
             apiKey: apiKey
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)(MediaPickerButton, {
+          }), studioPersonalizeOptions.media.url ? renderPersonalizeAction === null || renderPersonalizeAction === void 0 ? void 0 : renderPersonalizeAction(studioPersonalizeOptions) : null, /*#__PURE__*/(0, _jsxRuntime.jsx)(MediaPickerButton, {
             accept: "audio/*",
             label: copy.media.audioLabel,
             mediaCopy: copy.media,

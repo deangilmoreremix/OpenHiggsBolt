@@ -8,7 +8,7 @@
  * data?).
  */
 import React from 'react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vitest'
 import { render } from '@testing-library/react'
 import {
   getRemotionDesignTemplate,
@@ -20,14 +20,18 @@ import {
   REMOTION_DESIGN_ATTRIBUTION,
   REMOTION_DESIGN_LICENSE_NOTICE,
   REMOTION_DESIGN_TEMPLATES,
+  RVE_ATTRIBUTION,
+  RVE_LICENSE_NOTICE,
   animatedHeadlineTemplate,
   getRemotionDesignAttributionLine,
+  getRemotionDesignLicenseNotice,
   logoRevealTemplate,
   lowerThirdTemplate,
   promoCtaTemplate,
   visualEffectTemplate,
 } from '../catalog'
 import type {
+  RemotionDesignCategory,
   RemotionDesignComponentProps,
   RemotionDesignTemplate,
   RemotionDesignTextField,
@@ -67,6 +71,27 @@ const EXPECTED_IDS = [
   'promo-cta',
   'visual-effect',
 ]
+
+/**
+ * Every category the design layer knows about.
+ *
+ * The catalog must cover ALL of them: a category with no design is a
+ * category the customer can never pick from.
+ */
+const ALL_CATEGORIES: RemotionDesignCategory[] = [
+  'animated-headline',
+  'logo-reveal',
+  'lower-third',
+  'promo-cta',
+  'visual-effect',
+  'other',
+]
+
+/**
+ * The exact size of the catalog: five Phase 1 designs + ten batch-1 designs
+ * + four batch-2 designs.
+ */
+const EXPECTED_TOTAL = 19
 
 const VALID_TEXT_FIELDS: RemotionDesignTextField[] = [
   'businessName',
@@ -121,17 +146,52 @@ beforeEach(() => {
   clock.frame = 0
 })
 
+/**
+ * jsdom has no `FontFaceSet`, so the bundled typeface can never load here and
+ * `useDesignFonts()` warns on every render. The warning is a test-environment
+ * artifact (a real browser has `document.fonts`), so it is filtered out;
+ * every OTHER warning still reaches the console.
+ */
+const originalWarn = console.warn
+
+beforeAll(() => {
+  console.warn = (...args: unknown[]) => {
+    const first = typeof args[0] === 'string' ? args[0] : ''
+    if (first.includes('bundled design font')) return
+    originalWarn(...args)
+  }
+})
+
+afterAll(() => {
+  console.warn = originalWarn
+})
+
 describe('Remotion design catalog', () => {
   it('registers the five Phase 1 designs', () => {
     const ids = listRemotionDesignTemplates().map((template) => template.id)
-    expect(ids).toEqual(EXPECTED_IDS)
+    // Phase 2 (batch 1) added ten more designs and batch 2 four more, so the
+    // five Phase 1 designs are the HEAD of the registry now, not the whole of
+    // it.
+    expect(ids.slice(0, EXPECTED_IDS.length)).toEqual(EXPECTED_IDS)
+    expect(ids).toEqual(expect.arrayContaining(EXPECTED_IDS))
     for (const id of EXPECTED_IDS) {
       expect(getRemotionDesignTemplate(id)).toBeDefined()
     }
   })
 
+  it('registers exactly nineteen designs under unique ids', () => {
+    const ids = listRemotionDesignTemplates().map((template) => template.id)
+    expect(ids).toHaveLength(EXPECTED_TOTAL)
+    expect(REMOTION_DESIGN_TEMPLATES).toHaveLength(EXPECTED_TOTAL)
+    // A duplicate id would make the persisted `remotionDesignId` ambiguous.
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+
   it('exposes the five designs as named exports', () => {
-    expect(REMOTION_DESIGN_TEMPLATES).toHaveLength(5)
+    expect(REMOTION_DESIGN_TEMPLATES.length).toBe(EXPECTED_TOTAL)
+    expect(
+      REMOTION_DESIGN_TEMPLATES.slice(0, EXPECTED_IDS.length).map((template) => template.id),
+    ).toEqual(EXPECTED_IDS)
     expect(animatedHeadlineTemplate.id).toBe('animated-headline')
     expect(logoRevealTemplate.id).toBe('logo-reveal')
     expect(lowerThirdTemplate.id).toBe('lower-third')
@@ -144,14 +204,28 @@ describe('Remotion design catalog', () => {
       expect(template.component).toBeTruthy()
       expect(template.source.license).toBe('MIT')
       expect(template.source.attribution.trim().length).toBeGreaterThan(0)
-      expect(template.source.attribution).toBe(REMOTION_DESIGN_ATTRIBUTION)
-      expect(template.source.sourcePath).toMatch(/^src\/components\/.+\.tsx$/)
       expect(template.source.repositoryUrl).toMatch(/^https:\/\/github\.com\//)
+      // Phase 2 draws from TWO upstream repositories, so the credit line
+      // depends on the repository the design came from — but there are only
+      // those two, and every design carries the right one.
+      if (template.source.repository === 'free-remotion-templates') {
+        expect(template.source.attribution).toBe(REMOTION_DESIGN_ATTRIBUTION)
+        expect(template.source.sourcePath).toMatch(/^src\/components\/.+\.tsx$/)
+      } else {
+        expect(template.source.repository).toBe('remotion-templates')
+        expect(template.source.attribution).toBe(RVE_ATTRIBUTION)
+        expect(template.source.sourcePath).toMatch(/^templates\/.+\.tsx$/)
+      }
     }
   })
 
-  it('lists one design per category', () => {
-    const cases: Array<[RemotionDesignTemplate['category'], string]> = [
+  it('lists at least one design in every category', () => {
+    for (const category of ALL_CATEGORIES) {
+      const found = listRemotionDesignTemplatesByCategory(category)
+      expect(found.length, category).toBeGreaterThan(0)
+    }
+    // The Phase 1 designs are still in their own categories.
+    const cases: Array<[RemotionDesignCategory, string]> = [
       ['animated-headline', 'animated-headline'],
       ['logo-reveal', 'logo-reveal'],
       ['lower-third', 'lower-third'],
@@ -160,7 +234,7 @@ describe('Remotion design catalog', () => {
     ]
     for (const [category, id] of cases) {
       const found = listRemotionDesignTemplatesByCategory(category)
-      expect(found.map((template) => template.id)).toEqual([id])
+      expect(found.map((template) => template.id)).toContain(id)
     }
   })
 
@@ -185,8 +259,8 @@ describe('Remotion design catalog', () => {
       const slots = template.textSlots ?? []
       const primary = slots.filter((slot) => slot.primary)
       if (slots.length === 0) {
-        // The visual effect is textless by design.
-        expect(template.id).toBe('visual-effect')
+        // A textless design by design (the bokeh effect, the starfield).
+        expect(primary).toHaveLength(0)
         continue
       }
       expect(primary).toHaveLength(1)
@@ -195,13 +269,28 @@ describe('Remotion design catalog', () => {
   })
 
   it('exposes the MIT attribution and permission notice for the product UI', () => {
-    expect(getRemotionDesignAttributionLine()).toBe(REMOTION_DESIGN_ATTRIBUTION)
+    // The credits surface shows BOTH upstream credit lines (contract
+    // addition C10): a project can use designs from both repositories.
+    const line = getRemotionDesignAttributionLine()
+    expect(line).toContain(REMOTION_DESIGN_ATTRIBUTION)
+    expect(line).toContain(RVE_ATTRIBUTION)
     expect(REMOTION_DESIGN_ATTRIBUTION).toContain('© 2026 Trimora Inc.')
     expect(REMOTION_DESIGN_ATTRIBUTION).toContain('MIT License')
+    expect(RVE_ATTRIBUTION).toContain('React Video Editor')
+    expect(RVE_ATTRIBUTION).toContain('MIT License')
     expect(REMOTION_DESIGN_LICENSE_NOTICE).toContain('Copyright (c) 2026 Trimora Inc.')
     expect(REMOTION_DESIGN_LICENSE_NOTICE).toContain(
       'The above copyright notice and this permission notice shall be included in all',
     )
+    // The repo-2 notice names no holder, so it carries no copyright line.
+    expect(RVE_LICENSE_NOTICE).not.toMatch(/Copyright \(c\)/)
+    expect(RVE_LICENSE_NOTICE).toContain(
+      'The above copyright notice and this permission notice shall be included in all',
+    )
+    // Both permission notices are on the credits surface.
+    const notice = getRemotionDesignLicenseNotice()
+    expect(notice).toContain(REMOTION_DESIGN_LICENSE_NOTICE)
+    expect(notice).toContain(RVE_LICENSE_NOTICE)
   })
 
   it('applies every design with its own placement and primary text', () => {
@@ -231,8 +320,14 @@ describe('Remotion design catalog', () => {
 
   it('bounds every other design so it cannot cover the whole frame', () => {
     for (const template of REMOTION_DESIGN_TEMPLATES) {
-      if (template.id === 'visual-effect') continue
       const scale = template.placement?.scale ?? 1
+      if (scale >= 1) {
+        // A full-frame effect (the bokeh loop, the starfield) covers the frame
+        // on purpose — it has to be marked as such.
+        expect(template.placement?.animation).toBe('none')
+        expect(template.placement?.opacity).toBe(1)
+        continue
+      }
       expect(scale).toBeGreaterThan(0)
       expect(scale).toBeLessThan(1)
     }
@@ -287,7 +382,13 @@ describe('Remotion design adapters', () => {
       const { container, unmount } = renderTemplate(template)
       const credit = container.querySelector('[data-remotion-design-credit]')
       expect(credit).not.toBeNull()
-      expect(credit?.textContent).toContain('Trimora')
+      // The credit names the upstream the design came from.
+      if (template.source.repository === 'free-remotion-templates') {
+        expect(credit?.textContent).toContain('Trimora')
+      } else {
+        expect(credit?.textContent).toContain('React Video Editor')
+        expect(credit?.textContent).not.toContain('RenderComp')
+      }
       unmount()
     }
   })

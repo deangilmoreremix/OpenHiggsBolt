@@ -12,6 +12,7 @@ import {
 } from 'remotion'
 import { Video, Audio } from '@remotion/media'
 import { fontStackById, isImageLayerKind, toBox } from './presets'
+import { resolveDesignSlotValues } from './designSlots'
 import {
   clearPreviewMediaFailure,
   emitPreviewMediaFailure,
@@ -21,7 +22,6 @@ import { getRemotionDesignTemplate, subscribeRemotionDesignRegistry } from '../t
 import type {
   RemotionDesignComponentProps,
   RemotionDesignTemplate,
-  RemotionDesignTextField,
 } from '../templates/types'
 import type {
   PreviewAnimationId,
@@ -149,51 +149,23 @@ function warnMissingDesignOnce(designId: string | undefined): void {
   )
 }
 
-/** Brand value behind a design text slot. */
-function brandTextValue(
-  field: RemotionDesignTextField,
-  brand: PreviewInputProps['brand'],
-): string {
-  switch (field) {
-    case 'businessName':
-      return brand.businessName ?? ''
-    case 'headline':
-      return brand.headline ?? ''
-    case 'offer':
-      return brand.offer ?? ''
-    case 'cta':
-      return brand.cta ?? ''
-    case 'phone':
-      return brand.phone ?? ''
-    case 'website':
-      return brand.website ?? ''
-    default:
-      return ''
-  }
-}
-
 /**
  * Resolves every text slot of a design.
  *
- * The primary slot is the one the customer edits on the layer, so the layer's
- * own text wins there; every other slot is fed by the matching brand field.
+ * The shared resolver in `./designSlots` owns the precedence rule, so the
+ * inspector and the render can never disagree:
+ *
+ *  - the PRIMARY slot takes the layer's own `text` (the legacy contract);
+ *  - every other slot takes its stored override when that override is a
+ *    non-empty string;
+ *  - otherwise the slot falls back to its brand field.
  */
 function resolveDesignTextSlots(
   design: RemotionDesignTemplate,
   layer: PreviewLayer,
   brand: PreviewInputProps['brand'],
 ): Record<string, string> {
-  const slots: Record<string, string> = {}
-  const declared = Array.isArray(design.textSlots) ? design.textSlots : []
-  for (const slot of declared) {
-    if (!slot || typeof slot.key !== 'string') continue
-    if (slot.primary && typeof layer.text === 'string') {
-      slots[slot.key] = layer.text
-    } else {
-      slots[slot.key] = brandTextValue(slot.field, brand)
-    }
-  }
-  return slots
+  return resolveDesignSlotValues(design, layer, brand)
 }
 
 /**

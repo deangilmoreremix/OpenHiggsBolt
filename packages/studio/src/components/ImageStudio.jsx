@@ -7,7 +7,7 @@ import {
 import en from "../messages/en/imageStudio.json";
 import zh from "../messages/zh/imageStudio.json";
 import { resolveCopy } from "../i18nUtils";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { generateImage, generateI2I, uploadFile } from "../muapi.js";
 import { setCharacterSheet } from "../lib/characterStore";
 import DrawModal from "./DrawModal.jsx";
@@ -992,6 +992,19 @@ export default function ImageStudio({
   onFilesHandled,
   templateData,
   locale = "en",
+  /**
+   * Optional renderer for the shared Personalization Modal hand-off.
+   *
+   * The `studio` package is published standalone, so it MUST NOT import the
+   * app's `src/shared/personalization/studioEntry` module — the app root owns
+   * that wiring and passes the renderer in.
+   *
+   * The argument is a plain `StudioPersonalizeOptions` object:
+   *   { originStudio, studioProjectId, title,
+   *     media: { mediaType, url, poster, aspectRatio, duration, durationLabel },
+   *     prompt: { text, model, modelName } }
+   */
+  renderPersonalizeAction,
 }) {
   const copy = resolveCopy(en, zh, locale);
   const PERSIST_KEY = "hg_image_studio_persistent";
@@ -1038,6 +1051,36 @@ export default function ImageStudio({
 
   // Use prop history if provided, otherwise local
   const history = historyItems ?? localHistory;
+
+  // ── Personalization hand-off (Phase 2) ───────────────────────────────────
+  // The shared Personalization Modal keys its saved project on the source id,
+  // so the studio project id has to be unique per project AND stable while
+  // the project is unchanged. It is derived from the first uploaded image plus
+  // the generation configuration — a new upload (or a different model / aspect
+  // ratio) is a different project.
+  const studioPersonalizeOptions = useMemo(
+    () => ({
+      originStudio: "image",
+      studioProjectId: [
+        selectedModelId,
+        selectedAr,
+        uploadedImageUrls[0] ? uploadedImageUrls[0].split("/").pop() : "no-image",
+      ].join(":"),
+      title: "Image Studio image",
+      media: {
+        mediaType: "image",
+        url: uploadedImageUrls[0] ?? null,
+        poster: null,
+        aspectRatio: selectedAr,
+      },
+      prompt: {
+        text: prompt,
+        model: selectedModelId,
+        modelName: selectedModelName,
+      },
+    }),
+    [selectedModelId, selectedModelName, selectedAr, uploadedImageUrls, prompt],
+  );
 
   // ── Refs ────────────────────────────────────────────────────────────────
   const textareaRef = useRef(null);
@@ -1692,6 +1735,12 @@ export default function ImageStudio({
                 </div>
               ))}
               
+              {/* Personalize this image in the shared Personalization Modal.
+                  Renders nothing without an uploaded source image. */}
+              {studioPersonalizeOptions.media.url
+                ? renderPersonalizeAction?.(studioPersonalizeOptions)
+                : null}
+
               {/* Main Upload Trigger */}
               {uploadedImageUrls.length < maxImages && (
                 <UploadButton
@@ -1895,6 +1944,7 @@ export default function ImageStudio({
                       <option key={r} value={r}>{r}</option>
                     ))}
                   </select>
+
                 </div>
               )}
 
