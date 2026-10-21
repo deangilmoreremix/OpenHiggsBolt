@@ -63,6 +63,7 @@ var _imageInputContracts = require("./imageInputContracts.js");
 var _generationLifecycle = require("./utils/generationLifecycle.js");
 var _modelCapabilities = require("./modelCapabilities.js");
 var _modelParameters = require("./modelParameters.js");
+var _uploadContract = require("./uploadContract.js");
 var _window$location;
 function _regenerator() { /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ var e, t, r = "function" == typeof Symbol ? Symbol : {}, n = r.iterator || "@@iterator", o = r.toStringTag || "@@toStringTag"; function i(r, n, o, i) { var c = n && n.prototype instanceof Generator ? n : Generator, u = Object.create(c.prototype); return _regeneratorDefine2(u, "_invoke", function (r, n, o) { var i, c, u, f = 0, p = o || [], y = !1, G = { p: 0, n: 0, v: e, a: d, f: d.bind(e, 4), d: function d(t, r) { return i = t, c = 0, u = e, G.n = r, a; } }; function d(r, n) { for (c = r, u = n, t = 0; !y && f && !o && t < p.length; t++) { var o, i = p[t], d = G.p, l = i[2]; r > 3 ? (o = l === n) && (u = i[(c = i[4]) ? 5 : (c = 3, 3)], i[4] = i[5] = e) : i[0] <= d && ((o = r < 2 && d < i[1]) ? (c = 0, G.v = n, G.n = i[1]) : d < l && (o = r < 3 || i[0] > n || n > l) && (i[4] = r, i[5] = n, G.n = l, c = 0)); } if (o || r > 1) return a; throw y = !0, n; } return function (o, p, l) { if (f > 1) throw TypeError("Generator is already running"); for (y && 1 === p && d(p, l), c = p, u = l; (t = c < 2 ? e : u) || !y;) { i || (c ? c < 3 ? (c > 1 && (G.n = -1), d(c, u)) : G.n = u : G.v = u); try { if (f = 2, i) { if (c || (o = "next"), t = i[o]) { if (!(t = t.call(i, u))) throw TypeError("iterator result is not an object"); if (!t.done) return t; u = t.value, c < 2 && (c = 0); } else 1 === c && (t = i["return"]) && t.call(i), c < 2 && (u = TypeError("The iterator does not provide a '" + o + "' method"), c = 1); i = e; } else if ((t = (y = G.n < 0) ? u : r.call(n, G)) !== a) break; } catch (t) { i = e, c = 1, u = t; } finally { f = 1; } } return { value: t, done: y }; }; }(r, o, i), !0), u; } var a = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} t = Object.getPrototypeOf; var c = [][n] ? t(t([][n]())) : (_regeneratorDefine2(t = {}, n, function () { return this; }), t), u = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(c); function f(e) { return Object.setPrototypeOf ? Object.setPrototypeOf(e, GeneratorFunctionPrototype) : (e.__proto__ = GeneratorFunctionPrototype, _regeneratorDefine2(e, o, "GeneratorFunction")), e.prototype = Object.create(u), e; } return GeneratorFunction.prototype = GeneratorFunctionPrototype, _regeneratorDefine2(u, "constructor", GeneratorFunctionPrototype), _regeneratorDefine2(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = "GeneratorFunction", _regeneratorDefine2(GeneratorFunctionPrototype, o, "GeneratorFunction"), _regeneratorDefine2(u), _regeneratorDefine2(u, o, "Generator"), _regeneratorDefine2(u, n, function () { return this; }), _regeneratorDefine2(u, "toString", function () { return "[object Generator]"; }), (_regenerator = function _regenerator() { return { w: i, m: f }; })(); }
 function _regeneratorDefine2(e, r, n, t) { var i = Object.defineProperty; try { i({}, "", {}); } catch (e) { i = 0; } _regeneratorDefine2 = function _regeneratorDefine(e, r, n, t) { function o(r, n) { _regeneratorDefine2(e, r, function (e) { return this._invoke(r, n, e); }); } r ? i ? i(e, r, { value: n, enumerable: !t, configurable: !t, writable: !t }) : e[r] = n : (o("next", 0), o("throw", 1), o("return", 2)); }, _regeneratorDefine2(e, r, n, t); }
@@ -81,15 +82,25 @@ function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length)
 // SSR (no window) and Electron's file:// renderer call the upstream directly.
 var BASE_URL = typeof window !== 'undefined' && (_window$location = window.location) !== null && _window$location !== void 0 && (_window$location = _window$location.protocol) !== null && _window$location !== void 0 && _window$location.startsWith('http') ? '/api' : 'https://api.muapi.ai';
 var PROXY_WF_BASE = '/api/workflow';
-var FILE_UPLOAD_TIMEOUT_MS = 300000;
+// ── Upload timeout / retry policy ───────────────────────────────────────────
+// The SERVER route (app/api/v1/upload_file/route.ts) is the retry authority:
+// it makes up to 3 attempts, each with a 120s upstream timeout plus exponential
+// backoff, so its worst case is ~366s.
+//
+// The browser therefore makes exactly ONE attempt and waits longer than that
+// server budget. Retrying here would multiply upstream POSTs (up to 3×3) and,
+// worse, abandon still-in-flight server uploads that can succeed afterwards and
+// get duplicated.
+var FILE_UPLOAD_TIMEOUT_MS = 420000;
 var FILE_UPLOAD_PENDING_PROGRESS = 99;
-function notifyAuthRequired(status, detail) {
+function notifyAuthRequired(status, detail, code) {
   if (typeof window === 'undefined') return;
   if (status !== 401 && status !== 403) return;
   window.dispatchEvent(new CustomEvent('muapi:auth-required', {
     detail: {
       status: status,
-      message: detail
+      message: detail,
+      code: code
     }
   }));
 }
@@ -588,22 +599,53 @@ function _generateAudio() {
 }
 function uploadFile(apiKey, file, onProgress) {
   return new Promise(function (resolve, reject) {
-    var url = "".concat(BASE_URL, "/api/v1/upload_file");
-    var formData = new FormData();
-    formData.append('file', file);
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', url);
-    xhr.setRequestHeader('x-api-key', apiKey);
-    xhr.timeout = FILE_UPLOAD_TIMEOUT_MS;
-    if (onProgress) {
-      xhr.upload.onprogress = function (event) {
-        if (event.lengthComputable) {
-          var percentComplete = Math.min(Math.round(event.loaded / event.total * 100), FILE_UPLOAD_PENDING_PROGRESS);
-          onProgress(percentComplete);
-        }
-      };
+    if (!file) return reject(new Error('No file provided'));
+
+    // Limits and MIME allowlist come from the shared contract — this package
+    // cannot import the host's TypeScript config, so the canonical contract
+    // lives in ./uploadContract.js and is re-exported to the app as
+    // src/lib/uploadConfig.ts. Do not hardcode sizes here.
+    if (!(0, _uploadContract.isAllowedUploadMimeType)(file)) {
+      return reject(new Error("Invalid file type: ".concat(file.type || 'unknown')));
     }
-    xhr.onload = function () {
+    var MAX_FILE_SIZE = (0, _uploadContract.getUploadLimit)(file);
+    if (file.size > MAX_FILE_SIZE) {
+      return reject(new Error("File too large: ".concat((file.size / 1024 / 1024).toFixed(1), " MB. Maximum: ").concat((0, _uploadContract.formatUploadLimit)(MAX_FILE_SIZE))));
+    }
+    var url = '/api/v1/upload_file';
+    function attemptUpload() {
+      var formData = new FormData();
+      formData.append('file', file);
+      return new Promise(function (resolveAttempt, rejectAttempt) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', url);
+        xhr.setRequestHeader('x-api-key', apiKey);
+        xhr.timeout = FILE_UPLOAD_TIMEOUT_MS;
+        if (onProgress) {
+          xhr.upload.onprogress = function (event) {
+            if (event.lengthComputable) {
+              var percentComplete = Math.min(Math.round(event.loaded / event.total * 100), FILE_UPLOAD_PENDING_PROGRESS);
+              onProgress(percentComplete);
+            }
+          };
+        }
+        xhr.onload = function () {
+          return resolveAttempt(xhr);
+        };
+        xhr.onerror = function () {
+          return rejectAttempt(new Error('Network error during file upload'));
+        };
+        xhr.ontimeout = function () {
+          return rejectAttempt(new Error('File upload timed out. Please try again.'));
+        };
+        xhr.send(formData);
+      });
+    }
+
+    // Single attempt: the server route owns retry (see the timeout policy
+    // comment above). A client-side retry would multiply upstream POSTs and
+    // orphan in-flight server uploads.
+    attemptUpload().then(function (xhr) {
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           var _data$data;
@@ -620,23 +662,18 @@ function uploadFile(apiKey, file, onProgress) {
         }
       } else {
         var detail = xhr.statusText;
+        var code = null;
         try {
           var errObj = JSON.parse(xhr.responseText);
-          detail = errObj.detail || detail;
+          detail = errObj.error || errObj.detail || detail;
+          code = errObj.code || null;
         } catch (e) {
           // fallback to statusText
         }
-        notifyAuthRequired(xhr.status, detail);
+        notifyAuthRequired(xhr.status, detail, code);
         reject(new Error("File upload failed: ".concat(xhr.status, " - ").concat(detail)));
       }
-    };
-    xhr.onerror = function () {
-      return reject(new Error('Network error during file upload'));
-    };
-    xhr.ontimeout = function () {
-      return reject(new Error('File upload timed out. Please try again.'));
-    };
-    xhr.send(formData);
+    })["catch"](reject);
   });
 }
 function getUserBalance(_x27) {

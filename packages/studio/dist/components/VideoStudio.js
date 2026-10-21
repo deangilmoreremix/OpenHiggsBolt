@@ -15,6 +15,10 @@ var _promptRecipes = require("../lib/promptRecipes");
 var _registry = _interopRequireDefault(require("../skills/registry.json"));
 var _models = require("../models.js");
 var _videoAdvancedControls = require("../videoAdvancedControls.js");
+var _DrawModal = _interopRequireDefault(require("./DrawModal.jsx"));
+var _ModelParameterControls = _interopRequireDefault(require("./ModelParameterControls.jsx"));
+var _VideoModelControls = require("./VideoModelControls.jsx");
+var _usePromptMenu = _interopRequireDefault(require("./prompt/usePromptMenu.js"));
 var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
 var _AiAssistantProvider = require("../../../../components/AiAssistantProvider");
 var _PromptComposer = require("./prompt/PromptComposer.jsx");
@@ -23,7 +27,7 @@ var _videoStudio2 = _interopRequireDefault(require("../messages/zh/videoStudio.j
 var _i18nUtils = require("../i18nUtils");
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
-function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function _interopRequireWildcard(e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, "default": e }; if (null === e || "object" != _typeof(e) && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (var _t8 in e) "default" !== _t8 && {}.hasOwnProperty.call(e, _t8) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, _t8)) && (i.get || i.set) ? o(f, _t8, i) : f[_t8] = e[_t8]); return f; })(e, t); }
+function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function _interopRequireWildcard(e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, "default": e }; if (null === e || "object" != _typeof(e) && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (var _t9 in e) "default" !== _t9 && {}.hasOwnProperty.call(e, _t9) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, _t9)) && (i.get || i.set) ? o(f, _t9, i) : f[_t9] = e[_t9]); return f; })(e, t); }
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
 function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
@@ -56,20 +60,20 @@ function downloadFile(_x, _x2) {
   return _downloadFile.apply(this, arguments);
 } // Build a compact list of summary chips from a persisted advanced-control snapshot.
 function _downloadFile() {
-  _downloadFile = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee7(url, filename) {
-    var response, blob, blobUrl, a, _t7;
-    return _regenerator().w(function (_context7) {
-      while (1) switch (_context7.p = _context7.n) {
+  _downloadFile = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee8(url, filename) {
+    var response, blob, blobUrl, a, _t8;
+    return _regenerator().w(function (_context8) {
+      while (1) switch (_context8.p = _context8.n) {
         case 0:
-          _context7.p = 0;
-          _context7.n = 1;
+          _context8.p = 0;
+          _context8.n = 1;
           return fetch(url);
         case 1:
-          response = _context7.v;
-          _context7.n = 2;
+          response = _context8.v;
+          _context8.n = 2;
           return response.blob();
         case 2:
-          blob = _context7.v;
+          blob = _context8.v;
           blobUrl = URL.createObjectURL(blob);
           a = document.createElement("a");
           a.href = blobUrl;
@@ -78,16 +82,16 @@ function _downloadFile() {
           a.click();
           document.body.removeChild(a);
           URL.revokeObjectURL(blobUrl);
-          _context7.n = 4;
+          _context8.n = 4;
           break;
         case 3:
-          _context7.p = 3;
-          _t7 = _context7.v;
+          _context8.p = 3;
+          _t8 = _context8.v;
           window.open(url, "_blank");
         case 4:
-          return _context7.a(2);
+          return _context8.a(2);
       }
-    }, _callee7, null, [[0, 3]]);
+    }, _callee8, null, [[0, 3]]);
   }));
   return _downloadFile.apply(this, arguments);
 }
@@ -918,7 +922,7 @@ function ControlBtn(_ref8) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 function VideoStudio(_ref9) {
-  var _defaultModel$inputs, _defaultModel$inputs2, _defaultModel$inputs3, _defaultModel$inputs4, _currentModelObj$inpu, _i2vModels$find, _currentModelObj$inpu2;
+  var _defaultModel$inputs, _defaultModel$inputs2, _defaultModel$inputs3, _defaultModel$inputs4, _currentModelObj$inpu, _currentModelObj$inpu2, _i2vModels$find, _currentModelObj$inpu3;
   var apiKey = _ref9.apiKey,
     onGenerationComplete = _ref9.onGenerationComplete,
     onGenerationError = _ref9.onGenerationError,
@@ -1056,75 +1060,111 @@ function VideoStudio(_ref9) {
     uploadedVideoName = _useState60[0],
     setUploadedVideoName = _useState60[1];
 
-  // ── generation / canvas ──
-  var _useState61 = (0, _react.useState)(false),
+  // ── audio upload ───────────────────────────────────────────────────────────
+  var _useState61 = (0, _react.useState)([]),
     _useState62 = _slicedToArray(_useState61, 2),
-    generating = _useState62[0],
-    setGenerating = _useState62[1];
-  var _useState63 = (0, _react.useState)(null),
+    uploadedAudioUrls = _useState62[0],
+    setUploadedAudioUrls = _useState62[1];
+  var _useState63 = (0, _react.useState)(false),
     _useState64 = _slicedToArray(_useState63, 2),
-    generateError = _useState64[0],
-    setGenerateError = _useState64[1];
-  var _useState65 = (0, _react.useState)(null),
+    audioUploading = _useState64[0],
+    setAudioUploading = _useState64[1];
+  var _useState65 = (0, _react.useState)(0),
     _useState66 = _slicedToArray(_useState65, 2),
-    fullscreenUrl = _useState66[0],
-    setFullscreenUrl = _useState66[1];
-  var _useState67 = (0, _react.useState)(null),
+    audioProgress = _useState66[0],
+    setAudioProgress = _useState66[1];
+
+  // ── generation / canvas ──
+  var _useState67 = (0, _react.useState)(false),
     _useState68 = _slicedToArray(_useState67, 2),
-    canvasUrl = _useState68[0],
-    setCanvasUrl = _useState68[1];
+    generating = _useState68[0],
+    setGenerating = _useState68[1];
   var _useState69 = (0, _react.useState)(null),
     _useState70 = _slicedToArray(_useState69, 2),
-    canvasModel = _useState70[0],
-    setCanvasModel = _useState70[1];
-  var _useState71 = (0, _react.useState)(false),
+    generateError = _useState70[0],
+    setGenerateError = _useState70[1];
+  var _useState71 = (0, _react.useState)(null),
     _useState72 = _slicedToArray(_useState71, 2),
-    showCanvas = _useState72[0],
-    setShowCanvas = _useState72[1];
+    fullscreenUrl = _useState72[0],
+    setFullscreenUrl = _useState72[1];
   var _useState73 = (0, _react.useState)(null),
     _useState74 = _slicedToArray(_useState73, 2),
-    lastGenerationId = _useState74[0],
-    setLastGenerationId = _useState74[1];
+    canvasUrl = _useState74[0],
+    setCanvasUrl = _useState74[1];
   var _useState75 = (0, _react.useState)(null),
     _useState76 = _slicedToArray(_useState75, 2),
-    lastGenerationModel = _useState76[0],
-    setLastGenerationModel = _useState76[1];
-
-  // ── history ──
-  var _useState77 = (0, _react.useState)([]),
+    canvasModel = _useState76[0],
+    setCanvasModel = _useState76[1];
+  var _useState77 = (0, _react.useState)(false),
     _useState78 = _slicedToArray(_useState77, 2),
-    localHistory = _useState78[0],
-    setLocalHistory = _useState78[1];
-  var _useState79 = (0, _react.useState)(0),
+    showCanvas = _useState78[0],
+    setShowCanvas = _useState78[1];
+  var _useState79 = (0, _react.useState)(null),
     _useState80 = _slicedToArray(_useState79, 2),
-    activeHistoryIdx = _useState80[0],
-    setActiveHistoryIdx = _useState80[1];
-
-  // ── dropdown ──
+    lastGenerationId = _useState80[0],
+    setLastGenerationId = _useState80[1];
   var _useState81 = (0, _react.useState)(null),
     _useState82 = _slicedToArray(_useState81, 2),
-    openDropdown = _useState82[0],
-    setOpenDropdown = _useState82[1]; // 'model'|'ar'|'duration'|'resolution'|'quality'|'mode'|null
+    lastGenerationModel = _useState82[0],
+    setLastGenerationModel = _useState82[1];
 
-  // ── prompt ──
-  var _useState83 = (0, _react.useState)(""),
+  // ── generation sources (for Veo / Seedance continuation tracking) ──────────
+  var _useState83 = (0, _react.useState)({}),
     _useState84 = _slicedToArray(_useState83, 2),
-    prompt = _useState84[0],
-    setPrompt = _useState84[1];
-  var _useState85 = (0, _react.useState)(false),
+    generationSources = _useState84[0],
+    setGenerationSources = _useState84[1];
+  var _useState85 = (0, _react.useState)(""),
     _useState86 = _slicedToArray(_useState85, 2),
-    promptDisabled = _useState86[0],
-    setPromptDisabled = _useState86[1];
+    selectedVeoSourceId = _useState86[0],
+    setSelectedVeoSourceId = _useState86[1];
 
-  // ── Wave 1 recipe-driven state ──
+  // ── draw modal ─────────────────────────────────────────────────────────────
   var _useState87 = (0, _react.useState)(false),
     _useState88 = _slicedToArray(_useState87, 2),
-    nativeAudio = _useState88[0],
-    setNativeAudio = _useState88[1];
-  var _useState89 = (0, _react.useState)(null),
+    isDrawModalOpen = _useState88[0],
+    setIsDrawModalOpen = _useState88[1];
+
+  // ── model parameter controls (ModelParameterControls) ──────────────────────
+  var _useState89 = (0, _react.useState)({}),
     _useState90 = _slicedToArray(_useState89, 2),
-    characterSheetUrl = _useState90[0],
-    setCharacterSheetUrl = _useState90[1];
+    modelParameterValues = _useState90[0],
+    setModelParameterValues = _useState90[1];
+
+  // ── history ──
+  var _useState91 = (0, _react.useState)([]),
+    _useState92 = _slicedToArray(_useState91, 2),
+    localHistory = _useState92[0],
+    setLocalHistory = _useState92[1];
+  var _useState93 = (0, _react.useState)(0),
+    _useState94 = _slicedToArray(_useState93, 2),
+    activeHistoryIdx = _useState94[0],
+    setActiveHistoryIdx = _useState94[1];
+
+  // ── dropdown ──
+  var _useState95 = (0, _react.useState)(null),
+    _useState96 = _slicedToArray(_useState95, 2),
+    openDropdown = _useState96[0],
+    setOpenDropdown = _useState96[1]; // 'model'|'ar'|'duration'|'resolution'|'quality'|'mode'|null
+
+  // ── prompt ──
+  var _useState97 = (0, _react.useState)(""),
+    _useState98 = _slicedToArray(_useState97, 2),
+    prompt = _useState98[0],
+    setPrompt = _useState98[1];
+  var _useState99 = (0, _react.useState)(false),
+    _useState100 = _slicedToArray(_useState99, 2),
+    promptDisabled = _useState100[0],
+    setPromptDisabled = _useState100[1];
+
+  // ── Wave 1 recipe-driven state ──
+  var _useState101 = (0, _react.useState)(false),
+    _useState102 = _slicedToArray(_useState101, 2),
+    nativeAudio = _useState102[0],
+    setNativeAudio = _useState102[1];
+  var _useState103 = (0, _react.useState)(null),
+    _useState104 = _slicedToArray(_useState103, 2),
+    characterSheetUrl = _useState104[0],
+    setCharacterSheetUrl = _useState104[1];
 
   // ── refs ──
   var containerRef = (0, _react.useRef)(null);
@@ -1133,6 +1173,7 @@ function VideoStudio(_ref9) {
   var imageFileInputRef = (0, _react.useRef)(null);
   var endImageFileInputRef = (0, _react.useRef)(null);
   var videoFileInputRef = (0, _react.useRef)(null);
+  var audioFileInputRef = (0, _react.useRef)(null);
   var resultVideoRef = (0, _react.useRef)(null);
   var hasRestored = (0, _react.useRef)(false);
 
@@ -1361,6 +1402,10 @@ function VideoStudio(_ref9) {
         }
         if (data.uploadedVideoUrl) setUploadedVideoUrl(data.uploadedVideoUrl);
         if (data.uploadedVideoName) setUploadedVideoName(data.uploadedVideoName);
+        if (data.uploadedAudioUrls) setUploadedAudioUrls(data.uploadedAudioUrls);
+        if (data.isDrawModalOpen !== undefined) setIsDrawModalOpen(data.isDrawModalOpen);
+        if (data.modelParameterValues) setModelParameterValues(data.modelParameterValues);
+        if (data.selectedVeoSourceId) setSelectedVeoSourceId(data.selectedVeoSourceId);
         if (data.prompt) setPrompt(data.prompt);
         if (data.localHistory) setLocalHistory(data.localHistory);
 
@@ -1445,6 +1490,10 @@ function VideoStudio(_ref9) {
           uploadedImageUrls: uploadedImageUrls,
           uploadedVideoUrl: uploadedVideoUrl,
           uploadedVideoName: uploadedVideoName,
+          uploadedAudioUrls: uploadedAudioUrls,
+          isDrawModalOpen: isDrawModalOpen,
+          modelParameterValues: modelParameterValues,
+          selectedVeoSourceId: selectedVeoSourceId,
           prompt: prompt,
           localHistory: localHistory
         };
@@ -1456,7 +1505,7 @@ function VideoStudio(_ref9) {
     return function () {
       return clearTimeout(timer);
     };
-  }, [imageMode, v2vMode, selectedModel, selectedModelName, selectedAr, selectedDuration, selectedResolution, selectedQuality, selectedMode, selectedEffect, uploadedImageUrl, uploadedImageUrls, uploadedVideoUrl, uploadedVideoName, prompt, localHistory]);
+  }, [imageMode, v2vMode, selectedModel, selectedModelName, selectedAr, selectedDuration, selectedResolution, selectedQuality, selectedMode, selectedEffect, uploadedImageUrl, uploadedImageUrls, uploadedVideoUrl, uploadedVideoName, uploadedAudioUrls, isDrawModalOpen, modelParameterValues, selectedVeoSourceId, prompt, localHistory]);
 
   // ── Derived UI values ────────────────────────────────────────────────────
 
@@ -1485,6 +1534,7 @@ function VideoStudio(_ref9) {
             setUploadedImageUrl(url);
             setUploadedVideoUrl(null);
             setUploadedVideoName(null);
+            setUploadedAudioUrls([]);
             setV2vMode(false);
             targetModelId = selectedModel;
             if (!imageMode) {
@@ -1829,10 +1879,10 @@ function VideoStudio(_ref9) {
     return setUploadedEndImageUrl(null);
   };
 
-  // ── video upload ─────────────────────────────────────────────────────────
-  var handleVideoFileChange = /*#__PURE__*/function () {
+  // ── audio upload ───────────────────────────────────────────────────────────
+  var handleAudioFileChange = /*#__PURE__*/function () {
     var _ref12 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee5(e) {
-      var file, url, _currentT2VOrExtend$i3, currentT2VOrExtend, firstV2V, _t5;
+      var file, url, _t5;
       return _regenerator().w(function (_context5) {
         while (1) switch (_context5.p = _context5.n) {
           case 0:
@@ -1847,18 +1897,77 @@ function VideoStudio(_ref9) {
               _context5.n = 2;
               break;
             }
-            alert("Video exceeds 50MB limit.");
+            alert("Audio exceeds 50MB limit.");
             return _context5.a(2);
+          case 2:
+            setAudioUploading(true);
+            setAudioProgress(0);
+            _context5.p = 3;
+            _context5.n = 4;
+            return (0, _muapi.uploadFile)(apiKey, file, function (pct) {
+              setAudioProgress(pct);
+            });
+          case 4:
+            url = _context5.v;
+            setUploadedAudioUrls(function (prev) {
+              if (prev.includes(url)) return prev;
+              return [].concat(_toConsumableArray(prev), [url]);
+            });
+            _context5.n = 6;
+            break;
+          case 5:
+            _context5.p = 5;
+            _t5 = _context5.v;
+            alert("Audio upload failed: ".concat(_t5.message));
+          case 6:
+            _context5.p = 6;
+            setAudioUploading(false);
+            setAudioProgress(0);
+            if (audioFileInputRef.current) audioFileInputRef.current.value = "";
+            return _context5.f(6);
+          case 7:
+            return _context5.a(2);
+        }
+      }, _callee5, null, [[3, 5, 6, 7]]);
+    }));
+    return function handleAudioFileChange(_x7) {
+      return _ref12.apply(this, arguments);
+    };
+  }();
+  var clearAudioUpload = function clearAudioUpload() {
+    return setUploadedAudioUrls([]);
+  };
+
+  // ── video upload ─────────────────────────────────────────────────────────
+  var handleVideoFileChange = /*#__PURE__*/function () {
+    var _ref13 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee6(e) {
+      var file, url, _currentT2VOrExtend$i3, currentT2VOrExtend, firstV2V, _t6;
+      return _regenerator().w(function (_context6) {
+        while (1) switch (_context6.p = _context6.n) {
+          case 0:
+            file = e.target.files[0];
+            if (file) {
+              _context6.n = 1;
+              break;
+            }
+            return _context6.a(2);
+          case 1:
+            if (!(file.size > 50 * 1024 * 1024)) {
+              _context6.n = 2;
+              break;
+            }
+            alert("Video exceeds 50MB limit.");
+            return _context6.a(2);
           case 2:
             setVideoUploading(true);
             setVideoProgress(0);
-            _context5.p = 3;
-            _context5.n = 4;
+            _context6.p = 3;
+            _context6.n = 4;
             return (0, _muapi.uploadFile)(apiKey, file, function (pct) {
               setVideoProgress(pct);
             });
           case 4:
-            url = _context5.v;
+            url = _context6.v;
             setUploadedVideoUrl(url);
             setUploadedVideoName(file.name);
             if (isMotionControlSelection(selectedModel, v2vMode)) {
@@ -1887,26 +1996,26 @@ function VideoStudio(_ref9) {
                 setPromptDisabled(true);
               }
             }
-            _context5.n = 6;
+            _context6.n = 6;
             break;
           case 5:
-            _context5.p = 5;
-            _t5 = _context5.v;
-            console.error("[VideoStudio] Video upload failed:", _t5);
-            alert("Video upload failed: ".concat(_t5.message));
+            _context6.p = 5;
+            _t6 = _context6.v;
+            console.error("[VideoStudio] Video upload failed:", _t6);
+            alert("Video upload failed: ".concat(_t6.message));
           case 6:
-            _context5.p = 6;
+            _context6.p = 6;
             setVideoUploading(false);
             setVideoProgress(0);
             if (videoFileInputRef.current) videoFileInputRef.current.value = "";
-            return _context5.f(6);
+            return _context6.f(6);
           case 7:
-            return _context5.a(2);
+            return _context6.a(2);
         }
-      }, _callee5, null, [[3, 5, 6, 7]]);
+      }, _callee6, null, [[3, 5, 6, 7]]);
     }));
-    return function handleVideoFileChange(_x7) {
-      return _ref12.apply(this, arguments);
+    return function handleVideoFileChange(_x8) {
+      return _ref13.apply(this, arguments);
     };
   }();
   var clearVideoUpload = function clearVideoUpload() {
@@ -1968,11 +2077,20 @@ function VideoStudio(_ref9) {
     setShowCanvas(true);
   }, []);
 
+  // ── handle draw reference from DrawModal ──────────────────────────────────
+  var handleDrawReference = (0, _react.useCallback)(function (entry) {
+    if (!(entry !== null && entry !== void 0 && entry.url)) return;
+    setUploadedImageUrl(entry.url);
+    setUploadedImageUrls([entry.url]);
+    setImageMode(true);
+    setIsDrawModalOpen(false);
+  }, []);
+
   // ── generate ──────────────────────────────────────────────────────────────
-  var handleGenerate = (0, _react.useCallback)(/*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee6() {
-    var currentModel, isExtendMode, trimmedPrompt, advPayload, advSnapshot, advField, maxImgs, hadError, res, _res, v2vParams, genId, entry, _res2, _maxImgs2, i2vParams, i2vModel, durations, resolutions, _genId, _entry, _res3, params, _durations, _resolutions, _genId2, _entry2, _e$message, _e$message2, _t6;
-    return _regenerator().w(function (_context6) {
-      while (1) switch (_context6.p = _context6.n) {
+  var handleGenerate = (0, _react.useCallback)(/*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee7() {
+    var currentModel, isExtendMode, trimmedPrompt, advPayload, advSnapshot, advField, maxImgs, hadError, res, _res, v2vParams, genId, entry, _res2, _maxImgs2, i2vParams, i2vModel, durations, resolutions, _genId, _entry, _res3, params, _durations, _resolutions, _genId2, _entry2, _e$message, _e$message2, _t7;
+    return _regenerator().w(function (_context7) {
+      while (1) switch (_context7.p = _context7.n) {
         case 0:
           currentModel = getCurrentModel();
           isExtendMode = currentModel === null || currentModel === void 0 ? void 0 : currentModel.requiresRequestId;
@@ -1983,89 +2101,89 @@ function VideoStudio(_ref9) {
             advanced: advSnapshot
           } : {};
           if (!v2vMode) {
-            _context6.n = 4;
+            _context7.n = 4;
             break;
           }
           if (uploadedVideoUrl) {
-            _context6.n = 1;
+            _context7.n = 1;
             break;
           }
           alert("Please upload a video first.");
-          return _context6.a(2);
+          return _context7.a(2);
         case 1:
           if (!(currentModel !== null && currentModel !== void 0 && currentModel.imageField && !(currentModel !== null && currentModel !== void 0 && currentModel.imageOptional) && !uploadedImageUrl)) {
-            _context6.n = 2;
+            _context7.n = 2;
             break;
           }
           alert("Please upload a reference image for motion control.");
-          return _context6.a(2);
+          return _context7.a(2);
         case 2:
           if (!(currentModel !== null && currentModel !== void 0 && currentModel.promptRequired && !trimmedPrompt)) {
-            _context6.n = 3;
+            _context7.n = 3;
             break;
           }
           alert("Please describe the motion you want.");
-          return _context6.a(2);
+          return _context7.a(2);
         case 3:
-          _context6.n = 11;
+          _context7.n = 11;
           break;
         case 4:
           if (!isExtendMode) {
-            _context6.n = 6;
+            _context7.n = 6;
             break;
           }
           if (lastGenerationId) {
-            _context6.n = 5;
+            _context7.n = 5;
             break;
           }
           alert("No Seedance 2.0 generation found to extend. Generate a video first.");
-          return _context6.a(2);
+          return _context7.a(2);
         case 5:
-          _context6.n = 11;
+          _context7.n = 11;
           break;
         case 6:
           if (!imageMode) {
-            _context6.n = 10;
+            _context7.n = 10;
             break;
           }
           maxImgs = (0, _models.getMaxImagesForI2VModel)(selectedModel);
           if (!(maxImgs > 2)) {
-            _context6.n = 8;
+            _context7.n = 8;
             break;
           }
           if (!(uploadedImageUrls.length === 0)) {
-            _context6.n = 7;
+            _context7.n = 7;
             break;
           }
           alert("Please upload at least one reference image first.");
-          return _context6.a(2);
+          return _context7.a(2);
         case 7:
-          _context6.n = 9;
+          _context7.n = 9;
           break;
         case 8:
           if (uploadedImageUrl) {
-            _context6.n = 9;
+            _context7.n = 9;
             break;
           }
           alert("Please upload a start frame image first.");
-          return _context6.a(2);
+          return _context7.a(2);
         case 9:
-          _context6.n = 11;
+          _context7.n = 11;
           break;
         case 10:
           if (trimmedPrompt) {
-            _context6.n = 11;
+            _context7.n = 11;
             break;
           }
           alert("Please enter a prompt to generate a video.");
-          return _context6.a(2);
+          return _context7.a(2);
         case 11:
           setGenerating(true);
           setGenerateError(null);
           hadError = false;
-          _context6.p = 12;
+          _context7.p = 12;
           if (!v2vMode) {
-            _context6.n = 15;
+            _context7.n = 15;
             break;
           }
           // V2V: dedicated processV2V handles single-input tools (e.g. watermark
@@ -2077,15 +2195,18 @@ function VideoStudio(_ref9) {
           if (currentModel !== null && currentModel !== void 0 && currentModel.imageField && uploadedImageUrl) {
             v2vParams.image_url = uploadedImageUrl;
           }
+          if (uploadedAudioUrls.length > 0) {
+            v2vParams.audio_urls = uploadedAudioUrls;
+          }
           if (currentModel !== null && currentModel !== void 0 && currentModel.hasPrompt && trimmedPrompt) {
             v2vParams.prompt = trimmedPrompt;
           }
-          _context6.n = 13;
+          _context7.n = 13;
           return (0, _muapi.processV2V)(apiKey, v2vParams);
         case 13:
-          res = _context6.v;
+          res = _context7.v;
           if ((_res = res) !== null && _res !== void 0 && _res.url) {
-            _context6.n = 14;
+            _context7.n = 14;
             break;
           }
           throw new Error("No video URL returned by API");
@@ -2109,11 +2230,11 @@ function VideoStudio(_ref9) {
             prompt: currentModel !== null && currentModel !== void 0 && currentModel.hasPrompt ? trimmedPrompt : "",
             type: "video"
           });
-          _context6.n = 21;
+          _context7.n = 21;
           break;
         case 15:
           if (!imageMode) {
-            _context6.n = 18;
+            _context7.n = 18;
             break;
           }
           _maxImgs2 = (0, _models.getMaxImagesForI2VModel)(selectedModel);
@@ -2140,12 +2261,15 @@ function VideoStudio(_ref9) {
           if (selectedQuality) i2vParams.quality = selectedQuality;
           if (selectedMode) i2vParams.mode = selectedMode;
           if (showEffect && selectedEffect) i2vParams.name = selectedEffect;
-          _context6.n = 16;
+          if (uploadedAudioUrls.length > 0) {
+            i2vParams.audio_urls = uploadedAudioUrls;
+          }
+          _context7.n = 16;
           return (0, _muapi.generateI2V)(apiKey, i2vParams);
         case 16:
-          res = _context6.v;
+          res = _context7.v;
           if ((_res2 = res) !== null && _res2 !== void 0 && _res2.url) {
-            _context6.n = 17;
+            _context7.n = 17;
             break;
           }
           throw new Error("No video URL returned by API");
@@ -2176,7 +2300,7 @@ function VideoStudio(_ref9) {
             prompt: trimmedPrompt,
             type: "video"
           });
-          _context6.n = 21;
+          _context7.n = 21;
           break;
         case 18:
           // T2V (including extend mode)
@@ -2203,12 +2327,15 @@ function VideoStudio(_ref9) {
           if (_resolutions.length > 0) params.resolution = selectedResolution;
           if (selectedQuality) params.quality = selectedQuality;
           if (selectedMode) params.mode = selectedMode;
-          _context6.n = 19;
+          if (uploadedAudioUrls.length > 0) {
+            params.audio_urls = uploadedAudioUrls;
+          }
+          _context7.n = 19;
           return (0, _muapi.generateVideo)(apiKey, params);
         case 19:
-          res = _context6.v;
+          res = _context7.v;
           if ((_res3 = res) !== null && _res3 !== void 0 && _res3.url) {
-            _context6.n = 20;
+            _context7.n = 20;
             break;
           }
           throw new Error("No video URL returned by API");
@@ -2240,27 +2367,27 @@ function VideoStudio(_ref9) {
             type: "video"
           });
         case 21:
-          _context6.n = 23;
+          _context7.n = 23;
           break;
         case 22:
-          _context6.p = 22;
-          _t6 = _context6.v;
+          _context7.p = 22;
+          _t7 = _context7.v;
           hadError = true;
-          console.error("[VideoStudio]", _t6);
-          setGenerateError(((_e$message = _t6.message) === null || _e$message === void 0 ? void 0 : _e$message.slice(0, 80)) || "Generation failed");
+          console.error("[VideoStudio]", _t7);
+          setGenerateError(((_e$message = _t7.message) === null || _e$message === void 0 ? void 0 : _e$message.slice(0, 80)) || "Generation failed");
           setTimeout(function () {
             return setGenerateError(null);
           }, 4000);
-          onGenerationError === null || onGenerationError === void 0 || onGenerationError(((_e$message2 = _t6.message) === null || _e$message2 === void 0 ? void 0 : _e$message2.slice(0, 120)) || "Video generation failed");
+          onGenerationError === null || onGenerationError === void 0 || onGenerationError(((_e$message2 = _t7.message) === null || _e$message2 === void 0 ? void 0 : _e$message2.slice(0, 120)) || "Video generation failed");
         case 23:
-          _context6.p = 23;
+          _context7.p = 23;
           setGenerating(false);
-          return _context6.f(23);
+          return _context7.f(23);
         case 24:
-          return _context6.a(2);
+          return _context7.a(2);
       }
-    }, _callee6, null, [[12, 22, 23, 24]]);
-  })), [apiKey, prompt, v2vMode, imageMode, selectedModel, selectedAr, selectedDuration, selectedResolution, selectedQuality, selectedMode, selectedEffect, showEffect, uploadedImageUrl, uploadedImageUrls, uploadedVideoUrl, lastGenerationId, getCurrentModel, addToLocalHistory, showVideoInCanvas, onGenerationComplete]);
+    }, _callee7, null, [[12, 22, 23, 24]]);
+  })), [apiKey, prompt, v2vMode, imageMode, selectedModel, selectedAr, selectedDuration, selectedResolution, selectedQuality, selectedMode, selectedEffect, showEffect, uploadedImageUrl, uploadedImageUrls, uploadedVideoUrl, uploadedAudioUrls, lastGenerationId, getCurrentModel, addToLocalHistory, showVideoInCanvas, onGenerationComplete]);
 
   // ── reset to prompt bar ───────────────────────────────────────────────────
   var resetToPromptBar = (0, _react.useCallback)(function () {
@@ -2306,6 +2433,7 @@ function VideoStudio(_ref9) {
   var isSeedance2Canvas = canvasModel === "seedance-v2.0-t2v" || canvasModel === "seedance-v2.0-i2v";
   var currentModelObj = getCurrentModel();
   var isExtendMode = currentModelObj === null || currentModelObj === void 0 ? void 0 : currentModelObj.requiresRequestId;
+  var canUploadImageReference = imageMode || (currentModelObj === null || currentModelObj === void 0 ? void 0 : currentModelObj.imageField) && v2vMode || (currentModelObj === null || currentModelObj === void 0 || (_currentModelObj$inpu = currentModelObj.inputs) === null || _currentModelObj$inpu === void 0 ? void 0 : _currentModelObj$inpu.images_list);
   var promptPlaceholder = v2vMode ? currentModelObj !== null && currentModelObj !== void 0 && currentModelObj.imageField ? currentModelObj !== null && currentModelObj !== void 0 && currentModelObj.promptRequired ? "Describe the motion" : "Describe the motion (optional)" : "Video ready — click Generate to remove watermark" : imageMode ? "Describe the motion or effect (optional)" : isExtendMode ? "Optional: describe how to continue the video..." : "Describe the video you want to create";
   var toggleDropdown = function toggleDropdown(type) {
     return function (e) {
@@ -2607,6 +2735,36 @@ function VideoStudio(_ref9) {
                   className: "absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 hover:bg-black rounded-full flex items-center justify-center text-white/85 hover:text-white text-[8px] border border-white/5",
                   children: "\xD7"
                 })]
+              }), uploadedAudioUrls.length > 0 && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                className: "flex items-center gap-2 px-3 py-1 bg-white/5 rounded-lg border border-white/10",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                  width: "16",
+                  height: "16",
+                  viewBox: "0 0 24 24",
+                  fill: "none",
+                  stroke: "currentColor",
+                  strokeWidth: "2.5",
+                  className: "text-white/40 group-hover:text-[#22d3ee] transition-colors",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                    d: "M9 18V5l10-2v13"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                    cx: "6",
+                    cy: "18",
+                    r: "3"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                    cx: "16",
+                    cy: "16",
+                    r: "3"
+                  })]
+                }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
+                  className: "text-[9px] text-white/60 truncate max-w-[120px]",
+                  children: ["Audio (", uploadedAudioUrls.length, ")"]
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+                  type: "button",
+                  onClick: clearAudioUpload,
+                  className: "text-[9px] font-semibold text-red-300/70 hover:text-red-300 px-1",
+                  children: "Clear"
+                })]
               }), imageMode && (0, _models.getMaxImagesForI2VModel)(selectedModel) > 2 && /*#__PURE__*/(0, _jsxRuntime.jsx)(_jsxRuntime.Fragment, {
                 children: uploadedImageUrls.map(function (url, idx) {
                   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
@@ -2628,7 +2786,7 @@ function VideoStudio(_ref9) {
                     })]
                   }, idx);
                 })
-              }), (!v2vMode || isMotionControlSelection(selectedModel, v2vMode)) && (!isExtendMode || (currentModelObj === null || currentModelObj === void 0 || (_currentModelObj$inpu = currentModelObj.inputs) === null || _currentModelObj$inpu === void 0 ? void 0 : _currentModelObj$inpu.images_list)) && ((0, _models.getMaxImagesForI2VModel)(selectedModel) > 2 ? uploadedImageUrls.length < (0, _models.getMaxImagesForI2VModel)(selectedModel) && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+              }), (!v2vMode || isMotionControlSelection(selectedModel, v2vMode)) && (!isExtendMode || (currentModelObj === null || currentModelObj === void 0 || (_currentModelObj$inpu2 = currentModelObj.inputs) === null || _currentModelObj$inpu2 === void 0 ? void 0 : _currentModelObj$inpu2.images_list)) && ((0, _models.getMaxImagesForI2VModel)(selectedModel) > 2 ? uploadedImageUrls.length < (0, _models.getMaxImagesForI2VModel)(selectedModel) && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
                 className: "relative",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
                   ref: imageFileInputRef,
@@ -2822,7 +2980,7 @@ function VideoStudio(_ref9) {
                     })]
                   })
                 })]
-              }), !uploadedVideoUrl && (v2vMode || (currentModelObj === null || currentModelObj === void 0 || (_currentModelObj$inpu2 = currentModelObj.inputs) === null || _currentModelObj$inpu2 === void 0 ? void 0 : _currentModelObj$inpu2.video_files)) && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+              }), !uploadedVideoUrl && (v2vMode || (currentModelObj === null || currentModelObj === void 0 || (_currentModelObj$inpu3 = currentModelObj.inputs) === null || _currentModelObj$inpu3 === void 0 ? void 0 : _currentModelObj$inpu3.video_files)) && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
                 className: "relative",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
                   ref: videoFileInputRef,
@@ -2884,6 +3042,70 @@ function VideoStudio(_ref9) {
                       rx: "2",
                       ry: "2",
                       fill: "currentColor"
+                    })]
+                  })
+                })]
+              }), !audioUploading && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                className: "relative",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
+                  ref: audioFileInputRef,
+                  type: "file",
+                  accept: "audio/*",
+                  className: "hidden",
+                  onChange: handleAudioFileChange
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+                  type: "button",
+                  title: "Upload audio",
+                  onClick: function onClick() {
+                    var _audioFileInputRef$cu;
+                    return (_audioFileInputRef$cu = audioFileInputRef.current) === null || _audioFileInputRef$cu === void 0 ? void 0 : _audioFileInputRef$cu.click();
+                  },
+                  className: "w-12 h-12 shrink-0 rounded-xl border border-dashed border-white/10 hover:border-[#22d3ee]/40 bg-white/[0.02] hover:bg-white/5 transition-all flex items-center justify-center relative overflow-hidden group",
+                  children: audioUploading ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                    className: "flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]",
+                    children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                      className: "w-8 h-8 -rotate-90",
+                      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                        cx: "16",
+                        cy: "16",
+                        r: "14",
+                        stroke: "currentColor",
+                        strokeWidth: "2",
+                        fill: "transparent",
+                        className: "text-white/10"
+                      }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                        cx: "16",
+                        cy: "16",
+                        r: "14",
+                        stroke: "currentColor",
+                        strokeWidth: "2",
+                        fill: "transparent",
+                        strokeDasharray: 88,
+                        strokeDashoffset: 88 - 88 * audioProgress / 100,
+                        className: "text-[#22d3ee] transition-all duration-300"
+                      })]
+                    }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
+                      className: "absolute text-[9px] font-black text-[#22d3ee] leading-none",
+                      children: [audioProgress, "%"]
+                    })]
+                  }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                    width: "16",
+                    height: "16",
+                    viewBox: "0 0 24 24",
+                    fill: "none",
+                    stroke: "currentColor",
+                    strokeWidth: "2.5",
+                    className: "text-white/40 group-hover:text-[#22d3ee] transition-colors",
+                    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                      d: "M9 18V5l10-2v13"
+                    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                      cx: "6",
+                      cy: "18",
+                      r: "3"
+                    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                      cx: "16",
+                      cy: "16",
+                      r: "3"
                     })]
                   })
                 })]
@@ -3355,6 +3577,29 @@ function VideoStudio(_ref9) {
                     })
                   })]
                 })]
+              }), canUploadImageReference && /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+                type: "button",
+                className: (0, _PromptComposer.promptControlClassName)(),
+                onClick: function onClick() {
+                  return setIsDrawModalOpen(true);
+                },
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                  width: "16",
+                  height: "16",
+                  viewBox: "0 0 24 24",
+                  fill: "none",
+                  stroke: "currentColor",
+                  strokeWidth: "2.5",
+                  className: "opacity-40 text-white group-hover:text-[#22d3ee] transition-colors",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                    d: "M12 20h9"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                    d: "M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"
+                  })]
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                  className: _PromptComposer.PROMPT_CONTROL_LABEL_CLASS,
+                  children: "Draw"
+                })]
               })]
             }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
               type: "button",
@@ -3418,6 +3663,14 @@ function VideoStudio(_ref9) {
           return e.stopPropagation();
         }
       })]
+    }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_DrawModal["default"], {
+      isOpen: isDrawModalOpen,
+      onClose: function onClose() {
+        return setIsDrawModalOpen(false);
+      },
+      apiKey: apiKey,
+      batchSize: 1,
+      onAddHistoryItem: handleDrawReference
     }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactHotToast.Toaster, {
       position: "top-right",
       containerStyle: {
