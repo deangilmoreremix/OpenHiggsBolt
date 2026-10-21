@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { PublishStep } from "../../../../components/SocialPublishProvider";
+import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { uploadFile, generateMarketingStudioAd } from "../muapi.js";
 import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
 import MobileGenerationActions, {
@@ -500,6 +502,22 @@ export default function MarketingStudio({
                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
                      </svg>
                    </button>
+                   <PublishStep
+                     mediaUrl={entry.url}
+                     mediaType="video"
+                     title={entry.prompt?.substring(0, 50) || 'Marketing ad'}
+                     className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center"
+                   />
+                   <AssistStep
+                     assetUrl={entry.url}
+                     assetType="video"
+                     onApply={() => {}}
+                     className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center"
+                   >
+                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                       <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
+                     </svg>
+                   </AssistStep>
                    <button
                     type="button"
                     title={copy.buttons.delete}

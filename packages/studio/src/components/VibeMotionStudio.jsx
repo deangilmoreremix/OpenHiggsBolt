@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import toast, { Toaster } from "react-hot-toast";
+import { PublishStep } from "../../../../components/SocialPublishProvider";
+import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { runMotionGraphics, runMotionGraphicsEdit } from "../muapi.js";
 import { formatErrorMessage } from "../utils/formatError.js";
 import { scopedPersistKey, migrateLegacyPersistKey } from "../persistKey.js";
@@ -387,6 +389,22 @@ export default function VibeMotionStudio({
                       </svg>
                     </div>
                   ) : null}
+                  <PublishStep
+                    mediaUrl={entry.url}
+                    mediaType="video"
+                    title={entry.prompt?.substring(0, 50) || 'Motion graphic'}
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center"
+                  />
+                  <AssistStep
+                    assetUrl={entry.url}
+                    assetType="video"
+                    onApply={() => {}}
+                    className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10 flex items-center justify-center"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
+                    </svg>
+                  </AssistStep>
                   <button
                     type="button"
                     title={copy.card.delete}
