@@ -70,3 +70,6 @@ playwright/marketing-artifacts/
 .sync-backups/
 monitoring/
 .kilo/openhiggsbolt-personalization-fix/
+
+# Crawlee / browser-profile crawl state (not source)
+storage/

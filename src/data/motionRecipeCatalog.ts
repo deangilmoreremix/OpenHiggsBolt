@@ -5,7 +5,7 @@
  * (`src/apps/motion-studio/cards/demoMeta.ts`, `demo-index.ts`, `demoCards.ts`).
  * Do NOT edit by hand — re-generate via the extraction script in `.kilo/worktrees/adding-preview-to-personalization-modal`.
  *
- * Contains 150 motion shots across 124 distinct recipe cards spanning 10 categories.
+ * Contains 151 motion shots across 124 distinct recipe cards spanning 10 categories.
  *
  * Asset-insertion heuristic: each demo component file is scanned for prop-name
  * patterns (`logo`, `image`/`imgUrl`/`pictureUrl`, `screenshot`/`frame`/
@@ -43,10 +43,25 @@ export interface MotionCategory {
   count: number;
 }
 
+/**
+ * Card-registry bridge — the ONE place that turns a catalog shot into the id
+ * the Motion Studio card registry uses.
+ *
+ * The catalog ids are `<category>/<slug>/<Component>` while the registry
+ * (`apps/motion-studio/cards/demoCards.ts`) keys every demo card as
+ * `demo:<Stem>`. Indexing `CARDS` with a raw catalog id therefore always
+ * misses: every library preview fell back to a gradient placeholder and every
+ * entry-page clip pointed at a card that does not exist (the composition
+ * renders nothing for an unknown cardId).
+ *
+ * Use `motionCardId` at every boundary — preview, drag payload, clip insert.
+ */
+export const motionCardId = (t: MotionTemplate): string => `demo:${t.componentName}`;
+
 export const MOTION_CATEGORIES: readonly MotionCategory[] = [
   { key: 'opening', label: '开场与品牌', labelEn: 'Opening & Brand', count: 11 },
   { key: 'typography', label: '文字与字卡', labelEn: 'Typography & Title Cards', count: 25 },
-  { key: 'ui-entrance', label: '界面登场与陈列', labelEn: 'UI Entrance & Showcase', count: 22 },
+  { key: 'ui-entrance', label: '界面登场与陈列', labelEn: 'UI Entrance & Showcase', count: 23 },
   { key: 'camera', label: '运镜与空间', labelEn: 'Camera & Space', count: 14 },
   { key: 'data', label: '数据与指标', labelEn: 'Data & Metrics', count: 9 },
   { key: 'interaction', label: '交互与功能演示', labelEn: 'Interaction & Feature Demo', count: 13 },
@@ -2333,6 +2348,22 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {
+    id: 'ui-entrance/page-waterfall-wall/VerticalTicker',
+    slug: 'page-waterfall-wall',
+    componentName: 'VerticalTicker',
+    name: '纵向滚动墙 · VerticalTicker',
+    nameEn: 'page-waterfall-wall · VerticalTicker',
+    category: 'ui-entrance',
+    categoryLabel: '界面登场与陈列',
+    summary: '3D 透视多列无限纵向滚动墙——每列内容按自己的时钟循环，列间差速形成纵深，顶部与底部用遮罩柔和收边',
+    summaryEn: 'A 3D-perspective wall of endlessly scrolling columns, each looping on its own clock at a different speed, softened by fade masks top and bottom.',
+    durationInFrames: 150,
+    durationSec: 5,
+    sourceRepo: 'motion-studio',
+    styleKey: 'page-waterfall-wall',
+    assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
+  },
+  {
     id: 'ui-entrance/product-card-progressive-assemble/ProductCardProgressiveAssemble',
     slug: 'product-card-progressive-assemble',
     componentName: 'ProductCardProgressiveAssemble',
@@ -4450,4 +4481,38 @@ export function searchMotionTemplates(query: string): MotionTemplate[] {
       t.summaryEn.toLowerCase().includes(q) ||
       t.slug.toLowerCase().includes(q)
   );
+}
+
+/**
+ * Resolve any catalog identifier to a template:
+ *   - shot id        `camera/crash-zoom-punch/CrashZoomReal`
+ *   - grouped card   `camera/crash-zoom-punch`
+ *   - slug           `crash-zoom-punch`
+ *   - component name `CrashZoomReal`
+ */
+export function resolveMotionTemplate(id: string): MotionTemplate | undefined {
+  const needle = (id ?? "").trim();
+  if (!needle) return undefined;
+  return (
+    MOTION_TEMPLATES.find((t) => t.id === needle) ??
+    MOTION_TEMPLATES.find((t) => t.componentName === needle) ??
+    MOTION_TEMPLATES.find((t) => t.slug === needle) ??
+    MOTION_TEMPLATE_CARDS.find((t) => t.id === needle) ??
+    MOTION_TEMPLATE_CARDS.find((t) => t.slug === needle)
+  );
+}
+
+/** Registry id for any catalog identifier — undefined when the id is unknown. */
+export function motionCardIdFor(id: string): string | undefined {
+  const template = resolveMotionTemplate(id);
+  return template ? motionCardId(template) : undefined;
+}
+
+/**
+ * Every shot that belongs to a grouped card (same slug). 20 of the 124 cards
+ * ship 2–3 variants (e.g. `crash-zoom-punch` → CrashImpactReal +
+ * CrashZoomReal); each variant is its own selectable shot.
+ */
+export function motionTemplateVariants(card: MotionTemplate): MotionTemplate[] {
+  return MOTION_TEMPLATES.filter((t) => t.slug === card.slug);
 }

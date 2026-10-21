@@ -67,19 +67,8 @@ export interface PreviewVideoRef {
   url: string
   poster: string | null
   title: string
-  kind: 'demo' | 'uploaded' | 'saved' | 'source' | 'motion-template'
+  kind: 'demo' | 'uploaded' | 'saved' | 'source'
   demoId?: string
-  /** For `kind: 'motion-template'`: the canonical component name of the selected
-   *  Motion Studio shot, used to resolve the recipe in `/studio/motion-studio`
-   *  (e.g. "CrashImpactReal"). */
-  templateId?: string
-  /** For `kind: 'motion-template'`: the card slug (e.g. "crash-zoom-punch")
-   *  distinguishing a multi-style card from its sibling style. */
-  templateSlug?: string
-  /** For `kind: 'motion-template'`: source repository tag — always
-   *  `"motion-studio"` for catalog-derived templates; the studio handoff uses
-   *  this to locate the matching recipe. */
-  sourceRepo?: string
 }
 
 /** Optional customer audio track applied to the personalized preview. */

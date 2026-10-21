@@ -21,7 +21,6 @@ import PersonalizationModal from './PersonalizationModal'
 import { readHandoff, writeHandoff } from '@/shared/crossStudio'
 import { SocialPublishContext } from '@/components/SocialPublishProvider'
 import { useAuthConfig } from '@/lib/authConfig'
-import { getMotionTemplate, type MotionTemplate } from '@/data/motionRecipeCatalog'
 
 /** Safe accessor for SocialPublishContext — returns null when not wrapped in a provider. */
 function useOptionalSocialPublish(): null | { openPublish: (opts: { mediaUrl: string; mediaType?: 'image' | 'video'; title?: string; caption?: string }) => void; closePublish: () => void; openSocialPublisher: (opts: { asset: unknown }) => void } {
@@ -196,11 +195,6 @@ interface PersistedPreviewState {
   previewVideo?: unknown
   guidedStep?: unknown
   viewMode?: unknown
-  /** Motion Studio template selected in Step 2 (full metadata), so the
-   *  in-modal preview survives a reload. The provider re-resolves it through
-   *  `getMotionTemplate` on restore; storing the full object (not just an id)
-   *  keeps the preview renderable even before the catalog finishes loading. */
-  motionTemplate?: unknown
 }
 
 const PREVIEW_STORAGE_PREFIX = 'smartvideo_preview_state_'
@@ -674,14 +668,6 @@ export type DemoPersonalizeContextValue = {
    setPreviewAudio: (file: File) => Promise<void>
    removePreviewAudio: () => void
    previewAudioError: string | null
-
-   // Motion Studio recipe (the full library — 124 cards / 150 shots / 10
-   // categories — is exposed by `src/data/motionRecipeCatalog.ts`; the
-   // provider only holds the customer's currently-selected recipe and the
-   // handoff back to the canonical `/studio/motion-studio` route).
-   motionTemplate: import('@/data/motionRecipeCatalog').MotionTemplate | null
-   useMotionTemplate: (template: import('@/data/motionRecipeCatalog').MotionTemplate) => void
-   launchMotionTemplate: (template: import('@/data/motionRecipeCatalog').MotionTemplate) => void
  }
 
 const PersonalizationContext = createContext<DemoPersonalizeContextValue | null>(null)
@@ -1234,10 +1220,6 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const [previewVideo, setPreviewVideo] = useState<PreviewVideoRef | null>(null)
   const [previewApproved, setPreviewApproved] = useState(false)
   const [previewAudioError, setPreviewAudioError] = useState<string | null>(null)
-  // Motion Studio recipe selected in Step 2. The full catalog (150 shots,
-  // 124 cards, 10 categories) lives in `@/data/motionRecipeCatalog`; this
-  // state holds the customer's single picked recipe.
-  const [motionTemplate, setMotionTemplate] = useState<MotionTemplate | null>(null)
   // Set when the preview hands off to the existing generate() path after the
   // source has been patched with the selected preview video.
   const pendingFinalGenerateRef = useRef(false)
@@ -1520,11 +1502,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         previewVideo: previewVideo && previewVideo.url && !previewVideo.url.startsWith('blob:') ? previewVideo : null,
         guidedStep,
         viewMode,
-        motionTemplate: motionTemplate ?? null,
       })
     }, 800)
     return () => clearTimeout(timer)
-  }, [previewSettings, previewVideo, guidedStep, viewMode, motionTemplate, source?.id, access, previewUserScope])
+  }, [previewSettings, previewVideo, guidedStep, viewMode, source?.id, access, previewUserScope])
 
   // Cancel pending project persistence and release every still-owned blob URL
   // on unmount
@@ -1580,16 +1561,6 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     const storedViewMode = stored.viewMode
     setViewMode(storedViewMode === 'advanced' ? 'advanced' : 'simple')
     setPreviewApproved(false)
-    // Re-resolve the stored Motion Studio template through the catalog so a
-    // stale id resolves to the current canonical entry (or null if it was
-    // removed/renamed upstream). The catalog import is tree-shake-friendly
-    // and resolves synchronously.
-    const storedTemplate = stored.motionTemplate
-    setMotionTemplate(
-      storedTemplate && typeof storedTemplate === 'object'
-        ? getMotionTemplate((storedTemplate as MotionTemplate).id) ?? null
-        : null,
-    )
   }, [previewUserScope])
 
   const restoreProject = useCallback(async (src: PersonalizationSource): Promise<void> => {
@@ -1746,16 +1717,6 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         : stored?.viewMode
     setViewMode(storedViewMode === 'advanced' ? 'advanced' : 'simple')
     setPreviewApproved(false)
-    // Re-resolve the stored Motion Studio template through the catalog so a
-    // stale id (e.g. from an older session) maps to the current canonical
-    // entry. The mirror is the source of truth here; the project entry does
-    // not carry recipe metadata.
-    const storedTemplate = stored?.motionTemplate
-    setMotionTemplate(
-      storedTemplate && typeof storedTemplate === 'object'
-        ? getMotionTemplate((storedTemplate as MotionTemplate).id) ?? null
-        : null,
-    )
 
     // ── Restore output type ──────────────────────────────────────────────────
     if (entry.outputType && ['prompt', 'image', 'video', 'everything'].includes(entry.outputType)) {
@@ -4422,47 +4383,6 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     router.push('/studio/video')
   }, [closePersonalize, router])
 
-  // Select a Motion Studio recipe from the full catalog (124 cards / 150
-  // shots / 10 categories) as the wizard's preview source. The recipe is
-  // stored both in dedicated state (so the browser can re-render the in-modal
-  // preview across reloads) and as a `PreviewVideoRef` with the new
-  // `'motion-template'` kind (so the existing preview pipeline, the before/
-  // after pane and the export path all see it without further wiring).
-  const useMotionTemplate = useCallback((template: MotionTemplate) => {
-    if (!template || !template.componentName) return
-    setMotionTemplate(template)
-    const poster = template.preview
-      ? template.preview.startsWith('/')
-        ? template.preview
-        : `/${template.preview}`
-      : null
-    setPreviewVideo({
-      url: '',
-      poster,
-      title: template.nameEn || template.name,
-      kind: 'motion-template',
-      demoId: undefined,
-      templateId: template.componentName,
-      templateSlug: template.slug,
-      sourceRepo: template.sourceRepo,
-    })
-  }, [])
-
-  // Hand the selected Motion Studio recipe off to the canonical
-  // `/studio/motion-studio` route so the full editing + export surface can
-  // take over. The query param follows the existing
-  // `?template={sourceRepo}|{slug}` contract consumed by
-  // `app/studio/[[...slug]]/page.js` — passing `motion-studio|{componentName}`
-  // is the canonical way to identify a recipe in the studio.
-  const launchMotionTemplate = useCallback((template: MotionTemplate) => {
-    if (!template || !template.componentName) return
-    setMotionTemplate(template)
-    const search = new URLSearchParams()
-    search.set('template', `${template.sourceRepo}|${template.componentName}`)
-    closePersonalize()
-    router.push(`/studio/motion-studio?${search.toString()}`)
-  }, [closePersonalize, router])
-
   const publish = useCallback(() => {
     if (!lastResultRef.current?.url) return
     if (!socialPublish) return
@@ -4649,15 +4569,6 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
      setPreviewAudio,
      removePreviewAudio,
      previewAudioError,
-
-     // Motion Studio recipe (full catalog: 124 cards / 150 shots / 10
-     // categories, exposed by `@/data/motionRecipeCatalog`). The selected
-     // recipe is held here so the in-modal preview can re-render it across
-     // reloads, and the launch action hands it off to the canonical
-     // `/studio/motion-studio` route.
-     motionTemplate,
-     useMotionTemplate,
-     launchMotionTemplate,
     }
 
   return (

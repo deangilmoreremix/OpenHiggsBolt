@@ -25,6 +25,27 @@
 [site]
   site_id = "76f606a3-8546-440f-8469-33a0236a8a23"
 
+# The Next.js SSR handler is packaged by @netlify/plugin-nextjs into
+# .netlify/functions-internal/___netlify-server-handler, and the plugin writes a
+# per-function config (___netlify-server-handler.json) asking for
+# node_bundler = "none" plus included_files = ["**"] so the whole traced server
+# is shipped with the function.
+#
+# That per-function config is not always honoured on the deploy path: the CLI
+# re-zips the function with the config from this file, and when the resulting
+# bundler is "nft" (which runtimeAPIVersion 2 forces unless node_bundler is
+# explicitly "none") the function is bundled down to 5 files. The deployed
+# function then has no run-config.json, so the Lambda aborts with
+# "ENOENT: no such file or directory, open '/run-config.json'" and every SSR
+# route answers 502.
+#
+# Declaring the bundler and the included files here makes the packaging
+# deterministic: the handler always ships its run-config.json, .next output and
+# traced node_modules.
+[functions."___netlify-server-handler"]
+  node_bundler = "none"
+  included_files = [".netlify/functions-internal/___netlify-server-handler/**"]
+
 [[headers]]
   for = "/*"
   [headers.values]
@@ -32,7 +53,7 @@
     # and Google Fonts. Without this the Netlify Essential Next.js plugin's default
     # CSP blocks Clerk's JS/CSS/API and leaves /sign-in, /sign-up and the password-reset
     # pages blank.
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.go.smartvid.app; style-src 'self' 'unsafe-inline' https://clerk.go.smartvid.app https://fonts.googleapis.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://clerk.go.smartvid.app https://api.clerk.com https://muapi.ai https://*.muapi.ai https://*.supabase.co; font-src 'self' data: https://clerk.go.smartvid.app https://fonts.gstatic.com;"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.go.smartvid.app; style-src 'self' 'unsafe-inline' https://clerk.go.smartvid.app https://fonts.googleapis.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://clerk.go.smartvid.app https://api.clerk.com https://muapi.ai https://*.muapi.ai https://*.supabase.co https://www.remotion.pro; font-src 'self' data: https://clerk.go.smartvid.app https://fonts.gstatic.com;"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
