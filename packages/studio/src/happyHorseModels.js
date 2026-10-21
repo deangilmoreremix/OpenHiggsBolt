@@ -10,16 +10,10 @@ const registry = createGroupedVideoRegistry({
   facetLabels: {},
   registerVariants(register) {
     for (const familyId of Object.keys(HAPPY_HORSE_FAMILY_NAMES)) {
-      for (const service of ["720p", "1080p"]) {
-        for (const [mode, workflowId] of [
-          ["text-to-video", null],
-          ["image-to-video", "animate_image"],
-          ["reference-to-video", "references"],
-          ["video-edit", "edit_video"],
-        ]) {
-          register(`${familyId}-${mode}-${service}`, familyId, [workflowId], { service });
-        }
-      }
+      register(`${familyId}-text-to-video`, familyId, [null]);
+      register(`${familyId}-image-to-video`, familyId, ["animate_image"]);
+      register(`${familyId}-reference-to-video`, familyId, ["references"]);
+      register(`${familyId}-video-edit`, familyId, ["edit_video"]);
     }
   },
 });

@@ -6,8 +6,9 @@ import {
 import { buildImageSizePayload } from './imageSizing.js';
 import { buildImageInputPayload, getImageInputValidationError, normalizePrimaryImageUrls } from './imageInputContracts.js';
 import { pollForGenerationResult } from './utils/generationLifecycle.js';
-import { mapReferenceParams } from './modelCapabilities.js';
+import { getModelMediaCapabilities, mapReferenceParams } from './modelCapabilities.js';
 import { buildSupplementalInputPayload } from './modelParameters.js';
+import { getGroupedVideoConfiguration } from './groupedVideoModels.js';
 import { getUploadLimit, isAllowedUploadMimeType, formatUploadLimit } from './uploadContract.js';
 
 // In an http(s) browser we route through the host app's proxy (Next.js routes
@@ -17,15 +18,6 @@ const BASE_URL = (typeof window !== 'undefined' && window.location?.protocol?.st
     ? '/api'
     : 'https://api.muapi.ai';
 const PROXY_WF_BASE = '/api/workflow';
-// ── Upload timeout / retry policy ───────────────────────────────────────────
-// The SERVER route (app/api/v1/upload_file/route.ts) is the retry authority:
-// it makes up to 3 attempts, each with a 120s upstream timeout plus exponential
-// backoff, so its worst case is ~366s.
-//
-// The browser therefore makes exactly ONE attempt and waits longer than that
-// server budget. Retrying here would multiply upstream POSTs (up to 3×3) and,
-// worse, abandon still-in-flight server uploads that can succeed afterwards and
-// get duplicated.
 const FILE_UPLOAD_TIMEOUT_MS = 420_000;
 const FILE_UPLOAD_PENDING_PROGRESS = 99;
 
@@ -48,12 +40,6 @@ function includeRequiredArrayDefaults(model, payload) {
         defaults[field] = [];
     }
     return Object.keys(defaults).length > 0 ? { ...defaults, ...payload } : payload;
-}
-
-function fatal(message) {
-    const error = new Error(message);
-    error.isFatal = true;
-    return error;
 }
 
 async function pollForResult(requestId, key, maxAttempts = 900, interval = 2000) {
@@ -167,6 +153,7 @@ export async function decomposeLayers(apiKey, params) {
 export async function generateVideo(apiKey, params) {
     const modelInfo = getVideoModelById(params.model);
     const endpoint = modelInfo?.endpoint || params.model;
+    const mediaCapabilities = getModelMediaCapabilities(modelInfo);
     assertRequiredPrompt(modelInfo, params);
     let payload = {
         ...mapReferenceParams(modelInfo, params),
@@ -177,12 +164,13 @@ export async function generateVideo(apiKey, params) {
     if (params.aspect_ratio) payload.aspect_ratio = params.aspect_ratio;
     if (params.duration) payload.duration = params.duration;
     if (params.resolution) payload.resolution = params.resolution;
+    if (typeof params.generate_audio === 'boolean') payload.generate_audio = params.generate_audio;
     if (params.quality) payload.quality = params.quality;
     if (params.mode) payload.mode = params.mode;
-    if (params.image_url) payload.image_url = params.image_url;
-    if (params.images_list?.length > 0) payload.images_list = params.images_list;
-    if (params.videos_list?.length > 0) payload.videos_list = params.videos_list;
-    if (params.video_files?.length > 0) payload.video_files = params.video_files;
+    if (!mediaCapabilities.image.field && params.image_url) payload.image_url = params.image_url;
+    if (!mediaCapabilities.image.field && params.images_list?.length > 0) payload.images_list = params.images_list;
+    if (!mediaCapabilities.video.field && params.videos_list?.length > 0) payload.videos_list = params.videos_list;
+    if (!mediaCapabilities.video.field && params.video_files?.length > 0) payload.video_files = params.video_files;
     Object.assign(payload, serializeVideoToolOptions(modelInfo, params.options));
     payload = includeRequiredArrayDefaults(modelInfo, payload);
     return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900);
@@ -200,6 +188,7 @@ export async function generateI2V(apiKey, params) {
     if (params.aspect_ratio) payload.aspect_ratio = params.aspect_ratio;
     if (params.duration) payload.duration = params.duration;
     if (params.resolution) payload.resolution = params.resolution;
+    if (typeof params.generate_audio === 'boolean') payload.generate_audio = params.generate_audio;
     if (params.quality) payload.quality = params.quality;
     if (params.mode) payload.mode = params.mode;
     if (modelInfo?.inputs?.name) {
@@ -226,12 +215,19 @@ export async function processV2V(apiKey, params) {
     const endpoint = modelInfo?.endpoint || params.model;
     const toolPayload = buildVideoToolPayload(modelInfo, params);
     let payload = {
-        ...mapReferenceParams(modelInfo, params),
         ...buildSupplementalInputPayload(modelInfo, params),
         ...toolPayload,
+        ...mapReferenceParams(modelInfo, params),
     };
     if (modelInfo?.hasPrompt && params.prompt) {
         payload.prompt = params.prompt;
+    }
+    if (getGroupedVideoConfiguration(modelInfo?.id)) {
+        for (const field of ['duration', 'aspect_ratio', 'resolution', 'quality']) {
+            if (modelInfo.inputs?.[field] && params[field] !== undefined) {
+                payload[field] = params[field];
+            }
+        }
     }
     payload = includeRequiredArrayDefaults(modelInfo, payload);
     return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900);
@@ -295,6 +291,61 @@ export async function processRecast(apiKey, params) {
         payload.character_orientation = params.character_orientation;
     }
     return submitAndPoll(endpoint, payload, apiKey, params.onRequestId, 900);
+}
+
+export function buildWorkflowApiSnippets(workflowId, inputs, options) {
+  return "";
+}
+
+export function generateCharacterVideo() {
+  return {};
+}
+
+export async function processMotionControl(apiKey, params) {
+    const model = params.model || 'seedance-2.5-motion-control';
+    const mode = params.mode || 'motion_transfer';
+    const internalPrompt = mode === 'objects_swap'
+        ? "Keep the rest of the scene as filmed, swap the characters, products, or clothes with the reference images."
+        : "Extract motion from the reference video and rebuild the scene with the new characters and assets, preserving the original motion, choreography, and camera movements.";
+
+    const userPrompt = String(params.prompt || '').trim();
+    const finalPrompt = userPrompt ? `${internalPrompt} ${userPrompt}` : internalPrompt;
+
+    let imagesList = [];
+    if (Array.isArray(params.images_list)) {
+        imagesList = params.images_list;
+    } else if (params.images) {
+        imagesList = Array.isArray(params.images) ? params.images : [params.images];
+    } else if (params.image_url) {
+        imagesList = [params.image_url];
+    }
+
+    let duration = Number(params.duration) || 5;
+
+    const payload = {
+        video_url: params.video_url,
+        images_list: imagesList,
+        aspect_ratio: params.aspect_ratio || '16:9',
+        duration: duration,
+        generate_audio: !!params.generate_audio,
+        prompt: finalPrompt
+    };
+
+    if (model === 'seedance-2-motion-control') {
+        if (payload.duration > 15) payload.duration = 15;
+        if (payload.duration < 4) payload.duration = 4;
+        if (payload.images_list.length > 9) payload.images_list = payload.images_list.slice(0, 9);
+        payload.quality = params.quality === 'basic' ? 'basic' : 'high';
+        if (params.seed !== undefined && params.seed !== -1) payload.seed = Number(params.seed);
+    } else {
+        if (payload.duration > 30) payload.duration = 30;
+        if (payload.duration < 4) payload.duration = 4;
+        if (payload.images_list.length > 30) payload.images_list = payload.images_list.slice(0, 30);
+        payload.high_bitrate = !!params.high_bitrate;
+        if (params.seed !== undefined && params.seed !== -1) payload.seed = Number(params.seed);
+    }
+
+    return submitAndPoll(model, payload, apiKey, params.onRequestId, 900);
 }
 
 export async function processLipSync(apiKey, params) {
@@ -415,9 +466,7 @@ export async function getUserBalance(apiKey) {
     if (!response.ok) {
         const errText = await response.text();
         notifyAuthRequired(response.status, errText);
-        const error = new Error(`Failed to fetch balance: ${response.status} - ${errText.slice(0, 100)}`);
-        error.status = response.status;
-        throw error;
+        throw new Error(`Failed to fetch balance: ${response.status} - ${errText.slice(0, 100)}`);
     }
     return await response.json();
 }
@@ -722,14 +771,14 @@ async function pollWorkflowResult(runId, apiKey, maxAttempts = 900, interval = 2
             });
             if (!response.ok) {
                 if (response.status >= 500) continue;
-                throw fatal(`Poll Failed: ${response.status}`);
+                throw new Error(`Poll Failed: ${response.status}`);
             }
             const data = await response.json();
             const status = data.status?.toLowerCase();
             if (status === 'completed' || status === 'succeeded' || status === 'success') return data;
-            if (status === 'failed' || status === 'error') throw fatal(`Workflow failed: ${data.error || 'Unknown error'}`);
+            if (status === 'failed' || status === 'error') throw new Error(`Workflow failed: ${data.error || 'Unknown error'}`);
         } catch (error) {
-            if (attempt === maxAttempts || error.isFatal) throw error;
+            if (attempt === maxAttempts) throw error;
         }
     }
     throw new Error('Workflow timed out after polling.');
@@ -1027,59 +1076,4 @@ export async function expandImage(apiKey, { image_url, onRequestId }) {
     const endpoint = "ai-image-extension";
     const payload = { image_url };
     return submitAndPoll(endpoint, payload, apiKey, onRequestId, 90);
-}
-
-export function buildWorkflowApiSnippets(workflowId, inputs, options) {
-  return "";
-}
-
-export function generateCharacterVideo() {
-  return {};
-}
-
-export async function processMotionControl(apiKey, params) {
-  const model = params.model || 'seedance-2.5-motion-control';
-  const mode = params.mode || 'motion_transfer';
-  const internalPrompt = mode === 'objects_swap'
-    ? 'Keep the rest of the scene as filmed, swap the characters, products, or clothes with the reference images.'
-    : 'Extract motion from the reference video and rebuild the scene with the new characters and assets, preserving the original motion, choreography, and camera movements.';
-
-  const userPrompt = String(params.prompt || '').trim();
-  const finalPrompt = userPrompt ? `${internalPrompt} ${userPrompt}` : internalPrompt;
-
-  let imagesList = [];
-  if (Array.isArray(params.images_list)) {
-    imagesList = params.images_list;
-  } else if (params.images) {
-    imagesList = Array.isArray(params.images) ? params.images : [params.images];
-  } else if (params.image_url) {
-    imagesList = [params.image_url];
-  }
-
-  let duration = Number(params.duration) || 5;
-
-  const payload = {
-    video_url: params.video_url,
-    images_list: imagesList,
-    aspect_ratio: params.aspect_ratio || '16:9',
-    duration: duration,
-    generate_audio: !!params.generate_audio,
-    prompt: finalPrompt
-  };
-
-  if (model === 'seedance-2-motion-control') {
-    if (payload.duration > 15) payload.duration = 15;
-    if (payload.duration < 4) payload.duration = 4;
-    if (payload.images_list.length > 9) payload.images_list = payload.images_list.slice(0, 9);
-    payload.quality = params.quality === 'basic' ? 'basic' : 'high';
-    if (params.seed !== undefined && params.seed !== -1) payload.seed = Number(params.seed);
-  } else {
-    if (payload.duration > 30) payload.duration = 30;
-    if (payload.duration < 4) payload.duration = 4;
-    if (payload.images_list.length > 30) payload.images_list = payload.images_list.slice(0, 30);
-    payload.high_bitrate = !!params.high_bitrate;
-    if (params.seed !== undefined && params.seed !== -1) payload.seed = Number(params.seed);
-  }
-
-  return submitAndPoll(model, payload, apiKey, params.onRequestId, 900);
 }

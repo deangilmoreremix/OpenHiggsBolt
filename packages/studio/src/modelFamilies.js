@@ -21,6 +21,10 @@ const IMAGE_FAMILY_ALIASES = {
   "seedream-5.0-edit": "seedream-5.0",
   "bytedance-seedream-5.0-pro": "seedream-5.0",
   "bytedance-seedream-5.0-pro-edit": "seedream-5.0",
+  "bytedance-seedream-5.0-pro-layer": "seedream-5.0",
+  "seedream-5.0-flash": "seedream-5.0",
+  "seedream-5.0-flash-edit": "seedream-5.0",
+  "seedream-5.0-flash-layerize": "seedream-5.0",
   "google-imagen4-fast": "google-imagen4",
   "google-imagen4-ultra": "google-imagen4",
   "flux-2-klein-4b": "flux-2-klein",
@@ -41,6 +45,17 @@ const IMAGE_FAMILY_ALIASES = {
   "flux-2-pro-edit": "flux-2-pro",
   "gpt-image-1.5-edit": "gpt-image-1.5",
   "gpt-image-2-edit": "gpt-image-2",
+  "gpt-image-2.5-flare-text-to-image": "gpt-image-2.5",
+  "gpt-image-2.5-sunburst-text-to-image": "gpt-image-2.5",
+  "gpt-image-2.5-flare-image-to-image": "gpt-image-2.5",
+  "gpt-image-2.5-sunburst-image-to-image": "gpt-image-2.5",
+  "gemini-omni-character": "gemini-omni",
+  "grok-imagine-image-2-edit": "grok-imagine",
+  "qwen2-1-text-to-image": "qwen2-1",
+  "qwen2-1-image-to-image": "qwen2-1",
+  "topaz-upscale-image-creative": "topaz-upscale-image",
+  "topaz-upscale-image-generative": "topaz-upscale-image",
+  "topaz-upscale-image-precision": "topaz-upscale-image",
   "gpt4o-image-to-image": "gpt4o",
   "gpt4o-text-to-image": "gpt4o",
   "grok-imagine-image-to-image": "grok-imagine",
@@ -82,11 +97,16 @@ const IMAGE_FAMILY_ALIASES = {
 const IMAGE_FAMILY_NAMES = {
   "flux-2-klein": "Flux 2 Klein",
   "flux-dev": "Flux Dev",
+  "gemini-omni": "Gemini Omni",
   gpt4o: "GPT-4o",
   "grok-imagine": "Grok Imagine",
   "google-imagen4": "Google Imagen 4",
   "kling-o3": "Kling O3",
   "seedream-5.0": "Seedream 5.0",
+  "gpt-image-2": "GPT Image 2",
+  "gpt-image-2.5": "GPT Image 2.5",
+  "qwen2-1": "Qwen 2.1",
+  "topaz-upscale-image": "Topaz Image Upscale",
   "qwen-image-2.0": "Qwen Image 2.0",
   "qwen-plus": "Qwen Image Edit Plus",
   qwen3: "Qwen 3",
@@ -99,11 +119,16 @@ const VIDEO_FAMILY_ALIASES = {
   "hunyuan-image-to-video": "hunyuan",
   "hunyuan-text-to-video": "hunyuan",
   "video-effects": "ai-video-effects",
+  "topaz-upscale-video-creative": "topaz-upscale-video",
+  "topaz-upscale-video-generative": "topaz-upscale-video",
+  "topaz-upscale-video-precision": "topaz-upscale-video",
 };
 
 const VIDEO_FAMILY_NAMES = {
   "ai-video-upscaler": "AI Video Upscaler",
   hunyuan: "Hunyuan",
+  "minimax-h3-max": "MiniMax H3 Max",
+  "topaz-upscale-video": "Topaz Video Upscale",
 };
 
 function videoVariantKey(model) {
@@ -115,6 +140,14 @@ function videoVariantKey(model) {
 }
 
 const PREFERRED_IMAGE_VARIANTS = {
+  "gpt-image-2": {
+    t2i: "gpt-image-2",
+    i2i: "gpt-image-2-edit",
+  },
+  "gpt-image-2.5": {
+    t2i: "gpt-image-2.5-flare-text-to-image",
+    i2i: "gpt-image-2.5-flare-image-to-image",
+  },
   "flux-2-klein": {
     t2i: "flux-2-klein-4b",
     i2i: "flux-2-klein-4b-edit",
@@ -127,6 +160,10 @@ const PREFERRED_IMAGE_VARIANTS = {
   "qwen-image-2.0": {
     t2i: "qwen-image-2.0",
     i2i: "qwen-image-2.0-edit",
+  },
+  "qwen2-1": {
+    t2i: "qwen2-1-text-to-image",
+    i2i: "qwen2-1-image-to-image",
   },
   "qwen-plus": { i2i: "qwen-image-edit-plus" },
   qwen3: {
@@ -193,6 +230,8 @@ function imageFamilyId(model) {
 }
 
 function videoFamilyId(model) {
+  const grouped = getGroupedVideoConfiguration(model.id);
+  if (grouped) return grouped.familyId;
   const modelId = model.id.toLowerCase();
   const id = VIDEO_FAMILY_ALIASES[modelId] || modelId;
   let match = id.match(/^kling-(v?\d+(?:\.\d+)?|o1)(?:-|$)/);
@@ -222,6 +261,7 @@ function videoFamilyId(model) {
   match = id.match(/^minimax-hailuo-(\d+(?:\.\d+)?)(?:-|$)/);
   if (match) return `minimax-hailuo-${normalizeVersion(match[1])}`;
 
+  if (id.startsWith("minimax-h3-max")) return "minimax-h3-max";
   if (id.startsWith("minimax-h3")) return "minimax-h3";
   if (id.startsWith("openai-sora-2")) return "sora-2";
   if (id.startsWith("grok-imagine")) return "grok-imagine-video";

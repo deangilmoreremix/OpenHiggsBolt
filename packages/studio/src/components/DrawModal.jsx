@@ -55,13 +55,12 @@ export default function DrawModal({
 
   const fileInputRef = useRef(null);
   const insertImageInputRef = useRef(null);
-  const modelDropdownRef = useRef(null);
-  const arDropdownRef = useRef(null);
-
   const [isBgDragging, setIsBgDragging] = useState(false);
   const bgDragCounterRef = useRef(0);
   const [isOverlayDragging, setIsOverlayDragging] = useState(false);
   const overlayDragCounterRef = useRef(0);
+  const modelDropdownRef = useRef(null);
+  const arDropdownRef = useRef(null);
 
   // Predefined colors for drawing toolbar (rendered inline now)
   const PRESET_COLORS = [
@@ -785,20 +784,22 @@ export default function DrawModal({
   }, [brushSize]);
 
   // Upload background file
-  const handleUploadBg = async (filesOrEvent) => {
-    const files = filesOrEvent?.target?.files ? Array.from(filesOrEvent.target.files) : Array.isArray(filesOrEvent) ? filesOrEvent : [];
-    for (const file of files) {
-      if (!file) continue;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setBgImageUrl(event.target.result);
-        setAspectRatio("Auto");
-        setViewState("canvas");
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleUploadBg = (filesOrEvent) => {
+    const files = Array.isArray(filesOrEvent)
+      ? filesOrEvent
+      : Array.from(filesOrEvent?.target?.files || []);
+    const file = files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setBgImageUrl(event.target.result);
+      setAspectRatio("Auto");
+      setViewState("canvas");
+    };
+    reader.readAsDataURL(file);
   };
 
+  // Drag-and-drop handlers for the background upload dropzone
   const handleBgDragEnter = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -839,46 +840,48 @@ export default function DrawModal({
     insertImageInputRef.current?.click();
   };
 
-  const handleInsertImage = async (filesOrEvent) => {
-    const files = filesOrEvent?.target?.files ? Array.from(filesOrEvent.target.files) : Array.isArray(filesOrEvent) ? filesOrEvent : [];
-    for (const file of files) {
-      if (!file) continue;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          const id = Math.random().toString(36).substring(7);
-          const w = img.naturalWidth || img.width || 150;
-          const h = img.naturalHeight || img.height || 150;
+  const handleInsertImage = (filesOrEvent) => {
+    const files = Array.isArray(filesOrEvent)
+      ? filesOrEvent
+      : Array.from(filesOrEvent?.target?.files || []);
+    const file = files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const id = Math.random().toString(36).substring(7);
+        const w = img.naturalWidth || img.width || 150;
+        const h = img.naturalHeight || img.height || 150;
 
-          const maxDim = 150;
-          const scale = Math.min(maxDim / w, maxDim / h);
-          const startW = Math.round(w * scale);
-          const startH = Math.round(h * scale);
+        const maxDim = 150;
+        const scale = Math.min(maxDim / w, maxDim / h);
+        const startW = Math.round(w * scale);
+        const startH = Math.round(h * scale);
 
-          const newImageObj = {
-            id,
-            type: "image",
-            img,
-            url: event.target.result,
-            x: Math.round((canvasDimensions.width - startW) / 2),
-            y: Math.round((canvasDimensions.height - startH) / 2),
-            width: startW,
-            height: startH,
-          };
-
-          const nextObjs = [...canvasObjects, newImageObj];
-          setCanvasObjects(nextObjs);
-          saveStateToHistory(nextObjs);
-          setSelectedObjectId(id);
-          setActiveTool("pointer");
+        const newImageObj = {
+          id,
+          type: "image",
+          img,
+          url: event.target.result,
+          x: Math.round((canvasDimensions.width - startW) / 2),
+          y: Math.round((canvasDimensions.height - startH) / 2),
+          width: startW,
+          height: startH,
         };
-        img.src = event.target.result;
+
+        const nextObjs = [...canvasObjects, newImageObj];
+        setCanvasObjects(nextObjs);
+        saveStateToHistory(nextObjs);
+        setSelectedObjectId(id);
+        setActiveTool("pointer");
       };
-      reader.readAsDataURL(file);
-    }
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
   };
 
+  // Drag-and-drop handlers for the insert-overlay-image tool
   const handleOverlayDragEnter = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1562,12 +1565,14 @@ export default function DrawModal({
                   onDragLeave={handleOverlayDragLeave}
                   onDragOver={handleOverlayDragOver}
                   onDrop={handleOverlayDrop}
-                  title="Insert overlay image"
+                  title="Insert overlay image (or drop an image here)"
                   className={`p-1.5 rounded-lg transition-all ${
-                    activeTool === "image"
+                    isOverlayDragging
+                      ? "bg-[#b5f500] text-black ring-2 ring-[#b5f500]"
+                      : activeTool === "image"
                       ? "bg-white text-black"
                       : "text-white/60 hover:text-white"
-                  } ${isOverlayDragging ? "border-[#b5f500] bg-[#b5f500]/5" : ""}`}
+                  }`}
                 >
                   <svg
                     width="16"
@@ -1662,7 +1667,6 @@ export default function DrawModal({
                   ) : (
                     <>
                       Generate Image
-                      <span className="opacity-80">✦ {batchSize}</span>
                     </>
                   )}
                 </button>
