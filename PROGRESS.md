@@ -85,7 +85,38 @@ Every discovered `sourceUrl` re-fetched: **HTTP 200** with valid `image/jpeg` / 
   | `find-business-assets-go-viral.spec.ts` | **5 passed** |
   Every acceptance search returned **30 businesses**; asset discovery returned **202 + jobId** with **20 real assets**, which were selected and imported.
 
-## PHASE 6 — Candidate deploy (NOT published) — IN PROGRESS
+## PHASE 6 — Candidate deploy: DONE (production NOT touched)
+
+| | |
+|---|---|
+| **Candidate deploy id** | `6ad7e889a5a56adbc5609267` (context **`deploy-preview`**, `published_at: null` ⇒ DRAFT) |
+| **Candidate URL** | `https://6ad7e889a5a56adbc5609267--marvelous-strudel-a6dc23.netlify.app` |
+| **Candidate commit** | `f3fb85ecc5842e865bfcb365491aa3a723a93493` (merge of `fix/find-business-and-assets` into `release/find-business-candidate`) |
+| **Production deploy (unchanged)** | `6ad785b174944c0d9a60489e` @ `0bfecda0f8` — the rollback target |
+| **Branch** | `fix/find-business-and-assets` @ `e4d8dd913` (pushed) |
+
+Command used (the same one `scripts/release.mjs --preview` runs; the script itself needs a `NETLIFY_AUTH_TOKEN` that is not present, and the CLI is already authenticated):
+`netlify deploy --build --site 76f606a3-8546-440f-8469-33a0236a8a23` — **no `--prod`, no `--alias`**.
+Never executed: `netlify deploy --prod`, `release.mjs --approve-production`, any push/reset of `main`, GitHub Actions.
+
+**Candidate API evidence (interleaved with production, same request):**
+- candidate → **200, count 30**, 4.45 s cold / 0.41 s warm / 0.43–1.06 s thereafter
+- production → **504 @ 30.5 s**, then 200 @ 27.3 s cold, 0.45–0.67 s warm, **count 20** (pre-fix provider mix)
+
+**Candidate browser verification: 22/22 passed, 0 failed, 0 flaky.**
+`find-business-landing` 7/7 · `find-business-assets-landing` 6/6 · `find-business-go-viral` 4/4 · `find-business-assets-go-viral` 5/5.
+All 17 business searches → **30 businesses**; every asset discovery → **202 + jobId, 20 assets**, selected and imported.
+
+**Root cause of the production API 404 (found during this phase):** the deploy published at 13:56 on 20 Oct (`6ad7720c160ce82c7d6109e6`) was published **without `--build`** — `build_id: None`, and its `___netlify-server-handler` carries a passthrough route `^(?:\/(.*))\/?$`, so requests were passed to the static publish dir instead of being handled by Next.js. Pages rendered (200) while every `/api/*` route 404'd. `origin/main` has since fixed that (`5c50f25d5`, `7e8a436b3`); production is now API-capable but still 504s, because it runs `0bfecda0f8` which does **not** contain the budget fix.
+
+**Environment finding:** Clerk's instance allows only `https://go.smartvid.app` as an origin, so a deploy-preview host is refused by the FAPI (`400 origin_invalid`) and a real visitor cannot sign in on a preview URL. `scripts/generate-clerk-auth-state-preview.mts` mints a genuine session on the allowed origin and re-scopes the cookies to the preview host, so the candidate was tested **authenticated** (`/api/access/resolve` → `hasSmartVideoGo: true`).
+
+## Remaining regressions (NOT caused by this branch)
+- 19 failures in `src/access/__tests__/stripe-webhook-gates.test.ts` + `src/server/__tests__/zz-stripe-webhook-entitlements.test.ts` — entitlement-status vocabulary (`'revoked'` vs `'inactive'`). Reproduced on the base commit.
+- 6 failures in `src/access/__tests__/preview-mode.test.tsx` — same class, pre-existing.
+- 13 failures in `tests/go-ai-viral/seedance.test.ts`, `tests/go-ai-viral/list-row-thumbnail.test.tsx`, `tests/netlify/functions-entitlement.test.ts` — untouched areas (data file, jsdom env, function guard index).
+- 10 files under `tests/` are `node:test` suites that Vitest cannot load ("No test suite found") — a harness mismatch, pre-existing.
+None of these areas appear in `git diff origin/main..HEAD` (40 files, all business/asset discovery + E2E).
 
 **Blocker found:** the Netlify build command runs `npm run build:packages` → `npm run build -w workflow-builder`, and `packages/Vibe-Workflow` is a **git submodule** that is NOT initialised in the worktree (`No workspaces found: --workspace=workflow-builder`). The **parent repo** has all submodules + workspace links, so the candidate must be built there.
 

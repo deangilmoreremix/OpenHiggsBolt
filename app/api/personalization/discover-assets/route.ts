@@ -353,7 +353,11 @@ export async function POST(req: NextRequest) {
 
     let fastResult: RawDiscoveryResult | null = null
     let fastError: string | null = null
-    let needsBrowser = true
+    // The browser phase is an escalation: it only runs when the free layers
+    // could not answer on their own. The default is therefore "no browser",
+    // and ENABLE_BROWSER_DISCOVERY=false switches the escalation off
+    // entirely so an operator can keep a deployment on the free pipeline.
+    let needsBrowser = false
     try {
       const fast = await runFastDiscovery({
         websiteUrl,
@@ -361,7 +365,7 @@ export async function POST(req: NextRequest) {
         maxImages: 20,
         deadlineAt,
       })
-      needsBrowser = fast.needsBrowser
+      needsBrowser = fast.needsBrowser && process.env.ENABLE_BROWSER_DISCOVERY !== 'false'
       fastResult = {
         ...fast.result,
         discoveredAssets: fast.fastAssets,

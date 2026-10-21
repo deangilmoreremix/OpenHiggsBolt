@@ -166,8 +166,15 @@ export async function orchestrateDiscovery(options: OrchestratedDiscoveryOptions
   // The attempt list names the layers that RAN, not the layers that were
   // entered. A provider that was tried and produced nothing is not
   // "attempted" as far as the caller is concerned.
-  const attemptedProviders: string[] = ['SMARTVIDEO_STATIC']
-  providerUsed = fast.result.providerUsed || 'SMARTVIDEO_STATIC'
+  //
+  // The static layer is only listed when it actually completed. When it
+  // FAILED, listing it would claim a layer ran that never produced
+  // anything — and the caller would read "STATIC_FALLBACK" as the source
+  // of a result that in fact came from a later layer.
+  const staticCompleted = fast.providerAttempts.includes('SMARTVIDEO_STATIC_COMPLETED')
+  const attemptedProviders: string[] = []
+  if (staticCompleted) attemptedProviders.push('SMARTVIDEO_STATIC')
+  providerUsed = fast.result.providerUsed || (staticCompleted ? 'SMARTVIDEO_STATIC' : 'NONE')
   if (fast.providerAttempts.includes('CRAWLEE_CHEERIO_COMPLETED')) {
     attemptedProviders.push('CRAWLEE_CHEERIO')
     providerUsed = 'CRAWLEE_CHEERIO'
