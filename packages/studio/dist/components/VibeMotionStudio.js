@@ -8,15 +8,13 @@ Object.defineProperty(exports, "__esModule", {
 exports["default"] = VibeMotionStudio;
 var _react = require("react");
 var _reactHotToast = _interopRequireWildcard(require("react-hot-toast"));
-var _useTemplateData2 = require("../hooks/useTemplateData");
-var _TemplateBanner = _interopRequireDefault(require("./TemplateBanner"));
 var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
 var _AiAssistantProvider = require("../../../../components/AiAssistantProvider");
 var _muapi = require("../muapi.js");
-var _skillStore = require("../lib/skillStore");
-var _registry = _interopRequireDefault(require("../skills/registry.json"));
-var _promptRecipes = require("../lib/promptRecipes");
-var _storyboardHandoff = require("../storyboardHandoff.js");
+var _formatError = require("../utils/formatError.js");
+var _persistKey = require("../persistKey.js");
+var _MobileGenerationActions = _interopRequireWildcard(require("./MobileGenerationActions.jsx"));
+var _PromptComposer = require("./prompt/PromptComposer.jsx");
 var _vibeMotionStudio = _interopRequireDefault(require("../messages/en/vibeMotionStudio.json"));
 var _vibeMotionStudio2 = _interopRequireDefault(require("../messages/zh/vibeMotionStudio.json"));
 var _i18nUtils = require("../i18nUtils");
@@ -104,13 +102,10 @@ function DropdownItem(_ref) {
   var label = _ref.label,
     selected = _ref.selected,
     onClick = _ref.onClick;
-  return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-    className: "flex items-center justify-between p-3.5 hover:bg-white/5 rounded cursor-pointer transition-all group",
+  return /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptMenuItem, {
+    selected: selected,
     onClick: onClick,
-    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-      className: "text-xs font-bold text-white opacity-80 group-hover:opacity-100",
-      children: label
-    }), selected && /*#__PURE__*/(0, _jsxRuntime.jsx)(CheckSvg, {})]
+    children: label
   });
 }
 
@@ -118,11 +113,18 @@ function DropdownItem(_ref) {
 function VibeMotionStudio(_ref2) {
   var _sourceEntry$prompt, _sourceEntry$prompt2, _sourceEntry$prompt3;
   var apiKey = _ref2.apiKey,
-    templateData = _ref2.templateData,
+    onGenerationStart = _ref2.onGenerationStart,
+    onGenerationEnd = _ref2.onGenerationEnd,
+    onGenerationComplete = _ref2.onGenerationComplete,
+    onGenerationError = _ref2.onGenerationError,
     _ref2$locale = _ref2.locale,
     locale = _ref2$locale === void 0 ? "en" : _ref2$locale;
   var copy = (0, _i18nUtils.resolveCopy)(_vibeMotionStudio["default"], _vibeMotionStudio2["default"], locale);
-  var PERSIST_KEY = "hg_vibe_motion_studio_persistent";
+  var LEGACY_PERSIST_KEY = "hg_vibe_motion_studio_persistent";
+  var PERSIST_KEY = (0, _persistKey.scopedPersistKey)(LEGACY_PERSIST_KEY, apiKey);
+  (0, _react.useEffect)(function () {
+    (0, _persistKey.migrateLegacyPersistKey)(LEGACY_PERSIST_KEY, PERSIST_KEY);
+  }, [PERSIST_KEY]);
 
   // ── Params ────────────────────────────────────────────────────────────────
   var _useState = (0, _react.useState)(""),
@@ -148,45 +150,39 @@ function VibeMotionStudio(_ref2) {
     editSourceId = _useState0[0],
     setEditSourceId = _useState0[1]; // request_id of source
 
-  // ── Native audio flag (driven by Skills recipe) ───────────────────────────
-  var _useState1 = (0, _react.useState)(false),
-    _useState10 = _slicedToArray(_useState1, 2),
-    nativeAudio = _useState10[0],
-    setNativeAudio = _useState10[1];
-
   // ── Dropdown open state ───────────────────────────────────────────────────
-  var _useState11 = (0, _react.useState)(null),
-    _useState12 = _slicedToArray(_useState11, 2),
-    openDropdown = _useState12[0],
-    setOpenDropdown = _useState12[1]; // "ar" | "dur" | "source"
-  var containerRef = (0, _react.useRef)(null);
+  var _useState1 = (0, _react.useState)(null),
+    _useState10 = _slicedToArray(_useState1, 2),
+    openDropdown = _useState10[0],
+    setOpenDropdown = _useState10[1]; // "ar" | "dur" | "source"
+  var controlsRef = (0, _react.useRef)(null);
   var textareaRef = (0, _react.useRef)(null);
 
   // ── Generation state ──────────────────────────────────────────────────────
-  var _useState13 = (0, _react.useState)(false),
+  var _useState11 = (0, _react.useState)(false),
+    _useState12 = _slicedToArray(_useState11, 2),
+    generating = _useState12[0],
+    setGenerating = _useState12[1];
+  var _useState13 = (0, _react.useState)(null),
     _useState14 = _slicedToArray(_useState13, 2),
-    generating = _useState14[0],
-    setGenerating = _useState14[1];
-  var _useState15 = (0, _react.useState)(null),
+    generateError = _useState14[0],
+    setGenerateError = _useState14[1];
+  var _useState15 = (0, _react.useState)(0),
     _useState16 = _slicedToArray(_useState15, 2),
-    generateError = _useState16[0],
-    setGenerateError = _useState16[1];
-  var _useState17 = (0, _react.useState)(0),
-    _useState18 = _slicedToArray(_useState17, 2),
-    elapsedTime = _useState18[0],
-    setElapsedTime = _useState18[1];
+    elapsedTime = _useState16[0],
+    setElapsedTime = _useState16[1];
   var timerRef = (0, _react.useRef)(null);
   var pendingRequestId = (0, _react.useRef)(null);
 
   // ── History ───────────────────────────────────────────────────────────────
-  var _useState19 = (0, _react.useState)([]),
+  var _useState17 = (0, _react.useState)([]),
+    _useState18 = _slicedToArray(_useState17, 2),
+    history = _useState18[0],
+    setHistory = _useState18[1];
+  var _useState19 = (0, _react.useState)(null),
     _useState20 = _slicedToArray(_useState19, 2),
-    history = _useState20[0],
-    setHistory = _useState20[1];
-  var _useState21 = (0, _react.useState)(null),
-    _useState22 = _slicedToArray(_useState21, 2),
-    fullscreenUrl = _useState22[0],
-    setFullscreenUrl = _useState22[1];
+    fullscreenUrl = _useState20[0],
+    setFullscreenUrl = _useState20[1];
 
   // ── Load from localStorage ─────────────────────────────────────────────────
   (0, _react.useEffect)(function () {
@@ -200,22 +196,9 @@ function VibeMotionStudio(_ref2) {
           return rest; // canEdit is only an in-memory hint, never persisted
         });
         setHistory(restored);
-        try {
-          var flags = JSON.parse(localStorage.getItem(PERSIST_KEY + "_flags") || "null");
-          if (flags && flags.nativeAudio) setNativeAudio(true);
-        } catch (_) {}
       }
     } catch (_) {}
   }, []);
-
-  // ── Persist native-audio flag ─────────────────────────────────────────────
-  (0, _react.useEffect)(function () {
-    try {
-      localStorage.setItem(PERSIST_KEY + "_flags", JSON.stringify({
-        nativeAudio: nativeAudio
-      }));
-    } catch (_) {}
-  }, [nativeAudio]);
   var saveHistory = (0, _react.useCallback)(function (items) {
     setHistory(items);
     // Strip canEdit from persisted data — it is an in-memory hint only
@@ -232,7 +215,7 @@ function VibeMotionStudio(_ref2) {
   // ── Close dropdowns on outside click ─────────────────────────────────────
   (0, _react.useEffect)(function () {
     var handler = function handler(e) {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
+      if (controlsRef.current && !controlsRef.current.contains(e.target)) {
         setOpenDropdown(null);
       }
     };
@@ -241,7 +224,6 @@ function VibeMotionStudio(_ref2) {
       return document.removeEventListener("mousedown", handler);
     };
   }, []);
-
   // ── Timer ─────────────────────────────────────────────────────────────────
   var startTimer = function startTimer() {
     setElapsedTime(0);
@@ -261,73 +243,9 @@ function VibeMotionStudio(_ref2) {
     };
   }, []);
 
-  // ── Apply pending Skills recipe (set by SkillsBrowser) ────────────────────
-  (0, _react.useEffect)(function () {
-    var pending = (0, _skillStore.getPendingRecipe)("vibemotion");
-    if (!pending) return;
-    var skill = _registry["default"].skills.find(function (s) {
-      return s.slug === pending;
-    });
-    (0, _skillStore.clearPendingRecipe)("vibemotion");
-    if (!skill) return;
-    applyRecipe(skill);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ── Cross-studio: import a Storyboard hand-off ────────────────────────────
-  var handoffApplied = (0, _react.useRef)(null);
-  (0, _react.useEffect)(function () {
-    try {
-      var handoff = (0, _storyboardHandoff.readStoryboardHandoff)("vibe-motion");
-      if (!handoff || handoffApplied.current === handoff.createdAt) return;
-      handoffApplied.current = handoff.createdAt;
-      if (handoff.combinedPrompt || handoff.projectName) {
-        setPrompt(handoff.combinedPrompt || handoff.projectName);
-      }
-      if (["1:1", "16:9", "9:16"].includes(handoff.aspectRatio)) {
-        setAspectRatio(handoff.aspectRatio);
-      }
-    } catch (err) {
-      console.warn("Failed to apply Storyboard hand-off:", err);
-    }
-  }, []);
-  function applyRecipe(skill) {
-    var step0 = skill.steps && skill.steps[0];
-    if (!step0) {
-      if (skill.description) setPrompt(skill.description);
-      return;
-    }
-    if (step0.aspectRatio) setAspectRatio(step0.aspectRatio);
-    if (step0.duration) setDuration(Number(step0.duration));
-    if (step0.audio || step0.flags && step0.flags.nativeAudio) {
-      setNativeAudio(true);
-    }
-    var vals = {};
-    (skill.inputs || []).forEach(function (i) {
-      vals[i.name] = "";
-    });
-    setPrompt((0, _promptRecipes.fillTemplate)(step0.prompt || skill.description || "", vals));
-  }
-
-  // ── Apply template data from landing page "Create This Style" ──────────────
-  var _useTemplateData = (0, _useTemplateData2.useTemplateData)(templateData, function (data) {
-      if (data.prompt) {
-        setPrompt(data.prompt);
-      }
-      if (data.aspectRatio) {
-        var normalized = (0, _useTemplateData2.normalizeAspectRatio)(data.aspectRatio, "16:9");
-        setAspectRatio(normalized);
-      }
-      if (data.duration) {
-        setDuration(data.duration);
-      }
-    }),
-    resetTemplate = _useTemplateData.reset,
-    isTemplateApplied = _useTemplateData.isTemplateApplied;
-
   // ── Generate ──────────────────────────────────────────────────────────────
   var handleGenerate = (0, _react.useCallback)(/*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee() {
-    var _result, _result2, _result3, _result4, _result5, result, videoUrl, requestId, entry, next, raw, isStaleEdit, message, _t;
+    var _result, _result2, _result3, _result4, _result5, result, videoUrl, requestId, entry, next, raw, isStaleEdit, msg, errMsg, _t;
     return _regenerator().w(function (_context) {
       while (1) switch (_context.p = _context.n) {
         case 0:
@@ -337,6 +255,7 @@ function VibeMotionStudio(_ref2) {
           }
           return _context.a(2);
         case 1:
+          onGenerationStart === null || onGenerationStart === void 0 || onGenerationStart();
           setGenerating(true);
           setGenerateError(null);
           startTimer();
@@ -389,6 +308,10 @@ function VibeMotionStudio(_ref2) {
           };
           next = [entry].concat(_toConsumableArray(history)).slice(0, 30);
           saveHistory(next);
+          onGenerationComplete === null || onGenerationComplete === void 0 || onGenerationComplete({
+            url: videoUrl,
+            type: "video"
+          });
           _context.n = 8;
           break;
         case 7:
@@ -398,31 +321,27 @@ function VibeMotionStudio(_ref2) {
           raw = _t.message || "";
           isStaleEdit = raw.includes("animation code") || raw.includes("does not have saved") || raw.includes("Original generation does not");
           if (isStaleEdit) {
-            // Known backend limitation — warn only (not error), keep console clean
             console.warn("[VibeMotionStudio] Remix unavailable:", raw.slice(0, 120));
-            setGenerateError("This generation can't be remixed — the animation code wasn't saved server-side. " + "Generate a new motion graphic first, then remix that result.");
-            // Exit edit mode WITHOUT persisting canEdit:false — let user retry after refresh
+            msg = copy.errors.staleEditUnavailable;
+            if (onGenerationError) onGenerationError(msg);else _reactHotToast["default"].error(msg);
             setEditMode(false);
             setEditSourceId(null);
           } else {
             console.error("[VibeMotionStudio]", _t);
-            message = raw.slice(0, 120) || "Generation failed";
-            setGenerateError(message);
-            _reactHotToast["default"].error(message);
+            errMsg = (0, _formatError.formatErrorMessage)(raw || _t, copy.errors.generationFailed);
+            if (onGenerationError) onGenerationError(errMsg);else _reactHotToast["default"].error(errMsg);
           }
-          setTimeout(function () {
-            return setGenerateError(null);
-          }, 10000);
         case 8:
           _context.p = 8;
           setGenerating(false);
           stopTimer();
+          onGenerationEnd === null || onGenerationEnd === void 0 || onGenerationEnd();
           return _context.f(8);
         case 9:
           return _context.a(2);
       }
     }, _callee, null, [[2, 7, 8, 9]]);
-  })), [apiKey, prompt, editMode, editSourceId, aspectRatio, duration, history, saveHistory]);
+  })), [apiKey, prompt, editMode, editSourceId, aspectRatio, duration, history, saveHistory, onGenerationComplete, onGenerationEnd, onGenerationError, onGenerationStart, copy]);
   var handleKeyDown = function handleKeyDown(e) {
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleGenerate();
   };
@@ -448,14 +367,8 @@ function VibeMotionStudio(_ref2) {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-    ref: containerRef,
     className: "w-full h-full flex flex-col items-center justify-center bg-app-bg relative overflow-hidden",
-    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_reactHotToast.Toaster, {
-      position: "top-right",
-      containerStyle: {
-        zIndex: 99999
-      }
-    }), fullscreenUrl && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+    children: [fullscreenUrl && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
       className: "fixed inset-0 z-[200] bg-black/95 flex items-center justify-center",
       onClick: function onClick() {
         return setFullscreenUrl(null);
@@ -514,10 +427,10 @@ function VibeMotionStudio(_ref2) {
             className: "flex flex-col items-center gap-1",
             children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
               className: "text-white/80 font-semibold text-sm",
-              children: editMode ? "Remixing motion graphics…" : "Generating motion graphics…"
+              children: editMode ? copy.loading.remixing : copy.loading.generating
             }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
               className: "text-white/30 text-xs",
-              children: "React/Remotion rendering on Modal"
+              children: copy.loading.backend
             })]
           }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "flex items-center gap-2 text-white/30 text-xs bg-white/[0.03] px-4 py-1.5 rounded-full border border-white/[0.05]",
@@ -545,13 +458,13 @@ function VibeMotionStudio(_ref2) {
         children: history.map(function (entry, idx) {
           var _entry$prompt;
           return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "relative group rounded overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-xl hover:border-primary/50 transition-all duration-300 flex flex-col",
+            className: "relative group rounded overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-xl hover:border-primary/50 transition-all duration-300 flex flex-col cursor-pointer",
+            onClick: function onClick() {
+              return setFullscreenUrl(entry.url);
+            },
             children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("video", {
               src: entry.url,
-              className: "w-full aspect-video object-cover bg-black/40 cursor-pointer hover:opacity-80 transition-opacity",
-              onClick: function onClick() {
-                return setFullscreenUrl(entry.url);
-              },
+              className: "w-full aspect-video object-cover bg-black/40 hover:opacity-80 transition-opacity",
               controls: false,
               loop: true,
               muted: true,
@@ -565,43 +478,15 @@ function VibeMotionStudio(_ref2) {
               }
             }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
               className: "absolute top-2 left-2 px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider backdrop-blur-sm border ".concat(entry.mode === "edit" ? "bg-[#22d3ee]/20 text-[#22d3ee] border-[#22d3ee]/30" : "bg-violet-600/30 text-violet-300 border-violet-500/30"),
-              children: entry.mode === "edit" ? "✏ Edit" : "✦ Generated"
+              children: entry.mode === "edit" ? copy.card.modeEdit : copy.card.modeGenerated
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-              className: "absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-                type: "button",
-                title: "Fullscreen",
-                onClick: function onClick(e) {
-                  e.stopPropagation();
-                  setFullscreenUrl(entry.url);
-                },
-                className: "p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10",
-                children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-                  width: "14",
-                  height: "14",
-                  viewBox: "0 0 24 24",
-                  fill: "none",
-                  stroke: "currentColor",
-                  strokeWidth: "2.5",
-                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
-                    points: "15 3 21 3 21 9"
-                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
-                    points: "9 21 3 21 3 15"
-                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
-                    x1: "21",
-                    y1: "3",
-                    x2: "14",
-                    y2: "10"
-                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
-                    x1: "3",
-                    y1: "21",
-                    x2: "10",
-                    y2: "14"
-                  })]
-                })
+              className: "absolute top-2 right-2 hidden md:flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_MobileGenerationActions.GenerationCopyButtons, {
+                prompt: entry.prompt,
+                onCopyError: onGenerationError
               }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
                 type: "button",
-                title: "Download",
+                title: copy.card.download,
                 onClick: function onClick(e) {
                   e.stopPropagation();
                   downloadFile(entry.url, "motion-".concat(entry.id || idx, ".mp4"));
@@ -620,7 +505,7 @@ function VibeMotionStudio(_ref2) {
                 })
               }), entry.requestId && entry.canEdit !== false ? /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
                 type: "button",
-                title: "Remix this generation",
+                title: copy.card.remixThis,
                 onClick: function onClick(e) {
                   e.stopPropagation();
                   setEditMode(true);
@@ -651,7 +536,7 @@ function VibeMotionStudio(_ref2) {
               /*#__PURE__*/
               /* Legacy generation — animation code not saved by API, remix not available */
               (0, _jsxRuntime.jsx)("div", {
-                title: "Legacy generation \u2014 remix not available. Generate a new motion graphic to enable editing.",
+                title: copy.card.legacyRemixUnavailable,
                 className: "p-2 bg-black/60 backdrop-blur-md rounded-full text-white/20 border border-white/5 cursor-not-allowed",
                 children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
                   width: "14",
@@ -701,10 +586,10 @@ function VibeMotionStudio(_ref2) {
                 })
               }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
                 type: "button",
-                title: "Delete",
+                title: copy.card["delete"],
                 onClick: function onClick(e) {
                   e.stopPropagation();
-                  if (confirm("Are you sure you want to delete this generated item?")) {
+                  if (confirm(copy.card.confirmDelete)) {
                     setHistory(function (prev) {
                       return prev.filter(function (_, i) {
                         return i !== idx;
@@ -723,7 +608,7 @@ function VibeMotionStudio(_ref2) {
                   children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
                     points: "3 6 5 6 21 6"
                   }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-                    d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                    d: "M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"
                   }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
                     x1: "10",
                     y1: "11",
@@ -737,27 +622,65 @@ function VibeMotionStudio(_ref2) {
                   })]
                 })
               })]
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_MobileGenerationActions["default"], {
+              prompt: entry.prompt,
+              onCopyError: onGenerationError,
+              actions: [{
+                kind: "download",
+                label: copy.mobileActions.download,
+                onSelect: function onSelect() {
+                  return downloadFile(entry.url, "motion-".concat(entry.id || idx, ".mp4"));
+                }
+              }, entry.requestId && entry.canEdit !== false && {
+                kind: "remix",
+                label: copy.mobileActions.remix,
+                onSelect: function onSelect() {
+                  setEditMode(true);
+                  setEditSourceId(entry.requestId);
+                  setPrompt("");
+                  setTimeout(function () {
+                    var _textareaRef$current2;
+                    return (_textareaRef$current2 = textareaRef.current) === null || _textareaRef$current2 === void 0 ? void 0 : _textareaRef$current2.focus();
+                  }, 50);
+                }
+              }, {
+                kind: "delete",
+                label: copy.mobileActions["delete"],
+                danger: true,
+                onSelect: function onSelect() {
+                  if (confirm(copy.card.confirmDelete)) {
+                    setHistory(function (prev) {
+                      return prev.filter(function (_, i) {
+                        return i !== idx;
+                      });
+                    });
+                  }
+                }
+              }]
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
               className: "p-3 bg-black/80 backdrop-blur-sm border-t border-white/5 flex-1 flex flex-col justify-between gap-2",
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
                 className: "text-white/70 text-xs line-clamp-3 leading-relaxed",
                 title: entry.prompt,
-                children: entry.prompt || "No prompt"
-              }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                children: entry.prompt || copy.card.noPrompt
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
                 className: "flex items-center justify-between mt-1 flex-wrap gap-1",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
-                  className: "text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded border border-primary/20 whitespace-nowrap",
-                  children: ["motion-graphics", entry.mode === "edit" ? "-edit" : ""]
-                }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                  className: "flex gap-2",
-                  children: [entry.aspectRatio && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                    className: "text-[10px] text-white/40",
-                    children: entry.aspectRatio
-                  }), entry.duration && /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
-                    className: "text-[10px] text-white/40",
-                    children: [entry.duration, "s"]
+                children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                  className: "flex items-center gap-2",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                    className: "text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded border border-primary/20 whitespace-nowrap",
+                    children: copy.card.tag
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                    className: "flex gap-2",
+                    children: [entry.aspectRatio && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                      className: "text-[10px] text-white/40",
+                      children: entry.aspectRatio
+                    }), entry.duration && /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
+                      className: "text-[10px] text-white/40",
+                      children: [entry.duration, "s"]
+                    })]
                   })]
-                })]
+                })
               })]
             })]
           }, entry.id || idx);
@@ -802,327 +725,266 @@ function VibeMotionStudio(_ref2) {
           className: "text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-center px-4 flex flex-col items-center",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
             className: "text-white font-black uppercase text-xl sm:text-3xl tracking-wide mb-1 opacity-90",
-            children: "START CREATING WITH"
+            children: copy.empty.titleLine1
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
             className: "text-[#22d3ee] font-black uppercase text-2xl sm:text-4xl sm:mt-1 tracking-tight",
-            children: "VIBE MOTION STUDIO"
+            children: copy.empty.titleLine2
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
           className: "text-white/40 text-xs sm:text-sm font-medium tracking-wide text-center max-w-lg leading-relaxed px-4",
-          children: "Generate animated motion graphics from a text prompt \u2014 kinetic typography, data charts, logo reveals, and more."
+          children: copy.empty.description
         })]
       }) : null]
-    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-      className: "absolute bottom-4 w-full max-w-[95%] lg:max-w-4xl z-40 animate-fade-in-up",
-      style: {
-        animationDelay: "0.2s"
-      },
-      children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-        className: "w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]",
-        children: [editMode && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "flex items-center gap-2 px-3 py-1.5 mx-0 bg-[#22d3ee]/5 border border-[#22d3ee]/10 rounded text-[10px] text-[#22d3ee]/80 font-medium tracking-tight",
-          children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-            width: "13",
-            height: "13",
-            viewBox: "0 0 24 24",
-            fill: "none",
-            stroke: "currentColor",
-            strokeWidth: "2.5",
-            strokeLinecap: "round",
-            strokeLinejoin: "round",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-              d: "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-              d: "M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
-            })]
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-            children: sourceEntry ? "Editing: \"".concat((_sourceEntry$prompt = sourceEntry.prompt) === null || _sourceEntry$prompt === void 0 ? void 0 : _sourceEntry$prompt.slice(0, 50)).concat(((_sourceEntry$prompt2 = sourceEntry.prompt) === null || _sourceEntry$prompt2 === void 0 ? void 0 : _sourceEntry$prompt2.length) > 50 ? "…" : "", "\"") : "Select a source generation from the gallery"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+    }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptComposer, {
+      children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+        className: "flex items-center justify-between gap-3 px-1",
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptSegmentedControl, {
+          className: "flex-shrink-0",
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptSegmentOption, {
+            type: "button",
             onClick: function onClick() {
               setEditMode(false);
               setEditSourceId(null);
-              setPrompt("");
             },
-            className: "ml-auto text-[#22d3ee]/40 hover:text-[#22d3ee] transition-colors text-base leading-none",
-            children: "\xD7"
+            selected: !editMode,
+            children: copy.modeToggle.generate
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptSegmentOption, {
+            type: "button",
+            onClick: function onClick() {
+              return setEditMode(true);
+            },
+            disabled: editSources.length === 0,
+            selected: editMode,
+            className: "disabled:opacity-30 disabled:cursor-not-allowed",
+            children: copy.modeToggle.edit
           })]
-        }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "flex items-center gap-2 px-1",
-          children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "flex items-center gap-1 bg-white/[0.03] border border-white/[0.05] rounded-full p-0.5 flex-shrink-0",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-              type: "button",
-              onClick: function onClick() {
-                setEditMode(false);
-                setEditSourceId(null);
-              },
-              className: "px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all ".concat(!editMode ? "bg-[#22d3ee] text-black shadow" : "text-white/40 hover:text-white/70"),
-              children: "Generate"
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-              type: "button",
-              onClick: function onClick() {
-                return setEditMode(true);
-              },
-              disabled: editSources.length === 0,
-              className: "px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed ".concat(editMode ? "bg-[#22d3ee] text-black shadow" : "text-white/40 hover:text-white/70"),
-              children: "Edit"
-            })]
-          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "flex-1 flex flex-col gap-1",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_TemplateBanner["default"], {
-              isApplied: isTemplateApplied,
-              onClear: resetTemplate
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
-              ref: textareaRef,
-              value: prompt,
-              onChange: function onChange(e) {
-                return setPrompt(e.target.value);
-              },
-              onKeyDown: handleKeyDown,
-              placeholder: editMode ? "Describe what to change — 'change background to dark navy, make bars gold, add particles…'" : "Describe the motion graphic — 'Animated sales dashboard with glowing bar charts and rising numbers'",
-              rows: 1,
-              className: "w-full bg-transparent border-none text-white text-sm placeholder:text-white/10 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar"
-            })]
-          })]
-        }), generateError && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-xs",
+        }), editMode && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+          className: "flex items-center gap-2 px-3 py-1 bg-[#22d3ee]/5 border border-[#22d3ee]/10 rounded-full text-[11px] text-[#22d3ee] font-medium tracking-tight min-w-0 max-w-full overflow-hidden",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
             width: "12",
             height: "12",
             viewBox: "0 0 24 24",
             fill: "none",
             stroke: "currentColor",
-            strokeWidth: "2",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-              cx: "12",
-              cy: "12",
-              r: "10"
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
-              x1: "12",
-              y1: "8",
-              x2: "12",
-              y2: "12"
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
-              x1: "12",
-              y1: "16",
-              x2: "12.01",
-              y2: "16"
+            strokeWidth: "2.5",
+            className: "flex-shrink-0",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+              d: "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+              d: "M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
             })]
-          }), generateError]
-        }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-3 border-t border-white/[0.03] relative",
-          children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "flex items-center gap-2 relative flex-wrap pb-1 md:pb-0",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-              className: "relative",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-                type: "button",
-                onClick: toggleDropdown("ar"),
-                className: "flex items-center gap-2 px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                  className: "w-4 h-4 bg-[#22d3ee] rounded flex items-center justify-center shadow-lg shadow-[#22d3ee]/10",
-                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                    className: "text-[9px] font-bold text-black uppercase",
-                    children: "A"
-                  })
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                  className: "text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
-                  children: aspectRatio
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
-                  width: "8",
-                  height: "8",
-                  viewBox: "0 0 24 24",
-                  fill: "none",
-                  stroke: "currentColor",
-                  strokeWidth: "4",
-                  className: "opacity-20 group-hover:opacity-100 transition-opacity ml-1",
-                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-                    d: "M6 9l6 6 6-6"
-                  })
-                })]
-              }), openDropdown === "ar" && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-lg p-3 shadow-2xl border border-white/[0.05] min-w-[140px]",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                  className: "text-xs font-bold text-white/20 border-b border-white/[0.03] mb-2",
-                  children: "Aspect Ratio"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                  className: "flex flex-col gap-1",
-                  children: ASPECT_RATIOS.map(function (ar) {
-                    return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                      className: "flex items-center justify-between p-3 hover:bg-white/5 rounded cursor-pointer transition-all group/opt",
-                      onClick: function onClick() {
-                        setAspectRatio(ar);
-                        setOpenDropdown(null);
-                      },
-                      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                        className: "text-[11px] font-semibold text-white/70 group-hover/opt:text-white transition-opacity",
-                        children: ar
-                      }), aspectRatio === ar && /*#__PURE__*/(0, _jsxRuntime.jsx)(CheckSvg, {})]
-                    }, ar);
-                  })
-                })]
-              })]
-            }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-              className: "relative",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-                type: "button",
-                onClick: toggleDropdown("dur"),
-                className: "flex items-center gap-2 px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] rounded-md transition-all border border-white/[0.03] group whitespace-nowrap",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                  className: "w-4 h-4 bg-[#22d3ee] rounded flex items-center justify-center shadow-lg shadow-[#22d3ee]/10",
-                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                    className: "text-[9px] font-bold text-black uppercase",
-                    children: "T"
-                  })
-                }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
-                  className: "text-[11px] font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
-                  children: [duration, "s"]
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
-                  width: "8",
-                  height: "8",
-                  viewBox: "0 0 24 24",
-                  fill: "none",
-                  stroke: "currentColor",
-                  strokeWidth: "4",
-                  className: "opacity-20 group-hover:opacity-100 transition-opacity ml-1",
-                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-                    d: "M6 9l6 6 6-6"
-                  })
-                })]
-              }), openDropdown === "dur" && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 bg-[#0a0a0a] rounded-md p-3 shadow-2xl border border-white/10 min-w-[140px] max-h-52 overflow-y-auto custom-scrollbar",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                  className: "text-xs font-bold text-white/20 border-b border-white/[0.03] mb-2",
-                  children: "Duration"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                  className: "flex flex-col gap-1",
-                  children: DURATION_OPTIONS.map(function (d) {
-                    return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                      className: "flex items-center justify-between p-2 hover:bg-white/5 rounded-md cursor-pointer transition-all group/opt",
-                      onClick: function onClick() {
-                        setDuration(d);
-                        setOpenDropdown(null);
-                      },
-                      children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
-                        className: "text-xs font-semibold text-white/70 group-hover/opt:text-white",
-                        children: [d, "s"]
-                      }), duration === d && /*#__PURE__*/(0, _jsxRuntime.jsx)(CheckSvg, {})]
-                    }, d);
-                  })
-                })]
-              })]
-            }), editMode && editSources.length > 0 && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-              className: "relative",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-                type: "button",
-                onClick: toggleDropdown("source"),
-                className: "flex items-center gap-2 px-3 py-2 bg-[#22d3ee]/[0.04] hover:bg-[#22d3ee]/[0.08] rounded-md transition-all border border-[#22d3ee]/[0.08] group whitespace-nowrap",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                  className: "w-4 h-4 bg-[#22d3ee]/20 rounded flex items-center justify-center border border-[#22d3ee]/30",
-                  children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-                    width: "9",
-                    height: "9",
-                    viewBox: "0 0 24 24",
-                    fill: "none",
-                    stroke: "#22d3ee",
-                    strokeWidth: "3",
-                    strokeLinecap: "round",
-                    strokeLinejoin: "round",
-                    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-                      d: "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
-                    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-                      d: "M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
-                    })]
-                  })
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                  className: "text-xs font-semibold text-[#22d3ee]/70 group-hover:text-[#22d3ee] transition-colors max-w-[120px] truncate",
-                  children: sourceEntry ? "Source: ".concat((_sourceEntry$prompt3 = sourceEntry.prompt) === null || _sourceEntry$prompt3 === void 0 ? void 0 : _sourceEntry$prompt3.slice(0, 20), "\u2026") : "Pick source…"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
-                  width: "10",
-                  height: "10",
-                  viewBox: "0 0 24 24",
-                  fill: "none",
-                  stroke: "currentColor",
-                  strokeWidth: "3",
-                  className: "opacity-30 flex-shrink-0",
-                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-                    d: "M6 9l6 6 6-6"
-                  })
-                })]
-              }), openDropdown === "source" && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                className: "absolute bottom-[calc(100%+12px)] left-0 z-50 w-64 bg-[#0a0a0a] rounded-lg p-3 shadow-2xl border border-white/[0.05] max-h-64 overflow-y-auto custom-scrollbar",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                  className: "text-xs font-bold text-white/20 border-b border-white/[0.03] mb-2",
-                  children: "Source Generation"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                  className: "flex flex-col gap-1",
-                  children: editSources.map(function (src) {
-                    return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                      className: "flex items-center gap-3 p-2 hover:bg-white/5 rounded cursor-pointer transition-all group/opt",
-                      onClick: function onClick() {
-                        setEditSourceId(src.requestId);
-                        setOpenDropdown(null);
-                      },
-                      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                        className: "w-10 h-7 rounded overflow-hidden bg-black/40 flex-shrink-0 border border-white/5",
-                        children: /*#__PURE__*/(0, _jsxRuntime.jsx)("video", {
-                          src: src.url,
-                          className: "w-full h-full object-cover",
-                          muted: true,
-                          playsInline: true
-                        })
-                      }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                        className: "flex-1 min-w-0",
-                        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
-                          className: "text-[11px] text-white/70 truncate leading-tight group-hover/opt:text-white",
-                          children: src.prompt
-                        }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("p", {
-                          className: "text-[9px] text-white/30 mt-0.5",
-                          children: [src.aspectRatio, " \xB7 ", src.duration, "s"]
-                        })]
-                      }), editSourceId === src.requestId && /*#__PURE__*/(0, _jsxRuntime.jsx)(CheckSvg, {})]
-                    }, src.requestId);
-                  })
-                })]
-              })]
-            }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-              type: "button",
-              onClick: function onClick() {
-                return setNativeAudio(!nativeAudio);
-              },
-              className: "flex items-center gap-2 px-3 py-2 rounded-md transition-all border whitespace-nowrap ".concat(nativeAudio ? "bg-[#22d3ee]/[0.08] hover:bg-[#22d3ee]/[0.12] border-[#22d3ee]/[0.15] text-[#22d3ee]" : "bg-white/[0.03] hover:bg-white/[0.06] border-white/[0.03] text-white/40 hover:text-white/70"),
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                className: "w-4 h-4 rounded flex items-center justify-center shadow-lg shadow-[#22d3ee]/10 ".concat(nativeAudio ? "bg-[#22d3ee]" : "bg-white/10"),
-                children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                  className: "text-[9px] font-bold text-black uppercase",
-                  children: "A"
-                })
-              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                className: "text-[11px] font-semibold",
-                children: "Native Audio"
-              })]
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-              className: "text-[10px] text-white/20 hidden sm:block ml-2",
-              children: "Ctrl+Enter to run"
-            })]
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+            className: "truncate",
+            children: sourceEntry ? "".concat(copy.editBanner.editingPrefix, " \"").concat((_sourceEntry$prompt = sourceEntry.prompt) === null || _sourceEntry$prompt === void 0 ? void 0 : _sourceEntry$prompt.slice(0, 45)).concat(((_sourceEntry$prompt2 = sourceEntry.prompt) === null || _sourceEntry$prompt2 === void 0 ? void 0 : _sourceEntry$prompt2.length) > 45 ? "…" : "", "\"") : copy.editBanner.selectSource
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-            type: "button",
-            onClick: handleGenerate,
-            disabled: generating || !prompt.trim() || editMode && !editSourceId,
-            className: "bg-[#22d3ee] text-black px-7 py-3 rounded-full font-black text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10",
-            children: generating ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                className: "animate-spin inline-block text-black",
-                children: "\u25CC"
-              }), " ", editMode ? "Remixing..." : "Generating..."]
-            }) : generateError ? "Error: ".concat(generateError.slice(0, 40), "\u2026") : editMode ? /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-              children: "Remix"
-            }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-              children: "Generate"
-            })
+            onClick: function onClick() {
+              setEditMode(false);
+              setEditSourceId(null);
+              setPrompt("");
+            },
+            className: "ml-auto text-[#22d3ee]/40 hover:text-[#22d3ee] transition-colors text-sm leading-none flex-shrink-0",
+            title: copy.editBanner.cancelEdit,
+            children: "\xD7"
           })]
         })]
-      })
+      }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        className: "w-full",
+        children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptTextarea, {
+          ref: textareaRef,
+          value: prompt,
+          onChange: function onChange(e) {
+            return setPrompt(e.target.value);
+          },
+          onKeyDown: handleKeyDown,
+          placeholder: editMode ? copy.placeholder.edit : copy.placeholder.generate
+        })
+      }), generateError && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+        className: "flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-xs",
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+          width: "12",
+          height: "12",
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: "currentColor",
+          strokeWidth: "2",
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+            cx: "12",
+            cy: "12",
+            r: "10"
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+            x1: "12",
+            y1: "8",
+            x2: "12",
+            y2: "12"
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+            x1: "12",
+            y1: "16",
+            x2: "12.01",
+            y2: "16"
+          })]
+        }), generateError]
+      }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptFooter, {
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptControls, {
+          ref: controlsRef,
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            className: "relative",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+              type: "button",
+              onClick: toggleDropdown("ar"),
+              className: (0, _PromptComposer.promptControlClassName)({
+                active: openDropdown === "ar"
+              }),
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptAspectRatioIcon, {}), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                className: _PromptComposer.PROMPT_CONTROL_LABEL_CLASS,
+                children: aspectRatio
+              })]
+            }), openDropdown === "ar" && /*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptPopover, {
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptPopoverHeader, {
+                children: copy.controls.aspectRatio
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptMenuList, {
+                children: ASPECT_RATIOS.map(function (ar) {
+                  return /*#__PURE__*/(0, _jsxRuntime.jsx)(DropdownItem, {
+                    label: ar,
+                    selected: aspectRatio === ar,
+                    onClick: function onClick() {
+                      setAspectRatio(ar);
+                      setOpenDropdown(null);
+                    }
+                  }, ar);
+                })
+              })]
+            })]
+          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            className: "relative",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+              type: "button",
+              onClick: toggleDropdown("dur"),
+              className: (0, _PromptComposer.promptControlClassName)({
+                active: openDropdown === "dur"
+              }),
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptDurationIcon, {}), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
+                className: _PromptComposer.PROMPT_CONTROL_LABEL_CLASS,
+                children: [duration, "s"]
+              })]
+            }), openDropdown === "dur" && /*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptPopover, {
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptPopoverHeader, {
+                children: copy.controls.duration
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptMenuList, {
+                children: DURATION_OPTIONS.map(function (d) {
+                  return /*#__PURE__*/(0, _jsxRuntime.jsx)(DropdownItem, {
+                    label: "".concat(d, "s"),
+                    selected: duration === d,
+                    onClick: function onClick() {
+                      setDuration(d);
+                      setOpenDropdown(null);
+                    }
+                  }, d);
+                })
+              })]
+            })]
+          }), editMode && editSources.length > 0 && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            className: "relative",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+              type: "button",
+              onClick: toggleDropdown("source"),
+              className: (0, _PromptComposer.promptControlClassName)({
+                active: true
+              }),
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                className: "w-4 h-4 bg-[#22d3ee]/20 rounded flex items-center justify-center border border-[#22d3ee]/30",
+                children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                  width: "9",
+                  height: "9",
+                  viewBox: "0 0 24 24",
+                  fill: "none",
+                  stroke: "#22d3ee",
+                  strokeWidth: "3",
+                  strokeLinecap: "round",
+                  strokeLinejoin: "round",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                    d: "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                    d: "M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+                  })]
+                })
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                className: "".concat(_PromptComposer.PROMPT_CONTROL_LABEL_CLASS, " text-[#22d3ee]/70 max-w-[120px] truncate"),
+                children: sourceEntry ? "".concat(copy.controls.sourcePrefix, " ").concat((_sourceEntry$prompt3 = sourceEntry.prompt) === null || _sourceEntry$prompt3 === void 0 ? void 0 : _sourceEntry$prompt3.slice(0, 20), "\u2026") : copy.controls.pickSource
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptChevronIcon, {})]
+            }), openDropdown === "source" && /*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptPopover, {
+              className: "w-64",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptPopoverHeader, {
+                children: copy.controls.sourceGeneration
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                className: "flex flex-col gap-1",
+                children: editSources.map(function (src) {
+                  return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                    className: "flex items-center gap-3 p-2 hover:bg-white/5 rounded cursor-pointer transition-all group/opt",
+                    onClick: function onClick() {
+                      setEditSourceId(src.requestId);
+                      setOpenDropdown(null);
+                    },
+                    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                      className: "w-10 h-7 rounded overflow-hidden bg-black/40 flex-shrink-0 border border-white/5",
+                      children: /*#__PURE__*/(0, _jsxRuntime.jsx)("video", {
+                        src: src.url,
+                        className: "w-full h-full object-cover",
+                        muted: true,
+                        playsInline: true
+                      })
+                    }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                      className: "flex-1 min-w-0",
+                      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
+                        className: "text-[11px] text-white/70 truncate leading-tight group-hover/opt:text-white",
+                        children: src.prompt
+                      }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("p", {
+                        className: "text-[9px] text-white/30 mt-0.5",
+                        children: [src.aspectRatio, " \xB7 ", src.duration, "s"]
+                      })]
+                    }), editSourceId === src.requestId && /*#__PURE__*/(0, _jsxRuntime.jsx)(CheckSvg, {})]
+                  }, src.requestId);
+                })
+              })]
+            })]
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+            className: "text-[10px] text-white/20 hidden sm:block ml-2",
+            children: copy.controls.shortcutHint
+          })]
+        }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptAction, {
+          onClick: handleGenerate,
+          disabled: generating || !prompt.trim() || editMode && !editSourceId,
+          children: generating ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+              className: "animate-spin inline-block text-black",
+              children: "\u25CC"
+            }), " ", editMode ? copy.generateButton.remixing : copy.generateButton.generating]
+          }) : editMode ? /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+            children: copy.generateButton.remix
+          }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+            children: copy.generateButton.generate
+          })
+        })]
+      })]
+    }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactHotToast.Toaster, {
+      position: "top-right",
+      containerStyle: {
+        zIndex: 99999
+      },
+      toastOptions: {
+        duration: 5000,
+        style: {
+          background: '#18181b',
+          color: '#ffffff',
+          border: '1px solid rgba(255,255,255,0.15)',
+          fontSize: '13px',
+          borderRadius: '12px',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+          maxWidth: '440px',
+          wordBreak: 'break-word',
+          whiteSpace: 'pre-wrap',
+          padding: '12px 16px'
+        }
+      }
     })]
   });
 }

@@ -5,8 +5,10 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports["default"] = ModelParameterControls;
+var _react = require("react");
 var _PromptComposer = require("./prompt/PromptComposer.jsx");
 var _jsxRuntime = require("react/jsx-runtime");
+function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
@@ -61,7 +63,7 @@ function ScalarInput(_ref4) {
     _onChange = _ref4.onChange,
     label = _ref4.label;
   if (schema["enum"]) {
-    return /*#__PURE__*/(0, _jsxRuntime.jsx)("select", {
+    return /*#__PURE__*/(0, _jsxRuntime.jsxs)("select", {
       className: FIELD_CLASS,
       "aria-label": label,
       value: value !== null && value !== void 0 ? value : "",
@@ -71,12 +73,16 @@ function ScalarInput(_ref4) {
         });
         _onChange(selected);
       },
-      children: schema["enum"].map(function (option) {
+      children: [schema.emptyLabel && schema["default"] === undefined && /*#__PURE__*/(0, _jsxRuntime.jsx)("option", {
+        value: "",
+        children: schema.emptyLabel
+      }), schema["enum"].map(function (option) {
+        var _schema$optionLabels;
         return /*#__PURE__*/(0, _jsxRuntime.jsx)("option", {
           value: String(option),
-          children: String(option)
+          children: ((_schema$optionLabels = schema.optionLabels) === null || _schema$optionLabels === void 0 ? void 0 : _schema$optionLabels[option]) || String(option)
         }, String(option));
-      })
+      })]
     });
   }
   if (schema.type === "boolean") {
@@ -190,60 +196,119 @@ function ModelParameterControls(_ref9) {
     values = _ref9.values,
     _onChange2 = _ref9.onChange,
     open = _ref9.open,
-    onToggle = _ref9.onToggle;
-  if (inputs.length === 0) return null;
+    onToggle = _ref9.onToggle,
+    children = _ref9.children,
+    _ref9$label = _ref9.label,
+    label = _ref9$label === void 0 ? /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+      className: "text-[10px] font-black text-primary/80",
+      children: "PARAMS"
+    }) : _ref9$label,
+    _ref9$title = _ref9.title,
+    title = _ref9$title === void 0 ? "Model parameters" : _ref9$title,
+    _ref9$summary = _ref9.summary,
+    summary = _ref9$summary === void 0 ? inputs.length : _ref9$summary,
+    _ref9$fitViewport = _ref9.fitViewport,
+    fitViewport = _ref9$fitViewport === void 0 ? false : _ref9$fitViewport,
+    _ref9$solid = _ref9.solid,
+    solid = _ref9$solid === void 0 ? false : _ref9$solid,
+    _ref9$advancedKeys = _ref9.advancedKeys,
+    advancedKeys = _ref9$advancedKeys === void 0 ? [] : _ref9$advancedKeys,
+    _ref9$advancedLabel = _ref9.advancedLabel,
+    advancedLabel = _ref9$advancedLabel === void 0 ? "Advanced" : _ref9$advancedLabel,
+    advancedChildren = _ref9.advancedChildren;
+  var triggerRef = (0, _react.useRef)(null);
+  var extraControls = _react.Children.toArray(children);
+  var extraAdvancedControls = _react.Children.toArray(advancedChildren);
+  if (inputs.length === 0 && extraControls.length === 0 && extraAdvancedControls.length === 0) return null;
+  var advancedKeySet = new Set(advancedKeys);
+  var primaryInputs = [];
+  var advancedInputs = [];
+  var _iterator = _createForOfIteratorHelper(inputs),
+    _step;
+  try {
+    for (_iterator.s(); !(_step = _iterator.n()).done;) {
+      var input = _step.value;
+      (advancedKeySet.has(input.key) ? advancedInputs : primaryInputs).push(input);
+    }
+  } catch (err) {
+    _iterator.e(err);
+  } finally {
+    _iterator.f();
+  }
+  var renderInput = function renderInput(_ref0) {
+    var key = _ref0.key,
+      schema = _ref0.schema;
+    return /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+      className: "flex flex-col gap-2",
+      children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+        className: schema.type === "boolean" ? "flex items-center justify-between gap-4" : "flex flex-col gap-2",
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(FieldLabel, {
+          schema: schema,
+          inputKey: key
+        }), schema.type === "array" ? /*#__PURE__*/(0, _jsxRuntime.jsx)(ArrayInput, {
+          schema: schema,
+          label: schema.title || key.replaceAll("_", " "),
+          value: values[key],
+          onChange: function onChange(nextValue) {
+            return _onChange2(key, nextValue);
+          }
+        }) : /*#__PURE__*/(0, _jsxRuntime.jsx)(ScalarInput, {
+          schema: schema,
+          label: schema.title || key.replaceAll("_", " "),
+          value: values[key],
+          onChange: function onChange(nextValue) {
+            return _onChange2(key, nextValue);
+          }
+        })]
+      })
+    }, key);
+  };
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     className: "relative",
+    onKeyDown: function onKeyDown(event) {
+      var _triggerRef$current;
+      if (!open || event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      onToggle(event);
+      (_triggerRef$current = triggerRef.current) === null || _triggerRef$current === void 0 || _triggerRef$current.focus();
+    },
     children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
       type: "button",
+      ref: triggerRef,
+      "aria-expanded": open,
       onClick: onToggle,
       className: (0, _PromptComposer.promptControlClassName)({
         active: open
       }),
       children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-        className: "text-[10px] font-black text-primary/80",
-        children: "PARAMS"
-      }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
         className: _PromptComposer.PROMPT_CONTROL_LABEL_CLASS,
-        children: inputs.length
+        children: label
+      }), summary !== "" && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+        className: _PromptComposer.PROMPT_CONTROL_LABEL_CLASS,
+        children: summary
       }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptChevronIcon, {})]
     }), open && /*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptPopover, {
+      fitViewport: fitViewport,
+      solid: solid,
       onClick: function onClick(event) {
         return event.stopPropagation();
       },
       className: "w-[min(420px,calc(100vw-2rem))] max-h-[60vh]",
       children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptPopoverHeader, {
-        children: "Model parameters"
-      }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        children: title
+      }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
         className: "flex flex-col gap-4",
-        children: inputs.map(function (_ref0) {
-          var key = _ref0.key,
-            schema = _ref0.schema;
-          return /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-            className: "flex flex-col gap-2",
-            children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-              className: schema.type === "boolean" ? "flex items-center justify-between gap-4" : "flex flex-col gap-2",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(FieldLabel, {
-                schema: schema,
-                inputKey: key
-              }), schema.type === "array" ? /*#__PURE__*/(0, _jsxRuntime.jsx)(ArrayInput, {
-                schema: schema,
-                label: schema.title || key.replaceAll("_", " "),
-                value: values[key],
-                onChange: function onChange(nextValue) {
-                  return _onChange2(key, nextValue);
-                }
-              }) : /*#__PURE__*/(0, _jsxRuntime.jsx)(ScalarInput, {
-                schema: schema,
-                label: schema.title || key.replaceAll("_", " "),
-                value: values[key],
-                onChange: function onChange(nextValue) {
-                  return _onChange2(key, nextValue);
-                }
-              })]
-            })
-          }, key);
-        })
+        children: [extraControls, primaryInputs.map(renderInput), (advancedInputs.length > 0 || extraAdvancedControls.length > 0) && /*#__PURE__*/(0, _jsxRuntime.jsxs)("details", {
+          className: "border-t border-white/[0.07] pt-2",
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("summary", {
+            className: "cursor-pointer py-2 text-xs font-semibold text-white/60 focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary",
+            children: advancedLabel
+          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            className: "flex flex-col gap-4 pt-2",
+            children: [advancedInputs.map(renderInput), extraAdvancedControls]
+          })]
+        })]
       })]
     })]
   });

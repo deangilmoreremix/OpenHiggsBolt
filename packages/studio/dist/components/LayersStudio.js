@@ -11,6 +11,7 @@ var _reactHotToast = _interopRequireWildcard(require("react-hot-toast"));
 var _muapi = require("../muapi.js");
 var _formatError = require("../utils/formatError.js");
 var _layersStudio = _interopRequireDefault(require("../messages/en/layersStudio.json"));
+var _layersStudio2 = _interopRequireDefault(require("../messages/zh/layersStudio.json"));
 var _i18nUtils = require("../i18nUtils");
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
@@ -37,18 +38,15 @@ function _arrayWithHoles(r) { if (Array.isArray(r)) return r; } // Upscale Model
 var UPSCALE_MODELS = [{
   id: "topaz-image-upscale",
   name: "Topaz",
-  subtitle: "The default model for general-purpose...",
-  cost: "1.0"
+  subtitle: "The default model for general-purpose..."
 }, {
   id: "seedvr2-image-upscale",
   name: "SeedVR2",
-  subtitle: "Diffusion-transformer super-resolution (up to 8K)",
-  cost: "0.02"
+  subtitle: "Diffusion-transformer super-resolution (up to 8K)"
 }, {
   id: "ai-image-upscaler",
   name: "AI Upscaler",
-  subtitle: "Fast 1-click automatic super-resolution",
-  cost: "1.0"
+  subtitle: "Fast 1-click automatic super-resolution"
 }];
 
 // Sample initial image & decomposed layers for demonstration (Seedream Wild Beauty via CDN)
@@ -121,7 +119,7 @@ function LayersStudio(_ref) {
     onGenerationError = _ref.onGenerationError,
     _ref$locale = _ref.locale,
     locale = _ref$locale === void 0 ? "en" : _ref$locale;
-  var copy = (0, _i18nUtils.resolveCopy)(_layersStudio["default"], null, locale);
+  var copy = (0, _i18nUtils.resolveCopy)(_layersStudio["default"], _layersStudio2["default"], locale);
 
   // Main canvas & image state
   var _useState = (0, _react.useState)(DEFAULT_SAMPLE_IMAGE),
@@ -2789,15 +2787,12 @@ function LayersStudio(_ref) {
                       setIsModelDropdownOpen(false);
                     },
                     className: "w-full p-2.5 rounded-xl text-left flex flex-col transition-all ".concat(upscaleModel === opt.id ? "bg-[#343946] text-white" : "text-white/70 hover:bg-white/5 hover:text-white"),
-                    children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
                       className: "flex items-center justify-between",
-                      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                      children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                         className: "text-xs font-bold text-white",
                         children: opt.name
-                      }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
-                        className: "text-[10px] font-bold text-[#a3e635]",
-                        children: [opt.cost, " credits"]
-                      })]
+                      })
                     }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                       className: "text-[10px] text-white/40",
                       children: opt.subtitle
@@ -3887,15 +3882,12 @@ function LayersStudio(_ref) {
           className: "space-y-4 animate-fade-in",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "space-y-2",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
               className: "flex items-center justify-between px-1",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+              children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                 className: "text-[11px] font-extrabold uppercase tracking-wider text-white/40",
                 children: copy.common.model
-              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                className: "text-[10px] font-bold text-[#a3e635] bg-[#84cc16]/15 px-2 py-0.5 rounded-md",
-                children: copy.removeBg.credit
-              })]
+              })
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
               className: "bg-[#2d313d] p-3.5 rounded-2xl border border-white/5 flex items-center gap-3 shadow-sm",
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
@@ -3967,15 +3959,12 @@ function LayersStudio(_ref) {
           className: "space-y-4 animate-fade-in",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "space-y-2",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
               className: "flex items-center justify-between px-1",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+              children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                 className: "text-[11px] font-extrabold uppercase tracking-wider text-white/40",
                 children: copy.common.model
-              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                className: "text-[10px] font-bold text-[#a3e635] bg-[#84cc16]/15 px-2 py-0.5 rounded-md",
-                children: copy.expandCrop.credit
-              })]
+              })
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
               className: "bg-[#2d313d] p-3.5 rounded-2xl border border-white/5 flex items-center gap-3 shadow-sm",
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {

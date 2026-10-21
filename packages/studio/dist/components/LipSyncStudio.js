@@ -1,30 +1,27 @@
 "use strict";
 "use client";
 
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports["default"] = LipSyncStudio;
 var _react = require("react");
-var _useTemplateData2 = require("../hooks/useTemplateData");
-var _TemplateBanner = _interopRequireDefault(require("./TemplateBanner"));
+var _reactHotToast = _interopRequireWildcard(require("react-hot-toast"));
 var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
 var _AiAssistantProvider = require("../../../../components/AiAssistantProvider");
 var _muapi = require("../muapi.js");
+var _formatError = require("../utils/formatError.js");
+var _persistKey = require("../persistKey.js");
+var _MobileGenerationActions = _interopRequireWildcard(require("./MobileGenerationActions.jsx"));
 var _models = require("../models.js");
-var _skillStore = require("../lib/skillStore");
-var _characterStore = require("../lib/characterStore");
-var _registry = _interopRequireDefault(require("../skills/registry.json"));
-var _promptRecipes = require("../lib/promptRecipes");
-var _storyboardHandoff = require("../storyboardHandoff.js");
 var _PromptComposer = require("./prompt/PromptComposer.jsx");
 var _lipSyncStudio = _interopRequireDefault(require("../messages/en/lipSyncStudio.json"));
 var _lipSyncStudio2 = _interopRequireDefault(require("../messages/zh/lipSyncStudio.json"));
 var _i18nUtils = require("../i18nUtils");
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
-function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
-function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
+function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function _interopRequireWildcard(e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, "default": e }; if (null === e || "object" != _typeof(e) && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (var _t6 in e) "default" !== _t6 && {}.hasOwnProperty.call(e, _t6) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, _t6)) && (i.get || i.set) ? o(f, _t6, i) : f[_t6] = e[_t6]); return f; })(e, t); }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
@@ -46,6 +43,27 @@ var UPLOAD_STATE = {
   UPLOADING: "uploading",
   READY: "ready"
 };
+var isAudioFile = function isAudioFile(file) {
+  var _file$name;
+  if (!file) return false;
+  if (file.type && file.type.startsWith("audio/")) return true;
+  var ext = (_file$name = file.name) === null || _file$name === void 0 || (_file$name = _file$name.split(".").pop()) === null || _file$name === void 0 ? void 0 : _file$name.toLowerCase();
+  return ["mp3", "wav", "ogg", "m4a", "aac", "flac", "wma"].includes(ext);
+};
+var isImageFile = function isImageFile(file) {
+  var _file$name2;
+  if (!file) return false;
+  if (file.type && file.type.startsWith("image/")) return true;
+  var ext = (_file$name2 = file.name) === null || _file$name2 === void 0 || (_file$name2 = _file$name2.split(".").pop()) === null || _file$name2 === void 0 ? void 0 : _file$name2.toLowerCase();
+  return ["jpg", "jpeg", "png", "webp", "avif", "gif", "bmp"].includes(ext);
+};
+var isVideoFile = function isVideoFile(file) {
+  var _file$name3;
+  if (!file) return false;
+  if (file.type && file.type.startsWith("video/")) return true;
+  var ext = (_file$name3 = file.name) === null || _file$name3 === void 0 || (_file$name3 = _file$name3.split(".").pop()) === null || _file$name3 === void 0 ? void 0 : _file$name3.toLowerCase();
+  return ["mp4", "mov", "webm", "mkv", "avi"].includes(ext);
+};
 function MediaPickerButton(_ref) {
   var accept = _ref.accept,
     label = _ref.label,
@@ -57,20 +75,48 @@ function MediaPickerButton(_ref) {
     fileName = _ref.fileName,
     previewUrl = _ref.previewUrl,
     isVideo = _ref.isVideo,
+    isAudio = _ref.isAudio,
     apiKey = _ref.apiKey,
     _ref$mediaCopy = _ref.mediaCopy,
     mediaCopy = _ref$mediaCopy === void 0 ? _lipSyncStudio["default"].media : _ref$mediaCopy;
   var inputRef = (0, _react.useRef)(null);
+  var audioRef = (0, _react.useRef)(null);
   var _useState = (0, _react.useState)(false),
     _useState2 = _slicedToArray(_useState, 2),
     isDragging = _useState2[0],
     setIsDragging = _useState2[1];
+  var _useState3 = (0, _react.useState)(false),
+    _useState4 = _slicedToArray(_useState3, 2),
+    isPlaying = _useState4[0],
+    setIsPlaying = _useState4[1];
   var dragCounterRef = (0, _react.useRef)(0);
-  var acceptPrefix = accept ? accept.split(",")[0].trim().replace("/*", "") : "";
+  var acceptPrefix = accept === null || accept === void 0 ? void 0 : accept.split("/")[0];
+  (0, _react.useEffect)(function () {
+    if (uploadState !== UPLOAD_STATE.READY) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      setIsPlaying(false);
+    }
+  }, [uploadState, previewUrl]);
+  var togglePlayAudio = function togglePlayAudio(e) {
+    e.stopPropagation();
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play()["catch"](console.warn);
+    }
+  };
   var handleClick = function handleClick(e) {
     var _inputRef$current;
     e.stopPropagation();
     if (uploadState === UPLOAD_STATE.READY) {
+      if (isAudio) {
+        togglePlayAudio(e);
+        return;
+      }
       onClear();
       return;
     }
@@ -78,7 +124,7 @@ function MediaPickerButton(_ref) {
   };
   var handleChange = /*#__PURE__*/function () {
     var _ref2 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee(e) {
-      var files;
+      var files, fileList;
       return _regenerator().w(function (_context) {
         while (1) switch (_context.n) {
           case 0:
@@ -89,9 +135,10 @@ function MediaPickerButton(_ref) {
             }
             return _context.a(2);
           case 1:
+            fileList = Array.from(files);
             e.target.value = "";
             _context.n = 2;
-            return onUpload(Array.from(files));
+            return onUpload(fileList);
           case 2:
             return _context.a(2);
         }
@@ -123,10 +170,17 @@ function MediaPickerButton(_ref) {
     e.preventDefault();
     e.stopPropagation();
   };
+  var isAcceptedFile = function isAcceptedFile(file) {
+    if (!file) return false;
+    if (acceptPrefix === "audio") return isAudioFile(file);
+    if (acceptPrefix === "image") return isImageFile(file);
+    if (acceptPrefix === "video") return isVideoFile(file);
+    return true;
+  };
   var handleDrop = /*#__PURE__*/function () {
     var _ref3 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2(e) {
       var _e$dataTransfer2;
-      var files, matched;
+      var files;
       return _regenerator().w(function (_context2) {
         while (1) switch (_context2.n) {
           case 0:
@@ -140,25 +194,16 @@ function MediaPickerButton(_ref) {
             }
             return _context2.a(2);
           case 1:
-            files = (_e$dataTransfer2 = e.dataTransfer) === null || _e$dataTransfer2 === void 0 ? void 0 : _e$dataTransfer2.files;
-            if (!(!files || files.length === 0)) {
+            files = Array.from(((_e$dataTransfer2 = e.dataTransfer) === null || _e$dataTransfer2 === void 0 ? void 0 : _e$dataTransfer2.files) || []).filter(isAcceptedFile);
+            if (!(files.length === 0)) {
               _context2.n = 2;
               break;
             }
             return _context2.a(2);
           case 2:
-            matched = acceptPrefix ? Array.from(files).filter(function (f) {
-              return f.type.startsWith("".concat(acceptPrefix, "/"));
-            }) : Array.from(files);
-            if (!(matched.length === 0)) {
-              _context2.n = 3;
-              break;
-            }
-            return _context2.a(2);
+            _context2.n = 3;
+            return onUpload(files);
           case 3:
-            _context2.n = 4;
-            return onUpload(matched);
-          case 4:
             return _context2.a(2);
         }
       }, _callee2);
@@ -167,91 +212,153 @@ function MediaPickerButton(_ref) {
       return _ref3.apply(this, arguments);
     };
   }();
-  var borderClass = uploadState === UPLOAD_STATE.READY ? "border-primary/60 bg-primary/5" : "border-white/[0.03] bg-white/[0.03] hover:bg-white/[0.06] hover:border-primary/40";
-  return /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-    type: "button",
-    title: uploadState === UPLOAD_STATE.READY ? "".concat(fileName, " \u2014 ").concat(mediaCopy.clickToClear) : "".concat(mediaCopy.uploadFilePrefix, " ").concat(label, " ").concat(mediaCopy.uploadFileSuffix),
-    onClick: handleClick,
-    onDragEnter: handleDragEnter,
-    onDragLeave: handleDragLeave,
-    onDragOver: handleDragOver,
-    onDrop: handleDrop,
-    className: (0, _PromptComposer.promptMediaButtonClassName)({
-      active: uploadState === UPLOAD_STATE.READY,
-      className: isDragging ? "ring-2 ring-[#22d3ee] ring-offset-1 ring-offset-black scale-105" : ""
-    }),
+  return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+    className: "relative inline-flex group/media",
     children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
       ref: inputRef,
       type: "file",
       accept: accept,
       className: "hidden",
+      onClick: function onClick(e) {
+        return e.stopPropagation();
+      },
       onChange: handleChange
-    }), uploadState === UPLOAD_STATE.IDLE && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-      className: "flex flex-col items-center justify-center gap-1 w-full h-full",
-      children: icon
-    }), uploadState === UPLOAD_STATE.UPLOADING && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-      className: "flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]",
-      children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-        className: "w-8 h-8 -rotate-90",
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-          cx: "16",
-          cy: "16",
-          r: "14",
-          stroke: "currentColor",
-          strokeWidth: "2",
-          fill: "transparent",
-          className: "text-white/10"
-        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-          cx: "16",
-          cy: "16",
-          r: "14",
-          stroke: "currentColor",
-          strokeWidth: "2",
-          fill: "transparent",
-          strokeDasharray: 88,
-          strokeDashoffset: 88 - 88 * progress / 100,
-          className: "text-primary transition-all duration-300"
-        })]
-      }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
-        className: "absolute text-[9px] font-black text-primary leading-none",
-        children: [progress, "%"]
-      })]
-    }), uploadState === UPLOAD_STATE.READY && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-      className: "flex flex-col items-center justify-center gap-1 w-full h-full absolute inset-0 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-all",
-      children: previewUrl ? isVideo ? /*#__PURE__*/(0, _jsxRuntime.jsx)("video", {
-        src: previewUrl,
-        className: "w-full h-full object-cover",
-        muted: true
-      }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
-        src: previewUrl,
-        alt: "",
-        className: "w-full h-full object-cover"
-      }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-        className: "flex flex-col items-center justify-center w-full px-1",
+    }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+      type: "button",
+      title: uploadState === UPLOAD_STATE.READY ? isAudio ? "".concat(fileName, " \u2014 ").concat(isPlaying ? "Pause" : "Play") : "".concat(fileName, " \u2014 ").concat(mediaCopy.clickToClear) : "".concat(mediaCopy.uploadFilePrefix, " ").concat(label, " ").concat(mediaCopy.uploadFileSuffix),
+      onClick: handleClick,
+      onDragEnter: handleDragEnter,
+      onDragLeave: handleDragLeave,
+      onDragOver: handleDragOver,
+      onDrop: handleDrop,
+      className: (0, _PromptComposer.promptMediaButtonClassName)({
+        active: uploadState === UPLOAD_STATE.READY,
+        className: isDragging ? "ring-2 ring-[#22d3ee] ring-offset-1 ring-offset-black scale-105" : ""
+      }),
+      children: [uploadState === UPLOAD_STATE.IDLE && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        className: "flex flex-col items-center justify-center gap-1 w-full h-full",
+        children: icon
+      }), uploadState === UPLOAD_STATE.UPLOADING && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+        className: "flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]",
         children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-          width: "16",
-          height: "16",
-          viewBox: "0 0 24 24",
-          fill: "none",
-          stroke: "currentColor",
-          strokeWidth: "2.5",
-          className: "text-primary mb-0.5",
-          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-            d: "M9 18V5l12-2v13"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-            cx: "6",
-            cy: "18",
-            r: "3"
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
-            cx: "18",
+          className: "w-8 h-8 -rotate-90",
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+            cx: "16",
             cy: "16",
-            r: "3"
+            r: "14",
+            stroke: "currentColor",
+            strokeWidth: "2",
+            fill: "transparent",
+            className: "text-white/10"
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+            cx: "16",
+            cy: "16",
+            r: "14",
+            stroke: "currentColor",
+            strokeWidth: "2",
+            fill: "transparent",
+            strokeDasharray: 88,
+            strokeDashoffset: 88 - 88 * progress / 100,
+            className: "text-primary transition-all duration-300"
           })]
-        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-          className: "text-[7px] font-black text-primary uppercase truncate w-full text-center",
-          children: (fileName === null || fileName === void 0 ? void 0 : fileName.split('.').pop()) || "AUD"
+        }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
+          className: "absolute text-[9px] font-black text-primary leading-none",
+          children: [progress, "%"]
         })]
-      })
+      }), uploadState === UPLOAD_STATE.READY && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        className: "flex flex-col items-center justify-center gap-1 w-full h-full absolute inset-0 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-all",
+        children: isAudio ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+          className: "flex flex-col items-center justify-center w-full h-full text-primary",
+          children: [previewUrl && /*#__PURE__*/(0, _jsxRuntime.jsx)("audio", {
+            ref: audioRef,
+            src: previewUrl,
+            onEnded: function onEnded() {
+              return setIsPlaying(false);
+            },
+            onPause: function onPause() {
+              return setIsPlaying(false);
+            },
+            onPlay: function onPlay() {
+              return setIsPlaying(true);
+            }
+          }), isPlaying ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+            width: "16",
+            height: "16",
+            viewBox: "0 0 24 24",
+            fill: "currentColor",
+            className: "text-primary animate-pulse",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("rect", {
+              x: "6",
+              y: "4",
+              width: "4",
+              height: "16",
+              rx: "1"
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("rect", {
+              x: "14",
+              y: "4",
+              width: "4",
+              height: "16",
+              rx: "1"
+            })]
+          }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
+            width: "16",
+            height: "16",
+            viewBox: "0 0 24 24",
+            fill: "currentColor",
+            className: "text-primary translate-x-0.5",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("polygon", {
+              points: "5 3 19 12 5 21 5 3"
+            })
+          })]
+        }) : previewUrl ? isVideo ? /*#__PURE__*/(0, _jsxRuntime.jsx)("video", {
+          src: previewUrl,
+          className: "w-full h-full object-cover",
+          muted: true
+        }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+          src: previewUrl,
+          alt: "",
+          className: "w-full h-full object-cover"
+        }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+          className: "flex flex-col items-center justify-center w-full px-1",
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+            width: "16",
+            height: "16",
+            viewBox: "0 0 24 24",
+            fill: "none",
+            stroke: "currentColor",
+            strokeWidth: "2.5",
+            className: "text-primary mb-0.5",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+              d: "M9 18V5l12-2v13"
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+              cx: "6",
+              cy: "18",
+              r: "3"
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+              cx: "18",
+              cy: "16",
+              r: "3"
+            })]
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+            className: "text-[7px] font-black text-primary uppercase truncate w-full text-center",
+            children: (fileName === null || fileName === void 0 ? void 0 : fileName.split('.').pop()) || "AUD"
+          })]
+        })
+      })]
+    }), uploadState === UPLOAD_STATE.READY && /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+      type: "button",
+      title: mediaCopy.clickToClear || "Clear",
+      onClick: function onClick(e) {
+        e.stopPropagation();
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+        }
+        setIsPlaying(false);
+        onClear();
+      },
+      className: "absolute -top-1 -right-1 w-4 h-4 bg-black/80 hover:bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] border border-white/20 transition-all z-20 shadow-md group-hover/media:opacity-100 opacity-80 sm:opacity-0 sm:group-hover/media:opacity-100",
+      children: "\xD7"
     })]
   });
 }
@@ -406,96 +513,96 @@ var VideoIcon = function VideoIcon(_ref7) {
 function LipSyncStudio(_ref8) {
   var _firstModel$id, _firstModel$inputs$re, _firstModel$inputs, _selectedModel$name;
   var apiKey = _ref8.apiKey,
+    onGenerationStart = _ref8.onGenerationStart,
+    onGenerationEnd = _ref8.onGenerationEnd,
     onGenerationComplete = _ref8.onGenerationComplete,
+    onGenerationError = _ref8.onGenerationError,
     historyItems = _ref8.historyItems,
     droppedFiles = _ref8.droppedFiles,
     onFilesHandled = _ref8.onFilesHandled,
-    templateData = _ref8.templateData,
     _ref8$locale = _ref8.locale,
     locale = _ref8$locale === void 0 ? "en" : _ref8$locale;
   var copy = (0, _i18nUtils.resolveCopy)(_lipSyncStudio["default"], _lipSyncStudio2["default"], locale);
-  var PERSIST_KEY = "hg_lipsync_studio_persistent";
+  var LEGACY_PERSIST_KEY = "hg_lipsync_studio_persistent";
+  var PERSIST_KEY = (0, _persistKey.scopedPersistKey)(LEGACY_PERSIST_KEY, apiKey);
+  (0, _react.useEffect)(function () {
+    (0, _persistKey.migrateLegacyPersistKey)(LEGACY_PERSIST_KEY, PERSIST_KEY);
+  }, [PERSIST_KEY]);
 
   // ── Mode & model state ──────────────────────────────────────────────────
-  var _useState3 = (0, _react.useState)("image"),
-    _useState4 = _slicedToArray(_useState3, 2),
-    inputMode = _useState4[0],
-    setInputMode = _useState4[1]; // 'image' | 'video'
+  var _useState5 = (0, _react.useState)("image"),
+    _useState6 = _slicedToArray(_useState5, 2),
+    inputMode = _useState6[0],
+    setInputMode = _useState6[1]; // 'image' | 'video'
 
   var currentModels = inputMode === "image" ? _models.imageLipSyncModels : _models.videoLipSyncModels;
   var firstModel = currentModels[0];
-  var _useState5 = (0, _react.useState)((_firstModel$id = firstModel === null || firstModel === void 0 ? void 0 : firstModel.id) !== null && _firstModel$id !== void 0 ? _firstModel$id : ""),
-    _useState6 = _slicedToArray(_useState5, 2),
-    selectedModelId = _useState6[0],
-    setSelectedModelId = _useState6[1];
-  var _useState7 = (0, _react.useState)((_firstModel$inputs$re = firstModel === null || firstModel === void 0 || (_firstModel$inputs = firstModel.inputs) === null || _firstModel$inputs === void 0 || (_firstModel$inputs = _firstModel$inputs.resolution) === null || _firstModel$inputs === void 0 ? void 0 : _firstModel$inputs["default"]) !== null && _firstModel$inputs$re !== void 0 ? _firstModel$inputs$re : "480p"),
+  var _useState7 = (0, _react.useState)((_firstModel$id = firstModel === null || firstModel === void 0 ? void 0 : firstModel.id) !== null && _firstModel$id !== void 0 ? _firstModel$id : ""),
     _useState8 = _slicedToArray(_useState7, 2),
-    selectedResolution = _useState8[0],
-    setSelectedResolution = _useState8[1];
+    selectedModelId = _useState8[0],
+    setSelectedModelId = _useState8[1];
+  var _useState9 = (0, _react.useState)((_firstModel$inputs$re = firstModel === null || firstModel === void 0 || (_firstModel$inputs = firstModel.inputs) === null || _firstModel$inputs === void 0 || (_firstModel$inputs = _firstModel$inputs.resolution) === null || _firstModel$inputs === void 0 ? void 0 : _firstModel$inputs["default"]) !== null && _firstModel$inputs$re !== void 0 ? _firstModel$inputs$re : "480p"),
+    _useState0 = _slicedToArray(_useState9, 2),
+    selectedResolution = _useState0[0],
+    setSelectedResolution = _useState0[1];
 
   // ── Upload state ────────────────────────────────────────────────────────
-  var _useState9 = (0, _react.useState)(UPLOAD_STATE.IDLE),
-    _useState0 = _slicedToArray(_useState9, 2),
-    imageState = _useState0[0],
-    setImageState = _useState0[1];
-  var _useState1 = (0, _react.useState)(""),
+  var _useState1 = (0, _react.useState)(UPLOAD_STATE.IDLE),
     _useState10 = _slicedToArray(_useState1, 2),
-    imageName = _useState10[0],
-    setImageName = _useState10[1];
-  var _useState11 = (0, _react.useState)(null),
+    imageState = _useState10[0],
+    setImageState = _useState10[1];
+  var _useState11 = (0, _react.useState)(""),
     _useState12 = _slicedToArray(_useState11, 2),
-    imageUrl = _useState12[0],
-    setImageUrl = _useState12[1];
-  var _useState13 = (0, _react.useState)(UPLOAD_STATE.IDLE),
+    imageName = _useState12[0],
+    setImageName = _useState12[1];
+  var _useState13 = (0, _react.useState)(null),
     _useState14 = _slicedToArray(_useState13, 2),
-    videoState = _useState14[0],
-    setVideoState = _useState14[1];
-  var _useState15 = (0, _react.useState)(""),
+    imageUrl = _useState14[0],
+    setImageUrl = _useState14[1];
+  var _useState15 = (0, _react.useState)(UPLOAD_STATE.IDLE),
     _useState16 = _slicedToArray(_useState15, 2),
-    videoName = _useState16[0],
-    setVideoName = _useState16[1];
-  var _useState17 = (0, _react.useState)(null),
+    videoState = _useState16[0],
+    setVideoState = _useState16[1];
+  var _useState17 = (0, _react.useState)(""),
     _useState18 = _slicedToArray(_useState17, 2),
-    videoUrl = _useState18[0],
-    setVideoUrl = _useState18[1];
-  var _useState19 = (0, _react.useState)(UPLOAD_STATE.IDLE),
+    videoName = _useState18[0],
+    setVideoName = _useState18[1];
+  var _useState19 = (0, _react.useState)(null),
     _useState20 = _slicedToArray(_useState19, 2),
-    audioState = _useState20[0],
-    setAudioState = _useState20[1];
-  var _useState21 = (0, _react.useState)(""),
+    videoUrl = _useState20[0],
+    setVideoUrl = _useState20[1];
+  var _useState21 = (0, _react.useState)(UPLOAD_STATE.IDLE),
     _useState22 = _slicedToArray(_useState21, 2),
-    audioName = _useState22[0],
-    setAudioName = _useState22[1];
-  var _useState23 = (0, _react.useState)(null),
+    audioState = _useState22[0],
+    setAudioState = _useState22[1];
+  var _useState23 = (0, _react.useState)(""),
     _useState24 = _slicedToArray(_useState23, 2),
-    audioUrl = _useState24[0],
-    setAudioUrl = _useState24[1];
+    audioName = _useState24[0],
+    setAudioName = _useState24[1];
+  var _useState25 = (0, _react.useState)(null),
+    _useState26 = _slicedToArray(_useState25, 2),
+    audioUrl = _useState26[0],
+    setAudioUrl = _useState26[1];
 
   // ── Individual progress states ──
-  var _useState25 = (0, _react.useState)(0),
-    _useState26 = _slicedToArray(_useState25, 2),
-    imageProgress = _useState26[0],
-    setImageProgress = _useState26[1];
   var _useState27 = (0, _react.useState)(0),
     _useState28 = _slicedToArray(_useState27, 2),
-    videoProgress = _useState28[0],
-    setVideoProgress = _useState28[1];
+    imageProgress = _useState28[0],
+    setImageProgress = _useState28[1];
   var _useState29 = (0, _react.useState)(0),
     _useState30 = _slicedToArray(_useState29, 2),
-    audioProgress = _useState30[0],
-    setAudioProgress = _useState30[1];
+    videoProgress = _useState30[0],
+    setVideoProgress = _useState30[1];
+  var _useState31 = (0, _react.useState)(0),
+    _useState32 = _slicedToArray(_useState31, 2),
+    audioProgress = _useState32[0],
+    setAudioProgress = _useState32[1];
 
   // ── Prompt ──────────────────────────────────────────────────────────────
-  var _useState31 = (0, _react.useState)(""),
-    _useState32 = _slicedToArray(_useState31, 2),
-    prompt = _useState32[0],
-    setPrompt = _useState32[1];
-
-  // ── Native audio flag (set by Skills recipe) ───────────────────────────
-  var _useState33 = (0, _react.useState)(false),
+  var _useState33 = (0, _react.useState)(""),
     _useState34 = _slicedToArray(_useState33, 2),
-    nativeAudio = _useState34[0],
-    setNativeAudio = _useState34[1];
+    prompt = _useState34[0],
+    setPrompt = _useState34[1];
 
   // ── Generation / UI state ───────────────────────────────────────────────
   var _useState35 = (0, _react.useState)(false),
@@ -544,115 +651,9 @@ function LipSyncStudio(_ref8) {
   var resultVideoRef = (0, _react.useRef)(null);
   var hasRestored = (0, _react.useRef)(false);
 
-  // ── Apply pending Skills recipe (set by SkillsBrowser) ────────────────────
-  (0, _react.useEffect)(function () {
-    var pending = (0, _skillStore.getPendingRecipe)("lipsync");
-    if (!pending) return;
-    var skill = _registry["default"].skills.find(function (s) {
-      return s.slug === pending;
-    });
-    (0, _skillStore.clearPendingRecipe)("lipsync");
-    if (!skill) return;
-    applyRecipe(skill);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ── Cross-studio: import a Storyboard hand-off ────────────────────────────
-  var handoffApplied = (0, _react.useRef)(null);
-  (0, _react.useEffect)(function () {
-    try {
-      var handoff = (0, _storyboardHandoff.readStoryboardHandoff)("lipsync");
-      if (!handoff || handoffApplied.current === handoff.createdAt) return;
-      handoffApplied.current = handoff.createdAt;
-      if (handoff.combinedPrompt || handoff.projectName) {
-        setPrompt(handoff.combinedPrompt || handoff.projectName);
-      }
-      var ref = handoff.firstFrameUrl || handoff.referenceImageUrl;
-      if (ref) {
-        setImageUrl(ref);
-      }
-    } catch (err) {
-      console.warn("Failed to apply Storyboard hand-off:", err);
-    }
-  }, []);
-
-  // Resolve a recipe reference url. Returns null for unresolved {{token}}s
-  // so the studio leaves them for the user to supply.
-  function resolveRefUrl(raw) {
-    if (typeof raw !== "string") return null;
-    if (raw.startsWith("{{") && raw.endsWith("}}")) return null;
-    return raw;
-  }
-  function applyRecipe(skill) {
-    var step0 = skill.steps && skill.steps[0];
-    if (!step0) {
-      if (skill.description) setPrompt(skill.description);
-      return;
-    }
-    var modelId = step0.endpoint || step0.model;
-    var allModels = [].concat(_toConsumableArray(_models.lipsyncModels), _toConsumableArray(_models.imageLipSyncModels), _toConsumableArray(_models.videoLipSyncModels));
-    var model = allModels.find(function (m) {
-      return m.id === modelId;
-    });
-
-    // Native-audio toggle (recipe-driven)
-    if (step0.audio || step0.flags && step0.flags.nativeAudio) {
-      setNativeAudio(true);
-    }
-    if (model) setSelectedModelId(model.id);
-
-    // ── References ──
-    var refs = step0.references;
-    if (refs) {
-      var list = Array.isArray(refs) ? refs : [refs];
-      var _iterator = _createForOfIteratorHelper(list),
-        _step;
-      try {
-        for (_iterator.s(); !(_step = _iterator.n()).done;) {
-          var r = _step.value;
-          var isObj = r && _typeof(r) === "object";
-          var rawUrl = isObj ? r.url : r;
-          var role = isObj ? r.role : null;
-          var url = resolveRefUrl(rawUrl);
-          if (!url) continue; // token — leave for user
-
-          if (role === "character_sheet") {
-            (0, _characterStore.setCharacterSheet)("lipsync", url);
-            continue;
-          }
-          var isVideo = role === "video" || typeof role === "string" && role.toLowerCase().includes("video");
-          var name = url.split("/").pop() || "reference";
-          if (isVideo) {
-            switchToVideo();
-            setVideoUrl(url);
-            setVideoState(UPLOAD_STATE.READY);
-            setVideoName(name);
-          } else {
-            switchToImage();
-            setImageUrl(url);
-            setImageState(UPLOAD_STATE.READY);
-            setImageName(name);
-          }
-        }
-      } catch (err) {
-        _iterator.e(err);
-      } finally {
-        _iterator.f();
-      }
-    }
-
-    // Re-assert recipe model/resolution after any mode switch triggered above
-    if (model) setSelectedModelId(model.id);
-    if (step0.resolution) setSelectedResolution(step0.resolution);
-    var vals = {};
-    (skill.inputs || []).forEach(function (i) {
-      vals[i.name] = "";
-    });
-    setPrompt((0, _promptRecipes.fillTemplate)(step0.prompt || skill.description || "", vals));
-  }
-
   // ── Persistence: Load ────────────────────────────────────────────────────
   (0, _react.useEffect)(function () {
+    hasRestored.current = false;
     try {
       var stored = localStorage.getItem(PERSIST_KEY);
       if (stored) {
@@ -676,7 +677,6 @@ function LipSyncStudio(_ref8) {
         if (data.videoName) setVideoName(data.videoName);
         if (data.audioName) setAudioName(data.audioName);
         if (data.prompt) setPrompt(data.prompt);
-        if (data.nativeAudio !== undefined) setNativeAudio(data.nativeAudio);
         if (data.internalHistory) setInternalHistory(data.internalHistory);
       }
     } catch (err) {
@@ -684,10 +684,11 @@ function LipSyncStudio(_ref8) {
     } finally {
       hasRestored.current = true;
     }
-  }, []);
+  }, [PERSIST_KEY]);
 
   // ── Persistence: Save ────────────────────────────────────────────────────
   (0, _react.useEffect)(function () {
+    if (!hasRestored.current) return;
     var timer = setTimeout(function () {
       try {
         var state = {
@@ -701,7 +702,6 @@ function LipSyncStudio(_ref8) {
           audioUrl: audioUrl,
           audioName: audioName,
           prompt: prompt,
-          nativeAudio: nativeAudio,
           internalHistory: internalHistory
         };
         localStorage.setItem(PERSIST_KEY, JSON.stringify(state));
@@ -712,7 +712,7 @@ function LipSyncStudio(_ref8) {
     return function () {
       return clearTimeout(timer);
     };
-  }, [inputMode, selectedModelId, selectedResolution, imageUrl, imageName, videoUrl, videoName, audioUrl, audioName, prompt, nativeAudio, internalHistory]);
+  }, [PERSIST_KEY, inputMode, selectedModelId, selectedResolution, imageUrl, imageName, videoUrl, videoName, audioUrl, audioName, prompt, internalHistory]);
 
   // ── Derived model info ──────────────────────────────────────────────────
   var selectedModel = _models.lipsyncModels.find(function (m) {
@@ -733,15 +733,6 @@ function LipSyncStudio(_ref8) {
     setSelectedResolution((_first$inputs$resolut = (_first$inputs = first.inputs) === null || _first$inputs === void 0 || (_first$inputs = _first$inputs.resolution) === null || _first$inputs === void 0 ? void 0 : _first$inputs["default"]) !== null && _first$inputs$resolut !== void 0 ? _first$inputs$resolut : "480p");
   }, [inputMode]);
 
-  // ── Apply template data from landing page "Create This Style" ──────────────
-  var _useTemplateData = (0, _useTemplateData2.useTemplateData)(templateData, function (data) {
-      if (data.prompt) {
-        setPrompt(data.prompt);
-      }
-    }),
-    resetTemplate = _useTemplateData.reset,
-    isTemplateApplied = _useTemplateData.isTemplateApplied;
-
   // ── Upload handlers ─────────────────────────────────────────────────────
   var handleImageUpload = (0, _react.useCallback)(/*#__PURE__*/function () {
     var _ref9 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3(files) {
@@ -760,7 +751,7 @@ function LipSyncStudio(_ref8) {
               _context3.n = 2;
               break;
             }
-            alert("Image exceeds 10MB limit.");
+            _reactHotToast["default"].error(copy.errors.imageTooLarge);
             return _context3.a(2);
           case 2:
             setImageState(UPLOAD_STATE.UPLOADING);
@@ -781,7 +772,7 @@ function LipSyncStudio(_ref8) {
             _context3.p = 5;
             _t = _context3.v;
             setImageState(UPLOAD_STATE.IDLE);
-            alert("Image upload failed: ".concat(_t.message));
+            _reactHotToast["default"].error(copy.errors.imageUploadFailed.replace("{message}", _t.message));
           case 6:
             _context3.p = 6;
             setImageProgress(0);
@@ -794,7 +785,7 @@ function LipSyncStudio(_ref8) {
     return function (_x3) {
       return _ref9.apply(this, arguments);
     };
-  }(), [apiKey]);
+  }(), [apiKey, copy]);
   var handleVideoPick = (0, _react.useCallback)(/*#__PURE__*/function () {
     var _ref0 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee4(files) {
       var file, url, _t2;
@@ -812,7 +803,7 @@ function LipSyncStudio(_ref8) {
               _context4.n = 2;
               break;
             }
-            alert("Video exceeds 50MB limit.");
+            _reactHotToast["default"].error(copy.errors.videoTooLarge);
             return _context4.a(2);
           case 2:
             setVideoState(UPLOAD_STATE.UPLOADING);
@@ -833,7 +824,7 @@ function LipSyncStudio(_ref8) {
             _context4.p = 5;
             _t2 = _context4.v;
             setVideoState(UPLOAD_STATE.IDLE);
-            alert("Video upload failed: ".concat(_t2.message));
+            _reactHotToast["default"].error(copy.errors.videoUploadFailed.replace("{message}", _t2.message));
           case 6:
             _context4.p = 6;
             setVideoProgress(0);
@@ -846,7 +837,7 @@ function LipSyncStudio(_ref8) {
     return function (_x4) {
       return _ref0.apply(this, arguments);
     };
-  }(), [apiKey]);
+  }(), [apiKey, copy]);
   var handlePromptInput = function handlePromptInput(e) {
     setPrompt(e.target.value);
   };
@@ -867,7 +858,7 @@ function LipSyncStudio(_ref8) {
               _context5.n = 2;
               break;
             }
-            alert("Audio file exceeds 10MB limit.");
+            _reactHotToast["default"].error(copy.errors.audioTooLarge);
             return _context5.a(2);
           case 2:
             setAudioState(UPLOAD_STATE.UPLOADING);
@@ -888,7 +879,7 @@ function LipSyncStudio(_ref8) {
             _context5.p = 5;
             _t3 = _context5.v;
             setAudioState(UPLOAD_STATE.IDLE);
-            alert("Audio upload failed: ".concat(_t3.message));
+            _reactHotToast["default"].error(copy.errors.audioUploadFailed.replace("{message}", _t3.message));
           case 6:
             _context5.p = 6;
             setAudioProgress(0);
@@ -901,23 +892,18 @@ function LipSyncStudio(_ref8) {
     return function (_x5) {
       return _ref1.apply(this, arguments);
     };
-  }(), [apiKey]);
+  }(), [apiKey, copy]);
 
   // ── Handle Dropped Files ────────────────────────────────────────────────
   (0, _react.useEffect)(function () {
     if (droppedFiles && droppedFiles.length > 0) {
-      var imageFiles = droppedFiles.filter(function (f) {
-        return f.type.startsWith('image/');
-      });
-      var videoFiles = droppedFiles.filter(function (f) {
-        return f.type.startsWith('video/');
-      });
-      var audioFiles = droppedFiles.filter(function (f) {
-        return f.type.startsWith('audio/');
-      });
+      var audioFiles = droppedFiles.filter(isAudioFile);
+      var videoFiles = droppedFiles.filter(isVideoFile);
+      var imageFiles = droppedFiles.filter(isImageFile);
       if (audioFiles.length > 0) {
         handleAudioPick(audioFiles[0]);
-      } else if (videoFiles.length > 0) {
+      }
+      if (videoFiles.length > 0) {
         switchToVideo();
         handleVideoPick(videoFiles[0]);
       } else if (imageFiles.length > 0) {
@@ -1014,7 +1000,7 @@ function LipSyncStudio(_ref8) {
   // ── Generation ──────────────────────────────────────────────────────────
   var handleGenerate = /*#__PURE__*/function () {
     var _ref11 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee7() {
-      var lipsyncParams, res, genId, entry, _e$message$slice, _e$message, _t5;
+      var lipsyncParams, res, genId, entry, errMsg, _t5;
       return _regenerator().w(function (_context7) {
         while (1) switch (_context7.p = _context7.n) {
           case 0:
@@ -1022,23 +1008,24 @@ function LipSyncStudio(_ref8) {
               _context7.n = 1;
               break;
             }
-            alert("Please upload an audio file first.");
+            _reactHotToast["default"].error(copy.errors.needAudio);
             return _context7.a(2);
           case 1:
             if (!(inputMode === "image" && !imageUrl)) {
               _context7.n = 2;
               break;
             }
-            alert("Please upload a portrait image first.");
+            _reactHotToast["default"].error(copy.errors.needImage);
             return _context7.a(2);
           case 2:
             if (!(inputMode === "video" && !videoUrl)) {
               _context7.n = 3;
               break;
             }
-            alert("Please upload a source video first.");
+            _reactHotToast["default"].error(copy.errors.needVideo);
             return _context7.a(2);
           case 3:
+            onGenerationStart === null || onGenerationStart === void 0 || onGenerationStart();
             setIsGenerating(true);
             setGenerateError(null);
             _context7.p = 4;
@@ -1086,13 +1073,12 @@ function LipSyncStudio(_ref8) {
             _context7.p = 7;
             _t5 = _context7.v;
             console.error("[LipSyncStudio]", _t5);
-            setGenerateError((_e$message$slice = (_e$message = _t5.message) === null || _e$message === void 0 ? void 0 : _e$message.slice(0, 80)) !== null && _e$message$slice !== void 0 ? _e$message$slice : "Unknown error");
-            setTimeout(function () {
-              return setGenerateError(null);
-            }, 4000);
+            errMsg = (0, _formatError.formatErrorMessage)(_t5, copy.errors.generationFailed);
+            if (onGenerationError) onGenerationError(errMsg);else _reactHotToast["default"].error(errMsg);
           case 8:
             _context7.p = 8;
             setIsGenerating(false);
+            onGenerationEnd === null || onGenerationEnd === void 0 || onGenerationEnd();
             return _context7.f(8);
           case 9:
             return _context7.a(2);
@@ -1121,9 +1107,9 @@ function LipSyncStudio(_ref8) {
   };
 
   // ── Media status labels ─────────────────────────────────────────────────
-  var mediaStatusText = inputMode === "image" ? imageState === UPLOAD_STATE.READY ? "\u2713 ".concat(imageName) : "No image" : videoState === UPLOAD_STATE.READY ? "\u2713 ".concat(videoName) : "No video";
+  var mediaStatusText = inputMode === "image" ? imageState === UPLOAD_STATE.READY ? "\u2713 ".concat(imageName) : copy.media.noImage : videoState === UPLOAD_STATE.READY ? "\u2713 ".concat(videoName) : copy.media.noVideo;
   var mediaStatusClass = (inputMode === "image" ? imageState : videoState) === UPLOAD_STATE.READY ? "text-primary" : "text-muted";
-  var audioStatusText = audioState === UPLOAD_STATE.READY ? "\u2713 ".concat(audioName) : "No audio";
+  var audioStatusText = audioState === UPLOAD_STATE.READY ? "\u2713 ".concat(audioName) : copy.media.noAudio;
   var audioStatusClass = audioState === UPLOAD_STATE.READY ? "text-primary" : "text-muted";
   var hasHistory = history.length > 0;
 
@@ -1144,15 +1130,15 @@ function LipSyncStudio(_ref8) {
       children: history.length > 0 ? /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
         className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full pt-4 animate-fade-in-up",
         children: history.map(function (entry, idx) {
-          var _entry$model, _entry$model2;
+          var _entry$model;
           return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "relative group rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-xl hover:border-primary/50 transition-all duration-300 flex flex-col",
+            className: "relative group rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-xl hover:border-primary/50 transition-all duration-300 flex flex-col cursor-pointer",
+            onClick: function onClick() {
+              return setFullscreenUrl(entry.url);
+            },
             children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("video", {
               src: entry.url,
-              className: "w-full aspect-video object-cover bg-black/40 cursor-pointer hover:opacity-80 transition-opacity",
-              onClick: function onClick() {
-                return setFullscreenUrl(entry.url);
-              },
+              className: "w-full aspect-video object-cover bg-black/40 hover:opacity-80 transition-opacity",
               controls: false,
               loop: true,
               muted: true,
@@ -1165,41 +1151,13 @@ function LipSyncStudio(_ref8) {
                 e.target.currentTime = 0;
               }
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-              className: "absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-                type: "button",
-                title: "Fullscreen",
-                onClick: function onClick(e) {
-                  e.stopPropagation();
-                  setFullscreenUrl(entry.url);
-                },
-                className: "p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10",
-                children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-                  width: "14",
-                  height: "14",
-                  viewBox: "0 0 24 24",
-                  fill: "none",
-                  stroke: "currentColor",
-                  strokeWidth: "2.5",
-                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
-                    points: "15 3 21 3 21 9"
-                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
-                    points: "9 21 3 21 3 15"
-                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
-                    x1: "21",
-                    y1: "3",
-                    x2: "14",
-                    y2: "10"
-                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
-                    x1: "3",
-                    y1: "21",
-                    x2: "10",
-                    y2: "14"
-                  })]
-                })
+              className: "absolute top-2 right-2 hidden md:flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_MobileGenerationActions.GenerationCopyButtons, {
+                prompt: entry.prompt,
+                onCopyError: onGenerationError
               }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
                 type: "button",
-                title: "Download",
+                title: copy.actions.download,
                 onClick: function onClick(e) {
                   e.stopPropagation();
                   downloadFile(entry.url, "lipsync-".concat(entry.id || idx, ".mp4"));
@@ -1241,10 +1199,10 @@ function LipSyncStudio(_ref8) {
                 })
               }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
                 type: "button",
-                title: "Delete",
+                title: copy.actions["delete"],
                 onClick: function onClick(e) {
                   e.stopPropagation();
-                  if (confirm("Are you sure you want to delete this generated item?")) {
+                  if (confirm(copy.confirm.deleteItem)) {
                     setInternalHistory(function (prev) {
                       return prev.filter(function (_, i) {
                         return i !== idx;
@@ -1263,7 +1221,7 @@ function LipSyncStudio(_ref8) {
                   children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
                     points: "3 6 5 6 21 6"
                   }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-                    d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                    d: "M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"
                   }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
                     x1: "10",
                     y1: "11",
@@ -1277,18 +1235,48 @@ function LipSyncStudio(_ref8) {
                   })]
                 })
               })]
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_MobileGenerationActions["default"], {
+              prompt: entry.prompt,
+              onCopyError: onGenerationError,
+              actions: [{
+                kind: "download",
+                label: copy.actions.download,
+                onSelect: function onSelect() {
+                  return downloadFile(entry.url, "lipsync-".concat(entry.id || idx, ".mp4"));
+                }
+              }, {
+                kind: "delete",
+                label: copy.actions["delete"],
+                danger: true,
+                onSelect: function onSelect() {
+                  if (confirm(copy.confirm.deleteItem)) {
+                    setInternalHistory(function (prev) {
+                      return prev.filter(function (_, i) {
+                        return i !== idx;
+                      });
+                    });
+                  }
+                }
+              }]
+            }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
               className: "p-3 bg-black/80 backdrop-blur-sm border-t border-white/5 flex-1 flex flex-col justify-between gap-2",
-              children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                className: "flex items-center justify-between flex-wrap gap-1",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                  className: "text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded border border-primary/20 whitespace-nowrap",
-                  children: ((_entry$model2 = entry.model) === null || _entry$model2 === void 0 ? void 0 : _entry$model2.name) || entry.model || "Lip Sync"
-                }), entry.resolution && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                  className: "text-[10px] text-white/40",
-                  children: entry.resolution
-                })]
-              })
+              children: [entry.prompt && /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
+                className: "text-white/70 text-xs line-clamp-2 leading-relaxed",
+                title: entry.prompt,
+                children: entry.prompt
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                className: "flex items-center justify-between flex-wrap gap-1 mt-1",
+                children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                  className: "flex items-center gap-2",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                    className: "text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded border border-primary/20 whitespace-nowrap",
+                    children: copy.badges.lipSync
+                  }), entry.resolution && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                    className: "text-[10px] text-white/40",
+                    children: entry.resolution
+                  })]
+                })
+              })]
             })]
           }, entry.id || idx);
         })
@@ -1329,30 +1317,70 @@ function LipSyncStudio(_ref8) {
           className: "text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-center px-4 flex flex-col items-center",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
             className: "text-white font-black uppercase text-xl sm:text-3xl tracking-wide mb-1 opacity-90",
-            children: "START CREATING WITH"
+            children: copy.hero.titleLine1
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
             className: "text-[#22d3ee] font-black uppercase text-2xl sm:text-4xl sm:mt-1 tracking-tight",
-            children: "LIP SYNC STUDIO"
+            children: copy.hero.titleLine2
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
           className: "text-white/40 text-xs sm:text-sm font-medium tracking-wide text-center max-w-lg leading-relaxed px-4",
-          children: "Sync any voice with any face video to create premium talking avatars and videos."
+          children: copy.hero.subtitle
         })]
       })
     }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptComposer, {
-      children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-        className: "flex items-center gap-2 px-3",
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-          type: "button",
-          onClick: switchToImage,
-          className: "px-3 py-1 rounded-md text-xs font-bold transition-all border ".concat(inputMode === "image" ? "border-[#22d3ee]/60 bg-[#22d3ee]/5 text-[#22d3ee]" : "border-white/[0.03] bg-white/[0.03] text-white/40 hover:border-white/20 hover:text-white"),
-          children: "\uD83D\uDDBC Portrait Image"
-        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-          type: "button",
-          onClick: switchToVideo,
-          className: "px-3 py-1 rounded-md text-[10px] font-bold transition-all border ".concat(inputMode === "video" ? "border-[#22d3ee]/60 bg-[#22d3ee]/5 text-[#22d3ee]" : "border-white/[0.03] bg-white/[0.03] text-white/40 hover:border-white/20 hover:text-white"),
-          children: "\uD83C\uDFAC Video"
-        })]
+      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        className: "flex items-center px-1",
+        children: /*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptSegmentedControl, {
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptSegmentOption, {
+            type: "button",
+            onClick: switchToImage,
+            selected: inputMode === "image",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+              width: "13",
+              height: "13",
+              viewBox: "0 0 24 24",
+              fill: "none",
+              stroke: "currentColor",
+              strokeWidth: "2",
+              "aria-hidden": "true",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("rect", {
+                x: "3",
+                y: "3",
+                width: "18",
+                height: "18",
+                rx: "2"
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                cx: "8.5",
+                cy: "8.5",
+                r: "1.5"
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                d: "m21 15-5-5L5 21"
+              })]
+            }), copy.modes.portraitImage]
+          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptSegmentOption, {
+            type: "button",
+            onClick: switchToVideo,
+            selected: inputMode === "video",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+              width: "13",
+              height: "13",
+              viewBox: "0 0 24 24",
+              fill: "none",
+              stroke: "currentColor",
+              strokeWidth: "2",
+              "aria-hidden": "true",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("rect", {
+                x: "2",
+                y: "5",
+                width: "15",
+                height: "14",
+                rx: "2"
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                d: "m17 10 5-3v10l-5-3"
+              })]
+            }), copy.modes.video]
+          })]
+        })
       }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
         className: "flex items-center gap-2 px-1",
         children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
@@ -1431,26 +1459,22 @@ function LipSyncStudio(_ref8) {
             uploadState: audioState,
             progress: audioProgress,
             fileName: audioName,
-            previewUrl: null,
+            previewUrl: audioUrl,
+            isAudio: true,
             isVideo: false,
             apiKey: apiKey
           })]
-        }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
           className: "flex-1 flex flex-col",
-          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_TemplateBanner["default"], {
-            isApplied: isTemplateApplied,
-            onClear: resetTemplate
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptTextarea, {
+          children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptTextarea, {
             ref: textareaRef,
             value: prompt,
             onChange: handlePromptInput,
             placeholder: copy.prompt.placeholder
-          })]
+          })
         })]
-      }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-        className: "flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-3 border-t border-white/[0.03] relative",
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "flex items-center gap-2 px-1",
+      }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptFooter, {
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptControls, {
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "relative",
             children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
@@ -1460,7 +1484,9 @@ function LipSyncStudio(_ref8) {
                 e.stopPropagation();
                 setOpenDropdown(openDropdown === "model" ? null : "model");
               },
-              className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
+              className: (0, _PromptComposer.promptControlClassName)({
+                active: openDropdown === "model"
+              }),
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
                 className: "w-3.5 h-3.5 bg-[#22d3ee] rounded-sm flex items-center justify-center",
                 children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
@@ -1468,20 +1494,9 @@ function LipSyncStudio(_ref8) {
                   children: "S"
                 })
               }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                className: "text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
-                children: (_selectedModel$name = selectedModel === null || selectedModel === void 0 ? void 0 : selectedModel.name) !== null && _selectedModel$name !== void 0 ? _selectedModel$name : "Select model"
-              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
-                width: "10",
-                height: "10",
-                viewBox: "0 0 24 24",
-                fill: "none",
-                stroke: "currentColor",
-                strokeWidth: "4",
-                className: "opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0",
-                children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-                  d: "M6 9l6 6 6-6"
-                })
-              })]
+                className: _PromptComposer.PROMPT_CONTROL_LABEL_CLASS,
+                children: (_selectedModel$name = selectedModel === null || selectedModel === void 0 ? void 0 : selectedModel.name) !== null && _selectedModel$name !== void 0 ? _selectedModel$name : copy.model.selectModel
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptChevronIcon, {})]
             }), /*#__PURE__*/(0, _jsxRuntime.jsx)(Dropdown, {
               isOpen: openDropdown === "model",
               title: copy.model.dropdownTitle,
@@ -1496,18 +1511,20 @@ function LipSyncStudio(_ref8) {
             })]
           }), showResolution && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "relative",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
               ref: resolutionBtnRef,
               type: "button",
               onClick: function onClick(e) {
                 e.stopPropagation();
                 setOpenDropdown(openDropdown === "resolution" ? null : "resolution");
               },
-              className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
-              children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                className: "text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
+              className: (0, _PromptComposer.promptControlClassName)({
+                active: openDropdown === "resolution"
+              }),
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptQualityIcon, {}), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                className: _PromptComposer.PROMPT_CONTROL_LABEL_CLASS,
                 children: selectedResolution
-              })
+              })]
             }), /*#__PURE__*/(0, _jsxRuntime.jsx)(Dropdown, {
               isOpen: openDropdown === "resolution",
               title: copy.model.resolutionDropdownTitle,
@@ -1521,31 +1538,18 @@ function LipSyncStudio(_ref8) {
               },
               anchorRef: resolutionBtnRef
             })]
-          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-            type: "button",
-            onClick: function onClick() {
-              return setNativeAudio(!nativeAudio);
-            },
-            className: "h-[34px] flex items-center gap-2 px-3.5 rounded-md transition-all border whitespace-nowrap text-[11px] font-semibold shadow-inner ".concat(nativeAudio ? "bg-[#22d3ee]/10 border-[#22d3ee]/20 text-[#22d3ee]" : "bg-[#16161a]/60 border-white/[0.06] text-white/70 hover:bg-[#202026]/80 hover:text-white"),
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(MicIcon, {
-              className: "w-3.5 h-3.5 text-current"
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-              children: "Native Audio"
-            })]
           })]
-        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-          type: "button",
+        }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptAction, {
           onClick: handleGenerate,
           disabled: isGenerating,
-          className: "bg-[#22d3ee] text-black px-7 py-3 rounded-full font-black text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10",
           children: isGenerating ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
             children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
               className: "animate-spin inline-block text-black",
               children: "\u25CC"
-            }), " ", "Generating..."]
-          }) : generateError ? "Error: ".concat(generateError) : /*#__PURE__*/(0, _jsxRuntime.jsx)(_jsxRuntime.Fragment, {
+            }), " ", copy.actions.generating]
+          }) : /*#__PURE__*/(0, _jsxRuntime.jsx)(_jsxRuntime.Fragment, {
             children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-              children: "Sync Lip"
+              children: copy.actions.generate
             })
           })
         })]
@@ -1593,6 +1597,26 @@ function LipSyncStudio(_ref8) {
           return e.stopPropagation();
         }
       })]
+    }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactHotToast.Toaster, {
+      position: "top-right",
+      containerStyle: {
+        zIndex: 99999
+      },
+      toastOptions: {
+        duration: 5000,
+        style: {
+          background: '#18181b',
+          color: '#ffffff',
+          border: '1px solid rgba(255,255,255,0.15)',
+          fontSize: '13px',
+          borderRadius: '12px',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+          maxWidth: '440px',
+          wordBreak: 'break-word',
+          whiteSpace: 'pre-wrap',
+          padding: '12px 16px'
+        }
+      }
     })]
   });
 }

@@ -1,15 +1,18 @@
 "use strict";
 "use client";
 
-function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports["default"] = AudioStudio;
 var _react = require("react");
+var _reactHotToast = _interopRequireWildcard(require("react-hot-toast"));
 var _useTemplateData2 = require("../hooks/useTemplateData");
 var _TemplateBanner = _interopRequireDefault(require("./TemplateBanner"));
 var _muapi = require("../muapi.js");
+var _uploadContract = require("../uploadContract.js");
+var _formatError = require("../utils/formatError.js");
+var _persistKey = require("../persistKey.js");
 var _models = require("../models.js");
 var _CostEstimator = _interopRequireDefault(require("./CostEstimator.jsx"));
 var _audioStudio = _interopRequireDefault(require("../messages/en/audioStudio.json"));
@@ -17,6 +20,8 @@ var _audioStudio2 = _interopRequireDefault(require("../messages/zh/audioStudio.j
 var _i18nUtils = require("../i18nUtils");
 var _jsxRuntime = require("react/jsx-runtime");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
+function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function _interopRequireWildcard(e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, "default": e }; if (null === e || "object" != _typeof(e) && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (var _t5 in e) "default" !== _t5 && {}.hasOwnProperty.call(e, _t5) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, _t5)) && (i.get || i.set) ? o(f, _t5, i) : f[_t5] = e[_t5]); return f; })(e, t); }
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
@@ -188,11 +193,11 @@ function AudioFileUploader(_ref2) {
     _useState6 = _slicedToArray(_useState5, 2),
     fileName = _useState6[0],
     setFileName = _useState6[1];
-  var fileInputRef = (0, _react.useRef)(null);
   var _useState7 = (0, _react.useState)(false),
     _useState8 = _slicedToArray(_useState7, 2),
     isDragging = _useState8[0],
     setIsDragging = _useState8[1];
+  var fileInputRef = (0, _react.useRef)(null);
   var dragCounterRef = (0, _react.useRef)(0);
   (0, _react.useEffect)(function () {
     if (!value) {
@@ -217,7 +222,7 @@ function AudioFileUploader(_ref2) {
             }
             return _context.a(2);
           case 1:
-            if (!(file.size > 20 * 1024 * 1024)) {
+            if (!(file.size > (0, _uploadContract.getUploadLimit)(file))) {
               _context.n = 2;
               break;
             }
@@ -259,6 +264,10 @@ function AudioFileUploader(_ref2) {
   var handleInputChange = function handleInputChange(e) {
     handleUpload(Array.from(e.target.files || []));
   };
+  var clearFile = function clearFile(e) {
+    e.stopPropagation();
+    onChange(null);
+  };
   var handleDragEnter = function handleDragEnter(e) {
     var _e$dataTransfer;
     e.preventDefault();
@@ -294,10 +303,6 @@ function AudioFileUploader(_ref2) {
     if (files && files.length > 0) {
       handleUpload(Array.from(files));
     }
-  };
-  var clearFile = function clearFile(e) {
-    e.stopPropagation();
-    onChange(null);
   };
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     className: "space-y-2",
@@ -445,7 +450,9 @@ function AudioListUploader(_ref4) {
 // ---------------------------------------------------------------------------
 function PremiumAudioPlayer(_ref5) {
   var url = _ref5.url,
-    title = _ref5.title;
+    title = _ref5.title,
+    _ref5$copy = _ref5.copy,
+    copy = _ref5$copy === void 0 ? _audioStudio["default"] : _ref5$copy;
   var _useState9 = (0, _react.useState)(false),
     _useState0 = _slicedToArray(_useState9, 2),
     isPlaying = _useState0[0],
@@ -638,10 +645,10 @@ function PremiumAudioPlayer(_ref5) {
         className: "text-center px-4 max-w-full relative z-10",
         children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
           className: "text-xs font-black text-primary uppercase tracking-[0.2em] block mb-1",
-          children: "Now Playing"
+          children: copy.player.nowPlaying
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
           className: "text-white font-bold text-base truncate max-w-xs",
-          children: title || "Generated Track"
+          children: title || copy.player.defaultTitle
         })]
       })]
     }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
@@ -677,7 +684,7 @@ function PremiumAudioPlayer(_ref5) {
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
             onClick: toggleMute,
             className: "p-2 bg-zinc-800/80 border border-zinc-700 hover:bg-zinc-700 rounded text-zinc-200 hover:text-white transition-all",
-            title: "Mute/Unmute",
+            title: copy.player.muteUnmute,
             type: "button",
             children: isMuted ? /*#__PURE__*/(0, _jsxRuntime.jsx)(VolumeMuteIcon, {}) : /*#__PURE__*/(0, _jsxRuntime.jsx)(VolumeIcon, {})
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
@@ -692,13 +699,13 @@ function PremiumAudioPlayer(_ref5) {
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
           onClick: togglePlay,
           className: "w-12 h-12 bg-primary hover:bg-white text-black rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-glow",
-          title: isPlaying ? "Pause" : "Play",
+          title: isPlaying ? copy.player.pause : copy.player.play,
           type: "button",
           children: isPlaying ? /*#__PURE__*/(0, _jsxRuntime.jsx)(PauseIcon, {}) : /*#__PURE__*/(0, _jsxRuntime.jsx)(PlayIcon, {})
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
           onClick: downloadAudio,
           className: "px-4 py-2 bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700 rounded text-xs font-bold text-white flex items-center gap-2 hover:border-primary/45 transition-all",
-          title: "Download Audio",
+          title: copy.player.download,
           type: "button",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
             width: "12",
@@ -711,7 +718,7 @@ function PremiumAudioPlayer(_ref5) {
               d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"
             })
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-            children: "Save"
+            children: copy.player.save
           })]
         })]
       })]
@@ -725,15 +732,22 @@ function PremiumAudioPlayer(_ref5) {
 function AudioStudio(_ref7) {
   var _audioModels$0$id, _audioModels$, _selectedModel$name;
   var apiKey = _ref7.apiKey,
+    onGenerationStart = _ref7.onGenerationStart,
+    onGenerationEnd = _ref7.onGenerationEnd,
     onGenerationComplete = _ref7.onGenerationComplete,
+    onGenerationError = _ref7.onGenerationError,
     historyItems = _ref7.historyItems,
     droppedFiles = _ref7.droppedFiles,
     onFilesHandled = _ref7.onFilesHandled,
     templateData = _ref7.templateData,
     _ref7$locale = _ref7.locale,
     locale = _ref7$locale === void 0 ? "en" : _ref7$locale;
-  var PERSIST_KEY = "hg_audio_studio_persistent";
   var copy = (0, _i18nUtils.resolveCopy)(_audioStudio["default"], _audioStudio2["default"], locale);
+  var LEGACY_PERSIST_KEY = "hg_audio_studio_persistent";
+  var PERSIST_KEY = (0, _persistKey.scopedPersistKey)(LEGACY_PERSIST_KEY, apiKey);
+  (0, _react.useEffect)(function () {
+    (0, _persistKey.migrateLegacyPersistKey)(LEGACY_PERSIST_KEY, PERSIST_KEY);
+  }, [PERSIST_KEY]);
 
   // ── Mode & model state ──────────────────────────────────────────────────
   var _useState19 = (0, _react.useState)((_audioModels$0$id = (_audioModels$ = _models.audioModels[0]) === null || _audioModels$ === void 0 ? void 0 : _audioModels$.id) !== null && _audioModels$0$id !== void 0 ? _audioModels$0$id : ""),
@@ -748,40 +762,59 @@ function AudioStudio(_ref7) {
     _useState24 = _slicedToArray(_useState23, 2),
     openDropdown = _useState24[0],
     setOpenDropdown = _useState24[1];
+  var _useState25 = (0, _react.useState)(null),
+    _useState26 = _slicedToArray(_useState25, 2),
+    openParamDropdown = _useState26[0],
+    setOpenParamDropdown = _useState26[1];
   var modelBtnRef = (0, _react.useRef)(null);
+  var sidebarRef = (0, _react.useRef)(null);
+
+  // Close dropdowns on outside click
+  (0, _react.useEffect)(function () {
+    var handler = function handler(e) {
+      if (sidebarRef.current && !sidebarRef.current.contains(e.target)) {
+        setOpenDropdown(false);
+        setOpenParamDropdown(null);
+      }
+    };
+    window.addEventListener("click", handler);
+    return function () {
+      return window.removeEventListener("click", handler);
+    };
+  }, []);
 
   // ── Generation state ──────────────────────────────────────────────────
-  var _useState25 = (0, _react.useState)(false),
-    _useState26 = _slicedToArray(_useState25, 2),
-    isGenerating = _useState26[0],
-    setIsGenerating = _useState26[1];
-  var _useState27 = (0, _react.useState)(null),
+  var _useState27 = (0, _react.useState)(false),
     _useState28 = _slicedToArray(_useState27, 2),
-    generateError = _useState28[0],
-    setGenerateError = _useState28[1];
+    isGenerating = _useState28[0],
+    setIsGenerating = _useState28[1];
   var _useState29 = (0, _react.useState)(null),
     _useState30 = _slicedToArray(_useState29, 2),
-    activeResultUrl = _useState30[0],
-    setActiveResultUrl = _useState30[1];
-  var _useState31 = (0, _react.useState)(""),
+    generateError = _useState30[0],
+    setGenerateError = _useState30[1];
+  var _useState31 = (0, _react.useState)(null),
     _useState32 = _slicedToArray(_useState31, 2),
-    activeResultTitle = _useState32[0],
-    setActiveResultTitle = _useState32[1];
-  var _useState33 = (0, _react.useState)("input"),
+    activeResultUrl = _useState32[0],
+    setActiveResultUrl = _useState32[1];
+  var _useState33 = (0, _react.useState)(""),
     _useState34 = _slicedToArray(_useState33, 2),
-    view = _useState34[0],
-    setView = _useState34[1]; // 'input' | 'result'
+    activeResultTitle = _useState34[0],
+    setActiveResultTitle = _useState34[1];
+  var _useState35 = (0, _react.useState)("input"),
+    _useState36 = _slicedToArray(_useState35, 2),
+    view = _useState36[0],
+    setView = _useState36[1]; // 'input' | 'result'
 
   // ── History state ────────────────────────────────────────────────────
-  var _useState35 = (0, _react.useState)([]),
-    _useState36 = _slicedToArray(_useState35, 2),
-    internalHistory = _useState36[0],
-    setInternalHistory = _useState36[1];
-  var history = historyItems !== null && historyItems !== void 0 ? historyItems : internalHistory;
-  var _useState37 = (0, _react.useState)(0),
+  var _useState37 = (0, _react.useState)([]),
     _useState38 = _slicedToArray(_useState37, 2),
-    activeHistoryIdx = _useState38[0],
-    setActiveHistoryIdx = _useState38[1];
+    internalHistory = _useState38[0],
+    setInternalHistory = _useState38[1];
+  var history = historyItems !== null && historyItems !== void 0 ? historyItems : internalHistory;
+  var _useState39 = (0, _react.useState)(0),
+    _useState40 = _slicedToArray(_useState39, 2),
+    activeHistoryIdx = _useState40[0],
+    setActiveHistoryIdx = _useState40[1];
   var selectedModel = (0, _models.getAudioModelById)(selectedModelId);
 
   // ── Initialize params when model changes ──────────────────────────────
@@ -884,7 +917,7 @@ function AudioStudio(_ref7) {
               return _objectSpread(_objectSpread({}, prev), {}, _defineProperty({}, key, url));
             });
           })["catch"](function (err) {
-            return alert("Failed to upload dropped file: ".concat(err.message));
+            return alert(copy.generate.droppedFileUploadError.replace('{message}', err.message));
           });
         } else if (firstAudioListField) {
           var _firstAudioListField = _slicedToArray(firstAudioListField, 1),
@@ -896,7 +929,7 @@ function AudioStudio(_ref7) {
               return _objectSpread(_objectSpread({}, prev), {}, _defineProperty({}, _key, currentList));
             });
           })["catch"](function (err) {
-            return alert("Failed to upload dropped file: ".concat(err.message));
+            return alert(copy.generate.droppedFileUploadError.replace('{message}', err.message));
           });
         }
       }
@@ -912,13 +945,13 @@ function AudioStudio(_ref7) {
   }, []);
   var handleSelectHistory = function handleSelectHistory(entry, index) {
     setActiveResultUrl(entry.url);
-    setActiveResultTitle(entry.title || entry.prompt || "Generated Track");
+    setActiveResultTitle(entry.title || entry.prompt || copy.player.defaultTitle);
     setActiveHistoryIdx(index);
     setView("result");
   };
   var handleGenerate = /*#__PURE__*/function () {
     var _ref12 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3() {
-      var _iterator, _step, field, _selectedModel$inputs, audioParams, res, title, entry, _e$message$slice, _e$message, _t3, _t4;
+      var _iterator, _step, field, _selectedModel$inputs, audioParams, res, title, entry, errMsg, _t3, _t4;
       return _regenerator().w(function (_context3) {
         while (1) switch (_context3.p = _context3.n) {
           case 0:
@@ -945,7 +978,7 @@ function AudioStudio(_ref7) {
               _context3.n = 4;
               break;
             }
-            alert("Please complete the required field: ".concat(((_selectedModel$inputs = selectedModel.inputs) === null || _selectedModel$inputs === void 0 || (_selectedModel$inputs = _selectedModel$inputs[field]) === null || _selectedModel$inputs === void 0 ? void 0 : _selectedModel$inputs.title) || field));
+            alert(copy.sidebar.requiredFieldError.replace('{field}', ((_selectedModel$inputs = selectedModel.inputs) === null || _selectedModel$inputs === void 0 || (_selectedModel$inputs = _selectedModel$inputs[field]) === null || _selectedModel$inputs === void 0 ? void 0 : _selectedModel$inputs.title) || field));
             return _context3.a(2);
           case 4:
             _context3.n = 3;
@@ -962,6 +995,7 @@ function AudioStudio(_ref7) {
             _iterator.f();
             return _context3.f(7);
           case 8:
+            onGenerationStart === null || onGenerationStart === void 0 || onGenerationStart();
             setIsGenerating(true);
             setGenerateError(null);
             _context3.p = 9;
@@ -976,7 +1010,7 @@ function AudioStudio(_ref7) {
               _context3.n = 11;
               break;
             }
-            throw new Error("No audio URL returned by the API.");
+            throw new Error(copy.generate.noUrlError);
           case 11:
             title = params.title || params.prompt || "Generated ".concat(selectedModel.name);
             entry = {
@@ -1006,10 +1040,12 @@ function AudioStudio(_ref7) {
             _context3.p = 12;
             _t4 = _context3.v;
             console.error("[AudioStudio]", _t4);
-            setGenerateError((_e$message$slice = (_e$message = _t4.message) === null || _e$message === void 0 ? void 0 : _e$message.slice(0, 100)) !== null && _e$message$slice !== void 0 ? _e$message$slice : "Audio generation failed");
+            errMsg = (0, _formatError.formatErrorMessage)(_t4, copy.generate.genericError);
+            if (onGenerationError) onGenerationError(errMsg);else _reactHotToast["default"].error(errMsg);
           case 13:
             _context3.p = 13;
             setIsGenerating(false);
+            onGenerationEnd === null || onGenerationEnd === void 0 || onGenerationEnd();
             return _context3.f(13);
           case 14:
             return _context3.a(2);
@@ -1029,6 +1065,7 @@ function AudioStudio(_ref7) {
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     className: "w-full h-full flex bg-app-bg text-white overflow-hidden relative",
     children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+      ref: sidebarRef,
       className: "w-full lg:w-[400px] border-r border-zinc-900 flex flex-col bg-zinc-950/40 backdrop-blur-lg flex-shrink-0 z-30",
       children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
         className: "p-6 overflow-y-auto flex-1 custom-scrollbar space-y-6 pb-24",
@@ -1036,7 +1073,7 @@ function AudioStudio(_ref7) {
           className: "space-y-2 relative",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("label", {
             className: "text-xs font-bold text-zinc-300 uppercase tracking-wider block",
-            children: "Audio Model"
+            children: copy.sidebar.modelLabel
           }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
             ref: modelBtnRef,
             type: "button",
@@ -1045,7 +1082,7 @@ function AudioStudio(_ref7) {
             },
             className: "w-full bg-zinc-900 border border-zinc-700 rounded px-4 py-3.5 text-sm text-left font-bold text-white flex items-center justify-between hover:bg-zinc-850 hover:border-primary/50 transition-all",
             children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-              children: (_selectedModel$name = selectedModel === null || selectedModel === void 0 ? void 0 : selectedModel.name) !== null && _selectedModel$name !== void 0 ? _selectedModel$name : "Select Model"
+              children: (_selectedModel$name = selectedModel === null || selectedModel === void 0 ? void 0 : selectedModel.name) !== null && _selectedModel$name !== void 0 ? _selectedModel$name : copy.sidebar.selectModel
             }), /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
               width: "14",
               height: "14",
@@ -1081,7 +1118,7 @@ function AudioStudio(_ref7) {
           className: "",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
             className: "text-[10px] font-bold text-primary uppercase tracking-wider block mb-1.5",
-            children: "Description"
+            children: copy.sidebar.descriptionLabel
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
             className: "text-zinc-400 text-xs leading-relaxed font-semibold",
             children: selectedModel.description
@@ -1152,25 +1189,49 @@ function AudioStudio(_ref7) {
             }
             // Enum Dropdowns
             if (schema["enum"]) {
+              var isOpen = openParamDropdown === key;
               return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                className: "space-y-2",
+                className: "space-y-2 relative",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("label", {
-                  className: "block text-xs font-bold text-zinc-200 uppercase tracking-wider",
+                  className: "block text-xs font-bold text-zinc-300 uppercase tracking-wider",
                   children: schema.title || key
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("select", {
-                  value: params[key] || "",
-                  onChange: function onChange(e) {
-                    return setParams(function (prev) {
-                      return _objectSpread(_objectSpread({}, prev), {}, _defineProperty({}, key, e.target.value));
-                    });
+                }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+                  type: "button",
+                  onClick: function onClick() {
+                    setOpenDropdown(false);
+                    setOpenParamDropdown(isOpen ? null : key);
                   },
-                  className: "w-full bg-zinc-900 border border-zinc-700 hover:border-zinc-600 rounded px-4 py-3 text-xs text-white focus:outline-none focus:border-primary transition-all cursor-pointer",
+                  className: "w-full bg-zinc-900 border border-zinc-700 hover:border-zinc-600 rounded px-4 py-3.5 text-xs text-left font-bold text-white flex items-center justify-between transition-all cursor-pointer",
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                    children: params[key] || copy.sidebar.selectOption
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
+                    width: "12",
+                    height: "12",
+                    viewBox: "0 0 24 24",
+                    fill: "none",
+                    stroke: "currentColor",
+                    strokeWidth: "2.5",
+                    className: "transition-transform duration-200 ".concat(isOpen ? 'rotate-185' : ''),
+                    children: /*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
+                      points: "6 9 12 15 18 9"
+                    })
+                  })]
+                }), isOpen && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                  className: "absolute left-0 right-0 mt-1 z-50 bg-[#161618] border border-zinc-700 rounded shadow-3xl max-h-60 overflow-y-auto custom-scrollbar p-1",
                   children: schema["enum"].map(function (opt) {
-                    return /*#__PURE__*/(0, _jsxRuntime.jsx)("option", {
-                      value: opt,
-                      className: "bg-zinc-900 text-white text-xs",
-                      children: opt
-                    }, opt);
+                    var optionValue = _typeof(opt) === "object" ? opt.value : opt;
+                    var optionLabel = _typeof(opt) === "object" ? opt.label || opt.value : opt;
+                    return /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+                      type: "button",
+                      onClick: function onClick() {
+                        setParams(function (prev) {
+                          return _objectSpread(_objectSpread({}, prev), {}, _defineProperty({}, key, optionValue));
+                        });
+                        setOpenParamDropdown(null);
+                      },
+                      className: "w-full text-left px-4 py-2.5 rounded text-xs font-bold transition-all border ".concat(params[key] === optionValue ? "text-primary bg-primary/10 border-primary/20" : "text-zinc-200 border-transparent hover:bg-zinc-900 hover:text-white"),
+                      children: optionLabel
+                    }, optionValue);
                   })
                 }), schema.description && /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                   className: "block text-[11px] text-zinc-300 leading-normal",
@@ -1229,7 +1290,7 @@ function AudioStudio(_ref7) {
                 className: "space-y-2",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("label", {
                   className: "block text-xs font-bold text-zinc-200 uppercase tracking-wider",
-                  children: schema.title || "Lyrics / Prompt"
+                  children: schema.title || copy.sidebar.lyricsPromptLabel
                 }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_TemplateBanner["default"], {
                   isApplied: isTemplateApplied,
                   onClear: resetTemplate
@@ -1241,7 +1302,7 @@ function AudioStudio(_ref7) {
                     });
                   },
                   className: "w-full bg-zinc-900 border border-zinc-700 focus:border-primary/85 rounded p-3 text-xs text-white placeholder:text-zinc-400 focus:outline-none transition-all min-h-[100px] resize-none leading-relaxed shadow-inner",
-                  placeholder: schema.description || "Enter what you want generated..."
+                  placeholder: schema.description || copy.sidebar.promptPlaceholder
                 }), schema.examples && Array.isArray(schema.examples) && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
                   className: "flex flex-wrap gap-1.5 mt-2",
                   children: schema.examples.map(function (ex, idx) {
@@ -1269,7 +1330,7 @@ function AudioStudio(_ref7) {
               }), /*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
                 type: isNumber ? "number" : "text",
                 value: params[key] !== undefined ? params[key] : "",
-                placeholder: schema.placeholder || schema.description || "Enter ".concat(key, "..."),
+                placeholder: schema.placeholder || schema.description || copy.sidebar.fieldPlaceholder.replace('{field}', key),
                 onChange: function onChange(e) {
                   var val = isNumber ? e.target.value === "" ? "" : parseFloat(e.target.value) : e.target.value;
                   setParams(function (prev) {
@@ -1299,7 +1360,7 @@ function AudioStudio(_ref7) {
             children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
               className: "w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin"
             }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-              children: "Generating Audio..."
+              children: copy.generate.generating
             })]
           }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
             children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
@@ -1313,7 +1374,7 @@ function AudioStudio(_ref7) {
                 d: "M5 3l14 9-14 9V3z"
               })
             }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-              children: "Generate Track"
+              children: copy.generate.cta
             })]
           })
         })]
@@ -1355,7 +1416,7 @@ function AudioStudio(_ref7) {
               className: "text-center",
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                 className: "text-xs font-black text-red-500 uppercase tracking-widest block mb-1",
-                children: "Generation Error"
+                children: copy.result.errorHeading
               }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
                 className: "text-white font-medium text-sm leading-relaxed",
                 children: generateError
@@ -1377,10 +1438,10 @@ function AudioStudio(_ref7) {
               className: "text-center space-y-2",
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
                 className: "text-xs font-black text-primary uppercase tracking-[0.3em] animate-pulse",
-                children: "Generating Soundtrack"
+                children: copy.result.loadingHeading
               }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
                 className: "text-sm text-zinc-200 font-bold",
-                children: "Rendering audio waveforms and vocals..."
+                children: copy.result.loadingSubtext
               })]
             })]
           }), view === "input" && !isGenerating && !generateError && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
@@ -1396,10 +1457,10 @@ function AudioStudio(_ref7) {
               className: "relative z-10",
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("h3", {
                 className: "text-white font-black text-xl mb-3 tracking-tight",
-                children: "Audio Studio"
+                children: copy.result.emptyHeading
               }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
                 className: "text-sm text-zinc-200 font-medium leading-relaxed px-4",
-                children: "Choose an AI music model, voice cloner, or sound generator. Modify variables on the left and craft your next high-fidelity track."
+                children: copy.result.emptyBody
               })]
             })]
           }), view === "result" && activeResultUrl && !isGenerating && !generateError && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
@@ -1426,24 +1487,25 @@ function AudioStudio(_ref7) {
                     points: "12 19 5 12 12 5"
                   })]
                 }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                  children: "New Generation"
+                  children: copy.result.newGeneration
                 })]
               }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
                 className: "text-[11px] font-bold text-green-400 px-3.5 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full flex items-center gap-2",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
                   className: "w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"
-                }), " Success"]
+                }), " ", copy.result.success]
               })]
             }), /*#__PURE__*/(0, _jsxRuntime.jsx)(PremiumAudioPlayer, {
               url: activeResultUrl,
-              title: activeResultTitle
+              title: activeResultTitle,
+              copy: copy
             })]
           })]
         }), history.length > 0 && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
           className: "border-t border-zinc-900 pt-6 w-full animate-fade-in-up",
-          children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("h4", {
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("h4", {
             className: "text-xs font-bold text-zinc-300 uppercase tracking-wider mb-4 px-1",
-            children: ["Generation History (", history.length, ")"]
+            children: copy.history.heading.replace('{count}', history.length)
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
             className: "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4",
             children: history.map(function (entry, idx) {
@@ -1469,17 +1531,37 @@ function AudioStudio(_ref7) {
                     })
                   }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                     className: "text-[10px] font-bold text-primary uppercase tracking-wider truncate",
-                    children: entry.model ? entry.model.split('-').slice(0, 2).join(' ') : 'Audio'
+                    children: entry.model ? entry.model.split('-').slice(0, 2).join(' ') : copy.history.fallbackModel
                   })]
                 }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
                   className: "text-[11px] font-semibold text-white line-clamp-2 leading-tight",
-                  children: entry.title || entry.prompt || "Untitled Audio"
+                  children: entry.title || entry.prompt || copy.history.untitled
                 })]
               }, entry.id || idx);
             })
           })]
         })]
       })
+    }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactHotToast.Toaster, {
+      position: "top-right",
+      containerStyle: {
+        zIndex: 99999
+      },
+      toastOptions: {
+        duration: 5000,
+        style: {
+          background: '#18181b',
+          color: '#ffffff',
+          border: '1px solid rgba(255,255,255,0.15)',
+          fontSize: '13px',
+          borderRadius: '12px',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+          maxWidth: '440px',
+          wordBreak: 'break-word',
+          whiteSpace: 'pre-wrap',
+          padding: '12px 16px'
+        }
+      }
     })]
   });
 }
