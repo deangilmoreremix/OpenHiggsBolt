@@ -30,6 +30,8 @@ export interface UpdateDiscoveryJobInput {
   status?: DiscoveryJobStatus
   startedAt?: string | null
   completedAt?: string | null
+  /** The static/HTTP result, kept separately so it survives a failed browser phase. */
+  fastResult?: unknown
   browserResult?: unknown
   finalResult?: unknown
   telemetry?: Record<string, unknown>
@@ -65,6 +67,7 @@ export async function updateDiscoveryJob(id: string, input: UpdateDiscoveryJobIn
   if (input.status) payload.status = input.status
   if (input.startedAt !== undefined) payload.started_at = input.startedAt
   if (input.completedAt !== undefined) payload.completed_at = input.completedAt
+  if (input.fastResult !== undefined) payload.fast_result_json = input.fastResult
   if (input.browserResult !== undefined) payload.browser_result_json = input.browserResult
   if (input.finalResult !== undefined) payload.final_result_json = input.finalResult
   if (input.telemetry) payload.telemetry_json = input.telemetry

@@ -22,6 +22,7 @@ import {
   __resetNominatimSearchCircuitForTests,
   __nominatimSearchCircuitStateForTests,
 } from '../nominatimSearchProvider'
+import { geocodeLocation } from '../nominatimProvider'
 
 const BASE = 'http://127.0.0.1:9' // never actually contacted; fetch is stubbed
 
@@ -95,18 +96,31 @@ afterEach(() => {
 })
 
 describe('buildNicheSearchTerms', () => {
-  it('maps OSM tag values to natural-language search keywords', () => {
+  it('queries the niche by its own OSM tags, so the fallback searches the same population as Overpass', () => {
     const terms = buildNicheSearchTerms('restaurants-food')
-    expect(terms).toContain('restaurant')
-    expect(terms).toContain('coffee shop') // amenity=cafe alias
-    expect(terms).toContain('fast food') // amenity=fast_food alias
-    expect(terms).not.toContain('ice_cream') // never emits raw OSM vocabulary
+    expect(terms).toContain('amenity=restaurant')
+    expect(terms).toContain('amenity=cafe')
+    expect(terms).toContain('amenity=fast_food')
+    // Never emits a generic "matches everything" tag.
+    expect(terms).not.toContain('shop=yes')
+    // Never emits the raw underscore vocabulary in a natural-language query.
+    expect(terms.every((term) => /^[a-z]+=[a-z_]+$/.test(term))).toBe(true)
   })
 
-  it('resolves service-style tag values into customer-facing words', () => {
+  it('maps deprecated OSM tags onto their modern equivalents', () => {
+    const terms = buildNicheSearchTerms('wellness-fitness')
+    // amenity=fitness_centre / amenity=gym were replaced by leisure=* in
+    // modern OSM data; querying the deprecated key returns nothing.
+    expect(terms).toContain('leisure=fitness_centre')
+    expect(terms).toContain('leisure=spa')
+    expect(terms).not.toContain('amenity=gym')
+    expect(terms).not.toContain('amenity=fitness_centre')
+  })
+
+  it('resolves service-style tag values into their OSM tags', () => {
     const terms = buildNicheSearchTerms('real-estate')
-    expect(terms).toContain('real estate') // office=estate_agent
-    expect(terms).toContain('insurance agency') // office=insurance
+    expect(terms).toContain('office=estate_agent') // real estate agents
+    expect(terms).toContain('office=insurance') // insurance agencies
   })
 
   it('de-duplicates terms and returns an empty list for an unsupported niche', () => {
@@ -328,6 +342,96 @@ describe('searchBusinessesViaNominatim — request budget and throttling', () =>
       expect(timestamps[i] - timestamps[i - 1]).toBeGreaterThanOrEqual(1000)
     }
   })
+
+  it('paces the GEOCODER and the business-list search through ONE shared gate', async () => {
+    // The ~1 req/s policy is an app-wide limit on Nominatim, so the geocoder
+    // and the business-list search must share one gate. If they did not, the
+    // search's first query would start right after the geocode and the gap
+    // between two consecutive Nominatim requests would collapse below a second.
+    const timestamps: number[] = []
+    const fn = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      timestamps.push(Date.now())
+      const isBusinessList = decodeURIComponent(url).includes('q=[')
+      const body = isBusinessList
+        ? JSON.stringify([poi()])
+        : JSON.stringify([
+            {
+              lat: '30.2672',
+              lon: '-97.7431',
+              display_name: 'Austin, Texas, USA',
+              boundingbox: ['30.1', '-97.9', '30.4', '-97.5'],
+            },
+          ])
+      return new Response(body, {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+    vi.stubGlobal('fetch', fn)
+
+    // The route's order: geocode first, then the business-list search.
+    await geocodeLocation('Austin, TX')
+    await searchBusinessesViaNominatim({
+      niche: 'restaurants-food',
+      latitude: 30.2672,
+      longitude: -97.7431,
+      radiusMiles: 15,
+      location: 'Austin, TX',
+      __baseUrl: BASE,
+    })
+
+    // 1 geocode + up to 3 business queries, ALL paced by the same gate.
+    expect(timestamps.length).toBeGreaterThanOrEqual(2)
+    for (let i = 1; i < timestamps.length; i += 1) {
+      expect(
+        timestamps[i] - timestamps[i - 1],
+        `gap between Nominatim request ${i - 1} and ${i}`,
+      ).toBeGreaterThanOrEqual(1000)
+    }
+  })
+
+  it('cancels the in-flight Nominatim request when the caller\'s budget is spent', async () => {
+    let observedAbort = false
+    const fn = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const signal = init?.signal ?? undefined
+      return new Promise<Response>((_resolve, reject) => {
+        if (!signal) return
+        if (signal.aborted) {
+          observedAbort = true
+          reject(new DOMException('Aborted', 'AbortError'))
+          return
+        }
+        signal.addEventListener('abort', () => {
+          observedAbort = true
+          reject(new DOMException('Aborted', 'AbortError'))
+        })
+      })
+    })
+    vi.stubGlobal('fetch', fn)
+
+    const controller = new AbortController()
+    const pending = searchBusinessesViaNominatim({
+      niche: 'restaurants-food',
+      latitude: 30.2672,
+      longitude: -97.7431,
+      radiusMiles: 15,
+      location: 'Austin, TX',
+      __baseUrl: BASE,
+      signal: controller.signal,
+    })
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    controller.abort()
+
+    // The provider settles instead of hanging …
+    await pending.catch(() => undefined)
+    // … the upstream request really was cancelled …
+    expect(observedAbort).toBe(true)
+    // … and a CANCELLED query is not a provider failure: the circuit breaker
+    // must not be poisoned by a request the caller deliberately stopped.
+    expect(__nominatimSearchCircuitStateForTests().consecutiveFailures).toBe(0)
+  })
 })
 
 describe('searchBusinessesViaNominatim — circuit breaker', () => {
@@ -439,5 +543,26 @@ describe('searchBusinessesViaNominatim — input validation', () => {
       expect(url).toContain('addressdetails=1')
       expect(url).toContain('format=jsonv2')
     }
+  })
+
+  it('queries by OSM tag so it matches the same businesses as the Overpass query', async () => {
+    const { calls } = stubFetch({ results: [] })
+
+    await searchBusinessesViaNominatim({
+      niche: 'restaurants-food',
+      latitude: 30.2672,
+      longitude: -97.7431,
+      radiusMiles: 15,
+      location: 'Austin, TX',
+      __baseUrl: BASE,
+    })
+
+    expect(calls.length).toBeGreaterThan(0)
+    for (const url of calls) {
+      // `[key=value]` is Nominatim's OSM tag syntax; a plain word would only
+      // match POI NAMES and miss the rest of the category.
+      expect(decodeURIComponent(url)).toMatch(/q=\[[a-z]+=[a-z_]+\]/)
+    }
+    expect(calls.map((url) => decodeURIComponent(url)).join(' ')).toContain('q=[amenity=restaurant]')
   })
 })
