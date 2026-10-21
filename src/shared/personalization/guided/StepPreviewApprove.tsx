@@ -7,6 +7,7 @@ import { uploadPersonalizationAsset } from '../assetUploadService'
 import { BeforeAfterPreview } from '../preview/BeforeAfterPreview'
 import { buildPreviewInput } from './buildPreviewInput'
 import { OverlayEditor } from './OverlayEditor'
+import { RemotionDesignPicker } from './RemotionDesignPicker'
 import { C, badgeStyle, chipStyle, hintStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
 import { PREVIEW_ASPECT_RATIOS } from '../preview/types'
 import { PREVIEW_LAYOUTS } from '../preview/presets'
@@ -100,7 +101,8 @@ export function StepPreviewApprove(): React.JSX.Element {
         <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: C.text }}>Preview and approve</h2>
         <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 12, lineHeight: 1.55 }}>
           Watch the original and your personalized version side by side. Drag, resize and edit your branding
-          directly on the video below. Previews are free and run in your browser.
+          directly on the video below, or add a motion design to play over it. Previews are free and run in
+          your browser.
         </p>
       </div>
 
@@ -108,6 +110,9 @@ export function StepPreviewApprove(): React.JSX.Element {
       <div style={panelStyle}>
         <BeforeAfterPreview inputProps={inputProps} defaultMode="toggle" />
       </div>
+
+      {/* ── Motion design (Remotion designs) ─────────────────────────────── */}
+      <RemotionDesignPicker inputProps={inputProps} />
 
       {/* ── Quick adjustments ───────────────────────────────────────────── */}
       <div style={panelStyle}>

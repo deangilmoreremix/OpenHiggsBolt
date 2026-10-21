@@ -125,6 +125,10 @@ export function buildBeforeInputProps(inputProps: PreviewInputProps): PreviewInp
       layers: inputProps.settings.layers.map((layer) => ({ ...layer, visible: false })),
       showEndCard: false,
     },
+    // A selected motion design IS the personalization: the BEFORE pane has to
+    // show the untouched original, so the design is dropped here too.
+    remotionDesignId: undefined,
+    remotionDesignProps: undefined,
   }
   // Guard: the comparison is only honest when both panes show one source.
   if (beforeInputProps.videoUrl !== inputProps.videoUrl) {

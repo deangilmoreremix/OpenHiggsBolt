@@ -4,6 +4,8 @@
  * so saved placements correspond to the actual video resolution.
  */
 
+import type { RemotionDesignId } from '../remotion/registry'
+
 export type PreviewLayoutId =
   | 'business-introduction'
   | 'product-showcase'
@@ -24,6 +26,17 @@ export type PreviewPositionId =
   | 'lower-third' | 'bottom-left' | 'bottom-center' | 'bottom-right'
 
 export type PreviewAspectRatio = '16:9' | '9:16' | '1:1' | '4:5'
+
+/**
+ * Id of a design registered in the Remotion design registry
+ * (`src/shared/personalization/remotion/registry.ts`).
+ *
+ * The union keeps editor autocomplete for the known designs while still
+ * accepting any string, so a document persisted by a newer build (or a
+ * hand-edited one) round-trips instead of being rejected. Resolve the value
+ * against the registry with `getRemotionDesign()` before using it.
+ */
+export type PreviewRemotionDesignId = RemotionDesignId | (string & {})
 
 export interface PreviewLayer {
   /** Stable id: the layer kind, optionally suffixed (e.g. 'headline-2'). */
@@ -53,6 +66,20 @@ export interface PreviewLayer {
   fontFamily?: string
   /** Anchor image URL for image layers (resolved by the caller). */
   imageUrl?: string
+  /**
+   * Optional id of a registered Remotion design that renders this layer
+   * instead of the built-in text/image treatment.
+   *
+   * See `src/shared/personalization/remotion/registry.ts`. The field is
+   * optional and additive: layers that do not set it keep their existing
+   * behaviour exactly.
+   */
+  remotionDesignId?: PreviewRemotionDesignId
+  /**
+   * Optional props bag forwarded to the design named by
+   * `remotionDesignId`. Keys the design does not declare are ignored.
+   */
+  designProps?: Record<string, unknown>
 }
 
 export interface PreviewBrandColors {
@@ -102,6 +129,22 @@ export interface PersonalizationPreviewSettings {
   height: number
   /** Customer-selected audio track, or null when none is chosen. */
   audio: PreviewAudioSelection | null
+  /**
+   * Optional id of a registered Remotion design applied to the composition.
+   *
+   * See `src/shared/personalization/remotion/registry.ts`. The field is
+   * optional and additive: settings that do not set it keep their existing
+   * behaviour exactly (the built-in layer stack, no design).
+   */
+  remotionDesignId?: PreviewRemotionDesignId
+  /**
+   * Optional customer edits for the selected design's own copy and colours.
+   *
+   * These are OVERRIDES on top of the values derived from the customer's
+   * existing business/brand data. Keys the design does not declare are
+   * ignored when the props are resolved.
+   */
+  remotionDesignProps?: Record<string, unknown>
 }
 
 /** Everything the composition needs to render one frame-accurate scene. */
@@ -124,6 +167,20 @@ export interface PreviewInputProps {
   }
   /** Durable audio track to mix into the composition, or null. */
   audioUrl: string | null
+  /**
+   * Optional id of a registered Remotion design applied to the whole
+   * composition.
+   *
+   * See `src/shared/personalization/remotion/registry.ts`. The field is
+   * optional and additive: a composition that does not set it renders
+   * exactly as before.
+   */
+  remotionDesignId?: PreviewRemotionDesignId
+  /**
+   * Optional props bag forwarded to the design named by
+   * `remotionDesignId`. Keys the design does not declare are ignored.
+   */
+  remotionDesignProps?: Record<string, unknown>
 }
 
 export const DEFAULT_PREVIEW_FPS = 30

@@ -21,6 +21,8 @@ import { supabase } from '@/shared/api/supabase'
 import { readStoryboardHandoff, clearStoryboardHandoff } from '@/shared/crossStudio'
 import { enhancePrompt } from '@/shared/api/openai'
 import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider'
+import { useDemoPersonalize } from '@/shared/personalization'
+import { createPersonalizationOpenOptions } from '@/shared/personalization/entryPoint'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const SESSION_ID_KEY = 'thumbnail_studio_session_id'
@@ -257,6 +259,10 @@ function saveLocal(images: GeneratedImage[]) {
 // ── Main component ────────────────────────────────────────────────────────────
 export default function ThumbnailStudio({ apiKey, templateData }: { apiKey?: string; templateData?: { prompt?: string; tags?: string[]; [key: string]: any } }) {
   const { requireEntitlement } = useSmartVideoAccess();
+  // The ONE shared Personalization modal (src/shared/personalization). This
+  // studio does not own a second modal — it only describes what it has through
+  // the shared entry-point contract and lets the existing provider open it.
+  const { openPersonalize } = useDemoPersonalize();
 
   // Tabs
   const [activeTab, setActiveTab] = useState<'generate' | 'mine' | 'community'>('generate')
@@ -532,6 +538,40 @@ export default function ThumbnailStudio({ apiKey, templateData }: { apiKey?: str
       await supabase.from('thumbnails').update({ is_public: pub }).eq('id', id)
     } catch {}
   }, [])
+
+  /**
+   * Opens the ONE shared Personalization modal for the thumbnail that was just
+   * generated. The studio only describes what it has (its own image, its own
+   * prompt, its own canvas ratio); the shared entry-point contract turns that
+   * into the source the existing provider already accepts, and the provider
+   * hands the personalized result back through `onComplete`.
+   */
+  const handlePersonalize = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    if (!lastImageUrl) return
+    const sourceImage = lastImageUrl
+    openPersonalize(
+      createPersonalizationOpenOptions(
+        {
+          originatingStudio: 'thumbnail-studio',
+          mediaType: 'image',
+          sourceImage,
+          prompt: enhancedPrompt || prompt,
+          title: 'Personalize this thumbnail',
+          aspectRatio: selectedSize.ratio,
+          model: selectedModel,
+          onComplete: (result) => {
+            const url = result.url || result.urls?.[0]
+            setShareNotice(
+              url
+                ? `Personalized thumbnail ready: ${url}`
+                : 'Personalization finished — check the Personalization modal for your output.'
+            )
+          },
+        },
+        { trigger: event.currentTarget },
+      ),
+    )
+  }, [lastImageUrl, enhancedPrompt, prompt, selectedSize, selectedModel, openPersonalize])
 
   return (
     <div className="flex flex-col h-full" style={appWrapper}>
@@ -923,6 +963,24 @@ export default function ThumbnailStudio({ apiKey, templateData }: { apiKey?: str
                 >
                   Enhance
                 </AssistStep>
+                <button
+                  type="button"
+                  onClick={handlePersonalize}
+                  data-testid="thumbnail-studio-personalize"
+                  className="w-full py-2.5 rounded-lg text-xs font-medium transition-colors"
+                  style={{ background: 'var(--bg-page)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
+                >
+                  Personalize with AI
+                </button>
+                {shareNotice && (
+                  <div
+                    onClick={() => setShareNotice(null)}
+                    className="p-3 rounded-xl text-xs cursor-pointer"
+                    style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.25)', color: '#fbbf24' }}
+                  >
+                    {shareNotice}
+                  </div>
+                )}
               </div>
             )}
           </div>
