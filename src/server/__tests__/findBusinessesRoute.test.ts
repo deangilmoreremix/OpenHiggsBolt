@@ -99,6 +99,14 @@ vi.mock('@/server/businessDiscovery', async () => {
     deduplicateBusinesses: vi.fn(),
     enrichBusinessRecord: vi.fn(),
     scoreAndSort: vi.fn(),
+    // Ownership classification is part of the route's own pipeline, so the
+    // mock must supply it or every success-path test fails with a 500.
+    classifyRecords: vi.fn((records: unknown[]) => records),
+    excludeNationalChains: vi.fn((records: unknown[]) => ({
+      kept: records,
+      excluded: [],
+      unknownRetained: [],
+    })),
     createCacheKey: vi.fn(),
     businessDiscoveryCache: { get: vi.fn(), set: vi.fn() },
   }
