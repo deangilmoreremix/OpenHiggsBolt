@@ -1,19 +1,13 @@
 [build]
   # Build all workspace packages whose dist/ is gitignored and must be
-  # generated before the root Next.js build can resolve them, then build
-  # the Next.js application.
-  #
-  # IMPORTANT: CLI deployments MUST always be run with --build.
-  #   netlify deploy --build        # preview (recommended)
-  #   netlify deploy --build --prod # production (only after explicit approval)
-  #
-  # Running `netlify deploy --prod` WITHOUT --build skips the build command
-  # and the @netlify/plugin-nextjs plugin entirely, publishing the raw .next
-  # server output as a static site. That output contains no .html files and
-  # no Netlify Functions, so every route returns 404 and the framework is
-  # misdetected. Never deploy to production without --build. See
-  # RELEASE_PROCEDURE.md for the required release process.
-  command = "npm run build:metadata && npm run build:packages && npm run build"
+  # generated before the root Next.js build can resolve them.
+  # pnpm, not npm: the repo's packageManager is pnpm, the dependency tree is
+  # pnpm-lock.yaml, and only pnpm applies the patchedDependencies in
+  # pnpm-workspace.yaml. Under npm that patch is never applied and the prebuild
+  # guard exits 1, which is why every Netlify-side build failed with a bare
+  # "Build script returned non-zero exit code". Commit 4d6631bee fixed this and
+  # 7e8a436b3 reverted it; this restores the fix.
+  command = "pwd && ls -la && rm -rf node_modules/electron/dist && set -x && pnpm run build:metadata && pnpm run build:packages && pnpm run build"
   publish = ".next"
   exclude = ["electron/dist/**", "playwright/**", "src/**", "index.html", "vite.svg", "public/vite.svg", "electron/**", "*.md", "!public/**", ".next/cache/**"]
 
