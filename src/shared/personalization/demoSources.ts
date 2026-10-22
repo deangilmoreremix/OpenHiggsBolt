@@ -35,11 +35,13 @@ export const MEDIA_PENDING_KEY = 'mediaPending'
 /** Seedance records carry no duration/aspect metadata — never invent one. */
 const MAX_VIRAL_TITLE_LENGTH = 80
 
-function trimmed(value: string | null | undefined): string {
+/** Trims a string-ish value; anything that is not a string becomes ''. */
+export function trimmed(value: string | null | undefined): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
-function positiveNumberOrUndefined(value: number | null | undefined): number | undefined {
+/** Keeps only finite, strictly positive numbers; everything else is undefined. */
+export function positiveNumberOrUndefined(value: number | null | undefined): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined
 }
 

@@ -48,7 +48,34 @@ const allResults: DemoResult[] = [];
 async function clickViaElement(locator: Locator) {
   const el = await locator.elementHandle();
   if (!el) throw new Error(`element not found for click: ${locator}`);
-  await el.evaluate((e) => e.click());
+  await el.evaluate((e) => (e as HTMLElement).click());
+}
+
+/**
+ * The Demos tab now renders the WHOLE registry (123 demos) and mounts its
+ * cards in windows — the first 12, then ten more per "Show more" click. A
+ * demo outside the current window is simply not in the DOM, so every lookup
+ * has to page to it first.
+ */
+async function revealDemoCard(
+  dialog: Locator,
+  demo: { id: number; slug: string },
+  maxClicks = 40,
+): Promise<boolean> {
+  const card = dialog.getByTestId(`demo-card-${demo.id}-${demo.slug}`);
+  for (let i = 0; i < maxClicks; i += 1) {
+    if ((await card.count()) > 0) return true;
+    const more = dialog.getByTestId('demo-show-more');
+    if ((await more.count()) === 0) return false;
+    const before = await dialog.locator('[data-demo-id]').count();
+    await clickViaElement(more.first());
+    const deadline = Date.now() + 10000;
+    while (Date.now() < deadline) {
+      if ((await dialog.locator('[data-demo-id]').count()) > before) break;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+  return (await card.count()) > 0;
 }
 
 async function waitForVideoMetadata(page: Page, videoSelector: string, timeoutMs = 20000): Promise<boolean> {
@@ -160,6 +187,9 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
       // The overlay starts invisible (opacity 0) until hovered; locate by exact
       // aria-label (avoids matching the outer card button) and click via element
       // handle so the invisible overlay can still be activated.
+      // The Demos tab mounts its cards in windows, so the card may not be in
+      // the DOM yet: page to it first.
+      await revealDemoCard(dialog, expected);
       const playButton = dialog.locator(`button[aria-label="Play ${result.title}"]`);
       try {
         await expect(playButton.first()).toBeAttached({ timeout: 5000 });
@@ -428,6 +458,8 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
     };
 
     const card = dialog.getByTestId(`demo-card-${demo.id}-${demo.slug}`);
+    // The Demos tab mounts its cards in windows — page to this one first.
+    expect(await revealDemoCard(dialog, demo), `card ${demo.slug} must be reachable`).toBe(true);
     await expect(card).toBeVisible({ timeout: 10000 });
 
     // Before selecting: a still poster thumbnail, no player.
@@ -490,6 +522,9 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
     // Switching the selection remounts the player — the old clip must not
     // keep playing, and only the new card may carry a player.
     const otherDemo = EXPECTED_DEMOS[2];
+    expect(await revealDemoCard(dialog, otherDemo), `card ${otherDemo.slug} must be reachable`).toBe(
+      true,
+    );
     const otherPlayButton = dialog.locator(`button[aria-label="Play ${otherDemo.title}"]`);
     await clickViaElement(otherPlayButton.first());
 

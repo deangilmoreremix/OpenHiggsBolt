@@ -59,6 +59,7 @@ import type {
 } from './types'
 import { EMPTY_GENERATION_STATE } from './types'
 import { normalizePersonalizationSource, getEligibility } from './sourceNormalizer'
+import { deliverPersonalizationResult } from './entryPoint'
 import {
   loadClients,
   saveClient as saveClientRecord,
@@ -94,6 +95,7 @@ import { persistEditedPersonalizationAsset } from './editedAssetPersistence'
 import { normalizeUrl, TRACKING_PARAMS } from './urlNormalizer'
 import { createProjectPersistence, loadProject, type LoadProjectResult, type PersonalizationProjectState } from './supabaseProjectPersistence'
 import { buildPreviewInput } from './guided/buildPreviewInput'
+import { registerPersonalizationRemotionDesigns } from './remotionExportRegistry'
 import { chooseFinalOutputPath } from './finalOutput'
 import {
   createDefaultPreviewSettings,
@@ -116,6 +118,11 @@ const EMPTY_ASSET_LIBRARY: AssetLibrary = {
   audio: [],
   savedReferences: [],
 }
+
+// The browser export engine resolves a design by id. Registering the
+// catalogue once, at module load, means an export never fails with
+// "the design X is not registered".
+registerPersonalizationRemotionDesigns()
 
 const EMPTY_PROMPT_STATE: PromptState = {
   original: '',
@@ -425,7 +432,7 @@ function releaseAllOwnedBlobUrls(
 // by another asset.
 
 // ── Context ──────────────────────────────────────────────────────────────────
-type OpenPersonalizeOptions = {
+export type OpenPersonalizeOptions = {
   source: unknown
   trigger?: HTMLElement | null
   /**
@@ -435,6 +442,15 @@ type OpenPersonalizeOptions = {
    * existing entry point keeps the full pipeline unchanged.
    */
   access?: PersonalizationAccessMode
+  /**
+   * Optional completion callback. Invoked with the provider's own
+   * `GenerationResult` as soon as one is available, so a studio that opened
+   * the modal through the shared entry-point contract
+   * (`src/shared/personalization/entryPoint.ts`) can route the personalized
+   * output back to its own surface. Omitting it changes nothing: every
+   * existing entry point keeps working exactly as before.
+   */
+  onComplete?: (result: GenerationResult) => void
 }
 
 export type DemoPersonalizeContextValue = {
@@ -666,6 +682,16 @@ export type DemoPersonalizeContextValue = {
   updatePreviewBrandColors: (patch: Partial<PreviewBrandColors>) => void
    updatePreviewComposition: (patch: Partial<Pick<PersonalizationPreviewSettings, 'aspectRatio' | 'fps' | 'durationInFrames' | 'showEndCard'>>) => void
    resetPreviewLayout: () => void
+   /**
+    * Selects a registered Remotion design for the preview (null clears the
+    * selection and restores the built-in overlay layers).
+    */
+   setPreviewDesign: (designId: string | null) => void
+   /**
+    * Edits the selected design's own copy and colours. The values are
+    * overrides on top of what is derived from the customer's business data.
+    */
+   updatePreviewDesignProps: (patch: Record<string, unknown>) => void
    previewApproved: boolean
    approvePersonalization: () => void
    createFinalVideo: () => Promise<void>
@@ -1034,6 +1060,13 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     () => accessProp || detectAnonymousAccessFlag() || 'authenticated',
   )
   const triggerRef = useRef<HTMLElement | null>(null)
+  // Completion callback handed over by the studio that opened the modal
+  // (see the shared entry-point contract in `./entryPoint.ts`). Null when the
+  // caller did not ask for one — every pre-existing entry point omits it.
+  const onCompleteRef = useRef<((result: GenerationResult) => void) | null>(null)
+  // The result object the callback was last invoked with, so the same result
+  // is never delivered twice.
+  const notifiedResultRef = useRef<GenerationResult | null>(null)
 
   // Client
   const [clients, setClients] = useState<ClientProfile[]>(loadClients)
@@ -1349,6 +1382,20 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setPreviewVideo(null)
     setPreviewApproved(false)
   }, [source?.id, source])
+
+  // ── Completion callback ─────────────────────────────────────────────────────
+  // Hands the personalization result to the studio that opened the modal. The
+  // callback lives in the shared entry-point contract
+  // (`src/shared/personalization/entryPoint.ts`); this is the only place the
+  // provider knows about it, and the modal itself is unaware of it.
+  useEffect(() => {
+    if (!result) return
+    if (notifiedResultRef.current === result) return
+    notifiedResultRef.current = result
+    const notify = onCompleteRef.current
+    if (!notify) return
+    deliverPersonalizationResult(result, notify)
+  }, [result])
 
   // Persist current reusable assets to saved client library whenever they change
   useEffect(() => {
@@ -1841,6 +1888,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       setSource(normalized)
       setIsOpen(true)
       triggerRef.current = opts.trigger || null
+      onCompleteRef.current = opts.onComplete || null
+      notifiedResultRef.current = null
     }
   }, [accessProp])
 
@@ -1856,6 +1905,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setGeneration({ ...EMPTY_GENERATION_STATE })
     triggerRef.current?.focus()
     triggerRef.current = null
+    onCompleteRef.current = null
+    notifiedResultRef.current = null
   }, [accessProp, releaseAllBlobUrls])
 
   // ── Client actions ─────────────────────────────────────────────────────────
@@ -4129,6 +4180,23 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setPreviewSettings((prev) => resetLayoutToDefaults(prev, prev.layout, previewSeedRef.current))
   }, [])
 
+  const setPreviewDesign = useCallback((designId: string | null) => {
+    setPreviewSettings((prev) => ({
+      ...prev,
+      remotionDesignId: designId ?? undefined,
+      // Every design has its own prop names, so a newly picked design starts
+      // from the values derived from the customer's data again.
+      remotionDesignProps: {},
+    }))
+  }, [])
+
+  const updatePreviewDesignProps = useCallback((patch: Record<string, unknown>) => {
+    setPreviewSettings((prev) => ({
+      ...prev,
+      remotionDesignProps: { ...(prev.remotionDesignProps ?? {}), ...patch },
+    }))
+  }, [])
+
   const approvePersonalization = useCallback(() => {
     setPreviewApproved(true)
     // Write the approved preview through immediately instead of waiting for the
@@ -4226,8 +4294,18 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       // Loaded lazily so the renderer never lands in the main bundle.
       const { exportPersonalizedVideo, downloadWebExportBlob } = await import('./webExport')
 
+      // The design catalogue has to be resolvable by id before the render.
+      registerPersonalizationRemotionDesigns()
+
+      // A selected design IS the approved personalization, so the export
+      // renders the design itself — the same composition the preview showed.
+      const design = inputProps.remotionDesignId
+        ? { id: inputProps.remotionDesignId, props: inputProps.remotionDesignProps }
+        : undefined
+
       const exported = await exportPersonalizedVideo({
         inputProps,
+        ...(design ? { design } : {}),
         onProgress: (progress) => {
           // Real render progress from the web renderer, mapped into the
           // existing generation state (10..95%) so the UI stays a plain bar.
@@ -4671,6 +4749,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     updatePreviewBrandColors,
     updatePreviewComposition,
     resetPreviewLayout,
+    setPreviewDesign,
+    updatePreviewDesignProps,
     previewApproved,
     approvePersonalization,
      createFinalVideo,

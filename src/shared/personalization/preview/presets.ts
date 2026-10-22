@@ -567,6 +567,34 @@ export function normalizePreviewAudio(raw: unknown): PreviewAudioSelection | nul
 }
 
 /**
+ * Normalizes a stored design-props bag.
+ *
+ * Only JSON-safe primitive values survive, so a persisted preview can never
+ * smuggle a function or a DOM node into the renderer. Unknown keys are kept
+ * here (the design resolves them later) — the design itself decides which
+ * props it accepts.
+ */
+function normalizeDesignProps(raw: unknown): Record<string, unknown> | undefined {
+  if (!isRecord(raw)) return undefined
+  const out: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(raw)) {
+    if (typeof value === 'string') {
+      out[key] = value
+    } else if (typeof value === 'number' && Number.isFinite(value)) {
+      out[key] = value
+    } else if (typeof value === 'boolean') {
+      out[key] = value
+    } else if (
+      Array.isArray(value) &&
+      value.every((entry) => typeof entry === 'string')
+    ) {
+      out[key] = [...value]
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined
+}
+
+/**
  * Defensive normalization for missing, invalid or older persisted settings.
  * Never throws: any unusable value falls back to a safe default.
  */
@@ -658,7 +686,18 @@ export function normalizePreviewSettings(raw: unknown): PersonalizationPreviewSe
 
    out.audio = normalizePreviewAudio(raw.audio) ?? null
 
-   return out
+    // A selected Remotion design (and the customer's edits to it) survive a
+    // reload. The id is kept as a plain string so a design that a newer build
+    // added still round-trips; the composition resolves it against the
+    // registry and falls back to the built-in layers when it is unknown.
+    const designId = nonEmptyString(raw.remotionDesignId)
+    if (designId) {
+      out.remotionDesignId = designId
+      const designProps = normalizeDesignProps(raw.remotionDesignProps)
+      if (designProps) out.remotionDesignProps = designProps
+    }
+
+    return out
   } catch {
     return createDefaultPreviewSettings()
   }

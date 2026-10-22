@@ -17,6 +17,11 @@ import {
   emitPreviewMediaFailure,
   previewMediaLabel,
 } from './previewMediaEvents'
+import {
+  getRemotionDesign,
+  resolveRemotionDesignProps,
+  type RemotionDesign,
+} from '../remotion/registry'
 import type {
   PreviewAnimationId,
   PreviewInputProps,
@@ -215,9 +220,33 @@ const EndCard: React.FC<{
 }
 
 /**
+ * Draws a registered Remotion design.
+ *
+ * The design owns its own props: the caller (the wizard) resolves them from
+ * the customer's business data and their own edits, and the registry already
+ * merged them over the design's defaults. This wrapper only exists so the
+ * design's component and its props are mounted in one place.
+ */
+const RemotionDesignLayer: React.FC<{
+  design: RemotionDesign
+  props: Record<string, unknown>
+}> = ({ design, props }) => {
+  const DesignComponent = design.component
+  return <DesignComponent {...props} />
+}
+
+/**
  * Free, browser-based personalization preview composition. Renders the selected
  * source video (or poster image) as the background layer with the customer's
  * branding overlays on top. Never calls any paid API.
+ *
+ * When a Remotion design is selected, the design REPLACES the built-in layer
+ * stack — exactly like the browser export does — so the preview and the
+ * exported video show the same thing:
+ *   - an `overlay` design is drawn transparently on top of the customer's
+ *     actual video (the video keeps its own audio);
+ *   - a `full-frame` design owns the frame, so the footage is not drawn
+ *     underneath it.
  */
 export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
   videoUrl,
@@ -226,12 +255,23 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
   audioUrl,
   settings,
   brand,
+  remotionDesignId,
+  remotionDesignProps,
 }) => {
   const frame = useCurrentFrame()
   const videoConfig = useVideoConfig()
   const compW = settings.width > 0 ? settings.width : videoConfig.width
   const compH = settings.height > 0 ? settings.height : videoConfig.height
   const [mediaFailed, setMediaFailed] = useState(false)
+
+  // The selected design, resolved against the registry. An unknown id (a
+  // document saved by a newer build) simply renders no design, so the preview
+  // falls back to the built-in layers instead of breaking.
+  const design = remotionDesignId ? getRemotionDesign(remotionDesignId) : undefined
+  const designProps = design
+    ? resolveRemotionDesignProps(design.id, remotionDesignProps)
+    : null
+  const isFullFrameDesign = design?.placement === 'full-frame'
 
   // A browser media element that cannot be decoded/loaded (codec, network or
   // CORS restrictions on unusual remote URLs) would otherwise surface as an
@@ -262,6 +302,10 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
   }, [videoUrl])
 
   const renderBackground = () => {
+    // A full-frame design owns the whole frame: the customer's footage is not
+    // drawn underneath it. The browser export composites the design the same
+    // way, so preview and export stay identical.
+    if (isFullFrameDesign) return null
     if (isImageSource && !videoUrl) {
       if (!posterUrl) return null
       return (
@@ -334,13 +378,18 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
     )
   }
 
-  const visibleLayers = settings.layers.filter(
-    (layer) =>
-      layer.visible &&
-      layer.kind !== 'endCard' &&
-      frame >= layer.startFrame &&
-      (layer.endFrame === undefined || frame <= layer.endFrame),
-  )
+  // A selected design replaces the built-in layer stack: the browser export
+  // renders the design alone, so the preview must not draw the customer's
+  // layers on top of it as well.
+  const visibleLayers = design
+    ? []
+    : settings.layers.filter(
+        (layer) =>
+          layer.visible &&
+          layer.kind !== 'endCard' &&
+          frame >= layer.startFrame &&
+          (layer.endFrame === undefined || frame <= layer.endFrame),
+      )
 
   const endCardLen = Math.min(90, Math.max(45, Math.round(settings.durationInFrames * 0.2)))
   const endCardStart = Math.max(0, settings.durationInFrames - endCardLen)
@@ -349,14 +398,19 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
     <Internals.SequenceManager.Provider value={NOOP_SEQUENCE_MANAGER}>
     <AbsoluteFill style={{ background: '#05070a' }}>
       {renderBackground()}
-      {audioUrl ? <Audio src={audioUrl} /> : null}
-      <AbsoluteFill
-          style={{
-            background: '#000',
-            opacity: settings.brandColors.backgroundDim,
-            pointerEvents: 'none',
-          }}
-        />
+        {audioUrl ? <Audio src={audioUrl} /> : null}
+        {isFullFrameDesign ? null : (
+          <AbsoluteFill
+              style={{
+                background: '#000',
+                opacity: settings.brandColors.backgroundDim,
+                pointerEvents: 'none',
+              }}
+            />
+          )}
+        {design && designProps ? (
+          <RemotionDesignLayer design={design} props={designProps} />
+        ) : null}
         {visibleLayers.map((layer) => {
           const isImage = isImageLayerKind(layer.kind)
           const isText = TEXT_LAYER_KINDS.includes(layer.kind)
@@ -439,7 +493,7 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
             </AbsoluteFill>
           )
         })}
-        {settings.showEndCard ? (
+        {design ? null : settings.showEndCard ? (
           <Sequence from={endCardStart} durationInFrames={endCardLen}>
             <EndCard settings={settings} brand={brand} />
           </Sequence>

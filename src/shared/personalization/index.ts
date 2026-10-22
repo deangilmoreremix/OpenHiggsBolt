@@ -3,7 +3,22 @@
  */
 
 export { DemoPersonalizeProvider, useDemoPersonalize } from './DemoPersonalizeProvider'
+export type { OpenPersonalizeOptions } from './DemoPersonalizeProvider'
 export { default as PersonalizationModal } from './PersonalizationModal'
+export {
+  PERSONALIZATION_ENTRY_POINT_SOURCE_TYPE,
+  createPersonalizationOpenOptions,
+  deliverPersonalizationResult,
+  toPersonalizationOpenRequest,
+} from './entryPoint'
+export type {
+  PersonalizationBrandAssets,
+  PersonalizationEntryPoint,
+  PersonalizationMediaType,
+  PersonalizationOpenOptions,
+  PersonalizationOpenRequest,
+  PersonalizationResult,
+} from './entryPoint'
 export type {
   PersonalizationSource,
   PersonalizationSourceType,
