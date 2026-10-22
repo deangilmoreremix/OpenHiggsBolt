@@ -11,6 +11,7 @@ var _reactHotToast = _interopRequireWildcard(require("react-hot-toast"));
 var _useTemplateData2 = require("../hooks/useTemplateData");
 var _TemplateBanner = _interopRequireDefault(require("./TemplateBanner"));
 var _muapi = require("../muapi.js");
+var _uploadContract = require("../uploadContract.js");
 var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
 var _skillStore = require("../lib/skillStore");
 var _registry = _interopRequireDefault(require("../skills/registry.json"));
@@ -595,11 +596,11 @@ function ClippingStudio(_ref2) {
             }
             return _context2.a(2);
           case 1:
-            if (!(file.size > 100 * 1024 * 1024)) {
+            if (!(file.size > (0, _uploadContract.getUploadLimit)(file))) {
               _context2.n = 2;
               break;
             }
-            alert("Video exceeds 100MB limit.");
+            alert("Video exceeds the ".concat((0, _uploadContract.formatUploadLimit)((0, _uploadContract.getUploadLimit)(file)), " limit."));
             return _context2.a(2);
           case 2:
             setVideoUploading(true);

@@ -10,6 +10,7 @@ var _react = require("react");
 var _useTemplateData2 = require("../hooks/useTemplateData");
 var _TemplateBanner = _interopRequireDefault(require("./TemplateBanner"));
 var _muapi = require("../muapi.js");
+var _uploadContract = require("../uploadContract.js");
 var _models = require("../models.js");
 var _CostEstimator = _interopRequireDefault(require("./CostEstimator.jsx"));
 var _audioStudio = _interopRequireDefault(require("../messages/en/audioStudio.json"));
@@ -217,7 +218,7 @@ function AudioFileUploader(_ref2) {
             }
             return _context.a(2);
           case 1:
-            if (!(file.size > 20 * 1024 * 1024)) {
+            if (!(file.size > (0, _uploadContract.getUploadLimit)(file))) {
               _context.n = 2;
               break;
             }

@@ -6,7 +6,8 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.CopyContentIcon = CopyContentIcon;
 exports.GenerationCopyButtons = GenerationCopyButtons;
-exports["default"] = MobileGenerationActions;
+exports.MobileGenerationActions = MobileGenerationActions;
+exports["default"] = void 0;
 var _react = require("react");
 var _jsxRuntime = require("react/jsx-runtime");
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
@@ -568,3 +569,4 @@ function MobileGenerationActions(_ref6) {
     })]
   });
 }
+var _default = exports["default"] = MobileGenerationActions;
