@@ -2,7 +2,9 @@
 import { useMemo } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import Autoplay from 'embla-carousel-autoplay';
-import { useReducedMotion } from 'motion/react';
+// SSR-safe (false until mounted): markup below depends on it, and motion's
+// hook reads the real value on the first client render, breaking hydration.
+import { useReducedMotion } from './useReducedMotion';
 import CountUp from './fx/CountUp';
 import { AutoplayToggle, useAutoplayToggle } from './fx/AutoplayToggle';
 import { LOGOS } from './landingData';
@@ -17,8 +19,9 @@ const STATS = [
 
 /**
  * "Built for teams creating" strip. The same audience tiles as before, now on
- * an Embla autoplay loop (drag/swipe-able, pauses on hover), plus count-up
- * stats (GSAP ScrollTrigger).
+ * an Embla autoplay loop (drag/swipe-able, pauses on hover, pause button),
+ * plus count-up stats (GSAP ScrollTrigger). With reduced motion the tiles stay
+ * in the original static grid so all of them are visible without interaction.
  */
 export default function TrustStrip() {
   const reduced = useReducedMotion();
@@ -38,25 +41,39 @@ export default function TrustStrip() {
           <p className="text-center text-sm uppercase tracking-[0.35em] text-white/35">Built for teams creating</p>
           {!reduced && <AutoplayToggle paused={paused} onToggle={toggle} label="audience carousel" />}
         </div>
-        <div
-          {...hoverHandlers}
-          className="embla-viewport mt-6 [mask-image:linear-gradient(90deg,transparent,black_8%,black_92%,transparent)]"
-          ref={viewportRef}
-        >
-          <ul className="embla-container">
-            {slides.map((logo, i) => (
+        {reduced ? (
+          // Reduced motion: no autoplay, so show every tile in the original static grid.
+          <ul className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-6">
+            {LOGOS.map((logo) => (
               <li
-                key={`${logo}-${i}`}
-                aria-hidden={i >= LOGOS.length || undefined}
-                className="min-w-0 shrink-0 grow-0 basis-1/2 pr-3 md:basis-1/4 lg:basis-1/6"
+                key={logo}
+                className="rounded-2xl border border-white/10 bg-black/30 px-4 py-5 text-center text-sm font-semibold text-white/50"
               >
-                <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-5 text-center text-sm font-semibold text-white/50 transition hover:border-cyan-400/40 hover:text-white/80">
-                  {logo}
-                </div>
+                {logo}
               </li>
             ))}
           </ul>
-        </div>
+        ) : (
+          <div
+            {...hoverHandlers}
+            className="embla-viewport mt-6 [mask-image:linear-gradient(90deg,transparent,black_8%,black_92%,transparent)]"
+            ref={viewportRef}
+          >
+            <ul className="embla-container">
+              {slides.map((logo, i) => (
+                <li
+                  key={`${logo}-${i}`}
+                  aria-hidden={i >= LOGOS.length || undefined}
+                  className="min-w-0 shrink-0 grow-0 basis-1/2 pr-3 md:basis-1/4 lg:basis-1/6"
+                >
+                  <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-5 text-center text-sm font-semibold text-white/50 transition hover:border-cyan-400/40 hover:text-white/80">
+                    {logo}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <dl className="mt-10 grid grid-cols-2 gap-6 md:grid-cols-4">
           {STATS.map((s) => (

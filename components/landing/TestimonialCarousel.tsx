@@ -2,7 +2,10 @@
 import { useMemo } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import Autoplay from 'embla-carousel-autoplay';
-import { motion, useReducedMotion } from 'motion/react';
+import { motion } from 'motion/react';
+// SSR-safe (false until mounted): markup below depends on it, and motion's
+// hook reads the real value on the first client render, breaking hydration.
+import { useReducedMotion } from './useReducedMotion';
 import { AutoplayToggle, useAutoplayToggle } from './fx/AutoplayToggle';
 
 type Testimonial = { quote: string; name: string; role: string };

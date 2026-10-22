@@ -1,6 +1,9 @@
 'use client';
 import { useRef, type ReactNode, type PointerEvent } from 'react';
-import { motion, useMotionValue, useSpring, useTransform, useReducedMotion } from 'motion/react';
+import { motion, useMotionValue, useSpring, useTransform } from 'motion/react';
+// SSR-safe (false until mounted): markup below depends on it, and motion's
+// hook reads the real value on the first client render, breaking hydration.
+import { useReducedMotion } from '../useReducedMotion';
 
 /**
  * Tilts toward the cursor in 3D with a soft moving glare. Mouse only;
