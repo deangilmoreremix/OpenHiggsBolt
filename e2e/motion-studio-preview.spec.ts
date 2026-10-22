@@ -13,7 +13,10 @@ import { BASE_URL, EXPORT_LABEL } from './helpers/motion-studio';
  * preview is exercised with a genuine session, not the dev-only bypass
  * cookie, which production context ignores.
  */
-const email = process.env.E2E_TEST_EMAIL;
+// The repo stores the E2E account as E2E_CLERK_USER_EMAIL (auth.spec.ts reads a
+// different name that is never set, so its authenticated tests always skip).
+const email = process.env.E2E_CLERK_USER_EMAIL ?? process.env.E2E_TEST_EMAIL;
+const isDeployed = !/127\.0\.0\.1|localhost/.test(BASE_URL);
 
 test.beforeAll(async () => {
   // Must run in the worker so its env vars reach setupClerkTestingToken.
@@ -22,7 +25,10 @@ test.beforeAll(async () => {
 
 test.describe('Motion Studio customer flow', () => {
   test('opens the studio, edits a recipe, and exports an MP4', async ({ page }) => {
-    test.skip(!email, 'No E2E_TEST_EMAIL configured');
+    // The export run is the point of this spec, and it is slow (real in-browser
+    // render). Locally the same flow is covered by motion-studio-export-mp4.spec.ts,
+    // so only run the heavy path against a deployed target.
+    test.skip(!email || !isDeployed, 'Needs an E2E account and a deployed preview target');
 
     // 1. Sign in for real.
     await page.goto(`${BASE_URL}/`, { waitUntil: 'load' });
