@@ -201,10 +201,11 @@ const TAIL = 9;
 const TAIL_GAP = 0.0055;
 
 // Packet with comet tail, travelling along a geometry at path fraction `ph` (card: 6px head, 2.6 tail radius).
-const Packet: React.FC<{ geom: ReturnType<typeof mkGeom>; ph: number; op: number; from: number; reverse?: boolean }> = ({
-  geom, ph, op, from, reverse,
+// `drawn` = how much of the path is drawn (0–1); a packet never runs ahead of its line.
+const Packet: React.FC<{ geom: ReturnType<typeof mkGeom>; ph: number; op: number; from: number; drawn?: number; reverse?: boolean }> = ({
+  geom, ph, op, from, drawn = 1, reverse,
 }) => {
-  if (op <= 0.01) return null;
+  if (op <= 0.01 || from + (1 - from) * ph > drawn) return null;
   const at = (p: number) => geom.pointAt(geom.len * (from + (1 - from) * p));
   const head = at(ph);
   return (
@@ -364,7 +365,7 @@ export const HeroConverge: React.FC = () => {
             const pkOp = pkOn * (1 - Math.abs(ph - 0.5) * 0.6);
             return (
               <React.Fragment key={i}>
-                <Packet geom={IN_GEOMS[i]} ph={ph} op={pkOp} from={f0} />
+                <Packet geom={IN_GEOMS[i]} ph={ph} op={pkOp} from={f0} drawn={draw} />
                 <div style={{
                   position: 'absolute', left: 0, top: s.y - 15, width: X0 - NODE / 2 - 8, textAlign: 'right',
                   font: `500 9.5px/1 ${SANS}`, color: 'rgba(255,255,255,0.72)', letterSpacing: '-0.005em',
@@ -400,7 +401,7 @@ export const HeroConverge: React.FC = () => {
             const lit = seg(u, reach, reach + 6) * (1 - seg(u, reach + 8, reach + 30, EASE.out));
             return (
               <React.Fragment key={i}>
-                <Packet geom={geom} ph={ph} op={pkOp} from={0} />
+                <Packet geom={geom} ph={ph} op={pkOp} from={0} drawn={seg(u, 4 + i * 7, 4 + i * 7 + 28, E.outQuad)} />
                 <div style={{
                   position: 'absolute', left: CARD_X, top: o.y - CARD_H / 2, width: CARD_W, height: CARD_H,
                   boxSizing: 'border-box', borderRadius: 10, padding: '0 10px', display: 'flex', alignItems: 'center', gap: 9,
