@@ -132,9 +132,12 @@ html.lenis, html.lenis body { height: auto; }
   opacity: 0.85;
 }
 
-/* Embla carousels */
-.embla-viewport { overflow: hidden; }
-.embla-container { display: flex; touch-action: pan-y pinch-zoom; }
+/* Embla carousels. In the components layer so responsive utilities
+   (e.g. lg:grid, lg:overflow-visible on the UGC row) can override them. */
+@layer components {
+  .embla-viewport { overflow: hidden; }
+  .embla-container { display: flex; touch-action: pan-y pinch-zoom; }
+}
 
 /* Swiper coverflow reel: keep slides at the existing card widths. */
 .fx-reel .swiper-slide { height: auto; transition: opacity 0.4s ease, filter 0.4s ease; }
