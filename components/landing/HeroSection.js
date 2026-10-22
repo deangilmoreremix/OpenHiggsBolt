@@ -55,29 +55,33 @@ export default function HeroSection() {
             className="text-lg font-semibold text-white md:text-xl"
           />
         </div>
+      </div>
 
-        <div className="mx-auto mt-10 max-w-3xl overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl shadow-purple-500/10">
-          <video
-            className="block aspect-video w-full motion-reduce:hidden"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            poster="/landing/hero-converge-poster.jpg"
-            aria-label="SmartVideo GO pulls a business's branding, photos, products, services, people and offers into videos, ads, graphics, viral campaigns and 20+ AI Studios"
-          >
-            <source src="/landing/hero-converge.webm" type="video/webm" />
-            <source src="/landing/hero-converge.mp4" type="video/mp4" />
-          </video>
-          <Image
-            className="hidden aspect-video w-full motion-reduce:block"
-            src="/landing/hero-converge-poster.jpg"
-            width={1280}
-            height={720}
-            alt="SmartVideo GO turns a business's assets into videos, ads, graphics, viral campaigns and 20+ AI Studios"
-          />
-        </div>
+      {/* Breaks out of the text column so the video's labels read at full size */}
+      <div className="relative mx-auto mt-10 max-w-6xl overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl shadow-purple-500/10">
+        <video
+          className="block aspect-video w-full motion-reduce:hidden"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          poster="/landing/hero-converge-poster.jpg"
+          aria-label="SmartVideo GO pulls a business's branding, photos, products, services, people and offers into videos, ads, graphics, viral campaigns and 20+ AI Studios"
+        >
+          <source src="/landing/hero-converge.webm" type="video/webm" />
+          <source src="/landing/hero-converge.mp4" type="video/mp4" />
+        </video>
+        <Image
+          className="hidden aspect-video w-full motion-reduce:block"
+          src="/landing/hero-converge-poster.jpg"
+          width={1600}
+          height={900}
+          alt="SmartVideo GO turns a business's assets into videos, ads, graphics, viral campaigns and 20+ AI Studios"
+        />
+      </div>
+
+      <div className="mx-auto max-w-4xl text-center">
 
         <div className="mx-auto mt-6 max-w-2xl space-y-3 text-center text-base leading-7 text-white/60">
           <p>Enter a website — or discover a business.</p>

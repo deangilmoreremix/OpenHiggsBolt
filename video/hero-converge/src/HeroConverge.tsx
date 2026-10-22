@@ -32,7 +32,7 @@ const X0 = 110; // source node rest position
 const LEAD_X = 12; // straight lead starts here (card: off-frame -22)
 const K = (XC - X0) / 258; // card cubic span is 258 (74→332); scale its control points by K
 const NODE = 34; // source node diameter (card: 44, reduced for six rows)
-const CARD_X = 410, CARD_W = 200, CARD_H = 40;
+const CARD_X = 404, CARD_W = 222, CARD_H = 46;
 
 // card timing: 168f window → normalized t
 const CARD_FRAMES = 168;
@@ -133,10 +133,10 @@ const SRCS = ['Branding', 'Photos', 'Products', 'Services', 'People', 'Offers'].
 
 // ---- outputs (right) ----
 const OUTS = [
-  { title: 'Videos', line: 'Branded promos from their real assets', icon: 'videos' },
-  { title: 'Ads', line: 'High-converting campaigns for their offers', icon: 'ads' },
+  { title: 'Videos', line: 'Branded promos from real assets', icon: 'videos' },
+  { title: 'Ads', line: 'High-converting, built on their offers', icon: 'ads' },
   { title: 'Graphics', line: 'Cleaned-up, on-brand visuals', icon: 'graphics' },
-  { title: 'Viral Campaigns', line: 'Proven concepts, adapted to their niche', icon: 'viral' },
+  { title: 'Viral Campaigns', line: 'Proven concepts for their niche', icon: 'viral' },
   { title: '20+ AI Studios', line: 'Every format, one workflow', icon: 'studios' },
 ].map((o, i) => ({ ...o, y: YC + (i - 2) * 54 }));
 
@@ -246,10 +246,10 @@ const PersonalizedBadge: React.FC<{ on: number }> = ({ on }) => (
   <div style={{
     display: 'flex', alignItems: 'center', gap: 2.5, padding: '2px 5px', borderRadius: 999, flex: 'none',
     border: '0.5px solid rgba(148,135,214,0.4)', background: 'rgba(148,135,214,0.12)',
-    font: `600 5.6px/1 ${SANS}`, color: ACCENT_HI, letterSpacing: '0.02em',
+    font: `600 6.6px/1 ${SANS}`, color: ACCENT_HI, letterSpacing: '0.02em',
     opacity: clamp01(on).toFixed(3), transform: `scale(${lerp(on, 0.6, 1).toFixed(3)})`, transformOrigin: 'right center',
   }}>
-    <Sparkle size={5.5} />
+    <Sparkle size={6.4} />
     Personalized
   </div>
 );
@@ -286,7 +286,8 @@ export const HeroConverge: React.FC = () => {
   const erase = seg(t, 0.78, 0.9, E.outQuad);
   const pkCycle = (seg(t, 0.1, 0.74, E.linear) * 2) % 1;
   const badgeIn = seg(t, 0.16, 0.26, E.outCubic);
-  const labelOut = seg(t, 0.3, 0.4, EASE.out);
+  // labels ride with their node and fade while it slims down (not before the merge starts)
+  const labelOut = seg(conv, 0.12, 0.35, EASE.out);
 
   // ===== Part 2: mirrored fan-out (same stagger/draw/packet grammar, local frames) =====
   const u = frame - FAN_START;
@@ -367,10 +368,10 @@ export const HeroConverge: React.FC = () => {
               <React.Fragment key={i}>
                 <Packet geom={IN_GEOMS[i]} ph={ph} op={pkOp} from={f0} drawn={draw} />
                 <div style={{
-                  position: 'absolute', left: 0, top: s.y - 15, width: X0 - NODE / 2 - 8, textAlign: 'right',
-                  font: `500 9.5px/1 ${SANS}`, color: 'rgba(255,255,255,0.72)', letterSpacing: '-0.005em',
+                  position: 'absolute', left: 0, top: pt.y - 17, width: pt.x - size / 2 - 8, textAlign: 'right', whiteSpace: 'nowrap',
+                  font: `500 11px/1 ${SANS}`, color: 'rgba(255,255,255,0.78)', letterSpacing: '-0.005em',
                   opacity: (appearOp * (1 - labelOut)).toFixed(3),
-                  transform: `translateX(${(-4 * (1 - appearOp) - 6 * labelOut).toFixed(2)}px)`,
+                  transform: `translateX(${(-4 * (1 - appearOp)).toFixed(2)}px)`,
                 }}>
                   {s.label}
                 </div>
@@ -413,17 +414,17 @@ export const HeroConverge: React.FC = () => {
                   opacity: (popOp * (1 - cardsOut)).toFixed(3),
                 }}>
                   <div style={{
-                    width: 22, height: 22, borderRadius: 6, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 26, height: 26, borderRadius: 7, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     background: 'rgba(148,135,214,0.12)', border: '0.5px solid rgba(148,135,214,0.35)',
                   }}>
-                    <Icon name={o.icon} size={13} color={ACCENT_HI} width={1.7} />
+                    <Icon name={o.icon} size={15} color={ACCENT_HI} width={1.7} />
                   </div>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                      <div style={{ font: `650 9.5px/1.15 ${SANS}`, color: TXT, letterSpacing: '-0.01em' }}>{o.title}</div>
+                      <div style={{ font: `650 10.5px/1.15 ${SANS}`, color: TXT, letterSpacing: '-0.01em' }}>{o.title}</div>
                       <PersonalizedBadge on={seg(u, reach + 4, reach + 14, EASE.overshoot)} />
                     </div>
-                    <div style={{ font: `400 7px/1.3 ${SANS}`, color: 'rgba(255,255,255,0.6)', marginTop: 2, whiteSpace: 'nowrap' }}>{o.line}</div>
+                    <div style={{ font: `400 8px/1.3 ${SANS}`, color: 'rgba(255,255,255,0.66)', marginTop: 2.5, whiteSpace: 'nowrap' }}>{o.line}</div>
                   </div>
                 </div>
               </React.Fragment>
@@ -433,10 +434,10 @@ export const HeroConverge: React.FC = () => {
           {/* publish tag under the cards */}
           {frame >= FAN_START && (
             <div style={{
-              position: 'absolute', left: CARD_X, top: OUTS[OUTS.length - 1].y + CARD_H / 2 + 10,
+              position: 'absolute', left: CARD_X, top: OUTS[OUTS.length - 1].y + CARD_H / 2 + 7,
               display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 999,
               border: `0.6px solid ${GLASS_LINE}`, background: GLASS,
-              font: `600 7px/1 ${SANS}`, color: 'rgba(255,255,255,0.75)', letterSpacing: '0.01em',
+              font: `600 8.4px/1 ${SANS}`, color: 'rgba(255,255,255,0.78)', letterSpacing: '0.01em',
               opacity: (pubIn * (1 - cardsOut)).toFixed(3), transform: `translateY(${(3 * (1 - pubIn)).toFixed(2)}px)`,
             }}>
               <span style={{ color: CYAN }}>Publish</span>
@@ -448,15 +449,15 @@ export const HeroConverge: React.FC = () => {
           {/* personalization tag under the merge point: everything leaving the tile is personalized */}
           {frame >= FAN_START && (
             <div style={{
-              position: 'absolute', left: XC - 100, width: 140, top: YC + 38, display: 'flex', justifyContent: 'center',
+              position: 'absolute', left: XC - 116, width: 160, top: YC + 40, display: 'flex', justifyContent: 'center',
               opacity: (persIn * (1 - cardsOut)).toFixed(3), transform: `translateY(${(3 * (1 - persIn)).toFixed(2)}px)`,
             }}>
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 4, padding: '3.5px 8px', borderRadius: 999,
                 border: '0.6px solid rgba(148,135,214,0.45)', background: 'rgba(148,135,214,0.10)',
-                font: `600 7.2px/1 ${SANS}`, color: ACCENT_HI, whiteSpace: 'nowrap',
+                font: `600 8.6px/1 ${SANS}`, color: ACCENT_HI, whiteSpace: 'nowrap',
               }}>
-                <Sparkle size={7} />
+                <Sparkle size={8.4} />
                 Personalized to their brand
               </div>
             </div>
@@ -501,7 +502,7 @@ export const HeroConverge: React.FC = () => {
               const q = clamp01((capInn - i * CAP_ST) / CAP_WIN);
               return (
                 <span key={i} style={{
-                  font: `600 13px/1.25 ${SANS}`, marginRight: i === CAP_WORDS.length - 1 ? 0 : 3.6,
+                  font: `600 15px/1.25 ${SANS}`, marginRight: i === CAP_WORDS.length - 1 ? 0 : 4.2,
                   letterSpacing: (-0.012 - 0.02 * (1 - q)).toFixed(4) + 'em',
                   backgroundImage: q > 0 ? 'linear-gradient(90deg, #ffffff 0%, #a5f3fc 42%, #c4b5fd 100%)' : 'none',
                   backgroundSize: `${W}px 100%`, backgroundPosition: `${-i * 30}px 0`,
