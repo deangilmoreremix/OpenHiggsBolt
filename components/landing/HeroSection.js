@@ -57,30 +57,22 @@ export default function HeroSection() {
         </div>
       </div>
 
-      {/* Breaks out of the text column so the video's labels read at full size.
-          Phones get the portrait (4:5) cut; the browser picks one source, so only one file downloads. */}
+      {/* Breaks out of the text column so the video's labels read at full size */}
       <div className="relative mx-auto mt-10 max-w-6xl overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl shadow-purple-500/10">
         <video
-          className="block aspect-[4/5] w-full bg-black motion-reduce:hidden md:aspect-video"
+          className="block aspect-video w-full motion-reduce:hidden"
           autoPlay
           muted
           loop
           playsInline
           preload="metadata"
+          poster="/landing/hero-converge-poster.jpg"
           aria-label="SmartVideo GO pulls a business's branding, photos, products, services, people and offers into personalized videos, ads, graphics, viral campaigns and 20+ AI Studios"
         >
-          <source src="/landing/hero-converge-portrait.mp4" type="video/mp4" media="(max-width: 767px)" />
           <source src="/landing/hero-converge.mp4" type="video/mp4" />
         </video>
         <Image
-          className="hidden aspect-[4/5] w-full motion-reduce:block md:!hidden"
-          src="/landing/hero-converge-portrait-poster.jpg"
-          width={900}
-          height={1125}
-          alt="SmartVideo GO turns a business's assets into personalized videos, ads, graphics, viral campaigns and 20+ AI Studios"
-        />
-        <Image
-          className="hidden aspect-video w-full md:motion-reduce:block"
+          className="hidden aspect-video w-full motion-reduce:block"
           src="/landing/hero-converge-poster.jpg"
           width={1600}
           height={900}
