@@ -16,7 +16,8 @@
  */
 import { expect, type Page } from '@playwright/test';
 
-export const BASE_URL = 'http://127.0.0.1:3100';
+/** Target under test. Override with MS_BASE_URL to run the same specs against a deployed preview. */
+export const BASE_URL = process.env.MS_BASE_URL ?? 'http://127.0.0.1:3100';
 
 /** Motion Studio's internal router switches /new → / once this flag is set. */
 export const ENTRY_SEEN_KEY = 'motion-studio:entry-seen-v1';

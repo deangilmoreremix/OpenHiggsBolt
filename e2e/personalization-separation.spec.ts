@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
-
-const BASE = 'http://127.0.0.1:3100';
+import { BASE_URL as BASE } from './helpers/motion-studio';
 
 /**
  * Job A — Personalization Modal / Motion Studio separation.

@@ -85,14 +85,11 @@ test.describe('Motion Studio evidence', () => {
 
     await capture(page, 'ms-entry-page.png');
     // legacy file names kept in the evidence folder — refreshed, not blank
-    await capture(page, 'entry-page.png');
-    await capture(page, 'clean-entry.png');
   });
 
   test('EDITOR — the workbench', async ({ page }) => {
     await openWorkbench(page);
     await capture(page, 'ms-workbench.png');
-    await capture(page, 'clean-workbench.png');
   });
 
   test('EDITOR — the library grid with real Remotion previews', async ({ page }) => {
@@ -157,14 +154,10 @@ test.describe('Motion Studio evidence', () => {
 
   test('EDITOR — legacy file names (refreshed, not blank)', async ({ page }) => {
     await openWorkbench(page);
-    await capture(page, 'workbench-diag.png');
-    await capture(page, 'screenshot.png');
   });
 
   test('EDITOR — legacy workbench/scroll file names (refreshed, modal-free)', async ({ page }) => {
     await openWorkbench(page);
-    await capture(page, 'workbench.png');
-    await capture(page, 'workbench-final.png');
   });
 
   test('EDITOR — legacy scroll file names (refreshed, modal-free)', async ({ page }) => {
@@ -183,9 +176,6 @@ test.describe('Motion Studio evidence', () => {
       )
       .toBeGreaterThan(0);
     await page.waitForTimeout(1000);
-    await capture(page, 'workbench-scroll.png');
-    await capture(page, 'workbench-scrolled.png');
-    await capture(page, 'scroll-verify.png');
   });
 
   test('INPUT step — legacy entry file name (refreshed, modal-free)', async ({ page }) => {
@@ -194,7 +184,6 @@ test.describe('Motion Studio evidence', () => {
     await expect(
       page.getByPlaceholder('Describe your motion video...'),
     ).toBeVisible({ timeout: 60_000 });
-    await capture(page, 'entry-page-dismissed.png');
   });
 
   test('UPSTREAM studios — video, workflows, agents', async ({ page }) => {
