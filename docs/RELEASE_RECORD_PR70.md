@@ -34,8 +34,14 @@
   records the evidence and retriggers the PR #70 preview into a green build window.
 - Netlify env: NO CHANGES (nothing context-scoped existed to reconcile; app secrets untouched).
 
-## If the retriggered preview fails again
+## Retrigger #1 result (01:20Z) and the env fix
 
-- Suspected infra flake inside the build-command stage on the noble image (intermittent at the
-  same commit including production main); next step for the release owner: retry once, then
-  contact Netlify support with deploy ids 6ad93cb03628acb75d40fcdf + the 00:22Z production error.
+- Preview 6ad964d1336444a562b41f1b (this doc commit 5c9cdbc4732) FAILED with the identical
+  "Build script returned non-zero exit code: 2". Only delta vs 7a2715843 was this docs file,
+  proving the failure is independent of commit content.
+- Targeted environment-only change applied on Netlify (no repo/code changes):
+  PNPM_VERSION=10.30.3 set for contexts production + deploy-preview + branch-deploy (scope builds).
+  Rationale: the repo ships pnpm-lock.yaml so Netlify installs with pnpm; PNPM_VERSION was unset,
+  so builds previously rode the image-default pnpm (or a corepack resolution) instead of the exact
+  pnpm@10.30.3 pinned by packageManager and proven green locally. Nothing else was changed;
+  the Netlify env store contained no toolchain vars and no secrets were touched.
