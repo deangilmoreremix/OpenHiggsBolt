@@ -565,7 +565,7 @@ describe('Business Asset Finder is free for every authenticated user (runtime)',
     expect(h.gateCalls).toBe(0)
   })
 
-  it('POST /api/personalization/discover-assets still rejects an UNAUTHENTICATED caller with 401', async () => {
+  it('POST /api/personalization/discover-assets accepts an UNAUTHENTICATED caller (free feature), IP-scoped', async () => {
     h.authUserId = null
     h.hasSmartVideoGo = false
 
@@ -576,14 +576,16 @@ describe('Business Asset Finder is free for every authenticated user (runtime)',
       }),
     )
 
-    // "Free" must never become "anonymous" for an owner-scoped operation.
-    expect(res.status).toBe(401)
+    // Discovery is FREE: an anonymous caller is accepted, with its jobs scoped
+    // to the caller's IP rather than a shared 'anon' bucket. And it is still
+    // never a PAYMENT gate.
+    expect(res.status).toBe(202)
     const body = await res.json()
-    expect(body.error).toBe('UNAUTHENTICATED')
-    expect(body.error).not.toBe('PAYMENT_REQUIRED')
+    expect(body.ok).toBe(true)
+    expect(typeof body.jobId).toBe('string')
   })
 
-  it('GET /api/personalization/discover-assets/status still rejects an UNAUTHENTICATED caller with 401', async () => {
+  it('GET /api/personalization/discover-assets/status answers for an anonymous caller when the job is theirs', async () => {
     h.authUserId = null
     h.hasSmartVideoGo = false
 
@@ -592,7 +594,9 @@ describe('Business Asset Finder is free for every authenticated user (runtime)',
       new NextRequest('http://localhost/api/personalization/discover-assets/status?jobId=job-1'),
     )
 
-    expect(res.status).toBe(401)
+    // Anonymous polling is allowed; a job that belongs to another IP is 404
+    // (asserted by the isolation tests), and this is never a PAYMENT gate.
+    expect(res.status).not.toBe(403)
     const body = await res.json()
     expect(body.error).not.toBe('PAYMENT_REQUIRED')
   })
