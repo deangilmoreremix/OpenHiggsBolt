@@ -136,7 +136,7 @@ const OUTS = [
   { title: 'Videos', line: 'Branded promos from their real assets', icon: 'videos' },
   { title: 'Ads', line: 'High-converting campaigns for their offers', icon: 'ads' },
   { title: 'Graphics', line: 'Cleaned-up, on-brand visuals', icon: 'graphics' },
-  { title: 'Viral Campaigns', line: 'Proven concepts, personalized for them', icon: 'viral' },
+  { title: 'Viral Campaigns', line: 'Proven concepts, adapted to their niche', icon: 'viral' },
   { title: '20+ AI Studios', line: 'Every format, one workflow', icon: 'studios' },
 ].map((o, i) => ({ ...o, y: YC + (i - 2) * 54 }));
 
@@ -233,6 +233,26 @@ const Packet: React.FC<{ geom: ReturnType<typeof mkGeom>; ph: number; op: number
   );
 };
 
+// four-point sparkle used on the personalization marks
+const Sparkle: React.FC<{ size: number }> = ({ size }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={ACCENT_HI}>
+    <path d="M12 1.5c.7 5.4 3.6 8.8 10.5 10.5-6.9 1.7-9.8 5.1-10.5 10.5-.7-5.4-3.6-8.8-10.5-10.5C8.4 10.3 11.3 6.9 12 1.5z" />
+  </svg>
+);
+
+// small 'Personalized' chip on each output card; `on` (0→1, may overshoot) pops it in as the card lights
+const PersonalizedBadge: React.FC<{ on: number }> = ({ on }) => (
+  <div style={{
+    display: 'flex', alignItems: 'center', gap: 2.5, padding: '2px 5px', borderRadius: 999, flex: 'none',
+    border: '0.5px solid rgba(148,135,214,0.4)', background: 'rgba(148,135,214,0.12)',
+    font: `600 5.6px/1 ${SANS}`, color: ACCENT_HI, letterSpacing: '0.02em',
+    opacity: clamp01(on).toFixed(3), transform: `scale(${lerp(on, 0.6, 1).toFixed(3)})`, transformOrigin: 'right center',
+  }}>
+    <Sparkle size={5.5} />
+    Personalized
+  </div>
+);
+
 // ---- background: hero black + the two blurred orbs (cyan left, purple right) + grain/vignette ----
 const Background: React.FC = () => {
   const f = useCurrentFrame();
@@ -274,6 +294,7 @@ export const HeroConverge: React.FC = () => {
   const fanPkOn = seg(u, 14, 24) * (1 - seg(u, 104, 114));
   const cardsOut = seg(u, 125, 140, EASE.out);
   const pubIn = seg(u, 60, 72, EASE.out);
+  const persIn = seg(u, 0, 12, EASE.out);
 
   // ===== Part 3: lockup + caption =====
   const pan = seg(frame, LOGO_RESUME, LOGO_RESUME + 30, EASE.smooth);
@@ -284,7 +305,7 @@ export const HeroConverge: React.FC = () => {
   // plate under the tile: hides curve ends / packets behind the tile while it sits at the merge point
   const plateOn = seg(frame, 128, 150) * (1 - seg(frame, LOGO_RESUME, LOGO_RESUME + 8));
 
-  const CAP_WORDS = 'Videos, ads, graphics & viral campaigns — built for that business.'.split(' ');
+  const CAP_WORDS = 'Every video, ad, graphic & campaign — personalized for that business.'.split(' ');
   const CAP_ST = 0.78 / CAP_WORDS.length;
   const CAP_WIN = CAP_ST * 1.5;
 
@@ -396,8 +417,11 @@ export const HeroConverge: React.FC = () => {
                   }}>
                     <Icon name={o.icon} size={13} color={ACCENT_HI} width={1.7} />
                   </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ font: `650 9.5px/1.15 ${SANS}`, color: TXT, letterSpacing: '-0.01em' }}>{o.title}</div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                      <div style={{ font: `650 9.5px/1.15 ${SANS}`, color: TXT, letterSpacing: '-0.01em' }}>{o.title}</div>
+                      <PersonalizedBadge on={seg(u, reach + 4, reach + 14, EASE.overshoot)} />
+                    </div>
                     <div style={{ font: `400 7px/1.3 ${SANS}`, color: 'rgba(255,255,255,0.6)', marginTop: 2, whiteSpace: 'nowrap' }}>{o.line}</div>
                   </div>
                 </div>
@@ -417,6 +441,23 @@ export const HeroConverge: React.FC = () => {
               <span style={{ color: CYAN }}>Publish</span>
               <span style={{ color: 'rgba(255,255,255,0.3)' }}>→</span>
               <span>YouTube · Instagram · TikTok</span>
+            </div>
+          )}
+
+          {/* personalization tag under the merge point: everything leaving the tile is personalized */}
+          {frame >= FAN_START && (
+            <div style={{
+              position: 'absolute', left: XC - 100, width: 140, top: YC + 38, display: 'flex', justifyContent: 'center',
+              opacity: (persIn * (1 - cardsOut)).toFixed(3), transform: `translateY(${(3 * (1 - persIn)).toFixed(2)}px)`,
+            }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 4, padding: '3.5px 8px', borderRadius: 999,
+                border: '0.6px solid rgba(148,135,214,0.45)', background: 'rgba(148,135,214,0.10)',
+                font: `600 7.2px/1 ${SANS}`, color: ACCENT_HI, whiteSpace: 'nowrap',
+              }}>
+                <Sparkle size={7} />
+                Personalized to their brand
+              </div>
             </div>
           )}
 
