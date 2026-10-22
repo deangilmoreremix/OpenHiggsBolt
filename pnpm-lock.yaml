@@ -40,10 +40,16 @@ importers:
       '@remotion/media':
         specifier: 4.0.499
         version: 4.0.499(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@remotion/motion-blur':
+        specifier: 4.0.499
+        version: 4.0.499(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@remotion/player':
         specifier: 4.0.499
         version: 4.0.499(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@remotion/web-renderer':
+        specifier: 4.0.499
+        version: 4.0.499(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@remotion/zod-types':
         specifier: 4.0.499
         version: 4.0.499(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@sparticuz/chromium':
@@ -87,7 +93,7 @@ importers:
         version: 5.0.5
       openai:
         specifier: ^6.44.0
-        version: 6.49.0(ws@8.22.0)(zod@4.4.3)
+        version: 6.49.0(ws@8.22.0)(zod@4.3.6)
       playwright:
         specifier: ^1.63.0
         version: 1.63.0
@@ -133,6 +139,12 @@ importers:
       workflow-builder:
         specifier: file:./packages/Vibe-Workflow/packages/workflow-builder
         version: link:packages/Vibe-Workflow/packages/workflow-builder
+      zod:
+        specifier: 4.3.6
+        version: 4.3.6
+      zustand:
+        specifier: 5.0.8
+        version: 5.0.8(@types/react@19.3.0)(react@19.3.0)(use-sync-external-store@1.7.0(react@19.3.0))
     devDependencies:
       '@clerk/testing':
         specifier: ^2.2.6
@@ -2187,6 +2199,12 @@ packages:
       react: '>=16.8.0'
       react-dom: '>=16.8.0'
 
+  '@remotion/motion-blur@4.0.499':
+    resolution: {integrity: sha512-ZgLcDWVmDhDTQt4ARwmIX7fRE01r+M3sEZMVD2sGoSa+h5sahsTcp79Tqc/7ArwzzkKqTpMKlQNvkwQtKQ1j4Q==}
+    peerDependencies:
+      react: '>=16.8.0'
+      react-dom: '>=16.8.0'
+
   '@remotion/player@4.0.499':
     resolution: {integrity: sha512-3qEjNUj0KamSgWLXDhXnHdVMIx0EBsdr7XM5+QGldj1EiZH54vXVKJsWJj6SYfPbaskfEWI0wjKGGh0ml3vJrw==}
     peerDependencies:
@@ -2198,6 +2216,9 @@ packages:
     peerDependencies:
       react: '>=18.0.0'
       react-dom: '>=18.0.0'
+
+  '@remotion/zod-types@4.0.499':
+    resolution: {integrity: sha512-UyKMhwnS9T6NgHUznscZ4+pPkvjEIqfd6gEVqW6JkM3C7OcZfOBRcF7FWZZq96eyTIxJHLxCUDdlAZr8JcRlTA==}
 
   '@rolldown/pluginutils@1.0.0-beta.27':
     resolution: {integrity: sha512-+d0F4MKMCbeVUJwG96uQ4SgAznZNSq93I3V+9NHA4OpvqG8mRCpGdKmK8l/dl02h2CCDHwW2FqilnTyDcAnqjA==}
@@ -7239,6 +7260,9 @@ packages:
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
+  zod@4.3.6:
+    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
+
   zod@4.4.3:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
@@ -7259,6 +7283,24 @@ packages:
 
   zustand@5.0.15:
     resolution: {integrity: sha512-MpSEjRiBkA9crSYeOUH32rJC7SVqAbm0Fqcqge/bUi2PPoLcBWKOsG+C8mevmpr8TwXHBVkChbbJiyvkE+i/3A==}
+    engines: {node: '>=12.20.0'}
+    peerDependencies:
+      '@types/react': '>=18.0.0'
+      immer: '>=9.0.6'
+      react: '>=18.0.0'
+      use-sync-external-store: '>=1.2.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      immer:
+        optional: true
+      react:
+        optional: true
+      use-sync-external-store:
+        optional: true
+
+  zustand@5.0.8:
+    resolution: {integrity: sha512-gyPKpIaxY9XcO2vSMrLbiER7QMAMGOQZVRdJ6Zi782jkbzZygq5GI9nG8g+sMgitRtndwaBSl7uiqC49o1SSiw==}
     engines: {node: '>=12.20.0'}
     peerDependencies:
       '@types/react': '>=18.0.0'
@@ -9366,6 +9408,12 @@ snapshots:
       remotion: 4.0.499(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       zod: 4.4.3
 
+  '@remotion/motion-blur@4.0.499(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
+    dependencies:
+      react: 19.3.0
+      react-dom: 19.3.0(react@19.3.0)
+      remotion: 4.0.499(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+
   '@remotion/player@4.0.499(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
     dependencies:
       react: 19.3.0
@@ -9382,6 +9430,13 @@ snapshots:
       react: 19.3.0
       react-dom: 19.3.0(react@19.3.0)
       remotion: 4.0.499(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+
+  '@remotion/zod-types@4.0.499(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
+    dependencies:
+      remotion: 4.0.499(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+    transitivePeerDependencies:
+      - react
+      - react-dom
 
   '@rolldown/pluginutils@1.0.0-beta.27': {}
 
@@ -13537,10 +13592,10 @@ snapshots:
       is-docker: 2.2.1
       is-wsl: 2.2.0
 
-  openai@6.49.0(ws@8.22.0)(zod@4.4.3):
+  openai@6.49.0(ws@8.22.0)(zod@4.3.6):
     optionalDependencies:
       ws: 8.22.0
-      zod: 4.4.3
+      zod: 4.3.6
 
   optionator@0.9.4:
     dependencies:
@@ -15323,6 +15378,8 @@ snapshots:
 
   zod@3.25.76: {}
 
+  zod@4.3.6: {}
+
   zod@4.4.3: {}
 
   zustand@4.5.7(@types/react@18.3.31)(react@18.3.1):
@@ -15344,5 +15401,11 @@ snapshots:
       '@types/react': 18.3.31
       react: 18.3.1
       use-sync-external-store: 1.7.0(react@18.3.1)
+
+  zustand@5.0.8(@types/react@19.3.0)(react@19.3.0)(use-sync-external-store@1.7.0(react@19.3.0)):
+    optionalDependencies:
+      '@types/react': 19.3.0
+      react: 19.3.0
+      use-sync-external-store: 1.7.0(react@19.3.0)
 
   zwitch@2.0.4: {}

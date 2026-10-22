@@ -1,6 +1,6 @@
 {
   "name": "open-generative-ai",
-  "description": "Open-source alternative to HF AI — AI image, video, cinema and lip sync studio",
+  "description": "Open-source alternative to HF AI \u2014 AI image, video, cinema and lip sync studio",
   "homepage": "https://github.com/Anil-matcha/Open-Generative-AI",
   "private": true,
   "version": "2.0.0",
@@ -58,7 +58,7 @@
   "build": {
     "appId": "ai.generative.open",
     "productName": "SmartVideo GO",
-    "copyright": "Copyright © 2025",
+    "copyright": "Copyright \u00a9 2025",
     "directories": {
       "output": "release"
     },
@@ -142,6 +142,7 @@
     "@netlify/plugin-nextjs": "^5.15.12",
     "@octokit/rest": "^22.0.1",
     "@remotion/media": "4.0.499",
+    "@remotion/motion-blur": "4.0.499",
     "@remotion/player": "4.0.499",
     "@remotion/web-renderer": "4.0.499",
     "@sparticuz/chromium": "^153.0.0",
@@ -172,7 +173,10 @@
     "studio": "*",
     "svix": "^1.96.1",
     "tailwindcss": "^3.4.0",
-    "workflow-builder": "file:./packages/Vibe-Workflow/packages/workflow-builder"
+    "workflow-builder": "file:./packages/Vibe-Workflow/packages/workflow-builder",
+    "zustand": "5.0.8",
+    "zod": "4.3.6",
+    "@remotion/zod-types": "4.0.499"
   },
   "devDependencies": {
     "@clerk/testing": "^2.2.6",
