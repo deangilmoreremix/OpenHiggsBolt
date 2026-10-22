@@ -14,8 +14,41 @@ export function resolveDemoBaseURL(): string {
   return process.env.DEMO_BASE_URL || 'http://localhost:3111';
 }
 
-export function resolveDemoAuthStatePath(): string {
-  const origin = new URL(resolveDemoBaseURL()).origin;
+/**
+ * The base URL the E2E suites target.
+ *
+ * Defaults to the OpenHiggsBolt production domain. `https://smartvid.app` is
+ * deliberately NOT used: it is a different product ("Remix New Editor") that
+ * answers 404 for every `/api/personalization/*` call.
+ *
+ * Override it with `DEMO_BASE_URL` to point the same suites at a local server.
+ */
+export function resolveTargetBaseURL(): string {
+  return process.env.DEMO_BASE_URL || 'https://go.smartvid.app';
+}
+
+/**
+ * True when the target is a local dev server.
+ *
+ * A local server honours the `__e2e_auth_bypass` cookie (the dev-only escape
+ * hatch in the middleware), so a local run does not need a Clerk storage
+ * state. A production target must authenticate for real.
+ */
+export function isLocalDevTarget(baseURL: string): boolean {
+  try {
+    const host = new URL(baseURL).hostname;
+    return host === 'localhost' || host === '127.0.0.1';
+  } catch {
+    return false;
+  }
+}
+
+export function resolveDemoAuthStatePath(baseURL?: string): string {
+  // A caller that targets a specific origin MUST pass it, otherwise the state
+  // file is resolved for a different origin than the one under test and the
+  // Clerk session silently does not apply (the route handlers call Clerk's
+  // `auth()` themselves, so a mismatched state shows up as a 401).
+  const origin = new URL(baseURL || resolveDemoBaseURL()).origin;
   const safe = origin.replace(/[^a-z0-9]+/gi, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
   return path.join(process.cwd(), 'playwright/.clerk', `smartvideo-demo-${safe}.json`);
 }

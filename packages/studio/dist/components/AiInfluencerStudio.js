@@ -9,6 +9,8 @@ exports["default"] = AiInfluencerStudio;
 var _react = require("react");
 var _reactHotToast = _interopRequireWildcard(require("react-hot-toast"));
 var _muapi = require("../muapi.js");
+var _formatError = require("../utils/formatError.js");
+var _MobileGenerationActions = _interopRequireWildcard(require("./MobileGenerationActions.jsx"));
 var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
 var _AiAssistantProvider = require("../../../../components/AiAssistantProvider");
 var _skillStore = require("../lib/skillStore");
@@ -41,7 +43,7 @@ function _nonIterableRest() { throw new TypeError("Invalid attempt to destructur
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
 function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
 function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
-function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
+function _arrayWithHoles(r) { if (Array.isArray(r)) return r; } // ── SmartVideo local app integrations (no upstream equivalent) ───────────────
 var CDN = "https://cdn.muapi.ai/influencer";
 
 // ── Default image generation model ──────────────────────────────────────────
@@ -904,6 +906,10 @@ function AiInfluencerStudio(_ref2) {
   var _TABS_CONFIG$activeTa, _arMap$aspectRatio;
   var apiKey = _ref2.apiKey,
     onGenerate = _ref2.onGenerate,
+    onGenerationStart = _ref2.onGenerationStart,
+    onGenerationEnd = _ref2.onGenerationEnd,
+    onGenerationComplete = _ref2.onGenerationComplete,
+    onGenerationError = _ref2.onGenerationError,
     externalIsGenerating = _ref2.isGenerating,
     templateData = _ref2.templateData,
     _ref2$locale = _ref2.locale,
@@ -954,15 +960,6 @@ function AiInfluencerStudio(_ref2) {
     _useState18 = _slicedToArray(_useState17, 2),
     errorMsg = _useState18[0],
     setErrorMsg = _useState18[1];
-  var abortRef = (0, _react.useRef)(null);
-  // Abort any in-flight generation when this studio unmounts (e.g. the user
-  // switches tabs) so we stop polling MuAPI and burning API quota.
-  (0, _react.useEffect)(function () {
-    return function () {
-      var _abortRef$current;
-      (_abortRef$current = abortRef.current) === null || _abortRef$current === void 0 || _abortRef$current.abort();
-    };
-  }, []);
   var isGenerating = externalIsGenerating || isGeneratingInternal;
 
   // ── Apply pending Skills recipe (set by SkillsBrowser) ────────────────────
@@ -1059,7 +1056,7 @@ function AiInfluencerStudio(_ref2) {
   // ── Generate ──────────────────────────────────────────────────────────────
   var handleGenerate = /*#__PURE__*/function () {
     var _ref3 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee() {
-      var ac, prompt, _res, res, message, _t;
+      var prompt, _res, res, message, _t;
       return _regenerator().w(function (_context) {
         while (1) switch (_context.p = _context.n) {
           case 0:
@@ -1069,13 +1066,9 @@ function AiInfluencerStudio(_ref2) {
             }
             return _context.a(2);
           case 1:
+            onGenerationStart === null || onGenerationStart === void 0 || onGenerationStart();
             setIsGeneratingInternal(true);
             setErrorMsg("");
-
-            // New controller per generation; also lets a tab-switch unmount abort a
-            // long-running poll loop early.
-            ac = new AbortController();
-            abortRef.current = ac;
             prompt = buildPrompt();
             _context.p = 2;
             if (!onGenerate) {
@@ -1097,45 +1090,44 @@ function AiInfluencerStudio(_ref2) {
             return (0, _muapi.generateImage)(apiKey, {
               model: INFLUENCER_MODEL,
               prompt: prompt,
-              aspect_ratio: aspectRatio,
-              signal: ac.signal
+              aspect_ratio: aspectRatio
             });
           case 5:
             res = _context.v;
           case 6:
             if ((_res = res) !== null && _res !== void 0 && _res.url) {
               setCurrentResult(res.url);
-              // Bound history so a long session can't grow memory without limit.
               setHistory(function (prev) {
                 return [{
                   url: res.url,
+                  prompt: prompt,
                   ts: Date.now()
-                }].concat(_toConsumableArray(prev)).slice(0, 50);
+                }].concat(_toConsumableArray(prev));
               });
               setSelectedHistoryIdx(0);
+              onGenerationComplete === null || onGenerationComplete === void 0 || onGenerationComplete({
+                url: res.url,
+                model: INFLUENCER_MODEL,
+                prompt: prompt,
+                type: "image"
+              });
             }
-            _context.n = 9;
+            _context.n = 8;
             break;
           case 7:
             _context.p = 7;
             _t = _context.v;
-            if (!ac.signal.aborted) {
-              _context.n = 8;
-              break;
-            }
-            return _context.a(2);
+            message = (0, _formatError.formatErrorMessage)(_t, copy.errors.generationFailed);
+            if (onGenerationError) onGenerationError(message);else _reactHotToast["default"].error(message);
           case 8:
-            message = (_t === null || _t === void 0 ? void 0 : _t.message) || "Generation failed. Please try again.";
-            setErrorMsg(message);
-            _reactHotToast["default"].error(message);
-          case 9:
-            _context.p = 9;
+            _context.p = 8;
             setIsGeneratingInternal(false);
-            return _context.f(9);
-          case 10:
+            onGenerationEnd === null || onGenerationEnd === void 0 || onGenerationEnd();
+            return _context.f(8);
+          case 9:
             return _context.a(2);
         }
-      }, _callee, null, [[2, 7, 9, 10]]);
+      }, _callee, null, [[2, 7, 8, 9]]);
     }));
     return function handleGenerate() {
       return _ref3.apply(this, arguments);
@@ -1211,18 +1203,13 @@ function AiInfluencerStudio(_ref2) {
 
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     className: "flex h-full bg-[#0a0a0a] text-white overflow-hidden select-none font-sans",
-    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_reactHotToast.Toaster, {
-      position: "top-right",
-      containerStyle: {
-        zIndex: 99999
-      }
-    }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+    children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
       className: "flex flex-col w-[320px] shrink-0 border-r border-white/[0.07] bg-[#111111] overflow-hidden",
       children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
         className: "flex items-center justify-between px-4 py-3 border-b border-white/[0.07] shrink-0",
         children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
           className: "text-[13px] font-bold text-white tracking-tight",
-          children: "Builder"
+          children: copy.builder.title
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
           onClick: function onClick() {
             return setSelectedOptions(function () {
@@ -1237,7 +1224,7 @@ function AiInfluencerStudio(_ref2) {
             }());
           },
           className: "text-[11px] text-gray-500 hover:text-white transition-colors font-medium",
-          children: "Reset"
+          children: copy.builder.reset
         })]
       }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
         className: "flex gap-1 px-3 py-2 border-b border-white/[0.07] shrink-0",
@@ -1247,7 +1234,7 @@ function AiInfluencerStudio(_ref2) {
               return setActiveTab(key);
             },
             className: "flex-1 py-1.5 rounded-lg text-[12px] font-semibold transition-all ".concat(activeTab === key ? "bg-white text-black shadow" : "text-gray-500 hover:text-white hover:bg-white/[0.06]"),
-            children: TABS_CONFIG[key].label
+            children: copy.categoryTabs[key] || TABS_CONFIG[key].label
           }, key);
         })
       }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
@@ -1257,7 +1244,7 @@ function AiInfluencerStudio(_ref2) {
           return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
               className: "text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 px-0.5",
-              children: subcat.label
+              children: copy.subcategories[subcat.id] || subcat.label
             }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
               className: "grid grid-cols-3 gap-1.5",
               children: (_subcat$options = subcat.options) === null || _subcat$options === void 0 ? void 0 : _subcat$options.map(function (opt) {
@@ -1303,7 +1290,7 @@ function AiInfluencerStudio(_ref2) {
               onClick: function onClick() {
                 return setAspectRatio(r);
               },
-              className: "px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ".concat(aspectRatio === r ? "bg-[#22d3ee] text-black shadow-md shadow-[#22d3ee]/30" : "text-gray-500 hover:text-white"),
+              className: "px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ".concat(aspectRatio === r ? "bg-violet-600 text-white shadow-md shadow-violet-600/40" : "text-gray-500 hover:text-white"),
               children: r
             }, r);
           })
@@ -1312,11 +1299,11 @@ function AiInfluencerStudio(_ref2) {
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
             onClick: handleShuffle,
             className: "flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-gray-400 hover:text-white hover:bg-white/10 text-[12px] font-semibold transition-all",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(ShuffleIcon, {}), "Shuffle"]
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(ShuffleIcon, {}), copy.toolbar.shuffle]
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
             onClick: handleGenerate,
             disabled: isGenerating,
-            className: "flex items-center gap-2 px-5 py-2 rounded-xl text-[13px] font-bold transition-all shadow-lg ".concat(isGenerating ? "bg-[#22d3ee]/40 text-white/60 cursor-not-allowed" : "bg-[#22d3ee] text-black shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10"),
+            className: "flex items-center gap-2 px-5 py-2 rounded-xl text-[13px] font-bold transition-all shadow-lg ".concat(isGenerating ? "bg-violet-600/40 text-white/60 cursor-not-allowed" : "bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-violet-600/30 hover:shadow-violet-500/40"),
             children: isGenerating ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
               children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
                 className: "animate-spin",
@@ -1332,9 +1319,9 @@ function AiInfluencerStudio(_ref2) {
                 }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
                   d: "M21 12a9 9 0 00-9-9"
                 })]
-              }), "Generating\u2026"]
+              }), copy.toolbar.generating]
             }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(BoltIcon, {}), "Generate Character"]
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(BoltIcon, {}), copy.toolbar.generate]
             })
           })]
         })]
@@ -1350,22 +1337,22 @@ function AiInfluencerStudio(_ref2) {
           children: isGenerating ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "flex flex-col items-center gap-4 text-center px-8 py-12",
             children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-              className: "w-12 h-12 border-[3px] border-[#22d3ee]/20 border-t-[#22d3ee] rounded-full animate-spin"
+              className: "w-12 h-12 border-[3px] border-violet-500/20 border-t-violet-500 rounded-full animate-spin"
             }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
               className: "text-sm text-gray-400 font-medium",
-              children: "Generating your AI influencer\u2026"
+              children: copy.preview.generating
             })]
           }) : previewUrl ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
             children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
               src: previewUrl,
-              alt: "Generated AI Character",
+              alt: copy.preview.altGenerated,
               className: "w-full h-full object-cover"
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
               onClick: function onClick() {
                 return downloadImg(previewUrl);
               },
               className: "absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-white text-[11px] font-semibold hover:bg-black/80 transition-all",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(DownloadIcon, {}), "Save"]
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(DownloadIcon, {}), copy.preview.save]
             }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_SocialPublishProvider.PublishStep, {
               mediaUrl: previewUrl,
               mediaType: "image",
@@ -1409,10 +1396,10 @@ function AiInfluencerStudio(_ref2) {
               })]
             }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
               className: "text-sm text-gray-600 font-medium",
-              children: "Your AI influencer lives here."
+              children: copy.preview.emptyTitle
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("p", {
               className: "text-xs text-gray-700",
-              children: ["Design and build your AI influencer", /*#__PURE__*/(0, _jsxRuntime.jsx)("br", {}), "from scratch"]
+              children: [copy.preview.emptySubtitleLine1, /*#__PURE__*/(0, _jsxRuntime.jsx)("br", {}), copy.preview.emptySubtitleLine2]
             })]
           })
         })
@@ -1442,7 +1429,7 @@ function AiInfluencerStudio(_ref2) {
               });
             },
             className: "h-[22px] px-2 rounded-md bg-white/[0.04] hover:bg-white/[0.09] border border-white/[0.08] text-[11px] text-gray-500 hover:text-gray-300 whitespace-nowrap transition-all",
-            children: showAllTags ? "hide" : "show more"
+            children: showAllTags ? copy.tags.hide : copy.tags.showMore
           })]
         })
       }), errorMsg && /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
@@ -1459,8 +1446,8 @@ function AiInfluencerStudio(_ref2) {
           onChange: function onChange(e) {
             return setCustomPrompt(e.target.value);
           },
-          placeholder: "Add extra details\u2026 e.g. neon cyberpunk lighting, dramatic shadows",
-          className: "w-full h-9 bg-[#161616] border border-white/[0.07] rounded-xl px-3 text-[12px] text-gray-200 placeholder-gray-600 outline-none focus:border-[#22d3ee]/40 transition-colors"
+          placeholder: copy.customPrompt.placeholder,
+          className: "w-full h-9 bg-[#161616] border border-white/[0.07] rounded-xl px-3 text-[12px] text-gray-200 placeholder-gray-600 outline-none focus:border-violet-500/40 transition-colors"
         })]
       })]
     }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
@@ -1469,10 +1456,10 @@ function AiInfluencerStudio(_ref2) {
         className: "px-3 py-3 border-b border-white/[0.07] shrink-0",
         children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
           className: "text-[11px] font-bold text-white tracking-tight",
-          children: "Generated"
+          children: copy.gallery.title
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("p", {
           className: "text-[9px] text-gray-600 mt-0.5",
-          children: [history.length, " characters"]
+          children: [history.length, " ", copy.gallery.countSuffix]
         })]
       }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
         className: "flex-1 overflow-y-auto p-2 space-y-2",
@@ -1502,7 +1489,7 @@ function AiInfluencerStudio(_ref2) {
             })]
           }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("p", {
             className: "text-[9px] text-gray-700 leading-relaxed",
-            children: ["Generated characters", /*#__PURE__*/(0, _jsxRuntime.jsx)("br", {}), "appear here"]
+            children: [copy.gallery.emptyText.split('\n')[0], /*#__PURE__*/(0, _jsxRuntime.jsx)("br", {}), copy.gallery.emptyText.split('\n')[1]]
           })]
         }) : history.map(function (item, idx) {
           return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
@@ -1514,14 +1501,21 @@ function AiInfluencerStudio(_ref2) {
             onKeyDown: function onKeyDown(e) {
               return e.key === "Enter" && setSelectedHistoryIdx(idx);
             },
-            className: "group relative w-full aspect-[3/4] rounded-xl overflow-hidden border transition-all cursor-pointer ".concat(selectedHistoryIdx === idx ? "border-[#22d3ee] ring-1 ring-[#22d3ee]/40" : "border-white/[0.08] hover:border-white/20"),
+            className: "group relative w-full aspect-[3/4] rounded-xl overflow-hidden border transition-all cursor-pointer ".concat(selectedHistoryIdx === idx ? "border-violet-500 ring-1 ring-violet-500/40" : "border-white/[0.08] hover:border-white/20"),
             children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
               src: item.url,
-              alt: "Character ".concat(idx + 1),
+              alt: "".concat(copy.gallery.altPrefix, " ").concat(idx + 1),
               className: "w-full h-full object-cover"
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-              className: "absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-2",
+              className: "absolute inset-0 hidden md:flex bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity items-end justify-center pb-2",
               children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                className: "absolute right-2 top-2 flex flex-col gap-2",
+                children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_MobileGenerationActions.GenerationCopyButtons, {
+                  prompt: item.prompt,
+                  imageUrl: item.url,
+                  onCopyError: onGenerationError
+                })
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
                 role: "button",
                 tabIndex: 0,
                 onClick: function onClick(e) {
@@ -1529,7 +1523,7 @@ function AiInfluencerStudio(_ref2) {
                   downloadImg(item.url);
                 },
                 onKeyDown: function onKeyDown(e) {
-                  if (e.key === 'Enter') {
+                  if (e.key === "Enter") {
                     e.stopPropagation();
                     downloadImg(item.url);
                   }
@@ -1560,6 +1554,17 @@ function AiInfluencerStudio(_ref2) {
                   })
                 })
               })]
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_MobileGenerationActions["default"], {
+              prompt: item.prompt,
+              imageUrl: item.url,
+              onCopyError: onGenerationError,
+              actions: [{
+                kind: "download",
+                label: copy.gallery.download,
+                onSelect: function onSelect() {
+                  return downloadImg(item.url);
+                }
+              }]
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
               className: "absolute top-1 left-1 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[8px] text-gray-300 font-bold",
               children: ["#", history.length - idx]
@@ -1567,6 +1572,26 @@ function AiInfluencerStudio(_ref2) {
           }, item.ts);
         })
       })]
+    }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactHotToast.Toaster, {
+      position: "top-right",
+      containerStyle: {
+        zIndex: 99999
+      },
+      toastOptions: {
+        duration: 5000,
+        style: {
+          background: '#18181b',
+          color: '#ffffff',
+          border: '1px solid rgba(255,255,255,0.15)',
+          fontSize: '13px',
+          borderRadius: '12px',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+          maxWidth: '440px',
+          wordBreak: 'break-word',
+          whiteSpace: 'pre-wrap',
+          padding: '12px 16px'
+        }
+      }
     })]
   });
 }

@@ -95,18 +95,20 @@ function industrySuitability(category: string): { base: number; tier: string } {
 }
 
 /**
- * Derive the research input for a record from its own videoMarketing evidence
- * (populated by researchProvider). `no_video_on_scanned_pages` is explicitly
- * NOT a claim that the business has no videos, so it maps to 'unknown'.
+ * Derive the research input for a record from its own video evidence.
+ *
+ * `videoOpportunity` is the field the research step fills in
+ * (`{ hasPromoVideo, signals }`); `hasPromoVideo` is `'unknown'` when the
+ * site could not be verified, and never `false` from a single scanned page —
+ * so a missing embed never becomes a proven absence.
  */
 function deriveResearchFromRecord(
   record: BusinessDiscoveryRecord,
 ): VideoOpportunityResearch {
-  const vm = record.videoMarketing
-  if (vm?.state === 'video_found') {
-    return { hasPromoVideo: true, signals: vm.evidence, reachable: true }
-  }
-  return { hasPromoVideo: 'unknown' }
+  const vm = record.videoOpportunity
+  // State persists across re-scores; the signals are recomputed fresh so a
+  // re-scored record's rationale does not accumulate "research:" duplicates.
+  return { hasPromoVideo: vm?.hasPromoVideo ?? 'unknown' }
 }
 
 /**
@@ -186,52 +188,77 @@ export interface ScoreAndSortOptions {
  * this batch-wide so multi-location evidence is visible), otherwise it is
  * classified per record here.
  */
+/**
+ * Scores one business. Extracted from `scoreAndSort` so the normalizer's
+ * `enrichBusinessRecord` and the sorter cannot disagree about a number — the
+ * normalizer used to recompute a legacy activity-only score AFTER the sorter
+ * had already set the composite, so the score shown to the user was not the
+ * score the results were ranked by.
+ *
+ * `opts.research` carries video evidence collected by the research step; a
+ * record that already carries `videoOpportunity` keeps that evidence.
+ */
+export function scoreBusiness(
+  business: BusinessDiscoveryRecord,
+  opts?: ScoreAndSortOptions,
+  allNamesInBatch?: string[],
+): BusinessDiscoveryRecord {
+  const ownership: OwnershipType =
+    business.ownership ??
+    classifyOwnership({
+      name: business.name,
+      operator: business.operator,
+      brand: business.brand,
+      allNamesInBatch,
+    }).ownership
+
+  const contactability = computeContactabilityScore(business)
+  const activity = computeActivityScore(business)
+  const research = opts?.research ?? deriveResearchFromRecord(business)
+  const { score: videoOpportunity, signals } = computeVideoOpportunityScore(business, { research })
+
+  const multiplier = OWNERSHIP_MULTIPLIER[ownership] ?? 0.95
+  const composite = (contactability * 0.35 + activity * 0.2 + videoOpportunity * 0.45) * multiplier
+  const leadScore = Math.max(0, Math.min(100, Math.round(composite)))
+
+  const rationale = [...signals, `ownership ${ownership}: composite x${multiplier}`]
+
+  return {
+    ...business,
+    ownership,
+    contactabilityScore: contactability,
+    activityScore: activity,
+    videoOpportunityScore: videoOpportunity,
+    videoOpportunity: {
+      hasPromoVideo: research.hasPromoVideo ?? 'unknown',
+      signals,
+    },
+    leadScore,
+    scoreBreakdown: {
+      contactability,
+      activity,
+      videoOpportunity,
+      ownership,
+      rationale,
+    },
+  }
+}
+
+/**
+ * Compute all three scores and the composite leadScore:
+ * round(contactability * 0.35 + activity * 0.2 + videoOpportunity * 0.45)
+ * adjusted by the ownership multiplier, capped at 100. Sorts by leadScore desc.
+ *
+ * Ownership is read from the record when already classified (the route does
+ * this batch-wide so multi-location evidence is visible), otherwise it is
+ * classified per record here.
+ */
 export function scoreAndSort(
   businesses: BusinessDiscoveryRecord[],
   opts?: ScoreAndSortOptions,
 ): BusinessDiscoveryRecord[] {
   const allNamesInBatch = businesses.map((b) => b.name)
   return businesses
-    .map((b) => {
-      const ownership: OwnershipType =
-        b.ownership ??
-        classifyOwnership({
-          name: b.name,
-          operator: b.operator,
-          brand: b.brand,
-          allNamesInBatch,
-        }).ownership
-
-      const contactability = computeContactabilityScore(b)
-      const activity = computeActivityScore(b)
-      const research = opts?.research ?? deriveResearchFromRecord(b)
-      const { score: videoOpportunity, signals } = computeVideoOpportunityScore(b, { research })
-
-      const multiplier = OWNERSHIP_MULTIPLIER[ownership] ?? 0.95
-      const composite = (contactability * 0.35 + activity * 0.2 + videoOpportunity * 0.45) * multiplier
-      const leadScore = Math.max(0, Math.min(100, Math.round(composite)))
-
-      const rationale = [...signals, `ownership ${ownership}: composite x${multiplier}`]
-
-      return {
-        ...b,
-        ownership,
-        contactabilityScore: contactability,
-        activityScore: activity,
-        videoOpportunityScore: videoOpportunity,
-        videoOpportunity: {
-          hasPromoVideo: research.hasPromoVideo ?? 'unknown',
-          signals,
-        },
-        leadScore,
-        scoreBreakdown: {
-          contactability,
-          activity,
-          videoOpportunity,
-          ownership,
-          rationale,
-        },
-      }
-    })
+    .map((b) => scoreBusiness(b, opts, allNamesInBatch))
     .sort((a, b) => (b.leadScore || 0) - (a.leadScore || 0))
 }

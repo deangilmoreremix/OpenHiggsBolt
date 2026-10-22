@@ -59,34 +59,15 @@ function WorkflowCard(_ref) {
     _useState2 = _slicedToArray(_useState, 2),
     showOptions = _useState2[0],
     setShowOptions = _useState2[1];
-  var _useState3 = (0, _react.useState)(false),
-    _useState4 = _slicedToArray(_useState3, 2),
-    imgError = _useState4[0],
-    setImgError = _useState4[1];
-
-  // If the local/proxied thumbnail fails, fall back to the original raw URL.
-  var handleImgError = function handleImgError(e) {
-    var src = e.currentTarget.src;
-    // If this is already the proxy fallback, give up and show the placeholder.
-    if (src.includes('/api/thumbnail')) {
-      setImgError(true);
-      return;
-    }
-    // Prefer the app's same-origin proxy (works even when the CDN asset is
-    // missing/unreachable), otherwise fall back to the raw CDN url.
-    var viaProxy = "/api/thumbnail?url=".concat(encodeURIComponent(workflow.thumbnail || src));
-    e.currentTarget.src = viaProxy;
-  };
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     onClick: function onClick() {
       return _onClick(workflow);
     },
     className: "group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer border border-white/5 bg-[#0a0a0a] transition-all hover:border-[#22d3ee]/30 hover:scale-[1.02] shadow-2xl",
-    children: [workflow.thumbnail && !imgError ? /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+    children: [workflow.thumbnail ? /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
       src: workflow.thumbnail,
       alt: workflow.name,
-      className: "absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110",
-      onError: handleImgError
+      className: "absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
     }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
       className: "absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center",
       children: /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
@@ -206,24 +187,37 @@ function WorkflowStudio(_ref2) {
     _ref2$isHeaderVisible = _ref2.isHeaderVisible,
     isHeaderVisible = _ref2$isHeaderVisible === void 0 ? true : _ref2$isHeaderVisible,
     onToggleHeader = _ref2.onToggleHeader,
+    onGenerationStart = _ref2.onGenerationStart,
+    onGenerationEnd = _ref2.onGenerationEnd,
+    onGenerationComplete = _ref2.onGenerationComplete,
+    onGenerationError = _ref2.onGenerationError,
     templateData = _ref2.templateData;
   var params = (0, _navigation.useParams)();
   var router = (0, _navigation.useRouter)();
-  var slug = (params === null || params === void 0 ? void 0 : params.slug) || [];
   var idFromParams = params === null || params === void 0 ? void 0 : params.id; // exists on /workflow/[id]/[tab] route
-  var tabFromParams = params === null || params === void 0 ? void 0 : params.tab; // exists on /workflow/[id]/[tab] route
+  var tabFromParams = params === null || params === void 0 ? void 0 : params.tab; // string on /workflow/[id]/[tab]; array on the [[...tab]] catch-all
+  // Catch-all routes expose the whole remaining path as an array segment.
+  // Upstream reads that array from params.tab (its /studio/[brandSlug]/[[...tab]] and
+  // /open-generative-ai/[[...tab]] routes). THIS repo mounts the studio shell at
+  // /studio/[[...slug]], so the same array arrives as params.slug. Accept both, and
+  // guard the array access: a plain string here would make .findIndex unavailable.
+  var slugSegments = Array.isArray(params === null || params === void 0 ? void 0 : params.slug) ? params.slug : [];
+  var tabSegments = Array.isArray(tabFromParams) ? tabFromParams : [];
+  var catchAllSegments = slugSegments.length > 0 ? slugSegments : tabSegments;
 
   // Robustly extract ID and Tab from either route structure
   var getWorkflowInfo = (0, _react.useCallback)(function () {
-    // Priority 1: Dedicated /workflow/[id]/[tab] route  
+    // Priority 1: Dedicated /workflow/[id]/[tab] route
     if (idFromParams) {
       return {
         id: idFromParams,
-        tab: tabFromParams || null
+        tab: (Array.isArray(tabFromParams) ? tabFromParams[0] : tabFromParams) || null
       };
     }
-    // Priority 2: Catch-all /studio/[[...slug]] route
-    var wfIndex = slug.findIndex(function (s) {
+    // Priority 2: Catch-all studio shell route — also recognizes the singular
+    // "workflow" segment used by the standalone /workflow/[id]/[tab] URL scheme,
+    // since a white-label custom domain's middleware rewrite lands here too.
+    var wfIndex = catchAllSegments.findIndex(function (s) {
       return s === 'workflows' || s === 'workflow';
     });
     if (wfIndex === -1) return {
@@ -231,73 +225,73 @@ function WorkflowStudio(_ref2) {
       tab: null
     };
     return {
-      id: slug[wfIndex + 1] || null,
-      tab: slug[wfIndex + 2] || null
+      id: catchAllSegments[wfIndex + 1] || null,
+      tab: catchAllSegments[wfIndex + 2] || null
     };
-  }, [slug, idFromParams, tabFromParams]);
+  }, [catchAllSegments, idFromParams, tabFromParams]);
   var _getWorkflowInfo = getWorkflowInfo(),
     urlWorkflowId = _getWorkflowInfo.id,
     urlTab = _getWorkflowInfo.tab;
-  var _useState5 = (0, _react.useState)([]),
+  var _useState3 = (0, _react.useState)([]),
+    _useState4 = _slicedToArray(_useState3, 2),
+    workflows = _useState4[0],
+    setWorkflows = _useState4[1];
+  var _useState5 = (0, _react.useState)(true),
     _useState6 = _slicedToArray(_useState5, 2),
-    workflows = _useState6[0],
-    setWorkflows = _useState6[1];
-  var _useState7 = (0, _react.useState)(true),
+    loading = _useState6[0],
+    setLoading = _useState6[1];
+  var _useState7 = (0, _react.useState)(null),
     _useState8 = _slicedToArray(_useState7, 2),
-    loading = _useState8[0],
-    setLoading = _useState8[1];
-  var _useState9 = (0, _react.useState)(null),
+    selectedWorkflow = _useState8[0],
+    setSelectedWorkflow = _useState8[1];
+  var _useState9 = (0, _react.useState)("playground"),
     _useState0 = _slicedToArray(_useState9, 2),
-    selectedWorkflow = _useState0[0],
-    setSelectedWorkflow = _useState0[1];
-  var _useState1 = (0, _react.useState)("playground"),
+    activeSubTab = _useState0[0],
+    setActiveSubTab = _useState0[1]; // 'playground' | 'builder'
+  var _useState1 = (0, _react.useState)("templates"),
     _useState10 = _slicedToArray(_useState1, 2),
-    activeSubTab = _useState10[0],
-    setActiveSubTab = _useState10[1]; // 'playground' | 'builder'
-  var _useState11 = (0, _react.useState)("templates"),
+    activeMainTab = _useState10[0],
+    setActiveMainTab = _useState10[1]; // 'templates' | 'my-workflows' | 'published'
+  var _useState11 = (0, _react.useState)(null),
     _useState12 = _slicedToArray(_useState11, 2),
-    activeMainTab = _useState12[0],
-    setActiveMainTab = _useState12[1]; // 'templates' | 'my-workflows' | 'published'
-  var _useState13 = (0, _react.useState)(null),
+    renamingWorkflow = _useState12[0],
+    setRenamingWorkflow = _useState12[1];
+  var _useState13 = (0, _react.useState)(""),
     _useState14 = _slicedToArray(_useState13, 2),
-    renamingWorkflow = _useState14[0],
-    setRenamingWorkflow = _useState14[1];
-  var _useState15 = (0, _react.useState)(""),
+    newWorkflowName = _useState14[0],
+    setNewWorkflowName = _useState14[1];
+  var _useState15 = (0, _react.useState)(null),
     _useState16 = _slicedToArray(_useState15, 2),
-    newWorkflowName = _useState16[0],
-    setNewWorkflowName = _useState16[1];
+    isDeletingId = _useState16[0],
+    setIsDeletingId = _useState16[1];
   var _useState17 = (0, _react.useState)(null),
     _useState18 = _slicedToArray(_useState17, 2),
-    isDeletingId = _useState18[0],
-    setIsDeletingId = _useState18[1];
+    inputSchema = _useState18[0],
+    setInputSchema = _useState18[1];
   var _useState19 = (0, _react.useState)(null),
     _useState20 = _slicedToArray(_useState19, 2),
-    inputSchema = _useState20[0],
-    setInputSchema = _useState20[1];
+    nodeSchemas = _useState20[0],
+    setNodeSchemas = _useState20[1];
   var _useState21 = (0, _react.useState)(null),
     _useState22 = _slicedToArray(_useState21, 2),
-    nodeSchemas = _useState22[0],
-    setNodeSchemas = _useState22[1];
-  var _useState23 = (0, _react.useState)(null),
+    workflowDef = _useState22[0],
+    setWorkflowDef = _useState22[1];
+  var _useState23 = (0, _react.useState)({}),
     _useState24 = _slicedToArray(_useState23, 2),
-    workflowDef = _useState24[0],
-    setWorkflowDef = _useState24[1];
-  var _useState25 = (0, _react.useState)({}),
+    formData = _useState24[0],
+    setFormData = _useState24[1];
+  var _useState25 = (0, _react.useState)(false),
     _useState26 = _slicedToArray(_useState25, 2),
-    formData = _useState26[0],
-    setFormData = _useState26[1];
-  var _useState27 = (0, _react.useState)(false),
+    isExecuting = _useState26[0],
+    setIsExecuting = _useState26[1];
+  var _useState27 = (0, _react.useState)(null),
     _useState28 = _slicedToArray(_useState27, 2),
-    isExecuting = _useState28[0],
-    setIsExecuting = _useState28[1];
+    result = _useState28[0],
+    setResult = _useState28[1];
   var _useState29 = (0, _react.useState)(null),
     _useState30 = _slicedToArray(_useState29, 2),
-    result = _useState30[0],
-    setResult = _useState30[1];
-  var _useState31 = (0, _react.useState)(null),
-    _useState32 = _slicedToArray(_useState31, 2),
-    error = _useState32[0],
-    setError = _useState32[1];
+    error = _useState30[0],
+    setError = _useState30[1];
 
   // ── Apply template data from landing page "Create This Style" ──────────────
   var templateApplied = (0, _react.useRef)(null);
@@ -312,26 +306,6 @@ function WorkflowStudio(_ref2) {
       });
     }
   }, [templateData]);
-  var _useState33 = (0, _react.useState)(""),
-    _useState34 = _slicedToArray(_useState33, 2),
-    webhookUrl = _useState34[0],
-    setWebhookUrl = _useState34[1];
-  var _useState35 = (0, _react.useState)("form"),
-    _useState36 = _slicedToArray(_useState35, 2),
-    playgroundView = _useState36[0],
-    setPlaygroundView = _useState36[1]; // 'form' | 'api'
-  var _useState37 = (0, _react.useState)(null),
-    _useState38 = _slicedToArray(_useState37, 2),
-    rawResult = _useState38[0],
-    setRawResult = _useState38[1];
-  var _useState39 = (0, _react.useState)(null),
-    _useState40 = _slicedToArray(_useState39, 2),
-    copiedKey = _useState40[0],
-    setCopiedKey = _useState40[1];
-  var _useState41 = (0, _react.useState)(false),
-    _useState42 = _slicedToArray(_useState41, 2),
-    showRaw = _useState42[0],
-    setShowRaw = _useState42[1];
 
   // Handlers defined early so they can be used in effects
   var handleSelectWorkflow = (0, _react.useCallback)(/*#__PURE__*/function () {
@@ -346,7 +320,7 @@ function WorkflowStudio(_ref2) {
             setSelectedWorkflow(wf);
             setResult(null);
             setError(null);
-            targetTab = urlTab || (activeMainTab === "templates" ? "builder" : "playground");
+            targetTab = urlTab || "playground";
             setActiveSubTab(targetTab);
             if (!fromUrl) {
               // Always route to /workflow/[id] so the builder library's useParams().id resolves correctly
@@ -360,7 +334,7 @@ function WorkflowStudio(_ref2) {
     return function (_x) {
       return _ref3.apply(this, arguments);
     };
-  }(), [router, urlTab, activeMainTab]);
+  }(), [router, urlTab]);
 
   // Dedicated data fetching effect for the active workflow
   (0, _react.useEffect)(function () {
@@ -370,7 +344,7 @@ function WorkflowStudio(_ref2) {
     }
     function _loadWorkflowDetails() {
       _loadWorkflowDetails = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2() {
-        var wfId, results, response, schema, initial, nodes, def, _def$nodes, reasons, message, isAuth, _t;
+        var wfId, results, response, schema, initial, nodes, def, _def$nodes, _t;
         return _regenerator().w(function (_context2) {
           while (1) switch (_context2.p = _context2.n) {
             case 0:
@@ -382,7 +356,7 @@ function WorkflowStudio(_ref2) {
             case 1:
               results = _context2.v;
               // Process Input Schema
-              if (results[0].status === "fulfilled") {
+              if (results[0].status === 'fulfilled') {
                 response = results[0].value;
                 schema = response.input_data || response;
                 setInputSchema(schema);
@@ -401,18 +375,17 @@ function WorkflowStudio(_ref2) {
               }
 
               // Process Builder State
-              nodes = results[1].status === "fulfilled" ? results[1].value : [];
-              def = results[2].status === "fulfilled" ? results[2].value : {
+              nodes = results[1].status === 'fulfilled' ? results[1].value : [];
+              def = results[2].status === 'fulfilled' ? results[2].value : {
                 nodes: [],
                 edges: []
               };
               setNodeSchemas(nodes);
               setWorkflowDef(def);
-              if (results[1].status === "rejected" || results[2].status === "rejected") {
-                reasons = [results[1].reason, results[2].reason].filter(Boolean).join(", ");
-                console.error("Builder components failed to load:", reasons);
+              if (results[1].status === 'rejected' || results[2].status === 'rejected') {
+                console.error("Builder components failed to load:", results[1].reason, results[2].reason);
                 if (!nodes.length && !((_def$nodes = def.nodes) !== null && _def$nodes !== void 0 && _def$nodes.length)) {
-                  setError("Failed to load workflow data. If you're opening a template, enter a valid MuAPI key in Settings first.");
+                  setError("Failed to load full builder data. Some features may be disabled.");
                 }
               }
               _context2.n = 3;
@@ -420,10 +393,8 @@ function WorkflowStudio(_ref2) {
             case 2:
               _context2.p = 2;
               _t = _context2.v;
-              console.error("Critical error loading workflow details:", _t);
-              message = (_t === null || _t === void 0 ? void 0 : _t.message) || String(_t);
-              isAuth = /401|403|auth|credentials/i.test(message);
-              setError(isAuth ? "Enter a valid MuAPI key to load this workflow." : "Critical error loading workflow: " + message);
+              console.error("Critical error loading pulse details:", _t);
+              setError("Critical error loading builder: " + _t.message);
               setNodeSchemas([]);
               setWorkflowDef({
                 nodes: [],
@@ -470,7 +441,10 @@ function WorkflowStudio(_ref2) {
           return (0, _muapi.createWorkflow)(apiKey, payload);
         case 2:
           response = _context3.v;
-          // Route to /workflow/[id] so useParams().id works in the builder library
+          // Route to /workflow/[id] so useParams().id works in the builder library.
+          // That page has no white-label session of its own, so hand off our token
+          // via sessionStorage — it reads "wl_workflow_token" on mount.
+          if (apiKey) sessionStorage.setItem("wl_workflow_token", apiKey);
           router.push("/workflow/".concat(response.workflow_id, "/builder"));
           return _context3.a(2);
         case 3:
@@ -650,133 +624,64 @@ function WorkflowStudio(_ref2) {
         return _regenerator().w(function (_context6) {
           while (1) switch (_context6.p = _context6.n) {
             case 0:
-              if (!(!apiKey && activeMainTab !== "templates")) {
-                _context6.n = 1;
-                break;
-              }
-              setWorkflows([]);
-              setLoading(false);
-              return _context6.a(2);
-            case 1:
-              _context6.p = 1;
+              _context6.p = 0;
               setLoading(true);
               data = [];
               if (!(activeMainTab === "templates")) {
-                _context6.n = 3;
+                _context6.n = 2;
                 break;
               }
-              _context6.n = 2;
+              _context6.n = 1;
               return (0, _muapi.getTemplateWorkflows)(apiKey);
-            case 2:
+            case 1:
               data = _context6.v;
-              _context6.n = 7;
-              break;
-            case 3:
-              if (!(activeMainTab === "my-workflows")) {
-                _context6.n = 5;
-                break;
-              }
-              _context6.n = 4;
-              return (0, _muapi.getUserWorkflows)(apiKey);
-            case 4:
-              data = _context6.v;
-              _context6.n = 7;
-              break;
-            case 5:
-              if (!(activeMainTab === "published")) {
-                _context6.n = 7;
-                break;
-              }
               _context6.n = 6;
-              return (0, _muapi.getPublishedWorkflows)(apiKey);
-            case 6:
-              data = _context6.v;
-            case 7:
-              setWorkflows(data);
-              _context6.n = 9;
               break;
-            case 8:
-              _context6.p = 8;
+            case 2:
+              if (!(activeMainTab === "my-workflows")) {
+                _context6.n = 4;
+                break;
+              }
+              _context6.n = 3;
+              return (0, _muapi.getUserWorkflows)(apiKey);
+            case 3:
+              data = _context6.v;
+              _context6.n = 6;
+              break;
+            case 4:
+              if (!(activeMainTab === "published")) {
+                _context6.n = 6;
+                break;
+              }
+              _context6.n = 5;
+              return (0, _muapi.getPublishedWorkflows)(apiKey);
+            case 5:
+              data = _context6.v;
+            case 6:
+              setWorkflows(data);
+              _context6.n = 8;
+              break;
+            case 7:
+              _context6.p = 7;
               _t5 = _context6.v;
               console.error("Failed to load workflows:", _t5);
               setError("Failed to load workflows list.");
-            case 9:
-              _context6.p = 9;
+            case 8:
+              _context6.p = 8;
               setLoading(false);
-              return _context6.f(9);
-            case 10:
+              return _context6.f(8);
+            case 9:
               return _context6.a(2);
           }
-        }, _callee6, null, [[1, 8, 9, 10]]);
+        }, _callee6, null, [[0, 7, 8, 9]]);
       }));
       return _loadWorkflows.apply(this, arguments);
     }
     loadWorkflows();
   }, [apiKey, activeMainTab]);
-  var copyTimerRef = (0, _react.useRef)(null);
-  var copySnippet = function copySnippet(key, text) {
-    try {
-      var _navigator$clipboard;
-      (_navigator$clipboard = navigator.clipboard) === null || _navigator$clipboard === void 0 || _navigator$clipboard.writeText(text);
-      setCopiedKey(key);
-      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-      copyTimerRef.current = setTimeout(function () {
-        return setCopiedKey(null);
-      }, 1500);
-    } catch (_) {}
-  };
-  (0, _react.useEffect)(function () {
-    return function () {
-      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-    };
-  }, []);
-  var buildInputs = (0, _react.useCallback)(function () {
-    var inputs = {};
-    Object.entries(formData).forEach(function (_ref9) {
-      var _ref0 = _slicedToArray(_ref9, 2),
-        key = _ref0[0],
-        value = _ref0[1];
-      if (!value) return;
-      if (key.startsWith("text")) inputs[key] = {
-        prompt: value
-      };else if (key.startsWith("image")) inputs[key] = {
-        image_url: value
-      };else if (key.startsWith("video")) inputs[key] = {
-        video_url: value
-      };else inputs[key] = value;
-    });
-    return inputs;
-  }, [formData]);
-  var apiSnippets = (0, _react.useMemo)(function () {
-    return (0, _muapi.buildWorkflowApiSnippets)(selectedWorkflow === null || selectedWorkflow === void 0 ? void 0 : selectedWorkflow.id, buildInputs(), {
-      webhookUrl: webhookUrl || undefined
-    });
-  }, [selectedWorkflow === null || selectedWorkflow === void 0 ? void 0 : selectedWorkflow.id, buildInputs, webhookUrl]);
-  var makeSnippet = function makeSnippet(label, key, text) {
-    return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-      className: "space-y-2",
-      children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-        className: "flex items-center justify-between",
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-          className: "text-[10px] font-black text-white/40 uppercase tracking-widest",
-          children: label
-        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-          type: "button",
-          onClick: function onClick() {
-            return copySnippet(key, text);
-          },
-          className: "text-[10px] font-black text-[#22d3ee] uppercase tracking-widest hover:text-white transition-colors",
-          children: copiedKey === key ? "Copied" : "Copy"
-        })]
-      }), /*#__PURE__*/(0, _jsxRuntime.jsx)("pre", {
-        className: "text-[11px] text-white/70 bg-black/40 border border-white/10 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all",
-        children: text
-      })]
-    });
-  };
   var handleRun = /*#__PURE__*/function () {
-    var _ref1 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee7(e) {
-      var inputs, data, _t6;
+    var _ref9 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee7(e) {
+      var _data$output, _data$outputs, inputs, data, message, _t6;
       return _regenerator().w(function (_context7) {
         while (1) switch (_context7.p = _context7.n) {
           case 0:
@@ -787,30 +692,47 @@ function WorkflowStudio(_ref2) {
             }
             return _context7.a(2);
           case 1:
+            onGenerationStart === null || onGenerationStart === void 0 || onGenerationStart();
             setIsExecuting(true);
             setError(null);
             setResult(null);
             _context7.p = 2;
-            inputs = buildInputs();
+            inputs = {};
+            Object.entries(formData).forEach(function (_ref0) {
+              var _ref1 = _slicedToArray(_ref0, 2),
+                key = _ref1[0],
+                value = _ref1[1];
+              if (!value) return;
+              if (key.startsWith("text")) inputs[key] = {
+                prompt: value
+              };else if (key.startsWith("image")) inputs[key] = {
+                image_url: value
+              };else if (key.startsWith("video")) inputs[key] = {
+                video_url: value
+              };else inputs[key] = value;
+            });
             _context7.n = 3;
-            return (0, _muapi.executeWorkflow)(apiKey, selectedWorkflow.id, inputs, webhookUrl || undefined);
+            return (0, _muapi.executeWorkflow)(apiKey, selectedWorkflow.id, inputs);
           case 3:
             data = _context7.v;
             setResult(data);
-            setRawResult(data);
+            onGenerationComplete === null || onGenerationComplete === void 0 || onGenerationComplete({
+              url: (data === null || data === void 0 ? void 0 : data.url) || (data === null || data === void 0 || (_data$output = data.output) === null || _data$output === void 0 ? void 0 : _data$output.url) || (data === null || data === void 0 || (_data$outputs = data.outputs) === null || _data$outputs === void 0 || (_data$outputs = _data$outputs[0]) === null || _data$outputs === void 0 ? void 0 : _data$outputs.url) || null,
+              type: "workflow"
+            });
             _context7.n = 5;
             break;
           case 4:
             _context7.p = 4;
             _t6 = _context7.v;
             console.error("Execution failed:", _t6);
-            setError(_t6.message || "Execution failed");
-            setRawResult({
-              error: (_t6 === null || _t6 === void 0 ? void 0 : _t6.message) || String(_t6)
-            });
+            message = _t6.message || "Execution failed";
+            setError(message);
+            onGenerationError === null || onGenerationError === void 0 || onGenerationError(message);
           case 5:
             _context7.p = 5;
             setIsExecuting(false);
+            onGenerationEnd === null || onGenerationEnd === void 0 || onGenerationEnd();
             return _context7.f(5);
           case 6:
             return _context7.a(2);
@@ -818,7 +740,7 @@ function WorkflowStudio(_ref2) {
       }, _callee7, null, [[2, 4, 5, 6]]);
     }));
     return function handleRun(_x4) {
-      return _ref1.apply(this, arguments);
+      return _ref9.apply(this, arguments);
     };
   }();
   if (loading && !selectedWorkflow) {
@@ -874,7 +796,10 @@ function WorkflowStudio(_ref2) {
               }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
                 onClick: function onClick() {
                   setActiveSubTab("builder");
-                  if (selectedWorkflow !== null && selectedWorkflow !== void 0 && selectedWorkflow.id) router.push("/workflow/".concat(selectedWorkflow.id, "/builder"));
+                  if (selectedWorkflow !== null && selectedWorkflow !== void 0 && selectedWorkflow.id) {
+                    if (apiKey) sessionStorage.setItem("wl_workflow_token", apiKey);
+                    router.push("/workflow/".concat(selectedWorkflow.id, "/builder"));
+                  }
                 },
                 type: "button",
                 className: "px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ".concat(activeSubTab === "builder" ? "bg-[#22d3ee] text-black shadow-[0_0_15px_rgba(34, 211, 238,0.2)]" : "text-white/40 hover:text-white"),
@@ -974,26 +899,9 @@ function WorkflowStudio(_ref2) {
         children: activeSubTab === "playground" ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
             className: "w-full lg:w-[400px] border-r border-white/5 flex flex-col bg-black/20",
-            children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
               className: "p-6 overflow-y-auto flex-1 custom-scrollbar",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                className: "flex gap-1 p-1 bg-white/5 rounded-lg mb-4",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-                  type: "button",
-                  onClick: function onClick() {
-                    return setPlaygroundView("form");
-                  },
-                  className: "flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ".concat(playgroundView === "form" ? "bg-[#22d3ee] text-black" : "text-white/40 hover:text-white"),
-                  children: "Run"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-                  type: "button",
-                  onClick: function onClick() {
-                    return setPlaygroundView("api");
-                  },
-                  className: "flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ".concat(playgroundView === "api" ? "bg-[#22d3ee] text-black" : "text-white/40 hover:text-white"),
-                  children: "API & CLI"
-                })]
-              }), playgroundView === "form" ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("form", {
+              children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("form", {
                 onSubmit: handleRun,
                 className: "space-y-6",
                 children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
@@ -1043,26 +951,6 @@ function WorkflowStudio(_ref2) {
                       }, key);
                     })
                   })]
-                }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                  className: "space-y-2",
-                  children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("label", {
-                    className: "block text-[11px] font-bold text-white/80 uppercase tracking-wider",
-                    children: ["Webhook URL ", /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                      className: "text-white/30 normal-case font-medium",
-                      children: "(optional)"
-                    })]
-                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
-                    type: "url",
-                    value: webhookUrl,
-                    onChange: function onChange(e) {
-                      return setWebhookUrl(e.target.value);
-                    },
-                    placeholder: "https://your-app.com/webhook",
-                    className: "w-full bg-white/5 border border-white/10 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-[#22d3ee]/50 transition-colors"
-                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
-                    className: "text-[10px] text-white/30",
-                    children: "Receive a notification when the workflow completes."
-                  })]
                 }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
                   type: "submit",
                   disabled: isExecuting || !selectedWorkflow.id,
@@ -1092,34 +980,7 @@ function WorkflowStudio(_ref2) {
                   className: "text-[10px] text-white/30 text-center mt-4",
                   children: "Save your workflow first to enable execution."
                 })]
-              }) : function () {
-                var snippets = apiSnippets;
-                return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                  className: "space-y-6",
-                  children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                    className: "space-y-2",
-                    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                      className: "text-[10px] font-black text-white/40 uppercase tracking-widest",
-                      children: "Endpoint"
-                    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("pre", {
-                      className: "text-[11px] text-white/70 bg-black/40 border border-white/10 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all",
-                      children: "".concat(snippets.method, " ").concat(snippets.endpoint)
-                    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("pre", {
-                      className: "text-[11px] text-white/70 bg-black/40 border border-white/10 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all",
-                      children: "Poll ".concat(snippets.pollUrl)
-                    })]
-                  }), makeSnippet("cURL", "curl", snippets.curl), makeSnippet("JSON body", "json", snippets.json), makeSnippet("Node.js", "node", snippets.node), makeSnippet("Python", "python", snippets.python), makeSnippet("CLI", "cli", [snippets.cliDiscover, snippets.cliGet, snippets.cliRun].filter(Boolean).join("\n\n")), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-                    className: "mt-6 p-4 rounded-lg bg-white/[0.03] border border-white/5 text-[11px] text-white/50 leading-relaxed",
-                    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                      className: "text-[10px] font-black text-white/40 uppercase tracking-widest mb-2",
-                      children: "Dynamic references"
-                    }), "Pipe outputs between nodes with Jinja2 syntax, e.g. ", /*#__PURE__*/(0, _jsxRuntime.jsx)("code", {
-                      className: "text-[#22d3ee]",
-                      children: "{{ node_id.outputs[0].value }}"
-                    }), ". Node categories: Text, Image, Video, Audio, Utility, API."]
-                  })]
-                });
-              }()]
+              })
             })
           }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
             className: "flex-1 overflow-y-auto p-8 lg:p-12 bg-[#050505] flex items-center justify-center min-h-[500px]",
@@ -1268,43 +1129,22 @@ function WorkflowStudio(_ref2) {
                   }, idx);
                 })
               })]
-            }), rawResult && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-              className: "w-full max-w-4xl mt-8",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-                type: "button",
-                onClick: function onClick() {
-                  return setShowRaw(function (v) {
-                    return !v;
-                  });
-                },
-                className: "text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-[#22d3ee] transition-colors flex items-center gap-2",
-                children: [showRaw ? "Hide" : "Show", " raw response"]
-              }), showRaw && /*#__PURE__*/(0, _jsxRuntime.jsx)("pre", {
-                className: "mt-3 text-[11px] text-white/60 bg-black/40 border border-white/10 rounded-lg p-4 overflow-x-auto whitespace-pre-wrap break-all max-h-[400px] overflow-y-auto",
-                children: JSON.stringify(rawResult, null, 2)
-              })]
             })]
           })]
         }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
           className: "flex-1 relative bg-[#050505]",
-          children: error && !loading ? /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-            className: "absolute inset-0 flex items-center justify-center",
-            children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-              className: "w-full max-w-md p-6 bg-red-500/10 border border-red-500/20 rounded-2xl text-center",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                className: "text-red-400 text-xs font-bold uppercase tracking-widest mb-2",
-                children: "Unable to load workflow"
-              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                className: "text-white/60 text-sm",
-                children: error
-              })]
-            })
-          }) : nodeSchemas && workflowDef ? /*#__PURE__*/(0, _jsxRuntime.jsx)(WorkflowUI, {
+          children: nodeSchemas && workflowDef ? /*#__PURE__*/(0, _jsxRuntime.jsx)(WorkflowUI, {
+            apiKey: apiKey,
             workflowId: selectedWorkflow === null || selectedWorkflow === void 0 ? void 0 : selectedWorkflow.id,
             initialNodeSchemas: nodeSchemas,
             initialWorkflowData: _objectSpread(_objectSpread({}, workflowDef), {}, {
+              // Inject ID to prevent builder from assuming this is a new unsaved flow
               workflow_id: selectedWorkflow === null || selectedWorkflow === void 0 ? void 0 : selectedWorkflow.id
-            })
+            }),
+            onGenerationStart: onGenerationStart,
+            onGenerationEnd: onGenerationEnd,
+            onGenerationComplete: onGenerationComplete,
+            onGenerationError: onGenerationError
           }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
             className: "absolute inset-0 flex items-center justify-center",
             children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {

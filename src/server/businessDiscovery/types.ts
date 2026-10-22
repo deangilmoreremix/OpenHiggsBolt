@@ -33,31 +33,6 @@ export type OwnershipType =
   | 'national_bigbox'
   | 'unknown'
 
-/**
- * Video-marketing evidence gathered from a business's own website.
- *
- * `video_found` — promotional/video content was positively identified.
- * `no_video_on_scanned_pages` — the pages that were fetched contained no video
- *   embeds. This is explicitly NOT a claim that the business has no videos.
- * `unknown` — the site was unreachable or was not scanned, so nothing can be
- *   said either way.
- */
-export type VideoPresenceState =
-  | 'video_found'
-  | 'no_video_on_scanned_pages'
-  | 'unknown'
-
-export interface VideoMarketingEvidence {
-  state: VideoPresenceState
-  /** e.g. ['youtube', 'vimeo', 'native']. */
-  platforms: string[]
-  embedCount: number
-  evidence: string[]
-  /** Number of usable branding assets (logo / og:image / social image). */
-  brandingAssetCount: number
-  sourceUrl?: string
-}
-
 export interface BusinessDiscoveryRecord {
   id: string
   source: 'OPENSTREETMAP'
@@ -114,8 +89,6 @@ export interface BusinessDiscoveryRecord {
     ownership: OwnershipType
     rationale: string[]
   }
-  videoMarketing?: VideoMarketingEvidence
-
   websiteStatus: WebsiteStatus
   verificationStatus: VerificationStatus
 

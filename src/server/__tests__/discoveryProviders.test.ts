@@ -152,7 +152,7 @@ describe('orchestrateDiscovery', () => {
 
     // Static is now the primary provider; Firecrawl is optional fallback
     expect(result.providerAttempted).toBe('SMARTVIDEO_STATIC')
-    expect(result.providerUsed).toBe('SMARTVIDEO_STATIC')
+    expect(result.providerUsed).toBe('STATIC_FALLBACK')
   })
 
   it('falls back to static when Firecrawl key is missing', async () => {
@@ -170,7 +170,7 @@ describe('orchestrateDiscovery', () => {
     })
 
     expect(result.providerAttempted).toBe('SMARTVIDEO_STATIC')
-    expect(result.providerUsed).toBe('SMARTVIDEO_STATIC')
+    expect(result.providerUsed).toBe('STATIC_FALLBACK')
   })
 
   it('falls back to browser/Firecrawl when static fails and fallbacks enabled', async () => {
@@ -235,7 +235,7 @@ describe('orchestrateDiscovery', () => {
     })
 
     expect(result.providerAttempted).toBe('SMARTVIDEO_STATIC')
-    expect(result.providerUsed).toBe('SMARTVIDEO_STATIC')
+    expect(result.providerUsed).toBe('STATIC_FALLBACK')
     expect(result.providerAttempts).not.toContain('FIRECRAWL')
     expect(result.firecrawlUsed).toBe(false)
   })
@@ -252,7 +252,7 @@ describe('orchestrateDiscovery', () => {
     })
 
     expect(result.providerAttempted).toBe('SMARTVIDEO_STATIC')
-    expect(result.providerUsed).toBe('SMARTVIDEO_STATIC')
+    expect(result.providerUsed).toBe('STATIC_FALLBACK')
     expect(result.providerAttempts).not.toContain('FIRECRAWL')
     expect(result.firecrawlUsed).toBe(false)
   })

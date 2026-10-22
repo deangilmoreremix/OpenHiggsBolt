@@ -90,7 +90,6 @@ export interface BusinessDiscoveryRecord {
     rationale: string[]
   }
   videoOpportunity?: { hasPromoVideo: boolean | 'unknown'; signals: string[] }
-  videoMarketing?: VideoMarketingEvidence
   websiteStatus: 'confirmed' | 'unknown' | 'not_found_after_research'
   verificationStatus: 'unverified' | 'researching' | 'verified'
   rawSource?: Record<string, unknown>
@@ -106,20 +105,6 @@ export type BusinessOwnership =
   | 'franchise_chain'
   | 'national_bigbox'
   | 'unknown'
-
-export type VideoPresenceState =
-  | 'video_found'
-  | 'no_video_on_scanned_pages'
-  | 'unknown'
-
-export interface VideoMarketingEvidence {
-  state: VideoPresenceState
-  platforms: string[]
-  embedCount: number
-  evidence: string[]
-  brandingAssetCount: number
-  sourceUrl?: string
-}
 
 export type BusinessSearchMode = 'idle' | 'searching' | 'results' | 'selected' | 'error'
 export interface BusinessSearchState {

@@ -3609,6 +3609,26 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
               }
 
               if (jobStatus === 'error') {
+                // A background phase can fail while the static crawl already
+                // produced real assets (a hosting runtime with no browser, a
+                // site that refuses to render). Those assets are still valid
+                // and still downloadable, so they are shown for review and the
+                // failure is reported as a warning rather than as a dead end.
+                const salvaged: DiscoveredAsset[] = Array.isArray(statusData?.result?.discoveredAssets)
+                  ? statusData.result.discoveredAssets
+                  : []
+
+                if (salvaged.length > 0) {
+                  setDiscoveredAssetsState(salvaged)
+                  setDiscoveryStatus('reviewing')
+                  setDiscoveryError(
+                    typeof statusData?.errorMessage === 'string'
+                      ? `Some assets could not be verified (${statusData.errorMessage}). ${salvaged.length} asset(s) are ready to review.`
+                      : `Some assets could not be verified. ${salvaged.length} asset(s) are ready to review.`,
+                  )
+                  return
+                }
+
                 const errorMessage = typeof statusData?.errorMessage === 'string'
                   ? statusData.errorMessage
                   : typeof statusData?.error === 'string'
@@ -3637,7 +3657,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
 
       // Immediate complete response
       if (discoveredAssets.length === 0) {
-        setDiscoveryError('No useful assets were found on that website.')
+        const serverError = typeof data?.error === 'string' ? data.error : ''
+        setDiscoveryError(
+          serverError || 'No useful assets were found on that website.',
+        )
         setDiscoveryStatus('idle')
         return
       }
@@ -4431,13 +4454,20 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const useMotionTemplate = useCallback((template: MotionTemplate) => {
     if (!template || !template.componentName) return
     setMotionTemplate(template)
-    const poster = template.preview
-      ? template.preview.startsWith('/')
-        ? template.preview
-        : `/${template.preview}`
+    // `template.preview` is the real ShotCraft MP4 clip (an absolute URL);
+    // `template.poster` is the optional still frame. They are distinct
+    // assets — building the poster from `preview` would hand the pipeline an
+    // MP4 as a poster image.
+    const clip = template.preview || ''
+    const poster = template.poster
+      ? template.poster.startsWith('http://') || template.poster.startsWith('https://')
+        ? template.poster
+        : template.poster.startsWith('/')
+          ? template.poster
+          : `/${template.poster}`
       : null
     setPreviewVideo({
-      url: '',
+      url: clip,
       poster,
       title: template.nameEn || template.name,
       kind: 'motion-template',

@@ -8,16 +8,14 @@ Object.defineProperty(exports, "__esModule", {
 exports["default"] = RecastStudio;
 var _react = require("react");
 var _reactHotToast = _interopRequireWildcard(require("react-hot-toast"));
-var _useTemplateData2 = require("../hooks/useTemplateData");
-var _TemplateBanner = _interopRequireDefault(require("./TemplateBanner"));
 var _SocialPublishProvider = require("../../../../components/SocialPublishProvider");
 var _AiAssistantProvider = require("../../../../components/AiAssistantProvider");
 var _muapi = require("../muapi.js");
+var _formatError = require("../utils/formatError.js");
+var _persistKey = require("../persistKey.js");
+var _MobileGenerationActions = _interopRequireWildcard(require("./MobileGenerationActions.jsx"));
 var _models = require("../models.js");
-var _skillStore = require("../lib/skillStore");
-var _registry = _interopRequireDefault(require("../skills/registry.json"));
-var _promptRecipes = require("../lib/promptRecipes");
-var _storyboardHandoff = require("../storyboardHandoff.js");
+var _PromptComposer = require("./prompt/PromptComposer.jsx");
 var _recastStudio = _interopRequireDefault(require("../messages/en/recastStudio.json"));
 var _recastStudio2 = _interopRequireDefault(require("../messages/zh/recastStudio.json"));
 var _i18nUtils = require("../i18nUtils");
@@ -28,21 +26,16 @@ function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArra
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
 function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
-function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
-function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
-function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
-function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
-function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
+function _regenerator() { /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ var e, t, r = "function" == typeof Symbol ? Symbol : {}, n = r.iterator || "@@iterator", o = r.toStringTag || "@@toStringTag"; function i(r, n, o, i) { var c = n && n.prototype instanceof Generator ? n : Generator, u = Object.create(c.prototype); return _regeneratorDefine2(u, "_invoke", function (r, n, o) { var i, c, u, f = 0, p = o || [], y = !1, G = { p: 0, n: 0, v: e, a: d, f: d.bind(e, 4), d: function d(t, r) { return i = t, c = 0, u = e, G.n = r, a; } }; function d(r, n) { for (c = r, u = n, t = 0; !y && f && !o && t < p.length; t++) { var o, i = p[t], d = G.p, l = i[2]; r > 3 ? (o = l === n) && (u = i[(c = i[4]) ? 5 : (c = 3, 3)], i[4] = i[5] = e) : i[0] <= d && ((o = r < 2 && d < i[1]) ? (c = 0, G.v = n, G.n = i[1]) : d < l && (o = r < 3 || i[0] > n || n > l) && (i[4] = r, i[5] = n, G.n = l, c = 0)); } if (o || r > 1) return a; throw y = !0, n; } return function (o, p, l) { if (f > 1) throw TypeError("Generator is already running"); for (y && 1 === p && d(p, l), c = p, u = l; (t = c < 2 ? e : u) || !y;) { i || (c ? c < 3 ? (c > 1 && (G.n = -1), d(c, u)) : G.n = u : G.v = u); try { if (f = 2, i) { if (c || (o = "next"), t = i[o]) { if (!(t = t.call(i, u))) throw TypeError("iterator result is not an object"); if (!t.done) return t; u = t.value, c < 2 && (c = 0); } else 1 === c && (t = i["return"]) && t.call(i), c < 2 && (u = TypeError("The iterator does not provide a '" + o + "' method"), c = 1); i = e; } else if ((t = (y = G.n < 0) ? u : r.call(n, G)) !== a) break; } catch (t) { i = e, c = 1, u = t; } finally { f = 1; } } return { value: t, done: y }; }; }(r, o, i), !0), u; } var a = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} t = Object.getPrototypeOf; var c = [][n] ? t(t([][n]())) : (_regeneratorDefine2(t = {}, n, function () { return this; }), t), u = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(c); function f(e) { return Object.setPrototypeOf ? Object.setPrototypeOf(e, GeneratorFunctionPrototype) : (e.__proto__ = GeneratorFunctionPrototype, _regeneratorDefine2(e, o, "GeneratorFunction")), e.prototype = Object.create(u), e; } return GeneratorFunction.prototype = GeneratorFunctionPrototype, _regeneratorDefine2(u, "constructor", GeneratorFunctionPrototype), _regeneratorDefine2(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = "GeneratorFunction", _regeneratorDefine2(GeneratorFunctionPrototype, o, "GeneratorFunction"), _regeneratorDefine2(u), _regeneratorDefine2(u, o, "Generator"), _regeneratorDefine2(u, n, function () { return this; }), _regeneratorDefine2(u, "toString", function () { return "[object Generator]"; }), (_regenerator = function _regenerator() { return { w: i, m: f }; })(); }
+function _regeneratorDefine2(e, r, n, t) { var i = Object.defineProperty; try { i({}, "", {}); } catch (e) { i = 0; } _regeneratorDefine2 = function _regeneratorDefine(e, r, n, t) { function o(r, n) { _regeneratorDefine2(e, r, function (e) { return this._invoke(r, n, e); }); } r ? i ? i(e, r, { value: n, enumerable: !t, configurable: !t, writable: !t }) : e[r] = n : (o("next", 0), o("throw", 1), o("return", 2)); }, _regeneratorDefine2(e, r, n, t); }
+function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
+function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
 function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
 function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
 function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
 function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
-function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
-function _regenerator() { /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ var e, t, r = "function" == typeof Symbol ? Symbol : {}, n = r.iterator || "@@iterator", o = r.toStringTag || "@@toStringTag"; function i(r, n, o, i) { var c = n && n.prototype instanceof Generator ? n : Generator, u = Object.create(c.prototype); return _regeneratorDefine2(u, "_invoke", function (r, n, o) { var i, c, u, f = 0, p = o || [], y = !1, G = { p: 0, n: 0, v: e, a: d, f: d.bind(e, 4), d: function d(t, r) { return i = t, c = 0, u = e, G.n = r, a; } }; function d(r, n) { for (c = r, u = n, t = 0; !y && f && !o && t < p.length; t++) { var o, i = p[t], d = G.p, l = i[2]; r > 3 ? (o = l === n) && (u = i[(c = i[4]) ? 5 : (c = 3, 3)], i[4] = i[5] = e) : i[0] <= d && ((o = r < 2 && d < i[1]) ? (c = 0, G.v = n, G.n = i[1]) : d < l && (o = r < 3 || i[0] > n || n > l) && (i[4] = r, i[5] = n, G.n = l, c = 0)); } if (o || r > 1) return a; throw y = !0, n; } return function (o, p, l) { if (f > 1) throw TypeError("Generator is already running"); for (y && 1 === p && d(p, l), c = p, u = l; (t = c < 2 ? e : u) || !y;) { i || (c ? c < 3 ? (c > 1 && (G.n = -1), d(c, u)) : G.n = u : G.v = u); try { if (f = 2, i) { if (c || (o = "next"), t = i[o]) { if (!(t = t.call(i, u))) throw TypeError("iterator result is not an object"); if (!t.done) return t; u = t.value, c < 2 && (c = 0); } else 1 === c && (t = i["return"]) && t.call(i), c < 2 && (u = TypeError("The iterator does not provide a '" + o + "' method"), c = 1); i = e; } else if ((t = (y = G.n < 0) ? u : r.call(n, G)) !== a) break; } catch (t) { i = e, c = 1, u = t; } finally { f = 1; } } return { value: t, done: y }; }; }(r, o, i), !0), u; } var a = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} t = Object.getPrototypeOf; var c = [][n] ? t(t([][n]())) : (_regeneratorDefine2(t = {}, n, function () { return this; }), t), u = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(c); function f(e) { return Object.setPrototypeOf ? Object.setPrototypeOf(e, GeneratorFunctionPrototype) : (e.__proto__ = GeneratorFunctionPrototype, _regeneratorDefine2(e, o, "GeneratorFunction")), e.prototype = Object.create(u), e; } return GeneratorFunction.prototype = GeneratorFunctionPrototype, _regeneratorDefine2(u, "constructor", GeneratorFunctionPrototype), _regeneratorDefine2(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = "GeneratorFunction", _regeneratorDefine2(GeneratorFunctionPrototype, o, "GeneratorFunction"), _regeneratorDefine2(u), _regeneratorDefine2(u, o, "Generator"), _regeneratorDefine2(u, n, function () { return this; }), _regeneratorDefine2(u, "toString", function () { return "[object Generator]"; }), (_regenerator = function _regenerator() { return { w: i, m: f }; })(); }
-function _regeneratorDefine2(e, r, n, t) { var i = Object.defineProperty; try { i({}, "", {}); } catch (e) { i = 0; } _regeneratorDefine2 = function _regeneratorDefine(e, r, n, t) { function o(r, n) { _regeneratorDefine2(e, r, function (e) { return this._invoke(r, n, e); }); } r ? i ? i(e, r, { value: n, enumerable: !t, configurable: !t, writable: !t }) : e[r] = n : (o("next", 0), o("throw", 1), o("return", 2)); }, _regeneratorDefine2(e, r, n, t); }
-function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
-function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; } // ---------------------------------------------------------------------------
+function _arrayWithHoles(r) { if (Array.isArray(r)) return r; } // ---------------------------------------------------------------------------
 // Upload button states
 // ---------------------------------------------------------------------------
 var UPLOAD_STATE = {
@@ -60,8 +53,14 @@ function MediaPickerButton(_ref) {
     progress = _ref.progress,
     fileName = _ref.fileName,
     previewUrl = _ref.previewUrl,
-    isVideo = _ref.isVideo;
+    isVideo = _ref.isVideo,
+    copy = _ref.copy;
   var inputRef = (0, _react.useRef)(null);
+  var _useState = (0, _react.useState)(false),
+    _useState2 = _slicedToArray(_useState, 2),
+    isDragging = _useState2[0],
+    setIsDragging = _useState2[1];
+  var dragCounterRef = (0, _react.useRef)(0);
   var handleClick = function handleClick(e) {
     var _inputRef$current;
     e.stopPropagation();
@@ -71,21 +70,35 @@ function MediaPickerButton(_ref) {
     }
     (_inputRef$current = inputRef.current) === null || _inputRef$current === void 0 || _inputRef$current.click();
   };
-  var handleChange = /*#__PURE__*/function () {
-    var _ref2 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee(e) {
-      var _e$target$files;
-      var file;
+  var fileMatchesAccept = function fileMatchesAccept(file) {
+    if (!accept) return true;
+    var patterns = accept.split(",").map(function (p) {
+      return p.trim();
+    }).filter(Boolean);
+    if (patterns.length === 0) return true;
+    return patterns.some(function (pattern) {
+      if (pattern === "*" || pattern === "*/*") return true;
+      if (pattern.endsWith("/*")) {
+        return file.type.startsWith(pattern.slice(0, -1));
+      }
+      return file.type === pattern;
+    });
+  };
+  var handleFiles = /*#__PURE__*/function () {
+    var _ref2 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee(files) {
+      var _fileList$find;
+      var fileList, file;
       return _regenerator().w(function (_context) {
         while (1) switch (_context.n) {
           case 0:
-            file = (_e$target$files = e.target.files) === null || _e$target$files === void 0 ? void 0 : _e$target$files[0];
+            fileList = Array.from(files || []);
+            file = (_fileList$find = fileList.find(fileMatchesAccept)) !== null && _fileList$find !== void 0 ? _fileList$find : fileList[0];
             if (file) {
               _context.n = 1;
               break;
             }
             return _context.a(2);
           case 1:
-            e.target.value = "";
             _context.n = 2;
             return onUpload(file);
           case 2:
@@ -93,16 +106,76 @@ function MediaPickerButton(_ref) {
         }
       }, _callee);
     }));
-    return function handleChange(_x) {
+    return function handleFiles(_x) {
       return _ref2.apply(this, arguments);
     };
   }();
-  var borderClass = uploadState === UPLOAD_STATE.READY ? "border-primary/60 bg-primary/5" : "border-white/[0.03] bg-white/[0.03] hover:bg-white/[0.06] hover:border-primary/40";
+  var handleChange = /*#__PURE__*/function () {
+    var _ref3 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2(e) {
+      var files;
+      return _regenerator().w(function (_context2) {
+        while (1) switch (_context2.n) {
+          case 0:
+            files = Array.from(e.target.files || []);
+            e.target.value = "";
+            _context2.n = 1;
+            return handleFiles(files);
+          case 1:
+            return _context2.a(2);
+        }
+      }, _callee2);
+    }));
+    return function handleChange(_x2) {
+      return _ref3.apply(this, arguments);
+    };
+  }();
+  var handleDragEnter = function handleDragEnter(e) {
+    var _e$dataTransfer;
+    e.preventDefault();
+    e.stopPropagation();
+    if (uploadState === UPLOAD_STATE.UPLOADING) return;
+    dragCounterRef.current += 1;
+    if ((_e$dataTransfer = e.dataTransfer) !== null && _e$dataTransfer !== void 0 && _e$dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+  var handleDragLeave = function handleDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsDragging(false);
+    }
+  };
+  var handleDragOver = function handleDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  var handleDrop = function handleDrop(e) {
+    var _e$dataTransfer2;
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDragging(false);
+    if (uploadState === UPLOAD_STATE.UPLOADING) return;
+    var files = (_e$dataTransfer2 = e.dataTransfer) === null || _e$dataTransfer2 === void 0 ? void 0 : _e$dataTransfer2.files;
+    if (files && files.length > 0) {
+      handleFiles(files);
+    }
+  };
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
     type: "button",
-    title: uploadState === UPLOAD_STATE.READY ? "".concat(fileName, " \u2014 click to clear") : "Upload ".concat(label.toLowerCase(), " file"),
+    title: uploadState === UPLOAD_STATE.READY ? copy.titles.clickToClear.replace("{fileName}", fileName) : copy.titles.uploadFile.replace("{label}", label.toLowerCase()),
     onClick: handleClick,
-    className: "flex-shrink-0 w-10 h-10 rounded-full border transition-all flex items-center justify-center relative overflow-hidden group ".concat(borderClass),
+    onDragEnter: handleDragEnter,
+    onDragLeave: handleDragLeave,
+    onDragOver: handleDragOver,
+    onDrop: handleDrop,
+    className: (0, _PromptComposer.promptMediaButtonClassName)({
+      active: uploadState === UPLOAD_STATE.READY,
+      className: isDragging ? "border-[#22d3ee] bg-[#22d3ee]/10 ring-2 ring-[#22d3ee]/50 scale-105" : ""
+    }),
     children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
       ref: inputRef,
       type: "file",
@@ -155,46 +228,26 @@ function MediaPickerButton(_ref) {
 }
 
 // ---------------------------------------------------------------------------
-// Inline dropdown
+// Assets history dropdown
 // ---------------------------------------------------------------------------
-function Dropdown(_ref3) {
-  var isOpen = _ref3.isOpen,
-    items = _ref3.items,
-    selectedId = _ref3.selectedId,
-    onSelect = _ref3.onSelect,
-    onClose = _ref3.onClose,
-    anchorRef = _ref3.anchorRef;
+function AssetsDropdown(_ref4) {
+  var videos = _ref4.videos,
+    images = _ref4.images,
+    results = _ref4.results,
+    onSelectVideo = _ref4.onSelectVideo,
+    onSelectImage = _ref4.onSelectImage,
+    onSelectResultAsVideo = _ref4.onSelectResultAsVideo,
+    onDeleteAsset = _ref4.onDeleteAsset,
+    setFullscreenUrl = _ref4.setFullscreenUrl,
+    onClose = _ref4.onClose,
+    anchorRef = _ref4.anchorRef,
+    copy = _ref4.copy;
+  var _useState3 = (0, _react.useState)("videos"),
+    _useState4 = _slicedToArray(_useState3, 2),
+    activeTab = _useState4[0],
+    setActiveTab = _useState4[1]; // 'videos' | 'images' | 'results'
   var dropRef = (0, _react.useRef)(null);
-  var _useState = (0, _react.useState)({}),
-    _useState2 = _slicedToArray(_useState, 2),
-    style = _useState2[0],
-    setStyle = _useState2[1];
   (0, _react.useEffect)(function () {
-    if (!isOpen || !(anchorRef !== null && anchorRef !== void 0 && anchorRef.current) || !dropRef.current) return;
-    var rect = anchorRef.current.getBoundingClientRect();
-    var ddHeight = dropRef.current.offsetHeight;
-    var spaceBelow = window.innerHeight - rect.bottom - 8;
-    var spaceAbove = rect.top - 8;
-    var top, bottom, maxHeight;
-    if (spaceBelow >= ddHeight || spaceBelow >= spaceAbove) {
-      top = rect.bottom + 8;
-      bottom = "auto";
-      maxHeight = Math.max(150, spaceBelow - 8);
-    } else {
-      top = "auto";
-      bottom = window.innerHeight - rect.top + 8;
-      maxHeight = Math.max(150, spaceAbove - 8);
-    }
-    var left = Math.min(rect.left, window.innerWidth - 220);
-    setStyle({
-      top: top,
-      bottom: bottom,
-      left: left,
-      maxHeight: maxHeight
-    });
-  }, [isOpen, anchorRef]);
-  (0, _react.useEffect)(function () {
-    if (!isOpen) return;
     var handler = function handler(e) {
       var _dropRef$current, _anchorRef$current;
       if (!((_dropRef$current = dropRef.current) !== null && _dropRef$current !== void 0 && _dropRef$current.contains(e.target)) && !(anchorRef !== null && anchorRef !== void 0 && (_anchorRef$current = anchorRef.current) !== null && _anchorRef$current !== void 0 && _anchorRef$current.contains(e.target))) {
@@ -205,41 +258,199 @@ function Dropdown(_ref3) {
     return function () {
       return window.removeEventListener("click", handler);
     };
+  }, [onClose, anchorRef]);
+  var items = activeTab === "videos" ? videos : activeTab === "images" ? images : results;
+  return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptPopover, {
+    ref: dropRef,
+    className: "w-80 max-h-80 overflow-hidden flex flex-col gap-2",
+    onClick: function onClick(e) {
+      return e.stopPropagation();
+    },
+    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptPopoverHeader, {
+      className: "mb-0",
+      children: copy.assetLibrary.header
+    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+      className: "flex border-b border-white/5 pb-1",
+      children: ["videos", "images", "results"].map(function (tab) {
+        return /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+          type: "button",
+          onClick: function onClick() {
+            return setActiveTab(tab);
+          },
+          className: "flex-1 text-center py-1 text-xs font-bold capitalize transition-colors ".concat(activeTab === tab ? "text-[#22d3ee] border-b border-[#22d3ee]" : "text-white/40 hover:text-white/80"),
+          children: copy.assetLibrary.tabs[tab]
+        }, tab);
+      })
+    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+      className: "overflow-y-auto custom-scrollbar flex-1 flex flex-col gap-1.5 min-h-[180px] max-h-60",
+      children: items.length === 0 ? /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+        className: "flex flex-col items-center justify-center flex-1 py-10 text-xs text-white/20",
+        children: copy.assetLibrary.empty
+      }) : items.map(function (item, idx) {
+        return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+          onClick: function onClick() {
+            if (activeTab === "videos") {
+              onSelectVideo(item.url, item.name);
+            } else if (activeTab === "images") {
+              onSelectImage(item.url, item.name);
+            } else {
+              onSelectResultAsVideo(item.url, item.name);
+            }
+          },
+          className: "flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/5 hover:border-white/10 transition-all gap-2 group/item cursor-pointer",
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            className: "w-10 h-10 rounded-lg overflow-hidden bg-white/5 flex-shrink-0 relative",
+            children: [activeTab === "images" ? /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+              src: item.url,
+              alt: "",
+              className: "w-full h-full object-cover"
+            }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("video", {
+              src: item.url,
+              className: "w-full h-full object-cover",
+              muted: true,
+              playsInline: true,
+              loop: true
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+              type: "button",
+              title: copy.titles.enlargePreview,
+              onClick: function onClick(e) {
+                e.stopPropagation();
+                setFullscreenUrl(item.url);
+              },
+              className: "absolute inset-0 bg-black/60 opacity-0 group-hover/item:opacity-100 flex items-center justify-center transition-opacity text-white hover:text-[#22d3ee]",
+              children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                width: "12",
+                height: "12",
+                viewBox: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "2.5",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                  cx: "11",
+                  cy: "11",
+                  r: "8"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                  x1: "21",
+                  y1: "21",
+                  x2: "16.65",
+                  y2: "16.65"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                  x1: "11",
+                  y1: "8",
+                  x2: "11",
+                  y2: "14"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
+                  x1: "8",
+                  y1: "11",
+                  x2: "14",
+                  y2: "11"
+                })]
+              })
+            })]
+          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            className: "flex-1 min-w-0 flex flex-col",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+              className: "text-xs text-white/95 font-semibold truncate",
+              title: item.name,
+              children: item.name
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+              className: "text-[9px] text-white/30 truncate mt-0.5",
+              children: new Date(item.timestamp || Date.now()).toLocaleDateString()
+            })]
+          }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            className: "flex items-center gap-1",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+              type: "button",
+              className: "text-xs text-black font-black px-2.5 py-1 bg-[#22d3ee] rounded-md hover:bg-[#22d3ee]/90 transition-colors",
+              children: copy.buttons.use
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+              type: "button",
+              title: copy.titles.deleteFromLibrary,
+              onClick: function onClick(e) {
+                e.stopPropagation();
+                onDeleteAsset(activeTab, item.url);
+              },
+              className: "p-1.5 text-white/30 hover:text-red-500 rounded hover:bg-white/5 transition-colors",
+              children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                width: "12",
+                height: "12",
+                viewBox: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "2.5",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
+                  points: "3 6 5 6 21 6"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                  d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                })]
+              })
+            })]
+          })]
+        }, idx);
+      })
+    })]
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Inline dropdown
+// ---------------------------------------------------------------------------
+function Dropdown(_ref5) {
+  var isOpen = _ref5.isOpen,
+    title = _ref5.title,
+    items = _ref5.items,
+    selectedId = _ref5.selectedId,
+    onSelect = _ref5.onSelect,
+    onClose = _ref5.onClose,
+    anchorRef = _ref5.anchorRef,
+    _ref5$className = _ref5.className,
+    className = _ref5$className === void 0 ? "" : _ref5$className;
+  var dropRef = (0, _react.useRef)(null);
+  (0, _react.useEffect)(function () {
+    if (!isOpen) return;
+    var handler = function handler(e) {
+      var _dropRef$current2, _anchorRef$current2;
+      if (!((_dropRef$current2 = dropRef.current) !== null && _dropRef$current2 !== void 0 && _dropRef$current2.contains(e.target)) && !(anchorRef !== null && anchorRef !== void 0 && (_anchorRef$current2 = anchorRef.current) !== null && _anchorRef$current2 !== void 0 && _anchorRef$current2.contains(e.target))) {
+        onClose();
+      }
+    };
+    window.addEventListener("click", handler);
+    return function () {
+      return window.removeEventListener("click", handler);
+    };
   }, [isOpen, onClose, anchorRef]);
   if (!isOpen) return null;
-  return /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+  return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptPopover, {
     ref: dropRef,
-    style: _objectSpread({
-      position: "fixed",
-      zIndex: 100,
-      overflowY: "auto"
-    }, style),
-    className: "bg-[#111] border border-white/10 rounded-lg shadow-3xl p-2 custom-scrollbar w-[calc(100vw-3rem)] max-w-xs",
-    children: items.map(function (item) {
-      return /*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-        type: "button",
-        onClick: function onClick() {
-          onSelect(item);
-          onClose();
-        },
-        className: "w-full text-left px-4 py-2 rounded text-sm transition-all hover:bg-white/10 ".concat(item.id === selectedId ? "text-primary font-bold bg-primary/5" : "text-white font-medium"),
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+    className: className,
+    onClick: function onClick(e) {
+      return e.stopPropagation();
+    },
+    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptPopoverHeader, {
+      children: title
+    }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptMenuList, {
+      children: items.map(function (item) {
+        var _item$description;
+        return /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptMenuItem, {
+          selected: item.id === selectedId,
+          description: (_item$description = item.description) === null || _item$description === void 0 ? void 0 : _item$description.slice(0, 75),
+          onClick: function onClick() {
+            onSelect(item);
+            onClose();
+          },
           children: item.name
-        }), item.description && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "text-xs text-muted mt-0.5",
-          children: [item.description.slice(0, 60), "..."]
-        })]
-      }, item.id);
-    })
+        }, item.id);
+      })
+    })]
   });
 }
 
 // ---------------------------------------------------------------------------
 // SVG icons
 // ---------------------------------------------------------------------------
-var VideoIcon = function VideoIcon(_ref4) {
-  var _ref4$className = _ref4.className,
-    className = _ref4$className === void 0 ? "text-white/40 group-hover:text-primary transition-colors" : _ref4$className;
+var VideoIcon = function VideoIcon(_ref6) {
+  var _ref6$className = _ref6.className,
+    className = _ref6$className === void 0 ? "text-white/40 group-hover:text-primary transition-colors" : _ref6$className;
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
     width: "16",
     height: "16",
@@ -260,9 +471,9 @@ var VideoIcon = function VideoIcon(_ref4) {
     })]
   });
 };
-var ImageIcon = function ImageIcon(_ref5) {
-  var _ref5$className = _ref5.className,
-    className = _ref5$className === void 0 ? "text-white/40 group-hover:text-primary transition-colors" : _ref5$className;
+var ImageIcon = function ImageIcon(_ref7) {
+  var _ref7$className = _ref7.className,
+    className = _ref7$className === void 0 ? "text-white/40 group-hover:text-primary transition-colors" : _ref7$className;
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
     width: "16",
     height: "16",
@@ -291,149 +502,161 @@ var ImageIcon = function ImageIcon(_ref5) {
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
-function RecastStudio(_ref6) {
+function RecastStudio(_ref8) {
   var _firstModel$id, _firstModel$inputs$as, _firstModel$inputs, _selectedModel$name;
-  var apiKey = _ref6.apiKey,
-    onGenerationComplete = _ref6.onGenerationComplete,
-    historyItems = _ref6.historyItems,
-    droppedFiles = _ref6.droppedFiles,
-    onFilesHandled = _ref6.onFilesHandled,
-    templateData = _ref6.templateData,
-    _ref6$locale = _ref6.locale,
-    locale = _ref6$locale === void 0 ? "en" : _ref6$locale;
+  var apiKey = _ref8.apiKey,
+    onGenerationStart = _ref8.onGenerationStart,
+    onGenerationEnd = _ref8.onGenerationEnd,
+    onGenerationComplete = _ref8.onGenerationComplete,
+    onGenerationError = _ref8.onGenerationError,
+    historyItems = _ref8.historyItems,
+    droppedFiles = _ref8.droppedFiles,
+    onFilesHandled = _ref8.onFilesHandled,
+    _ref8$locale = _ref8.locale,
+    locale = _ref8$locale === void 0 ? "en" : _ref8$locale;
   var copy = (0, _i18nUtils.resolveCopy)(_recastStudio["default"], _recastStudio2["default"], locale);
-  var PERSIST_KEY = "hg_recast_studio_persistent";
+  var LEGACY_PERSIST_KEY = "hg_recast_studio_persistent";
+  var PERSIST_KEY = (0, _persistKey.scopedPersistKey)(LEGACY_PERSIST_KEY, apiKey);
+  (0, _react.useEffect)(function () {
+    (0, _persistKey.migrateLegacyPersistKey)(LEGACY_PERSIST_KEY, PERSIST_KEY);
+  }, [PERSIST_KEY]);
 
   // ── Model state ───────────────────────────────────────────────────────────
   var firstModel = _models.recastModels[0];
-  var _useState3 = (0, _react.useState)((_firstModel$id = firstModel === null || firstModel === void 0 ? void 0 : firstModel.id) !== null && _firstModel$id !== void 0 ? _firstModel$id : ""),
-    _useState4 = _slicedToArray(_useState3, 2),
-    selectedModelId = _useState4[0],
-    setSelectedModelId = _useState4[1];
-  var _useState5 = (0, _react.useState)((_firstModel$inputs$as = firstModel === null || firstModel === void 0 || (_firstModel$inputs = firstModel.inputs) === null || _firstModel$inputs === void 0 || (_firstModel$inputs = _firstModel$inputs.aspect_ratio) === null || _firstModel$inputs === void 0 ? void 0 : _firstModel$inputs["default"]) !== null && _firstModel$inputs$as !== void 0 ? _firstModel$inputs$as : "16:9"),
+  var _useState5 = (0, _react.useState)((_firstModel$id = firstModel === null || firstModel === void 0 ? void 0 : firstModel.id) !== null && _firstModel$id !== void 0 ? _firstModel$id : ""),
     _useState6 = _slicedToArray(_useState5, 2),
-    selectedAspectRatio = _useState6[0],
-    setSelectedAspectRatio = _useState6[1];
+    selectedModelId = _useState6[0],
+    setSelectedModelId = _useState6[1];
+  var _useState7 = (0, _react.useState)((_firstModel$inputs$as = firstModel === null || firstModel === void 0 || (_firstModel$inputs = firstModel.inputs) === null || _firstModel$inputs === void 0 || (_firstModel$inputs = _firstModel$inputs.aspect_ratio) === null || _firstModel$inputs === void 0 ? void 0 : _firstModel$inputs["default"]) !== null && _firstModel$inputs$as !== void 0 ? _firstModel$inputs$as : "16:9"),
+    _useState8 = _slicedToArray(_useState7, 2),
+    selectedAspectRatio = _useState8[0],
+    setSelectedAspectRatio = _useState8[1];
 
   // ── Upload state ──────────────────────────────────────────────────────────
-  var _useState7 = (0, _react.useState)(UPLOAD_STATE.IDLE),
-    _useState8 = _slicedToArray(_useState7, 2),
-    videoState = _useState8[0],
-    setVideoState = _useState8[1];
-  var _useState9 = (0, _react.useState)(""),
+  var _useState9 = (0, _react.useState)(UPLOAD_STATE.IDLE),
     _useState0 = _slicedToArray(_useState9, 2),
-    videoName = _useState0[0],
-    setVideoName = _useState0[1];
-  var _useState1 = (0, _react.useState)(null),
+    videoState = _useState0[0],
+    setVideoState = _useState0[1];
+  var _useState1 = (0, _react.useState)(""),
     _useState10 = _slicedToArray(_useState1, 2),
-    videoUrl = _useState10[0],
-    setVideoUrl = _useState10[1];
-  var _useState11 = (0, _react.useState)(0),
+    videoName = _useState10[0],
+    setVideoName = _useState10[1];
+  var _useState11 = (0, _react.useState)(null),
     _useState12 = _slicedToArray(_useState11, 2),
-    videoProgress = _useState12[0],
-    setVideoProgress = _useState12[1];
-  var _useState13 = (0, _react.useState)(UPLOAD_STATE.IDLE),
+    videoUrl = _useState12[0],
+    setVideoUrl = _useState12[1];
+  var _useState13 = (0, _react.useState)(0),
     _useState14 = _slicedToArray(_useState13, 2),
-    imageState = _useState14[0],
-    setImageState = _useState14[1];
-  var _useState15 = (0, _react.useState)(""),
+    videoProgress = _useState14[0],
+    setVideoProgress = _useState14[1];
+  var _useState15 = (0, _react.useState)(UPLOAD_STATE.IDLE),
     _useState16 = _slicedToArray(_useState15, 2),
-    imageName = _useState16[0],
-    setImageName = _useState16[1];
-  var _useState17 = (0, _react.useState)(null),
+    imageState = _useState16[0],
+    setImageState = _useState16[1];
+  var _useState17 = (0, _react.useState)(""),
     _useState18 = _slicedToArray(_useState17, 2),
-    imageUrl = _useState18[0],
-    setImageUrl = _useState18[1];
-  var _useState19 = (0, _react.useState)(0),
+    imageName = _useState18[0],
+    setImageName = _useState18[1];
+  var _useState19 = (0, _react.useState)(null),
     _useState20 = _slicedToArray(_useState19, 2),
-    imageProgress = _useState20[0],
-    setImageProgress = _useState20[1];
+    imageUrl = _useState20[0],
+    setImageUrl = _useState20[1];
+  var _useState21 = (0, _react.useState)(0),
+    _useState22 = _slicedToArray(_useState21, 2),
+    imageProgress = _useState22[0],
+    setImageProgress = _useState22[1];
 
   // ── Prompt ────────────────────────────────────────────────────────────────
-  var _useState21 = (0, _react.useState)(""),
-    _useState22 = _slicedToArray(_useState21, 2),
-    prompt = _useState22[0],
-    setPrompt = _useState22[1];
+  var _useState23 = (0, _react.useState)(""),
+    _useState24 = _slicedToArray(_useState23, 2),
+    prompt = _useState24[0],
+    setPrompt = _useState24[1];
+
+  // ── Character Orientation ─────────────────────────────────────────────────
+  var _useState25 = (0, _react.useState)("image"),
+    _useState26 = _slicedToArray(_useState25, 2),
+    characterOrientation = _useState26[0],
+    setCharacterOrientation = _useState26[1];
+
+  // ── Assets Library ────────────────────────────────────────────────────────
+  var _useState27 = (0, _react.useState)(function () {
+      if (typeof window !== "undefined") {
+        try {
+          var stored = localStorage.getItem("hg_recast_studio_assets");
+          if (stored) {
+            var data = JSON.parse(stored);
+            return data.videos || [];
+          }
+        } catch (err) {}
+      }
+      return [];
+    }),
+    _useState28 = _slicedToArray(_useState27, 2),
+    assetVideos = _useState28[0],
+    setAssetVideos = _useState28[1];
+  var _useState29 = (0, _react.useState)(function () {
+      if (typeof window !== "undefined") {
+        try {
+          var stored = localStorage.getItem("hg_recast_studio_assets");
+          if (stored) {
+            var data = JSON.parse(stored);
+            return data.images || [];
+          }
+        } catch (err) {}
+      }
+      return [];
+    }),
+    _useState30 = _slicedToArray(_useState29, 2),
+    assetImages = _useState30[0],
+    setAssetImages = _useState30[1];
+  var _useState31 = (0, _react.useState)(function () {
+      if (typeof window !== "undefined") {
+        try {
+          var stored = localStorage.getItem("hg_recast_studio_assets");
+          if (stored) {
+            var data = JSON.parse(stored);
+            return data.results || [];
+          }
+        } catch (err) {}
+      }
+      return [];
+    }),
+    _useState32 = _slicedToArray(_useState31, 2),
+    assetResults = _useState32[0],
+    setAssetResults = _useState32[1];
 
   // ── Generation / UI state ─────────────────────────────────────────────────
-  var _useState23 = (0, _react.useState)(false),
-    _useState24 = _slicedToArray(_useState23, 2),
-    isGenerating = _useState24[0],
-    setIsGenerating = _useState24[1];
-  var _useState25 = (0, _react.useState)(null),
-    _useState26 = _slicedToArray(_useState25, 2),
-    generateError = _useState26[0],
-    setGenerateError = _useState26[1];
-  var _useState27 = (0, _react.useState)(null),
-    _useState28 = _slicedToArray(_useState27, 2),
-    fullscreenUrl = _useState28[0],
-    setFullscreenUrl = _useState28[1];
+  var _useState33 = (0, _react.useState)(false),
+    _useState34 = _slicedToArray(_useState33, 2),
+    isGenerating = _useState34[0],
+    setIsGenerating = _useState34[1];
+  var _useState35 = (0, _react.useState)(null),
+    _useState36 = _slicedToArray(_useState35, 2),
+    generateError = _useState36[0],
+    setGenerateError = _useState36[1];
+  var _useState37 = (0, _react.useState)(null),
+    _useState38 = _slicedToArray(_useState37, 2),
+    fullscreenUrl = _useState38[0],
+    setFullscreenUrl = _useState38[1];
 
   // ── History ───────────────────────────────────────────────────────────────
-  var _useState29 = (0, _react.useState)([]),
-    _useState30 = _slicedToArray(_useState29, 2),
-    internalHistory = _useState30[0],
-    setInternalHistory = _useState30[1];
+  var _useState39 = (0, _react.useState)([]),
+    _useState40 = _slicedToArray(_useState39, 2),
+    internalHistory = _useState40[0],
+    setInternalHistory = _useState40[1];
   var history = historyItems !== null && historyItems !== void 0 ? historyItems : internalHistory;
 
   // ── Dropdown state ────────────────────────────────────────────────────────
-  var _useState31 = (0, _react.useState)(null),
-    _useState32 = _slicedToArray(_useState31, 2),
-    openDropdown = _useState32[0],
-    setOpenDropdown = _useState32[1]; // 'model' | 'aspect' | null
+  var _useState41 = (0, _react.useState)(null),
+    _useState42 = _slicedToArray(_useState41, 2),
+    openDropdown = _useState42[0],
+    setOpenDropdown = _useState42[1]; // 'model' | 'aspect' | 'orientation' | 'assets' | null
   var modelBtnRef = (0, _react.useRef)(null);
   var aspectBtnRef = (0, _react.useRef)(null);
+  var orientationBtnRef = (0, _react.useRef)(null);
+  var assetsBtnRef = (0, _react.useRef)(null);
   var textareaRef = (0, _react.useRef)(null);
   var hasRestored = (0, _react.useRef)(false);
-
-  // ── Apply pending Skills recipe (set by SkillsBrowser) ────────────────────
-  (0, _react.useEffect)(function () {
-    var pending = (0, _skillStore.getPendingRecipe)("recast");
-    if (!pending) return;
-    var skill = _registry["default"].skills.find(function (s) {
-      return s.slug === pending;
-    });
-    (0, _skillStore.clearPendingRecipe)("recast");
-    if (!skill) return;
-    applyRecipe(skill);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ── Cross-studio: import a Storyboard hand-off ────────────────────────────
-  var handoffApplied = (0, _react.useRef)(null);
-  (0, _react.useEffect)(function () {
-    try {
-      var handoff = (0, _storyboardHandoff.readStoryboardHandoff)("recast");
-      if (!handoff || handoffApplied.current === handoff.createdAt) return;
-      handoffApplied.current = handoff.createdAt;
-      if (handoff.combinedPrompt || handoff.projectName) {
-        setPrompt(handoff.combinedPrompt || handoff.projectName);
-      }
-      if (["1:1", "16:9", "9:16"].includes(handoff.aspectRatio)) {
-        setSelectedAspectRatio(handoff.aspectRatio);
-      }
-    } catch (err) {
-      console.warn("Failed to apply Storyboard hand-off:", err);
-    }
-  }, []);
-  function applyRecipe(skill) {
-    var step0 = skill.steps && skill.steps[0];
-    if (!step0) {
-      if (skill.description) setPrompt(skill.description);
-      return;
-    }
-    var modelId = step0.endpoint || step0.model;
-    var model = _models.recastModels.find(function (m) {
-      return m.id === modelId;
-    });
-    if (model) setSelectedModelId(model.id);
-    if (step0.aspectRatio) setSelectedAspectRatio(step0.aspectRatio);
-    var vals = {};
-    (skill.inputs || []).forEach(function (i) {
-      vals[i.name] = "";
-    });
-    setPrompt((0, _promptRecipes.fillTemplate)(step0.prompt || skill.description || "", vals));
-  }
 
   // ── Persistence: Load ──────────────────────────────────────────────────────
   (0, _react.useEffect)(function () {
@@ -443,6 +666,7 @@ function RecastStudio(_ref6) {
         var data = JSON.parse(stored);
         if (data.selectedModelId) setSelectedModelId(data.selectedModelId);
         if (data.selectedAspectRatio) setSelectedAspectRatio(data.selectedAspectRatio);
+        if (data.characterOrientation) setCharacterOrientation(data.characterOrientation);
         if (data.videoUrl) {
           setVideoUrl(data.videoUrl);
           setVideoState(UPLOAD_STATE.READY);
@@ -463,6 +687,40 @@ function RecastStudio(_ref6) {
     }
   }, []);
 
+  // ── Save Assets ────────────────────────────────────────────────────────────
+  (0, _react.useEffect)(function () {
+    try {
+      localStorage.setItem("hg_recast_studio_assets", JSON.stringify({
+        videos: assetVideos,
+        images: assetImages,
+        results: assetResults
+      }));
+    } catch (err) {
+      console.warn("Failed to save RecastStudio assets:", err);
+    }
+  }, [assetVideos, assetImages, assetResults]);
+  var handleDeleteAsset = function handleDeleteAsset(tab, url) {
+    if (tab === "videos") {
+      setAssetVideos(function (prev) {
+        return prev.filter(function (item) {
+          return item.url !== url;
+        });
+      });
+    } else if (tab === "images") {
+      setAssetImages(function (prev) {
+        return prev.filter(function (item) {
+          return item.url !== url;
+        });
+      });
+    } else {
+      setAssetResults(function (prev) {
+        return prev.filter(function (item) {
+          return item.url !== url;
+        });
+      });
+    }
+  };
+
   // ── Persistence: Save ──────────────────────────────────────────────────────
   (0, _react.useEffect)(function () {
     var timer = setTimeout(function () {
@@ -470,6 +728,7 @@ function RecastStudio(_ref6) {
         localStorage.setItem(PERSIST_KEY, JSON.stringify({
           selectedModelId: selectedModelId,
           selectedAspectRatio: selectedAspectRatio,
+          characterOrientation: characterOrientation,
           videoUrl: videoUrl,
           videoName: videoName,
           imageUrl: imageUrl,
@@ -484,20 +743,7 @@ function RecastStudio(_ref6) {
     return function () {
       return clearTimeout(timer);
     };
-  }, [selectedModelId, selectedAspectRatio, videoUrl, videoName, imageUrl, imageName, prompt, internalHistory]);
-
-  // ── Apply template data from landing page "Create This Style" ──────────────
-  var _useTemplateData = (0, _useTemplateData2.useTemplateData)(templateData, function (data) {
-      if (data.prompt) {
-        setPrompt(data.prompt);
-      }
-      if (data.aspectRatio) {
-        var normalized = (0, _useTemplateData2.normalizeAspectRatio)(data.aspectRatio, "16:9");
-        setSelectedAspectRatio(normalized);
-      }
-    }),
-    resetTemplate = _useTemplateData.reset,
-    isTemplateApplied = _useTemplateData.isTemplateApplied;
+  }, [selectedModelId, selectedAspectRatio, characterOrientation, videoUrl, videoName, imageUrl, imageName, prompt, internalHistory]);
 
   // ── Derived model info ──────────────────────────────────────────────────────
   var selectedModel = (0, _models.getRecastModelById)(selectedModelId);
@@ -507,92 +753,53 @@ function RecastStudio(_ref6) {
 
   // ── Upload handlers ─────────────────────────────────────────────────────────
   var handleVideoPick = (0, _react.useCallback)(/*#__PURE__*/function () {
-    var _ref7 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2(file) {
+    var _ref9 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3(file) {
       var url, _t;
-      return _regenerator().w(function (_context2) {
-        while (1) switch (_context2.p = _context2.n) {
+      return _regenerator().w(function (_context3) {
+        while (1) switch (_context3.p = _context3.n) {
           case 0:
             if (!(file.size > 50 * 1024 * 1024)) {
-              _context2.n = 1;
+              _context3.n = 1;
               break;
             }
-            alert("Video exceeds 50MB limit.");
-            return _context2.a(2);
+            alert(copy.errors.videoTooLarge);
+            return _context3.a(2);
           case 1:
             setVideoState(UPLOAD_STATE.UPLOADING);
             setVideoProgress(0);
-            _context2.p = 2;
-            _context2.n = 3;
+            _context3.p = 2;
+            _context3.n = 3;
             return (0, _muapi.uploadFile)(apiKey, file, function (pct) {
               return setVideoProgress(pct);
             });
           case 3:
-            url = _context2.v;
+            url = _context3.v;
             setVideoUrl(url);
             setVideoName(file.name);
             setVideoState(UPLOAD_STATE.READY);
-            _context2.n = 5;
-            break;
-          case 4:
-            _context2.p = 4;
-            _t = _context2.v;
-            setVideoState(UPLOAD_STATE.IDLE);
-            alert("Video upload failed: ".concat(_t.message));
-          case 5:
-            _context2.p = 5;
-            setVideoProgress(0);
-            return _context2.f(5);
-          case 6:
-            return _context2.a(2);
-        }
-      }, _callee2, null, [[2, 4, 5, 6]]);
-    }));
-    return function (_x2) {
-      return _ref7.apply(this, arguments);
-    };
-  }(), [apiKey]);
-  var handlePromptInput = function handlePromptInput(e) {
-    setPrompt(e.target.value);
-    var el = e.target;
-    el.style.height = "auto";
-    var maxH = window.innerWidth < 768 ? 150 : 250;
-    el.style.height = Math.min(el.scrollHeight, maxH) + "px";
-  };
-  var handleImageUpload = (0, _react.useCallback)(/*#__PURE__*/function () {
-    var _ref8 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3(file) {
-      var url, _t2;
-      return _regenerator().w(function (_context3) {
-        while (1) switch (_context3.p = _context3.n) {
-          case 0:
-            if (!(file.size > 10 * 1024 * 1024)) {
-              _context3.n = 1;
-              break;
-            }
-            alert("Image exceeds 10MB limit.");
-            return _context3.a(2);
-          case 1:
-            setImageState(UPLOAD_STATE.UPLOADING);
-            setImageProgress(0);
-            _context3.p = 2;
-            _context3.n = 3;
-            return (0, _muapi.uploadFile)(apiKey, file, function (pct) {
-              return setImageProgress(pct);
+
+            // Add to assets
+            setAssetVideos(function (prev) {
+              var exists = prev.some(function (item) {
+                return item.url === url;
+              });
+              if (exists) return prev;
+              return [{
+                url: url,
+                name: file.name,
+                timestamp: new Date().toISOString()
+              }].concat(_toConsumableArray(prev)).slice(0, 30);
             });
-          case 3:
-            url = _context3.v;
-            setImageUrl(url);
-            setImageName(file.name);
-            setImageState(UPLOAD_STATE.READY);
             _context3.n = 5;
             break;
           case 4:
             _context3.p = 4;
-            _t2 = _context3.v;
-            setImageState(UPLOAD_STATE.IDLE);
-            alert("Image upload failed: ".concat(_t2.message));
+            _t = _context3.v;
+            setVideoState(UPLOAD_STATE.IDLE);
+            alert(copy.errors.videoUploadFailed.replace("{message}", _t.message));
           case 5:
             _context3.p = 5;
-            setImageProgress(0);
+            setVideoProgress(0);
             return _context3.f(5);
           case 6:
             return _context3.a(2);
@@ -600,7 +807,68 @@ function RecastStudio(_ref6) {
       }, _callee3, null, [[2, 4, 5, 6]]);
     }));
     return function (_x3) {
-      return _ref8.apply(this, arguments);
+      return _ref9.apply(this, arguments);
+    };
+  }(), [apiKey]);
+  var handlePromptInput = function handlePromptInput(e) {
+    setPrompt(e.target.value);
+  };
+  var handleImageUpload = (0, _react.useCallback)(/*#__PURE__*/function () {
+    var _ref0 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee4(file) {
+      var url, _t2;
+      return _regenerator().w(function (_context4) {
+        while (1) switch (_context4.p = _context4.n) {
+          case 0:
+            if (!(file.size > 10 * 1024 * 1024)) {
+              _context4.n = 1;
+              break;
+            }
+            alert(copy.errors.imageTooLarge);
+            return _context4.a(2);
+          case 1:
+            setImageState(UPLOAD_STATE.UPLOADING);
+            setImageProgress(0);
+            _context4.p = 2;
+            _context4.n = 3;
+            return (0, _muapi.uploadFile)(apiKey, file, function (pct) {
+              return setImageProgress(pct);
+            });
+          case 3:
+            url = _context4.v;
+            setImageUrl(url);
+            setImageName(file.name);
+            setImageState(UPLOAD_STATE.READY);
+
+            // Add to assets
+            setAssetImages(function (prev) {
+              var exists = prev.some(function (item) {
+                return item.url === url;
+              });
+              if (exists) return prev;
+              return [{
+                url: url,
+                name: file.name,
+                timestamp: new Date().toISOString()
+              }].concat(_toConsumableArray(prev)).slice(0, 30);
+            });
+            _context4.n = 5;
+            break;
+          case 4:
+            _context4.p = 4;
+            _t2 = _context4.v;
+            setImageState(UPLOAD_STATE.IDLE);
+            alert(copy.errors.imageUploadFailed.replace("{message}", _t2.message));
+          case 5:
+            _context4.p = 5;
+            setImageProgress(0);
+            return _context4.f(5);
+          case 6:
+            return _context4.a(2);
+        }
+      }, _callee4, null, [[2, 4, 5, 6]]);
+    }));
+    return function (_x4) {
+      return _ref0.apply(this, arguments);
     };
   }(), [apiKey]);
 
@@ -636,20 +904,20 @@ function RecastStudio(_ref6) {
     });
   }, []);
   var downloadFile = /*#__PURE__*/function () {
-    var _ref9 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee4(url, filename) {
+    var _ref1 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee5(url, filename) {
       var response, blob, blobUrl, a, _t3;
-      return _regenerator().w(function (_context4) {
-        while (1) switch (_context4.p = _context4.n) {
+      return _regenerator().w(function (_context5) {
+        while (1) switch (_context5.p = _context5.n) {
           case 0:
-            _context4.p = 0;
-            _context4.n = 1;
+            _context5.p = 0;
+            _context5.n = 1;
             return fetch(url);
           case 1:
-            response = _context4.v;
-            _context4.n = 2;
+            response = _context5.v;
+            _context5.n = 2;
             return response.blob();
           case 2:
-            blob = _context4.v;
+            blob = _context5.v;
             blobUrl = URL.createObjectURL(blob);
             a = document.createElement("a");
             a.href = blobUrl;
@@ -658,46 +926,47 @@ function RecastStudio(_ref6) {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(blobUrl);
-            _context4.n = 4;
+            _context5.n = 4;
             break;
           case 3:
-            _context4.p = 3;
-            _t3 = _context4.v;
+            _context5.p = 3;
+            _t3 = _context5.v;
             window.open(url, "_blank");
           case 4:
-            return _context4.a(2);
+            return _context5.a(2);
         }
-      }, _callee4, null, [[0, 3]]);
+      }, _callee5, null, [[0, 3]]);
     }));
-    return function downloadFile(_x4, _x5) {
-      return _ref9.apply(this, arguments);
+    return function downloadFile(_x5, _x6) {
+      return _ref1.apply(this, arguments);
     };
   }();
 
   // ── Generation ──────────────────────────────────────────────────────────────
   var handleGenerate = /*#__PURE__*/function () {
-    var _ref0 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee5() {
-      var params, res, genId, entry, _e$message$slice, _e$message, message, _t4;
-      return _regenerator().w(function (_context5) {
-        while (1) switch (_context5.p = _context5.n) {
+    var _ref10 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee6() {
+      var params, res, genId, entry, errMsg, _t4;
+      return _regenerator().w(function (_context6) {
+        while (1) switch (_context6.p = _context6.n) {
           case 0:
             if (videoUrl) {
-              _context5.n = 1;
+              _context6.n = 1;
               break;
             }
-            alert("Please upload a source video first.");
-            return _context5.a(2);
+            alert(copy.errors.missingVideo);
+            return _context6.a(2);
           case 1:
             if (imageUrl) {
-              _context5.n = 2;
+              _context6.n = 2;
               break;
             }
-            alert("Please upload a character image first.");
-            return _context5.a(2);
+            alert(copy.errors.missingImage);
+            return _context6.a(2);
           case 2:
+            onGenerationStart === null || onGenerationStart === void 0 || onGenerationStart();
             setIsGenerating(true);
             setGenerateError(null);
-            _context5.p = 3;
+            _context6.p = 3;
             params = {
               model: selectedModelId,
               video_url: videoUrl,
@@ -705,12 +974,15 @@ function RecastStudio(_ref6) {
             };
             if (showAspect) params.aspect_ratio = selectedAspectRatio;
             if (prompt && selectedModel !== null && selectedModel !== void 0 && selectedModel.hasPrompt) params.prompt = prompt;
-            _context5.n = 4;
+            if (selectedModelId === "kling-v3.0-pro-recast") {
+              params.character_orientation = characterOrientation;
+            }
+            _context6.n = 4;
             return (0, _muapi.processRecast)(apiKey, params);
           case 4:
-            res = _context5.v;
+            res = _context6.v;
             if (res !== null && res !== void 0 && res.url) {
-              _context5.n = 5;
+              _context6.n = 5;
               break;
             }
             throw new Error("No video URL returned by API");
@@ -724,6 +996,21 @@ function RecastStudio(_ref6) {
               timestamp: new Date().toISOString()
             };
             if (!historyItems) addToInternalHistory(entry);
+
+            // Add to assets
+            setAssetResults(function (prev) {
+              var url = res.url;
+              var name = prompt ? prompt.slice(0, 20) + "..." : "Result ".concat(new Date().toLocaleTimeString());
+              var exists = prev.some(function (item) {
+                return item.url === url;
+              });
+              if (exists) return prev;
+              return [{
+                url: url,
+                name: name,
+                timestamp: new Date().toISOString()
+              }].concat(_toConsumableArray(prev)).slice(0, 30);
+            });
             if (onGenerationComplete) {
               onGenerationComplete({
                 url: res.url,
@@ -732,29 +1019,26 @@ function RecastStudio(_ref6) {
                 type: "recast"
               });
             }
-            _context5.n = 7;
+            _context6.n = 7;
             break;
           case 6:
-            _context5.p = 6;
-            _t4 = _context5.v;
+            _context6.p = 6;
+            _t4 = _context6.v;
             console.error("[RecastStudio]", _t4);
-            message = (_e$message$slice = (_e$message = _t4.message) === null || _e$message === void 0 ? void 0 : _e$message.slice(0, 80)) !== null && _e$message$slice !== void 0 ? _e$message$slice : "Unknown error";
-            setGenerateError(message);
-            _reactHotToast["default"].error(message);
-            setTimeout(function () {
-              return setGenerateError(null);
-            }, 4000);
+            errMsg = (0, _formatError.formatErrorMessage)(_t4, copy.errors.generationFailed);
+            if (onGenerationError) onGenerationError(errMsg);else _reactHotToast["default"].error(errMsg);
           case 7:
-            _context5.p = 7;
+            _context6.p = 7;
             setIsGenerating(false);
-            return _context5.f(7);
+            onGenerationEnd === null || onGenerationEnd === void 0 || onGenerationEnd();
+            return _context6.f(7);
           case 8:
-            return _context5.a(2);
+            return _context6.a(2);
         }
-      }, _callee5, null, [[3, 6, 7, 8]]);
+      }, _callee6, null, [[3, 6, 7, 8]]);
     }));
     return function handleGenerate() {
-      return _ref0.apply(this, arguments);
+      return _ref10.apply(this, arguments);
     };
   }();
 
@@ -769,25 +1053,20 @@ function RecastStudio(_ref6) {
   // ── Render ────────────────────────────────────────────────────────────────
   return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
     className: "w-full h-full flex flex-col items-center justify-center bg-app-bg relative overflow-hidden",
-    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_reactHotToast.Toaster, {
-      position: "top-right",
-      containerStyle: {
-        zIndex: 99999
-      }
-    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
       className: "flex-1 w-full max-w-7xl mx-auto overflow-y-auto custom-scrollbar pb-40 lg:pb-32 px-2",
       children: history.length > 0 ? /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
         className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full pt-4 animate-fade-in-up",
         children: history.map(function (entry, idx) {
-          var _entry$prompt, _entry$model;
+          var _entry$prompt;
           return /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "relative group rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-xl hover:border-primary/50 transition-all duration-300 flex flex-col",
+            className: "relative group rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-xl hover:border-primary/50 transition-all duration-300 flex flex-col cursor-pointer",
+            onClick: function onClick() {
+              return setFullscreenUrl(entry.url);
+            },
             children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("video", {
               src: entry.url,
-              className: "w-full aspect-video object-cover bg-black/40 cursor-pointer hover:opacity-80 transition-opacity",
-              onClick: function onClick() {
-                return setFullscreenUrl(entry.url);
-              },
+              className: "w-full aspect-video object-cover bg-black/40 hover:opacity-80 transition-opacity",
               controls: false,
               loop: true,
               muted: true,
@@ -800,41 +1079,13 @@ function RecastStudio(_ref6) {
                 e.target.currentTime = 0;
               }
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-              className: "absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-                type: "button",
-                title: "Fullscreen",
-                onClick: function onClick(e) {
-                  e.stopPropagation();
-                  setFullscreenUrl(entry.url);
-                },
-                className: "p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-primary hover:text-black transition-all border border-white/10",
-                children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
-                  width: "14",
-                  height: "14",
-                  viewBox: "0 0 24 24",
-                  fill: "none",
-                  stroke: "currentColor",
-                  strokeWidth: "2.5",
-                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
-                    points: "15 3 21 3 21 9"
-                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
-                    points: "9 21 3 21 3 15"
-                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
-                    x1: "21",
-                    y1: "3",
-                    x2: "14",
-                    y2: "10"
-                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
-                    x1: "3",
-                    y1: "21",
-                    x2: "10",
-                    y2: "14"
-                  })]
-                })
+              className: "absolute top-2 right-2 hidden md:flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity",
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_MobileGenerationActions.GenerationCopyButtons, {
+                prompt: entry.prompt,
+                onCopyError: onGenerationError
               }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
                 type: "button",
-                title: "Download",
+                title: copy.buttons.download,
                 onClick: function onClick(e) {
                   e.stopPropagation();
                   downloadFile(entry.url, "bodyswap-".concat(entry.id || idx, ".mp4"));
@@ -876,10 +1127,10 @@ function RecastStudio(_ref6) {
                 })
               }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
                 type: "button",
-                title: "Delete",
+                title: copy.buttons["delete"],
                 onClick: function onClick(e) {
                   e.stopPropagation();
-                  if (confirm("Are you sure you want to delete this generated item?")) {
+                  if (confirm(copy.confirm.deleteGenerated)) {
                     setInternalHistory(function (prev) {
                       return prev.filter(function (_, i) {
                         return i !== idx;
@@ -898,7 +1149,7 @@ function RecastStudio(_ref6) {
                   children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("polyline", {
                     points: "3 6 5 6 21 6"
                   }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-                    d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                    d: "M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"
                   }), /*#__PURE__*/(0, _jsxRuntime.jsx)("line", {
                     x1: "10",
                     y1: "11",
@@ -912,15 +1163,42 @@ function RecastStudio(_ref6) {
                   })]
                 })
               })]
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_MobileGenerationActions["default"], {
+              prompt: entry.prompt,
+              onCopyError: onGenerationError,
+              actions: [{
+                kind: "download",
+                label: copy.buttons.download,
+                onSelect: function onSelect() {
+                  return downloadFile(entry.url, "bodyswap-".concat(entry.id || idx, ".mp4"));
+                }
+              }, {
+                kind: "delete",
+                label: copy.buttons["delete"],
+                danger: true,
+                onSelect: function onSelect() {
+                  if (confirm("Are you sure you want to delete this generated item?")) {
+                    setInternalHistory(function (prev) {
+                      return prev.filter(function (_, i) {
+                        return i !== idx;
+                      });
+                    });
+                  }
+                }
+              }]
+            }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
               className: "p-3 bg-black/80 backdrop-blur-sm border-t border-white/5 flex-1 flex flex-col justify-between gap-2",
-              children: /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                className: "flex items-center justify-between flex-wrap gap-1",
+              children: [entry.prompt && /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
+                className: "text-white/70 text-xs line-clamp-2 leading-relaxed",
+                title: entry.prompt,
+                children: entry.prompt
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                className: "flex items-center justify-between flex-wrap gap-1 mt-1",
                 children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                   className: "text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded border border-primary/20 whitespace-nowrap",
-                  children: ((_entry$model = entry.model) === null || _entry$model === void 0 ? void 0 : _entry$model.name) || entry.model || "Body Swap"
+                  children: copy.badges.bodySwap
                 })
-              })
+              })]
             })]
           }, entry.id || idx);
         })
@@ -961,164 +1239,246 @@ function RecastStudio(_ref6) {
           className: "text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-center px-4 flex flex-col items-center",
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
             className: "text-white font-black uppercase text-xl sm:text-3xl tracking-wide mb-1 opacity-90",
-            children: "START CREATING WITH"
+            children: copy.empty.titleLine1
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
             className: "text-[#22d3ee] font-black uppercase text-2xl sm:text-4xl sm:mt-1 tracking-tight",
-            children: "BODY SWAP STUDIO"
+            children: copy.empty.titleLine2
           })]
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)("p", {
           className: "text-white/40 text-xs sm:text-sm font-medium tracking-wide text-center max-w-lg leading-relaxed px-4",
-          children: "Swap the character in any video dynamically by choosing a video clip and a target character image."
+          children: copy.empty.description
         })]
       })
-    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-      className: "absolute bottom-4 w-full max-w-[95%] lg:max-w-4xl z-40 animate-fade-in-up",
-      style: {
-        animationDelay: "0.2s"
-      },
-      children: /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-        className: "w-full bg-gradient-to-b from-[#18181c]/90 via-[#0f0f12]/90 to-[#0c0c0e]/95 backdrop-blur-2xl rounded-[2rem] border border-white/[0.08] p-4 flex flex-col gap-3 shadow-[0_15px_50px_rgba(0,0,0,0.8)]",
+    }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptComposer, {
+      children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+        className: "flex items-center gap-2 px-1",
         children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "flex items-center gap-2 px-1",
+          className: "flex items-center gap-2",
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(MediaPickerButton, {
+            accept: "video/*",
+            label: copy.labels.video,
+            icon: /*#__PURE__*/(0, _jsxRuntime.jsx)(VideoIcon, {
+              className: "text-white/40 group-hover:text-[#22d3ee] transition-colors"
+            }),
+            onUpload: handleVideoPick,
+            onClear: function onClear() {
+              setVideoUrl(null);
+              setVideoState(UPLOAD_STATE.IDLE);
+              setVideoName("");
+            },
+            uploadState: videoState,
+            progress: videoProgress,
+            fileName: videoName,
+            previewUrl: videoUrl,
+            isVideo: true,
+            copy: copy
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)(MediaPickerButton, {
+            accept: "image/*",
+            label: copy.labels.characterImage,
+            icon: /*#__PURE__*/(0, _jsxRuntime.jsx)(ImageIcon, {
+              className: "text-white/40 group-hover:text-[#22d3ee] transition-colors"
+            }),
+            onUpload: handleImageUpload,
+            onClear: function onClear() {
+              setImageUrl(null);
+              setImageState(UPLOAD_STATE.IDLE);
+              setImageName("");
+            },
+            uploadState: imageState,
+            progress: imageProgress,
+            fileName: imageName,
+            previewUrl: imageUrl,
+            isVideo: false,
+            copy: copy
+          })]
+        }), /*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+          className: "flex-1 flex flex-col",
+          children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptTextarea, {
+            ref: textareaRef,
+            value: prompt,
+            onChange: handlePromptInput,
+            placeholder: copy.placeholders.prompt
+          })
+        })]
+      }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptFooter, {
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)(_PromptComposer.PromptControls, {
           children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "flex items-center gap-2",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(MediaPickerButton, {
-              accept: "video/*",
-              label: "Video",
-              icon: /*#__PURE__*/(0, _jsxRuntime.jsx)(VideoIcon, {
-                className: "text-white/40 group-hover:text-[#22d3ee] transition-colors"
-              }),
-              onUpload: handleVideoPick,
-              onClear: function onClear() {
-                setVideoUrl(null);
-                setVideoState(UPLOAD_STATE.IDLE);
-                setVideoName("");
+            className: "relative",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+              ref: modelBtnRef,
+              type: "button",
+              onClick: function onClick(e) {
+                e.stopPropagation();
+                setOpenDropdown(openDropdown === "model" ? null : "model");
               },
-              uploadState: videoState,
-              progress: videoProgress,
-              fileName: videoName,
-              previewUrl: videoUrl,
-              isVideo: true
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)(MediaPickerButton, {
-              accept: "image/*",
-              label: "Character image",
-              icon: /*#__PURE__*/(0, _jsxRuntime.jsx)(ImageIcon, {
-                className: "text-white/40 group-hover:text-[#22d3ee] transition-colors"
+              className: (0, _PromptComposer.promptControlClassName)({
+                active: openDropdown === "model"
               }),
-              onUpload: handleImageUpload,
-              onClear: function onClear() {
-                setImageUrl(null);
-                setImageState(UPLOAD_STATE.IDLE);
-                setImageName("");
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
+                className: "w-3.5 h-3.5 bg-[#22d3ee] rounded-sm flex items-center justify-center",
+                children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                  className: "text-[9px] font-black text-black",
+                  children: "R"
+                })
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                className: _PromptComposer.PROMPT_CONTROL_LABEL_CLASS,
+                children: (_selectedModel$name = selectedModel === null || selectedModel === void 0 ? void 0 : selectedModel.name) !== null && _selectedModel$name !== void 0 ? _selectedModel$name : copy.dropdowns.selectModel
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptChevronIcon, {})]
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)(Dropdown, {
+              isOpen: openDropdown === "model",
+              title: copy.dropdowns.model,
+              items: _models.recastModels,
+              selectedId: selectedModelId,
+              onSelect: handleModelSelect,
+              onClose: function onClose() {
+                return setOpenDropdown(null);
               },
-              uploadState: imageState,
-              progress: imageProgress,
-              fileName: imageName,
-              previewUrl: imageUrl,
-              isVideo: false
+              anchorRef: modelBtnRef,
+              className: "w-80 max-w-[calc(100vw-2rem)]"
+            })]
+          }), showAspect && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            className: "relative",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+              ref: aspectBtnRef,
+              type: "button",
+              onClick: function onClick(e) {
+                e.stopPropagation();
+                setOpenDropdown(openDropdown === "aspect" ? null : "aspect");
+              },
+              className: (0, _PromptComposer.promptControlClassName)({
+                active: openDropdown === "aspect"
+              }),
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptAspectRatioIcon, {}), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                className: _PromptComposer.PROMPT_CONTROL_LABEL_CLASS,
+                children: selectedAspectRatio
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptChevronIcon, {})]
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)(Dropdown, {
+              isOpen: openDropdown === "aspect",
+              title: copy.dropdowns.aspectRatio,
+              items: aspectDropdownItems,
+              selectedId: selectedAspectRatio,
+              onSelect: function onSelect(item) {
+                return setSelectedAspectRatio(item.id);
+              },
+              onClose: function onClose() {
+                return setOpenDropdown(null);
+              },
+              anchorRef: aspectBtnRef
+            })]
+          }), selectedModelId === "kling-v3.0-pro-recast" && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+            className: "relative",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+              ref: orientationBtnRef,
+              type: "button",
+              onClick: function onClick(e) {
+                e.stopPropagation();
+                setOpenDropdown(openDropdown === "orientation" ? null : "orientation");
+              },
+              className: (0, _PromptComposer.promptControlClassName)({
+                active: openDropdown === "orientation"
+              }),
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                className: "text-xs font-semibold text-current opacity-50 group-hover:opacity-100 transition-opacity",
+                children: copy.labels.orientationPrefix
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                className: "text-xs font-semibold text-current capitalize",
+                children: characterOrientation
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptChevronIcon, {})]
+            }), /*#__PURE__*/(0, _jsxRuntime.jsx)(Dropdown, {
+              isOpen: openDropdown === "orientation",
+              title: copy.dropdowns.orientation,
+              items: [{
+                id: "image",
+                name: copy.dropdowns.orientationImage,
+                description: copy.dropdowns.orientationImageDesc
+              }, {
+                id: "video",
+                name: copy.dropdowns.orientationVideo,
+                description: copy.dropdowns.orientationVideoDesc
+              }],
+              selectedId: characterOrientation,
+              onSelect: function onSelect(item) {
+                return setCharacterOrientation(item.id);
+              },
+              onClose: function onClose() {
+                return setOpenDropdown(null);
+              },
+              anchorRef: orientationBtnRef,
+              className: "w-64"
             })]
           }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "flex-1 flex flex-col",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_TemplateBanner["default"], {
-              isApplied: isTemplateApplied,
-              onClear: resetTemplate
-            }), /*#__PURE__*/(0, _jsxRuntime.jsx)("textarea", {
-              ref: textareaRef,
-              value: prompt,
-              onChange: handlePromptInput,
-              placeholder: "Optional \u2014 describe the motion or scene...",
-              className: "w-full bg-transparent border-none text-white text-sm placeholder:text-white/10 focus:outline-none resize-none pt-1 leading-relaxed min-h-[40px] max-h-[150px] md:max-h-[250px] overflow-y-auto custom-scrollbar disabled:opacity-40",
-              rows: 1
-            })]
-          })]
-        }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-          className: "flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-3 border-t border-white/[0.03] relative",
-          children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-            className: "flex items-center gap-2 px-1",
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-              className: "relative",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
-                ref: modelBtnRef,
-                type: "button",
-                onClick: function onClick(e) {
-                  e.stopPropagation();
-                  setOpenDropdown(openDropdown === "model" ? null : "model");
-                },
-                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("div", {
-                  className: "w-3.5 h-3.5 bg-[#22d3ee] rounded-sm flex items-center justify-center",
-                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                    className: "text-[9px] font-black text-black",
-                    children: "R"
-                  })
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                  className: "text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
-                  children: (_selectedModel$name = selectedModel === null || selectedModel === void 0 ? void 0 : selectedModel.name) !== null && _selectedModel$name !== void 0 ? _selectedModel$name : "Select model"
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("svg", {
-                  width: "10",
-                  height: "10",
-                  viewBox: "0 0 24 24",
-                  fill: "none",
-                  stroke: "currentColor",
-                  strokeWidth: "4",
-                  className: "opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0",
-                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
-                    d: "M6 9l6 6 6-6"
-                  })
+            className: "relative",
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("button", {
+              ref: assetsBtnRef,
+              type: "button",
+              onClick: function onClick(e) {
+                e.stopPropagation();
+                setOpenDropdown(openDropdown === "assets" ? null : "assets");
+              },
+              className: (0, _PromptComposer.promptControlClassName)({
+                active: openDropdown === "assets"
+              }),
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                width: "14",
+                height: "14",
+                viewBox: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "2",
+                className: "text-white/50 group-hover:text-[#22d3ee] transition-colors",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                  d: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                  d: "M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"
                 })]
-              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(Dropdown, {
-                isOpen: openDropdown === "model",
-                items: _models.recastModels,
-                selectedId: selectedModelId,
-                onSelect: handleModelSelect,
-                onClose: function onClose() {
-                  return setOpenDropdown(null);
-                },
-                anchorRef: modelBtnRef
-              })]
-            }), showAspect && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
-              className: "relative",
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-                ref: aspectBtnRef,
-                type: "button",
-                onClick: function onClick(e) {
-                  e.stopPropagation();
-                  setOpenDropdown(openDropdown === "aspect" ? null : "aspect");
-                },
-                className: "h-[34px] flex items-center gap-2 px-3.5 bg-[#16161a]/60 hover:bg-[#202026]/80 rounded-md transition-all border border-white/[0.06] group whitespace-nowrap shadow-inner",
-                children: /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                  className: "text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
-                  children: selectedAspectRatio
-                })
-              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(Dropdown, {
-                isOpen: openDropdown === "aspect",
-                items: aspectDropdownItems,
-                selectedId: selectedAspectRatio,
-                onSelect: function onSelect(item) {
-                  return setSelectedAspectRatio(item.id);
-                },
-                onClose: function onClose() {
-                  return setOpenDropdown(null);
-                },
-                anchorRef: aspectBtnRef
-              })]
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+                className: "text-xs font-semibold text-white/70 group-hover:text-[#22d3ee] transition-colors",
+                children: copy.labels.library
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptChevronIcon, {})]
+            }), openDropdown === "assets" && /*#__PURE__*/(0, _jsxRuntime.jsx)(AssetsDropdown, {
+              videos: assetVideos,
+              images: assetImages,
+              results: assetResults,
+              onSelectVideo: function onSelectVideo(url, name) {
+                setVideoUrl(url);
+                setVideoName(name || copy.defaults.selectedVideo);
+                setVideoState(UPLOAD_STATE.READY);
+                setOpenDropdown(null);
+              },
+              onSelectImage: function onSelectImage(url, name) {
+                setImageUrl(url);
+                setImageName(name || copy.defaults.selectedImage);
+                setImageState(UPLOAD_STATE.READY);
+                setOpenDropdown(null);
+              },
+              onSelectResultAsVideo: function onSelectResultAsVideo(url, name) {
+                setVideoUrl(url);
+                setVideoName(name || copy.defaults.resultVideo);
+                setVideoState(UPLOAD_STATE.READY);
+                setOpenDropdown(null);
+              },
+              onDeleteAsset: handleDeleteAsset,
+              setFullscreenUrl: setFullscreenUrl,
+              onClose: function onClose() {
+                return setOpenDropdown(null);
+              },
+              anchorRef: assetsBtnRef,
+              copy: copy
             })]
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
-            type: "button",
-            onClick: handleGenerate,
-            disabled: isGenerating,
-            className: "bg-[#22d3ee] text-black px-7 py-3 rounded-full font-black text-sm hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 w-full sm:w-auto shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10 z-10 disabled:opacity-50 disabled:cursor-not-allowed",
-            children: isGenerating ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-                className: "animate-spin inline-block text-black",
-                children: "\u25CC"
-              }), " ", "Swapping..."]
-            }) : generateError ? "Error: ".concat(generateError) : /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
-              children: "Swap Body"
-            })
           })]
+        }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_PromptComposer.PromptAction, {
+          onClick: handleGenerate,
+          disabled: isGenerating,
+          children: isGenerating ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_jsxRuntime.Fragment, {
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+              className: "animate-spin inline-block text-black",
+              children: "\u25CC"
+            }), " ", copy.buttons.swapping]
+          }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
+            children: copy.buttons.swapBody
+          })
         })]
-      })
+      })]
     }), fullscreenUrl && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
       className: "fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm animate-fade-in",
       onClick: function onClick() {
@@ -1152,16 +1512,46 @@ function RecastStudio(_ref6) {
             y2: "18"
           })]
         })
-      }), /*#__PURE__*/(0, _jsxRuntime.jsx)("video", {
-        src: fullscreenUrl,
-        controls: true,
-        autoPlay: true,
-        loop: true,
-        className: "max-w-[95vw] max-h-[95vh] rounded-2xl shadow-2xl object-contain animate-scale-up",
-        onClick: function onClick(e) {
-          return e.stopPropagation();
+      }), function () {
+        var isImg = fullscreenUrl.match(/\.(jpeg|jpg|gif|png|webp|avif)/i) || fullscreenUrl.includes("/ai-images/") || fullscreenUrl.includes("image") || fullscreenUrl.startsWith("data:image");
+        return isImg ? /*#__PURE__*/(0, _jsxRuntime.jsx)("img", {
+          src: fullscreenUrl,
+          alt: "Fullscreen Preview",
+          className: "max-w-[95vw] max-h-[95vh] rounded-2xl shadow-2xl object-contain animate-scale-up",
+          onClick: function onClick(e) {
+            return e.stopPropagation();
+          }
+        }) : /*#__PURE__*/(0, _jsxRuntime.jsx)("video", {
+          src: fullscreenUrl,
+          controls: true,
+          autoPlay: true,
+          loop: true,
+          className: "max-w-[95vw] max-h-[95vh] rounded-2xl shadow-2xl object-contain animate-scale-up",
+          onClick: function onClick(e) {
+            return e.stopPropagation();
+          }
+        });
+      }()]
+    }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactHotToast.Toaster, {
+      position: "top-right",
+      containerStyle: {
+        zIndex: 99999
+      },
+      toastOptions: {
+        duration: 5000,
+        style: {
+          background: '#18181b',
+          color: '#ffffff',
+          border: '1px solid rgba(255,255,255,0.15)',
+          fontSize: '13px',
+          borderRadius: '12px',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+          maxWidth: '440px',
+          wordBreak: 'break-word',
+          whiteSpace: 'pre-wrap',
+          padding: '12px 16px'
         }
-      })]
+      }
     })]
   });
 }

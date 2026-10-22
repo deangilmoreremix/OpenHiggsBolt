@@ -23,6 +23,12 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
   };
   // Enable React's act() batching/flushing in the test env.
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+  // jsdom does not implement scrollIntoView; the upstream model picker calls it
+  // when the popover opens (VideoStudio.jsx:493). Stub the DOM API only — no
+  // assertion is relaxed.
+  if (!Element.prototype.scrollIntoView) {
+    Element.prototype.scrollIntoView = function () {};
+  }
 });
 var flush = function flush() {
   return (0, _react.act)(/*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee() {
@@ -40,30 +46,11 @@ var flush = function flush() {
   })));
 };
 
-// Click the innermost element whose text includes `text`. Dispatch the native
-// click OUTSIDE `act` so React does not flush synchronously — otherwise
-// the component's window-level outside-click-close handler fires (it checks
-// dropdownRef.current) and immediately closes the dropdown we just opened.
-// We flush afterward.
-function clickText(container, text) {
-  var els = _toConsumableArray(container.querySelectorAll('*')).filter(function (n) {
-    var _n$textContent;
-    return (_n$textContent = n.textContent) === null || _n$textContent === void 0 ? void 0 : _n$textContent.includes(text);
-  });
-  if (els.length === 0) throw new Error("clickText: not found: ".concat(text));
-  // Prefer a real <button> control over decorative text that also
-  // contains the name (e.g. the empty-state hero card), which
-  // has no onClick.
-  var el = els.find(function (e) {
-    return e.tagName === 'BUTTON';
-  }) || els.sort(function (a, b) {
-    return a.textContent.length - b.textContent.length;
-  })[0];
-  el.dispatchEvent(new MouseEvent('click', {
-    bubbles: true
-  }));
-  return flush();
-}
+// Helpers below dispatch the native click OUTSIDE `act` so React does not flush
+// synchronously — otherwise the component's window-level outside-click-close
+// handler fires (it checks dropdownRef.current) and immediately closes the
+// dropdown we just opened. We flush afterward.
+
 function typeSearch(container, value) {
   var input = container.querySelector('input[type="text"]');
   if (!input) {
@@ -84,6 +71,39 @@ function buttons(container) {
     return b.textContent.trim();
   });
 }
+
+// The prompt-bar control (model picker trigger, mode picker trigger, settings
+// trigger) is the only button whose whole text is exactly `label`.
+function clickControl(container, label) {
+  var btn = _toConsumableArray(container.querySelectorAll('button')).find(function (b) {
+    return b.textContent.trim() === label;
+  });
+  if (!btn) {
+    throw new Error("clickControl: not found: ".concat(label, ". buttons=").concat(JSON.stringify(buttons(container))));
+  }
+  btn.dispatchEvent(new MouseEvent('click', {
+    bubbles: true
+  }));
+  return flush();
+}
+
+// A model-picker entry is a button whose name label is `label`; the entry also
+// carries a provider badge, so the prompt-bar trigger (same label, no badge)
+// is told apart by taking the last matching span.
+function clickModelEntry(container, label) {
+  var _spans;
+  var spans = _toConsumableArray(container.querySelectorAll('span')).filter(function (s) {
+    return s.textContent.trim() === label;
+  });
+  var btn = (_spans = spans[spans.length - 1]) === null || _spans === void 0 ? void 0 : _spans.closest('button');
+  if (!btn) {
+    throw new Error("clickModelEntry: not found: ".concat(label));
+  }
+  btn.dispatchEvent(new MouseEvent('click', {
+    bubbles: true
+  }));
+  return flush();
+}
 function mount() {
   var container = document.createElement('div');
   document.body.appendChild(container);
@@ -100,41 +120,61 @@ function mount() {
 }
 (0, _vitest.describe)('VideoStudio Quality & Mode controls', function () {
   (0, _vitest.it)('renders and shows Quality for Seedance 2.0, Mode for Grok Imagine', /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2() {
-    var _mount, container;
+    var _mount, container, quality;
     return _regenerator().w(function (_context2) {
       while (1) switch (_context2.n) {
         case 0:
-          _mount = mount(), container = _mount.container; // Default model (Seedance Lite) has neither quality nor mode.
-          (0, _vitest.expect)(buttons(container)).not.toContain('basic');
-          (0, _vitest.expect)(buttons(container)).not.toContain('normal');
+          _mount = mount(), container = _mount.container; // Default model (Seedance 1.0 Lite) exposes no quality/settings control.
+          (0, _vitest.expect)(buttons(container)).not.toContain('Settings');
+          (0, _vitest.expect)(container.querySelector('select')).toBeNull();
 
-          // Open the model picker and pick a quality-capable model.
+          // Open the model picker and pick a grouped model.
           _context2.n = 1;
-          return clickText(container, 'Seedance Lite');
+          return clickControl(container, 'Seedance 1.0 Lite');
         case 1:
           _context2.n = 2;
           return typeSearch(container, 'Seedance 2.0');
         case 2:
           _context2.n = 3;
-          return clickText(container, 'Seedance 2.0');
+          return clickModelEntry(container, 'Seedance 2.0');
         case 3:
-          // Quality control now shows the model default ("basic").
-          (0, _vitest.expect)(buttons(container)).toContain('basic');
+          // Upstream surfaces the per-model quality/profile settings through the
+          // grouped "Settings" popover instead of a standalone quality dropdown.
+          (0, _vitest.expect)(buttons(container)).toContain('Settings');
+          (0, _vitest.expect)(buttons(container)).toContain('Standard speed');
 
           // Switch to a mode-capable model.
           _context2.n = 4;
-          return clickText(container, 'Seedance 2.0');
+          return clickControl(container, 'Seedance 2.0');
         case 4:
           _context2.n = 5;
           return typeSearch(container, 'Grok Imagine');
         case 5:
           _context2.n = 6;
-          return clickText(container, 'Grok Imagine');
+          return clickModelEntry(container, 'Grok Imagine');
         case 6:
-          // Mode control now shows the model default ("normal").
-          (0, _vitest.expect)(buttons(container)).toContain('normal');
-          (0, _vitest.expect)(buttons(container)).not.toContain('basic');
+          (0, _vitest.expect)(buttons(container)).toContain('Grok Imagine');
+
+          // Its quality/style control lives in the Settings popover and keeps the
+          // upstream default value ("normal", shown as "Standard").
+          _context2.n = 7;
+          return clickControl(container, 'Settings');
         case 7:
+          quality = container.querySelector('select');
+          (0, _vitest.expect)(quality).toBeTruthy();
+          (0, _vitest.expect)(quality.value).toBe('normal');
+          (0, _vitest.expect)(_toConsumableArray(quality.options).map(function (o) {
+            return o.textContent.trim();
+          })).toEqual(['Standard', 'Creative', 'Spicy']);
+          _context2.n = 8;
+          return clickControl(container, 'Settings');
+        case 8:
+          _context2.n = 9;
+          return clickControl(container, 'From prompt');
+        case 9:
+          (0, _vitest.expect)(container.textContent).toContain('Video mode');
+          (0, _vitest.expect)(container.textContent).toContain('Use references');
+        case 10:
           return _context2.a(2);
       }
     }, _callee2);

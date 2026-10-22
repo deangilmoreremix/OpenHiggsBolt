@@ -97,6 +97,10 @@ vi.mock('@/server/businessDiscovery', async () => {
     scoreAndSort: vi.fn(),
     createCacheKey: vi.fn(),
     businessDiscoveryCache: { get: vi.fn(), set: vi.fn() },
+    // The route races the Overpass provider against the Nominatim business
+    // search. It contributes no records here, so the Overpass failure is the
+    // only outcome the route has to report.
+    searchBusinessesViaNominatim: vi.fn(async () => []),
   }
 })
 
@@ -176,8 +180,110 @@ describe('discoverBusinesses — per-mirror timeout is bounded', () => {
   }, 45_000)
 })
 
-// ── 2. Per-mirror circuit breaker ──────────────────────────────────────────
+// ── 1b. The mirrors are raced CONCURRENTLY, and the budget cancels them ───
 
+describe('discoverBusinesses — the mirrors race concurrently', () => {
+  it('has every mirror in flight at the same time, so one slow mirror cannot delay the others', async () => {
+    const endpoints = [
+      'https://m1.overpass.test/api/interpreter',
+      'https://m2.overpass.test/api/interpreter',
+      'https://m3.overpass.test/api/interpreter',
+    ]
+
+    let inFlight = 0
+    let maxInFlight = 0
+    const responders: Array<() => void> = []
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
+      inFlight += 1
+      maxInFlight = Math.max(maxInFlight, inFlight)
+      return new Promise<Response>((resolve) => {
+        responders.push(() => {
+          inFlight -= 1
+          resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              elements: [
+                {
+                  type: 'node' as const,
+                  id: 1,
+                  lat: 26.1,
+                  lon: -80.1,
+                  tags: { amenity: 'restaurant', name: 'Concurrent Eats' },
+                },
+              ],
+            }),
+          } as any)
+        })
+      })
+    })
+
+    const pending = discoverBusinesses({
+      niche: 'restaurants-food',
+      latitude: 26.1,
+      longitude: -80.1,
+      radiusMiles: 10,
+      __endpoints: endpoints,
+    })
+
+    // Let the provider issue its requests.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    // All three mirrors are queried at the same time: the stage costs the
+    // SLOWEST mirror, never the sum of all of them.
+    expect(maxInFlight).toBe(3)
+
+    // One mirror answers with real elements → the stage resolves and the
+    // losers are cancelled.
+    responders[0]()
+
+    const records = await pending
+    expect(records).toHaveLength(1)
+    expect(records[0].name).toBe('Concurrent Eats')
+  })
+
+  it('cancels the in-flight mirror request when the caller\'s budget is spent', async () => {
+    const endpoint = 'https://slow.overpass.test/api/interpreter'
+    let observedAbort = false
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((_input: any, init: any) => {
+      return new Promise<Response>((_resolve, reject) => {
+        const signal: AbortSignal | undefined = init?.signal
+        if (!signal) return
+        if (signal.aborted) {
+          observedAbort = true
+          reject(new DOMException('Aborted', 'AbortError'))
+          return
+        }
+        signal.addEventListener('abort', () => {
+          observedAbort = true
+          reject(new DOMException('Aborted', 'AbortError'))
+        })
+      })
+    })
+
+    const controller = new AbortController()
+    const pending = discoverBusinesses({
+      niche: 'restaurants-food',
+      latitude: 26.1,
+      longitude: -80.1,
+      radiusMiles: 10,
+      __endpoints: [endpoint],
+      signal: controller.signal,
+    })
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    controller.abort()
+
+    // The provider settles (it never leaves the caller hanging) …
+    await expect(pending).rejects.toBeInstanceOf(AllOverpassProvidersFailed)
+    // … and the upstream request really was cancelled.
+    expect(observedAbort).toBe(true)
+  })
+})
+
+// ── 2. Per-mirror circuit breaker ──────────────────────────────────────────
 describe('discoverBusinesses — per-mirror circuit breaker', () => {
   it('opens a mirror after FAILURE_THRESHOLD consecutive failures and short-circuits subsequent calls', async () => {
     // All three mirrors fail synchronously. The provider records each

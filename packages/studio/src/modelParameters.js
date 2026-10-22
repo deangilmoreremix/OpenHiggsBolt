@@ -31,7 +31,7 @@ export function getSupplementalModelInputs(model) {
   if (!model?.inputs) return [];
   const mediaKeys = mediaInputKeys(model);
   return Object.entries(model.inputs)
-    .filter(([key]) => !COMMON_INPUT_KEYS.has(key) && !mediaKeys.has(key))
+    .filter(([key, schema]) => (schema.configurable || !COMMON_INPUT_KEYS.has(key)) && !mediaKeys.has(key))
     .map(([key, schema]) => ({ key, schema }));
 }
 
@@ -60,6 +60,7 @@ function normalizeValue(value, schema, { includeEmpty = false } = {}) {
   }
   if (schema.type === "boolean") return typeof value === "boolean" ? value : !!schema.default;
   if (["number", "integer", "int"].includes(schema.type)) {
+    if (value === "" || value == null) return includeEmpty ? "" : undefined;
     return clampNumber(value, schema);
   }
   if (schema.type === "array") {
@@ -108,6 +109,10 @@ export function createModelParameterValues(model, previousValues = {}) {
     values[key] = normalized === undefined ? defaultValue(schema) : normalized;
   }
   return values;
+}
+
+export function mergeModelParameterValues(model, previousValues = {}) {
+  return { ...previousValues, ...createModelParameterValues(model, previousValues) };
 }
 
 export function buildSupplementalInputPayload(model, values = {}) {
