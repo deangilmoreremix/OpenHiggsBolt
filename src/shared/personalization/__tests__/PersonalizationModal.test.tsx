@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useEffect } from 'react';
-import { render, screen, act, configure } from '@testing-library/react';
+import { render, screen, act, configure, waitFor } from '@testing-library/react';
 import { createRoot } from 'react-dom/client';
 import PersonalizationModal from '../PersonalizationModal';
 import { DemoPersonalizeProvider, useDemoPersonalize } from '../DemoPersonalizeProvider';
@@ -536,12 +536,12 @@ describe('PersonalizationModal', () => {
       ;(window as any).__personalizationCtx.addLogoFiles(files)
     })
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 50))
+    // Wait for the retry affordance to render rather than racing a fixed
+    // wall-clock delay. The modal's runtime path is slow when local env
+    // files are present, and a 50ms sleep made this assertion flaky.
+    await waitFor(() => {
+      expect(screen.getAllByText('Retry').length).toBeGreaterThanOrEqual(1)
     })
-
-    const retryButtons = screen.getAllByText('Retry')
-    expect(retryButtons.length).toBeGreaterThanOrEqual(1)
   })
   // ── Find Local Business (lead finder) entry flow ──────────────────────────
 
