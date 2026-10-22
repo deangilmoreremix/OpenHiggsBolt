@@ -132,6 +132,26 @@ html.lenis, html.lenis body { height: auto; }
   opacity: 0.85;
 }
 
+/* Demo video cards: cursor spotlight, gentle media zoom and a soft glow on
+   hover. Mouse only, so touch taps never leave a card stuck "hovered". */
+.fx-card { position: relative; }
+.fx-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  background: radial-gradient(380px circle at var(--fx-x, 50%) var(--fx-y, 50%), rgba(103, 232, 249, 0.12), transparent 60%);
+}
+.fx-card-media video { transition: transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1); }
+@media (hover: hover) and (pointer: fine) {
+  .group:hover > .fx-card::after { opacity: 1; }
+  .group:hover .fx-card-media video { transform: scale(1.045); }
+  .fx-card-glow:hover { box-shadow: 0 24px 60px -24px rgba(34, 211, 238, 0.35), 0 0 0 1px rgba(168, 85, 247, 0.18); }
+}
+
 /* Embla carousels. In the components layer so responsive utilities
    (e.g. lg:grid, lg:overflow-visible on the UGC row) can override them. */
 @layer components {
@@ -283,6 +303,7 @@ html.lenis, html.lenis body { height: auto; }
   .hero-pending [data-hero-reveal] { opacity: 1; animation: none; }
   .fx-holo-border::before { animation: none; }
   .fx-shine::after { display: none; }
+  .fx-card-media video { transition: none; transform: none !important; }
   .animated-word,
   .animated-word--enter,
   .animated-word--exit,

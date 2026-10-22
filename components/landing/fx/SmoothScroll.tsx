@@ -74,7 +74,11 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
   function start() {
     const instance = new Lenis({
       autoRaf: false,
-      duration: 1.15,
+      // Lerp (not a fixed duration) so the page follows the wheel closely
+      // and settles quickly instead of gliding; a lower multiplier moves a
+      // little less per wheel notch than native scrolling.
+      lerp: 0.14,
+      wheelMultiplier: 0.85,
       allowNestedScroll: true,
       prevent: (node) => Boolean(node.closest?.('[role="dialog"], [aria-modal="true"]')),
     });

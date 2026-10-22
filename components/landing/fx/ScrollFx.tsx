@@ -48,6 +48,23 @@ export default function ScrollFx() {
     const mm = gsap.matchMedia();
     mm.add(MOTION_OK, (context) => {
       const seen = new WeakSet<Element>();
+      const reveals = new Map<Element, gsap.core.Timeline>();
+
+      // Play each reveal when its heading is actually on screen. Measured
+      // live rather than with ScrollTrigger start positions, which are taken
+      // while the showcase is still loading (the page grows tenfold) and
+      // would fire long before the heading is reached.
+      const io = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            io.unobserve(entry.target);
+            reveals.get(entry.target)?.play();
+            reveals.delete(entry.target);
+          });
+        },
+        { rootMargin: '0px 0px -20% 0px' },
+      );
 
       /** Wires up any headings not seen yet; returns how many were new. */
       const setup = () => {
@@ -58,43 +75,54 @@ export default function ScrollFx() {
           added += 1;
 
           const split = SplitText.create(heading, { type: 'lines', mask: 'lines' });
-          gsap.from(split.lines, {
-            yPercent: 110,
+          const tl = gsap.timeline({ paused: true });
+          tl.from(split.lines, {
+            yPercent: 105,
+            rotate: 2,
             opacity: 0,
-            duration: 1.1,
-            ease: 'expo.out',
-            stagger: 0.09,
-            scrollTrigger: { trigger: heading, start: 'top 88%', once: true },
+            duration: 1.3,
+            ease: 'power3.out',
+            stagger: 0.14,
             onComplete: () => split.revert(),
           });
 
           const eyebrow = heading.previousElementSibling;
           if (eyebrow instanceof HTMLElement && eyebrow.tagName === 'P') {
-            gsap.from(eyebrow, {
-              opacity: 0,
-              y: 10,
-              letterSpacing: '0.6em',
-              duration: 1.1,
-              ease: 'power3.out',
-              scrollTrigger: { trigger: heading, start: 'top 92%', once: true },
-            });
+            tl.from(
+              eyebrow,
+              { opacity: 0, y: 10, letterSpacing: '0.6em', duration: 1.1, ease: 'power3.out' },
+              0,
+            );
           }
+          reveals.set(heading, tl);
+          io.observe(heading);
         });
         return added;
       };
 
       setup();
-      const onMutate = debounce(() => {
-        let added = 0;
-        context.add(() => {
-          added = setup();
-        });
-        if (added) refresh();
-      }, 200);
+      // Throttled, not debounced: count-ups and the rotating hero words
+      // mutate the page continuously, which would keep postponing setup.
+      let queued: ReturnType<typeof setTimeout> | undefined;
+      const onMutate = () => {
+        if (queued) return;
+        queued = setTimeout(() => {
+          queued = undefined;
+          let added = 0;
+          context.add(() => {
+            added = setup();
+          });
+          if (added) refresh();
+        }, 150);
+      };
       const mutationObserver = new MutationObserver(onMutate);
       mutationObserver.observe(main, { childList: true, subtree: true });
 
-      return () => mutationObserver.disconnect();
+      return () => {
+        mutationObserver.disconnect();
+        clearTimeout(queued);
+        io.disconnect();
+      };
     });
 
     return () => {
