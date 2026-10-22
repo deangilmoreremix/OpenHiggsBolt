@@ -22,6 +22,9 @@ importers:
       '@crawlee/cheerio':
         specifier: ^3.18.1
         version: 3.18.2
+      '@crawlee/core':
+        specifier: ^3.18.1
+        version: 3.18.2
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
