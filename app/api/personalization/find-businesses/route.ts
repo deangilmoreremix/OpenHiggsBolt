@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { geocodeLocation, discoverBusinesses, searchBusinessesViaNominatim, deduplicateBusinesses, enrichBusinessRecord, scoreAndSort, classifyRecords, excludeNationalChains, createCacheKey, businessDiscoveryCache } from '@/server/businessDiscovery'
+import { geocodeLocation, discoverBusinesses, searchBusinessesViaNominatim, deduplicateBusinesses, scoreAndSort, classifyRecords, excludeNationalChains, createCacheKey, businessDiscoveryCache } from '@/server/businessDiscovery'
 import type { BusinessDiscoveryRecord, OwnershipType } from '@/server/businessDiscovery'
 import { getNicheMapping, getSupportedNiches } from '@/server/businessDiscovery'
 import { createStageDeadline, withDeadline, DeadlineExceededError, ROUTE_DEADLINE_MS } from '@/server/businessDiscovery/deadline'
@@ -155,8 +155,10 @@ function processDiscoveryBatch(
   const classified = classifyRecords(deduplicateBusinesses(results))
   const { kept, excluded } = excludeNationalChains(classified)
   const pool = includeChains ? classified : kept
-  const scored = scoreAndSort(pool)
-  const enriched = scored.map(enrichBusinessRecord)
+  // scoreAndSort assigns every score field itself; enriching again would just
+  // recompute identical values (the double-source pattern behind the old
+  // "displayed score ≠ ranked score" bug).
+  const enriched = scoreAndSort(pool)
   return { enriched, stats: buildStats(classified, excluded.length, pool) }
 }
 

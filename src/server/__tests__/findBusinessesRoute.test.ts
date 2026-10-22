@@ -6,7 +6,7 @@
  *   getNicheMapping/getSupportedNiches are kept (re-exported from the
  *   dependency-free nicheMappings module) so niche-validation tests exercise
  *   the real supported list; every network-touching export (geocodeLocation,
- *   discoverBusinesses, deduplicateBusinesses, enrichBusinessRecord,
+ *   discoverBusinesses, deduplicateBusinesses,
  *   scoreAndSort, createCacheKey, businessDiscoveryCache) is a controllable
  *   mock.
  * - '@/server/personalizationLog' and '@/server/envValidation' are mocked.
@@ -102,7 +102,6 @@ vi.mock('@/server/businessDiscovery', async () => {
     // as the winner.
     searchBusinessesViaNominatim: vi.fn(async () => []),
     deduplicateBusinesses: vi.fn(),
-    enrichBusinessRecord: vi.fn(),
     scoreAndSort: vi.fn(),
     // Ownership classification is part of the route's own pipeline, so the
     // mock must supply it or every success-path test fails with a 500.
@@ -125,7 +124,6 @@ import {
   geocodeLocation,
   discoverBusinesses,
   deduplicateBusinesses,
-  enrichBusinessRecord,
   scoreAndSort,
   createCacheKey,
   businessDiscoveryCache,
@@ -174,7 +172,6 @@ beforeEach(() => {
   vi.mocked(discoverBusinesses).mockResolvedValue([rawRecord('one'), rawRecord('two')] as any)
   vi.mocked(deduplicateBusinesses).mockImplementation((items: any) => items)
   vi.mocked(scoreAndSort).mockImplementation((items: any) => items)
-  vi.mocked(enrichBusinessRecord).mockImplementation((record: any) => record)
   vi.mocked(createCacheKey).mockImplementation(
     (niche: string, location: string, radiusMiles: number) =>
       `${niche}|${location}|${radiusMiles}`,
@@ -369,7 +366,6 @@ describe('find-businesses route — success flow', () => {
     )
     expect(deduplicateBusinesses).toHaveBeenCalledTimes(1)
     expect(scoreAndSort).toHaveBeenCalledTimes(1)
-    expect(enrichBusinessRecord).toHaveBeenCalledTimes(2)
     // Results are cached with the 1h TTL.
     expect(businessDiscoveryCache.set).toHaveBeenCalledWith(
       `${NICHE}|${LOCATION}|15`,
