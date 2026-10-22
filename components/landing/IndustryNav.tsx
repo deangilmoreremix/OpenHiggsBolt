@@ -60,6 +60,7 @@ export default function IndustryNav({ niches }: { niches: NicheConfig[] }) {
                       // Clear both the header and this sticky bar.
                       const bar = e.currentTarget.closest('nav');
                       scrollToTarget(lenis, `#niche-${n.id}`, bar?.offsetHeight ?? 0);
+                      history.replaceState(null, '', `#niche-${n.id}`);
                     }}
                     aria-current={isActive ? 'true' : undefined}
                     className={`relative block whitespace-nowrap rounded-full border px-4 py-1.5 text-xs font-semibold transition-colors ${

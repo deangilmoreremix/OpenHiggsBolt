@@ -23,12 +23,16 @@ export function headerHeight() {
 export function scrollToTarget(lenis: Lenis | null, target: string | HTMLElement, extraOffset = 0) {
   const el = typeof target === 'string' ? document.querySelector<HTMLElement>(target) : target;
   if (!el) return;
-  const offset = -(headerHeight() + 16 + extraOffset);
+  // Resolve to a number ourselves: given an element, Lenis also subtracts its
+  // scroll-margin-top (which main section[id] sets to the header height),
+  // which would clear the header twice.
+  const base = lenis ? lenis.animatedScroll : window.scrollY;
+  const top = el.getBoundingClientRect().top + base - (headerHeight() + 16 + extraOffset);
   if (lenis) {
-    lenis.scrollTo(el, { offset });
+    lenis.scrollTo(top);
   } else {
-    const top = el.getBoundingClientRect().top + window.scrollY + offset;
-    window.scrollTo({ top, behavior: 'smooth' });
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top, behavior: reduced ? 'auto' : 'smooth' });
   }
 }
 

@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 
 type Faq = { question: string; answer: string };
 
@@ -11,6 +11,8 @@ type Faq = { question: string; answer: string };
  */
 export default function FaqAccordion({ faqs, idPrefix = 'faq' }: { faqs: Faq[]; idPrefix?: string }) {
   const [open, setOpen] = useState<number | null>(null);
+  const reduced = useReducedMotion();
+  const instant = { duration: 0 };
   // Static ids: useId() produced different ids on the server and the client
   // on this page, which broke hydration.
   const baseId = idPrefix;
@@ -24,7 +26,7 @@ export default function FaqAccordion({ faqs, idPrefix = 'faq' }: { faqs: Faq[]; 
         return (
           <motion.div
             key={faq.question}
-            layout
+            layout={!reduced}
             className={`landing-card rounded-2xl transition-colors ${isOpen ? 'border-cyan-400/30' : ''}`}
           >
             <h3>
@@ -40,7 +42,7 @@ export default function FaqAccordion({ faqs, idPrefix = 'faq' }: { faqs: Faq[]; 
                 <motion.span
                   aria-hidden="true"
                   animate={{ rotate: isOpen ? 45 : 0 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                  transition={reduced ? instant : { type: 'spring', stiffness: 300, damping: 20 }}
                   className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/15 text-lg leading-none text-cyan-200"
                 >
                   +
@@ -56,7 +58,7 @@ export default function FaqAccordion({ faqs, idPrefix = 'faq' }: { faqs: Faq[]; 
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                  transition={reduced ? instant : { duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                   className="overflow-hidden"
                 >
                   <p className="px-6 pb-6 leading-7 text-white/60">{faq.answer}</p>

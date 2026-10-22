@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { gsap, ScrollTrigger, DESKTOP_MOTION } from './fx/gsap';
 
 const LottieIcon = dynamic(() => import('./fx/LottieIcon'), { ssr: false });
@@ -28,6 +28,7 @@ export default function WorkflowStory() {
   const [active, setActive] = useState(0);
   const [pinned, setPinned] = useState(false);
   const [near, setNear] = useState(false);
+  const reduced = useReducedMotion();
 
   // Only load the Lottie runtime once the section is close.
   useEffect(() => {
@@ -66,7 +67,8 @@ export default function WorkflowStory() {
       };
     });
 
-    mm.add('(max-width: 1023px), (pointer: coarse)', () => {
+    // Everyone not pinned above, including desktop visitors who prefer reduced motion.
+    mm.add('(max-width: 1023px), (pointer: coarse), (prefers-reduced-motion: reduce)', () => {
       const io = new IntersectionObserver(
         (entries) => {
           entries.forEach((e) => {
@@ -119,7 +121,7 @@ export default function WorkflowStory() {
                 className="relative flex gap-4 border-b border-white/10 py-5 last:border-0"
               >
                 <span className="relative grid h-10 w-10 shrink-0 place-items-center">
-                  {near && (
+                  {near && !reduced && (
                     <LottieIcon
                       src="/lottie/pulse-ring.json"
                       playing={isActive}
