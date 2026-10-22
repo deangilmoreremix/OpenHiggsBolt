@@ -20,16 +20,17 @@ export function useAutoplayToggle(embla: EmblaCarouselType | undefined) {
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
   pausedRef.current = paused;
+  const hoveredRef = useRef(false);
 
   // The plugin restarts itself after drags, clicks and focus changes
-  // (pointerUp, focusout, mouseleave), whatever our pause says. Every restart
-  // emits 'autoplay:play', so stop again while paused. Deferred because the
-  // plugin only marks itself active after emitting, so an immediate stop()
-  // would be a no-op.
+  // (pointerUp, focusout, mouseleave), whatever our pause or hover says.
+  // Every restart emits 'autoplay:play', so stop again while paused or
+  // hovered. Deferred because the plugin only marks itself active after
+  // emitting, so an immediate stop() would be a no-op.
   useEffect(() => {
     if (!embla) return;
     const keepPaused = () => {
-      if (pausedRef.current) queueMicrotask(() => autoplayOf(embla)?.stop());
+      if (pausedRef.current || hoveredRef.current) queueMicrotask(() => autoplayOf(embla)?.stop());
     };
     embla.on('autoplay:play', keepPaused);
     return () => {
@@ -47,8 +48,12 @@ export function useAutoplayToggle(embla: EmblaCarouselType | undefined) {
   }, [embla, paused]);
 
   const hoverHandlers = {
-    onMouseEnter: () => autoplayOf(embla)?.stop(),
+    onMouseEnter: () => {
+      hoveredRef.current = true;
+      autoplayOf(embla)?.stop();
+    },
     onMouseLeave: () => {
+      hoveredRef.current = false;
       if (!paused) autoplayOf(embla)?.play();
     },
   };

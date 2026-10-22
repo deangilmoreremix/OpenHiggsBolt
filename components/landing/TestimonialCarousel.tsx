@@ -43,7 +43,11 @@ export default function TestimonialCarousel({ testimonials }: { testimonials: Te
     () => (reduced ? [] : [Autoplay({ delay: 4200, stopOnInteraction: false })]),
     [reduced],
   );
-  const [viewportRef, embla] = useEmblaCarousel({ loop: true, align: 'start' }, plugins);
+  // duration 0 makes prev/next (and drag release) jump instead of glide under reduced motion.
+  const [viewportRef, embla] = useEmblaCarousel(
+    { loop: true, align: 'start', ...(reduced ? { duration: 0 } : {}) },
+    plugins,
+  );
   const { paused, toggle, hoverHandlers } = useAutoplayToggle(embla);
   const slides = [...testimonials, ...testimonials];
 
