@@ -62,7 +62,83 @@ body {
 .animate-fade-in-up { animation: fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
 /* ── Landing page utilities ─────────────────────────────── */
-html { scroll-behavior: smooth; }
+/* Native smooth anchors only on touch devices, where Lenis never runs.
+   On mouse/trackpad devices Lenis handles anchors. html must not be smooth
+   there: ScrollTrigger records smooth scroll-behavior when it starts and
+   re-applies it inline after every refresh, which would then double-smooth
+   Lenis's per-frame scroll writes. */
+@media (pointer: coarse) {
+  html { scroll-behavior: smooth; }
+}
+/* Native anchor jumps land below the sticky header (height set by LandingNav). */
+main section[id] { scroll-margin-top: calc(var(--landing-header-h, 72px) + 16px); }
+
+/* Lenis (from lenis/dist/lenis.css) */
+html.lenis, html.lenis body { height: auto; }
+.lenis:not(.lenis-autoToggle).lenis-stopped { overflow: clip; }
+.lenis [data-lenis-prevent],
+.lenis [data-lenis-prevent-wheel],
+.lenis [data-lenis-prevent-touch],
+.lenis [data-lenis-prevent-vertical],
+.lenis [data-lenis-prevent-horizontal] { overscroll-behavior: contain; }
+.lenis.lenis-smooth iframe { pointer-events: none; }
+.lenis.lenis-autoToggle {
+  transition-property: overflow;
+  transition-duration: 1ms;
+  transition-behavior: allow-discrete;
+}
+
+/* Hero entrance: hidden until GSAP takes over; reveals itself after 2.5s if JS never runs. */
+@keyframes fx-reveal-fallback { to { opacity: 1; } }
+.hero-pending [data-hero-pill],
+.hero-pending h1,
+.hero-pending [data-hero-reveal] {
+  opacity: 0;
+  animation: fx-reveal-fallback 0.6s ease 2.5s forwards;
+}
+
+@keyframes fx-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.fx-fade-in { animation: fx-fade-in 1.6s ease forwards; }
+
+/* Light sweep across primary CTAs on hover. */
+.fx-shine { position: relative; overflow: hidden; isolation: isolate; }
+.fx-shine::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.55) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fx-shine:hover::after { transform: translateX(120%); }
+
+/* Rotating holographic border (pricing, featured frames). */
+@property --fx-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+@keyframes fx-spin { to { --fx-angle: 360deg; } }
+.fx-holo-border { position: relative; isolation: isolate; }
+.fx-holo-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(from var(--fx-angle), #22d3ee, #a855f7, #f0abfc, #22d3ee);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: fx-spin 6s linear infinite;
+  opacity: 0.85;
+}
+
+/* Embla carousels */
+.embla-viewport { overflow: hidden; }
+.embla-container { display: flex; touch-action: pan-y pinch-zoom; }
+
+/* Swiper coverflow reel: keep slides at the existing card widths. */
+.fx-reel .swiper-slide { height: auto; transition: opacity 0.4s ease, filter 0.4s ease; }
+.fx-reel .swiper-slide:not(.swiper-slide-active) { opacity: 0.55; filter: saturate(0.7); }
 
 .landing-noise {
   position: fixed;
@@ -199,6 +275,11 @@ html { scroll-behavior: smooth; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  .hero-pending [data-hero-pill],
+  .hero-pending h1,
+  .hero-pending [data-hero-reveal] { opacity: 1; animation: none; }
+  .fx-holo-border::before { animation: none; }
+  .fx-shine::after { display: none; }
   .animated-word,
   .animated-word--enter,
   .animated-word--exit,
