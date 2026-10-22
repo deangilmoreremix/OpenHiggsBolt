@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 430 88" width="430" height="88">
+  <defs>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- play tile -->
+  <g filter="url(#glow)">
+    <rect x="12" y="10" width="68" height="68" rx="14" fill="#0a090e" stroke="#9088d0" stroke-width="2.2"/>
+    <path d="M38.5 30.5v27a1.6 1.6 0 0 0 2.4 1.4l21-13.5a1.6 1.6 0 0 0 0-2.8l-21-13.5a1.6 1.6 0 0 0-2.4 1.4z" fill="#9487d6"/>
+  </g>
+  <!-- wordmark -->
+  <text x="101" y="61" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-weight="500" font-size="46" letter-spacing="-0.9" textLength="236" lengthAdjust="spacing" fill="#f2f1f6">SmartVideo</text>
+  <!-- GO badge -->
+  <rect x="348" y="21.5" width="70" height="45" rx="9" fill="#2c2742" stroke="#8d85c5" stroke-width="2" filter="url(#glow)"/>
+  <text x="383" y="55" text-anchor="middle" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-weight="600" font-size="30" letter-spacing="0.5" fill="#efedff">GO</text>
+</svg>
