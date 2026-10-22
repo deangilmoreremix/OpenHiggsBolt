@@ -9,6 +9,7 @@ exports["default"] = LayersStudio;
 var _react = require("react");
 var _reactHotToast = _interopRequireWildcard(require("react-hot-toast"));
 var _muapi = require("../muapi.js");
+var _uploadContract = require("../uploadContract.js");
 var _formatError = require("../utils/formatError.js");
 var _layersStudio = _interopRequireDefault(require("../messages/en/layersStudio.json"));
 var _layersStudio2 = _interopRequireDefault(require("../messages/zh/layersStudio.json"));
@@ -502,7 +503,11 @@ function LayersStudio(_ref) {
   var handleFiles = function handleFiles(files) {
     var fileList = Array.from(files || []);
     if (fileList.length === 0) return;
-    var MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB
+
+    // Limit comes from the shared upload contract (MuAPI spec: images 10MB).
+    var MAX_IMAGE_SIZE = (0, _uploadContract.getUploadLimit)({
+      type: 'image/jpeg'
+    });
     var file = fileList.find(function (f) {
       return f.type.startsWith("image/");
     }) || fileList[0];

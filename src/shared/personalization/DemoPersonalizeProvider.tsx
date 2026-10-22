@@ -3191,8 +3191,14 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       setDiscoveryError(partialDownloadError)
     }
 
+    // The assets are in the session regardless of whether the durable upload
+    // succeeded: `setAssets` above already placed every created asset into the
+    // library, and the video personalization reads them from there. Reporting
+    // `count: 0` when only the durable upload failed told a customer whose
+    // BYOK key was missing that nothing had been added, while the assets were
+    // in fact usable in the session.
     setImportConfirmation({
-      count: successCount,
+      count: createdAssets.length,
       failedCount: uploadErrors.length,
       clientName: clientForm.businessName || clientForm.name || undefined,
     })

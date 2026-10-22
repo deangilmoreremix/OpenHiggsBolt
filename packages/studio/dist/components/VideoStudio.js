@@ -2540,6 +2540,15 @@ function VideoStudio(_ref7) {
     setShowCanvas(true);
   }, []);
 
+  // ── handle draw reference from DrawModal ──────────────────────────────────
+  var handleDrawReference = (0, _react.useCallback)(function (entry) {
+    if (!(entry !== null && entry !== void 0 && entry.url)) return;
+    setUploadedImageUrl(entry.url);
+    setUploadedImageUrls([entry.url]);
+    setImageMode(true);
+    setIsDrawModalOpen(false);
+  }, []);
+
   // ── generate ──────────────────────────────────────────────────────────────
   var handleGenerate = (0, _react.useCallback)(/*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee0() {
     var _currentModel$inputs;
@@ -3526,6 +3535,70 @@ function VideoStudio(_ref7) {
                       })]
                     }), /*#__PURE__*/(0, _jsxRuntime.jsx)("span", {
                       children: copy.dropdowns.baseGeneration
+                    })]
+                  })
+                })]
+              }), !audioUploading && /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                className: "relative",
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("input", {
+                  ref: audioFileInputRef,
+                  type: "file",
+                  accept: "audio/*",
+                  className: "hidden",
+                  onChange: handleAudioFileChange
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)("button", {
+                  type: "button",
+                  title: "Upload audio",
+                  onClick: function onClick() {
+                    var _audioFileInputRef$cu;
+                    return (_audioFileInputRef$cu = audioFileInputRef.current) === null || _audioFileInputRef$cu === void 0 ? void 0 : _audioFileInputRef$cu.click();
+                  },
+                  className: "w-12 h-12 shrink-0 rounded-xl border border-dashed border-white/10 hover:border-[#22d3ee]/40 bg-white/[0.02] hover:bg-white/5 transition-all flex items-center justify-center relative overflow-hidden group",
+                  children: audioUploading ? /*#__PURE__*/(0, _jsxRuntime.jsxs)("div", {
+                    className: "flex flex-col items-center justify-center w-full h-full absolute inset-0 bg-black/80 z-20 backdrop-blur-[2px]",
+                    children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                      className: "w-8 h-8 -rotate-90",
+                      children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                        cx: "16",
+                        cy: "16",
+                        r: "14",
+                        stroke: "currentColor",
+                        strokeWidth: "2",
+                        fill: "transparent",
+                        className: "text-white/10"
+                      }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                        cx: "16",
+                        cy: "16",
+                        r: "14",
+                        stroke: "currentColor",
+                        strokeWidth: "2",
+                        fill: "transparent",
+                        strokeDasharray: 88,
+                        strokeDashoffset: 88 - 88 * audioProgress / 100,
+                        className: "text-[#22d3ee] transition-all duration-300"
+                      })]
+                    }), /*#__PURE__*/(0, _jsxRuntime.jsxs)("span", {
+                      className: "absolute text-[9px] font-black text-[#22d3ee] leading-none",
+                      children: [audioProgress, "%"]
+                    })]
+                  }) : /*#__PURE__*/(0, _jsxRuntime.jsxs)("svg", {
+                    width: "16",
+                    height: "16",
+                    viewBox: "0 0 24 24",
+                    fill: "none",
+                    stroke: "currentColor",
+                    strokeWidth: "2.5",
+                    className: "text-white/40 group-hover:text-[#22d3ee] transition-colors",
+                    children: [/*#__PURE__*/(0, _jsxRuntime.jsx)("path", {
+                      d: "M9 18V5l10-2v13"
+                    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                      cx: "6",
+                      cy: "18",
+                      r: "3"
+                    }), /*#__PURE__*/(0, _jsxRuntime.jsx)("circle", {
+                      cx: "16",
+                      cy: "16",
+                      r: "3"
                     })]
                   })
                 })]
