@@ -4,6 +4,8 @@ import { useMemo, useState } from 'react'
 import { Building2, Globe, MapPin, Search, Star } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { BUSINESS_NICHES } from '../businessNiches'
+import { ownershipBadgeStyle, ownershipLabel } from '../ownershipBadge'
+import type { BusinessOwnership } from '../types'
 import { C, badgeStyle, hintStyle, inputStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
 
 const RADIUS_OPTIONS = [5, 15, 50]
@@ -212,7 +214,13 @@ export function StepFindBusiness(): React.JSX.Element {
                       {[business.category, [business.city, business.region].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}
                     </div>
                     {business.phone && <div style={{ color: C.muted2, fontSize: 11 }}>{business.phone}</div>}
-                  </div>
+                    {business.ownership && (
+                      <div style={{ marginTop: 4 }}>
+                        <span style={ownershipBadgeStyle(business.ownership)}>
+                          {ownershipLabel(business.ownership)}
+                        </span>
+                      </div>
+                    )}                  </div>
                   <button
                     type="button"
                     onClick={() => selectBusiness(business)}

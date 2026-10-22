@@ -163,6 +163,45 @@ export const NICHE_MAPPINGS: Record<string, NicheMapping> = {
       ['shop', 'chemist'],
     ],
   },
+  'home-contractors': {
+    label: 'Home Contractors',
+    tags: [
+      ['craft', 'plumber'],
+      ['craft', 'electrician'],
+      ['craft', 'hvac'],
+      ['craft', 'roofing_construction'],
+      ['craft', 'carpenter'],
+      ['craft', 'painter'],
+      ['office', 'construction_company'],
+    ],
+  },
+  'auto-detailing': {
+    label: 'Auto Detailing',
+    tags: [
+      ['shop', 'car_repair'],
+      ['shop', 'car'],
+      ['amenity', 'car_wash'],
+      ['shop', 'car_parts'],
+      ['craft', 'car_repair'],
+    ],
+  },
+  'pet-services': {
+    label: 'Pet Services',
+    tags: [
+      ['shop', 'pet'],
+      ['amenity', 'veterinary'],
+      ['shop', 'pet_grooming'],
+    ],
+  },
+  'professional-services': {
+    label: 'Professional Services',
+    tags: [
+      ['office', 'lawyer'],
+      ['office', 'accountant'],
+      ['office', 'insurance'],
+      ['office', 'travel_agent'],
+    ],
+  },
 }
 
 export function getSupportedNiches(): string[] {

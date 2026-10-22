@@ -136,6 +136,28 @@ describe('Business normalizer', () => {
     expect(enriched.activityScore).toBeGreaterThan(0)
     expect(enriched.leadScore).toBeGreaterThan(0)
   })
+
+  it('keeps the composite score the results were ranked by', () => {
+    // Regression: the normalizer used to recompute a legacy activity-only
+    // score AFTER the sorter had set the composite, so the "% match" the
+    // client showed was not the score the ranking used.
+    const business = makeBusiness({
+      name: 'Independent Diner',
+      phone: '555-1234',
+      website: 'https://abc.com',
+      address: '123 Main St',
+      openingHours: 'Mo-Su 09:00-21:00',
+      facebook: 'https://fb.com/abc',
+      instagram: 'https://ig.com/abc',
+      category: 'Restaurants / Food',
+    })
+    const [ranked] = scoreAndSort([{ ...business, ownership: 'independent' }])
+    const enriched = enrichBusinessRecord(ranked)
+    expect(enriched.leadScore).toBe(ranked.leadScore)
+    expect(enriched.activityScore).toBe(ranked.activityScore)
+    expect(enriched.contactabilityScore).toBe(ranked.contactabilityScore)
+    expect(enriched.scoreBreakdown).toEqual(ranked.scoreBreakdown)
+  })
 })
 
 // ---------------------------------------------------------------------------

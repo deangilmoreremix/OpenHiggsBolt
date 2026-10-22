@@ -70,17 +70,43 @@ export interface BusinessDiscoveryRecord {
   whatsapp?: string
   youtube?: string
   linkedin?: string
+  tiktok?: string
   openingHours?: string
   operator?: string
+  brand?: string
+  network?: string
   activityScore?: number
   leadScore?: number
+  contactabilityScore?: number
+  videoOpportunityScore?: number
+  ownership?: BusinessOwnership
+  /** Human-readable evidence for the ownership verdict. */
+  ownershipEvidence?: string[]
+  scoreBreakdown?: {
+    contactability: number
+    activity: number
+    videoOpportunity: number
+    ownership: BusinessOwnership
+    rationale: string[]
+  }
+  videoOpportunity?: { hasPromoVideo: boolean | 'unknown'; signals: string[] }
   websiteStatus: 'confirmed' | 'unknown' | 'not_found_after_research'
   verificationStatus: 'unverified' | 'researching' | 'verified'
   rawSource?: Record<string, unknown>
 }
 
-export type BusinessSearchMode = 'idle' | 'searching' | 'results' | 'selected' | 'error'
+/**
+ * Ownership classification for a discovered business. Mirrors the server-side
+ * contract in `src/server/businessDiscovery/types.ts` (`OwnershipType`).
+ */
+export type BusinessOwnership =
+  | 'independent'
+  | 'local_multi_location'
+  | 'franchise_chain'
+  | 'national_bigbox'
+  | 'unknown'
 
+export type BusinessSearchMode = 'idle' | 'searching' | 'results' | 'selected' | 'error'
 export interface BusinessSearchState {
   mode: BusinessSearchMode
   results: BusinessDiscoveryRecord[]
@@ -454,6 +480,16 @@ export interface BusinessResearchResult {
     phones: string[]
     emails: string[]
     addresses: string[]
+  }
+  // Video-marketing evidence from the research route: a tri-state promo-video
+  // verdict plus the raw detection signals (mirrors researchProvider.ts).
+  videoMarketing?: {
+    hasPromoVideo: boolean | 'unknown'
+    signals: string[]
+  }
+  brandingAssets?: {
+    logoUrl?: string
+    imageUrls: string[]
   }
 }
 

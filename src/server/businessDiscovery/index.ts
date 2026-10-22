@@ -21,9 +21,26 @@ export {
 
 export {
   computeLeadScore,
+  computeContactabilityScore,
   computeActivityScore,
+  computeVideoOpportunityScore,
   scoreAndSort,
 } from './businessScoring'
+
+export type {
+  VideoOpportunityResearch,
+  VideoOpportunityOptions,
+} from './businessScoring'
+
+export {
+  classifyOwnership,
+  classifyRecords,
+  excludeNationalChains,
+  NATIONAL_CHAIN_NAMES,
+  normalizeNameForMatching,
+  stripLocationQualifiers,
+  type ClassifyOwnershipInput,
+} from './ownershipClassification'
 
 export {
   businessDiscoveryCache,
@@ -62,4 +79,5 @@ export type {
   OsmElementType,
   WebsiteStatus,
   VerificationStatus,
+  OwnershipType,
 } from './types'
