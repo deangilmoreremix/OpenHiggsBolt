@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "remotion studio src/index.ts",
     "render": "remotion render src/index.ts HeroConverge out/hero-converge.mp4",
+    "render:portrait": "remotion render src/index.ts HeroConvergePortrait out/hero-converge-portrait.mp4",
     "still": "remotion still src/index.ts HeroConverge"
   },
   "dependencies": {

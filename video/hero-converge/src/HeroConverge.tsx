@@ -14,16 +14,16 @@ export const HERO_FPS = 30;
 export const HERO_DURATION = 435;
 
 // ---- landing-page tokens (components/landing, app/globals.css) ----
-const SANS = 'Inter, "Helvetica Neue", Arial, sans-serif';
-const TXT = '#ffffff';
-const DIM = 'rgba(255,255,255,0.28)';
-const GLASS = 'rgba(255,255,255,0.04)';
-const GLASS_LINE = 'rgba(255,255,255,0.10)';
-const ACCENT = '#9487d6'; // logo lavender — the only accent in the foreground
-const ACCENT_HI = '#c3bbf5';
-const CYAN = '#22d3ee';
+export const SANS = 'Inter, "Helvetica Neue", Arial, sans-serif';
+export const TXT = '#ffffff';
+export const DIM = 'rgba(255,255,255,0.28)';
+export const GLASS = 'rgba(255,255,255,0.04)';
+export const GLASS_LINE = 'rgba(255,255,255,0.10)';
+export const ACCENT = '#9487d6'; // logo lavender — the only accent in the foreground
+export const ACCENT_HI = '#c3bbf5';
+export const CYAN = '#22d3ee';
 
-const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
+export const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 // ---- layout ----
 const W = 640, H = 360;
@@ -41,16 +41,16 @@ const FAN_START = 168;
 const LOGO_RESUME = 300;
 
 // ---- logo video timing (SmartVideo_GO_Logo_v2, 30fps, 201f) ----
-const LOGO_DOT_FRAME = 8; // single dot
-const LOGO_GROW_FROM = 16; // dot → tile outline → play glyph → ring pulse
-const LOGO_TILE_FRAME = 45; // tile alone, centred — last clean frame before its ring pulse
-const LOGO_END = 201;
-const LOGO_RATE = 1.5; // lockup + particles, slightly brisker so the loop stays ~14.5s
+export const LOGO_DOT_FRAME = 8; // single dot
+export const LOGO_GROW_FROM = 16; // dot → tile outline → play glyph → ring pulse
+export const LOGO_TILE_FRAME = 45; // tile alone, centred — last clean frame before its ring pulse
+export const LOGO_END = 201;
+export const LOGO_RATE = 1.5; // lockup + particles, slightly brisker so the loop stays ~14.5s
 const LOGO_W = 360; // video drawn at 360×202.8 design units, centred on the tile
 const LOGO_H = (LOGO_W * 338) / 600;
 const LOGO_PAN = 320 - XC; // card's closing pan: bring the lockup to frame centre
 
-type Pt = { x: number; y: number };
+export type Pt = { x: number; y: number };
 
 // ---- icons (24 viewbox, stroked) ----
 const ICON: Record<string, React.ReactNode> = {
@@ -117,7 +117,7 @@ const ICON: Record<string, React.ReactNode> = {
   ),
 };
 
-const Icon: React.FC<{ name: string; size: number; color: string; width?: number }> = ({ name, size, color, width = 1.6 }) => (
+export const Icon: React.FC<{ name: string; size: number; color: string; width?: number }> = ({ name, size, color, width = 1.6 }) => (
   <svg width={Math.max(0.1, size)} height={Math.max(0.1, size)} viewBox="0 0 24 24" fill="none" stroke={color}
     strokeWidth={width} strokeLinecap="round" strokeLinejoin="round">
     {ICON[name]}
@@ -125,26 +125,28 @@ const Icon: React.FC<{ name: string; size: number; color: string; width?: number
 );
 
 // ---- sources (left) ----
-const SRCS = ['Branding', 'Photos', 'Products', 'Services', 'People', 'Offers'].map((label, i) => ({
+export const SRC_LABELS = ['Branding', 'Photos', 'Products', 'Services', 'People', 'Offers'];
+const SRCS = SRC_LABELS.map((label, i) => ({
   label,
   icon: label.toLowerCase(),
   y: YC + (i - 2.5) * 46,
 }));
 
 // ---- outputs (right) ----
-const OUTS = [
+export const OUT_COPY = [
   { title: 'Videos', line: 'Branded promos from real assets', icon: 'videos' },
   { title: 'Ads', line: 'High-converting, built on their offers', icon: 'ads' },
   { title: 'Graphics', line: 'Cleaned-up, on-brand visuals', icon: 'graphics' },
   { title: 'Viral Campaigns', line: 'Proven concepts for their niche', icon: 'viral' },
   { title: '20+ AI Studios', line: 'Every format, one workflow', icon: 'studios' },
-].map((o, i) => ({ ...o, y: YC + (i - 2) * 54 }));
+];
+const OUTS = OUT_COPY.map((o, i) => ({ ...o, y: YC + (i - 2) * 54 }));
 
 // ---- geometry: lead line + cubic, sampled to an arc-length table (pure, deterministic) ----
 // Converge path (card): M LEAD,y L X0,y C X0+112K,y X0+140K,YC XC,YC
 // Fan-out path (mirror): M XC,YC C XC+dx·(1−140/258),YC XC+dx·(1−112/258),ya xa,ya
-const SAMPLES = 1600;
-const cubicAt = (p0: Pt, p1: Pt, p2: Pt, p3: Pt, u: number): Pt => {
+export const SAMPLES = 1600;
+export const cubicAt = (p0: Pt, p1: Pt, p2: Pt, p3: Pt, u: number): Pt => {
   const v = 1 - u;
   return {
     x: v * v * v * p0.x + 3 * v * v * u * p1.x + 3 * v * u * u * p2.x + u * u * u * p3.x,
@@ -197,12 +199,13 @@ const OUT_GEOMS = OUTS.map((o) => {
   ]);
 });
 
-const TAIL = 9;
-const TAIL_GAP = 0.0055;
+export const TAIL = 9;
+export const TAIL_GAP = 0.0055;
 
 // Packet with comet tail, travelling along a geometry at path fraction `ph` (card: 6px head, 2.6 tail radius).
 // `drawn` = how much of the path is drawn (0–1); a packet never runs ahead of its line.
-const Packet: React.FC<{ geom: ReturnType<typeof mkGeom>; ph: number; op: number; from: number; drawn?: number; reverse?: boolean }> = ({
+export type Geom = { len: number; pointAt: (s: number) => Pt };
+export const Packet: React.FC<{ geom: Geom; ph: number; op: number; from: number; drawn?: number; reverse?: boolean }> = ({
   geom, ph, op, from, drawn = 1, reverse,
 }) => {
   if (op <= 0.01 || from + (1 - from) * ph > drawn) return null;
@@ -235,14 +238,14 @@ const Packet: React.FC<{ geom: ReturnType<typeof mkGeom>; ph: number; op: number
 };
 
 // four-point sparkle used on the personalization marks
-const Sparkle: React.FC<{ size: number }> = ({ size }) => (
+export const Sparkle: React.FC<{ size: number }> = ({ size }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={ACCENT_HI}>
     <path d="M12 1.5c.7 5.4 3.6 8.8 10.5 10.5-6.9 1.7-9.8 5.1-10.5 10.5-.7-5.4-3.6-8.8-10.5-10.5C8.4 10.3 11.3 6.9 12 1.5z" />
   </svg>
 );
 
 // small 'Personalized' chip on each output card; `on` (0→1, may overshoot) pops it in as the card lights
-const PersonalizedBadge: React.FC<{ on: number }> = ({ on }) => (
+export const PersonalizedBadge: React.FC<{ on: number }> = ({ on }) => (
   <div style={{
     display: 'flex', alignItems: 'center', gap: 2.5, padding: '2px 5px', borderRadius: 999, flex: 'none',
     border: '0.5px solid rgba(148,135,214,0.4)', background: 'rgba(148,135,214,0.12)',
@@ -255,7 +258,7 @@ const PersonalizedBadge: React.FC<{ on: number }> = ({ on }) => (
 );
 
 // ---- background: hero black + the two blurred orbs (cyan left, purple right) + grain/vignette ----
-const Background: React.FC = () => {
+export const Background: React.FC = () => {
   const f = useCurrentFrame();
   const drift = Math.sin(f / 70) * 6;
   return (
@@ -272,7 +275,7 @@ const Background: React.FC = () => {
 };
 
 // ---- logo: SmartVideo GO animation, screen-blended so its black plate disappears ----
-const LogoVideo: React.FC<{ startFrom: number; rate?: number }> = ({ startFrom, rate = 1 }) => (
+export const LogoVideo: React.FC<{ startFrom: number; rate?: number }> = ({ startFrom, rate = 1 }) => (
   <OffthreadVideo src={staticFile('brand/smartvideo-go-logo.mp4')} startFrom={startFrom} playbackRate={rate} muted
     style={{ width: '100%', height: '100%' }} />
 );
