@@ -36,47 +36,6 @@
 [site]
   site_id = "76f606a3-8546-440f-8469-33a0236a8a23"
 
-# The Next.js SSR handler is packaged by @netlify/plugin-nextjs into
-# .netlify/functions-internal/___netlify-server-handler, and the plugin writes a
-# per-function config (___netlify-server-handler.json) asking for
-# node_bundler = "none" plus included_files = ["**"] so the whole traced server
-# is shipped with the function.
-#
-# That per-function config is not always honoured on the deploy path: the CLI
-# re-zips the function with the config from this file, and when the resulting
-# bundler is "nft" (which runtimeAPIVersion 2 forces unless node_bundler is
-# explicitly "none") the function is bundled down to 5 files. The deployed
-# function then has no run-config.json, so the Lambda aborts with
-# "ENOENT: no such file or directory, open '/run-config.json'" and every SSR
-# route answers 502.
-#
-# Declaring the bundler and the included files here makes the packaging
-# deterministic: the handler always ships its run-config.json, .next output and
-# traced node_modules.
-#
-# The included_files path is resolved against the SITE's base directory.
-#
-#  - In a Netlify CI build the base directory IS the checkout, so the first
-#    path is the one that matches.
-#  - When `netlify deploy` is run from a worktree nested inside the linked
-#    site's base directory, the base directory is the root checkout, so the
-#    second path (the worktree) is the one that matches.
-#
-# included_files is resolved against the SITE BASE DIRECTORY the deploy step
-# uses, which has been observed to be EITHER this worktree OR the root
-# checkout (see the sync-ssr-function plugin). A single glob that names the
-# function's own directory RELATIVE TO THAT BASE is correct in both cases:
-# zisi then sees exactly ONE directory (mainFile dir == included tree), which
-# is what produces a FLAT zip with run-config.json, .next/ and node_modules/
-# at the Lambda task root. Adding the second, worktree-prefixed glob made
-# BOTH trees match at once (base = root checkout), so the zip nested
-# everything under .netlify/functions-internal/... and
-# kilo/worktrees/... and the Lambda booted without .next -> 502
-# ("Could not find a production build in the '.next' directory").
-[functions."___netlify-server-handler"]
-  node_bundler = "none"
-  included_files = [".netlify/functions-internal/___netlify-server-handler/**"]
-
 [[headers]]
   for = "/*"
   [headers.values]
@@ -89,13 +48,6 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# Declared AFTER @netlify/plugin-nextjs so its onPostBuild runs after the
-# Next.js plugin has packaged the SSR handler: it syncs this build's packaged
-# function into the linked site's base directory, which is where the
-# included_files glob above is resolved from. See the plugin's own header
-# comment for the full rationale.
-[[plugins]]
-  package = "./netlify-plugins/sync-ssr-function"
 
 [[redirects]]
   from = "/api/brands"

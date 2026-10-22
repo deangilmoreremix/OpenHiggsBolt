@@ -25,17 +25,17 @@ All captures are deterministic and offline: the dev-only `__e2e_auth_bypass=1` c
 | `docs/motion-studio-evidence/ms-agent-panel.png` | `/studio/motion-studio/` | 191,490 | Agent rail after one real chat turn ("make the text bigger" → "Set the text size on “字卡 · Ink Press” to 137px (was 116px)"), the Inspector showing `Font size 137px`, the player re-rendered |
 | `docs/motion-studio-evidence/ms-history-gallery.png` | `/studio/motion-studio/` | 163,104 | History rail with the session the agent turn created ("Untitled project", prompt "make the text bigger", 00:14) |
 | `docs/motion-studio-evidence/ms-theme-panel.png` | `/studio/motion-studio/` | 189,063 | Inspector → "Film theme": preset swatches (Paper) and the replace-colours palette (Background / Card / Text / Secondary text) |
-| `docs/motion-studio-evidence/entry-page.png` | `/studio/motion-studio/new` | 78,632 | INPUT step (legacy file name, re-captured) |
-| `docs/motion-studio-evidence/clean-entry.png` | `/studio/motion-studio/new` | 86,957 | INPUT step (legacy file name, re-captured) |
-| `docs/motion-studio-evidence/entry-page-dismissed.png` | `/studio/motion-studio/new` | 89,227 | INPUT step (legacy file name, re-captured) |
-| `docs/motion-studio-evidence/clean-workbench.png` | `/studio/motion-studio/` | 177,895 | FULL editor (legacy file name, re-captured) |
-| `docs/motion-studio-evidence/workbench.png` | `/studio/motion-studio/` | 177,898 | FULL editor (legacy file name, re-captured) |
-| `docs/motion-studio-evidence/workbench-final.png` | `/studio/motion-studio/` | 177,905 | FULL editor (legacy file name, re-captured) |
-| `docs/motion-studio-evidence/workbench-diag.png` | `/studio/motion-studio/` | 177,903 | FULL editor (legacy file name, re-captured) |
-| `docs/motion-studio-evidence/screenshot.png` | `/studio/motion-studio/` | 177,904 | FULL editor (legacy file name, re-captured) |
-| `docs/motion-studio-evidence/workbench-scroll.png` | `/studio/motion-studio/` (library scrolled) | 197,883 | Library grid with previews (legacy file name, re-captured) |
-| `docs/motion-studio-evidence/workbench-scrolled.png` | `/studio/motion-studio/` (library scrolled) | 197,879 | Library grid with previews (legacy file name, re-captured) |
-| `docs/motion-studio-evidence/scroll-verify.png` | `/studio/motion-studio/` (library scrolled) | 197,881 | Library grid with previews (legacy file name, re-captured) |
+| `docs/motion-studio-evidence/ms-entry-page.png` | `/studio/motion-studio/new` | 78,632 | INPUT step (legacy file name, re-captured) |
+| `docs/motion-studio-evidence/ms-entry-page.png` | `/studio/motion-studio/new` | 86,957 | INPUT step (legacy file name, re-captured) |
+| `docs/motion-studio-evidence/ms-entry-page.png` | `/studio/motion-studio/new` | 89,227 | INPUT step (legacy file name, re-captured) |
+| `docs/motion-studio-evidence/ms-workbench.png` | `/studio/motion-studio/` | 177,895 | FULL editor (legacy file name, re-captured) |
+| `docs/motion-studio-evidence/ms-workbench.png` | `/studio/motion-studio/` | 177,898 | FULL editor (legacy file name, re-captured) |
+| `docs/motion-studio-evidence/ms-workbench.png` | `/studio/motion-studio/` | 177,905 | FULL editor (legacy file name, re-captured) |
+| `docs/motion-studio-evidence/ms-workbench.png` | `/studio/motion-studio/` | 177,903 | FULL editor (legacy file name, re-captured) |
+| `docs/motion-studio-evidence/ms-workbench.png` | `/studio/motion-studio/` | 177,904 | FULL editor (legacy file name, re-captured) |
+| `docs/motion-studio-evidence/ms-workbench.png` | `/studio/motion-studio/` (library scrolled) | 197,883 | Library grid with previews (legacy file name, re-captured) |
+| `docs/motion-studio-evidence/ms-workbench.png` | `/studio/motion-studio/` (library scrolled) | 197,879 | Library grid with previews (legacy file name, re-captured) |
+| `docs/motion-studio-evidence/ms-workbench.png` | `/studio/motion-studio/` (library scrolled) | 197,881 | Library grid with previews (legacy file name, re-captured) |
 
 Every file above is ≥ 78 KB and shows the UI unobstructed. The earlier ~16 KB blank shells and the captures that were covered by the "Welcome to SmartVideo GO" modal have all been replaced.
 

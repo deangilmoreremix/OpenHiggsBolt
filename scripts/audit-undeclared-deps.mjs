@@ -15,7 +15,16 @@ const declared = new Set([
   ...Object.keys(pkg.optionalDependencies || {}),
 ])
 
-const SCAN_ROOTS = ['src', 'app', 'components', 'packages/studio/src', 'lib', 'scripts']
+const SCAN_ROOTS = ['src', 'app', 'components', 'lib']
+// Sub-workspaces have their own package.json; their imports are not the root's
+// responsibility. Node builtins are never package dependencies.
+const SUB_WORKSPACES = ['packages/studio', 'packages/Vibe-Workflow', 'packages/Open-Poe-AI', 'apps/']
+const NODE_BUILTINS = new Set([
+  'assert', 'buffer', 'child_process', 'cluster', 'console', 'crypto', 'dns', 'events',
+  'fs', 'http', 'http2', 'https', 'net', 'os', 'path', 'perf_hooks', 'process', 'punycode',
+  'querystring', 'readline', 'stream', 'string_decoder', 'timers', 'tls', 'url', 'util',
+  'v8', 'vm', 'worker_threads', 'zlib',
+])
 const SKIP = new Set(['node_modules', '.next', '.git', 'dist', '.netlify', 'build', 'out', 'coverage'])
 
 const IMPORT_RE =
@@ -42,6 +51,10 @@ for (const root of SCAN_ROOTS) {
       if (!spec) continue
       if (spec.startsWith('.') || spec.startsWith('/') || spec.startsWith('@/') || spec.startsWith('~/')) continue
       if (spec.startsWith('node:')) continue
+      if (NODE_BUILTINS.has(spec)) continue
+      // skip anything resolved by a sub-workspace's own package.json
+      const inSubWorkspace = SUB_WORKSPACES.some((w) => file.replace(ROOT + '/', '').startsWith(w))
+      if (inSubWorkspace) continue
       // scoped packages
       const parts = spec.split('/')
       const pkgName = spec.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0]
