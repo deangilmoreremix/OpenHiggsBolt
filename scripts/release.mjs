@@ -325,7 +325,7 @@ async function runRelease(run, ctx) {
       name: 'deploy-preview',
       cwd: REPO_ROOT,
       env: netlifyEnv,
-      cmd: `netlify deploy --build --site ${SITE_ID} --message ${shq(previewMsg)} --skip-functions-cache`,
+      cmd: `netlify deploy ${skipBuild ? '' : '--build'} --site ${SITE_ID} --message ${shq(previewMsg)} --skip-functions-cache`,
     },
     'preview'
   )
@@ -394,7 +394,7 @@ async function runRelease(run, ctx) {
         name: 'deploy-production',
         cwd: REPO_ROOT,
         env: netlifyEnv,
-        cmd: `netlify deploy --build --prod --site ${SITE_ID} --message ${shq(prodMsg)} --skip-functions-cache`,
+        cmd: `netlify deploy ${skipBuild ? '--prod' : '--build --prod'} --site ${SITE_ID} --message ${shq(prodMsg)} --skip-functions-cache`,
       },
       'production'
     )
