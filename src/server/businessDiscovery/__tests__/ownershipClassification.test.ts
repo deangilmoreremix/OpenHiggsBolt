@@ -52,6 +52,16 @@ describe('classifyOwnership', () => {
     expect(classifyOwnership({ name: 'Ross Plumbing & Heating' }).ownership).toBe('independent')
   })
 
+  it('classifies Brazilian steakhouses and breakfast chains found by the real-search audit', () => {
+    // 2026-10-21 Fort Lauderdale quality audit: Fogo de Chão (a ~60-unit
+    // chain) was classified independent. These entries are regression pins.
+    expect(classifyOwnership({ name: 'Fogo de Chão' }).ownership).toBe('national_bigbox')
+    expect(classifyOwnership({ name: 'Fogo de Chao Brazilian Steakhouse' }).ownership).toBe('national_bigbox')
+    expect(classifyOwnership({ name: 'Texas de Brazil' }).ownership).toBe('national_bigbox')
+    expect(classifyOwnership({ name: "Miller's Ale House" }).ownership).toBe('national_bigbox')
+    expect(classifyOwnership({ name: 'First Watch' }).ownership).toBe('national_bigbox')
+  })
+
   it('classifies a business with no brand evidence as independent', () => {
     const result = classifyOwnership({ name: "Joe's Diner" })
     expect(result.ownership).toBe('independent')

@@ -46,7 +46,14 @@ export const NATIONAL_CHAIN_NAMES: readonly string[] = [
   'Texas Roadhouse', "Carrabba's", 'Bonefish Grill', "Fleming's",
   "Ruth's Chris", 'Capital Grille', 'Cheesecake Factory', "P.F. Chang's",
   'Benihana', "Denny's", 'IHOP', 'Cracker Barrel', 'Hard Rock Cafe',
-  'Bahama Breeze', 'Smokey Bones', 'Miller Ale House',
+  'Bahama Breeze', 'Smokey Bones', 'Miller Ale House', "Miller's Ale House",
+  // Brazilian steakhouses & breakfast chains (multi-unit, frequent in
+  // South Florida OSM data; caught by the 2026-10 real-search audit when
+  // Fogo de Chão Fort Lauderdale was classified independent).
+  'Fogo de Chao', 'Fogo de Chão', 'Fogo de Chao Brazilian Steakhouse',
+  'Fogo de Chão Brazilian Steakhouse', 'Fogo de Chao Churrascaria',
+  'Texas de Brazil', 'Chima', 'First Watch',
+  "Keke's Breakfast Cafe", 'Snooze', 'Another Broken Egg',
   // Coffee, dessert & fast-casual chains.
   'Krispy Kreme', 'Baskin-Robbins', 'Cold Stone Creamery', 'Dunkin Donuts',
   "Culver's", 'Whataburger', 'In-N-Out', 'Sonic', 'Jack in the Box', "Arby's",
