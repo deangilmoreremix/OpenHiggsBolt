@@ -269,3 +269,10 @@ $$;
 revoke all on function public.lead_finder_leads_list(text) from public, anon, authenticated;
 revoke all on function public.lead_finder_leads_upsert(uuid, text, text, jsonb, text, text, boolean, text, text) from public, anon, authenticated;
 revoke all on function public.lead_finder_leads_delete(uuid, text) from public, anon, authenticated;
+
+-- CREATE FUNCTION grants EXECUTE to PUBLIC by default, and `service_role` is a
+-- member of PUBLIC, so the revokes above would leave the server route unable
+-- to call the RPCs on a fresh environment. Grant it back explicitly.
+grant execute on function public.lead_finder_leads_list(text) to service_role;
+grant execute on function public.lead_finder_leads_upsert(uuid, text, text, jsonb, text, text, boolean, text, text) to service_role;
+grant execute on function public.lead_finder_leads_delete(uuid, text) to service_role;
