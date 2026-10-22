@@ -7,6 +7,7 @@ import StandaloneShell from '@/components/StandaloneShell';
 import { PRODUCT_NAME, NAV_ITEMS, LOGOS, TESTIMONIALS, PRICING, FAQS } from './landingData';
 import PersonalizedHeroHeading from './PersonalizedHeroHeading';
 import HeroSection from './HeroSection';
+import { useReducedMotion } from './useReducedMotion';
 import { DemoPersonalizeProvider } from '@/shared/personalization';
 
 const SmartVideoShowcase = dynamic(() => import('./SmartVideoShowcase'), {
@@ -97,6 +98,7 @@ function PricingCard({ plan }) {
 }
 
 export default function LandingPage({ FullStudio, AuthControls }) {
+  const reducedMotion = useReducedMotion();
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
       <div className="landing-noise" aria-hidden="true" />
@@ -105,9 +107,22 @@ export default function LandingPage({ FullStudio, AuthControls }) {
       {/* ── Nav ── */}
       <header className="sticky top-0 z-40 border-b border-white/10 bg-black/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-cyan-400 to-purple-500 text-sm font-black text-black">OG</span>
-            <span className="font-semibold tracking-tight">{PRODUCT_NAME}</span>
+          <Link href="/" className="flex items-center" aria-label={`${PRODUCT_NAME} home`}>
+            {reducedMotion ? (
+              <img src="/brand/logo-header.png" alt={PRODUCT_NAME} width={428} height={86} className="h-9 w-auto mix-blend-screen" />
+            ) : (
+              <video
+                src="/brand/logo-header.mp4"
+                poster="/brand/logo-header.png"
+                width={428}
+                height={86}
+                autoPlay
+                muted
+                playsInline
+                aria-hidden="true"
+                className="h-9 w-auto mix-blend-screen"
+              />
+            )}
           </Link>
           <nav className="hidden items-center gap-7 text-sm text-white/60 md:flex" aria-label="Primary navigation">
             {NAV_ITEMS.map((item) => (
