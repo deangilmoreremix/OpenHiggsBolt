@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import AnimatedHeadline from './AnimatedHeadline';
 import AnimatedLine from './AnimatedLine';
@@ -52,6 +53,29 @@ export default function HeroSection() {
             interval={3000}
             transition={HERO_PHRASE_TRANSITION_MS}
             className="text-lg font-semibold text-white md:text-xl"
+          />
+        </div>
+
+        <div className="mx-auto mt-10 max-w-3xl overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl shadow-purple-500/10">
+          <video
+            className="block aspect-video w-full motion-reduce:hidden"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            poster="/landing/hero-converge-poster.jpg"
+            aria-label="SmartVideo GO pulls a business's branding, photos, products, services, people and offers into videos, ads, graphics, viral campaigns and 20+ AI Studios"
+          >
+            <source src="/landing/hero-converge.webm" type="video/webm" />
+            <source src="/landing/hero-converge.mp4" type="video/mp4" />
+          </video>
+          <Image
+            className="hidden aspect-video w-full motion-reduce:block"
+            src="/landing/hero-converge-poster.jpg"
+            width={1280}
+            height={720}
+            alt="SmartVideo GO turns a business's assets into videos, ads, graphics, viral campaigns and 20+ AI Studios"
           />
         </div>
 
