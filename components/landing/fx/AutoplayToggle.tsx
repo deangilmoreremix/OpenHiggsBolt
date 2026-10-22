@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { UseEmblaCarouselType } from 'embla-carousel-react';
 
 type EmblaCarouselType = NonNullable<UseEmblaCarouselType[1]>;
@@ -18,10 +18,29 @@ function autoplayOf(embla: EmblaCarouselType | undefined): Autoplay | undefined 
  */
 export function useAutoplayToggle(embla: EmblaCarouselType | undefined) {
   const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
+  pausedRef.current = paused;
+
+  // The plugin restarts itself after drags, clicks and focus changes
+  // (pointerUp, focusout, mouseleave), whatever our pause says. Every restart
+  // emits 'autoplay:play', so stop again while paused. Deferred because the
+  // plugin only marks itself active after emitting, so an immediate stop()
+  // would be a no-op.
+  useEffect(() => {
+    if (!embla) return;
+    const keepPaused = () => {
+      if (pausedRef.current) queueMicrotask(() => autoplayOf(embla)?.stop());
+    };
+    embla.on('autoplay:play', keepPaused);
+    return () => {
+      embla.off('autoplay:play', keepPaused);
+    };
+  }, [embla]);
 
   const toggle = useCallback(() => {
     const autoplay = autoplayOf(embla);
     if (!autoplay) return;
+    pausedRef.current = !paused;
     if (paused) autoplay.play();
     else autoplay.stop();
     setPaused(!paused);
