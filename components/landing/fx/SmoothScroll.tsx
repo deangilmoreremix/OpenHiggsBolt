@@ -41,7 +41,8 @@ export function scrollToTarget(lenis: Lenis | null, target: string | HTMLElement
  * ScrollTrigger and Lenis share one frame clock.
  *
  * - Only runs on precise-pointer devices; touch keeps native scrolling.
- * - Off when the visitor prefers reduced motion.
+ * - Off when the visitor prefers reduced motion, including when they switch
+ *   it on while the page is open.
  * - Never smooths wheel events inside dialogs (Personalization Modal, prompt
  *   modal, create picker) or anything marked `data-lenis-prevent`.
  * - Pauses while a modal locks the page (body overflow hidden) and resumes
@@ -52,8 +53,25 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: no-preference) and (pointer: fine)');
-    if (!mq.matches) return;
+    let teardown: (() => void) | null = null;
+    // Follow the preference live: switching reduced motion on mid-visit
+    // destroys Lenis, switching it off starts it again.
+    const sync = () => {
+      if (mq.matches && !teardown) teardown = start();
+      else if (!mq.matches && teardown) {
+        teardown();
+        teardown = null;
+      }
+    };
+    sync();
+    mq.addEventListener('change', sync);
+    return () => {
+      mq.removeEventListener('change', sync);
+      teardown?.();
+    };
+  }, []);
 
+  function start() {
     const instance = new Lenis({
       autoRaf: false,
       duration: 1.15,
@@ -105,7 +123,7 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
       instance.destroy();
       setLenis(null);
     };
-  }, []);
+  }
 
   return <LenisContext.Provider value={lenis}>{children}</LenisContext.Provider>;
 }
