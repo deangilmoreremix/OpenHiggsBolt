@@ -1,7 +1,7 @@
 /**
  * G10c — R8 acceptance assertions for Motion Studio.
  *
- *   R8-1  library coverage      → 124 grouped cards / 151 shots / 10 categories
+ *   R8-1  library coverage      → 124 grouped cards / 150 shots / 10 categories
  *   R8-2  card previews         → a real Remotion <Player> per visible card
  *   R8-3  agent round trip      → a chat turn mutates a clip prop, Player re-renders
  *   R8-4  Remotion playback     → the playhead advances while playing
@@ -20,7 +20,7 @@ import {
 /** Catalog size — see src/data/motionRecipeCatalog.ts. */
 const GROUPED_CARDS = 124;
 /** Individual shots (the Community tab). */
-const SHOTS = 151;
+const SHOTS = 150;
 /** MOTION_CATEGORIES. */
 const CATEGORY_LABELS = [
   'Opening & Brand',
@@ -45,7 +45,7 @@ async function openWorkbench(page: Page): Promise<void> {
 }
 
 test.describe('R8 · Motion Studio acceptance', () => {
-  test('R8-1: the library exposes 124 grouped cards, 151 shots and 10 categories', async ({
+  test('R8-1: the library exposes 124 grouped cards, 150 shots and 10 categories', async ({
     page,
   }) => {
     await openWorkbench(page);
@@ -67,7 +67,7 @@ test.describe('R8 · Motion Studio acceptance', () => {
       await expect(page.locator('.library-categories button').filter({ hasText: label })).toHaveCount(1);
     }
 
-    // ── Community tab → the 151 individual shots ─────────────────────────
+    // ── Community tab → the 150 individual shots ─────────────────────────
     await page.getByRole('button', { name: 'Community', exact: true }).click();
     await expect(page.locator('.library-grid [data-recipe-card]')).toHaveCount(SHOTS, {
       timeout: 120_000,

@@ -154,16 +154,16 @@ export default function LibraryPanel({
       : "No recipes found";
 
   return (
-    <div className="library-panel p-4 bg-[#0a0a0a] text-white min-h-full">
+    <div className="library-panel p-3 text-white min-h-full" style={{ background: "var(--bg-app)" }}>
       <div className="library-toolbar mb-4 flex flex-col gap-3">
-        <div className="library-tabs flex gap-2">
+        <div className="library-tabs flex flex-wrap gap-1.5">
           {TABS.map((t) => (
             <button
               key={t.id}
-              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border border-white/[0.05] transition-all ${
                 tab === t.id
-                  ? "bg-[#22d3ee] text-black"
-                  : "bg-white/[0.05] text-white/60 hover:bg-white/[0.1]"
+                  ? "bg-[rgba(59,130,246,0.2)] text-[#60a5fa]"
+                  : "bg-[var(--bg-card)] text-white/50 hover:text-white/80"
               }`}
               onClick={() => {
                 setTab(t.id);
@@ -180,17 +180,17 @@ export default function LibraryPanel({
             placeholder="Search recipes..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white/[0.05] border border-white/[0.1] rounded-lg px-3 py-2 text-sm text-white focus:border-[#22d3ee] focus:outline-none focus:ring-1 focus:ring-[#22d3ee]"
+            className="w-full rounded-lg px-3 py-2 text-sm text-white outline-none bg-[var(--bg-card)] border border-white/[0.05] focus:border-white/20"
           />
         </div>
         <div className="library-categories flex flex-wrap gap-1.5">
           <button
             type="button"
             onClick={() => setCategory("all")}
-            className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
+            className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all ${
               category === "all"
-                ? "border-[#22d3ee]/60 bg-[#22d3ee]/10 text-[#22d3ee]"
-                : "border-white/[0.08] text-white/50 hover:text-white/80"
+                ? "border-[rgba(96,165,250,0.3)] bg-[rgba(59,130,246,0.15)] text-[#60a5fa]"
+                : "border-white/[0.05] bg-[var(--bg-card)] text-white/50 hover:text-white/80"
             }`}
           >
             All <span className="opacity-60">{source.length}</span>
@@ -204,10 +204,10 @@ export default function LibraryPanel({
                 key={c.key}
                 type="button"
                 onClick={() => setCategory(active ? "all" : c.key)}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all ${
                   active
-                    ? "border-[#22d3ee]/60 bg-[#22d3ee]/10 text-[#22d3ee]"
-                    : "border-white/[0.08] text-white/50 hover:text-white/80"
+                    ? "border-[rgba(96,165,250,0.3)] bg-[rgba(59,130,246,0.15)] text-[#60a5fa]"
+                    : "border-white/[0.05] bg-[var(--bg-card)] text-white/50 hover:text-white/80"
                 }`}
               >
                 {c.labelEn} <span className="opacity-60">{n}</span>
@@ -216,7 +216,7 @@ export default function LibraryPanel({
           })}
         </div>
       </div>
-      <div className="library-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="library-grid grid grid-cols-2 gap-2">
         {recipes.map((recipe) => {
           const variants = tab === "templates" ? motionTemplateVariants(recipe) : [];
           const isOpen = Boolean(expanded[recipe.id]);

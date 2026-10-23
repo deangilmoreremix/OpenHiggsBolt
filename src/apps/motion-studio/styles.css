@@ -494,3 +494,90 @@
    - `.ms-root` = outer wrapper applied by src/apps/motion-studio/MotionStudio.tsx
    - `.ms-app`  = inner app container (previously `.app`)
    Scoped so the host SmartVideo GO app keeps its own typography, scrolling and box-sizing. */
+
+/* —— Design Agent skin ——
+   Motion Studio uses the Design Agent's visual language (src/apps/design-agent/ui.tsx):
+   one flat app surface, hairline borders, rounded-xl cards, pill controls with a blue
+   active state, and the primary colour reserved for the main action. Layout and
+   behaviour above are unchanged; this block only restyles them. */
+.ms-root { --panel: var(--bg-app); --panel-2: var(--bg-card); }
+.ms-root .topbar {
+  height: auto; min-height: 52px; padding: 10px 16px; gap: 8px; flex-wrap: wrap;
+  background: var(--bg-app); border-bottom: 1px solid var(--border-color);
+}
+.ms-root .ms-back {
+  background: none; border: 0; padding: 0; cursor: pointer; font: inherit;
+  font-size: 12px; color: rgba(255, 255, 255, 0.3); transition: color 0.15s;
+}
+.ms-root .ms-back:hover { color: #fff; }
+.ms-root .logo { font-size: 13px; }
+.ms-root .project-name { font-size: 14px; font-weight: 500; width: 150px; }
+.ms-root .ms-mode-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.ms-root .topbar .tl-sep { display: none; }
+.ms-root .topbar .btn { padding: 6px 10px; }
+
+.ms-root .btn {
+  background: var(--bg-card); color: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--border-color); border-radius: 8px; box-shadow: none;
+  padding: 6px 12px; font-size: 12px; font-weight: 500;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.ms-root .btn:hover:not(:disabled) { filter: none; color: #fff; border-color: rgba(255, 255, 255, 0.2); }
+.ms-root .btn.primary {
+  background: var(--color-primary); color: #000; border-color: transparent; font-weight: 600;
+}
+.ms-root .btn.primary:hover:not(:disabled) { color: #000; filter: brightness(1.08); }
+.ms-root .btn-play { border-radius: 50%; padding: 0; }
+.ms-root select.btn { padding-right: 26px; }
+
+/* Panels sit on the app surface and are separated by hairlines, like the Design Agent chat. */
+.ms-root .inspector,
+.ms-root .timeline,
+.ms-root .transport { background: var(--bg-app); }
+.ms-root .preview-panel { background: #050505; }
+.ms-root .panel-title { font-size: 14px; padding: 14px 16px; }
+
+/* Segmented tabs → Design Agent pills */
+.ms-root .inspector-tabs,
+.ms-root .lib-tabs { background: transparent; gap: 6px; padding: 0; }
+.ms-root .inspector-tab,
+.ms-root .lib-tab {
+  flex: none; border-radius: 9999px; padding: 6px 12px; font-size: 12px;
+  background: var(--bg-card); border: 1px solid var(--border-color); color: rgba(255, 255, 255, 0.5);
+}
+.ms-root .inspector-tab.on,
+.ms-root .lib-tab.on {
+  background: rgba(59, 130, 246, 0.2); color: #60a5fa; box-shadow: none; font-weight: 500;
+}
+
+.ms-root .inspector input,
+.ms-root .inspector textarea,
+.ms-root .inspector select { background: var(--bg-card); border-radius: 8px; }
+
+/* Director rail (left) */
+.ms-root .ms-rail { background: var(--bg-app); border-left: 0; border-right: 1px solid var(--border-color); }
+.ms-root .ms-rail-tabs {
+  align-items: center; gap: 8px; margin: 0; padding: 12px 12px 10px;
+  background: transparent; border-radius: 0; border-bottom: 1px solid var(--border-color);
+}
+.ms-root .ms-rail-hide {
+  background: none; border: 0; cursor: pointer; font-size: 16px; line-height: 1;
+  color: rgba(255, 255, 255, 0.3); padding: 2px 6px; border-radius: 6px;
+}
+.ms-root .ms-rail-hide:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+.ms-root .ms-rail-body { padding: 0; }
+
+/* Timeline clips → rounded cards */
+.ms-root .clip { border-radius: 10px; }
+
+/* Phone / narrow tablets: stack the workspace instead of squeezing four columns. */
+@media (max-width: 900px) {
+  .ms-root .app { height: auto; min-height: 100%; }
+  .ms-root .topbar { padding: 10px 16px; }
+  .ms-root .project-name { width: 100%; order: 10; }
+  .ms-root .main { flex-direction: column; flex: none; }
+  .ms-root .main > .panel-wrap { width: 100% !important; max-height: 420px; }
+  .ms-root .main > .preview-panel { min-height: 280px; }
+  .ms-root .splitter { display: none; }
+  .ms-root .app > .panel-wrap { height: 320px !important; }
+}

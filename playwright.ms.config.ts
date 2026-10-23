@@ -12,5 +12,10 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'failed',
+    // MS_OFFLINE_CLERK=1 (sandboxed local runs): talk to the local dev server
+    // directly instead of through an exported HTTPS_PROXY.
+    ...(process.env.MS_OFFLINE_CLERK === '1'
+      ? { launchOptions: { args: ['--no-proxy-server'] } }
+      : {}),
   },
 });

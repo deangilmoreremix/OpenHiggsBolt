@@ -67,6 +67,16 @@ export async function installStudioSession(page: Page, seed: StudioSeed = {}): P
   // fires and the upgrade modal blocks the transition into the editor.
   await page.context().addCookies([
     { name: '__e2e_auth_bypass', value: '1', domain: '127.0.0.1', path: '/' },
+    // MS_OFFLINE_CLERK=1: the dev server runs with a placeholder Clerk dev key
+    // and no Clerk network access. Clerk's middleware would answer every
+    // document request with a handshake redirect to the (unreachable) dev
+    // instance; a signed-out marker plus a dev-browser token skips it.
+    ...(process.env.MS_OFFLINE_CLERK === '1'
+      ? [
+          { name: '__client_uat', value: '0', domain: '127.0.0.1', path: '/' },
+          { name: '__clerk_db_jwt', value: 'dvb_e2e', domain: '127.0.0.1', path: '/' },
+        ]
+      : []),
   ]);
 
   // Hard guarantee that nothing in the run can reach a paid endpoint.

@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import axios from 'axios'
-import { Plus, Send, ChevronDown, X, Loader2, Sparkles, FolderOpen, Trash2, Download, Key } from 'lucide-react'
+import { X, Loader2, Sparkles, Download, Key } from 'lucide-react'
 import { semantic, appWrapper } from '@/shared/styles/designTokens'
 import DesignAgentErrorBoundary from './ErrorBoundary'
+import { AttachButton, ChatBubble, HomeHero, NewProjectTile, ProjectTile, PromptCard, PromptInput, SelectedChip, SendButton, TemplateOption, TemplatePickerModal, TemplatesPill, useTypingPlaceholder } from './ui'
 import { PublishStep } from '@/components/SocialPublishProvider'
 import { AssistStep } from '@/components/AiAssistantProvider'
 import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider'
@@ -251,36 +252,14 @@ function TemplateModal({ open, onClose, search, setSearch, templates, onSelect }
   templates: typeof TEMPLATES
   onSelect: (template: typeof TEMPLATES[number]) => void
 }) {
-  if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
-      <div className="w-full max-w-6xl rounded-2xl overflow-hidden shadow-2xl animate-fade-in-up" style={{ background: '#111', border: '1px solid var(--border-color)', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={event => event.stopPropagation()}>
-        <div className="p-5 border-b flex items-start justify-between" style={{ borderColor: 'var(--border-color)' }}>
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(59,130,246,0.2)' }}><Sparkles size={18} style={{ color: '#60a5fa' }} /></div>
-            <div><h2 className="text-base font-semibold">Templates</h2><p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>Pick a starting point — specialized workflows for common tasks.</p></div>
-          </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10"><X size={17} /></button>
-        </div>
-        <div className="px-4 pt-3 pb-2">
-          <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search templates..." className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'white' }} />
-        </div>
-        <div className="overflow-y-auto custom-scrollbar flex-1 p-4 pt-2">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {templates.map(template => (
-              <button key={template.id} onClick={() => onSelect(template)} className="p-4 rounded-xl text-left transition-all hover:bg-white/5" style={{ border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.02)' }}>
-                <div className="flex items-center gap-2 mb-2"><Sparkles size={13} style={{ color: '#60a5fa', flexShrink: 0 }} /><span className="text-sm font-medium">{template.label}</span></div>
-                <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.4)' }}>{template.description}</p>
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="px-5 py-3 border-t flex items-center justify-between" style={{ borderColor: 'var(--border-color)' }}>
-          <div className="flex items-center gap-2" style={{ color: 'rgba(255,255,255,0.3)' }}><Sparkles size={12} /><span className="text-xs">DESIGN PROTOCOL V1.2</span></div>
-          <button onClick={onClose} className="text-xs font-medium transition-all hover:text-white" style={{ color: 'rgba(255,255,255,0.4)' }}>Dismiss</button>
-        </div>
+    <TemplatePickerModal open={open} onClose={onClose} title="Templates" subtitle="Pick a starting point — specialized workflows for common tasks." search={search} setSearch={setSearch} footerLabel="DESIGN PROTOCOL V1.2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {templates.map(template => (
+          <TemplateOption key={template.id} label={template.label} description={template.description} onSelect={() => onSelect(template)} />
+        ))}
       </div>
-    </div>
+    </TemplatePickerModal>
   )
 }
 
@@ -370,10 +349,7 @@ export default function DesignAgent({ apiKey: propApiKey, onRequestApiKey, templ
   const [showTemplates, setShowTemplates] = useState(false)
   const [templateSearch, setTemplateSearch] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [placeholder, setPlaceholder] = useState('')
-  const [placeholderIdx, setPlaceholderIdx] = useState(0)
-  const [charIdx, setCharIdx] = useState(0)
-  const [isTyping, setIsTyping] = useState(true)
+  const placeholder = useTypingPlaceholder(PLACEHOLDERS, Boolean(input))
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
   const [attachments, setAttachments] = useState<AgentAttachment[]>([])
   const [uploading, setUploading] = useState(false)
@@ -395,25 +371,6 @@ export default function DesignAgent({ apiKey: propApiKey, onRequestApiKey, templ
     templateApplied.current = templateData.slug || 'template'
     if (templateData.prompt) setInput(templateData.prompt)
   }, [templateData])
-
-  useEffect(() => {
-    if (input) return
-    const target = PLACEHOLDERS[placeholderIdx]
-    if (isTyping) {
-      if (charIdx < target.length) {
-        const timer = setTimeout(() => { setPlaceholder(target.slice(0, charIdx + 1)); setCharIdx(value => value + 1) }, 40)
-        return () => clearTimeout(timer)
-      }
-      const timer = setTimeout(() => setIsTyping(false), 1800)
-      return () => clearTimeout(timer)
-    }
-    if (charIdx > 0) {
-      const timer = setTimeout(() => { setPlaceholder(target.slice(0, charIdx - 1)); setCharIdx(value => value - 1) }, 20)
-      return () => clearTimeout(timer)
-    }
-    setPlaceholderIdx(value => (value + 1) % PLACEHOLDERS.length)
-    setIsTyping(true)
-  }, [charIdx, isTyping, placeholderIdx, input])
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, pendingPlan, activity])
   useEffect(() => { saveProjects(projects) }, [projects])
@@ -808,44 +765,29 @@ export default function DesignAgent({ apiKey: propApiKey, onRequestApiKey, templ
           </div>
 
           <div className="flex-1 flex flex-col items-center justify-center px-8 pb-8 space-y-8">
-            <div className="text-center space-y-2">
-              <h1 className="text-4xl font-bold tracking-tight">Design is easier with <span style={{ color: 'var(--color-primary)' }}>Go-AI</span></h1>
-              <p className="text-base" style={{ color: semantic.textSecondary }}>The design agent that gets you and gets the job done</p>
-            </div>
+            <HomeHero lead="Design is easier with" accent="Go-AI" subtitle="The design agent that gets you and gets the job done" />
 
             <div className="w-full max-w-5xl space-y-2">
               <AttachmentStrip attachments={attachments} uploading={uploading} progress={uploadProgress} activity={activity} onRemove={removeAttachment} />
-              <div className="rounded-2xl p-4 space-y-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)' }}>
-                <div className="relative">
-                  {!input && <div className="absolute top-0 left-0 right-0 text-sm pointer-events-none select-none" style={{ color: 'rgba(255,255,255,0.25)', fontFamily: 'inherit', lineHeight: '1.5' }}>{placeholder}<span className="animate-pulse">|</span></div>}
-                  <textarea value={input} onChange={event => setInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void sendMessage() } }} placeholder="" rows={3} className="w-full bg-transparent resize-none outline-none text-sm relative" style={{ color: 'white', caretColor: 'var(--color-primary)', zIndex: 1 }} />
-                </div>
+              <PromptCard>
+                <PromptInput value={input} onChange={setInput} onSubmit={() => void sendMessage()} typingText={placeholder} rows={3} />
                 <div className="flex flex-wrap items-center gap-2">
-                  <button onClick={() => fileInputRef.current?.click()} disabled={uploading || attachments.length >= MAX_ATTACHMENTS} className="p-1.5 rounded-full transition-all hover:bg-white/10 disabled:opacity-30" style={{ color: semantic.textMuted }} aria-label="Upload reference media"><Plus size={16} /></button>
-                  <button onClick={() => setShowTemplates(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all" style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa' }}><Sparkles size={11} />Templates<ChevronDown size={11} /></button>
-                  {selectedTemplate && <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs" style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa' }}><Sparkles size={11} />{selectedTemplate.id}<button onClick={() => setSelectedTemplate(null)}><X size={10} /></button></div>}
+                  <AttachButton onClick={() => fileInputRef.current?.click()} disabled={uploading || attachments.length >= MAX_ATTACHMENTS} />
+                  <TemplatesPill onClick={() => setShowTemplates(true)} />
+                  {selectedTemplate && <SelectedChip label={selectedTemplate.id} onClear={() => setSelectedTemplate(null)} />}
                   <span className="text-[10px]" style={{ color: semantic.textMuted }}>{attachments.length}/{MAX_ATTACHMENTS} references</span>
                   <div className="flex-1" />
-                  <button onClick={() => void sendMessage()} disabled={!canSend || isLoading} className="p-2 rounded-full transition-all disabled:opacity-30" style={{ color: canSend ? 'var(--color-primary)' : semantic.textMuted }} aria-label="Send message"><Send size={16} /></button>
+                  <SendButton onClick={() => void sendMessage()} disabled={!canSend || isLoading} active={canSend} />
                 </div>
-              </div>
+              </PromptCard>
             </div>
 
             <div className="w-full max-w-5xl">
               <h2 className="text-base font-semibold mb-4">Recent Projects</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                <button onClick={() => void createNewProject()} className="aspect-[4/3] rounded-xl flex flex-col items-center justify-center gap-2 transition-all hover:border-white/20" style={{ border: '1px dashed var(--border-color)', background: 'transparent' }}>
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'var(--bg-card)' }}><Plus size={16} style={{ color: 'rgba(255,255,255,0.6)' }} /></div>
-                  <span className="text-xs" style={{ color: semantic.textSecondary }}>New Project</span>
-                </button>
+                <NewProjectTile onClick={() => void createNewProject()} />
                 {projects.slice(0, 8).map(project => (
-                  <div key={project.id} className="group relative aspect-[4/3] rounded-xl overflow-hidden cursor-pointer transition-all hover:border-white/20" style={{ border: '1px solid var(--border-color)', background: 'var(--bg-card)' }} onClick={() => { setActiveProject(project); setMessages([]); setActivity([]); setPendingPlan(null) }}>
-                    {project.preview ? <img src={project.preview} alt={project.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><FolderOpen size={20} style={{ color: semantic.textDisabled }} /></div>}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-all flex flex-col justify-end p-2">
-                      <p className="text-xs font-medium truncate">{project.name}</p>
-                      <button onClick={event => { event.stopPropagation(); deleteProject(project.id) }} className="absolute top-2 right-2 p-1 rounded-lg transition-all" style={{ background: 'rgba(0,0,0,0.6)' }} aria-label={`Delete project ${project.name}`}><Trash2 size={11} className="text-red-400" /></button>
-                    </div>
-                  </div>
+                  <ProjectTile key={project.id} name={project.name} preview={project.preview} onOpen={() => { setActiveProject(project); setMessages([]); setActivity([]); setPendingPlan(null) }} onDelete={() => deleteProject(project.id)} />
                 ))}
               </div>
             </div>
@@ -873,9 +815,7 @@ export default function DesignAgent({ apiKey: propApiKey, onRequestApiKey, templ
         <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
           {messages.length === 0 && !pendingPlan && <div className="flex flex-col items-center justify-center h-full gap-3" style={{ color: semantic.textDisabled }}><Sparkles size={32} style={{ color: 'var(--color-primary)', opacity: 0.5 }} /><p className="text-sm">Start your design project</p></div>}
           {messages.map(message => (
-            <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className="max-w-[80%] space-y-2">
-                <div className="px-4 py-3 rounded-2xl text-sm" style={{ background: message.role === 'user' ? 'var(--color-primary)' : 'var(--bg-card)', color: message.role === 'user' ? 'black' : 'white', border: message.role === 'assistant' ? '1px solid var(--border-color)' : 'none' }}>{message.content}</div>
+            <ChatBubble key={message.id} role={message.role} below={<>
                 {message.attachments?.length ? <div className="flex flex-wrap gap-1 justify-end">{message.attachments.map(item => <span key={item.asset_label} className="px-2 py-1 rounded-full text-[10px]" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: semantic.textSecondary }}>{item.kind === 'video' ? '🎬' : item.kind === 'audio' ? '🎵' : '🖼️'} {item.asset_label}</span>)}</div> : null}
                 {message.assets?.length ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -887,8 +827,7 @@ export default function DesignAgent({ apiKey: propApiKey, onRequestApiKey, templ
                     ))}
                   </div>
                 ) : null}
-              </div>
-            </div>
+              </>}>{message.content}</ChatBubble>
           ))}
 
           {pendingPlan && <PlanCard plan={pendingPlan} busy={isLoading} onApprove={() => void handlePlanAction('approve')} onReject={() => void handlePlanAction('reject')} />}
@@ -898,20 +837,17 @@ export default function DesignAgent({ apiKey: propApiKey, onRequestApiKey, templ
         </div>
 
         <div className="flex-shrink-0 p-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
-          <div className="rounded-2xl p-3 space-y-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)' }}>
-            <div className="relative">
-              {!input && <div className="absolute top-0 left-0 right-0 text-sm pointer-events-none select-none" style={{ color: 'rgba(255,255,255,0.25)', fontFamily: 'inherit', lineHeight: '1.5' }}>{placeholder}<span className="animate-pulse">|</span></div>}
-              <textarea value={input} onChange={event => setInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void sendMessage() } }} placeholder="" rows={2} className="w-full bg-transparent resize-none outline-none text-sm relative" style={{ color: 'white', caretColor: 'var(--color-primary)', zIndex: 1 }} />
-            </div>
+          <PromptCard compact>
+            <PromptInput value={input} onChange={setInput} onSubmit={() => void sendMessage()} typingText={placeholder} rows={2} />
             <div className="flex flex-wrap items-center gap-2">
-              <button onClick={() => fileInputRef.current?.click()} disabled={uploading || attachments.length >= MAX_ATTACHMENTS} className="p-1.5 rounded-full transition-all hover:bg-white/10 disabled:opacity-30" style={{ color: semantic.textMuted }} aria-label="Upload reference media"><Plus size={16} /></button>
-              <button onClick={() => setShowTemplates(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all" style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa' }}><Sparkles size={11} />Templates<ChevronDown size={11} /></button>
-              {selectedTemplate && <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs" style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa' }}><Sparkles size={11} />{selectedTemplate.id}<button onClick={() => setSelectedTemplate(null)}><X size={10} /></button></div>}
+              <AttachButton onClick={() => fileInputRef.current?.click()} disabled={uploading || attachments.length >= MAX_ATTACHMENTS} />
+              <TemplatesPill onClick={() => setShowTemplates(true)} />
+              {selectedTemplate && <SelectedChip label={selectedTemplate.id} onClear={() => setSelectedTemplate(null)} />}
               <span className="text-[10px]" style={{ color: semantic.textMuted }}>{attachments.length}/{MAX_ATTACHMENTS} references</span>
               <div className="flex-1" />
-              <button onClick={() => void sendMessage()} disabled={!canSend || isLoading || Boolean(pendingPlan)} className="p-2 rounded-full transition-all disabled:opacity-30" style={{ color: canSend ? 'var(--color-primary)' : semantic.textMuted }} aria-label="Send message"><Send size={16} /></button>
+              <SendButton onClick={() => void sendMessage()} disabled={!canSend || isLoading || Boolean(pendingPlan)} active={canSend} />
             </div>
-          </div>
+          </PromptCard>
         </div>
       </div>
 

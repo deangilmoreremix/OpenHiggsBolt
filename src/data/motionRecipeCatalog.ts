@@ -5,7 +5,7 @@
  * (`src/apps/motion-studio/cards/demoMeta.ts`, `demo-index.ts`, `demoCards.ts`).
  * Do NOT edit by hand — re-generate via the extraction script in `.kilo/worktrees/adding-preview-to-personalization-modal`.
  *
- * Contains 151 motion shots across 124 distinct recipe cards spanning 10 categories.
+ * Contains 150 motion shots across 124 distinct recipe cards spanning 10 categories.
  *
  * Asset-insertion heuristic: each demo component file is scanned for prop-name
  * patterns (`logo`, `image`/`imgUrl`/`pictureUrl`, `screenshot`/`frame`/
@@ -98,7 +98,7 @@ export const motionCardId = (t: MotionTemplate): string => `demo:${t.componentNa
 export const MOTION_CATEGORIES: readonly MotionCategory[] = [
   { key: 'opening', label: '开场与品牌', labelEn: 'Opening & Brand', count: 11 },
   { key: 'typography', label: '文字与字卡', labelEn: 'Typography & Title Cards', count: 25 },
-  { key: 'ui-entrance', label: '界面登场与陈列', labelEn: 'UI Entrance & Showcase', count: 23 },
+  { key: 'ui-entrance', label: '界面登场与陈列', labelEn: 'UI Entrance & Showcase', count: 22 },
   { key: 'camera', label: '运镜与空间', labelEn: 'Camera & Space', count: 14 },
   { key: 'data', label: '数据与指标', labelEn: 'Data & Metrics', count: 9 },
   { key: 'interaction', label: '交互与功能演示', labelEn: 'Interaction & Feature Demo', count: 13 },
@@ -2575,22 +2575,6 @@ export const MOTION_TEMPLATES: readonly MotionTemplate[] = [
     sourceRepo: 'motion-studio',
     styleKey: 'page-waterfall-wall',
     preview: '/api/media/shotcraft/page-waterfall-wall.mp4',
-    assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
-  },
-  {
-    id: 'ui-entrance/page-waterfall-wall/VerticalTicker',
-    slug: 'page-waterfall-wall',
-    componentName: 'VerticalTicker',
-    name: '纵向滚动墙 · VerticalTicker',
-    nameEn: 'page-waterfall-wall · VerticalTicker',
-    category: 'ui-entrance',
-    categoryLabel: '界面登场与陈列',
-    summary: '3D 透视多列无限纵向滚动墙——每列内容按自己的时钟循环，列间差速形成纵深，顶部与底部用遮罩柔和收边',
-    summaryEn: 'A 3D-perspective wall of endlessly scrolling columns, each looping on its own clock at a different speed, softened by fade masks top and bottom.',
-    durationInFrames: 150,
-    durationSec: 5,
-    sourceRepo: 'motion-studio',
-    styleKey: 'page-waterfall-wall',
     assets: { logo: false, image: false, screenshot: true, product: false, text: false, cta: false },
   },
   {

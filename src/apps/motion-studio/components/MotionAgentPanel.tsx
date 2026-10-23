@@ -1,41 +1,14 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  PromptComposer,
-  PromptTextarea as PromptTextareaBase,
-  PromptAction as PromptActionBase,
-  PromptFooter,
-} from "studio/src/components/prompt/PromptComposer";
+import { semantic } from "@/shared/styles/designTokens";
+import { ChatBubble, PromptCard, PromptInput, SendButton, useTypingPlaceholder } from "@/apps/design-agent/ui";
 import { useStore } from "../store";
 import { CARDS } from "../cards/registry";
 import { interpretAgentCommand, AGENT_HELP, type AgentContext } from "../lib/agentCommands";
 import { applyAgentOps } from "../lib/agentApply";
 import { projectToSession } from "../lib/sessionAdapter";
 import type { SessionMessage } from "../types";
-
-/**
- * 上游 primitives 是 .jsx（没有类型声明），TS 推不出 props。
- * 这里只补一层类型，不改实现：仍然用的是 studio 的 PromptComposer / PromptTextarea。
- */
-type ComposerTextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
-  value: string;
-  onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
-  maxHeightMobile?: number;
-  maxHeightDesktop?: number;
-};
-
-const PromptTextarea = PromptTextareaBase as unknown as React.ForwardRefExoticComponent<
-  ComposerTextareaProps & React.RefAttributes<HTMLTextAreaElement>
->;
-
-type ComposerActionProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  children?: React.ReactNode;
-};
-
-const PromptAction = PromptActionBase as unknown as React.ForwardRefExoticComponent<
-  ComposerActionProps & React.RefAttributes<HTMLButtonElement>
->;
 
 /**
  * Motion Agent —— 工作室里的对话式改片面板。
@@ -59,24 +32,19 @@ const clock = (iso: string) => {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 };
 
-const Bubble: React.FC<{ message: SessionMessage }> = ({ message }) => {
-  const user = message.role === "user";
-  return (
-    <div className={`flex ${user ? "justify-end" : "justify-start"}`}>
-      <div
-        className={[
-          "max-w-[85%] rounded-xl border px-3 py-2 text-[13px] leading-relaxed",
-          user
-            ? "border-[#22d3ee]/25 bg-[#22d3ee]/10 text-white"
-            : "border-white/5 bg-[#0a0a0a] text-white/80",
-        ].join(" ")}
-      >
-        <div className="whitespace-pre-wrap break-words">{message.content}</div>
-        <div className="mt-1 text-[10px] text-white/30">{clock(message.ts)}</div>
+const Bubble: React.FC<{ message: SessionMessage }> = ({ message }) => (
+  <ChatBubble
+    role={message.role}
+    preWrap
+    below={
+      <div className={`text-[10px] ${message.role === "user" ? "text-right" : ""}`} style={{ color: semantic.textMuted }}>
+        {clock(message.ts)}
       </div>
-    </div>
-  );
-};
+    }
+  >
+    {message.content}
+  </ChatBubble>
+);
 
 export interface MotionAgentPanelProps {
   /** 要写入对话的会话；不给时用当前会话 */
@@ -147,24 +115,23 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
   );
 
   const messages = session?.messages ?? [];
+  const typing = useTypingPlaceholder(SUGGESTIONS, Boolean(draft));
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 bg-[#030303] p-4">
-      <div
-        ref={scrollRef}
-        className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto rounded-xl border border-white/5 bg-[#030303] p-3"
-      >
+    <div className="flex min-h-0 flex-1 flex-col" style={{ background: "var(--bg-app)" }}>
+      <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 custom-scrollbar">
         {messages.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-8 text-center">
-            <div className="text-[13px] font-semibold text-white/80">Motion Agent</div>
-            <p className="max-w-md text-[12px] leading-relaxed text-white/45">{AGENT_HELP}</p>
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 py-8 text-center">
+            <div className="text-sm font-semibold">Motion Agent</div>
+            <p className="max-w-md text-xs leading-relaxed" style={{ color: semantic.textSecondary }}>{AGENT_HELP}</p>
             <div className="flex flex-wrap justify-center gap-2">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
                   type="button"
                   onClick={() => send(s)}
-                  className="rounded-lg border border-white/5 bg-white/[0.03] px-2.5 py-1 text-[11px] text-white/60 transition-colors hover:border-[#22d3ee]/30 hover:text-[#22d3ee]"
+                  className="px-3 py-1.5 rounded-full text-[11px] transition-all hover:text-white"
+                  style={{ background: "var(--bg-card)", border: "1px solid var(--border-color)", color: semantic.textSecondary }}
                 >
                   {s}
                 </button>
@@ -176,31 +143,26 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
         )}
       </div>
 
-      <PromptComposer
-        positionClassName="relative w-full"
-        panelClassName="!rounded-xl !border-white/5 !bg-[#030303] !p-3 !shadow-none"
-      >
-        <PromptTextarea
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              send(draft);
-            }
-          }}
-          placeholder="Tell the agent what to change — “make the text bigger”, “set the duration to 8s”…"
-          className="text-white placeholder:text-white/25"
-        />
-        <PromptFooter className="!border-white/5">
-          <span className="text-[11px] text-white/30">
-            {session ? `${messages.length} message${messages.length === 1 ? "" : "s"}` : "Starts a session on first send"}
-          </span>
-          <PromptAction onClick={() => send(draft)} disabled={!draft.trim()} className="!px-5 !py-2">
-            Send
-          </PromptAction>
-        </PromptFooter>
-      </PromptComposer>
+      <div className="flex-shrink-0 p-3 border-t" style={{ borderColor: "var(--border-color)" }}>
+        <PromptCard compact>
+          <PromptInput
+            value={draft}
+            onChange={setDraft}
+            onSubmit={() => send(draft)}
+            typingText={typing}
+            placeholder="Tell the agent what to change — “make the text bigger”, “set the duration to 8s”…"
+            aria-label="Tell the agent what to change"
+            rows={2}
+          />
+          <div className="flex items-center gap-2">
+            <span className="text-[10px]" style={{ color: semantic.textMuted }}>
+              {session ? `${messages.length} message${messages.length === 1 ? "" : "s"}` : "Starts a session on first send"}
+            </span>
+            <div className="flex-1" />
+            <SendButton onClick={() => send(draft)} disabled={!draft.trim()} active={Boolean(draft.trim())} label="Send" />
+          </div>
+        </PromptCard>
+      </div>
     </div>
   );
 };
