@@ -577,7 +577,10 @@ async function handleSubscriptionEvent(subscription: any): Promise<void> {
 async function revokeForSubscription(event: Stripe.Event): Promise<void> {
   const subscription = event.data.object as Stripe.Subscription;
 
-  if (event.type === 'customer.subscription.updated' && subscription.status === 'active') {
+  if (
+    event.type === 'customer.subscription.updated' &&
+    mapSubscriptionStatus(subscription.status) === 'active'
+  ) {
     return;
   }
 
@@ -664,10 +667,13 @@ async function routeEvent(event: Stripe.Event): Promise<void> {
       await handleSubscriptionEvent(event.data.object);
       return;
     case 'customer.subscription.updated':
-      // Grant on (re)activation. Any other status must revoke the row even when
-      // its price is no longer in the product map — a granted entitlement must
-      // not outlive its subscription just because the map changed.
-      if ((event.data.object as { status?: string }).status === 'active') {
+      // Grant on (re)activation — `active` or `trialing`, the same statuses
+      // `mapSubscriptionStatus` and the `created` path treat as active, so a
+      // trial that is merely updated keeps its access. Any other status must
+      // revoke the row even when its price is no longer in the product map — a
+      // granted entitlement must not outlive its subscription just because the
+      // map changed.
+      if (mapSubscriptionStatus((event.data.object as { status?: string }).status) === 'active') {
         await handleSubscriptionEvent(event.data.object);
       } else {
         await revokeForSubscription(event);

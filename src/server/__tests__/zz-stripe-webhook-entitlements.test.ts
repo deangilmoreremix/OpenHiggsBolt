@@ -699,6 +699,16 @@ describe('zz-stripe: webhook entitlement lifecycle', () => {
       expect(rowFor('user_rebuild_buyer')?.status).toBe('inactive');
     });
 
+    it('customer.subscription.updated keeps access while the subscription is trialing', async () => {
+      await route.POST(makeRequest(checkoutSessionEvent('evt_grant_for_sub_trial')));
+
+      const trialing = await route.POST(makeRequest(
+        subscriptionEvent('evt_rebuild_sub_trialing', 'customer.subscription.updated', 'trialing')
+      ));
+      expect(trialing.status).toBe(200);
+      expect(rowFor('user_rebuild_buyer')?.status).toBe('active');
+    });
+
     it('revocation with no matching row is acked rather than failing the delivery', async () => {
       const res = await route.POST(makeRequest(chargeRefundedEvent('evt_rebuild_refund_nomatch')));
 

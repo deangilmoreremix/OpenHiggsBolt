@@ -84,6 +84,26 @@ describe('buildStudioPersonalizeSource', () => {
     expect(normalizePersonalizationSource(source)).not.toBeNull()
   })
 
+  it('defaults an image hand-off poster to the image itself, so the composition can draw it', () => {
+    const image = buildStudioPersonalizeSource(
+      videoOptions({
+        originStudio: 'image',
+        media: { mediaType: 'image', url: 'https://cdn.example.test/frame.png' },
+      }),
+    )
+    expect(image.poster).toBe('https://cdn.example.test/frame.png')
+
+    // An explicit poster still wins, and a video without one stays null.
+    const withPoster = buildStudioPersonalizeSource(
+      videoOptions({
+        originStudio: 'image',
+        media: { mediaType: 'image', url: 'https://cdn.example.test/frame.png', poster: 'https://cdn.example.test/thumb.png' },
+      }),
+    )
+    expect(withPoster.poster).toBe('https://cdn.example.test/thumb.png')
+    expect(buildStudioPersonalizeSource(videoOptions()).poster ?? null).toBeNull()
+  })
+
   it('maps the prompt and model context through', () => {
     const source = buildStudioPersonalizeSource(videoOptions())
 

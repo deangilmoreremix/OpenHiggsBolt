@@ -6,7 +6,7 @@
 **Branch:** `feature/remotion-personalization-phase-2`
 **Baseline commit:** `ef13ab9bc` (Phase 2 close-out) — no rebase, no reset, no commit, no push, no deploy (report written before commit step).
 **`origin/main`:** untouched. `netlify.toml`, `package.json`, `pnpm-lock.yaml`, `package-lock.json`, `.github/` — **no working-tree changes** (verified: `git diff` on those paths is empty).
-**Production deployment:** ❌ **none.** Netlify remains billing-locked. Stopped before merge/publish per release-safety rules; release approval required.
+**Production deployment:** ❌ **none.** The Netlify production site is intentionally locked against automatic publishing (a release-control lock, **not** a billing lock — corrected in the final review, see `docs/REMOTION_PHASE_1_2_3_FINAL_AUDIT.md`). Stopped before merge/publish per release-safety rules; release approval required.
 
 ---
 
@@ -65,8 +65,8 @@ The matrix was re-run against a fresh production build served on `http://localho
 **Verified:** changedInBox 870,752 ≥ MIN_EFFECT_PIXELS (5,000); control brand pixels 0; credit present. `error: null`.
 
 ### F2 — `starfield-warp` (thin star artwork) — FIXED ✅
-**Root cause:** `src/shared/personalization/templates/_upstream/starfield-warp/Starfield.tsx` drew each star with `sizeBase: 1 + random*2.5` (1–3.5px cores). H.264 quantisation smeared 1px streaks below the per-channel brand tolerance — only 12 brand-primary pixels measured (needs ≥200).
-**Fix:** Widened `sizeBase` to `3 + random*4` (3–7px cores) in `Starfield.tsx`, with a documented deviation note in the file header. Motion, count (60), scaling, trails and glow preserved — original design intent intact.
+**Root cause:** the upstream starfield (`_upstream/starfield-warp/Starfield.tsx`, frozen verbatim) draws each star with `sizeBase: 1 + random*2.5` (1–3.5px cores). H.264 quantisation smeared 1px streaks below the per-channel brand tolerance — only 12 brand-primary pixels measured (needs ≥200).
+**Fix (as corrected in the final review):** the Phase 3 commit `0e0403b` first widened `sizeBase` inside the frozen upstream file, which broke its verbatim-provenance contract. The final review restored that file byte-for-byte to `free-remotion-templates@f648980` and moved the correction into the adapter: `templates/designs/StarfieldWarpDesign.tsx` now renders `ThickCoreStarfield`, a local derivative of the upstream render function whose only change is the core-size range (`EXPORT_STAR_CORE_SIZE` = 3–7px). `starfieldUpstreamIntegrity.test.tsx` proves the derivative renders markup identical to the frozen upstream when given the upstream's own 1–3.5px range, and pins every `_upstream/` file by SHA-256. Motion, count (60), scaling, trails and glow preserved.
 **Verified:** changedInBox 14,080 ≥ MIN_EFFECT_PIXELS (5,000); control brand pixels 0. `error: null`. (Passes via the design-aware presence proof: thin-line designs are judged by changed-in-box, not opaque brand-pixel count — see spec lines 1399–1418.)
 
 ### F3 — RVE designs missing OFL typeface attribution — FIXED ✅
@@ -139,7 +139,7 @@ The structural script `e2e/structural-studio-provider-ancestors.mjs` also report
 - **F1/F2 design-aware proof:** `visual-effect` and `starfield-warp` are translucent/thin-line by contract, so they are verified by `changedInBox ≥ 5,000` (presence proof) rather than opaque brand-pixel count. This is documented in the spec and is the honest, non-weakened criterion.
 - **Item 12 (gallery-only designs):** 12 designs are paywalled/pro upstream; source not obtainable. Formally not-actionable.
 - **CI/Netlify (D5):** repo-wide CI red is a billing lock on the owner account, not a workflow defect. No code change; no workflows added/removed.
-- **No production deploy:** Netlify remains billing-locked. Changes committed/pushed but not deployed. Release approval required before any production action.
+- **No production deploy:** the Netlify production site is intentionally locked against automatic publishing (not billing-locked). Changes committed/pushed but not deployed. Release approval required before any production action.
 
 ---
 
@@ -174,7 +174,7 @@ The structural script `e2e/structural-studio-provider-ancestors.mjs` also report
 
 **F1/F2 export fixes:**
 - `src/shared/personalization/templates/designs/VisualEffectDesign.tsx` (F1 adapter rework)
-- `src/shared/personalization/templates/_upstream/starfield-warp/Starfield.tsx` (F2 star thickening, documented deviation)
+- `src/shared/personalization/templates/designs/StarfieldWarpDesign.tsx` (F2 star thickening as a local adapter customization — the upstream `_upstream/starfield-warp/Starfield.tsx` was restored verbatim in the final review)
 
 **Hygiene (P3-D):**
 - `.gitignore`
@@ -211,7 +211,7 @@ The structural script `e2e/structural-studio-provider-ancestors.mjs` also report
 ## Remaining risks
 
 - Item 12 gallery-only designs are not integrable (source not obtainable) — accepted, documented.
-- CI red persists until the owner clears the Netlify billing lock (D5) — accepted, documented; not a workflow defect.
+- GitHub Actions red was attributed in Phase 2 to a GitHub-account billing annotation (D5) — a GitHub Actions matter, unrelated to Netlify. Netlify production publishing is intentionally locked for controlled releases.
 - No production deployment yet — release approval required before any production action (see release-safety rules).
 
 ---

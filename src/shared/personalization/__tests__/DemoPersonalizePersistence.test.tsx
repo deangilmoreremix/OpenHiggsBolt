@@ -26,7 +26,7 @@
 
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { act } from 'react'
+import React, { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 
 const DEBOUNCE_MS = 40
@@ -69,7 +69,10 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
 }))
 vi.mock('@/components/SocialPublishProvider', () => ({
-  SocialPublishContext: { Provider: ({ children }: any) => children, Consumer: ({ children }: any) => children(null) } as any,
+  SocialPublishContext: {
+    Provider: ({ children }: { children: React.ReactNode }) => children,
+    Consumer: ({ children }: { children: (value: null) => React.ReactNode }) => children(null),
+  },
   useSocialPublish: () => { throw new Error('useSocialPublish must be used within a <SocialPublishProvider>') },
 }))
 vi.mock('@/lib/authConfig', () => ({
@@ -97,19 +100,27 @@ const SOURCE = {
   sourceMetadata: {},
 }
 
+type PersonalizeCtx = ReturnType<typeof useDemoPersonalize>
+let capturedCtx: PersonalizeCtx | null = null
+
 function TestCapture() {
-  ;(window as any).__persistCtx = useDemoPersonalize()
+  capturedCtx = useDemoPersonalize()
   return null
 }
 
-const ctx = () => (window as any).__persistCtx
+const ctx = (): PersonalizeCtx => {
+  if (!capturedCtx) throw new Error('provider not mounted')
+  return capturedCtx
+}
+
+type ProjectWrite = { project: { prompt: { personalized: string } } & Record<string, unknown> }
 
 let fetchMock: ReturnType<typeof vi.fn>
 let root: Root | null = null
 let container: HTMLDivElement | null = null
 
 /** POSTs to the project route — the only durable write the provider makes. */
-function projectWrites(): Array<{ project: Record<string, any> }> {
+function projectWrites(): ProjectWrite[] {
   return fetchMock.mock.calls
     .filter(([url, init]) => String(url).startsWith('/api/personalization/project') && init?.method === 'POST')
     .map(([, init]) => JSON.parse(String(init.body)))

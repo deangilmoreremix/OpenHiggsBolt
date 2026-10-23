@@ -196,7 +196,12 @@ export function buildStudioPersonalizeSource(
     title: options.title?.trim() || 'Personalization',
     mediaType: options.media.mediaType,
     sourceMedia: options.media.url ?? null,
-    poster: options.media.poster ?? null,
+    // An image source needs a poster: the composition draws an image source
+    // through its poster (`sourceMedia` is fed to `<Video>`, which cannot
+    // decode a still), so an image hand-off without one defaults to itself.
+    poster:
+      options.media.poster ??
+      (options.media.mediaType === 'image' ? options.media.url ?? null : null),
     shortPrompt: text,
     fullPrompt: text,
     originalPrompt: text,
