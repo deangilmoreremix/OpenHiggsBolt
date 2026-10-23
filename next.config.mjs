@@ -63,6 +63,45 @@ const nextConfig = {
       'node_modules/app-builder-bin/**',
       'node_modules/7zip-bin/**',
       'node_modules/**/*.map',
+      // --- Function bundle size control (Netlify 250 MB limit) ---
+      //
+      // The traced server bundle used to be ~773 MB, which is far over the
+      // Netlify function size limit. The function then fails to boot and every
+      // SSR route answers 502. The two dominant contributors were a webpack
+      // filesystem cache and Next.js' own build-time toolchain; neither is
+      // reachable from the production server, so both are excluded here.
+      //
+      // 1. Webpack filesystem cache. Remotion writes its bundler cache to
+      //    node_modules/.cache/webpack/remotion-production-<version>/ while
+      //    `next build` prerenders the studio compositions. The three .pack
+      //    files are 622 MB of build cache and have zero runtime value; the
+      //    file tracer picks them up only because they sit inside node_modules.
+      'node_modules/.cache/**',
+      // 2. Next.js' build toolchain. These are dependencies of the `next`
+      //    package, so the file tracer pulls them in, but the production
+      //    server never requires them: `next/dist/server/**` has no
+      //    require() of webpack/esbuild/rspack/typescript/postcss outside
+      //    next/dist/{build,compiled,dev}/** (Next uses its own inlined
+      //    copies of webpack, postcss and styled-jsx at runtime). Removing
+      //    them from a packaged bundle and booting it was verified to leave
+      //    every SSR route working.
+      'node_modules/webpack/**',
+      'node_modules/esbuild/**',
+      'node_modules/@esbuild/**',
+      'node_modules/@rspack/**',
+      'node_modules/typescript/**',
+      'node_modules/postcss/**',
+      'node_modules/lightningcss/**',
+      'node_modules/caniuse-lite/**',
+      'node_modules/terser/**',
+      // NOT excluded on purpose: playwright-core, chromium-bidi, @sparticuz/
+      // chromium and @crawlee/* ARE imported at runtime by the
+      // app/api/personalization/discover-assets route (src/server/
+      // browserDiscovery.ts and src/server/crawleeProvider.ts). They add only
+      // ~8 MB to the bundle, and the separate netlify/functions/browser-probe.js
+      // and netlify/functions/personalization-browser-discovery.js functions
+      // resolve them from the repository's node_modules, not from this
+      // traced bundle.
     ],
   },
   eslint: {
