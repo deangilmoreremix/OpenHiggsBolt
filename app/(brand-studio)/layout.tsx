@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Palette, Camera, Plus, ArrowLeft, ChevronRight, Globe } from 'lucide-react';
 import { semantic, appWrapper } from '@/shared/styles/designTokens';
+import { DemoPersonalizeProvider } from '@/shared/personalization';
 
 /**
  * Brand Studio — one application, one shell.
@@ -14,6 +15,12 @@ import { semantic, appWrapper } from '@/shared/styles/designTokens';
  * /brand/[id], /campaign/[id], /asset/[id]/edit, /photo-studio) lives inside
  * this layout, so they share one menu and read as one application instead of
  * separate apps.
+ *
+ * The layout mounts the shared Personalization provider ONCE around the route
+ * content: every studio inside this group must have exactly ONE
+ * `DemoPersonalizeProvider` ancestor, and this is it. Pages inside the group
+ * (photo-studio, brand/[id]) render the Personalize trigger and consume the
+ * same context — a second provider mount here would break it.
  */
 
 type Brand = {
@@ -253,7 +260,7 @@ export default function BrandStudioLayout({ children }: { children: React.ReactN
               <Camera size={12} /> Photo Studio
             </Link>
           </div>
-          {children}
+          <DemoPersonalizeProvider>{children}</DemoPersonalizeProvider>
         </main>
       </div>
     </div>

@@ -4,36 +4,47 @@
  * Upstream: `src/components/bokeh-circles/BokehCircles.tsx`
  * (MIT, © 2026 Trimora Inc. / RenderComp).
  *
- * The upstream is a seamless, full-frame particle effect: soft discs that
- * drift over the whole canvas. Its `baseColor` prop is the canvas fill and is
- * forced to `transparent`, and its optional `label` MUST stay `undefined` —
- * the upstream default is the demo string `"Background Demo"`.
+ * WHY THE UPSTREAM IS NOT DELEGATED TO ANY MORE (Phase 3, finding F1)
+ * ------------------------------------------------------------------
+ * The upstream paints each disc with `radial-gradient(circle, color 0%,
+ * transparent 70%)`, `filter: blur(20px)` and `mix-blend-mode: screen`.
+ * That is fine in the PREVIEW (a real browser DOM), but the branded export
+ * rasterises the composition with `@remotion/web-renderer`, whose drawing
+ * stage implements linear gradients (`parse-linear-gradient`) and box
+ * shadows — and NO radial-gradient parser. Every disc therefore rasterised
+ * to a fully transparent div, and the exported video contained NOTHING of
+ * the design (P3-E's matrix measured changed-in-box == credit-only, i.e.
+ * the design was invisible in every export; see
+ * docs/phase3/EXPORT_MATRIX.md finding F1).
  *
- * Stacking-context hazard: the circles use `mix-blend-mode: screen`, which
- * is neutralised by any ancestor with a `transform`, an `opacity < 1`, a
- * `filter` or `isolation`. The composition applies the layer's entrance
- * `transform` and `opacity` to the layer wrapper, and the scale-wrapper adds
- * its own `transform` whenever the box is smaller than the composition.
+ * The upstream file is frozen (reproduced verbatim from the MIT source), so
+ * the fix lives HERE, in the adapter: the same seeded randomness, the same
+ * drift/pulse motion and the same palette assignment, drawn with
+ * rasteriser-supported primitives —
  *
- * The adapter therefore
- *  - omits the scale transform when the box already is the composition
- *    (the catalog places this design at `scale = 1`), and
- *  - the catalog places it with `animation: 'none'` and `opacity: 1`, so the
- *    composition adds neither a transform nor a reduced opacity.
+ *   - a solid `backgroundColor` disc with `borderRadius: 50%` (supported),
+ *   - its soft bokeh edge via `boxShadow` (`draw-box-shadow` is supported),
+ *   - the disc's own `opacity` (supported),
+ *   - and NO `radial-gradient`, NO `mix-blend-mode`, NO `filter`.
  *
- * If a blend is neutralised anyway (e.g. the customer moves the layer), the
- * discs still render as soft translucent circles — the effect degrades, it
- * never disappears.
+ * Dropping `mix-blend-mode: screen` also retires the stacking-context
+ * hazard the old doc comment tracked: with no blend mode there is nothing
+ * for an ancestor transform or opacity to neutralise, so the discs can
+ * never disappear the way they used to — in the preview or in the export.
+ *
+ * The trade is deliberate and recorded in `docs/phase3/DECISIONS.md`: the
+ * discs read as soft glowing circles rather than gradient-falloff discs,
+ * identically in preview and export (the two surfaces render the same
+ * component, so they can never disagree).
+ *
+ * Its `baseColor` prop stays `transparent` and its optional `label` stays
+ * `undefined` — the upstream default is the demo string
+ * `"Background Demo"`.
  */
 
 import React from 'react'
-import { BokehCircles } from '../_upstream/bokeh-circles/BokehCircles'
-import {
-  DesignStage,
-  TRANSPARENT,
-  pickColor,
-  type DesignAdapterProps,
-} from './shared'
+import { AbsoluteFill } from 'remotion'
+import { DesignStage, pickColor, type DesignAdapterProps } from './shared'
 
 /**
  * Number of discs.
@@ -43,23 +54,74 @@ import {
  */
 const CIRCLE_COUNT = 16
 
+/** The same pseudo-random the upstream uses, so the layout is identical. */
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed * 9301 + 49297) * 49297
+  return x - Math.floor(x)
+}
+
 export const VisualEffectDesign: React.FC<DesignAdapterProps> = (props) => {
   const accent = pickColor([props.colors?.accent], '#ffd1a4')
   const primary = pickColor([props.colors?.primary], '#ffe6c7')
   const text = pickColor([props.colors?.text], '#fff3d6')
+  const frame = props.frame ?? 0
 
   // The upstream assigns a palette entry to each disc pseudo-randomly.
   const palette = [accent, primary, accent, text]
 
+  // Identical disc generation to the upstream: same seed formulas, same
+  // size/speed/phase/colour/opacity ranges.
+  const circles = React.useMemo(() => {
+    return Array.from({ length: CIRCLE_COUNT }, (_, i) => ({
+      seedX: seededRandom(i * 3 + 1),
+      seedY: seededRandom(i * 5 + 2),
+      sizeBase: 80 + seededRandom(i * 7 + 3) * 240,
+      speed: 0.4 + seededRandom(i * 11 + 4) * 0.8,
+      phase: seededRandom(i * 13 + 5) * Math.PI * 2,
+      color: palette[Math.floor(seededRandom(i * 17 + 6) * palette.length)],
+      opacity: 0.25 + seededRandom(i * 19 + 7) * 0.45,
+    }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the palette is a
+    // stable tuple derived from props.colors; rebuilding it per frame would
+    // re-seed the discs every frame. The upstream has the same behaviour with
+    // its own `colors` prop.
+  }, [])
+
   return (
     <DesignStage designId="visual-effect" props={props}>
-      <BokehCircles
-        colors={palette}
-        baseColor={TRANSPARENT}
-        count={CIRCLE_COUNT}
-        label={undefined}
-        labelColor={pickColor([props.color, text])}
-      />
+      <AbsoluteFill style={{ overflow: 'hidden' }}>
+        {circles.map((c, i) => {
+          // Same motion math as the upstream, frame for frame.
+          const t = frame * 0.02 * c.speed + c.phase
+          const x = c.seedX * 100 + Math.sin(t) * 8
+          const y = c.seedY * 100 + Math.cos(t * 0.8) * 8
+          const pulse = 1 + Math.sin(t * 1.2) * 0.15
+          const size = c.sizeBase * pulse
+          return (
+            <div
+              key={i}
+              style={{
+                position: 'absolute',
+                left: `${x}%`,
+                top: `${y}%`,
+                width: size,
+                height: size,
+                marginLeft: -size / 2,
+                marginTop: -size / 2,
+                borderRadius: '50%',
+                // Solid disc + a wide, soft box-shadow glow: both primitives
+                // are implemented by the export rasteriser, so the effect is
+                // visible in the encoded output. This replaces the upstream's
+                // radial-gradient + blur + screen-blend trio, none of which
+                // the rasteriser draws (F1).
+                backgroundColor: c.color,
+                boxShadow: `0 0 ${size * 0.45}px ${size * 0.22}px ${c.color}`,
+                opacity: c.opacity,
+              }}
+            />
+          )
+        })}
+      </AbsoluteFill>
     </DesignStage>
   )
 }

@@ -10,6 +10,7 @@ import { OverlayEditor } from './OverlayEditor'
 import { C, badgeStyle, chipStyle, hintStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
 import { PREVIEW_ASPECT_RATIOS } from '../preview/types'
 import { PREVIEW_LAYOUTS } from '../preview/presets'
+import { getRemotionDesignFixedSvgIdWarning } from '../templates/catalog'
 import { chooseFinalOutputPath } from '../finalOutput'
 
 /**
@@ -54,6 +55,11 @@ export function StepPreviewApprove(): React.JSX.Element {
   // (and disabled) so the two operations are never conflated.
   const finalPath = chooseFinalOutputPath({ personalizationMode: mode || null })
   const isBrandedPath = finalPath === 'branded-render'
+  // Phase 3 item 13: some frozen upstream designs hardcode SVG `id`s, so a
+  // second instance of the same design is clipped by the first. The catalog
+  // declares which designs are constrained; Step 4 shows a non-blocking
+  // note next to the "Designs" chip row when the selected one is affected.
+  const fixedSvgIdWarning = getRemotionDesignFixedSvgIdWarning(activeRemotionDesignId)
 
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -148,6 +154,11 @@ export function StepPreviewApprove(): React.JSX.Element {
                 </button>
               ))}
             </div>
+            {fixedSvgIdWarning ? (
+              <p role="note" style={{ ...hintStyle, marginTop: 8 }}>
+                {fixedSvgIdWarning}
+              </p>
+            ) : null}
             {remotionDesignError ? (
               <p style={{ ...hintStyle, color: C.danger, marginTop: 8 }}>{remotionDesignError}</p>
             ) : null}

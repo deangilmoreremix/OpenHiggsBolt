@@ -24,6 +24,9 @@
 import React from 'react'
 import { AbsoluteFill } from 'remotion'
 import { DESIGN_CREDIT_FONT_STACK, useDesignFonts } from './fonts'
+// `DESIGN_FONT_ATTRIBUTION` is NOT re-exported by `./fonts`, and that module is
+// not this lane's file — so the OFL notice is imported straight from the source.
+import { DESIGN_FONT_ATTRIBUTION } from '../typography'
 import type { RemotionDesignComponentProps } from '../types'
 
 /**
@@ -39,12 +42,18 @@ export const TRANSPARENT = 'transparent'
  * Short credit line rendered inside every design.
  *
  * The upstream templates are MIT licensed and the licence requires the
- * copyright notice to travel with every copy. `catalog.ts` exposes the full
- * attribution and the verbatim permission notice for the product's credits
- * surface; this short line is what actually ends up in the preview and in the
- * exported video.
+ * copyright notice to travel with every copy. The designs are also set in
+ * the bundled Inter Latin subset (SIL OFL 1.1, Phase 3 decision D2), so the
+ * typeface's own attribution travels with the rendered artefact too —
+ * appended after the MIT upstream credit in the same line.
+ *
+ * `catalog.ts` exposes the full attribution and the verbatim permission
+ * notice for the product's credits surface; this short line is what actually
+ * ends up in the preview and in the exported video. It is deliberately kept
+ * on ONE unobtrusive 10px line (`white-space: nowrap`), which is why both
+ * notices are joined with the same `·` separator instead of a second row.
  */
-export const DESIGN_VIDEO_CREDIT = '© 2026 Trimora Inc. (RenderComp) · MIT'
+export const DESIGN_VIDEO_CREDIT = `© 2026 Trimora Inc. (RenderComp) · MIT · ${DESIGN_FONT_ATTRIBUTION}`
 
 /**
  * The props every adapter receives.

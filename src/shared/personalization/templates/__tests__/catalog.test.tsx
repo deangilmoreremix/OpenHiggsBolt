@@ -17,9 +17,14 @@ import {
   listRemotionDesignTemplatesByCategory,
 } from '../registry'
 import {
+  DESIGN_FONT_ATTRIBUTION,
+  DESIGN_FONT_LICENSE_FILE,
+  getRemotionDesignFixedSvgIdWarning,
   REMOTION_DESIGN_ATTRIBUTION,
+  REMOTION_DESIGN_FIXED_SVG_IDS,
   REMOTION_DESIGN_LICENSE_NOTICE,
   REMOTION_DESIGN_TEMPLATES,
+
   RVE_ATTRIBUTION,
   RVE_LICENSE_NOTICE,
   animatedHeadlineTemplate,
@@ -36,6 +41,7 @@ import type {
   RemotionDesignTemplate,
   RemotionDesignTextField,
 } from '../types'
+import { DESIGN_VIDEO_CREDIT } from '../designs/shared'
 import {
   applyDesignTemplate,
   createDefaultPreviewSettings,
@@ -291,6 +297,41 @@ describe('Remotion design catalog', () => {
     const notice = getRemotionDesignLicenseNotice()
     expect(notice).toContain(REMOTION_DESIGN_LICENSE_NOTICE)
     expect(notice).toContain(RVE_LICENSE_NOTICE)
+
+    // Phase 3 decision D2: the typeface notice joins the aggregated credit.
+    expect(line).toContain(DESIGN_FONT_ATTRIBUTION)
+    expect(DESIGN_FONT_ATTRIBUTION).toContain('SIL OFL 1.1')
+    expect(DESIGN_FONT_ATTRIBUTION).toContain('Inter')
+    // The licence file stays reachable from the credits surface (OFL clause 2).
+    expect(notice).toContain(DESIGN_FONT_LICENSE_FILE)
+    expect(DESIGN_FONT_LICENSE_FILE).toBe('/fonts/OFL.txt')
+  })
+
+  it('carries the OFL typeface attribution in the rendered credit line', () => {
+    // BOTH notices in one line: the MIT upstream credit (which the e2e
+    // spec asserts) and the OFL typeface attribution (D2).
+    expect(DESIGN_VIDEO_CREDIT).toContain('MIT')
+    expect(DESIGN_VIDEO_CREDIT).toContain(DESIGN_FONT_ATTRIBUTION)
+  })
+
+  it('declares the fixed-SVG-id constraint for the affected designs (item 13)', () => {
+    expect(Object.keys(REMOTION_DESIGN_FIXED_SVG_IDS).sort()).toEqual([
+      'logo-mask-wipe',
+      'logo-reveal',
+      'rve-circular-progress',
+    ])
+
+    for (const constrained of ['logo-mask-wipe', 'logo-reveal', 'rve-circular-progress']) {
+      const warning = getRemotionDesignFixedSvgIdWarning(constrained)
+      expect(typeof warning).toBe('string')
+      expect(warning).toContain('SVG id')
+      expect(warning).toContain('ONE instance')
+    }
+
+    expect(getRemotionDesignFixedSvgIdWarning('animated-headline')).toBeNull()
+    expect(getRemotionDesignFixedSvgIdWarning('not-a-design')).toBeNull()
+    expect(getRemotionDesignFixedSvgIdWarning(null)).toBeNull()
+    expect(getRemotionDesignFixedSvgIdWarning(undefined)).toBeNull()
   })
 
   it('applies every design with its own placement and primary text', () => {
@@ -370,11 +411,24 @@ describe('Remotion design adapters', () => {
     expect(container.textContent).not.toContain('Thanks for watching')
   })
 
-  it('renders the bokeh effect as blended discs without the upstream label', () => {
+  it('renders the bokeh effect as translucent rasteriser-safe discs without the upstream label', () => {
+    // Phase 3 finding F1: the export rasteriser draws neither radial-gradient
+    // nor blend modes, so the upstream's `mix-blend-mode: screen` discs were
+    // INVISIBLE in every encoded export. The adapter now draws solid discs
+    // with a box-shadow glow and keeps the upstream per-disc opacity — the
+    // discs stay translucent, and the demo label must still never appear.
     const { container } = renderTemplate(visualEffectTemplate)
     expect(container.innerHTML.length).toBeGreaterThan(0)
     expect(container.textContent).not.toContain('Background Demo')
-    expect(container.querySelectorAll('[style*="mix-blend-mode"]').length).toBeGreaterThan(0)
+    // The discs are still translucent over the video (opacity per disc).
+    const discStyles = Array.from(
+      container.querySelectorAll<HTMLElement>('[style*="border-radius: 50%"]'),
+    ).map((el) => el.style.opacity)
+    expect(discStyles.length).toBeGreaterThan(0)
+    for (const opacity of discStyles) {
+      expect(Number(opacity)).toBeGreaterThan(0)
+      expect(Number(opacity)).toBeLessThan(1)
+    }
   })
 
   it('draws the MIT credit line inside every design', () => {
@@ -439,7 +493,16 @@ describe('Remotion design adapters', () => {
       expect(stage.style.backgroundColor).toBe('')
       expect(canvas.style.background).toBe('')
       expect(canvas.style.backgroundColor).toBe('')
-      expect(upstreamRoot?.style.backgroundColor).toBe('transparent')
+      // Phase 3 F1: the bokeh adapter no longer delegates to the frozen
+      // upstream component, so there is no upstream root with an explicit
+      // `transparent` fill any more. The equivalent guarantee — the design's
+      // own root paints NOTHING behind the discs — is asserted instead.
+      if (template.id === 'visual-effect') {
+        expect(upstreamRoot?.style.background ?? '').toBe('')
+        expect(upstreamRoot?.style.backgroundColor ?? '').toBe('')
+      } else {
+        expect(upstreamRoot?.style.backgroundColor).toBe('transparent')
+      }
       unmount()
     }
   })

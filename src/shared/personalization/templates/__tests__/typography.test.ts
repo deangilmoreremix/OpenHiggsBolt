@@ -13,10 +13,13 @@ import { describe, it, expect } from 'vitest'
 import { existsSync, readFileSync, statSync } from 'fs'
 import { join } from 'path'
 import {
+  DESIGN_FONT_ATTRIBUTION,
+  DESIGN_FONT_DATA_URI,
   DESIGN_FONT_FACE_CSS,
   DESIGN_FONT_FAMILY,
   DESIGN_FONT_FILE,
   DESIGN_FONT_FILES,
+  DESIGN_FONT_LICENSE_FILE,
   DESIGN_FONT_OVERRIDE_CSS,
   DESIGN_FONT_STACK,
   DESIGN_TYPE_ROLE_IDS,
@@ -144,10 +147,15 @@ describe('the typography modules reference no remote font', () => {
     }
   })
 
-  it('emits a stylesheet with no remote source', () => {
+  it('emits a stylesheet whose font source is the inline data URI, not a path', () => {
     const css = designTypographyCss()
     expect(css).not.toMatch(/https?:\/\//)
-    expect(css).toContain(DESIGN_FONT_FILE)
+    // Phase 3 decision D1 (the strict reading of contract rule C11): the
+    // stylesheet must CARRY the font, so a branded render issues no font
+    // request at all — not even a same-origin one.
+    expect(css).toContain('data:font/woff2;base64,')
+    // The old same-origin path must not survive as a fallback source.
+    expect(css).not.toContain(`url("${DESIGN_FONT_FILE}")`)
   })
 })
 
@@ -175,8 +183,74 @@ describe('the bundled font asset', () => {
   })
 
   it('is the file the stylesheet points at', () => {
-    expect(DESIGN_FONT_FACE_CSS).toContain(DESIGN_FONT_FILE)
+    // Phase 3 decision D1 changed what this means: the stylesheet no longer
+    // points at the file, it CARRIES the font. The file still ships (the OFL
+    // notice must accompany every copy of the font), but the render path does
+    // not reference it.
     expect(DESIGN_FONT_FACE_CSS).toContain(`font-family: "${DESIGN_FONT_FAMILY}"`)
+    expect(DESIGN_FONT_FACE_CSS).toContain('data:font/woff2;base64,')
+    expect(DESIGN_FONT_FACE_CSS).not.toContain(DESIGN_FONT_FILE)
+  })
+})
+
+describe('the inlined font payload (Phase 3 decision D1)', () => {
+  const GENERATED_MODULE_PATH = join(
+    REPO_ROOT,
+    'src/shared/personalization/templates/fonts/personalizationSansDataUri.ts',
+  )
+  const GENERATOR_PATH = join(
+    REPO_ROOT,
+    'src/shared/personalization/templates/fonts/generate-font-data-uri.mjs',
+  )
+  const FONT_PATH = join(REPO_ROOT, 'public/fonts/personalization-sans-latin.woff2')
+
+  it('is a static module, so the browser bundle never imports a node builtin', () => {
+    // The build breaker: `typography.ts` is imported by every design adapter
+    // and therefore by the browser bundle. A module-scope `readFileSync()`
+    // there fails `npm run build` with "Can't resolve 'fs'". Only actual
+    // import/require statements matter — a doc-comment MENTION of the word
+    // (this module explains its own history) is not a dependency.
+    const typographySource = readFileSync(TYPOGRAPHY_SOURCE_PATH, 'utf-8')
+    expect(typographySource).not.toMatch(/from\s+['"](fs|path|node:fs|node:path)['"]/)
+    expect(typographySource).not.toMatch(/require\(\s*['"](fs|path)['"]\s*\)/)
+  })
+
+  it('imports the generated payload instead of reading the file at runtime', () => {
+    const typographySource = readFileSync(TYPOGRAPHY_SOURCE_PATH, 'utf-8')
+    expect(typographySource).toContain("./fonts/personalizationSansDataUri")
+  })
+
+  it('never imports the generator from runtime code', () => {
+    expect(existsSync(GENERATOR_PATH)).toBe(true)
+    const typographySource = readFileSync(TYPOGRAPHY_SOURCE_PATH, 'utf-8')
+    // The generator runs on a developer machine only; a doc-comment mention of
+    // its name is fine, an import statement is not. Line-bounded so the match
+    // cannot bridge a real import statement into a later comment line.
+    expect(typographySource).not.toMatch(/import[^\n]*generate-font-data-uri/)
+    expect(typographySource).not.toMatch(/require\([^)\n]*generate-font-data-uri/)
+  })
+
+  it('decodes to exactly the bytes of the shipped font file', () => {
+    const fontBytes = readFileSync(FONT_PATH)
+    const base64 = DESIGN_FONT_DATA_URI.replace(/^data:font\/woff2;base64,/, '')
+    const decoded = Buffer.from(base64, 'base64')
+    expect(decoded.length).toBe(fontBytes.length)
+    expect(decoded.equals(fontBytes)).toBe(true)
+    // The woff2 magic.
+    expect(decoded.subarray(0, 4).toString('binary')).toBe('wOF2')
+  })
+
+  it('is in sync with the committed generated module', () => {
+    // The generated module is committed; if the font file changes without
+    // regenerating it, the payload would be stale.
+    const generated = readFileSync(GENERATED_MODULE_PATH, 'utf-8')
+    expect(generated).toContain(DESIGN_FONT_DATA_URI)
+  })
+
+  it('exposes the licence attribution the credit line must carry (D2)', () => {
+    expect(DESIGN_FONT_ATTRIBUTION).toContain('SIL OFL 1.1')
+    expect(DESIGN_FONT_ATTRIBUTION).toContain('The Inter Project Authors')
+    expect(DESIGN_FONT_LICENSE_FILE).toBe('/fonts/OFL.txt')
   })
 })
 

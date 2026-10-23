@@ -2,15 +2,26 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { brands, getBrandForUser, type Brand } from '@/shared/brandStore'
 import { apiError } from '@/lib/apiError'
+import { requireApiEntitlement, entitlementForbiddenResponse } from '@/access/apiRequireEntitlement'
+import { ENTITLEMENTS } from '@/access/entitlements'
 
 export const dynamic = "force-dynamic";
 
 async function requireUserId(): Promise<{ userId: string } | { response: NextResponse }> {
   // H4: these handlers used to be fully unauthenticated while exposing a
-  // module-level store shared by every user.
+  // module-level store shared by every user. Same gate as the analyze route:
+  // 401 UNAUTHENTICATED when signed out, 403 PAYMENT_REQUIRED when signed in
+  // without the smartvideo_go entitlement.
+  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
+  if (!entitlementCheck.allowed) {
+    if (entitlementCheck.status === 401) {
+      return { response: NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 }) }
+    }
+    return { response: entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO) }
+  }
   const { userId } = await auth()
   if (!userId) {
-    return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+    return { response: NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 }) }
   }
   return { userId }
 }

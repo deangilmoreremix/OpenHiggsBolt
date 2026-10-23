@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { Upload, Download, Loader2 } from 'lucide-react';
 import { panels, buttons, semantic, optionStyle } from '@/shared/styles/designTokens';
 import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider';
+import PersonalizeVideoAction from '@/components/PersonalizeVideoAction';
+import type { StudioPersonalizeOptions } from '@/shared/personalization/studioEntry';
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +96,30 @@ export default function PhotoStudioPage() {
     return ['Nature Organic', 'Spa Minimal', 'Active Sports', 'Clean Science', 'Sunrise Glow'].includes(s);
   });
 
+  // ── Shared Personalization hand-off ──────────────────────────────────────
+  // The provider is mounted ONCE in app/(brand-studio)/layout.tsx, so this
+  // page only builds the hand-off payload and renders the trigger. The
+  // trigger appears only when there is source media to personalize (the
+  // newest generated product photo); PersonalizeStep renders nothing
+  // without `media.url`.
+  const sourceMediaUrl = result?.image_url || history[0]?.image_url || null;
+  const sourceLabel = result ? (result.style || 'Generated photo') : (history[0]?.style || 'Generated photo');
+  const studioPersonalizeOptions: StudioPersonalizeOptions | null = sourceMediaUrl
+    ? {
+        originStudio: 'photo-studio',
+        studioProjectId: `${brandId || 'no-brand'} : ${category} : ${sourceMediaUrl.split('/').pop()}`,
+        title: sourceLabel,
+        category: 'photo-studio',
+        media: {
+          mediaType: 'image',
+          url: sourceMediaUrl,
+          poster: null,
+          aspectRatio: '1:1',
+        },
+        prompt: { text: style || sourceLabel },
+      }
+    : null;
+
   return (
     <div className="p-6">
       <div className="mx-auto max-w-7xl">
@@ -108,6 +134,11 @@ export default function PhotoStudioPage() {
               <option key={b.id} value={b.id}>{b.brand_name || b.url}</option>
             ))}
           </select>
+          {studioPersonalizeOptions && (
+            <PersonalizeVideoAction options={studioPersonalizeOptions} className="px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-[10px] font-bold text-white/70 hover:text-white hover:border-[#22d3ee]/60 transition-colors">
+              Personalize
+            </PersonalizeVideoAction>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2 mb-6">

@@ -35,6 +35,12 @@ import React from 'react'
 import { AbsoluteFill } from 'remotion'
 import type { RemotionDesignComponentProps } from '../types'
 import { DESIGN_CREDIT_FONT_STACK, DESIGN_FONT_STACK, useDesignFonts } from './fonts'
+// Phase 3 decision D2: the OFL typeface attribution joins the rendered
+// credit line, so every repo-2 design carries it the same way the repo-1
+// designs do. `designs/fonts.ts` does not re-export it (it is not a font
+// *stack*), so the constant is imported from the typography module directly
+// — the same module the repo-1 credit reaches it through.
+import { DESIGN_FONT_ATTRIBUTION } from '../typography'
 
 /* -------------------------------------------------------------------------- */
 /* Attribution                                                                 */
@@ -243,6 +249,10 @@ export function RveCreditBlock(): React.ReactElement {
     >
       <div style={{ whiteSpace: 'nowrap' }}>{RVE_ATTRIBUTION}</div>
       <div>{RVE_UPSTREAM_CREDIT}</div>
+      {/* Phase 3 decision D2: the bundled typeface is rendered by this design
+          too, so its OFL attribution travels with the credit line exactly as
+          it does in the repo-1 credit (`DesignCreditLine`). */}
+      <div style={{ whiteSpace: 'nowrap' }}>{DESIGN_FONT_ATTRIBUTION}</div>
       <div
         style={{
           marginTop: 2,

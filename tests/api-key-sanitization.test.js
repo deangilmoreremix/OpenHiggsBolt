@@ -12,7 +12,7 @@
  *   5. IMAGE_ENDPOINT_ALIASES contains correct, non-identity mappings.
  */
 
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 
 // ── Recreate the cleanApiKey/cleanKey implementations under test ─────────────

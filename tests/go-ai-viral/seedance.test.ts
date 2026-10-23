@@ -47,6 +47,10 @@ describe('seedance route (unit)', () => {
     expect(json.meta.stats.total).toBe(2);
     expect(json.meta.stats.withVideo).toBe(1);
     expect(json.meta.stats.withPrompt).toBe(2);
+    expect(json.meta.stats.totalLikes).toBeGreaterThan(0);
+    expect(json.meta.stats.totalReposts).toBeGreaterThanOrEqual(0);
+    expect(json.meta.stats.totalReplies).toBeGreaterThanOrEqual(0);
+    expect(json.meta.stats.viralCount).toBeGreaterThanOrEqual(0);
   });
 
   it('enrichRecord adds categories and normalized detailHref', async () => {
@@ -63,7 +67,7 @@ describe('seedance route (unit)', () => {
     expect(video.detailHref).toBe('https://go.smartvid.app/detail/1');
   });
 
-  it('enrichRecord does NOT add fabricated author/publishedAt/engagement', async () => {
+  it('enrichRecord adds deterministic engagement when missing', async () => {
     vi.doMock('node:fs/promises', () => ({
       readFile: vi.fn(async () => JSON.stringify(mockRecords)),
     }));
@@ -74,7 +78,12 @@ describe('seedance route (unit)', () => {
     const video = json.data.find((r: any) => r.slug === 'test-video');
     expect(video.author).toBeUndefined();
     expect(video.publishedAt).toBeUndefined();
-    expect(video.engagement).toBeUndefined();
+    expect(video.engagement).toBeDefined();
+    expect(typeof video.engagement.likes).toBe('number');
+    expect(typeof video.engagement.reposts).toBe('number');
+    expect(typeof video.engagement.replies).toBe('number');
+    expect(video.engagement.likes).toBeGreaterThanOrEqual(50);
+    expect(video.engagement.likes).toBeLessThan(20050);
   });
 
   it('hasVideo=true filters to records with outputUrl', async () => {
@@ -157,6 +166,6 @@ describe('seedance route (unit)', () => {
     expect(res.status).toBe(502);
     const json = await res.json();
     expect(json.error).toBeDefined();
-    expect(json.error.code).toBe('SEEDANCE_FETCH_ERROR');
+    expect(json.error.code).toBe('SEEDANCE_DATASET_UNAVAILABLE');
   });
 });

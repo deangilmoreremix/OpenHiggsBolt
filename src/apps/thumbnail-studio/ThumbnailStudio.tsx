@@ -255,7 +255,7 @@ function saveLocal(images: GeneratedImage[]) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function ThumbnailStudio({ apiKey, templateData }: { apiKey?: string; templateData?: { prompt?: string; tags?: string[]; [key: string]: any } }) {
+export default function ThumbnailStudio({ apiKey, templateData, renderPersonalizeAction }: { apiKey?: string; templateData?: { prompt?: string; tags?: string[]; [key: string]: any }; renderPersonalizeAction?: (options: unknown) => React.ReactNode }) {
   const { requireEntitlement } = useSmartVideoAccess();
 
   // Tabs
@@ -508,6 +508,35 @@ export default function ThumbnailStudio({ apiKey, templateData }: { apiKey?: str
       URL.revokeObjectURL(a.href)
     } catch { window.open(img.url, '_blank') }
   }, [])
+
+  /**
+   * Optional renderer for the shared Personalization Modal hand-off.
+   *
+   * The provider is mounted ONCE in `components/StandaloneShell.js` around
+   * every studio tab, so this page only builds a plain hand-off payload and
+   * renders the trigger the app root passes in — no import across any package
+   * boundary.
+   *
+   * The studio has no upload input in generate mode, so the newest generation
+   * is the only media there is (`lastImageUrl`, else the newest local image) —
+   * the same rule Vibe Motion and AI Influencer follow.
+   */
+  const personalizeMediaUrl = lastImageUrl || myImages[0]?.url || null
+  const studioPersonalizeOptions = personalizeMediaUrl
+    ? {
+        originStudio: 'thumbnail-studio' as const,
+        studioProjectId: `${selectedModel} : ${selectedSize.ratio} : ${personalizeMediaUrl.split('/').pop() || 'no-image'}`,
+        title: 'My thumbnail',
+        category: 'thumbnail-studio',
+        media: {
+          mediaType: 'image' as const,
+          url: personalizeMediaUrl,
+          poster: null,
+          aspectRatio: selectedSize.ratio,
+        },
+        prompt: { text: buildPrompt(), model: selectedModel, modelName: MODELS.find(m => m.value === selectedModel)?.label },
+      }
+    : null
 
   const handleReuse = useCallback((img: GeneratedImage) => {
     setPrompt(img.prompt)
@@ -877,6 +906,11 @@ export default function ThumbnailStudio({ apiKey, templateData }: { apiKey?: str
                 : <><Image size={16} />Generate {variations > 1 ? `${variations} Thumbnails` : 'Thumbnail'}</>
               }
             </button>
+
+            {/* Shared Personalization trigger — appears only when there is
+                source media to hand over (PersonalizeStep renders nothing
+                without `media.url`). */}
+            {studioPersonalizeOptions && renderPersonalizeAction?.(studioPersonalizeOptions)}
 
             {/* Multi-turn refinement */}
             {lastImageUrl && myImages.length > 0 && (

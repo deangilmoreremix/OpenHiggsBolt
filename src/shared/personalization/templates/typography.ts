@@ -26,7 +26,8 @@
  * Licence: SIL Open Font License 1.1.
  * Copyright 2016 The Inter Project Authors. The full licence text ships next
  * to the binary as `public/fonts/OFL.txt`; the attribution obligation is
- * spelled out in `docs/phase2/handoffs/A10.md`.
+ * spelled out in `docs/phase2/handoffs/A10.md` and is surfaced to the product
+ * through `DESIGN_FONT_ATTRIBUTION` below (Phase 3 decision D2).
  *
  * The family is deliberately NOT called "Inter". The app's own
  * `next/font/google` Inter (`app/layout.js`) already registers a family
@@ -36,20 +37,62 @@
  *
  * NO NETWORK
  * ----------
- * The only font source in this module is a same-origin path under
- * `public/fonts/`. Nothing here points at a remote host, so a branded render
- * never fetches a typeface from the network and never changes its glyphs
- * halfway through an export.
+ * Phase 3 decision D1 (the strict reading of contract rule C11): the
+ * typeface is INLINED as a base64 data URI, so the `@font-face` rule carries
+ * the whole font inside the stylesheet itself. A branded render therefore
+ * issues ZERO font requests — not even a same-origin one — and can never
+ * change its glyphs halfway through an export.
+ *
+ * The binary still ships as a file under `public/fonts/` so that the OFL
+ * licence travels with it and so the asset can be audited; the data URI
+ * below is the very same bytes, which the typography test verifies.
  */
 
 import { useEffect, useState } from 'react'
 import { useDelayRender } from 'remotion'
+import {
+  PERSONALIZATION_SANS_DATA_URI,
+  PERSONALIZATION_SANS_FONT_BYTES,
+} from './fonts/personalizationSansDataUri'
 
 /** The self-hosted family's name. Never "Inter" — see the module note. */
 export const DESIGN_FONT_FAMILY = 'Personalization Sans'
 
 /** The bundled font file, served from the app's own origin. */
 export const DESIGN_FONT_FILE = '/fonts/personalization-sans-latin.woff2'
+
+/**
+ * The licence text that travels with the bundled typeface.
+ *
+ * OFL 1.1 clause 2 requires every copy of the font software to contain the
+ * copyright notice and the licence. The file ships at this path next to the
+ * binary, so it is present in every deployment.
+ */
+export const DESIGN_FONT_LICENSE_FILE = '/fonts/OFL.txt'
+
+/**
+ * The bundled typeface, INLINED as a base64 data URI (Phase 3 decision D1).
+ *
+ * The strict reading of contract rule C11: the `@font-face` rule must carry
+ * the font itself, so that rendering a branded video issues no font request
+ * at all — not even a same-origin one. `public/fonts/` still ships the same
+ * bytes as a file (the OFL licence has to travel with the font, and the file
+ * is the auditable artefact), but nothing in the render path points at it.
+ *
+ * The payload is a STATIC module, not a runtime read: this file is imported by
+ * every design adapter and therefore by the BROWSER bundle, where a
+ * module-scope `readFileSync()` would break `npm run build` (webpack 5 does
+ * not polyfill `fs` for the client). It is generated once by
+ * `templates/fonts/generate-font-data-uri.mjs`.
+ *
+ * `templates/__tests__/typography.test.ts` asserts that the data URI really
+ * embeds the woff2 file (the decoded bytes match) and that no `http(s)://`
+ * font reference survives.
+ */
+export const DESIGN_FONT_DATA_URI = PERSONALIZATION_SANS_DATA_URI
+
+/** The byte length of the inlined font, for the integrity assertions. */
+export const DESIGN_FONT_DATA_URI_BYTES = PERSONALIZATION_SANS_FONT_BYTES
 
 /**
  * Every font file this module depends on.
@@ -59,6 +102,19 @@ export const DESIGN_FONT_FILE = '/fonts/personalization-sans-latin.woff2'
  * silently degrading the export to a system font.
  */
 export const DESIGN_FONT_FILES: readonly string[] = [DESIGN_FONT_FILE]
+
+/**
+ * The bundled typeface's copyright notice and licence, in the form the
+ * product's credits surface shows it (Phase 3 decision D2).
+ *
+ * The OFL itself does NOT require a visible credit line in the rendered
+ * output — the obligation is that the notice and the licence accompany every
+ * copy of the font, which `public/fonts/OFL.txt` satisfies. Showing it
+ * anyway is a product decision: the designs are rendered with this typeface,
+ * so the credit travels with the rendered artefact too.
+ */
+export const DESIGN_FONT_ATTRIBUTION =
+  'Typeface: Inter (SIL OFL 1.1) © 2016 The Inter Project Authors'
 
 /**
  * The canonical font stack used by every design.
@@ -244,7 +300,7 @@ export const DESIGN_FONT_FACE_CSS = `@font-face {
   font-style: normal;
   font-weight: 100 900;
   font-display: block;
-  src: url("${DESIGN_FONT_FILE}") format("woff2");
+  src: url("${DESIGN_FONT_DATA_URI}") format("woff2");
   unicode-range: U+0000, U+0020-007E, U+00A0-00AC, U+00AE-00FF, U+0131,
     U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0300-0301,
     U+0303-0304, U+0308-0309, U+0323, U+2002, U+2009, U+200B, U+2013-2014,
@@ -309,11 +365,12 @@ export interface DesignFontLoadResult {
 /**
  * Loads the bundled typeface and waits until it is usable.
  *
- * This never touches the network beyond the app's own origin: the browser's
- * font loader fetches `/fonts/personalization-sans-latin.woff2`, which is a
- * static asset shipped with the app. No `fetch`, `XMLHttpRequest` or
- * `WebSocket` call is made, so the "no network during a branded render"
- * guarantee is preserved.
+ * This never touches the network at all. The `@font-face` rule carries the
+ * font as a base64 data URI (Phase 3 decision D1), so the browser's font
+ * loader resolves the face from the inline payload — there is no request to
+ * make, not even a same-origin one. `fetch`, `XMLHttpRequest` and
+ * `WebSocket` are never called, and `FontFace.load()` is never called with a
+ * URL, so the "no network during a branded render" guarantee holds.
  *
  * A failure is reported, never thrown: the caller keeps rendering with the
  * fallback chain, so a missing file degrades the export instead of

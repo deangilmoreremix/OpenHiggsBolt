@@ -1916,20 +1916,39 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   // this effect then fills it back in from durable storage. Anonymous sessions
   // have no durable storage to hydrate from (and issue no authenticated
   // request), so the free run always starts from a clean slate.
+  //
+  // `restoreProject` is read through a ref: its identity changes whenever
+  // `previewUserScope` does (the auth-config API key hydrates AFTER mount on
+  // every real page load), and re-running the restore then would re-apply the
+  // just-written localStorage mirror over the user's live session — silently
+  // reverting their view mode, guided step and preview state to what they
+  // were ~800ms after the modal opened. The restore must run once per
+  // source/open, with the latest closure — never again because the scope
+  // arrived late.
+  const restoreProjectRef = useRef(restoreProject)
+  useEffect(() => {
+    restoreProjectRef.current = restoreProject
+  }, [restoreProject])
+
   useEffect(() => {
     if (!source?.id || !isOpen || access !== 'authenticated') return
     let cancelled = false
     setRestoring(true)
     setLoadedProject(null)
 
-    restoreProject(source).finally(() => {
+    restoreProjectRef.current(source).finally(() => {
       if (!cancelled) setRestoring(false)
     })
 
     return () => {
       cancelled = true
     }
-  }, [source?.id, isOpen, restoreProject, access])
+    // `restoreProject` is intentionally absent: it is read through
+    // `restoreProjectRef` above so a late `previewUserScope` change (the
+    // auth-config API key hydrating) never re-triggers this restore and
+    // clobbers the visitor's live session. See the comment above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source?.id, isOpen, access])
 
   // ── Modal actions ──────────────────────────────────────────────────────────
 

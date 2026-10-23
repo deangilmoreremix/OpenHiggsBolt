@@ -4,7 +4,9 @@
 // upstream    : https://github.com/deangilmoreremix/free-remotion-templates (main @ f648980e528defb7594e24c6447055f0540f340b)
 // upstream src: src/components/starfield/Starfield.tsx
 // license     : MIT License — Copyright (c) 2026 Trimora Inc. (RenderComp). The MIT copyright notice and permission notice must be retained in all copies or substantial portions of the software.
-// Upstream code is reproduced verbatim apart from this header comment.
+// Upstream code is reproduced verbatim apart from this header comment AND the
+// Phase 3 F2 star-thickness deviation below (sizeBase range widened so star
+// cores survive H.264 quantisation in the browser export).
 // ---------------------------------------------------------------------------
 // SPDX-FileCopyrightText: 2026 Trimora Inc.
 // SPDX-License-Identifier: MIT
@@ -75,7 +77,7 @@ export const Starfield: React.FC<StarfieldProps> = ({
     return Array.from({ length: count }, (_, i) => ({
       angle: seededRandom(i * 3 + 1) * Math.PI * 2,
       startOffset: seededRandom(i * 5 + 2) * maxR,
-      sizeBase: 1 + seededRandom(i * 7 + 3) * 2.5,
+      sizeBase: 3 + seededRandom(i * 7 + 3) * 4,   // F2: 3-7px cores instead of 1-3.5px; thin 1-3px lines lose brand colour after H.264 quantisation
       speedJitter: 0.7 + seededRandom(i * 11 + 4) * 0.6,
     }));
   }, [count, maxR]);

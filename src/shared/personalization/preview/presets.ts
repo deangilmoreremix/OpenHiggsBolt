@@ -23,6 +23,10 @@ import type {
   RemotionDesignMediaRole,
   RemotionDesignTemplate,
 } from '../templates/types'
+// Phase 3 decision D3: the font picker resolves everything to the bundled,
+// deterministic typeface. `templates/typography` imports nothing from
+// `preview/`, so this import cannot form a cycle.
+import { DESIGN_FONT_STACK } from '../templates/typography'
 
 const LAYER_KINDS: PreviewLayerKind[] = [
   'logo',
@@ -251,35 +255,78 @@ export const LAYER_IDS_BY_LAYOUT: Record<PreviewLayoutId, PreviewLayerKind[]> = 
   'branded-ending': ['logo', 'businessName', 'cta', 'endCard'],
 }
 
-export const PREVIEW_FONTS: { id: string; label: string; stack: string }[] = [
+/**
+ * The customer-facing font picker (Phase 3 decision D3).
+ *
+ * WHY THE HISTORICAL ENTRIES ARE ALL UNAVAILABLE: the four per-OS entries
+ * (`inter`, `georgia`, `impact`, `monospace`) made the rendered result
+ * machine-dependent — the same exported video picked SF Pro on macOS, Segoe
+ * UI on Windows and whatever the generic family resolved to on Linux, so a
+ * preview and its export could disagree. The bundled "Personalization Sans"
+ * (see `templates/typography.ts`) is the only deterministic face, so it is
+ * the only AVAILABLE entry. The historical entries stay in the list (with
+ * their original stacks, as documentation of what the id used to mean) so a
+ * saved layer with `fontFamily: 'georgia'` still matches an entry — but a
+ * DISABLED one, and `fontStackById` resolves every id to the bundled stack.
+ */
+export const PREVIEW_FONTS: { id: string; label: string; stack: string; available: boolean }[] = [
   {
     id: 'inter',
-    label: 'Inter',
+    label: 'Inter (unavailable)',
     stack: 'Inter, ui-sans-serif, system-ui, sans-serif',
+    available: false,
   },
   {
     id: 'georgia',
-    label: 'Georgia',
+    label: 'Georgia (unavailable)',
     stack: "Georgia, 'Times New Roman', serif",
+    available: false,
   },
   {
     id: 'impact',
-    label: 'Impact',
+    label: 'Impact (unavailable)',
     stack: "Impact, 'Arial Black', sans-serif",
+    available: false,
   },
   {
     id: 'monospace',
-    label: 'Monospace',
+    label: 'Monospace (unavailable)',
     stack: "ui-monospace, 'SF Mono', Menlo, monospace",
+    available: false,
+  },
+  {
+    id: 'personalization-sans',
+    label: 'Personalization Sans',
+    // `DESIGN_FONT_STACK` from `templates/typography` — the import is safe:
+    // `templates/typography` imports only react, remotion and the static font
+    // payload module, never anything from `preview/`, so there is no cycle.
+    stack: DESIGN_FONT_STACK,
+    available: true,
   },
 ]
 
-const DEFAULT_FONT_STACK = PREVIEW_FONTS[0].stack
+/** The ONE bundled, deterministic stack — every id resolves to it. */
+const BUNDLED_FONT_STACK = DESIGN_FONT_STACK
 
+/** The default stack (no explicit family chosen) is the bundled stack. */
+const DEFAULT_FONT_STACK = BUNDLED_FONT_STACK
+
+/**
+ * Resolves a layer's persisted `fontFamily` to the stack that is RENDERED.
+ *
+ * THE INVARIANT (Phase 3 decision D3): the rendered font MUST be the bundled
+ * face for every id, so a saved Georgia layer renders with the bundled face
+ * and export fidelity is guaranteed. The historical ids keep resolving (they
+ * never throw, never fall into a per-OS stack) — but they resolve TO the
+ * bundled stack. A customer therefore cannot force a per-OS font at all.
+ */
 export function fontStackById(id?: string): string {
   if (!id) return DEFAULT_FONT_STACK
+  // The lookup stays for documentation: the id still identifies an entry, but
+  // the entry's own (per-OS) stack is deliberately ignored in favour of the
+  // bundled one.
   const match = PREVIEW_FONTS.find((font) => font.id === id || font.stack === id)
-  return match ? match.stack : DEFAULT_FONT_STACK
+  return match ? BUNDLED_FONT_STACK : DEFAULT_FONT_STACK
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

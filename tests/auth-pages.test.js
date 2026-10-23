@@ -1,5 +1,5 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
+import { test } from 'vitest';
+import assert from 'node:assert/strict';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 

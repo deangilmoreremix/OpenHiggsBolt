@@ -64,6 +64,12 @@ import {
   RVE_CATALOG_ENTRIES,
   RVE_LICENSE_NOTICE,
 } from './designs/rveCatalogEntries'
+import { DESIGN_FONT_ATTRIBUTION, DESIGN_FONT_LICENSE_FILE } from './typography'
+
+// The typeface constants are re-exported from the catalog lane (like the
+// repo-2 notices above), so the product's credits surface can reach every
+// upstream AND typeface notice from ONE module (Phase 3 decision D2).
+export { DESIGN_FONT_ATTRIBUTION, DESIGN_FONT_LICENSE_FILE }
 
 // The repo-2 credit constants are re-exported from the catalog lane, so the
 // product's credits surface can reach every upstream's notice from ONE
@@ -143,6 +149,10 @@ export function getRemotionDesignAttributionLine(): string {
     if (!attribution) continue
     if (!lines.includes(attribution)) lines.push(attribution)
   }
+  // The typeface attribution (Phase 3 decision D2): every design is set in
+  // the bundled Inter subset, so the OFL notice joins the upstream credits.
+  // Appended last, after the repository lines.
+  lines.push(DESIGN_FONT_ATTRIBUTION)
   return lines.join('\n')
 }
 
@@ -154,7 +164,58 @@ export function getRemotionDesignAttributionLine(): string {
  * they are kept apart and both are shown.
  */
 export function getRemotionDesignLicenseNotice(): string {
-  return `${REMOTION_DESIGN_LICENSE_NOTICE}\n\n${RVE_LICENSE_NOTICE}`
+  // The typeface notice (Phase 3 decision D2): OFL 1.1 clause 2 requires the
+  // licence to accompany every copy of the font, so the credits surface
+  // points at the shipped licence file.
+  return `${REMOTION_DESIGN_LICENSE_NOTICE}\n\n${RVE_LICENSE_NOTICE}\n\nTypeface licence: the bundled Inter subset is distributed under the SIL Open Font License 1.1 (Copyright 2016 The Inter Project Authors). The full licence text ships at ${DESIGN_FONT_LICENSE_FILE}.`
+}
+
+/* -------------------------------------------------------------------------- */
+/* Fixed SVG ids (Phase 3 item 13)                                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Designs that hardcode SVG `id` attributes, keyed by template id.
+ *
+ * WHY THE CONSTRAINT EXISTS: SVG `id`s are document-global. A design such as
+ * `logo-mask-wipe` draws a `<clipPath id="lmw-wipe">` (and `logo-reveal`
+ * draws `<clipPath id="lsd-shine-clip">`, `rve-circular-progress` a
+ * `<linearGradient id="progressGradient">`). If TWO instances of the same
+ * design are mounted in one composition, both instances reference the id and
+ * the browser/rendeder resolves the reference to the FIRST one in the
+ * document — so the second instance is CLIPPED (or gradient-filled) against
+ * the first one's geometry. This is a frozen-upstream trait (contract
+ * addition C7) and cannot be fixed inside the upstream files, so it is
+ * declared here and surfaced as a warning in the Step 4 UI.
+ *
+ * The marker lives in THIS standalone map rather than on the template
+ * objects, because the batch-2 (RVE) template objects are built in
+ * `designs/rveCatalogEntries.ts`, which is owned by another lane.
+ */
+export const REMOTION_DESIGN_FIXED_SVG_IDS: Record<string, string[]> = {
+  'logo-mask-wipe': ['lmw-wipe'],
+  'logo-reveal': ['lsd-shine-clip'],
+  'rve-circular-progress': ['progressGradient'],
+}
+
+/**
+ * The human-readable warning for a design that uses fixed SVG ids.
+ *
+ * Returns `null` for unconstrained designs, unknown ids and `undefined`/
+ * `null` (no design selected), so the Step 4 UI can render the warning only
+ * when it applies.
+ */
+export function getRemotionDesignFixedSvgIdWarning(
+  templateId: string | null | undefined,
+): string | null {
+  if (!templateId) return null
+  const fixedIds = REMOTION_DESIGN_FIXED_SVG_IDS[templateId]
+  if (!fixedIds || fixedIds.length === 0) return null
+  const idList = fixedIds.map((id) => `"${id}"`).join(', ')
+  return (
+    `This design uses fixed SVG ids (${idList}), so only ONE instance of it can appear per composition — ` +
+    'a second instance is clipped by the first because the SVG ids collide.'
+  )
 }
 
 /* -------------------------------------------------------------------------- */
@@ -396,9 +457,11 @@ export const visualEffectTemplate: RemotionDesignTemplate = {
     preview: true,
     browserExport: true,
     notes:
-      'Renders in the browser export path. The discs use filter: blur(20px) and mix-blend-mode: screen: ' +
-      'the blend needs a stacking context free ancestor, which the full-frame placement provides, but it ' +
-      'is confined while the layer animates. Verify the blur in an exported frame.',
+      'Renders in the browser export path. The discs are drawn with rasteriser-safe primitives — ' +
+      'a solid fill plus a boxShadow glow (the @remotion/web-renderer implements no radial-gradient, ' +
+      'no filter and no blend modes, so the upstream gradient+blur+screen trio rasterised to ' +
+      'nothing). Same seeded motion and palette as the upstream; proven in the encoded export ' +
+      'matrix (error: null).',
   },
   previewCompatible: true,
 }

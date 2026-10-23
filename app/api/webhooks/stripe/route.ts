@@ -236,8 +236,23 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event): Promise<void
   // email-based Clerk id lookup) and record the purchase in
   // reseller_purchases, then stop. Non-reseller prices fall through to the
   // existing entitlement handling below, unchanged.
-  const sessionPriceId = session.line_items?.data?.[0]?.price?.id || '';
-  const resellerPackageId = getResellerPackageIdForPriceId(sessionPriceId);
+  let sessionPriceId = session.line_items?.data?.[0]?.price?.id || '';
+  let resellerPackageId = getResellerPackageIdForPriceId(sessionPriceId);
+  if (!sessionPriceId && stripe) {
+    // The webhook payload can omit line items; retrieve the session so a
+    // reseller price is still resolved (same fallback the entitlement path
+    // below uses).
+    try {
+      const retrieved = await stripe.checkout.sessions.retrieve(session.id, {
+        expand: ['line_items'],
+      });
+      sessionPriceId =
+        (retrieved as Stripe.Checkout.Session).line_items?.data?.[0]?.price?.id || '';
+      resellerPackageId = getResellerPackageIdForPriceId(sessionPriceId);
+    } catch (err: any) {
+      console.warn('[stripe webhook] failed to retrieve session for reseller check:', err?.message || err);
+    }
+  }
   if (resellerPackageId) {
     try {
       await applyResellerPurchase({
@@ -450,7 +465,9 @@ async function handleRefundLike(
   }
 
   for (const clerkUserId of clerkUserIds) {
-    await setEntitlementStatus(clerkUserId, 'revoked');
+    // revokeEntitlement is the canonical revocation: status flip to 'inactive'
+    // (never a delete), so hasSmartVideoGo() resolves false everywhere.
+    await revokeEntitlement({ clerkUserId }, { reason });
     // Also record the revocation reason so the audit trail is searchable.
     const { error: reasonError } = await supabase
       .from('user_entitlements')
@@ -564,7 +581,44 @@ async function revokeForSubscription(event: Stripe.Event): Promise<void> {
     return;
   }
 
-  await revokeForTarget(subscriptionRevocationTarget(subscription), subscription.id, event.type);
+  const target = subscriptionRevocationTarget(subscription);
+  let result = await revokeEntitlement(target, { reason: event.type });
+
+  // A subscription can outlive the customer-id link on the entitlement row.
+  // Fall back to the purchase ledger, same as the grant/status path.
+  if (!result.revoked) {
+    const customerId = idOf(subscription?.customer);
+    if (customerId) {
+      const supabase = getSupabaseAdmin();
+      const { data: purchase } = await supabase
+        .from('user_purchases')
+        .select('clerk_user_id, email')
+        .eq('stripe_customer_id', customerId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (purchase) {
+        result = await revokeEntitlement(
+          {
+            clerkUserId: purchase.clerk_user_id ? String(purchase.clerk_user_id) : undefined,
+            email: purchase.email ? normalizeEmail(String(purchase.email)) : undefined,
+          },
+          { reason: event.type }
+        );
+      }
+    }
+  }
+
+  if (!result.revoked) {
+    console.warn(`[stripe webhook] no entitlement row matched ${event.type}:`, subscription.id);
+    return;
+  }
+
+  console.log(
+    `[stripe webhook] revoked ${result.matched} entitlement row(s) for ${event.type}:`,
+    subscription.id
+  );
 }
 
 async function revokeForTarget(
@@ -600,14 +654,27 @@ async function routeEvent(event: Stripe.Event): Promise<void> {
       await handleRefundLike(event.data.object, 'refunded', `${event.type}:${event.id}`);
       return;
     case 'charge.dispute.created':
+      // Mark the ledger purchase and match by payment intent / email, then
+      // also resolve the charge: a real Dispute payload may carry nothing but
+      // the charge id, so the charge lookup is the only way to find the buyer.
       await handleRefundLike(event.data.object, 'disputed', `${event.type}:${event.id}`);
+      await revokeForCharge(event);
       return;
     case 'customer.subscription.created':
+      await handleSubscriptionEvent(event.data.object);
+      return;
     case 'customer.subscription.updated':
-      await handleSubscriptionEvent(event.data.object as any);
+      // Grant on (re)activation. Any other status must revoke the row even when
+      // its price is no longer in the product map — a granted entitlement must
+      // not outlive its subscription just because the map changed.
+      if ((event.data.object as { status?: string }).status === 'active') {
+        await handleSubscriptionEvent(event.data.object);
+      } else {
+        await revokeForSubscription(event);
+      }
       return;
     case 'customer.subscription.deleted':
-      await handleSubscriptionEvent(event.data.object as any);
+      await revokeForSubscription(event);
       return;
     default:
       return;

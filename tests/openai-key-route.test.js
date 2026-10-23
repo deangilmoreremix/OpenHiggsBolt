@@ -1,4 +1,4 @@
-import { describe, it, before, after } from 'node:test';
+import { describe, it, beforeAll, afterAll } from 'vitest';
 import assert from 'node:assert/strict';
 
 // The route encrypts the key at rest; it needs a server-only secret.
@@ -67,7 +67,7 @@ describe('openai-key route (integration)', () => {
     error: null,
   });
 
-  before(async () => {
+  beforeAll(async () => {
     store.app_users.clear();
     const mod = await import('../app/api/auth/openai-key/route.ts');
     route = mod.buildHandlers({
@@ -77,7 +77,7 @@ describe('openai-key route (integration)', () => {
     });
   });
 
-  after(() => { store.app_users.clear(); });
+  afterAll(() => { store.app_users.clear(); });
 
   it('blocks GET when unauthenticated -> 401', async () => {
     store.userId = null;
@@ -158,10 +158,10 @@ describe('openai-key route (integration)', () => {
   it('DELETE returns failure when Supabase update errors', async () => {
     const failingSb = () => ({
       from: () => ({
-        update: async () => {
-          const { error } = await Promise.resolve({ error: new Error('Simulated DB delete failure') });
-          if (error) throw error;
-          return { error: null };
+        // Sync throw: the route chains .update().eq(), so an async thrower
+        // would leave a floating rejected promise (unhandled rejection).
+        update: () => {
+          throw new Error('Simulated DB delete failure');
         },
         eq: () => ({
           select: () => ({
@@ -228,7 +228,9 @@ describe('openai-key route (integration)', () => {
   it('returns 500 on database failure without leaking internals', async () => {
     const failingSb = () => ({
       from: () => ({
-        update: async () => {
+        // Sync throw: the route chains .update().eq(), so an async thrower
+        // would leave a floating rejected promise (unhandled rejection).
+        update: () => {
           throw new Error('Simulated DB failure');
         },
         eq: () => ({
@@ -319,11 +321,11 @@ describe('openai-key route — verification policy', () => {
 describe('openaiKey client service (unit)', () => {
   let originalFetch;
 
-  before(() => {
+  beforeAll(() => {
     originalFetch = globalThis.fetch;
   });
 
-  after(() => {
+  afterAll(() => {
     globalThis.fetch = originalFetch;
   });
 

@@ -16,27 +16,41 @@ const store = {
 
 function makeBuilder() {
   // Track the last requested clerk_user_id so we can verify the filter is used.
-  let lastEqClause: string | null = null;
+  let lastEqClause = null;
+  let pendingUpdate = null;
+  let appliedUpdate = false;
   const builder = {
     eq: (column, value) => {
       if (column === 'clerk_user_id') {
         lastEqClause = String(value);
+        // Real Supabase applies update() to the rows matched by eq() at await
+        // time, not when update() is chained. Defer until eq() runs.
+        if (pendingUpdate) {
+          const existing = store.app_users.get(lastEqClause) || {};
+          store.app_users.set(lastEqClause, { ...existing, ...pendingUpdate });
+          pendingUpdate = null;
+          appliedUpdate = true;
+        }
       }
       return builder;
     },
     update: (payload) => {
-      const existing = store.app_users.get(lastEqClause) || {};
-      store.app_users.set(lastEqClause, {
-        ...existing,
-        ...payload,
-      });
+      pendingUpdate = payload;
       return builder;
     },
     insert: (payload) => {
       store.app_users.set(payload.clerk_user_id || store.userId, payload);
       return builder;
     },
-    select: () => builder, // chain continues to maybeSingle()
+    select: () => {
+      // update().eq().select() must resolve to the updated rows so the route
+      // sees them and skips the insert fallback; a plain read select() keeps
+      // chaining to maybeSingle().
+      if (appliedUpdate) {
+        return Promise.resolve({ data: [store.app_users.get(lastEqClause) || null], error: null });
+      }
+      return builder; // chain continues to maybeSingle()
+    },
     maybeSingle: () => {
       const row = store.app_users.get(lastEqClause || store.userId) || null;
       return Promise.resolve({ data: row || null, error: null });

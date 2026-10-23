@@ -661,8 +661,21 @@ export function OverlayEditor({ inputProps }: OverlayEditorProps): React.JSX.Ele
                         style={{ ...inputStyle, minHeight: 34 }}
                       >
                         <option value="">Match brand</option>
+                        {/* Phase 3 decision D3: only the bundled face is
+                            selectable. The historical per-OS entries stay
+                            listed — as DISABLED options with their
+                            "(unavailable)" labels — so a customer is never
+                            silently offered a font that would break export
+                            fidelity, and an old saved layer still shows which
+                            (now unavailable) choice it carries. */}
                         {PREVIEW_FONTS.map((font) => (
-                          <option key={font.id} value={font.stack}>{font.label}</option>
+                          <option
+                            key={font.id}
+                            value={font.stack}
+                            disabled={!font.available}
+                          >
+                            {font.label}
+                          </option>
                         ))}
                       </select>
                     </div>
