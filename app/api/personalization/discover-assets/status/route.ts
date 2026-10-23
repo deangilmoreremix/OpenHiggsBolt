@@ -41,22 +41,23 @@ export async function GET(req: NextRequest) {
   if (job.status === 'running' && job.started_at) {
     const started = new Date(job.started_at).getTime()
     if (Date.now() - started > STALE_JOB_MS) {
-      await updateDiscoveryJob(job.id, {
+      const updated = await updateDiscoveryJob(job.id, {
         status: 'error',
         completedAt: new Date().toISOString(),
         errorCode: 'BACKGROUND_DISPATCH_FAILED',
         errorMessage: 'Background discovery did not complete in time',
-      }).catch((persistErr) => {
-        console.error('[discover-assets/status] Failed to mark stale job:', persistErr)
+        expectedStatus: 'running',
       })
-      return NextResponse.json(
-        buildDiscoveryJobResponse({
-          ...job,
-          status: 'error',
-          error_code: 'BACKGROUND_DISPATCH_FAILED',
-          error_message: 'Background discovery did not complete in time',
-        }),
-      )
+
+      if (updated === null) {
+        const current = await getDiscoveryJobForUser(job.id, jobOwnerId)
+        if (current) {
+          return NextResponse.json(buildDiscoveryJobResponse(current))
+        }
+        return NextResponse.json({ error: 'Job not found' }, { status: 404 })
+      }
+
+      return NextResponse.json(buildDiscoveryJobResponse(updated))
     }
   }
 

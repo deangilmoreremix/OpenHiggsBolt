@@ -1000,4 +1000,72 @@ describe('Discovered Assets Integration', () => {
       }),
     ).resolves.not.toThrow()
   })
+
+  // -------------------------------------------------------------------------
+  // Regression: guided-view rendering of URL-only assets must not crash
+  // StepFindBusiness renders asset.sourceUrl.replace(...) in the review panel
+  // (StepFindBusiness.tsx:465). It must fall back to previewUrl when sourceUrl
+  // is absent — raw discovery candidates carry only previewUrl.
+  // -------------------------------------------------------------------------
+
+  it('renders StepFindBusiness guided view with URL-only assets without crashing', async () => {
+    const container = await renderProvider()
+    await act(async () => {
+      ;(window as any).__personalizationCtx.openPersonalize({
+        source: {
+          id: 'demo-1',
+          title: 'Test Demo',
+          mediaType: 'video',
+          originalPrompt: 'test',
+          sourceMedia: null,
+          poster: null,
+          fullPrompt: 'test',
+          shortPrompt: 'test',
+          sourceType: 'landing-demo',
+          sourceMetadata: {},
+        },
+      })
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    // Stay in Simple Mode (guided) — do NOT click "Advanced Editing".
+    // Click "Find Business Assets" to navigate to StepFindBusiness.
+    const findButtons = screen.getAllByRole('button', { name: /find business assets/i })
+    expect(findButtons.length).toBeGreaterThanOrEqual(1)
+    await act(async () => {
+      findButtons[0].click()
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    await act(async () => {
+      ctx.setDiscoveredAssets([
+        {
+          id: 'disc-guided-url-only',
+          // No sourceUrl — only previewUrl, as raw candidates arrive
+          previewUrl: 'https://test.com/asset.png',
+          sourceType: 'WEBSITE',
+          category: 'logo',
+          selected: true,
+          recommended: true,
+          rejected: false,
+        },
+      ])
+    })
+
+    // Give React a chance to render the review panel
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    const c = (window as any).__personalizationCtx
+    // No crash: the component rendered the previewUrl fallback on line 465
+    expect(c.discoveredAssets.length).toBe(1)
+    expect(c.discoveredAssets[0].sourceUrl).toBeUndefined()
+    expect(c.discoveredAssets[0].previewUrl).toBe('https://test.com/asset.png')
+  })
 })

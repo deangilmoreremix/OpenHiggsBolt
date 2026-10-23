@@ -30,6 +30,9 @@ export interface UpdateDiscoveryJobInput {
   status?: DiscoveryJobStatus
   startedAt?: string | null
   completedAt?: string | null
+  /** Only update when the job currently has this status. Prevents the
+   * stale-job watchdog from overwriting a job the worker just completed. */
+  expectedStatus?: DiscoveryJobStatus
   /** The static/HTTP result, kept separately so it survives a failed browser phase. */
   fastResult?: unknown
   browserResult?: unknown
@@ -60,7 +63,7 @@ export async function createDiscoveryJob(input: CreateDiscoveryJobInput): Promis
   return data as DiscoveryJobRow
 }
 
-export async function updateDiscoveryJob(id: string, input: UpdateDiscoveryJobInput): Promise<DiscoveryJobRow> {
+export async function updateDiscoveryJob(id: string, input: UpdateDiscoveryJobInput): Promise<DiscoveryJobRow | null> {
   const supabase = getSupabaseAdmin()
   const payload: Record<string, unknown> = {}
 
@@ -74,15 +77,26 @@ export async function updateDiscoveryJob(id: string, input: UpdateDiscoveryJobIn
   if (input.errorCode !== undefined) payload.error_code = input.errorCode
   if (input.errorMessage !== undefined) payload.error_message = input.errorMessage
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('personalization_discovery_jobs')
     .update(payload)
     .eq('id', id)
-    .select('*')
-    .single()
+  if (input.expectedStatus) {
+    query = query.eq('status', input.expectedStatus)
+  }
+  const { data, error } = await query.select('*').single()
 
   if (error) {
     throw new Error(`Failed to update discovery job: ${error.message}`)
+  }
+  if (!data && input.expectedStatus) {
+    // The job's current status does not match the expected status — another
+    // process already transitioned it. Return null so the caller can re-read
+    // and act on the current state.
+    return null
+  }
+  if (!data) {
+    throw new Error('Failed to update discovery job: no rows affected')
   }
 
   return data as DiscoveryJobRow

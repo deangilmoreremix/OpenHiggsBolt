@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import type { ImageCandidate, SocialProfileSource } from '@/server/discoveryProvider'
 import type { DiscoveredAsset } from '@/server/discoverAssets'
@@ -42,6 +42,14 @@ const isTestModeAllowed = process.env.NODE_ENV !== 'production'
 const RATE_LIMIT_WINDOW_MS = 60_000
 const RATE_LIMIT_MAX_REQUESTS = 10
 const MAX_WEBSITE_URL_LENGTH = 2048
+
+// Shared secret for internal dispatch to the background worker. Mirrors the
+// pattern used by assets.js, brands.js, campaigns.js, and photo-studio.js:
+// every internal call carries `x-internal-service-token`, and the worker
+// rejects calls that lack it or carry the wrong value. Anonymous callers can
+// still trigger discovery — the secret authenticates the dispatch, not the
+// end user.
+const INTERNAL_FUNCTION_SECRET = process.env.INTERNAL_FUNCTION_SECRET || ''
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
 
@@ -160,14 +168,23 @@ async function dispatchBackgroundJob(
   // requests without a session token and drives the job under its existing
   // owner identity.
   const sessionToken = extractClerkSessionToken(req)
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+  if (sessionToken) {
+    headers.Authorization = `Bearer ${sessionToken}`
+  }
+  // Internal dispatch authentication: every call to the background worker
+  // carries INTERNAL_FUNCTION_SECRET so the worker can reject public
+  // invocation. Mirrors assets.js, brands.js, campaigns.js, photo-studio.js.
+  if (INTERNAL_FUNCTION_SECRET) {
+    headers['x-internal-service-token'] = INTERNAL_FUNCTION_SECRET
+  }
 
   try {
     const response = await fetch(workerUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
-      },
+      headers,
       body: JSON.stringify({
         jobId,
         websiteUrl,
@@ -366,12 +383,24 @@ export async function POST(req: NextRequest) {
       ]),
     ).slice(0, 4)
 
-    // Fire-and-forget the dispatch. If the worker cannot be reached, the job
-    // stays `running` and the client's next poll will still return the job row;
-    // a stale-job watchdog on the status endpoint recovers it.
-    dispatchBackgroundJob(req, job.id, websiteUrl, priorityPages).catch((dispatchErr) => {
-      console.error('[discover-assets] Background dispatch failed:', dispatchErr instanceof Error ? dispatchErr.message : String(dispatchErr))
-    })
+    // Durably dispatch discovery to the background worker. `after()` keeps the
+    // serverless function alive until the dispatch settles, so a slow network
+    // or cold-starting worker cannot lose the job. If dispatch fails, the job
+    // stays `running` and the stale-job watchdog on the status endpoint
+    // recovers it on the next poll.
+    // `after()` throws outside a Next.js request scope (e.g. unit tests),
+    // so we fall back to fire-and-forget there; the watchdog still recovers.
+    try {
+      after(() => {
+        dispatchBackgroundJob(req, job.id, websiteUrl, priorityPages).catch((dispatchErr) => {
+          console.error('[discover-assets] Background dispatch failed:', dispatchErr instanceof Error ? dispatchErr.message : String(dispatchErr))
+        })
+      })
+    } catch {
+      dispatchBackgroundJob(req, job.id, websiteUrl, priorityPages).catch((dispatchErr) => {
+        console.error('[discover-assets] Background dispatch failed:', dispatchErr instanceof Error ? dispatchErr.message : String(dispatchErr))
+      })
+    }
 
     logPersonalization({
       route: '/api/personalization/discover-assets',
