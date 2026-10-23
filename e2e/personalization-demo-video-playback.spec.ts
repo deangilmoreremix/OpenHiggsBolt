@@ -276,18 +276,32 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
     const networkErrors: string[] = [];
     /** Status codes of the demo clip responses (the Step 4 proof). */
     const clipResponses: number[] = [];
+    /** `/media/` responses that came back with an HTTP error status. */
+    const mediaHttpErrors: string[] = [];
 
+    // Every diagnostic line names its URL and reason. A bare "Failed to load
+    // resource: 401" console line next to a bare `/media/` requestfailed URL
+    // reads like a media 401 when it is really the anonymous
+    // `/api/personalization/project` call, and the `/media/` entries are
+    // ranged requests the browser cancels (net::ERR_ABORTED) when the preview
+    // `src` switches to the next demo.
     page.on('console', (msg) => {
-      if (msg.type() === 'error') consoleErrors.push(msg.text());
+      if (msg.type() === 'error') {
+        const source = msg.location().url;
+        consoleErrors.push(source ? `${msg.text()} [${source}]` : msg.text());
+      }
     });
     page.on('pageerror', (err) => {
       consoleErrors.push(err.message);
     });
     page.on('requestfailed', (request) => {
-      networkErrors.push(request.url());
+      networkErrors.push(`${request.failure()?.errorText ?? 'failed'} ${request.url()}`);
     });
     page.on('response', (res) => {
       if (/\.(mp4|webm|mov|m4v)(\?|$)/i.test(res.url())) clipResponses.push(res.status());
+      if (/\/media\//.test(new URL(res.url()).pathname) && res.status() >= 400) {
+        mediaHttpErrors.push(`${res.status()} ${res.url()}`);
+      }
     });
 
     await page.goto(`${BASE}/personalization-demo?test=true`, { waitUntil: 'domcontentloaded' });
@@ -580,6 +594,8 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
     }
 
     expect(buttonCount).toBeGreaterThan(0);
+    // Public demo media must never be refused (401/403) or missing (404).
+    expect(mediaHttpErrors, 'no /media/ request may return an HTTP error').toEqual([]);
     expect(
       failed,
       `failed demos: ${failedList.map((r) => `${r.registryId} (${r.videoError ?? 'see log'})`).join('; ')}`,

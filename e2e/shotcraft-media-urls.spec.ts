@@ -22,6 +22,11 @@ const BASE = process.env.DEMO_BASE_URL || 'http://localhost:3111';
 const PROXY_PREFIX = '/api/media/shotcraft/';
 const KEY_PATTERN = /^\/api\/media\/shotcraft\/([a-z0-9][a-z0-9-]*)\.mp4$/;
 const SWEEP_CONCURRENCY = 8;
+// The HEAD sweep touches all 150 keys, and every proxied HEAD still opens an
+// upstream fetch (Next answers HEAD through the GET handler). Eight parallel
+// upstream streams on a cold dev server is what pushed the sweep past its
+// budget, so it runs at half the width; it still finishes well inside it.
+const HEAD_SWEEP_CONCURRENCY = 4;
 const RANGE_SAMPLE_SIZE = 15;
 
 /** Every unique style key referenced by BOTH catalog arrays, sorted. */
@@ -124,7 +129,7 @@ test.describe('ShotCraft proxy — full clip universe', () => {
           problems.push(`${key}: HEAD threw ${(err as Error).message}`);
         }
       }),
-      SWEEP_CONCURRENCY,
+      HEAD_SWEEP_CONCURRENCY,
     );
 
     console.log(`  proxy HEAD sweep: ${checked}/${CLIP_KEYS.length} keys checked`);
