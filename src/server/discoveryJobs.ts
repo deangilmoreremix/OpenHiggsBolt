@@ -84,7 +84,11 @@ export async function updateDiscoveryJob(id: string, input: UpdateDiscoveryJobIn
   if (input.expectedStatus) {
     query = query.eq('status', input.expectedStatus)
   }
-  const { data, error } = await query.select('*').single()
+  // `.single()` turns "no row matched" into an error; a conditional update
+  // that lost the race must instead come back as null.
+  const { data, error } = input.expectedStatus
+    ? await query.select('*').maybeSingle()
+    : await query.select('*').single()
 
   if (error) {
     throw new Error(`Failed to update discovery job: ${error.message}`)

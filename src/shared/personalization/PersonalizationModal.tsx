@@ -1599,7 +1599,9 @@ export default function PersonalizationModal() {
               message={generation.progressMessage}
             />
           ) : simpleModeActive ? (
-            <SimpleModeWizard />
+            // Image edits are refused server-side for anonymous sessions, so
+            // the guided flow only offers "Edit with AI" to signed-in users.
+            <SimpleModeWizard onEditDiscoveredAsset={isAnonymous ? undefined : openDiscoveredImageEditor} />
           ) : (
             <ConfigurationView
               source={source}

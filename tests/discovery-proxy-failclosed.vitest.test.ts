@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import net from 'node:net'
 import { EventEmitter } from 'node:events'
 import { createRequire } from 'node:module'
+import fs from 'node:fs'
+import path from 'node:path'
 
 /**
  * Fail-closed contract for the browser-discovery allowlist proxy.
@@ -222,10 +224,38 @@ function installNetlifySeams(validToken = 'session-token-valid'): NetlifySeams {
     } as unknown as NodeJS.Module
   }
 
+  // The compiled free layers exist only after a build. When they do, they are
+  // stubbed so this suite never touches the network; "found nothing, escalate"
+  // is what an unreachable site produces.
+  const fastDiscoveryPath = path.resolve(NETLIFY_FN_DIR, '../lib/fast-discovery.cjs')
+  if (fs.existsSync(fastDiscoveryPath)) {
+    saved.push([fastDiscoveryPath, nodeRequire.cache[fastDiscoveryPath]])
+    nodeRequire.cache[fastDiscoveryPath] = {
+      id: fastDiscoveryPath,
+      filename: fastDiscoveryPath,
+      loaded: true,
+      children: [],
+      paths: [],
+      exports: {
+        runFastDiscovery: async () => ({
+          fastAssets: [],
+          needsBrowser: true,
+          result: { providerUsed: 'NONE', providerAttempts: [], pagesCrawled: 0, rawCandidates: 0, duration: 0, candidates: [], socialProfiles: [] },
+        }),
+      },
+    } as unknown as NodeJS.Module
+  }
+
+  // The browser phase (and the proxy that serves it) is opt-in.
+  const savedBrowserFlag = process.env.ENABLE_BROWSER_DISCOVERY
+  process.env.ENABLE_BROWSER_DISCOVERY = 'true'
+
   return {
     browser,
     supabaseCalls,
     restored: () => {
+      if (savedBrowserFlag === undefined) delete process.env.ENABLE_BROWSER_DISCOVERY
+      else process.env.ENABLE_BROWSER_DISCOVERY = savedBrowserFlag
       for (const [resolved, original] of saved) {
         if (original === undefined) delete nodeRequire.cache[resolved]
         else nodeRequire.cache[resolved] = original

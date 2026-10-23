@@ -5,7 +5,8 @@ import { Building2, Globe, MapPin, Search, Star } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { BUSINESS_NICHES } from '../businessNiches'
 import { ownershipBadgeStyle, ownershipLabel } from '../ownershipBadge'
-import type { BusinessOwnership } from '../types'
+import type { BusinessOwnership, DiscoveredAsset } from '../types'
+import { isImageEditSupported } from '../image-editor/imageEditSupport'
 import { C, badgeStyle, hintStyle, inputStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
 
 const RADIUS_OPTIONS = [5, 15, 50]
@@ -28,7 +29,12 @@ function businessLabel(business: {
  * search local businesses, enter a website (the single website input in the
  * whole guided flow), or pick a saved business profile.
  */
-export function StepFindBusiness(): React.JSX.Element {
+export function StepFindBusiness({
+  onEditAsset,
+}: {
+  /** Opens the AI image editor on a discovered asset; omitted for anonymous sessions. */
+  onEditAsset?: (asset: DiscoveredAsset) => void
+} = {}): React.JSX.Element {
   const ctx = useDemoPersonalize()
   const {
     clientForm = {},
@@ -465,6 +471,16 @@ export function StepFindBusiness(): React.JSX.Element {
                           {(asset.sourceUrl || asset.previewUrl || '').replace(/^https?:\/\//, '').slice(0, 48)}
                         </div>
                       </div>
+                      {onEditAsset && isImageEditSupported(asset) && (
+                        <button
+                          type="button"
+                          aria-label={`Edit ${asset.category} with AI`}
+                          onClick={() => onEditAsset(asset)}
+                          style={{ ...secondaryButtonStyle, minHeight: 28, padding: '0 10px', color: C.cyan, borderColor: C.cyanBorder }}
+                        >
+                          Edit with AI
+                        </button>
+                      )}
                       <button
                         type="button"
                         aria-label={asset.selected ? 'Deselect' : 'Select'}

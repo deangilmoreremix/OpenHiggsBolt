@@ -156,6 +156,7 @@ async function dispatchBackgroundJob(
   jobId: string,
   websiteUrl: string,
   priorityPages: string[],
+  jobOwnerId: string,
 ): Promise<{ dispatched: boolean; reason?: string }> {
   const workerUrl = backgroundWorkerUrl(req)
   if (!workerUrl) {
@@ -170,6 +171,10 @@ async function dispatchBackgroundJob(
   const sessionToken = extractClerkSessionToken(req)
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    // This fetch is server-to-server, so the worker sees this function's
+    // egress IP, never the end user's. The owner the job was created under is
+    // forwarded explicitly so the worker can match it against the job row.
+    'x-discovery-job-owner': jobOwnerId,
   }
   if (sessionToken) {
     headers.Authorization = `Bearer ${sessionToken}`
@@ -385,21 +390,36 @@ export async function POST(req: NextRequest) {
 
     // Durably dispatch discovery to the background worker. `after()` keeps the
     // serverless function alive until the dispatch settles, so a slow network
-    // or cold-starting worker cannot lose the job. If dispatch fails, the job
-    // stays `running` and the stale-job watchdog on the status endpoint
-    // recovers it on the next poll.
+    // or cold-starting worker cannot lose the job. If this function dies before
+    // the dispatch settles, the stale-job watchdog on the status endpoint
+    // recovers the job on the next poll.
     // `after()` throws outside a Next.js request scope (e.g. unit tests),
-    // so we fall back to fire-and-forget there; the watchdog still recovers.
-    try {
-      after(() => {
-        dispatchBackgroundJob(req, job.id, websiteUrl, priorityPages).catch((dispatchErr) => {
+    // so we fall back to fire-and-forget there.
+    // A dispatch the worker refused (or never received) is recorded on the job
+    // straight away, so the caller's next poll reports the real reason instead
+    // of waiting for the watchdog. `expectedStatus` keeps it from overwriting a
+    // result the worker already wrote.
+    const dispatchAndRecord = () =>
+      dispatchBackgroundJob(req, job.id, websiteUrl, priorityPages, jobOwnerId)
+        .then(async (dispatch) => {
+          if (dispatch.dispatched) return
+          console.error('[discover-assets] Background dispatch failed:', dispatch.reason)
+          await updateDiscoveryJob(job.id, {
+            status: 'error',
+            completedAt: new Date().toISOString(),
+            errorCode: (dispatch.reason || 'BACKGROUND_DISPATCH_FAILED').split(':')[0],
+            errorMessage: 'Asset discovery could not be started. Please try again.',
+            expectedStatus: 'running',
+          })
+        })
+        .catch((dispatchErr) => {
           console.error('[discover-assets] Background dispatch failed:', dispatchErr instanceof Error ? dispatchErr.message : String(dispatchErr))
         })
-      })
+    try {
+      // The callback returns the promise so `after()` waits for it.
+      after(dispatchAndRecord)
     } catch {
-      dispatchBackgroundJob(req, job.id, websiteUrl, priorityPages).catch((dispatchErr) => {
-        console.error('[discover-assets] Background dispatch failed:', dispatchErr instanceof Error ? dispatchErr.message : String(dispatchErr))
-      })
+      void dispatchAndRecord()
     }
 
     logPersonalization({

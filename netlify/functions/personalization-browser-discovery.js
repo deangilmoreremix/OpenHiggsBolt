@@ -1564,6 +1564,24 @@ function jsonResponse(statusCode, payload) {
 }
 
 /**
+ * The static HTTP → sitemap → Crawlee/Cheerio layers.
+ *
+ * They live in TypeScript (`src/server/fastDiscovery.ts`), which this
+ * function's default bundler ships as-is and Node cannot execute, so the
+ * `prebuild` step compiles them to CommonJS at this path. The literal
+ * `require` lets the bundler trace the file and its dependencies.
+ */
+function loadFastDiscovery() {
+  // eslint-disable-next-line global-require
+  return require('../lib/fast-discovery.cjs')
+}
+
+/** Browser escalation is opt-in: it only runs when the flag is exactly 'true'. */
+function isBrowserDiscoveryEnabled() {
+  return process.env.ENABLE_BROWSER_DISCOVERY === 'true'
+}
+
+/**
  * Builds the discovery handler.
  *
  * The dependencies are injectable purely so the unit tests can run hermetically
@@ -1575,6 +1593,8 @@ function createBrowserDiscoveryHandler(overrides = {}) {
     verifySessionToken: verifyClerkSessionToken,
     createSsrfGuard,
     getSupabase,
+    loadFastDiscovery,
+    isBrowserDiscoveryEnabled,
     ...overrides,
   }
 
@@ -1622,6 +1642,53 @@ function createBrowserDiscoveryHandler(overrides = {}) {
     }
 
     const supabase = deps.getSupabase()
+
+    // Free-layer results live outside the try so that every failure path below
+    // can still save them.
+    let fastAssets = []
+    let fastNeedsBrowser = true
+    let fastProviderUsed = 'NONE'
+    let fastProviderAttempts = []
+    let fastPagesCrawled = 0
+    let fastRawCandidates = 0
+    let fastDuration = 0
+    let fastCandidates = []
+    let fastSocialProfiles = []
+
+    // Saves the free-layer assets as a complete job. Used when the browser
+    // phase is skipped or fails: those assets are valid on their own.
+    const saveFreeLayerResult = async (extraTelemetry = {}, browserError = undefined) => {
+      const finalResult = {
+        provider: fastProviderUsed,
+        candidates: fastCandidates,
+        discoveredAssets: fastAssets,
+        pagesCrawled: fastPagesCrawled,
+        rawCandidates: fastRawCandidates,
+        duration: fastDuration,
+        socialProfiles: fastSocialProfiles,
+        providerAttempts: fastProviderAttempts,
+        ...(browserError ? { browserError } : {}),
+      }
+      await supabase
+        .from('personalization_discovery_jobs')
+        .update({
+          status: 'complete',
+          completed_at: new Date().toISOString(),
+          browser_result_json: null,
+          final_result_json: finalResult,
+          telemetry_json: {
+            freeLayersOnly: true,
+            providerUsed: fastProviderUsed,
+            providerAttempts: fastProviderAttempts,
+            pagesCrawled: fastPagesCrawled,
+            rawCandidates: fastRawCandidates,
+            durationMs: fastDuration,
+            ...extraTelemetry,
+            ...(auth.userId ? { clerkUserId: auth.userId } : {}),
+          },
+        })
+        .eq('id', jobId)
+    }
 
     try {
       const { data: job, error: fetchError } = await supabase
@@ -1673,12 +1740,22 @@ function createBrowserDiscoveryHandler(overrides = {}) {
         return jsonResponse(403, { error: 'This discovery job belongs to another user' })
       }
       // Anonymous callers can only drive their own IP-scoped jobs. The route
-      // handler creates anonymous jobs as `anon-<ip>`; the worker re-checks
-      // that the caller's IP matches before driving the job.
+      // handler creates anonymous jobs as `anon-<ip>`. Its dispatch is
+      // server-to-server, so the request's own IP is the route's egress
+      // address; the route forwards the owner in `x-discovery-job-owner`
+      // instead. That header is trusted ONLY when the dispatch proved itself
+      // with INTERNAL_FUNCTION_SECRET (checked above) — without the secret
+      // anyone could send it. Otherwise the caller is identified by its IP,
+      // derived exactly as the route derives it (no port stripping, which
+      // would also truncate every IPv6 address).
       if (!auth.userId) {
         const headers = event.headers || {}
-        const callerIp = (headers['x-forwarded-for']?.split(',')[0].trim() || headers['x-real-ip'] || '').replace(/:.*$/, '')
-        const expectedOwner = callerIp ? `anon-${callerIp}` : 'anon'
+        // Only an anonymous owner can be forwarded: a job that belongs to a
+        // signed-in user always needs that user's verified session.
+        const claimedOwner = headers['x-discovery-job-owner'] || ''
+        const forwardedOwner = INTERNAL_FUNCTION_SECRET && /^anon(-|$)/.test(claimedOwner) ? claimedOwner : ''
+        const callerIp = headers['x-forwarded-for']?.split(',')[0].trim() || headers['x-real-ip'] || ''
+        const expectedOwner = forwardedOwner || (callerIp ? `anon-${callerIp}` : 'anon')
         if (jobOwner !== expectedOwner) {
           return jsonResponse(403, { error: 'This discovery job belongs to another caller' })
         }
@@ -1696,17 +1773,8 @@ function createBrowserDiscoveryHandler(overrides = {}) {
       // that only runs when they could not produce enough useful assets.
       // Results from the free layers are always preserved, even when the
       // browser phase fails or is disabled.
-      let fastAssets = []
-      let fastNeedsBrowser = true
-      let fastProviderUsed = 'NONE'
-      let fastProviderAttempts = []
-      let fastPagesCrawled = 0
-      let fastRawCandidates = 0
-      let fastDuration = 0
       try {
-        // Dynamic import keeps this worker bundlable on runtimes that do not
-        // carry the full server-side discovery dependency tree.
-        const { runFastDiscovery } = await import('../../src/server/fastDiscovery.js')
+        const { runFastDiscovery } = deps.loadFastDiscovery()
         const fastResult = await runFastDiscovery({
           websiteUrl,
           maxPages: BROWSER_FALLBACK_MAX_PAGES,
@@ -1719,6 +1787,8 @@ function createBrowserDiscoveryHandler(overrides = {}) {
         fastPagesCrawled = fastResult.result?.pagesCrawled || 0
         fastRawCandidates = fastResult.result?.rawCandidates || 0
         fastDuration = fastResult.result?.duration || 0
+        fastCandidates = fastResult.result?.candidates || []
+        fastSocialProfiles = fastResult.result?.socialProfiles || []
       } catch (err) {
         console.error('[personalization-browser-discovery] Fast discovery failed:', err instanceof Error ? err.message : String(err))
       }
@@ -1726,36 +1796,15 @@ function createBrowserDiscoveryHandler(overrides = {}) {
       // The free layers answered on their own — save the assets and return.
       // No browser is launched, no page is navigated.
       if (!fastNeedsBrowser && fastAssets.length > 0) {
-        const completedAt = new Date().toISOString()
-        const finalResult = {
-          provider: fastProviderUsed,
-          candidates: [],
-          discoveredAssets: fastAssets,
-          pagesCrawled: fastPagesCrawled,
-          rawCandidates: fastRawCandidates,
-          duration: fastDuration,
-          socialProfiles: [],
-          providerAttempts: fastProviderAttempts,
-        }
-        await supabase
-          .from('personalization_discovery_jobs')
-          .update({
-            status: 'complete',
-            completed_at: completedAt,
-            browser_result_json: null,
-            final_result_json: finalResult,
-            telemetry_json: {
-              freeLayersOnly: true,
-              providerUsed: fastProviderUsed,
-              providerAttempts: fastProviderAttempts,
-              pagesCrawled: fastPagesCrawled,
-              rawCandidates: fastRawCandidates,
-              durationMs: fastDuration,
-              ...(auth.userId ? { clerkUserId: auth.userId } : {}),
-            },
-          })
-          .eq('id', jobId)
+        await saveFreeLayerResult()
         return jsonResponse(200, { ok: true, jobId, staticOnly: true })
+      }
+
+      // Browser escalation is switched off: what the free layers found (which
+      // may be nothing) is the result.
+      if (!deps.isBrowserDiscoveryEnabled()) {
+        await saveFreeLayerResult({ browserSkipped: 'ENABLE_BROWSER_DISCOVERY is not true' })
+        return jsonResponse(200, { ok: true, jobId, staticOnly: true, browserSkipped: true })
       }
 
       const browserRuntimeMode = process.platform === 'darwin' ? 'local-mac' : 'netlify-linux'
@@ -1819,12 +1868,12 @@ function createBrowserDiscoveryHandler(overrides = {}) {
 
         finalResult = {
           provider: mergedAssets.length > 0 ? (fastAssets.length > 0 ? 'SMARTVIDEO_STATIC_BROWSER' : 'SMARTVIDEO_BROWSER') : 'NONE',
-          candidates: [...(fastResult?.result?.candidates || []), ...candidates],
+          candidates: [...fastCandidates, ...candidates],
           discoveredAssets: mergedAssets,
           pagesCrawled: fastPagesCrawled + pagesCrawled,
           rawCandidates: fastRawCandidates + candidates.length,
           duration: fastDuration + browserDurationMs,
-          socialProfiles: [...(fastResult?.result?.socialProfiles || []), ...(pageTelemetry || [])],
+          socialProfiles: [...fastSocialProfiles, ...(pageTelemetry || [])],
           providerAttempts: [...fastProviderAttempts, 'SMARTVIDEO_BROWSER'],
         }
 
@@ -1860,6 +1909,17 @@ function createBrowserDiscoveryHandler(overrides = {}) {
         browserDurationMs = new Date(errorCompletedAt).getTime() - new Date(browserLaunchStartedAt).getTime()
         browserErrorCode = err?.code || 'BROWSER_LAUNCH_FAILED'
         browserErrorMessage = err instanceof Error ? err.message : String(err)
+
+        if (fastAssets.length > 0) {
+          await saveFreeLayerResult({
+            browserFailed: true,
+            browserErrorCode,
+            browserErrorMessage,
+            browserDurationMs,
+            perPage: pageTelemetry,
+          }, browserErrorMessage)
+          return jsonResponse(200, { ok: true, jobId, staticOnly: true, browserFailed: true })
+        }
 
         await supabase
           .from('personalization_discovery_jobs')
@@ -1912,50 +1972,16 @@ function createBrowserDiscoveryHandler(overrides = {}) {
       const errorCode = err?.code || 'BACKGROUND_FUNCTION_ERROR'
       const errorMessage = err instanceof Error ? err.message : String(err)
 
-      // Browser failure does not discard the free-layer assets. Static,
-      // sitemap and Crawlee results are valid and downloadable even when the
-      // browser phase fails (hosting runtime with no browser, site that
-      // refuses to render, etc.). Write them as complete so the caller can
-      // review and import them; the browser error is surfaced as a warning.
-      if (fastAssets && fastAssets.length > 0) {
-        const completedAt = new Date().toISOString()
-        const finalResult = {
-          provider: fastProviderUsed,
-          candidates: fastResult?.result?.candidates || [],
-          discoveredAssets: fastAssets,
-          pagesCrawled: fastPagesCrawled,
-          rawCandidates: fastRawCandidates,
-          duration: fastDuration,
-          socialProfiles: fastResult?.result?.socialProfiles || [],
-          providerAttempts: fastProviderAttempts,
-          browserError: errorMessage,
-        }
+      // An unexpected failure does not discard the free-layer assets. Static,
+      // sitemap and Crawlee results are valid on their own, so they are saved
+      // as complete and the error is surfaced as a warning.
+      if (fastAssets.length > 0) {
         try {
-          await supabase
-            .from('personalization_discovery_jobs')
-            .update({
-              status: 'complete',
-              completed_at: completedAt,
-              browser_result_json: null,
-              final_result_json: finalResult,
-              telemetry_json: {
-                freeLayersOnly: true,
-                browserFailed: true,
-                browserErrorCode: errorCode,
-                browserErrorMessage: errorMessage,
-                providerUsed: fastProviderUsed,
-                providerAttempts: fastProviderAttempts,
-                pagesCrawled: fastPagesCrawled,
-                rawCandidates: fastRawCandidates,
-                durationMs: fastDuration,
-                ...(auth.userId ? { clerkUserId: auth.userId } : {}),
-              },
-            })
-            .eq('id', jobId)
+          await saveFreeLayerResult({ browserFailed: true, browserErrorCode: errorCode, browserErrorMessage: errorMessage }, errorMessage)
+          return jsonResponse(200, { ok: true, jobId, staticOnly: true, browserFailed: true })
         } catch {
-          // ignore supabase update error
+          // fall through and record the error instead
         }
-        return jsonResponse(200, { ok: true, jobId, staticOnly: true, browserFailed: true })
       }
 
       try {
