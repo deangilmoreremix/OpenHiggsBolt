@@ -1488,8 +1488,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     releaseAllOwnedBlobUrls(ownedSavedBlobUrlsRef.current, revokedBlobUrlsRef.current, liveBlobUrlCounts())
   }, [savedClientAssets, liveBlobUrlCounts])
 
-  // Single builder for the persisted project payload, shared by both debounced
-  // persist effects below and by the immediate flush on approval so they can
+  // Single builder for the persisted project payload, shared by the debounced
+  // persist effect below and by the immediate flush on approval so they can
   // never drift. The payload is purely additive over the previous fields.
   const buildProjectPayload = useCallback((): PersonalizationProjectState => ({
     // Which surface opened the modal. A studio hand-off records its own slug;
@@ -1556,37 +1556,11 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     viewMode,
   ])
 
-  // Debounced Supabase project persistence
-  useEffect(() => {
-    // Anonymous sessions persist nothing: the free discovery run writes no
-    // project row, no identity and no saved asset.
-    if (!source || access !== 'authenticated') return
-    projectPersistence.current.persist(buildProjectPayload())
-  }, [
-    source?.id,
-    source,
-    mode,
-    promptState.original,
-    promptState.personalized,
-    promptState.edited,
-    assets,
-    outputType,
-    selectedClientId,
-    generation.status,
-    result?.url,
-    result?.urls,
-    clientForm.ctaHeadline,
-    clientForm.callToAction,
-    genOptions,
-    previewSettings,
-    previewVideo,
-    guidedStep,
-    viewMode,
-    access,
-    buildProjectPayload,
-  ])
-
-  // Debounced Supabase project persistence
+  // Debounced Supabase project persistence. Exactly ONE effect may schedule
+  // this write: `persist` coalesces calls inside the debounce window, so a
+  // second identical effect never added a request, but it doubled the payload
+  // build + scheduling on every commit and hid which effect owns the write.
+  // `DemoPersonalizePersistence.test.tsx` pins one `persist` per commit.
   useEffect(() => {
     // Anonymous sessions persist nothing: the free discovery run writes no
     // project row, no identity and no saved asset.
