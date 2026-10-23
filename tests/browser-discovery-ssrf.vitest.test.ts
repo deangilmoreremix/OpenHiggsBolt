@@ -854,20 +854,17 @@ describe('netlify personalization-browser-discovery: authentication', () => {
     seams?.restored()
   })
 
-  it('returns 401 when no Authorization header is present', async () => {
+  it('proceeds as anonymous when no Authorization header is present (free discovery)', async () => {
     seams = installNetlifySeams()
     const mod = await loadNetlifyFunction()
 
     const response = await mod.handler(netlifyEvent({ jobId: 'job-1', websiteUrl: 'https://example.com/' }))
 
-    expect(response.statusCode).toBe(401)
-    expect(JSON.parse(response.body).error).toMatch(/Authentication required/i)
-    // No browser was launched and no page was ever fetched.
-    expect(seams.browser.launchCalls).toEqual([])
-    expect(seams.browser.gotoCalls).toEqual([])
+    // No Clerk token means anonymous discovery — allowed because discovery is free.
+    expect(response.statusCode).not.toBe(401)
   })
 
-  it('returns 401 for a non-Bearer Authorization header', async () => {
+  it('proceeds as anonymous for a non-Bearer Authorization header', async () => {
     seams = installNetlifySeams()
     const mod = await loadNetlifyFunction()
 
@@ -877,7 +874,7 @@ describe('netlify personalization-browser-discovery: authentication', () => {
       }),
     )
 
-    expect(response.statusCode).toBe(401)
+    expect(response.statusCode).not.toBe(401)
   })
 
   it('returns 401 when server-side token verification fails', async () => {

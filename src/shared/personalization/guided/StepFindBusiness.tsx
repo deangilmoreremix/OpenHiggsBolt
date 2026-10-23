@@ -462,7 +462,7 @@ export function StepFindBusiness(): React.JSX.Element {
                           style={{ color: C.muted2, fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                           title={asset.sourceUrl}
                         >
-                          {asset.sourceUrl.replace(/^https?:\/\//, '').slice(0, 48)}
+                          {(asset.sourceUrl || asset.previewUrl || '').replace(/^https?:\/\//, '').slice(0, 48)}
                         </div>
                       </div>
                       <button

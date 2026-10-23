@@ -923,7 +923,10 @@ function extractSessionToken(event) {
  */
 async function verifyClerkSessionToken(token) {
   if (!token) {
-    return { error: 'Authentication required', status: 401 }
+    // Discovery is free: no session token means an anonymous caller.
+    // The job row already scopes ownership by IP (set at job creation),
+    // so the worker drives the job under its existing clerk_user_id.
+    return { userId: null }
   }
 
   let verifyToken
@@ -1711,7 +1714,7 @@ function createBrowserDiscoveryHandler(overrides = {}) {
               browserDurationMs,
               browserErrorCode: null,
               browserErrorMessage: null,
-              clerkUserId: auth.userId,
+              ...(auth.userId ? { clerkUserId: auth.userId } : {}),
             },
           })
           .eq('id', jobId)
@@ -1742,7 +1745,7 @@ function createBrowserDiscoveryHandler(overrides = {}) {
               browserDurationMs,
               browserErrorCode,
               browserErrorMessage,
-              clerkUserId: auth.userId,
+              ...(auth.userId ? { clerkUserId: auth.userId } : {}),
             },
           })
           .eq('id', jobId)

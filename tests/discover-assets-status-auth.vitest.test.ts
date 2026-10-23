@@ -164,12 +164,13 @@ describe('GET /api/personalization/discover-assets/status', () => {
       id: 'job-running',
       clerk_user_id: 'user-123',
       status: 'running',
-      started_at: '2026-01-01T00:00:01Z',
+      started_at: new Date().toISOString(),
       completed_at: null,
     }
 
     vi.doMock('@/server/discoveryJobs', () => ({
       getDiscoveryJobForUser: vi.fn(async () => runningJob),
+      updateDiscoveryJob: vi.fn(async () => ({})),
     }))
 
     const { GET } = await import('@/app/api/personalization/discover-assets/status/route')
