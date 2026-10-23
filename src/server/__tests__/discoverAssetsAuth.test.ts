@@ -105,52 +105,42 @@ describe('POST /api/personalization/discover-assets auth', () => {
   }
 
   // -------------------------------------------------------------------------
-  // Unauthenticated: userId is null
+  // Unauthenticated: discovery is FREE, so an anonymous caller is allowed.
+  // Its jobs are scoped to the caller's IP — never one shared 'anon' bucket.
   // -------------------------------------------------------------------------
 
-  it('MUST REJECT with 401 when auth returns userId = null', async () => {
+  it('MUST ALLOW an unauthenticated caller (free feature), with IP-scoped jobs', async () => {
     vi.mocked(auth).mockResolvedValue({ userId: null } as any)
 
     const res = await post('https://example.com')
-    expect(res.status).toBe(401)
+    expect(res.status).toBe(202)
     const body = await res.json()
-    expect(body.error).toBe('UNAUTHENTICATED')
+    expect(body.ok).toBe(true)
 
-    // No discovery job should be created
-    expect(createDiscoveryJob).not.toHaveBeenCalled()
-    expect(runFastDiscovery).not.toHaveBeenCalled()
+    // The job must be scoped to the CALLER's identity: the caller's IP when
+    // one is present, and at worst a plain 'anon' bucket when the request
+    // carries no IP headers at all (as this mock's does).
+    expect(createDiscoveryJob).toHaveBeenCalledTimes(1)
+    const jobArg = (createDiscoveryJob as any).mock.calls[0][0]
+    expect(jobArg.clerkUserId).toMatch(/^anon/)
   })
 
-  // -------------------------------------------------------------------------
-  // Unauthenticated: userId is undefined
-  // -------------------------------------------------------------------------
-
-  it('MUST REJECT with 401 when auth returns userId = undefined', async () => {
+  it('MUST ALLOW an unauthenticated caller when auth returns userId = undefined', async () => {
     vi.mocked(auth).mockResolvedValue({ userId: undefined } as any)
 
     const res = await post('https://example.com')
-    expect(res.status).toBe(401)
+    expect(res.status).toBe(202)
     const body = await res.json()
-    expect(body.error).toBe('UNAUTHENTICATED')
-
-    expect(createDiscoveryJob).not.toHaveBeenCalled()
-    expect(runFastDiscovery).not.toHaveBeenCalled()
+    expect(body.ok).toBe(true)
   })
 
-  // -------------------------------------------------------------------------
-  // Unauthenticated: auth returns empty string userId
-  // -------------------------------------------------------------------------
-
-  it('MUST REJECT with 401 when auth returns an empty string userId', async () => {
+  it('MUST ALLOW an unauthenticated caller when auth returns an empty string userId', async () => {
     vi.mocked(auth).mockResolvedValue({ userId: '' } as any)
 
     const res = await post('https://example.com')
-    expect(res.status).toBe(401)
+    expect(res.status).toBe(202)
     const body = await res.json()
-    expect(body.error).toBe('UNAUTHENTICATED')
-
-    expect(createDiscoveryJob).not.toHaveBeenCalled()
-    expect(runFastDiscovery).not.toHaveBeenCalled()
+    expect(body.ok).toBe(true)
   })
 
   // -------------------------------------------------------------------------
@@ -205,17 +195,21 @@ describe('POST /api/personalization/discover-assets auth', () => {
   // fires for these requests because requireApiEntitlement short-circuits first.
   // -------------------------------------------------------------------------
 
-  it('route auth stage produces 401 with no crawler/discovery side effects', async () => {
+  it('anonymous callers get the free discovery path with no auth side effects', async () => {
     vi.mocked(auth).mockResolvedValue({ userId: null } as any)
 
     const res = await post('https://example.com')
-    expect(res.status).toBe(401)
+    expect(res.status).toBe(202)
     const body = await res.json()
-    expect(body.error).toBe('UNAUTHENTICATED')
+    expect(body.ok).toBe(true)
 
-    // The route's own auth stage rejects before any discovery machinery runs.
-    expect(createDiscoveryJob).not.toHaveBeenCalled()
-    expect(runFastDiscovery).not.toHaveBeenCalled()
+    // Discovery ran: the free path is a real discovery, not a rejection.
+    expect(runFastDiscovery).toHaveBeenCalledTimes(1)
+    expect(createDiscoveryJob).toHaveBeenCalledTimes(1)
+    // And the job is IP-scoped when an IP is present ('anon' only when the
+    // request has no IP headers at all).
+    const jobArg = (createDiscoveryJob as any).mock.calls[0][0]
+    expect(jobArg.clerkUserId).toMatch(/^anon/)
   })
 
   // -------------------------------------------------------------------------

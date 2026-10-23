@@ -49,7 +49,11 @@ export function StepFindBusiness(): React.JSX.Element {
     runDiscoveryWorkflow,
     discoverAssets,
     discoveryStatus,
+    discoveryError,
     discoveredAssets = [],
+    toggleDiscoveredAssetSelection,
+    importDiscoveredAssets,
+    importConfirmation,
     access,
     setViewMode,
   } = ctx
@@ -67,7 +71,17 @@ export function StepFindBusiness(): React.JSX.Element {
   const website = clientForm.website || ''
   const research = businessResearch
   const discoveredCount = discoveredAssets.filter((asset) => !asset.rejected).length
-  const logoCount = assets?.logos?.length || 0
+  // "Logo found" must reflect the DISCOVERED assets: a discovery run that
+  // found logos reports them here, and this step is exactly where the
+  // customer is told about them. Reading the asset library instead made the
+  // line say "Not yet" right after a discovery that had found a logo.
+  const discoveredLogos = discoveredAssets.filter(
+    (asset) => !asset.rejected && asset.category === 'logo'
+  )
+  const logoCount = discoveredLogos.length
+  const selectedDiscoveredCount = discoveredAssets.filter(
+    (asset) => asset.selected && !asset.rejected
+  ).length
 
   const researchSummary = useMemo(() => {
     if (!research || research.status !== 'done' || !research.result) return null
@@ -397,6 +411,121 @@ export function StepFindBusiness(): React.JSX.Element {
               {researchSummary.description && (
                 <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 12, lineHeight: 1.55 }}>{researchSummary.description}</p>
               )}
+            </div>
+          )}
+
+          {/* ── Inline discovery review ────────────────────────────────────
+              The customer reviews and imports the discovered assets HERE,
+              without being sent to Advanced Editing. This is the same
+              provider flow the advanced view uses (toggle selection +
+              importDiscoveredAssets); only the presentation is guided. */}
+          {discoveredCount > 0 && (
+            <div style={{ ...softPanelStyle, marginTop: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                <h4 style={{ margin: 0, fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', color: C.text }}>
+                  Discovered assets
+                </h4>
+                <span style={badgeStyle('cyan')}>
+                  {selectedDiscoveredCount} of {discoveredCount} selected
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {discoveredAssets
+                  .filter((asset) => !asset.rejected)
+                  .slice(0, 8)
+                  .map((asset) => (
+                    <div
+                      key={asset.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        padding: '6px 8px',
+                        borderRadius: 8,
+                        border: `1px solid ${asset.selected ? C.cyanBorder : C.border}`,
+                        background: asset.selected ? 'rgba(34,211,238,0.06)' : 'transparent',
+                      }}
+                    >
+                      {asset.previewUrl && (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={asset.editedDataUrl || asset.previewUrl}
+                          alt=""
+                          style={{ width: 34, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }}
+                        />
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ color: C.text, fontSize: 12, fontWeight: 600, textTransform: 'capitalize' }}>
+                          {asset.category}
+                        </div>
+                        <div
+                          style={{ color: C.muted2, fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                          title={asset.sourceUrl}
+                        >
+                          {asset.sourceUrl.replace(/^https?:\/\//, '').slice(0, 48)}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={asset.selected ? 'Deselect' : 'Select'}
+                        onClick={() => toggleDiscoveredAssetSelection(asset.id)}
+                        style={{
+                          ...secondaryButtonStyle,
+                          minHeight: 28,
+                          padding: '0 10px',
+                          color: asset.selected ? C.cyan : C.text,
+                          borderColor: asset.selected ? C.cyanBorder : C.border,
+                        }}
+                      >
+                        {asset.selected ? 'Deselect' : 'Select'}
+                      </button>
+                    </div>
+                  ))}
+                {discoveredCount > 8 && (
+                  <div style={{ color: C.muted2, fontSize: 10 }}>
+                    +{discoveredCount - 8} more — review all of them in Advanced Editing
+                  </div>
+                )}
+              </div>
+              {discoveryStatus === 'importing' && (
+                <p style={{ margin: '8px 0 0', color: C.cyan, fontSize: 11 }}>Importing assets…</p>
+              )}
+              {discoveryError && (
+                <p style={{ margin: '8px 0 0', color: C.danger, fontSize: 11, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span>{discoveryError}</span>
+                  <button type="button" onClick={() => importDiscoveredAssets()} style={{ ...secondaryButtonStyle, minHeight: 28 }}>
+                    Retry
+                  </button>
+                </p>
+              )}
+              {importConfirmation && (
+                <p style={{ margin: '8px 0 0', color: importConfirmation.count > 0 ? C.green : C.danger, fontSize: 11 }}>
+                  {importConfirmation.count > 0
+                    ? `${importConfirmation.count} asset${importConfirmation.count === 1 ? '' : 's'} added${importConfirmation.clientName ? ` to ${importConfirmation.clientName}` : ''}.`
+                    : 'The selected assets could not be added.'}
+                </p>
+              )}
+              {discoveryError && /failed to upload|Missing API key/i.test(discoveryError) && (
+                <p style={{ margin: '6px 0 0', color: C.muted, fontSize: 10, lineHeight: 1.5 }}>
+                  The selected assets are in this session and can be used to personalize the video. Saving them
+                  durably to your library needs your own MuAPI key (BYOK) — add it under your account settings and
+                  re-import to store them permanently.
+                </p>
+              )}
+              <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => importDiscoveredAssets()}
+                  disabled={selectedDiscoveredCount === 0 || discoveryStatus === 'importing'}
+                  style={{
+                    ...primaryButtonStyle,
+                    minHeight: 34,
+                    opacity: selectedDiscoveredCount === 0 || discoveryStatus === 'importing' ? 0.5 : 1,
+                  }}
+                >
+                  {discoveryStatus === 'importing' ? 'Importing…' : `Use ${selectedDiscoveredCount || 'selected'} asset${selectedDiscoveredCount === 1 ? '' : 's'}`}
+                </button>
+              </div>
             </div>
           )}
 

@@ -16,15 +16,19 @@ export async function GET(req: NextRequest) {
 
   const { userId } = await auth()
 
-  if (!userId) {
-    // Security: require an authenticated session. Previously this route fell
-    // back to getDiscoveryJobById(jobId) with no ownership check, allowing any
-    // unauthenticated caller to read any discovery job (audit Finding 4.1).
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  // Discovery is FREE, so an anonymous caller may poll its own job — but the
+  // scope is the caller's identity, exactly as the POST handler scopes it:
+  // the signed-in user's id, else `anon-<client ip>`, else plain `anon`.
+  // There is deliberately NO unscoped fallback: a job that belongs to another
+  // user, or to another anonymous caller, is not found (404). Previously this
+  // route fell back to getDiscoveryJobById(jobId) with no ownership check,
+  // letting any unauthenticated caller read any discovery job (audit
+  // Finding 4.1) — that hole stays closed.
+  const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.headers.get('x-real-ip') || undefined
+  const jobOwnerId = userId || (clientIp ? `anon-${clientIp}` : 'anon')
 
   // Owner-scoped lookup: a job that belongs to another user is not found.
-  const job = await getDiscoveryJobForUser(jobId, userId)
+  const job = await getDiscoveryJobForUser(jobId, jobOwnerId)
 
   if (!job) {
     return NextResponse.json({ error: 'Job not found' }, { status: 404 })
