@@ -67,6 +67,10 @@ function createStatusRequest(jobId = 'job-abc'): NextRequest {
 describe('GET /api/personalization/discover-assets/status', () => {
   it('allows anonymous polling when no session is present (free discovery)', async () => {
     authUserId = null
+    vi.doMock('@/server/discoveryJobs', () => ({
+      getDiscoveryJobForUser: vi.fn(async () => null),
+      updateDiscoveryJob: vi.fn(async () => ({})),
+    }))
     const { GET } = await import('@/app/api/personalization/discover-assets/status/route')
 
     const response = await GET(createStatusRequest())
