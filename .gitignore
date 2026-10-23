@@ -78,3 +78,6 @@ monitoring/
 .kilo/openhiggsbolt-personalization-fix/
 storage/key_value_stores/
 storage/request_queues/
+
+# Supabase CLI local state (changes on every CLI run)
+supabase/.temp/

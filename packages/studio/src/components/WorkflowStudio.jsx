@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   getTemplateWorkflows,
@@ -13,7 +13,6 @@ import {
   executeWorkflow,
   getAllNodeSchemas,
   getWorkflowData,
-  buildWorkflowApiSnippets,
 } from "../muapi.js";
 import dynamic from "next/dynamic";
 
@@ -33,89 +32,17 @@ const WorkflowUI = dynamic(() => import("./WorkflowUI"), {
 
 function WorkflowCard({ workflow, onClick, activeTab, onRename, onDelete }) {
   const [showOptions, setShowOptions] = useState(false);
-  const [imgExhausted, setImgExhausted] = useState(false);
-  const [candidateIndex, setCandidateIndex] = useState(0);
-
-  // Known filename corrections: remote URL filename -> local file filename.
-  // The CDN sometimes serves `…__1_.jpg` while the local copy is `…-1.jpg`.
-  const THUMBNAIL_FILENAME_CORRECTIONS = {
-    '9d1e5efced63471e84c721bc56f3b5e7__1_.jpg': '9d1e5efced63471e84c721bc56f3b5e7-1.jpg',
-  };
-
-  // Hosts allowed by the same-origin thumbnail proxy (app/api/thumbnail/route.js).
-  const ALLOWED_PROXY_HOSTS = new Set([
-    'cdn.muapi.ai',
-    'd3adwkbyhxyrtq.cloudfront.net',
-    'muapi.ai',
-  ]);
-
-  // Build the ordered candidate list for this workflow's thumbnail.
-  // Preference: verified original URL → verified local image → same-origin proxy → placeholder.
-  const candidates = useMemo(() => {
-    const list = [];
-    const remoteUrl = workflow.thumbnail || null;
-
-    // 1. Verified original image URL (when accessible directly).
-    if (remoteUrl) list.push({ url: remoteUrl, kind: 'remote' });
-
-    // 2. Verified local image mapped to this workflow.
-    if (remoteUrl) {
-      const fileName = remoteUrl.split('/').pop();
-      if (fileName) {
-        const localName = THUMBNAIL_FILENAME_CORRECTIONS[fileName] || fileName;
-        list.push({ url: `/thumbnails/workflows/${localName}`, kind: 'local' });
-      }
-    }
-
-    // 3. Secure same-origin proxy for supported remote hosts.
-    if (remoteUrl) {
-      try {
-        const parsed = new URL(remoteUrl);
-        if (
-          parsed.protocol === 'https:' &&
-          ALLOWED_PROXY_HOSTS.has(parsed.hostname)
-        ) {
-          list.push({
-            url: `/api/thumbnail?url=${encodeURIComponent(remoteUrl)}`,
-            kind: 'proxy',
-          });
-        }
-      } catch {
-        // Invalid URL — skip proxy candidate.
-      }
-    }
-
-    return list;
-  }, [workflow.thumbnail]);
-
-  const current = candidates[candidateIndex];
-
-  // Reset image error state when the workflow or thumbnail URL changes.
-  useEffect(() => {
-    setImgExhausted(false);
-    setCandidateIndex(0);
-  }, [workflow.id, workflow.thumbnail]);
-
-  const handleImgError = () => {
-    // Prevent infinite retry loops: only advance while candidates remain.
-    if (candidateIndex >= candidates.length - 1) {
-      setImgExhausted(true);
-      return;
-    }
-    setCandidateIndex((prev) => prev + 1);
-  };
 
   return (
     <div
       onClick={() => onClick(workflow)}
       className="group relative aspect-[3/4] rounded-lg overflow-hidden cursor-pointer border border-white/5 bg-[#0a0a0a] transition-all hover:border-[#22d3ee]/30 hover:scale-[1.02] shadow-2xl"
     >
-      {current && !imgExhausted ? (
+      {workflow.thumbnail ? (
         <img
-          src={current.url}
+          src={workflow.thumbnail}
           alt={workflow.name}
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-          onError={handleImgError}
         />
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center">
@@ -198,27 +125,45 @@ function WorkflowCard({ workflow, onClick, activeTab, onRename, onDelete }) {
   );
 }
 
-export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggleHeader, templateData }) {
+export default function WorkflowStudio({
+  apiKey,
+  isHeaderVisible = true,
+  onToggleHeader,
+  onGenerationStart,
+  onGenerationEnd,
+  onGenerationComplete,
+  onGenerationError,
+  templateData,
+}) {
   const params = useParams();
   const router = useRouter();
-  const slug = params?.slug || [];
   const idFromParams = params?.id;     // exists on /workflow/[id]/[tab] route
-  const tabFromParams = params?.tab;   // exists on /workflow/[id]/[tab] route
-  
+  const tabFromParams = params?.tab;   // string on /workflow/[id]/[tab]; array on the [[...tab]] catch-all
+  // Catch-all routes expose the whole remaining path as an array segment.
+  // Upstream reads that array from params.tab (its /studio/[brandSlug]/[[...tab]] and
+  // /open-generative-ai/[[...tab]] routes). THIS repo mounts the studio shell at
+  // /studio/[[...slug]], so the same array arrives as params.slug. Accept both, and
+  // guard the array access: a plain string here would make .findIndex unavailable.
+  const slugSegments = Array.isArray(params?.slug) ? params.slug : [];
+  const tabSegments = Array.isArray(tabFromParams) ? tabFromParams : [];
+  const catchAllSegments = slugSegments.length > 0 ? slugSegments : tabSegments;
+
   // Robustly extract ID and Tab from either route structure
   const getWorkflowInfo = useCallback(() => {
-    // Priority 1: Dedicated /workflow/[id]/[tab] route  
+    // Priority 1: Dedicated /workflow/[id]/[tab] route
     if (idFromParams) {
-      return { id: idFromParams, tab: tabFromParams || null };
+      return { id: idFromParams, tab: (Array.isArray(tabFromParams) ? tabFromParams[0] : tabFromParams) || null };
     }
-    // Priority 2: Catch-all /studio/[[...slug]] route
-    const wfIndex = slug.findIndex(s => s === 'workflows' || s === 'workflow');
+    // Priority 2: Catch-all studio shell route — also recognizes the singular
+    // "workflow" segment used by the standalone /workflow/[id]/[tab] URL scheme,
+    // since a white-label custom domain's middleware rewrite lands here too.
+    const wfIndex = catchAllSegments.findIndex(s => s === 'workflows' || s === 'workflow');
     if (wfIndex === -1) return { id: null, tab: null };
     return {
-      id: slug[wfIndex + 1] || null,
-      tab: slug[wfIndex + 2] || null
+      id: catchAllSegments[wfIndex + 1] || null,
+      tab: catchAllSegments[wfIndex + 2] || null
     };
-  }, [slug, idFromParams, tabFromParams]);
+  }, [catchAllSegments, idFromParams, tabFromParams]);
 
   const { id: urlWorkflowId, tab: urlTab } = getWorkflowInfo();
 
@@ -249,23 +194,14 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
     }
   }, [templateData]);
 
-  const [webhookUrl, setWebhookUrl] = useState("");
-  const [playgroundView, setPlaygroundView] = useState("form"); // 'form' | 'api'
-  const [rawResult, setRawResult] = useState(null);
-  const [copiedKey, setCopiedKey] = useState(null);
-  const [showRaw, setShowRaw] = useState(false);
-  
-
   // Handlers defined early so they can be used in effects
   const handleSelectWorkflow = useCallback(
     async (wf, fromUrl = false) => {
       setSelectedWorkflow(wf);
       setResult(null);
       setError(null);
-
-      const targetTab =
-        urlTab ||
-        (activeMainTab === "templates" ? "builder" : "playground");
+      
+      const targetTab = urlTab || "playground";
       setActiveSubTab(targetTab);
 
       if (!fromUrl) {
@@ -273,7 +209,7 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
         router.push(`/workflow/${wf.id}/${targetTab}`);
       }
     },
-    [router, urlTab, activeMainTab],
+    [router, urlTab],
   );
 
   // Dedicated data fetching effect for the active workflow
@@ -284,16 +220,16 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
       try {
         setLoading(true);
         const wfId = selectedWorkflow.id;
-
+        
         // Fetch everything in parallel with allSettled so one failure doesn't block the others
         const results = await Promise.allSettled([
           getWorkflowInputs(apiKey, wfId),
           getAllNodeSchemas(apiKey, wfId),
-          getWorkflowData(apiKey, wfId),
+          getWorkflowData(apiKey, wfId)
         ]);
 
         // Process Input Schema
-        if (results[0].status === "fulfilled") {
+        if (results[0].status === 'fulfilled') {
           const response = results[0].value;
           const schema = response.input_data || response;
           setInputSchema(schema);
@@ -313,30 +249,21 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
         }
 
         // Process Builder State
-        const nodes = results[1].status === "fulfilled" ? results[1].value : [];
-        const def = results[2].status === "fulfilled" ? results[2].value : { nodes: [], edges: [] };
+        const nodes = results[1].status === 'fulfilled' ? results[1].value : [];
+        const def = results[2].status === 'fulfilled' ? results[2].value : { nodes: [], edges: [] };
 
         setNodeSchemas(nodes);
         setWorkflowDef(def);
 
-        if (results[1].status === "rejected" || results[2].status === "rejected") {
-          const reasons = [results[1].reason, results[2].reason].filter(Boolean).join(", ");
-          console.error("Builder components failed to load:", reasons);
+        if (results[1].status === 'rejected' || results[2].status === 'rejected') {
+          console.error("Builder components failed to load:", results[1].reason, results[2].reason);
           if (!nodes.length && !def.nodes?.length) {
-            setError(
-              "Failed to load workflow data. If you're opening a template, enter a valid MuAPI key in Settings first."
-            );
+             setError("Failed to load full builder data. Some features may be disabled.");
           }
         }
       } catch (err) {
-        console.error("Critical error loading workflow details:", err);
-        const message = err?.message || String(err);
-        const isAuth = /401|403|auth|credentials/i.test(message);
-        setError(
-          isAuth
-            ? "Enter a valid MuAPI key to load this workflow."
-            : "Critical error loading workflow: " + message
-        );
+        console.error("Critical error loading pulse details:", err);
+        setError("Critical error loading builder: " + err.message);
         setNodeSchemas([]);
         setWorkflowDef({ nodes: [], edges: [] });
       } finally {
@@ -359,7 +286,10 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
             data: { nodes: [] },
           };
           const response = await createWorkflow(apiKey, payload);
-          // Route to /workflow/[id] so useParams().id works in the builder library
+          // Route to /workflow/[id] so useParams().id works in the builder library.
+          // That page has no white-label session of its own, so hand off our token
+          // via sessionStorage — it reads "wl_workflow_token" on mount.
+          if (apiKey) sessionStorage.setItem("wl_workflow_token", apiKey);
           router.push(`/workflow/${response.workflow_id}/builder`);
           return;
         }
@@ -474,14 +404,6 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
 
   useEffect(() => {
     async function loadWorkflows() {
-      // Templates are a PUBLIC endpoint — load them even without an API key so
-      // the workflow gallery and its thumbnails are always visible. The
-      // user-specific tabs (my-workflows / published) still require a key.
-      if (!apiKey && activeMainTab !== "templates") {
-        setWorkflows([]);
-        setLoading(false);
-        return;
-      }
       try {
         setLoading(true);
         let data = [];
@@ -503,79 +425,39 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
     loadWorkflows();
   }, [apiKey, activeMainTab]);
 
-  const copyTimerRef = useRef(null);
-  const copySnippet = (key, text) => {
-    try {
-      navigator.clipboard?.writeText(text);
-      setCopiedKey(key);
-      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-      copyTimerRef.current = setTimeout(() => setCopiedKey(null), 1500);
-    } catch (_) {}
-  };
-
-  useEffect(() => () => {
-    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-  }, []);
-
-  const buildInputs = useCallback(() => {
-    const inputs = {};
-    Object.entries(formData).forEach(([key, value]) => {
-      if (!value) return;
-      if (key.startsWith("text")) inputs[key] = { prompt: value };
-      else if (key.startsWith("image")) inputs[key] = { image_url: value };
-      else if (key.startsWith("video")) inputs[key] = { video_url: value };
-      else inputs[key] = value;
-    });
-    return inputs;
-  }, [formData]);
-
-  const apiSnippets = useMemo(
-    () =>
-      buildWorkflowApiSnippets(selectedWorkflow?.id, buildInputs(), {
-        webhookUrl: webhookUrl || undefined,
-      }),
-    [selectedWorkflow?.id, buildInputs, webhookUrl],
-  );
-
-  const makeSnippet = (label, key, text) => (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">
-          {label}
-        </span>
-        <button
-          type="button"
-          onClick={() => copySnippet(key, text)}
-          className="text-[10px] font-black text-[#22d3ee] uppercase tracking-widest hover:text-white transition-colors"
-        >
-          {copiedKey === key ? "Copied" : "Copy"}
-        </button>
-      </div>
-      <pre className="text-[11px] text-white/70 bg-black/40 border border-white/10 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all">
-        {text}
-      </pre>
-    </div>
-  );
-
   const handleRun = async (e) => {
     e.preventDefault();
     if (isExecuting) return;
 
+    onGenerationStart?.();
     setIsExecuting(true);
     setError(null);
     setResult(null);
 
     try {
-      const inputs = buildInputs();
-      const data = await executeWorkflow(apiKey, selectedWorkflow.id, inputs, webhookUrl || undefined);
+      const inputs = {};
+      Object.entries(formData).forEach(([key, value]) => {
+        if (!value) return;
+        if (key.startsWith("text")) inputs[key] = { prompt: value };
+        else if (key.startsWith("image")) inputs[key] = { image_url: value };
+        else if (key.startsWith("video")) inputs[key] = { video_url: value };
+        else inputs[key] = value;
+      });
+
+      const data = await executeWorkflow(apiKey, selectedWorkflow.id, inputs);
       setResult(data);
-      setRawResult(data);
+      onGenerationComplete?.({
+        url: data?.url || data?.output?.url || data?.outputs?.[0]?.url || null,
+        type: "workflow",
+      });
     } catch (err) {
       console.error("Execution failed:", err);
-      setError(err.message || "Execution failed");
-      setRawResult({ error: err?.message || String(err) });
+      const message = err.message || "Execution failed";
+      setError(message);
+      onGenerationError?.(message);
     } finally {
       setIsExecuting(false);
+      onGenerationEnd?.();
     }
   };
 
@@ -626,7 +508,10 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
                   <button
                     onClick={() => {
                         setActiveSubTab("builder");
-                        if (selectedWorkflow?.id) router.push(`/workflow/${selectedWorkflow.id}/builder`);
+                        if (selectedWorkflow?.id) {
+                          if (apiKey) sessionStorage.setItem("wl_workflow_token", apiKey);
+                          router.push(`/workflow/${selectedWorkflow.id}/builder`);
+                        }
                     }}
                     type="button"
                     className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${
@@ -711,24 +596,7 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
               {/* Controls Panel */}
               <div className="w-full lg:w-[400px] border-r border-white/5 flex flex-col bg-black/20">
                 <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
-                  <div className="flex gap-1 p-1 bg-white/5 rounded-lg mb-4">
-                    <button
-                      type="button"
-                      onClick={() => setPlaygroundView("form")}
-                      className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${playgroundView === "form" ? "bg-[#22d3ee] text-black" : "text-white/40 hover:text-white"}`}
-                    >
-                      Run
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPlaygroundView("api")}
-                      className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${playgroundView === "api" ? "bg-[#22d3ee] text-black" : "text-white/40 hover:text-white"}`}
-                    >
-                      API &amp; CLI
-                    </button>
-                  </div>
-                  {playgroundView === "form" ? (
-                    <form onSubmit={handleRun} className="space-y-6">
+                  <form onSubmit={handleRun} className="space-y-6">
                     <div>
                       <h3 className="text-xs font-black text-white/30 uppercase tracking-widest mb-4">
                         Configuration
@@ -798,20 +666,6 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="block text-[11px] font-bold text-white/80 uppercase tracking-wider">
-                        Webhook URL <span className="text-white/30 normal-case font-medium">(optional)</span>
-                      </label>
-                      <input
-                        type="url"
-                        value={webhookUrl}
-                        onChange={(e) => setWebhookUrl(e.target.value)}
-                        placeholder="https://your-app.com/webhook"
-                        className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-[#22d3ee]/50 transition-colors"
-                      />
-                      <p className="text-[10px] text-white/30">Receive a notification when the workflow completes.</p>
-                    </div>
-
                     <button
                       type="submit"
                       disabled={isExecuting || !selectedWorkflow.id}
@@ -844,29 +698,6 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
                       </p>
                     )}
                   </form>
-                  ) : (
-                    (() => {
-                      const snippets = apiSnippets;
-                      return (
-                        <div className="space-y-6">
-                          <div className="space-y-2">
-                            <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Endpoint</span>
-                            <pre className="text-[11px] text-white/70 bg-black/40 border border-white/10 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all">{`${snippets.method} ${snippets.endpoint}`}</pre>
-                            <pre className="text-[11px] text-white/70 bg-black/40 border border-white/10 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-all">{`Poll ${snippets.pollUrl}`}</pre>
-                          </div>
-                          {makeSnippet("cURL", "curl", snippets.curl)}
-                          {makeSnippet("JSON body", "json", snippets.json)}
-                          {makeSnippet("Node.js", "node", snippets.node)}
-                          {makeSnippet("Python", "python", snippets.python)}
-                          {makeSnippet("CLI", "cli", [snippets.cliDiscover, snippets.cliGet, snippets.cliRun].filter(Boolean).join("\n\n"))}
-                          <div className="mt-6 p-4 rounded-lg bg-white/[0.03] border border-white/5 text-[11px] text-white/50 leading-relaxed">
-                            <div className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2">Dynamic references</div>
-                            Pipe outputs between nodes with Jinja2 syntax, e.g. <code className="text-[#22d3ee]">{"{{ node_id.outputs[0].value }}"}</code>. Node categories: Text, Image, Video, Audio, Utility, API.
-                          </div>
-                        </div>
-                      );
-                    })()
-                  )}
                 </div>
               </div>
 
@@ -1013,38 +844,24 @@ export default function WorkflowStudio({ apiKey, isHeaderVisible = true, onToggl
                     </div>
                   </div>
                 )}
-                {rawResult && (
-                  <div className="w-full max-w-4xl mt-8">
-                    <button type="button" onClick={() => setShowRaw((v) => !v)}
-                      className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-[#22d3ee] transition-colors flex items-center gap-2">
-                      {showRaw ? "Hide" : "Show"} raw response
-                    </button>
-                    {showRaw && (
-                      <pre className="mt-3 text-[11px] text-white/60 bg-black/40 border border-white/10 rounded-lg p-4 overflow-x-auto whitespace-pre-wrap break-all max-h-[400px] overflow-y-auto">
-                        {JSON.stringify(rawResult, null, 2)}
-                      </pre>
-                    )}
-                  </div>
-                )}
               </div>
             </>
           ) : (
             <div className="flex-1 relative bg-[#050505]">
-              {error && !loading ? (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-full max-w-md p-6 bg-red-500/10 border border-red-500/20 rounded-2xl text-center">
-                    <div className="text-red-400 text-xs font-bold uppercase tracking-widest mb-2">Unable to load workflow</div>
-                    <div className="text-white/60 text-sm">{error}</div>
-                  </div>
-                </div>
-              ) : nodeSchemas && workflowDef ? (
+              {nodeSchemas && workflowDef ? (
                 <WorkflowUI
+                  apiKey={apiKey}
                   workflowId={selectedWorkflow?.id}
                   initialNodeSchemas={nodeSchemas}
                   initialWorkflowData={{
                     ...workflowDef,
-                    workflow_id: selectedWorkflow?.id,
+                    // Inject ID to prevent builder from assuming this is a new unsaved flow
+                    workflow_id: selectedWorkflow?.id
                   }}
+                  onGenerationStart={onGenerationStart}
+                  onGenerationEnd={onGenerationEnd}
+                  onGenerationComplete={onGenerationComplete}
+                  onGenerationError={onGenerationError}
                 />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center">

@@ -1,5 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
-import { MOTION_TEMPLATES } from '../src/data/motionRecipeCatalog';
+import { MOTION_TEMPLATES, MOTION_TEMPLATE_CARDS } from '../src/data/motionRecipeCatalog';
 
 const BASE = process.env.DEMO_BASE_URL || 'http://localhost:3112';
 
@@ -10,7 +10,13 @@ const BASE = process.env.DEMO_BASE_URL || 'http://localhost:3112';
  * Regression under test: every Motion Studio card used to render a still
  * `<img>`/SVG placeholder, so selecting a recipe never showed a moving
  * picture. The catalog now carries the real upstream ShotCraft MP4 clip for
- * every shot, and the SELECTED card must host a playable `<video>`.
+ * every style, and the SELECTED recipe card must host a playable `<video>`.
+ *
+ * The grid unit is the RECIPE CARD (124 of them, `MOTION_TEMPLATE_CARDS`) —
+ * the 150-clip sweep lives in the catalog data test
+ * (`src/data/__tests__/motionRecipeCatalog.preview.test.ts`). Card picks here
+ * are deterministic: the cards array is ordered and begins
+ * `camera/basic-3d-scene`, `camera/crash-zoom-punch` (asserted there).
  */
 
 async function clickViaElement(locator: Locator) {
@@ -55,16 +61,16 @@ test.describe('Personalization Modal — Motion Studio template video', () => {
     const motionTab = dialog.getByRole('tab', { name: /Motion Studio/i });
     await clickViaElement(motionTab);
 
-    // The full library renders.
+    // The full recipe-card library renders (124 cards).
     const cards = dialog.getByTestId('motion-template-card');
     await expect(cards.first()).toBeVisible({ timeout: 20000 });
-    await expect(cards).toHaveCount(150, { timeout: 20000 });
+    await expect(cards).toHaveCount(124, { timeout: 20000 });
 
     // Before selecting: no player anywhere in the grid, and the first card
     // still shows a still poster (not a video).
     await expect(dialog.getByTestId('motion-template-player')).toHaveCount(0);
 
-    const firstTemplate = MOTION_TEMPLATES[0];
+    const firstTemplate = MOTION_TEMPLATE_CARDS[0];
     expect(firstTemplate.preview, 'catalog entry must carry a preview clip').toBeTruthy();
 
     const firstCard = dialog.locator(
@@ -144,7 +150,7 @@ test.describe('Personalization Modal — Motion Studio template video', () => {
     expect(playback.paused).toBe(false);
 
     // Switching to another template moves the player to the new clip.
-    const secondTemplate = MOTION_TEMPLATES[1];
+    const secondTemplate = MOTION_TEMPLATE_CARDS[1];
     const secondCard = dialog.locator(
       `[data-testid="motion-template-card"][data-template-id="${secondTemplate.id}"]`,
     );
@@ -170,9 +176,9 @@ test.describe('Personalization Modal — Motion Studio template video', () => {
   test('the selected Motion Studio clip becomes the wizard preview video', async ({ page }) => {
     const dialog = await openStep2(page);
 
-    // Open the Motion Studio tab and pick the first recipe.
+    // Open the Motion Studio tab and pick the first recipe card.
     await clickViaElement(dialog.getByRole('tab', { name: /Motion Studio/i }));
-    const firstTemplate = MOTION_TEMPLATES[0];
+    const firstTemplate = MOTION_TEMPLATE_CARDS[0];
     const firstCard = dialog.locator(
       `[data-testid="motion-template-card"][data-template-id="${firstTemplate.id}"]`,
     );
@@ -271,19 +277,21 @@ test.describe('Personalization Modal — Motion Studio template video', () => {
     console.log(`MOTION_TEMPLATES total: ${MOTION_TEMPLATES.length}`);
     console.log(`  with a preview MP4 URL: ${withPreview.length}`);
 
+    // Catalog-level counts: 150 shot clips upstream + 124 recipe cards in the
+    // grid. The 150-clip × upstream parity sweep (style match + JPEG posters)
+    // lives in `src/data/__tests__/motionRecipeCatalog.preview.test.ts` — it is
+    // a data check, not a browser check, and running 150 upstream reads here
+    // starves the playback tests in the same run.
     expect(MOTION_TEMPLATES.length).toBe(150);
     expect(withPreview.length).toBe(MOTION_TEMPLATES.length);
+    expect(MOTION_TEMPLATE_CARDS.length).toBe(124);
+    expect(MOTION_TEMPLATE_CARDS.filter((c) => Boolean(c.preview)).length).toBe(124);
 
     // Every preview must point at the same-origin ShotCraft proxy.
     for (const template of withPreview) {
       expect(template.preview).toMatch(/^\/api\/media\/shotcraft\/[a-z0-9][a-z0-9-]*\.mp4$/);
     }
 
-    // The full 150-clip integrity sweep (upstream style match + JPEG posters)
-    // lives in `src/data/__tests__/motionRecipeCatalog.preview.test.ts` — it is
-    // a data check, not a browser check, and running 150 upstream reads here
-    // starves the playback tests in the same run.
-    //
     // Here we only prove the PROXY path works end to end: a range GET must
     // return 206 with a real MP4 header, and an unknown key must 404/400
     // rather than serve something else.
