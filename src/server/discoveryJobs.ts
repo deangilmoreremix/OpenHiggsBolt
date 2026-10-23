@@ -1,12 +1,13 @@
 import { getSupabaseAdmin } from '@/lib/supabaseServer'
 
-export type DiscoveryJobStatus = 'queued' | 'running' | 'complete' | 'error'
+export type DiscoveryJobStatus = 'queued' | 'running' | 'complete' | 'error' | 'retrying'
 
 export interface DiscoveryJobRow {
   id: string
   clerk_user_id: string
   website_url: string
   status: DiscoveryJobStatus
+  claimed_by: string | null
   fast_result_json: unknown | null
   browser_result_json: unknown | null
   final_result_json: unknown | null
