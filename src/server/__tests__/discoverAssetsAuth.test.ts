@@ -14,10 +14,6 @@ vi.mock('@clerk/nextjs/server', () => ({
   auth: vi.fn(),
 }))
 
-// The route is now gated by requireApiEntitlement, which calls the
-// Supabase-backed resolveSmartVideoAccessForUser. Stub it at the module
-// boundary (the tests/proxy-routes.vitest.test.ts idiom) so tests can drive
-// the gate entitled/unentitled without a Supabase env.
 vi.mock('@/access/resolveAccess', () => ({
   resolveSmartVideoAccessForUser: vi.fn(async () => ({ hasSmartVideoGo: true })),
 }))
@@ -51,12 +47,9 @@ import { validatePersonalizationEnv } from '@/server/envValidation'
 import { createDiscoveryJob, updateDiscoveryJob } from '@/server/discoveryJobs'
 import { runFastDiscovery } from '@/server/discoveryOrchestrator'
 
-describe('POST /api/personalization/discover-assets auth', () => {
+describe('POST /api/personalization/discover-assets auth and dispatch', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Default: an entitled caller so only the cases that flip it exercise the
-    // unentitled path (clearAllMocks keeps implementations, so re-seed here to
-    // undo any prior test's hasSmartVideoGo:false override).
     vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: true } as any)
     vi.mocked(validatePersonalizationEnv).mockReturnValue({ valid: true } as any)
     vi.mocked(runFastDiscovery).mockResolvedValue({
@@ -95,19 +88,14 @@ describe('POST /api/personalization/discover-assets auth', () => {
     })
   })
 
-  async function post(websiteUrl: unknown) {
+  async function post(websiteUrl: unknown, headers: Record<string, string> = {}) {
     const req = new NextRequest('http://localhost/api/personalization/discover-assets', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...headers },
       body: JSON.stringify({ websiteUrl }),
     })
     return await POST(req)
   }
-
-  // -------------------------------------------------------------------------
-  // Unauthenticated: discovery is FREE, so an anonymous caller is allowed.
-  // Its jobs are scoped to the caller's IP — never one shared 'anon' bucket.
-  // -------------------------------------------------------------------------
 
   it('MUST ALLOW an unauthenticated caller (free feature), with IP-scoped jobs', async () => {
     vi.mocked(auth).mockResolvedValue({ userId: null } as any)
@@ -117,9 +105,6 @@ describe('POST /api/personalization/discover-assets auth', () => {
     const body = await res.json()
     expect(body.ok).toBe(true)
 
-    // The job must be scoped to the CALLER's identity: the caller's IP when
-    // one is present, and at worst a plain 'anon' bucket when the request
-    // carries no IP headers at all (as this mock's does).
     expect(createDiscoveryJob).toHaveBeenCalledTimes(1)
     const jobArg = (createDiscoveryJob as any).mock.calls[0][0]
     expect(jobArg.clerkUserId).toMatch(/^anon/)
@@ -143,38 +128,24 @@ describe('POST /api/personalization/discover-assets auth', () => {
     expect(body.ok).toBe(true)
   })
 
-  // -------------------------------------------------------------------------
-  // Authenticated: request proceeds normally and the job is owner-scoped
-  // -------------------------------------------------------------------------
-
   it('MUST ALLOW discovery when userId is present', async () => {
     vi.mocked(auth).mockResolvedValue({ userId: 'user-123' } as any)
 
     const res = await post('https://example.com')
-    // The route always accepts a discovery JOB and answers 202 with the job
-    // id, so a long scrape can never block the initial response.
     expect(res.status).toBe(202)
     const body = await res.json()
     expect(body.ok).toBe(true)
     expect(typeof body.jobId).toBe('string')
     expect(body.cached).toBe(false)
 
-    // Discovery pipeline must have run
     expect(runFastDiscovery).toHaveBeenCalledTimes(1)
     expect(createDiscoveryJob).toHaveBeenCalledTimes(1)
-
-    // jobId must be present in the response
     expect(body.jobId).toBeDefined()
 
-    // The persisted job is owned by the authenticated caller — never 'anon'.
     const jobArg = vi.mocked(createDiscoveryJob).mock.calls[0][0] as { clerkUserId: string }
     expect(jobArg.clerkUserId).toBe('user-123')
     expect(jobArg.clerkUserId).not.toBe('anon')
   })
-
-  // -------------------------------------------------------------------------
-  // URL length cap: reject instead of silently truncating
-  // -------------------------------------------------------------------------
 
   it('MUST REJECT a websiteUrl longer than MAX_WEBSITE_URL_LENGTH with 400', async () => {
     vi.mocked(auth).mockResolvedValue({ userId: 'user-123' } as any)
@@ -187,14 +158,6 @@ describe('POST /api/personalization/discover-assets auth', () => {
     expect(runFastDiscovery).not.toHaveBeenCalled()
   })
 
-  // -------------------------------------------------------------------------
-  // The entitlement gate owns the unauthenticated rejection now: it returns 401
-  // BEFORE the route's own auth stage, so re-point the historical "logs at the
-  // auth stage" assertion at the gate's observable behavior — a 401 body and no
-  // crawler/discovery side effects. The route's own auth-stage log no longer
-  // fires for these requests because requireApiEntitlement short-circuits first.
-  // -------------------------------------------------------------------------
-
   it('anonymous callers get the free discovery path with no auth side effects', async () => {
     vi.mocked(auth).mockResolvedValue({ userId: null } as any)
 
@@ -203,32 +166,22 @@ describe('POST /api/personalization/discover-assets auth', () => {
     const body = await res.json()
     expect(body.ok).toBe(true)
 
-    // Discovery ran: the free path is a real discovery, not a rejection.
     expect(runFastDiscovery).toHaveBeenCalledTimes(1)
     expect(createDiscoveryJob).toHaveBeenCalledTimes(1)
-    // And the job is IP-scoped when an IP is present ('anon' only when the
-    // request has no IP headers at all).
     const jobArg = (createDiscoveryJob as any).mock.calls[0][0]
     expect(jobArg.clerkUserId).toMatch(/^anon/)
   })
-
-  // -------------------------------------------------------------------------
-  // No entitlement gate: authenticated callers proceed to discovery
-  // -------------------------------------------------------------------------
 
   it('authenticated caller proceeds to discovery (no entitlement gate on free demo route)', async () => {
     vi.mocked(auth).mockResolvedValue({ userId: 'user-123' } as any)
     vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: false } as any)
 
     const res = await post('https://example.com')
-    // The route always accepts a discovery JOB and answers 202 with the job
-    // id, so a long scrape can never block the initial response.
     expect(res.status).toBe(202)
     const body = await res.json()
     expect(body.ok).toBe(true)
     expect(typeof body.jobId).toBe('string')
 
-    // Discovery pipeline ran because there is no entitlement gate on this route.
     expect(runFastDiscovery).toHaveBeenCalledTimes(1)
     expect(createDiscoveryJob).toHaveBeenCalledTimes(1)
   })

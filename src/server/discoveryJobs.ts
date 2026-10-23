@@ -89,6 +89,52 @@ export async function updateDiscoveryJob(id: string, input: UpdateDiscoveryJobIn
   return data as DiscoveryJobRow
 }
 
+export async function tryClaimDiscoveryJob(id: string, claimantId: string): Promise<DiscoveryJobRow | null> {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from('personalization_discovery_jobs')
+    .update({ status: 'running', started_at: new Date().toISOString(), claimed_by: claimantId })
+    .eq('id', id)
+    .eq('status', 'queued')
+    .select('*')
+    .single()
+
+  if (error || !data) {
+    return null
+  }
+
+  return data as DiscoveryJobRow
+}
+
+export async function updateDiscoveryJobIfOwner(id: string, claimantId: string, input: UpdateDiscoveryJobInput): Promise<DiscoveryJobRow | null> {
+  const supabase = getSupabaseAdmin()
+  const payload: Record<string, unknown> = {}
+
+  if (input.status) payload.status = input.status
+  if (input.startedAt !== undefined) payload.started_at = input.startedAt
+  if (input.completedAt !== undefined) payload.completed_at = input.completedAt
+  if (input.fastResult !== undefined) payload.fast_result_json = input.fastResult
+  if (input.browserResult !== undefined) payload.browser_result_json = input.browserResult
+  if (input.finalResult !== undefined) payload.final_result_json = input.finalResult
+  if (input.telemetry) payload.telemetry_json = input.telemetry
+  if (input.errorCode !== undefined) payload.error_code = input.errorCode
+  if (input.errorMessage !== undefined) payload.error_message = input.errorMessage
+
+  const { data, error } = await supabase
+    .from('personalization_discovery_jobs')
+    .update(payload)
+    .eq('id', id)
+    .eq('claimed_by', claimantId)
+    .select('*')
+    .single()
+
+  if (error || !data) {
+    return null
+  }
+
+  return data as DiscoveryJobRow
+}
+
 export async function getDiscoveryJobForUser(id: string, clerkUserId: string): Promise<DiscoveryJobRow | null> {
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase

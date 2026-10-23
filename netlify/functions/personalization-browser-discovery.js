@@ -1630,15 +1630,39 @@ function createBrowserDiscoveryHandler(overrides = {}) {
       }
 
       const startedAt = new Date().toISOString()
+      // Try to claim the job atomically - only if status is queued or running but not claimed
+      const { data: job, error: fetchError } = await supabase
+        .from('personalization_discovery_jobs')
+        .select('*')
+        .eq('id', jobId)
+        .single()
+
+      if (fetchError || !job) {
+        return jsonResponse(404, { error: 'Job not found' })
+      }
+
+      // Authorization, not just authentication: the session is verified, and
+      // the job it is about to drive must belong to that same user. A row that
+      // carries no owner column (legacy rows written before ownership was
+      // recorded) stays readable — refusing them would break existing jobs
+      // rather than close a hole.
+      const jobOwner = job.clerk_user_id || job.user_id || job.owner_id || null
+      if (jobOwner && auth.userId && jobOwner !== auth.userId) {
+        return jsonResponse(403, { error: 'This discovery job belongs to another user' })
+      }
+
+      // Only claim if not already completed/errored
+      if (job.status === 'complete' || job.status === 'error') {
+        return jsonResponse(200, { ok: true, jobId, alreadyComplete: true })
+      }
+
+      // Update to running with claim
       await supabase
         .from('personalization_discovery_jobs')
-        .update({ status: 'running', started_at: startedAt })
+        .update({ status: 'running', started_at: job.started_at || startedAt, claimed_by: 'browser-worker' })
         .eq('id', jobId)
-
-      const browserRuntimeMode = process.platform === 'darwin' ? 'local-mac' : 'netlify-linux'
-      const browserAvailable = true
-      const browserExecutableResolved = await getChromiumExecutablePath() || 'playwright-managed'
-      const browserLaunchStartedAt = new Date().toISOString()
+        .neq('status', 'complete')
+        .neq('status', 'error')
 
       let browserLaunchedAt = null
       let browserCandidates = 0
@@ -1715,6 +1739,8 @@ function createBrowserDiscoveryHandler(overrides = {}) {
             },
           })
           .eq('id', jobId)
+          .neq('status', 'complete')
+          .neq('status', 'error')
       } catch (err) {
         const errorCompletedAt = new Date().toISOString()
         browserDurationMs = new Date(errorCompletedAt).getTime() - new Date(browserLaunchStartedAt).getTime()
@@ -1746,6 +1772,8 @@ function createBrowserDiscoveryHandler(overrides = {}) {
             },
           })
           .eq('id', jobId)
+          .neq('status', 'complete')
+          .neq('status', 'error')
       } finally {
         if (browser) {
           try {

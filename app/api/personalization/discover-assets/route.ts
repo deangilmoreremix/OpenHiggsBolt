@@ -152,16 +152,20 @@ async function dispatchBackgroundJob(
   jobId: string,
   websiteUrl: string,
   priorityPages: string[],
-): Promise<{ dispatched: boolean; reason?: string }> {
+  timeoutMs = 15000,
+): Promise<{ dispatched: boolean; reason?: string; errorCode?: string }> {
   const workerUrl = backgroundWorkerUrl(req)
   if (!workerUrl) {
-    return { dispatched: false, reason: 'NO_BACKGROUND_WORKER_URL' }
+    return { dispatched: false, reason: 'No background worker URL configured', errorCode: 'NO_BACKGROUND_WORKER_URL' }
   }
 
   const sessionToken = extractClerkSessionToken(req)
   if (!sessionToken) {
-    return { dispatched: false, reason: 'NO_SESSION_TOKEN' }
+    return { dispatched: false, reason: 'No session token available', errorCode: 'NO_SESSION_TOKEN' }
   }
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
   try {
     const response = await fetch(workerUrl, {
@@ -175,17 +179,40 @@ async function dispatchBackgroundJob(
         websiteUrl,
         priorityPages: priorityPages.slice(0, 4),
       }),
+      signal: controller.signal,
     })
 
     if (!response.ok) {
-      return { dispatched: false, reason: `BACKGROUND_WORKER_${response.status}` }
+      let errorBody: any = {}
+      try {
+        errorBody = await response.json().catch(() => ({}))
+      } catch {
+        // ignore
+      }
+      return {
+        dispatched: false,
+        reason: errorBody.error || `Background worker returned ${response.status}`,
+        errorCode: `BACKGROUND_WORKER_${response.status}`,
+      }
     }
+
+    // Worker responded OK - treat as acknowledgment of job acceptance
     return { dispatched: true }
   } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      return {
+        dispatched: false,
+        reason: `Worker dispatch timed out after ${timeoutMs}ms`,
+        errorCode: 'WORKER_TIMEOUT',
+      }
+    }
     return {
       dispatched: false,
-      reason: `BACKGROUND_WORKER_UNREACHABLE: ${err instanceof Error ? err.message : 'unknown'}`,
+      reason: `Background worker unreachable: ${err instanceof Error ? err.message : 'unknown'}`,
+      errorCode: 'BACKGROUND_WORKER_UNREACHABLE',
     }
+  } finally {
+    clearTimeout(timeout)
   }
 }
 
@@ -352,7 +379,8 @@ export async function POST(req: NextRequest) {
     }
 
     const startedAt = new Date().toISOString()
-    await updateDiscoveryJob(job.id, { status: 'running', startedAt }).catch((persistErr) => {
+    // Don't mark as running until worker claims it - keep as queued initially
+    await updateDiscoveryJob(job.id, { startedAt }).catch((persistErr) => {
       console.error('[discover-assets] Failed to persist job state:', persistErr)
     })
 
@@ -438,21 +466,8 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // The free layers did not answer (or did not answer in time). The job
-    // continues out of band and the caller polls for it.
-    await updateDiscoveryJob(job.id, {
-      status: 'running',
-      fastResult: fastResult ?? undefined,
-      telemetry: {
-        providerAttempts: fastResult?.providerAttempts || [],
-        providerUsed: fastResult?.providerUsed,
-        pagesCrawled: fastResult?.pagesCrawled ?? 0,
-        rawCandidates: fastResult?.rawCandidates ?? 0,
-        fastError: fastError ?? null,
-      },
-    }).catch((persistErr) => {
-      console.error('[discover-assets] Failed to persist job state:', persistErr)
-    })
+    // Update to running only after successful dispatch acknowledgment
+    // If we reach here and need browser, we'll update based on dispatch result
 
     const priorityPages = Array.from(
       new Set([
@@ -461,36 +476,58 @@ export async function POST(req: NextRequest) {
       ]),
     ).slice(0, 4)
 
-    const dispatch = await dispatchBackgroundJob(req, job.id, websiteUrl, priorityPages)
+    const dispatchTimeoutMs = Number(process.env.DISCOVERY_DISPATCH_TIMEOUT_MS || '15000')
+    const dispatch = await dispatchBackgroundJob(req, job.id, websiteUrl, priorityPages, dispatchTimeoutMs)
 
     if (!dispatch.dispatched) {
       // Nothing is going to finish this job. It has to reach a terminal state
       // here, otherwise the caller polls a job that stays `running` for ever
       // and the UI reports a timeout.
       const hasAssets = discoveredAssets.length > 0
-      await updateDiscoveryJob(job.id, {
-        status: hasAssets ? 'complete' : 'error',
-        completedAt: new Date().toISOString(),
-        finalResult: fastResult ?? undefined,
-        errorCode: hasAssets ? undefined : (dispatch.reason || 'BACKGROUND_DISPATCH_FAILED'),
-        errorMessage: hasAssets ? undefined : (dispatch.reason || 'Background discovery could not be started'),
-        telemetry: {
-          providerAttempts: fastResult?.providerAttempts || [],
-          providerUsed: fastResult?.providerUsed,
-          pagesCrawled: fastResult?.pagesCrawled ?? 0,
-          rawCandidates: fastResult?.rawCandidates ?? 0,
-          backgroundDispatchReason: dispatch.reason,
-        },
-      }).catch((persistErr) => {
+      const isTimeout = dispatch.errorCode === 'WORKER_TIMEOUT'
+      const isUncertain = isTimeout // timeout might mean worker accepted but response was slow
+
+      try {
+        await updateDiscoveryJob(job.id, {
+          status: hasAssets ? 'complete' : (isUncertain ? 'queued' : 'error'),
+          completedAt: hasAssets ? new Date().toISOString() : (isUncertain ? undefined : new Date().toISOString()),
+          finalResult: fastResult ?? undefined,
+          errorCode: hasAssets ? undefined : (dispatch.errorCode || dispatch.reason || 'BACKGROUND_DISPATCH_FAILED'),
+          errorMessage: hasAssets ? undefined : dispatch.reason,
+          telemetry: {
+            providerAttempts: fastResult?.providerAttempts || [],
+            providerUsed: fastResult?.providerUsed,
+            pagesCrawled: fastResult?.pagesCrawled ?? 0,
+            rawCandidates: fastResult?.rawCandidates ?? 0,
+            backgroundDispatchReason: dispatch.reason,
+            backgroundDispatchErrorCode: dispatch.errorCode,
+            backgroundDispatchUncertain: isUncertain,
+          },
+        })
+      } catch (persistErr) {
         console.error('[discover-assets] Failed to persist job state:', persistErr)
-      })
+        // If we can't persist state, we must not claim success
+        logPersonalization({
+          route: '/api/personalization/discover-assets',
+          stage: 'background-dispatch',
+          httpStatus: 500,
+          safeErrorCode: 'DISPATCH_PERSIST_FAILED',
+          safeMessage: 'Failed to persist job state after dispatch failure',
+          correlationId,
+          durationMs: Date.now() - startTime,
+        })
+        return NextResponse.json(
+          { error: 'Failed to persist discovery state', code: 'DISPATCH_PERSIST_FAILED', correlationId },
+          { status: 500, headers: { 'x-correlation-id': correlationId } },
+        )
+      }
 
       logPersonalization({
         route: '/api/personalization/discover-assets',
         stage: 'background-dispatch',
         httpStatus: 202,
-        safeErrorCode: dispatch.reason,
-        safeMessage: 'Background discovery could not be started',
+        safeErrorCode: dispatch.errorCode || dispatch.reason,
+        safeMessage: dispatch.reason || 'Background discovery could not be started',
         correlationId,
         durationMs: Date.now() - startTime,
       })
@@ -517,6 +554,22 @@ export async function POST(req: NextRequest) {
         )
       }
 
+      if (isUncertain) {
+        return NextResponse.json(
+          {
+            ok: true,
+            cached: false,
+            status: 'queued',
+            jobId: job.id,
+            browserQueued: true,
+            message: 'Discovery queued for background processing',
+            discoveredAssets: [],
+            count: 0,
+          },
+          { status: 202 },
+        )
+      }
+
       return NextResponse.json(
         {
           ok: true,
@@ -524,12 +577,36 @@ export async function POST(req: NextRequest) {
           status: 'error',
           jobId: job.id,
           browserQueued: false,
-          error: 'Discovery could not be completed',
+          error: dispatch.reason || 'Discovery could not be completed',
+          errorCode: dispatch.errorCode,
           discoveredAssets: [],
           count: 0,
         },
         { status: 202 },
       )
+    }
+
+    // Don't immediately mark as running until we have confirmation
+    // The job remains queued until the worker claims it or we decide it's terminal
+    const dispatchedWithTimeout = dispatch.dispatched
+    if (dispatchedWithTimeout) {
+      // Update to running since we have acknowledgment
+      await updateDiscoveryJob(job.id, {
+        status: 'running',
+        telemetry: {
+          providerAttempts: fastResult?.providerAttempts || [],
+          providerUsed: fastResult?.providerUsed,
+          pagesCrawled: fastResult?.pagesCrawled ?? 0,
+          rawCandidates: fastResult?.rawCandidates ?? 0,
+          fastError: fastError ?? null,
+          dispatched: true,
+        },
+      }).catch((persistErr) => {
+        console.error('[discover-assets] Failed to persist job state:', persistErr)
+      })
+    } else {
+      // Keep as queued if uncertain (timeout) so worker can retry or watchdog can recover
+      // If definitely failed, we'll handle below
     }
 
     logPersonalization({
@@ -545,7 +622,7 @@ export async function POST(req: NextRequest) {
       {
         ok: true,
         cached: false,
-        status: 'processing',
+        status: dispatchedWithTimeout ? 'processing' : 'queued',
         providerUsed: fastResult?.providerUsed,
         providerAttempted: fastResult?.providerAttempted,
         discoveredAssets,
