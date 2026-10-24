@@ -8,6 +8,7 @@ import { StepChooseVideo } from './StepChooseVideo'
 import { StepPersonalize } from './StepPersonalize'
 import { StepPreviewApprove } from './StepPreviewApprove'
 import { C, badgeStyle, primaryButtonStyle, secondaryButtonStyle } from './tokens'
+import type { DiscoveredAsset } from '../types'
 
 const STEPS = [
   { step: 1 as const, label: 'Find your business' },
@@ -26,7 +27,12 @@ const STEPS = [
  * layout automatically in step 3, so the only real gates are a business on
  * step 1 and a video on step 2.
  */
-export function SimpleModeWizard(): React.JSX.Element {
+export function SimpleModeWizard({
+  onEditDiscoveredAsset,
+}: {
+  /** Opens the AI image editor on a discovered asset; omitted for anonymous sessions. */
+  onEditDiscoveredAsset?: (asset: DiscoveredAsset) => void
+} = {}): React.JSX.Element {
   const ctx = useDemoPersonalize()
   const {
     guidedStep = 1,
@@ -116,7 +122,7 @@ export function SimpleModeWizard(): React.JSX.Element {
 
       {/* ── Step body ───────────────────────────────────────────────────── */}
       <div style={{ minHeight: 380 }}>
-        {currentStep === 1 && <StepFindBusiness />}
+        {currentStep === 1 && <StepFindBusiness onEditAsset={onEditDiscoveredAsset} />}
         {currentStep === 2 && <StepChooseVideo />}
         {currentStep === 3 && (
           <StepPersonalize layoutChosenByUser={layoutChosenByUser} onChooseLayout={() => setLayoutChosenByUser(true)} />

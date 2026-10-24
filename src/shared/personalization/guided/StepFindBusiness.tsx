@@ -5,7 +5,8 @@ import { Building2, Globe, MapPin, Search, Star } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { BUSINESS_NICHES } from '../businessNiches'
 import { ownershipBadgeStyle, ownershipLabel } from '../ownershipBadge'
-import type { BusinessOwnership } from '../types'
+import type { BusinessOwnership, DiscoveredAsset } from '../types'
+import { isImageEditSupported } from '../image-editor/imageEditSupport'
 import { C, badgeStyle, hintStyle, inputStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
 
 const RADIUS_OPTIONS = [5, 15, 50]
@@ -28,7 +29,12 @@ function businessLabel(business: {
  * search local businesses, enter a website (the single website input in the
  * whole guided flow), or pick a saved business profile.
  */
-export function StepFindBusiness(): React.JSX.Element {
+export function StepFindBusiness({
+  onEditAsset,
+}: {
+  /** Opens the AI image editor on a discovered asset; omitted for anonymous sessions. */
+  onEditAsset?: (asset: DiscoveredAsset) => void
+} = {}): React.JSX.Element {
   const ctx = useDemoPersonalize()
   const {
     clientForm = {},
@@ -351,7 +357,11 @@ export function StepFindBusiness(): React.JSX.Element {
       )}
 
       {/* ── What we found ───────────────────────────────────────────────── */}
-      {businessName && (
+      {/* Shown whenever there is something to report. "Find business assets"
+          runs discovery from a typed website alone, with no business name, so
+          gating this panel on the name hid the found assets, the progress
+          badge and any error: the visitor saw nothing at all. */}
+      {(businessName || discoveredCount > 0 || discoveryStatus === 'discovering' || discoveryError) && (
         <div style={{ ...panelStyle, border: `1px solid ${C.cyanBorder}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <Building2 size={15} color={C.cyan} />
@@ -360,11 +370,16 @@ export function StepFindBusiness(): React.JSX.Element {
             </h3>
             {discoveryStatus === 'discovering' && <span style={badgeStyle('cyan')}>Finding assets…</span>}
           </div>
+          {discoveryError && discoveredCount === 0 && (
+            <p role="alert" style={{ margin: '0 0 10px', color: C.danger, fontSize: 12 }}>{discoveryError}</p>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 10 }}>
-            <div>
-              <div style={labelStyle}>Business</div>
-              <div style={{ color: C.text, fontSize: 13, fontWeight: 700 }}>{businessName}</div>
-            </div>
+            {businessName && (
+              <div>
+                <div style={labelStyle}>Business</div>
+                <div style={{ color: C.text, fontSize: 13, fontWeight: 700 }}>{businessName}</div>
+              </div>
+            )}
             {clientForm.industry && (
               <div>
                 <div style={labelStyle}>Industry</div>
@@ -462,9 +477,19 @@ export function StepFindBusiness(): React.JSX.Element {
                           style={{ color: C.muted2, fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                           title={asset.sourceUrl}
                         >
-                          {asset.sourceUrl.replace(/^https?:\/\//, '').slice(0, 48)}
+                          {(asset.sourceUrl || asset.previewUrl || '').replace(/^https?:\/\//, '').slice(0, 48)}
                         </div>
                       </div>
+                      {onEditAsset && isImageEditSupported(asset) && (
+                        <button
+                          type="button"
+                          aria-label={`Edit ${asset.category} with AI`}
+                          onClick={() => onEditAsset(asset)}
+                          style={{ ...secondaryButtonStyle, minHeight: 28, padding: '0 10px', color: C.cyan, borderColor: C.cyanBorder }}
+                        >
+                          Edit with AI
+                        </button>
+                      )}
                       <button
                         type="button"
                         aria-label={asset.selected ? 'Deselect' : 'Select'}

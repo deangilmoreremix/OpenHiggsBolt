@@ -75,3 +75,6 @@ storage/request_queues/
 
 # Supabase CLI local state (changes on every CLI run)
 supabase/.temp/
+
+# Built by scripts/build-fast-discovery.mjs (runs in prebuild)
+netlify/lib/fast-discovery.cjs

@@ -3561,8 +3561,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       const browserQueued = Boolean(data?.browserQueued)
       const responseStatus = typeof data?.status === 'string' ? data.status : (res.status === 202 ? 'processing' : 'complete')
 
-      // If background discovery is queued, show fast assets and poll for completion
-      if (jobId && (responseStatus === 'processing' || browserQueued)) {
+      // If background discovery is queued, show fast assets and poll for completion.
+      // 'pending' means the job was accepted but the background worker has not
+      // started yet — poll just the same.
+      if (jobId && (responseStatus === 'processing' || responseStatus === 'pending' || browserQueued)) {
         if (discoveredAssets.length > 0) {
           setDiscoveredAssetsState(discoveredAssets)
           setDiscoveryStatus('reviewing')
@@ -3657,7 +3659,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           setDiscoveryStatus('idle')
         }
 
-        pollStatus()
+        // Awaited so the caller's "busy" state lasts until the job finishes.
+        // Returning early re-enabled the button mid-poll, so every extra click
+        // started another discovery job.
+        await pollStatus()
         return
       }
 
