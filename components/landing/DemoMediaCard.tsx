@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useRef, useState, type PointerEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import LazyVideo from './LazyVideo';
 import Reveal from './Reveal';
@@ -38,15 +38,25 @@ export default function DemoMediaCard({
     router.push(`/demo/${demo.slug}`)
   }, [demo.slug, router])
 
+  // Feeds the cursor position to the hover spotlight (CSS vars, no re-render).
+  const trackSpotlight = useCallback((event: PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== 'mouse') return
+    const el = event.currentTarget
+    const r = el.getBoundingClientRect()
+    el.style.setProperty('--fx-x', `${event.clientX - r.left}px`)
+    el.style.setProperty('--fx-y', `${event.clientY - r.top}px`)
+  }, [])
+
   return (
     <Reveal
       as="article"
       delay={Math.min(index, 8) * 60}
-      className="group flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02] transition duration-300 hover:border-white/20 hover:bg-white/[0.04]"
+      className="fx-card-glow group flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02] transition duration-300 hover:border-white/20 hover:bg-white/[0.04]"
       onClick={openDetail}
     >
+      <div className="fx-card flex flex-1 flex-col" onPointerMove={trackSpotlight}>
       {/* Media */}
-      <div className="relative">
+      <div className="fx-card-media relative">
         <LazyVideo
           src={demo.videoSrc}
           poster={demo.posterSrc}
@@ -56,6 +66,7 @@ export default function DemoMediaCard({
           className={`${aspectClassName} w-full`}
           objectFit={objectFit}
         />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/45 to-transparent" />
         <span className="glass-panel absolute left-3 top-3 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white/90">
           {badge ?? demo.category}
         </span>
@@ -92,6 +103,7 @@ export default function DemoMediaCard({
             />
           )}
         </div>
+      </div>
       </div>
     </Reveal>
   );
