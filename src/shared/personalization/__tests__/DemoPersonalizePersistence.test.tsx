@@ -343,6 +343,62 @@ describe('DemoPersonalizeProvider debounced project persistence', () => {
     expect(writes[1].project.id).toBe(INSERTED_ID)
   })
 
+  it('a restore response from an earlier session is discarded', async () => {
+    const SOURCE_B = { ...SOURCE, id: 'demo-persist-B', title: 'Source B' }
+    const ROW_A = 'aaaaaaaa-0000-4000-8000-00000000000a'
+    const ROW_B = 'bbbbbbbb-0000-4000-8000-00000000000b'
+    const savedRow = (id: string, sourceDemoId: string, prompt: string) => ({
+      ok: true,
+      data: {
+        id,
+        sourceType: 'go-ai-viral-video',
+        sourceDemoId,
+        originalPrompt: 'Original prompt',
+        personalizedPrompt: prompt,
+        identityAssetIds: [],
+        logoAssetIds: [],
+        productAssetIds: [],
+        brandReferenceAssetIds: [],
+        outputUrls: [],
+        outputType: 'video',
+      },
+    })
+    let resolveA!: (value: unknown) => void
+    persistenceSpy.loadProject.mockImplementation(({ sourceId }: { sourceId: string }) =>
+      sourceId === SOURCE.id
+        ? new Promise((resolve) => { resolveA = resolve })
+        : Promise.resolve(savedRow(ROW_B, SOURCE_B.id, 'Prompt B')),
+    )
+    await mount()
+    await act(async () => {
+      ctx().openPersonalize({ source: SOURCE })
+    })
+    await act(async () => {
+      ctx().closePersonalize()
+    })
+    await act(async () => {
+      ctx().openPersonalize({ source: SOURCE_B })
+    })
+    await settle()
+    fetchMock.mockClear()
+
+    // Source A's restore finally answers — after B is open and restored.
+    await act(async () => {
+      resolveA(savedRow(ROW_A, SOURCE.id, 'Prompt A'))
+    })
+    await settle()
+    expect(ctx().promptState.personalized).toBe('Prompt B')
+
+    await act(async () => {
+      ctx().updatePersonalizedPrompt('edit on B')
+    })
+    await settle()
+    const writes = projectWrites()
+    expect(writes).toHaveLength(1)
+    expect(writes[0].project.id).toBe(ROW_B)
+    expect(writes[0].project.source).toMatchObject({ id: SOURCE_B.id })
+  })
+
   it('anonymous sessions never persist', async () => {
     await mount('anonymous')
     await open()
