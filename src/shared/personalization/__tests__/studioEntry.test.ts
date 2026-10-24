@@ -14,6 +14,7 @@ import { normalizePersonalizationSource } from '../sourceNormalizer'
 import {
   assertStudioPersonalizeOptions,
   buildStudioPersonalizeSource,
+  fingerprint,
   type StudioPersonalizeOptions,
 } from '../studioEntry'
 
@@ -84,6 +85,26 @@ describe('buildStudioPersonalizeSource', () => {
     expect(normalizePersonalizationSource(source)).not.toBeNull()
   })
 
+  it('defaults an image hand-off poster to the image itself, so the composition can draw it', () => {
+    const image = buildStudioPersonalizeSource(
+      videoOptions({
+        originStudio: 'image',
+        media: { mediaType: 'image', url: 'https://cdn.example.test/frame.png' },
+      }),
+    )
+    expect(image.poster).toBe('https://cdn.example.test/frame.png')
+
+    // An explicit poster still wins, and a video without one stays null.
+    const withPoster = buildStudioPersonalizeSource(
+      videoOptions({
+        originStudio: 'image',
+        media: { mediaType: 'image', url: 'https://cdn.example.test/frame.png', poster: 'https://cdn.example.test/thumb.png' },
+      }),
+    )
+    expect(withPoster.poster).toBe('https://cdn.example.test/thumb.png')
+    expect(buildStudioPersonalizeSource(videoOptions()).poster ?? null).toBeNull()
+  })
+
   it('maps the prompt and model context through', () => {
     const source = buildStudioPersonalizeSource(videoOptions())
 
@@ -123,8 +144,8 @@ describe('buildStudioPersonalizeSource', () => {
     const b = buildStudioPersonalizeSource(videoOptions({ studioProjectId: 'project-b' }))
 
     expect(a.id).not.toBe(b.id)
-    expect(a.id).toBe('video:project-a')
-    expect(b.id).toBe('video:project-b')
+    expect(a.id).toBe(`video:project-a#${fingerprint('https://cdn.example.test/clip.mp4')}`)
+    expect(b.id).toBe(`video:project-b#${fingerprint('https://cdn.example.test/clip.mp4')}`)
   })
 
   it('produces a unique id per origin studio', () => {
@@ -136,8 +157,23 @@ describe('buildStudioPersonalizeSource', () => {
     )
 
     expect(video.id).not.toBe(image.id)
-    expect(video.id).toBe('video:shared-key')
-    expect(image.id).toBe('image:shared-key')
+    expect(video.id.startsWith('video:shared-key#')).toBe(true)
+    expect(image.id.startsWith('image:shared-key#')).toBe(true)
+  })
+
+  it('separates two uploads that share a studio key, and keeps one upload stable', () => {
+    const first = buildStudioPersonalizeSource(
+      videoOptions({ studioProjectId: 'clip.mp4:seedance', media: { mediaType: 'video', url: 'https://cdn.example.test/u/1/clip.mp4' } }),
+    )
+    const second = buildStudioPersonalizeSource(
+      videoOptions({ studioProjectId: 'clip.mp4:seedance', media: { mediaType: 'video', url: 'https://cdn.example.test/u/2/clip.mp4' } }),
+    )
+    const again = buildStudioPersonalizeSource(
+      videoOptions({ studioProjectId: 'clip.mp4:seedance', media: { mediaType: 'video', url: 'https://cdn.example.test/u/1/clip.mp4' } }),
+    )
+    expect(first.id).not.toBe(second.id)
+    expect(again.id).toBe(first.id)
+    expect(fingerprint('abc')).toMatch(/^[0-9a-f]{8}$/)
   })
 
   it('falls back to the media url when no studio project id is given', () => {

@@ -103,7 +103,7 @@ const ARTIFACT_DIR = path.join(process.cwd(), 'test-results', 'remotion-export')
 const SCREENSHOT_DIR = path.join(process.cwd(), 'docs', 'screenshots', 'phase-3');
 
 /** The OFL typeface notice the Wave 1 credit line must carry. */
-const OFL_TYPEFACE_NOTICE = 'Typeface: Personalization Sans (bundled Inter 4.001 subset, SIL OFL 1.1) © 2016 The Inter Project Authors';
+const OFL_TYPEFACE_NOTICE = 'Typeface: Inter (SIL OFL 1.1)';
 
 /** The minimum number of designs the registry must expose (5 + 10 + 4). */
 const MIN_REGISTRY_DESIGNS = 19;

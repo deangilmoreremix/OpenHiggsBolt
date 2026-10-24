@@ -3,6 +3,7 @@
  */
 
 import type { BusinessDiscoveryRecord } from './types'
+import { scoreBusiness } from './businessScoring'
 
 export function deduplicateBusinesses(
   businesses: BusinessDiscoveryRecord[],
@@ -48,38 +49,55 @@ function scoreRecord(record: BusinessDiscoveryRecord): number {
   return score
 }
 
+// Lifecycle tags that explicitly mark a business as closed. Mirrors the
+// CLOSED_LIFEcycle_TAGS check in overpassProvider but operates on already
+// normalized records (via rawSource) instead of raw OSM elements.
+const CLOSED_RAW_TAG_BASES = [
+  'closed',
+  'abandoned',
+  'disused',
+  'demolished',
+  'razed',
+  'removed',
+  'vacant',
+]
+
+function isExplicitlyClosed(record: BusinessDiscoveryRecord): boolean {
+  const raw = record.rawSource
+  if (!raw) return false
+  for (const key of Object.keys(raw)) {
+    const base = key.split(':')[0]
+    if (CLOSED_RAW_TAG_BASES.includes(base)) {
+      const value = raw[key]
+      if (value === 'yes' || value === '1' || value === true) return true
+    }
+  }
+  return false
+}
+
+/**
+ * Drops only records explicitly marked closed (OSM lifecycle tags on
+ * rawSource). Records with websiteStatus 'not_found_after_research' are
+ * RETAINED: a business whose website could not be found is still a reachable
+ * prospect, not a closed one. The route does not currently call this, but
+ * callers should apply it BEFORE scoring/enrichment.
+ */
 export function filterClosedBusinesses(
   businesses: BusinessDiscoveryRecord[],
 ): BusinessDiscoveryRecord[] {
-  return businesses.filter((b) => b.websiteStatus !== 'not_found_after_research')
+  return businesses.filter((b) => !isExplicitlyClosed(b))
 }
 
+/**
+ * Enriches a record with its scores.
+ *
+ * Delegates to the shared scorer so the score the client sees is the score the
+ * results were ranked by — the normalizer used to recompute a legacy
+ * activity-only lead score after the sorter had set the composite, silently
+ * replacing it.
+ */
 export function enrichBusinessRecord(
   record: BusinessDiscoveryRecord,
 ): BusinessDiscoveryRecord {
-  // Calculate a simple activity score based on available data
-  let activityScore = 0
-  if (record.phone) activityScore += 20
-  if (record.website) activityScore += 20
-  if (record.email) activityScore += 10
-  if (record.openingHours) activityScore += 15
-  if (record.facebook || record.instagram) activityScore += 15
-  if (record.address) activityScore += 10
-  if (record.latitude != null && record.longitude != null) activityScore += 10
-
-  // Cap at 100
-  activityScore = Math.min(activityScore, 100)
-
-  // Calculate lead score
-  let leadScore = activityScore
-  if (record.website) leadScore += 10
-  if (record.phone && record.website) leadScore += 10
-
-  leadScore = Math.min(leadScore, 100)
-
-  return {
-    ...record,
-    activityScore,
-    leadScore,
-  }
+  return scoreBusiness(record)
 }

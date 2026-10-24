@@ -64,7 +64,7 @@ import {
   RVE_CATALOG_ENTRIES,
   RVE_LICENSE_NOTICE,
 } from './designs/rveCatalogEntries'
-import { DESIGN_FONT_ATTRIBUTION, DESIGN_FONT_LICENSE_FILE } from './typography'
+import { DESIGN_FONT_ALIAS_NOTE, DESIGN_FONT_ATTRIBUTION, DESIGN_FONT_LICENSE_FILE } from './typography'
 
 // The typeface constants are re-exported from the catalog lane (like the
 // repo-2 notices above), so the product's credits surface can reach every
@@ -167,7 +167,7 @@ export function getRemotionDesignLicenseNotice(): string {
   // The typeface notice (Phase 3 decision D2): OFL 1.1 clause 2 requires the
   // licence to accompany every copy of the font, so the credits surface
   // points at the shipped licence file.
-  return `${REMOTION_DESIGN_LICENSE_NOTICE}\n\n${RVE_LICENSE_NOTICE}\n\nTypeface licence: the bundled Inter subset is distributed under the SIL Open Font License 1.1 (Copyright 2016 The Inter Project Authors). The full licence text ships at ${DESIGN_FONT_LICENSE_FILE}.`
+  return `${REMOTION_DESIGN_LICENSE_NOTICE}\n\n${RVE_LICENSE_NOTICE}\n\nTypeface licence: the bundled Inter subset is distributed under the SIL Open Font License 1.1 (Copyright 2016 The Inter Project Authors). The full licence text ships at ${DESIGN_FONT_LICENSE_FILE}. ${DESIGN_FONT_ALIAS_NOTE}`
 }
 
 /* -------------------------------------------------------------------------- */
@@ -482,6 +482,11 @@ export const visualEffectTemplate: RemotionDesignTemplate = {
  * Unlike `bokeh-circles` the upstream uses no `mix-blend-mode` and no
  * `filter`, so the stacking context a scale-wrapper would create could not
  * confine anything.
+ *
+ * Local adapter customization (Phase 3, finding F2): the adapter renders a
+ * local derivative of the upstream with 3–7 px star cores instead of the
+ * upstream's 1–3.5 px, so the stars keep their colour through H.264 export.
+ * The frozen upstream file is unmodified; see `designs/StarfieldWarpDesign.tsx`.
  */
 export const starfieldWarpTemplate: RemotionDesignTemplate = {
   id: 'starfield-warp',
@@ -514,7 +519,9 @@ export const starfieldWarpTemplate: RemotionDesignTemplate = {
     notes:
       'Renders in the browser export path: plain CSS gradients and box-shadows only — no filter, ' +
       'no blend mode, no staticFile, no media components. The effect is full-frame (scale 1, ' +
-      'animation none) and the upstream label stays undefined, so no demo text can appear.',
+      'animation none) and no label is drawn, so no demo text can appear. Local adapter ' +
+      'customization: star cores are 3–7 px (upstream 1–3.5 px) so they survive H.264 ' +
+      'quantisation in the exported MP4; the frozen upstream file is unmodified.',
   },
   previewCompatible: true,
 }

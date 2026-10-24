@@ -1,6 +1,7 @@
 import { createGroupedVideoRegistry } from "./groupedVideoRegistry.js";
 
 export const MINIMAX_FAMILY_NAMES = Object.freeze({
+  "minimax-h3-max": "MiniMax H3 Max",
   "minimax-h3": "MiniMax H3",
   "minimax-hailuo-2.3": "Hailuo 2.3",
   "minimax-hailuo-02": "Hailuo 02",
@@ -15,6 +16,7 @@ const FACET_OPTIONS = Object.freeze({
   speed: [
     { value: "standard", label: "Standard" },
     { value: "fast", label: "Fast" },
+    { value: "turbo", label: "Turbo" },
   ],
 });
 const FACET_LABELS = Object.freeze({ profile: "Customization", speed: "Speed" });
@@ -50,6 +52,12 @@ const registry = createGroupedVideoRegistry({
     register("minimax-h3-image-to-video-spicy", "minimax-h3", ["animate_image", "keyframes"], {
       profile: "spicy", service: "open",
     });
+
+    register("minimax-h3-max-text-to-video", "minimax-h3-max", [null]);
+    register("minimax-h3-max-image-to-video", "minimax-h3-max", ["animate_image", "keyframes"]);
+    register("minimax-h3-max-reference-to-video", "minimax-h3-max", ["references"]);
+    register("minimax-h3-max-turbo-text-to-video", "minimax-h3-max", [null], { speed: "turbo" });
+    register("minimax-h3-max-turbo-image-to-video", "minimax-h3-max", ["animate_image", "keyframes"], { speed: "turbo" });
   },
 });
 

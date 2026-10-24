@@ -1240,7 +1240,11 @@ describe('DemoPersonalizeProvider asset import / durable upload', () => {
     expect(ctx.discoveryError).toMatch(/1 of 2 asset\(s\) failed to upload/)
     expect(ctx.importConfirmation).toBeTruthy()
     expect(ctx.importConfirmation.failedCount).toBe(1)
-    expect(ctx.importConfirmation.count).toBe(1)
+    // `count` reports every asset that was ADDED to the session library —
+    // both of them are usable for personalization even though only one could
+    // be stored durably. The upload failure is reported separately via
+    // `failedCount` and `discoveryError`.
+    expect(ctx.importConfirmation.count).toBe(2)
 
     const allAssets = [
       ...ctx.assets.identities,

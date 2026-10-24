@@ -13,8 +13,8 @@ import { NextRequest, NextResponse } from 'next/server';
  *      so any `fetch()`-based media loader is rejected. The Remotion player
  *      (mediabunny `UrlSource`) slices the clip with `fetch()` + `Range`
  *      requests, so it fails outright.
- *   2. CSP — `connect-src` would have to allow `github.com` for that fetch,
- *      which would widen the app's outbound allow-list for every page.
+ *   2. CSP — `connect-src` would have to allow the upstream host for that
+ *      fetch, which would widen the app's outbound allow-list for every page.
  *
  * Proxying through this route fixes both: the browser only ever talks to its
  * own origin, so there is no CORS pre-flight and no new CSP origin is needed
@@ -22,12 +22,30 @@ import { NextRequest, NextResponse } from 'next/server';
  * route never generates, re-encodes or substitutes a video.
  *
  * `Range` support is forwarded verbatim so the player can seek.
+ *
+ * WHICH UPSTREAM
+ * --------------
+ * The clips are published twice: as GitHub release assets under the
+ * `gallery-media` tag, and as the published site media at
+ * `vincentwei1021.github.io/video-shotcraft/media`. The two are NOT always the
+ * same bytes: upstream re-uploads a clip when it is revised, and the release
+ * asset is frozen at the time of the release. A byte-level comparison of the
+ * current catalogue (150 style keys) found the release mirror serving the
+ * OLDER cut for re-uploaded clips (e.g. `basic-3d-scene`, `multiplane`,
+ * `split-text-stagger`) while the site origin serves the current one, and the
+ * release mirror also sends `application/octet-stream` where the site origin
+ * sends `video/mp4`.
+ *
+ * The site origin is therefore the primary source of truth here, and the
+ * release asset is kept as a fallback so a single upstream outage cannot take
+ * the whole Motion Studio library offline. Both origins carry all 150 clips.
  */
 
-// The upstream base is a compile-time constant. The request path only ever
-// selects a file name inside it, so this route cannot be pointed at another
+// The upstream bases are compile-time constants. The request path only ever
+// selects a file name inside them, so this route cannot be pointed at another
 // host (no SSRF surface).
-const UPSTREAM_RELEASE_BASE =
+const UPSTREAM_PRIMARY_BASE = 'https://vincentwei1021.github.io/video-shotcraft/media';
+const UPSTREAM_FALLBACK_BASE =
   'https://github.com/Vincentwei1021/video-shotcraft/releases/download/gallery-media';
 
 /** Only lowercase kebab-case style keys are accepted (e.g. `basic-3d-scene`). */
@@ -36,14 +54,14 @@ const STYLE_KEY_PATTERN = /^[a-z0-9][a-z0-9-]{0,80}$/;
 /**
  * Hosts the upstream redirect chain is allowed to reach.
  *
- * GitHub serves release assets from `github.com` and redirects to
- * `release-assets.githubusercontent.com` (an Azure-backed asset CDN). The
- * redirect is followed manually so that every hop is validated BEFORE the
- * request is made — `redirect: 'follow'` would let an unexpected `Location`
- * aim the server at an arbitrary host.
+ * The site origin serves the media directly. The fallback release asset is
+ * served by `github.com`, which redirects to `release-assets.githubusercontent.com`
+ * (an Azure-backed asset CDN). Redirects are followed manually so that every
+ * hop is validated BEFORE the request is made — `redirect: 'follow'` would let
+ * an unexpected `Location` aim the server at an arbitrary host.
  */
-const ALLOWED_UPSTREAM_HOSTS = ['github.com'];
-const ALLOWED_UPSTREAM_HOST_SUFFIXES = ['.githubusercontent.com'];
+const ALLOWED_UPSTREAM_HOSTS = ['github.com', 'vincentwei1021.github.io'];
+const ALLOWED_UPSTREAM_HOST_SUFFIXES = ['.githubusercontent.com', '.github.io'];
 
 function isAllowedUpstreamHost(hostname: string): boolean {
   const host = hostname.toLowerCase();
@@ -65,7 +83,7 @@ export async function GET(
   const { styleKey } = await params;
 
   // The catalog stores the URL as `/api/media/shotcraft/<styleKey>.mp4`; the
-  // upstream release asset is `<styleKey>.mp4`, so an optional extension on
+  // upstream file is `<styleKey>.mp4`, so an optional extension on
   // the incoming path is stripped before validation.
   const key = typeof styleKey === 'string' ? styleKey.replace(/\.mp4$/i, '') : '';
 
@@ -73,7 +91,11 @@ export async function GET(
     return NextResponse.json({ error: 'Invalid media key' }, { status: 400 });
   }
 
-  const upstreamUrl = `${UPSTREAM_RELEASE_BASE}/${key}.mp4`;
+  // Primary first (current upstream bytes), release asset as the fallback.
+  const upstreamCandidates = [
+    `${UPSTREAM_PRIMARY_BASE}/${key}.mp4`,
+    `${UPSTREAM_FALLBACK_BASE}/${key}.mp4`,
+  ];
 
   // Forward the client's Range header so the player can seek, and ask the
   // upstream for the exact bytes requested.
@@ -84,12 +106,29 @@ export async function GET(
   // One deadline for the whole redirect chain, not one per hop.
   const signal = AbortSignal.timeout(30_000);
 
-  let upstream: Response;
-  try {
-    upstream = await fetchUpstream(upstreamUrl, headers, signal);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Upstream fetch failed';
-    return NextResponse.json({ error: message }, { status: 502 });
+  let upstream: Response | null = null;
+  let failureMessage = 'Upstream fetch failed';
+
+  for (let i = 0; i < upstreamCandidates.length; i += 1) {
+    const candidate = upstreamCandidates[i];
+    const isLastCandidate = i === upstreamCandidates.length - 1;
+
+    try {
+      const response = await fetchUpstream(candidate, headers, signal);
+      upstream = response;
+
+      // A miss (unknown key), an unsatisfiable range or an upstream fault is
+      // worth retrying against the other origin — but only when one is left.
+      const retryable = response.status === 404 || response.status === 416 || response.status >= 500;
+      if (!retryable || isLastCandidate) break;
+    } catch (err) {
+      failureMessage = err instanceof Error ? err.message : 'Upstream fetch failed';
+      if (isLastCandidate) break;
+    }
+  }
+
+  if (!upstream) {
+    return NextResponse.json({ error: failureMessage }, { status: 502 });
   }
 
   // A 4xx from the upstream is a client-visible condition and must not be
@@ -107,9 +146,10 @@ export async function GET(
   }
 
   const responseHeaders = new Headers();
-  // The upstream release assets are served as `application/octet-stream`. This
-  // route only ever serves MP4s, so the real media type is declared explicitly
-  // rather than forwarded — the player needs to know it is a video.
+  // The site origin serves `video/mp4`; the release-asset fallback serves
+  // `application/octet-stream`. This route only ever serves MP4s, so the real
+  // media type is declared explicitly rather than forwarded — the player needs
+  // to know it is a video.
   responseHeaders.set('Content-Type', 'video/mp4');
   responseHeaders.set('Accept-Ranges', upstream.headers.get('accept-ranges') || 'bytes');
 
@@ -125,8 +165,12 @@ export async function GET(
   const contentRange = upstream.headers.get('content-range');
   if (contentRange) responseHeaders.set('Content-Range', contentRange);
 
-  // Release assets are immutable, so the CDN can hold them indefinitely.
-  responseHeaders.set('Cache-Control', 'public, max-age=31536000, immutable');
+  // Upstream re-uploads a clip under the same file name when it is revised
+  // (the release mirror is frozen at release time, the site origin is not), so
+  // a long `immutable` TTL would pin a stale cut in the CDN for a year. One
+  // hour plus stale-while-revalidate keeps the previews fast while still
+  // picking up an upstream revision within the hour.
+  responseHeaders.set('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
 
   return new Response(upstream.body, {
     status: upstream.status === 206 ? 206 : 200,

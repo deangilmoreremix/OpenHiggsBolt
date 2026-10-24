@@ -209,18 +209,22 @@ export async function POST(req: NextRequest) {
 
     const { userId } = await auth()
     // S7: anonymous callers used to fall through to `clerkUserId: userId || 'anon'`,
-    // which persisted discovery jobs under a single shared anonymous identity.
-    // Discovery is an authenticated feature: no session, no job.
+    // which persisted discovery jobs under a single shared anonymous identity —
+    // every anonymous visitor shared one job bucket. Asset discovery is FREE, so
+    // an anonymous caller is allowed, but its jobs are scoped to the caller's IP
+    // (the same per-caller identity the demo route's quota uses) instead of one
+    // shared 'anon' bucket. Signed-in callers keep their per-user scope.
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.headers.get('x-real-ip') || undefined
+    const jobOwnerId = userId || (clientIp ? `anon-${clientIp}` : 'anon')
     if (!userId) {
       logPersonalization({
         route: '/api/personalization/discover-assets',
         stage: 'auth',
-        httpStatus: 401,
-        safeErrorCode: 'UNAUTHORIZED',
-        safeMessage: 'Missing authenticated session',
+        httpStatus: 200,
+        safeErrorCode: 'ANONYMOUS_DISCOVERY',
+        safeMessage: 'Discovery proceeding without a session (free feature)',
         correlationId,
       })
-      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
     }
     const body = await req.json().catch(() => ({}))
     const rawWebsiteUrl = typeof body?.websiteUrl === 'string' ? body.websiteUrl : ''
@@ -254,8 +258,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid website URL format' }, { status: 400 })
     }
 
-    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.headers.get('x-real-ip') || undefined
-    const rateLimitKey = userId || clientIp || 'anon'
+    const rateLimitKey = jobOwnerId
     const rateLimit = checkRateLimit(rateLimitKey)
     if (!rateLimit.allowed) {
       logPersonalization({
@@ -280,9 +283,9 @@ export async function POST(req: NextRequest) {
     let job: DiscoveryJobRow
     try {
       job = await createDiscoveryJob({
-        clerkUserId: userId,
+        clerkUserId: jobOwnerId,
         websiteUrl,
-        telemetry: { startedAt: new Date().toISOString() },
+        telemetry: { startedAt: new Date().toISOString(), anonymous: !userId },
       })
     } catch (err) {
       logPersonalization({
@@ -590,12 +593,14 @@ export async function GET(req: NextRequest) {
   }
 
   const { userId } = await auth()
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  // Same per-caller scope as the POST: signed-in users read their own jobs,
+  // anonymous callers read the jobs scoped to their IP (never one shared
+  // 'anon' bucket — see the POST handler).
+  const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.headers.get('x-real-ip') || undefined
+  const jobOwnerId = userId || (clientIp ? `anon-${clientIp}` : 'anon')
 
   // Owner-scoped lookup: a job that belongs to somebody else is not found.
-  const job = await getDiscoveryJobForUser(jobId, userId)
+  const job = await getDiscoveryJobForUser(jobId, jobOwnerId)
   if (!job) {
     return NextResponse.json({ error: 'Job not found' }, { status: 404 })
   }

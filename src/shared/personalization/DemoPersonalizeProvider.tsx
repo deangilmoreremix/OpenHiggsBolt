@@ -93,7 +93,7 @@ import { cancelActiveExport } from './webExport'
 import { persistEditedPersonalizationAsset } from './editedAssetPersistence'
 
 import { normalizeUrl, TRACKING_PARAMS } from './urlNormalizer'
-import { createProjectPersistence, loadProject, type LoadProjectResult, type PersonalizationProjectState } from './supabaseProjectPersistence'
+import { createProjectPersistence, durableAssetUrls, loadProject, resolveRestoredAssetUrl, type LoadProjectResult, type PersonalizationProjectState } from './supabaseProjectPersistence'
 import { buildPreviewInput } from './guided/buildPreviewInput'
 import { chooseFinalOutputPath } from './finalOutput'
 import {
@@ -1488,8 +1488,8 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     releaseAllOwnedBlobUrls(ownedSavedBlobUrlsRef.current, revokedBlobUrlsRef.current, liveBlobUrlCounts())
   }, [savedClientAssets, liveBlobUrlCounts])
 
-  // Single builder for the persisted project payload, shared by both debounced
-  // persist effects below and by the immediate flush on approval so they can
+  // Single builder for the persisted project payload, shared by the debounced
+  // persist effect below and by the immediate flush on approval so they can
   // never drift. The payload is purely additive over the previous fields.
   const buildProjectPayload = useCallback((): PersonalizationProjectState => ({
     // Which surface opened the modal. A studio hand-off records its own slug;
@@ -1510,6 +1510,20 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     brandReferenceAssetIds: assets.brandReferences.map((b) => b.id),
     firstFrameAssetId: assets.firstFrame?.id || null,
     lastFrameAssetId: assets.lastFrame?.id || null,
+    // The id lists alone cannot be restored; persist each asset's durable URL
+    // next to its id (blob:/data: URLs are dropped by `durableAssetUrls`).
+    assetUrls: durableAssetUrls(
+      Object.fromEntries(
+        [
+          ...assets.identities,
+          ...assets.logos,
+          ...assets.products,
+          ...assets.brandReferences,
+          ...(assets.firstFrame ? [assets.firstFrame] : []),
+          ...(assets.lastFrame ? [assets.lastFrame] : []),
+        ].map((a) => [a.id, a.uploadedUrl || a.url]),
+      ),
+    ),
     outputUrls: result?.urls || (result?.url ? [result.url] : []),
     outputType,
     clientId: selectedClientId || null,
@@ -1556,7 +1570,11 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     viewMode,
   ])
 
-  // Debounced Supabase project persistence
+  // Debounced Supabase project persistence. Exactly ONE effect may schedule
+  // this write: `persist` coalesces calls inside the debounce window, so a
+  // second identical effect never added a request, but it doubled the payload
+  // build + scheduling on every commit and hid which effect owns the write.
+  // `DemoPersonalizePersistence.test.tsx` pins one `persist` per commit.
   useEffect(() => {
     // Anonymous sessions persist nothing: the free discovery run writes no
     // project row, no identity and no saved asset.
@@ -1708,26 +1726,21 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     }
 
     // ── Restore assets ───────────────────────────────────────────────────────
+    // Each saved id is rebuilt from its persisted durable URL. An id with no
+    // loadable URL (a row saved before `assetUrls` existed) is skipped: an
+    // asset whose `url` is an opaque id would break generation and previews.
     const assetEntries: { id: string; url: string; role: PersonalizationAsset['role']; isPrimary: boolean }[] = []
+    const pushRestored = (id: string, role: PersonalizationAsset['role'], isPrimary: boolean) => {
+      const url = resolveRestoredAssetUrl(id, entry.assetUrls)
+      if (url) assetEntries.push({ id, url, role, isPrimary })
+    }
 
-    entry.identityAssetIds.forEach((id, idx) => {
-      assetEntries.push({ id, url: id, role: 'presenter_identity', isPrimary: idx === 0 })
-    })
-    entry.logoAssetIds.forEach((id, idx) => {
-      assetEntries.push({ id, url: id, role: 'logo', isPrimary: idx === 0 })
-    })
-    entry.productAssetIds.forEach((id) => {
-      assetEntries.push({ id, url: id, role: 'product_reference', isPrimary: false })
-    })
-    entry.brandReferenceAssetIds.forEach((id) => {
-      assetEntries.push({ id, url: id, role: 'brand_reference', isPrimary: false })
-    })
-    if (entry.firstFrameAssetId) {
-      assetEntries.push({ id: entry.firstFrameAssetId, url: entry.firstFrameAssetId, role: 'first_frame', isPrimary: true })
-    }
-    if (entry.lastFrameAssetId) {
-      assetEntries.push({ id: entry.lastFrameAssetId, url: entry.lastFrameAssetId, role: 'last_frame', isPrimary: true })
-    }
+    entry.identityAssetIds.forEach((id, idx) => pushRestored(id, 'presenter_identity', idx === 0))
+    entry.logoAssetIds.forEach((id, idx) => pushRestored(id, 'logo', idx === 0))
+    entry.productAssetIds.forEach((id) => pushRestored(id, 'product_reference', false))
+    entry.brandReferenceAssetIds.forEach((id) => pushRestored(id, 'brand_reference', false))
+    if (entry.firstFrameAssetId) pushRestored(entry.firstFrameAssetId, 'first_frame', true)
+    if (entry.lastFrameAssetId) pushRestored(entry.lastFrameAssetId, 'last_frame', true)
 
     // Build the AssetLibrary in one shot to avoid intermediate empty states
     const restoredLibrary = assetEntries.reduce<AssetLibrary>((lib, a) => {
@@ -3311,8 +3324,14 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       setDiscoveryError(partialDownloadError)
     }
 
+    // The assets are in the session regardless of whether the durable upload
+    // succeeded: `setAssets` above already placed every created asset into the
+    // library, and the video personalization reads them from there. Reporting
+    // `count: 0` when only the durable upload failed told a customer whose
+    // BYOK key was missing that nothing had been added, while the assets were
+    // in fact usable in the session.
     setImportConfirmation({
-      count: successCount,
+      count: createdAssets.length,
       failedCount: uploadErrors.length,
       clientName: clientForm.businessName || clientForm.name || undefined,
     })

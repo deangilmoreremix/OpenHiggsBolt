@@ -29,11 +29,26 @@
  * spelled out in `docs/phase2/handoffs/A10.md` and is surfaced to the product
  * through `DESIGN_FONT_ATTRIBUTION` below (Phase 3 decision D2).
  *
- * The family is deliberately NOT called "Inter". The app's own
- * `next/font/google` Inter (`app/layout.js`) already registers a family
- * called "Inter", and a stylesheet that lands later in the cascade would win
- * over ours. "Personalization Sans" cannot collide with anything, so the
+ "PERSONALIZATION SANS" IS A LOCAL ALIAS FOR INTER, NOT A DIFFERENT FONT
+ * ---------------------------------------------------------------------
+ * The bundled binary IS Inter: its own `name` table reads family "Inter",
+ * full name "Inter Regular", version "Version 4.001;git-66647c0bb" and
+ * copyright "Copyright 2016 The Inter Project Authors" (followed by the
+ * rsms/inter project URL). It was Latin-subset (230 codepoints)
+ * and is otherwise unmodified; the font's internal names were not changed.
+ *
+ * "Personalization Sans" exists only as the CSS `font-family` name in the
+ * `@font-face` rule below (`DESIGN_FONT_FAMILY`). It is deliberately not
+ * "Inter": the app's own `next/font/google` Inter (`app/layout.js`) already
+ * registers a family called "Inter", and a stylesheet that lands later in the
+ * cascade would win over ours. The alias cannot collide with anything, so the
  * bundled file is always the face that is actually used.
+ *
+ * Because the face is Inter, every credit names Inter
+ * (`DESIGN_FONT_ATTRIBUTION`) and the licence notice is Inter's. Inter's OFL
+ * declares no Reserved Font Name, so neither the subset nor the local alias
+ * conflicts with OFL clause 3. `typography.test.ts` reads the binary's
+ * `name` table and fails if the attribution and the bundled font disagree.
  *
  * NO NETWORK
  * ----------
@@ -55,8 +70,27 @@ import {
   PERSONALIZATION_SANS_FONT_BYTES,
 } from './fonts/personalizationSansDataUri'
 
-/** The self-hosted family's name. Never "Inter" — see the module note. */
+/**
+ * The local CSS family alias the bundled Inter face is registered under.
+ * Never "Inter" — see the module note. This is NOT the font's name: credits
+ * and licence notices use `DESIGN_FONT_UPSTREAM_FAMILY`.
+ */
 export const DESIGN_FONT_FAMILY = 'Personalization Sans'
+
+/** The bundled font's real family name, as its own `name` table records it. */
+export const DESIGN_FONT_UPSTREAM_FAMILY = 'Inter'
+
+/** The bundled font's version, as its own `name` table records it. */
+export const DESIGN_FONT_UPSTREAM_VERSION = '4.001'
+
+/** The licence the bundled font is distributed under. */
+export const DESIGN_FONT_LICENSE = 'SIL OFL 1.1'
+
+/** The copyright holder named by the font (`name` ID 0) and by `OFL.txt`. */
+export const DESIGN_FONT_COPYRIGHT_HOLDER = 'The Inter Project Authors'
+
+/** The font's copyright year (`name` ID 0) and `OFL.txt`'s first line. */
+export const DESIGN_FONT_COPYRIGHT_YEAR = '2016'
 
 /** The bundled font file, served from the app's own origin. */
 export const DESIGN_FONT_FILE = '/fonts/personalization-sans-latin.woff2'
@@ -114,7 +148,16 @@ export const DESIGN_FONT_FILES: readonly string[] = [DESIGN_FONT_FILE]
  * so the credit travels with the rendered artefact too.
  */
 export const DESIGN_FONT_ATTRIBUTION =
-  'Typeface: Personalization Sans (bundled Inter 4.001 subset, SIL OFL 1.1) © 2016 The Inter Project Authors'
+  `Typeface: ${DESIGN_FONT_UPSTREAM_FAMILY} (${DESIGN_FONT_LICENSE}) © ${DESIGN_FONT_COPYRIGHT_YEAR} ${DESIGN_FONT_COPYRIGHT_HOLDER}`
+
+/**
+ * One sentence that explains the local family alias, for licence/credits
+ * surfaces that show the full notice (not the in-video credit line).
+ */
+export const DESIGN_FONT_ALIAS_NOTE =
+  `"${DESIGN_FONT_FAMILY}" is the local CSS family name under which the bundled ` +
+  `${DESIGN_FONT_UPSTREAM_FAMILY} ${DESIGN_FONT_UPSTREAM_VERSION} Latin subset is loaded; ` +
+  `it is not a different typeface.`
 
 /**
  * The canonical font stack used by every design.

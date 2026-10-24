@@ -90,7 +90,7 @@ describe('resolveModelCapabilities', () => {
     const caps = resolveModelCapabilities(EMPTY_SOURCE, { ...baseOptions, model: 'kling-o1-video-edit' })
     expect(caps.supportsV2V).toBe(true)
     expect(caps.maxImages).toBe(4)
-    expect(caps.aspectRatioOptions).toEqual([])
+    expect(caps.aspectRatioOptions).toEqual(['16:9', '9:16', '1:1'])
   })
 
   it('resolves aspect ratio and duration options for seedance-2-t2v', () => {

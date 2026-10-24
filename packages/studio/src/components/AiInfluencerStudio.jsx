@@ -3,6 +3,11 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { generateImage } from "../muapi.js";
+import { formatErrorMessage } from "../utils/formatError.js";
+import MobileGenerationActions, {
+  GenerationCopyButtons,
+} from "./MobileGenerationActions.jsx";
+// ── SmartVideo local app integrations (no upstream equivalent) ───────────────
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { getPendingRecipe, clearPendingRecipe } from "../lib/skillStore";
@@ -10,7 +15,7 @@ import registry from "../skills/registry.json";
 import { fillTemplate } from "../lib/promptRecipes";
 import { useTemplateData, normalizeAspectRatio } from "../hooks/useTemplateData";
 import TemplateBanner from "./TemplateBanner";
-import { readStoryboardHandoff, clearStoryboardHandoff } from "../storyboardHandoff.js";
+import { readStoryboardHandoff } from "../storyboardHandoff.js";
 import en from "../messages/en/aiInfluencerStudio.json";
 import zh from "../messages/zh/aiInfluencerStudio.json";
 import { resolveCopy } from "../i18nUtils";
@@ -345,6 +350,10 @@ function HoverPill({ label, img, onClick }) {
 export default function AiInfluencerStudio({
   apiKey,
   onGenerate,
+  onGenerationStart,
+  onGenerationEnd,
+  onGenerationComplete,
+  onGenerationError,
   isGenerating: externalIsGenerating,
   templateData,
   locale = "en",
@@ -382,10 +391,6 @@ export default function AiInfluencerStudio({
   const [history, setHistory] = useState([]);                  // all generated images
   const [selectedHistoryIdx, setSelectedHistoryIdx] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
-  const abortRef = useRef(null);
-  // Abort any in-flight generation when this studio unmounts (e.g. the user
-  // switches tabs) so we stop polling MuAPI and burning API quota.
-  useEffect(() => () => { abortRef.current?.abort(); }, []);
 
   const isGenerating = externalIsGenerating || isGeneratingInternal;
 
@@ -478,13 +483,9 @@ export default function AiInfluencerStudio({
   // ── Generate ──────────────────────────────────────────────────────────────
   const handleGenerate = async () => {
     if (isGenerating) return;
+    onGenerationStart?.();
     setIsGeneratingInternal(true);
     setErrorMsg("");
-
-    // New controller per generation; also lets a tab-switch unmount abort a
-    // long-running poll loop early.
-    const ac = new AbortController();
-    abortRef.current = ac;
 
     const prompt = buildPrompt();
     try {
@@ -496,23 +497,26 @@ export default function AiInfluencerStudio({
           model: INFLUENCER_MODEL,
           prompt,
           aspect_ratio: aspectRatio,
-          signal: ac.signal,
         });
       }
       if (res?.url) {
         setCurrentResult(res.url);
-        // Bound history so a long session can't grow memory without limit.
-        setHistory((prev) => [{ url: res.url, ts: Date.now() }, ...prev].slice(0, 50));
+        setHistory((prev) => [{ url: res.url, prompt, ts: Date.now() }, ...prev]);
         setSelectedHistoryIdx(0);
+        onGenerationComplete?.({
+          url: res.url,
+          model: INFLUENCER_MODEL,
+          prompt,
+          type: "image",
+        });
       }
     } catch (err) {
-      // Ignore aborts (unmount / superseded) — not a user-facing failure.
-      if (ac.signal.aborted) return;
-      const message = err?.message || "Generation failed. Please try again.";
-      setErrorMsg(message);
-      toast.error(message);
+      const message = formatErrorMessage(err, copy.errors.generationFailed);
+      if (onGenerationError) onGenerationError(message);
+      else toast.error(message);
     } finally {
       setIsGeneratingInternal(false);
+      onGenerationEnd?.();
     }
   };
 
@@ -585,7 +589,6 @@ export default function AiInfluencerStudio({
 
   return (
     <div className="flex h-full bg-[#0a0a0a] text-white overflow-hidden select-none font-sans">
-      <Toaster position="top-right" containerStyle={{ zIndex: 99999 }} />
 
       {/* ════════════════════════════════════════════════════════════
           LEFT — Builder / Options Panel
@@ -594,7 +597,7 @@ export default function AiInfluencerStudio({
 
         {/* Builder header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.07] shrink-0">
-          <span className="text-[13px] font-bold text-white tracking-tight">Builder</span>
+          <span className="text-[13px] font-bold text-white tracking-tight">{copy.builder.title}</span>
           <button
             onClick={() => setSelectedOptions((() => {
               const init = {};
@@ -607,7 +610,7 @@ export default function AiInfluencerStudio({
             })())}
             className="text-[11px] text-gray-500 hover:text-white transition-colors font-medium"
           >
-            Reset
+            {copy.builder.reset}
           </button>
         </div>
 
@@ -623,7 +626,7 @@ export default function AiInfluencerStudio({
                   : "text-gray-500 hover:text-white hover:bg-white/[0.06]"
               }`}
             >
-              {TABS_CONFIG[key].label}
+              {copy.categoryTabs[key] || TABS_CONFIG[key].label}
             </button>
           ))}
         </div>
@@ -633,7 +636,7 @@ export default function AiInfluencerStudio({
           {TABS_CONFIG[activeTab]?.subcategories?.map((subcat) => (
             <div key={subcat.id}>
               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 px-0.5">
-                {subcat.label}
+                {copy.subcategories[subcat.id] || subcat.label}
               </p>
               <div className="grid grid-cols-3 gap-1.5">
                 {subcat.options?.map((opt) => {
@@ -689,7 +692,7 @@ export default function AiInfluencerStudio({
                 onClick={() => setAspectRatio(r)}
                 className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
                   aspectRatio === r
-                    ? "bg-[#22d3ee] text-black shadow-md shadow-[#22d3ee]/30"
+                    ? "bg-violet-600 text-white shadow-md shadow-violet-600/40"
                     : "text-gray-500 hover:text-white"
                 }`}
               >
@@ -705,7 +708,7 @@ export default function AiInfluencerStudio({
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-gray-400 hover:text-white hover:bg-white/10 text-[12px] font-semibold transition-all"
             >
               <ShuffleIcon />
-              Shuffle
+              {copy.toolbar.shuffle}
             </button>
 
             {/* Generate */}
@@ -714,8 +717,8 @@ export default function AiInfluencerStudio({
               disabled={isGenerating}
               className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[13px] font-bold transition-all shadow-lg ${
                 isGenerating
-                  ? "bg-[#22d3ee]/40 text-white/60 cursor-not-allowed"
-                  : "bg-[#22d3ee] text-black shadow-lg shadow-[#22d3ee]/20 hover:shadow-[#22d3ee]/35 border border-[#22d3ee]/10"
+                  ? "bg-violet-600/40 text-white/60 cursor-not-allowed"
+                  : "bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-violet-600/30 hover:shadow-violet-500/40"
               }`}
             >
               {isGenerating ? (
@@ -724,10 +727,10 @@ export default function AiInfluencerStudio({
                     <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity="0.3" />
                     <path d="M21 12a9 9 0 00-9-9" />
                   </svg>
-                  Generating…
+                  {copy.toolbar.generating}
                 </>
               ) : (
-                <><BoltIcon />Generate Character</>
+                <><BoltIcon />{copy.toolbar.generate}</>
               )}
             </button>
           </div>
@@ -741,19 +744,19 @@ export default function AiInfluencerStudio({
           >
             {isGenerating ? (
               <div className="flex flex-col items-center gap-4 text-center px-8 py-12">
-                <div className="w-12 h-12 border-[3px] border-[#22d3ee]/20 border-t-[#22d3ee] rounded-full animate-spin" />
-                <p className="text-sm text-gray-400 font-medium">Generating your AI influencer…</p>
+                <div className="w-12 h-12 border-[3px] border-violet-500/20 border-t-violet-500 rounded-full animate-spin" />
+                <p className="text-sm text-gray-400 font-medium">{copy.preview.generating}</p>
               </div>
             ) : previewUrl ? (
               <>
-                <img src={previewUrl} alt="Generated AI Character" className="w-full h-full object-cover" />
+                <img src={previewUrl} alt={copy.preview.altGenerated} className="w-full h-full object-cover" />
                 {/* Download overlay button */}
                 <button
                   onClick={() => downloadImg(previewUrl)}
                   className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-white text-[11px] font-semibold hover:bg-black/80 transition-all"
                 >
                   <DownloadIcon />
-                  Save
+                  {copy.preview.save}
                 </button>
                 <PublishStep
                   mediaUrl={previewUrl}
@@ -781,8 +784,8 @@ export default function AiInfluencerStudio({
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.8" className="text-gray-700">
                   <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" />
                 </svg>
-                <p className="text-sm text-gray-600 font-medium">Your AI influencer lives here.</p>
-                <p className="text-xs text-gray-700">Design and build your AI influencer<br />from scratch</p>
+                <p className="text-sm text-gray-600 font-medium">{copy.preview.emptyTitle}</p>
+                <p className="text-xs text-gray-700">{copy.preview.emptySubtitleLine1}<br />{copy.preview.emptySubtitleLine2}</p>
               </div>
             )}
           </div>
@@ -812,7 +815,7 @@ export default function AiInfluencerStudio({
                   onClick={() => setShowAllTags((v) => !v)}
                   className="h-[22px] px-2 rounded-md bg-white/[0.04] hover:bg-white/[0.09] border border-white/[0.08] text-[11px] text-gray-500 hover:text-gray-300 whitespace-nowrap transition-all"
                 >
-                  {showAllTags ? "hide" : `show more`}
+                  {showAllTags ? copy.tags.hide : copy.tags.showMore}
                 </button>
               )}
             </div>
@@ -833,8 +836,8 @@ export default function AiInfluencerStudio({
             type="text"
             value={customPrompt}
             onChange={(e) => setCustomPrompt(e.target.value)}
-            placeholder="Add extra details… e.g. neon cyberpunk lighting, dramatic shadows"
-            className="w-full h-9 bg-[#161616] border border-white/[0.07] rounded-xl px-3 text-[12px] text-gray-200 placeholder-gray-600 outline-none focus:border-[#22d3ee]/40 transition-colors"
+            placeholder={copy.customPrompt.placeholder}
+            className="w-full h-9 bg-[#161616] border border-white/[0.07] rounded-xl px-3 text-[12px] text-gray-200 placeholder-gray-600 outline-none focus:border-violet-500/40 transition-colors"
           />
         </div>
       </div>
@@ -846,8 +849,8 @@ export default function AiInfluencerStudio({
 
         {/* Gallery header */}
         <div className="px-3 py-3 border-b border-white/[0.07] shrink-0">
-          <p className="text-[11px] font-bold text-white tracking-tight">Generated</p>
-          <p className="text-[9px] text-gray-600 mt-0.5">{history.length} characters</p>
+          <p className="text-[11px] font-bold text-white tracking-tight">{copy.gallery.title}</p>
+          <p className="text-[9px] text-gray-600 mt-0.5">{history.length} {copy.gallery.countSuffix}</p>
         </div>
 
         {/* Gallery scroll */}
@@ -857,7 +860,7 @@ export default function AiInfluencerStudio({
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="text-gray-700 mb-2">
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
               </svg>
-              <p className="text-[9px] text-gray-700 leading-relaxed">Generated characters<br />appear here</p>
+              <p className="text-[9px] text-gray-700 leading-relaxed">{copy.gallery.emptyText.split('\n')[0]}<br />{copy.gallery.emptyText.split('\n')[1]}</p>
             </div>
           ) : (
             history.map((item, idx) => (
@@ -869,39 +872,58 @@ export default function AiInfluencerStudio({
                 onKeyDown={(e) => e.key === "Enter" && setSelectedHistoryIdx(idx)}
                 className={`group relative w-full aspect-[3/4] rounded-xl overflow-hidden border transition-all cursor-pointer ${
                   selectedHistoryIdx === idx
-                    ? "border-[#22d3ee] ring-1 ring-[#22d3ee]/40"
+                    ? "border-violet-500 ring-1 ring-violet-500/40"
                     : "border-white/[0.08] hover:border-white/20"
                 }`}
               >
-                <img src={item.url} alt={`Character ${idx + 1}`} className="w-full h-full object-cover" />
+                <img src={item.url} alt={`${copy.gallery.altPrefix} ${idx + 1}`} className="w-full h-full object-cover" />
                 {/* Download on hover */}
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-2">
-                 <div
-                     role="button"
-                     tabIndex={0}
-                     onClick={(e) => { e.stopPropagation(); downloadImg(item.url); }}
-                     onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); downloadImg(item.url); } }}
-                     className="p-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 transition-all cursor-pointer"
-                   >
-                     <DownloadIcon />
-                   </div>
-                   <PublishStep
-                     mediaUrl={item.url}
-                     mediaType="image"
-                     title={`Influencer #${history.length - idx}`}
-                     className="p-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 transition-all cursor-pointer"
-                   />
-                   <AssistStep
-                     assetUrl={item.url}
-                     assetType="image"
-                     onApply={() => {}}
-                     className="p-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 transition-all cursor-pointer"
-                   >
-                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                       <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
-                     </svg>
-                   </AssistStep>
+                <div className="absolute inset-0 hidden md:flex bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity items-end justify-center pb-2">
+                  <div className="absolute right-2 top-2 flex flex-col gap-2">
+                    <GenerationCopyButtons
+                      prompt={item.prompt}
+                      imageUrl={item.url}
+                      onCopyError={onGenerationError}
+                    />
+                  </div>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => { e.stopPropagation(); downloadImg(item.url); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); downloadImg(item.url); } }}
+                    className="p-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 transition-all cursor-pointer"
+                  >
+                    <DownloadIcon />
+                  </div>
+                  <PublishStep
+                    mediaUrl={item.url}
+                    mediaType="image"
+                    title={`Influencer #${history.length - idx}`}
+                    className="p-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 transition-all cursor-pointer"
+                  />
+                  <AssistStep
+                    assetUrl={item.url}
+                    assetType="image"
+                    onApply={() => {}}
+                    className="p-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 transition-all cursor-pointer"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
+                    </svg>
+                  </AssistStep>
                 </div>
+                <MobileGenerationActions
+                  prompt={item.prompt}
+                  imageUrl={item.url}
+                  onCopyError={onGenerationError}
+                  actions={[
+                    {
+                      kind: "download",
+                      label: copy.gallery.download,
+                      onSelect: () => downloadImg(item.url),
+                    },
+                  ]}
+                />
                 {/* Index badge */}
                 <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[8px] text-gray-300 font-bold">
                   #{history.length - idx}
@@ -911,7 +933,7 @@ export default function AiInfluencerStudio({
           )}
         </div>
       </div>
-
+      <Toaster position="top-right" containerStyle={{ zIndex: 99999 }} toastOptions={{ duration: 5000, style: { background: '#18181b', color: '#ffffff', border: '1px solid rgba(255,255,255,0.15)', fontSize: '13px', borderRadius: '12px', boxShadow: '0 10px 30px rgba(0,0,0,0.6)', maxWidth: '440px', wordBreak: 'break-word', whiteSpace: 'pre-wrap', padding: '12px 16px' } }} />
     </div>
   );
 }

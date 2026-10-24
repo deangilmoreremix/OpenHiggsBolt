@@ -4868,3 +4868,68 @@ export function searchMotionTemplates(query: string): MotionTemplate[] {
       t.slug.toLowerCase().includes(q)
   );
 }
+
+/**
+ * Runtime-derived per-category card counts for `MOTION_TEMPLATE_CARDS` — the
+ * counts the TemplateBrowser tab badges show (recipe cards, not shots: e.g.
+ * `camera` is 10 cards but 14 shots). Reads the cards array it is given
+ * instead of trusting any declared count, so the badges can never drift from
+ * what the grid actually renders.
+ */
+export function normalizeCardCounts(
+  cards?: readonly MotionTemplate[]
+): Record<MotionCategoryKey, number> {
+  const counts: Record<MotionCategoryKey, number> = {
+    opening: 0,
+    typography: 0,
+    'ui-entrance': 0,
+    camera: 0,
+    data: 0,
+    interaction: 0,
+    transition: 0,
+    rhythm: 0,
+    effects: 0,
+    outro: 0,
+  };
+  for (const card of cards ?? MOTION_TEMPLATE_CARDS) {
+    counts[card.category] = (counts[card.category] ?? 0) + 1;
+  }
+  return counts;
+}
+
+export function getMotionTemplateCardsByCategory(category: MotionCategoryKey): MotionTemplate[] {
+  return MOTION_TEMPLATE_CARDS.filter((c) => c.category === category);
+}
+
+export function searchMotionTemplateCards(query: string): MotionTemplate[] {
+  const q = query.toLowerCase();
+  return MOTION_TEMPLATE_CARDS.filter(
+    (c) =>
+      c.name.toLowerCase().includes(q) ||
+      c.nameEn.toLowerCase().includes(q) ||
+      c.summary.toLowerCase().includes(q) ||
+      c.summaryEn.toLowerCase().includes(q) ||
+      c.slug.toLowerCase().includes(q) ||
+      c.componentName.toLowerCase().includes(q) ||
+      c.categoryLabel?.toLowerCase().includes(q)
+  );
+}
+
+/**
+ * The representative SHOT of a recipe card: the shot whose id is
+ * `<card.id>/<Component>`, preferring (deterministically — array order is
+ * stable) the shot whose clip matches the card's own `preview`, else the shot
+ * carrying the card's `componentName`. Most cards resolve on rule 1; a
+ * multi-style card whose published clip belongs to a style with no dedicated
+ * local component (e.g. `shot-transitions` first style `flash-cut`) resolves
+ * on rule 2. Selection flows resolve to this shot so persisted wizard state
+ * keeps the shot identity the provider's `getMotionTemplate` restore path
+ * expects, while the browser grid shows cards.
+ */
+export function getMotionTemplateCardShot(card: MotionTemplate): MotionTemplate | undefined {
+  const prefix = `${card.id}/`;
+  const shots = MOTION_TEMPLATES.filter((t) => t.id.startsWith(prefix));
+  const byPreview = shots.find((t) => Boolean(t.preview) && t.preview === card.preview);
+  if (byPreview) return byPreview;
+  return shots.find((t) => t.componentName === card.componentName) ?? shots[0];
+}

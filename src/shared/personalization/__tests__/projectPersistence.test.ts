@@ -29,6 +29,11 @@ import {
   loadProject,
   listProjects,
   deleteProject,
+  projectRowFromState,
+  projectStateFromRow,
+  resolveRestoredAssetUrl,
+  stripSessionScopedUrls,
+  type PersonalizationProjectState,
 } from '../supabaseProjectPersistence'
 
 // ── Route dependencies ────────────────────────────────────────────────────────
@@ -422,5 +427,117 @@ describe('GET /api/personalization/project', () => {
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.project.id).toBe('proj-7')
+  })
+})
+
+describe('source-scoped list filters before the row limit', () => {
+  const row = (id: string, source: string) => ({
+    id,
+    source: { id: source },
+    client: {},
+    assets: {},
+    prompt: {},
+    generation: {},
+    output_type: 'video',
+    status: 'draft',
+  })
+
+  it('a sourceId request uses the source-scoped RPC', async () => {
+    const rpc = vi.fn(async () => ({ data: [row('old-row', 'demo-9')], error: null }))
+    routeMocks.createServerClient.mockReturnValue({ rpc })
+
+    const res = await GET(createRouteRequest({ list: 'true', sourceId: 'demo-9' }))
+
+    expect(res.status).toBe(200)
+    expect(rpc).toHaveBeenCalledTimes(1)
+    expect(rpc).toHaveBeenCalledWith('personalization_saved_projects_list_by_source', {
+      p_clerk_user_id: 'user-123',
+      p_source_id: 'demo-9',
+    })
+    const data = await res.json()
+    expect(data.projects.map((p: { id: string }) => p.id)).toEqual(['old-row'])
+  })
+
+  it('falls back to the plain list (still filtered) while the migration is not applied', async () => {
+    const rpc = vi.fn(async (name: string) =>
+      name === 'personalization_saved_projects_list_by_source'
+        ? { data: null, error: { code: 'PGRST202', message: 'Could not find the function' } }
+        : { data: [row('a', 'demo-1'), row('b', 'demo-9')], error: null },
+    )
+    routeMocks.createServerClient.mockReturnValue({ rpc })
+
+    const res = await GET(createRouteRequest({ list: 'true', sourceId: 'demo-9' }))
+
+    expect(res.status).toBe(200)
+    expect(rpc.mock.calls.map((call) => call[0])).toEqual([
+      'personalization_saved_projects_list_by_source',
+      'personalization_saved_projects_list',
+    ])
+    const data = await res.json()
+    expect(data.projects.map((p: { id: string }) => p.id)).toEqual(['b'])
+  })
+
+  it('a plain list request (no sourceId) keeps using the plain list RPC', async () => {
+    const rpc = vi.fn(async () => ({ data: [], error: null }))
+    routeMocks.createServerClient.mockReturnValue({ rpc })
+    await GET(createRouteRequest({ list: 'true' }))
+    expect(rpc).toHaveBeenCalledWith('personalization_saved_projects_list', { p_clerk_user_id: 'user-123' })
+  })
+
+  it('a real database error is not masked by the fallback', async () => {
+    const rpc = vi.fn(async () => ({ data: null, error: { code: '57014', message: 'canceling statement due to statement timeout' } }))
+    routeMocks.createServerClient.mockReturnValue({ rpc })
+    const res = await GET(createRouteRequest({ list: 'true', sourceId: 'demo-9' }))
+    expect(res.status).toBe(500)
+    expect(rpc).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('asset URLs travel with asset ids (restore must have something to load)', () => {
+  const state: PersonalizationProjectState = {
+    sourceType: 'go-ai-viral-video',
+    sourceDemoId: 'demo-1',
+    originalPrompt: 'o',
+    personalizedPrompt: 'p',
+    identityAssetIds: ['asset_identity'],
+    logoAssetIds: ['asset_logo', 'asset_local'],
+    productAssetIds: [],
+    brandReferenceAssetIds: [],
+    outputUrls: [],
+    outputType: 'video',
+    assetUrls: {
+      asset_identity: 'https://cdn.example.com/identity.png',
+      asset_logo: 'https://cdn.example.com/logo.png',
+      asset_local: 'blob:https://app.example/123',
+      asset_inline: 'data:image/png;base64,AAAA',
+    },
+  }
+
+  it('persists only durable http(s) URLs and reads them back', () => {
+    const row = projectRowFromState(stripSessionScopedUrls(state))
+    expect((row.assets as Record<string, unknown>).assetUrls).toEqual({
+      asset_identity: 'https://cdn.example.com/identity.png',
+      asset_logo: 'https://cdn.example.com/logo.png',
+    })
+    const restored = projectStateFromRow(row)
+    expect(restored?.logoAssetIds).toEqual(['asset_logo', 'asset_local'])
+    expect(restored?.assetUrls).toEqual({
+      asset_identity: 'https://cdn.example.com/identity.png',
+      asset_logo: 'https://cdn.example.com/logo.png',
+    })
+  })
+
+  it('resolves a restore URL from the map, from a URL-shaped legacy id, or not at all', () => {
+    const urls = { asset_logo: 'https://cdn.example.com/logo.png' }
+    expect(resolveRestoredAssetUrl('asset_logo', urls)).toBe('https://cdn.example.com/logo.png')
+    expect(resolveRestoredAssetUrl('https://cdn.example.com/legacy.png', undefined)).toBe('https://cdn.example.com/legacy.png')
+    expect(resolveRestoredAssetUrl('asset_local', urls)).toBeNull()
+    expect(resolveRestoredAssetUrl('asset_logo', undefined)).toBeNull()
+  })
+
+  it('reads a row saved before the map existed', () => {
+    const legacy = projectStateFromRow({ source: { id: 'demo-1' }, assets: { logoAssetIds: ['asset_logo'] } })
+    expect(legacy?.logoAssetIds).toEqual(['asset_logo'])
+    expect(legacy?.assetUrls).toEqual({})
   })
 })

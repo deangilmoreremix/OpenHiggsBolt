@@ -24,6 +24,7 @@ export function stripSessionScopedUrls(state: PersonalizationProjectState): Pers
     outputUrls: Array.isArray(state.outputUrls)
       ? state.outputUrls.filter((u) => typeof u === 'string' && !u.startsWith('blob:'))
       : [],
+    assetUrls: durableAssetUrls(state.assetUrls),
     previewVideo:
       state.previewVideo && typeof state.previewVideo === 'object' && 'url' in state.previewVideo
         ? isBlobUrl((state.previewVideo as PreviewVideoRef).url)
@@ -51,6 +52,36 @@ export function stripSessionScopedUrls(state: PersonalizationProjectState): Pers
   }
 }
 
+/** True for an `http(s)://` URL — the only kind that survives a reload. */
+export function isDurableMediaUrl(value: unknown): value is string {
+  return typeof value === 'string' && /^https?:\/\//i.test(value)
+}
+
+/** Keeps only `id → http(s) URL` pairs; anything else (blob:, data:, junk) is dropped. */
+export function durableAssetUrls(value: unknown): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return out
+  for (const [id, url] of Object.entries(value as Record<string, unknown>)) {
+    if (id && isDurableMediaUrl(url)) out[id] = url
+  }
+  return out
+}
+
+/**
+ * The URL a restored asset should load from: the saved durable URL for its id,
+ * or the id itself when a legacy row stored a URL as the id. `null` means the
+ * row has no loadable media for this asset, and the restore must skip it
+ * rather than build an asset whose `url` is an opaque id.
+ */
+export function resolveRestoredAssetUrl(
+  id: string,
+  assetUrls: Record<string, string> | undefined,
+): string | null {
+  const saved = assetUrls?.[id]
+  if (isDurableMediaUrl(saved)) return saved
+  return isDurableMediaUrl(id) ? id : null
+}
+
 import type { ClientProfile, AssetLibrary, PersonalizationSource, GenerationOptions, GenerationState, PromptState, OutputType, VideoPersonalizationMode, ImagePersonalizationMode, PersonalizationViewMode } from './types'
 import type { PersonalizationPreviewSettings, PreviewVideoRef } from './preview/types'
 
@@ -74,6 +105,13 @@ export interface PersonalizationProjectState {
   firstFrameAssetId?: string | null
   lastFrameAssetId?: string | null
   ctaAssetId?: string | null
+  /**
+   * Durable media URL for each saved asset id. The id lists above are only
+   * identifiers; without this map a restore has nothing to load. Optional so
+   * rows saved before the map existed still restore (their assets are skipped
+   * unless the id itself is a durable URL — see `resolveRestoredAssetUrl`).
+   */
+  assetUrls?: Record<string, string>
   outputUrls: string[]
   outputType: OutputType
   clientId?: string | null
@@ -258,6 +296,7 @@ export function projectStateFromRow(row: unknown): PersonalizationProjectState |
       asString(assets.ctaAssetId) ??
       asString(asRecord(assets.ctaGraphic).id) ??
       null,
+    assetUrls: durableAssetUrls(r.assetUrls ?? assets.assetUrls),
     outputUrls: firstIdList(r.outputUrls, outputUrls),
     outputType: (asString(r.outputType) ?? asString(r.output_type) ?? 'prompt') as OutputType,
     clientId: asString(r.clientId) ?? asString(client.clientId) ?? null,
@@ -310,6 +349,7 @@ export function projectRowFromState(state: PersonalizationProjectState): SavedPr
       firstFrameAssetId: state.firstFrameAssetId ?? null,
       lastFrameAssetId: state.lastFrameAssetId ?? null,
       ctaAssetId: state.ctaAssetId ?? null,
+      assetUrls: durableAssetUrls(state.assetUrls),
     },
     prompt: {
       original: state.originalPrompt ?? '',

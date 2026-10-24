@@ -22,10 +22,10 @@ const WorkflowUI = ({
 
   return (
     <div className="w-full h-full bg-black">
-      <WorkflowBuilder 
+      <WorkflowBuilder
         apiKey={apiKey}
         workflowId={workflowId}
-        initialNodeSchemas={initialNodeSchemas} 
+        initialNodeSchemas={initialNodeSchemas}
         initialWorkflowData={initialWorkflowData}
         costType="dollars"
         onGenerationStart={onGenerationStart}
