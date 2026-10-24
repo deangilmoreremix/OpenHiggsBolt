@@ -58,6 +58,8 @@ vi.mock('../supabaseProjectPersistence', async (importOriginal) => {
           persistenceSpy.cancel()
           real.cancel()
         },
+        setProjectId: real.setProjectId,
+        getProjectId: real.getProjectId,
       }
     },
   }
@@ -86,6 +88,9 @@ vi.mock('../editedAssetPersistence', () => ({ persistEditedPersonalizationAsset:
 
 const { DemoPersonalizeProvider, useDemoPersonalize } = await import('../DemoPersonalizeProvider')
 
+const RESTORED_ID = '11111111-2222-4333-8444-555555555555'
+const INSERTED_ID = '99999999-8888-4777-8666-555555555555'
+
 const SOURCE = {
   id: 'demo-persist-1',
   title: 'Persistence test',
@@ -113,7 +118,7 @@ const ctx = (): PersonalizeCtx => {
   return capturedCtx
 }
 
-type ProjectWrite = { project: { prompt: { personalized: string } } & Record<string, unknown> }
+type ProjectWrite = { project: { id: string | null; prompt: { personalized: string } } & Record<string, unknown> }
 
 let fetchMock: ReturnType<typeof vi.fn>
 let root: Root | null = null
@@ -225,7 +230,7 @@ describe('DemoPersonalizeProvider debounced project persistence', () => {
     persistenceSpy.loadProject.mockResolvedValue({
       ok: true,
       data: {
-        id: 'proj-restore',
+        id: RESTORED_ID,
         sourceType: 'go-ai-viral-video',
         sourceDemoId: SOURCE.id,
         originalPrompt: 'Original prompt',
@@ -252,6 +257,8 @@ describe('DemoPersonalizeProvider debounced project persistence', () => {
     const writes = projectWrites()
     expect(writes).toHaveLength(1)
     expect(writes[0].project.prompt.personalized).toBe('Restored prompt')
+    // The autosave updates the restored row instead of inserting a new one.
+    expect(writes[0].project.id).toBe(RESTORED_ID)
 
     // Nothing else is queued once the restore has settled.
     await settle()
@@ -313,6 +320,27 @@ describe('DemoPersonalizeProvider debounced project persistence', () => {
     await settle()
     // ... and the approval's own state change schedules at most one more cycle.
     expect(projectWrites().length).toBeLessThanOrEqual(2)
+  })
+
+  it('after the first insert, later autosaves update that row instead of inserting again', async () => {
+    fetchMock.mockImplementation(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: true, project: [{ id: INSERTED_ID }] }),
+    }))
+    await mount()
+    await open()
+    const first = projectWrites()
+    expect(first).toHaveLength(1)
+    expect(first[0].project.id).toBeNull() // no saved project yet: insert
+
+    await act(async () => {
+      ctx().updatePersonalizedPrompt('second save')
+    })
+    await settle()
+    const writes = projectWrites()
+    expect(writes).toHaveLength(2)
+    expect(writes[1].project.id).toBe(INSERTED_ID)
   })
 
   it('anonymous sessions never persist', async () => {

@@ -1690,6 +1690,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
   const restoreProject = useCallback(async (src: PersonalizationSource): Promise<void> => {
     if (!src?.id) return
     projectPersistence.current.cancel() // don't race with an in-flight save
+    // A new source writes to its own row: forget the previous source's row id
+    // until this source's saved project (if any) is known.
+    projectPersistence.current.setProjectId(null)
 
     let result: LoadProjectResult
     try {
@@ -1882,6 +1885,9 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
         })
       }
     }
+
+    // Later autosaves update the restored row rather than inserting a new one.
+    projectPersistence.current.setProjectId(entry.id)
 
     // Expose restore summary to the UI
     setLoadedProject({

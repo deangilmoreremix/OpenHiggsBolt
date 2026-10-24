@@ -29,6 +29,7 @@ import {
   loadProject,
   listProjects,
   deleteProject,
+  createProjectPersistence,
   projectRowFromState,
   projectStateFromRow,
   resolveRestoredAssetUrl,
@@ -539,5 +540,68 @@ describe('asset URLs travel with asset ids (restore must have something to load)
     const legacy = projectStateFromRow({ source: { id: 'demo-1' }, assets: { logoAssetIds: ['asset_logo'] } })
     expect(legacy?.logoAssetIds).toEqual(['asset_logo'])
     expect(legacy?.assetUrls).toEqual({})
+  })
+})
+
+describe('autosaves keep writing to one row', () => {
+  const ROW_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
+  const base: PersonalizationProjectState = {
+    sourceType: 'go-ai-viral-video',
+    sourceDemoId: 'demo-1',
+    originalPrompt: 'o',
+    personalizedPrompt: 'p',
+    identityAssetIds: [],
+    logoAssetIds: [],
+    productAssetIds: [],
+    brandReferenceAssetIds: [],
+    outputUrls: [],
+    outputType: 'video',
+  }
+  const sentIds = () =>
+    fetchMock.mock.calls
+      .filter(([, init]) => (init as RequestInit | undefined)?.method === 'POST')
+      .map(([, init]) => JSON.parse(String((init as RequestInit).body)).project.id)
+  const settle = () => new Promise((r) => setTimeout(r, 20))
+
+  it('back-to-back saves wait for the first insert and reuse its id', async () => {
+    fetchMock.mockImplementation(async () => stubResponse({ ok: true, project: { id: ROW_ID } }))
+    const persistence = createProjectPersistence({ debounceMs: 5 })
+    persistence.flush(base)
+    persistence.flush({ ...base, personalizedPrompt: 'p2' })
+    await settle()
+    expect(sentIds()).toEqual([null, ROW_ID])
+    expect(persistence.getProjectId()).toBe(ROW_ID)
+  })
+
+  it('setProjectId points saves at a restored row, and null starts a fresh one', async () => {
+    fetchMock.mockImplementation(async () => stubResponse({ ok: true, project: null }))
+    const persistence = createProjectPersistence({ debounceMs: 5 })
+    persistence.setProjectId(ROW_ID)
+    persistence.flush(base)
+    await settle()
+    persistence.setProjectId(null)
+    persistence.flush(base)
+    await settle()
+    persistence.setProjectId('not-a-uuid')
+    persistence.flush(base)
+    await settle()
+    expect(sentIds()).toEqual([ROW_ID, null, null])
+  })
+
+  it('a response that lands after a source switch is not adopted', async () => {
+    let release!: () => void
+    fetchMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve(stubResponse({ ok: true, project: { id: ROW_ID } }))
+        }),
+    )
+    const persistence = createProjectPersistence({ debounceMs: 5 })
+    persistence.flush(base)
+    await settle()
+    persistence.setProjectId(null) // the modal moved to another source
+    release()
+    await settle()
+    expect(persistence.getProjectId()).toBeNull()
   })
 })
