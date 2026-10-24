@@ -39,16 +39,18 @@ const ASSETS = [
 let root: Root | null = null
 let container: HTMLDivElement | null = null
 
-async function render(onEditAsset?: (asset: DiscoveredAsset) => void) {
+async function render(onEditAsset?: (asset: DiscoveredAsset) => void, overrides: Record<string, unknown> = {}) {
   Object.assign(ctx, {
     clientForm: { businessName: "Joe's Pizza", website: 'https://joes-pizza.example' },
     access: onEditAsset ? 'authenticated' : 'anonymous',
     discoveredAssets: ASSETS,
     discoveryStatus: 'idle',
+    discoveryError: null,
     toggleDiscoveredAssetSelection: vi.fn(),
     importDiscoveredAssets: vi.fn(),
     saveClient: vi.fn(),
     setViewMode: vi.fn(),
+    ...overrides,
   })
   container = document.createElement('div')
   document.body.appendChild(container)
@@ -88,5 +90,36 @@ describe('StepFindBusiness: Edit with AI', () => {
     expect(buttons).toHaveLength(0)
     // Review and import still work without it.
     expect(view.textContent).toContain('Discovered assets')
+  })
+})
+
+// "Find business assets" runs discovery from a typed website alone, so the
+// client form has a website but no business name. The results panel used to
+// be gated on the name, so the visitor saw nothing even when assets came back.
+describe('StepFindBusiness: results for a website with no business name', () => {
+  const websiteOnly = { clientForm: { website: 'https://joes-pizza.example' } }
+
+  it('shows the discovered assets', async () => {
+    const view = await render(undefined, websiteOnly)
+
+    expect(view.textContent).toContain('What we found')
+    expect(view.textContent).toContain('Discovered assets')
+    expect(view.textContent).toContain('3 ready to review')
+  })
+
+  it('shows the progress badge while discovery runs', async () => {
+    const view = await render(undefined, { ...websiteOnly, discoveredAssets: [], discoveryStatus: 'discovering' })
+
+    expect(view.textContent).toContain('Finding assets…')
+  })
+
+  it('shows the error when discovery found nothing', async () => {
+    const view = await render(undefined, {
+      ...websiteOnly,
+      discoveredAssets: [],
+      discoveryError: 'No useful assets were found on that website.',
+    })
+
+    expect(view.querySelector('[role="alert"]')?.textContent).toBe('No useful assets were found on that website.')
   })
 })

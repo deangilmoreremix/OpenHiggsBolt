@@ -357,7 +357,11 @@ export function StepFindBusiness({
       )}
 
       {/* ── What we found ───────────────────────────────────────────────── */}
-      {businessName && (
+      {/* Shown whenever there is something to report. "Find business assets"
+          runs discovery from a typed website alone, with no business name, so
+          gating this panel on the name hid the found assets, the progress
+          badge and any error: the visitor saw nothing at all. */}
+      {(businessName || discoveredCount > 0 || discoveryStatus === 'discovering' || discoveryError) && (
         <div style={{ ...panelStyle, border: `1px solid ${C.cyanBorder}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <Building2 size={15} color={C.cyan} />
@@ -366,11 +370,16 @@ export function StepFindBusiness({
             </h3>
             {discoveryStatus === 'discovering' && <span style={badgeStyle('cyan')}>Finding assets…</span>}
           </div>
+          {discoveryError && discoveredCount === 0 && (
+            <p role="alert" style={{ margin: '0 0 10px', color: C.danger, fontSize: 12 }}>{discoveryError}</p>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 10 }}>
-            <div>
-              <div style={labelStyle}>Business</div>
-              <div style={{ color: C.text, fontSize: 13, fontWeight: 700 }}>{businessName}</div>
-            </div>
+            {businessName && (
+              <div>
+                <div style={labelStyle}>Business</div>
+                <div style={{ color: C.text, fontSize: 13, fontWeight: 700 }}>{businessName}</div>
+              </div>
+            )}
             {clientForm.industry && (
               <div>
                 <div style={labelStyle}>Industry</div>

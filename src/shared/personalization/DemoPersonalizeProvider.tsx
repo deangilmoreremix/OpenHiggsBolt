@@ -3659,7 +3659,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           setDiscoveryStatus('idle')
         }
 
-        pollStatus()
+        // Awaited so the caller's "busy" state lasts until the job finishes.
+        // Returning early re-enabled the button mid-poll, so every extra click
+        // started another discovery job.
+        await pollStatus()
         return
       }
 
