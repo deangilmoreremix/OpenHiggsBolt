@@ -21,12 +21,13 @@ const BASE = process.env.DEMO_BASE_URL || 'http://localhost:3111';
 
 const PROXY_PREFIX = '/api/media/shotcraft/';
 const KEY_PATTERN = /^\/api\/media\/shotcraft\/([a-z0-9][a-z0-9-]*)\.mp4$/;
-const SWEEP_CONCURRENCY = 8;
+const RANGE_PROBE_CONCURRENCY = 8;
 // The HEAD sweep touches all 150 keys, and every proxied HEAD still opens an
 // upstream fetch (Next answers HEAD through the GET handler). Eight parallel
 // upstream streams on a cold dev server is what pushed the sweep past its
 // budget, so it runs at half the width; it still finishes well inside it.
 const HEAD_SWEEP_CONCURRENCY = 4;
+const HEAD_REQUEST_TIMEOUT_MS = 20_000;
 const RANGE_SAMPLE_SIZE = 15;
 
 /** Every unique style key referenced by BOTH catalog arrays, sorted. */
@@ -118,7 +119,11 @@ test.describe('ShotCraft proxy — full clip universe', () => {
     await runWithConcurrency(
       CLIP_KEYS.map((key) => async () => {
         try {
-          const res = await fetch(`${BASE}${PROXY_PREFIX}${key}.mp4`, { method: 'HEAD' });
+          // A stalled upstream fails its own key instead of eating the test budget.
+          const res = await fetch(`${BASE}${PROXY_PREFIX}${key}.mp4`, {
+            method: 'HEAD',
+            signal: AbortSignal.timeout(HEAD_REQUEST_TIMEOUT_MS),
+          });
           const contentType = res.headers.get('content-type') ?? '';
           const acceptRanges = res.headers.get('accept-ranges') ?? '';
           checked += 1;
@@ -181,7 +186,7 @@ test.describe('ShotCraft proxy — full clip universe', () => {
           problems.push(`${key}[${category}]: media GET threw ${(err as Error).message}`);
         }
       }),
-      SWEEP_CONCURRENCY,
+      RANGE_PROBE_CONCURRENCY,
     );
 
     expect(problems, `${problems.length}/${sample.length} sampled keys failed the range probe`).toEqual([]);

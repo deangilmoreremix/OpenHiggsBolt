@@ -66,8 +66,8 @@ test.describe('Personalization Modal — Motion Studio template video', () => {
     await expect(cards.first()).toBeVisible({ timeout: 20000 });
     await expect(cards).toHaveCount(124, { timeout: 20000 });
 
-    // Before selecting: no player anywhere in the grid, and the first card
-    // still shows a still poster (not a video).
+    // Before selecting: no full player anywhere in the grid, and the first
+    // card autoplays its own silent preview clip.
     await expect(dialog.getByTestId('motion-template-player')).toHaveCount(0);
 
     const firstTemplate = MOTION_TEMPLATE_CARDS[0];
@@ -77,6 +77,25 @@ test.describe('Personalization Modal — Motion Studio template video', () => {
       `[data-testid="motion-template-card"][data-template-id="${firstTemplate.id}"]`,
     );
     await expect(firstCard).toHaveCount(1);
+
+    // Previews only load while on screen, so bring the card into view first.
+    await firstCard.scrollIntoViewIfNeeded();
+    const preview = firstCard.getByTestId('card-preview-video');
+    await expect(preview).toHaveCount(1, { timeout: 15000 });
+    expect(await preview.getAttribute('src')).toContain(firstTemplate.preview!);
+    const previewAdvanced = await preview.evaluate(async (v: HTMLVideoElement) => {
+      const deadline = Date.now() + 20000;
+      while (Date.now() < deadline && v.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      const start = v.currentTime;
+      while (Date.now() < deadline) {
+        if (v.currentTime > start + 0.05) return true;
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      return false;
+    });
+    expect(previewAdvanced, 'the unselected card preview must be playing').toBe(true);
 
     // Select the first template.
     const useButton = firstCard.getByTestId('motion-template-use');

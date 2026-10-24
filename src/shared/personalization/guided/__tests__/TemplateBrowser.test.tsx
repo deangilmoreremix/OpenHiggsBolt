@@ -358,6 +358,22 @@ describe('TemplateBrowser (recipe-card grid)', () => {
     expect(called.id.startsWith(`${MOTION_TEMPLATE_CARDS[0].id}/`)).toBe(true)
   })
 
+  it('every unselected recipe card autoplays its own silent clip', () => {
+    const { container } = renderBrowser()
+    const cards = [...container.querySelectorAll<HTMLElement>('[data-testid="motion-template-card"]')]
+    expect(cards.length).toBe(124)
+    for (const card of cards) {
+      const id = card.getAttribute('data-template-id')!
+      const template = MOTION_TEMPLATE_CARDS.find((t) => t.id === id)!
+      if (!template.preview) continue
+      const clip = card.querySelector('video[data-testid="card-preview-video"]') as HTMLVideoElement
+      expect(clip, `card ${id} must play a preview clip`).toBeTruthy()
+      expect(clip.getAttribute('src')).toBe(template.preview)
+      expect(clip.muted && clip.loop && clip.autoplay && clip.playsInline).toBe(true)
+      expect(clip.controls).toBe(false)
+    }
+  })
+
   it('marks the currently-selected template card as active and mounts its player', () => {
     // Select via the shot the provider would get: CrashImpactReal belongs to
     // the camera/crash-zoom-punch card.

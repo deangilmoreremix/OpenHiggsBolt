@@ -299,7 +299,7 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
     });
     page.on('response', (res) => {
       if (/\.(mp4|webm|mov|m4v)(\?|$)/i.test(res.url())) clipResponses.push(res.status());
-      if (/\/media\//.test(new URL(res.url()).pathname) && res.status() >= 400) {
+      if (/^https?:\/\/[^/]+\/(api\/)?media\//.test(res.url()) && res.status() >= 400) {
         mediaHttpErrors.push(`${res.status()} ${res.url()}`);
       }
     });
@@ -395,11 +395,12 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
       await clickViaElement(playButton.first());
 
       // Wait for the <video> to reflect the newly selected demo's src.
-      const videoSelector = 'video';
+      // Every card autoplays a preview clip, so target the selected card's player.
+      const videoSelector = '[data-testid="demo-player"]';
       try {
         await page.waitForFunction(
           (expectedSrc: string) => {
-            const v = document.querySelector('video') as HTMLVideoElement | null;
+            const v = document.querySelector('[data-testid="demo-player"]') as HTMLVideoElement | null;
             return Boolean(v && v.src && v.src.includes(expectedSrc));
           },
           expected.videoSrc,
@@ -482,7 +483,7 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
       // Wait for video to load.
       await page.waitForFunction(
         (expectedSrc: string) => {
-          const v = document.querySelector('video') as HTMLVideoElement | null;
+          const v = document.querySelector('[data-testid="demo-player"]') as HTMLVideoElement | null;
           return Boolean(v && v.src && v.src.includes(expectedSrc));
         },
         step4Demo.videoSrc,
@@ -651,9 +652,28 @@ test.describe('Personalization Modal — Demo Video Playback', () => {
     expect(await revealDemoCard(dialog, demo), `card ${demo.slug} must be reachable`).toBe(true);
     await expect(card).toBeVisible({ timeout: 10000 });
 
-    // Before selecting: a still poster thumbnail, no player.
+    // Before selecting: the card autoplays its own silent preview clip over
+    // its poster, and carries no full player.
     await expect(card.locator('img')).toHaveCount(1);
     await expect(card.locator('[data-testid="demo-player"]')).toHaveCount(0);
+    // Previews only load while on screen, so bring the card into view first.
+    await card.scrollIntoViewIfNeeded();
+    const preview = card.locator('[data-testid="card-preview-video"]');
+    await expect(preview).toHaveCount(1, { timeout: 10000 });
+    expect(await preview.getAttribute('src')).toContain(demo.videoSrc);
+    const previewPlayback = await preview.evaluate(async (v: HTMLVideoElement) => {
+      const deadline = Date.now() + 15000;
+      while (Date.now() < deadline && v.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      const start = v.currentTime;
+      while (Date.now() < deadline) {
+        if (v.currentTime > start + 0.05) return { advanced: true, controls: v.controls, muted: v.muted };
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      return { advanced: false, controls: v.controls, muted: v.muted };
+    });
+    expect(previewPlayback).toEqual({ advanced: true, controls: false, muted: true });
 
     // Select the demo.
     const playButton = dialog.locator(`button[aria-label="Play ${demo.title}"]`);
