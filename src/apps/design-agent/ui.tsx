@@ -232,10 +232,35 @@ export function TemplatePickerModal({ open, onClose, title, subtitle, search, se
 }
 
 /** One template/recipe card inside `TemplatePickerModal`. */
-export function TemplateOption({ label, description, onSelect, selected, testId }: { label: string; description: string; onSelect: () => void; selected?: boolean; testId?: string }) {
+export function TemplateOption({ label, description, onSelect, selected, testId, media, meta, onActiveChange }: {
+  label: string
+  description: string
+  onSelect: () => void
+  selected?: boolean
+  testId?: string
+  /** Optional preview shown above the label (e.g. a thumbnail or player). */
+  media?: ReactNode
+  /** Optional secondary line under the label (e.g. an upstream key). */
+  meta?: string
+  /** Hover/focus in (true) and out (false) — lets the caller drive one live preview. */
+  onActiveChange?: (active: boolean) => void
+}) {
   return (
-    <button type="button" onClick={onSelect} data-testid={testId} className="p-4 rounded-xl text-left transition-all hover:bg-white/5" style={{ border: selected ? '1px solid rgba(96,165,250,0.6)' : '1px solid var(--border-color)', background: selected ? 'rgba(59,130,246,0.08)' : 'rgba(255,255,255,0.02)' }}>
+    <button
+      type="button"
+      onClick={onSelect}
+      onMouseEnter={onActiveChange && (() => onActiveChange(true))}
+      onMouseLeave={onActiveChange && (() => onActiveChange(false))}
+      onFocus={onActiveChange && (() => onActiveChange(true))}
+      onBlur={onActiveChange && (() => onActiveChange(false))}
+      aria-pressed={selected}
+      data-testid={testId}
+      className="p-4 rounded-xl text-left transition-all hover:bg-white/5"
+      style={{ border: selected ? '1px solid rgba(96,165,250,0.6)' : '1px solid var(--border-color)', background: selected ? 'rgba(59,130,246,0.08)' : 'rgba(255,255,255,0.02)' }}
+    >
+      {media && <div className="mb-3">{media}</div>}
       <div className="flex items-center gap-2 mb-2"><Sparkles size={13} style={{ color: '#60a5fa', flexShrink: 0 }} /><span className="text-sm font-medium">{label}</span></div>
+      {meta && <div className="-mt-1 mb-2 text-[10px] font-mono" style={{ color: 'rgba(255,255,255,0.3)' }}>{meta}</div>}
       <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.4)' }}>{description}</p>
     </button>
   )

@@ -3,6 +3,7 @@ import {
   MOTION_CATEGORIES,
   MOTION_TEMPLATE_CARDS,
   MOTION_TEMPLATES,
+  motionTemplateTitle,
   motionTemplateVariants,
   resolveMotionTemplate,
   type MotionCategoryKey,
@@ -39,6 +40,7 @@ type CategoryFilter = MotionCategoryKey | "all";
 const matchesQuery = (t: MotionTemplate, q: string) =>
   t.name.toLowerCase().includes(q) ||
   t.nameEn.toLowerCase().includes(q) ||
+  motionTemplateTitle(t).toLowerCase().includes(q) ||
   t.slug.toLowerCase().includes(q) ||
   t.summary.toLowerCase().includes(q) ||
   t.summaryEn.toLowerCase().includes(q) ||
@@ -242,8 +244,8 @@ export default function LibraryPanel({
                       key={v.id}
                       className="flex items-center gap-2 text-[11px] text-white/60"
                     >
-                      <span className="truncate flex-1" title={v.componentName}>
-                        {v.componentName}
+                      <span className="truncate flex-1" title={v.nameEn}>
+                        {motionTemplateTitle(v).split(" · ").pop()}
                       </span>
                       <span className="text-white/30">{v.durationSec}s</span>
                       <button

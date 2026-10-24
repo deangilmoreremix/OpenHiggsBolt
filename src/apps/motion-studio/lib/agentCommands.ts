@@ -11,6 +11,7 @@
 import type { ClipData, ProjectData } from "../types";
 import type { PropField } from "../cards/types";
 import { schemaForCard } from "../cards/cardSchemas";
+import { englishRecipeName } from "@/data/motionRecipeCatalog";
 
 /** 卡片元数据（解释器只需要 id / 名字 / 属性面） */
 export interface CardMeta {
@@ -214,7 +215,7 @@ const resolveTarget = (ctx: AgentContext, kind: TargetKind): ClipData | null => 
 /** 给人看的名字：卡片名 → clip 标签 → cardId */
 const clipName = (ctx: AgentContext, clip: ClipData): string => {
   const meta = ctx.cards?.[clip.cardId];
-  return meta?.nameEn || meta?.name || clip.label || clip.cardId;
+  return (meta?.nameEn && englishRecipeName(meta.nameEn)) || meta?.name || clip.label || clip.cardId;
 };
 
 const stripQuotes = (v: string) =>

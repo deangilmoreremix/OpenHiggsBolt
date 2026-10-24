@@ -124,11 +124,17 @@ test.describe('Motion Studio · input → editor transition', () => {
     // (a) the project name in the top bar
     await expect(page.locator('.project-name')).toHaveValue(DESCRIPTION);
 
-    // (b) the persisted project in localStorage
-    const stored = await page.evaluate(() =>
-      localStorage.getItem('shotcraft-workbench-project-v1'),
-    );
-    expect(stored, 'the created project must be persisted').toBeTruthy();
+    // (b) the persisted project in localStorage — the store saves on an 800ms
+    // debounce, so wait for the write instead of reading once.
+    const readStored = () =>
+      page.evaluate(() => localStorage.getItem('shotcraft-workbench-project-v1'));
+    await expect
+      .poll(async () => JSON.parse((await readStored()) ?? 'null')?.name ?? null, {
+        message: 'the created project must be persisted',
+        timeout: 10_000,
+      })
+      .toBe(DESCRIPTION);
+    const stored = await readStored();
     const project = JSON.parse(stored as string) as {
       name: string;
       width: number;

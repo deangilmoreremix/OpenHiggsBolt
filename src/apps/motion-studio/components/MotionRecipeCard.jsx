@@ -7,7 +7,7 @@ import { themedProps } from '../theme';
 import { MANIFEST } from '../cards/projectCards';
 import { PromptMenuList, PromptMenuItem } from 'studio/src/components/prompt/PromptComposer';
 import { setDragPayload } from '../dnd';
-import { MOTION_CATEGORIES, motionCardId } from '@/data/motionRecipeCatalog';
+import { MOTION_CATEGORIES, motionCardId, motionTemplateTitle } from '@/data/motionRecipeCatalog';
 
 const CATEGORY_LABEL_EN = Object.fromEntries(MOTION_CATEGORIES.map((c) => [c.key, c.labelEn]));
 
@@ -250,7 +250,7 @@ export default function MotionRecipeCard({
             </div>
           )}
           <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 to-transparent px-2 pb-1.5 pt-4">
-            <h3 className="text-xs font-medium text-white truncate" title={recipe.name}>{recipe.nameEn || recipe.name}</h3>
+            <h3 className="text-xs font-medium text-white truncate" title={recipe.nameEn}>{recipe.nameEn ? motionTemplateTitle(recipe) : recipe.name}</h3>
           </div>
           <div className="absolute bottom-8 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
             <button

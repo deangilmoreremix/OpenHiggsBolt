@@ -46,6 +46,7 @@ import {
   MOTION_TEMPLATE_CARDS,
   getMotionTemplateCardShot,
   getMotionTemplateCardsByCategory,
+  motionTemplateTitle,
   normalizeCardCounts,
   searchMotionTemplateCards,
   type MotionCategoryKey,
@@ -458,10 +459,8 @@ function TemplateCard({
         )}
       </div>
 
-      <div style={{ color: C.text, fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>{template.nameEn}</div>
-      {template.nameEn !== template.name && (
-        <div style={{ color: C.muted2, fontSize: 10 }}>{template.name}</div>
-      )}
+      <div style={{ color: C.text, fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>{motionTemplateTitle(template)}</div>
+      <div style={{ color: C.muted2, fontSize: 10 }}>{template.nameEn}</div>
       {template.summaryEn && (
         <p style={{ ...hintStyle, margin: 0 }}>{template.summaryEn}</p>
       )}

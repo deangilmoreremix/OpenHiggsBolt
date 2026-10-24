@@ -26,8 +26,10 @@ import {
   TemplatesPill,
   useTypingPlaceholder,
 } from '@/apps/design-agent/ui';
+import { RecipePreview } from '../components/RecipePreview';
 import {
   searchMotionTemplates,
+  motionTemplateTitle,
   MOTION_CATEGORIES,
   MOTION_TEMPLATES,
   type MotionTemplate,
@@ -168,6 +170,8 @@ export default function MotionStudioEntry() {
   const [showRecipePicker, setShowRecipePicker] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  /** Recipe under the pointer / keyboard focus in the picker — the one live Remotion preview. */
+  const [previewRecipe, setPreviewRecipe] = useState<string | null>(null);
   /** 提示词条上选的本地素材（object URL）——生成工程时一起带进新工程 */
   const [media, setMedia] = useState<MediaAttachment[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -278,7 +282,23 @@ export default function MotionStudioEntry() {
   const closePicker = () => {
     setShowRecipePicker(false);
     setSearchQuery('');
+    setPreviewRecipe(null);
   };
+
+  /** Only one recipe plays at a time: the hovered one, else the selected one. */
+  const playingRecipe = previewRecipe ?? selectedRecipe;
+  const recipeOption = (tpl: MotionTemplate, description: string) => (
+    <TemplateOption
+      key={tpl.id}
+      label={motionTemplateTitle(tpl)}
+      meta={tpl.nameEn}
+      description={description}
+      selected={selectedRecipe === tpl.id}
+      onSelect={() => pickRecipe(tpl.id)}
+      media={<RecipePreview recipe={tpl} playing={playingRecipe === tpl.id} />}
+      onActiveChange={(active) => setPreviewRecipe((current) => (active ? tpl.id : current === tpl.id ? null : current))}
+    />
+  );
 
   const pickRecipe = (id: string) => {
     setSelectedRecipe(id);
@@ -300,18 +320,10 @@ export default function MotionStudioEntry() {
         {searchResults ? (
           <div className="space-y-2">
             <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: semantic.textMuted }}>Search results</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {searchResults.map((tpl) => {
                 const cat = MOTION_CATEGORIES.find((c) => c.key === tpl.category);
-                return (
-                  <TemplateOption
-                    key={tpl.id}
-                    label={tpl.nameEn}
-                    description={`${cat?.labelEn ?? tpl.category} · ${tpl.summaryEn}`}
-                    selected={selectedRecipe === tpl.id}
-                    onSelect={() => pickRecipe(tpl.id)}
-                  />
-                );
+                return recipeOption(tpl, `${cat?.labelEn ?? tpl.category} · ${tpl.summaryEn}`);
               })}
             </div>
           </div>
@@ -320,16 +332,8 @@ export default function MotionStudioEntry() {
             {RECIPE_CATEGORIES.map((cat) => (
               <div key={cat.key} className="space-y-2">
                 <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: semantic.textMuted }}>{cat.label}</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {cat.recipes.map((tpl) => (
-                    <TemplateOption
-                      key={tpl.id}
-                      label={tpl.nameEn}
-                      description={tpl.summaryEn}
-                      selected={selectedRecipe === tpl.id}
-                      onSelect={() => pickRecipe(tpl.id)}
-                    />
-                  ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {cat.recipes.map((tpl) => recipeOption(tpl, tpl.summaryEn))}
                 </div>
               </div>
             ))}
@@ -413,8 +417,8 @@ export default function MotionStudioEntry() {
             />
             <div className="flex flex-wrap items-center gap-2">
               <AttachButton onClick={() => fileRef.current?.click()} disabled={isCreating} label="Attach image / video / audio" testId="motion-prompt-media-button" />
-              <TemplatesPill onClick={() => setShowRecipePicker(true)} ariaLabel={selectedTemplate ? `Templates — ${selectedTemplate.nameEn}` : 'Templates — Select a recipe'} />
-              {selectedTemplate && <SelectedChip label={selectedTemplate.nameEn} onClear={() => setSelectedRecipe('')} clearLabel="Clear recipe" />}
+              <TemplatesPill onClick={() => setShowRecipePicker(true)} ariaLabel={selectedTemplate ? `Templates — ${motionTemplateTitle(selectedTemplate)}` : 'Templates — Select a recipe'} />
+              {selectedTemplate && <SelectedChip label={motionTemplateTitle(selectedTemplate)} onClear={() => setSelectedRecipe('')} clearLabel="Clear recipe" />}
               <OptionPill<AspectRatio> label="Aspect ratio" options={ASPECT_RATIOS} value={aspectRatio} onChange={setAspectRatio} format={(v) => v} />
               <OptionPill<number> label="Duration" options={DURATIONS} value={duration} onChange={setDuration} format={(v) => `${v}s`} />
               <span className="text-[10px]" style={{ color: semantic.textMuted }}>{media.length} references</span>

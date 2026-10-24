@@ -21,7 +21,7 @@ import PersonalizationModal from './PersonalizationModal'
 import { readHandoff, writeHandoff } from '@/shared/crossStudio'
 import { SocialPublishContext } from '@/components/SocialPublishProvider'
 import { useAuthConfig } from '@/lib/authConfig'
-import { getMotionTemplate, type MotionTemplate } from '@/data/motionRecipeCatalog'
+import { getMotionTemplate, motionTemplateTitle, type MotionTemplate } from '@/data/motionRecipeCatalog'
 
 /** Safe accessor for SocialPublishContext — returns null when not wrapped in a provider. */
 function useOptionalSocialPublish(): null | { openPublish: (opts: { mediaUrl: string; mediaType?: 'image' | 'video'; title?: string; caption?: string }) => void; closePublish: () => void; openSocialPublisher: (opts: { asset: unknown }) => void } {
@@ -4475,7 +4475,7 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     setPreviewVideo({
       url: clip,
       poster,
-      title: template.nameEn || template.name,
+      title: template.nameEn ? motionTemplateTitle(template) : template.name,
       kind: 'motion-template',
       demoId: undefined,
       templateId: template.componentName,

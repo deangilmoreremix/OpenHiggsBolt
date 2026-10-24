@@ -95,6 +95,33 @@ export interface MotionCategory {
  */
 export const motionCardId = (t: MotionTemplate): string => `demo:${t.componentName}`;
 
+/**
+ * Readable English title for a recipe.
+ *
+ * Upstream ShotCraft has no English display names — its `nameEn` is the
+ * kebab-case card key, plus ` · <Component>` for multi-style cards
+ * (`crash-zoom-punch · CrashImpactReal`). This turns both halves into words:
+ * `Crash Zoom Punch · Crash Impact Real`. Keep `nameEn` itself as the upstream
+ * key for search and cross-referencing.
+ */
+const TITLE_ACRONYMS: Record<string, string> = {
+  '2d': '2D', '3d': '3D', ai: 'AI', bg: 'BG', cta: 'CTA', fui: 'FUI', hud: 'HUD', svg: 'SVG', ui: 'UI', v2: 'V2',
+};
+const titleWord = (word: string): string =>
+  TITLE_ACRONYMS[word.toLowerCase()] ?? word.charAt(0).toUpperCase() + word.slice(1);
+const splitCamel = (value: string): string =>
+  value
+    .replace(/([a-z])([A-Z0-9])/g, '$1 $2')
+    .replace(/([A-Z0-9]+)([A-Z][a-z])/g, '$1 $2');
+export const englishRecipeName = (nameEn: string): string =>
+  nameEn
+    .split(' · ')
+    .map((part) => (/^[a-z0-9-]+$/.test(part) ? part.split('-').filter(Boolean).map(titleWord).join(' ') : splitCamel(part)))
+    .join(' · ');
+
+/** `englishRecipeName` for a catalog entry. */
+export const motionTemplateTitle = (t: Pick<MotionTemplate, 'nameEn'>): string => englishRecipeName(t.nameEn);
+
 export const MOTION_CATEGORIES: readonly MotionCategory[] = [
   { key: 'opening', label: '开场与品牌', labelEn: 'Opening & Brand', count: 11 },
   { key: 'typography', label: '文字与字卡', labelEn: 'Typography & Title Cards', count: 25 },
@@ -4877,6 +4904,7 @@ export function searchMotionTemplates(query: string): MotionTemplate[] {
     (t) =>
       t.name.toLowerCase().includes(q) ||
       t.nameEn.toLowerCase().includes(q) ||
+      motionTemplateTitle(t).toLowerCase().includes(q) ||
       t.categoryLabel.toLowerCase().includes(q) ||
       t.summary.toLowerCase().includes(q) ||
       t.summaryEn.toLowerCase().includes(q) ||

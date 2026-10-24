@@ -91,6 +91,27 @@ replaced by the Design Agent home layout:
 `handleCreate`, the entitlement gate, `createProjectFromEntry`, Personalization
 brand mapping and media attachment are the same code as before.
 
+### Recipe previews and English titles (follow-up)
+
+- **Template pop-up previews (Remotion).** Each recipe in the home page's
+  Templates pop-up now shows a thumbnail (`components/RecipePreview.tsx`). The
+  hovered card — or the selected one when nothing is hovered — mounts a live
+  Remotion `<Player>` of that recipe's own card component, the same component
+  the timeline renders. Only one Player is ever mounted; the rest show the
+  upstream ShotCraft poster, or a category tile where upstream has no poster.
+  The still layer stays mounted under the Player (`pointer-events: none`) so the
+  node under the pointer never changes — swapping it caused a spurious
+  mouseleave and swallowed clicks that started on it.
+- **English recipe titles.** Upstream has no English display names (its English
+  name is the kebab-case key). `englishRecipeName` / `motionTemplateTitle` in
+  `motionRecipeCatalog.ts` turn keys into titles
+  (`crash-zoom-punch · CrashImpactReal` → `Crash Zoom Punch · Crash Impact Real`).
+  Used in the pop-up, the selected-recipe chip, library cards and variant rows,
+  timeline/inspector names (English locale), Motion Agent replies, and the
+  Personalization recipe browser (which showed the Chinese name before). The
+  upstream key stays as a small subtitle for cross-referencing the ShotCraft
+  site. Search matches the English titles too.
+
 ### Motion Studio workbench (`App.tsx`, `MotionAgentPanel.tsx`, `LibraryPanel.tsx`, `MotionRecipeCard.jsx`, `styles.css`)
 
 - Header styled as the Design Agent chat header: "← Projects" (back to the
@@ -122,6 +143,7 @@ brand mapping and media attachment are the same code as before.
 | --- | --- | --- |
 | Home, desktop | `before-home-desktop.png` | `after-home-desktop.png` |
 | Home, mobile | `before-home-mobile.png` | `after-home-mobile.png` |
+| Template pop-up with live Remotion preview | — | `after-template-picker-desktop.png`, `after-template-picker-mobile.png` |
 | Workbench, desktop | `before-workbench-desktop.png` | `after-workbench-desktop.png` |
 | Workbench, mobile | `before-workbench-mobile.png` | `after-workbench-mobile.png` |
 
