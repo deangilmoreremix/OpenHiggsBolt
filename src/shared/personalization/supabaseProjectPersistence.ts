@@ -407,13 +407,24 @@ export function createProjectPersistence(opts: ProjectPersistenceOptions = {}) {
   }
 
   function save(state: PersonalizationProjectState): Promise<{ ok: boolean; error?: string }> {
-    const run = queue.then(() => send(state))
+    // The session is captured when the save is QUEUED: a save still waiting
+    // behind an in-flight one when the modal switches source belongs to the
+    // old session and must be dropped, or it would be sent with the new
+    // session's row id and overwrite that project.
+    const queuedEpoch = epoch
+    const run = queue.then(() =>
+      queuedEpoch === epoch
+        ? send(state, queuedEpoch)
+        : { ok: false, error: 'Superseded by a newer project session' },
+    )
     queue = run.catch(() => undefined)
     return run
   }
 
-  function send(state: PersonalizationProjectState): Promise<{ ok: boolean; error?: string }> {
-    const sentEpoch = epoch
+  function send(
+    state: PersonalizationProjectState,
+    sentEpoch: number,
+  ): Promise<{ ok: boolean; error?: string }> {
     const sanitized = stripSessionScopedUrls({ ...state, id: state.id || projectId || undefined })
     // Route the fetch through a promise step so a synchronous throw (e.g. fetch
     // missing after environment teardown) or a non-thenable return (e.g. a mock

@@ -588,6 +588,34 @@ describe('autosaves keep writing to one row', () => {
     expect(sentIds()).toEqual([ROW_ID, null, null])
   })
 
+  it('a save still queued when the source switches is dropped, not sent with the new row id', async () => {
+    const releases: Array<() => void> = []
+    fetchMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          releases.push(() => resolve(stubResponse({ ok: true, project: null })))
+        }),
+    )
+    const persistence = createProjectPersistence({ debounceMs: 5 })
+    persistence.flush({ ...base, sourceDemoId: 'source-A' }) // in flight
+    persistence.flush({ ...base, sourceDemoId: 'source-A', personalizedPrompt: 'queued' }) // queued
+    await settle()
+    persistence.setProjectId(ROW_ID) // restore of source B
+    releases.shift()!()
+    await settle()
+    persistence.flush({ ...base, sourceDemoId: 'source-B' })
+    await settle()
+    releases.forEach((release) => release())
+    await settle()
+    const posts = fetchMock.mock.calls
+      .filter(([, init]) => (init as RequestInit | undefined)?.method === 'POST')
+      .map(([, init]) => JSON.parse(String((init as RequestInit).body)).project)
+    expect(posts.map((p) => [p.source.id, p.id])).toEqual([
+      ['source-A', null],
+      ['source-B', ROW_ID],
+    ])
+  })
+
   it('a response that lands after a source switch is not adopted', async () => {
     let release!: () => void
     fetchMock.mockImplementation(
