@@ -1,8 +1,9 @@
-'use client';
+ 'use client';
 
 import { useCallback, useState } from 'react';
 import { Copy, Download, Play, RefreshCw, Trash2, Loader2 } from 'lucide-react';
 import { getPosterFrameUrl, formatTime } from '../lib/thumbnailUtils';
+import MotionFullscreenPlayer from './MotionFullscreenPlayer';
 
 const ACTIONS = [
   { icon: Copy, label: 'Copy' },
@@ -23,7 +24,7 @@ export default function MotionHistoryGallery({
   entryCount = 0,
 }) {
   const [hoveredId, setHoveredId] = useState(null);
-  const [fullscreenUrl, setFullscreenUrl] = useState(null);
+  const [fullscreenIdx, setFullscreenIdx] = useState(null);
 
   const handleCopy = useCallback((url) => {
     navigator.clipboard?.writeText(url);
@@ -86,7 +87,7 @@ export default function MotionHistoryGallery({
           <span className="mt-2 text-sm text-white/60">Generating video…</span>
         </div>
       )}
-      {sessions.map((session) => {
+      {sessions.map((session, index) => {
         const poster = getPosterFrameUrl(session);
         const duration = formatTime(session.duration ?? 0);
         const isHovered = hoveredId === session.id;
@@ -100,7 +101,7 @@ export default function MotionHistoryGallery({
             <div
               className="relative aspect-video rounded-xl overflow-hidden border border-white/[0.08] bg-[#0a0a0a] cursor-pointer group"
               onClick={() => onSelect?.(session)}
-              onDoubleClick={() => setFullscreenUrl(poster)}
+              onDoubleClick={() => setFullscreenIdx(index)}
             >
               <video
                 className="w-full h-full object-cover"
@@ -162,6 +163,15 @@ export default function MotionHistoryGallery({
           </div>
         );
       })}
+      {fullscreenIdx !== null && (
+        <MotionFullscreenPlayer
+          url={getPosterFrameUrl(sessions[fullscreenIdx])}
+          mediaType="video"
+          onClose={() => setFullscreenIdx(null)}
+          onPrev={() => setFullscreenIdx((i) => (i > 0 ? i - 1 : i))}
+          onNext={() => setFullscreenIdx((i) => (i < sessions.length - 1 ? i + 1 : i))}
+        />
+      )}
     </div>
   );
 }

@@ -11,9 +11,13 @@ import { MANIFEST } from '../cards/projectCards';
 import { themedProps } from '../theme';
 import { cardName, t, useLocale, useT, useTx } from "../i18n";
 import MotionFullscreenPlayer from "../components/MotionFullscreenPlayer";
+import type { CardDef } from "../cards/types";
 
-/** 素材库点击预览：占据画面区，循环播放；主工程 Player 保持挂载（display:none） */
-const ItemPreview: React.FC<{ item: NonNullable<PreviewItem>; onClose: () => void; onFullscreen?: (url: string) => void }> = ({
+type FullscreenPayload =
+  | { kind: "video" | "image"; url: string; mediaType: "video" | "image" }
+  | { kind: "card"; card: CardDef };
+
+const ItemPreview: React.FC<{ item: NonNullable<PreviewItem>; onClose: () => void; onFullscreen?: (payload: FullscreenPayload) => void }> = ({
   item,
   onClose,
   onFullscreen,
@@ -70,8 +74,19 @@ const ItemPreview: React.FC<{ item: NonNullable<PreviewItem>; onClose: () => voi
         <span className="preview-tag">{t("prev.tag")}</span>
         <b>{title}</b>
         <span className="dim">{t("prev.dragHint")}</span>
-        {item.kind === "video" && onFullscreen && (
-          <button className="btn" onClick={() => onFullscreen(`/ ${item.file}`)}>
+        {onFullscreen && item.kind !== "audio" && (
+          <button
+            className="btn"
+            onClick={() => {
+              if (item.kind === "card") {
+                const card = CARDS[item.cardId];
+                if (card) onFullscreen({ kind: "card", card });
+              } else {
+                const mediaType = item.kind === "image" ? "image" : "video";
+                onFullscreen({ kind: mediaType, url: `/${item.file}`, mediaType });
+              }
+            }}
+          >
             ⛶
           </button>
         )}
@@ -141,31 +156,72 @@ export const PreviewPanel: React.FC = () => {
   const previewItem = useStore((s) => s.previewItem);
   const setPreview = useStore((s) => s.setPreview);
   const [loop, setLoop] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [fullscreenUrl, setFullscreenUrl] = useState<string | null>(null);
+  const [fullscreenMedia, setFullscreenMedia] = useState<FullscreenPayload | null>(null);
 
+  const themeId = useStore((s) => s.project.themeId);
+  const themeColors = useStore((s) => s.project.themeColors);
   const duration = projectDuration(project);
   const inputProps = useMemo(() => ({ project }), [project]);
 
+  const handleCloseFullscreen = () => setFullscreenMedia(null);
+
   return (
     <div className="preview-panel">
-      {isFullscreen && fullscreenUrl && (
-        <MotionFullscreenPlayer
-          url={fullscreenUrl}
-          onClose={() => {
-            setFullscreenUrl(null);
-            setIsFullscreen(false);
-          }}
-        />
-      )}
+      {fullscreenMedia &&
+        (fullscreenMedia.kind === "card" ? (
+          <div
+            className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center"
+            onClick={handleCloseFullscreen}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div
+              className="relative max-h-[90vh] max-w-[90vw]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {(() => {
+                const card = fullscreenMedia.card;
+                const { width, height } = cardSize(card);
+                return (
+                  <Player
+                    component={card.component}
+                    inputProps={themedProps(MANIFEST, card, themeId, {}, themeColors)}
+                    durationInFrames={Math.max(2, card.durationInFrames)}
+                    compositionWidth={width}
+                    compositionHeight={height}
+                    fps={cardFps(card)}
+                    autoPlay
+                    loop
+                    controls={false}
+                    clickToPlay
+                    numberOfSharedAudioTags={32}
+                    style={{ width: "100%", height: "100%" }}
+                  />
+                );
+              })()}
+              <button
+                type="button"
+                onClick={handleCloseFullscreen}
+                className="absolute top-2 right-2 z-[201] flex h-8 w-8 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                aria-label="Close"
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        ) : (
+          <MotionFullscreenPlayer
+            url={fullscreenMedia.url}
+            mediaType={fullscreenMedia.mediaType}
+            onClose={handleCloseFullscreen}
+          />
+        ))}
       {previewItem && (
         <ItemPreview
           item={previewItem}
           onClose={() => setPreview(null)}
-          onFullscreen={(url) => {
-            setFullscreenUrl(url);
-            setIsFullscreen(true);
-          }}
+          onFullscreen={(payload) => setFullscreenMedia(payload)}
         />
       )}
       <div className="preview-stage" style={previewItem ? { display: "none" } : undefined}>
