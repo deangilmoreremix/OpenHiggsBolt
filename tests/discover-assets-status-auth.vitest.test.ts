@@ -60,19 +60,42 @@ function createStatusRequest(jobId = 'job-abc'): NextRequest {
 }
 
 // ---------------------------------------------------------------------------
-// Auth classification: this route requires a valid authenticated session.
-// Ownership is enforced via the `clerk_user_id` filter in getDiscoveryJobForUser.
+// Auth classification: asset discovery is FREE, so an anonymous caller may poll
+// its own job. Ownership is enforced via the `clerk_user_id` filter in
+// getDiscoveryJobForUser, scoped exactly like the POST handler: the signed-in
+// user's id, else `anon-<client ip>`, else plain `anon`.
 // ---------------------------------------------------------------------------
 
 describe('GET /api/personalization/discover-assets/status', () => {
-  it('returns 401 when no session is present', async () => {
+  it('lets an anonymous caller poll its own job, scoped to anon-<client ip>', async () => {
     authUserId = null
+    const anonJob = { ...mockJobRow, clerk_user_id: 'anon-203.0.113.7' }
+    const getDiscoveryJobForUser = vi.fn(async (_id: string, owner: string) =>
+      owner === 'anon-203.0.113.7' ? anonJob : null,
+    )
+    vi.doMock('@/server/discoveryJobs', () => ({ getDiscoveryJobForUser }))
+    const { GET } = await import('@/app/api/personalization/discover-assets/status/route')
+
+    const req = createStatusRequest()
+    req.headers.set('x-forwarded-for', '203.0.113.7')
+    const response = await GET(req)
+    expect(response.status).toBe(200)
+    expect(getDiscoveryJobForUser).toHaveBeenCalledWith('job-abc', 'anon-203.0.113.7')
+    const data = await response.json()
+    expect(data.id).toBe('job-abc')
+  })
+
+  it("returns 404 when an anonymous caller polls a signed-in user's job", async () => {
+    authUserId = null
+    const getDiscoveryJobForUser = vi.fn(async (_id: string, owner: string) =>
+      owner === 'user-123' ? mockJobRow : null,
+    )
+    vi.doMock('@/server/discoveryJobs', () => ({ getDiscoveryJobForUser }))
     const { GET } = await import('@/app/api/personalization/discover-assets/status/route')
 
     const response = await GET(createStatusRequest())
-    expect(response.status).toBe(401)
-    const data = await response.json()
-    expect(data.error).toBe('Unauthorized')
+    expect(response.status).toBe(404)
+    expect(getDiscoveryJobForUser).toHaveBeenCalledWith('job-abc', 'anon')
   })
 
   it('returns 404 when job belongs to another user', async () => {
