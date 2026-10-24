@@ -250,6 +250,8 @@ describe('the inlined font payload (Phase 3 decision D1)', () => {
   it('exposes the licence attribution the credit line must carry (D2)', () => {
     expect(DESIGN_FONT_ATTRIBUTION).toContain('SIL OFL 1.1')
     expect(DESIGN_FONT_ATTRIBUTION).toContain('The Inter Project Authors')
+    expect(DESIGN_FONT_ATTRIBUTION).toContain('Personalization Sans')
+    expect(DESIGN_FONT_ATTRIBUTION).toContain('bundled Inter 4.001 subset')
     expect(DESIGN_FONT_LICENSE_FILE).toBe('/fonts/OFL.txt')
   })
 })

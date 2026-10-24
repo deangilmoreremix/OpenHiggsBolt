@@ -1586,36 +1586,6 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     buildProjectPayload,
   ])
 
-  // Debounced Supabase project persistence
-  useEffect(() => {
-    // Anonymous sessions persist nothing: the free discovery run writes no
-    // project row, no identity and no saved asset.
-    if (!source || access !== 'authenticated') return
-    projectPersistence.current.persist(buildProjectPayload())
-  }, [
-    source?.id,
-    source,
-    mode,
-    promptState.original,
-    promptState.personalized,
-    promptState.edited,
-    assets,
-    outputType,
-    selectedClientId,
-    generation.status,
-    result?.url,
-    result?.urls,
-    clientForm.ctaHeadline,
-    clientForm.callToAction,
-    genOptions,
-    previewSettings,
-    previewVideo,
-    guidedStep,
-    viewMode,
-    access,
-    buildProjectPayload,
-  ])
-
   // Local mirror of the guided/preview state, so save/restore works in the
   // browser even when Supabase has no row for this source (same rule as the
   // project persistence above: anonymous sessions write nothing).

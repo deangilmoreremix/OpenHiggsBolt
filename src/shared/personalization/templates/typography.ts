@@ -114,7 +114,7 @@ export const DESIGN_FONT_FILES: readonly string[] = [DESIGN_FONT_FILE]
  * so the credit travels with the rendered artefact too.
  */
 export const DESIGN_FONT_ATTRIBUTION =
-  'Typeface: Inter (SIL OFL 1.1) © 2016 The Inter Project Authors'
+  'Typeface: Personalization Sans (bundled Inter 4.001 subset, SIL OFL 1.1) © 2016 The Inter Project Authors'
 
 /**
  * The canonical font stack used by every design.
