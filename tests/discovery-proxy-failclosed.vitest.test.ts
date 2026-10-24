@@ -249,6 +249,9 @@ function installNetlifySeams(validToken = 'session-token-valid'): NetlifySeams {
   // The browser phase (and the proxy that serves it) is opt-in.
   const savedBrowserFlag = process.env.ENABLE_BROWSER_DISCOVERY
   process.env.ENABLE_BROWSER_DISCOVERY = 'true'
+  // The worker refuses every call until the dispatch secret is configured.
+  const savedSecret = process.env.INTERNAL_FUNCTION_SECRET
+  process.env.INTERNAL_FUNCTION_SECRET = TEST_INTERNAL_SECRET
 
   return {
     browser,
@@ -256,6 +259,8 @@ function installNetlifySeams(validToken = 'session-token-valid'): NetlifySeams {
     restored: () => {
       if (savedBrowserFlag === undefined) delete process.env.ENABLE_BROWSER_DISCOVERY
       else process.env.ENABLE_BROWSER_DISCOVERY = savedBrowserFlag
+      if (savedSecret === undefined) delete process.env.INTERNAL_FUNCTION_SECRET
+      else process.env.INTERNAL_FUNCTION_SECRET = savedSecret
       for (const [resolved, original] of saved) {
         if (original === undefined) delete nodeRequire.cache[resolved]
         else nodeRequire.cache[resolved] = original
@@ -269,8 +274,11 @@ async function loadNetlifyFunction() {
   return import(NETLIFY_FN)
 }
 
+const TEST_INTERNAL_SECRET = 'test-internal-secret'
+
 function authenticatedEvent(body: unknown, token: string | null) {
-  const headers: Record<string, string> = { 'content-type': 'application/json' }
+  // Every call is a dispatch from the route, which carries the secret.
+  const headers: Record<string, string> = { 'content-type': 'application/json', 'x-internal-service-token': TEST_INTERNAL_SECRET }
   if (token) headers.authorization = `Bearer ${token}`
   return {
     httpMethod: 'POST',

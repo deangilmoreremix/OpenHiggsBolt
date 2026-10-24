@@ -11,7 +11,9 @@ const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
 const INTERNAL_FUNCTION_SECRET = process.env.INTERNAL_FUNCTION_SECRET || ''
 
 function internalSecretOk(event) {
-  if (!INTERNAL_FUNCTION_SECRET) return true
+  // Fail closed: with no secret configured nothing can prove a dispatch came
+  // from the route, so nothing is accepted.
+  if (!INTERNAL_FUNCTION_SECRET) return false
   const headers = event.headers || {}
   const provided = headers['x-internal-service-token']
   if (provided === undefined || provided === null || provided === '') return false
@@ -1618,6 +1620,10 @@ function createBrowserDiscoveryHandler(overrides = {}) {
     // Internal dispatch authentication. Anonymous end users can trigger
     // discovery (it is free), but the dispatch itself must carry the shared
     // secret so the worker cannot be invoked directly from the browser.
+    if (!INTERNAL_FUNCTION_SECRET) {
+      console.error('[personalization-browser-discovery] INTERNAL_FUNCTION_SECRET is not set; refusing every dispatch')
+      return jsonResponse(503, { error: 'Discovery worker is not configured', code: 'INTERNAL_SECRET_NOT_CONFIGURED' })
+    }
     if (!internalSecretOk(event)) {
       return jsonResponse(401, { error: 'Internal dispatch secret required', code: 'INTERNAL_SECRET_REQUIRED' })
     }
@@ -1743,9 +1749,9 @@ function createBrowserDiscoveryHandler(overrides = {}) {
       // handler creates anonymous jobs as `anon-<ip>`. Its dispatch is
       // server-to-server, so the request's own IP is the route's egress
       // address; the route forwards the owner in `x-discovery-job-owner`
-      // instead. That header is trusted ONLY when the dispatch proved itself
-      // with INTERNAL_FUNCTION_SECRET (checked above) — without the secret
-      // anyone could send it. Otherwise the caller is identified by its IP,
+      // instead. That header can be trusted because every request reaching
+      // this point proved itself with INTERNAL_FUNCTION_SECRET (checked
+      // above). Without a forwarded owner the caller is identified by its IP,
       // derived exactly as the route derives it (no port stripping, which
       // would also truncate every IPv6 address).
       if (!auth.userId) {
@@ -1753,7 +1759,7 @@ function createBrowserDiscoveryHandler(overrides = {}) {
         // Only an anonymous owner can be forwarded: a job that belongs to a
         // signed-in user always needs that user's verified session.
         const claimedOwner = headers['x-discovery-job-owner'] || ''
-        const forwardedOwner = INTERNAL_FUNCTION_SECRET && /^anon(-|$)/.test(claimedOwner) ? claimedOwner : ''
+        const forwardedOwner = /^anon(-|$)/.test(claimedOwner) ? claimedOwner : ''
         const callerIp = headers['x-forwarded-for']?.split(',')[0].trim() || headers['x-real-ip'] || ''
         const expectedOwner = forwardedOwner || (callerIp ? `anon-${callerIp}` : 'anon')
         if (jobOwner !== expectedOwner) {

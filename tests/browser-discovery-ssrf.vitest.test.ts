@@ -222,6 +222,9 @@ function installNetlifySeams(validToken = 'session-token-valid'): NetlifySeams {
   // These suites exercise the browser phase, which is opt-in.
   const savedBrowserFlag = process.env.ENABLE_BROWSER_DISCOVERY
   process.env.ENABLE_BROWSER_DISCOVERY = 'true'
+  // The worker refuses every call until the dispatch secret is configured.
+  const savedSecret = process.env.INTERNAL_FUNCTION_SECRET
+  process.env.INTERNAL_FUNCTION_SECRET = TEST_INTERNAL_SECRET
 
   const saved: Array<[string, unknown]> = []
   for (const seam of seams) {
@@ -265,6 +268,8 @@ function installNetlifySeams(validToken = 'session-token-valid'): NetlifySeams {
     restored: () => {
       if (savedBrowserFlag === undefined) delete process.env.ENABLE_BROWSER_DISCOVERY
       else process.env.ENABLE_BROWSER_DISCOVERY = savedBrowserFlag
+      if (savedSecret === undefined) delete process.env.INTERNAL_FUNCTION_SECRET
+      else process.env.INTERNAL_FUNCTION_SECRET = savedSecret
       for (const [resolved, original] of saved) {
         if (original === undefined) delete nodeRequire.cache[resolved]
         else nodeRequire.cache[resolved] = original
@@ -278,12 +283,15 @@ async function loadNetlifyFunction() {
   return import(NETLIFY_FN)
 }
 
+const TEST_INTERNAL_SECRET = 'test-internal-secret'
+
 function netlifyEvent(body: unknown, headers: Record<string, string> = {}) {
   const posted = (body as { websiteUrl?: unknown } | null)?.websiteUrl
   jobWebsiteUrl = typeof posted === 'string' ? posted : 'https://example.com/'
   return {
     httpMethod: 'POST',
-    headers: { 'content-type': 'application/json', ...headers },
+    // Every call is a dispatch from the route, which carries the secret.
+    headers: { 'content-type': 'application/json', 'x-internal-service-token': TEST_INTERNAL_SECRET, ...headers },
     body: JSON.stringify(body),
   }
 }

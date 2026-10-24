@@ -6,7 +6,8 @@
  *
  *   - an anonymous job dispatched by the route (server-to-server, so the
  *     request carries the route's egress IP) is driven, not refused;
- *   - a forwarded owner is only trusted behind INTERNAL_FUNCTION_SECRET;
+ *   - the worker refuses everything until INTERNAL_FUNCTION_SECRET is set,
+ *     and every call must carry it;
  *   - free-layer assets survive browser success, browser failure, and a
  *     disabled browser phase;
  *   - an unexpected failure never leaves the handler throwing.
@@ -96,8 +97,15 @@ function fastDiscovery(needsBrowser: boolean) {
   })
 }
 
+const SECRET = 'internal-secret'
+
+/** A dispatch that carries the internal secret unless the test overrides it. */
 function event(headers: Record<string, string>) {
-  return { httpMethod: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify({ jobId: 'job-1' }) }
+  return {
+    httpMethod: 'POST',
+    headers: { 'content-type': 'application/json', 'x-internal-service-token': SECRET, ...headers },
+    body: JSON.stringify({ jobId: 'job-1' }),
+  }
 }
 
 describe('discovery worker: job lifecycle', () => {
@@ -128,8 +136,9 @@ describe('discovery worker: job lifecycle', () => {
     else process.env.INTERNAL_FUNCTION_SECRET = savedSecret
   })
 
-  async function handlerWith(overrides: Record<string, unknown> = {}, secret?: string) {
-    if (secret === undefined) delete process.env.INTERNAL_FUNCTION_SECRET
+  /** `secret: null` deploys the worker with INTERNAL_FUNCTION_SECRET unset. */
+  async function handlerWith(overrides: Record<string, unknown> = {}, secret: string | null = SECRET) {
+    if (secret === null) delete process.env.INTERNAL_FUNCTION_SECRET
     else process.env.INTERNAL_FUNCTION_SECRET = secret
     vi.resetModules()
     const mod = await import(NETLIFY_FN)
@@ -143,35 +152,53 @@ describe('discovery worker: job lifecycle', () => {
     })
   }
 
+  describe('dispatch authentication', () => {
+    it('refuses every call while INTERNAL_FUNCTION_SECRET is unset', async () => {
+      const handler = await handlerWith({}, null)
+
+      const response = await handler(event({ authorization: 'Bearer valid' }))
+
+      expect(response.statusCode).toBe(503)
+      expect(JSON.parse(response.body).code).toBe('INTERNAL_SECRET_NOT_CONFIGURED')
+      expect(h.launches).toBe(0)
+      expect(h.updates).toEqual([])
+    })
+
+    it('rejects a call that does not carry the secret', async () => {
+      const handler = await handlerWith()
+
+      const response = await handler(event({ authorization: 'Bearer valid', 'x-internal-service-token': 'wrong' }))
+
+      expect(response.statusCode).toBe(401)
+      expect(h.updates).toEqual([])
+    })
+  })
+
   describe('anonymous ownership', () => {
     it('drives an anonymous job the route dispatched from its own egress IP', async () => {
       h.job.clerk_user_id = 'anon-203.0.113.7'
-      const handler = await handlerWith({}, 'internal-secret')
+      const handler = await handlerWith()
 
-      const response = await handler(event({
-        'x-internal-service-token': 'internal-secret',
-        'x-forwarded-for': '18.116.204.94',
-        'x-discovery-job-owner': 'anon-203.0.113.7',
-      }))
+      const response = await handler(event({ 'x-forwarded-for': '18.116.204.94', 'x-discovery-job-owner': 'anon-203.0.113.7' }))
 
       expect(response.statusCode).toBe(200)
       expect(h.job.status).toBe('complete')
     })
 
-    it('ignores a forwarded owner when no internal secret authenticates the dispatch', async () => {
+    it("refuses an anonymous job when the caller's identity does not match its owner", async () => {
       h.job.clerk_user_id = 'anon-203.0.113.7'
       const handler = await handlerWith()
 
-      const response = await handler(event({ 'x-forwarded-for': '198.51.100.9', 'x-discovery-job-owner': 'anon-203.0.113.7' }))
+      const response = await handler(event({ 'x-forwarded-for': '198.51.100.9' }))
 
       expect(response.statusCode).toBe(403)
       expect(h.job.status).toBe('running')
     })
 
     it("never lets a forwarded owner claim a signed-in user's job", async () => {
-      const handler = await handlerWith({}, 'internal-secret')
+      const handler = await handlerWith()
 
-      const response = await handler(event({ 'x-internal-service-token': 'internal-secret', 'x-discovery-job-owner': 'user_abc' }))
+      const response = await handler(event({ 'x-discovery-job-owner': 'user_abc' }))
 
       expect(response.statusCode).toBe(403)
     })
