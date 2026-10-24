@@ -1,0 +1,336 @@
+# docs/phase3/validate.sh — final-review run, Linux cloud container, 2026-10-23
+# Env: placeholder (fake, non-secret) NEXT_PUBLIC_SUPABASE_URL/ANON_KEY and Clerk test-format keys so the app build can collect page data.
+# Ids run: P3-A P3-B P3-C P3-D P3-F P3-H (P3-E/P3-G are subsets of P3-H).
+
+################ validate.sh P3-A (2026-10-23T23:22:55Z)
+== P3-A Persistence Contract ==
+  PASS  projectPersistence.test.ts exists
+  ....  loadProject still called with sourceId — check the persistence layer sends id/list
+  PASS  server reads id/list params
+  ....  route source filter does not read the jsonb source id — verify it is not filtering a non-existent column
+  PASS  route reports whether the source filter was applied or unavailable
+      Tests  16 passed (16)
+   Start at  23:23:06
+   Duration  3.77s (transform 724ms, setup 776ms, collect 2.22s, tests 51ms, environment 0ms, prepare 319ms)
+
+
+P3-A: ALL CHECKS PASSED
+validate.sh P3-A EXIT 0
+################ validate.sh P3-B (2026-10-23T23:23:10Z)
+== P3-B Layering (modals only; toasts/dropdowns may legitimately be topmost) ==
+  PASS  studioLayering.test.jsx: no modal at/above z-250 outside the allowed layers
+  PASS  no shipped modal layer at/above z-250 (upgrade gate + Personalization Modal excluded)
+
+P3-B: ALL CHECKS PASSED
+validate.sh P3-B EXIT 0
+################ validate.sh P3-C (2026-10-23T23:23:15Z)
+== P3-C Credit, Font, Picker, Capability ==
+  PASS  font payload inlined as a base64 data URI (static module)
+  PASS  typography.ts references the static data-URI constant
+  PASS  no node builtin import in the browser-reachable personalization tree
+  PASS  FontFace.load spy present
+  PASS  OFL attribution in the credit surface
+      Tests  176 passed (176)
+   Start at  23:23:16
+   Duration  11.82s (transform 3.15s, setup 2.36s, collect 7.87s, tests 3.23s, environment 17.58s, prepare 965ms)
+
+
+P3-C: ALL CHECKS PASSED
+validate.sh P3-C EXIT 0
+################ validate.sh P3-D (2026-10-23T23:23:28Z)
+== P3-D Hygiene ==
+  PASS  packages/studio/dist untracked
+  PASS  PersonalizationModal.test.tsx: 5/5 consecutive clean runs
+
+P3-D: ALL CHECKS PASSED
+validate.sh P3-D EXIT 0
+################ validate.sh P3-F (2026-10-23T23:24:12Z)
+== P3-F Studio Coverage ==
+  ....  brand-studio: no provider mount found
+  PASS  academy has a provider mount
+  PASS  typecheck clean
+
+P3-F: ALL CHECKS PASSED
+validate.sh P3-F EXIT 0
+################ validate.sh P3-H (2026-10-23T23:24:26Z)
+== P3-H Full matrix ==
+docs/phase3/validate.sh: line 17: vm_stat: command not found
+  FAIL  host gate (load1=1, available=0.0 GiB) — results under this load are not trusted
+
+> open-generative-ai@2.0.0 typecheck
+> tsc --noEmit
+
+  PASS  typecheck
+
+> open-generative-ai@2.0.0 prebuild
+> node scripts/verify-html-encoding-sniffer-patch.mjs
+
+[patch-check] html-encoding-sniffer patch: PASS (/home/user/OpenHiggsBolt/node_modules/.pnpm/jsdom@29.1.1/node_modules/html-encoding-sniffer/lib/html-encoding-sniffer.js)
+
+> open-generative-ai@2.0.0 build
+> next build
+
+   ▲ Next.js 15.5.15
+
+   Creating an optimized production build ...
+ ⚠ Compiled with warnings in 39.7s
+
+./node_modules/.pnpm/browserslist@4.29.3/node_modules/browserslist/node.js
+Critical dependency: require function is used in a way in which dependencies cannot be statically extracted
+
+Import trace for requested module:
+./node_modules/.pnpm/browserslist@4.29.3/node_modules/browserslist/node.js
+./node_modules/.pnpm/browserslist@4.29.3/node_modules/browserslist/index.js
+./node_modules/.pnpm/header-generator@2.1.88/node_modules/header-generator/utils.js
+./node_modules/.pnpm/header-generator@2.1.88/node_modules/header-generator/header-generator.js
+./node_modules/.pnpm/header-generator@2.1.88/node_modules/header-generator/index.js
+./node_modules/.pnpm/header-generator@2.1.88/node_modules/header-generator/index.mjs
+./node_modules/.pnpm/got-scraping@4.2.2/node_modules/got-scraping/dist/index.js
+./node_modules/.pnpm/@crawlee+utils@3.18.2/node_modules/@crawlee/utils/internals/gotScraping.js
+./node_modules/.pnpm/@crawlee+utils@3.18.2/node_modules/@crawlee/utils/index.js
+./node_modules/.pnpm/@crawlee+core@3.18.2/node_modules/@crawlee/core/autoscaling/load_signal.js
+./node_modules/.pnpm/@crawlee+core@3.18.2/node_modules/@crawlee/core/autoscaling/index.js
+./node_modules/.pnpm/@crawlee+core@3.18.2/node_modules/@crawlee/core/index.js
+./node_modules/.pnpm/@crawlee+core@3.18.2/node_modules/@crawlee/core/index.mjs
+./src/server/crawleeProvider.ts
+./src/server/fastDiscovery.ts
+./src/server/discoveryOrchestrator.ts
+./app/api/personalization/discover-assets/route.ts
+
+./node_modules/.pnpm/browserslist@4.29.3/node_modules/browserslist/node.js
+Critical dependency: require function is used in a way in which dependencies cannot be statically extracted
+
+Import trace for requested module:
+./node_modules/.pnpm/browserslist@4.29.3/node_modules/browserslist/node.js
+./node_modules/.pnpm/browserslist@4.29.3/node_modules/browserslist/index.js
+./node_modules/.pnpm/header-generator@2.1.88/node_modules/header-generator/utils.js
+./node_modules/.pnpm/header-generator@2.1.88/node_modules/header-generator/header-generator.js
+./node_modules/.pnpm/header-generator@2.1.88/node_modules/header-generator/index.js
+./node_modules/.pnpm/header-generator@2.1.88/node_modules/header-generator/index.mjs
+./node_modules/.pnpm/got-scraping@4.2.2/node_modules/got-scraping/dist/index.js
+./node_modules/.pnpm/@crawlee+utils@3.18.2/node_modules/@crawlee/utils/internals/gotScraping.js
+./node_modules/.pnpm/@crawlee+utils@3.18.2/node_modules/@crawlee/utils/index.js
+./node_modules/.pnpm/@crawlee+core@3.18.2/node_modules/@crawlee/core/autoscaling/load_signal.js
+./node_modules/.pnpm/@crawlee+core@3.18.2/node_modules/@crawlee/core/autoscaling/index.js
+./node_modules/.pnpm/@crawlee+core@3.18.2/node_modules/@crawlee/core/index.js
+./node_modules/.pnpm/@crawlee+core@3.18.2/node_modules/@crawlee/core/index.mjs
+./src/server/crawleeProvider.ts
+./src/server/fastDiscovery.ts
+./src/server/discoveryOrchestrator.ts
+./app/api/personalization/discover-assets/route.ts
+
+ ⚠ Compiled with warnings in 29.9s
+
+./src/libs/viralMediaResolver.ts
+Critical dependency: Accessing import.meta directly is unsupported (only property access or destructuring is supported)
+
+Import trace for requested module:
+./src/libs/viralMediaResolver.ts
+./src/shared/personalization/demoSources.ts
+./app/demo/[slug]/page.tsx
+
+ ✓ Compiled successfully in 71s
+   Skipping linting
+   Checking validity of types ...
+   Collecting page data ...
+<claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
+<claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
+   Generating static pages (0/23) ...
+   Generating static pages (5/23) 
+   Generating static pages (11/23) 
+   Generating static pages (17/23) 
+ ✓ Generating static pages (23/23)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                         Size  First Load JS
+┌ ƒ /                                            9.74 kB        1.02 MB
+├ ƒ /_not-found                                    998 B         105 kB
+├ ƒ /academy                                       211 B        1.14 MB
+├ ƒ /academy/reseller                            3.02 kB         271 kB
+├ ƒ /account                                     6.88 kB         156 kB
+├ ƒ /agents/[agent_id]                             895 B         209 kB
+├ ƒ /agents/[agent_id]/[conversation_id]           895 B         209 kB
+├ ƒ /agents/create                                 769 B         209 kB
+├ ƒ /agents/edit/[id]                              770 B         209 kB
+├ ƒ /api/academy/content                           306 B         104 kB
+├ ƒ /api/access/resolve                            306 B         104 kB
+├ ƒ /api/access/restore                            306 B         104 kB
+├ ƒ /api/agents/[[...path]]                        306 B         104 kB
+├ ƒ /api/animate                                   306 B         104 kB
+├ ƒ /api/api/v1/[[...path]]                        306 B         104 kB
+├ ƒ /api/app/[[...path]]                           306 B         104 kB
+├ ƒ /api/assets                                    306 B         104 kB
+├ ƒ /api/auth/muapi-key                            306 B         104 kB
+├ ƒ /api/auth/openai-key                           306 B         104 kB
+├ ƒ /api/auth/whoami                               306 B         104 kB
+├ ƒ /api/brand                                     306 B         104 kB
+├ ƒ /api/brand/analyze                             306 B         104 kB
+├ ƒ /api/brands                                    306 B         104 kB
+├ ƒ /api/campaigns                                 306 B         104 kB
+├ ƒ /api/demo/discover                             306 B         104 kB
+├ ƒ /api/design-agent/approve                      306 B         104 kB
+├ ƒ /api/design-agent/assets                       306 B         104 kB
+├ ƒ /api/design-agent/chat                         306 B         104 kB
+├ ƒ /api/design-agent/jobs                         306 B         104 kB
+├ ƒ /api/design-agent/reject                       306 B         104 kB
+├ ƒ /api/design-agent/run-skill                    306 B         104 kB
+├ ƒ /api/design-agent/session-assets               306 B         104 kB
+├ ƒ /api/design-agent/sessions                     306 B         104 kB
+├ ƒ /api/design-agent/skills                       306 B         104 kB
+├ ƒ /api/dev-login                                 306 B         104 kB
+├ ƒ /api/go-ai-viral/health                        306 B         104 kB
+├ ƒ /api/go-ai-viral/prompts                       306 B         104 kB
+├ ƒ /api/go-ai-viral/seedance                      306 B         104 kB
+├ ƒ /api/go-ai-viral/stats                         306 B         104 kB
+├ ƒ /api/media/shotcraft/[styleKey]                306 B         104 kB
+├ ƒ /api/personalization/discover-assets           306 B         104 kB
+├ ƒ /api/personalization/discover-assets/status    306 B         104 kB
+├ ƒ /api/personalization/download-image            306 B         104 kB
+├ ƒ /api/personalization/find-businesses           306 B         104 kB
+├ ƒ /api/personalization/image-analyze             306 B         104 kB
+├ ƒ /api/personalization/image-edit                306 B         104 kB
+├ ƒ /api/personalization/image-smart-edit          306 B         104 kB
+├ ƒ /api/personalization/leads                     306 B         104 kB
+├ ƒ /api/personalization/leads/[id]                306 B         104 kB
+├ ƒ /api/personalization/project                   306 B         104 kB
+├ ƒ /api/personalization/record                    306 B         104 kB
+├ ƒ /api/personalization/research-business         306 B         104 kB
+├ ƒ /api/photo-studio                              306 B         104 kB
+├ ƒ /api/proxy/openai-enhance                      306 B         104 kB
+├ ƒ /api/proxy/openai-image                        306 B         104 kB
+├ ƒ /api/proxy/thumbnail-generate                  306 B         104 kB
+├ ƒ /api/reseller/checkout                         306 B         104 kB
+├ ƒ /api/reseller/download                         306 B         104 kB
+├ ƒ /api/reseller/upgrade                          306 B         104 kB
+├ ƒ /api/storyboard/[[...path]]                    306 B         104 kB
+├ ƒ /api/stripe/checkout                           306 B         104 kB
+├ ƒ /api/thumbnail                                 306 B         104 kB
+├ ƒ /api/upload-binary                             306 B         104 kB
+├ ƒ /api/v1/[...slug]                              306 B         104 kB
+├ ƒ /api/v1/creative-agent/[[...path]]             306 B         104 kB
+├ ƒ /api/v1/get_upload_url                         306 B         104 kB
+├ ƒ /api/v1/upload_file                            306 B         104 kB
+├ ƒ /api/v1/upload-binary                          306 B         104 kB
+├ ƒ /api/version                                   306 B         104 kB
+├ ƒ /api/vfx/cancel                                306 B         104 kB
+├ ƒ /api/vfx/generate                              306 B         104 kB
+├ ƒ /api/vfx/status                                306 B         104 kB
+├ ƒ /api/vfx/upload                                306 B         104 kB
+├ ƒ /api/webhooks/clerk                            306 B         104 kB
+├ ƒ /api/webhooks/stripe                           306 B         104 kB
+├ ƒ /api/workflow/[[...path]]                      306 B         104 kB
+├ ƒ /api/workspace/provision                       306 B         104 kB
+├ ƒ /asset/[id]/edit                             4.72 kB         108 kB
+├ ƒ /assistant                                     306 B         104 kB
+├ ƒ /brand-studio                                4.75 kB         151 kB
+├ ƒ /brand/[id]                                  3.07 kB         978 kB
+├ ƒ /brand/[id]/campaigns/new                    3.79 kB         107 kB
+├ ƒ /campaign/[id]                               4.33 kB         108 kB
+├ ƒ /demo                                         2.7 kB         936 kB
+├ ƒ /demo/[slug]                                 5.62 kB         936 kB
+├ ƒ /env-error                                     306 B         104 kB
+├ ƒ /forgot-password/[[...rest]]                 2.48 kB         148 kB
+├ ƒ /go-ai-viral                                   306 B         104 kB
+├ ƒ /personalization-demo                        1.23 kB         931 kB
+├ ƒ /photo-studio                                2.47 kB         977 kB
+├ ƒ /reseller/deployment                         24.4 kB         128 kB
+├ ƒ /sign-in/[[...rest]]                         2.12 kB         148 kB
+├ ƒ /sign-up/[[...rest]]                           336 B         151 kB
+├ ƒ /studio/[[...slug]]                            517 B        1.01 MB
+├ ƒ /studio/apps                                   202 B        1.01 MB
+├ ƒ /studio/mcp-cli                                306 B         104 kB
+├ ƒ /vfx                                           306 B         104 kB
+├ ƒ /workflow/[id]                                 202 B        1.01 MB
+└ ƒ /workflow/[id]/[tab]                           202 B        1.01 MB
++ First Load JS shared by all                     104 kB
+  ├ chunks/9473-18019679e0a0fd55.js              46.1 kB
+  ├ chunks/fde7fb9f-c20985b34b20aab2.js          54.2 kB
+  └ other shared chunks (total)                  3.35 kB
+
+
+ƒ Middleware                                     92.4 kB
+
+ƒ  (Dynamic)  server-rendered on demand
+
+  PASS  app build
+
+> open-generative-ai@2.0.0 build:packages
+> npm run build:workflow && npm run build:agent && npm run build:studio
+
+
+> open-generative-ai@2.0.0 build:workflow
+> npm run build -w workflow-builder
+
+
+> workflow-builder@1.0.0 build
+> npm run build:css && babel src --out-dir dist --extensions .js,.jsx
+
+
+> workflow-builder@1.0.0 build:css
+> tailwindcss -i ./src/tailwind.css -o ./dist/tailwind.css --minify
+
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 913ms.
+Successfully compiled 23 files with Babel (5153ms).
+
+> open-generative-ai@2.0.0 build:agent
+> npm run build -w ai-agent
+
+
+> ai-agent@1.0.0 build
+> npm run build:css && babel src --out-dir dist --extensions .js,.jsx
+
+
+> ai-agent@1.0.0 build:css
+> tailwindcss -i ./src/tailwind.css -o ./dist/tailwind.css --minify
+
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 596ms.
+Successfully compiled 11 files with Babel (1849ms).
+
+> open-generative-ai@2.0.0 build:studio
+> npm run build -w studio
+
+
+> studio@1.0.0 build
+> npm run build:css && babel src --out-dir dist --extensions .js,.jsx
+
+
+> studio@1.0.0 build:css
+> tailwindcss -i ./src/tailwind.css -o ./dist/tailwind.css --minify
+
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 1774ms.
+[BABEL] Note: The code generator has deoptimised the styling of /home/user/OpenHiggsBolt/packages/studio/src/models.js as it exceeds the max of 500KB.
+Successfully compiled 88 files with Babel (14462ms).
+  PASS  package build
+      Tests  14 failed | 2947 passed | 6 skipped (2967)
+     Errors  14 errors
+   Start at  23:27:26
+   Duration  172.74s (transform 19.75s, setup 32.48s, collect 61.50s, tests 301.54s, environment 57.32s, prepare 19.99s)
+
+    [chromium] › e2e/personalization-step4-remotion-export.spec.ts:1218:7 › Phase 3 — the export matrix: every registered design, in the encoded pixels › every registered design is encoded, pixel-compared against its control, and carries the credit line 
+    [chromium] › e2e/personalization-studio-handoff.spec.ts:277:7 › Phase 2 — studio → Personalization Modal hand-off › Video Studio shows a Personalize trigger next to its media and hands that media to the modal 
+    [chromium] › e2e/personalization-studio-handoff.spec.ts:333:7 › Phase 2 — studio → Personalization Modal hand-off › Image Studio shows a Personalize trigger next to its media and hands that media to the modal 
+  1 passed (1.8m)
+  PASS  protected files untouched
+
+P3-H: CHECKS FAILED
+validate.sh P3-H EXIT 1
+ALLDONE
