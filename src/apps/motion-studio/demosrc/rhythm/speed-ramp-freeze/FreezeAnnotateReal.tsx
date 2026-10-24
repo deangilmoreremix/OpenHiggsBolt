@@ -27,6 +27,7 @@ import layout from '../../_textures/live-layout.json';
 import { EASE, FONT, SpeedBlur, mix, ramp, velocity } from '../../_fixtures/Polish';
 import { LOOKS, Stage, TextReveal, alpha, springAt, type } from '../../_fixtures/Look';
 import { BRAND, MotionStudioMark } from '../../_fixtures/Brand';
+import { liveTexture } from '../../_fixtures/liveTexture';
 
 export const FREEZEANNOTATE_DUR = 158;
 
@@ -185,7 +186,7 @@ export const FreezeAnnotateReal: React.FC = () => {
           }}
         />
         <Img
-          src={staticFile(`motion-studio/textures/live/${file}`)}
+          src={liveTexture(file)}
           style={{ position: 'relative', width: '100%', height: '100%', display: 'block', borderRadius: 16 }}
         />
         {isT && pin > 0.001 && (

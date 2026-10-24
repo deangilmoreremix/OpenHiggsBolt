@@ -25,6 +25,7 @@ import { AbsoluteFill, Img, staticFile, useCurrentFrame } from 'remotion';
 import layout from '../../_textures/live-layout.json';
 import { EASE, Grain, Vignette, mix, ramp } from '../../_fixtures/Polish';
 import { LOOKS, Stage, TextReveal, alpha, type } from '../../_fixtures/Look';
+import { liveTexture } from '../../_fixtures/liveTexture';
 
 export const CRASHIMPACT_DUR = 126;
 
@@ -112,7 +113,7 @@ const World: React.FC<{ f: number; frame: number }> = ({ f, frame }) => {
         boxShadow: `0 0 0 ${px(1.5)}px ${alpha(LIME, 0.35)}, 0 ${px(40)}px ${px(110)}px ${px(-10)}px rgba(0,0,0,0.85)`,
       }}>
         <div style={{ position: 'absolute', left: -CROP.x, top: -CROP.y, width: 1920, height: layout.projects.pageH }}>
-          <Img src={staticFile('motion-studio/textures/live/projects-full.png')} style={{ position: 'absolute', width: 1920 }} />
+          <Img src={liveTexture('projects-full.png')} style={{ position: 'absolute', width: 1920 }} />
           {/* 全景时页面略压一档，和暗场舞台不打架 */}
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(12,14,10,0.1)' }} />
           {/* 扫描十字线：贯穿监视屏，跟着取景框中心走 */}
@@ -132,7 +133,7 @@ const World: React.FC<{ f: number; frame: number }> = ({ f, frame }) => {
         }} />
       )}
       {/* 高清目标卡覆盖原位（Q2） */}
-      <Img src={staticFile('motion-studio/textures/live/card4-hires.png')} style={{ position: 'absolute', left: CARD.x, top: CARD.y, width: CARD.w, height: CARD.h, borderRadius: CARD_R }} />
+      <Img src={liveTexture('card4-hires.png')} style={{ position: 'absolute', left: CARD.x, top: CARD.y, width: CARD.w, height: CARD.h, borderRadius: CARD_R }} />
       {/* 扫描线：落定后自上而下扫过卡面一次，裁进圆角（Q4） */}
       {frame >= 52 && frame <= 70 && (
         <div style={{ position: 'absolute', left: CARD.x, top: CARD.y, width: CARD.w, height: CARD.h, borderRadius: CARD_R, overflow: 'hidden', pointerEvents: 'none' }}>

@@ -12,10 +12,12 @@ import { createProjectFromEntry, type MotionStudioEntry, type AspectRatio } from
 import { usePersonalizationPerson } from '../personalizationAdapter';
 import { prepareMedia, attachMediaAttachments, type MediaAttachment } from '../lib/mediaUpload';
 import {
+  ActivityList,
   AttachButton,
   HomeHero,
   NewProjectTile,
   PillButton,
+  PlanCard,
   ProjectTile,
   PromptCard,
   PromptInput,
@@ -27,9 +29,15 @@ import {
   useTypingPlaceholder,
 } from '@/apps/design-agent/ui';
 import { RecipePreview } from '../components/RecipePreview';
+import { analyzeBeats } from '../lib/beatSync';
+import { planToProject, type FilmCapture } from '../lib/buildFilm';
+import { captureSite, findSiteUrl, requestPlan, DirectorError, type SiteCapture } from '../lib/directorClient';
+import type { DirectorPlan } from '../lib/directorPlan';
+import { isProductTextureShot } from '../lib/productShots';
 import {
   searchMotionTemplates,
   motionTemplateTitle,
+  resolveMotionTemplate,
   MOTION_CATEGORIES,
   MOTION_TEMPLATES,
   type MotionTemplate,
@@ -72,7 +80,7 @@ MOTION_TEMPLATES.forEach((t) => {
 });
 
 const ASPECT_RATIOS: AspectRatio[] = ['16:9', '9:16', '1:1'];
-const DURATIONS = [5, 6, 8, 10, 12, 15, 20, 25, 30];
+const DURATIONS = [5, 6, 8, 10, 12, 15, 20, 25, 30, 45, 60];
 
 /** Typewriter prompts for the composer (Design Agent pattern, Motion Studio copy). */
 const PLACEHOLDERS = [
@@ -84,7 +92,8 @@ const PLACEHOLDERS = [
 
 /** One-click example prompts shown under the composer. */
 const EXAMPLE_PROMPTS = [
-  'Create a 30-second promotional film from my website using my product screenshots and brand colors.',
+  'Create a 30-second launch film for https://your-product.com: show the real pages, highlight three features, end on a call to action.',
+  'Create a 30-second promotional film from my product screenshots and brand colors.',
   'A 10-second launch teaser: logo reveal, three feature callouts, end card with a call to action.',
   'A 15-second product walkthrough with smooth camera moves over my dashboard screenshots.',
 ];
@@ -170,6 +179,14 @@ export default function MotionStudioEntry() {
   const [showRecipePicker, setShowRecipePicker] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  /** Director run: progress lines, the proposed plan, and the site capture it was built from. */
+  type Activity = { label: string; status: 'running' | 'done' | 'error' };
+  const [activity, setActivity] = useState<Activity[]>([]);
+  const [plan, setPlan] = useState<DirectorPlan | null>(null);
+  const [capture, setCapture] = useState<SiteCapture | null>(null);
+  const [building, setBuilding] = useState(false);
+  const pushActivity = (label: string, status: Activity['status']) =>
+    setActivity((prev) => [...prev.filter((a) => a.status !== 'running'), { label, status }].slice(-6));
   /** Recipe under the pointer / keyboard focus in the picker — the one live Remotion preview. */
   const [previewRecipe, setPreviewRecipe] = useState<string | null>(null);
   /** 提示词条上选的本地素材（object URL）——生成工程时一起带进新工程 */
@@ -215,40 +232,74 @@ export default function MotionStudioEntry() {
     // upgrade modal via requireEntitlement as designed.
     const isE2E = typeof document !== 'undefined'
       && document.cookie.includes('__e2e_auth_bypass=1');
+    /** Quick start (no director): today's starter project, optionally from a picked recipe. */
+    const quickCreate = () => {
+      // `usePersonalizationPerson` (via personalizationAdapter) already
+      // maps the active client + asset library onto a typed
+      // PersonalizationPerson (or null when no brand context is present).
+      const entry: MotionStudioEntry = {
+        description,
+        aspectRatio,
+        duration,
+        person: person ?? undefined,
+        recipeId: selectedRecipe || undefined,
+      };
+
+      const project = createProjectFromEntry(entry);
+      setProject(project);
+      // 本地素材跟着新工程一起走：接在已有片段之后（object URL，不上传）
+      if (media.length) {
+        const end = project.tracks.reduce(
+          (max, track) =>
+            track.clips.reduce((m, clip) => Math.max(m, clip.start + clip.duration), max),
+          0,
+        );
+        attachMediaAttachments(media, { at: end });
+      }
+      openWorkbench();
+    };
+
     const runCreate = async () => {
         setIsCreating(true);
+        setPlan(null);
+        setActivity([]);
         try {
-          // `usePersonalizationPerson` (via personalizationAdapter) already
-          // maps the active client + asset library onto a typed
-          // PersonalizationPerson (or null when no brand context is present).
-          const entry: MotionStudioEntry = {
-            description,
+          // A recipe picked in Templates means "start from this shot" — no director.
+          if (selectedRecipe) {
+            quickCreate();
+            return;
+          }
+          let site: SiteCapture | null = null;
+          const siteUrl = findSiteUrl(description);
+          if (siteUrl) {
+            pushActivity(`Capturing ${siteUrl}`, 'running');
+            try {
+              site = await captureSite(siteUrl);
+              pushActivity(`Captured ${site.title || siteUrl} · ${site.crops.length} card crops`, 'done');
+            } catch (error) {
+              pushActivity(`Could not capture ${siteUrl}: ${error instanceof Error ? error.message : 'failed'}`, 'error');
+            }
+          }
+          pushActivity('Directing the storyboard', 'running');
+          const proposed = await requestPlan({
+            prompt: description,
+            durationSec: duration,
             aspectRatio,
-            duration,
-            person: person ?? undefined,
-            recipeId: selectedRecipe || undefined,
-          };
-
-          const project = createProjectFromEntry(entry);
-          setProject(project);
-          // 本地素材跟着新工程一起走：接在已有片段之后（object URL，不上传）
-          if (media.length) {
-            const end = project.tracks.reduce(
-              (max, track) =>
-                track.clips.reduce((m, clip) => Math.max(m, clip.start + clip.duration), max),
-              0,
-            );
-            attachMediaAttachments(media, { at: end });
-          }
-          try {
-            window.localStorage.setItem('motion-studio:entry-seen-v1', '1');
-          } catch {
-            /* private mode / storage disabled — entry will just reappear next visit */
-          }
-          navigate('/');
+            capture: site,
+            brandKit: person ? { businessName: person.businessName ?? null, colors: person.brandColors ?? null, notes: person.notes ?? null } : null,
+          });
+          setCapture(site);
+          setPlan(proposed);
+          pushActivity(`Storyboard ready · ${proposed.scenes.length} scenes`, 'done');
         } catch (error) {
-          console.error('Failed to create Motion Studio project:', error);
-          window.alert(t('export.startFailed'));
+          if (error instanceof DirectorError && (error.status === 401 || error.status === 403)) {
+            // No director available for this account: keep today's behaviour.
+            pushActivity(`${error.message} Started a quick project instead.`, 'error');
+            quickCreate();
+            return;
+          }
+          console.error('Motion Studio director failed:', error);
+          pushActivity(error instanceof Error ? error.message : 'The director failed', 'error');
         } finally {
           setIsCreating(false);
         }
@@ -258,6 +309,50 @@ export default function MotionStudioEntry() {
     } else {
       requireEntitlement(ENTITLEMENTS.SMARTVIDEO_GO, runCreate);
     }
+  };
+
+  const openWorkbench = () => {
+    try {
+      window.localStorage.setItem('motion-studio:entry-seen-v1', '1');
+    } catch {
+      /* private mode / storage disabled — entry will just reappear next visit */
+    }
+    navigate('/');
+  };
+
+  /** Approve: build the film from the plan, the capture (or attached screenshots) and music. */
+  const buildFilm = async () => {
+    if (!plan) return;
+    setBuilding(true);
+    try {
+      const images = media.filter((m) => m.kind === 'image').map((m) => m.url);
+      const film: FilmCapture | null = capture
+        ? { screens: [capture.page.url], crops: capture.crops }
+        : images.length
+          ? { screens: images, crops: images }
+          : null;
+      const track = media.find((m) => m.kind === 'audio');
+      let beats: number[] = [];
+      if (track) {
+        pushActivity(`Finding the beat in ${track.name}`, 'running');
+        beats = await analyzeBeats(track.url).then((r) => r.beats).catch(() => []);
+        pushActivity(beats.length ? `Scene changes snapped to the beat of ${track.name}` : `No clear beat in ${track.name}; kept the planned timing`, 'done');
+      }
+      setProject(planToProject(plan, { aspectRatio, capture: film, music: track ? { url: track.url, name: track.name, beats } : null }));
+      openWorkbench();
+    } catch (error) {
+      console.error('Failed to build the film:', error);
+      pushActivity(error instanceof Error ? error.message : 'Could not build the film', 'error');
+    } finally {
+      setBuilding(false);
+    }
+  };
+
+  const revisePlan = () => {
+    setPlan(null);
+    setActivity([]);
+    setDescription((d) => `${d.trim()}\n\nRevise: `);
+    promptRef.current?.focus();
   };
 
   const selectedTemplate = selectedRecipe ? TEMPLATE_BY_ID[selectedRecipe] : undefined;
@@ -388,6 +483,7 @@ export default function MotionStudioEntry() {
         <HomeHero lead="Films are easier with" accent="Motion Studio" subtitle="The motion director that turns your product into a cinematic, editable film" />
 
         <div className="w-full max-w-5xl space-y-2">
+          <ActivityList items={activity} />
           {media.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 rounded-xl p-2" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid var(--border-color)' }}>
               {media.map((m) => (
@@ -426,7 +522,30 @@ export default function MotionStudioEntry() {
               <SendButton onClick={() => void handleCreate()} disabled={!canCreate || isCreating} active={canCreate} label="Generate" />
             </div>
           </PromptCard>
-          <div className="flex flex-wrap gap-2 pt-1">
+          {plan && (
+            <PlanCard
+              testId="director-plan"
+              eyebrow="MOTION STUDIO STORYBOARD"
+              title={plan.title}
+              meta={`${plan.scenes.length} scenes · ${Math.round(plan.scenes.reduce((sum, sc) => sum + sc.durationSec, 0))}s${capture ? ' · uses your site' : ''}`}
+              steps={plan.scenes.map((scene, i) => {
+                const template = scene.kind === 'shot' ? resolveMotionTemplate(scene.recipeId) : undefined;
+                const onSite = Boolean(template && capture && isProductTextureShot(template.componentName));
+                return {
+                  key: `${i}-${scene.recipeId || 'title'}`,
+                  label: template ? motionTemplateTitle(template) : 'Title card',
+                  detail: [`${scene.durationSec}s`, scene.headline && `“${scene.headline}”`, scene.caption && `caption: ${scene.caption}`, onSite && 'shows your site', scene.transition === 'flash' && 'flash cut'].filter(Boolean).join(' · '),
+                  media: template ? <RecipePreview recipe={template} playing={false} /> : undefined,
+                };
+              })}
+              onApprove={() => void buildFilm()}
+              onReject={revisePlan}
+              busy={building}
+              approveLabel={building ? 'Building…' : 'Approve & build film'}
+              rejectLabel="Revise"
+            />
+          )}
+          {!plan && <div className="flex flex-wrap gap-2 pt-1">
             {EXAMPLE_PROMPTS.map((example) => (
               <button
                 key={example}
@@ -438,7 +557,7 @@ export default function MotionStudioEntry() {
                 {example}
               </button>
             ))}
-          </div>
+          </div>}
         </div>
 
         <div className="w-full max-w-5xl">

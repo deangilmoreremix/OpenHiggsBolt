@@ -13,6 +13,7 @@ import React from 'react';
 import { AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import { Backdrop, Grain } from '../../_fixtures/Polish';
 import { VerticalTicker, TickerColumn } from './VerticalTicker';
+import { liveTexture } from '../../_fixtures/liveTexture';
 
 export const PAGE_WATERFALL_WALL_DURATION = 150; // 5s（无限循环体，按段落需要裁）
 
@@ -30,7 +31,7 @@ const shot = (file: string) => (
       boxShadow: '0 2px 4px rgba(0,0,0,0.35), 0 22px 48px -12px rgba(0,0,0,0.6)',
     }}
   >
-    <Img src={staticFile(`motion-studio/textures/live/${file}`)} style={{ width: '100%', display: 'block' }} />
+    <Img src={liveTexture(file)} style={{ width: '100%', display: 'block' }} />
     {/* 发丝线 + 顶部受光沿（裁在圆角内） */}
     <div
       style={{

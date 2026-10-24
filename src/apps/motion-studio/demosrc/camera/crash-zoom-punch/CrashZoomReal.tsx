@@ -28,6 +28,7 @@ import { AbsoluteFill, Img, staticFile, useCurrentFrame } from 'remotion';
 import layout from '../../_textures/live-layout.json';
 import { Dust, LOOKS, Stage, TextReveal, alpha, type } from '../../_fixtures/Look';
 import { EASE, FONT, Vignette, mix, ramp, softShadow } from '../../_fixtures/Polish';
+import { liveTexture } from '../../_fixtures/liveTexture';
 
 export const CRASHZOOM_DUR = 132;
 
@@ -112,7 +113,7 @@ const World: React.FC<{ f: number; lift: number; lock: number; breath: number }>
             </div>
             <div style={{ position: 'absolute', left: 0, top: CHROME, width: WIN.w, height: WIN.h, overflow: 'hidden' }}>
               <div style={{ position: 'absolute', left: -WIN.x, top: -WIN.y, width: 1920, height: layout.projects.pageH }}>
-                <Img src={staticFile('motion-studio/textures/live/projects-full.png')} style={{ position: 'absolute', width: 1920 }} />
+                <Img src={liveTexture('projects-full.png')} style={{ position: 'absolute', width: 1920 }} />
                 {/* 点名：卡片外一圈极大 spread 的影子当遮罩，周边压成暖黑；目标卡生出浮起影 */}
                 {lift > 0.001 && (
                   <div
@@ -123,7 +124,7 @@ const World: React.FC<{ f: number; lift: number; lock: number; breath: number }>
                   />
                 )}
                 {/* 高清目标卡覆盖原位，放大后文字仍锐（Q2） */}
-                <Img src={staticFile('motion-studio/textures/live/card4-hires.png')} style={{ position: 'absolute', left: CARD.x, top: CARD.y, width: CARD.w, height: CARD.h, borderRadius: CARD_R }} />
+                <Img src={liveTexture('card4-hires.png')} style={{ position: 'absolute', left: CARD.x, top: CARD.y, width: CARD.w, height: CARD.h, borderRadius: CARD_R }} />
                 {/* 轮廓光：主角唯一的光效，贴着圆角走（Q4） */}
                 {lift > 0.001 && (
                   <div

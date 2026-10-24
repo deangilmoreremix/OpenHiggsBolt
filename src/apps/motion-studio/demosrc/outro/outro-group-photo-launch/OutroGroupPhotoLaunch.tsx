@@ -14,6 +14,7 @@ import { PageCam2D } from '../../_fixtures/PageCam2D';
 import { EASE, Grain, SpeedBlur, ramp, velocity } from '../../_fixtures/Polish';
 import layout from '../../_textures/live-layout.json';
 import { BRAND, PITCH, MotionStudioMark } from '../../_fixtures/Brand';
+import { liveTexture } from '../../_fixtures/liveTexture';
 
 export const OUTRO_GROUP_PHOTO_LAUNCH_DURATION = 145;
 
@@ -169,7 +170,7 @@ export const OutroGroupPhotoLaunch: React.FC = () => {
             const saturate = 1 - 0.08 * recede;
             const texture = el.wbrCrop
               ? {
-                  background: `#fff url(${staticFile(`motion-studio/textures/live/${el.file}`)}) -576px -173px / 1920px ${WBR_PAGE_H}px no-repeat`,
+                  background: `#fff url(${liveTexture(el.file)}) -576px -173px / 1920px ${WBR_PAGE_H}px no-repeat`,
                   border: '1px solid oklch(90% .008 82)',
                 }
               : null;
@@ -200,7 +201,7 @@ export const OutroGroupPhotoLaunch: React.FC = () => {
                   }}
                 >
                   {el.wbrCrop ? null : (
-                    <Img src={staticFile(`motion-studio/textures/live/${el.file}`)} style={{ position: 'absolute', inset: 0, width: el.w, height: el.h, display: 'block' }} />
+                    <Img src={liveTexture(el.file)} style={{ position: 'absolute', inset: 0, width: el.w, height: el.h, display: 'block' }} />
                   )}
                 </div>
               </SpeedBlur>

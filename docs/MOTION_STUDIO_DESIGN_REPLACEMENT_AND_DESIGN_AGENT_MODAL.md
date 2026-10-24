@@ -191,3 +191,40 @@ These were in the original brief but are new features, so they were not built:
 - The library panel is narrow by default (224 px); its three tabs wrap onto
   separate lines until the panel is dragged wider.
 - The pre-existing `DiscoveredAssets` unit failure on `main` is unresolved.
+
+## Creating full ShotCraft films (follow-up)
+
+Requested after the design replacement: let Motion Studio make films the way
+upstream `video-shotcraft` does with a coding agent. The agent here **composes
+existing recipes with data** — it never writes or runs code — so everything it
+makes stays editable in the Workbench and safe to run in a web app.
+
+Flow: **prompt (with a website URL) → capture → AI storyboard → Approve → film**.
+
+| Upstream step | Motion Studio |
+| --- | --- |
+| Capture real pages 1920 px @2x + element crops | `POST /api/motion-studio/capture` → `capturePageScreenshots` in `src/server/browserDiscovery.ts`, inside the same SSRF-guarded browser session as asset discovery (allowlist proxy, pinned DNS, per-request gate, final-origin check). Images go to `personalization-assets/<userId>/motion-capture/…`; only URLs reach the project. |
+| Design tokens from the product | Computed background/text/accent/font from the captured page, passed to the director as the palette. |
+| Pick shot recipes, write storyboard | `POST /api/motion-studio/director` (`mode: plan`): the user's saved OpenAI key, Responses API, strict JSON schema, catalog of all 150 shots. Output validated in `lib/directorPlan.ts` (unknown recipes dropped, timings clamped and fitted). Shown as a Design Agent plan card with Approve / Revise. |
+| Implement each shot on real screenshots | 13 product-page shots now read textures through `demosrc/_fixtures/liveTexture.ts`; a clip's `screens`/`crops` props swap in the capture. Without them the shots render exactly as before. |
+| Assemble film | `lib/buildFilm.ts`: Shots, Captions, Transitions (flash cuts), background and Music tracks of ordinary cards. |
+| Beat-synced cuts | `lib/beatSync.ts`: in-browser onset/tempo/phase on the user's uploaded music; scene changes snap to beats. |
+| Conversational revisions | Workbench chat: built-in commands first; anything else goes to the director (`mode: edit`) as validated data edits (set text/duration, replace recipe, add shot, remove, palette). |
+| Render | Existing in-browser MP4 export. |
+
+Access: both routes require a signed-in user with the SmartVideo GO
+entitlement and are rate-limited. Without a saved OpenAI key the home page
+falls back to the previous quick project and says why.
+
+Not covered (still upstream-only): new shot code written by the agent, the
+remaining 137 code-drawn shots taking the user's text/UI (they take the brand
+accent only; headlines go in the caption strip), the upstream SFX library
+(licences marked unconfirmed upstream), automated frame QA / independent
+review, and a live capture test here (the sandbox cannot reach public sites
+through the guard's proxy; capture is covered by stubbed-browser tests).
+
+Tests: `tests/motion-studio-capture.vitest.test.ts`, `tests/motion-studio-routes.vitest.test.ts`,
+`src/apps/motion-studio/__tests__/director.test.ts`, `…/liveTexture.test.tsx`,
+`e2e/motion-studio-director.spec.ts` (capture/director responses mocked at the
+network layer; everything else real). Evidence:
+`director-storyboard-desktop.png`, `director-film-workbench-desktop.png`.

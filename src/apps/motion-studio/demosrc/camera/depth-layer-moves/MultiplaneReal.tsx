@@ -25,6 +25,7 @@ import layout from '../../_textures/live-layout.json';
 import { EASE, SpeedBlur, bezier, mix, ramp, softShadow, velocity } from '../../_fixtures/Polish';
 import { LOOKS, Stage, TextReveal, alpha, type } from '../../_fixtures/Look';
 import { BRAND, MotionStudioMark } from '../../_fixtures/Brand';
+import { liveTexture } from '../../_fixtures/liveTexture';
 
 export const MULTIPLANE_DUR = 165;
 
@@ -65,7 +66,7 @@ export const MultiplaneReal: React.FC = () => {
       <Stage look={L} keyLight={{ x: 0.3, y: 0.0 }} fill={{ x: 0.85, y: 1 }} grain={0.06}>
         {/* 远景 0.35x：整页缩小一档、退焦、降饱和（页面空白与底色同色，横移不露边） */}
         <div style={{ position: 'absolute', left: 0, top: 0, transform: `translateX(${(-drive * 0.35).toFixed(2)}px)`, filter: 'blur(5px) saturate(0.7)', opacity: 0.75 }}>
-          <Img src={staticFile('motion-studio/textures/live/projects-full.png')} style={{ position: 'absolute', left: -40, top: -170, width: 2100 }} />
+          <Img src={liveTexture('projects-full.png')} style={{ position: 'absolute', left: -40, top: -170, width: 2100 }} />
         </div>
         {/* 空气透视：远景之上一层暖色薄雾，上部更浓 */}
         <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(180deg, ${alpha(L.bg[0], 0.82)} 0%, ${alpha(L.bg[1], 0.62)} 50%, ${alpha(L.bg[2], 0.55)} 100%)` }} />
@@ -85,7 +86,7 @@ export const MultiplaneReal: React.FC = () => {
               transform: hero ? `translateY(${(-14 * lift).toFixed(2)}px) scale(${(1 + 0.035 * lift).toFixed(4)})` : undefined,
               boxShadow: `0 0 0 ${hero ? (2.5 * ring).toFixed(2) : 0}px ${alpha(L.accent, 0.9)}, ${softShadow(e, { color: L.shadow, strength: 1.2 })}`,
             }}>
-              <Img src={staticFile(`motion-studio/textures/live/${hero ? 'card4-hires.png' : c.file}`)} style={{ width: '100%', height: '100%' }} />
+              <Img src={liveTexture(hero ? 'card4-hires.png' : c.file)} style={{ width: '100%', height: '100%' }} />
             </div>
           );
         })}

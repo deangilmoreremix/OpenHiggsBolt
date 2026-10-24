@@ -5,7 +5,7 @@ import axios from 'axios'
 import { X, Loader2, Sparkles, Download, Key } from 'lucide-react'
 import { semantic, appWrapper } from '@/shared/styles/designTokens'
 import DesignAgentErrorBoundary from './ErrorBoundary'
-import { AttachButton, ChatBubble, HomeHero, NewProjectTile, ProjectTile, PromptCard, PromptInput, SelectedChip, SendButton, TemplateOption, TemplatePickerModal, TemplatesPill, useTypingPlaceholder } from './ui'
+import { AttachButton, ChatBubble, HomeHero, NewProjectTile, PlanCard, ProjectTile, PromptCard, PromptInput, SelectedChip, SendButton, TemplateOption, TemplatePickerModal, TemplatesPill, useTypingPlaceholder } from './ui'
 import { PublishStep } from '@/components/SocialPublishProvider'
 import { AssistStep } from '@/components/AiAssistantProvider'
 import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider'
@@ -315,26 +315,21 @@ function AttachmentStrip({ attachments, uploading, progress, activity, onRemove 
   )
 }
 
-function PlanCard({ plan, onApprove, onReject, busy }: { plan: PendingPlan; onApprove: () => void; onReject: () => void; busy: boolean }) {
+function GoAiPlanCard({ plan, onApprove, onReject, busy }: { plan: PendingPlan; onApprove: () => void; onReject: () => void; busy: boolean }) {
   return (
-    <div className="rounded-2xl p-4" style={{ background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(96,165,250,0.28)' }}>
-      <div className="flex items-start justify-between gap-4">
-        <div><div className="text-xs font-semibold" style={{ color: '#60a5fa' }}>GO-AI EXECUTION PLAN</div><div className="mt-1 text-sm font-semibold">{plan.title}</div></div>
-        <div className="text-xs" style={{ color: semantic.textSecondary }}>{plan.nodes.length} steps · {plan.totalCredits} credits</div>
-      </div>
-      <div className="mt-3 grid gap-2 md:grid-cols-2">
-        {plan.nodes.map((node, index) => (
-          <div key={String(node.id ?? index)} className="rounded-xl p-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
-            <div className="text-xs font-medium">{index + 1}. {node.label || String(node.tool || 'Generate asset').replace(/_/g, ' ')}</div>
-            <div className="mt-1 text-[11px]" style={{ color: semantic.textMuted }}>{node.tool ? String(node.tool).replace(/_/g, ' ') : 'AI step'}{node.est_credits != null ? ` · ${node.est_credits} cr` : ''}{node.depends?.length ? ` · after ${node.depends.join(', ')}` : ''}</div>
-          </div>
-        ))}
-      </div>
-      <div className="mt-4 flex justify-end gap-2">
-        <button disabled={busy} onClick={onReject} className="px-4 py-2 rounded-lg text-xs font-medium disabled:opacity-50" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: semantic.textSecondary }}>Reject / Revise</button>
-        <button disabled={busy} onClick={onApprove} className="px-4 py-2 rounded-lg text-xs font-semibold disabled:opacity-50" style={{ background: 'var(--color-primary)', color: 'white' }}>Approve & Generate</button>
-      </div>
-    </div>
+    <PlanCard
+      eyebrow="GO-AI EXECUTION PLAN"
+      title={plan.title}
+      meta={`${plan.nodes.length} steps · ${plan.totalCredits} credits`}
+      steps={plan.nodes.map((node, index) => ({
+        key: String(node.id ?? index),
+        label: node.label || String(node.tool || 'Generate asset').replace(/_/g, ' '),
+        detail: `${node.tool ? String(node.tool).replace(/_/g, ' ') : 'AI step'}${node.est_credits != null ? ` · ${node.est_credits} cr` : ''}${node.depends?.length ? ` · after ${node.depends.join(', ')}` : ''}`,
+      }))}
+      onApprove={onApprove}
+      onReject={onReject}
+      busy={busy}
+    />
   )
 }
 
@@ -830,7 +825,7 @@ export default function DesignAgent({ apiKey: propApiKey, onRequestApiKey, templ
               </>}>{message.content}</ChatBubble>
           ))}
 
-          {pendingPlan && <PlanCard plan={pendingPlan} busy={isLoading} onApprove={() => void handlePlanAction('approve')} onReject={() => void handlePlanAction('reject')} />}
+          {pendingPlan && <GoAiPlanCard plan={pendingPlan} busy={isLoading} onApprove={() => void handlePlanAction('approve')} onReject={() => void handlePlanAction('reject')} />}
           <AttachmentStrip attachments={attachments} uploading={uploading} progress={uploadProgress} activity={activity} onRemove={removeAttachment} />
           {isLoading && !pendingPlan && <div className="flex justify-start"><div className="px-4 py-3 rounded-2xl flex items-center gap-2" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}><Loader2 size={14} className="animate-spin" style={{ color: 'var(--color-primary)' }} /><span className="text-sm" style={{ color: semantic.textMuted }}>Go-AI is working...</span></div></div>}
           <div ref={messagesEndRef} />

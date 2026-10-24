@@ -29,6 +29,7 @@ import { EASE, FONT, ramp } from '../../_fixtures/Polish';
 import { LOOKS, Stage, TextReveal, alpha, type } from '../../_fixtures/Look';
 import layout from '../../_textures/live-layout.json';
 import { MotionStudioMark } from '../../_fixtures/Brand';
+import { liveTexture } from '../../_fixtures/liveTexture';
 
 export const DECK_DEAL_FLYIN_DURATION = 150;
 
@@ -185,7 +186,7 @@ export const DeckDealFlyin: React.FC = () => {
                 boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 60px 160px rgba(0,0,0,0.7), 0 12px 40px rgba(0,0,0,0.5)',
               }}
             >
-              <Img src={staticFile('motion-studio/textures/live/projects-empty.png')} style={{ position: 'absolute', left: -BOARD.x, top: 0, width: 1920, height: PAGE_H }} />
+              <Img src={liveTexture('projects-empty.png')} style={{ position: 'absolute', left: -BOARD.x, top: 0, width: 1920, height: PAGE_H }} />
               {/* 纸面延长段的分区小标（与截图同款排版：大写字距 + 计数） */}
               <div style={{ position: 'absolute', left: 408 - BOARD.x, top: PAGE_H + 6, width: 1104, height: 1, background: 'rgba(60,45,30,0.08)' }} />
               {/* 板面暗层：开场整块板在暗处，灯从牌堆处亮开（柔边光圈） */}
@@ -250,7 +251,7 @@ export const DeckDealFlyin: React.FC = () => {
                         opacity: 0.28 * (1 - diveT), filter: 'blur(7px)', borderRadius: 16, overflow: 'hidden',
                       }}
                     >
-                      <Img src={staticFile(`motion-studio/textures/live/${c.file}`)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+                      <Img src={liveTexture(c.file)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
                     </div>
                   ) : null}
                   <div
@@ -259,7 +260,7 @@ export const DeckDealFlyin: React.FC = () => {
                       transform, boxShadow: shadow, borderRadius: 16, overflow: 'hidden',
                     }}
                   >
-                    <Img src={staticFile(`motion-studio/textures/live/${c.file}`)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+                    <Img src={liveTexture(c.file)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
                     {pileShade > 0.005 && <div style={{ position: 'absolute', inset: 0, background: `rgba(10,10,12,${pileShade.toFixed(3)})` }} />}
                   </div>
                 </div>

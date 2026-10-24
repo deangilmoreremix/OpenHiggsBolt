@@ -8,6 +8,7 @@ import { CARDS } from "../cards/registry";
 import { interpretAgentCommand, AGENT_HELP, type AgentContext } from "../lib/agentCommands";
 import { applyAgentOps } from "../lib/agentApply";
 import { projectToSession } from "../lib/sessionAdapter";
+import { applyDirectorOps, requestEdit, DirectorError } from "../lib/directorClient";
 import type { SessionMessage } from "../types";
 
 /**
@@ -64,6 +65,7 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
   const addSession = useStore((s) => s.addSession);
   const appendSessionMessage = useStore((s) => s.appendSessionMessage);
   const [draft, setDraft] = useState("");
+  const [thinking, setThinking] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const targetId = sessionId ?? activeSessionId;
@@ -104,12 +106,31 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
         cards: CARDS,
       };
       const { ops, reply } = interpretAgentCommand(text, ctx);
-      applyAgentOps(ops);
-
-      const ts = new Date().toISOString();
-      state.appendSessionMessage(id, { role: "user", content: text, ts });
-      state.appendSessionMessage(id, { role: "assistant", content: reply, ts });
+      const sessionId = id;
+      state.appendSessionMessage(sessionId, { role: "user", content: text, ts: new Date().toISOString() });
       setDraft("");
+
+      if (ops.length) {
+        applyAgentOps(ops);
+        state.appendSessionMessage(sessionId, { role: "assistant", content: reply, ts: new Date().toISOString() });
+        return;
+      }
+      // Not one of the built-in commands: ask the AI director for real edits.
+      setThinking(true);
+      requestEdit(text, useStore.getState().project)
+        .then((result) => {
+          const applied = applyDirectorOps(result.ops);
+          return applied ? result.reply : `${result.reply}${result.ops.length ? "" : `\n\n${AGENT_HELP}`}`;
+        })
+        .catch((error) =>
+          error instanceof DirectorError && (error.status === 401 || error.status === 403)
+            ? `${reply}\n\n(${error.message})`
+            : `${reply}\n\n(The AI director could not be reached: ${error instanceof Error ? error.message : "error"})`,
+        )
+        .then((content) => {
+          useStore.getState().appendSessionMessage(sessionId, { role: "assistant", content, ts: new Date().toISOString() });
+        })
+        .finally(() => setThinking(false));
     },
     [targetId, recipeId, recipeName],
   );
@@ -141,6 +162,9 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
         ) : (
           messages.map((m, i) => <Bubble key={`${m.ts}-${i}`} message={m} />)
         )}
+        {thinking && (
+          <div className="text-xs" style={{ color: "#60a5fa" }} role="status">● Director is editing the film…</div>
+        )}
       </div>
 
       <div className="flex-shrink-0 p-3 border-t" style={{ borderColor: "var(--border-color)" }}>
@@ -159,7 +183,7 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
               {session ? `${messages.length} message${messages.length === 1 ? "" : "s"}` : "Starts a session on first send"}
             </span>
             <div className="flex-1" />
-            <SendButton onClick={() => send(draft)} disabled={!draft.trim()} active={Boolean(draft.trim())} label="Send" />
+            <SendButton onClick={() => send(draft)} disabled={!draft.trim() || thinking} active={Boolean(draft.trim())} label="Send" />
           </div>
         </PromptCard>
       </div>

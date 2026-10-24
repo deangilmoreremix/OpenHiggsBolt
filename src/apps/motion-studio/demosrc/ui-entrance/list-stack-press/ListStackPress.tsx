@@ -17,6 +17,7 @@ import { AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame, Easing } f
 import { PageCam2D, CamKey2D } from '../../_fixtures/PageCam2D';
 import { FONT, SpeedBlur, bezier, softShadow, velocity } from '../../_fixtures/Polish';
 import layout from '../../_textures/live-layout.json';
+import { liveTexture } from '../../_fixtures/liveTexture';
 
 export const LIST_STACK_PRESS_DURATION = 88; // 18–88f 落在 shot 内 offset 0
 
@@ -176,7 +177,7 @@ export const ListStackPress: React.FC = () => {
               }}
             >
               <div style={{ position: 'absolute', inset: 0, borderRadius: 12, overflow: 'hidden' }}>
-                <Img src={staticFile(`motion-studio/textures/live/${FILES[i]}`)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
+                <Img src={liveTexture(FILES[i])} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
                 {hlGrow > 0 && hlFade > 0 ? (
                   // 荧光笔：multiply 叠在字下，字保持原深度
                   <div

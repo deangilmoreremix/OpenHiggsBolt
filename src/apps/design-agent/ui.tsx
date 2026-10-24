@@ -265,3 +265,53 @@ export function TemplateOption({ label, description, onSelect, selected, testId,
     </button>
   )
 }
+
+/** Design Agent plan card: proposed steps with Approve / Revise. */
+export function PlanCard({ eyebrow, title, meta, steps, onApprove, onReject, busy, approveLabel = 'Approve & Generate', rejectLabel = 'Reject / Revise', testId }: {
+  eyebrow: string
+  title: string
+  meta: string
+  steps: Array<{ key: string; label: string; detail: string; media?: ReactNode }>
+  onApprove: () => void
+  onReject: () => void
+  busy: boolean
+  approveLabel?: string
+  rejectLabel?: string
+  testId?: string
+}) {
+  return (
+    <div className="rounded-2xl p-4" style={{ background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(96,165,250,0.28)' }} data-testid={testId}>
+      <div className="flex items-start justify-between gap-4">
+        <div><div className="text-xs font-semibold" style={{ color: '#60a5fa' }}>{eyebrow}</div><div className="mt-1 text-sm font-semibold">{title}</div></div>
+        <div className="text-xs whitespace-nowrap" style={{ color: semantic.textSecondary }}>{meta}</div>
+      </div>
+      <div className="mt-3 grid gap-2 md:grid-cols-2">
+        {steps.map((step, index) => (
+          <div key={step.key} className="rounded-xl p-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+            {step.media && <div className="mb-2">{step.media}</div>}
+            <div className="text-xs font-medium">{index + 1}. {step.label}</div>
+            <div className="mt-1 text-[11px]" style={{ color: semantic.textMuted }}>{step.detail}</div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 flex justify-end gap-2">
+        <button type="button" disabled={busy} onClick={onReject} className="px-4 py-2 rounded-lg text-xs font-medium disabled:opacity-50" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: semantic.textSecondary }}>{rejectLabel}</button>
+        <button type="button" disabled={busy} onClick={onApprove} className="px-4 py-2 rounded-lg text-xs font-semibold disabled:opacity-50" style={{ background: 'var(--color-primary)', color: 'white' }}>{approveLabel}</button>
+      </div>
+    </div>
+  )
+}
+
+/** Running / done / error activity lines (Design Agent attachment strip style). */
+export function ActivityList({ items }: { items: Array<{ label: string; status: 'running' | 'done' | 'error' }> }) {
+  if (!items.length) return null
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl p-2" role="status" aria-live="polite" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid var(--border-color)' }}>
+      {items.map((item, index) => (
+        <div key={`${item.label}-${index}`} className="text-xs" style={{ color: item.status === 'error' ? '#f87171' : item.status === 'done' ? '#86efac' : '#60a5fa' }}>
+          {item.status === 'done' ? '✓' : item.status === 'error' ? '!' : '●'} {item.label}
+        </div>
+      ))}
+    </div>
+  )
+}
