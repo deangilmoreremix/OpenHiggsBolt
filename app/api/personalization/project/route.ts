@@ -40,6 +40,16 @@ type SourceFilterState = 'not-requested' | 'applied' | 'unavailable'
  * below therefore probes every location the id can legitimately live in, and the
  * caller degrades to the unfiltered list when none of them is present.
  */
+/**
+ * True when Supabase reports that an RPC does not exist — PostgREST answers
+ * `PGRST202` for an unknown function, Postgres `42883` for an undefined one.
+ * Used to fall back to the plain list while a migration is not yet applied.
+ */
+function isMissingFunctionError(error: { code?: string | null; message?: string | null }): boolean {
+  if (error.code === 'PGRST202' || error.code === '42883') return true
+  return /could not find the function|function .* does not exist/i.test(error.message ?? '')
+}
+
 function readSourceDemoId(row: unknown): string | null {
   if (!row || typeof row !== 'object') return null
   const record = row as Record<string, unknown>
@@ -124,8 +134,24 @@ export async function GET(req: NextRequest) {
     if (list === 'true') {
       // The identity is passed as an RPC argument and set as the GUC inside
       // the same transaction, so the RLS predicate and the where-clause agree.
-      const { data, error } = await supabase
-        .rpc('personalization_saved_projects_list', { p_clerk_user_id: userId })
+      //
+      // A source-scoped request uses the source-scoped RPC, which filters on
+      // `source->>'id'` BEFORE its row limit — the plain list returns only the
+      // caller's 50 newest rows, so filtering it afterwards loses any source
+      // whose latest row is older than that. If the function is not deployed
+      // yet (migration 20261024000000 not applied), fall back to the plain
+      // list; the route filter below still narrows it.
+      const wantedSource = sourceId?.trim() || ''
+      let { data, error } = wantedSource
+        ? await supabase.rpc('personalization_saved_projects_list_by_source', {
+            p_clerk_user_id: userId,
+            p_source_id: wantedSource,
+          })
+        : await supabase.rpc('personalization_saved_projects_list', { p_clerk_user_id: userId })
+      if (wantedSource && error && isMissingFunctionError(error)) {
+        ;({ data, error } = await supabase
+          .rpc('personalization_saved_projects_list', { p_clerk_user_id: userId }))
+      }
 
       clearTimeout(timeoutId)
 
@@ -143,8 +169,9 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: error.message }, { status: 500 })
       }
 
-      // Optional source filter — performed by the route after the RPC because
-      // the SQL function does not (yet) take a source argument. The DB still
+      // Source filter — a second, defensive pass. The source-scoped RPC has
+      // already filtered in SQL; on the plain-list fallback this is the only
+      // filter. The DB still
       // returns only the caller's rows; this just narrows to the requested
       // demo and still surfaces the empty-array 200 shape so the restore path
       // can take its normal "no durable row" branch instead of 400-ing.

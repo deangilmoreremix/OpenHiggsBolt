@@ -73,6 +73,14 @@ function makeSavedEntry(overrides: Record<string, unknown> = {}): Record<string,
     brandReferenceAssetIds: ['brand-1'],
     firstFrameAssetId: 'first-1',
     lastFrameAssetId: 'last-1',
+    assetUrls: {
+      'identity-1': 'https://cdn.example.com/identity.png',
+      'logo-1': 'https://cdn.example.com/logo-asset.png',
+      'product-1': 'https://cdn.example.com/product-asset.png',
+      'brand-1': 'https://cdn.example.com/brand.png',
+      'first-1': 'https://cdn.example.com/first.png',
+      'last-1': 'https://cdn.example.com/last.png',
+    },
     outputUrls: ['https://cdn.example.com/result.mp4'],
     outputType: 'video',
     clientId: 'client-1',
@@ -184,9 +192,14 @@ describe('DemoPersonalizeProvider durable field save/restore roundtrip', () => {
     expect(ctx.clientForm.website).toBe('https://acme.test')
     expect(ctx.clientForm.phone).toBe('+15125550100')
 
-    // 6 + 7. Selected logo, images, first/last frame (id-based, restored as ready)
+    // 6 + 7. Selected logo, images, first/last frame — restored by id, loading
+    // from the persisted durable URL (never from the opaque id itself)
     expect(ctx.assets.logos[0]?.id).toBe('logo-1')
     expect(ctx.assets.logos[0]?.uploadStatus).toBe('ready')
+    expect(ctx.assets.logos[0]?.url).toBe('https://cdn.example.com/logo-asset.png')
+    expect(ctx.assets.logos[0]?.uploadedUrl).toBe('https://cdn.example.com/logo-asset.png')
+    expect(ctx.assets.identities[0]?.url).toBe('https://cdn.example.com/identity.png')
+    expect(ctx.assets.firstFrame?.url).toBe('https://cdn.example.com/first.png')
     expect(ctx.assets.identities[0]?.id).toBe('identity-1')
     expect(ctx.assets.products[0]?.id).toBe('product-1')
     expect(ctx.assets.brandReferences[0]?.id).toBe('brand-1')
@@ -318,9 +331,8 @@ describe('DemoPersonalizeProvider Restore default layout end-to-end', () => {
     expect(restoredLogo.scale).toBe(0.22)
     expect(restoredLogo.visible).toBe(true)
     // Logo imageUrl is re-seeded from previewSeed (which derives from the
-    // selected primary logo asset). In this test the asset's url is 'logo-1'
-    // (the asset id from logoAssetIds), so that is the re-seeded value.
-    expect(restoredLogo.imageUrl).toBe('logo-1')
+    // selected primary logo asset), i.e. the logo asset's persisted durable URL.
+    expect(restoredLogo.imageUrl).toBe('https://cdn.example.com/logo-asset.png')
     // Product was re-seeded from the form/asset context, not from the dragged layer.
     expect(restoredProduct.x).not.toBe(0.05)
     expect(restoredProduct.y).not.toBe(0.05)
@@ -331,5 +343,23 @@ describe('DemoPersonalizeProvider Restore default layout end-to-end', () => {
     // headline (the dragged headline was at x=0.5, y=0.85; the seed is default).
     expect(restoredHeadline.x).toBe(0.08)
     expect(restoredHeadline.y).toBe(0.4)
+  })
+})
+
+describe('DemoPersonalizeProvider restore of rows saved without asset URLs', () => {
+  it('skips assets whose id is not loadable instead of using the id as a media URL', async () => {
+    await mountAndOpen(makeSavedEntry({
+      assetUrls: undefined,
+      // A legacy row may have stored a durable URL as the id: that one is kept.
+      productAssetIds: ['https://cdn.example.com/legacy-product.png'],
+    }))
+    const ctx = (window as unknown as { __personalizationCtx: ReturnType<typeof useDemoPersonalize> }).__personalizationCtx
+    expect(ctx.assets.logos).toHaveLength(0)
+    expect(ctx.assets.identities).toHaveLength(0)
+    expect(ctx.assets.brandReferences).toHaveLength(0)
+    expect(ctx.assets.firstFrame ?? null).toBeNull()
+    expect(ctx.assets.lastFrame ?? null).toBeNull()
+    expect(ctx.assets.products).toHaveLength(1)
+    expect(ctx.assets.products[0].url).toBe('https://cdn.example.com/legacy-product.png')
   })
 })

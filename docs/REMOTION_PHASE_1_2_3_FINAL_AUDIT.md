@@ -215,9 +215,9 @@ direct dependency, which fixed the one typecheck error the pre-merge branch had.
 | # | Severity | Item | Status |
 |---|---|---|---|
 | B1 | **blocker** | Export matrix (19) and runtime Playwright (6) not re-run on the final tree | run on the supported host before release |
-| B2 | high | **Restored projects carry asset IDs as URLs.** `restoreProject` maps `identityAssetIds` etc. to `{ id, url: id }` (`DemoPersonalizeProvider.tsx:1717-1727`). Pre-existing on `main`, but unreachable there because restore always 400'd; Phase 3's working restore makes it reachable (Codex P2 on PR #67). | open — needs an asset lookup or persisting asset URLs |
-| B3 | medium | Source restore filters **after** the RPC's `limit 50` (`20261013000000_personalization_saved_projects.sql:125`), so a project older than the user's 50 latest is not restored (Codex P2). Pre-existing SQL. | open — needs a migration |
-| D1 | low | Studio project keys use the URL basename (Image/Marketing/Video). Two different uploads with the same basename would share saved state (Codex P2). | open — use the full URL |
+| B2 | high | ~~**Restored projects carry asset IDs as URLs.**~~ `restoreProject` maps `identityAssetIds` etc. to `{ id, url: id }` (`DemoPersonalizeProvider.tsx:1717-1727`). Pre-existing on `main`, but unreachable there because restore always 400'd; Phase 3's working restore makes it reachable (Codex P2 on PR #67). | ✅ **fixed** — the payload now persists an `assetUrls` map (id → durable http(s) URL; blob:/data: dropped) and restore loads from it. Rows saved before the map are restored without the assets whose id is not a URL, instead of with broken media. Tests: `projectPersistence.test.ts`, `durableFieldRestore.test.tsx` |
+| B3 | medium | ~~Source restore filters **after**~~ the RPC's `limit 50` (`20261013000000_personalization_saved_projects.sql:125`), so a project older than the user's 50 latest is not restored (Codex P2). Pre-existing SQL. | ✅ **fixed in code** — new migration `20261024000000_personalization_saved_projects_list_by_source.sql` filters by `source->>'id'` before the limit (plus an index); the route uses it and falls back to the old list+filter while the migration is not applied. **The migration must be applied to Supabase as part of the release.** Tests: `projectPersistence.test.ts` |
+| D1 | low | ~~Studio project keys use the URL basename / file name~~ (13 studios). Two different uploads with the same basename would share saved state (Codex P2). | ✅ **fixed centrally** — `buildStudioPersonalizeSource` appends a fingerprint of the full media URL to the source id. Test: `studioEntry.test.ts`. Saved projects created under the old ids will not be found under the new ones (pre-release, acceptable). |
 | D2 | info | `visual-effect` and `starfield-warp` pass the matrix on a changed-in-box presence criterion, not the brand-pixel threshold (documented in the spec). | accepted |
 | D3 | info | The Phase 3 report's "lint 302 < 1224" could not be reproduced: the merged tree lints at 1 281 errors repo-wide. No new errors come from this work; the figure in the earlier report should not be relied on. | documented |
 | D4 | info | 12 gallery-only designs not integrable (no source). | not actionable |
@@ -239,6 +239,6 @@ Fixed during this audit (beyond R1–R3), each with a regression test:
 | Phase 2 | ✅ Complete as scoped |
 | Phase 3 (code scope + final-review corrections) | ✅ Complete |
 | Phase 3 verification on the final tree | ⚠ Partial — B1 |
-| **Three-phase program, release-ready** | ❌ **Not yet** — B1 must pass; B2 should be fixed or explicitly accepted before paying users rely on restore; B3/D1 are follow-ups |
+| **Three-phase program, release-ready** | ❌ **Not yet** — B1 (export matrix + runtime suites on the supported host) must pass, and the B3 migration must be applied at release. B2, B3 (code) and D1 are fixed. |
 
 Netlify production stays locked; release is a separate, approved, manual step.

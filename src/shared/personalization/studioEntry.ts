@@ -171,6 +171,16 @@ export function assertStudioPersonalizeOptions(options: StudioPersonalizeOptions
   }
 }
 
+/** Deterministic 32-bit FNV-1a fingerprint, as 8 hex chars. Not a security hash. */
+export function fingerprint(value: string): string {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0')
+}
+
 /**
  * Build a complete `PersonalizationSource` for a studio hand-off.
  *
@@ -178,8 +188,8 @@ export function assertStudioPersonalizeOptions(options: StudioPersonalizeOptions
  * `sourceType` and `originalPrompt`), otherwise the modal never opens and
  * nothing tells you why.
  *
- * The `id` is `${originStudio}:${studioProjectId}` — unique per studio AND
- * per studio project, because the provider keys project persistence and
+ * The `id` is `${originStudio}:${studioProjectId}#${fingerprint(media.url)}`
+ * — unique per studio, per studio project AND per uploaded media, because the provider keys project persistence and
  * project restore on `source.id`.
  */
 export function buildStudioPersonalizeSource(
@@ -188,7 +198,16 @@ export function buildStudioPersonalizeSource(
   assertStudioPersonalizeOptions(options)
 
   const text = options.prompt?.text ?? ''
-  const projectKey = options.studioProjectId?.trim() || options.media.url || 'adhoc'
+  const studioKey = options.studioProjectId?.trim()
+  const mediaUrl = options.media.url?.trim() || ''
+  // A studio key is usually built from a file name or URL basename, so two
+  // different uploads can share one. The full media URL's fingerprint keeps
+  // their saved projects apart; the same upload always maps to the same id.
+  const projectKey = studioKey
+    ? mediaUrl
+      ? `${studioKey}#${fingerprint(mediaUrl)}`
+      : studioKey
+    : mediaUrl || 'adhoc'
 
   return {
     sourceType: 'studio-project',

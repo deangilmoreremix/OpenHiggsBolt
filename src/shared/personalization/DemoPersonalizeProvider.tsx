@@ -93,7 +93,7 @@ import { cancelActiveExport } from './webExport'
 import { persistEditedPersonalizationAsset } from './editedAssetPersistence'
 
 import { normalizeUrl, TRACKING_PARAMS } from './urlNormalizer'
-import { createProjectPersistence, loadProject, type LoadProjectResult, type PersonalizationProjectState } from './supabaseProjectPersistence'
+import { createProjectPersistence, durableAssetUrls, loadProject, resolveRestoredAssetUrl, type LoadProjectResult, type PersonalizationProjectState } from './supabaseProjectPersistence'
 import { buildPreviewInput } from './guided/buildPreviewInput'
 import { chooseFinalOutputPath } from './finalOutput'
 import {
@@ -1510,6 +1510,20 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     brandReferenceAssetIds: assets.brandReferences.map((b) => b.id),
     firstFrameAssetId: assets.firstFrame?.id || null,
     lastFrameAssetId: assets.lastFrame?.id || null,
+    // The id lists alone cannot be restored; persist each asset's durable URL
+    // next to its id (blob:/data: URLs are dropped by `durableAssetUrls`).
+    assetUrls: durableAssetUrls(
+      Object.fromEntries(
+        [
+          ...assets.identities,
+          ...assets.logos,
+          ...assets.products,
+          ...assets.brandReferences,
+          ...(assets.firstFrame ? [assets.firstFrame] : []),
+          ...(assets.lastFrame ? [assets.lastFrame] : []),
+        ].map((a) => [a.id, a.uploadedUrl || a.url]),
+      ),
+    ),
     outputUrls: result?.urls || (result?.url ? [result.url] : []),
     outputType,
     clientId: selectedClientId || null,
@@ -1712,26 +1726,21 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     }
 
     // ── Restore assets ───────────────────────────────────────────────────────
+    // Each saved id is rebuilt from its persisted durable URL. An id with no
+    // loadable URL (a row saved before `assetUrls` existed) is skipped: an
+    // asset whose `url` is an opaque id would break generation and previews.
     const assetEntries: { id: string; url: string; role: PersonalizationAsset['role']; isPrimary: boolean }[] = []
+    const pushRestored = (id: string, role: PersonalizationAsset['role'], isPrimary: boolean) => {
+      const url = resolveRestoredAssetUrl(id, entry.assetUrls)
+      if (url) assetEntries.push({ id, url, role, isPrimary })
+    }
 
-    entry.identityAssetIds.forEach((id, idx) => {
-      assetEntries.push({ id, url: id, role: 'presenter_identity', isPrimary: idx === 0 })
-    })
-    entry.logoAssetIds.forEach((id, idx) => {
-      assetEntries.push({ id, url: id, role: 'logo', isPrimary: idx === 0 })
-    })
-    entry.productAssetIds.forEach((id) => {
-      assetEntries.push({ id, url: id, role: 'product_reference', isPrimary: false })
-    })
-    entry.brandReferenceAssetIds.forEach((id) => {
-      assetEntries.push({ id, url: id, role: 'brand_reference', isPrimary: false })
-    })
-    if (entry.firstFrameAssetId) {
-      assetEntries.push({ id: entry.firstFrameAssetId, url: entry.firstFrameAssetId, role: 'first_frame', isPrimary: true })
-    }
-    if (entry.lastFrameAssetId) {
-      assetEntries.push({ id: entry.lastFrameAssetId, url: entry.lastFrameAssetId, role: 'last_frame', isPrimary: true })
-    }
+    entry.identityAssetIds.forEach((id, idx) => pushRestored(id, 'presenter_identity', idx === 0))
+    entry.logoAssetIds.forEach((id, idx) => pushRestored(id, 'logo', idx === 0))
+    entry.productAssetIds.forEach((id) => pushRestored(id, 'product_reference', false))
+    entry.brandReferenceAssetIds.forEach((id) => pushRestored(id, 'brand_reference', false))
+    if (entry.firstFrameAssetId) pushRestored(entry.firstFrameAssetId, 'first_frame', true)
+    if (entry.lastFrameAssetId) pushRestored(entry.lastFrameAssetId, 'last_frame', true)
 
     // Build the AssetLibrary in one shot to avoid intermediate empty states
     const restoredLibrary = assetEntries.reduce<AssetLibrary>((lib, a) => {
