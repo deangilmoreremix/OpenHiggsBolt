@@ -301,6 +301,27 @@ describe('Demos tab — pagination', () => {
   })
 })
 
+describe('Demos tab — card previews', () => {
+  it('every unselected card autoplays its own silent clip over its poster', () => {
+    const { container } = render(<StepChooseVideo />)
+    fireEvent.click(screen.getByRole('tab', { name: /AI Demos/i }))
+
+    const cards = [...container.querySelectorAll<HTMLElement>('[data-demo-id]')]
+    expect(cards.length).toBeGreaterThan(0)
+    for (const card of cards) {
+      const entry = DEMO_LIBRARY_REGISTRY.find((e) => e.id === card.getAttribute('data-demo-id'))!
+      if (card.getAttribute('aria-pressed') === 'true') continue
+      const clip = card.querySelector('video[data-testid="card-preview-video"]') as HTMLVideoElement
+      expect(clip, `card ${entry.id} must play a preview clip`).toBeTruthy()
+      expect(clip.getAttribute('src')).toBe(entry.videoSrc)
+      expect(clip.muted && clip.loop && clip.autoplay && clip.playsInline).toBe(true)
+      expect(clip.controls).toBe(false)
+      // The poster stays underneath as the loading / failure face.
+      expect(card.querySelector('img')?.getAttribute('src')).toBe(entry.posterSrc)
+    }
+  })
+})
+
 describe('Demos tab — selection', () => {
   it('mounts a real <video> on the selected card and keeps it stable across filters', () => {
     const demo = DEMO_LIBRARY_REGISTRY[0]

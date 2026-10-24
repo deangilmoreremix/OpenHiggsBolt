@@ -53,6 +53,7 @@ import {
 } from '@/data/motionRecipeCatalog'
 import { C, badgeStyle, hintStyle, inputStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle, tileStyle } from './tokens'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
+import { CardPreviewVideo } from './CardPreviewVideo'
 
 /** Map a category key to a small lucide icon so the tab bar reads at a glance. */
 const CATEGORY_ICONS: Record<MotionCategoryKey, React.ComponentType<{ size?: number; color?: string }>> = {
@@ -426,9 +427,14 @@ function TemplateCard({
   const clip = previewVideoUrl(template)
   const supportedAssets = ASSET_ICONS.filter((entry) => template.assets[entry.key])
   const durationLabel = template.durationSec > 0 ? `${template.durationSec.toFixed(1)}s` : null
-  // The SELECTED card hosts the real, playing clip. Unselected cards keep the
-  // still poster so the grid stays cheap — only one clip is ever fetched.
+  // The SELECTED card hosts the real, playing clip with controls. Every other
+  // card autoplays its own silent clip while on screen, over its poster.
   const showPlayer = active && Boolean(clip)
+  const still = poster ? (
+    <TemplatePosterImage template={template} poster={poster} />
+  ) : (
+    <TemplatePosterPlaceholder template={template} />
+  )
 
   return (
     <div
@@ -438,10 +444,10 @@ function TemplateCard({
     >
       {showPlayer ? (
         <MotionTemplatePlayer template={template} src={clip!} poster={poster} />
-      ) : poster ? (
-        <TemplatePosterImage template={template} poster={poster} />
+      ) : clip ? (
+        <CardPreviewVideo src={clip} poster={poster} fallback={still} />
       ) : (
-        <TemplatePosterPlaceholder template={template} />
+        still
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>

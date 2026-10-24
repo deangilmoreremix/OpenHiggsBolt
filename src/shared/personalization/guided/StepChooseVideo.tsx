@@ -29,6 +29,7 @@ import {
   matchesDemoQuery,
 } from './demoCategories'
 import { DemoCategoryTabs, DemoFilterSelect, DemoSearchInput } from './DemoGalleryControls'
+import { CardPreviewVideo } from './CardPreviewVideo'
 import {
   DEMO_LIBRARY_REGISTRY,
   demoCollections,
@@ -614,18 +615,23 @@ export function StepChooseVideo(): React.JSX.Element {
                       >
                         <div style={{ position: 'relative' }}>
                           {/* The selected card IS the player: a real, muted, looping
-                              <video> replaces the still thumbnail so the demo is
-                              visibly moving without any extra click. Unselected
-                              cards keep the poster as their thumbnail. Exactly one
-                              of the two is ever mounted. */}
+                              <video> with controls. Every other card autoplays its
+                              own silent clip while on screen, over the poster it
+                              falls back to. */}
                           {active ? (
                             <DemoCardPlayer key={`demo-player-${demo.id}`} demo={demo} />
                           ) : (
-                            <img
-                              src={demo.posterSrc}
-                              alt=""
-                              loading="lazy"
-                              style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 8, display: 'block', background: '#000' }}
+                            <CardPreviewVideo
+                              src={demo.videoSrc}
+                              poster={demo.posterSrc}
+                              fallback={
+                                <img
+                                  src={demo.posterSrc}
+                                  alt=""
+                                  loading="lazy"
+                                  style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 8, display: 'block', background: '#000' }}
+                                />
+                              }
                             />
                           )}
                           {/* Play overlay — makes the card clearly a playable video, not a static image.
