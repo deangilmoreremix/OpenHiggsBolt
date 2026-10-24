@@ -1319,6 +1319,149 @@ interface CollectBrowserCandidatesOptions {
   onSubrequestsBlocked?: (count: number) => void
 }
 
+interface GuardedContextOptions {
+  guard: BrowserSsrfGuard
+  /** The validated base URL; the browser's resolver is pinned to its addresses. */
+  baseTarget: ValidatedBrowserUrl
+  /** Playwright context options (user agent, viewport, scale factor…). */
+  contextOptions: Record<string, unknown>
+  /** Resource types aborted before the SSRF gate is consulted. */
+  blockedResourceTypes: readonly string[]
+}
+
+/**
+ * Runs `fn` with a browser context behind the full SSRF guard: the allowlist
+ * proxy (network level), the pinned resolver, the per-request interceptor, and
+ * blocked service workers. Owns the context, browser and proxy lifetimes.
+ * Shared by asset discovery and Motion Studio page capture so both stay behind
+ * exactly the same protections.
+ */
+async function withGuardedContext<T>(
+  options: GuardedContextOptions,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  fn: (context: any, counters: { readonly blockedSubrequests: number }) => Promise<T>,
+): Promise<T> {
+  let browser: any = null
+  let ownedBrowser = false
+  let context: any = null
+  let allowlistProxy: AllowlistProxy | null = null
+
+  try {
+    // Network-level half of the guard: every socket the browser opens is forced
+    // through a local proxy that re-validates the destination. This layer is
+    // mandatory, because `context.route()` is not called for redirect targets
+    // or service-worker fetches, so it cannot be the only thing that stands
+    // between a page and an internal address. If the proxy cannot be started
+    // the run is aborted (fail closed) rather than continued with the weaker
+    // request-level interceptor plus the `--host-resolver-rules` pin.
+    if (shouldUseAllowlistProxy()) {
+      allowlistProxy = await startAllowlistProxy(options.guard)
+    }
+
+    const { browser: launched, owned } = await acquireBrowser(
+      [
+        { hostname: options.baseTarget.hostname, addresses: options.baseTarget.addresses },
+      ],
+      allowlistProxy ? allowlistProxy.url : undefined,
+    )
+    browser = launched
+    ownedBrowser = owned
+
+    context = await browser.newContext({
+      ...options.contextOptions,
+      // A registered service worker issues its own `fetch`es in a worker scope
+      // that `context.route()` never sees. Blocking them closes the bypass: the
+      // first page can no longer cache a worker that keeps talking to an
+      // internal address after the run's checks are over.
+      serviceWorkers: 'block',
+    })
+
+    let inflightRequests = 0
+    const counters = { blockedSubrequests: 0 }
+
+    // One interceptor for every request the context makes. This is the layer
+    // that stops a *public* page from pulling images or scripts out of an
+    // internal address: `context.route` sees subresources, and `page.goto`'s
+    // own validation never would.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await context.route('**/*', async (route: any, request: any) => {
+      const resourceType = typeof request.resourceType === 'function' ? request.resourceType() : ''
+      const url = typeof request.url === 'function' ? request.url() : ''
+
+      // Cheap synchronous filters first, so the DNS gate is not consulted for
+      // every tracker pixel on the page.
+      if (isBlockedUrl(url) || options.blockedResourceTypes.includes(resourceType)) {
+        return route.abort()
+      }
+
+      // Redirect hops are counted here as a cheap budget, not as a guarantee:
+      // Playwright does not invoke this interceptor for every hop of every
+      // navigation (and not at all for service-worker fetches), so this counter
+      // cannot be the thing that stops a public page 30x-ing into an internal
+      // host. That is exactly why the allowlist proxy is mandatory — it is the
+      // only layer that sees every socket the browser opens. The counter is
+      // cycle-safe, so a chain that never terminates is refused as well.
+      if (exceedsRedirectHopLimit(request)) {
+        counters.blockedSubrequests++
+        return route.abort()
+      }
+
+      // The full destination gate for this request. `currentUrl` is where the
+      // browser is coming from, which is what makes this a redirect-aware check
+      // rather than a plain URL check. Treat it as the best-effort layer; the
+      // proxy re-runs the same gate per socket.
+      if (!(await options.guard.isResourceRequestAllowed(url, redirectedFromUrl(request)))) {
+        counters.blockedSubrequests++
+        return route.abort()
+      }
+
+      if (inflightRequests >= BROWSER_SSRF_MAX_INFLIGHT_REQUESTS) {
+        return route.abort()
+      }
+
+      inflightRequests++
+      try {
+        return await route.continue()
+      } finally {
+        inflightRequests--
+      }
+    })
+
+
+    return await fn(context, counters)
+  } finally {
+    // Close the browser context after each discovery run so businesses do not
+    // share cookies, cache, or storage between runs. The cached browser
+    // process itself is kept for warm-server reuse.
+    try {
+      if (context) {
+        await context.close()
+      }
+    } catch {
+      // ignore context close errors
+    }
+    if (ownedBrowser && browser) {
+      try {
+        await browser.close()
+      } catch {
+        // ignore
+      }
+    }
+    // The allowlist proxy is torn down with the run that created it: it exists
+    // only to serve this browser, and leaving a listener bound to a stale guard
+    // would keep rejected hosts memoised for the next business.
+    if (allowlistProxy) {
+      try {
+        await allowlistProxy.close()
+      } catch {
+        // ignore proxy close errors
+      }
+      allowlistProxy = null
+    }
+  }
+
+}
+
 async function collectBrowserCandidates(
   baseUrl: string,
   pages: string[],
@@ -1352,93 +1495,17 @@ async function collectBrowserCandidates(
     )
   }
 
-  let browser: any = null
-  let ownedBrowser = false
-  let context: any = null
-  let allowlistProxy: AllowlistProxy | null = null
-
-  try {
-    // Network-level half of the guard: every socket the browser opens is forced
-    // through a local proxy that re-validates the destination. This layer is
-    // mandatory, because `context.route()` is not called for redirect targets
-    // or service-worker fetches, so it cannot be the only thing that stands
-    // between a page and an internal address. If the proxy cannot be started
-    // the run is aborted (fail closed) rather than continued with the weaker
-    // request-level interceptor plus the `--host-resolver-rules` pin.
-    if (shouldUseAllowlistProxy()) {
-      allowlistProxy = await startAllowlistProxy(guard)
-    }
-
-    const { browser: launched, owned } = await acquireBrowser(
-      [
-        { hostname: baseTarget.hostname, addresses: baseTarget.addresses },
-      ],
-      allowlistProxy ? allowlistProxy.url : undefined,
-    )
-    browser = launched
-    ownedBrowser = owned
-
-    context = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (compatible; AssetDiscovery/1.0; +https://example.com/bot)',
-      viewport: { width: 1280, height: 900 },
-      // A registered service worker issues its own `fetch`es in a worker scope
-      // that `context.route()` never sees. Blocking them closes the bypass: the
-      // first page can no longer cache a worker that keeps talking to an
-      // internal address after the run's checks are over.
-      serviceWorkers: 'block',
-    })
-
-    let inflightRequests = 0
-    let blockedSubrequests = 0
-
-    // One interceptor for every request the context makes. This is the layer
-    // that stops a *public* page from pulling images or scripts out of an
-    // internal address: `context.route` sees subresources, and `page.goto`'s
-    // own validation never would.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await context.route('**/*', async (route: any, request: any) => {
-      const resourceType = typeof request.resourceType === 'function' ? request.resourceType() : ''
-      const url = typeof request.url === 'function' ? request.url() : ''
-
-      // Cheap synchronous filters first, so the DNS gate is not consulted for
-      // every tracker pixel on the page.
-      if (isBlockedUrl(url) || BLOCKED_RESOURCE_TYPES.includes(resourceType)) {
-        return route.abort()
-      }
-
-      // Redirect hops are counted here as a cheap budget, not as a guarantee:
-      // Playwright does not invoke this interceptor for every hop of every
-      // navigation (and not at all for service-worker fetches), so this counter
-      // cannot be the thing that stops a public page 30x-ing into an internal
-      // host. That is exactly why the allowlist proxy is mandatory — it is the
-      // only layer that sees every socket the browser opens. The counter is
-      // cycle-safe, so a chain that never terminates is refused as well.
-      if (exceedsRedirectHopLimit(request)) {
-        blockedSubrequests++
-        return route.abort()
-      }
-
-      // The full destination gate for this request. `currentUrl` is where the
-      // browser is coming from, which is what makes this a redirect-aware check
-      // rather than a plain URL check. Treat it as the best-effort layer; the
-      // proxy re-runs the same gate per socket.
-      if (!(await guard.isResourceRequestAllowed(url, redirectedFromUrl(request)))) {
-        blockedSubrequests++
-        return route.abort()
-      }
-
-      if (inflightRequests >= BROWSER_SSRF_MAX_INFLIGHT_REQUESTS) {
-        return route.abort()
-      }
-
-      inflightRequests++
-      try {
-        return await route.continue()
-      } finally {
-        inflightRequests--
-      }
-    })
-
+  return withGuardedContext(
+    {
+      guard,
+      baseTarget,
+      contextOptions: {
+        userAgent: 'Mozilla/5.0 (compatible; AssetDiscovery/1.0; +https://example.com/bot)',
+        viewport: { width: 1280, height: 900 },
+      },
+      blockedResourceTypes: BLOCKED_RESOURCE_TYPES,
+    },
+    async (context, counters) => {
     const tasks = safePages.map((pageUrl) => async (): Promise<PageTelemetry> => {
       const navStartedAt = new Date().toISOString()
       let navCompletedAt: string | null = null
@@ -1514,48 +1581,20 @@ async function collectBrowserCandidates(
     for (const entry of telemetry) {
       options.onPageTelemetry?.(entry)
     }
-    options.onSubrequestsBlocked?.(blockedSubrequests)
-  } finally {
-    // Close the browser context after each discovery run so businesses do not
-    // share cookies, cache, or storage between runs. The cached browser
-    // process itself is kept for warm-server reuse.
-    try {
-      if (context) {
-        await context.close()
-      }
-    } catch {
-      // ignore context close errors
-    }
-    if (ownedBrowser && browser) {
-      try {
-        await browser.close()
-      } catch {
-        // ignore
-      }
-    }
-    // The allowlist proxy is torn down with the run that created it: it exists
-    // only to serve this browser, and leaving a listener bound to a stale guard
-    // would keep rejected hosts memoised for the next business.
-    if (allowlistProxy) {
-      try {
-        await allowlistProxy.close()
-      } catch {
-        // ignore proxy close errors
-      }
-      allowlistProxy = null
-    }
-  }
+    options.onSubrequestsBlocked?.(counters.blockedSubrequests)
 
-  const staticCount = allCandidates.length
-  const browserCount = allCandidates.length
+      const staticCount = allCandidates.length
+      const browserCount = allCandidates.length
 
-  return {
-    candidates: allCandidates.slice(0, BROWSER_FALLBACK_MAX_CANDIDATES),
-    staticCandidates: staticCount,
-    browserCandidates: browserCount,
-    pagesCrawled,
-    fallbackUsed: true,
-  }
+      return {
+        candidates: allCandidates.slice(0, BROWSER_FALLBACK_MAX_CANDIDATES),
+        staticCandidates: staticCount,
+        browserCandidates: browserCount,
+        pagesCrawled,
+        fallbackUsed: true,
+      }
+    },
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -1579,4 +1618,186 @@ export async function discoverRenderedAssets(
 
   const limitedPages = pages.slice(0, BROWSER_FALLBACK_MAX_PAGES)
   return collectBrowserCandidates(baseUrl, limitedPages, options)
+}
+
+// ---------------------------------------------------------------------------
+// Motion Studio page capture
+// ---------------------------------------------------------------------------
+
+/**
+ * Capture geometry matches the textures Motion Studio's screenshot-based shots
+ * were tuned on (upstream ShotCraft's capture step): pages 1920 CSS px wide at
+ * a 2x device scale, cut at the sample page's height, plus element crops of
+ * card-sized blocks.
+ */
+export const CAPTURE_VIEWPORT = { width: 1920, height: 1080 } as const
+export const CAPTURE_DEVICE_SCALE = 2
+export const CAPTURE_MAX_PAGE_HEIGHT = 1746
+export const CAPTURE_MAX_CROPS = 6
+export const CAPTURE_NAVIGATION_TIMEOUT = 15_000
+// Media is never needed for a still capture; fonts and stylesheets are, so
+// unlike discovery they are allowed (each still passes the SSRF gate).
+const CAPTURE_BLOCKED_RESOURCE_TYPES = ['media'] as const
+
+export interface CaptureRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface PageCaptureBrand {
+  background: string | null
+  text: string | null
+  accent: string | null
+  fontFamily: string | null
+}
+
+export interface PageCapture {
+  url: string
+  title: string
+  /** JPEG of the page, CAPTURE_VIEWPORT.width CSS px wide at CAPTURE_DEVICE_SCALE. */
+  page: Buffer
+  pageHeight: number
+  /** JPEG element crops (card-sized blocks), largest first. */
+  crops: Buffer[]
+  brand: PageCaptureBrand
+}
+
+/** `rgb()/rgba()` → `#rrggbb`; null for transparent or unparseable colours. */
+export function cssColorToHex(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const m = value.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s/]+([\d.]+))?\s*\)/i)
+  if (!m) return /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : null
+  if (m[4] !== undefined && Number(m[4]) === 0) return null
+  return `#${[m[1], m[2], m[3]].map((n) => Math.min(255, Number(n)).toString(16).padStart(2, '0')).join('')}`
+}
+
+/**
+ * Card-sized, visible, non-overlapping blocks near the top of the page, largest
+ * first. Runs in the page; kept free of closures so it serialises cleanly.
+ */
+function findCropRects(limits: { maxY: number; max: number }): CaptureRect[] {
+  const picked: CaptureRect[] = []
+  const overlaps = (a: CaptureRect, b: CaptureRect) =>
+    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
+  const nodes = Array.from(document.querySelectorAll('article, section, li, a, div')) as HTMLElement[]
+  const candidates = nodes
+    .map((el) => {
+      const r = el.getBoundingClientRect()
+      return { el, rect: { x: r.left + window.scrollX, y: r.top + window.scrollY, width: r.width, height: r.height } }
+    })
+    .filter(({ el, rect }) => {
+      if (rect.width < 280 || rect.width > 760 || rect.height < 200 || rect.height > 700) return false
+      const aspect = rect.width / rect.height
+      if (aspect < 0.8 || aspect > 1.9) return false
+      if (rect.y < 0 || rect.y + rect.height > limits.maxY) return false
+      const style = getComputedStyle(el)
+      if (style.visibility === 'hidden' || Number(style.opacity) === 0) return false
+      return (el.textContent ?? '').trim().length > 20 || el.querySelector('img, svg, canvas') !== null
+    })
+    .sort((a, b) => b.rect.width * b.rect.height - a.rect.width * a.rect.height)
+  for (const { rect } of candidates) {
+    if (picked.length >= limits.max) break
+    if (picked.some((p) => overlaps(p, rect))) continue
+    picked.push({ x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) })
+  }
+  return picked
+}
+
+/** Computed brand colours/fonts from the rendered page. Runs in the page. */
+function readBrandStyles(): Record<string, string | null> {
+  const body = getComputedStyle(document.body)
+  const heading = document.querySelector('h1, h2')
+  const action = Array.from(document.querySelectorAll('button, a[class*="btn"], a[class*="button"], [role="button"]'))
+    .map((el) => getComputedStyle(el).backgroundColor)
+    .find((c) => c && !/rgba?\(\s*0,\s*0,\s*0,\s*0\s*\)|transparent/.test(c))
+  const html = getComputedStyle(document.documentElement)
+  return {
+    background: body.backgroundColor && !/rgba\(0, 0, 0, 0\)/.test(body.backgroundColor) ? body.backgroundColor : html.backgroundColor,
+    text: heading ? getComputedStyle(heading).color : body.color,
+    accent: action ?? null,
+    fontFamily: (heading ? getComputedStyle(heading).fontFamily : body.fontFamily) || null,
+  }
+}
+
+/**
+ * Captures one public page for Motion Studio behind the same SSRF guard as
+ * discovery: the URL, every redirect hop and every subresource must pass the
+ * gate, and the run ends on the validated host.
+ */
+export async function capturePageScreenshots(
+  rawUrl: string,
+  options: { guard?: BrowserSsrfGuard; maxCrops?: number } = {},
+): Promise<PageCapture> {
+  const guard = options.guard ?? createSsrfGuard()
+  const baseTarget = await guard.validateNavigationTarget(rawUrl)
+  const maxCrops = Math.max(0, Math.min(CAPTURE_MAX_CROPS, options.maxCrops ?? CAPTURE_MAX_CROPS))
+
+  return withGuardedContext(
+    {
+      guard,
+      baseTarget,
+      contextOptions: {
+        userAgent: 'Mozilla/5.0 (compatible; SmartVideoMotionStudio/1.0)',
+        viewport: { ...CAPTURE_VIEWPORT },
+        deviceScaleFactor: CAPTURE_DEVICE_SCALE,
+      },
+      blockedResourceTypes: CAPTURE_BLOCKED_RESOURCE_TYPES,
+    },
+    async (context) => {
+      const page = await context.newPage()
+      try {
+        await page.goto(baseTarget.url, { waitUntil: 'load', timeout: CAPTURE_NAVIGATION_TIMEOUT })
+        const finalTarget = await guard.validateNavigationTarget(page.url())
+        if (finalTarget.hostname !== baseTarget.hostname) {
+          throw new BrowserSsrfError('Navigation left the validated origin', page.url(), finalTarget.hostname)
+        }
+        await page.waitForLoadState('networkidle', { timeout: 3_000 }).catch(() => undefined)
+        // Nudge lazy-loaded content inside the captured band, then return to the top.
+        await page.evaluate(async (maxY: number) => {
+          for (let y = 0; y < maxY; y += 600) {
+            window.scrollTo(0, y)
+            await new Promise((resolve) => setTimeout(resolve, 80))
+          }
+          window.scrollTo(0, 0)
+        }, CAPTURE_MAX_PAGE_HEIGHT)
+        await page.waitForLoadState('networkidle', { timeout: 2_000 }).catch(() => undefined)
+
+        const docHeight: number = await page.evaluate(() => document.documentElement.scrollHeight)
+        const pageHeight = Math.max(CAPTURE_VIEWPORT.height, Math.min(CAPTURE_MAX_PAGE_HEIGHT, docHeight))
+        const shot = await page.screenshot({
+          type: 'jpeg',
+          quality: 82,
+          fullPage: true,
+          clip: { x: 0, y: 0, width: CAPTURE_VIEWPORT.width, height: pageHeight },
+        })
+
+        const rects: CaptureRect[] = maxCrops
+          ? await page.evaluate(findCropRects, { maxY: pageHeight, max: maxCrops })
+          : []
+        const crops: Buffer[] = []
+        for (const rect of rects) {
+          crops.push(await page.screenshot({ type: 'jpeg', quality: 85, fullPage: true, clip: rect }))
+        }
+
+        const styles = await page.evaluate(readBrandStyles)
+        return {
+          url: page.url(),
+          title: String((await page.title()) ?? '').slice(0, 200),
+          page: shot,
+          pageHeight,
+          crops,
+          brand: {
+            background: cssColorToHex(styles.background),
+            text: cssColorToHex(styles.text),
+            accent: cssColorToHex(styles.accent),
+            fontFamily: typeof styles.fontFamily === 'string' ? styles.fontFamily.slice(0, 120) : null,
+          },
+        }
+      } finally {
+        await page.close().catch(() => undefined)
+      }
+    },
+  )
 }
