@@ -1,0 +1,14 @@
+[dotenv@17.2.2] injecting env (22) from .env.local -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+
+Running 3 tests using 1 worker
+
+[dotenv@17.2.2] injecting env (0) from .env.local -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+  ✓  1 [chromium] › e2e/personalization-studio-handoff.spec.ts:253:7 › Phase 2 — studio → Personalization Modal hand-off › the app root wires the Personalize trigger into all ten studios (178ms)
+[dotenv@17.2.2] injecting env (0) from .env.local,.env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[dotenv@17.2.2] injecting env (0) from .env.local -- tip: ⚙️  suppress all logs with { quiet: true }
+V2: video studio hand-off: {"studio":"video","mediaUrl":"/academy/07-ai-product-photography/templates/examples/batch-skincare-grid-clip.mp4","title":"phase2-e2e-source.mp4"}
+  ✓  2 [chromium] › e2e/personalization-studio-handoff.spec.ts:277:7 › Phase 2 — studio → Personalization Modal hand-off › Video Studio shows a Personalize trigger next to its media and hands that media to the modal (9.0s)
+V2: image studio hand-off: {"studio":"image","mediaUrl":"/thumbnails/seed-ai-1.jpeg","title":"Image Studio image"}
+  ✓  3 [chromium] › e2e/personalization-studio-handoff.spec.ts:333:7 › Phase 2 — studio → Personalization Modal hand-off › Image Studio shows a Personalize trigger next to its media and hands that media to the modal (7.1s)
+
+  3 passed (21.3s)

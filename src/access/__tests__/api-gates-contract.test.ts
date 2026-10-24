@@ -27,6 +27,11 @@ const GATE_SYMBOL = 'requireApiEntitlement'
 // diff below catches a NEW gated route that is not yet listed here.
 // ---------------------------------------------------------------------------
 const PAID_PATHS: string[] = [
+  // brand studio brand store: mutating paid surfaces (POST/PATCH), gated with
+  // the same requireApiEntitlement contract as brand/analyze (see
+  // tests/api/brand-route.test.ts and 12e0e1fde).
+  'app/api/brand/route.ts',
+  'app/api/brands/route.ts',
   // vfx/*
   'app/api/vfx/cancel/route.ts',
   'app/api/vfx/generate/route.ts',
@@ -158,8 +163,6 @@ const PAID_GATE_VOCABULARY: readonly string[] = [
 const ALLOWLIST_PATHS: string[] = [
   'app/api/go-ai-viral/seedance/route.ts',
   'app/api/thumbnail/route.js',
-  'app/api/brand/route.ts',
-  'app/api/brands/route.ts',
   'app/api/access/resolve/route.ts',
   'app/api/access/restore/route.ts',
   'app/api/version/route.ts',

@@ -18,6 +18,7 @@ const LAYER_LABELS: Record<PreviewLayerKind, string> = {
   serviceImage: 'Service image',
   tagline: 'Tagline',
   endCard: 'Branded end card',
+  design: 'Design',
 }
 
 /**

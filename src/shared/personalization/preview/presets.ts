@@ -18,6 +18,15 @@ import type {
   PreviewPositionId,
 } from './types'
 import { DEFAULT_PREVIEW_BRAND_COLORS, DEFAULT_PREVIEW_FPS } from './types'
+import { getRemotionDesignTemplate } from '../templates/registry'
+import type {
+  RemotionDesignMediaRole,
+  RemotionDesignTemplate,
+} from '../templates/types'
+// Phase 3 decision D3: the font picker resolves everything to the bundled,
+// deterministic typeface. `templates/typography` imports nothing from
+// `preview/`, so this import cannot form a cycle.
+import { DESIGN_FONT_STACK } from '../templates/typography'
 
 const LAYER_KINDS: PreviewLayerKind[] = [
   'logo',
@@ -29,6 +38,7 @@ const LAYER_KINDS: PreviewLayerKind[] = [
   'serviceImage',
   'tagline',
   'endCard',
+  'design',
 ]
 
 const ANIMATION_IDS: PreviewAnimationId[] = [
@@ -149,6 +159,16 @@ const LAYER_DEFAULTS: Record<PreviewLayerKind, PreviewLayerBase> = {
     startFrame: 0,
     opacity: 1,
   },
+  design: {
+    visible: true,
+    x: 0.5,
+    y: 0.5,
+    scale: 1,
+    animation: 'fade',
+    animationDelay: 0,
+    startFrame: 0,
+    opacity: 1,
+  },
 }
 
 export function getCompositionDimensions(
@@ -235,35 +255,78 @@ export const LAYER_IDS_BY_LAYOUT: Record<PreviewLayoutId, PreviewLayerKind[]> = 
   'branded-ending': ['logo', 'businessName', 'cta', 'endCard'],
 }
 
-export const PREVIEW_FONTS: { id: string; label: string; stack: string }[] = [
+/**
+ * The customer-facing font picker (Phase 3 decision D3).
+ *
+ * WHY THE HISTORICAL ENTRIES ARE ALL UNAVAILABLE: the four per-OS entries
+ * (`inter`, `georgia`, `impact`, `monospace`) made the rendered result
+ * machine-dependent — the same exported video picked SF Pro on macOS, Segoe
+ * UI on Windows and whatever the generic family resolved to on Linux, so a
+ * preview and its export could disagree. The bundled "Personalization Sans"
+ * (see `templates/typography.ts`) is the only deterministic face, so it is
+ * the only AVAILABLE entry. The historical entries stay in the list (with
+ * their original stacks, as documentation of what the id used to mean) so a
+ * saved layer with `fontFamily: 'georgia'` still matches an entry — but a
+ * DISABLED one, and `fontStackById` resolves every id to the bundled stack.
+ */
+export const PREVIEW_FONTS: { id: string; label: string; stack: string; available: boolean }[] = [
   {
     id: 'inter',
-    label: 'Inter',
+    label: 'Inter (unavailable)',
     stack: 'Inter, ui-sans-serif, system-ui, sans-serif',
+    available: false,
   },
   {
     id: 'georgia',
-    label: 'Georgia',
+    label: 'Georgia (unavailable)',
     stack: "Georgia, 'Times New Roman', serif",
+    available: false,
   },
   {
     id: 'impact',
-    label: 'Impact',
+    label: 'Impact (unavailable)',
     stack: "Impact, 'Arial Black', sans-serif",
+    available: false,
   },
   {
     id: 'monospace',
-    label: 'Monospace',
+    label: 'Monospace (unavailable)',
     stack: "ui-monospace, 'SF Mono', Menlo, monospace",
+    available: false,
+  },
+  {
+    id: 'personalization-sans',
+    label: 'Personalization Sans',
+    // `DESIGN_FONT_STACK` from `templates/typography` — the import is safe:
+    // `templates/typography` imports only react, remotion and the static font
+    // payload module, never anything from `preview/`, so there is no cycle.
+    stack: DESIGN_FONT_STACK,
+    available: true,
   },
 ]
 
-const DEFAULT_FONT_STACK = PREVIEW_FONTS[0].stack
+/** The ONE bundled, deterministic stack — every id resolves to it. */
+const BUNDLED_FONT_STACK = DESIGN_FONT_STACK
 
+/** The default stack (no explicit family chosen) is the bundled stack. */
+const DEFAULT_FONT_STACK = BUNDLED_FONT_STACK
+
+/**
+ * Resolves a layer's persisted `fontFamily` to the stack that is RENDERED.
+ *
+ * THE INVARIANT (Phase 3 decision D3): the rendered font MUST be the bundled
+ * face for every id, so a saved Georgia layer renders with the bundled face
+ * and export fidelity is guaranteed. The historical ids keep resolving (they
+ * never throw, never fall into a per-OS stack) — but they resolve TO the
+ * bundled stack. A customer therefore cannot force a per-OS font at all.
+ */
 export function fontStackById(id?: string): string {
   if (!id) return DEFAULT_FONT_STACK
+  // The lookup stays for documentation: the id still identifies an entry, but
+  // the entry's own (per-OS) stack is deliberately ignored in favour of the
+  // bundled one.
   const match = PREVIEW_FONTS.find((font) => font.id === id || font.stack === id)
-  return match ? match.stack : DEFAULT_FONT_STACK
+  return match ? BUNDLED_FONT_STACK : DEFAULT_FONT_STACK
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -327,6 +390,7 @@ export function createDefaultPreviewSettings(
     width,
     height,
     audio: null,
+    remotionDesignId: null,
   }
   if (!overrides) return base
   const merged: PersonalizationPreviewSettings = {
@@ -416,6 +480,9 @@ export function applyLayoutPreset(
     layout: layoutId,
     layers,
     brandColors: { ...settings.brandColors },
+    // A layout replaces the layer list, so an applied design is no longer
+    // rendered and must not stay selected.
+    remotionDesignId: null,
   }
 }
 
@@ -466,7 +533,117 @@ export function resetLayoutToDefaults(
     layout: layoutId,
     layers,
     brandColors: { ...settings.brandColors },
+    // Restoring a layout also drops an applied design: the design layer is
+    // not part of any layout.
+    remotionDesignId: null,
   }
+}
+
+/** The layout a fresh preview starts from. */
+const DEFAULT_PREVIEW_LAYOUT_ID: PreviewLayoutId = 'business-introduction'
+
+/** Brand context key that seeds each media role a design can consume. */
+const DESIGN_MEDIA_CONTEXT_KEYS: Record<RemotionDesignMediaRole, keyof ApplyLayoutContext> = {
+  logo: 'logoUrl',
+  product: 'productUrl',
+  service: 'serviceUrl',
+}
+
+/** The slot the customer edits directly on the layer, if the design has one. */
+function pickPrimaryTextSlot(design: RemotionDesignTemplate) {
+  const slots = Array.isArray(design.textSlots) ? design.textSlots : []
+  return slots.find((slot) => slot && slot.primary) ?? slots[0]
+}
+
+/** The media binding the layer's own `imageUrl` overrides, if there is one. */
+function pickPrimaryMediaBinding(design: RemotionDesignTemplate) {
+  const media = Array.isArray(design.media) ? design.media : []
+  return media.find((binding) => binding && binding.required) ?? media[0]
+}
+
+/**
+ * Applies a registered Remotion design to the preview settings.
+ *
+ * The design replaces the layer list with a single `design` layer that carries
+ * the design's own placement, its primary text slot and its primary media
+ * binding. Brand colours, aspect ratio, fps, duration, the selected layout and
+ * the audio track are all preserved, and the applied design is remembered in
+ * `remotionDesignId` so it survives a reload.
+ *
+ * Pure: `prev` is never mutated and a new settings object is returned.
+ * Applying the same design twice yields the same result (an already applied
+ * design keeps the text the customer typed), and an unknown design id is a
+ * no-op.
+ */
+export function applyDesignTemplate(
+  prev: PersonalizationPreviewSettings,
+  designId: string,
+  ctx?: ApplyLayoutContext,
+): PersonalizationPreviewSettings {
+  const design = getRemotionDesignTemplate(designId)
+  if (!design) return prev
+
+  const existing = (Array.isArray(prev.layers) ? prev.layers : []).find(
+    (layer) => layer && layer.kind === 'design' && layer.designId === design.id,
+  )
+
+  const primarySlot = pickPrimaryTextSlot(design)
+  const text = primarySlot
+    ? (existing?.text ?? nonEmptyString(ctx?.[primarySlot.field]))
+    : undefined
+
+  const primaryMedia = pickPrimaryMediaBinding(design)
+  const imageUrl = primaryMedia
+    ? (existing?.imageUrl ??
+        nonEmptyString(ctx?.[DESIGN_MEDIA_CONTEXT_KEYS[primaryMedia.role]]))
+    : undefined
+
+  // The customer's edits to the SECONDARY text slots survive a re-apply of the
+  // same design: the layer is rebuilt from scratch, so the overrides have to
+  // be carried over explicitly (the primary slot is carried over through
+  // `existing.text` above).
+  const textSlotOverrides =
+    existing?.designId === design.id ? existing.textSlotOverrides : undefined
+
+  const placement = design.placement
+  const overrides: Partial<PreviewLayer> = {
+    designId: design.id,
+    animation: placement?.animation ?? 'fade',
+    animationDelay: design.animation?.delayInFrames ?? 0,
+    startFrame: 0,
+  }
+  if (typeof placement?.x === 'number') overrides.x = placement.x
+  if (typeof placement?.y === 'number') overrides.y = placement.y
+  if (typeof placement?.scale === 'number') overrides.scale = placement.scale
+  if (typeof placement?.opacity === 'number') overrides.opacity = placement.opacity
+  if (text !== undefined) overrides.text = text
+  if (imageUrl !== undefined) overrides.imageUrl = imageUrl
+  if (textSlotOverrides) overrides.textSlotOverrides = textSlotOverrides
+
+  const layer = createLayer('design', overrides)
+
+  return {
+    ...prev,
+    layers: [layer],
+    brandColors: { ...prev.brandColors },
+    remotionDesignId: design.id,
+  }
+}
+
+/**
+ * Clears the applied Remotion design and restores the default layout.
+ *
+ * Pure: `prev` is never mutated and a new settings object is returned.
+ */
+export function resetPreviewDesign(
+  prev: PersonalizationPreviewSettings,
+  ctx?: ApplyLayoutContext,
+): PersonalizationPreviewSettings {
+  return resetLayoutToDefaults(
+    { ...prev, remotionDesignId: null },
+    DEFAULT_PREVIEW_LAYOUT_ID,
+    ctx,
+  )
 }
 
 /** Center coordinates (0..1) for a position preset; identity when unknown. */
@@ -486,24 +663,34 @@ export function isImageLayerKind(kind: PreviewLayerKind): boolean {
 /**
  * Converts normalized center coordinates plus scale into pixels.
  * Image layers use scale as a width fraction and are square; text layers use
- * scale as a fraction of the composition height for the font size.
+ * scale as a fraction of the composition height for the font size; design
+ * layers use scale as a fraction of the composition on BOTH axes, so the
+ * design keeps the video's own shape inside its box.
  */
 export function toBox(
   layer: PreviewLayer,
   compW: number,
   compH: number,
-): { leftPx: number; topPx: number; widthPx: number; fontSizePx: number } {
+): { leftPx: number; topPx: number; widthPx: number; heightPx?: number; fontSizePx: number } {
   const width = Math.max(1, finiteNumber(compW, 1920))
   const height = Math.max(1, finiteNumber(compH, 1080))
   const scale = Math.min(1, Math.max(0.02, finiteNumber(layer.scale, 0.02)))
   const x = Math.min(1, Math.max(0, finiteNumber(layer.x, 0)))
   const y = Math.min(1, Math.max(0, finiteNumber(layer.y, 0)))
 
+  if (layer.kind === 'design') {
+    const widthPx = Math.round(scale * width)
+    const heightPx = Math.round(scale * height)
+    const leftPx = Math.round(x * width - widthPx / 2)
+    const topPx = Math.max(0, Math.round(y * height - heightPx / 2))
+    return { leftPx, topPx, widthPx, heightPx, fontSizePx: 0 }
+  }
+
   if (isImageLayerKind(layer.kind)) {
     const widthPx = Math.round(scale * width)
     const leftPx = Math.round(x * width - widthPx / 2)
     const topPx = Math.max(0, Math.round(y * height - widthPx / 2))
-    return { leftPx, topPx, widthPx, fontSizePx: 0 }
+    return { leftPx, topPx, widthPx, heightPx: widthPx, fontSizePx: 0 }
   }
 
   const fontSizePx = Math.round(scale * height)
@@ -547,7 +734,35 @@ function normalizeLayer(raw: unknown): PreviewLayer | null {
   const imageUrl = nonEmptyString(raw.imageUrl)
   // Reject session-scoped blob URLs: they are dead after a page reload.
   if (imageUrl && !imageUrl.startsWith('blob:')) normalized.imageUrl = imageUrl
+  // A design layer carries the id of the registered design it renders.
+  const designId = nonEmptyString(raw.designId)
+  if (designId) normalized.designId = designId
+  // The per-slot text overrides of a design layer (the secondary slots). They
+  // are dropped when they are absent, malformed or empty, so a saved project
+  // keeps rendering the brand values for the slots the customer never edited.
+  const textSlotOverrides = normalizeTextSlotOverrides(raw.textSlotOverrides)
+  if (textSlotOverrides) normalized.textSlotOverrides = textSlotOverrides
   return normalized
+}
+
+/**
+ * Normalizes the per-slot text overrides of a design layer.
+ *
+ * Only string entries survive: a malformed value must never reach the render,
+ * and a blank entry is dropped by the resolver (which falls back to the brand
+ * value). An empty map is equivalent to an absent one, so `undefined` is
+ * returned for it.
+ */
+function normalizeTextSlotOverrides(raw: unknown): Record<string, string> | undefined {
+  if (!isRecord(raw)) return undefined
+  const out: Record<string, string> = {}
+  for (const key of Object.keys(raw)) {
+    if (typeof key !== 'string' || !key) continue
+    const value = raw[key]
+    if (typeof value !== 'string') continue
+    out[key] = value
+  }
+  return Object.keys(out).length > 0 ? out : undefined
 }
 
 /**
@@ -657,6 +872,10 @@ export function normalizePreviewSettings(raw: unknown): PersonalizationPreviewSe
    }
 
    out.audio = normalizePreviewAudio(raw.audio) ?? null
+
+   // The applied Remotion design. Absent in projects saved before the design
+   // registry existed, so it falls back to null instead of throwing.
+   out.remotionDesignId = nonEmptyString(raw.remotionDesignId) ?? null
 
    return out
   } catch {

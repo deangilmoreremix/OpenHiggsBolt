@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from '@/src/lib/supabaseServer'
 import { callOpenAIResponses } from '@/src/shared/api/openai'
+import { getOpenAiKeyForUser } from '@/src/lib/openaiKeyServer'
 
 const OPENAI_MODEL = 'gpt-4o'
 const IMAGE_MODEL = 'dall-e-3'
@@ -135,7 +136,8 @@ Copy angle: ${concept.copyAngle || ''}
 
 Keep the body under ${platform.wordCap} words. Do not include markdown fences.`
 
-  const copyText = await callOpenAIResponses([copyPrompt])
+  const openaiKey = await getOpenAiKeyForUser()
+  const copyText = await callOpenAIResponses([copyPrompt], openaiKey || undefined)
   const copy = extractFirstJson(copyText)
 
   const imagePrompt = `${concept.visualTheme || concept.copyAngle || concept.title || 'Brand-aligned marketing visual'}. Brand colors: ${colors}. Use ${fonts} inspired composition. NO text or typography.`
@@ -144,7 +146,8 @@ Keep the body under ${platform.wordCap} words. Do not include markdown fences.`
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+      // BYOK: the authenticated user's own key — never a server env key.
+      'Authorization': `Bearer ${openaiKey}`,
     },
     body: JSON.stringify({
       model: IMAGE_MODEL,

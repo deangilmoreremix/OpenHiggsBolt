@@ -2,6 +2,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act, useEffect, useLayoutEffect, useMemo } from 'react'
 import { createRoot } from 'react-dom/client'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 
 vi.mock('studio/src/muapi', () => ({
   uploadFile: vi.fn(),
@@ -2247,5 +2249,27 @@ describe('DemoPersonalizeProvider edit persistence fallback', () => {
     expect(jobLogo).toBeTruthy()
     expect(jobLogo.url).toBe('https://example.com/persisted-saved.png')
     expect(mockUpload).not.toHaveBeenCalled()
+  })
+})
+
+describe('DemoPersonalizeProvider persistence dedup (Phase 3 review finding 1)', () => {
+  const PROVIDER_PATH = join(
+    process.cwd(),
+    'src/shared/personalization/DemoPersonalizeProvider.tsx',
+  )
+
+  it('has exactly one projectPersistence.persist call in an effect', () => {
+    const source = readFileSync(PROVIDER_PATH, 'utf-8')
+    // Count persist calls inside useEffect blocks (not flush/cancel)
+    const persistCalls = source.match(/projectPersistence\.current\.persist\(/g)
+    expect(persistCalls).not.toBeNull()
+    expect(persistCalls!.length).toBe(1)
+  })
+
+  it('has exactly two cancel calls in cleanup effects', () => {
+    const source = readFileSync(PROVIDER_PATH, 'utf-8')
+    const cancelCalls = source.match(/projectPersistence\.current\.cancel\(/g)
+    expect(cancelCalls).not.toBeNull()
+    expect(cancelCalls!.length).toBe(2)
   })
 })

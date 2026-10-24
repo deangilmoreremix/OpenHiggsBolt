@@ -417,9 +417,14 @@ describe('zz-stripe: webhook entitlement lifecycle', () => {
     });
 
     it('grants the entitlement exactly once when the same event is re-delivered', async () => {
+      // db.upserts also records the purchase-ledger write (upserted by the
+      // checkout flow since the PR #60 purchase ledger); the grant-exactly-once
+      // contract is about the ENTITLEMENT upsert.
+      const entitlementUpserts = () => db.upserts.filter((u) => 'entitlements' in u);
+
       const first = await route.POST(makeRequest(checkoutSessionEvent('evt_idem_1')));
       expect(first.status).toBe(200);
-      expect(db.upserts).toHaveLength(1);
+      expect(entitlementUpserts()).toHaveLength(1);
 
       const second = await route.POST(makeRequest(checkoutSessionEvent('evt_idem_1')));
       expect(second.status).toBe(200);
@@ -428,7 +433,7 @@ describe('zz-stripe: webhook entitlement lifecycle', () => {
       expect(rows).toHaveLength(1);
       expect(rows[0].status).toBe('active');
       expect(db.stripe_webhook_events).toHaveLength(1);
-      expect(db.upserts).toHaveLength(1);
+      expect(entitlementUpserts()).toHaveLength(1);
     });
 
     it('resolves the entitlement from the price map carried in the event line items', async () => {
@@ -691,6 +696,45 @@ describe('zz-stripe: webhook entitlement lifecycle', () => {
         subscriptionEvent('evt_rebuild_sub_past_due', 'customer.subscription.updated', 'past_due')
       ));
       expect(pastDue.status).toBe(200);
+      expect(rowFor('user_rebuild_buyer')?.status).toBe('inactive');
+    });
+
+    it('customer.subscription.updated keeps access while the subscription is trialing', async () => {
+      await route.POST(makeRequest(checkoutSessionEvent('evt_grant_for_sub_trial')));
+
+      const trialing = await route.POST(makeRequest(
+        subscriptionEvent('evt_rebuild_sub_trialing', 'customer.subscription.updated', 'trialing')
+      ));
+      expect(trialing.status).toBe(200);
+      expect(rowFor('user_rebuild_buyer')?.status).toBe('active');
+    });
+
+    it('an unrelated (unmapped-price) subscription ending does not revoke the buyer', async () => {
+      await route.POST(makeRequest(checkoutSessionEvent('evt_grant_for_unrelated_sub')));
+      expect(rowFor('user_rebuild_buyer')?.status).toBe('active');
+
+      const res = await route.POST(makeRequest(
+        subscriptionEvent('evt_unrelated_sub_deleted', 'customer.subscription.deleted', 'canceled', {
+          id: 'sub_other_product_9',
+          items: { data: [{ price: { id: 'price_some_other_product' } }] },
+        })
+      ));
+      expect(res.status).toBe(200);
+      expect(rowFor('user_rebuild_buyer')?.status).toBe('active');
+    });
+
+    it('a subscription revokes the row it granted even after its price left the product map', async () => {
+      await route.POST(makeRequest(checkoutSessionEvent('evt_grant_for_own_sub')));
+      const row = rowFor('user_rebuild_buyer')!;
+      row.stripe_subscription_id = 'sub_own_retired_price';
+
+      const res = await route.POST(makeRequest(
+        subscriptionEvent('evt_own_sub_deleted', 'customer.subscription.deleted', 'canceled', {
+          id: 'sub_own_retired_price',
+          items: { data: [{ price: { id: 'price_retired_from_map' } }] },
+        })
+      ));
+      expect(res.status).toBe(200);
       expect(rowFor('user_rebuild_buyer')?.status).toBe('inactive');
     });
 

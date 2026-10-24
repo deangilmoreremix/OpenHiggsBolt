@@ -10,6 +10,7 @@ import { useClerk, useAuth } from '@clerk/nextjs';
 import ApiKeyModal from './ApiKeyModal';
 import { SocialPublishProvider } from '@/components/SocialPublishProvider';
 import { AiAssistantProvider } from '@/components/AiAssistantProvider';
+import PersonalizeVideoAction from '@/components/PersonalizeVideoAction';
 import { useAuthConfig } from '@/lib/authConfig';
 import { isValidKeyFormat } from '@/lib/keys';
 import { saveOpenAIKey, deleteOpenAIKey } from '@/shared/api/openaiKey';
@@ -45,6 +46,50 @@ const GoAiViralStudio = dynamic(() => import('../src/apps/go-ai-viral/GoAiViralS
 const Storyboard = dynamic(() => import('../src/apps/storyboard/Storyboard'), { ssr: false });
 const ThumbnailStudio = dynamic(() => import('../src/apps/thumbnail-studio/ThumbnailStudio'), { ssr: false });
 const SocialPublishing = dynamic(() => import('../src/apps/social-publishing/SocialPublishing'), { ssr: false });
+
+// ── Shared Personalization Modal trigger ─────────────────────────────────────
+//
+// The `studio` package is published standalone (`main`/`module` =
+// `src/index.js`, `files: ["src", "dist"]`), so it must not import the app's
+// `src/shared/personalization/studioEntry` module: that path only exists
+// inside this repo and would ship into the published tarball. Every studio
+// therefore takes an optional `renderPersonalizeAction` render prop, and the
+// app root — which owns the shared module — injects the trigger here.
+//
+// Each studio renders the trigger only when it has source media to hand over,
+// so the button appears exactly when there is something to personalize.
+
+// Video Studio's trigger keeps the exact class and label it had when the
+// studio rendered the shared module itself.
+const PERSONALIZE_TRIGGER_CLASS_VIDEO =
+  'h-12 px-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-[10px] font-bold text-white/70 hover:text-white hover:border-[#22d3ee]/60 transition-colors';
+
+// The trigger of the studios whose trigger sits in a normal flex row.
+const PERSONALIZE_TRIGGER_CLASS =
+  'px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-[10px] font-bold text-white/70 hover:text-white hover:border-[#22d3ee]/60 transition-colors';
+
+// The AI Influencer preview is a `relative` box whose Publish/Assist buttons
+// are absolutely positioned, so its trigger needs an absolute class too.
+const PERSONALIZE_TRIGGER_CLASS_OVERLAY =
+  'absolute bottom-3 right-52 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-white text-[11px] font-semibold hover:bg-black/80 transition-all';
+
+const renderPersonalizeAction = (options) => (
+  <PersonalizeVideoAction options={options} className={PERSONALIZE_TRIGGER_CLASS}>
+    Personalize
+  </PersonalizeVideoAction>
+);
+
+const renderPersonalizeActionVideo = (options) => (
+  <PersonalizeVideoAction options={options} className={PERSONALIZE_TRIGGER_CLASS_VIDEO}>
+    Personalize
+  </PersonalizeVideoAction>
+);
+
+const renderPersonalizeActionOverlay = (options) => (
+  <PersonalizeVideoAction options={options} className={PERSONALIZE_TRIGGER_CLASS_OVERLAY}>
+    Personalize
+  </PersonalizeVideoAction>
+);
 const TABS = [
   { id: 'image',   label: 'Image Studio' },
   { id: 'brand-studio', label: 'Brand Studio' },
@@ -662,29 +707,29 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       <SocialPublishProvider apiKey={apiKey}>
       <DemoPersonalizeProvider apiKey={apiKey}>
       <div className="flex-1 min-h-0 relative overflow-hidden">
-         {activeTab === 'image'   && <ImageStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
-         {activeTab === 'video'   && <VideoStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
-         {activeTab === 'clipping' && <ClippingStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
-         {activeTab === 'vibe-motion' && <VibeMotionStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
-         {activeTab === 'motion-control' && <MotionControlStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} locale={locale} />}
-         {activeTab === 'lipsync' && <LipSyncStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
-         {activeTab === 'cinema'  && <CinemaStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
+         {activeTab === 'image'   && <ImageStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} renderPersonalizeAction={renderPersonalizeAction} />}
+         {activeTab === 'video'   && <VideoStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} renderPersonalizeAction={renderPersonalizeActionVideo} />}
+         {activeTab === 'clipping' && <ClippingStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} renderPersonalizeAction={renderPersonalizeAction} />}
+         {activeTab === 'vibe-motion' && <VibeMotionStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} renderPersonalizeAction={renderPersonalizeAction} />}
+         {activeTab === 'motion-control' && <MotionControlStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} locale={locale} renderPersonalizeAction={renderPersonalizeAction} />}
+         {activeTab === 'lipsync' && <LipSyncStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} renderPersonalizeAction={renderPersonalizeAction} />}
+         {activeTab === 'cinema'  && <CinemaStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} renderPersonalizeAction={renderPersonalizeAction} />}
          {activeTab === 'audio'   && <AudioStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
-         {activeTab === 'marketing' && <MarketingStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
-         {activeTab === 'recast' && <RecastStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
+         {activeTab === 'marketing' && <MarketingStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} renderPersonalizeAction={renderPersonalizeAction} />}
+         {activeTab === 'recast' && <RecastStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} renderPersonalizeAction={renderPersonalizeAction} />}
          {activeTab === 'layers' && <LayersStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} locale={locale} />}
          {activeTab === 'workflows' && <WorkflowStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}
          {activeTab === 'agents' && <AgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} locale={locale} />}
          {activeTab === 'design-agent' && <DesignAgentStudio apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}
-         {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} onDismissApiKey={() => setShowApiKeyPopup(false)} templateData={templateData} /></MemoryRouter>}
+         {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} onDismissApiKey={() => setShowApiKeyPopup(false)} templateData={templateData} renderPersonalizeAction={renderPersonalizeAction} /></MemoryRouter>}
          {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} templateData={templateData} /></MemoryRouter>}
-         {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} />}
+         {activeTab === 'thumbnail-studio' && <ThumbnailStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} renderPersonalizeAction={renderPersonalizeAction} />}
          {activeTab === 'brand-studio' && (
            <div className="flex items-center justify-center h-full">
              <p className="text-white/50">Loading Brand Studio…</p>
            </div>
          )}
-         {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} templateData={templateData} locale={locale} />}
+         {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} templateData={templateData} locale={locale} renderPersonalizeAction={renderPersonalizeActionOverlay} />}
           {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
           {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
           {activeTab === 'apps' && <AppsStudio locale={locale} />}

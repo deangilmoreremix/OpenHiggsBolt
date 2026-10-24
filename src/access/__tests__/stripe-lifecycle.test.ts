@@ -428,8 +428,10 @@ describe('stripe webhook lifecycle', () => {
     expect(res.status).toBe(200);
 
     expect(h.supabase.current.tables.user_purchases[0].purchase_status).toBe('refunded');
+    // Canonical revocation status (revokeEntitlement): the row is kept for
+    // history with a non-qualifying status, so hasSmartVideoGo() is false.
     expect(h.supabase.current.tables.user_entitlements[0]).toMatchObject({
-      status: 'revoked',
+      status: 'inactive',
       entitlements: { smartvideo_go: true },
     });
     expect(String(h.supabase.current.tables.user_entitlements[0].revoked_reason)).toContain('charge.refunded');
@@ -437,7 +439,7 @@ describe('stripe webhook lifecycle', () => {
     // Idempotent: a duplicate refund event changes nothing further.
     const res2 = await POST(makeRequest(event));
     expect(res2.status).toBe(200);
-    expect(h.supabase.current.tables.user_entitlements[0].status).toBe('revoked');
+    expect(h.supabase.current.tables.user_entitlements[0].status).toBe('inactive');
 
     // Revoked rows no longer qualify for access.
     const { resolveSmartVideoAccessForUser } = await import('@/access/resolveAccess');
@@ -481,7 +483,7 @@ describe('stripe webhook lifecycle', () => {
     const res = await POST(makeRequest(event));
     expect(res.status).toBe(200);
     expect(h.supabase.current.tables.user_purchases[0].purchase_status).toBe('disputed');
-    expect(h.supabase.current.tables.user_entitlements[0].status).toBe('revoked');
+    expect(h.supabase.current.tables.user_entitlements[0].status).toBe('inactive');
   });
 
   it('(d3) refund.created also revokes', async () => {
@@ -516,10 +518,10 @@ describe('stripe webhook lifecycle', () => {
     const res = await POST(makeRequest(event));
     expect(res.status).toBe(200);
     expect(h.supabase.current.tables.user_purchases[0].purchase_status).toBe('refunded');
-    expect(h.supabase.current.tables.user_entitlements[0].status).toBe('revoked');
+    expect(h.supabase.current.tables.user_entitlements[0].status).toBe('inactive');
   });
 
-  it('(e) subscription.deleted expires the entitlement; subscription.created activates it', async () => {
+  it('(e) subscription.deleted revokes the entitlement; subscription.created activates it', async () => {
     h.supabase.current = createFakeSupabase({
       user_entitlements: [
         {
@@ -540,7 +542,7 @@ describe('stripe webhook lifecycle', () => {
     seedWebhook(deleted);
     let res = await POST(makeRequest(deleted));
     expect(res.status).toBe(200);
-    expect(h.supabase.current.tables.user_entitlements[0].status).toBe('expired');
+    expect(h.supabase.current.tables.user_entitlements[0].status).toBe('inactive');
 
     const created = stripeEvent('customer.subscription.created', subscription({ status: 'trialing' }));
     seedWebhook(created);
@@ -581,7 +583,7 @@ describe('stripe webhook lifecycle', () => {
     expect(res.status).toBe(200);
     expect(h.supabase.current.tables.user_entitlements[0]).toMatchObject({
       clerk_user_id: 'email:buyer@example.com',
-      status: 'expired',
+      status: 'inactive',
     });
   });
 
