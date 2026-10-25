@@ -75,3 +75,6 @@ storage/request_queues/
 
 # Supabase CLI local state (changes on every CLI run)
 supabase/.temp/
+
+# Crawlee / browser-profile crawl state (not source)
+/storage/
