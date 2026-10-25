@@ -1,6 +1,6 @@
 import React from "react";
-import { AbsoluteFill, Audio, Img, staticFile } from "remotion";
-import { Video } from "@remotion/media";
+import { AbsoluteFill, Img, staticFile } from "remotion";
+import { Audio, Video } from "@remotion/media";
 import type { CardDef } from "./types";
 
 // —— 媒体卡：视频 / 图片 / 音频文件直接上轨（成片工程 public/ 与仓库音效库都走它们）——
