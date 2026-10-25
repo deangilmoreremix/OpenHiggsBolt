@@ -769,7 +769,32 @@ export function isBrowserDiscoveryAvailable(): boolean {
   }
 }
 
+let serverlessChromiumEnvironmentReady = false
+
+/**
+ * Points the serverless Chromium at its bundled system libraries. Without it
+ * the binary cannot start on Netlify's runtime (same bootstrap as
+ * netlify/functions/personalization-browser-discovery.js).
+ */
+async function ensureServerlessChromiumEnvironment(): Promise<void> {
+  if (serverlessChromiumEnvironmentReady) return
+  try {
+    const mod = await import('@sparticuz/chromium')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const setupLambdaEnvironment = (mod as any).setupLambdaEnvironment
+    if (typeof setupLambdaEnvironment === 'function') {
+      const { tmpdir } = await import('node:os')
+      const { join } = await import('node:path')
+      setupLambdaEnvironment(join(tmpdir(), 'al2023', 'lib'))
+    }
+  } catch {
+    // Not a serverless runtime (or the package is absent): nothing to set up.
+  }
+  serverlessChromiumEnvironmentReady = true
+}
+
 async function getChromiumExecutablePath(): Promise<string | undefined> {
+  await ensureServerlessChromiumEnvironment()
   try {
     // @sparticuz/chromium provides a Linux serverless-compatible Chromium.
     // Use it only when the local platform is not macOS, because the downloaded
@@ -782,6 +807,29 @@ async function getChromiumExecutablePath(): Promise<string | undefined> {
     // Fall back to Playwright-managed Chromium below.
   }
   return undefined
+}
+
+/**
+ * Launch flags. With the serverless Chromium, use its own flag set (it needs
+ * e.g. single-process on Lambda-style runtimes) minus site isolation, which
+ * crashes the page target there — the fix from the Netlify discovery function.
+ */
+async function getChromiumArgs(executablePath: string | undefined): Promise<string[]> {
+  const base = ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+  if (!executablePath) return base
+  try {
+    const { default: chromium } = await import('@sparticuz/chromium')
+    const args: string[] = Array.isArray(chromium.args) ? chromium.args : []
+    // Untrusted pages: keep the same-origin policy and mixed-content blocking.
+    const unsafe = new Set(['--disable-web-security', '--allow-running-insecure-content'])
+    const filtered = args.filter(
+      (arg) => !arg.startsWith('--disable-features=') && !arg.startsWith('--headless') && !unsafe.has(arg),
+    )
+    filtered.push('--disable-features=site-per-process')
+    return filtered.length > 1 ? filtered : base
+  } catch {
+    return base
+  }
 }
 
 async function getChromium() {
@@ -999,7 +1047,7 @@ function browserPinKey(pins: BrowserPin[]): string {
 async function launchChromium(pins: BrowserPin[], proxyUrl?: string): Promise<any> {
   const chromium = await getChromium()
   const executablePath = await getChromiumExecutablePath()
-  const args = ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+  const args = await getChromiumArgs(executablePath)
 
   const resolverRules = buildHostResolverRules(pins)
   if (resolverRules) {
