@@ -263,6 +263,25 @@ describe('discovery worker: job lifecycle', () => {
     })
   })
 
+  it('gives the free layers a deadline well inside the 75s stale-job watchdog', async () => {
+    let received: { deadlineAt?: number } | undefined
+    const handler = await handlerWith({
+      loadFastDiscovery: () => ({
+        runFastDiscovery: async (opts: { deadlineAt?: number }) => {
+          received = opts
+          return { fastAssets: FAST_ASSETS, needsBrowser: false, result: { providerAttempts: [], candidates: [], socialProfiles: [] } }
+        },
+      }),
+    })
+    const before = Date.now()
+
+    await handler(event({ authorization: 'Bearer valid' }))
+
+    expect(received?.deadlineAt).toBeTypeOf('number')
+    expect(received!.deadlineAt! - before).toBeLessThanOrEqual(30_000)
+    expect(received!.deadlineAt! - before).toBeGreaterThan(0)
+  })
+
   it('answers instead of throwing when an unexpected failure hits the outer handler', async () => {
     h.failUpdateNo = 1
     const handler = await handlerWith()

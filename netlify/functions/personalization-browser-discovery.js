@@ -42,6 +42,8 @@ function getSupabase() {
 // ---------------------------------------------------------------------------
 
 const BROWSER_FALLBACK_MAX_PAGES = 4
+// Time budget for the static / sitemap / Crawlee layers inside the worker.
+const FAST_DISCOVERY_BUDGET_MS = 20_000
 const BROWSER_FALLBACK_MAX_CANDIDATES = 60
 const BROWSER_FALLBACK_NAVIGATION_TIMEOUT = 5000
 const BROWSER_FALLBACK_SCROLL_TIMEOUT = 2000
@@ -1785,6 +1787,10 @@ function createBrowserDiscoveryHandler(overrides = {}) {
           websiteUrl,
           maxPages: BROWSER_FALLBACK_MAX_PAGES,
           maxImages: BROWSER_FALLBACK_MAX_IMAGES_PER_PAGE,
+          // Bounded so a site with many slow images still leaves time for the
+          // browser phase and the final write before the status route's 75s
+          // stale-job watchdog gives up on the job.
+          deadlineAt: Date.now() + FAST_DISCOVERY_BUDGET_MS,
         })
         fastAssets = fastResult.fastAssets || []
         fastNeedsBrowser = Boolean(fastResult.needsBrowser)
