@@ -19,7 +19,7 @@
 
 ## 1. Verdict
 
-**Every matching web studio has all upstream features, functions and options.** No studio code needed to change. The only upstream lines absent locally are the documented carve-outs (upload code, Clerk auth-event field, Workflow route adapter, one import variant, one whitespace line). No local addition hides, removes or overrides an upstream control. The browser tests (§4) exercise the main Video Studio workflows plus every studio tab.
+**Every matching web studio now has all upstream features, functions and options.** The studio components themselves needed no change. The shell they run in was missing two upstream features (§2.6), which are now ported. The only upstream lines absent locally are the documented carve-outs (upload code, Clerk auth-event field, Workflow route adapter, one import variant, one whitespace line). No local addition hides, removes or overrides an upstream control. The browser tests (§4) exercise the main Video Studio workflows plus every studio tab.
 
 Upstream has made **no functional change** since the previous pin. `093d71f..1fe8991` touches only `README.md` and `Dockerfile`.
 
@@ -94,6 +94,22 @@ The byte-identical files include the whole model catalogue and controls layer: `
 | `packages/studio/package.json` | Only `design-agent` is missing (Design Agent excluded). The `exports` map is not used by this app, which resolves the package through aliases |
 | `packages/studio/dist/` (git-tracked build) | Rebuilt from `src/` during this audit: **0 files changed**, so the shipped bundle matches source |
 
+### 2.6 Studio shell (`components/StandaloneShell.js`) — gaps found and ported
+
+The studios run inside the shell, so a missing shell feature is missing from every studio. The shell is a SmartVideo rewrite (top tab bar instead of upstream's sidebar), so it was compared feature by feature.
+
+| Upstream shell feature | Before | Now |
+|---|---|---|
+| **Persistent background generation** (`32d9dcc`): studios stay mounted while hidden, so a running generation survives switching studios | **Missing.** Only the active studio was rendered, and tab switches used `router.push('/studio/<tab>')`, which in the App Router remounts the whole route segment. Every studio switch lost in-flight jobs and unsaved prompts/settings | **Ported.** A matching studio mounts on first visit and then stays mounted (hidden). Studio tabs switch with `history.pushState` + a `popstate` listener, as upstream does. The URL-sync effect reads `usePathname()` so it follows `pushState` |
+| **Generation activity + result notifications**: "X is generating (n)", "Generation complete — Open →", "Generation failed" with the provider message, 12 s expiry, 3 visible, kept in sessionStorage | **Missing.** All 13 matching studios fire `onGenerationStart/End/Complete/Error`, but the shell passed none of them | **Ported** (upstream markup and copy; English copy added to `messages/en/common.json`) |
+| Drag-and-drop media onto a studio | present | unchanged; files go **only to the active studio**, so a drop never uploads into hidden studios |
+| Back/forward between studios | present (via router) | kept, now via `popstate` |
+| Balance display, settings, API-key modal | present (SmartVideo versions) | unchanged |
+| Collapsible category sidebar / mobile drawer | top tab bar instead | not ported: layout difference, every studio is reachable |
+| Vadoo promo banner | absent | not ported: third-party promo, not a studio feature |
+
+Scope guards: non-matching studios keep their mount-on-active rendering; Design Agent, the Personalization Modal/provider (`DemoPersonalizeProvider` and everything under `src/shared/personalization/`) and upload code are untouched. Template data, like dropped files, goes only to the active studio, so a hidden studio never applies another studio's template.
+
 ## 3. Deliberate differences (not parity gaps)
 
 | Difference | Reason |
@@ -108,7 +124,7 @@ The byte-identical files include the whole model catalogue and controls layer: `
 
 ### 4.1 Browser tests — `e2e/release-smoke.spec.ts` (new)
 
-The public tests ran against a **local production build** (`next build` + `next start`). The studio tests ran against a dev server at the same commit, which honours the repo's E2E auth-bypass cookie. **Paid generation was never called**: every MuAPI request in the studio tests is answered by `page.route` and those tests are labelled MOCKED. Result: **14/14 passed, two consecutive runs, no retries.**
+The public tests ran against a **local production build** (`next build` + `next start`). The studio tests ran against a dev server at the same commit, which honours the repo's E2E auth-bypass cookie. **Paid generation was never called**: every MuAPI request in the studio tests is answered by `page.route` and those tests are labelled MOCKED. Result: **17/17 passed, no retries** (8 public tests on the production build, 9 studio tests including the new shell features).
 
 | # | Test | Mocked? | Result |
 |---|---|---|---|
@@ -126,8 +142,11 @@ The public tests ran against a **local production build** (`next build` + `next 
 | 12 | Failed generation surfaces the provider error and re-enables Generate | MOCKED | PASS |
 | 13 | All 14 matching studio tabs render; navigating back to Video works | key endpoint | PASS |
 | 14 | Selected model persists across reload (upstream's `localStorage` persistence, scoped per key) | key endpoint | PASS |
+| 15 | **Background generation**: start in Video, switch to Image (URL changes), "Video Studio is generating" stays visible; on completion a toast appears and "Open →" returns to Video with the result | MOCKED | PASS |
+| 16 | Unsaved prompt survives switching studios; browser back/forward follow the URL | key endpoint | PASS |
+| 17 | Failed generation raises an error notification with the provider message; dismiss works | MOCKED | PASS |
 
-Screenshots: `docs/assets/upstream-parity-2026-10-23/01…09-*.png`. External thumbnails appear broken because the sandbox blocks the CDN.
+Screenshots: `docs/assets/upstream-parity-2026-10-23/01…11-*.png`. External thumbnails appear broken because the sandbox blocks the CDN.
 
 To re-run (e.g. against a preview with a Clerk storage state):
 
@@ -162,7 +181,7 @@ npx playwright test e2e/release-smoke.spec.ts --retries=0
 
 ## 5. Defects fixed in this work
 
-None of these touches studio, upload, Personalization Modal, or production code paths, apart from the release tooling. **No file under `src/shared/personalization/` was changed** (owner instruction).
+Production code changed only in the release tooling (F1) and the studio shell (F6). No studio component, upload code, Design Agent or Personalization Modal file was changed. **No file under `src/shared/personalization/` was changed** (owner instruction).
 
 | # | File | Defect | Fix | Regression evidence |
 |---|---|---|---|---|
@@ -171,7 +190,8 @@ None of these touches studio, upload, Personalization Modal, or production code 
 | F3 | `tests/discover-assets-status-auth.vitest.test.ts` | Still asserted 401 for anonymous polling after `790d952` deliberately allowed anonymous callers to poll their **own** job (the free feature) | Replaced with tests of the intended contract: anonymous polls are scoped to `anon-<ip>`, and another user's job returns 404 | 9/9 |
 | F4 | `tests/muapi-key-route.test.js` | (a) TypeScript annotation in a `.js` file broke the documented `test:muapi` gate. (b) The Supabase mock applied `update()` before `eq()` and was not awaitable, so "saving a MuAPI key keeps the OpenAI key" failed for a mock reason | Removed the annotation; the mock models `update().eq().select()` | 24/24. **Mutation-checked**: making the route null `openai_key` fails the test |
 | F5 | `src/data/__tests__/demoLibraryRegistry.test.ts` | Read every demo video in full (~450 MB) to check a 12-byte header, so it timed out under full-suite load | Reads only the header | 29/29 in 0.13 s |
-| — | `e2e/release-smoke.spec.ts` | New browser smoke suite (§4.1) | — | 14/14 ×2 |
+| F6 | `components/StandaloneShell.js`, `messages/en/common.json` | Parity gaps in the studio shell: no background generation (studio switches remounted everything) and no generation notifications (§2.6) | Ported upstream behaviour | Browser tests 15–17 |
+| — | `e2e/release-smoke.spec.ts` | New browser smoke suite (§4.1) | — | 17/17 |
 
 ## 6. Desktop app — out of scope, gaps recorded
 
@@ -209,7 +229,7 @@ The owner chose web-only parity. Porting the items above would bring the desktop
 
 ## 9. Decision
 
-**Upstream parity (web studios): VERIFIED.** No missing upstream features, functions or options in any matching studio. No studio changes were required.
+**Upstream parity (web studios): VERIFIED.** No missing upstream features, functions or options in any matching studio. The studio components needed no changes; the two missing shell features (background generation, notifications) are ported and browser-tested.
 
 **Production release: PARTIALLY VERIFIED.** The local build, unit tests and browser workflows pass. However, (a) the existing preview is the wrong (older) commit, and (b) no smoke test has been run against a deployed preview.
 

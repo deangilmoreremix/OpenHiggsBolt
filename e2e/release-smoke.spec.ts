@@ -323,6 +323,80 @@ test.describe('studio workflows (MuAPI MOCKED)', () => {
     expect(errors).toEqual([]);
   });
 
+  test('a generation keeps running in the background and notifies on completion (MOCKED)', async ({ page }) => {
+    const errors = trackPageErrors(page);
+    let release = false;
+    await page.route('**/api/api/v1/**', async (route) => {
+      const req = route.request();
+      if (req.method() === 'POST') {
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ request_id: 'req_bg_1' }) });
+      }
+      const body = release
+        ? { status: 'completed', outputs: [urlFor(STUDIO, OUTPUT_VIDEO)] }
+        : { status: 'processing' };
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    });
+
+    await openVideoStudio(page);
+    await page.getByPlaceholder('Describe the video you want to create').fill('background generation');
+    await page.getByRole('button', { name: 'Generate' }).click();
+    const activity = page.locator('[data-testid="generation-activity"][data-generation-tab="video"]');
+    await expect(activity).toContainText('Video Studio is generating', { timeout: 30_000 });
+
+    // Leave the studio while the job is still running.
+    await page.getByRole('button', { name: 'Image Studio', exact: true }).first().click();
+    await expect(page).toHaveURL(/\/studio\/image/);
+    await expect(activity).toBeVisible();
+    await shot(page, '10-background-generation-activity');
+
+    release = true;
+    const toast = page.locator('[data-notification-type="success"][data-notification-tab="video"]');
+    await expect(toast).toContainText('Video Studio', { timeout: 30_000 });
+    await expect(activity).toHaveCount(0);
+    await shot(page, '11-generation-complete-toast');
+
+    await toast.getByRole('button', { name: 'Open Video Studio result' }).click();
+    await expect(page).toHaveURL(/\/studio\/video/);
+    await expect(page.locator(`video[src*="${OUTPUT_VIDEO}"]`).first()).toBeAttached({ timeout: 30_000 });
+    expect(errors).toEqual([]);
+  });
+
+  test('switching studios keeps unsaved studio state; back/forward follow the URL', async ({ page }) => {
+    const errors = trackPageErrors(page);
+    await openVideoStudio(page);
+    const prompt = page.getByPlaceholder('Describe the video you want to create');
+    await prompt.fill('unsaved draft prompt');
+    await page.getByRole('button', { name: 'Image Studio', exact: true }).first().click();
+    await expect(page).toHaveURL(/\/studio\/image$/);
+    await expect(prompt).toBeHidden();
+
+    await page.goBack();
+    await expect(page).toHaveURL(/\/studio\/video$/);
+    await expect(prompt).toBeVisible();
+    await expect(prompt).toHaveValue('unsaved draft prompt');
+
+    await page.goForward();
+    await expect(page).toHaveURL(/\/studio\/image$/);
+    await expect(prompt).toBeHidden();
+    expect(errors).toEqual([]);
+  });
+
+  test('a failed generation raises an error notification (MOCKED)', async ({ page }) => {
+    await page.route('**/api/api/v1/**', async (route) => {
+      if (route.request().method() === 'POST') {
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ request_id: 'req_bg_fail' }) });
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'failed', error: 'mocked provider outage' }) });
+    });
+    await openVideoStudio(page);
+    await page.getByPlaceholder('Describe the video you want to create').fill('failure notification');
+    await page.getByRole('button', { name: 'Generate' }).click();
+    const toast = page.locator('[data-notification-type="error"][data-notification-tab="video"]');
+    await expect(toast).toContainText('mocked provider outage', { timeout: 30_000 });
+    await toast.getByRole('button', { name: 'Dismiss notification' }).click();
+    await expect(toast).toHaveCount(0);
+  });
+
   test('every studio tab renders and navigation keeps the shell working', async ({ page }) => {
     const errors = trackPageErrors(page);
     await openVideoStudio(page);

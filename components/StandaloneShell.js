@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -17,6 +17,7 @@ import { DemoPersonalizeProvider } from '@/shared/personalization';
 import { useSmartVideoAccess } from '@/access/SmartVideoAccessProvider';
 import UpgradeModal from '@/access/UpgradeModal';
 import PreviewModeBadge from '@/access/PreviewModeBadge';
+import { getCommonCopy } from '../lib/locales';
 
 // Lazily load the heavy `studio` package so its many studio modules are not
 // part of the initial bundle for /, /studio and /workflow. Each export is only
@@ -100,6 +101,43 @@ const SLUG_TO_TAB = {
   apps: 'apps',
 };
 
+// Upstream-matching studios that stay mounted (hidden) after their first visit,
+// so a generation keeps running and reports back while the user is in another
+// studio — upstream's persistent background generation. Non-matching studios
+// keep their mount-on-active behaviour.
+const PERSISTENT_STUDIO_TABS = [
+  'image', 'video', 'clipping', 'vibe-motion', 'motion-control', 'lipsync', 'cinema',
+  'audio', 'marketing', 'recast', 'layers', 'workflows', 'agents', 'ai-influencer',
+];
+
+const NOTIFICATIONS_STORAGE_KEY = 'open_gen_notifications_v1';
+const MAX_VISIBLE_NOTIFICATIONS = 3;
+const NOTIFICATION_TTL_MS = 12000;
+
+const loadStoredNotifications = () => {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const stored = JSON.parse(window.sessionStorage.getItem(NOTIFICATIONS_STORAGE_KEY) || '[]');
+    const now = Date.now();
+    return Array.isArray(stored)
+      ? stored.filter((notification) => notification.expiresAt > now).slice(0, MAX_VISIBLE_NOTIFICATIONS)
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+const persistNotifications = (notifications) => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.sessionStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(notifications));
+  } catch {
+    // Notification persistence is optional; rendering still works without storage.
+  }
+};
+
 export default function StandaloneShell({ embedded = false, initialTab = null, demoMode = false, templateData = null, locale = 'en' } = {}) {
   const params = useParams();
   const router = useRouter();
@@ -137,6 +175,8 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
   
   const { apiKey, openaiKey, setApiKey, setOpenAiKey, clearApiKey, clearOpenAiKey, hasApiKey, hasOpenAiKey } = auth;
   const [activeTab, setActiveTab] = useState(initialTab || getInitialTab());
+  const apiKeyRef = useRef(apiKey);
+  useEffect(() => { apiKeyRef.current = apiKey; }, [apiKey]);
 
   useEffect(() => {
     if (embedded) return;
@@ -160,24 +200,79 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
   const [isDragging, setIsDragging] = useState(false);
   const [droppedFiles, setDroppedFiles] = useState(null);
 
+  // Persistent studios: once visited, a matching studio stays mounted (hidden).
+  const [visitedTabs, setVisitedTabs] = useState(() => new Set([activeTab]));
+  useEffect(() => {
+    setVisitedTabs((previous) => (previous.has(activeTab) ? previous : new Set(previous).add(activeTab)));
+  }, [activeTab]);
+
+  // Global generation notifications remain mounted while users switch studios.
+  const notificationCopy = getCommonCopy(locale).notifications;
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsHydrated, setNotificationsHydrated] = useState(false);
+  const [generationCounts, setGenerationCounts] = useState({});
+
+  useEffect(() => {
+    setNotifications(loadStoredNotifications());
+    setNotificationsHydrated(true);
+  }, []);
+
+  const pushNotification = useCallback((notif) => {
+    const now = Date.now();
+    const id = `notif-${now}-${Math.random()}`;
+    const entry = { ...notif, id, expiresAt: now + NOTIFICATION_TTL_MS };
+    setNotifications((previous) => [
+      ...previous.filter((notification) => notification.expiresAt > now),
+      entry,
+    ].slice(-MAX_VISIBLE_NOTIFICATIONS));
+  }, []);
+
+  const dismissNotification = useCallback((id) => {
+    setNotifications((previous) => previous.filter((notification) => notification.id !== id));
+  }, []);
+
+  useEffect(() => {
+    if (!notificationsHydrated) return;
+    persistNotifications(notifications);
+  }, [notifications, notificationsHydrated]);
+
+  useEffect(() => {
+    if (notifications.length === 0) return undefined;
+
+    const nextExpiry = Math.min(...notifications.map((notification) => notification.expiresAt));
+    const timer = window.setTimeout(() => {
+      const now = Date.now();
+      setNotifications((previous) => previous.filter((notification) => notification.expiresAt > now));
+    }, Math.max(0, nextExpiry - Date.now()));
+
+    return () => window.clearTimeout(timer);
+  }, [notifications]);
+
+  const tabLabel = useCallback((tabId) => TABS.find((tab) => tab.id === tabId)?.label || tabId, []);
+
   // Sync tab with URL if user navigates manually or via browser back/forward
+  // Reads the live pathname, not useParams(): tab switches use
+  // history.pushState, after which the route params still hold the previous tab.
   useEffect(() => {
     if (embedded) return;
-    const info = getWorkflowInfo();
-    if (info.id) {
+    const segments = (pathname || '').split('/').filter(Boolean);
+    const pathSlug = segments[0] === 'studio' ? segments.slice(1) : slug;
+    const wfIndex = pathSlug.findIndex((s) => s === 'workflows' || s === 'workflow');
+    if (idFromParams || (wfIndex !== -1 && pathSlug[wfIndex + 1])) {
         setActiveTab('workflows');
-    } else if (slug.includes('agents')) {
+    } else if (pathSlug.includes('agents')) {
         setActiveTab('agents');
-    } else if (slug.includes('design-agent')) {
+    } else if (pathSlug.includes('design-agent')) {
         setActiveTab('design-agent');
     } else {
-        const firstSegment = slug[0];
+        const firstSegment = pathSlug[0];
         const mapped = firstSegment && SLUG_TO_TAB[firstSegment];
         if (mapped) {
           setActiveTab(mapped);
         }
     }
-  }, [slug, getWorkflowInfo, embedded]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- slug is only the fallback for non-/studio routes
+  }, [pathname, idFromParams, embedded]);
 
   const handleTabChange = (tabId) => {
     if (tabId === 'brand-studio') {
@@ -189,8 +284,30 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       setActiveTab(tabId);
       return;
     }
-    router.push(`/studio/${tabId}`);
+    // Same-page navigation (upstream behaviour): router.push to another
+    // /studio/<tab> value remounts the whole route segment, which unmounted
+    // every studio and dropped in-flight generations. pushState keeps the shell
+    // mounted; the popstate listener below handles back/forward.
+    window.history.pushState(null, '', `/studio/${tabId}`);
+    setActiveTab(tabId);
   };
+
+  // Back/forward between studio tabs pushed above.
+  useEffect(() => {
+    if (embedded) return undefined;
+    const handlePopState = () => {
+      const segments = window.location.pathname.split('/').filter(Boolean);
+      if (segments[0] !== 'studio') return;
+      if (segments.includes('workflow') || segments.includes('workflows')) {
+        setActiveTab('workflows');
+        return;
+      }
+      const mapped = SLUG_TO_TAB[segments[1] || 'image'];
+      if (mapped) setActiveTab(mapped);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [embedded]);
 
   // Cross-studio handoff: listen for studios that request a tab switch via
   // the shared `storyboard:send-to` event. The source studio writes its
@@ -256,6 +373,50 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       }
     }
   }, []);
+
+  // Per-studio generation lifecycle callbacks (upstream contract:
+  // onGenerationStart / onGenerationEnd / onGenerationComplete / onGenerationError).
+  const generationCallbacks = useMemo(() => {
+    const byTab = {};
+    for (const tabId of PERSISTENT_STUDIO_TABS) {
+      byTab[tabId] = {
+        onGenerationStart: () => {
+          setGenerationCounts((previous) => ({ ...previous, [tabId]: (previous[tabId] || 0) + 1 }));
+        },
+        onGenerationEnd: () => {
+          setGenerationCounts((previous) => {
+            const currentCount = previous[tabId] || 0;
+            if (currentCount <= 1) {
+              const next = { ...previous };
+              delete next[tabId];
+              return next;
+            }
+            return { ...previous, [tabId]: currentCount - 1 };
+          });
+        },
+        onGenerationComplete: (data) => {
+          pushNotification({ type: 'success', tabId, label: tabLabel(tabId), resultUrl: data?.url || null });
+        },
+        onGenerationError: (errorOrMessage) => {
+          const message = typeof errorOrMessage === 'string'
+            ? errorOrMessage
+            : (errorOrMessage?.message || errorOrMessage?.error || String(errorOrMessage || 'Generation failed'));
+          pushNotification({ type: 'error', tabId, label: tabLabel(tabId), message });
+          if (apiKeyRef.current) void fetchBalance(apiKeyRef.current);
+        },
+      };
+    }
+    return byTab;
+  }, [fetchBalance, pushNotification, tabLabel]);
+
+  const activeGenerations = TABS
+    .filter((tab) => generationCounts[tab.id] > 0)
+    .map((tab) => ({ tabId: tab.id, label: tab.label, count: generationCounts[tab.id] }));
+
+  const handleOpenNotification = (notification) => {
+    handleTabChange(notification.tabId);
+    dismissNotification(notification.id);
+  };
 
   useEffect(() => {
     setHasMounted(true);
@@ -546,6 +707,19 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
     </div>
   );
 
+  // Mounts a matching studio on its first visit and keeps it mounted (hidden)
+  // afterwards. Only the active studio receives dropped files and template
+  // data, so a hidden studio never acts on another studio's input.
+  const persistentStudio = (tabId, render) => {
+    const active = activeTab === tabId;
+    if (!active && !visitedTabs.has(tabId)) return null;
+    return (
+      <div key={tabId} className={active ? 'h-full w-full' : 'hidden'}>
+        {render(active)}
+      </div>
+    );
+  };
+
   return (
     <div 
       className="h-screen bg-[#030303] flex flex-col overflow-hidden text-white relative"
@@ -662,19 +836,19 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       <SocialPublishProvider apiKey={apiKey}>
       <DemoPersonalizeProvider apiKey={apiKey}>
       <div className="flex-1 min-h-0 relative overflow-hidden">
-         {activeTab === 'image'   && <ImageStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
-         {activeTab === 'video'   && <VideoStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
-         {activeTab === 'clipping' && <ClippingStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
-         {activeTab === 'vibe-motion' && <VibeMotionStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
-         {activeTab === 'motion-control' && <MotionControlStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} locale={locale} />}
-         {activeTab === 'lipsync' && <LipSyncStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
-         {activeTab === 'cinema'  && <CinemaStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
-         {activeTab === 'audio'   && <AudioStudio   apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
-         {activeTab === 'marketing' && <MarketingStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
-         {activeTab === 'recast' && <RecastStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} templateData={templateData} locale={locale} />}
-         {activeTab === 'layers' && <LayersStudio apiKey={apiKey} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} locale={locale} />}
-         {activeTab === 'workflows' && <WorkflowStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}
-         {activeTab === 'agents' && <AgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} locale={locale} />}
+         {persistentStudio('image', (active) => <ImageStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} {...generationCallbacks['image']} />)}
+         {persistentStudio('video', (active) => <VideoStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} {...generationCallbacks['video']} />)}
+         {persistentStudio('clipping', (active) => <ClippingStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} {...generationCallbacks['clipping']} />)}
+         {persistentStudio('vibe-motion', (active) => <VibeMotionStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} {...generationCallbacks['vibe-motion']} />)}
+         {persistentStudio('motion-control', (active) => <MotionControlStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} locale={locale} {...generationCallbacks['motion-control']} />)}
+         {persistentStudio('lipsync', (active) => <LipSyncStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} {...generationCallbacks['lipsync']} />)}
+         {persistentStudio('cinema', (active) => <CinemaStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} {...generationCallbacks['cinema']} />)}
+         {persistentStudio('audio', (active) => <AudioStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} {...generationCallbacks['audio']} />)}
+         {persistentStudio('marketing', (active) => <MarketingStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} {...generationCallbacks['marketing']} />)}
+         {persistentStudio('recast', (active) => <RecastStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} templateData={active ? templateData : null} locale={locale} {...generationCallbacks['recast']} />)}
+         {persistentStudio('layers', (active) => <LayersStudio apiKey={apiKey} droppedFiles={active ? droppedFiles : null} onFilesHandled={handleFilesHandled} locale={locale} {...generationCallbacks['layers']} />)}
+         {persistentStudio('workflows', (active) => <WorkflowStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={active ? templateData : null} {...generationCallbacks['workflows']} />)}
+         {persistentStudio('agents', (active) => <AgentStudio apiKey={apiKey} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={active ? templateData : null} locale={locale} />)}
          {activeTab === 'design-agent' && <DesignAgentStudio apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} isHeaderVisible={isHeaderVisible} onToggleHeader={setIsHeaderVisible} templateData={templateData} />}
          {activeTab === 'vfx-studio' && <MemoryRouter initialEntries={['/']}><VFXStudio apiKey={apiKey} onRequestApiKey={() => setShowApiKeyPopup(true)} onDismissApiKey={() => setShowApiKeyPopup(false)} templateData={templateData} /></MemoryRouter>}
          {activeTab === 'storyboard' && <MemoryRouter initialEntries={['/']}><Storyboard apiKey={apiKey} templateData={templateData} /></MemoryRouter>}
@@ -684,7 +858,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
              <p className="text-white/50">Loading Brand Studio…</p>
            </div>
          )}
-         {activeTab === 'ai-influencer' && <AiInfluencerStudio apiKey={apiKey} templateData={templateData} locale={locale} />}
+         {persistentStudio('ai-influencer', (active) => <AiInfluencerStudio apiKey={apiKey} templateData={active ? templateData : null} locale={locale} {...generationCallbacks['ai-influencer']} />)}
           {activeTab === 'social-publishing' && <SocialPublishing apiKey={apiKey} />}
           {activeTab === 'go-ai-viral' && <GoAiViralStudio apiKey={apiKey} />}
           {activeTab === 'apps' && <AppsStudio locale={locale} />}
@@ -692,6 +866,120 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       </DemoPersonalizeProvider>
       </SocialPublishProvider>
       </AiAssistantProvider>
+
+      {/* Global generation activity and notification stack */}
+      {(activeGenerations.length > 0 || notifications.length > 0) && (
+        <div
+          aria-live="polite"
+          aria-label={notificationCopy.ariaLabel}
+          className="fixed top-16 right-5 z-[200] flex max-h-[calc(100vh-80px)] w-[340px] max-w-[calc(100vw-32px)] flex-col gap-2 overflow-x-hidden overflow-y-auto global-notif-stack pointer-events-none"
+          data-testid="global-notification-stack"
+        >
+          {activeGenerations.map((generation) => (
+            <div
+              key={generation.tabId}
+              role="status"
+              data-generation-tab={generation.tabId}
+              className="pointer-events-auto flex items-center gap-3 rounded-xl border border-cyan-500/40 bg-white px-3.5 py-3 text-[13px] text-zinc-900 shadow-[0_10px_30px_rgba(0,0,0,0.15)]"
+              data-testid="generation-activity"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-cyan-400/40 bg-cyan-50">
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-cyan-600/30 border-t-cyan-600" aria-hidden="true" />
+              </span>
+              <p className="min-w-0 flex-1 font-semibold leading-5 text-zinc-900">
+                {generation.label} {notificationCopy.generating}
+                {generation.count > 1 ? ` (${generation.count})` : ''}
+              </p>
+            </div>
+          ))}
+
+          {notifications.map((notif) => {
+            const errorText = typeof notif.message === 'string' ? notif.message : String(notif.message?.message || notif.message || '');
+            return (
+              <div
+                key={notif.id}
+                role={notif.type === 'error' ? 'alert' : 'status'}
+                data-notification-type={notif.type}
+                data-notification-tab={notif.tabId}
+                className="pointer-events-auto flex items-start gap-3 rounded-xl border bg-white px-3.5 py-3 text-[13px] text-zinc-900 shadow-[0_10px_30px_rgba(0,0,0,0.15)]"
+                style={{
+                  borderColor: notif.type === 'success' ? 'rgba(6,182,212,0.4)' : 'rgba(239,68,68,0.4)',
+                  animation: 'slideInRight 280ms cubic-bezier(0.16,1,0.3,1) forwards',
+                }}
+              >
+                <span
+                  className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
+                    notif.type === 'success'
+                      ? 'border-cyan-400/40 bg-cyan-50 text-cyan-600'
+                      : 'border-red-400/40 bg-red-50 text-red-600'
+                  }`}
+                >
+                  {notif.type === 'success' ? (
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="m5 12 4 4L19 6" />
+                    </svg>
+                  ) : (
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M12 7v6" />
+                      <path d="M12 17h.01" />
+                    </svg>
+                  )}
+                </span>
+
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold leading-5 text-zinc-900">
+                    {notif.label}
+                    <span className="font-normal text-zinc-500">
+                      {' '}
+                      {notif.type === 'success' ? notificationCopy.generationComplete : notificationCopy.generationFailed}
+                    </span>
+                  </p>
+                  {notif.type === 'error' && errorText && (
+                    <p className="mt-0.5 line-clamp-2 text-[12px] font-medium leading-4 text-red-600" title={errorText}>
+                      {errorText}
+                    </p>
+                  )}
+                  {notif.type === 'success' && (
+                    <>
+                      <p className="mt-0.5 text-[12px] leading-4 text-zinc-500">{notificationCopy.resultReady}</p>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenNotification(notif)}
+                        className="mt-1.5 text-[11px] font-bold text-cyan-600 transition-colors hover:text-cyan-700"
+                        aria-label={notificationCopy.openResult.replace('{label}', notif.label)}
+                      >
+                        {notificationCopy.open}
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => dismissNotification(notif.id)}
+                  className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-300"
+                  aria-label={notificationCopy.dismissNotification}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                    <path d="M18 6 6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Keyframe for toast slide-in & scrollbar suppression */}
+      <style>{`
+        @keyframes slideInRight {
+          from { transform: translateX(110%); opacity: 0; }
+          to   { transform: translateX(0);    opacity: 1; }
+        }
+        .global-notif-stack::-webkit-scrollbar { display: none; }
+        .global-notif-stack { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
 
       {/* First-login API key popup — on-brand overlay modal with an X close
           button, wired to the same handleKeySave / MuAPI persistence logic as
