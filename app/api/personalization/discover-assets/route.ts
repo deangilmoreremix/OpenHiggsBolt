@@ -10,6 +10,7 @@ import {
   updateDiscoveryJob,
   type DiscoveryJobRow,
 } from '@/server/discoveryJobs'
+import { withDbTimeout, DiscoveryDbTimeoutError, DISCOVERY_BUSY_MESSAGE } from '@/server/dbTimeout'
 import { buildDiscoveryJobResponse } from '@/server/discoveryJobResponse'
 import { assertSafeUrlString } from '@/lib/networkSafety'
 
@@ -302,12 +303,24 @@ export async function POST(req: NextRequest) {
     // and the row is the proof that the job belongs to this caller.
     let job: DiscoveryJobRow
     try {
-      job = await createDiscoveryJob({
+      job = await withDbTimeout(createDiscoveryJob({
         clerkUserId: jobOwnerId,
         websiteUrl,
         telemetry: { startedAt: new Date().toISOString(), anonymous: !userId },
-      })
+      }))
     } catch (err) {
+      if (err instanceof DiscoveryDbTimeoutError) {
+        logPersonalization({
+          route: '/api/personalization/discover-assets',
+          stage: 'job-create',
+          httpStatus: 503,
+          safeErrorCode: 'JOB_STORE_TIMEOUT',
+          safeMessage: 'Discovery job store did not respond in time',
+          correlationId,
+          durationMs: Date.now() - startTime,
+        })
+        return NextResponse.json({ error: DISCOVERY_BUSY_MESSAGE }, { status: 503, headers: { 'Retry-After': '60' } })
+      }
       logPersonalization({
         route: '/api/personalization/discover-assets',
         stage: 'job-create',
@@ -372,7 +385,7 @@ export async function POST(req: NextRequest) {
     }
 
     const startedAt = new Date().toISOString()
-    await updateDiscoveryJob(job.id, { status: 'running', startedAt }).catch((persistErr) => {
+    await withDbTimeout(updateDiscoveryJob(job.id, { status: 'running', startedAt })).catch((persistErr) => {
       console.error('[discover-assets] Failed to persist job state:', persistErr)
     })
 

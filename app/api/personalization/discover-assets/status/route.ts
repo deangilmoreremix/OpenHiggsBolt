@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { getDiscoveryJobForUser, updateDiscoveryJob } from '@/server/discoveryJobs'
+import {
+  getDiscoveryJobForUser,
+  updateDiscoveryJob,
+} from '@/server/discoveryJobs'
+import { withDbTimeout, DiscoveryDbTimeoutError, DISCOVERY_BUSY_MESSAGE } from '@/server/dbTimeout'
 import { buildDiscoveryJobResponse } from '@/server/discoveryJobResponse'
 
 export const dynamic = "force-dynamic";
@@ -30,7 +34,15 @@ export async function GET(req: NextRequest) {
   const jobOwnerId = userId || (clientIp ? `anon-${clientIp}` : 'anon')
 
   // Owner-scoped lookup: a job that belongs to another user is not found.
-  const job = await getDiscoveryJobForUser(jobId, jobOwnerId)
+  let job: Awaited<ReturnType<typeof getDiscoveryJobForUser>>
+  try {
+    job = await withDbTimeout(getDiscoveryJobForUser(jobId, jobOwnerId))
+  } catch (err) {
+    if (err instanceof DiscoveryDbTimeoutError) {
+      return NextResponse.json({ error: DISCOVERY_BUSY_MESSAGE }, { status: 503, headers: { 'Retry-After': '60' } })
+    }
+    throw err
+  }
 
   if (!job) {
     return NextResponse.json({ error: 'Job not found' }, { status: 404 })

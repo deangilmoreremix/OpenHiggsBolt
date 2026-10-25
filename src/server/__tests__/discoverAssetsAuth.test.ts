@@ -214,4 +214,22 @@ describe('POST /api/personalization/discover-assets auth', () => {
     expect(createDiscoveryJob).toHaveBeenCalledTimes(1)
     expect(updateDiscoveryJob).toHaveBeenCalled()
   })
+
+  it('answers 503 with a retry message instead of hanging when the job store is unresponsive', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.mocked(auth).mockResolvedValue({ userId: null } as any)
+      vi.mocked(createDiscoveryJob).mockReturnValue(new Promise(() => {}))
+
+      const pending = post('https://example.com')
+      await vi.advanceTimersByTimeAsync(8_000)
+      const res = await pending
+
+      expect(res.status).toBe(503)
+      expect(res.headers.get('Retry-After')).toBe('60')
+      expect((await res.json()).error).toMatch(/try again/)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
