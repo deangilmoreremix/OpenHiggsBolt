@@ -449,9 +449,14 @@ describe('Business Asset Finder is free for every authenticated user (runtime)',
       // The real, dependency-free niche lookups so niche validation is real;
       // every network-touching export is a controllable mock.
       const nicheMappings = await import('@/server/businessDiscovery/nicheMappings')
+      // Ownership classification is pure (no network), so the real functions
+      // run here; the route calls both on every search result set.
+      const ownership = await import('@/server/businessDiscovery/ownershipClassification')
       return {
         getNicheMapping: nicheMappings.getNicheMapping,
         getSupportedNiches: nicheMappings.getSupportedNiches,
+        classifyRecords: ownership.classifyRecords,
+        excludeNationalChains: ownership.excludeNationalChains,
         geocodeLocation: vi.fn(async () => ({
           latitude: 30.2672,
           longitude: -97.7431,
