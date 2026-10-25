@@ -8,16 +8,14 @@ import { useT } from '../i18n';
 import { useStore } from '../store';
 import { useDemoPersonalize } from '@/shared/personalization/DemoPersonalizeProvider';
 import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider';
-import { createProjectFromEntry, type MotionStudioEntry, type AspectRatio } from '../projectContract';
+import type { AspectRatio } from '../projectContract';
 import { usePersonalizationPerson } from '../personalizationAdapter';
-import { prepareMedia, attachMediaAttachments, type MediaAttachment } from '../lib/mediaUpload';
+import { prepareMedia, type MediaAttachment } from '../lib/mediaUpload';
 import {
-  ActivityList,
   AttachButton,
   HomeHero,
   NewProjectTile,
   PillButton,
-  PlanCard,
   ProjectTile,
   PromptCard,
   PromptInput,
@@ -29,15 +27,11 @@ import {
   useTypingPlaceholder,
 } from '@/apps/design-agent/ui';
 import { RecipePreview } from '../components/RecipePreview';
-import { analyzeBeats } from '../lib/beatSync';
-import { planToProject, type FilmCapture } from '../lib/buildFilm';
-import { captureSite, findSiteUrl, requestPlan, DirectorError, type SiteCapture } from '../lib/directorClient';
-import type { DirectorPlan } from '../lib/directorPlan';
-import { isProductTextureShot } from '../lib/productShots';
+import { FilmDirectorChat } from '../components/FilmDirectorChat';
+import { useFilmDirector } from '../components/useFilmDirector';
 import {
   searchMotionTemplates,
   motionTemplateTitle,
-  resolveMotionTemplate,
   MOTION_CATEGORIES,
   MOTION_TEMPLATES,
   type MotionTemplate,
@@ -92,10 +86,10 @@ const PLACEHOLDERS = [
 
 /** One-click example prompts shown under the composer. */
 const EXAMPLE_PROMPTS = [
-  'Create a 30-second launch film for https://your-product.com: show the real pages, highlight three features, end on a call to action.',
-  'Create a 30-second promotional film from my product screenshots and brand colors.',
-  'A 10-second launch teaser: logo reveal, three feature callouts, end card with a call to action.',
-  'A 15-second product walkthrough with smooth camera moves over my dashboard screenshots.',
+  'Use video-shotcraft to make a promo for my product.',
+  'Make a launch film for https://your-product.com with the Ink Press template.',
+  'Use the deck-deal-flyin and row-embed shot cards to present this feature.',
+  'Design a product close-up inspired by spotlight-hero-card.',
 ];
 
 /** Pill that opens a small option menu (aspect ratio / duration). */
@@ -174,19 +168,10 @@ export default function MotionStudioEntry() {
 
   const [description, setDescription] = useState('');
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('16:9');
-  const [duration, setDuration] = useState(5);
-  const [selectedRecipe, setSelectedRecipe] = useState<string>('');
+  const [duration, setDuration] = useState(20);
+  const [selectedRecipes, setSelectedRecipes] = useState<string[]>([]);
   const [showRecipePicker, setShowRecipePicker] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  /** Director run: progress lines, the proposed plan, and the site capture it was built from. */
-  type Activity = { label: string; status: 'running' | 'done' | 'error' };
-  const [activity, setActivity] = useState<Activity[]>([]);
-  const [plan, setPlan] = useState<DirectorPlan | null>(null);
-  const [capture, setCapture] = useState<SiteCapture | null>(null);
-  const [building, setBuilding] = useState(false);
-  const pushActivity = (label: string, status: Activity['status']) =>
-    setActivity((prev) => [...prev.filter((a) => a.status !== 'running'), { label, status }].slice(-6));
   /** Recipe under the pointer / keyboard focus in the picker — the one live Remotion preview. */
   const [previewRecipe, setPreviewRecipe] = useState<string | null>(null);
   /** 提示词条上选的本地素材（object URL）——生成工程时一起带进新工程 */
@@ -223,8 +208,27 @@ export default function MotionStudioEntry() {
     }
   }, [activeClient]);
 
-  const handleCreate = async () => {
-    if (!description.trim()) return;
+  const director = useFilmDirector({
+    settings: () => ({
+      aspectRatio,
+      durationSec: duration,
+      brandKit: person ? { businessName: person.businessName ?? null, colors: person.brandColors ?? null, notes: person.notes ?? null } : null,
+      media,
+      pickedRecipes: selectedRecipes.map((id) => TEMPLATE_BY_ID[id]).filter(Boolean),
+    }),
+  });
+  const conversing = director.messages.length > 0;
+  /** Keep the newest message / storyboard / film in view. */
+  const chatRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = chatRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [director.messages.length, director.stage, director.activity.length]);
+  const busy = director.stage === 'storyboarding' || director.stage === 'building';
+
+  const handleCreate = () => {
+    const text = description.trim() || (selectedRecipes.length ? `Make a film with these shot cards: ${selectedRecipes.map((id) => TEMPLATE_BY_ID[id]?.slug).filter(Boolean).join(', ')}` : '');
+    if (!text || busy) return;
     // The dev-only e2e auth bypass cookie honors create actions regardless of
     // paid entitlement. The StandaloneShell has already gated the route through
     // Clerk middleware, so this only short-circuits the client-side gate for
@@ -232,83 +236,14 @@ export default function MotionStudioEntry() {
     // upgrade modal via requireEntitlement as designed.
     const isE2E = typeof document !== 'undefined'
       && document.cookie.includes('__e2e_auth_bypass=1');
-    /** Quick start (no director): today's starter project, optionally from a picked recipe. */
-    const quickCreate = () => {
-      // `usePersonalizationPerson` (via personalizationAdapter) already
-      // maps the active client + asset library onto a typed
-      // PersonalizationPerson (or null when no brand context is present).
-      const entry: MotionStudioEntry = {
-        description,
-        aspectRatio,
-        duration,
-        person: person ?? undefined,
-        recipeId: selectedRecipe || undefined,
-      };
-
-      const project = createProjectFromEntry(entry);
-      setProject(project);
-      // 本地素材跟着新工程一起走：接在已有片段之后（object URL，不上传）
-      if (media.length) {
-        const end = project.tracks.reduce(
-          (max, track) =>
-            track.clips.reduce((m, clip) => Math.max(m, clip.start + clip.duration), max),
-          0,
-        );
-        attachMediaAttachments(media, { at: end });
-      }
-      openWorkbench();
+    const run = () => {
+      // In the entry composer every message is about the film: a new request, the
+      // answer to the Ink Press question, or a revision of the storyboard.
+      director.send(text, { force: director.stage === 'idle' || director.stage === 'film' });
+      setDescription('');
     };
-
-    const runCreate = async () => {
-        setIsCreating(true);
-        setPlan(null);
-        setActivity([]);
-        try {
-          // A recipe picked in Templates means "start from this shot" — no director.
-          if (selectedRecipe) {
-            quickCreate();
-            return;
-          }
-          let site: SiteCapture | null = null;
-          const siteUrl = findSiteUrl(description);
-          if (siteUrl) {
-            pushActivity(`Capturing ${siteUrl}`, 'running');
-            try {
-              site = await captureSite(siteUrl);
-              pushActivity(`Captured ${site.title || siteUrl} · ${site.crops.length} card crops`, 'done');
-            } catch (error) {
-              pushActivity(`Could not capture ${siteUrl}: ${error instanceof Error ? error.message : 'failed'}`, 'error');
-            }
-          }
-          pushActivity('Directing the storyboard', 'running');
-          const proposed = await requestPlan({
-            prompt: description,
-            durationSec: duration,
-            aspectRatio,
-            capture: site,
-            brandKit: person ? { businessName: person.businessName ?? null, colors: person.brandColors ?? null, notes: person.notes ?? null } : null,
-          });
-          setCapture(site);
-          setPlan(proposed);
-          pushActivity(`Storyboard ready · ${proposed.scenes.length} scenes`, 'done');
-        } catch (error) {
-          if (error instanceof DirectorError && (error.status === 401 || error.status === 403)) {
-            // No director available for this account: keep today's behaviour.
-            pushActivity(`${error.message} Started a quick project instead.`, 'error');
-            quickCreate();
-            return;
-          }
-          console.error('Motion Studio director failed:', error);
-          pushActivity(error instanceof Error ? error.message : 'The director failed', 'error');
-        } finally {
-          setIsCreating(false);
-        }
-    };
-    if (isE2E) {
-      void runCreate();
-    } else {
-      requireEntitlement(ENTITLEMENTS.SMARTVIDEO_GO, runCreate);
-    }
+    if (isE2E) run();
+    else requireEntitlement(ENTITLEMENTS.SMARTVIDEO_GO, run);
   };
 
   const openWorkbench = () => {
@@ -320,43 +255,15 @@ export default function MotionStudioEntry() {
     navigate('/');
   };
 
-  /** Approve: build the film from the plan, the capture (or attached screenshots) and music. */
-  const buildFilm = async () => {
-    if (!plan) return;
-    setBuilding(true);
-    try {
-      const images = media.filter((m) => m.kind === 'image').map((m) => m.url);
-      const film: FilmCapture | null = capture
-        ? { screens: [capture.page.url], crops: capture.crops }
-        : images.length
-          ? { screens: images, crops: images }
-          : null;
-      const track = media.find((m) => m.kind === 'audio');
-      let beats: number[] = [];
-      if (track) {
-        pushActivity(`Finding the beat in ${track.name}`, 'running');
-        beats = await analyzeBeats(track.url).then((r) => r.beats).catch(() => []);
-        pushActivity(beats.length ? `Scene changes snapped to the beat of ${track.name}` : `No clear beat in ${track.name}; kept the planned timing`, 'done');
-      }
-      setProject(planToProject(plan, { aspectRatio, capture: film, music: track ? { url: track.url, name: track.name, beats } : null }));
-      openWorkbench();
-    } catch (error) {
-      console.error('Failed to build the film:', error);
-      pushActivity(error instanceof Error ? error.message : 'Could not build the film', 'error');
-    } finally {
-      setBuilding(false);
-    }
+  /** Hand the finished film to the Motion Workbench (tracks, inspector, library, export). */
+  const editInWorkbench = () => {
+    if (!director.film) return;
+    setProject(director.film.project);
+    openWorkbench();
   };
 
-  const revisePlan = () => {
-    setPlan(null);
-    setActivity([]);
-    setDescription((d) => `${d.trim()}\n\nRevise: `);
-    promptRef.current?.focus();
-  };
-
-  const selectedTemplate = selectedRecipe ? TEMPLATE_BY_ID[selectedRecipe] : undefined;
-  const canCreate = Boolean(description.trim());
+  const selectedTemplates = selectedRecipes.map((id) => TEMPLATE_BY_ID[id]).filter(Boolean);
+  const canCreate = Boolean(description.trim()) || (director.stage === 'idle' && selectedRecipes.length > 0);
 
   /** 本地素材 → object URL（不上传）；生成工程时再接进新工程 */
   const handleFiles = (files: FileList | null) => {
@@ -380,24 +287,24 @@ export default function MotionStudioEntry() {
     setPreviewRecipe(null);
   };
 
-  /** Only one recipe plays at a time: the hovered one, else the selected one. */
-  const playingRecipe = previewRecipe ?? selectedRecipe;
+  /** Only one recipe plays at a time: the hovered one, else the last one picked. */
+  const playingRecipe = previewRecipe ?? selectedRecipes[selectedRecipes.length - 1];
   const recipeOption = (tpl: MotionTemplate, description: string) => (
     <TemplateOption
       key={tpl.id}
       label={motionTemplateTitle(tpl)}
       meta={tpl.nameEn}
       description={description}
-      selected={selectedRecipe === tpl.id}
+      selected={selectedRecipes.includes(tpl.id)}
       onSelect={() => pickRecipe(tpl.id)}
       media={<RecipePreview recipe={tpl} playing={playingRecipe === tpl.id} />}
       onActiveChange={(active) => setPreviewRecipe((current) => (active ? tpl.id : current === tpl.id ? null : current))}
     />
   );
 
+  /** Templates picker is multi-select: each pick adds (or removes) a shot card for the film. */
   const pickRecipe = (id: string) => {
-    setSelectedRecipe(id);
-    closePicker();
+    setSelectedRecipes((prev) => (prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]));
   };
 
   return (
@@ -406,7 +313,7 @@ export default function MotionStudioEntry() {
         open={showRecipePicker}
         onClose={closePicker}
         title="Motion Templates"
-        subtitle="Pick a real ShotCraft recipe to open your film with — or let Motion Director match one to your description."
+        subtitle={selectedRecipes.length ? `${selectedRecipes.length} shot card${selectedRecipes.length === 1 ? '' : 's'} chosen — the film is built around them, in this order. Close when done.` : 'Pick the shot cards for your film (pick several, in order) — or let Motion Director choose them from your description.'}
         search={searchQuery}
         setSearch={setSearchQuery}
         searchPlaceholder="Search recipes..."
@@ -483,7 +390,11 @@ export default function MotionStudioEntry() {
         <HomeHero lead="Films are easier with" accent="Motion Director" subtitle="The AI director that turns your product into a cinematic, editable film" />
 
         <div className="w-full max-w-5xl space-y-2">
-          <ActivityList items={activity} />
+          {conversing && (
+            <div ref={chatRef} className="rounded-2xl p-3 sm:p-4 max-h-[70vh] overflow-y-auto custom-scrollbar" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)' }}>
+              <FilmDirectorChat director={director} onOpenWorkbench={editInWorkbench} onPickShots={() => setShowRecipePicker(true)} />
+            </div>
+          )}
           {media.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 rounded-xl p-2" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid var(--border-color)' }}>
               {media.map((m) => (
@@ -504,48 +415,27 @@ export default function MotionStudioEntry() {
               ref={promptRef}
               value={description}
               onChange={setDescription}
-              onSubmit={() => { if (canCreate && !isCreating) void handleCreate(); }}
+              onSubmit={() => { if (canCreate && !busy) handleCreate(); }}
               typingText={placeholder}
-              placeholder="Describe your motion video..."
+              placeholder={director.stage === 'offer' ? 'Answer: use Ink Press, let the director pick, or name shot cards…' : director.stage === 'plan' ? 'Tell me what to change in the storyboard…' : director.stage === 'film' ? 'Describe another film…' : 'Describe your motion video...'}
               aria-label="Describe your motion video"
-              disabled={isCreating}
+              disabled={busy}
               rows={3}
             />
             <div className="flex flex-wrap items-center gap-2">
-              <AttachButton onClick={() => fileRef.current?.click()} disabled={isCreating} label="Attach image / video / audio" testId="motion-prompt-media-button" />
-              <TemplatesPill onClick={() => setShowRecipePicker(true)} ariaLabel={selectedTemplate ? `Templates — ${motionTemplateTitle(selectedTemplate)}` : 'Templates — Select a recipe'} />
-              {selectedTemplate && <SelectedChip label={motionTemplateTitle(selectedTemplate)} onClear={() => setSelectedRecipe('')} clearLabel="Clear recipe" />}
+              <AttachButton onClick={() => fileRef.current?.click()} disabled={busy} label="Attach image / video / audio" testId="motion-prompt-media-button" />
+              <TemplatesPill onClick={() => setShowRecipePicker(true)} ariaLabel={selectedTemplates.length ? `Templates — ${selectedTemplates.map(motionTemplateTitle).join(', ')}` : 'Templates — Select a recipe'} />
+              {selectedTemplates.map((tpl) => (
+                <SelectedChip key={tpl.id} label={motionTemplateTitle(tpl)} onClear={() => setSelectedRecipes((prev) => prev.filter((id) => id !== tpl.id))} clearLabel={`Remove ${motionTemplateTitle(tpl)}`} />
+              ))}
               <OptionPill<AspectRatio> label="Aspect ratio" options={ASPECT_RATIOS} value={aspectRatio} onChange={setAspectRatio} format={(v) => v} />
               <OptionPill<number> label="Duration" options={DURATIONS} value={duration} onChange={setDuration} format={(v) => `${v}s`} />
               <span className="text-[10px]" style={{ color: semantic.textMuted }}>{media.length} references</span>
               <div className="flex-1" />
-              <SendButton onClick={() => void handleCreate()} disabled={!canCreate || isCreating} active={canCreate} label="Generate" />
+              <SendButton onClick={handleCreate} disabled={!canCreate || busy} active={canCreate} label={director.stage === 'idle' || director.stage === 'film' ? 'Generate' : 'Send'} />
             </div>
           </PromptCard>
-          {plan && (
-            <PlanCard
-              testId="director-plan"
-              eyebrow="MOTION STUDIO STORYBOARD"
-              title={plan.title}
-              meta={`${plan.scenes.length} scenes · ${Math.round(plan.scenes.reduce((sum, sc) => sum + sc.durationSec, 0))}s${capture ? ' · uses your site' : ''}`}
-              steps={plan.scenes.map((scene, i) => {
-                const template = scene.kind === 'shot' ? resolveMotionTemplate(scene.recipeId) : undefined;
-                const onSite = Boolean(template && capture && isProductTextureShot(template.componentName));
-                return {
-                  key: `${i}-${scene.recipeId || 'title'}`,
-                  label: template ? motionTemplateTitle(template) : 'Title card',
-                  detail: [`${scene.durationSec}s`, scene.headline && `“${scene.headline}”`, scene.caption && `caption: ${scene.caption}`, onSite && 'shows your site', scene.transition === 'flash' && 'flash cut'].filter(Boolean).join(' · '),
-                  media: template ? <RecipePreview recipe={template} playing={false} /> : undefined,
-                };
-              })}
-              onApprove={() => void buildFilm()}
-              onReject={revisePlan}
-              busy={building}
-              approveLabel={building ? 'Building…' : 'Approve & build film'}
-              rejectLabel="Revise"
-            />
-          )}
-          {!plan && <div className="flex flex-wrap gap-2 pt-1">
+          {!conversing && <div className="flex flex-wrap gap-2 pt-1">
             {EXAMPLE_PROMPTS.map((example) => (
               <button
                 key={example}

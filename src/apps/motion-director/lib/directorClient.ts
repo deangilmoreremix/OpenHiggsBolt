@@ -34,11 +34,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return data as T;
 }
 
-/** First web address in a prompt (`https://…`, `www.…`, or `name.tld`). */
-export function findSiteUrl(prompt: string): string | null {
-  const m = prompt.match(/\bhttps?:\/\/[^\s)'"<>]+|\bwww\.[^\s)'"<>]+|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|io|app|ai|co|dev|net|org|so|xyz|tech)(?:\/[^\s)'"<>]*)?/i);
-  return m ? m[0].replace(/[.,;:!?]+$/, '') : null;
-}
+export { findSiteUrl } from './filmChat';
 
 export const captureSite = (url: string) => post<SiteCapture>('/api/motion-studio/capture', { url });
 
@@ -48,6 +44,10 @@ export async function requestPlan(body: {
   aspectRatio: string;
   capture?: SiteCapture | null;
   brandKit?: Record<string, unknown> | null;
+  /** Catalog shot ids the film must use, in this order (named in chat or picked in Templates). */
+  requiredRecipes?: string[];
+  /** 'inkpress': follow the Ink Press template structure. */
+  template?: 'inkpress' | null;
 }): Promise<DirectorPlan> {
   const { plan } = await post<{ plan: unknown }>('/api/motion-studio/director', {
     mode: 'plan',
@@ -56,6 +56,8 @@ export async function requestPlan(body: {
     aspectRatio: body.aspectRatio,
     capture: body.capture ? { title: body.capture.title, url: body.capture.url, brand: body.capture.brand, cropCount: body.capture.crops.length } : null,
     brandKit: body.brandKit ?? null,
+    requiredRecipes: body.requiredRecipes ?? [],
+    template: body.template ?? null,
   });
   return validatePlan(plan, { targetSec: body.durationSec });
 }

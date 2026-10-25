@@ -1,0 +1,209 @@
+/**
+ * Motion Studio film pipeline — the steps the chat runs for "make a promo for
+ * my product": capture the real pages → storyboard from shot recipes → build
+ * the editable project (beat-synced cuts, sound design) → frame QA.
+ *
+ * The director model is used when the account has it; without it (no OpenAI
+ * key, director down) the Ink Press template storyboard is built locally, so a
+ * film request always ends in a film.
+ */
+import { CARDS } from '../cards/registry';
+import { projectEndFrame, type ProjectData } from '../types';
+import type { AspectRatio } from '../projectContract';
+import type { MediaAttachment } from './mediaUpload';
+import { analyzeBeats } from './beatSync';
+import { planToProject, type FilmCapture } from './buildFilm';
+import { captureSite, requestPlan, DirectorError, type SiteCapture } from './directorClient';
+import type { DirectorPalette, DirectorPlan } from './directorPlan';
+import { ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
+import { isProductTextureShot } from './productShots';
+import { resolveMotionTemplate } from '@/data/motionRecipeCatalog';
+
+export type ActivityStatus = 'running' | 'done' | 'error';
+export type ActivityLog = (label: string, status: ActivityStatus) => void;
+
+export interface FilmBrandKit {
+  businessName?: string | null;
+  colors?: { primary?: string; secondary?: string; accent?: string; background?: string } | null;
+  notes?: string | null;
+}
+
+export interface StoryboardResult {
+  plan: DirectorPlan;
+  capture: SiteCapture | null;
+  /** Who wrote the storyboard. */
+  source: 'director' | 'inkpress';
+  /** Why the director was not used, when it was asked and failed. */
+  note?: string;
+}
+
+const brandPalette = (capture: SiteCapture | null, kit: FilmBrandKit | null | undefined): Partial<DirectorPalette> => ({
+  background: capture?.brand.background ?? kit?.colors?.background ?? undefined,
+  text: capture?.brand.text ?? undefined,
+  accent: capture?.brand.accent ?? kit?.colors?.accent ?? kit?.colors?.primary ?? undefined,
+});
+
+/** Capture (when the request has a URL) and storyboard the film. */
+export async function storyboardFilm(
+  req: FilmRequest,
+  opts: { template: FilmTemplateChoice; durationSec: number; aspectRatio: AspectRatio; brandKit?: FilmBrandKit | null; capture?: SiteCapture | null },
+  log: ActivityLog,
+): Promise<StoryboardResult> {
+  const bare = (u: string) => u.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '').toLowerCase();
+  let capture = opts.capture && (!req.siteUrl || bare(opts.capture.url).startsWith(bare(req.siteUrl))) ? opts.capture : null;
+  if (!capture && req.siteUrl) {
+    log(`Capturing ${req.siteUrl}`, 'running');
+    try {
+      capture = await captureSite(req.siteUrl);
+      log(`Captured ${capture.title || req.siteUrl} · ${capture.crops.length} card crops`, 'done');
+    } catch (error) {
+      log(`Could not capture ${req.siteUrl}: ${error instanceof Error ? error.message : 'failed'}`, 'error');
+    }
+  }
+  const productName = productNameFrom(req.prompt, { siteTitle: capture?.title, businessName: opts.brandKit?.businessName });
+  const palette = brandPalette(capture, opts.brandKit);
+
+  if (req.single) {
+    log(`Designing one ${req.single.nameEn} shot`, 'done');
+    return { plan: singleShotPlan(req.single, { prompt: req.prompt, productName, palette }), capture, source: 'inkpress' };
+  }
+
+  const required =
+    req.recipes.length > 0
+      ? req.recipes
+      : opts.template === 'inkpress'
+        ? INK_PRESS_SHOTS.map((id) => resolveMotionTemplate(id)!).filter(Boolean)
+        : [];
+  log(opts.template === 'inkpress' ? 'Storyboarding with the Ink Press template' : 'Directing the storyboard', 'running');
+  try {
+    const plan = await requestPlan({
+      prompt: req.prompt,
+      durationSec: opts.durationSec,
+      aspectRatio: opts.aspectRatio,
+      capture,
+      brandKit: opts.brandKit ? { ...opts.brandKit } : null,
+      requiredRecipes: required.map((r) => r.id),
+      template: opts.template === 'inkpress' ? 'inkpress' : null,
+    });
+    const fitted = ensureRecipes(plan, req.recipes, opts.durationSec);
+    log(`Storyboard ready · ${fitted.scenes.length} scenes`, 'done');
+    return { plan: fitted, capture, source: 'director' };
+  } catch (error) {
+    const note =
+      error instanceof DirectorError && (error.status === 401 || error.status === 403)
+        ? error.message
+        : `The AI director could not be reached (${error instanceof Error ? error.message : 'error'}).`;
+    const plan = inkPressPlan({ prompt: req.prompt, durationSec: opts.durationSec, recipes: req.recipes, productName, palette });
+    log(`Storyboard ready from the Ink Press template · ${plan.scenes.length} scenes`, 'done');
+    return { plan, capture, source: 'inkpress', note };
+  }
+}
+
+/** Approved storyboard → editable project, with the music's beat grid when a track was attached. */
+export async function buildFilmProject(
+  plan: DirectorPlan,
+  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[] },
+  log: ActivityLog,
+): Promise<ProjectData> {
+  const images = opts.media.filter((m) => m.kind === 'image').map((m) => m.url);
+  const film: FilmCapture | null = opts.capture
+    ? { screens: [opts.capture.page.url, ...images], crops: [...opts.capture.crops, ...images] }
+    : images.length
+      ? { screens: images, crops: images }
+      : null;
+  const track = opts.media.find((m) => m.kind === 'audio');
+  let beats: number[] = [];
+  if (track) {
+    log(`Finding the beat in ${track.name}`, 'running');
+    beats = await analyzeBeats(track.url).then((r) => r.beats).catch(() => []);
+    log(beats.length ? `Cuts snapped to the beat of ${track.name}` : `No clear beat in ${track.name}; kept the planned timing`, 'done');
+  }
+  log('Animating the shots and laying in sound design', 'running');
+  const project = planToProject(plan, { aspectRatio: opts.aspectRatio, capture: film, music: track ? { url: track.url, name: track.name, beats } : null });
+  log(`Film built · ${project.tracks.length} tracks`, 'done');
+  return project;
+}
+
+export interface FilmQaReport {
+  ok: boolean;
+  issues: string[];
+  warnings: string[];
+  /** Frames rendered by the frame check (0 when the browser cannot render stills). */
+  framesChecked: number;
+}
+
+/** Structural check of a built film: every clip resolves, shots run back to back, nothing runs past the end. */
+export function checkFilmStructure(project: ProjectData, opts: { hasProductImages: boolean } = { hasProductImages: false }): FilmQaReport {
+  const issues: string[] = [];
+  const warnings: string[] = [];
+  const end = projectEndFrame(project);
+  if (end <= 0) issues.push('The film is empty.');
+  for (const track of project.tracks) {
+    const clips = track.clips.slice().sort((a, b) => a.start - b.start);
+    for (const c of clips) {
+      if (!CARDS[c.cardId]) issues.push(`${track.name}: clip uses an unknown card (${c.cardId}).`);
+      if (c.duration <= 0) issues.push(`${track.name}: a clip has no length.`);
+    }
+    if (clips.some((c) => c.cardId.startsWith('demo:') || c.cardId === 'inkpress-title-card')) {
+      for (let i = 1; i < clips.length; i++) {
+        const gap = clips[i].start - (clips[i - 1].start + clips[i - 1].duration);
+        if (gap > 1) issues.push(`${track.name}: ${gap}-frame black gap at ${(clips[i].start / project.fps).toFixed(1)}s.`);
+        if (gap < -1) issues.push(`${track.name}: shots overlap at ${(clips[i].start / project.fps).toFixed(1)}s.`);
+      }
+    }
+  }
+  const productShots = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId.startsWith('demo:') && isProductTextureShot(c.cardId.slice(5)));
+  if (productShots.length && !opts.hasProductImages) {
+    warnings.push(`${productShots.length} product shot${productShots.length === 1 ? '' : 's'} show sample pages — add your URL or attach screenshots to put your product on screen.`);
+  }
+  return { ok: issues.length === 0, issues, warnings, framesChecked: 0 };
+}
+
+/**
+ * Frame QA: render the middle frame of every shot and the film's first and
+ * last frame (in the browser, with the same composition the export uses) and
+ * report the ones that fail. Skipped when the browser cannot render stills; bounded by `budgetMs`.
+ */
+export async function checkFilmFrames(project: ProjectData, log: ActivityLog, budgetMs = 20_000): Promise<{ checked: number; failed: string[] }> {
+  let render: typeof import('../webRenderer').renderStillOnWebExport;
+  try {
+    render = (await import('../webRenderer')).renderStillOnWebExport;
+  } catch {
+    return { checked: 0, failed: [] };
+  }
+  const shotTrack = project.tracks.find((t) => t.clips.some((c) => c.cardId.startsWith('demo:'))) ?? project.tracks[0];
+  const frames = new Set<number>();
+  // The middle of every shot, plus the film's first and last frame.
+  for (const c of shotTrack?.clips ?? []) frames.add(c.start + Math.floor(c.duration / 2));
+  frames.add(0);
+  frames.add(Math.max(0, projectEndFrame(project) - 1));
+  const list = [...frames].sort((a, b) => a - b);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), budgetMs);
+  const failed: string[] = [];
+  let checked = 0;
+  log(`Frame QA · checking ${list.length} frames`, 'running');
+  try {
+    for (const f of list) {
+      if (controller.signal.aborted) break;
+      try {
+        await render(project, f, controller.signal);
+        checked++;
+      } catch (error) {
+        if (controller.signal.aborted) break;
+        failed.push(`${(f / project.fps).toFixed(2)}s: ${error instanceof Error ? error.message : 'render failed'}`);
+      }
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+  log(
+    failed.length
+      ? `Frame QA · ${failed.length} of ${checked + failed.length} frames failed`
+      : checked
+        ? `Frame QA · ${checked} frames render cleanly${checked < list.length ? ` (time budget reached at ${checked}/${list.length})` : ''}`
+        : 'Frame QA · skipped (this browser cannot render stills)',
+    failed.length ? 'error' : 'done',
+  );
+  return { checked, failed };
+}

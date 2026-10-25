@@ -22,7 +22,9 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import {
   BASE_URL,
+  approveFilmAndOpenWorkbench,
   installStudioSession,
+  setEntryDuration,
   assertNoOnboardingModal,
   ENTRY_PROMPT_PLACEHOLDER,
 } from './helpers/motion-studio';
@@ -62,7 +64,8 @@ test.describe('Motion Studio MP4 export', () => {
 
     // aspect-ratio + duration controls are part of the current input step
     await expect(page.getByRole('button', { name: '16:9', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: '5s', exact: true })).toBeVisible();
+    await setEntryDuration(page, '5s');
+  await expect(page.getByRole('button', { name: '5s', exact: true })).toBeVisible();
 
     // Pick a shot so the rendered composition is not empty.
     await page.getByRole('button', { name: /Select a recipe/ }).click();
@@ -72,11 +75,15 @@ test.describe('Motion Studio MP4 export', () => {
     const firstHit = page.locator('button').filter({ hasText: 'crash-zoom-punch' }).first();
     await expect(firstHit).toBeVisible();
     await firstHit.click();
+    await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
 
     // ── 2. Generate → the editor ─────────────────────────────────────────
     const generate = page.getByRole('button', { name: /^Generate$/ });
     await expect(generate).toBeEnabled();
     await generate.click();
+    // The picked shot card goes straight to a storyboard; approve, then open the film in the workbench.
+    await approveFilmAndOpenWorkbench(page);
 
     await expect(page).toHaveURL(/\/studio\/motion-studio\/?(\?.*)?$/, { timeout: 60_000 });
     const exportButton = page.getByRole('button', { name: 'Export video' });

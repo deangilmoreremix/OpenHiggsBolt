@@ -14,6 +14,13 @@ type JobState = {
   error?: string;
 };
 
+const EXPORT_EVENT = 'motion-studio:export';
+
+/** Start an MP4 export from elsewhere in the studio (the Agent chat's "render the MP4"). */
+export const requestExport = () => {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(EXPORT_EVENT));
+};
+
 const ExportButton: React.FC = () => {
   const t = useT();
   const [job, setJob] = useState<JobState | null>(null);
@@ -88,6 +95,19 @@ const ExportButton: React.FC = () => {
       abortControllerRef.current = null;
     }
   };
+
+  const startRef = useRef(start);
+  startRef.current = start;
+  const jobRef = useRef(job);
+  jobRef.current = job;
+  useEffect(() => {
+    const onRequest = () => {
+      const status = jobRef.current?.status;
+      if (status !== 'running' && status !== 'queued') void startRef.current();
+    };
+    window.addEventListener(EXPORT_EVENT, onRequest);
+    return () => window.removeEventListener(EXPORT_EVENT, onRequest);
+  }, []);
 
   // We don't need to resume a render because it's all client-side and doesn't survive a refresh.
   // However, we can keep the effect to clean up on unmount.

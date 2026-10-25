@@ -44,6 +44,8 @@ Return a storyboard as JSON. Rules:
 - transition: "flash" for a beat-like white flash before the next scene, otherwise "cut". Use "flash" sparingly (≤ 3).
 - palette: hex colours taken from the brand when given (background, text, accent).
 - Scene durations in seconds should sum to the requested length.
+- requiredRecipes (when given): the user picked these shots by name. Use EVERY one of them, in that order; add titles or other shots around them only when the length allows.
+- template "inkpress": follow the Ink Press structure — a title card, real-page PRODUCT-PAGE shots with caption strips, flash cuts on key beats, a call-to-action title, and an Outro shot. Keep the paper/ink palette (#f7f4ee background, #1c1a17 text, #b5651d accent) unless brand colours are given.
 
 Catalog (id | title | category | native length | flags | what it does):
 ${CATALOG_BRIEF}`
@@ -153,6 +155,8 @@ export async function POST(req: NextRequest) {
         ? { title: str(capture.title, 200), url: str(capture.url, 300), brand: capture.brand ?? null, cropCount: Number(capture.cropCount) || 0 }
         : null,
       brandKit: body.brandKit && typeof body.brandKit === 'object' ? body.brandKit : null,
+      requiredRecipes: (Array.isArray(body.requiredRecipes) ? body.requiredRecipes : []).slice(0, PLAN_LIMITS.maxScenes).map((r) => str(r, 120)).filter(Boolean),
+      template: body.template === 'inkpress' ? 'inkpress' : null,
     }
     const raw = await callDirector(key, PLAN_INSTRUCTIONS, JSON.stringify(brief), 'motion_studio_plan', PLAN_JSON_SCHEMA)
     return NextResponse.json({ plan: validatePlan(raw, { targetSec: durationSec }) })

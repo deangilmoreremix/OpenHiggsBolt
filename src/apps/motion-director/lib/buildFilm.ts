@@ -10,7 +10,7 @@
  */
 import { CARDS } from '../cards/registry';
 import { CARD_FPS, type CardDef } from '../cards/types';
-import { aspectRatioToDimensions, type AspectRatio } from '../projectContract';
+import type { AspectRatio } from '../projectContract';
 import { t } from '../i18n';
 import { uid, type ClipData, type ProjectData } from '../types';
 import { motionCardId, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
@@ -38,6 +38,10 @@ const SFX_CUT = 'motion-studio/sfxlib/transition/swoosh-quick.mp3';
 const SFX_FLASH = 'motion-studio/sfxlib/impact/impact-transition.mp3';
 const SFX_FRAMES = 24;
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+/** Delivery size of a built film: full HD at 30 fps, h264 on export. */
+export const filmDimensions = (ratio: AspectRatio): { width: number; height: number } =>
+  ratio === '9:16' ? { width: 1080, height: 1920 } : ratio === '1:1' ? { width: 1080, height: 1080 } : { width: 1920, height: 1080 };
 
 const clip = (cardId: string, start: number, duration: number, props: Record<string, unknown>, extra: Partial<ClipData> = {}): ClipData => ({
   id: uid('clip'),
@@ -97,7 +101,7 @@ export function planToProject(
   plan: DirectorPlan,
   opts: { aspectRatio: AspectRatio; capture?: FilmCapture | null; music?: FilmMusic | null },
 ): ProjectData {
-  const { width, height } = aspectRatioToDimensions(opts.aspectRatio);
+  const { width, height } = filmDimensions(opts.aspectRatio);
   const palette = plan.palette;
   const durations = snapToBeats(plan.scenes.map((s) => s.durationSec), opts.music?.beats ?? []);
   const screens = opts.capture?.screens ?? [];
