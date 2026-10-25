@@ -37,7 +37,7 @@ const ENTRY_SEEN_KEY = 'motion-studio:entry-seen-v1';
 const STUDIO_ROOT_PATH = '/studio/motion-director';
 
 /** `<root>/new` — the INPUT step (prompt composer, aspect ratio, duration). */
-const INPUT_PATH_RE = /\/motion-studio\/new\/?$/;
+const INPUT_PATH_RE = /\/motion-director\/new\/?$/;
 
 /** True when the browser is on the INPUT step of the studio. */
 const isInputPath = () =>
