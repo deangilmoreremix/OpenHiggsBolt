@@ -201,6 +201,12 @@ export interface RevokeEntitlementLocator {
   clerkUserId?: string;
   email?: string;
   stripeCustomerId?: string;
+  /**
+   * When set, only rows granted by THIS subscription are revoked. A
+   * subscription event must not revoke an independent lifetime purchase or a
+   * different subscription that happens to share the customer or user.
+   */
+  stripeSubscriptionId?: string;
 }
 
 export interface RevokeEntitlementResult {
@@ -221,6 +227,13 @@ export async function revokeEntitlement(
 
   const matches = new Map<string, { id: string }>();
 
+  // Narrow every lookup to the subscription's own rows when one is given.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the query builder type is not exported
+  const scoped = (query: any) =>
+    locator.stripeSubscriptionId
+      ? query.eq('stripe_subscription_id', locator.stripeSubscriptionId)
+      : query;
+
   const collect = (rows: { id: string }[] | null) => {
     for (const row of rows || []) {
       if (row?.id) matches.set(String(row.id), row);
@@ -228,26 +241,32 @@ export async function revokeEntitlement(
   };
 
   if (locator.clerkUserId) {
-    const { data } = await supabase
-      .from('user_entitlements')
-      .select('id')
-      .eq('clerk_user_id', locator.clerkUserId);
+    const { data } = await scoped(
+      supabase
+        .from('user_entitlements')
+        .select('id')
+        .eq('clerk_user_id', locator.clerkUserId)
+    );
     collect(data);
   }
 
   if (locator.email) {
-    const { data } = await supabase
-      .from('user_entitlements')
-      .select('id')
-      .eq('email', locator.email.toLowerCase().trim());
+    const { data } = await scoped(
+      supabase
+        .from('user_entitlements')
+        .select('id')
+        .eq('email', locator.email.toLowerCase().trim())
+    );
     collect(data);
   }
 
   if (locator.stripeCustomerId) {
-    const { data } = await supabase
-      .from('user_entitlements')
-      .select('id')
-      .eq('stripe_customer_id', locator.stripeCustomerId);
+    const { data } = await scoped(
+      supabase
+        .from('user_entitlements')
+        .select('id')
+        .eq('stripe_customer_id', locator.stripeCustomerId)
+    );
     collect(data);
   }
 

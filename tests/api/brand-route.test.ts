@@ -63,6 +63,7 @@ describe('route module exports', () => {
 describe('GET /api/brand', () => {
   beforeEach(() => {
     vi.resetModules()
+    mockEntitledUser()
     vi.doMock('@/src/lib/supabaseServer', () => ({
       getSupabaseAdmin: vi.fn(() => ({
         from: () => ({
@@ -163,6 +164,11 @@ describe('POST /api/brand/analyze', () => {
   beforeEach(() => {
     vi.resetModules()
     mockEntitledUser()
+    // BYOK: the analyze flow resolves the authenticated user's own OpenAI key
+    // from the server-side store instead of any env key.
+    vi.doMock('@/src/lib/openaiKeyServer', () => ({
+      getOpenAiKeyForUser: vi.fn(async () => 'sk-user-openai-key'),
+    }))
     vi.doMock('@/src/lib/supabaseServer', () => ({
       getSupabaseAdmin: vi.fn(() => ({
         from: () => ({

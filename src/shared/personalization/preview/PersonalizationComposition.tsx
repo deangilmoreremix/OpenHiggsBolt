@@ -12,11 +12,17 @@ import {
 } from 'remotion'
 import { Video, Audio } from '@remotion/media'
 import { fontStackById, isImageLayerKind, toBox } from './presets'
+import { resolveDesignSlotValues } from './designSlots'
 import {
   clearPreviewMediaFailure,
   emitPreviewMediaFailure,
   previewMediaLabel,
 } from './previewMediaEvents'
+import { getRemotionDesignTemplate, subscribeRemotionDesignRegistry } from '../templates'
+import type {
+  RemotionDesignComponentProps,
+  RemotionDesignTemplate,
+} from '../templates/types'
 import type {
   PreviewAnimationId,
   PreviewInputProps,
@@ -126,6 +132,70 @@ function resolveLayerImageUrl(
   return ''
 }
 
+/**
+ * Design ids we already warned about.
+ *
+ * The composition renders once per frame, so a missing template would print
+ * the same warning hundreds of times per second. Warn once per id instead.
+ */
+const warnedDesignIds = new Set<string>()
+
+function warnMissingDesignOnce(designId: string | undefined): void {
+  const key = designId ?? '(none)'
+  if (warnedDesignIds.has(key)) return
+  warnedDesignIds.add(key)
+  console.warn(
+    `[personalization] No Remotion design template is registered for "${key}". The design layer will not render.`,
+  )
+}
+
+/**
+ * Resolves every text slot of a design.
+ *
+ * The shared resolver in `./designSlots` owns the precedence rule, so the
+ * inspector and the render can never disagree:
+ *
+ *  - the PRIMARY slot takes the layer's own `text` (the legacy contract);
+ *  - every other slot takes its stored override when that override is a
+ *    non-empty string;
+ *  - otherwise the slot falls back to its brand field.
+ */
+function resolveDesignTextSlots(
+  design: RemotionDesignTemplate,
+  layer: PreviewLayer,
+  brand: PreviewInputProps['brand'],
+): Record<string, string> {
+  return resolveDesignSlotValues(design, layer, brand)
+}
+
+/**
+ * Resolves the media a design can use.
+ *
+ * The layer's own image replaces the design's primary (required) media
+ * binding; every other role is fed by the matching brand asset.
+ */
+function resolveDesignMedia(
+  design: RemotionDesignTemplate,
+  layer: PreviewLayer,
+  brand: PreviewInputProps['brand'],
+): Record<string, string | null> {
+  const media: Record<string, string | null> = {}
+  const declared = Array.isArray(design.media) ? design.media : []
+  const primary = declared.find((binding) => binding && binding.required) ?? declared[0]
+  for (const binding of declared) {
+    if (!binding || typeof binding.role !== 'string') continue
+    if (primary && binding.role === primary.role && layer.imageUrl) {
+      media[binding.role] = layer.imageUrl
+      continue
+    }
+    if (binding.role === 'logo') media[binding.role] = brand.logoUrl ?? null
+    else if (binding.role === 'product') media[binding.role] = brand.productUrl ?? null
+    else if (binding.role === 'service') media[binding.role] = brand.serviceUrl ?? null
+    else media[binding.role] = null
+  }
+  return media
+}
+
 const EndCard: React.FC<{
   settings: PersonalizationPreviewSettings
   brand: PreviewInputProps['brand']
@@ -232,6 +302,14 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
   const compW = settings.width > 0 ? settings.width : videoConfig.width
   const compH = settings.height > 0 ? settings.height : videoConfig.height
   const [mediaFailed, setMediaFailed] = useState(false)
+
+  // The design catalog registers itself on import. Re-render when the registry
+  // changes so a design that lands after the first paint is picked up.
+  const [, setRegistryVersion] = useState(0)
+  useEffect(
+    () => subscribeRemotionDesignRegistry(() => setRegistryVersion((version) => version + 1)),
+    [],
+  )
 
   // A browser media element that cannot be decoded/loaded (codec, network or
   // CORS restrictions on unusual remote URLs) would otherwise surface as an
@@ -360,7 +438,8 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
         {visibleLayers.map((layer) => {
           const isImage = isImageLayerKind(layer.kind)
           const isText = TEXT_LAYER_KINDS.includes(layer.kind)
-          if (!isImage && !isText) return null
+          const isDesign = layer.kind === 'design'
+          if (!isImage && !isText && !isDesign) return null
           const text = isText ? resolveLayerText(layer, brand) : ''
           const imageUrl = isImage ? resolveLayerImageUrl(layer, brand) : ''
           if (isText && !text.trim()) return null
@@ -384,6 +463,68 @@ export const PersonalizationComposition: React.FC<PreviewInputProps> = ({
             transform: transformParts.length > 0 ? transformParts.join(' ') : undefined,
             opacity: layer.opacity * entrance.opacity,
             pointerEvents: 'none',
+          }
+
+          if (isDesign) {
+            // A design renders through its own registered component. Without a
+            // registered template there is nothing to draw, so the layer is
+            // skipped (and the missing template is reported once).
+            const design = layer.designId ? getRemotionDesignTemplate(layer.designId) : undefined
+            if (!design) {
+              warnMissingDesignOnce(layer.designId)
+              return null
+            }
+            const DesignComponent = design.component
+            const slots = resolveDesignTextSlots(design, layer, brand)
+            const primarySlot =
+              (Array.isArray(design.textSlots) ? design.textSlots : []).find(
+                (slot) => slot && slot.primary,
+              ) ??
+              (Array.isArray(design.textSlots) ? design.textSlots : [])[0]
+            const designProps = (design.defaultProps ?? {}) as Partial<RemotionDesignComponentProps>
+            // The design component lives inside a Sequence so its own
+            // `useCurrentFrame()` is layer-local: the design's animation
+            // starts when the layer appears, not at the composition's frame 0.
+            const layerFrame = Math.max(0, frame - layer.startFrame)
+            const designDuration =
+              layer.endFrame === undefined
+                ? undefined
+                : Math.max(1, layer.endFrame - layer.startFrame)
+            return (
+              <AbsoluteFill
+                key={layer.id}
+                data-remotion-design-id={design.id}
+                style={{ ...layerStyle, height: box.heightPx ?? '100%' }}
+              >
+                <Sequence from={layer.startFrame} durationInFrames={designDuration}>
+                  <DesignComponent
+                    {...designProps}
+                    text={primarySlot ? (slots[primarySlot.key] ?? '') : ''}
+                    textSlots={slots}
+                    colors={{
+                      primary: settings.brandColors.primary,
+                      accent: settings.brandColors.accent,
+                      text: settings.brandColors.text,
+                      backgroundDim: settings.brandColors.backgroundDim,
+                    }}
+                    media={resolveDesignMedia(design, layer, brand)}
+                    box={{
+                      leftPx: box.leftPx,
+                      topPx: box.topPx,
+                      widthPx: box.widthPx,
+                      heightPx: box.heightPx ?? compH,
+                    }}
+                    width={compW}
+                    height={compH}
+                    frame={layerFrame}
+                    fps={settings.fps}
+                    opacity={layer.opacity}
+                    color={textColor}
+                    fontFamily={layer.fontFamily}
+                  />
+                </Sequence>
+              </AbsoluteFill>
+            )
           }
 
           if (isImage) {

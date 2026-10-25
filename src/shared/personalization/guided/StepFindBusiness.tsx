@@ -5,7 +5,17 @@ import { Building2, Globe, MapPin, Search, Star } from 'lucide-react'
 import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { BUSINESS_NICHES } from '../businessNiches'
 import { ownershipBadgeStyle, ownershipLabel } from '../ownershipBadge'
-import type { BusinessOwnership } from '../types'
+import type { BusinessOwnership, DiscoveredAsset } from '../types'
+import { DiscoveredAssetGrid, type DiscoveredAssetDropZone } from '../DiscoveredAssetGrid'
+
+// Simple mode has no client-asset section cards on screen, so the grid shows
+// its own drop zones; dropping an asset imports it into that section.
+const SIMPLE_MODE_DROP_ZONES: DiscoveredAssetDropZone[] = [
+  { section: 'person', label: 'Person' },
+  { section: 'logo', label: 'Logo' },
+  { section: 'products', label: 'Products' },
+  { section: 'brand', label: 'Brand' },
+]
 import { C, badgeStyle, hintStyle, inputStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
 
 const RADIUS_OPTIONS = [5, 15, 50]
@@ -28,7 +38,12 @@ function businessLabel(business: {
  * search local businesses, enter a website (the single website input in the
  * whole guided flow), or pick a saved business profile.
  */
-export function StepFindBusiness(): React.JSX.Element {
+export function StepFindBusiness({
+  onEditAsset,
+}: {
+  /** Opens the AI image editor on a discovered asset; omitted for anonymous sessions. */
+  onEditAsset?: (asset: DiscoveredAsset) => void
+} = {}): React.JSX.Element {
   const ctx = useDemoPersonalize()
   const {
     clientForm = {},
@@ -52,6 +67,12 @@ export function StepFindBusiness(): React.JSX.Element {
     discoveryError,
     discoveredAssets = [],
     toggleDiscoveredAssetSelection,
+    rejectDiscoveredAsset,
+    updateDiscoveredAssetCategory,
+    revertDiscoveredAssetEdit,
+    removeDiscoveredAssetFromSection,
+    moveDiscoveredAssetToSection,
+    setDiscoveredAssets,
     importDiscoveredAssets,
     importConfirmation,
     access,
@@ -351,7 +372,11 @@ export function StepFindBusiness(): React.JSX.Element {
       )}
 
       {/* ── What we found ───────────────────────────────────────────────── */}
-      {businessName && (
+      {/* Shown whenever there is something to report. "Find business assets"
+          runs discovery from a typed website alone, with no business name, so
+          gating this panel on the name hid the found assets, the progress
+          badge and any error: the visitor saw nothing at all. */}
+      {(businessName || discoveredAssets.length > 0 || discoveryStatus === 'discovering' || discoveryError) && (
         <div style={{ ...panelStyle, border: `1px solid ${C.cyanBorder}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <Building2 size={15} color={C.cyan} />
@@ -360,11 +385,16 @@ export function StepFindBusiness(): React.JSX.Element {
             </h3>
             {discoveryStatus === 'discovering' && <span style={badgeStyle('cyan')}>Finding assets…</span>}
           </div>
+          {discoveryError && discoveredCount === 0 && (
+            <p role="alert" style={{ margin: '0 0 10px', color: C.danger, fontSize: 12 }}>{discoveryError}</p>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 10 }}>
-            <div>
-              <div style={labelStyle}>Business</div>
-              <div style={{ color: C.text, fontSize: 13, fontWeight: 700 }}>{businessName}</div>
-            </div>
+            {businessName && (
+              <div>
+                <div style={labelStyle}>Business</div>
+                <div style={{ color: C.text, fontSize: 13, fontWeight: 700 }}>{businessName}</div>
+              </div>
+            )}
             {clientForm.industry && (
               <div>
                 <div style={labelStyle}>Industry</div>
@@ -419,7 +449,7 @@ export function StepFindBusiness(): React.JSX.Element {
               without being sent to Advanced Editing. This is the same
               provider flow the advanced view uses (toggle selection +
               importDiscoveredAssets); only the presentation is guided. */}
-          {discoveredCount > 0 && (
+          {(discoveredCount > 0 || discoveredAssets.some((a) => a.rejected)) && (
             <div style={{ ...softPanelStyle, marginTop: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
                 <h4 style={{ margin: 0, fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', color: C.text }}>
@@ -429,64 +459,24 @@ export function StepFindBusiness(): React.JSX.Element {
                   {selectedDiscoveredCount} of {discoveredCount} selected
                 </span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {discoveredAssets
-                  .filter((asset) => !asset.rejected)
-                  .slice(0, 8)
-                  .map((asset) => (
-                    <div
-                      key={asset.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        padding: '6px 8px',
-                        borderRadius: 8,
-                        border: `1px solid ${asset.selected ? C.cyanBorder : C.border}`,
-                        background: asset.selected ? 'rgba(34,211,238,0.06)' : 'transparent',
-                      }}
-                    >
-                      {asset.previewUrl && (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={asset.editedDataUrl || asset.previewUrl}
-                          alt=""
-                          style={{ width: 34, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }}
-                        />
-                      )}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ color: C.text, fontSize: 12, fontWeight: 600, textTransform: 'capitalize' }}>
-                          {asset.category}
-                        </div>
-                        <div
-                          style={{ color: C.muted2, fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                          title={asset.sourceUrl}
-                        >
-                          {asset.sourceUrl.replace(/^https?:\/\//, '').slice(0, 48)}
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        aria-label={asset.selected ? 'Deselect' : 'Select'}
-                        onClick={() => toggleDiscoveredAssetSelection(asset.id)}
-                        style={{
-                          ...secondaryButtonStyle,
-                          minHeight: 28,
-                          padding: '0 10px',
-                          color: asset.selected ? C.cyan : C.text,
-                          borderColor: asset.selected ? C.cyanBorder : C.border,
-                        }}
-                      >
-                        {asset.selected ? 'Deselect' : 'Select'}
-                      </button>
-                    </div>
-                  ))}
-                {discoveredCount > 8 && (
-                  <div style={{ color: C.muted2, fontSize: 10 }}>
-                    +{discoveredCount - 8} more — review all of them in Advanced Editing
-                  </div>
-                )}
-              </div>
+              {/* The same grid as Advanced Editing: every asset, grouped by
+                  category, with select, remove / restore, category, Edit with
+                  AI, full-screen viewer, and drag onto a section. */}
+              <DiscoveredAssetGrid
+                assets={discoveredAssets}
+                onToggle={toggleDiscoveredAssetSelection}
+                onRemove={rejectDiscoveredAsset}
+                onCategoryChange={updateDiscoveredAssetCategory}
+                onEdit={onEditAsset}
+                onRevert={revertDiscoveredAssetEdit}
+                onRemoveFromSection={removeDiscoveredAssetFromSection}
+                onRestoreAll={() => setDiscoveredAssets(discoveredAssets.map((a) => ({ ...a, rejected: false })))}
+                dropZones={SIMPLE_MODE_DROP_ZONES}
+                onDropToSection={(id, section) => {
+                  moveDiscoveredAssetToSection(id, section)
+                  void importDiscoveredAssets({ ids: [id], section })
+                }}
+              />
               {discoveryStatus === 'importing' && (
                 <p style={{ margin: '8px 0 0', color: C.cyan, fontSize: 11 }}>Importing assets…</p>
               )}

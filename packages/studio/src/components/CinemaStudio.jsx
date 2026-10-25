@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { generateImage, uploadFile } from "../muapi.js";
@@ -546,6 +546,19 @@ export default function CinemaStudio({
   historyItems,
   templateData,
   locale = "en",
+  /**
+   * Optional renderer for the shared Personalization Modal hand-off.
+   *
+   * The `studio` package is published standalone, so it MUST NOT import the
+   * app's `src/shared/personalization/studioEntry` module — the app root owns
+   * that wiring and passes the renderer in.
+   *
+   * The argument is a plain `StudioPersonalizeOptions` object:
+   *   { originStudio, studioProjectId, title,
+   *     media: { mediaType, url, poster, aspectRatio, duration, durationLabel },
+   *     prompt: { text, model, modelName } }
+   */
+  renderPersonalizeAction,
 }) {
   const copy = resolveCopy(en, zh, locale);
   const LEGACY_PERSIST_KEY = "hg_cinema_studio_persistent";
@@ -767,6 +780,42 @@ export default function CinemaStudio({
 
   // Derive effective history (prop wins over internal)
   const history = historyItems != null ? historyItems : internalHistory;
+
+  // ── Personalization hand-off (Phase 2) ───────────────────────────────────
+  // Cinema Studio generates IMAGES (it calls `generateImage`, not a video
+  // model), so the hand-off media type is 'image'.
+  // The reference image the user uploaded is the primary asset; when the
+  // studio was used as a pure text-to-image studio there is no upload, and
+  // the newest gallery entry (the shot that was actually generated) is the
+  // single primary output that gets handed over.
+  // The Modal keys its saved project on the source id, so the studio project
+  // id has to be unique per project AND stable while the project is
+  // unchanged: the media file name plus the camera settings.
+  const studioPersonalizeOptions = useMemo(
+    () => {
+      const sourceUrl = uploadedImage || history[0]?.url || null;
+      return {
+        originStudio: "cinema",
+        studioProjectId: [
+          sourceUrl ? sourceUrl.split("/").pop() : "no-shot",
+          settings.aspect_ratio,
+          settings.camera,
+        ].join(":"),
+        title: "Cinema Studio shot",
+        media: {
+          mediaType: "image",
+          url: sourceUrl,
+          poster: null,
+          aspectRatio: settings.aspect_ratio,
+        },
+        prompt: {
+          text: settings.prompt,
+          model: uploadedImage ? "nano-banana-pro-edit" : "nano-banana-pro",
+        },
+      };
+    },
+    [uploadedImage, history, settings],
+  );
 
   useEffect(() => {
     setCanvasUrl(history[0]?.url || null);
@@ -1270,6 +1319,12 @@ export default function CinemaStudio({
                 )}
               </button>
             </div>
+
+            {/* Personalize this shot in the shared Personalization Modal.
+                Renders nothing without a source image. */}
+            {studioPersonalizeOptions.media.url
+              ? renderPersonalizeAction?.(studioPersonalizeOptions)
+              : null}
 
             <PromptTextarea
               ref={textareaRef}

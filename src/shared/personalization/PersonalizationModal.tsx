@@ -56,6 +56,7 @@ import ImageEditorModal, {
 } from './image-editor/ImageEditorModal'
 import { makeDiscoveredAssetVideoReady } from './image-editor/batchVideoReady'
 import { isImageEditSupported } from './image-editor/imageEditSupport'
+import { DiscoveredAssetGrid } from './DiscoveredAssetGrid'
 import { SimpleModeWizard } from './guided/SimpleModeWizard'
 import { OverlayEditor } from './guided/OverlayEditor'
 import { buildPreviewInput } from './guided/buildPreviewInput'
@@ -537,187 +538,6 @@ function ThumbUploaded({
   )
 }
 
-/** Thumbnail for a discovered asset in the review area. */
-function DiscoveredAssetThumb({
-  asset,
-  onToggle,
-  onRemove,
-  onCategoryChange,
-  onEdit,
-  onRevert,
-  onRemoveFromSection,
-  onMoveToSection,
-  draggable = false,
-  onDragStart,
-  onDragEnd,
-}: {
-  asset: DiscoveredAsset
-  onToggle: () => void
-  onRemove: () => void
-  onCategoryChange: (cat: DiscoveredAssetCategory) => void
-  onEdit?: () => void
-  onRevert?: () => void
-  onRemoveFromSection?: () => void
-  onMoveToSection?: (section: AssignedSection) => void
-  draggable?: boolean
-  onDragStart?: (e: DragEvent) => void
-  onDragEnd?: (e: DragEvent) => void
-}) {
-  const categories: DiscoveredAssetCategory[] = [
-    'person',
-    'logo',
-    'product',
-    'service',
-    'completed_work',
-    'storefront',
-    'office',
-    'branded_vehicle',
-    'team',
-    'brand',
-    'irrelevant',
-  ]
-
-  return (
-    <div
-      draggable={draggable}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      className="relative w-[82px] min-h-[86px] rounded-[9px] border overflow-hidden"
-      style={{
-        borderColor: asset.selected ? C.cyanBorder : asset.rejected ? 'rgba(239,91,103,.4)' : C.border,
-        background: asset.rejected ? 'rgba(239,91,103,.08)' : 'linear-gradient(145deg, #3b4652, #151a20)',
-        opacity: asset.rejected ? 0.5 : 1,
-        cursor: draggable ? 'grab' : 'default',
-      }}
-    >
-      {(asset.editedDataUrl || asset.previewUrl) ? (
-        <img src={asset.editedDataUrl || asset.previewUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
-      ) : null}
-      {onEdit && isImageEditSupported(asset) && (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onEdit() }}
-          className="absolute right-1 top-6 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
-          style={{ background: 'rgba(41,211,242,.92)', color: '#041014' }}
-          aria-label="Edit discovered image"
-        >
-          {EDIT_WITH_AI}
-        </button>
-      )}
-      {asset.edited && onRevert && (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onRevert() }}
-          className="absolute left-1 top-6 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
-          style={{ background: 'rgba(255,255,255,.9)', color: '#041014' }}
-          aria-label="Revert to original"
-        >
-          Revert
-        </button>
-      )}
-      {(asset.edited || asset.videoReady) && (
-        <div className="absolute left-1 top-6 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase" style={{ background: 'rgba(40,201,139,.9)', color: '#fff' }}>
-          {asset.videoReady ? 'Video Ready' : 'Edited'}
-        </div>
-      )}
-      {asset.visionAnalysis && (
-        <div
-          className="absolute left-1 top-[42px] z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase"
-          style={{ background: 'rgba(168,85,247,.9)', color: '#fff' }}
-          title={asset.visionAnalysis.summary}
-        >
-          Vision {Math.round(asset.visionAnalysis.confidence)}%
-        </div>
-      )}
-      <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,.7), transparent 60%)' }} />
-      {/* Select checkbox */}
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); onToggle() }}
-        className="absolute top-1 left-1 z-10 rounded-full w-4 h-4 flex items-center justify-center"
-        style={{
-          border: `2px solid ${asset.selected ? C.cyan : 'rgba(255,255,255,.5)'}`,
-          background: asset.selected ? C.cyan : 'transparent',
-        }}
-        aria-label={asset.selected ? 'Deselect' : 'Select'}
-      >
-        {asset.selected && <span style={{ fontSize: 8, color: '#041014', fontWeight: 900 }}>✓</span>}
-      </button>
-      {/* Auto-assigned badge */}
-      {asset.autoAssigned && (
-        <div
-          className="absolute top-1 left-6 z-10 rounded-full px-1.5 py-0.5"
-          style={{
-            background: 'rgba(16,185,129,.9)',
-            color: 'white',
-            fontSize: 7,
-            fontWeight: 800,
-            textTransform: 'uppercase',
-            lineHeight: 1,
-          }}
-        >
-          AUTO
-        </div>
-      )}
-      {/* Remove button */}
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); onRemove() }}
-        className="absolute top-1 right-1 z-10 rounded-full p-0.5"
-        style={{ background: 'rgba(239,91,103,.85)' }}
-        aria-label="Remove"
-      >
-        <X size={8} className="text-white" />
-      </button>
-      {/* Remove from section / move buttons */}
-      {asset.assignedSection && onRemoveFromSection && (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onRemoveFromSection() }}
-          className="absolute bottom-8 right-1 z-10 rounded-full p-0.5"
-          style={{ background: 'rgba(255,255,255,.2)' }}
-          aria-label="Remove from section"
-          title="Remove from section"
-        >
-          <span style={{ fontSize: 7, color: 'white', fontWeight: 800 }}>✕</span>
-        </button>
-      )}
-      {/* Source type badge */}
-      <div
-        className="absolute bottom-8 left-1 right-1 z-10 rounded px-1 py-0.5 text-center"
-        style={{
-          background: 'rgba(0,0,0,.6)',
-          color: 'white',
-          fontSize: 7,
-          fontWeight: 700,
-          textTransform: 'uppercase',
-          lineHeight: 1,
-        }}
-      >
-        {asset.sourceType.replace('_', ' ')}
-      </div>
-      {/* Category selector */}
-       <select
-         value={asset.category}
-         onChange={(e) => onCategoryChange(e.target.value as DiscoveredAssetCategory)}
-         onClick={(e) => e.stopPropagation()}
-         className="absolute bottom-1 left-1 right-1 z-10 text-[7px] font-bold rounded px-0.5 py-0.5 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-1 focus-visible:ring-offset-black"
-         style={{
-           background: 'rgba(0,0,0,.6)',
-           color: 'white',
-           border: '1px solid rgba(255,255,255,.2)',
-           fontSize: 7,
-         }}
-         aria-label="Change category"
-       >
-        {categories.map((c) => (
-          <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>
-        ))}
-      </select>
-    </div>
-  )
-}
-
 // ── Modal ────────────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -875,6 +695,14 @@ export default function PersonalizationModal() {
 
   const dialogRef = useRef<HTMLDivElement>(null)
   const previousActiveElementRef = useRef<HTMLElement | null>(null)
+  /**
+   * The inline `overflow` value the document body had *before* the modal locked
+   * scrolling. Restoring a hard-coded `''` on close silently destroyed any
+   * value the page (or an enclosing studio) had already set — e.g. `overflow:
+   * hidden` on a scrolled panel, or `overflow: auto`. The captured value is
+   * restored verbatim instead, including the empty string.
+   */
+  const previousBodyOverflowRef = useRef<string | null>(null)
 
   const personalizationInProgress =
     generation.status === 'generating' || generation.status === 'processing' || generation.status === 'personalizing-prompt'
@@ -992,9 +820,12 @@ export default function PersonalizationModal() {
 
     const { assetId, source } = payload
 
-    // Handle discovered assets: just update assignedSection
+    // Discovered assets are imported into the section they were dropped on.
+    // Only tagging them with the section changed nothing on screen: the
+    // section cards show imported assets, so the drop looked like it failed.
     if (source === 'discovered') {
       moveDiscoveredAssetToSection(assetId, section as AssignedSection)
+      void importDiscoveredAssets({ ids: [assetId], section: section as AssignedSection })
       return
     }
 
@@ -1015,13 +846,17 @@ export default function PersonalizationModal() {
 
     // Handle current job assets: move between sections
     moveLibraryAssetToSection(assetId, section as AssignedSection)
-  }, [moveDiscoveredAssetToSection, moveLibraryAssetToSection, selectSavedAsset])
+  }, [importDiscoveredAssets, moveDiscoveredAssetToSection, moveLibraryAssetToSection, selectSavedAsset])
 
   // ── Focus trap & Escape ──────────────────────────────────────────────────
 
   useEffect(() => {
     if (!isOpen) return
     previousActiveElementRef.current = document.activeElement as HTMLElement
+    // Capture the body's inline overflow *before* locking, so cleanup can put
+    // back exactly what was there (possibly '' / unset) instead of clobbering
+    // a value the page or an enclosing studio had already applied.
+    previousBodyOverflowRef.current = document.body.style.overflow
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !personalizationInProgress && !imageEditorAsset) closePersonalize()
     }
@@ -1029,7 +864,8 @@ export default function PersonalizationModal() {
     document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = ''
+      document.body.style.overflow = previousBodyOverflowRef.current ?? ''
+      previousBodyOverflowRef.current = null
       previousActiveElementRef.current?.focus()
     }
   }, [isOpen, closePersonalize, personalizationInProgress, imageEditorAsset])
@@ -1453,7 +1289,7 @@ export default function PersonalizationModal() {
 
   return (
       <div
-        className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5"
+        className="fixed inset-0 z-[250] flex items-center justify-center p-3 sm:p-5"
         style={{
           background: 'radial-gradient(circle at top, rgba(41,211,242,.07), transparent 30%), #07090d',
         }}
@@ -1599,7 +1435,9 @@ export default function PersonalizationModal() {
               message={generation.progressMessage}
             />
           ) : simpleModeActive ? (
-            <SimpleModeWizard />
+            // Image edits are refused server-side for anonymous sessions, so
+            // the guided flow only offers "Edit with AI" to signed-in users.
+            <SimpleModeWizard onEditDiscoveredAsset={isAnonymous ? undefined : openDiscoveredImageEditor} />
           ) : (
             <ConfigurationView
               source={source}
@@ -3620,59 +3458,30 @@ function ConfigurationView(props: any) {
             </div>
           )}
 
-          {(['person', 'logo', 'product', 'service', 'completed_work', 'storefront', 'office', 'branded_vehicle', 'team', 'brand', 'irrelevant'] as const).map((cat) => {
-            const items = discoveredAssets.filter((a) => a.category === cat && !a.rejected)
-            if (items.length === 0) return null
-            const catLabel = cat.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
-            return (
-              <div key={cat} style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>
-                  {catLabel} ({items.length})
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {items.map((asset) => (
-                     <DiscoveredAssetThumb
-                       key={asset.id}
-                       asset={asset}
-                       onToggle={() => toggleDiscoveredAssetSelection(asset.id)}
-                       onRemove={() => rejectDiscoveredAsset(asset.id)}
-                       onCategoryChange={(newCat) => updateDiscoveredAssetCategory(asset.id, newCat)}
-                       onEdit={onEditDiscovered ? () => onEditDiscovered(asset) : undefined}
-                        onRevert={() => revertDiscoveredAssetEdit(asset.id)}
-                       onRemoveFromSection={() => removeDiscoveredAssetFromSection(asset.id)}
-                       onMoveToSection={(section) => moveDiscoveredAssetToSection(asset.id, section)}
-                       draggable
-                        onDragStart={(e) => handleAssetDragStart({
-                          assetId: asset.id,
-                          source: 'discovered',
-                          assetType: asset.category,
-                          url: asset.sourceUrl,
-                          uploadedUrl: asset.editedDataUrl || undefined,
-                          metadata: {
-                            sourceCategory: asset.category,
-                            sourceType: asset.sourceType,
-                          },
-                        }, e)}
-                       onDragEnd={handleAssetDragEnd}
-                     />
-                  ))}
-                </div>
-              </div>
-            )
-          })}
-
-          {discoveredAssets.some((a) => a.rejected) && (
-            <div style={{ marginTop: 12, fontSize: 10, color: C.muted2 }}>
-              {discoveredAssets.filter((a) => a.rejected).length} removed —{' '}
-              <button
-                type="button"
-                onClick={() => setDiscoveredAssets((prev) => prev.map((a) => ({ ...a, rejected: false })))}
-                style={{ color: C.cyan, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 10 }}
-              >
-                Restore all removed
-              </button>
-            </div>
-          )}
+          <DiscoveredAssetGrid
+            assets={discoveredAssets}
+            onToggle={toggleDiscoveredAssetSelection}
+            onRemove={rejectDiscoveredAsset}
+            onCategoryChange={updateDiscoveredAssetCategory}
+            onEdit={onEditDiscovered || undefined}
+            onRevert={revertDiscoveredAssetEdit}
+            onRemoveFromSection={removeDiscoveredAssetFromSection}
+            onRestoreAll={() => setDiscoveredAssets((prev) => prev.map((a) => ({ ...a, rejected: false })))}
+            onDragStart={(asset, e) => handleAssetDragStart({
+              assetId: asset.id,
+              source: 'discovered',
+              assetType: asset.category,
+              // URL-only candidates carry no sourceUrl; without a url the
+              // drop was rejected as malformed.
+              url: asset.sourceUrl || asset.previewUrl,
+              uploadedUrl: asset.editedDataUrl || undefined,
+              metadata: {
+                sourceCategory: asset.category,
+                sourceType: asset.sourceType,
+              },
+            }, e)}
+            onDragEnd={handleAssetDragEnd}
+          />
         </section>
       )}
 

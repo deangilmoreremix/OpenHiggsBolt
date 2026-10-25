@@ -68,7 +68,7 @@
  */
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 
 /* ------------------------------------------------------------------------- */
@@ -191,6 +191,25 @@ function findBash() {
     }
   }
   return null
+}
+
+/**
+ * True when `/bin/sh` is bash. Only bash honours an inherited
+ * `SHELLOPTS=pipefail`; dash (the `/bin/sh` on Debian/Ubuntu hosts and build
+ * images) ignores it, so a pipeline inside a nested `sh -c '...'` still
+ * reports its trailing filter's status there.
+ */
+function binShIsBash() {
+  try {
+    return /bash/.test(realpathSync('/bin/sh'))
+  } catch {
+    return false
+  }
+}
+
+/** A nested `sh -c` / `dash -c` invocation inside the command string. */
+function hasNestedPosixShell(cmd) {
+  return typeof cmd === 'string' && /(^|[\s;&|(])(\/bin\/)?(sh|dash)\s+-c\b/.test(cmd)
 }
 
 /**
@@ -493,6 +512,12 @@ export function runStage(run, options = {}) {
   let exitCodeTrusted = true
   let unverifiable = false
   if (piped && exitCode === 0 && !usedBashPipefail && strictPipelines) {
+    exitCodeTrusted = false
+    unverifiable = true
+  }
+  // Outer bash pipefail does not reach a pipeline inside a nested `sh -c`
+  // when /bin/sh is not bash, so that zero status cannot be certified either.
+  if (piped && exitCode === 0 && strictPipelines && hasNestedPosixShell(cmd) && !binShIsBash()) {
     exitCodeTrusted = false
     unverifiable = true
   }

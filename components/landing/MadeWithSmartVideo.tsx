@@ -1,5 +1,11 @@
 'use client';
-import { useRef } from 'react';
+import { useState } from 'react';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { A11y, EffectCoverflow, Keyboard } from 'swiper/modules';
+import type { Swiper as SwiperInstance } from 'swiper';
+import 'swiper/css';
+import 'swiper/css/effect-coverflow';
+import { useReducedMotion } from 'motion/react';
 import DemoMediaCard from './DemoMediaCard';
 import { MINIMAX_H3_DEMOS } from '@/data/minimaxH3Demos';
 import { type VideoDemo } from '@/data/types';
@@ -20,8 +26,14 @@ type MadeWithSmartVideoProps = {
   demos?: VideoDemo[];
 };
 
+/**
+ * Same reel and demos as before, now a Swiper 3D coverflow: the centred
+ * commercial sits forward, its neighbours angle back and dim. Swipe, drag,
+ * arrow keys and the existing arrow buttons all move it.
+ */
 export default function MadeWithSmartVideo({ slugs, demos }: MadeWithSmartVideoProps) {
-  const reelRef = useRef<HTMLDivElement>(null);
+  const [swiper, setSwiper] = useState<SwiperInstance | null>(null);
+  const reduced = useReducedMotion();
   const activeDemos =
     demos ??
     (slugs ?? DEFAULT_REEL_SLUGS)
@@ -29,7 +41,8 @@ export default function MadeWithSmartVideo({ slugs, demos }: MadeWithSmartVideoP
       .filter(Boolean) as typeof MINIMAX_H3_DEMOS;
 
   const scrollBy = (dir: 1 | -1) => {
-    reelRef.current?.scrollBy({ left: dir * 380, behavior: 'smooth' });
+    if (dir === 1) swiper?.slideNext();
+    else swiper?.slidePrev();
   };
 
   return (
@@ -69,17 +82,27 @@ export default function MadeWithSmartVideo({ slugs, demos }: MadeWithSmartVideoP
           </div>
         </div>
 
-        {/* Cinematic horizontal reel (snap). 1-up mobile, 2-up tablet, 3-up+ desktop. */}
-        <div
-          ref={reelRef}
-          className="scrollbar-none mt-10 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [scroll-padding:0_1.5rem]"
+        {/* Cinematic coverflow reel. 1-up mobile, 2-up tablet, 3-up+ desktop. */}
+        <Swiper
+          className="fx-reel mt-10 !overflow-visible"
+          modules={[EffectCoverflow, Keyboard, A11y]}
+          onSwiper={setSwiper}
+          effect={reduced ? 'slide' : 'coverflow'}
+          coverflowEffect={{ rotate: 18, stretch: 0, depth: 160, modifier: 1, slideShadows: false }}
+          slidesPerView="auto"
+          centeredSlides
+          initialSlide={Math.min(1, activeDemos.length - 1)}
+          spaceBetween={20}
+          grabCursor
+          keyboard={{ enabled: true, onlyInViewport: true }}
+          a11y={{ prevSlideMessage: 'Previous commercial', nextSlideMessage: 'Next commercial' }}
         >
           {activeDemos.map((demo, i) => (
-            <div key={demo.slug} className="w-[85vw] shrink-0 snap-start sm:w-[45%] lg:w-[31%]">
+            <SwiperSlide key={demo.slug} className="!w-[85vw] sm:!w-[45%] lg:!w-[31%]">
               <DemoMediaCard demo={demo} index={i} />
-            </div>
+            </SwiperSlide>
           ))}
-        </div>
+        </Swiper>
       </div>
     </section>
   );

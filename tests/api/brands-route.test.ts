@@ -49,6 +49,7 @@ function mockUnentitledUser() {
 describe('GET /api/brands', () => {
   beforeEach(() => {
     vi.resetModules()
+    mockEntitledUser()
     vi.doMock('@/src/lib/supabaseServer', () => ({
       getSupabaseAdmin: vi.fn(() => ({
         from: () => ({

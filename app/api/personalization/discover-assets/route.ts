@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import type { ImageCandidate, SocialProfileSource } from '@/server/discoveryProvider'
 import type { DiscoveredAsset } from '@/server/discoverAssets'
@@ -10,10 +10,9 @@ import {
   updateDiscoveryJob,
   type DiscoveryJobRow,
 } from '@/server/discoveryJobs'
+import { withDbTimeout, DiscoveryDbTimeoutError, DISCOVERY_BUSY_MESSAGE } from '@/server/dbTimeout'
 import { buildDiscoveryJobResponse } from '@/server/discoveryJobResponse'
-import { runFastDiscovery } from '@/server/discoveryOrchestrator'
 import { assertSafeUrlString } from '@/lib/networkSafety'
-import { DISCOVERY_SYNC_BUDGET_MS } from '@/server/discoveryPolicy'
 
 export const dynamic = "force-dynamic";
 
@@ -39,13 +38,19 @@ type RawDiscoveryResult = {
 }
 
 const discoveryCache = new Map<string, { result: RawDiscoveryResult; expiresAt: number }>()
-const CACHE_TTL_MS = (process.env.FIRECRAWL_DISCOVERY_CACHE_TTL_MS || '86400000') as string
-const cacheTtlMs = Number.isNaN(Number(CACHE_TTL_MS)) ? 86400000 : Number(CACHE_TTL_MS)
 const isTestModeAllowed = process.env.NODE_ENV !== 'production'
 
 const RATE_LIMIT_WINDOW_MS = 60_000
 const RATE_LIMIT_MAX_REQUESTS = 10
 const MAX_WEBSITE_URL_LENGTH = 2048
+
+// Shared secret for internal dispatch to the background worker. Mirrors the
+// pattern used by assets.js, brands.js, campaigns.js, and photo-studio.js:
+// every internal call carries `x-internal-service-token`, and the worker
+// rejects calls that lack it or carry the wrong value. Anonymous callers can
+// still trigger discovery — the secret authenticates the dispatch, not the
+// end user.
+const INTERNAL_FUNCTION_SECRET = process.env.INTERNAL_FUNCTION_SECRET || ''
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
 
@@ -152,24 +157,40 @@ async function dispatchBackgroundJob(
   jobId: string,
   websiteUrl: string,
   priorityPages: string[],
+  jobOwnerId: string,
 ): Promise<{ dispatched: boolean; reason?: string }> {
   const workerUrl = backgroundWorkerUrl(req)
   if (!workerUrl) {
     return { dispatched: false, reason: 'NO_BACKGROUND_WORKER_URL' }
   }
 
+  // Discovery is free: a Clerk session is not required to dispatch a
+  // background job. Anonymous callers are scoped by their IP-scoped job owner
+  // id (set when the job row was created). The background worker accepts
+  // requests without a session token and drives the job under its existing
+  // owner identity.
   const sessionToken = extractClerkSessionToken(req)
-  if (!sessionToken) {
-    return { dispatched: false, reason: 'NO_SESSION_TOKEN' }
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    // This fetch is server-to-server, so the worker sees this function's
+    // egress IP, never the end user's. The owner the job was created under is
+    // forwarded explicitly so the worker can match it against the job row.
+    'x-discovery-job-owner': jobOwnerId,
+  }
+  if (sessionToken) {
+    headers.Authorization = `Bearer ${sessionToken}`
+  }
+  // Internal dispatch authentication: every call to the background worker
+  // carries INTERNAL_FUNCTION_SECRET so the worker can reject public
+  // invocation. Mirrors assets.js, brands.js, campaigns.js, photo-studio.js.
+  if (INTERNAL_FUNCTION_SECRET) {
+    headers['x-internal-service-token'] = INTERNAL_FUNCTION_SECRET
   }
 
   try {
     const response = await fetch(workerUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${sessionToken}`,
-      },
+      headers,
       body: JSON.stringify({
         jobId,
         websiteUrl,
@@ -275,19 +296,31 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const cacheKey = `${websiteUrl}:${testMode ? 'test' : 'live'}:${userId || 'anon'}`
+    const cacheKey = `${websiteUrl}:${testMode ? 'test' : 'live'}:${jobOwnerId}`
 
     // The job row is created BEFORE the crawl starts. The caller gets a job
     // id it can poll even when the crawl outlives the synchronous budget,
     // and the row is the proof that the job belongs to this caller.
     let job: DiscoveryJobRow
     try {
-      job = await createDiscoveryJob({
+      job = await withDbTimeout(createDiscoveryJob({
         clerkUserId: jobOwnerId,
         websiteUrl,
         telemetry: { startedAt: new Date().toISOString(), anonymous: !userId },
-      })
+      }))
     } catch (err) {
+      if (err instanceof DiscoveryDbTimeoutError) {
+        logPersonalization({
+          route: '/api/personalization/discover-assets',
+          stage: 'job-create',
+          httpStatus: 503,
+          safeErrorCode: 'JOB_STORE_TIMEOUT',
+          safeMessage: 'Discovery job store did not respond in time',
+          correlationId,
+          durationMs: Date.now() - startTime,
+        })
+        return NextResponse.json({ error: DISCOVERY_BUSY_MESSAGE }, { status: 503, headers: { 'Retry-After': '60' } })
+      }
       logPersonalization({
         route: '/api/personalization/discover-assets',
         stage: 'job-create',
@@ -352,190 +385,59 @@ export async function POST(req: NextRequest) {
     }
 
     const startedAt = new Date().toISOString()
-    await updateDiscoveryJob(job.id, { status: 'running', startedAt }).catch((persistErr) => {
+    await withDbTimeout(updateDiscoveryJob(job.id, { status: 'running', startedAt })).catch((persistErr) => {
       console.error('[discover-assets] Failed to persist job state:', persistErr)
     })
 
-    // The synchronous phase is bounded. Everything the crawl does — the page
-    // fetches, the sitemap fetches, the image probes — is clamped to the
-    // remaining budget, so a slow site can never hold this request open.
-    const deadlineAt = Date.now() + DISCOVERY_SYNC_BUDGET_MS
-
-    let fastResult: RawDiscoveryResult | null = null
-    let fastError: string | null = null
-    // The browser phase is an escalation: it only runs when the free layers
-    // could not answer on their own. The default is therefore "no browser",
-    // and ENABLE_BROWSER_DISCOVERY=false switches the escalation off
-    // entirely so an operator can keep a deployment on the free pipeline.
-    let needsBrowser = false
-    try {
-      const fast = await runFastDiscovery({
-        websiteUrl,
-        maxPages: 4,
-        maxImages: 20,
-        deadlineAt,
-      })
-      needsBrowser = fast.needsBrowser && process.env.ENABLE_BROWSER_DISCOVERY !== 'false'
-      fastResult = {
-        ...fast.result,
-        discoveredAssets: fast.fastAssets,
-      }
-    } catch (fastErr) {
-      fastError = fastErr instanceof Error ? fastErr.message : String(fastErr)
-    }
-
-    const discoveredAssets = fastResult?.discoveredAssets || []
-
-    if (fastResult && !needsBrowser) {
-      // The free layers answered within the budget: the job is done and the
-      // caller gets the assets straight away.
-      await updateDiscoveryJob(job.id, {
-        status: 'complete',
-        completedAt: new Date().toISOString(),
-        fastResult,
-        finalResult: fastResult,
-        telemetry: {
-          providerAttempts: fastResult.providerAttempts,
-          providerUsed: fastResult.providerUsed,
-          pagesCrawled: fastResult.pagesCrawled,
-          rawCandidates: fastResult.rawCandidates,
-        },
-      }).catch((persistErr) => {
-        console.error('[discover-assets] Failed to persist job state:', persistErr)
-      })
-
-      logPersonalization({
-        route: '/api/personalization/discover-assets',
-        stage: 'discovery',
-        provider: fastResult.providerUsed,
-        httpStatus: 202,
-        correlationId,
-        durationMs: Date.now() - startTime,
-      })
-
-      // 202 in every case: a discovery JOB was accepted, and the job id is
-      // the handle the caller polls. The body says whether the free layers
-      // already answered (`complete`) or whether the browser phase is still
-      // running (`processing`).
-      return NextResponse.json(
-        {
-          ok: true,
-          cached: false,
-          status: 'complete',
-          providerUsed: fastResult.providerUsed,
-          providerAttempted: fastResult.providerAttempted,
-          discoveredAssets,
-          candidates: fastResult.candidates,
-          count: discoveredAssets.length,
-          pagesCrawled: fastResult.pagesCrawled,
-          rawCandidates: fastResult.rawCandidates,
-          duration: fastResult.duration,
-          socialProfiles: fastResult.socialProfiles,
-          jobId: job.id,
-          browserQueued: false,
-        },
-        { status: 202 },
-      )
-    }
-
-    // The free layers did not answer (or did not answer in time). The job
-    // continues out of band and the caller polls for it.
-    await updateDiscoveryJob(job.id, {
-      status: 'running',
-      fastResult: fastResult ?? undefined,
-      telemetry: {
-        providerAttempts: fastResult?.providerAttempts || [],
-        providerUsed: fastResult?.providerUsed,
-        pagesCrawled: fastResult?.pagesCrawled ?? 0,
-        rawCandidates: fastResult?.rawCandidates ?? 0,
-        fastError: fastError ?? null,
-      },
-    }).catch((persistErr) => {
-      console.error('[discover-assets] Failed to persist job state:', persistErr)
-    })
-
+    // Discovery always runs in the background worker. The HTTP handler never
+    // runs the crawl synchronously: a slow site would hold this serverless
+    // function open past Netlify's 30s limit and return 504 before the caller
+    // ever receives a job id. The worker performs the full pipeline — static
+    // HTTP, sitemap, Crawlee/Cheerio, and browser escalation when enabled —
+    // and writes the result back to the job row for the status endpoint.
     const priorityPages = Array.from(
       new Set([
         websiteUrl,
-        ...(fastResult?.candidates || []).map((candidate) => candidate.sourcePage).filter(Boolean),
       ]),
     ).slice(0, 4)
 
-    const dispatch = await dispatchBackgroundJob(req, job.id, websiteUrl, priorityPages)
-
-    if (!dispatch.dispatched) {
-      // Nothing is going to finish this job. It has to reach a terminal state
-      // here, otherwise the caller polls a job that stays `running` for ever
-      // and the UI reports a timeout.
-      const hasAssets = discoveredAssets.length > 0
-      await updateDiscoveryJob(job.id, {
-        status: hasAssets ? 'complete' : 'error',
-        completedAt: new Date().toISOString(),
-        finalResult: fastResult ?? undefined,
-        errorCode: hasAssets ? undefined : (dispatch.reason || 'BACKGROUND_DISPATCH_FAILED'),
-        errorMessage: hasAssets ? undefined : (dispatch.reason || 'Background discovery could not be started'),
-        telemetry: {
-          providerAttempts: fastResult?.providerAttempts || [],
-          providerUsed: fastResult?.providerUsed,
-          pagesCrawled: fastResult?.pagesCrawled ?? 0,
-          rawCandidates: fastResult?.rawCandidates ?? 0,
-          backgroundDispatchReason: dispatch.reason,
-        },
-      }).catch((persistErr) => {
-        console.error('[discover-assets] Failed to persist job state:', persistErr)
-      })
-
-      logPersonalization({
-        route: '/api/personalization/discover-assets',
-        stage: 'background-dispatch',
-        httpStatus: 202,
-        safeErrorCode: dispatch.reason,
-        safeMessage: 'Background discovery could not be started',
-        correlationId,
-        durationMs: Date.now() - startTime,
-      })
-
-      if (hasAssets) {
-        return NextResponse.json(
-          {
-            ok: true,
-            cached: false,
-            status: 'complete',
-            providerUsed: fastResult?.providerUsed,
-            providerAttempted: fastResult?.providerAttempted,
-            discoveredAssets,
-            candidates: fastResult?.candidates || [],
-            count: discoveredAssets.length,
-            pagesCrawled: fastResult?.pagesCrawled ?? 0,
-            rawCandidates: fastResult?.rawCandidates ?? 0,
-            duration: fastResult?.duration ?? 0,
-            socialProfiles: fastResult?.socialProfiles || [],
-            jobId: job.id,
-            browserQueued: false,
-          },
-          { status: 202 },
-        )
-      }
-
-      return NextResponse.json(
-        {
-          ok: true,
-          cached: false,
-          status: 'error',
-          jobId: job.id,
-          browserQueued: false,
-          error: 'Discovery could not be completed',
-          discoveredAssets: [],
-          count: 0,
-        },
-        { status: 202 },
-      )
+    // Durably dispatch discovery to the background worker. `after()` keeps the
+    // serverless function alive until the dispatch settles, so a slow network
+    // or cold-starting worker cannot lose the job. If this function dies before
+    // the dispatch settles, the stale-job watchdog on the status endpoint
+    // recovers the job on the next poll.
+    // `after()` throws outside a Next.js request scope (e.g. unit tests),
+    // so we fall back to fire-and-forget there.
+    // A dispatch the worker refused (or never received) is recorded on the job
+    // straight away, so the caller's next poll reports the real reason instead
+    // of waiting for the watchdog. `expectedStatus` keeps it from overwriting a
+    // result the worker already wrote.
+    const dispatchAndRecord = () =>
+      dispatchBackgroundJob(req, job.id, websiteUrl, priorityPages, jobOwnerId)
+        .then(async (dispatch) => {
+          if (dispatch.dispatched) return
+          console.error('[discover-assets] Background dispatch failed:', dispatch.reason)
+          await updateDiscoveryJob(job.id, {
+            status: 'error',
+            completedAt: new Date().toISOString(),
+            errorCode: (dispatch.reason || 'BACKGROUND_DISPATCH_FAILED').split(':')[0],
+            errorMessage: 'Asset discovery could not be started. Please try again.',
+            expectedStatus: 'running',
+          })
+        })
+        .catch((dispatchErr) => {
+          console.error('[discover-assets] Background dispatch failed:', dispatchErr instanceof Error ? dispatchErr.message : String(dispatchErr))
+        })
+    try {
+      // The callback returns the promise so `after()` waits for it.
+      after(dispatchAndRecord)
+    } catch {
+      void dispatchAndRecord()
     }
 
     logPersonalization({
       route: '/api/personalization/discover-assets',
       stage: 'discovery',
-      provider: fastResult?.providerUsed,
       httpStatus: 202,
       correlationId,
       durationMs: Date.now() - startTime,
@@ -545,18 +447,18 @@ export async function POST(req: NextRequest) {
       {
         ok: true,
         cached: false,
-        status: 'processing',
-        providerUsed: fastResult?.providerUsed,
-        providerAttempted: fastResult?.providerAttempted,
-        discoveredAssets,
-        candidates: fastResult?.candidates || [],
-        count: discoveredAssets.length,
-        pagesCrawled: fastResult?.pagesCrawled ?? 0,
-        rawCandidates: fastResult?.rawCandidates ?? 0,
-        duration: fastResult?.duration ?? 0,
-        socialProfiles: fastResult?.socialProfiles || [],
+        status: 'pending',
+        providerUsed: null,
+        providerAttempted: null,
+        discoveredAssets: [],
+        candidates: [],
+        count: 0,
+        pagesCrawled: 0,
+        rawCandidates: 0,
+        duration: 0,
+        socialProfiles: [],
         jobId: job.id,
-        browserQueued: true,
+        browserQueued: false,
       },
       { status: 202 },
     )

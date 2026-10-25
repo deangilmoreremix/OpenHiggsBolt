@@ -22,8 +22,10 @@
  *    gate.
  */
 
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { CheerioCrawler } from '@crawlee/cheerio'
-import { GotScrapingHttpClient } from '@crawlee/core'
+import { Configuration, GotScrapingHttpClient } from '@crawlee/core'
 import * as cheerio from 'cheerio'
 import { sanitizeUrl } from './discoverAssets'
 import { isJunkAssetUrl, isSocialAssetUrl, normalizeAssetUrl, tokenize } from './discoveryAssetFilter'
@@ -236,6 +238,16 @@ export async function discoverWithCrawlee(
     allCandidates.push(candidate)
   }
 
+  // Crawlee persists its request queue under `./storage` by default. On
+  // Netlify the working directory is the read-only `/var/task`, so the crawl
+  // died with `ENOENT: mkdir '/var/task/storage'`. A single crawl never needs
+  // its queue to outlive the process: keep storage in memory, and point any
+  // directory Crawlee still resolves at the writable temp directory.
+  const crawleeConfig = new Configuration({
+    persistStorage: false,
+    storageClientOptions: { localDataDirectory: join(tmpdir(), 'crawlee-storage') },
+  })
+
   const crawler = new CheerioCrawler({
     maxRequestsPerCrawl: MAX_PAGES,
     maxConcurrency: 2,
@@ -329,7 +341,7 @@ export async function discoverWithCrawlee(
         }
       }
     },
-  })
+  }, crawleeConfig)
 
   // The sitemap pages are crawled first: they are the pages a business
   // points a crawler at on purpose.

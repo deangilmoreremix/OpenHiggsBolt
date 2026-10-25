@@ -1,10 +1,10 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
+import { test } from 'vitest';
+import assert from 'node:assert/strict';
 
-const {
+import {
     pickBinaryAssetForPlatform,
     getBundledBinaryResourceDir,
-} = require('../electron/lib/localInferenceAssets');
+} from '../electron/lib/localInferenceAssets';
 
 test('pickBinaryAssetForPlatform prefers native linux arm64 assets', () => {
     const zipNames = [
