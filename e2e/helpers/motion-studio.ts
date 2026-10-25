@@ -21,6 +21,8 @@ export const BASE_URL = process.env.MS_BASE_URL ?? 'http://127.0.0.1:3100';
 
 /** Motion Studio's internal router switches /new → / once this flag is set. */
 export const ENTRY_SEEN_KEY = 'motion-studio:entry-seen-v1';
+/** Motion Director keeps its own copy (src/apps/motion-director/MotionStudio.tsx). */
+export const DIRECTOR_ENTRY_SEEN_KEY = 'motion-director:entry-seen-v1';
 
 /** Workbench panel widths (see `usePanelSize` in `src/apps/motion-studio/App.tsx`). */
 export const LIB_PANEL_WIDTH_KEY = 'wb-lib-w';
@@ -102,8 +104,8 @@ export async function installStudioSession(page: Page, seed: StudioSeed = {}): P
     openai_key: DUMMY_OPENAI_KEY,
     ...(seed.extra ?? {}),
   };
-  if (seed.entrySeen) entries[ENTRY_SEEN_KEY] = '1';
-  else entries[ENTRY_SEEN_KEY] = '';
+  entries[ENTRY_SEEN_KEY] = seed.entrySeen ? '1' : '';
+  entries[DIRECTOR_ENTRY_SEEN_KEY] = seed.entrySeen ? '1' : '';
   if (seed.libWidth !== undefined) entries[LIB_PANEL_WIDTH_KEY] = String(seed.libWidth);
   if (seed.inspectorWidth !== undefined) entries[INSPECTOR_WIDTH_KEY] = String(seed.inspectorWidth);
   if (seed.timelineHeight !== undefined) entries[TIMELINE_HEIGHT_KEY] = String(seed.timelineHeight);

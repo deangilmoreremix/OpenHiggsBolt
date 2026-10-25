@@ -194,7 +194,7 @@ export default function MotionStudioEntry() {
   const fileRef = useRef<HTMLInputElement>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const placeholder = useTypingPlaceholder(PLACEHOLDERS, Boolean(description));
-  const hasSeenEntry = typeof window !== 'undefined' && !!window.localStorage.getItem('motion-studio:entry-seen-v1');
+  const hasSeenEntry = typeof window !== 'undefined' && !!window.localStorage.getItem('motion-director:entry-seen-v1');
   const hasCurrentProject = hasSeenEntry && project.tracks.some((track) => track.clips.length > 0);
 
   const searchResults = useMemo(() => {
@@ -313,7 +313,7 @@ export default function MotionStudioEntry() {
 
   const openWorkbench = () => {
     try {
-      window.localStorage.setItem('motion-studio:entry-seen-v1', '1');
+      window.localStorage.setItem('motion-director:entry-seen-v1', '1');
     } catch {
       /* private mode / storage disabled — entry will just reappear next visit */
     }
@@ -367,7 +367,7 @@ export default function MotionStudioEntry() {
   const openSession = (id: string) => {
     applySession(id);
     try {
-      window.localStorage.setItem('motion-studio:entry-seen-v1', '1');
+      window.localStorage.setItem('motion-director:entry-seen-v1', '1');
     } catch {
       /* storage disabled */
     }

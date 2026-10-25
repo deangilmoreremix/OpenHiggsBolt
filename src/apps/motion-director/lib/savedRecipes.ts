@@ -7,7 +7,7 @@
  * copy of it.
  */
 
-const STORAGE_KEY = 'motion-studio:saved-recipes-v1';
+const STORAGE_KEY = 'motion-director:saved-recipes-v1';
 
 export interface SavedRecipe {
   /** Catalog shot id — `motionCardId` maps it to the registry card. */

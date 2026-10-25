@@ -14,8 +14,8 @@ export { projectDuration } from "./types";
 
 // Kept for backwards compatibility with saved projects written by the original
 // "shotcraft-workbench" tool so returning users keep their existing project.
-const STORAGE_KEY = "shotcraft-workbench-project-v1";
-const SESSIONS_STORAGE_KEY = "shotcraft-motion-sessions-v1";
+const STORAGE_KEY = "motion-director:project-v1";
+const SESSIONS_STORAGE_KEY = "motion-director:sessions-v1";
 
 const loadSaved = (): ProjectData | null => {
   try {

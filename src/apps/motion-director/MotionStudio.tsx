@@ -31,7 +31,7 @@ import './styles.css';
 const MotionStudioWorkbench = dynamic(() => import('./App').then((m) => m.App), { ssr: false });
 const MotionStudioEntry = dynamic(() => import('./pages/MotionStudioEntry').then((m) => m.default), { ssr: false });
 
-const ENTRY_SEEN_KEY = 'motion-studio:entry-seen-v1';
+const ENTRY_SEEN_KEY = 'motion-director:entry-seen-v1';
 
 /** Host URL of the Motion Studio workspace (the INPUT step is `<root>/new`). */
 const STUDIO_ROOT_PATH = '/studio/motion-director';

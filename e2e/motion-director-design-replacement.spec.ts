@@ -81,12 +81,31 @@ test.describe('Motion Studio and Motion Director are separate studios', () => {
     // Motion Director: the Design Agent home with the director prompt.
     await page.goto(`${BASE_URL}/studio/motion-director/new`);
     await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
-    await expect(page.getByRole('button', { name: /Select a recipe/ })).toBeVisible();
+    await expect(page.getByText('Films are easier with')).toBeVisible();
     await expect(page).toHaveURL(/\/studio\/motion-director/);
     // Motion Studio: the original studio stays on its own route.
     await page.goto(`${BASE_URL}/studio/motion-studio/new`);
     await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
-    await expect(page.getByRole('button', { name: /Select a recipe/ })).toHaveCount(0);
+    await expect(page.getByText('Describe your video')).toBeVisible();
+    await expect(page.getByText('Films are easier with')).toHaveCount(0);
     await expect(page).toHaveURL(/\/studio\/motion-studio/);
+  });
+});
+
+test.describe('Motion Studio and Motion Director keep separate projects', () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test('a project saved in one studio does not open in the other', async ({ page }) => {
+    await installStudioSession(page, {
+      entrySeen: true,
+      extra: {
+        'shotcraft-workbench-project-v1': JSON.stringify({ name: 'Studio only project', fps: 30, width: 1920, height: 1080, background: '#000000', tracks: [] }),
+      },
+    });
+    await page.goto(`${BASE_URL}/studio/motion-director`);
+    await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
+    await expect(page.locator('.project-name')).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator('.project-name')).not.toHaveValue('Studio only project');
+    expect(await page.evaluate(() => localStorage.getItem('shotcraft-workbench-project-v1'))).toContain('Studio only project');
   });
 });

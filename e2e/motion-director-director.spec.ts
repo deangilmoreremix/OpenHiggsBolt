@@ -154,7 +154,7 @@ test.describe('Motion Studio director', () => {
     expect(calls.edit).toBe(1);
     await expect
       .poll(async () => page.evaluate(() => {
-        const p = JSON.parse(localStorage.getItem('shotcraft-workbench-project-v1') || '{}');
+        const p = JSON.parse(localStorage.getItem('motion-director:project-v1') || '{}');
         return p.tracks?.flatMap((t: any) => t.clips).find((c: any) => c.cardId === 'inkpress-title-card')?.props?.text ?? null;
       }), { timeout: 10_000 })
       .toBe('Acme ships *faster*');

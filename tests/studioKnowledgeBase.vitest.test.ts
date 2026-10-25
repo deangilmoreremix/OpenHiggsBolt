@@ -26,8 +26,8 @@ describe('studioKnowledgeBase source-of-truth', () => {
     expect(studios.length).toBeGreaterThan(0);
   });
 
-  it('has exactly 21 entries', () => {
-    expect(studios).toHaveLength(21);
+  it('has exactly 22 entries', () => {
+    expect(studios).toHaveLength(22);
   });
 
   it('every entry has required fields', () => {
@@ -71,7 +71,7 @@ describe('studioKnowledgeBase source-of-truth', () => {
       'image', 'video', 'audio', 'clipping', 'vibe-motion', 'lipsync',
       'cinema', 'storyboard', 'marketing', 'recast', 'layers', 'workflows',
       'agents', 'design-agent', 'vfx-studio', 'thumbnail-studio',
-      'ai-influencer', 'social-publishing', 'go-ai-viral'
+      'ai-influencer', 'social-publishing', 'go-ai-viral', 'motion-director'
     ];
     const kbIds = new Set(studios.map(e => e.id));
     for (const id of tabIds) {
