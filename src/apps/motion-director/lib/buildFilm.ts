@@ -4,7 +4,8 @@
  * Builds the same structure as the Ink Press template / demo project: a Shots
  * track (recipe shots and title cards back to back), a Captions track, a
  * Transitions track (flash cuts on the scene changes the plan asked for), the
- * paper background, and an optional music track. Every clip is an ordinary
+ * paper background, an SFX track (a whoosh on each cut, an impact on flash
+ * cuts), and an optional music track. Every clip is an ordinary
  * card with props, so the whole film stays editable in the Workbench.
  */
 import { CARDS } from '../cards/registry';
@@ -32,6 +33,10 @@ export interface FilmMusic {
 
 const FPS = 30;
 const FLASH_FRAMES = 10;
+/** Sound effects served from public/ (copied from the ShotCraft SFX library). */
+const SFX_CUT = 'motion-studio/sfxlib/transition/swoosh-quick.mp3';
+const SFX_FLASH = 'motion-studio/sfxlib/impact/impact-transition.mp3';
+const SFX_FRAMES = 24;
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 const clip = (cardId: string, start: number, duration: number, props: Record<string, unknown>, extra: Partial<ClipData> = {}): ClipData => ({
@@ -101,6 +106,7 @@ export function planToProject(
   const shots: ClipData[] = [];
   const captions: ClipData[] = [];
   const flashes: ClipData[] = [];
+  const sfx: ClipData[] = [];
   let at = 0;
 
   plan.scenes.forEach((scene, i) => {
@@ -135,22 +141,26 @@ export function planToProject(
       }
     }
     at += frames;
-    if (scene.transition === 'flash' && i < plan.scenes.length - 1) {
-      flashes.push(clip('inkpress-flash-cut', Math.max(0, at - FLASH_FRAMES / 2), FLASH_FRAMES, {}));
+    if (i < plan.scenes.length - 1) {
+      // Every scene change gets a whoosh; flash cuts also get an impact hit.
+      const flash = scene.transition === 'flash';
+      if (flash) flashes.push(clip('inkpress-flash-cut', Math.max(0, at - FLASH_FRAMES / 2), FLASH_FRAMES, {}));
+      sfx.push(clip('audio-clip', Math.max(0, at - SFX_FRAMES / 2), SFX_FRAMES, { file: flash ? SFX_FLASH : SFX_CUT, volume: 0.6 }, { label: flash ? 'Impact' : 'Whoosh' }));
     }
   });
 
   const total = Math.max(at, FPS);
   const tracks = [
-    { id: uid('track'), name: 'Transitions', clips: flashes },
+    { id: uid('track'), name: t('track.transitions'), clips: flashes },
     { id: uid('track'), name: t('track.captions'), clips: captions },
     { id: uid('track'), name: t('track.shots'), clips: shots },
     { id: uid('track'), name: t('track.background'), clips: [clip('bg-paper', 0, total, { color: palette.background })] },
+    { id: uid('track'), name: t('track.sfx'), clips: sfx },
   ];
   if (opts.music?.url) {
     tracks.push({
       id: uid('track'),
-      name: 'Music',
+      name: t('track.music'),
       clips: [clip('audio-clip', 0, total, { file: opts.music.url }, { label: opts.music.name.slice(0, 32) })],
     });
   }

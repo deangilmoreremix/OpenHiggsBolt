@@ -246,7 +246,7 @@ export const App: React.FC = () => {
         >
           ← Projects
         </button>
-        <span className="logo">Motion <b>Studio</b></span>
+        <span className="logo">Motion <b>Director</b></span>
         <input
           className="project-name"
           value={project.name}

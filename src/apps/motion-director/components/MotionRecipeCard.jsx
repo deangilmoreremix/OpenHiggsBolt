@@ -120,7 +120,7 @@ export default function MotionRecipeCard({
       setDragPayload(e, {
         cardId,
         duration: recipe.durationInFrames,
-        label: recipe.name,
+        label: recipe.nameEn ? motionTemplateTitle(recipe) : recipe.name,
       });
     },
     [cardId, recipe],

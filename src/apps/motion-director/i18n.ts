@@ -562,6 +562,11 @@ export const useT = () => {
 // —— 内容标签词典（zh → en）——
 // 键是卡片 / 清单里写的原文；" · " 分隔的复合标签按段翻译。改卡片文案时同步这里，查不到会原样显示（中文），一眼能看出漏了。
 const LABELS_ZH_EN: Record<string, string> = {
+  "标题文本": "Title text",
+  "标题字号": "Title size",
+  "标题颜色": "Title color",
+  "画面染色": "Tint",
+  "染色强度": "Tint strength",
   // 分类
   "内置卡": "Built-in cards",
   "成片单元": "Film units",
@@ -684,6 +689,11 @@ const LABELS_ZH_EN: Record<string, string> = {
   ...DEMO_CATEGORY_EN,
 };
 const LABELS_ZH_RU: Record<string, string> = {
+  "标题文本": "Текст заголовка",
+  "标题字号": "Размер заголовка",
+  "标题颜色": "Цвет заголовка",
+  "画面染色": "Тонировка",
+  "染色强度": "Сила тонировки",
   "内置卡": "Встроенные",
   "成片单元": "Элементы видео",
   "音频": "Аудио",

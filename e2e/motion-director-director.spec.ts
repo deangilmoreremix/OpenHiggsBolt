@@ -133,8 +133,9 @@ test.describe('Motion Studio director', () => {
     await page.getByRole('button', { name: 'Approve & build film' }).click();
     await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
     await expect(page.locator('.project-name')).toHaveValue('Acme launch film');
-    // 4 scenes + 2 caption strips (one per shot; title cards carry theirs as a subtitle) + 1 flash cut + background
-    await expect(page.locator('.clip')).toHaveCount(8, { timeout: 30_000 });
+    // 4 scenes + 2 caption strips (one per shot; title cards carry theirs as a subtitle)
+    // + 1 flash cut + 3 sound effects (one per scene change) + background
+    await expect(page.locator('.clip')).toHaveCount(11, { timeout: 30_000 });
 
     // The product shot renders the captured page, not the sample texture.
     // Seek into the product shot (2.5s–7s) by clicking the ruler above it.

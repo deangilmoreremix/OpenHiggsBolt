@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { existsSync } from 'node:fs';
 import { MOTION_TEMPLATES, motionCardId } from '@/data/motionRecipeCatalog';
 import { PLAN_LIMITS, buildCatalogBrief, validateEditOps, validatePlan } from '../lib/directorPlan';
 import { planToProject, snapToBeats } from '../lib/buildFilm';
@@ -109,6 +110,12 @@ describe('film assembly', () => {
     expect(shots[1].props).toMatchObject({ screens: ['https://cdn.example/page.jpg'], crops: ['https://cdn.example/crop-1.jpg'] });
     expect(shots[2].props.screens).toBeUndefined();
     expect(byName.Transitions.map((c) => c.cardId)).toEqual(['inkpress-flash-cut']);
+    // One sound effect per scene change: a whoosh on the plain cut, an impact on the flash cut.
+    expect(byName.SFX.map((c) => c.props.file)).toEqual([
+      'motion-studio/sfxlib/transition/swoosh-quick.mp3',
+      'motion-studio/sfxlib/impact/impact-transition.mp3',
+    ]);
+    for (const c of byName.SFX) expect(existsSync(`public/${c.props.file}`), String(c.props.file)).toBe(true);
     expect(byName.Music[0]).toMatchObject({ cardId: 'audio-clip', props: { file: 'blob:music' } });
     expect(project.name).toBe('Acme launch');
     expect(project.background).toBe('#101010');
