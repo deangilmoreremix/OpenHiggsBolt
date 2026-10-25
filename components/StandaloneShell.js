@@ -284,6 +284,12 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
       setActiveTab(tabId);
       return;
     }
+    // Leaving a dedicated route (e.g. /workflow/[id]) needs a real transition:
+    // its route params (params.id) would otherwise stay stale after pushState.
+    if (!window.location.pathname.startsWith('/studio')) {
+      router.push(`/studio/${tabId}`);
+      return;
+    }
     // Same-page navigation (upstream behaviour): router.push to another
     // /studio/<tab> value remounts the whole route segment, which unmounted
     // every studio and dropped in-flight generations. pushState keeps the shell
@@ -312,7 +318,9 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
   // Cross-studio handoff: listen for studios that request a tab switch via
   // the shared `storyboard:send-to` event. The source studio writes its
   // payload to localStorage before emitting, so the target studio can apply
-  // it on mount.
+  // it on mount. A persistent studio that is already mounted is remounted
+  // (its key is bumped) so it reads the new payload.
+  const [handoffKeys, setHandoffKeys] = useState({})
   const handleTabChangeRef = useRef(handleTabChange)
   useEffect(() => {
     handleTabChangeRef.current = handleTabChange
@@ -325,6 +333,9 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
         typeof target === 'string' && SLUG_TO_TAB[target]
           ? SLUG_TO_TAB[target]
           : target
+      if (PERSISTENT_STUDIO_TABS.includes(tabId)) {
+        setHandoffKeys((previous) => ({ ...previous, [tabId]: (previous[tabId] || 0) + 1 }))
+      }
       handleTabChangeRef.current(tabId)
     }
     window.addEventListener('storyboard:send-to', handler)
@@ -714,7 +725,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
     const active = activeTab === tabId;
     if (!active && !visitedTabs.has(tabId)) return null;
     return (
-      <div key={tabId} className={active ? 'h-full w-full' : 'hidden'}>
+      <div key={`${tabId}:${handoffKeys[tabId] || 0}`} className={active ? 'h-full w-full' : 'hidden'}>
         {render(active)}
       </div>
     );

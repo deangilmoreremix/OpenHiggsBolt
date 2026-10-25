@@ -381,6 +381,44 @@ test.describe('studio workflows (MuAPI MOCKED)', () => {
     expect(errors).toEqual([]);
   });
 
+  test('"Send to" a studio that is already open applies the new hand-off', async ({ page }) => {
+    const errors = trackPageErrors(page);
+    await openVideoStudio(page);
+    const prompt = page.getByPlaceholder('Describe the video you want to create');
+    await prompt.fill('old prompt before hand-off');
+    await page.getByRole('button', { name: 'Image Studio', exact: true }).first().click();
+    await expect(prompt).toBeHidden();
+
+    // What the Storyboard "Send to" menu does: write the payload, then emit.
+    await page.evaluate(() => {
+      localStorage.setItem('storyboard_to_studio', JSON.stringify({
+        version: 1, target: 'video', from: 'storyboard', projectName: 'Smoke project',
+        aspectRatio: '16:9', episodeDuration: 5, videoUrl: null, referenceImageUrl: null,
+        characterNames: [], shots: [], combinedPrompt: 'storyboard hand-off prompt',
+        firstFrameUrl: null, createdAt: new Date().toISOString(),
+      }));
+      window.dispatchEvent(new CustomEvent('storyboard:send-to', { detail: { target: 'video' } }));
+    });
+    await expect(page).toHaveURL(/\/studio\/video$/);
+    await expect(prompt).toBeVisible();
+    await expect(prompt).toHaveValue('storyboard hand-off prompt');
+    expect(errors).toEqual([]);
+  });
+
+  test('leaving a dedicated /workflow/<id> page lands on the requested studio', async ({ page }) => {
+    // Workflow list endpoints return arrays.
+    await page.route('**/api/workflow/**', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }),
+    );
+    await page.goto(urlFor(STUDIO, '/workflow/wf_smoke_1'), { waitUntil: 'networkidle' });
+    await expect(page.locator('body')).not.toContainText('Something went wrong');
+    await page.evaluate(() =>
+      window.dispatchEvent(new CustomEvent('storyboard:send-to', { detail: { target: 'image' } })),
+    );
+    await expect(page).toHaveURL(/\/studio\/image$/, { timeout: 60_000 });
+    await expect(page.getByPlaceholder('Describe the image you want to create')).toBeVisible({ timeout: 60_000 });
+  });
+
   test('a failed generation raises an error notification (MOCKED)', async ({ page }) => {
     await page.route('**/api/api/v1/**', async (route) => {
       if (route.request().method() === 'POST') {

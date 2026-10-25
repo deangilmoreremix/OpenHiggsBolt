@@ -124,7 +124,7 @@ Scope guards: non-matching studios keep their mount-on-active rendering; Design 
 
 ### 4.1 Browser tests — `e2e/release-smoke.spec.ts` (new)
 
-The public tests ran against a **local production build** (`next build` + `next start`). The studio tests ran against a dev server at the same commit, which honours the repo's E2E auth-bypass cookie. **Paid generation was never called**: every MuAPI request in the studio tests is answered by `page.route` and those tests are labelled MOCKED. Result: **17/17 passed, no retries** (8 public tests on the production build, 9 studio tests including the new shell features).
+The public tests ran against a **local production build** (`next build` + `next start`). The studio tests ran against a dev server at the same commit, which honours the repo's E2E auth-bypass cookie. **Paid generation was never called**: every MuAPI request in the studio tests is answered by `page.route` and those tests are labelled MOCKED. Result: **19/19 passed, no retries** (8 public tests on the production build, 11 studio tests including the new shell features).
 
 | # | Test | Mocked? | Result |
 |---|---|---|---|
@@ -145,6 +145,8 @@ The public tests ran against a **local production build** (`next build` + `next 
 | 15 | **Background generation**: start in Video, switch to Image (URL changes), "Video Studio is generating" stays visible; on completion a toast appears and "Open →" returns to Video with the result | MOCKED | PASS |
 | 16 | Unsaved prompt survives switching studios; browser back/forward follow the URL | key endpoint | PASS |
 | 17 | Failed generation raises an error notification with the provider message; dismiss works | MOCKED | PASS |
+| 18 | Storyboard "Send to" a studio that is already open applies the new hand-off (regression test for a review finding; fails without the fix) | key endpoint | PASS |
+| 19 | Leaving a dedicated `/workflow/<id>` page lands on the requested studio (regression test for a review finding; fails without the fix) | workflow API | PASS |
 
 Screenshots: `docs/assets/upstream-parity-2026-10-23/01…11-*.png`. External thumbnails appear broken because the sandbox blocks the CDN.
 
@@ -190,8 +192,8 @@ Production code changed only in the release tooling (F1) and the studio shell (F
 | F3 | `tests/discover-assets-status-auth.vitest.test.ts` | Still asserted 401 for anonymous polling after `790d952` deliberately allowed anonymous callers to poll their **own** job (the free feature) | Replaced with tests of the intended contract: anonymous polls are scoped to `anon-<ip>`, and another user's job returns 404 | 9/9 |
 | F4 | `tests/muapi-key-route.test.js` | (a) TypeScript annotation in a `.js` file broke the documented `test:muapi` gate. (b) The Supabase mock applied `update()` before `eq()` and was not awaitable, so "saving a MuAPI key keeps the OpenAI key" failed for a mock reason | Removed the annotation; the mock models `update().eq().select()` | 24/24. **Mutation-checked**: making the route null `openai_key` fails the test |
 | F5 | `src/data/__tests__/demoLibraryRegistry.test.ts` | Read every demo video in full (~450 MB) to check a 12-byte header, so it timed out under full-suite load | Reads only the header | 29/29 in 0.13 s |
-| F6 | `components/StandaloneShell.js`, `messages/en/common.json` | Parity gaps in the studio shell: no background generation (studio switches remounted everything) and no generation notifications (§2.6) | Ported upstream behaviour | Browser tests 15–17 |
-| — | `e2e/release-smoke.spec.ts` | New browser smoke suite (§4.1) | — | 17/17 |
+| F6 | `components/StandaloneShell.js`, `messages/en/common.json` | Parity gaps in the studio shell: no background generation (studio switches remounted everything) and no generation notifications (§2.6) | Ported upstream behaviour | Browser tests 15–19 |
+| — | `e2e/release-smoke.spec.ts` | New browser smoke suite (§4.1) | — | 19/19 |
 
 ## 6. Desktop app — out of scope, gaps recorded
 
