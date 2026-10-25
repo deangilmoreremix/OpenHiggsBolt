@@ -159,7 +159,19 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
   const settingsClosedAt = useRef(0);
   const [authError, setAuthError] = useState(null);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const tabNavRef = useRef(null);
   const [hasMounted, setHasMounted] = useState(false);
+  // Keep the open studio's tab visible in the scrolling tab row (the header
+  // only renders once mounted, so re-run when it appears).
+  useEffect(() => {
+    const nav = tabNavRef.current;
+    const btn = nav?.querySelector(`[data-tab="${activeTab}"]`);
+    if (!nav || !btn) return;
+    const left = btn.offsetLeft - nav.offsetLeft;
+    if (left < nav.scrollLeft || left + btn.offsetWidth > nav.scrollLeft + nav.clientWidth) {
+      nav.scrollLeft = Math.max(0, left - nav.clientWidth / 2 + btn.offsetWidth / 2);
+    }
+  }, [activeTab, hasMounted, isHeaderVisible]);
   // Drag and Drop State
   const [isDragging, setIsDragging] = useState(false);
   const [droppedFiles, setDroppedFiles] = useState(null);
@@ -591,12 +603,24 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
           {/* Center: Navigation Container with fade edges */}
           <div className="flex-1 min-w-0 mx-4 sm:mx-6 relative overflow-hidden h-full flex items-center justify-start">
             {/* Fade Left Overlay */}
-            <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#030303] to-transparent pointer-events-none z-10 block lg:hidden" />
+            <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#030303] to-transparent pointer-events-none z-10" />
             
-             <nav className="flex items-center gap-4 overflow-x-auto scrollbar-none w-full lg:w-auto h-full px-4 lg:px-0">
+             <nav
+               ref={tabNavRef}
+               onWheel={(e) => {
+                 // A mouse wheel scrolls vertically; turn it into a sideways
+                 // scroll so every studio tab is reachable without a trackpad.
+                 const el = e.currentTarget;
+                 if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && el.scrollWidth > el.clientWidth) {
+                   el.scrollLeft += e.deltaY;
+                 }
+               }}
+               className="flex items-center gap-4 overflow-x-auto scrollbar-none w-full h-full px-4"
+             >
                {TABS.map((tab) => (
                  <button
                    key={tab.id}
+                   data-tab={tab.id}
                    onClick={() => handleTabChange(tab.id)}
                    className={`relative text-[13px] font-medium transition-all duration-300 whitespace-nowrap px-1 flex-shrink-0 flex items-center h-full ${
                      activeTab === tab.id
@@ -626,7 +650,7 @@ export default function StandaloneShell({ embedded = false, initialTab = null, d
              </nav>
             
             {/* Fade Right Overlay */}
-            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#030303] to-transparent pointer-events-none z-10 block lg:hidden" />
+            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#030303] to-transparent pointer-events-none z-10" />
           </div>
 
           {/* Right: Actions */}
