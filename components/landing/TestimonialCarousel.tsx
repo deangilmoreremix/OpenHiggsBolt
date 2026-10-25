@@ -76,7 +76,7 @@ export default function TestimonialCarousel({ testimonials }: { testimonials: Te
                 transition={{ type: 'spring', stiffness: 260, damping: 22 }}
                 className="landing-card h-full rounded-3xl p-7"
               >
-                <blockquote className="text-base leading-7 text-white/70">"{t.quote}"</blockquote>
+                <blockquote className="text-base leading-7 text-white/70">&ldquo;{t.quote}&rdquo;</blockquote>
                 <figcaption className="mt-6">
                   <div className="font-bold text-white">{t.name}</div>
                   <div className="text-sm text-white/45">{t.role}</div>
