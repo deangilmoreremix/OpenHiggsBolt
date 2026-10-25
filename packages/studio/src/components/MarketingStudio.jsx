@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
 import { uploadFile, generateMarketingStudioAd } from "../muapi.js";
@@ -327,6 +327,19 @@ export default function MarketingStudio({
   onGenerationError,
   historyItems,
   locale = "en",
+  /**
+   * Optional renderer for the shared Personalization Modal hand-off.
+   *
+   * The `studio` package is published standalone, so it MUST NOT import the
+   * app's `src/shared/personalization/studioEntry` module — the app root owns
+   * that wiring and passes the renderer in.
+   *
+   * The argument is a plain `StudioPersonalizeOptions` object:
+   *   { originStudio, studioProjectId, title,
+   *     media: { mediaType, url, poster, aspectRatio, duration, durationLabel },
+   *     prompt: { text, model, modelName } }
+   */
+  renderPersonalizeAction,
 }) {
   const copy = resolveCopy(en, zh, locale);
   const LEGACY_PERSIST_KEY = "hg_marketing_studio_persistent";
@@ -358,6 +371,47 @@ export default function MarketingStudio({
   const [slideDirection, setSlideDirection] = useState("next"); // 'next' | 'prev'
 
   const textareaRef = useRef(null);
+
+  // ── Personalization hand-off (Phase 2) ───────────────────────────────────
+  // Marketing Studio composes several assets (product image, avatar image and
+  // additional references), but the shared Personalization Modal takes ONE
+  // source media — the product image is the primary asset, so it is the one
+  // handed over. The avatar and reference images are deliberately NOT part of
+  // the hand-off.
+  // The Modal keys its saved project on the source id, so the studio project
+  // id has to be unique per project AND stable while the project is
+  // unchanged: the product image file name plus the ad configuration.
+  const studioPersonalizeOptions = useMemo(
+    () => {
+      const sourceUrl = productImage || avatarImage || additionalImages[0] || null;
+      return {
+        originStudio: "marketing",
+        studioProjectId: [
+          sourceUrl ? sourceUrl.split("/").pop() : "no-product",
+          params.ratio,
+          String(params.duration),
+        ].join(":"),
+        title: "Marketing Studio ad",
+        media: {
+          mediaType: "image",
+          url: sourceUrl,
+          poster: null,
+          aspectRatio: params.ratio,
+          duration: params.duration,
+          durationLabel: `${params.duration}s`,
+        },
+        prompt: {
+          text: prompt,
+          model:
+            params.res === "1080p"
+              ? "sd-2-vip-omni-reference-1080p"
+              : "seedance-2-vip-omni-reference",
+          modelName: params.format,
+        },
+      };
+    },
+    [productImage, avatarImage, additionalImages, params, prompt],
+  );
 
   // ── Persistence ───────────────────────────────────────────────────────────
 
@@ -668,6 +722,12 @@ export default function MarketingStudio({
                   onUpload={(files) => handleUpload(files, 'product')}
                   onClear={() => setProductImage(null)}
                 />
+
+                {/* Personalize the product image in the shared Personalization
+                    Modal. Renders nothing without an uploaded source image. */}
+                {studioPersonalizeOptions.media.url
+                  ? renderPersonalizeAction?.(studioPersonalizeOptions)
+                  : null}
                 <UploadSlot
                   label={copy.uploadSlots.avatar}
                   title={`${copy.uploadSlots.uploadPrefix} ${copy.uploadSlots.avatar}`}

@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import assert from 'node:assert';
 
 // We test the pure logic from src/data/types.ts and src/data/demoLookup.ts

@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Save, Loader2, Check, Plus, X, Camera, Sparkles } from 'lucide-react';
 import { panels, buttons, semantic } from '@/shared/styles/designTokens';
+import PersonalizeVideoAction from '@/components/PersonalizeVideoAction';
+import type { StudioPersonalizeOptions } from '@/shared/personalization/studioEntry';
 
 type Brand = {
   id: string;
@@ -85,6 +87,27 @@ export default function BrandPage() {
 
   const update = (field: string, value: any) => setForm((prev) => ({ ...prev, [field]: value }));
 
+  // ── Shared Personalization hand-off ──────────────────────────────────────
+  // The provider is mounted ONCE in app/(brand-studio)/layout.tsx, so this
+  // page only builds the hand-off payload and renders the trigger. The brand
+  // screenshot is Brand Studio's own media; the trigger appears only when
+  // there is one (PersonalizeStep renders nothing without `media.url`).
+  const studioPersonalizeOptions: StudioPersonalizeOptions | null = brand?.screenshot_url
+    ? {
+        originStudio: 'brand-studio',
+        studioProjectId: `${params.id} : ${brand.url || form.brand_name || 'brand'} : ${String(brand.screenshot_url).split('/').pop()}`,
+        title: `${form.brand_name || 'Untitled Brand'} Brand DNA`,
+        category: 'brand-studio',
+        media: {
+          mediaType: 'image',
+          url: brand.screenshot_url,
+          poster: null,
+          aspectRatio: '16:9',
+        },
+        prompt: { text: form.tagline || form.value_proposition || brand.tagline || '' },
+      }
+    : null;
+
   const save = async () => {
     if (!params.id) return;
     setSaving(true);
@@ -154,6 +177,11 @@ export default function BrandPage() {
               <Camera size={14} className="mr-1.5 inline" />
               Photo Studio
             </a>
+            {studioPersonalizeOptions && (
+              <PersonalizeVideoAction options={studioPersonalizeOptions} className="px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-bold text-white/70 hover:text-white hover:border-[#22d3ee]/60 transition-colors">
+                Personalize
+              </PersonalizeVideoAction>
+            )}
             <button onClick={save} disabled={saving} className="rounded-lg px-4 py-2 font-semibold flex items-center gap-2 disabled:opacity-50" style={buttons.primary}>
               {saving ? <Loader2 size={16} className="animate-spin" /> : saved ? <Check size={16} /> : <Save size={16} />}
               {saved ? 'Saved' : 'Save'}

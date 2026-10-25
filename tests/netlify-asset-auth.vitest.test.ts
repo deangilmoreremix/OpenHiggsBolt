@@ -1032,18 +1032,23 @@ describe('brand studio functions: purchase entitlement gate', () => {
     expect(res.body).toEqual([]);
   });
 
-  it('brands.js / campaigns.js / photo-studio.js: the gate covers reads and mutations alike', async () => {
+  it('brands.js / photo-studio.js gate reads; campaigns GET stays free browse (Next.js contract)', async () => {
+    // The Next.js /api/campaigns route has never entitlement-gated GET —
+    // free users keep browse/preview access; only generation (POST) is gated.
+    // brands.js and photo-studio.js reads stay purchase-gated.
     const readExpected = [
-      { file: 'brands', event: makeEvent({ token: signSessionToken(USER_C) }) },
-      { file: 'campaigns', event: makeEvent({ token: signSessionToken(USER_C) }) },
-      { file: 'photo-studio', event: makeEvent({ token: signSessionToken(USER_C) }) },
+      { file: 'brands', event: makeEvent({ token: signSessionToken(USER_C) }), status: 403 },
+      { file: 'campaigns', event: makeEvent({ token: signSessionToken(USER_C) }), status: 200 },
+      { file: 'photo-studio', event: makeEvent({ token: signSessionToken(USER_C) }), status: 403 },
     ];
-    for (const { file, event } of readExpected) {
+    for (const { file, event, status } of readExpected) {
       const handler = await loadFunction(file);
       const res = await call(handler, event);
-      expect(res.status, `${file} GET`).toBe(403);
-      expect(res.body.error).toBe('PAYMENT_REQUIRED');
-      expect(edgeCalls()).toHaveLength(0);
+      expect(res.status, `${file} GET`).toBe(status);
+      if (status === 403) {
+        expect(res.body.error).toBe('PAYMENT_REQUIRED');
+        expect(edgeCalls()).toHaveLength(0);
+      }
     }
 
     const mutationExpected = [

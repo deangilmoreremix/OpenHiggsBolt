@@ -9,6 +9,70 @@ export const runtime = 'nodejs'
 const MAX_PAYLOAD_SIZE = 5_000_000
 const MAX_STRING_LENGTH = 500_000
 
+/**
+ * How the list branch narrowed its rows.
+ *
+ * - `not-requested` — no `sourceId` was supplied; the caller's full list is returned.
+ * - `applied`      — the rows carried a source identifier and the matching one was kept.
+ * - `unavailable`  — NO row carried a source identifier, so the filter could not be
+ *                    applied and the unfiltered list is returned (degraded mode).
+ */
+type SourceFilterState = 'not-requested' | 'applied' | 'unavailable'
+
+/**
+ * Read the source demo id out of a saved-project row.
+ *
+ * EVIDENCE (do not "fix" this by guessing a column name):
+ *   `personalization_saved_projects_list` is declared as
+ *     `returns setof public.personalization_saved_projects`
+ *   in `supabase/migrations/20261013000000_personalization_saved_projects.sql:109-127`
+ *   and the table's columns (same file, lines 45-61) are:
+ *     id, clerk_user_id, source, client, assets, prompt, generation,
+ *     output_type, mode, status, error_message, created_at, updated_at
+ *   There is NO `sourceDemoId` and NO `source_demo_id` column. The source demo id
+ *   lives INSIDE the `source` jsonb payload, as `source->>'id'` (the jsonb is the
+ *   `PersonalizationSource` object, whose `id` field is the demo id — see
+ *   `src/shared/personalization/types.ts:18-36`).
+ *
+ * A filter that assumed a top-level `sourceDemoId` column therefore dropped EVERY
+ * row and made the restore silently answer "no saved project" — the same
+ * user-visible symptom as the `400 MISSING_PROJECT_ID`, only quieter. The lookup
+ * below therefore probes every location the id can legitimately live in, and the
+ * caller degrades to the unfiltered list when none of them is present.
+ */
+/**
+ * True when Supabase reports that an RPC does not exist — PostgREST answers
+ * `PGRST202` for an unknown function, Postgres `42883` for an undefined one.
+ * Used to fall back to the plain list while a migration is not yet applied.
+ */
+function isMissingFunctionError(error: { code?: string | null; message?: string | null }): boolean {
+  if (error.code === 'PGRST202' || error.code === '42883') return true
+  return /could not find the function|function .* does not exist/i.test(error.message ?? '')
+}
+
+function readSourceDemoId(row: unknown): string | null {
+  if (!row || typeof row !== 'object') return null
+  const record = row as Record<string, unknown>
+
+  // Top-level columns (today: none exist, but a future migration may add one).
+  for (const key of ['sourceDemoId', 'source_demo_id']) {
+    const value = record[key]
+    if (typeof value === 'string' && value.trim()) return value.trim()
+  }
+
+  // The real location: the `source` jsonb column.
+  const source = record.source
+  if (source && typeof source === 'object') {
+    const sourceRecord = source as Record<string, unknown>
+    for (const key of ['id', 'demoId', 'demo_id', 'sourceDemoId', 'source_demo_id']) {
+      const value = sourceRecord[key]
+      if (typeof value === 'string' && value.trim()) return value.trim()
+    }
+  }
+
+  return null
+}
+
 function sanitizeValue(value: unknown, maxLength = MAX_STRING_LENGTH): unknown {
   if (typeof value === 'string') {
     return value.length > maxLength ? value.slice(0, maxLength) + '...' : value
@@ -63,14 +127,31 @@ export async function GET(req: NextRequest) {
 
     const projectId = req.nextUrl.searchParams.get('id')
     const list = req.nextUrl.searchParams.get('list')
+    const sourceId = req.nextUrl.searchParams.get('sourceId')
 
     const supabase = createServerClient()
 
     if (list === 'true') {
       // The identity is passed as an RPC argument and set as the GUC inside
       // the same transaction, so the RLS predicate and the where-clause agree.
-      const { data, error } = await supabase
-        .rpc('personalization_saved_projects_list', { p_clerk_user_id: userId })
+      //
+      // A source-scoped request uses the source-scoped RPC, which filters on
+      // `source->>'id'` BEFORE its row limit — the plain list returns only the
+      // caller's 50 newest rows, so filtering it afterwards loses any source
+      // whose latest row is older than that. If the function is not deployed
+      // yet (migration 20261024000000 not applied), fall back to the plain
+      // list; the route filter below still narrows it.
+      const wantedSource = sourceId?.trim() || ''
+      let { data, error } = wantedSource
+        ? await supabase.rpc('personalization_saved_projects_list_by_source', {
+            p_clerk_user_id: userId,
+            p_source_id: wantedSource,
+          })
+        : await supabase.rpc('personalization_saved_projects_list', { p_clerk_user_id: userId })
+      if (wantedSource && error && isMissingFunctionError(error)) {
+        ;({ data, error } = await supabase
+          .rpc('personalization_saved_projects_list', { p_clerk_user_id: userId }))
+      }
 
       clearTimeout(timeoutId)
 
@@ -88,16 +169,60 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: error.message }, { status: 500 })
       }
 
+      // Source filter — a second, defensive pass. The source-scoped RPC has
+      // already filtered in SQL; on the plain-list fallback this is the only
+      // filter. The DB still
+      // returns only the caller's rows; this just narrows to the requested
+      // demo and still surfaces the empty-array 200 shape so the restore path
+      // can take its normal "no durable row" branch instead of 400-ing.
+      //
+      // The filter is TOLERANT on purpose: if no returned row carries a source
+      // identifier (i.e. the column we look for is not what the RPC returns),
+      // the unfiltered list is returned and the response says so via
+      // `sourceFilter: 'unavailable'`. Returning an empty list because a column
+      // name was wrong is indistinguishable from "the user never saved this
+      // project" and silently breaks the restore.
+      const rows = Array.isArray(data) ? data : data ? [data] : []
+      let filtered = rows
+      let sourceFilter: SourceFilterState = 'not-requested'
+
+      if (sourceId && sourceId.trim()) {
+        const wanted = sourceId.trim()
+        const rowsWithSource = rows.map((row) => ({ row, source: readSourceDemoId(row) }))
+        const anyRowCarriesSource = rowsWithSource.some((entry) => entry.source !== null)
+
+        if (!anyRowCarriesSource) {
+          // Degraded mode — the rows carry no source identifier at all, so the
+          // requested demo cannot be matched. Return the caller's own rows
+          // unchanged rather than an empty list that would look like a lost
+          // project.
+          sourceFilter = 'unavailable'
+          filtered = rows
+        } else {
+          sourceFilter = 'applied'
+          filtered = rowsWithSource
+            .filter((entry) => entry.source === wanted)
+            .map((entry) => entry.row)
+        }
+      }
+
       logPersonalization({
         route: '/api/personalization/project',
         stage: 'db-list',
         provider: 'supabase',
         httpStatus: 200,
+        ...(sourceFilter === 'unavailable'
+          ? {
+              safeErrorCode: 'SOURCE_FILTER_UNAVAILABLE',
+              safeMessage:
+                'Saved-project rows carry no source identifier; the unfiltered list was returned',
+            }
+          : {}),
         correlationId,
         durationMs: Date.now() - startTime,
       })
 
-      return NextResponse.json({ projects: data || [] })
+      return NextResponse.json({ projects: filtered, sourceFilter })
     }
 
     if (!projectId) {
