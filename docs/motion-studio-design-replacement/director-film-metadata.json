@@ -1,0 +1,21 @@
+{
+  "size_bytes": 1709959,
+  "container": "MP4",
+  "ftyp_brand": "isom",
+  "ftyp_compatible_brands": [
+    "isom",
+    "avc1",
+    "mp41"
+  ],
+  "width": 1280,
+  "height": 720,
+  "duration_seconds": 15.125,
+  "video_codec": "h264",
+  "video_codec_fourcc": "avc1",
+  "audio_codec": "aac",
+  "audio_codec_fourcc": "mp4a",
+  "movie_timescale": 57600,
+  "creation_time": "2026-10-25T05:37:23.000Z",
+  "date": "2026-10-25T05:39:11.819Z",
+  "tracks": 2
+}
