@@ -177,7 +177,8 @@ export function DiscoveredAssetThumb({
         className="absolute bottom-8 left-1 right-1 z-10 rounded px-1 py-0.5 text-center pointer-events-none"
         style={{ background: 'rgba(0,0,0,.6)', color: 'white', fontSize: 7, fontWeight: 700, textTransform: 'uppercase', lineHeight: 1 }}
       >
-        {asset.sourceType.replace('_', ' ')}
+        {/* Browser-phase assets carry no sourceType. */}
+        {(asset.sourceType || 'website').replace('_', ' ')}
       </div>
       <select
         value={asset.category}

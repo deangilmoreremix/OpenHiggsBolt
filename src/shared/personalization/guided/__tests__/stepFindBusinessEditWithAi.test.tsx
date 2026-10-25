@@ -107,6 +107,24 @@ describe('StepFindBusiness: full discovered-asset grid', () => {
     expect(view.textContent).not.toContain('more — review all of them')
   })
 
+  it('renders browser-phase assets that carry no sourceType', async () => {
+    const browserAsset = { ...many[0], id: 'b1', sourceType: undefined } as unknown as DiscoveredAsset
+    const view = await render(undefined, { discoveredAssets: [browserAsset] })
+
+    expect(view.querySelectorAll('[aria-label^="View "]')).toHaveLength(1)
+  })
+
+  it('keeps "Restore all removed" reachable after every asset is removed', async () => {
+    const setDiscoveredAssets = vi.fn()
+    const allRemoved = many.slice(0, 2).map((a) => ({ ...a, rejected: true }))
+    const view = await render(undefined, { clientForm: { website: 'https://joes-pizza.example' }, discoveredAssets: allRemoved, setDiscoveredAssets })
+
+    const restore = Array.from(view.querySelectorAll('button')).find((b) => b.textContent === 'Restore all removed')
+    expect(restore).toBeDefined()
+    await act(async () => restore!.click())
+    expect(setDiscoveredAssets).toHaveBeenCalledWith(allRemoved.map((a) => ({ ...a, rejected: false })))
+  })
+
   it('removes an asset from the card', async () => {
     const rejectDiscoveredAsset = vi.fn()
     const view = await render(undefined, { discoveredAssets: many, rejectDiscoveredAsset })

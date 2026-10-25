@@ -376,7 +376,7 @@ export function StepFindBusiness({
           runs discovery from a typed website alone, with no business name, so
           gating this panel on the name hid the found assets, the progress
           badge and any error: the visitor saw nothing at all. */}
-      {(businessName || discoveredCount > 0 || discoveryStatus === 'discovering' || discoveryError) && (
+      {(businessName || discoveredAssets.length > 0 || discoveryStatus === 'discovering' || discoveryError) && (
         <div style={{ ...panelStyle, border: `1px solid ${C.cyanBorder}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <Building2 size={15} color={C.cyan} />
@@ -449,7 +449,7 @@ export function StepFindBusiness({
               without being sent to Advanced Editing. This is the same
               provider flow the advanced view uses (toggle selection +
               importDiscoveredAssets); only the presentation is guided. */}
-          {discoveredCount > 0 && (
+          {(discoveredCount > 0 || discoveredAssets.some((a) => a.rejected)) && (
             <div style={{ ...softPanelStyle, marginTop: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
                 <h4 style={{ margin: 0, fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em', color: C.text }}>
