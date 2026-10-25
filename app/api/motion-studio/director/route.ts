@@ -104,8 +104,8 @@ export async function POST(req: NextRequest) {
   if (!ALLOWED_MODELS.has(DIRECTOR_MODEL)) {
     return NextResponse.json({ error: 'Director model is not allowed', code: 'MODEL_NOT_ALLOWED' }, { status: 500 })
   }
-  // Dev-only bypass has no stored key; it may use the server's own key outside production.
-  const key = user.bypass ? process.env.OPENAI_API_KEY ?? null : await getOpenAiKeyForUser()
+  // BYOK only: the dev-only bypass has no stored key and so gets OPENAI_KEY_REQUIRED.
+  const key = user.bypass ? null : await getOpenAiKeyForUser()
   if (!key) {
     return NextResponse.json(
       { error: 'OPENAI_KEY_REQUIRED', message: 'Add your OpenAI API key in SmartVideo GO Settings to use the Motion Studio director.' },

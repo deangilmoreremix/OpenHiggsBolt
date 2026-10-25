@@ -267,7 +267,7 @@ export function DiscoveredAssetLightbox({
       aria-modal="true"
       aria-label="Discovered asset viewer"
       onClick={onClose}
-      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(4,6,9,.94)', display: 'flex', flexDirection: 'column' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(4,6,9,.94)', display: 'flex', flexDirection: 'column' }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
