@@ -437,6 +437,11 @@ type OpenPersonalizeOptions = {
   access?: PersonalizationAccessMode
 }
 
+export interface ImportDiscoveredAssetsOptions {
+  ids?: string[]
+  section?: AssignedSection
+}
+
 export type DemoPersonalizeContextValue = {
   // Modal
   isOpen: boolean
@@ -551,7 +556,8 @@ export type DemoPersonalizeContextValue = {
   moveDiscoveredAssetToSection: (id: string, section: AssignedSection) => void
   revertDiscoveredAssetEdit: (id: string) => void
   selectRecommendedDiscoveredAssets: () => void
-  importDiscoveredAssets: () => Promise<void>
+  /** Imports the selected assets, or only `ids` into `section` (a drop onto a section). */
+  importDiscoveredAssets: (options?: ImportDiscoveredAssetsOptions) => Promise<void>
   cancelDiscovery: () => void
   discoverAssets: (websiteUrl: string) => Promise<void>
   visionStatus: 'idle' | 'analyzing' | 'complete' | 'error'
@@ -3013,11 +3019,24 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     )
   }, [])
 
-  const importDiscoveredAssets = useCallback(async () => {
+  const importDiscoveredAssets = useCallback(async (options?: ImportDiscoveredAssetsOptions) => {
+    // Buttons wire this straight to onClick, so the argument can be a click
+    // event; only a real options object with ids narrows the import.
+    const ids = options && Array.isArray((options as ImportDiscoveredAssetsOptions).ids)
+      ? (options as ImportDiscoveredAssetsOptions).ids!
+      : null
+    const sectionOverride = ids ? (options as ImportDiscoveredAssetsOptions).section : undefined
+
     setDiscoveryStatus('importing')
     setDiscoveryError(null)
 
-    const toImport = discoveredAssets.filter((a) => a.selected && !a.rejected)
+    // A drop onto a section imports exactly the dropped asset into that
+    // section, selected or not; otherwise every selected asset is imported.
+    const toImport = ids
+      ? discoveredAssets
+          .filter((a) => ids.includes(a.id) && !a.rejected)
+          .map((a) => (sectionOverride ? { ...a, assignedSection: sectionOverride } : a))
+      : discoveredAssets.filter((a) => a.selected && !a.rejected)
     if (toImport.length === 0) {
       setDiscoveryStatus('reviewing')
       return
@@ -3175,8 +3194,14 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       }
     }
 
-    setDiscoveredAssetsState([])
-    setDiscoveryStatus('idle')
+    if (ids) {
+      // A drop imports one asset: only it leaves the review, the rest stay.
+      setDiscoveredAssetsState((prev) => prev.filter((a) => !ids.includes(a.id)))
+      setDiscoveryStatus('reviewing')
+    } else {
+      setDiscoveredAssetsState([])
+      setDiscoveryStatus('idle')
+    }
 
     const totalAttempted = createdAssets.length
     const successCount = totalAttempted - uploadErrors.length

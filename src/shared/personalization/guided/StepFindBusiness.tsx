@@ -6,7 +6,16 @@ import { useDemoPersonalize } from '../DemoPersonalizeProvider'
 import { BUSINESS_NICHES } from '../businessNiches'
 import { ownershipBadgeStyle, ownershipLabel } from '../ownershipBadge'
 import type { BusinessOwnership, DiscoveredAsset } from '../types'
-import { isImageEditSupported } from '../image-editor/imageEditSupport'
+import { DiscoveredAssetGrid, type DiscoveredAssetDropZone } from '../DiscoveredAssetGrid'
+
+// Simple mode has no client-asset section cards on screen, so the grid shows
+// its own drop zones; dropping an asset imports it into that section.
+const SIMPLE_MODE_DROP_ZONES: DiscoveredAssetDropZone[] = [
+  { section: 'person', label: 'Person' },
+  { section: 'logo', label: 'Logo' },
+  { section: 'products', label: 'Products' },
+  { section: 'brand', label: 'Brand' },
+]
 import { C, badgeStyle, hintStyle, inputStyle, labelStyle, panelStyle, primaryButtonStyle, secondaryButtonStyle, softPanelStyle } from './tokens'
 
 const RADIUS_OPTIONS = [5, 15, 50]
@@ -58,6 +67,12 @@ export function StepFindBusiness({
     discoveryError,
     discoveredAssets = [],
     toggleDiscoveredAssetSelection,
+    rejectDiscoveredAsset,
+    updateDiscoveredAssetCategory,
+    revertDiscoveredAssetEdit,
+    removeDiscoveredAssetFromSection,
+    moveDiscoveredAssetToSection,
+    setDiscoveredAssets,
     importDiscoveredAssets,
     importConfirmation,
     access,
@@ -444,74 +459,24 @@ export function StepFindBusiness({
                   {selectedDiscoveredCount} of {discoveredCount} selected
                 </span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {discoveredAssets
-                  .filter((asset) => !asset.rejected)
-                  .slice(0, 8)
-                  .map((asset) => (
-                    <div
-                      key={asset.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        padding: '6px 8px',
-                        borderRadius: 8,
-                        border: `1px solid ${asset.selected ? C.cyanBorder : C.border}`,
-                        background: asset.selected ? 'rgba(34,211,238,0.06)' : 'transparent',
-                      }}
-                    >
-                      {asset.previewUrl && (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={asset.editedDataUrl || asset.previewUrl}
-                          alt=""
-                          style={{ width: 34, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }}
-                        />
-                      )}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ color: C.text, fontSize: 12, fontWeight: 600, textTransform: 'capitalize' }}>
-                          {asset.category}
-                        </div>
-                        <div
-                          style={{ color: C.muted2, fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                          title={asset.sourceUrl}
-                        >
-                          {(asset.sourceUrl || asset.previewUrl || '').replace(/^https?:\/\//, '').slice(0, 48)}
-                        </div>
-                      </div>
-                      {onEditAsset && isImageEditSupported(asset) && (
-                        <button
-                          type="button"
-                          aria-label={`Edit ${asset.category} with AI`}
-                          onClick={() => onEditAsset(asset)}
-                          style={{ ...secondaryButtonStyle, minHeight: 28, padding: '0 10px', color: C.cyan, borderColor: C.cyanBorder }}
-                        >
-                          Edit with AI
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        aria-label={asset.selected ? 'Deselect' : 'Select'}
-                        onClick={() => toggleDiscoveredAssetSelection(asset.id)}
-                        style={{
-                          ...secondaryButtonStyle,
-                          minHeight: 28,
-                          padding: '0 10px',
-                          color: asset.selected ? C.cyan : C.text,
-                          borderColor: asset.selected ? C.cyanBorder : C.border,
-                        }}
-                      >
-                        {asset.selected ? 'Deselect' : 'Select'}
-                      </button>
-                    </div>
-                  ))}
-                {discoveredCount > 8 && (
-                  <div style={{ color: C.muted2, fontSize: 10 }}>
-                    +{discoveredCount - 8} more — review all of them in Advanced Editing
-                  </div>
-                )}
-              </div>
+              {/* The same grid as Advanced Editing: every asset, grouped by
+                  category, with select, remove / restore, category, Edit with
+                  AI, full-screen viewer, and drag onto a section. */}
+              <DiscoveredAssetGrid
+                assets={discoveredAssets}
+                onToggle={toggleDiscoveredAssetSelection}
+                onRemove={rejectDiscoveredAsset}
+                onCategoryChange={updateDiscoveredAssetCategory}
+                onEdit={onEditAsset}
+                onRevert={revertDiscoveredAssetEdit}
+                onRemoveFromSection={removeDiscoveredAssetFromSection}
+                onRestoreAll={() => setDiscoveredAssets(discoveredAssets.map((a) => ({ ...a, rejected: false })))}
+                dropZones={SIMPLE_MODE_DROP_ZONES}
+                onDropToSection={(id, section) => {
+                  moveDiscoveredAssetToSection(id, section)
+                  void importDiscoveredAssets({ ids: [id], section })
+                }}
+              />
               {discoveryStatus === 'importing' && (
                 <p style={{ margin: '8px 0 0', color: C.cyan, fontSize: 11 }}>Importing assets…</p>
               )}

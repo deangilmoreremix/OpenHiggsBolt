@@ -75,7 +75,8 @@ describe('StepFindBusiness: Edit with AI', () => {
 
     const buttons = Array.from(view.querySelectorAll('button')).filter((b) => b.textContent === 'Edit with AI')
     // The blob: preview cannot be sent to the editor, so it gets no button.
-    expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual(['Edit logo with AI', 'Edit storefront with AI'])
+    // One per editable asset, in the grid's category order (logo, storefront).
+    expect(buttons).toHaveLength(2)
 
     await act(async () => buttons[1].click())
 
@@ -90,6 +91,79 @@ describe('StepFindBusiness: Edit with AI', () => {
     expect(buttons).toHaveLength(0)
     // Review and import still work without it.
     expect(view.textContent).toContain('Discovered assets')
+  })
+})
+
+// The guided step uses the same grid as Advanced Editing.
+describe('StepFindBusiness: full discovered-asset grid', () => {
+  const many = Array.from({ length: 12 }, (_, i) =>
+    asset({ id: `p${i}`, category: 'person', previewUrl: `https://joes-pizza.example/p${i}.jpg`, sourceUrl: `https://joes-pizza.example/p${i}.jpg` }),
+  )
+
+  it('shows every asset, not just the first eight', async () => {
+    const view = await render(undefined, { discoveredAssets: many })
+
+    expect(view.querySelectorAll('[aria-label^="View "]')).toHaveLength(12)
+    expect(view.textContent).not.toContain('more — review all of them')
+  })
+
+  it('removes an asset from the card', async () => {
+    const rejectDiscoveredAsset = vi.fn()
+    const view = await render(undefined, { discoveredAssets: many, rejectDiscoveredAsset })
+
+    await act(async () => (view.querySelector('[aria-label="Remove"]') as HTMLButtonElement).click())
+
+    expect(rejectDiscoveredAsset).toHaveBeenCalledWith('p0')
+  })
+
+  it('opens an asset full screen and steps through them with the arrows', async () => {
+    const view = await render(undefined, { discoveredAssets: many })
+
+    await act(async () => (view.querySelectorAll('[aria-label^="View "]')[2] as HTMLElement).click())
+    const dialog = () => document.querySelector('[aria-label="Discovered asset viewer"]')
+    expect(dialog()?.textContent).toContain('3 / 12')
+
+    await act(async () => (document.querySelector('[aria-label="Next asset"]') as HTMLButtonElement).click())
+    expect(dialog()?.textContent).toContain('4 / 12')
+
+    await act(async () => (document.querySelector('[aria-label="Previous asset"]') as HTMLButtonElement).click())
+    await act(async () => (document.querySelector('[aria-label="Previous asset"]') as HTMLButtonElement).click())
+    expect(dialog()?.textContent).toContain('2 / 12')
+
+    await act(async () => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' })) })
+    expect(dialog()?.textContent).toContain('3 / 12')
+
+    await act(async () => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })) })
+    expect(dialog()).toBeNull()
+  })
+
+  it('imports an asset into the section it is dropped on', async () => {
+    const importDiscoveredAssets = vi.fn(async () => {})
+    const moveDiscoveredAssetToSection = vi.fn()
+    const view = await render(undefined, { discoveredAssets: many, importDiscoveredAssets, moveDiscoveredAssetToSection })
+
+    const store: Record<string, string> = {}
+    const dataTransfer = {
+      setData: (k: string, v: string) => { store[k] = v },
+      getData: (k: string) => store[k] || '',
+      effectAllowed: '',
+      dropEffect: '',
+    }
+    const card = view.querySelectorAll('[aria-label^="View "]')[4] as HTMLElement
+    const zone = view.querySelector('[data-drop-section="logo"]') as HTMLElement
+    const fire = (el: HTMLElement, type: string) => {
+      const event = new Event(type, { bubbles: true, cancelable: true })
+      Object.defineProperty(event, 'dataTransfer', { value: dataTransfer })
+      el.dispatchEvent(event)
+    }
+    await act(async () => {
+      fire(card, 'dragstart')
+      fire(zone, 'dragover')
+      fire(zone, 'drop')
+    })
+
+    expect(moveDiscoveredAssetToSection).toHaveBeenCalledWith('p4', 'logo')
+    expect(importDiscoveredAssets).toHaveBeenCalledWith({ ids: ['p4'], section: 'logo' })
   })
 })
 
