@@ -12,7 +12,6 @@
 //   </PageCam2D>
 import React from 'react';
 import { AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame, Easing } from 'remotion';
-import { liveTexturePath } from './liveTexture';
 
 export type CamKey2D = {
   frame: number;
@@ -78,7 +77,7 @@ export const PageCam2D: React.FC<{
             filter: blur > 0 ? `blur(${blur}px)` : undefined,
           }}
         >
-          <Img src={liveTexturePath(src)} style={{ position: 'absolute', width: 1920, height: pageH }} />
+          <Img src={staticFile(src)} style={{ position: 'absolute', width: 1920, height: pageH }} />
           {children}
         </div>
       </AbsoluteFill>
@@ -107,7 +106,7 @@ export const PageCam2D: React.FC<{
             filter: blur > 0 ? `blur(${blur}px)` : undefined,
           }}
         >
-          <Img src={liveTexturePath(src)} style={{ position: 'absolute', width: 1920, height: pageH }} />
+          <Img src={staticFile(src)} style={{ position: 'absolute', width: 1920, height: pageH }} />
           {children}
         </div>
       </div>

@@ -8,7 +8,7 @@ import {
   buildCatalogBrief,
   validateEditOps,
   validatePlan,
-} from '@/apps/motion-studio/lib/directorPlan'
+} from '@/apps/motion-director/lib/directorPlan'
 import { requireMotionStudioUser } from '../lib/auth'
 
 export const dynamic = 'force-dynamic'

@@ -1,6 +1,5 @@
 import React from "react";
 import { AbsoluteFill } from "remotion";
-import { LiveTextureContext, textureOverrides } from "../demosrc/_fixtures/liveTexture";
 
 /**
  * 动效库（demo 卡）的 props 包装层。
@@ -20,10 +19,6 @@ interface DemoOverlayProps {
   accent?: string;
   tint?: string;
   tintOpacity?: number;
-  /** Captured product pages (1920 CSS px wide, 2x) for the screenshot-based shots. */
-  screens?: string[];
-  /** Captured element crops (cards) for the same shots. */
-  crops?: string[];
 }
 
 const num = (v: unknown, fallback: number) => {
@@ -42,22 +37,14 @@ export const withDemoProps = (
       accent = "#22d3ee",
       tint = "#000000",
       tintOpacity = 0,
-      screens,
-      crops,
     } = props as DemoOverlayProps;
-    const textures = React.useMemo(
-      () => textureOverrides(Array.isArray(screens) ? screens : [], Array.isArray(crops) ? crops : []),
-      [screens, crops],
-    );
     const size = Math.max(8, num(titleSize, 64));
     const wash = Math.min(1, Math.max(0, num(tintOpacity, 0)));
     const label = String(title ?? "").trim();
 
     return (
       <AbsoluteFill>
-        <LiveTextureContext.Provider value={textures}>
-          <Inner />
-        </LiveTextureContext.Provider>
+        <Inner />
         {wash > 0 ? (
           <AbsoluteFill style={{ background: tint, opacity: wash, mixBlendMode: "overlay" }} />
         ) : null}

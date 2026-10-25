@@ -7,9 +7,7 @@ import { themedProps } from '../theme';
 import { MANIFEST } from '../cards/projectCards';
 import { PromptMenuList, PromptMenuItem } from 'studio/src/components/prompt/PromptComposer';
 import { setDragPayload } from '../dnd';
-import { MOTION_CATEGORIES, motionCardId, motionTemplateTitle } from '@/data/motionRecipeCatalog';
-
-const CATEGORY_LABEL_EN = Object.fromEntries(MOTION_CATEGORIES.map((c) => [c.key, c.labelEn]));
+import { motionCardId } from '@/data/motionRecipeCatalog';
 
 const CATEGORY_GRADIENTS = {
   opening: 'from-[#22d3ee]/20 to-[#0ea5e9]/20',
@@ -207,7 +205,7 @@ export default function MotionRecipeCard({
         </div>
       )}
       <div
-        className="aspect-[4/3] rounded-xl overflow-hidden cursor-pointer border border-white/[0.05] bg-[var(--bg-card)] transition-all hover:border-white/20 group"
+        className="aspect-[3/4] rounded-lg overflow-hidden cursor-pointer border border-white/5 bg-[#0a0a0a] transition-all hover:border-[#22d3ee]/30 hover:scale-[1.02] shadow-2xl group"
         draggable
         onDragStart={handleDragStart}
         onClick={handleCardClick}
@@ -239,9 +237,9 @@ export default function MotionRecipeCard({
           )}
           <div className="absolute top-2 left-2 z-10">
             <span
-              className="text-[9px] font-semibold text-[#60a5fa] uppercase tracking-wider px-2 py-0.5 rounded-full bg-[rgba(59,130,246,0.15)] border border-[rgba(59,130,246,0.3)]"
+              className="text-[10px] font-semibold text-[#22d3ee] uppercase tracking-wider px-2 py-0.5 rounded bg-white/[0.05] border border-white/[0.05]"
             >
-              {CATEGORY_LABEL_EN[recipe.category] ?? recipe.categoryLabel ?? recipe.category}
+              {recipe.categoryLabel ?? recipe.category}
             </span>
           </div>
           {saved && (
@@ -249,8 +247,8 @@ export default function MotionRecipeCard({
               <Bookmark className="w-3.5 h-3.5" />
             </div>
           )}
-          <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 to-transparent px-2 pb-1.5 pt-4">
-            <h3 className="text-xs font-medium text-white truncate" title={recipe.nameEn}>{recipe.nameEn ? motionTemplateTitle(recipe) : recipe.name}</h3>
+          <div className="absolute bottom-2 left-2 right-2 z-10">
+            <h3 className="text-sm font-semibold text-white truncate">{recipe.name}</h3>
           </div>
           <div className="absolute bottom-8 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
             <button

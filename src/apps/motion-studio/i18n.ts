@@ -14,7 +14,6 @@
 import { create } from "zustand";
 import { DEMO_CATEGORY_EN, DEMO_TEXT_RU } from "./cards/demoMeta";
 import type { CardDef } from "./cards/types";
-import { englishRecipeName } from "@/data/motionRecipeCatalog";
 
 /** 工作台界面语言。English 是默认；中文、Русский 可选。
  *  localStorage 记住选择；顶栏下拉框切换。语言只影响展示，不改写工程数据。
@@ -840,7 +839,7 @@ export const useTx = () => {
 /** 卡片名 / 摘要：demo 卡有画廊生成的英文（nameEn / summaryEn）与俄文（DEMO_TEXT_RU），其余走词典 */
 export const cardName = (card: Pick<CardDef, "name" | "nameEn">): string => {
   const l = useLocale.getState().locale;
-  if (l === "en" && card.nameEn) return englishRecipeName(card.nameEn);
+  if (l === "en" && card.nameEn) return card.nameEn;
   return tx(card.name);
 };
 export const cardSummary = (card: Pick<CardDef, "summary" | "summaryEn">): string | undefined => {

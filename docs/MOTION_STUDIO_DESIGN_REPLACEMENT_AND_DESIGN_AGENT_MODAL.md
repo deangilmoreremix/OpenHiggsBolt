@@ -228,3 +228,7 @@ Tests: `tests/motion-studio-capture.vitest.test.ts`, `tests/motion-studio-routes
 `e2e/motion-studio-director.spec.ts` (capture/director responses mocked at the
 network layer; everything else real). Evidence:
 `director-storyboard-desktop.png`, `director-film-workbench-desktop.png`.
+
+## Update: Motion Director is its own studio
+
+The Design Agent-styled studio (director, ShotCraft films, Remotion template previews) now lives in `src/apps/motion-director` as its own tab, **Motion Director**, at `/studio/motion-director`. The original Motion Studio is restored unchanged in `src/apps/motion-studio` at `/studio/motion-studio`. Both are registered in `components/StandaloneShell.js`, `messages/en/common.json`, `src/access/UpgradeModal.tsx` and `src/data/studioDemoMap.ts`. The `/api/motion-studio/capture` and `/api/motion-studio/director` routes are shared. The new-design e2e specs are `e2e/motion-director-*.spec.ts`; one of them checks that each route opens its own studio.

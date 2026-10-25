@@ -15,7 +15,6 @@ import { AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame, Easing } f
 import { PageCam2D, CamKey2D } from '../../_fixtures/PageCam2D';
 import { SpeedBlur, velocity } from '../../_fixtures/Polish';
 import layout from '../../_textures/live-layout.json';
-import { liveTexture } from '../../_fixtures/liveTexture';
 
 export const TYPE_AND_FILTER_DURATION = 73; // 118–190f 落在 shot 内 offset 0
 
@@ -131,7 +130,7 @@ export const TypeAndFilter: React.FC = () => {
                 boxShadow: '0 1px 2px rgba(60,45,30,.06), 0 4px 12px -4px rgba(60,45,30,.08)',
               }}
             >
-              <Img src={liveTexture(c.file)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
+              <Img src={staticFile(`motion-studio/textures/live/${c.file}`)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
             </div>
           );
         })}
@@ -155,7 +154,7 @@ export const TypeAndFilter: React.FC = () => {
                   borderRadius: 16, overflow: 'hidden',
                 }}
               >
-                <Img src={liveTexture(nano.file)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
+                <Img src={staticFile(`motion-studio/textures/live/${nano.file}`)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
               </div>
             </SpeedBlur>
           );

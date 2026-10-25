@@ -30,7 +30,6 @@ import { PageCam2D, CamKey2D } from '../../_fixtures/PageCam2D';
 import { EASE, FONT, Grain, ramp } from '../../_fixtures/Polish';
 import { Dust, LOOKS, alpha } from '../../_fixtures/Look';
 import layout from '../../_textures/live-layout.json';
-import { liveTexture } from '../../_fixtures/liveTexture';
 
 export const SPOTLIGHT_HERO_CARD_DURATION = 172;
 
@@ -197,8 +196,8 @@ export const SpotlightHeroCard: React.FC = () => {
             transform: `translateZ(${(z + 2).toFixed(2)}px) scale(${press})`, transformOrigin: 'center center', transformStyle: 'preserve-3d',
           }}>
             <div style={{ position: 'absolute', inset: 0, borderRadius: RADIUS, overflow: 'hidden', boxShadow: landed ? 'none' : shadow }}>
-              <Img src={liveTexture(CARD.file)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
-              <Img src={liveTexture('card4-hires.png')} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', opacity: hiresIn }} />
+              <Img src={staticFile(`motion-studio/textures/live/${CARD.file}`)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
+              <Img src={staticFile('motion-studio/textures/live/card4-hires.png')} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', opacity: hiresIn }} />
               {/* 悬浮时卡面受光：右上角暖光 → 左下渐暗 */}
               <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(200deg, rgba(${LAMP},0.35), rgba(${LAMP},0) 45%, rgba(20,16,10,0.08) 100%)`, opacity: lift, pointerEvents: 'none' }} />
             </div>

@@ -26,7 +26,6 @@ import { AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame, Easing } f
 import { EASE, FONT, ramp } from '../../_fixtures/Polish';
 import { LOOKS, Stage, Dust, TextReveal, alpha, type } from '../../_fixtures/Look';
 import layout from '../../_textures/live-layout.json';
-import { liveTexture } from '../../_fixtures/liveTexture';
 
 export const DOCUMENT_TYPEWRITER_REVEAL_DURATION = 150;
 
@@ -153,7 +152,7 @@ export const DocumentTypewriterReveal: React.FC = () => {
                 boxShadow: `0 0 0 1.5px ${alpha('#ffffff', 0.35)}, 0 70px 160px -20px ${alpha(L.shadow, 0.95)}, 0 20px 60px ${alpha('#000000', 0.55)}`,
               }}
             >
-              <Img src={liveTexture('wbr-full.png')} style={{ position: 'absolute', width: PAGE_W, height: PAGE_H }} />
+              <Img src={staticFile('motion-studio/textures/live/wbr-full.png')} style={{ position: 'absolute', width: PAGE_W, height: PAGE_H }} />
 
               {blocks.map((p, i) => {
                 const cue = cueFor(i);

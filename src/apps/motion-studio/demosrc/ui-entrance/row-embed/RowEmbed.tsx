@@ -17,7 +17,6 @@ import { AbsoluteFill, interpolate, staticFile, useCurrentFrame, Easing } from '
 import { PageCam2D, CamKey2D } from '../../_fixtures/PageCam2D';
 import { Grain, Vignette } from '../../_fixtures/Polish';
 import layout from '../../_textures/live-layout.json';
-import { liveTexture } from '../../_fixtures/liveTexture';
 
 export const ROW_EMBED_DURATION = 68;
 
@@ -36,12 +35,12 @@ const CUES = [12, 22, 31, 39, 46];
 const FLY = 12;
 // 下落：起步慢、末段仍带速度砸进槽位（终点斜率≈1.25），由 press 回弹吸收冲击
 const FLY_EASE = Easing.bezier(0.5, 0, 0.8, 0.75);
+const detailSrc = staticFile('motion-studio/textures/live/detail-full.png');
 const clamp = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
 
 const airOf = (frame: number, cue: number) => 1 - interpolate(frame, [cue, cue + FLY], [0, 1], { ...clamp, easing: FLY_EASE });
 
 export const RowEmbed: React.FC = () => {
-  const detailSrc = liveTexture('detail-full.png');
   const frame = useCurrentFrame();
 
   return (

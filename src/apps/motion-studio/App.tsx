@@ -12,8 +12,6 @@
  * kept unchanged for backwards compatibility with existing saved projects/palettes.
  */
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { PillButton } from "@/apps/design-agent/ui";
 import LibraryPanel from "./panels/LibraryPanel";
 import { Inspector } from "./panels/Inspector";
 import { PreviewPanel } from "./preview/PreviewPanel";
@@ -140,13 +138,16 @@ export const App: React.FC = () => {
   const [railW, setRailW] = usePanelSize("wb-rail-w", 360);
   const [tlH, setTlH] = usePanelSize("wb-tl-h", 264);
   const [viewMode, setViewMode] = useState<"library" | "sessions">("library");
-  // 左侧 Director 面板（Design Agent 式常驻对话）：Agent 对话 / 提示词与素材 / 历史画廊
-  const [railOpen, setRailOpen] = useState(true);
+  // 右侧工作台：Agent 对话 / 提示词与素材 / 历史画廊
+  const [railOpen, setRailOpen] = useState(false);
   const [railTab, setRailTab] = useState<RailTab>("agent");
-  const navigate = useNavigate();
 
-  /** 顶栏模式胶囊：选中即打开对应的面（Design Agent 的模式切换），收起走面板里的按钮 */
-  const openRailTab = (tab: RailTab) => {
+  /** 顶栏按钮：再点一次同一个面 = 收起；点别的面 = 切过去 */
+  const toggleRail = (tab: RailTab) => {
+    if (railOpen && railTab === tab) {
+      setRailOpen(false);
+      return;
+    }
     setRailTab(tab);
     setRailOpen(true);
   };
@@ -238,64 +239,38 @@ export const App: React.FC = () => {
   return (
     <div className="app">
       <header className="topbar">
-        <button
-          type="button"
-          className="ms-back"
-          onClick={() => navigate("/new")}
-          title="Back to Motion Studio home"
-        >
-          ← Projects
-        </button>
         <span className="logo">Motion <b>Studio</b></span>
         <input
           className="project-name"
           value={project.name}
           onChange={(e) => updateName(e.target.value)}
           spellCheck={false}
-          aria-label="Project name"
         />
-        <div className="ms-mode-pills" role="group" aria-label="Studio views">
-          <PillButton
-            active={railOpen && railTab === "agent"}
-            onClick={() => openRailTab("agent")}
-            title="Motion Agent — tell it what to change"
-            pressed={railOpen && railTab === "agent"}
-            testId="topbar-agent-toggle"
-          >
-            Chat
-          </PillButton>
-          <PillButton
-            active={viewMode === "library"}
-            onClick={() => setViewMode("library")}
-            title="Motion recipe library"
-            pressed={viewMode === "library"}
-          >
-            Library
-          </PillButton>
-          <PillButton
-            active={viewMode === "sessions"}
-            onClick={() => setViewMode("sessions")}
-            title="Saved sessions"
-            pressed={viewMode === "sessions"}
-          >
-            Sessions
-          </PillButton>
-          <PillButton
-            active={railOpen && railTab === "history"}
-            onClick={() => openRailTab("history")}
-            title="History gallery — past sessions"
-            pressed={railOpen && railTab === "history"}
-            testId="topbar-history-toggle"
-          >
-            History
-          </PillButton>
-        </div>
         <span style={{ flex: 1 }} />
         <button className="btn" disabled={!canUndo} onClick={undo} title={t("undo.title")}>
           {t("undo")}
         </button>
         <button className="btn" disabled={!canRedo} onClick={redo} title={t("redo.title")}>
           {t("redo")}
+        </button>
+        <span className="tl-sep" />
+        <button
+          className={`btn${railOpen && railTab === "agent" ? " primary" : ""}`}
+          onClick={() => toggleRail("agent")}
+          title="Motion Agent — tell it what to change"
+          aria-pressed={railOpen && railTab === "agent"}
+          data-testid="topbar-agent-toggle"
+        >
+          💬 Agent
+        </button>
+        <button
+          className={`btn${railOpen && railTab === "history" ? " primary" : ""}`}
+          onClick={() => toggleRail("history")}
+          title="History gallery — past sessions"
+          aria-pressed={railOpen && railTab === "history"}
+          data-testid="topbar-history-toggle"
+        >
+          🕘 History
         </button>
         <span className="tl-sep" />
         <ExportButton />
@@ -349,58 +324,6 @@ export const App: React.FC = () => {
       </header>
 
       <main className="main">
-        {railOpen && (
-          <>
-            <div className="panel-wrap ms-rail-wrap" style={{ width: railW }}>
-              <div className="ms-rail" data-testid="studio-rail">
-                <div className="ms-rail-tabs" role="tablist" aria-label="Director panel">
-                  {(
-                    [
-                      { id: "agent", label: "Agent" },
-                      { id: "prompt", label: "Prompt" },
-                      { id: "history", label: "History" },
-                    ] as { id: RailTab; label: string }[]
-                  ).map((tab) => (
-                    <PillButton
-                      key={tab.id}
-                      asTab
-                      active={railTab === tab.id}
-                      onClick={() => setRailTab(tab.id)}
-                      testId={`rail-tab-${tab.id}`}
-                    >
-                      {tab.label}
-                    </PillButton>
-                  ))}
-                  <span style={{ flex: 1 }} />
-                  <button
-                    type="button"
-                    className="ms-rail-hide"
-                    onClick={() => setRailOpen(false)}
-                    aria-label="Hide director panel"
-                    title="Hide"
-                  >
-                    ×
-                  </button>
-                </div>
-                <div className="ms-rail-body">
-                  {railTab === "agent" && <MotionAgentPanel />}
-                  {railTab === "prompt" && (
-                    <MotionPromptPanel onGenerate={handlePromptGenerate} />
-                  )}
-                  {railTab === "history" && <MotionHistorySection />}
-                </div>
-              </div>
-            </div>
-            <div
-              className="splitter v"
-              title={t("split.inspector")}
-              onPointerDown={(e) => {
-                const start = railW;
-                startSplit(e, (dx) => setRailW(clamp(start + dx, 260, 640)));
-              }}
-            />
-          </>
-        )}
         <div className="panel-wrap" style={{ width: libW }}>
           {viewMode === "library" ? (
             <LibraryPanel
@@ -432,6 +355,50 @@ export const App: React.FC = () => {
         <div className="panel-wrap" style={{ width: inspW }}>
           <Inspector />
         </div>
+        {railOpen && (
+          <>
+            <div
+              className="splitter v"
+              title={t("split.inspector")}
+              onPointerDown={(e) => {
+                const start = railW;
+                startSplit(e, (dx) => setRailW(clamp(start - dx, 260, 640)));
+              }}
+            />
+            <div className="panel-wrap" style={{ width: railW }}>
+              <div className="ms-rail" data-testid="studio-rail">
+                <div className="ms-rail-tabs" role="tablist" aria-label="Studio side panel">
+                  {(
+                    [
+                      { id: "agent", label: "Agent" },
+                      { id: "prompt", label: "Prompt" },
+                      { id: "history", label: "History" },
+                    ] as { id: RailTab; label: string }[]
+                  ).map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={railTab === tab.id}
+                      className={`ms-rail-tab${railTab === tab.id ? " on" : ""}`}
+                      onClick={() => setRailTab(tab.id)}
+                      data-testid={`rail-tab-${tab.id}`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="ms-rail-body">
+                  {railTab === "agent" && <MotionAgentPanel />}
+                  {railTab === "prompt" && (
+                    <MotionPromptPanel onGenerate={handlePromptGenerate} />
+                  )}
+                  {railTab === "history" && <MotionHistorySection />}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </main>
 
       <div

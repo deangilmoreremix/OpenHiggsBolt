@@ -23,7 +23,6 @@ import { AbsoluteFill, Img, staticFile, useCurrentFrame } from 'remotion';
 import layout from '../../_textures/live-layout.json';
 import { EASE, FONT, ramp, mix, velocity, softShadow, SpeedBlur } from '../../_fixtures/Polish';
 import { LOOKS, Stage, alpha, type, SERIF } from '../../_fixtures/Look';
-import { liveTexture } from '../../_fixtures/liveTexture';
 
 export const WHIPBRAKE_DUR = 130;
 
@@ -127,9 +126,9 @@ export const WhipBrakeReal: React.FC = () => {
       <SpeedBlur vx={-v} amount={0.085} max={64}>
         <div style={{ position: 'absolute', left: 0, top: 0, transform: `translateX(${(-dx).toFixed(2)}px)` }}>
           {RAIL.map((c, k) => (c ? (
-            <Img key={c.file} src={liveTexture(c.file)} style={cardStyle(k)} />
+            <Img key={c.file} src={staticFile(`motion-studio/textures/live/${c.file}`)} style={cardStyle(k)} />
           ) : (
-            <Img key="target" src={liveTexture('card4-hires.png')} style={{
+            <Img key="target" src={staticFile('motion-studio/textures/live/card4-hires.png')} style={{
               ...cardStyle(k), top: RAIL_Y - 12 * lift, transform: lift > 0 ? `scale(${targetScale.toFixed(4)})` : undefined,
               boxShadow: softShadow(mix(8, 44, lift), { color: L.shadow, strength: 1.3 }), zIndex: 2,
             }} />
