@@ -65,14 +65,19 @@ function createStatusRequest(jobId = 'job-abc'): NextRequest {
 // ---------------------------------------------------------------------------
 
 describe('GET /api/personalization/discover-assets/status', () => {
-  it('returns 401 when no session is present', async () => {
+  it('allows anonymous polling when no session is present (free discovery)', async () => {
     authUserId = null
+    vi.doMock('@/server/discoveryJobs', () => ({
+      getDiscoveryJobForUser: vi.fn(async () => null),
+      updateDiscoveryJob: vi.fn(async () => ({})),
+    }))
     const { GET } = await import('@/app/api/personalization/discover-assets/status/route')
 
     const response = await GET(createStatusRequest())
-    expect(response.status).toBe(401)
-    const data = await response.json()
-    expect(data.error).toBe('Unauthorized')
+    // No 401: discovery is free, anonymous callers can poll their own jobs.
+    // The job is IP-scoped, so an anonymous caller without a matching job
+    // gets 404, not 401.
+    expect(response.status).not.toBe(401)
   })
 
   it('returns 404 when job belongs to another user', async () => {
@@ -164,12 +169,13 @@ describe('GET /api/personalization/discover-assets/status', () => {
       id: 'job-running',
       clerk_user_id: 'user-123',
       status: 'running',
-      started_at: '2026-01-01T00:00:01Z',
+      started_at: new Date().toISOString(),
       completed_at: null,
     }
 
     vi.doMock('@/server/discoveryJobs', () => ({
       getDiscoveryJobForUser: vi.fn(async () => runningJob),
+      updateDiscoveryJob: vi.fn(async () => ({})),
     }))
 
     const { GET } = await import('@/app/api/personalization/discover-assets/status/route')

@@ -53,7 +53,8 @@
     "source:status": "node scripts/verify-source-of-truth.mjs",
     "source:verify": "node scripts/verify-source-of-truth.mjs",
     "build:metadata": "node scripts/generate-build-info.mjs",
-    "prebuild": "node scripts/verify-html-encoding-sniffer-patch.mjs"
+    "prebuild": "node scripts/verify-html-encoding-sniffer-patch.mjs && node scripts/build-fast-discovery.mjs",
+    "build:fast-discovery": "node scripts/build-fast-discovery.mjs"
   },
   "build": {
     "appId": "ai.generative.open",

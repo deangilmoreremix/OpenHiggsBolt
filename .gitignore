@@ -78,3 +78,5 @@ supabase/.temp/
 
 # Crawlee / browser-profile crawl state (not source)
 /storage/
+# Built by scripts/build-fast-discovery.mjs (runs in prebuild)
+netlify/lib/fast-discovery.cjs

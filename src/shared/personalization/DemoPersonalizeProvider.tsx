@@ -437,6 +437,11 @@ type OpenPersonalizeOptions = {
   access?: PersonalizationAccessMode
 }
 
+export interface ImportDiscoveredAssetsOptions {
+  ids?: string[]
+  section?: AssignedSection
+}
+
 export type DemoPersonalizeContextValue = {
   // Modal
   isOpen: boolean
@@ -551,7 +556,8 @@ export type DemoPersonalizeContextValue = {
   moveDiscoveredAssetToSection: (id: string, section: AssignedSection) => void
   revertDiscoveredAssetEdit: (id: string) => void
   selectRecommendedDiscoveredAssets: () => void
-  importDiscoveredAssets: () => Promise<void>
+  /** Imports the selected assets, or only `ids` into `section` (a drop onto a section). */
+  importDiscoveredAssets: (options?: ImportDiscoveredAssetsOptions) => Promise<void>
   cancelDiscovery: () => void
   discoverAssets: (websiteUrl: string) => Promise<void>
   visionStatus: 'idle' | 'analyzing' | 'complete' | 'error'
@@ -3013,11 +3019,24 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     )
   }, [])
 
-  const importDiscoveredAssets = useCallback(async () => {
+  const importDiscoveredAssets = useCallback(async (options?: ImportDiscoveredAssetsOptions) => {
+    // Buttons wire this straight to onClick, so the argument can be a click
+    // event; only a real options object with ids narrows the import.
+    const ids = options && Array.isArray((options as ImportDiscoveredAssetsOptions).ids)
+      ? (options as ImportDiscoveredAssetsOptions).ids!
+      : null
+    const sectionOverride = ids ? (options as ImportDiscoveredAssetsOptions).section : undefined
+
     setDiscoveryStatus('importing')
     setDiscoveryError(null)
 
-    const toImport = discoveredAssets.filter((a) => a.selected && !a.rejected)
+    // A drop onto a section imports exactly the dropped asset into that
+    // section, selected or not; otherwise every selected asset is imported.
+    const toImport = ids
+      ? discoveredAssets
+          .filter((a) => ids.includes(a.id) && !a.rejected)
+          .map((a) => (sectionOverride ? { ...a, assignedSection: sectionOverride } : a))
+      : discoveredAssets.filter((a) => a.selected && !a.rejected)
     if (toImport.length === 0) {
       setDiscoveryStatus('reviewing')
       return
@@ -3175,8 +3194,16 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       }
     }
 
-    setDiscoveredAssetsState([])
-    setDiscoveryStatus('idle')
+    if (ids) {
+      // Only assets that actually imported leave the review; failed ones stay
+      // so they can be retried.
+      const importedIds = new Set(assetsToCreate.map(({ item }) => item.id))
+      setDiscoveredAssetsState((prev) => prev.filter((a) => !importedIds.has(a.id)))
+      setDiscoveryStatus('reviewing')
+    } else {
+      setDiscoveredAssetsState([])
+      setDiscoveryStatus('idle')
+    }
 
     const totalAttempted = createdAssets.length
     const successCount = totalAttempted - uploadErrors.length
@@ -3561,8 +3588,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
       const browserQueued = Boolean(data?.browserQueued)
       const responseStatus = typeof data?.status === 'string' ? data.status : (res.status === 202 ? 'processing' : 'complete')
 
-      // If background discovery is queued, show fast assets and poll for completion
-      if (jobId && (responseStatus === 'processing' || browserQueued)) {
+      // If background discovery is queued, show fast assets and poll for completion.
+      // 'pending' means the job was accepted but the background worker has not
+      // started yet — poll just the same.
+      if (jobId && (responseStatus === 'processing' || responseStatus === 'pending' || browserQueued)) {
         if (discoveredAssets.length > 0) {
           setDiscoveredAssetsState(discoveredAssets)
           setDiscoveryStatus('reviewing')
@@ -3657,7 +3686,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
           setDiscoveryStatus('idle')
         }
 
-        pollStatus()
+        // Awaited so the caller's "busy" state lasts until the job finishes.
+        // Returning early re-enabled the button mid-poll, so every extra click
+        // started another discovery job.
+        await pollStatus()
         return
       }
 
