@@ -249,17 +249,54 @@ describe('discovery worker: job lifecycle', () => {
       expect((h.job.final_result_json as { discoveredAssets: unknown[] }).discoveredAssets).toHaveLength(FAST_ASSETS.length)
     })
 
-    it('completes with no assets when the free layers cannot load and the browser is off', async () => {
+    it('records an error when the free layers cannot load and the browser is off', async () => {
       const handler = await handlerWith({
         loadFastDiscovery: () => { throw new Error("Cannot find module '../lib/fast-discovery.cjs'") },
         isBrowserDiscoveryEnabled: () => false,
       })
 
+      const response = await handler(event({ authorization: 'Bearer valid' }))
+
+      expect(response.statusCode).toBe(500)
+      expect(h.launches).toBe(0)
+      expect(h.job.status).toBe('error')
+      expect(h.job.error_code).toBe('FAST_DISCOVERY_FAILED')
+    })
+
+    it('completes with no assets when the free layers run and find nothing', async () => {
+      const handler = await handlerWith({
+        loadFastDiscovery: () => ({ runFastDiscovery: async () => ({ fastAssets: [], needsBrowser: true, result: {} }) }),
+        isBrowserDiscoveryEnabled: () => false,
+      })
+
       await handler(event({ authorization: 'Bearer valid' }))
 
-      expect(h.launches).toBe(0)
       expect(h.job.status).toBe('complete')
-      expect((h.job.final_result_json as { discoveredAssets: unknown[] }).discoveredAssets).toEqual([])
+    })
+
+    it('does not report success when the result cannot be stored', async () => {
+      const handler = await handlerWith({
+        getSupabase: () => {
+          const base = fakeSupabase(h)
+          return {
+            from: () => ({
+              ...base.from(),
+              update: (payload: Record<string, unknown>) => ({
+                eq: async () => {
+                  if (payload.status === 'complete') return { data: null, error: { message: 'write refused' } }
+                  Object.assign(h.job, payload)
+                  return { data: null, error: null }
+                },
+              }),
+            }),
+          }
+        },
+      })
+
+      const response = await handler(event({ authorization: 'Bearer valid' }))
+
+      expect(response.statusCode).toBe(500)
+      expect(h.job.status).toBe('error')
     })
   })
 

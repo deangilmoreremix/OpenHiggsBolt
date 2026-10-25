@@ -3195,8 +3195,10 @@ export function DemoPersonalizeProvider({ children, testMode, access: accessProp
     }
 
     if (ids) {
-      // A drop imports one asset: only it leaves the review, the rest stay.
-      setDiscoveredAssetsState((prev) => prev.filter((a) => !ids.includes(a.id)))
+      // Only assets that actually imported leave the review; failed ones stay
+      // so they can be retried.
+      const importedIds = new Set(assetsToCreate.map(({ item }) => item.id))
+      setDiscoveredAssetsState((prev) => prev.filter((a) => !importedIds.has(a.id)))
       setDiscoveryStatus('reviewing')
     } else {
       setDiscoveredAssetsState([])

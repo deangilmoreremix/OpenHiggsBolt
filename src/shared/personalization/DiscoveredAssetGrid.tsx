@@ -116,8 +116,8 @@ export function DiscoveredAssetThumb({
           Revert
         </button>
       )}
-      {(asset.edited || asset.videoReady) && (
-        <div className="absolute left-1 top-6 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase" style={{ background: 'rgba(40,201,139,.9)', color: '#fff' }}>
+      {(asset.videoReady || (asset.edited && !onRevert)) && (
+        <div className="pointer-events-none absolute left-1 top-6 z-20 rounded-md px-1.5 py-1 text-[7px] font-black uppercase" style={{ background: 'rgba(40,201,139,.9)', color: '#fff' }}>
           {asset.videoReady ? 'Video Ready' : 'Edited'}
         </div>
       )}

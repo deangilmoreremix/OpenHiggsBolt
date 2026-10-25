@@ -1662,6 +1662,7 @@ function createBrowserDiscoveryHandler(overrides = {}) {
     let fastDuration = 0
     let fastCandidates = []
     let fastSocialProfiles = []
+    let fastError = null
 
     // Saves the free-layer assets as a complete job. Used when the browser
     // phase is skipped or fails: those assets are valid on their own.
@@ -1677,7 +1678,7 @@ function createBrowserDiscoveryHandler(overrides = {}) {
         providerAttempts: fastProviderAttempts,
         ...(browserError ? { browserError } : {}),
       }
-      await supabase
+      const { error: saveError } = await supabase
         .from('personalization_discovery_jobs')
         .update({
           status: 'complete',
@@ -1696,6 +1697,8 @@ function createBrowserDiscoveryHandler(overrides = {}) {
           },
         })
         .eq('id', jobId)
+      // Never report a completion that was not stored.
+      if (saveError) throw new Error(`Failed to save discovery result: ${saveError.message}`)
     }
 
     try {
@@ -1802,7 +1805,8 @@ function createBrowserDiscoveryHandler(overrides = {}) {
         fastCandidates = fastResult.result?.candidates || []
         fastSocialProfiles = fastResult.result?.socialProfiles || []
       } catch (err) {
-        console.error('[personalization-browser-discovery] Fast discovery failed:', err instanceof Error ? err.message : String(err))
+        fastError = err instanceof Error ? err.message : String(err)
+        console.error('[personalization-browser-discovery] Fast discovery failed:', fastError)
       }
 
       // The free layers answered on their own — save the assets and return.
@@ -1815,6 +1819,19 @@ function createBrowserDiscoveryHandler(overrides = {}) {
       // Browser escalation is switched off: what the free layers found (which
       // may be nothing) is the result.
       if (!deps.isBrowserDiscoveryEnabled()) {
+        // The only enabled phase failed: that is an error, not "found nothing".
+        if (fastError) {
+          await supabase
+            .from('personalization_discovery_jobs')
+            .update({
+              status: 'error',
+              completed_at: new Date().toISOString(),
+              error_code: 'FAST_DISCOVERY_FAILED',
+              error_message: fastError,
+            })
+            .eq('id', jobId)
+          return jsonResponse(500, { error: fastError, code: 'FAST_DISCOVERY_FAILED' })
+        }
         await saveFreeLayerResult({ browserSkipped: 'ENABLE_BROWSER_DISCOVERY is not true' })
         return jsonResponse(200, { ok: true, jobId, staticOnly: true, browserSkipped: true })
       }
