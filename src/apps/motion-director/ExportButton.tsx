@@ -3,21 +3,32 @@
 import { useEffect, useRef, useState } from 'react';
 import { useT } from './i18n';
 import { useStore } from './store';
-import { canRenderVideo, renderVideoOnWeb, createDownloadUrl } from './webRenderer';
+import { canRenderVideo, renderVideoOnWeb, createDownloadUrl, formatEta, guardTabWhileRendering } from './webRenderer';
 
 type JobState = {
   id: string;
   status: 'queued' | 'running' | 'done' | 'error';
   progress: number;
+  /** Renderer's estimate of the time left (ms). */
+  etaMs?: number | null;
   filename?: string;
   blob?: Blob;
   error?: string;
+};
+
+const EXPORT_EVENT = 'motion-studio:export';
+
+/** Start an MP4 export from elsewhere in the studio (the Agent chat's "render the MP4"). */
+export const requestExport = () => {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(EXPORT_EVENT));
 };
 
 const ExportButton: React.FC = () => {
   const t = useT();
   const [job, setJob] = useState<JobState | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  /** Set synchronously on start, so a second request during the capability check is ignored. */
+  const inFlightRef = useRef(false);
 
   const stopRendering = () => {
     if (abortControllerRef.current) {
@@ -26,7 +37,18 @@ const ExportButton: React.FC = () => {
     }
   };
 
+  /** Every export path (button, "Export again", the chat's "render the MP4") goes through here. */
   const start = async () => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    try {
+      await runExport();
+    } finally {
+      inFlightRef.current = false;
+    }
+  };
+
+  const runExport = async () => {
     const project = useStore.getState().project;
 
     // First, check if the browser can render media on web
@@ -57,13 +79,17 @@ const ExportButton: React.FC = () => {
     const id = Math.random().toString(36).substring(2, 9);
     setJob({ id, status: 'queued', progress: 0 });
     abortControllerRef.current = new AbortController();
+    // The render runs in this tab: closing or reloading it cancels the export.
+    const releaseGuard = guardTabWhileRendering();
 
     try {
       const result = await renderVideoOnWeb({
         project,
-        onProgress: (progress) => {
+        videoCodec: canRenderResult.videoCodec,
+        audioCodec: canRenderResult.audioCodec,
+        onProgress: (progress, info) => {
           if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
-            setJob((prev) => (prev ? { ...prev, progress, status: 'running' } : null));
+            setJob((prev) => (prev ? { ...prev, progress, etaMs: info?.etaMs ?? null, status: 'running' } : null));
           }
         },
         signal: abortControllerRef.current.signal,
@@ -85,9 +111,23 @@ const ExportButton: React.FC = () => {
         setJob((prev) => (prev ? { ...prev, status: 'error', error: msg } : null));
       }
     } finally {
+      releaseGuard();
       abortControllerRef.current = null;
     }
   };
+
+  const startRef = useRef(start);
+  startRef.current = start;
+  const jobRef = useRef(job);
+  jobRef.current = job;
+  useEffect(() => {
+    const onRequest = () => {
+      const status = jobRef.current?.status;
+      if (status !== 'running' && status !== 'queued') void startRef.current();
+    };
+    window.addEventListener(EXPORT_EVENT, onRequest);
+    return () => window.removeEventListener(EXPORT_EVENT, onRequest);
+  }, []);
 
   // We don't need to resume a render because it's all client-side and doesn't survive a refresh.
   // However, we can keep the effect to clean up on unmount.
@@ -109,7 +149,11 @@ const ExportButton: React.FC = () => {
 
   if (job?.status === 'running' || job?.status === 'queued') {
     return (
-      <button className="btn primary" disabled>
+      <button
+        className="btn primary"
+        disabled
+        title={['Rendering in this tab with the Remotion web renderer — keep it open.', formatEta(job.etaMs)].filter(Boolean).join(' ')}
+      >
         {t('export.running', { pct: Math.round((job.progress ?? 0) * 100) })}
       </button>
     );

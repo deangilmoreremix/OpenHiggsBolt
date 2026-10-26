@@ -10,10 +10,12 @@ export const maxDuration = 60
 
 /**
  * POST /api/motion-studio/capture  { url }
+ *   → { url, title, page, crops, images, logo, brand, transient }
  *
  * Captures one public page for Motion Studio's screenshot-based shots (a
  * 1920-wide page at 2x plus card crops and the page's brand colours) behind the
- * discovery SSRF guard, stores the images under the caller's storage prefix and
+ * discovery SSRF guard, plus the site's own assets (its logo and its largest
+ * images, taken from the rendered page), stores the images under the caller's storage prefix and
  * returns their URLs. Images are never inlined into the project: the project is
  * saved in localStorage, which multi-megabyte data URLs would overflow.
  */
@@ -21,14 +23,16 @@ const BUCKET = 'personalization-assets'
 
 const sanitize = (value: string) => value.replace(/[^A-Za-z0-9._-]/g, '-').slice(0, 96) || 'x'
 
-async function storeImages(userId: string, images: Buffer[]): Promise<string[]> {
+type StoredImage = { name: string; body: Buffer; contentType: string }
+
+async function storeImages(userId: string, images: StoredImage[]): Promise<string[]> {
   const { createServerClient } = await import('@/lib/supabase')
   const storage = createServerClient().storage.from(BUCKET)
   const folder = `${sanitize(userId)}/motion-capture/${randomUUID()}`
   const urls: string[] = []
-  for (const [i, image] of images.entries()) {
-    const path = `${folder}/${i === 0 ? 'page' : `crop-${i}`}.jpg`
-    const { error } = await storage.upload(path, image, { contentType: 'image/jpeg', upsert: false })
+  for (const image of images) {
+    const path = `${folder}/${image.name}`
+    const { error } = await storage.upload(path, image.body, { contentType: image.contentType, upsert: false })
     if (error) throw new Error(`storage upload failed: ${error.message}`)
     const { data } = storage.getPublicUrl(path)
     if (!data?.publicUrl) throw new Error('storage returned no public URL')
@@ -65,7 +69,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'The page could not be captured', code: 'CAPTURE_FAILED' }, { status: 502 })
   }
 
-  const images = [capture.page, ...capture.crops]
+  // Page, card crops, the site's own images, then its logo — one upload batch, split back below.
+  const jpeg = 'image/jpeg'
+  const siteImages = capture.images ?? []
+  const images: StoredImage[] = [
+    { name: 'page.jpg', body: capture.page, contentType: jpeg },
+    ...capture.crops.map((body, i) => ({ name: `crop-${i + 1}.jpg`, body, contentType: jpeg })),
+    ...siteImages.map((body, i) => ({ name: `image-${i + 1}.jpg`, body, contentType: jpeg })),
+    ...(capture.logo ? [{ name: 'logo.png', body: capture.logo, contentType: 'image/png' }] : []),
+  ]
   let urls: string[]
   let transient = false
   try {
@@ -77,7 +89,7 @@ export async function POST(req: NextRequest) {
       console.warn('[motion-studio/capture] storage failed', err instanceof Error ? err.message : String(err))
       return NextResponse.json({ error: 'The capture could not be saved', code: 'STORAGE_FAILED' }, { status: 502 })
     }
-    urls = images.map((image) => `data:image/jpeg;base64,${image.toString('base64')}`)
+    urls = images.map((image) => `data:${image.contentType};base64,${image.body.toString('base64')}`)
     transient = true
   }
 
@@ -85,7 +97,9 @@ export async function POST(req: NextRequest) {
     url: capture.url,
     title: capture.title,
     page: { url: urls[0], width: CAPTURE_VIEWPORT.width * CAPTURE_DEVICE_SCALE, height: capture.pageHeight * CAPTURE_DEVICE_SCALE },
-    crops: urls.slice(1),
+    crops: urls.slice(1, 1 + capture.crops.length),
+    images: urls.slice(1 + capture.crops.length, 1 + capture.crops.length + siteImages.length),
+    logo: capture.logo ? urls[urls.length - 1] : null,
     brand: capture.brand,
     transient,
   })

@@ -5,7 +5,6 @@ import type {
   WebRendererVideoCodec, 
   WebRendererAudioCodec, 
   WebRendererContainer, 
-  WebRendererOutputTarget,
   RenderMediaOnWebOptions,
   RenderStillOnWebOptions,
   RenderStillOnWebResult,
@@ -17,7 +16,8 @@ import { projectEndFrame } from './types';
 
 type RenderOptions = {
   project: ProjectData;
-  onProgress?: (progress: number) => void;
+  /** `etaMs`: the web renderer's estimate of the time left, when it has one. */
+  onProgress?: (progress: number, info?: { etaMs: number | null }) => void;
   signal?: AbortSignal;
   videoCodec?: WebRendererVideoCodec | null;
   audioCodec?: WebRendererAudioCodec | null;
@@ -68,14 +68,14 @@ export const canRenderVideo = async (opts: {
     container: opts.container ?? 'mp4',
   });
 
-  const outputTarget = result.resolvedOutputTarget as (WebRendererOutputTarget & { container?: WebRendererContainer }) | null;
-
   return {
     canRender: result.canRender,
     issues: result.issues.map((i) => i.message),
     videoCodec: result.resolvedVideoCodec,
     audioCodec: result.resolvedAudioCodec,
-    container: outputTarget?.container ?? null,
+    // `resolvedOutputTarget` is where the file is written ('web-fs' | 'arraybuffer'), not a
+    // container; the container is the one that was asked for.
+    container: result.canRender ? opts.container ?? 'mp4' : null,
   };
 };
 
@@ -153,7 +153,8 @@ export const renderVideoOnWeb = async (opts: RenderOptions): Promise<RenderResul
           renderEstimatedTime: progress.renderEstimatedTime,
         }),
       );
-      onProgress?.(progress.progress);
+      const eta = progress.renderEstimatedTime > 0 && progress.doneIn === null ? progress.renderEstimatedTime : null;
+      onProgress?.(progress.progress, { etaMs: eta });
     },
   };
 
@@ -187,6 +188,50 @@ export const renderVideoOnWeb = async (opts: RenderOptions): Promise<RenderResul
     blob,
     progress: 1,
   };
+};
+
+export class RenderUnsupportedError extends Error {}
+
+/**
+ * Render a project to MP4 the way every Motion Studio export does: check the
+ * browser first (WebCodecs, WebGL, an h264/aac encoder at this size), then
+ * render with the codecs that check resolved. The web renderer writes to disk
+ * through the File System API when the browser has it, otherwise to memory.
+ */
+export const exportMp4 = async (opts: Omit<RenderOptions, 'videoCodec' | 'audioCodec' | 'container'>): Promise<RenderResult> => {
+  // `scale` renders the same frames at a smaller output size (e.g. 2/3 → 1080p becomes 720p).
+  const scale = opts.scale ?? 1;
+  const check = await canRenderVideo({ width: Math.round(opts.project.width * scale), height: Math.round(opts.project.height * scale), muted: opts.muted });
+  if (!check.canRender) {
+    throw new RenderUnsupportedError(
+      check.issues.length ? check.issues.join(', ') : 'This browser cannot encode MP4 in this configuration.',
+    );
+  }
+  return renderVideoOnWeb({ ...opts, videoCodec: check.videoCodec, audioCodec: check.audioCodec, container: 'mp4' });
+};
+
+/** "about 1 min 20 s left" from the renderer's estimate. */
+export const formatEta = (ms: number | null | undefined): string => {
+  if (!ms || !Number.isFinite(ms) || ms <= 0) return '';
+  const total = Math.max(1, Math.round(ms / 1000));
+  const m = Math.floor(total / 60);
+  const sec = total % 60;
+  return `about ${m ? `${m} min ` : ''}${m && !sec ? '' : `${sec} s `}left`;
+};
+
+/**
+ * While a render runs, ask before the tab is closed or reloaded: the web
+ * renderer lives in this tab, so leaving it cancels the export. Returns the
+ * function that removes the guard.
+ */
+export const guardTabWhileRendering = (): (() => void) => {
+  if (typeof window === 'undefined') return () => {};
+  const onBeforeUnload = (e: BeforeUnloadEvent) => {
+    e.preventDefault();
+    e.returnValue = '';
+  };
+  window.addEventListener('beforeunload', onBeforeUnload);
+  return () => window.removeEventListener('beforeunload', onBeforeUnload);
 };
 
 /**

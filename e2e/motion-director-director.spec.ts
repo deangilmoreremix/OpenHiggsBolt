@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { deflateSync } from 'node:zlib';
-import { BASE_URL, assertNoOnboardingModal, captureEvidence, installStudioSession } from './helpers/motion-studio';
+import { BASE_URL, answerInkPressOffer, approveFilmAndOpenWorkbench, assertNoOnboardingModal, captureEvidence, installStudioSession, setEntryDuration } from './helpers/motion-studio';
 
 /**
  * Prompt → site capture → AI director storyboard → Approve → a real film in the
@@ -14,6 +14,8 @@ import { BASE_URL, assertNoOnboardingModal, captureEvidence, installStudioSessio
 const OUT = 'docs/motion-studio-design-replacement';
 const CAPTURE_PAGE = 'https://captures.example.com/page.png';
 const CAPTURE_CROP = 'https://captures.example.com/crop-1.png';
+const CAPTURE_IMAGE = 'https://captures.example.com/image-1.jpg';
+const CAPTURE_LOGO = 'https://captures.example.com/logo.png';
 
 /** Solid-colour PNG so the capture is unmistakable in the render. */
 function solidPng(width: number, height: number, rgb: [number, number, number]): Buffer {
@@ -64,6 +66,8 @@ async function mockDirector(page: Page) {
         title: 'Acme',
         page: { url: CAPTURE_PAGE, width: 3840, height: 3492 },
         crops: [CAPTURE_CROP],
+        images: [CAPTURE_IMAGE],
+        logo: CAPTURE_LOGO,
         brand: { background: '#111111', text: '#fafafa', accent: '#ec008c', fontFamily: 'Inter' },
         transient: false,
       }),
@@ -117,22 +121,35 @@ test.describe('Motion Studio director', () => {
     await assertNoOnboardingModal(page);
 
     await page.getByPlaceholder('Describe your motion video...').fill('A 15-second launch film for https://acme.example.com showing the real pages');
-    await page.getByRole('button', { name: 'Duration' }).or(page.getByRole('button', { name: '5s', exact: true })).first().click();
-    await page.getByRole('menuitemradio', { name: '15s' }).click();
+    await setEntryDuration(page, '15s');
     await page.getByRole('button', { name: 'Generate' }).click();
+    // A plain film request: the chat introduces Ink Press and asks first.
+    await answerInkPressOffer(page, 'director');
 
     const plan = page.getByTestId('director-plan');
     await expect(plan).toBeVisible({ timeout: 60_000 });
     await expect(plan).toContainText('Acme launch film');
     await expect(plan).toContainText('Crash Zoom Punch · Crash Impact Real');
     await expect(plan).toContainText('shows your site');
-    await expect(page.getByText(/Captured Acme · 1 card crops/)).toBeVisible();
+    await expect(page.getByText(/Captured Acme · 1 card crops · logo · 1 site image/)).toBeVisible();
+    // The assets pulled from the site are shown in the chat.
+    const assets = page.getByTestId('site-assets');
+    await expect(assets.locator(`img[src="${CAPTURE_LOGO}"]`)).toBeVisible();
+    await expect(assets.locator(`img[src="${CAPTURE_IMAGE}"]`)).toBeVisible();
     expect(calls).toMatchObject({ capture: 1, plan: 1 });
     await captureEvidence(page, `${OUT}/director-storyboard-desktop.png`, { minBytes: 10 * 1024 });
 
-    await page.getByRole('button', { name: 'Approve & build film' }).click();
-    await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
+    await approveFilmAndOpenWorkbench(page);
     await expect(page.locator('.project-name')).toHaveValue('Acme launch film');
+    // The site's logo is on the title cards; its image leads the product shots' card slots.
+    const savedClips = () =>
+      page.evaluate(() => (JSON.parse(localStorage.getItem('motion-director:project-v1') || '{}').tracks ?? []).flatMap((t: any) => t.clips));
+    await expect.poll(async () => (await savedClips()).some((c: any) => c.props?.logo), { timeout: 15_000 }).toBe(true);
+    const all = await savedClips();
+    const titles = all.filter((c: any) => c.cardId === 'inkpress-title-card');
+    expect(titles.length).toBeGreaterThan(0);
+    for (const t of titles) expect(t.props.logo).toBe(CAPTURE_LOGO);
+    expect(all.find((c: any) => Array.isArray(c.props?.crops))?.props.crops[0]).toBe(CAPTURE_IMAGE);
     // 4 scenes + 2 caption strips (one per shot; title cards carry theirs as a subtitle)
     // + 1 flash cut + 3 sound effects (one per scene change) + background
     await expect(page.locator('.clip')).toHaveCount(11, { timeout: 30_000 });
@@ -148,7 +165,7 @@ test.describe('Motion Studio director', () => {
     await captureEvidence(page, `${OUT}/director-film-workbench-desktop.png`, { minBytes: 10 * 1024 });
 
     // A conversational edit the built-in commands do not cover goes to the director.
-    const agentInput = page.getByPlaceholder(/Tell the agent/);
+    const agentInput = page.getByPlaceholder(/tell the agent/i);
     await agentInput.fill('rewrite the opening line so it feels punchier');
     await agentInput.press('Enter');
     await expect(page.getByText('Rewrote the opening line.')).toBeVisible({ timeout: 30_000 });
@@ -161,7 +178,173 @@ test.describe('Motion Studio director', () => {
       .toBe('Acme ships *faster*');
   });
 
-  test('without an OpenAI key it falls back to a quick project and says why', async ({ page }) => {
+  test('chat: "make a promo" → Ink Press question → storyboard → film plays in the chat → Motion Workbench', async ({ page }) => {
+    await installStudioSession(page);
+    const calls = await mockDirector(page);
+    await page.goto(`${BASE_URL}/studio/motion-director/new`);
+    await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
+    await assertNoOnboardingModal(page);
+
+    await page.getByPlaceholder('Describe your motion video...').fill('Use video-shotcraft to make a promo for https://acme.example.com');
+    await page.getByRole('button', { name: 'Generate' }).click();
+    const chat = page.getByTestId('film-chat');
+    await expect(chat).toContainText('Ink Press template');
+    await answerInkPressOffer(page, 'inkpress');
+    await expect(page.getByTestId('director-plan')).toBeVisible({ timeout: 60_000 });
+    expect(calls).toMatchObject({ capture: 1, plan: 1 });
+    await captureEvidence(page, `${OUT}/chat-storyboard-desktop.png`, { minBytes: 10 * 1024 });
+
+    await page.getByRole('button', { name: 'Approve & build film' }).click();
+    const film = page.getByTestId('film-result');
+    await expect(film).toBeVisible({ timeout: 120_000 });
+    await expect(film).toContainText('1920×1080 · 30 fps');
+    await expect(film.locator('.__remotion-player')).toBeVisible();
+    await expect(chat).toContainText('Your film is ready');
+    // The seven workflow steps, Product → Deliver, all ran.
+    const steps = page.getByTestId('film-steps');
+    for (const id of ['product', 'capture', 'storyboard', 'animate', 'beat', 'qa', 'deliver']) {
+      await expect(steps.locator(`[data-step="${id}"]`)).toHaveAttribute('data-state', 'done');
+    }
+    await expect(steps.locator('[data-step="capture"]')).toContainText('1 card crops · logo · 1 site image');
+    await expect(page.getByTestId('film-render')).toBeVisible();
+    await captureEvidence(page, `${OUT}/chat-film-desktop.png`, { minBytes: 10 * 1024 });
+
+    await page.getByTestId('film-open-workbench').click();
+    await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator('.project-name')).toHaveValue('Acme launch film');
+  });
+
+  test('chat: shot cards named in the message are the film\'s shots', async ({ page }) => {
+    await installStudioSession(page);
+    await page.route('**/api/motion-studio/director', (route) =>
+      route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'OPENAI_KEY_REQUIRED', message: 'No key.' }) }),
+    );
+    await page.goto(`${BASE_URL}/studio/motion-director/new`);
+    await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
+    await page.getByPlaceholder('Describe your motion video...').fill('Use the deck-deal-flyin and row-embed shot cards to present this feature.');
+    await page.getByRole('button', { name: 'Generate' }).click();
+    const plan = page.getByTestId('director-plan');
+    await expect(plan).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId('inkpress-offer')).toHaveCount(0);
+    await expect(plan).toContainText(/Deck Deal Flyin/i);
+    await expect(plan).toContainText(/Row Embed/i);
+  });
+
+  test('chat: Render MP4 encodes the film in the browser with the Remotion web renderer', async ({ page }) => {
+    test.setTimeout(15 * 60 * 1000);
+    await installStudioSession(page);
+    await page.route('**/api/motion-studio/director', (route) =>
+      route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'OPENAI_KEY_REQUIRED', message: 'No key.' }) }),
+    );
+    await page.goto(`${BASE_URL}/studio/motion-director/new`);
+    await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
+    await setEntryDuration(page, '5s');
+    await page.getByPlaceholder('Describe your motion video...').fill('Make a launch film for Acme with the Ink Press template');
+    await page.getByRole('button', { name: 'Generate' }).click();
+    await expect(page.getByTestId('director-plan')).toBeVisible({ timeout: 60_000 });
+    await page.getByRole('button', { name: 'Approve & build film' }).click();
+    await expect(page.getByTestId('film-result')).toBeVisible({ timeout: 120_000 });
+
+    await page.getByTestId('film-render').click();
+    await expect(page.getByTestId('film-render-status')).toContainText('keep it open');
+    const link = page.getByTestId('film-download');
+    await expect(link).toBeVisible({ timeout: 12 * 60 * 1000 });
+    const [download] = await Promise.all([page.waitForEvent('download'), link.click()]);
+    expect(download.suggestedFilename()).toMatch(/\.mp4$/);
+    const bytes = await (await import('node:fs/promises')).readFile((await download.path())!);
+    expect(bytes.length).toBeGreaterThan(20_000);
+    // ISO-BMFF: an `ftyp` box at offset 4.
+    expect(bytes.subarray(4, 8).toString('latin1')).toBe('ftyp');
+    if (process.env.MS_FFPROBE !== '0') {
+      try {
+        const { execFileSync } = await import('node:child_process');
+        const probe = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', (await download.path())!]).toString());
+        const video = probe.streams.find((st: any) => st.codec_type === 'video');
+        expect([video.codec_name, video.width, video.height]).toEqual(['h264', 1920, 1080]);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      }
+    }
+
+    // In the Motion Workbench, "render the MP4" in the chat runs the toolbar export.
+    await page.getByTestId('film-open-workbench').click();
+    await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
+    const agentInput = page.getByPlaceholder(/tell the agent/i);
+    await agentInput.fill('render the MP4');
+    await agentInput.press('Enter');
+    await expect(page.getByText(/Rendering the MP4 with Remotion/)).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.topbar a[download$=".mp4"]')).toBeVisible({ timeout: 12 * 60 * 1000 });
+  });
+
+  test('chat: an attached video is cut into the film, and Fast draft renders a 720p MP4', async ({ page }) => {
+    test.setTimeout(15 * 60 * 1000);
+    await installStudioSession(page);
+    await page.route('**/api/motion-studio/director', (route) =>
+      route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'OPENAI_KEY_REQUIRED', message: 'No key.' }) }),
+    );
+    await page.goto(`${BASE_URL}/studio/motion-director/new`);
+    await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
+    await page.getByTestId('motion-prompt-media-input').setInputFiles('public/landing/hero-converge.mp4');
+    await expect(page.getByTestId('motion-prompt-media-thumb')).toBeVisible();
+    await setEntryDuration(page, '5s');
+    await page.getByPlaceholder('Describe your motion video...').fill('Make a launch film for Acme with the Ink Press template');
+    await page.getByRole('button', { name: 'Generate' }).click();
+    await expect(page.getByTestId('director-plan')).toBeVisible({ timeout: 60_000 });
+    await page.getByRole('button', { name: 'Approve & build film' }).click();
+    await expect(page.getByTestId('film-result')).toBeVisible({ timeout: 120_000 });
+    await expect(page.getByTestId('film-chat')).toContainText('Cutting in 1 attached video');
+
+    await page.getByTestId('film-render-draft').click();
+    const link = page.getByTestId('film-download');
+    await expect(link).toBeVisible({ timeout: 12 * 60 * 1000 });
+    await expect(link).toContainText('draft 1280×720');
+    const [download] = await Promise.all([page.waitForEvent('download'), link.click()]);
+    expect(download.suggestedFilename()).toMatch(/-draft-720p\.mp4$/);
+    const file = (await download.path())!;
+    const bytes = await (await import('node:fs/promises')).readFile(file);
+    expect(bytes.subarray(4, 8).toString('latin1')).toBe('ftyp');
+    try {
+      const { execFileSync } = await import('node:child_process');
+      const probe = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', file]).toString());
+      const video = probe.streams.find((st: any) => st.codec_type === 'video');
+      expect([video.codec_name, video.width, video.height]).toEqual(['h264', 1280, 720]);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+
+    await page.getByTestId('film-open-workbench').click();
+    await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator('.clip', { hasText: 'hero-converge.mp4' })).toHaveCount(1, { timeout: 30_000 });
+  });
+
+  test('chat: opening the workbench mid-render asks before cancelling the MP4', async ({ page }) => {
+    await installStudioSession(page);
+    await page.route('**/api/motion-studio/director', (route) =>
+      route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'OPENAI_KEY_REQUIRED', message: 'No key.' }) }),
+    );
+    await page.goto(`${BASE_URL}/studio/motion-director/new`);
+    await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
+    await setEntryDuration(page, '5s');
+    await page.getByPlaceholder('Describe your motion video...').fill('Make a launch film for Acme with the Ink Press template');
+    await page.getByRole('button', { name: 'Generate' }).click();
+    await page.getByRole('button', { name: 'Approve & build film' }).click();
+    await expect(page.getByTestId('film-result')).toBeVisible({ timeout: 120_000 });
+    await page.getByTestId('film-render').click();
+    await expect(page.getByTestId('film-render-status')).toBeVisible();
+
+    // Declining keeps the render going and stays in the chat.
+    page.once('dialog', (d) => void d.dismiss());
+    await page.getByTestId('film-open-workbench').click();
+    await expect(page.getByTestId('film-render-status')).toBeVisible();
+    await expect(page.locator('.topbar')).toHaveCount(0);
+
+    // Accepting cancels it and opens the workbench.
+    page.once('dialog', (d) => void d.accept());
+    await page.getByTestId('film-open-workbench').click();
+    await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
+  });
+
+  test('without an OpenAI key it storyboards from the Ink Press template and says why', async ({ page }) => {
     await installStudioSession(page);
     await page.route('**/api/motion-studio/director', (route) =>
       route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'OPENAI_KEY_REQUIRED', message: 'Add your OpenAI API key in SmartVideo GO Settings to use the Motion Studio director.' }) }),
@@ -170,7 +353,10 @@ test.describe('Motion Studio director', () => {
     await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
     await page.getByPlaceholder('Describe your motion video...').fill('A calm product teaser');
     await page.getByRole('button', { name: 'Generate' }).click();
-    await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
-    await expect(page.locator('.project-name')).toHaveValue('A calm product teaser');
+    await answerInkPressOffer(page, 'director');
+    await expect(page.getByTestId('director-plan')).toContainText('INK PRESS STORYBOARD', { timeout: 60_000 });
+    await expect(page.getByTestId('film-chat')).toContainText('Add your OpenAI API key');
+    await approveFilmAndOpenWorkbench(page);
+    await expect(page.locator('.project-name')).toHaveValue('Product — Ink Press');
   });
 });

@@ -43,6 +43,8 @@ beforeEach(() => {
     page: Buffer.from('page'),
     pageHeight: 1746,
     crops: [Buffer.from('c1'), Buffer.from('c2')],
+    images: [Buffer.from('i1')],
+    logo: Buffer.from('logo'),
     brand: { background: '#ffffff', text: '#111111', accent: '#ff5500', fontFamily: 'Inter' },
   })
   mockCommon()
@@ -77,10 +79,12 @@ describe('POST /api/motion-studio/capture', () => {
     expect(capture).toHaveBeenCalledWith('https://acme.test')
     expect(body.page.url).toMatch(/^https:\/\/storage\.test\/user_1\/motion-capture\/[^/]+\/page\.jpg$/)
     expect(body.crops).toHaveLength(2)
+    expect(body.images).toEqual([expect.stringMatching(/\/image-1\.jpg$/)])
+    expect(body.logo).toMatch(/\/logo\.png$/)
     expect(body.page).toMatchObject({ width: 3840, height: 3492 })
     expect(body.brand.accent).toBe('#ff5500')
     expect(body.transient).toBe(false)
-    expect(upload).toHaveBeenCalledTimes(3)
+    expect(upload).toHaveBeenCalledTimes(5) // page, 2 crops, 1 site image, logo
   })
 
   it('requires a signed-in user', async () => {

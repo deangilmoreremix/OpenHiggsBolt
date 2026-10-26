@@ -1682,6 +1682,10 @@ export const CAPTURE_VIEWPORT = { width: 1920, height: 1080 } as const
 export const CAPTURE_DEVICE_SCALE = 2
 export const CAPTURE_MAX_PAGE_HEIGHT = 1746
 export const CAPTURE_MAX_CROPS = 6
+/** Site images (product shots, hero art) pulled from the page as stills. */
+export const CAPTURE_MAX_IMAGES = 6
+/** How far down the page site images are looked for (CSS px). */
+export const CAPTURE_MAX_IMAGE_Y = 4200
 export const CAPTURE_NAVIGATION_TIMEOUT = 15_000
 // Media is never needed for a still capture; fonts and stylesheets are, so
 // unlike discovery they are allowed (each still passes the SSRF gate).
@@ -1710,6 +1714,10 @@ export interface PageCapture {
   /** JPEG element crops (card-sized blocks), largest first. */
   crops: Buffer[]
   brand: PageCaptureBrand
+  /** The site's logo as a transparent PNG (header / nav logo), when one was found. */
+  logo: Buffer | null
+  /** The site's own images (product shots, hero art) as JPEGs, largest first. */
+  images: Buffer[]
 }
 
 /** `rgb()/rgba()` → `#rrggbb`; null for transparent or unparseable colours. */
@@ -1751,6 +1759,74 @@ function findCropRects(limits: { maxY: number; max: number }): CaptureRect[] {
     picked.push({ x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) })
   }
   return picked
+}
+
+/**
+ * The site's logo and its largest content images, as page rects. Runs in the
+ * page; kept free of closures so it serialises cleanly.
+ *
+ * Logo: an <img>/<svg> near the top that says "logo" (class, id, alt, src),
+ * sits in the header/nav, or is the home link — scored, best first.
+ * Images: loaded, visible <img> elements at least 240×160, largest first,
+ * not overlapping each other or the logo.
+ */
+function findAssetRects(limits: { maxY: number; maxImages: number }): { logo: CaptureRect | null; images: CaptureRect[] } {
+  const toRect = (el: Element): CaptureRect => {
+    const r = el.getBoundingClientRect()
+    return { x: Math.round(r.left + window.scrollX), y: Math.round(r.top + window.scrollY), width: Math.round(r.width), height: Math.round(r.height) }
+  }
+  const visible = (el: Element) => {
+    const style = getComputedStyle(el)
+    return style.visibility !== 'hidden' && style.display !== 'none' && Number(style.opacity) > 0.05
+  }
+  const overlaps = (a: CaptureRect, b: CaptureRect) =>
+    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
+  const says = (el: Element, word: RegExp) => {
+    let node: Element | null = el
+    for (let depth = 0; node && depth < 3; depth++, node = node.parentElement) {
+      const attrs = [node.getAttribute('class'), node.id, node.getAttribute('alt'), node.getAttribute('src'), node.getAttribute('aria-label')]
+      if (attrs.some((a) => typeof a === 'string' && word.test(a))) return true
+    }
+    return false
+  }
+
+  let logo: CaptureRect | null = null
+  let best = 0
+  for (const el of Array.from(document.querySelectorAll('img, svg'))) {
+    if (el.closest('svg') !== el && el.tagName.toLowerCase() === 'svg') continue
+    const rect = toRect(el)
+    if (rect.y > 260 || rect.width < 24 || rect.width > 520 || rect.height < 14 || rect.height > 220 || !visible(el)) continue
+    let score = 0
+    if (says(el, /logo|brand/i)) score += 4
+    if (el.closest('header, nav, [role="banner"]')) score += 2
+    const link = el.closest('a')
+    if (link) {
+      try {
+        const href = new URL(link.href, location.href)
+        if (href.origin === location.origin && (href.pathname === '/' || href.pathname === '')) score += 3
+      } catch { /* ignore */ }
+    }
+    if (rect.x < window.innerWidth / 3) score += 1
+    if (score > best) {
+      best = score
+      logo = rect
+    }
+  }
+  if (best < 3) logo = null
+
+  const images: CaptureRect[] = []
+  const candidates = (Array.from(document.querySelectorAll('img')) as HTMLImageElement[])
+    .filter((img) => img.complete && img.naturalWidth >= 200 && visible(img))
+    .map((img) => toRect(img))
+    .filter((r) => r.width >= 240 && r.height >= 160 && r.y >= 0 && r.y + r.height <= limits.maxY)
+    .sort((a, b) => b.width * b.height - a.width * a.height)
+  for (const rect of candidates) {
+    if (images.length >= limits.maxImages) break
+    if (logo && overlaps(rect, logo)) continue
+    if (images.some((p) => overlaps(p, rect))) continue
+    images.push(rect)
+  }
+  return { logo, images }
 }
 
 /** Computed brand colours/fonts from the rendered page. Runs in the page. */
@@ -1829,6 +1905,18 @@ export async function capturePageScreenshots(
           crops.push(await page.screenshot({ type: 'jpeg', quality: 85, fullPage: true, clip: rect }))
         }
 
+        // The site's own assets: its logo (transparent PNG) and its largest images.
+        const assets = (await page.evaluate(findAssetRects, { maxY: CAPTURE_MAX_IMAGE_Y, maxImages: CAPTURE_MAX_IMAGES })) ?? { logo: null, images: [] }
+        let logo: Buffer | null = null
+        if (assets.logo) {
+          logo = await page.screenshot({ type: 'png', omitBackground: true, fullPage: true, clip: assets.logo }).catch(() => null)
+        }
+        const images: Buffer[] = []
+        for (const rect of assets.images) {
+          const image = await page.screenshot({ type: 'jpeg', quality: 88, fullPage: true, clip: rect }).catch(() => null)
+          if (image) images.push(image)
+        }
+
         const styles = await page.evaluate(readBrandStyles)
         return {
           url: page.url(),
@@ -1836,6 +1924,8 @@ export async function capturePageScreenshots(
           page: shot,
           pageHeight,
           crops,
+          logo,
+          images,
           brand: {
             background: cssColorToHex(styles.background),
             text: cssColorToHex(styles.text),

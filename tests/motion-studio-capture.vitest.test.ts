@@ -22,6 +22,7 @@ function stubChromium(h: Harness) {
     waitForLoadState: vi.fn(async () => {}),
     evaluate: vi.fn(async (fn: { name?: string }) => {
       if (fn.name === 'findCropRects') return [{ x: 400, y: 240, width: 360, height: 300 }, { x: 780, y: 240, width: 360, height: 300 }]
+      if (fn.name === 'findAssetRects') return { logo: { x: 40, y: 20, width: 160, height: 48 }, images: [{ x: 960, y: 300, width: 800, height: 520 }] }
       if (fn.name === 'readBrandStyles') return { background: 'rgb(255, 255, 255)', text: 'rgb(17, 17, 17)', accent: 'rgba(255, 85, 0, 1)', fontFamily: 'Inter, sans-serif' }
       if (String(fn).includes('scrollHeight')) return 5000
       return undefined
@@ -76,6 +77,15 @@ describe('capturePageScreenshots', () => {
     expect(result.pageHeight).toBe(mod.CAPTURE_MAX_PAGE_HEIGHT)
     expect(result.title).toBe('Acme — ship faster')
     expect(result.brand).toEqual({ background: '#ffffff', text: '#111111', accent: '#ff5500', fontFamily: 'Inter, sans-serif' })
+  })
+
+  it("pulls the site's logo (transparent PNG) and its own images", async () => {
+    const { mod, guard } = await load()
+    const result = await mod.capturePageScreenshots('https://acme.example.com/', { guard })
+    expect(result.logo).toBeInstanceOf(Buffer)
+    expect(result.images).toHaveLength(1)
+    expect(h.screenshots).toContainEqual(expect.objectContaining({ type: 'png', omitBackground: true, clip: { x: 40, y: 20, width: 160, height: 48 } }))
+    expect(h.screenshots).toContainEqual(expect.objectContaining({ type: 'jpeg', clip: { x: 960, y: 300, width: 800, height: 520 } }))
   })
 
   it('lets fonts and stylesheets through the gate but blocks media', async () => {

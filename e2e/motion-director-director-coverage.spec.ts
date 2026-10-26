@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { promises as fs, readFileSync } from 'node:fs';
-import { BASE_URL, assertNoOnboardingModal, installStudioSession } from './helpers/motion-studio';
+import { BASE_URL, answerInkPressOffer, approveFilmAndOpenWorkbench, assertNoOnboardingModal, installStudioSession, setEntryDuration } from './helpers/motion-studio';
 
 /**
  * Director-built films across the whole ShotCraft library.
@@ -61,12 +61,10 @@ async function buildFilm(page: Page, prompt: string, seconds: string) {
   await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
   await assertNoOnboardingModal(page);
   await page.getByPlaceholder('Describe your motion video...').fill(prompt);
-  await page.getByRole('button', { name: '5s', exact: true }).click();
-  await page.getByRole('menuitemradio', { name: seconds }).click();
+  await setEntryDuration(page, seconds);
   await page.getByRole('button', { name: 'Generate' }).click();
-  await expect(page.getByTestId('director-plan')).toBeVisible({ timeout: 60_000 });
-  await page.getByRole('button', { name: 'Approve & build film' }).click();
-  await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
+  await answerInkPressOffer(page, 'director');
+  await approveFilmAndOpenWorkbench(page);
 }
 
 test.describe('Director films across the ShotCraft library', () => {

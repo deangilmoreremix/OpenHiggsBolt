@@ -9,7 +9,12 @@ import { interpretAgentCommand, AGENT_HELP, type AgentContext } from "../lib/age
 import { applyAgentOps } from "../lib/agentApply";
 import { projectToSession } from "../lib/sessionAdapter";
 import { applyDirectorOps, requestEdit, DirectorError } from "../lib/directorClient";
-import type { SessionMessage } from "../types";
+import type { ProjectData, SessionMessage } from "../types";
+import type { AspectRatio } from "../projectContract";
+import { useFilmDirector } from "./useFilmDirector";
+import { isFilmRequest, isNewFilmRequest } from "../lib/filmChat";
+import { FilmDirectorChat } from "./FilmDirectorChat";
+import { requestExport } from "../ExportButton";
 
 /**
  * Motion Agent —— 工作室里的对话式改片面板。
@@ -20,12 +25,19 @@ import type { SessionMessage } from "../types";
  */
 
 const SUGGESTIONS = [
+  "Use video-shotcraft to make a promo for my product",
+  "Use the deck-deal-flyin and row-embed shot cards to present this feature",
+  "render the MP4",
   "make the text bigger",
   "set the duration to 8s",
   "change the background to red",
   "slow down by 0.5x",
   "add a caption clip",
 ];
+
+const RENDER_RE = /\b(?:render|export)\b[^.]{0,30}\b(?:mp4|video|film|movie)\b|^\s*(?:render|export)\s*(?:it)?\s*[.!]?\s*$/i;
+
+const aspectOf = (p: ProjectData): AspectRatio => (p.width === p.height ? "1:1" : p.height > p.width ? "9:16" : "16:9");
 
 const clock = (iso: string) => {
   const d = new Date(iso);
@@ -80,10 +92,63 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
     el.scrollTop = el.scrollHeight;
   }, [session?.messages.length, targetId]);
 
+  /** Session the film conversation writes into (created on first use). */
+  const ensureSession = useCallback((): string => {
+    const current = sessionId ?? useStore.getState().activeSessionId;
+    if (current && useStore.getState().sessions.some((s) => s.id === current)) return current;
+    const state = useStore.getState();
+    const created = projectToSession(state.project, state.project.name || "Untitled Session", undefined, recipeId, recipeName);
+    state.addSession(created);
+    return created.id;
+  }, [sessionId, recipeId, recipeName]);
+
+  const director = useFilmDirector({
+    settings: () => ({
+      aspectRatio: aspectOf(useStore.getState().project),
+      durationSec: 20,
+      brandKit: null,
+      media: [],
+      pickedRecipes: [],
+    }),
+    onMessage: (m) => useStore.getState().appendSessionMessage(ensureSession(), { role: m.role, content: m.content, ts: m.ts }),
+    // Already in the workbench: the built film replaces the project (one undo step brings the old one back).
+    onBuilt: (film) => useStore.getState().setProject(film.project),
+    // Once there is a film to edit, only an explicit ask starts a new one; edits stay edits.
+    isRequest: (text) =>
+      useStore.getState().project.tracks.some((t) => t.clips.length > 0) ? isNewFilmRequest(text) : isFilmRequest(text),
+    editFallback: true,
+  });
+
+  // The film conversation belongs to one session: switching to another session starts it
+  // afresh. (The first message creates a session; going from none to that one is not a switch.)
+  const resetDirector = director.reset;
+  const prevTargetRef = useRef(targetId);
+  useEffect(() => {
+    const prev = prevTargetRef.current;
+    prevTargetRef.current = targetId;
+    if (prev && targetId !== prev) resetDirector();
+  }, [targetId, resetDirector]);
+
   const send = useCallback(
     (raw: string) => {
       const text = raw.trim();
       if (!text) return;
+
+      // New film / shot requests, the Ink Press answer and storyboard revisions go to the film director.
+      if (director.send(text)) {
+        setDraft("");
+        return;
+      }
+
+      if (RENDER_RE.test(text)) {
+        const sid = ensureSession();
+        const now = new Date().toISOString();
+        useStore.getState().appendSessionMessage(sid, { role: "user", content: text, ts: now });
+        requestExport();
+        useStore.getState().appendSessionMessage(sid, { role: "assistant", content: "Rendering the MP4 with Remotion (h264, the same frames as the preview). Progress shows on the Export button; it turns into a download link when done.", ts: now });
+        setDraft("");
+        return;
+      }
 
       let id = targetId;
       if (!id) {
@@ -132,7 +197,7 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
         })
         .finally(() => setThinking(false));
     },
-    [targetId, recipeId, recipeName],
+    [targetId, recipeId, recipeName, director, ensureSession],
   );
 
   const messages = session?.messages ?? [];
@@ -162,6 +227,7 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
         ) : (
           messages.map((m, i) => <Bubble key={`${m.ts}-${i}`} message={m} />)
         )}
+        <FilmDirectorChat director={director} hideOwnMessages showFilm={false} />
         {thinking && (
           <div className="text-xs" style={{ color: "#60a5fa" }} role="status">● Director is editing the film…</div>
         )}
@@ -174,7 +240,7 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
             onChange={setDraft}
             onSubmit={() => send(draft)}
             typingText={typing}
-            placeholder="Tell the agent what to change — “make the text bigger”, “set the duration to 8s”…"
+            placeholder="Ask for a film — “make a promo for my product” — or tell the agent what to change…"
             aria-label="Tell the agent what to change"
             rows={2}
           />
@@ -183,7 +249,7 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
               {session ? `${messages.length} message${messages.length === 1 ? "" : "s"}` : "Starts a session on first send"}
             </span>
             <div className="flex-1" />
-            <SendButton onClick={() => send(draft)} disabled={!draft.trim() || thinking} active={Boolean(draft.trim())} label="Send" />
+            <SendButton onClick={() => send(draft)} disabled={!draft.trim() || thinking || director.stage === "storyboarding" || director.stage === "building"} active={Boolean(draft.trim())} label="Send" />
           </div>
         </PromptCard>
       </div>

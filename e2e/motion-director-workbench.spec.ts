@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { BASE_URL, assertNoOnboardingModal, captureEvidence, installStudioSession } from './helpers/motion-studio';
+import { BASE_URL, answerInkPressOffer, approveFilmAndOpenWorkbench, assertNoOnboardingModal, captureEvidence, installStudioSession } from './helpers/motion-studio';
 
 /**
  * After the AI director delivers a film, the user keeps working in the Motion
@@ -40,9 +40,8 @@ async function buildFilm(page: Page) {
   await assertNoOnboardingModal(page);
   await page.getByPlaceholder('Describe your motion video...').fill('A 10-second launch film for Acme');
   await page.getByRole('button', { name: 'Generate' }).click();
-  await expect(page.getByTestId('director-plan')).toBeVisible({ timeout: 60_000 });
-  await page.getByRole('button', { name: 'Approve & build film' }).click();
-  await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
+  await answerInkPressOffer(page, 'director');
+  await approveFilmAndOpenWorkbench(page);
 }
 
 /** The saved project (the store persists it after an 800 ms debounce). */

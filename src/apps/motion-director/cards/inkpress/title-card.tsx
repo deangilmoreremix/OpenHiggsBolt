@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, Easing, interpolate, useCurrentFrame } from "remotion";
+import { AbsoluteFill, Easing, Img, interpolate, useCurrentFrame } from "remotion";
 import type { CardDef } from "../types";
 import { TITLE_CARD_SCHEMA } from "../cardSchemas";
 import { DigitRoll } from "./digit-roll";
@@ -31,6 +31,9 @@ interface Props {
   fontSize?: number;
   underlineWidth?: number;
   duration?: number;
+  /** Brand logo URL shown above the line (Brand Kit); empty for none. */
+  logo?: string;
+  logoHeight?: number;
 }
 
 const TitleCard: React.FC<Props> = ({
@@ -43,6 +46,8 @@ const TitleCard: React.FC<Props> = ({
   fontSize = 116,
   underlineWidth = 220,
   duration = 55,
+  logo = "",
+  logoHeight = 110,
 }) => {
   const frame = useCurrentFrame();
   const words = parseWords(text);
@@ -59,6 +64,12 @@ const TitleCard: React.FC<Props> = ({
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
+  // The logo stamps in just ahead of the words.
+  const logoT = interpolate(frame, [0, 10], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+    easing: Easing.bezier(0.2, 0.75, 0.3, 1),
+  });
 
   return (
     <AbsoluteFill
@@ -71,6 +82,15 @@ const TitleCard: React.FC<Props> = ({
       }}
     >
       <div style={{ textAlign: "center", maxWidth: 1500 }}>
+        {logo ? (
+          <Img
+            src={logo}
+            style={{
+              height: logoHeight, maxWidth: 520, objectFit: "contain", display: "block", margin: "0 auto 40px",
+              opacity: logoT, transform: `scale(${1.12 - 0.12 * logoT})`,
+            }}
+          />
+        ) : null}
         <div
           style={{
             fontFamily: SERIF, fontSize, fontWeight: 600, lineHeight: 1.14,

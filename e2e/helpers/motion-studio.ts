@@ -178,3 +178,25 @@ export async function captureEvidence(
   ).toBeGreaterThan(minBytes);
   return size;
 }
+
+/** Set the entry composer's Duration pill (its label is the current value, e.g. "20s"). */
+export async function setEntryDuration(page: Page, seconds: string): Promise<void> {
+  await page.getByRole('button', { name: /^\d+s$/ }).first().click();
+  await page.getByRole('menuitemradio', { name: seconds, exact: true }).click();
+}
+
+/** The chat introduces Ink Press for a plain film request; answer it when it asks. */
+export async function answerInkPressOffer(page: Page, choice: 'inkpress' | 'director'): Promise<void> {
+  const offer = page.getByTestId('inkpress-offer');
+  await expect(offer).toBeVisible({ timeout: 30_000 });
+  await offer.getByRole('button', { name: choice === 'inkpress' ? 'Use Ink Press' : 'Let the director pick shots' }).click();
+}
+
+/** Approve the storyboard, wait for the film in the chat, and open it in the Motion Workbench. */
+export async function approveFilmAndOpenWorkbench(page: Page): Promise<void> {
+  await expect(page.getByTestId('director-plan')).toBeVisible({ timeout: 60_000 });
+  await page.getByRole('button', { name: 'Approve & build film' }).click();
+  await expect(page.getByTestId('film-result')).toBeVisible({ timeout: 120_000 });
+  await page.getByTestId('film-open-workbench').click();
+  await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
+}
