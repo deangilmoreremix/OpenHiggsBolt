@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AspectRatio } from '../projectContract';
 import type { ProjectData } from '../types';
 import type { MediaAttachment } from '../lib/mediaUpload';
@@ -106,6 +106,14 @@ export function useFilmDirector(opts: {
    * finishes after the switch never lands in the other session.
    */
   const gen = useRef(0);
+  // Unmounting (e.g. the rail switching to History) abandons in-flight work too, so a build
+  // that finishes later can't install its film into whatever session is open by then.
+  useEffect(
+    () => () => {
+      gen.current++;
+    },
+    [],
+  );
 
   const say = useCallback((role: FilmChatMessage['role'], content: string) => {
     const m = msg(role, content);
@@ -189,7 +197,16 @@ export function useFilmDirector(opts: {
         const extra = parseFilmRequest(text);
         if (answer || extra.recipes.length) {
           say('user', text);
-          const req = { ...offerReq.current, recipes: [...offerReq.current.recipes, ...extra.recipes], siteUrl: extra.siteUrl ?? offerReq.current.siteUrl };
+          const base = offerReq.current;
+          // Keep what came with the answer: "yes, make it 30 seconds and focus on team features".
+          const bareAnswer = /^\W*(?:y|yes|yep|yeah|sure|ok|okay|please|no|nope|go|go ahead|do it|use it|use ink ?press|ink ?press|let the director pick(?: the)? shots?)\W*$/i.test(text);
+          const req = {
+            ...base,
+            prompt: bareAnswer ? base.prompt : `${base.prompt}\n\n${text}`,
+            recipes: [...base.recipes, ...extra.recipes.filter((r) => !base.recipes.includes(r))],
+            durationSec: extra.durationSec ?? base.durationSec,
+            siteUrl: extra.siteUrl ?? base.siteUrl,
+          };
           offerReq.current = null;
           void runStoryboard(req, extra.recipes.length && answer !== 'inkpress' ? 'director' : answer ?? 'director');
           return true;

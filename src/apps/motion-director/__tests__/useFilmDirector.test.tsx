@@ -2,19 +2,26 @@
 import { describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 
-const calls: Array<{ prompt: string; capture: unknown; single: string | null }> = [];
+const calls: Array<{ prompt: string; capture: unknown; single: string | null; durationSec: number }> = [];
 /** When set, storyboards wait for it — to finish one after the conversation was reset. */
 let gate: Promise<void> | null = null;
+/** When set, the build (frame QA) waits for it. */
+let buildGate: Promise<void> | null = null;
 vi.mock('../lib/filmPipeline', async (orig) => {
   const real = await orig<typeof import('../lib/filmPipeline')>();
   const { inkPressPlan } = await import('../lib/filmChat');
   return {
     ...real,
     storyboardFilm: vi.fn(async (req: { prompt: string; siteUrl: string | null; single: { componentName: string } | null }, opts: { capture: unknown; durationSec: number }) => {
-      calls.push({ prompt: req.prompt, capture: opts.capture, single: req.single?.componentName ?? null });
+      calls.push({ prompt: req.prompt, capture: opts.capture, single: req.single?.componentName ?? null, durationSec: opts.durationSec });
       if (gate) await gate;
       const capture = req.siteUrl ? { url: `https://${req.siteUrl}/`, title: 'Acme', page: { url: 'p', width: 1, height: 1 }, crops: [], brand: {} } : opts.capture;
       return { plan: inkPressPlan({ prompt: req.prompt, durationSec: 10 }), capture, source: 'inkpress' };
+    }),
+    // Frame QA renders in a real browser; here it just waits on the gate.
+    checkFilmFrames: vi.fn(async () => {
+      if (buildGate) await buildGate;
+      return { checked: 0, failed: [] };
     }),
   };
 });
@@ -92,5 +99,37 @@ describe('useFilmDirector', () => {
     await flush();
     expect(state()).toMatchObject({ product: 'done', storyboard: 'done', animate: 'todo', deliver: 'todo' });
     expect(result.current.steps.map((st) => st.title)).toEqual(['Product', 'Capture', 'Storyboard', 'Animate', 'Beat sync', 'Frame QA', 'Deliver']);
+  });
+
+  it('keeps the length and instructions given with the Ink Press answer', async () => {
+    calls.length = 0;
+    const { result } = renderHook(() => useFilmDirector({ settings }));
+    act(() => { result.current.send('make a promo for my product'); });
+    expect(result.current.stage).toBe('offer');
+    act(() => { result.current.send('yes, make it 30 seconds and emphasize team collaboration'); });
+    await flush();
+    expect(calls[0].durationSec).toBe(30);
+    expect(calls[0].prompt).toContain('emphasize team collaboration');
+  });
+
+  it('a film still building when the chat unmounts is never installed', async () => {
+    const build = async (unmountMidway: boolean) => {
+      const onBuilt = vi.fn();
+      const { result, unmount } = renderHook(() => useFilmDirector({ settings, onBuilt }));
+      act(() => { result.current.send('Make a launch film for acme.io with the Ink Press template', { force: true }); });
+      await flush();
+      expect(result.current.stage).toBe('plan');
+      let release!: () => void;
+      buildGate = new Promise<void>((r) => { release = r; });
+      act(() => { void result.current.approve(); });
+      if (unmountMidway) unmount();
+      release();
+      await flush();
+      buildGate = null;
+      if (!unmountMidway) unmount();
+      return onBuilt;
+    };
+    expect(await build(false)).toHaveBeenCalledTimes(1);
+    expect(await build(true)).not.toHaveBeenCalled();
   });
 });
