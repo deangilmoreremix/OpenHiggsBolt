@@ -146,15 +146,19 @@ export function useFilmDirector(opts: {
       if (wanted.length > recipes.length && live()) {
         say('assistant', `A film can hold up to ${MAX_PICKED_SHOTS} chosen shots, so I'm using the first ${MAX_PICKED_SHOTS} (dropped: ${wanted.slice(MAX_PICKED_SHOTS).map((r) => r.slug).join(', ')}).`);
       }
-      const full = { ...req, recipes };
+      // "A close-up inspired by X" builds one shot — unless Templates picks add more shots, then it's a film of them all.
+      const single = req.single && recipes.every((r) => r === req.single) ? req.single : null;
+      const full = { ...req, recipes, single };
+      // What the storyboard is planned with is what gets built, even if attachments change before approval.
+      const media = s.media.slice();
       // Attached videos are scenes of the film too: they take their time out of the requested length.
-      const videos = s.media.filter((m) => m.kind === 'video').map((m) => ({ name: m.name, sec: videoSceneSec(m) }));
+      const videos = media.filter((m) => m.kind === 'video').map((m) => ({ name: m.name, sec: videoSceneSec(m) }));
       pending.current = { req: full, template };
       setStage('storyboarding');
       setStoryboard(null);
       setFilm(null);
       setActivity([]);
-      const images = s.media.filter((m) => m.kind === 'image').length;
+      const images = media.filter((m) => m.kind === 'image').length;
       let next = markStep(initialSteps(), 'product', 'done', req.siteUrl ?? 'From your message');
       next = reuseCapture && storyboard?.capture
         ? markStep(next, 'capture', 'done', 'Reusing the captured pages')
@@ -162,7 +166,7 @@ export function useFilmDirector(opts: {
           ? markStep(next, 'capture', 'active', `Capturing ${req.siteUrl}`)
           : markStep(next, 'capture', images ? 'done' : 'skipped', images ? `${images} attached screenshot${images === 1 ? '' : 's'}` : 'No URL — sample pages');
       setSteps(markStep(next, 'storyboard', 'active'));
-      if (!req.siteUrl && !s.media.some((m) => m.kind === 'image')) {
+      if (!req.siteUrl && !media.some((m) => m.kind === 'image')) {
         say('assistant', 'No product URL or screenshots yet, so the product shots will use sample pages. Add your URL to the message (or attach screenshots) any time and I will re-capture.');
       }
       try {
@@ -180,6 +184,7 @@ export function useFilmDirector(opts: {
         );
         if (!live()) return;
         result.videos = videos;
+        result.media = media;
         setStoryboard(result);
         setStage('plan');
         const videoSec = videos.reduce((sum, v) => sum + v.sec, 0);
@@ -312,10 +317,12 @@ export function useFilmDirector(opts: {
     setStage('building');
     mark('animate', 'active', 'Building the Remotion project');
     try {
-      const project = await buildFilmProject(storyboard.plan, { aspectRatio: s.aspectRatio, capture: storyboard.capture, media: s.media, logo: s.brandKit?.logo ?? null }, glog);
-      const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || s.media.some((m) => m.kind === 'image') });
+      // Build with the attachments the approved storyboard was planned with (a revision picks up new ones).
+      const media = storyboard.media ?? s.media;
+      const project = await buildFilmProject(storyboard.plan, { aspectRatio: s.aspectRatio, capture: storyboard.capture, media, logo: s.brandKit?.logo ?? null }, glog);
+      const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || media.some((m) => m.kind === 'image') });
       const cuts = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId === 'audio-clip' && /sfxlib/.test(String(c.props?.file ?? ''))).length;
-      const music = s.media.find((m) => m.kind === 'audio');
+      const music = media.find((m) => m.kind === 'audio');
       mark('animate', 'done', `${project.tracks.reduce((n, t) => n + t.clips.length, 0)} clips on ${project.tracks.length} tracks`);
       mark('beat', 'done', `${cuts} SFX hits${music ? ` · cuts on the beat of ${music.name}` : ' · attach music to beat-sync the cuts'}`);
       const frames = await checkFilmFrames(project, glog);

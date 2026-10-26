@@ -158,4 +158,29 @@ describe('useFilmDirector', () => {
     expect(calls[0].recipes).toHaveLength(12);
     expect(result.current.messages.some((m) => /up to 12 chosen shots/.test(m.content))).toBe(true);
   });
+
+  it('a single-shot request with more shots picked in Templates builds a film of them all', async () => {
+    calls.length = 0;
+    const extra = MOTION_TEMPLATES.find((t) => t.componentName === 'RowEmbed')!;
+    const { result } = renderHook(() => useFilmDirector({ settings: () => ({ ...settings(), pickedRecipes: [extra] }) }));
+    act(() => { result.current.send('Design a product close-up inspired by spotlight-hero-card', { force: true }); });
+    await flush();
+    expect(calls[0].single).toBeNull();
+    expect(calls[0].recipes).toEqual(['SpotlightHeroCard', 'RowEmbed']);
+  });
+
+  it('builds with the attachments the approved storyboard was planned with', async () => {
+    let media: Array<{ id: string; kind: 'video'; name: string; url: string; size: number; durationSec: number }> = [
+      { id: 'v', kind: 'video', name: 'demo.mp4', url: 'blob:demo', size: 1, durationSec: 4 },
+    ];
+    const onBuilt = vi.fn();
+    const { result } = renderHook(() => useFilmDirector({ settings: () => ({ ...settings(), media }), onBuilt }));
+    act(() => { result.current.send('Make a launch film for acme.io with the Ink Press template', { force: true }); });
+    await flush();
+    expect(result.current.storyboard?.videos).toEqual([{ name: 'demo.mp4', sec: 4 }]);
+    media = []; // removed after the storyboard was shown
+    await act(async () => { await result.current.approve(); });
+    const project = onBuilt.mock.calls[0][0].project as { tracks: { clips: { cardId: string }[] }[] };
+    expect(project.tracks.flatMap((t) => t.clips).some((c) => c.cardId === 'video-clip')).toBe(true);
+  });
 });

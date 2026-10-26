@@ -39,6 +39,8 @@ export interface StoryboardResult {
   note?: string;
   /** Attached videos the film will play as their own scenes before the closing card. */
   videos?: Array<{ name: string; sec: number }>;
+  /** The attachments this storyboard was planned with; the build uses exactly these. */
+  media?: MediaAttachment[];
 }
 
 const brandPalette = (capture: SiteCapture | null, kit: FilmBrandKit | null | undefined): Partial<DirectorPalette> => ({
