@@ -4,6 +4,7 @@ import { MOTION_TEMPLATES } from '@/data/motionRecipeCatalog';
 import {
   INK_PRESS_SHOTS,
   ensureRecipes,
+  reviseRecipes,
   findNamedRecipes,
   inkPressPlan,
   isFilmRequest,
@@ -104,6 +105,33 @@ describe('Ink Press storyboard', () => {
     const fixed = ensureRecipes(plan, [named], 20);
     expect(fixed.scenes.some((s) => s.recipeId === named.id)).toBe(true);
     expect(fixed.scenes[fixed.scenes.length - 1].kind).toBe('title');
+  });
+
+  it('puts the named shots in the order they were named, even when the director swapped them', () => {
+    const deck = byComponent('DeckDealFlyin');
+    const row = byComponent('RowEmbed');
+    const plan = inkPressPlan({ prompt: 'x', durationSec: 16, recipes: [row, deck] });
+    expect(plan.scenes.filter((s) => s.kind === 'shot').map((s) => s.recipeId)).toEqual([row.id, deck.id]);
+    const fixed = ensureRecipes(plan, [deck, row], 16);
+    expect(fixed.scenes.filter((s) => s.kind === 'shot').map((s) => s.recipeId)).toEqual([deck.id, row.id]);
+    // Titles stay where they were.
+    expect(fixed.scenes[0].kind).toBe('title');
+    expect(fixed.scenes[fixed.scenes.length - 1].kind).toBe('title');
+    // Already in order: the plan comes back untouched.
+    expect(ensureRecipes(fixed, [deck, row], 16)).toBe(fixed);
+  });
+
+  it('revisions replace shots when asked to, and add them otherwise', () => {
+    const deck = byComponent('DeckDealFlyin');
+    const row = byComponent('RowEmbed');
+    const crash = byComponent('CrashZoomReal');
+    expect(reviseRecipes([deck, row], 'use CrashZoomReal instead of row-embed')).toEqual([deck, crash]);
+    expect(reviseRecipes([deck, row], 'replace deck-deal-flyin with CrashZoomReal')).toEqual([crash, row]);
+    expect(reviseRecipes([deck, row], 'swap row-embed for CrashZoomReal')).toEqual([deck, crash]);
+    expect(reviseRecipes([deck, row], 'use CrashZoomReal instead')).toEqual([crash]);
+    expect(reviseRecipes([deck, row], 'remove row-embed')).toEqual([deck]);
+    expect(reviseRecipes([deck], 'also add row-embed at the end')).toEqual([deck, row]);
+    expect(reviseRecipes([deck, row], 'make it 20 seconds')).toEqual([deck, row]);
   });
 
   it('builds a single adapted shot and a clean full-HD project from a storyboard', () => {

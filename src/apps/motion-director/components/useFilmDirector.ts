@@ -11,6 +11,7 @@ import {
   isFilmRequest,
   parseFilmRequest,
   readTemplateAnswer,
+  reviseRecipes,
   type FilmRequest,
   type FilmTemplateChoice,
 } from '../lib/filmChat';
@@ -110,7 +111,8 @@ export function useFilmDirector(opts: {
     /** `reuseCapture`: only a revision of the storyboard on the table keeps its site capture. */
     async (req: FilmRequest, template: FilmTemplateChoice, reuseCapture = false) => {
       const s = optsRef.current.settings();
-      const recipes = [...req.recipes, ...s.pickedRecipes.filter((r) => !req.recipes.includes(r))];
+      // A revision carries its own (revised) list; a new film adds the shots picked in Templates.
+      const recipes = reuseCapture ? req.recipes : [...req.recipes, ...s.pickedRecipes.filter((r) => !req.recipes.includes(r))];
       const full = { ...req, recipes };
       pending.current = { req: full, template };
       setStage('storyboarding');
@@ -177,7 +179,7 @@ export function useFilmDirector(opts: {
           {
             ...prev.req,
             prompt: `${prev.req.prompt}\n\nRevise: ${text}`,
-            recipes: [...prev.req.recipes, ...extra.recipes.filter((r) => !prev.req.recipes.includes(r))],
+            recipes: reviseRecipes(prev.req.recipes, text),
             durationSec: extra.durationSec ?? prev.req.durationSec,
             siteUrl: extra.siteUrl ?? prev.req.siteUrl,
           },

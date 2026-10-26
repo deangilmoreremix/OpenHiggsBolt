@@ -270,6 +270,43 @@ export function singleShotPlan(shot: MotionTemplate, opts: { prompt: string; pro
   };
 }
 
+const REMOVE_RE = /\b(?:remove|drop|without|lose)\b/i;
+
+/**
+ * The required shots after a storyboard revision. Named shots are added, but a
+ * replacement replaces: "use X instead of Y", "replace Y with X", "swap Y for
+ * X", "remove Y", and a bare "use X instead" (which drops the earlier picks, so
+ * the director is free to cut them).
+ */
+export function reviseRecipes(prev: readonly MotionTemplate[], text: string): MotionTemplate[] {
+  const named = (part: string) => findNamedRecipes(part);
+  const merge = (keep: readonly MotionTemplate[], add: readonly MotionTemplate[]) => [...keep, ...add.filter((r) => !keep.includes(r))];
+  const drop = (gone: readonly MotionTemplate[]) => prev.filter((r) => !gone.includes(r));
+  let m = text.match(/^([\s\S]*)\binstead\s+of\b([\s\S]*)$/i);
+  if (m) {
+    const removed = named(m[2]);
+    const added = named(m[1]);
+    // Put each new shot where the shot it replaces was.
+    if (removed.length === 1 && added.length === 1 && prev.includes(removed[0])) {
+      return merge(prev.map((r) => (r === removed[0] ? added[0] : r)), []);
+    }
+    return merge(drop(removed), added);
+  }
+  m = text.match(/\breplace\b([\s\S]*)\bwith\b([\s\S]*)$/i) ?? text.match(/\bswap\b([\s\S]*)\b(?:for|with)\b([\s\S]*)$/i);
+  if (m) {
+    const removed = named(m[1]);
+    const added = named(m[2]);
+    if (removed.length === 1 && added.length === 1 && prev.includes(removed[0])) {
+      return merge(prev.map((r) => (r === removed[0] ? added[0] : r)), []);
+    }
+    return merge(drop(removed), added);
+  }
+  const names = named(text);
+  if (/\binstead\b/i.test(text)) return names.length ? names : prev.slice();
+  if (REMOVE_RE.test(text)) return drop(names);
+  return merge(prev, names);
+}
+
 /**
  * Make sure every shot the user named is in the plan, in their order, then
  * re-fit the length. The director is asked to use them, but its output is
@@ -277,13 +314,24 @@ export function singleShotPlan(shot: MotionTemplate, opts: { prompt: string; pro
  */
 export function ensureRecipes(plan: DirectorPlan, recipes: readonly MotionTemplate[], targetSec: number): DirectorPlan {
   if (!recipes.length) return plan;
+  const named = (s: DirectorScene) => s.kind === 'shot' && recipes.some((r) => r.id === s.recipeId);
   const missing = recipes.filter((r) => !plan.scenes.some((s) => s.recipeId === r.id));
-  if (!missing.length) return plan;
   const scenes = plan.scenes.slice();
   // Insert before a closing title / outro so the call to action stays last.
   const last = scenes[scenes.length - 1];
   const closing = last && (last.kind === 'title' || resolveMotionTemplate(last.recipeId)?.category === 'outro') ? 1 : 0;
-  scenes.splice(scenes.length - closing, 0, ...missing.map((r) => sceneFor(r, r.durationSec || 4, 'cut')));
+  if (missing.length) scenes.splice(scenes.length - closing, 0, ...missing.map((r) => sceneFor(r, r.durationSec || 4, 'cut')));
+  // The named shots play in the order they were named: the slots they hold keep
+  // their places in the film, and the shots are dealt into those slots in order.
+  const slots = scenes.map((s, i) => (named(s) ? i : -1)).filter((i) => i >= 0);
+  const inOrder = slots
+    .map((i) => scenes[i])
+    .sort((a, b) => recipes.findIndex((r) => r.id === a.recipeId) - recipes.findIndex((r) => r.id === b.recipeId));
+  slots.forEach((slot, k) => {
+    scenes[slot] = inOrder[k];
+  });
+  const unchanged = !missing.length && scenes.every((s, i) => s === plan.scenes[i]);
+  if (unchanged) return plan;
   // Drop unnamed shots first if the plan is now too long.
   while (scenes.length > PLAN_LIMITS.maxScenes) {
     const idx = scenes.findIndex((s) => s.kind === 'shot' && !recipes.some((r) => r.id === s.recipeId));
