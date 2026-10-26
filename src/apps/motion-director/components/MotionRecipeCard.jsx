@@ -144,9 +144,21 @@ export default function MotionRecipeCard({
   const handleAdd = useCallback(
     (e) => {
       e.stopPropagation();
+      clearTimeout(clickTimer.current);
       onAddToTimeline?.(recipe);
     },
     [onAddToTimeline, recipe],
+  );
+
+  /** Enter / Space on the focused card = the click (use it in the chat); keys on the nested Add button stay its own. */
+  const handleCardKeyDown = useCallback(
+    (e) => {
+      if (e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return;
+      e.preventDefault();
+      clearTimeout(clickTimer.current);
+      onClick?.(recipe);
+    },
+    [onClick, recipe],
   );
 
   return (
@@ -218,6 +230,10 @@ export default function MotionRecipeCard({
         onDragStart={handleDragStart}
         onClick={handleCardClick}
         onDoubleClick={handleDoubleClick}
+        onKeyDown={handleCardKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-label={`Use ${recipe.nameEn || recipe.name} in the chat`}
         title="Click to use in the chat · drag to the timeline · double-click to add at the playhead"
         data-testid="library-recipe-card"
       >

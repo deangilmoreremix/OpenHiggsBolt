@@ -441,6 +441,13 @@ test.describe('Motion Studio director', () => {
     await expect(page.getByPlaceholder(/Describe your motion video|Describe another film/)).toBeFocused({ timeout: 30_000 });
     await expect(page.getByRole('button', { name: /Remove Deck Deal Flyin/i })).toBeVisible();
     await expect(page).toHaveURL(/\/studio\/motion-director\/?(\?.*)?$/);
+    // Keyboard: Enter on a focused library card does the same.
+    await page.goto(`${BASE_URL}/studio/motion-director/workbench`);
+    await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
+    await page.getByPlaceholder('Search recipes...').fill('row-embed');
+    await page.getByTestId('library-recipe-card').first().focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('button', { name: /Remove Row Embed/i })).toBeVisible({ timeout: 30_000 });
   });
 
   test('without an OpenAI key it storyboards from the Ink Press template and says why', async ({ page }) => {
