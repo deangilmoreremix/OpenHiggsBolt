@@ -317,6 +317,33 @@ test.describe('Motion Studio director', () => {
     await expect(page.locator('.clip', { hasText: 'hero-converge.mp4' })).toHaveCount(1, { timeout: 30_000 });
   });
 
+  test('chat: opening the workbench mid-render asks before cancelling the MP4', async ({ page }) => {
+    await installStudioSession(page);
+    await page.route('**/api/motion-studio/director', (route) =>
+      route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'OPENAI_KEY_REQUIRED', message: 'No key.' }) }),
+    );
+    await page.goto(`${BASE_URL}/studio/motion-director/new`);
+    await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
+    await setEntryDuration(page, '5s');
+    await page.getByPlaceholder('Describe your motion video...').fill('Make a launch film for Acme with the Ink Press template');
+    await page.getByRole('button', { name: 'Generate' }).click();
+    await page.getByRole('button', { name: 'Approve & build film' }).click();
+    await expect(page.getByTestId('film-result')).toBeVisible({ timeout: 120_000 });
+    await page.getByTestId('film-render').click();
+    await expect(page.getByTestId('film-render-status')).toBeVisible();
+
+    // Declining keeps the render going and stays in the chat.
+    page.once('dialog', (d) => void d.dismiss());
+    await page.getByTestId('film-open-workbench').click();
+    await expect(page.getByTestId('film-render-status')).toBeVisible();
+    await expect(page.locator('.topbar')).toHaveCount(0);
+
+    // Accepting cancels it and opens the workbench.
+    page.once('dialog', (d) => void d.accept());
+    await page.getByTestId('film-open-workbench').click();
+    await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
+  });
+
   test('without an OpenAI key it storyboards from the Ink Press template and says why', async ({ page }) => {
     await installStudioSession(page);
     await page.route('**/api/motion-studio/director', (route) =>
