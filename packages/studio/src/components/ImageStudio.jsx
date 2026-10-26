@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { generateImage, generateI2I, uploadFile } from "../muapi.js";
 import { formatErrorMessage } from "../utils/formatError.js";
@@ -990,6 +990,19 @@ export default function ImageStudio({
   onFilesHandled,
   templateData,
   locale = "en",
+  /**
+   * Optional renderer for the shared Personalization Modal hand-off.
+   *
+   * The `studio` package is published standalone, so it MUST NOT import the
+   * app's `src/shared/personalization/studioEntry` module — the app root owns
+   * that wiring and passes the renderer in.
+   *
+   * The argument is a plain `StudioPersonalizeOptions` object:
+   *   { originStudio, studioProjectId, title,
+   *     media: { mediaType, url, poster, aspectRatio, duration, durationLabel },
+   *     prompt: { text, model, modelName } }
+   */
+  renderPersonalizeAction,
 }) {
   const copy = resolveCopy(en, zh, locale);
   const LEGACY_PERSIST_KEY = "hg_image_studio_persistent";
@@ -1291,6 +1304,37 @@ export default function ImageStudio({
   const selectedFamily = imageModelCatalog.familyById.get(selectedFamilyId) || initialFamily;
   const selectedPickerEntry = imageModelPickerEntryByVariantId.get(selectedModelId);
   const selectedModelDisplayName = selectedPickerEntry?.name || selectedFamily.name;
+
+  // ── Personalization hand-off (Phase 2) ───────────────────────────────────
+  // The shared Personalization Modal keys its saved project on the source id,
+  // so the studio project id has to be unique per project AND stable while
+  // the project is unchanged. It is derived from the first uploaded image plus
+  // the generation configuration — a new upload (or a different model / aspect
+  // ratio) is a different project. Declared after `selectedModelDisplayName`,
+  // which it reads during render.
+  const studioPersonalizeOptions = useMemo(
+    () => ({
+      originStudio: "image",
+      studioProjectId: [
+        selectedModelId,
+        selectedAr,
+        uploadedImageUrls[0] ? uploadedImageUrls[0].split("/").pop() : "no-image",
+      ].join(":"),
+      title: "Image Studio image",
+      media: {
+        mediaType: "image",
+        url: uploadedImageUrls[0] ?? null,
+        poster: null,
+        aspectRatio: selectedAr,
+      },
+      prompt: {
+        text: prompt,
+        model: selectedModelId,
+        modelName: selectedModelDisplayName,
+      },
+    }),
+    [selectedModelId, selectedModelDisplayName, selectedAr, uploadedImageUrls, prompt],
+  );
   const currentMode = imageMode ? "i2i" : "t2i";
   const selectedVariant = imageModelCatalog.variantById.get(selectedModelId);
   const supplementalInputs = getSupplementalModelInputs(selectedVariant?.model);
@@ -1818,6 +1862,12 @@ export default function ImageStudio({
                 </div>
               ))}
               
+              {/* Personalize this image in the shared Personalization Modal.
+                  Renders nothing without an uploaded source image. */}
+              {studioPersonalizeOptions.media.url
+                ? renderPersonalizeAction?.(studioPersonalizeOptions)
+                : null}
+
               {/* Main Upload Trigger */}
               {referenceVariant && uploadedImageUrls.length < referenceImageLimit && (
                 <UploadButton
@@ -2024,6 +2074,7 @@ export default function ImageStudio({
                       <option key={r} value={r}>{r}</option>
                     ))}
                   </select>
+
                 </div>
               )}
 

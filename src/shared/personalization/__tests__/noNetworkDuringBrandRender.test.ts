@@ -28,6 +28,7 @@ import {
   WEB_RENDER_MIME_TYPE,
   PERSONALIZATION_COMPOSITION_ID,
 } from '../finalOutput'
+import { DESIGN_FONT_FACE_CSS } from '../templates/typography'
 
 function makeBlob() {
   return new Blob(['fake-branded-video-bytes'], { type: 'video/mp4' })
@@ -135,5 +136,89 @@ describe('no network during branded render', () => {
     expect(getCtx(ref).generation.status).toBe('complete')
     expect(getCtx(ref).result.metadata.container).toBe(WEB_RENDER_MIME_TYPE.mp4)
     expect(getCtx(ref).result.metadata.extension).toBe('mp4')
+  })
+})
+
+/**
+ * Phase 3 decision D1 — the FontFace.load() spy.
+ *
+ * The first test spies on fetch/XHR/WebSocket, which the browser-internal
+ * font loader does NOT go through: a font loaded through `new FontFace(url)`
+ * or a `url()` reference would break the zero-network property while the
+ * test stayed green (A6's memo). This test stubs `globalThis.FontFace` with
+ * a recording class, runs the SAME branded render, and asserts that the
+ * loader never reached any URL.
+ *
+ * The stub is scoped to this test only (installed and restored inside it) so
+ * the harness for the three existing tests keeps using the real environment.
+ */
+describe('no font network requests during branded render (D1)', () => {
+  it('never calls FontFace.load() with a URL during a branded render', async () => {
+    const globalScope = globalThis as unknown as Record<string, unknown>
+    const OriginalFontFace = globalScope.FontFace
+    const recordedSources: unknown[] = []
+
+    class RecordingFontFace {
+      family: string
+      status: string
+      private readonly source: unknown
+
+      constructor(family: string, source: unknown) {
+        this.family = family
+        this.source = source
+        this.status = 'unloaded'
+      }
+
+      load(): Promise<{ family: string; status: string }> {
+        recordedSources.push(this.source)
+        this.status = 'loaded'
+        return Promise.resolve({ family: this.family, status: this.status })
+      }
+    }
+    globalScope.FontFace = RecordingFontFace
+
+    try {
+      const fetchSpy = vi.fn()
+      globalScope.fetch = fetchSpy
+
+      const ref: HarnessRef = { current: null }
+      await renderProvider(ref)
+      await openSource(ref)
+
+      await act(async () => {
+        getCtx(ref).approvePersonalization()
+      })
+      await act(async () => {})
+      await new Promise((r) => setTimeout(r, 0))
+      fetchSpy.mockClear()
+
+      renderMediaOnWeb.mockImplementation(async () => ({
+        getBlob: async () => makeBlob(),
+      }))
+
+      await act(async () => {
+        await getCtx(ref).createFinalVideo()
+      })
+
+      // The strongest form: load() is never called AT ALL — the @font-face
+      // rule carries the whole font as a base64 data URI, so there is no
+      // source for the font loader to fetch (not even a same-origin one).
+      expect(recordedSources).toEqual([])
+      // Defence in depth: should a future source ever be recorded, it must
+      // still not be remote.
+      const remoteSources = recordedSources.filter((source) =>
+        /https?:\/\//i.test(String(source)),
+      )
+      expect(remoteSources).toEqual([])
+
+      // The injected @font-face CSS itself carries no URL to fetch: no
+      // remote URL and no public/-path reference — only the data URI.
+      expect(DESIGN_FONT_FACE_CSS).toMatch(/data:font\/woff2;base64,/)
+      expect(DESIGN_FONT_FACE_CSS).not.toMatch(/https?:\/\//i)
+      expect(DESIGN_FONT_FACE_CSS).not.toContain('url("/fonts/')
+      expect(DESIGN_FONT_FACE_CSS).not.toMatch(/url\(['"]?\//)
+    } finally {
+      globalScope.FontFace = OriginalFontFace
+    }
   })
 })

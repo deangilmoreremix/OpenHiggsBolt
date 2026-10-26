@@ -14,6 +14,8 @@ export type PreviewLayoutId =
 export type PreviewLayerKind =
   | 'logo' | 'businessName' | 'headline' | 'offer' | 'cta'
   | 'productImage' | 'serviceImage' | 'tagline' | 'endCard'
+  /** A registered Remotion design rendered by its own component. */
+  | 'design'
 
 export type PreviewAnimationId =
   | 'none' | 'fade' | 'slide-up' | 'slide-down' | 'slide-left'
@@ -53,6 +55,24 @@ export interface PreviewLayer {
   fontFamily?: string
   /** Anchor image URL for image layers (resolved by the caller). */
   imageUrl?: string
+  /**
+   * Id of the registered Remotion design this layer renders.
+   *
+   * Only set on `design` layers. Optional so projects saved before the design
+   * registry existed still restore.
+   */
+  designId?: string
+  /**
+   * Per-slot text overrides for a `design` layer, keyed by
+   * `RemotionDesignTextSlot.key`.
+   *
+   * The PRIMARY slot is NOT stored here: it keeps using `layer.text`.
+   * Only the secondary slots appear in this map, so a design that declares
+   * no primary slot stores every slot here.
+   *
+   * Absent => the slot falls back to its brand field.
+   */
+  textSlotOverrides?: Record<string, string>
 }
 
 export interface PreviewBrandColors {
@@ -102,6 +122,13 @@ export interface PersonalizationPreviewSettings {
   height: number
   /** Customer-selected audio track, or null when none is chosen. */
   audio: PreviewAudioSelection | null
+  /**
+   * Id of the Remotion design currently applied to the preview, or null.
+   *
+   * Optional so projects saved before the design registry existed still
+   * restore; the normalizer falls back to `null`.
+   */
+  remotionDesignId?: string | null
 }
 
 /** Everything the composition needs to render one frame-accurate scene. */

@@ -1,0 +1,45 @@
+# Phase 3 — Build lock
+
+**Status:** GRANTED
+**Holder:** P3-H (Integration, QA & Report Engineer; session ses_e9a690e81ffecxVkl9kKT2fSqg)
+**Granted at:** 2026-10-22 ~21:52 UTC
+**Released at:** —
+**Note:** taken for the full P3-H matrix (build, build:packages, test:unit,
+playwright e2e) and release verification.
+
+## Rules
+
+1. Ask the orchestrator for the lock, then write your agent id and the time into the fields above.
+2. Run your heavy command.
+3. Paste the **raw output** into `docs/phase3/handoffs/<ID>.md` and `docs/phase3/raw/<row>.txt`.
+4. Reset the fields to `FREE` and release.
+
+Only one agent may hold this lock. These require it: `npm run build`, `npm run build:packages`,
+`npm run build:studio`, `npm run test:unit`, `npx playwright test`.
+These **do not**: `npm run typecheck`, `npx tsc --noEmit`, `npx next lint`, single-file
+`npx vitest run <file>`, `git` read commands.
+
+## Why it exists
+
+Under host pressure the test suite produced a **different 2–4 failures on every run**, with whole
+test files failing to collect and **no assertion** — the signature of worker timeouts, not broken
+code. A saturated host makes the suite signal worthless.
+
+## Server hygiene
+
+- **Turbopack is broken in this worktree** (`next dev --turbopack` → "Next.js package not found").
+  Use `npx next start --port 3111` against a production build. `next dev` overwrites `.next`.
+- Check `lsof -ti :3111` first: reuse a running server, or start one and clean it up with
+  `lsof -ti :3111 | xargs kill -9`. **Never kill a process you did not start.**
+- Playwright's `webServer` config would start the broken Turbopack server, so start
+  `next start` on 3111 yourself and Playwright will reuse it.
+
+## Host health gate (run before any suite)
+
+```
+uptime                                   # load1 < 40
+vm_stat | grep -E 'Pages (free|inactive)'   # available = free+inactive+spec+purgeable > 1.5 GiB
+```
+
+If the gate fails, **delay** and report it. A suite result obtained under load is discarded,
+not trusted.

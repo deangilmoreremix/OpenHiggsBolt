@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { PublishStep } from "../../../../components/SocialPublishProvider";
 import { AssistStep } from "../../../../components/AiAssistantProvider";
@@ -490,6 +490,19 @@ export default function RecastStudio({
   droppedFiles,
   onFilesHandled,
   locale = "en",
+  /**
+   * Optional renderer for the shared Personalization Modal hand-off.
+   *
+   * The `studio` package is published standalone, so it MUST NOT import the
+   * app's `src/shared/personalization/studioEntry` module — the app root owns
+   * that wiring and passes the renderer in.
+   *
+   * The argument is a plain `StudioPersonalizeOptions` object:
+   *   { originStudio, studioProjectId, title,
+   *     media: { mediaType, url, poster, aspectRatio, duration, durationLabel },
+   *     prompt: { text, model, modelName } }
+   */
+  renderPersonalizeAction,
 }) {
   const copy = resolveCopy(en, zh, locale);
   const LEGACY_PERSIST_KEY = "hg_recast_studio_persistent";
@@ -675,6 +688,38 @@ export default function RecastStudio({
   const aspectOptions = getAspectRatiosForRecastModel(selectedModelId);
   const showAspect = aspectOptions.length > 0;
   const showPrompt = !!selectedModel?.hasPrompt;
+
+  // ── Personalization hand-off (Phase 2) ───────────────────────────────────
+  // Recast (body swap) composes a source video plus a character image, but
+  // the shared Personalization Modal takes ONE source media — the source
+  // video is the primary asset, so it is the one handed over. The character
+  // image is deliberately NOT part of the hand-off.
+  // The Modal keys its saved project on the source id, so the studio project
+  // id has to be unique per project AND stable while the project is
+  // unchanged: the uploaded video name plus the model and aspect ratio.
+  const studioPersonalizeOptions = useMemo(
+    () => ({
+      originStudio: "recast",
+      studioProjectId: [
+        videoName || (videoUrl ? videoUrl.split("/").pop() : "no-video"),
+        selectedModelId,
+        selectedAspectRatio,
+      ].join(":"),
+      title: "Recast source video",
+      media: {
+        mediaType: "video",
+        url: videoUrl || null,
+        poster: null,
+        aspectRatio: selectedAspectRatio,
+      },
+      prompt: {
+        text: prompt,
+        model: selectedModelId,
+        modelName: selectedModel?.name,
+      },
+    }),
+    [videoUrl, videoName, selectedModelId, selectedModel, selectedAspectRatio, prompt],
+  );
 
   // ── Upload handlers ─────────────────────────────────────────────────────────
   const handleVideoPick = useCallback(
@@ -1047,6 +1092,12 @@ export default function RecastStudio({
                 isVideo={true}
                 copy={copy}
               />
+
+              {/* Personalize the source video in the shared Personalization
+                  Modal. Renders nothing without an uploaded source video. */}
+              {studioPersonalizeOptions.media.url
+                ? renderPersonalizeAction?.(studioPersonalizeOptions)
+                : null}
 
               {/* Character image */}
               <MediaPickerButton

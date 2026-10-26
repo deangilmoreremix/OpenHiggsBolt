@@ -2,10 +2,12 @@
  * Negative auth tests for POST /api/personalization/discover-assets.
  *
  * Proves:
- * - Unauthenticated requests (userId = null/undefined/'') are rejected with 401
- * - An 'anon' clerkUserId can never reach createDiscoveryJob
+ * - Unauthenticated requests (userId = null/undefined/'') are allowed (free feature)
+ * - Jobs are scoped to the caller's identity (IP for anonymous, userId for signed-in)
  * - Auth failure is logged before any business logic runs
  * - An oversized websiteUrl is rejected (400) instead of silently truncated
+ * - Discovery is asynchronous: POST returns 202 with a jobId immediately,
+ *   the crawl runs in the background worker
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -32,10 +34,6 @@ vi.mock('@/server/envValidation', () => ({
   validatePersonalizationEnv: vi.fn(),
 }))
 
-vi.mock('@/server/discoveryOrchestrator', () => ({
-  runFastDiscovery: vi.fn(),
-}))
-
 vi.mock('@/server/discoveryJobs', () => ({
   createDiscoveryJob: vi.fn(),
   getDiscoveryJobForUser: vi.fn(),
@@ -49,7 +47,6 @@ import { auth } from '@clerk/nextjs/server'
 import { resolveSmartVideoAccessForUser } from '@/access/resolveAccess'
 import { validatePersonalizationEnv } from '@/server/envValidation'
 import { createDiscoveryJob, updateDiscoveryJob } from '@/server/discoveryJobs'
-import { runFastDiscovery } from '@/server/discoveryOrchestrator'
 
 describe('POST /api/personalization/discover-assets auth', () => {
   beforeEach(() => {
@@ -59,24 +56,6 @@ describe('POST /api/personalization/discover-assets auth', () => {
     // undo any prior test's hasSmartVideoGo:false override).
     vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: true } as any)
     vi.mocked(validatePersonalizationEnv).mockReturnValue({ valid: true } as any)
-    vi.mocked(runFastDiscovery).mockResolvedValue({
-      result: {
-        providerUsed: 'STATIC_FALLBACK',
-        providerAttempted: 'STATIC_FALLBACK',
-        candidates: [],
-        pagesCrawled: 0,
-        rawCandidates: 0,
-        duration: 0,
-        socialProfiles: [],
-        discoveredAssets: [],
-        firecrawlUsed: false,
-        providerAttempts: ['STATIC_FALLBACK'],
-      },
-      fastAssets: [],
-      usefulAssetCount: 0,
-      providerAttempts: ['STATIC_FALLBACK'],
-      needsBrowser: false,
-    })
     vi.mocked(createDiscoveryJob).mockResolvedValue({
       id: 'job-1',
       clerk_user_id: 'user-1',
@@ -116,6 +95,8 @@ describe('POST /api/personalization/discover-assets auth', () => {
     expect(res.status).toBe(202)
     const body = await res.json()
     expect(body.ok).toBe(true)
+    expect(body.status).toBe('pending')
+    expect(typeof body.jobId).toBe('string')
 
     // The job must be scoped to the CALLER's identity: the caller's IP when
     // one is present, and at worst a plain 'anon' bucket when the request
@@ -132,6 +113,7 @@ describe('POST /api/personalization/discover-assets auth', () => {
     expect(res.status).toBe(202)
     const body = await res.json()
     expect(body.ok).toBe(true)
+    expect(body.status).toBe('pending')
   })
 
   it('MUST ALLOW an unauthenticated caller when auth returns an empty string userId', async () => {
@@ -141,6 +123,7 @@ describe('POST /api/personalization/discover-assets auth', () => {
     expect(res.status).toBe(202)
     const body = await res.json()
     expect(body.ok).toBe(true)
+    expect(body.status).toBe('pending')
   })
 
   // -------------------------------------------------------------------------
@@ -152,16 +135,18 @@ describe('POST /api/personalization/discover-assets auth', () => {
 
     const res = await post('https://example.com')
     // The route always accepts a discovery JOB and answers 202 with the job
-    // id, so a long scrape can never block the initial response.
+    // id immediately — the crawl runs in the background worker and can never
+    // block the initial response.
     expect(res.status).toBe(202)
     const body = await res.json()
     expect(body.ok).toBe(true)
+    expect(body.status).toBe('pending')
     expect(typeof body.jobId).toBe('string')
     expect(body.cached).toBe(false)
 
-    // Discovery pipeline must have run
-    expect(runFastDiscovery).toHaveBeenCalledTimes(1)
+    // The job was created and marked running
     expect(createDiscoveryJob).toHaveBeenCalledTimes(1)
+    expect(updateDiscoveryJob).toHaveBeenCalled()
 
     // jobId must be present in the response
     expect(body.jobId).toBeDefined()
@@ -184,15 +169,10 @@ describe('POST /api/personalization/discover-assets auth', () => {
 
     expect(res.status).toBe(400)
     expect(createDiscoveryJob).not.toHaveBeenCalled()
-    expect(runFastDiscovery).not.toHaveBeenCalled()
   })
 
   // -------------------------------------------------------------------------
-  // The entitlement gate owns the unauthenticated rejection now: it returns 401
-  // BEFORE the route's own auth stage, so re-point the historical "logs at the
-  // auth stage" assertion at the gate's observable behavior — a 401 body and no
-  // crawler/discovery side effects. The route's own auth-stage log no longer
-  // fires for these requests because requireApiEntitlement short-circuits first.
+  // Free discovery path: no auth side effects, job is IP-scoped
   // -------------------------------------------------------------------------
 
   it('anonymous callers get the free discovery path with no auth side effects', async () => {
@@ -202,10 +182,11 @@ describe('POST /api/personalization/discover-assets auth', () => {
     expect(res.status).toBe(202)
     const body = await res.json()
     expect(body.ok).toBe(true)
+    expect(body.status).toBe('pending')
 
-    // Discovery ran: the free path is a real discovery, not a rejection.
-    expect(runFastDiscovery).toHaveBeenCalledTimes(1)
+    // Discovery job was created (async dispatch happens in background)
     expect(createDiscoveryJob).toHaveBeenCalledTimes(1)
+    expect(updateDiscoveryJob).toHaveBeenCalled()
     // And the job is IP-scoped when an IP is present ('anon' only when the
     // request has no IP headers at all).
     const jobArg = (createDiscoveryJob as any).mock.calls[0][0]
@@ -222,14 +203,33 @@ describe('POST /api/personalization/discover-assets auth', () => {
 
     const res = await post('https://example.com')
     // The route always accepts a discovery JOB and answers 202 with the job
-    // id, so a long scrape can never block the initial response.
+    // id immediately — the crawl runs in the background worker.
     expect(res.status).toBe(202)
     const body = await res.json()
     expect(body.ok).toBe(true)
+    expect(body.status).toBe('pending')
     expect(typeof body.jobId).toBe('string')
 
-    // Discovery pipeline ran because there is no entitlement gate on this route.
-    expect(runFastDiscovery).toHaveBeenCalledTimes(1)
+    // Job was created because there is no entitlement gate on this route.
     expect(createDiscoveryJob).toHaveBeenCalledTimes(1)
+    expect(updateDiscoveryJob).toHaveBeenCalled()
+  })
+
+  it('answers 503 with a retry message instead of hanging when the job store is unresponsive', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.mocked(auth).mockResolvedValue({ userId: null } as any)
+      vi.mocked(createDiscoveryJob).mockReturnValue(new Promise(() => {}))
+
+      const pending = post('https://example.com')
+      await vi.advanceTimersByTimeAsync(8_000)
+      const res = await pending
+
+      expect(res.status).toBe(503)
+      expect(res.headers.get('Retry-After')).toBe('60')
+      expect((await res.json()).error).toMatch(/try again/)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

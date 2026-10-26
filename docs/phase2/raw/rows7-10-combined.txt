@@ -1,0 +1,220 @@
+[dotenv@17.2.2] injecting env (22) from .env.local -- tip: ⚙️  override existing env vars with { override: true }
+
+Running 14 tests using 1 worker
+
+[dotenv@17.2.2] injecting env (0) from .env.local -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+  ✓   1 [chromium] › e2e/personalization-step4-remotion-designs-all.spec.ts:176:7 › Phase 2 — every registered Remotion design works in Step 4 › the Designs group lists all 19 registered designs as pill chips (4.6s)
+  ✓   2 [chromium] › e2e/personalization-step4-remotion-designs-all.spec.ts:199:7 › Phase 2 — every registered Remotion design works in Step 4 › the five original layout pills are unchanged and still selectable (4.7s)
+V2: 19-design evidence: {
+  "count": 19,
+  "ids": [
+    "animated-headline",
+    "logo-reveal",
+    "lower-third",
+    "promo-cta",
+    "visual-effect",
+    "starfield-warp",
+    "logo-bounce-drop",
+    "logo-mask-wipe",
+    "logo-split-reveal",
+    "brush-stroke-reveal",
+    "text-mask-reveal",
+    "glitch-text",
+    "logo-blur-reveal",
+    "chapter-title",
+    "bar-chart-anim",
+    "rve-circular-progress",
+    "rve-animated-text",
+    "rve-popping-text",
+    "rve-slide-text"
+  ],
+  "credits": [
+    "animated-headline: © 2026 Trimora Inc. (RenderComp) · MIT",
+    "logo-reveal: © 2026 Trimora Inc. (RenderComp) · MIT",
+    "lower-third: © 2026 Trimora Inc. (RenderComp) · MIT",
+    "promo-cta: © 2026 Trimora Inc. (RenderComp) · MIT",
+    "visual-effect: © 2026 Trimora Inc. (RenderComp) · MIT",
+    "starfield-warp: © 2026 Trimora Inc. (RenderComp) · MIT",
+    "logo-bounce-drop: © 2026 Trimora Inc. (RenderComp) · MIT",
+    "logo-mask-wipe: © 2026 Trimora Inc. (RenderComp) · MIT",
+    "logo-split-reveal: © 2026 Trimora Inc. (RenderComp) · MIT",
+    "brush-stroke-reveal: © 2026 Trimora Inc. (RenderComp) · MIT",
+    "text-mask-reveal: © 2026 Trimora Inc. (RenderComp) · MIT",
+    "glitch-text: © 2026 Trimora Inc. (RenderComp) · MIT",
+    "logo-blur-reveal: © 2026 Trimora Inc. (RenderComp) · MIT",
+    "chapter-title: © 2026 Trimora Inc. (RenderComp) · MIT",
+    "bar-chart-anim: © 2026 Trimora Inc. (RenderComp) · MIT",
+    "rve-circular-progress: Remotion templates by React Video Editor (reactvideoeditor.com) — MIT License. Free Remotion Template Component — This template is free to use in your projects! Credit appreciated but not required. Created by the team at https://www.reactvideoeditor.com Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
+    "rve-animated-text: Remotion templates by React Video Editor (reactvideoeditor.com) — MIT License. Free Remotion Template Component — This template is free to use in your projects! Credit appreciated but not required. Created by the team at https://www.reactvideoeditor.com Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
+    "rve-popping-text: Remotion templates by React Video Editor (reactvideoeditor.com) — MIT License. Free Remotion Template Component — This template is free to use in your projects! Credit appreciated but not required. Created by the team at https://www.reactvideoeditor.com Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
+    "rve-slide-text: Remotion templates by React Video Editor (reactvideoeditor.com) — MIT License. Free Remotion Template Component — This template is free to use in your projects! Credit appreciated but not required. Created by the team at https://www.reactvideoeditor.com Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
+  ]
+}
+  ✓   3 [chromium] › e2e/personalization-step4-remotion-designs-all.spec.ts:236:7 › Phase 2 — every registered Remotion design works in Step 4 › every one of the 19 designs is selectable and renders its layer and credit line (9.8s)
+  ✓   4 [chromium] › e2e/personalization-step4-remotion-designs-all.spec.ts:296:7 › Phase 2 — every registered Remotion design works in Step 4 › captures the expanded 19-design row (4.6s)
+  ✓   5 [chromium] › e2e/personalization-step4-remotion-designs.spec.ts:62:7 › Phase 1 — Remotion designs in Step 4 › the five existing pill layouts are unchanged and still selectable (5.2s)
+  ✓   6 [chromium] › e2e/personalization-step4-remotion-designs.spec.ts:85:7 › Phase 1 — Remotion designs in Step 4 › the five Remotion designs are selectable in Step 4 and render a design layer (7.1s)
+  ✓   7 [chromium] › e2e/personalization-step4-remotion-designs.spec.ts:118:7 › Phase 1 — Remotion designs in Step 4 › each design renders its own content in the live preview (4.6s)
+  ✓   8 [chromium] › e2e/personalization-step4-remotion-designs.spec.ts:135:7 › Phase 1 — Remotion designs in Step 4 › captures before/after Step 4 screenshots (4.1s)
+A1: export done {"file":"/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/personalized-with-design.mp4","info":{"size":2047038,"type":"video/mp4"},"probe":{"exportRootCount":195,"designId":"animated-headline","creditPresent":true,"creditText":"© 2026 Trimora Inc. (RenderComp) · MIT","designBox":{"left":432,"top":157,"width":1056,"height":594},"creditBox":{"left":1277,"top":733,"width":203,"height":12},"samples":201},"inspector":{"layerRows":["DesignAnimated Headline"],"textareas":["Headline"],"inspectorSaysUnregistered":false}}
+A1: container + decode evidence: {
+  "container": {
+    "magic": "ftyp",
+    "majorBrand": "isom",
+    "hasAvc1": true,
+    "hasMp4a": true,
+    "byteLength": 2047038
+  },
+  "decoded": {
+    "duration": 5.077333,
+    "videoWidth": 1920,
+    "videoHeight": 1080
+  },
+  "size": 2047038,
+  "file": "/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/personalized-with-design.mp4"
+}
+  ✓   9 [chromium] › e2e/personalization-step4-remotion-export.spec.ts:524:7 › Phase 2 — Remotion designs survive the real browser export › the browser export produces a real encoded MP4 that contains the design (30.7s)
+A1: export done {"file":"/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/personalized-without-design.mp4","info":{"size":1992563,"type":"video/mp4"},"probe":{"exportRootCount":0,"designId":null,"creditPresent":false,"creditText":null,"designBox":null,"creditBox":null,"samples":174},"inspector":{"layerRows":["DesignAnimated Headline"],"textareas":["Headline"],"inspectorSaysUnregistered":false}}
+A1: export done {"file":"/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/personalized-with-design.mp4","info":{"size":2045467,"type":"video/mp4"},"probe":{"exportRootCount":210,"designId":"animated-headline","creditPresent":true,"creditText":"© 2026 Trimora Inc. (RenderComp) · MIT","designBox":{"left":432,"top":157,"width":1056,"height":594},"creditBox":{"left":1277,"top":733,"width":203,"height":12},"samples":218},"inspector":{"layerRows":["DesignAnimated Headline"],"textareas":["Headline"],"inspectorSaysUnregistered":false}}
+A1: decoding both exported files and comparing pixels…
+A1: pixel evidence: {
+  "designBox": {
+    "left": 432,
+    "top": 157,
+    "width": 1056,
+    "height": 594
+  },
+  "creditBox": {
+    "left": 1277,
+    "top": 733,
+    "width": 203,
+    "height": 12
+  },
+  "personalizedSize": 2045467,
+  "controlSize": 1992563,
+  "withDesignWidth": 1920,
+  "withDesignHeight": 1080,
+  "withDesignDuration": 5.077333,
+  "withoutDesignWidth": 1920,
+  "withoutDesignHeight": 1080,
+  "withoutDesignDuration": 5.077333,
+  "brandInBox": 16190,
+  "brandInBoxControl": 0,
+  "changedInBox": 20807,
+  "changedOutsideBox": 0,
+  "changedTotal": 20807,
+  "creditChanged": 958,
+  "creditBrighter": 872,
+  "meanBrand": {
+    "r": 42,
+    "g": 211,
+    "b": 239
+  },
+  "personalizedFile": "/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/personalized-with-design.mp4",
+  "controlFile": "/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/personalized-without-design.mp4"
+}
+  ✓  10 [chromium] › e2e/personalization-step4-remotion-export.spec.ts:578:7 › Phase 2 — Remotion designs survive the real browser export › the design is in the encoded pixels, and the un-personalized render has none (1.3m)
+A1: export done {"file":"/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/design-animated-headline.mp4","info":{"size":2046342,"type":"video/mp4"},"probe":{"exportRootCount":223,"designId":"animated-headline","creditPresent":true,"creditText":"© 2026 Trimora Inc. (RenderComp) · MIT","designBox":{"left":432,"top":157,"width":1056,"height":594},"creditBox":{"left":1277,"top":733,"width":203,"height":12},"samples":245},"inspector":{"layerRows":["DesignAnimated Headline"],"textareas":["Headline"],"inspectorSaysUnregistered":false}}
+A1: export done {"file":"/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/design-logo-reveal.mp4","info":{"size":2019473,"type":"video/mp4"},"probe":{"exportRootCount":272,"designId":"logo-reveal","creditPresent":true,"creditText":"© 2026 Trimora Inc. (RenderComp) · MIT","designBox":{"left":576,"top":270,"width":768,"height":432},"creditBox":{"left":1133,"top":684,"width":203,"height":12},"samples":288},"inspector":{"layerRows":["DesignLogo Reveal"],"textareas":["Business name"],"inspectorSaysUnregistered":false}}
+A1: export done {"file":"/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/design-lower-third.mp4","info":{"size":2014610,"type":"video/mp4"},"probe":{"exportRootCount":228,"designId":"lower-third","creditPresent":true,"creditText":"© 2026 Trimora Inc. (RenderComp) · MIT","designBox":{"left":-19,"top":313,"width":1190,"height":670},"creditBox":{"left":960,"top":965,"width":203,"height":12},"samples":243},"inspector":{"layerRows":["DesignLower Third"],"textareas":["Name","Title"],"inspectorSaysUnregistered":false}}
+A1: export done {"file":"/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/design-promo-cta.mp4","info":{"size":1999452,"type":"video/mp4"},"probe":{"exportRootCount":326,"designId":"promo-cta","creditPresent":true,"creditText":"© 2026 Trimora Inc. (RenderComp) · MIT","designBox":{"left":432,"top":481,"width":1056,"height":594},"creditBox":{"left":1277,"top":1057,"width":203,"height":12},"samples":333},"inspector":{"layerRows":["DesignPromo CTA"],"textareas":["Headline","Subtitle","Call to action"],"inspectorSaysUnregistered":false}}
+A1: export done {"file":"/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/design-visual-effect.mp4","info":{"size":1998537,"type":"video/mp4"},"probe":{"exportRootCount":217,"designId":"visual-effect","creditPresent":true,"creditText":"© 2026 Trimora Inc. (RenderComp) · MIT","designBox":{"left":0,"top":0,"width":1920,"height":1080},"creditBox":{"left":1709,"top":1062,"width":203,"height":12},"samples":227},"inspector":{"layerRows":["DesignBokeh Particles"],"textareas":[],"inspectorSaysUnregistered":false}}
+A1: all-designs evidence: [
+  {
+    "id": "animated-headline",
+    "size": 2046342,
+    "container": {
+      "magic": "ftyp",
+      "majorBrand": "isom",
+      "hasAvc1": true,
+      "hasMp4a": true,
+      "byteLength": 2046342
+    },
+    "decoded": {
+      "duration": 5.077333,
+      "videoWidth": 1920,
+      "videoHeight": 1080
+    },
+    "file": "/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/design-animated-headline.mp4"
+  },
+  {
+    "id": "logo-reveal",
+    "size": 2019473,
+    "container": {
+      "magic": "ftyp",
+      "majorBrand": "isom",
+      "hasAvc1": true,
+      "hasMp4a": true,
+      "byteLength": 2019473
+    },
+    "decoded": {
+      "duration": 5.077333,
+      "videoWidth": 1920,
+      "videoHeight": 1080
+    },
+    "file": "/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/design-logo-reveal.mp4"
+  },
+  {
+    "id": "lower-third",
+    "size": 2014610,
+    "container": {
+      "magic": "ftyp",
+      "majorBrand": "isom",
+      "hasAvc1": true,
+      "hasMp4a": true,
+      "byteLength": 2014610
+    },
+    "decoded": {
+      "duration": 5.077333,
+      "videoWidth": 1920,
+      "videoHeight": 1080
+    },
+    "file": "/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/design-lower-third.mp4"
+  },
+  {
+    "id": "promo-cta",
+    "size": 1999452,
+    "container": {
+      "magic": "ftyp",
+      "majorBrand": "isom",
+      "hasAvc1": true,
+      "hasMp4a": true,
+      "byteLength": 1999452
+    },
+    "decoded": {
+      "duration": 5.077333,
+      "videoWidth": 1920,
+      "videoHeight": 1080
+    },
+    "file": "/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/design-promo-cta.mp4"
+  },
+  {
+    "id": "visual-effect",
+    "size": 1998537,
+    "container": {
+      "magic": "ftyp",
+      "majorBrand": "isom",
+      "hasAvc1": true,
+      "hasMp4a": true,
+      "byteLength": 1998537
+    },
+    "decoded": {
+      "duration": 5.077333,
+      "videoWidth": 1920,
+      "videoHeight": 1080
+    },
+    "file": "/Users/deanellgilmore/Downloads/openbolt/OpenHiggsBolt/.kilo/worktrees/personalization-upgrades/test-results/remotion-export/design-visual-effect.mp4"
+  }
+]
+  ✓  11 [chromium] › e2e/personalization-step4-remotion-export.spec.ts:832:7 › Phase 2 — Remotion designs survive the real browser export › every registered design exports to a real encoded MP4 (3.5m)
+  ✓  12 [chromium] › e2e/personalization-studio-handoff.spec.ts:253:7 › Phase 2 — studio → Personalization Modal hand-off › the app root wires the Personalize trigger into all ten studios (31ms)
+[dotenv@17.2.2] injecting env (0) from .env.local,.env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+[dotenv@17.2.2] injecting env (0) from .env.local -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+V2: video studio hand-off: {"studio":"video","mediaUrl":"/academy/07-ai-product-photography/templates/examples/batch-skincare-grid-clip.mp4","title":"phase2-e2e-source.mp4"}
+  ✓  13 [chromium] › e2e/personalization-studio-handoff.spec.ts:277:7 › Phase 2 — studio → Personalization Modal hand-off › Video Studio shows a Personalize trigger next to its media and hands that media to the modal (8.4s)
+V2: image studio hand-off: {"studio":"image","mediaUrl":"/thumbnails/seed-ai-1.jpeg","title":"Image Studio image"}
+  ✓  14 [chromium] › e2e/personalization-studio-handoff.spec.ts:333:7 › Phase 2 — studio → Personalization Modal hand-off › Image Studio shows a Personalize trigger next to its media and hands that media to the modal (6.7s)
+
+  Slow test file: [chromium] › e2e/personalization-step4-remotion-export.spec.ts (5.3m)
+  Consider running tests from slow files in parallel. See: https://playwright.dev/docs/test-parallel
+  14 passed (7.0m)

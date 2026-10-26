@@ -27,6 +27,11 @@ const GATE_SYMBOL = 'requireApiEntitlement'
 // diff below catches a NEW gated route that is not yet listed here.
 // ---------------------------------------------------------------------------
 const PAID_PATHS: string[] = [
+  // brand studio brand store: mutating paid surfaces (POST/PATCH), gated with
+  // the same requireApiEntitlement contract as brand/analyze (see
+  // tests/api/brand-route.test.ts and 12e0e1fde).
+  'app/api/brand/route.ts',
+  'app/api/brands/route.ts',
   // vfx/*
   'app/api/vfx/cancel/route.ts',
   'app/api/vfx/generate/route.ts',
@@ -158,8 +163,6 @@ const PAID_GATE_VOCABULARY: readonly string[] = [
 const ALLOWLIST_PATHS: string[] = [
   'app/api/go-ai-viral/seedance/route.ts',
   'app/api/thumbnail/route.js',
-  'app/api/brand/route.ts',
-  'app/api/brands/route.ts',
   'app/api/access/resolve/route.ts',
   'app/api/access/restore/route.ts',
   'app/api/version/route.ts',
@@ -449,9 +452,14 @@ describe('Business Asset Finder is free for every authenticated user (runtime)',
       // The real, dependency-free niche lookups so niche validation is real;
       // every network-touching export is a controllable mock.
       const nicheMappings = await import('@/server/businessDiscovery/nicheMappings')
+      // Ownership classification is pure (no network), so the real functions
+      // run here; the route calls both on every search result set.
+      const ownership = await import('@/server/businessDiscovery/ownershipClassification')
       return {
         getNicheMapping: nicheMappings.getNicheMapping,
         getSupportedNiches: nicheMappings.getSupportedNiches,
+        classifyRecords: ownership.classifyRecords,
+        excludeNationalChains: ownership.excludeNationalChains,
         geocodeLocation: vi.fn(async () => ({
           latitude: 30.2672,
           longitude: -97.7431,

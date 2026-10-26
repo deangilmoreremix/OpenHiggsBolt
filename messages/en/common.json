@@ -9,6 +9,8 @@
     "cinema": "Cinema Studio",
     "storyboard": "Storyboard",
     "marketing": "Marketing Studio",
+    "motion-studio": "Motion Studio",
+    "motion-director": "Motion Director",
     "recast": "Body Swap",
     "layers": "Layers Studio",
     "workflows": "Workflows",
@@ -32,6 +34,16 @@
     "title": "Settings",
     "addKeys": "Add your API keys",
     "close": "Close"
+  },
+  "notifications": {
+    "generating": "is generating",
+    "generationComplete": "- Generation complete",
+    "generationFailed": "- Generation failed",
+    "resultReady": "Your result is ready.",
+    "open": "Open →",
+    "openResult": "Open {label} result",
+    "dismissNotification": "Dismiss notification",
+    "ariaLabel": "Generation activity and notifications"
   },
   "apiKeyModal": {
     "title": "Welcome to SmartVideo GO",

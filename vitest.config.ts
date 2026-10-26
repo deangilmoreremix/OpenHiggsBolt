@@ -52,6 +52,11 @@ export default defineConfig({
       'packages/*/dist/**',
       'packages/**/dist/**',
       'tests/authConfig.test.ts',
+      // node:test runner files with their own script (`npm run test:muapi`);
+      // vitest collects them via the tests/**/*.test.js glob but cannot run
+      // their node:test suites ("No test suite found").
+      'tests/muapi-key-route.test.js',
+      'tests/muapiKeyCrypto.test.js',
     ],
     setupFiles: ['vitest.setup.ts'],
   },

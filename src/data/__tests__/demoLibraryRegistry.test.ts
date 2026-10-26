@@ -20,7 +20,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { existsSync, statSync, readFileSync, readdirSync } from 'fs'
+import { closeSync, existsSync, openSync, readSync, statSync, readdirSync } from 'fs'
 import { join } from 'path'
 import { getCreateUrl } from '../types'
 import { findDemoById } from '../demoLookup'
@@ -77,7 +77,15 @@ function publicPath(sitePath: string): string {
 
 /** True when the file starts with a real WebM or MP4 container magic. */
 function hasMediaMagic(absPath: string): boolean {
-  const head = readFileSync(absPath).subarray(0, 12)
+  // Read only the 12-byte header: loading every whole video (~450 MB) made
+  // this test time out under full-suite CPU contention.
+  const head = Buffer.alloc(12)
+  const fd = openSync(absPath, 'r')
+  try {
+    readSync(fd, head, 0, 12, 0)
+  } finally {
+    closeSync(fd)
+  }
   return (
     head.subarray(0, 4).equals(WEBM_MAGIC) || head.subarray(4, 8).toString('latin1') === 'ftyp'
   )

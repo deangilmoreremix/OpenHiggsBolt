@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { motion } from 'motion/react';
 import DemoMediaCard from './DemoMediaCard';
 import { getDemosForNiche } from '@/data/nicheDemos';
 import { type NicheConfig } from '@/data/nicheContent';
@@ -44,16 +45,18 @@ export default function NicheSection({ niche, demos }: NicheSectionProps) {
         {/* Show more */}
         {hasMore && (
           <div className="mt-10 flex justify-center">
-            <button
+            <motion.button
               type="button"
               onClick={() => setVisible((v) => Math.min(v + STEP, activeDemos.length))}
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-7 py-3 text-sm font-bold text-white transition hover:bg-white/[0.08]"
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-7 py-3 text-sm font-bold text-white transition-colors hover:border-cyan-400/40 hover:bg-white/[0.08]"
             >
               Show More
               <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold text-white/70">
                 {activeDemos.length - visible} more
               </span>
-            </button>
+            </motion.button>
           </div>
         )}
       </div>

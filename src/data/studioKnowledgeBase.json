@@ -10886,6 +10886,286 @@
         "Brand Color Extraction": "The automated process of identifying a brand's primary colors from its website for use in creative generation.",
         "Brand Asset": "A visual or written creative element generated from brand DNA, including images, videos, and campaign concepts."
       }
+    },
+    {
+      "id": "motion-director",
+      "name": "Motion Director",
+      "route": "/studio/motion-director",
+      "description": "AI motion director that turns a prompt (and optionally your website) into a cinematic, editable product film built from the 150-shot ShotCraft library and rendered with Remotion.",
+      "keyFeatures": [
+        "Prompt-to-film AI director with an approvable storyboard",
+        "Captures your live website and puts the real pages inside product shots",
+        "150 ShotCraft shot recipes with live Remotion previews",
+        "Title cards, captions, flash cuts and beat-synced scene changes",
+        "Full timeline editor with conversational edits",
+        "MP4 export"
+      ],
+      "howToUse": "Describe the film you want (include your site URL to show real pages), pick a length and aspect ratio, and press Generate. Review the storyboard, approve it, then refine the film in the editor by chatting with the director or editing clips directly. Export to MP4 when done.",
+      "inputs": [
+        "text prompt",
+        "website URL",
+        "shot recipe selection",
+        "duration",
+        "aspect ratio",
+        "music track",
+        "brand kit"
+      ],
+      "requiredInputs": [
+        "text prompt"
+      ],
+      "optionalInputs": [
+        "website URL",
+        "shot recipe selection",
+        "music track",
+        "brand kit"
+      ],
+      "generationModes": [
+        "director storyboard",
+        "film build",
+        "conversational edit",
+        "quick project"
+      ],
+      "modelCapabilities": "Uses the user's OpenAI key to plan a storyboard and edits against the ShotCraft catalog; a guarded headless browser captures the user's site. Rendering and export run with Remotion in the browser.",
+      "advancedFeatures": [
+        "Site capture with brand color detection",
+        "Beat detection to snap cuts to music",
+        "Director edit operations (rewrite text, swap shots, retime, palette)",
+        "Recipe template picker with live Remotion previews",
+        "Saved recipes and project sessions"
+      ],
+      "outputs": [
+        "MP4 video",
+        "editable Remotion project"
+      ],
+      "limitations": [
+        "Director planning needs an OpenAI API key (falls back to a quick project without one)",
+        "Site capture only works for public websites",
+        "Projects are stored in the browser (localStorage)"
+      ],
+      "troubleshooting": [
+        "No storyboard: add your OpenAI key in Settings",
+        "Site not captured: check the URL is public and reachable",
+        "Export slow: shorter films and 16:9 render fastest"
+      ],
+      "relatedStudios": [
+        "design-agent",
+        "video",
+        "storyboard",
+        "vibe-motion"
+      ],
+      "sourceFiles": [
+        "src/apps/motion-director/MotionStudio.tsx",
+        "src/apps/motion-director/pages/MotionStudioEntry.tsx",
+        "app/api/motion-studio/director/route.ts",
+        "app/api/motion-studio/capture/route.ts"
+      ],
+      "verification": {
+        "status": "verified",
+        "evidence": "Component read directly from repository",
+        "verifiedAt": "2026-10-25T12:00:00.000Z",
+        "verifiedBy": "SmartVideo GO AI Knowledge Base"
+      },
+      "shortDescription": "AI director that turns a prompt and your website into an editable cinematic product film.",
+      "fullDescription": "Motion Director plans a product film from your prompt, shows you the storyboard to approve, and builds it from real ShotCraft shot recipes, with your captured website pages inside the product shots. Everything stays editable in the timeline, and you can keep directing by chat before exporting an MP4.",
+      "whenToUse": [
+        "Launch and promo films for a product or website",
+        "Turning real product pages into cinematic shots",
+        "Fast storyboard-to-film without manual editing"
+      ],
+      "whenToUseAnother": [
+        "Use Motion Studio to hand-pick and edit shots without the AI director",
+        "Use Video Studio for generative AI video clips",
+        "Use Storyboard for multi-scene planning with characters"
+      ],
+      "bestFor": "Founders, marketers and product teams who want a polished product film from their real site in minutes.",
+      "howToSteps": [
+        "Open Motion Director.",
+        "Describe the film and include your site URL.",
+        "Choose length and aspect ratio, then Generate.",
+        "Review and approve the storyboard.",
+        "Refine in the editor or by chatting with the director.",
+        "Export to MP4."
+      ],
+      "tips": [
+        "Include your website URL so product shots show your real pages.",
+        "Add a music track to snap cuts to the beat.",
+        "Ask the director for specific edits, e.g. 'make the opener punchier'."
+      ],
+      "faqs": [
+        {
+          "question": "How is Motion Director different from Motion Studio?",
+          "answer": "Motion Studio is a hands-on shot editor; Motion Director adds an AI director that plans and builds the whole film for you."
+        }
+      ],
+      "glossary": {
+        "Storyboard": "The director's scene-by-scene plan you approve before the film is built.",
+        "Shot recipe": "A ShotCraft motion template used as one scene of the film."
+      },
+      "featureExplanations": [
+        {
+          "feature": "AI director storyboard",
+          "explanation": "The director turns your prompt into a scene-by-scene plan using real ShotCraft recipes.",
+          "whyToUse": "See and approve the film's structure before anything is built."
+        },
+        {
+          "feature": "Site capture",
+          "explanation": "Your public website is captured and its pages appear inside product shots, with brand colors detected.",
+          "whyToUse": "Show your real product instead of placeholder screens."
+        },
+        {
+          "feature": "Conversational edits",
+          "explanation": "Ask the director to rewrite lines, swap shots, retime scenes or change the palette.",
+          "whyToUse": "Refine the film without manual timeline work."
+        }
+      ],
+      "inputDetails": [
+        {
+          "name": "text prompt",
+          "description": "What the film should show and its tone",
+          "required": true,
+          "whenToUse": "Every film",
+          "restrictions": "Plain text"
+        },
+        {
+          "name": "website URL",
+          "description": "Public site to capture for product shots",
+          "required": false,
+          "whenToUse": "Product and launch films",
+          "restrictions": "Must be publicly reachable"
+        },
+        {
+          "name": "music track",
+          "description": "Audio file used to snap cuts to the beat",
+          "required": false,
+          "whenToUse": "Rhythmic edits",
+          "restrictions": "Common audio formats"
+        }
+      ],
+      "modeExplanations": [
+        {
+          "mode": "director storyboard",
+          "description": "AI plans scenes from your prompt",
+          "acronymExpanded": "N/A",
+          "useCase": "Starting a new film"
+        },
+        {
+          "mode": "conversational edit",
+          "description": "AI applies edits to the built film",
+          "acronymExpanded": "N/A",
+          "useCase": "Refining an existing film"
+        },
+        {
+          "mode": "quick project",
+          "description": "Builds a starter project without the AI director",
+          "acronymExpanded": "N/A",
+          "useCase": "No OpenAI key configured"
+        }
+      ],
+      "modelExplanations": "Motion Director uses your OpenAI key to plan storyboards and edits against the ShotCraft catalog, a guarded headless browser to capture your site, and Remotion to preview and export the film.",
+      "advancedFeatureExplanations": [
+        {
+          "feature": "Beat sync",
+          "explanation": "Scene changes snap to nearby beats in your music track.",
+          "useCase": "Music-driven promo films"
+        },
+        {
+          "feature": "Recipe template picker",
+          "explanation": "Browse all 150 shot recipes with live Remotion previews.",
+          "useCase": "Choosing an opening shot"
+        }
+      ],
+      "outputDetails": [
+        {
+          "outputType": "MP4 video",
+          "description": "Rendered film in the chosen aspect ratio",
+          "postGenerationActions": [
+            "Download",
+            "Publish"
+          ]
+        },
+        {
+          "outputType": "editable Remotion project",
+          "description": "Timeline project saved in the browser",
+          "postGenerationActions": [
+            "Edit",
+            "Re-export"
+          ]
+        }
+      ],
+      "exampleWorkflows": [
+        {
+          "title": "Product launch film",
+          "steps": [
+            "Enter a prompt with your site URL.",
+            "Choose 30s and 16:9.",
+            "Approve the storyboard.",
+            "Ask the director to tighten the opener.",
+            "Export to MP4."
+          ]
+        }
+      ],
+      "commonProblems": [
+        {
+          "problem": "No storyboard appears",
+          "whyItHappens": "No OpenAI key is configured",
+          "howToFix": "Add your OpenAI key in Settings; otherwise a quick project is built."
+        },
+        {
+          "problem": "Site pages missing from shots",
+          "whyItHappens": "The site could not be captured",
+          "howToFix": "Use a public URL that loads without login."
+        }
+      ],
+      "troubleshootingSteps": [
+        {
+          "issue": "Director unavailable",
+          "steps": [
+            "Open Settings.",
+            "Add or check your OpenAI API key.",
+            "Generate again."
+          ]
+        },
+        {
+          "issue": "Capture failed",
+          "steps": [
+            "Check the URL opens in a private browser window.",
+            "Try the site's homepage URL."
+          ]
+        }
+      ],
+      "limitationDetails": [
+        {
+          "limitation": "Needs an OpenAI key for the director",
+          "impact": "Without it only a quick project is built",
+          "workaround": "Add the key in Settings"
+        },
+        {
+          "limitation": "Public sites only",
+          "impact": "Pages behind login cannot be captured",
+          "workaround": "Upload screenshots as references instead"
+        }
+      ],
+      "relatedStudioGuidance": [
+        {
+          "studio": "Motion Studio",
+          "relationship": "Manual shot editor",
+          "whenToMove": "When you want to hand-pick every shot",
+          "why": "Motion Studio gives direct control without the AI director"
+        },
+        {
+          "studio": "Video Studio",
+          "relationship": "Generative video",
+          "whenToMove": "When you need AI-generated footage",
+          "why": "Video Studio generates clips from prompts"
+        }
+      ],
+      "academyGuidance": [
+        {
+          "resource": "SmartVideo GO Academy",
+          "whatYouLearn": "Writing film prompts, using site capture, and refining films with director edits.",
+          "whenToUse": "Before your first product film"
+        }
+      ]
     }
   ],
   "meta": {
