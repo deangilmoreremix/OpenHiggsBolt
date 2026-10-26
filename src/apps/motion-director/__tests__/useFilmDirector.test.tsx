@@ -82,4 +82,15 @@ describe('useFilmDirector', () => {
     await flush();
     expect(calls[2].single).toBe('CrashZoomReal');
   });
+
+  it('walks the seven workflow steps from Product to Storyboard', async () => {
+    const { result } = renderHook(() => useFilmDirector({ settings }));
+    expect(result.current.steps.map((st) => st.state)).toEqual(Array(7).fill('todo'));
+    act(() => { result.current.send('Make a launch film for acme.io with the Ink Press template', { force: true }); });
+    const state = () => Object.fromEntries(result.current.steps.map((st) => [st.id, st.state]));
+    expect(state()).toMatchObject({ product: 'done', capture: 'active', storyboard: 'active', animate: 'todo' });
+    await flush();
+    expect(state()).toMatchObject({ product: 'done', storyboard: 'done', animate: 'todo', deliver: 'todo' });
+    expect(result.current.steps.map((st) => st.title)).toEqual(['Product', 'Capture', 'Storyboard', 'Animate', 'Beat sync', 'Frame QA', 'Deliver']);
+  });
 });

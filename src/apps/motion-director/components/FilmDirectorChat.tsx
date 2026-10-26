@@ -11,6 +11,7 @@ import { createDownloadUrl, exportMp4, formatEta, guardTabWhileRendering } from 
 import { isProductTextureShot } from '../lib/productShots';
 import { RecipePreview } from './RecipePreview';
 import type { FilmChatMessage, FilmDirector } from './useFilmDirector';
+import type { FilmStep, FilmStepState } from '../lib/filmSteps';
 
 /**
  * The film conversation as it appears in chat: messages, the Ink Press
@@ -153,6 +154,41 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
   );
 };
 
+const STEP_COLORS: Record<FilmStepState, { border: string; num: string; label: string }> = {
+  todo: { border: 'var(--border-color)', num: semantic.textMuted, label: 'Waiting' },
+  active: { border: 'rgba(232,176,92,0.7)', num: '#e8b05c', label: 'Working…' },
+  done: { border: 'rgba(34,197,94,0.45)', num: '#86efac', label: 'Done' },
+  skipped: { border: 'var(--border-color)', num: semantic.textMuted, label: 'Skipped' },
+  error: { border: 'rgba(248,113,113,0.6)', num: '#fca5a5', label: 'Problem' },
+};
+
+/** The seven workflow steps — Product → Capture → Storyboard → Animate → Beat sync → Frame QA → Deliver — with live state. */
+export const FilmSteps: React.FC<{ steps: FilmStep[] }> = ({ steps }) => (
+  <ol className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2" data-testid="film-steps" aria-label="Film workflow">
+    {steps.map((step, i) => {
+      const c = STEP_COLORS[step.state];
+      return (
+        <li
+          key={step.id}
+          data-step={step.id}
+          data-state={step.state}
+          className="rounded-xl p-2.5 min-w-0"
+          style={{ background: 'var(--bg-card)', border: `1px solid ${c.border}`, opacity: step.state === 'todo' || step.state === 'skipped' ? 0.65 : 1 }}
+          title={step.detail ?? c.label}
+        >
+          <div className="flex items-center justify-between text-[10px] font-mono" style={{ color: c.num }}>
+            <span>{String(i + 1).padStart(2, '0')}</span>
+            <span>{step.state === 'active' ? '●' : step.state === 'done' ? '✓' : step.state === 'error' ? '!' : ''}</span>
+          </div>
+          <div className="mt-1 text-xs font-semibold truncate">{step.title}</div>
+          <div className="text-[10px] truncate" style={{ color: semantic.textMuted }}>{step.sub}</div>
+          <div className="mt-1 text-[10px] leading-snug line-clamp-2" style={{ color: semantic.textSecondary }}>{step.detail ?? c.label}</div>
+        </li>
+      );
+    })}
+  </ol>
+);
+
 export interface FilmDirectorChatProps {
   director: FilmDirector;
   /** Messages to show before the director's own (e.g. the session history). */
@@ -168,11 +204,17 @@ export interface FilmDirectorChatProps {
 }
 
 export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, history = [], hideOwnMessages, onOpenWorkbench, openLabel, onPickShots, showFilm = true }) => {
-  const { messages, stage, activity, storyboard, film } = director;
+  const { messages, stage, activity, steps, storyboard, film } = director;
   const shown = hideOwnMessages ? history : [...history, ...messages];
   const plan = storyboard?.plan;
   return (
     <div className="flex flex-col gap-3" data-testid="film-chat">
+      {steps.some((s) => s.state !== 'todo') && (
+        // Pinned while the conversation scrolls, so the seven steps stay in view.
+        <div className="sticky -top-3 sm:-top-4 z-10 -mx-1 -mt-3 sm:-mt-4 px-1 pt-3 sm:pt-4 pb-1" style={{ background: 'var(--bg-app, #0b0b0d)' }}>
+          <FilmSteps steps={steps} />
+        </div>
+      )}
       {shown.map((m, i) => <FilmMessage key={`${m.ts}-${i}`} message={m} />)}
       {stage === 'offer' && (
         <div className="flex flex-wrap gap-2" data-testid="inkpress-offer">

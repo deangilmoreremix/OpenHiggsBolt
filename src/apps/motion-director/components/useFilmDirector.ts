@@ -15,6 +15,7 @@ import {
   type FilmRequest,
   type FilmTemplateChoice,
 } from '../lib/filmChat';
+import { initialSteps, markStep, type FilmStep, type FilmStepId, type FilmStepState } from '../lib/filmSteps';
 import {
   buildFilmProject,
   checkFilmFrames,
@@ -92,6 +93,9 @@ export function useFilmDirector(opts: {
   const [activity, setActivity] = useState<Array<{ label: string; status: ActivityStatus }>>([]);
   const [storyboard, setStoryboard] = useState<StoryboardResult | null>(null);
   const [film, setFilm] = useState<BuiltFilm | null>(null);
+  /** The seven workflow steps (Product → Deliver) with their live state. */
+  const [steps, setSteps] = useState<FilmStep[]>(initialSteps);
+  const mark = useCallback((id: FilmStepId, state: FilmStepState, detail?: string) => setSteps((prev) => markStep(prev, id, state, detail)), []);
   const pending = useRef<{ req: FilmRequest; template: FilmTemplateChoice } | null>(null);
   const offerReq = useRef<FilmRequest | null>(null);
   const optsRef = useRef(opts);
@@ -119,7 +123,10 @@ export function useFilmDirector(opts: {
       const my = gen.current;
       const live = () => gen.current === my;
       const glog: typeof log = (label, status) => {
-        if (live()) log(label, status);
+        if (!live()) return;
+        log(label, status);
+        if (/^Captured /.test(label)) mark('capture', 'done', label.replace(/^Captured [^·]*· ?/, ''));
+        else if (/^Could not capture/.test(label)) mark('capture', 'error', label);
       };
       const s = optsRef.current.settings();
       // A revision carries its own (revised) list; a new film adds the shots picked in Templates.
@@ -130,6 +137,14 @@ export function useFilmDirector(opts: {
       setStoryboard(null);
       setFilm(null);
       setActivity([]);
+      const images = s.media.filter((m) => m.kind === 'image').length;
+      let next = markStep(initialSteps(), 'product', 'done', req.siteUrl ?? 'From your message');
+      next = reuseCapture && storyboard?.capture
+        ? markStep(next, 'capture', 'done', 'Reusing the captured pages')
+        : req.siteUrl
+          ? markStep(next, 'capture', 'active', `Capturing ${req.siteUrl}`)
+          : markStep(next, 'capture', images ? 'done' : 'skipped', images ? `${images} attached screenshot${images === 1 ? '' : 's'}` : 'No URL — sample pages');
+      setSteps(markStep(next, 'storyboard', 'active'));
       if (!req.siteUrl && !s.media.some((m) => m.kind === 'image')) {
         say('assistant', 'No product URL or screenshots yet, so the product shots will use sample pages. Add your URL to the message (or attach screenshots) any time and I will re-capture.');
       }
@@ -142,6 +157,11 @@ export function useFilmDirector(opts: {
         if (!live()) return;
         setStoryboard(result);
         setStage('plan');
+        mark(
+          'storyboard',
+          'done',
+          `${result.plan.scenes.length} scene${result.plan.scenes.length === 1 ? '' : 's'} · ${secs(result.plan)}s · ${result.source === 'director' ? 'AI director' : 'Ink Press'}`,
+        );
         const lines = result.plan.scenes.map((sc, i) => `${i + 1}. ${sc.kind === 'title' ? 'Title card' : sc.recipeId.split('/')[1]} · ${sc.durationSec}s${sc.headline ? ` — “${sc.headline.replace(/\*/g, '')}”` : ''}`);
         say(
           'assistant',
@@ -150,10 +170,11 @@ export function useFilmDirector(opts: {
       } catch (error) {
         if (!live()) return;
         setStage('idle');
+        mark('storyboard', 'error', error instanceof Error ? error.message : 'failed');
         say('assistant', `I could not storyboard that: ${error instanceof Error ? error.message : 'unknown error'}`);
       }
     },
-    [log, say, storyboard?.capture],
+    [log, mark, say, storyboard?.capture],
   );
 
   /** Handle a chat message. Returns false when it is not a film request (the caller treats it as an edit). */
@@ -244,13 +265,21 @@ export function useFilmDirector(opts: {
     const my = gen.current;
     const live = () => gen.current === my;
     const glog: typeof log = (label, status) => {
-      if (live()) log(label, status);
+      if (!live()) return;
+      log(label, status);
+      if (/^Finding the beat/.test(label)) mark('beat', 'active', label);
+      else if (/^Frame QA/.test(label)) mark('qa', status === 'running' ? 'active' : status === 'error' ? 'error' : 'done', label.replace(/^Frame QA · /, ''));
     };
     const s = optsRef.current.settings();
     setStage('building');
+    mark('animate', 'active', 'Building the Remotion project');
     try {
       const project = await buildFilmProject(storyboard.plan, { aspectRatio: s.aspectRatio, capture: storyboard.capture, media: s.media, logo: s.brandKit?.logo ?? null }, glog);
       const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || s.media.some((m) => m.kind === 'image') });
+      const cuts = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId === 'audio-clip' && /sfxlib/.test(String(c.props?.file ?? ''))).length;
+      const music = s.media.find((m) => m.kind === 'audio');
+      mark('animate', 'done', `${project.tracks.reduce((n, t) => n + t.clips.length, 0)} clips on ${project.tracks.length} tracks`);
+      mark('beat', 'done', `${cuts} SFX hits${music ? ` · cuts on the beat of ${music.name}` : ' · attach music to beat-sync the cuts'}`);
       const frames = await checkFilmFrames(project, glog);
       if (!live()) return;
       qa.framesChecked = frames.checked;
@@ -259,6 +288,9 @@ export function useFilmDirector(opts: {
       const built = { project, qa };
       setFilm(built);
       setStage('film');
+      if (!frames.checked && !frames.failed.length) mark('qa', qa.ok ? 'done' : 'error', qa.ok ? 'Structure checked' : `${qa.issues.length} issue(s)`);
+      else if (!qa.ok) mark('qa', 'error', `${qa.issues.length} issue(s)`);
+      mark('deliver', 'done', 'MP4 · Motion Workbench');
       optsRef.current.onBuilt?.(built);
       say(
         'assistant',
@@ -272,10 +304,11 @@ export function useFilmDirector(opts: {
     } catch (error) {
       if (!live()) return;
       setStage('plan');
+      mark('animate', 'error', error instanceof Error ? error.message : 'failed');
       log(error instanceof Error ? error.message : 'Could not build the film', 'error');
       say('assistant', `Building the film failed: ${error instanceof Error ? error.message : 'unknown error'}`);
     }
-  }, [log, say, storyboard]);
+  }, [log, mark, say, storyboard]);
 
   const revise = useCallback(() => {
     say('assistant', 'What should change? Name shots to swap in (e.g. “use crash-zoom-punch instead”), a new length, or new copy.');
@@ -290,9 +323,10 @@ export function useFilmDirector(opts: {
     setFilm(null);
     setActivity([]);
     setMessages([]);
+    setSteps(initialSteps());
   }, []);
 
-  return { messages, stage, activity, storyboard, film, send, chooseTemplate, approve, revise, reset };
+  return { messages, stage, activity, steps, storyboard, film, send, chooseTemplate, approve, revise, reset };
 }
 
 export type FilmDirector = ReturnType<typeof useFilmDirector>;

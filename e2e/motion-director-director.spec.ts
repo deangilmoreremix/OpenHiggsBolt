@@ -200,6 +200,12 @@ test.describe('Motion Studio director', () => {
     await expect(film).toContainText('1920×1080 · 30 fps');
     await expect(film.locator('.__remotion-player')).toBeVisible();
     await expect(chat).toContainText('Your film is ready');
+    // The seven workflow steps, Product → Deliver, all ran.
+    const steps = page.getByTestId('film-steps');
+    for (const id of ['product', 'capture', 'storyboard', 'animate', 'beat', 'qa', 'deliver']) {
+      await expect(steps.locator(`[data-step="${id}"]`)).toHaveAttribute('data-state', 'done');
+    }
+    await expect(steps.locator('[data-step="capture"]')).toContainText('1 card crops · logo · 1 site image');
     await expect(page.getByTestId('film-render')).toBeVisible();
     await captureEvidence(page, `${OUT}/chat-film-desktop.png`, { minBytes: 10 * 1024 });
 
