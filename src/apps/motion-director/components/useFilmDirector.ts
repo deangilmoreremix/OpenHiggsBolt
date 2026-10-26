@@ -150,7 +150,8 @@ export function useFilmDirector(opts: {
       const single = req.single && recipes.every((r) => r === req.single) ? req.single : null;
       const full = { ...req, recipes, single };
       // What the storyboard is planned with is what gets built, even if attachments change before approval.
-      const media = s.media.slice();
+      // Copy the records too: a video's length is probed after it is attached and lands on the same object.
+      const media = s.media.map((m) => ({ ...m }));
       // Attached videos are scenes of the film too: they take their time out of the requested length.
       const videos = media.filter((m) => m.kind === 'video').map((m) => ({ name: m.name, sec: videoSceneSec(m) }));
       pending.current = { req: full, template };

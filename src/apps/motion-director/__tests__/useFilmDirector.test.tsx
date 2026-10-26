@@ -183,4 +183,17 @@ describe('useFilmDirector', () => {
     const project = onBuilt.mock.calls[0][0].project as { tracks: { clips: { cardId: string }[] }[] };
     expect(project.tracks.flatMap((t) => t.clips).some((c) => c.cardId === 'video-clip')).toBe(true);
   });
+
+  it('a video length probed after the storyboard does not change the approved film', async () => {
+    const video = { id: 'v', kind: 'video' as const, name: 'demo.mp4', url: 'blob:demo', size: 1, durationSec: undefined as number | undefined };
+    const onBuilt = vi.fn();
+    const { result } = renderHook(() => useFilmDirector({ settings: () => ({ ...settings(), media: [video] }), onBuilt }));
+    act(() => { result.current.send('Make a launch film for acme.io with the Ink Press template', { force: true }); });
+    await flush();
+    expect(result.current.storyboard?.videos).toEqual([{ name: 'demo.mp4', sec: 4 }]);
+    video.durationSec = 8; // the metadata probe finishes on the same attachment object
+    await act(async () => { await result.current.approve(); });
+    const clips = (onBuilt.mock.calls[0][0].project as { tracks: { clips: { cardId: string; duration: number }[] }[] }).tracks.flatMap((t) => t.clips);
+    expect(clips.find((c) => c.cardId === 'video-clip')?.duration).toBe(120); // 4 s at 30 fps, as approved
+  });
 });
