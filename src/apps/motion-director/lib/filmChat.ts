@@ -258,9 +258,12 @@ export function inkPressPlan(opts: {
 }
 
 /** One shot, adapted to the product: the shot plus its caption, at its native length. */
-export function singleShotPlan(shot: MotionTemplate, opts: { prompt: string; productName?: string; palette?: Partial<DirectorPalette> | null }): DirectorPlan {
+export function singleShotPlan(
+  shot: MotionTemplate,
+  opts: { prompt: string; productName?: string; palette?: Partial<DirectorPalette> | null; /** A length the user asked for; else the shot's native length. */ durationSec?: number | null },
+): DirectorPlan {
   const name = opts.productName || productNameFrom(opts.prompt);
-  const durationSec = Math.max(PLAN_LIMITS.minSceneSec, Math.min(PLAN_LIMITS.maxSceneSec, shot.durationSec || 5));
+  const durationSec = Math.max(PLAN_LIMITS.minSceneSec, Math.min(PLAN_LIMITS.maxSceneSec, opts.durationSec || shot.durationSec || 5));
   const palette = { ...INK_PRESS_PALETTE, ...Object.fromEntries(Object.entries(opts.palette ?? {}).filter(([, v]) => Boolean(v))) };
   return {
     title: `${name === 'your product' ? 'Product' : name} — ${motionTemplateTitle(shot)}`,

@@ -137,6 +137,9 @@ describe('Ink Press storyboard', () => {
   it('builds a single adapted shot and a clean full-HD project from a storyboard', () => {
     const single = singleShotPlan(byComponent('SpotlightHeroCard'), { prompt: 'close-up for Acme' });
     expect(single.scenes).toHaveLength(1);
+    // A length the user asked for wins over the shot's native length (within the scene limits).
+    expect(singleShotPlan(byComponent('SpotlightHeroCard'), { prompt: 'x', durationSec: 10 }).scenes[0].durationSec).toBe(10);
+    expect(singleShotPlan(byComponent('SpotlightHeroCard'), { prompt: 'x', durationSec: 99 }).scenes[0].durationSec).toBe(12);
     const project = planToProject(inkPressPlan({ prompt: 'promo for Acme', durationSec: 20 }), { aspectRatio: '16:9' });
     expect([project.width, project.height, project.fps]).toEqual([1920, 1080, 30]);
     for (const clip of project.tracks.flatMap((t) => t.clips)) expect(CARDS[clip.cardId]).toBeDefined();

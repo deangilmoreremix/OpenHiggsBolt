@@ -9,14 +9,15 @@ let gate: Promise<void> | null = null;
 let buildGate: Promise<void> | null = null;
 vi.mock('../lib/filmPipeline', async (orig) => {
   const real = await orig<typeof import('../lib/filmPipeline')>();
-  const { inkPressPlan } = await import('../lib/filmChat');
+  const { inkPressPlan, singleShotPlan } = await import('../lib/filmChat');
   return {
     ...real,
-    storyboardFilm: vi.fn(async (req: { prompt: string; siteUrl: string | null; single: { componentName: string } | null }, opts: { capture: unknown; durationSec: number }) => {
+    storyboardFilm: vi.fn(async (req: { prompt: string; siteUrl: string | null; durationSec: number | null; single: Parameters<typeof singleShotPlan>[0] | null }, opts: { capture: unknown; durationSec: number }) => {
       calls.push({ prompt: req.prompt, capture: opts.capture, single: req.single?.componentName ?? null, durationSec: opts.durationSec });
       if (gate) await gate;
       const capture = req.siteUrl ? { url: `https://${req.siteUrl}/`, title: 'Acme', page: { url: 'p', width: 1, height: 1 }, crops: [], brand: {} } : opts.capture;
-      return { plan: inkPressPlan({ prompt: req.prompt, durationSec: 10 }), capture, source: 'inkpress' };
+      const plan = req.single ? singleShotPlan(req.single, { prompt: req.prompt, durationSec: req.durationSec }) : inkPressPlan({ prompt: req.prompt, durationSec: 10 });
+      return { plan, capture, source: 'inkpress' };
     }),
     // Frame QA renders in a real browser; here it just waits on the gate.
     checkFilmFrames: vi.fn(async () => {
@@ -88,6 +89,10 @@ describe('useFilmDirector', () => {
     act(() => { result.current.send('make it a bit longer'); });
     await flush();
     expect(calls[2].single).toBe('CrashZoomReal');
+    act(() => { result.current.send('make it 7 seconds'); });
+    await flush();
+    expect(calls[3].single).toBe('CrashZoomReal');
+    expect(result.current.storyboard?.plan.scenes[0].durationSec).toBe(7);
   });
 
   it('walks the seven workflow steps from Product to Storyboard', async () => {

@@ -68,7 +68,7 @@ export async function storyboardFilm(
 
   if (req.single) {
     log(`Designing one ${req.single.nameEn} shot`, 'done');
-    return { plan: singleShotPlan(req.single, { prompt: req.prompt, productName, palette }), capture, source: 'inkpress' };
+    return { plan: singleShotPlan(req.single, { prompt: req.prompt, productName, palette, durationSec: req.durationSec }), capture, source: 'inkpress' };
   }
 
   const required =
