@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useT } from './i18n';
 import { useStore } from './store';
-import { canRenderVideo, renderVideoOnWeb, createDownloadUrl } from './webRenderer';
+import { canRenderVideo, renderVideoOnWeb, createDownloadUrl, formatEta, guardTabWhileRendering } from './webRenderer';
 
 type JobState = {
   id: string;
   status: 'queued' | 'running' | 'done' | 'error';
   progress: number;
+  /** Renderer's estimate of the time left (ms). */
+  etaMs?: number | null;
   filename?: string;
   blob?: Blob;
   error?: string;
@@ -64,13 +66,17 @@ const ExportButton: React.FC = () => {
     const id = Math.random().toString(36).substring(2, 9);
     setJob({ id, status: 'queued', progress: 0 });
     abortControllerRef.current = new AbortController();
+    // The render runs in this tab: closing or reloading it cancels the export.
+    const releaseGuard = guardTabWhileRendering();
 
     try {
       const result = await renderVideoOnWeb({
         project,
-        onProgress: (progress) => {
+        videoCodec: canRenderResult.videoCodec,
+        audioCodec: canRenderResult.audioCodec,
+        onProgress: (progress, info) => {
           if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
-            setJob((prev) => (prev ? { ...prev, progress, status: 'running' } : null));
+            setJob((prev) => (prev ? { ...prev, progress, etaMs: info?.etaMs ?? null, status: 'running' } : null));
           }
         },
         signal: abortControllerRef.current.signal,
@@ -92,6 +98,7 @@ const ExportButton: React.FC = () => {
         setJob((prev) => (prev ? { ...prev, status: 'error', error: msg } : null));
       }
     } finally {
+      releaseGuard();
       abortControllerRef.current = null;
     }
   };
@@ -129,7 +136,11 @@ const ExportButton: React.FC = () => {
 
   if (job?.status === 'running' || job?.status === 'queued') {
     return (
-      <button className="btn primary" disabled>
+      <button
+        className="btn primary"
+        disabled
+        title={['Rendering in this tab with the Remotion web renderer — keep it open.', formatEta(job.etaMs)].filter(Boolean).join(' ')}
+      >
         {t('export.running', { pct: Math.round((job.progress ?? 0) * 100) })}
       </button>
     );

@@ -7,7 +7,7 @@ import { ActivityList, ChatBubble, PlanCard } from '@/apps/design-agent/ui';
 import { motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { MainComposition } from '../preview/Composition';
 import { projectDuration, type ProjectData } from '../types';
-import { createDownloadUrl, renderVideoOnWeb } from '../webRenderer';
+import { createDownloadUrl, exportMp4, formatEta, guardTabWhileRendering } from '../webRenderer';
 import { isProductTextureShot } from '../lib/productShots';
 import { RecipePreview } from './RecipePreview';
 import type { FilmChatMessage, FilmDirector } from './useFilmDirector';
@@ -40,7 +40,7 @@ const choiceStyle = (primary: boolean): React.CSSProperties =>
 
 /** Player + MP4 render + hand-off to the workbench for a built film. */
 export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: () => void; openLabel?: string }> = ({ project, onOpenWorkbench, openLabel = 'Open in Motion Workbench' }) => {
-  const [render, setRender] = useState<{ status: 'idle' | 'running' | 'done' | 'error'; progress: number; url?: string; error?: string }>({ status: 'idle', progress: 0 });
+  const [render, setRender] = useState<{ status: 'idle' | 'running' | 'done' | 'error'; progress: number; etaMs?: number | null; url?: string; error?: string }>({ status: 'idle', progress: 0 });
   const abort = useRef<AbortController | null>(null);
   const inputProps = useMemo(() => ({ project }), [project]);
   useEffect(() => () => {
@@ -53,15 +53,20 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
   const start = async () => {
     abort.current = new AbortController();
     setRender({ status: 'running', progress: 0 });
+    // Same path as the toolbar export: browser check, then the Remotion web renderer in this tab.
+    const releaseGuard = guardTabWhileRendering();
     try {
-      const result = await renderVideoOnWeb({
+      const result = await exportMp4({
         project,
         signal: abort.current.signal,
-        onProgress: (progress) => setRender((r) => (r.status === 'running' ? { ...r, progress } : r)),
+        onProgress: (progress, info) => setRender((r) => (r.status === 'running' ? { ...r, progress, etaMs: info?.etaMs ?? null } : r)),
       });
       setRender({ status: 'done', progress: 1, url: createDownloadUrl(result.blob) });
     } catch (error) {
-      setRender({ status: 'error', progress: 0, error: error instanceof Error ? error.message : String(error) });
+      const cancelled = abort.current?.signal.aborted;
+      setRender({ status: cancelled ? 'idle' : 'error', progress: 0, error: cancelled ? undefined : error instanceof Error ? error.message : String(error) });
+    } finally {
+      releaseGuard();
     }
   };
 
@@ -113,6 +118,11 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
           <button type="button" onClick={onOpenWorkbench} className="px-4 py-2 rounded-lg text-xs font-semibold" style={choiceStyle(false)} data-testid="film-open-workbench">
             {openLabel}
           </button>
+        )}
+        {render.status === 'running' && (
+          <span className="text-[11px]" style={{ color: semantic.textSecondary }} data-testid="film-render-status">
+            Rendering in this tab with the Remotion web renderer — keep it open.{render.etaMs ? ` ${formatEta(render.etaMs)}.` : ''}
+          </span>
         )}
         {render.status === 'error' && <span className="text-[11px]" style={{ color: '#fca5a5' }}>{render.error}</span>}
       </div>

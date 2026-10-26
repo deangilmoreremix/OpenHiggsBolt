@@ -12,7 +12,6 @@ import {
   assertNoOnboardingModal,
   waitForWorkbench,
   captureEvidence,
-  approveFilmAndOpenWorkbench,
 } from './helpers/motion-studio';
 
 /** 1×1 PNG —— 用来验证本地素材接入（不上传、不调外部 API） */
@@ -140,7 +139,7 @@ test.describe('G8 · Motion Studio 孤儿件接线', () => {
     // 顶栏按钮打开右侧工作台（Agent 面）
     await openRail(page, 'agent');
 
-    const agentInput = page.getByPlaceholder(/tell the agent/i);
+    const agentInput = page.getByPlaceholder(/Tell the agent/);
     await expect(agentInput).toBeVisible();
 
     // 选中时间轨上的 Ink Press 字卡（frame 0，Player 里正显示的就是它）
@@ -185,7 +184,7 @@ test.describe('G8 · Motion Studio 孤儿件接线', () => {
 
     // 先用 Agent 造一条真实会话（会话 + 对话都进 store）
     await openRail(page, 'agent');
-    const agentInput = page.getByPlaceholder(/tell the agent/i);
+    const agentInput = page.getByPlaceholder(/Tell the agent/);
     await agentInput.fill('make the text bigger');
     await agentInput.press('Enter');
     await expect(page.getByText(/Set the text size on/)).toBeVisible({ timeout: 60_000 });
@@ -298,21 +297,14 @@ test.describe('G8 · Motion Studio 孤儿件接线', () => {
     await page.getByPlaceholder('Describe your motion video...').fill('A calm ink press opener');
     await page.getByRole('button', { name: 'Generate' }).click();
 
-    // "ink press" in the message takes the template path straight to a storyboard;
-    // approve it, and the attached screenshot becomes the product shots' page.
-    await approveFilmAndOpenWorkbench(page);
-    await expect
-      .poll(
-        () =>
-          page.evaluate(() => {
-            const p = JSON.parse(localStorage.getItem('motion-director:project-v1') || '{}');
-            return (p.tracks ?? [])
-              .flatMap((t: any) => t.clips)
-              .filter((c: any) => (c.props?.screens ?? []).some((u: string) => u.startsWith('blob:'))).length;
-          }),
-        { timeout: 60_000 },
-      )
-      .toBeGreaterThan(0);
+    // 新工程里恰好一个素材片段（不重复接入）
+    await expect(page.locator('.topbar')).toBeVisible({ timeout: 120_000 });
+    await expect(page.locator('.clip-name', { hasText: 'entry-shot.png' })).toHaveCount(1, {
+      timeout: 60_000,
+    });
+    await expect(page.locator('.preview-stage img[src^="blob:"]')).toHaveCount(1, {
+      timeout: 60_000,
+    });
 
     await captureEvidence(page, 'test-results/g8-entry-media.png');
   });

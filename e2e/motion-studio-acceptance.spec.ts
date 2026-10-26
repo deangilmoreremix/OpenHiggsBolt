@@ -163,7 +163,7 @@ test.describe('R8 · Motion Studio acceptance', () => {
       .toBe(true);
 
     // One chat turn → the clip prop changes.
-    const agentInput = page.getByPlaceholder(/tell the agent/i);
+    const agentInput = page.getByPlaceholder(/Tell the agent/);
     await agentInput.fill('make the text bigger');
     await agentInput.press('Enter');
     await expect(page.getByText(/Set the text size on/)).toBeVisible({ timeout: 60_000 });

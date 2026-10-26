@@ -23,7 +23,7 @@
  */
 import { test, expect } from '@playwright/test';
 import fs from 'fs';
-import { BASE_URL, approveFilmAndOpenWorkbench, installStudioSession, setEntryDuration } from './helpers/motion-studio';
+import { BASE_URL, installStudioSession } from './helpers/motion-studio';
 
 /** Hard deadline for the in-browser render (15 min). */
 const RENDER_DEADLINE_MS = 900_000;
@@ -72,9 +72,8 @@ test('Motion Studio real MP4 export via Remotion web renderer', async ({ page })
   );
 
   // The control labels ARE the current values, so seeing "16:9" and "5s"
-  // pins the film to 1920x1080 @ 30fps / 5 s.
+  // pins the project to 1280x720 @ 30fps / 150 frames (5 s).
   await expect(page.getByRole('button', { name: '16:9', exact: true })).toBeVisible();
-  await setEntryDuration(page, '5s');
   await expect(page.getByRole('button', { name: '5s', exact: true })).toBeVisible();
 
   // Pick the shot so the rendered composition is not empty.
@@ -85,14 +84,11 @@ test('Motion Studio real MP4 export via Remotion web renderer', async ({ page })
   const firstHit = page.locator('button').filter({ hasText: 'crash-zoom-punch' }).first();
   await expect(firstHit).toBeVisible();
   await firstHit.click();
-  await page.keyboard.press('Escape');
 
   // ── 2. Generate → the workbench ─────────────────────────────────────────
   const generate = page.getByRole('button', { name: /^Generate$/ });
   await expect(generate).toBeEnabled();
   await generate.click();
-  // The picked shot card goes straight to a storyboard; approve, then open the film in the workbench.
-  await approveFilmAndOpenWorkbench(page);
 
   await expect(page).toHaveURL(/\/studio\/motion-studio\/?(\?.*)?$/, { timeout: 60_000 });
   await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
@@ -114,8 +110,8 @@ test('Motion Studio real MP4 export via Remotion web renderer', async ({ page })
   // The transport shows the project size — proof the export is the SHORT one.
   const sizeLabel = await page.locator('.transport .dim').last().innerText();
   console.log('PROJECT SIZE:', sizeLabel.trim());
-  expect(sizeLabel).toContain('1920');
-  expect(sizeLabel).toContain('1080');
+  expect(sizeLabel).toContain('1280');
+  expect(sizeLabel).toContain('720');
 
   // ── 3. Verify Undo/Redo enabled (proves a change was committed to the
   //       undo stack — the entry flow's setProject() commits). ──────────────

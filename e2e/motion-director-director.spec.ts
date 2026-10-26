@@ -207,6 +207,52 @@ test.describe('Motion Studio director', () => {
     await expect(plan).toContainText(/Row Embed/i);
   });
 
+  test('chat: Render MP4 encodes the film in the browser with the Remotion web renderer', async ({ page }) => {
+    test.setTimeout(15 * 60 * 1000);
+    await installStudioSession(page);
+    await page.route('**/api/motion-studio/director', (route) =>
+      route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'OPENAI_KEY_REQUIRED', message: 'No key.' }) }),
+    );
+    await page.goto(`${BASE_URL}/studio/motion-director/new`);
+    await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
+    await setEntryDuration(page, '5s');
+    await page.getByPlaceholder('Describe your motion video...').fill('Make a launch film for Acme with the Ink Press template');
+    await page.getByRole('button', { name: 'Generate' }).click();
+    await expect(page.getByTestId('director-plan')).toBeVisible({ timeout: 60_000 });
+    await page.getByRole('button', { name: 'Approve & build film' }).click();
+    await expect(page.getByTestId('film-result')).toBeVisible({ timeout: 120_000 });
+
+    await page.getByTestId('film-render').click();
+    await expect(page.getByTestId('film-render-status')).toContainText('keep it open');
+    const link = page.getByTestId('film-download');
+    await expect(link).toBeVisible({ timeout: 12 * 60 * 1000 });
+    const [download] = await Promise.all([page.waitForEvent('download'), link.click()]);
+    expect(download.suggestedFilename()).toMatch(/\.mp4$/);
+    const bytes = await (await import('node:fs/promises')).readFile((await download.path())!);
+    expect(bytes.length).toBeGreaterThan(20_000);
+    // ISO-BMFF: an `ftyp` box at offset 4.
+    expect(bytes.subarray(4, 8).toString('latin1')).toBe('ftyp');
+    if (process.env.MS_FFPROBE !== '0') {
+      try {
+        const { execFileSync } = await import('node:child_process');
+        const probe = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', (await download.path())!]).toString());
+        const video = probe.streams.find((st: any) => st.codec_type === 'video');
+        expect([video.codec_name, video.width, video.height]).toEqual(['h264', 1920, 1080]);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      }
+    }
+
+    // In the Motion Workbench, "render the MP4" in the chat runs the toolbar export.
+    await page.getByTestId('film-open-workbench').click();
+    await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
+    const agentInput = page.getByPlaceholder(/tell the agent/i);
+    await agentInput.fill('render the MP4');
+    await agentInput.press('Enter');
+    await expect(page.getByText(/Rendering the MP4 with Remotion/)).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.topbar a[download$=".mp4"]')).toBeVisible({ timeout: 12 * 60 * 1000 });
+  });
+
   test('without an OpenAI key it storyboards from the Ink Press template and says why', async ({ page }) => {
     await installStudioSession(page);
     await page.route('**/api/motion-studio/director', (route) =>

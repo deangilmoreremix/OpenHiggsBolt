@@ -60,7 +60,7 @@ async function runAgentTurn(page: Page): Promise<void> {
   await expect(clip).toBeVisible();
   await clip.click();
 
-  const agentInput = page.getByPlaceholder(/tell the agent/i);
+  const agentInput = page.getByPlaceholder(/Tell the agent/);
   await expect(agentInput).toBeVisible();
   await agentInput.fill('make the text bigger');
   await agentInput.press('Enter');
