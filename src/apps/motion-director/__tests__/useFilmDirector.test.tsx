@@ -2,14 +2,17 @@
 import { describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 
-const calls: Array<{ prompt: string; capture: unknown }> = [];
+const calls: Array<{ prompt: string; capture: unknown; single: string | null }> = [];
+/** When set, storyboards wait for it — to finish one after the conversation was reset. */
+let gate: Promise<void> | null = null;
 vi.mock('../lib/filmPipeline', async (orig) => {
   const real = await orig<typeof import('../lib/filmPipeline')>();
   const { inkPressPlan } = await import('../lib/filmChat');
   return {
     ...real,
-    storyboardFilm: vi.fn(async (req: { prompt: string; siteUrl: string | null }, opts: { capture: unknown; durationSec: number }) => {
-      calls.push({ prompt: req.prompt, capture: opts.capture });
+    storyboardFilm: vi.fn(async (req: { prompt: string; siteUrl: string | null; single: { componentName: string } | null }, opts: { capture: unknown; durationSec: number }) => {
+      calls.push({ prompt: req.prompt, capture: opts.capture, single: req.single?.componentName ?? null });
+      if (gate) await gate;
       const capture = req.siteUrl ? { url: `https://${req.siteUrl}/`, title: 'Acme', page: { url: 'p', width: 1, height: 1 }, crops: [], brand: {} } : opts.capture;
       return { plan: inkPressPlan({ prompt: req.prompt, durationSec: 10 }), capture, source: 'inkpress' };
     }),
@@ -49,5 +52,34 @@ describe('useFilmDirector', () => {
     act(() => { handled = result.current.send('make the text bigger'); });
     expect(handled).toBe(false);
     expect(result.current.stage).toBe('offer');
+  });
+
+  it('a storyboard that finishes after a reset (session switch) is dropped', async () => {
+    let release!: () => void;
+    gate = new Promise<void>((r) => { release = r; });
+    const { result } = renderHook(() => useFilmDirector({ settings }));
+    act(() => { result.current.send('Make a launch film for acme.io with the Ink Press template', { force: true }); });
+    expect(result.current.stage).toBe('storyboarding');
+    act(() => { result.current.reset(); });
+    release();
+    await flush();
+    gate = null;
+    expect(result.current.stage).toBe('idle');
+    expect(result.current.storyboard).toBeNull();
+    expect(result.current.messages).toEqual([]);
+  });
+
+  it('revising a one-shot film swaps the shot', async () => {
+    calls.length = 0;
+    const { result } = renderHook(() => useFilmDirector({ settings }));
+    act(() => { result.current.send('Design a product close-up inspired by spotlight-hero-card', { force: true }); });
+    await flush();
+    expect(calls[0].single).toBe('SpotlightHeroCard');
+    act(() => { result.current.send('use CrashZoomReal instead'); });
+    await flush();
+    expect(calls[1].single).toBe('CrashZoomReal');
+    act(() => { result.current.send('make it a bit longer'); });
+    await flush();
+    expect(calls[2].single).toBe('CrashZoomReal');
   });
 });

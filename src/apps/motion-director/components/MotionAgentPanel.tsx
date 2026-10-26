@@ -119,6 +119,16 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
     editFallback: true,
   });
 
+  // The film conversation belongs to one session: switching to another session starts it
+  // afresh. (The first message creates a session; going from none to that one is not a switch.)
+  const resetDirector = director.reset;
+  const prevTargetRef = useRef(targetId);
+  useEffect(() => {
+    const prev = prevTargetRef.current;
+    prevTargetRef.current = targetId;
+    if (prev && targetId !== prev) resetDirector();
+  }, [targetId, resetDirector]);
+
   const send = useCallback(
     (raw: string) => {
       const text = raw.trim();

@@ -96,6 +96,12 @@ export function useFilmDirector(opts: {
   const offerReq = useRef<FilmRequest | null>(null);
   const optsRef = useRef(opts);
   optsRef.current = opts;
+  /**
+   * Conversation generation: `reset` (e.g. switching sessions) bumps it, and
+   * every async step checks it before writing, so a storyboard or film that
+   * finishes after the switch never lands in the other session.
+   */
+  const gen = useRef(0);
 
   const say = useCallback((role: FilmChatMessage['role'], content: string) => {
     const m = msg(role, content);
@@ -110,6 +116,11 @@ export function useFilmDirector(opts: {
   const runStoryboard = useCallback(
     /** `reuseCapture`: only a revision of the storyboard on the table keeps its site capture. */
     async (req: FilmRequest, template: FilmTemplateChoice, reuseCapture = false) => {
+      const my = gen.current;
+      const live = () => gen.current === my;
+      const glog: typeof log = (label, status) => {
+        if (live()) log(label, status);
+      };
       const s = optsRef.current.settings();
       // A revision carries its own (revised) list; a new film adds the shots picked in Templates.
       const recipes = reuseCapture ? req.recipes : [...req.recipes, ...s.pickedRecipes.filter((r) => !req.recipes.includes(r))];
@@ -126,8 +137,9 @@ export function useFilmDirector(opts: {
         const result = await storyboardFilm(
           full,
           { template, durationSec: req.durationSec ?? s.durationSec, aspectRatio: s.aspectRatio, brandKit: s.brandKit, capture: reuseCapture ? storyboard?.capture ?? null : null },
-          log,
+          glog,
         );
+        if (!live()) return;
         setStoryboard(result);
         setStage('plan');
         const lines = result.plan.scenes.map((sc, i) => `${i + 1}. ${sc.kind === 'title' ? 'Title card' : sc.recipeId.split('/')[1]} · ${sc.durationSec}s${sc.headline ? ` — “${sc.headline.replace(/\*/g, '')}”` : ''}`);
@@ -136,6 +148,7 @@ export function useFilmDirector(opts: {
           `${result.note ? `${result.note} I used the Ink Press template instead.\n\n` : ''}Storyboard “${result.plan.title}” — ${result.plan.scenes.length} scene${result.plan.scenes.length === 1 ? '' : 's'}, ${secs(result.plan)}s${result.capture ? ', using your captured pages' : ''}:\n${lines.join('\n')}\n\nApprove to build the film, or tell me what to change.`,
         );
       } catch (error) {
+        if (!live()) return;
         setStage('idle');
         say('assistant', `I could not storyboard that: ${error instanceof Error ? error.message : 'unknown error'}`);
       }
@@ -175,11 +188,14 @@ export function useFilmDirector(opts: {
         say('user', text);
         const prev = pending.current;
         const extra = parseFilmRequest(text);
+        const revised = reviseRecipes(prev.req.recipes, text);
         void runStoryboard(
           {
             ...prev.req,
             prompt: `${prev.req.prompt}\n\nRevise: ${text}`,
-            recipes: reviseRecipes(prev.req.recipes, text),
+            recipes: revised,
+            // A one-shot film follows its revision: "use crash-zoom-punch instead" builds that shot.
+            single: prev.req.single ? (revised.length === 1 ? revised[0] : null) : null,
             durationSec: extra.durationSec ?? prev.req.durationSec,
             siteUrl: extra.siteUrl ?? prev.req.siteUrl,
           },
@@ -225,12 +241,18 @@ export function useFilmDirector(opts: {
 
   const approve = useCallback(async () => {
     if (!storyboard) return;
+    const my = gen.current;
+    const live = () => gen.current === my;
+    const glog: typeof log = (label, status) => {
+      if (live()) log(label, status);
+    };
     const s = optsRef.current.settings();
     setStage('building');
     try {
-      const project = await buildFilmProject(storyboard.plan, { aspectRatio: s.aspectRatio, capture: storyboard.capture, media: s.media, logo: s.brandKit?.logo ?? null }, log);
+      const project = await buildFilmProject(storyboard.plan, { aspectRatio: s.aspectRatio, capture: storyboard.capture, media: s.media, logo: s.brandKit?.logo ?? null }, glog);
       const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || s.media.some((m) => m.kind === 'image') });
-      const frames = await checkFilmFrames(project, log);
+      const frames = await checkFilmFrames(project, glog);
+      if (!live()) return;
       qa.framesChecked = frames.checked;
       qa.issues.push(...frames.failed.map((f) => `Frame ${f}`));
       qa.ok = qa.issues.length === 0;
@@ -248,6 +270,7 @@ export function useFilmDirector(opts: {
         ].join('\n'),
       );
     } catch (error) {
+      if (!live()) return;
       setStage('plan');
       log(error instanceof Error ? error.message : 'Could not build the film', 'error');
       say('assistant', `Building the film failed: ${error instanceof Error ? error.message : 'unknown error'}`);
@@ -259,12 +282,14 @@ export function useFilmDirector(opts: {
   }, [say]);
 
   const reset = useCallback(() => {
+    gen.current++;
     pending.current = null;
     offerReq.current = null;
     setStage('idle');
     setStoryboard(null);
     setFilm(null);
     setActivity([]);
+    setMessages([]);
   }, []);
 
   return { messages, stage, activity, storyboard, film, send, chooseTemplate, approve, revise, reset };
