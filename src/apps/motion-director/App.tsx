@@ -242,9 +242,10 @@ export const App: React.FC = () => {
           type="button"
           className="ms-back"
           onClick={() => navigate("/new")}
-          title="Back to Motion Director home"
+          title="Back to the Motion Director chat (your film stays here — reopen it from Continue editing)"
+          data-testid="workbench-back-to-chat"
         >
-          ← Projects
+          ← Back to chat
         </button>
         <span className="logo">Motion <b>Director</b></span>
         <input

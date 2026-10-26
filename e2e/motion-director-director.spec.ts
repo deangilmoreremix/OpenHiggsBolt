@@ -344,6 +344,67 @@ test.describe('Motion Studio director', () => {
     await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
   });
 
+  test('the Motion Director tab opens the chat; the workbench has its own URL and a way back', async ({ page }) => {
+    await installStudioSession(page, { entrySeen: true });
+    await page.route('**/api/motion-studio/director', (route) =>
+      route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'OPENAI_KEY_REQUIRED', message: 'No key.' }) }),
+    );
+    // Returning user: the tab still opens the chat, not the last film.
+    await page.goto(`${BASE_URL}/studio/motion-director`);
+    await expect(page.getByPlaceholder('Describe your motion video...')).toBeVisible({ timeout: 120_000 });
+    await expect(page.locator('.topbar')).toHaveCount(0);
+
+    // Build a film and open it: the URL says /workbench, and a reload stays there.
+    await setEntryDuration(page, '5s');
+    await page.getByPlaceholder('Describe your motion video...').fill('Make a launch film for Acme with the Ink Press template');
+    await page.getByRole('button', { name: 'Generate' }).click();
+    await approveFilmAndOpenWorkbench(page);
+    await expect(page).toHaveURL(/\/studio\/motion-director\/workbench/);
+    await page.reload();
+    await expect(page.locator('.topbar')).toBeVisible({ timeout: 120_000 });
+
+    // "← Back to chat" goes back, and so does clicking the Motion Director tab.
+    await page.getByTestId('workbench-back-to-chat').click();
+    await expect(page.getByPlaceholder(/Describe your motion video|Describe another film/)).toBeVisible();
+    await expect(page).toHaveURL(/\/studio\/motion-director\/?(\?.*)?$/);
+    // The "Continue editing" tile (the current project) reopens the film.
+    await page.getByRole('button', { name: /^Open project / }).first().click();
+    await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
+    await page.locator('header nav').first().getByRole('button', { name: 'Motion Director', exact: true }).click();
+    await expect(page.locator('.topbar')).toHaveCount(0, { timeout: 30_000 });
+    await expect(page.getByPlaceholder(/Describe your motion video|Describe another film/)).toBeVisible();
+  });
+
+  test('chat: Stop halts a film being built and keeps the storyboard', async ({ page }) => {
+    await installStudioSession(page);
+    await page.route('**/api/motion-studio/director', (route) =>
+      route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'OPENAI_KEY_REQUIRED', message: 'No key.' }) }),
+    );
+    await page.goto(`${BASE_URL}/studio/motion-director/new`);
+    await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
+    await page.getByPlaceholder('Describe your motion video...').fill('Make a launch film for Acme with the Ink Press template');
+    await page.getByRole('button', { name: 'Generate' }).click();
+    await expect(page.getByTestId('director-plan')).toBeVisible({ timeout: 60_000 });
+    await page.getByRole('button', { name: 'Approve & build film' }).click();
+    await page.getByTestId('film-stop').click();
+    await expect(page.getByTestId('film-chat')).toContainText('Stopped building the film');
+    await expect(page.getByTestId('film-result')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Approve & build film' })).toBeEnabled();
+  });
+
+  test('picking a template goes straight back to the chat box', async ({ page }) => {
+    await installStudioSession(page);
+    await page.goto(`${BASE_URL}/studio/motion-director/new`);
+    await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
+    await page.getByRole('button', { name: /Select a recipe/ }).click();
+    const dialog = page.getByRole('dialog', { name: 'Motion Templates' });
+    await dialog.getByPlaceholder('Search recipes...').fill('deck-deal-flyin');
+    await dialog.locator('button').filter({ hasText: /Deck Deal Flyin/i }).first().click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByPlaceholder('Describe your motion video...')).toBeFocused();
+    await expect(page.getByRole('button', { name: /Remove Deck Deal Flyin/i })).toBeVisible();
+  });
+
   test('without an OpenAI key it storyboards from the Ink Press template and says why', async ({ page }) => {
     await installStudioSession(page);
     await page.route('**/api/motion-studio/director', (route) =>

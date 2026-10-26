@@ -307,9 +307,14 @@ export default function MotionStudioEntry() {
     />
   );
 
-  /** Templates picker is multi-select: each pick adds (or removes) a shot card for the film. */
+  /**
+   * Picking a shot card adds it (or removes it, if it was already picked) and goes straight back
+   * to the chat box, ready to type. Open Templates again to add more; picks keep their order.
+   */
   const pickRecipe = (id: string) => {
     setSelectedRecipes((prev) => (prev.includes(id) ? prev.filter((r) => r !== id) : prev.length >= MAX_PICKED_SHOTS ? prev : [...prev, id]));
+    closePicker();
+    window.requestAnimationFrame(() => promptRef.current?.focus());
   };
 
   return (
@@ -318,7 +323,7 @@ export default function MotionStudioEntry() {
         open={showRecipePicker}
         onClose={closePicker}
         title="Motion Templates"
-        subtitle={selectedRecipes.length ? `${selectedRecipes.length} of up to ${MAX_PICKED_SHOTS} shot cards chosen — the film is built around them, in this order. Close when done.` : 'Pick the shot cards for your film (pick several, in order) — or let Motion Director choose them from your description.'}
+        subtitle={selectedRecipes.length ? `${selectedRecipes.length} of up to ${MAX_PICKED_SHOTS} shot cards chosen. Pick another to add it — the film uses them in this order.` : 'Pick a shot card for your film (open Templates again to add more, in order) — or let Motion Director choose them from your description.'}
         search={searchQuery}
         setSearch={setSearchQuery}
         searchPlaceholder="Search recipes..."

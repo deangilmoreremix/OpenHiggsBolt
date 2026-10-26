@@ -196,4 +196,39 @@ describe('useFilmDirector', () => {
     const clips = (onBuilt.mock.calls[0][0].project as { tracks: { clips: { cardId: string; duration: number }[] }[] }).tracks.flatMap((t) => t.clips);
     expect(clips.find((c) => c.cardId === 'video-clip')?.duration).toBe(120); // 4 s at 30 fps, as approved
   });
+
+  it('Stop drops a storyboard in progress and ignores its late result', async () => {
+    let release!: () => void;
+    gate = new Promise<void>((r) => { release = r; });
+    const { result } = renderHook(() => useFilmDirector({ settings }));
+    act(() => { result.current.send('Make a launch film for acme.io with the Ink Press template', { force: true }); });
+    expect(result.current.stage).toBe('storyboarding');
+    act(() => { result.current.stop(); });
+    expect(result.current.stage).toBe('idle');
+    release();
+    await flush();
+    gate = null;
+    expect(result.current.stage).toBe('idle');
+    expect(result.current.storyboard).toBeNull();
+    expect(result.current.messages.at(-1)?.content).toMatch(/^Stopped\./);
+  });
+
+  it('Stop during the build keeps the storyboard to approve again', async () => {
+    const onBuilt = vi.fn();
+    const { result } = renderHook(() => useFilmDirector({ settings, onBuilt }));
+    act(() => { result.current.send('Make a launch film for acme.io with the Ink Press template', { force: true }); });
+    await flush();
+    let release!: () => void;
+    buildGate = new Promise<void>((r) => { release = r; });
+    act(() => { void result.current.approve(); });
+    expect(result.current.stage).toBe('building');
+    act(() => { result.current.stop(); });
+    expect(result.current.stage).toBe('plan');
+    expect(result.current.storyboard).not.toBeNull();
+    release();
+    await flush();
+    buildGate = null;
+    expect(onBuilt).not.toHaveBeenCalled();
+    expect(result.current.film).toBeNull();
+  });
 });
