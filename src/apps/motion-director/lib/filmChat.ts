@@ -33,7 +33,7 @@ export const INK_PRESS_SHOTS: readonly string[] = [
 /* findSiteUrl lives here (not in directorClient) so this module stays free of the browser store. */
 /** First web address in a prompt (`https://…`, `www.…`, or `name.tld`). */
 export function findSiteUrl(prompt: string): string | null {
-  const m = prompt.match(/\bhttps?:\/\/[^\s)'"<>]+|\bwww\.[^\s)'"<>]+|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|io|app|ai|co|dev|net|org|so|xyz|tech)(?:\/[^\s)'"<>]*)?/i);
+  const m = prompt.match(/\bhttps?:\/\/[^\s)'"<>]+|\bwww\.[^\s)'"<>]+|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|io|app|ai|co|dev|net|org|so|xyz|tech)(?![a-z0-9-])(?:\/[^\s)'"<>]*)?/i);
   return m ? m[0].replace(/[.,;:!?]+$/, '') : null;
 }
 
@@ -67,7 +67,10 @@ export interface FilmRequest {
 const INK_PRESS_RE = /\bink[\s-]?press\b/i;
 const FILM_NOUN_RE =
   /\b(?:promo|promotional|teaser|trailer|walkthrough|walk-through|reel|commercial|explainer|showcase|sizzle|launch\s+(?:film|video)|product\s+(?:film|video)|close-?up)\b/i;
-const NEW_FILM_RE = /\b(?:a|an|new|another|my)\s+(?:[\w-]+\s+){0,3}(?:video|film|movie|clip)\b/i;
+const NEW_FILM_RE = /\b(?:a|an|new|another)\s+(?:[\w-]+\s+){0,3}(?:video|film|movie)\b/i;
+/** "make a promo …", "create a new launch video …": a creation verb straight into a film noun. */
+const CREATE_FILM_RE =
+  /\b(?:make|create|build|produce|generate|design|direct)\s+(?:me\s+|us\s+)?(?:a|an|new|another)\s+(?:[\w-]+\s+){0,3}(?:film|video|movie|promo|teaser|trailer|commercial|explainer|showcase|sizzle|reel|walkthrough|close-?up)\b/i;
 const VERB_RE = /\b(?:make|create|build|produce|design|generate|cut|present|turn|use|start|direct|film|shoot|want|need)\b/i;
 const SHOTCRAFT_RE = /\bvideo[\s-]?shotcraft\b/i;
 const SINGLE_RE = /\b(?:inspired\s+by|in\s+the\s+style\s+of|based\s+on|like)\b/i;
@@ -149,6 +152,19 @@ export function isFilmRequest(text: string): boolean {
   if (FILM_NOUN_RE.test(t) || NEW_FILM_RE.test(t)) return true;
   // "use the deck-deal-flyin and row-embed shot cards to present this feature"
   return findNamedRecipes(t).length > 0 && /\b(?:use|present|design|make|create|build|show)\b/i.test(t);
+}
+
+/**
+ * The stricter test for a chat that is already editing a film: only an
+ * explicit ask for a new film counts ("make a promo for …", video-shotcraft,
+ * Ink Press, or named shot cards), so edits like "make my video shorter" or
+ * "make the intro a close-up" stay edits.
+ */
+export function isNewFilmRequest(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  if (SHOTCRAFT_RE.test(t) || INK_PRESS_RE.test(t) || CREATE_FILM_RE.test(t)) return true;
+  return findNamedRecipes(t).length > 0 && /\bshot[\s-]*cards?\b|\binspired\s+by\b/i.test(t);
 }
 
 /** Answer to the Ink Press question: yes / no / not an answer. */

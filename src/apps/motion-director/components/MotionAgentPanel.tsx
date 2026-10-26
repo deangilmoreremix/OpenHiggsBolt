@@ -12,6 +12,7 @@ import { applyDirectorOps, requestEdit, DirectorError } from "../lib/directorCli
 import type { ProjectData, SessionMessage } from "../types";
 import type { AspectRatio } from "../projectContract";
 import { useFilmDirector } from "./useFilmDirector";
+import { isFilmRequest, isNewFilmRequest } from "../lib/filmChat";
 import { FilmDirectorChat } from "./FilmDirectorChat";
 import { requestExport } from "../ExportButton";
 
@@ -112,6 +113,10 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
     onMessage: (m) => useStore.getState().appendSessionMessage(ensureSession(), { role: m.role, content: m.content, ts: m.ts }),
     // Already in the workbench: the built film replaces the project (one undo step brings the old one back).
     onBuilt: (film) => useStore.getState().setProject(film.project),
+    // Once there is a film to edit, only an explicit ask starts a new one; edits stay edits.
+    isRequest: (text) =>
+      useStore.getState().project.tracks.some((t) => t.clips.length > 0) ? isNewFilmRequest(text) : isFilmRequest(text),
+    editFallback: true,
   });
 
   const send = useCallback(

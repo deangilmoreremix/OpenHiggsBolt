@@ -7,6 +7,8 @@ import {
   findNamedRecipes,
   inkPressPlan,
   isFilmRequest,
+  isNewFilmRequest,
+  findSiteUrl,
   parseFilmRequest,
   readTemplateAnswer,
   singleShotPlan,
@@ -26,9 +28,32 @@ describe('film chat requests', () => {
   });
 
   it('leaves edit commands to the edit agent', () => {
-    for (const edit of ['make the text bigger', 'set the duration to 8s', 'make the video 8s long', 'change the background to red', 'add a caption clip']) {
+    for (const edit of ['make the text bigger', 'set the duration to 8s', 'make the video 8s long', 'change the background to red', 'add a caption clip', 'make my video shorter', 'make a caption clip bigger', 'turn a clip red']) {
       expect(isFilmRequest(edit)).toBe(false);
     }
+  });
+
+  it('once a film exists, only an explicit ask starts a new one', () => {
+    for (const edit of ['make my video shorter', 'make the intro a close-up', 'make the promo faster', 'turn the reel red', 'use a bigger font']) {
+      expect(isNewFilmRequest(edit)).toBe(false);
+    }
+    for (const ask of [
+      'Use video-shotcraft to make a promo for my product.',
+      'Make a launch film for this repo with the Ink Press template.',
+      'Use the deck-deal-flyin and row-embed shot cards to present this feature.',
+      'Design a product close-up inspired by spotlight-hero-card.',
+      'create a new 30-second video for acme.io',
+    ]) {
+      expect(isNewFilmRequest(ask)).toBe(true);
+    }
+  });
+
+  it('reads the product URL without cutting longer TLDs short', () => {
+    expect(findSiteUrl('a promo for acme.company please')).toBeNull();
+    expect(findSiteUrl('a promo for acme.software')).toBeNull();
+    expect(findSiteUrl('a promo for acme.co/pricing')).toBe('acme.co/pricing');
+    expect(findSiteUrl('see https://acme.example.com/app.')).toBe('https://acme.example.com/app');
+    expect(findSiteUrl('make a promo for acme.io')).toBe('acme.io');
   });
 
   it('finds shots named by slug, in the order they were named', () => {

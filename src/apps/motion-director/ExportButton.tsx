@@ -27,6 +27,8 @@ const ExportButton: React.FC = () => {
   const t = useT();
   const [job, setJob] = useState<JobState | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  /** Set synchronously on start, so a second request during the capability check is ignored. */
+  const inFlightRef = useRef(false);
 
   const stopRendering = () => {
     if (abortControllerRef.current) {
@@ -35,7 +37,18 @@ const ExportButton: React.FC = () => {
     }
   };
 
+  /** Every export path (button, "Export again", the chat's "render the MP4") goes through here. */
   const start = async () => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    try {
+      await runExport();
+    } finally {
+      inFlightRef.current = false;
+    }
+  };
+
+  const runExport = async () => {
     const project = useStore.getState().project;
 
     // First, check if the browser can render media on web

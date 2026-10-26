@@ -77,6 +77,14 @@ export function useFilmDirector(opts: {
   onMessage?: (m: FilmChatMessage) => void;
   /** Called when a film is built (the Agent panel installs it straight into the workbench). */
   onBuilt?: (film: BuiltFilm) => void;
+  /** Which messages start a new film (default `isFilmRequest`). */
+  isRequest?: (text: string) => boolean;
+  /**
+   * The chat also edits the current film: while the Ink Press question is
+   * open, a message that is not an answer goes back to the caller as an edit
+   * (`send` returns false) instead of re-asking.
+   */
+  editFallback?: boolean;
 }) {
   const [messages, setMessages] = useState<FilmChatMessage[]>([]);
   const [stage, setStage] = useState<FilmStage>('idle');
@@ -99,7 +107,8 @@ export function useFilmDirector(opts: {
   }, []);
 
   const runStoryboard = useCallback(
-    async (req: FilmRequest, template: FilmTemplateChoice) => {
+    /** `reuseCapture`: only a revision of the storyboard on the table keeps its site capture. */
+    async (req: FilmRequest, template: FilmTemplateChoice, reuseCapture = false) => {
       const s = optsRef.current.settings();
       const recipes = [...req.recipes, ...s.pickedRecipes.filter((r) => !req.recipes.includes(r))];
       const full = { ...req, recipes };
@@ -114,7 +123,7 @@ export function useFilmDirector(opts: {
       try {
         const result = await storyboardFilm(
           full,
-          { template, durationSec: req.durationSec ?? s.durationSec, aspectRatio: s.aspectRatio, brandKit: s.brandKit, capture: storyboard?.capture ?? null },
+          { template, durationSec: req.durationSec ?? s.durationSec, aspectRatio: s.aspectRatio, brandKit: s.brandKit, capture: reuseCapture ? storyboard?.capture ?? null : null },
           log,
         );
         setStoryboard(result);
@@ -149,7 +158,8 @@ export function useFilmDirector(opts: {
           void runStoryboard(req, extra.recipes.length && answer !== 'inkpress' ? 'director' : answer ?? 'director');
           return true;
         }
-        if (!isFilmRequest(text)) {
+        if (!(optsRef.current.isRequest ?? isFilmRequest)(text)) {
+          if (optsRef.current.editFallback) return false;
           say('user', text);
           say('assistant', 'Shall I use the Ink Press template? Say “yes” for Ink Press, “no” to let the director pick shots, or name the shot cards you want.');
           return true;
@@ -172,11 +182,12 @@ export function useFilmDirector(opts: {
             siteUrl: extra.siteUrl ?? prev.req.siteUrl,
           },
           extra.template ?? (extra.recipes.length ? 'director' : prev.template),
+          true,
         );
         return true;
       }
 
-      if (!sendOpts.force && !isFilmRequest(text)) return false;
+      if (!sendOpts.force && !(optsRef.current.isRequest ?? isFilmRequest)(text)) return false;
       say('user', text);
       const req = parseFilmRequest(text);
       const picked = optsRef.current.settings().pickedRecipes;
