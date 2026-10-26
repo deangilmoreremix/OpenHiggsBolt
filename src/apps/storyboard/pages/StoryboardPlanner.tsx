@@ -176,7 +176,8 @@ export default function StoryboardPlanner() {
 
       <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
         <div className="max-w-4xl mx-auto p-6 space-y-6">
-          {/* Locked while generating so the result can't land in a different project. */}
+          {/* Project switching and page navigation are locked while generating, so the
+              planner stays mounted and the result can't land in a different project. */}
           <fieldset disabled={isGenerating} className={isGenerating ? 'opacity-60' : ''}>
             <ProjectBar />
           </fieldset>
@@ -264,14 +265,16 @@ export default function StoryboardPlanner() {
               <div className="ml-auto flex gap-1">
                 <button
                   onClick={() => navigate('/shots/current')}
-                  className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs transition-all"
+                  disabled={isGenerating}
+                  className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs transition-all disabled:opacity-50"
                   style={buttons.ghost}
                 >
                   <Film size={14} /> Shot Editor
                 </button>
                 <button
                   onClick={() => navigate('/analysis/current')}
-                  className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs transition-all"
+                  disabled={isGenerating}
+                  className="flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs transition-all disabled:opacity-50"
                   style={buttons.ghost}
                 >
                   <BarChart3 size={14} /> Analysis

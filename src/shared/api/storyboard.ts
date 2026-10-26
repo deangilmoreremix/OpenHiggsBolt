@@ -70,13 +70,17 @@ export async function pollStoryboardResult(
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     await new Promise((resolve) => setTimeout(resolve, interval))
     let data: StoryboardResult
+    // Outside the try: a missing key won't fix itself, so fail now instead of retrying.
+    const headers = authHeaders()
     try {
-      const res = await axios.get(`${STORYBOARD_BASE}/result`, {
-        params: { id: requestId },
-        headers: authHeaders(),
-      })
+      const res = await axios.get(`${STORYBOARD_BASE}/result`, { params: { id: requestId }, headers })
       data = res.data || {}
     } catch (err: any) {
+      // 4xx from our own route (bad id, missing key, no entitlement) won't succeed on retry.
+      const status = err?.response?.status
+      if (status >= 400 && status < 500 && status !== 408 && status !== 429) {
+        throw new Error(errorMessage(err, 'Storyboard generation failed'))
+      }
       // Transient network/5xx errors: keep polling, surface the last one on timeout.
       lastError = err
       continue
