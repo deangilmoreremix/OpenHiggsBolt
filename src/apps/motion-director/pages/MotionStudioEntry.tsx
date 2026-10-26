@@ -29,6 +29,7 @@ import {
 import { RecipePreview } from '../components/RecipePreview';
 import { FilmDirectorChat } from '../components/FilmDirectorChat';
 import { useFilmDirector } from '../components/useFilmDirector';
+import { MAX_PICKED_SHOTS } from '../lib/filmChat';
 import {
   searchMotionTemplates,
   motionTemplateTitle,
@@ -229,7 +230,9 @@ export default function MotionStudioEntry() {
   const busy = director.stage === 'storyboarding' || director.stage === 'building';
 
   const handleCreate = () => {
-    const text = description.trim() || (selectedRecipes.length ? `Make a film with these shot cards: ${selectedRecipes.map((id) => TEMPLATE_BY_ID[id]?.slug).filter(Boolean).join(', ')}` : '');
+    // With only picks, the message names them for the chat; the picks themselves (exact shots,
+    // variants included) reach the storyboard through `pickedRecipes`, not by re-reading this text.
+    const text = description.trim() || (selectedRecipes.length ? `Make a film with the shot cards I picked: ${selectedTemplates.map(motionTemplateTitle).join(', ')}` : '');
     if (!text || busy) return;
     // The dev-only e2e auth bypass cookie honors create actions regardless of
     // paid entitlement. The StandaloneShell has already gated the route through
@@ -306,7 +309,7 @@ export default function MotionStudioEntry() {
 
   /** Templates picker is multi-select: each pick adds (or removes) a shot card for the film. */
   const pickRecipe = (id: string) => {
-    setSelectedRecipes((prev) => (prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]));
+    setSelectedRecipes((prev) => (prev.includes(id) ? prev.filter((r) => r !== id) : prev.length >= MAX_PICKED_SHOTS ? prev : [...prev, id]));
   };
 
   return (
@@ -315,7 +318,7 @@ export default function MotionStudioEntry() {
         open={showRecipePicker}
         onClose={closePicker}
         title="Motion Templates"
-        subtitle={selectedRecipes.length ? `${selectedRecipes.length} shot card${selectedRecipes.length === 1 ? '' : 's'} chosen — the film is built around them, in this order. Close when done.` : 'Pick the shot cards for your film (pick several, in order) — or let Motion Director choose them from your description.'}
+        subtitle={selectedRecipes.length ? `${selectedRecipes.length} of up to ${MAX_PICKED_SHOTS} shot cards chosen — the film is built around them, in this order. Close when done.` : 'Pick the shot cards for your film (pick several, in order) — or let Motion Director choose them from your description.'}
         search={searchQuery}
         setSearch={setSearchQuery}
         searchPlaceholder="Search recipes..."

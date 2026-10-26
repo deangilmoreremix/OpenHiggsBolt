@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 
-const calls: Array<{ prompt: string; capture: unknown; single: string | null; durationSec: number }> = [];
+const calls: Array<{ prompt: string; capture: unknown; single: string | null; durationSec: number; recipes: string[] }> = [];
 /** When set, storyboards wait for it — to finish one after the conversation was reset. */
 let gate: Promise<void> | null = null;
 /** When set, the build (frame QA) waits for it. */
@@ -12,8 +12,8 @@ vi.mock('../lib/filmPipeline', async (orig) => {
   const { inkPressPlan, singleShotPlan } = await import('../lib/filmChat');
   return {
     ...real,
-    storyboardFilm: vi.fn(async (req: { prompt: string; siteUrl: string | null; durationSec: number | null; single: Parameters<typeof singleShotPlan>[0] | null }, opts: { capture: unknown; durationSec: number }) => {
-      calls.push({ prompt: req.prompt, capture: opts.capture, single: req.single?.componentName ?? null, durationSec: opts.durationSec });
+    storyboardFilm: vi.fn(async (req: { prompt: string; siteUrl: string | null; durationSec: number | null; recipes: { componentName: string }[]; single: Parameters<typeof singleShotPlan>[0] | null }, opts: { capture: unknown; durationSec: number }) => {
+      calls.push({ prompt: req.prompt, capture: opts.capture, single: req.single?.componentName ?? null, durationSec: opts.durationSec, recipes: req.recipes.map((t) => t.componentName) });
       if (gate) await gate;
       const capture = req.siteUrl ? { url: `https://${req.siteUrl}/`, title: 'Acme', page: { url: 'p', width: 1, height: 1 }, crops: [], brand: {} } : opts.capture;
       const plan = req.single ? singleShotPlan(req.single, { prompt: req.prompt, durationSec: req.durationSec }) : inkPressPlan({ prompt: req.prompt, durationSec: 10 });
@@ -28,6 +28,7 @@ vi.mock('../lib/filmPipeline', async (orig) => {
 });
 
 import { useFilmDirector } from '../components/useFilmDirector';
+import { MOTION_TEMPLATES, motionTemplateTitle } from '@/data/motionRecipeCatalog';
 
 const settings = () => ({ aspectRatio: '16:9' as const, durationSec: 10, brandKit: null, media: [], pickedRecipes: [] });
 const flush = () => act(async () => { await new Promise((r) => setTimeout(r, 0)); });
@@ -136,5 +137,25 @@ describe('useFilmDirector', () => {
     };
     expect(await build(false)).toHaveBeenCalledTimes(1);
     expect(await build(true)).not.toHaveBeenCalled();
+  });
+
+  it('a picker-only request uses exactly the picked shots, variants included', async () => {
+    calls.length = 0;
+    const picked = [MOTION_TEMPLATES.find((t) => t.componentName === 'CrashZoomReal')!];
+    const withPicks = () => ({ ...settings(), pickedRecipes: picked });
+    const { result } = renderHook(() => useFilmDirector({ settings: withPicks }));
+    act(() => { result.current.send(`Make a film with the shot cards I picked: ${picked.map(motionTemplateTitle).join(', ')}`, { force: true }); });
+    await flush();
+    expect(calls[0].recipes).toEqual(['CrashZoomReal']);
+  });
+
+  it('asks for at most the shots a storyboard can hold, and says what was dropped', async () => {
+    calls.length = 0;
+    const picked = MOTION_TEMPLATES.slice(0, 13);
+    const { result } = renderHook(() => useFilmDirector({ settings: () => ({ ...settings(), pickedRecipes: picked }) }));
+    act(() => { result.current.send('make a promo with these', { force: true }); });
+    await flush();
+    expect(calls[0].recipes).toHaveLength(12);
+    expect(result.current.messages.some((m) => /up to 12 chosen shots/.test(m.content))).toBe(true);
   });
 });

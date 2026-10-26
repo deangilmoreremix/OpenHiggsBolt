@@ -8,6 +8,7 @@ import type { MotionTemplate } from '@/data/motionRecipeCatalog';
 import { motionTemplateTitle } from '@/data/motionRecipeCatalog';
 import {
   INK_PRESS_INTRO,
+  MAX_PICKED_SHOTS,
   isFilmRequest,
   parseFilmRequest,
   readTemplateAnswer,
@@ -138,7 +139,12 @@ export function useFilmDirector(opts: {
       };
       const s = optsRef.current.settings();
       // A revision carries its own (revised) list; a new film adds the shots picked in Templates.
-      const recipes = reuseCapture ? req.recipes : [...req.recipes, ...s.pickedRecipes.filter((r) => !req.recipes.includes(r))];
+      const wanted = reuseCapture ? req.recipes : [...req.recipes, ...s.pickedRecipes.filter((r) => !req.recipes.includes(r))];
+      // A storyboard holds MAX_PICKED_SHOTS named shots; say so instead of silently losing the rest.
+      const recipes = wanted.slice(0, MAX_PICKED_SHOTS);
+      if (wanted.length > recipes.length && live()) {
+        say('assistant', `A film can hold up to ${MAX_PICKED_SHOTS} chosen shots, so I'm using the first ${MAX_PICKED_SHOTS} (dropped: ${wanted.slice(MAX_PICKED_SHOTS).map((r) => r.slug).join(', ')}).`);
+      }
       const full = { ...req, recipes };
       pending.current = { req: full, template };
       setStage('storyboarding');

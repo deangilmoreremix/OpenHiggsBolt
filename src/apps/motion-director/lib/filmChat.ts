@@ -37,6 +37,9 @@ export function findSiteUrl(prompt: string): string | null {
   return m ? m[0].replace(/[.,;:!?]+$/, '') : null;
 }
 
+/** Most shots a film can be asked to include: a storyboard holds PLAN_LIMITS.maxScenes, two go to the title cards. */
+export const MAX_PICKED_SHOTS = PLAN_LIMITS.maxScenes - 2;
+
 export const INK_PRESS_PALETTE: DirectorPalette = { background: '#f7f4ee', text: '#1c1a17', accent: '#b5651d' };
 
 export const INK_PRESS_INTRO =
@@ -230,7 +233,8 @@ export function inkPressPlan(opts: {
   const maxScenes = Math.max(PLAN_LIMITS.minScenes, Math.floor(target / 2));
   const named = Boolean(opts.recipes?.length);
   while (!named && shots.length + 2 > maxScenes && shots.length > 1) shots.splice(shots.length - 2, 1);
-  const withTitles = target >= (shots.length + 2) * PLAN_LIMITS.minSceneSec;
+  // Titles only when they fit, in time and in the storyboard's scene limit (a shot is never dropped for a title).
+  const withTitles = target >= (shots.length + 2) * PLAN_LIMITS.minSceneSec && shots.length + 2 <= PLAN_LIMITS.maxScenes;
   const scenes: DirectorScene[] = [];
   if (withTitles) {
     scenes.push({ kind: 'title', recipeId: '', durationSec: 2.5, headline: `Meet *${name}*.`, caption: '', transition: 'cut' });
@@ -337,7 +341,10 @@ export function ensureRecipes(plan: DirectorPlan, recipes: readonly MotionTempla
   if (unchanged) return plan;
   // Drop unnamed shots first if the plan is now too long.
   while (scenes.length > PLAN_LIMITS.maxScenes) {
-    const idx = scenes.findIndex((s) => s.kind === 'shot' && !recipes.some((r) => r.id === s.recipeId));
+    // Unnamed shots go first, then title cards: validation keeps only the first maxScenes,
+    // so anything left over would cut named shots off the end.
+    let idx = scenes.findIndex((s) => s.kind === 'shot' && !recipes.some((r) => r.id === s.recipeId));
+    if (idx < 0) idx = scenes.findIndex((s) => s.kind === 'title');
     if (idx < 0) break;
     scenes.splice(idx, 1);
   }

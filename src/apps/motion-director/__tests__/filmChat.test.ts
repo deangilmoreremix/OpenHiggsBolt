@@ -5,6 +5,7 @@ import {
   INK_PRESS_SHOTS,
   ensureRecipes,
   reviseRecipes,
+  MAX_PICKED_SHOTS,
   findNamedRecipes,
   inkPressPlan,
   isFilmRequest,
@@ -119,6 +120,19 @@ describe('Ink Press storyboard', () => {
     expect(fixed.scenes[fixed.scenes.length - 1].kind).toBe('title');
     // Already in order: the plan comes back untouched.
     expect(ensureRecipes(fixed, [deck, row], 16)).toBe(fixed);
+  });
+
+  it('never drops a named shot for a title card when the storyboard is full', () => {
+    const shots = MOTION_TEMPLATES.slice(0, 14);
+    const ids = (p: { scenes: { kind: string; recipeId: string }[] }) => p.scenes.filter((s) => s.kind === 'shot').map((s) => s.recipeId);
+    const twelve = inkPressPlan({ prompt: 'x', durationSec: 60, recipes: shots.slice(0, MAX_PICKED_SHOTS) });
+    expect(ids(twelve)).toEqual(shots.slice(0, 12).map((t) => t.id));
+    expect(twelve.scenes[0].kind).toBe('title');
+    const fourteen = inkPressPlan({ prompt: 'x', durationSec: 60, recipes: shots });
+    expect(ids(fourteen)).toEqual(shots.map((t) => t.id));
+    // ensureRecipes on a plan with titles makes room by dropping the titles, not the named shots.
+    const repaired = ensureRecipes(twelve, shots, 60);
+    expect(ids(repaired)).toEqual(shots.map((t) => t.id));
   });
 
   it('revisions replace shots when asked to, and add them otherwise', () => {
