@@ -14,7 +14,7 @@ import type { MediaAttachment } from './mediaUpload';
 import { analyzeBeats } from './beatSync';
 import { planToProject, type FilmCapture } from './buildFilm';
 import { captureSite, requestPlan, DirectorError, type SiteCapture } from './directorClient';
-import type { DirectorPalette, DirectorPlan } from './directorPlan';
+import { PLAN_LIMITS, type DirectorPalette, type DirectorPlan } from './directorPlan';
 import { ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
 import { isProductTextureShot } from './productShots';
 import { resolveMotionTemplate } from '@/data/motionRecipeCatalog';
@@ -37,6 +37,8 @@ export interface StoryboardResult {
   source: 'director' | 'inkpress';
   /** Why the director was not used, when it was asked and failed. */
   note?: string;
+  /** Attached videos the film will play as their own scenes before the closing card. */
+  videos?: Array<{ name: string; sec: number }>;
 }
 
 const brandPalette = (capture: SiteCapture | null, kit: FilmBrandKit | null | undefined): Partial<DirectorPalette> => ({
@@ -48,7 +50,15 @@ const brandPalette = (capture: SiteCapture | null, kit: FilmBrandKit | null | un
 /** Capture (when the request has a URL) and storyboard the film. */
 export async function storyboardFilm(
   req: FilmRequest,
-  opts: { template: FilmTemplateChoice; durationSec: number; aspectRatio: AspectRatio; brandKit?: FilmBrandKit | null; capture?: SiteCapture | null },
+  opts: {
+    template: FilmTemplateChoice;
+    durationSec: number;
+    aspectRatio: AspectRatio;
+    brandKit?: FilmBrandKit | null;
+    capture?: SiteCapture | null;
+    /** Seconds the film already gives to attached videos; the storyboard fills the rest. */
+    reservedSec?: number;
+  },
   log: ActivityLog,
 ): Promise<StoryboardResult> {
   const bare = (u: string) => u.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '').toLowerCase();
@@ -63,6 +73,8 @@ export async function storyboardFilm(
       log(`Could not capture ${req.siteUrl}: ${error instanceof Error ? error.message : 'failed'}`, 'error');
     }
   }
+  // Attached videos play as their own scenes; the storyboard gets what is left of the requested length.
+  const planSec = Math.max(PLAN_LIMITS.minFilmSec, opts.durationSec - (opts.reservedSec ?? 0));
   const productName = productNameFrom(req.prompt, { siteTitle: capture?.title, businessName: opts.brandKit?.businessName });
   const palette = brandPalette(capture, opts.brandKit);
 
@@ -81,14 +93,14 @@ export async function storyboardFilm(
   try {
     const plan = await requestPlan({
       prompt: req.prompt,
-      durationSec: opts.durationSec,
+      durationSec: planSec,
       aspectRatio: opts.aspectRatio,
       capture,
       brandKit: opts.brandKit ? { ...opts.brandKit } : null,
       requiredRecipes: required.map((r) => r.id),
       template: opts.template === 'inkpress' ? 'inkpress' : null,
     });
-    const fitted = ensureRecipes(plan, req.recipes, opts.durationSec);
+    const fitted = ensureRecipes(plan, req.recipes, planSec);
     log(`Storyboard ready · ${fitted.scenes.length} scenes`, 'done');
     return { plan: fitted, capture, source: 'director' };
   } catch (error) {
@@ -96,7 +108,7 @@ export async function storyboardFilm(
       error instanceof DirectorError && (error.status === 401 || error.status === 403)
         ? error.message
         : `The AI director could not be reached (${error instanceof Error ? error.message : 'error'}).`;
-    const plan = inkPressPlan({ prompt: req.prompt, durationSec: opts.durationSec, recipes: req.recipes, productName, palette });
+    const plan = inkPressPlan({ prompt: req.prompt, durationSec: planSec, recipes: req.recipes, productName, palette });
     log(`Storyboard ready from the Ink Press template · ${plan.scenes.length} scenes`, 'done');
     return { plan, capture, source: 'inkpress', note };
   }

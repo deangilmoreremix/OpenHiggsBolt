@@ -47,6 +47,9 @@ const SFX_FLASH = 'motion-studio/sfxlib/impact/impact-transition.mp3';
 const SFX_FRAMES = 24;
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
+/** Screen time an attached video gets as its own scene: its length, kept between 2 and 8 seconds. */
+export const videoSceneSec = (v: { durationSec?: number }): number => clamp(v.durationSec ?? 4, 2, 8);
+
 /** Delivery size of a built film: full HD at 30 fps, h264 on export. */
 export const filmDimensions = (ratio: AspectRatio): { width: number; height: number } =>
   ratio === '9:16' ? { width: 1080, height: 1920 } : ratio === '1:1' ? { width: 1080, height: 1080 } : { width: 1920, height: 1080 };
@@ -139,7 +142,7 @@ export function planToProject(
     // Attached videos play just before the closing scene (or at the end of a one-scene film).
     if (i === lastIndex && lastIndex > 0) {
       for (const v of videos) {
-        const frames = Math.round(clamp(v.durationSec ?? 4, 2, 8) * FPS);
+        const frames = Math.round(videoSceneSec(v) * FPS);
         shots.push(clip('video-clip', at, frames, { file: v.url, fit: 'cover', muted: Boolean(opts.music?.url) }, { label: v.name.slice(0, 32) }));
         at += frames;
         cut(false);
@@ -182,7 +185,7 @@ export function planToProject(
   if (lastIndex === 0) {
     for (const v of videos) {
       cut(false);
-      const frames = Math.round(clamp(v.durationSec ?? 4, 2, 8) * FPS);
+      const frames = Math.round(videoSceneSec(v) * FPS);
       shots.push(clip('video-clip', at, frames, { file: v.url, fit: 'cover', muted: Boolean(opts.music?.url) }, { label: v.name.slice(0, 32) }));
       at += frames;
     }

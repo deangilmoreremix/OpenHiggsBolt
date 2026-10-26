@@ -207,6 +207,13 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
   const { messages, stage, activity, steps, storyboard, film } = director;
   const shown = hideOwnMessages ? history : [...history, ...messages];
   const plan = storyboard?.plan;
+  const videos = storyboard?.videos ?? [];
+  /** Attached videos sit just before the closing scene, where the build places them. */
+  const withVideos = <T,>(steps: T[]): Array<T | { key: string; label: string; detail: string }> => {
+    const out: Array<T | { key: string; label: string; detail: string }> = steps.slice();
+    out.splice(steps.length > 1 ? steps.length - 1 : steps.length, 0, ...videos.map((v, i) => ({ key: `video-${i}`, label: 'Your video', detail: `${v.sec}s · ${v.name}` })));
+    return out;
+  };
   return (
     <div className="flex flex-col gap-3" data-testid="film-chat">
       {steps.some((s) => s.state !== 'todo') && (
@@ -240,8 +247,8 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
           testId="director-plan"
           eyebrow={storyboard?.source === 'director' ? 'MOTION DIRECTOR STORYBOARD' : 'INK PRESS STORYBOARD'}
           title={plan.title}
-          meta={`${plan.scenes.length} scenes · ${Math.round(plan.scenes.reduce((sum, sc) => sum + sc.durationSec, 0))}s${storyboard?.capture ? ' · uses your site' : ''}`}
-          steps={plan.scenes.map((scene, i) => {
+          meta={`${plan.scenes.length + videos.length} scenes · ${Math.round(plan.scenes.reduce((sum, sc) => sum + sc.durationSec, 0) + videos.reduce((sum, v) => sum + v.sec, 0))}s${storyboard?.capture ? ' · uses your site' : ''}`}
+          steps={withVideos(plan.scenes.map((scene, i) => {
             const template = scene.kind === 'shot' ? resolveMotionTemplate(scene.recipeId) : undefined;
             const onSite = Boolean(template && storyboard?.capture && isProductTextureShot(template.componentName));
             return {
@@ -250,7 +257,7 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
               detail: [`${scene.durationSec}s`, scene.headline && `“${scene.headline.replace(/\*/g, '')}”`, scene.caption && `caption: ${scene.caption}`, onSite && 'shows your site', scene.transition === 'flash' && 'flash cut'].filter(Boolean).join(' · '),
               media: template ? <RecipePreview recipe={template} playing={false} /> : undefined,
             };
-          })}
+          }))}
           onApprove={() => void director.approve()}
           onReject={director.revise}
           busy={stage === 'building'}

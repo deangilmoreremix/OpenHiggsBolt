@@ -16,6 +16,7 @@ import {
   type FilmRequest,
   type FilmTemplateChoice,
 } from '../lib/filmChat';
+import { videoSceneSec } from '../lib/buildFilm';
 import { initialSteps, markStep, type FilmStep, type FilmStepId, type FilmStepState } from '../lib/filmSteps';
 import {
   buildFilmProject,
@@ -146,6 +147,8 @@ export function useFilmDirector(opts: {
         say('assistant', `A film can hold up to ${MAX_PICKED_SHOTS} chosen shots, so I'm using the first ${MAX_PICKED_SHOTS} (dropped: ${wanted.slice(MAX_PICKED_SHOTS).map((r) => r.slug).join(', ')}).`);
       }
       const full = { ...req, recipes };
+      // Attached videos are scenes of the film too: they take their time out of the requested length.
+      const videos = s.media.filter((m) => m.kind === 'video').map((m) => ({ name: m.name, sec: videoSceneSec(m) }));
       pending.current = { req: full, template };
       setStage('storyboarding');
       setStoryboard(null);
@@ -165,21 +168,33 @@ export function useFilmDirector(opts: {
       try {
         const result = await storyboardFilm(
           full,
-          { template, durationSec: req.durationSec ?? s.durationSec, aspectRatio: s.aspectRatio, brandKit: s.brandKit, capture: reuseCapture ? storyboard?.capture ?? null : null },
+          {
+            template,
+            durationSec: req.durationSec ?? s.durationSec,
+            aspectRatio: s.aspectRatio,
+            brandKit: s.brandKit,
+            capture: reuseCapture ? storyboard?.capture ?? null : null,
+            reservedSec: videos.reduce((sum, v) => sum + v.sec, 0),
+          },
           glog,
         );
         if (!live()) return;
+        result.videos = videos;
         setStoryboard(result);
         setStage('plan');
+        const videoSec = videos.reduce((sum, v) => sum + v.sec, 0);
         mark(
           'storyboard',
           'done',
-          `${result.plan.scenes.length} scene${result.plan.scenes.length === 1 ? '' : 's'} · ${secs(result.plan)}s · ${result.source === 'director' ? 'AI director' : 'Ink Press'}`,
+          `${result.plan.scenes.length + videos.length} scene${result.plan.scenes.length + videos.length === 1 ? '' : 's'} · ${Math.round(secs(result.plan) + videoSec)}s · ${result.source === 'director' ? 'AI director' : 'Ink Press'}`,
         );
-        const lines = result.plan.scenes.map((sc, i) => `${i + 1}. ${sc.kind === 'title' ? 'Title card' : sc.recipeId.split('/')[1]} · ${sc.durationSec}s${sc.headline ? ` — “${sc.headline.replace(/\*/g, '')}”` : ''}`);
+        const lines = result.plan.scenes.map((sc) => `${sc.kind === 'title' ? 'Title card' : sc.recipeId.split('/')[1]} · ${sc.durationSec}s${sc.headline ? ` — “${sc.headline.replace(/\*/g, '')}”` : ''}`);
+        // Attached videos play just before the closing scene (after a one-scene film), as the build places them.
+        lines.splice(lines.length > 1 ? lines.length - 1 : lines.length, 0, ...videos.map((v) => `Your video ${v.name} · ${v.sec}s`));
+        const numbered = lines.map((line, i) => `${i + 1}. ${line}`);
         say(
           'assistant',
-          `${result.note ? `${result.note} I used the Ink Press template instead.\n\n` : ''}Storyboard “${result.plan.title}” — ${result.plan.scenes.length} scene${result.plan.scenes.length === 1 ? '' : 's'}, ${secs(result.plan)}s${result.capture ? ', using your captured pages' : ''}:\n${lines.join('\n')}\n\nApprove to build the film, or tell me what to change.`,
+          `${result.note ? `${result.note} I used the Ink Press template instead.\n\n` : ''}Storyboard “${result.plan.title}” — ${lines.length} scene${lines.length === 1 ? '' : 's'}, ${Math.round(secs(result.plan) + videos.reduce((sum, v) => sum + v.sec, 0))}s${result.capture ? ', using your captured pages' : ''}:\n${numbered.join('\n')}\n\nApprove to build the film, or tell me what to change.`,
         );
       } catch (error) {
         if (!live()) return;
