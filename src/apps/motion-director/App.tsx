@@ -116,7 +116,6 @@ export const App: React.FC = () => {
   const setLocale = useLocale((s) => s.setLocale);
   useEffect(() => applyLocaleToDocument(locale), [locale]);
   const project = useStore((s) => s.project);
-  const setPreview = useStore((s) => s.setPreview);
   const undo = useStore((s) => s.undo);
   const redo = useStore((s) => s.redo);
   const canUndo = useStore((s) => s.past.length > 0);
@@ -134,11 +133,9 @@ export const App: React.FC = () => {
   const [railOpen, setRailOpen] = useState(true);
   const navigate = useNavigate();
 
+  /** Clicking a recipe goes to the chat with it picked (films are made there); "Add" still puts it on the timeline. */
   const handleSelectRecipe = (recipe: MotionTemplate) => {
-    // The catalog id (`<category>/<slug>/<Component>`) is NOT a card id — the
-    // registry keys demo cards as `demo:<Stem>`. Bridge it before previewing,
-    // otherwise the preview falls back to a placeholder / empty composition.
-    setPreview({ kind: "card", cardId: motionCardId(recipe) });
+    navigate("/new", { state: { pickRecipe: recipe.id } });
   };
 
   /** Library → timeline: insert the shot at the playhead on the selected

@@ -105,11 +105,16 @@ export default function MotionRecipeCard({
 
   const gradient = CATEGORY_GRADIENTS[recipe.category] || CATEGORY_GRADIENTS.effects;
 
+  /** A single click waits a moment so a double-click (add to the timeline) does not also fire it. */
+  const clickTimer = useRef(null);
+  useEffect(() => () => clearTimeout(clickTimer.current), []);
   const handleCardClick = useCallback(
     (e) => {
       if (menuOpen) return;
       e.stopPropagation();
-      onClick?.(recipe);
+      clearTimeout(clickTimer.current);
+      if (e.detail > 1) return;
+      clickTimer.current = setTimeout(() => onClick?.(recipe), 250);
     },
     [menuOpen, recipe, onClick],
   );
@@ -130,6 +135,7 @@ export default function MotionRecipeCard({
   const handleDoubleClick = useCallback(
     (e) => {
       e.stopPropagation();
+      clearTimeout(clickTimer.current);
       onAddToTimeline?.(recipe);
     },
     [onAddToTimeline, recipe],
@@ -212,7 +218,8 @@ export default function MotionRecipeCard({
         onDragStart={handleDragStart}
         onClick={handleCardClick}
         onDoubleClick={handleDoubleClick}
-        title="Drag to the timeline · double-click to add at the playhead"
+        title="Click to use in the chat · drag to the timeline · double-click to add at the playhead"
+        data-testid="library-recipe-card"
       >
         <div className="w-full h-full relative">
           {card && inView ? (
