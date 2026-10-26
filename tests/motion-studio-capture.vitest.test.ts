@@ -124,3 +124,95 @@ describe('capturePageScreenshots', () => {
     expect(mod.cssColorToHex('red')).toBeNull()
   })
 })
+
+describe('capture the way upstream ShotCraft does', () => {
+  const links = [
+    { href: 'https://acme.example.com/login', text: 'Log in' },
+    { href: 'https://acme.example.com/blog', text: 'Blog' },
+    { href: 'https://acme.example.com/pricing', text: 'Pricing' },
+    { href: 'https://acme.example.com/features/', text: 'Features' },
+    { href: 'https://other.example.com/features', text: 'Partner' },
+    { href: 'https://acme.example.com/terms', text: 'Terms' },
+    { href: 'https://acme.example.com/docs/a/b/c', text: 'Deep' },
+  ]
+  const content = { description: 'Ship faster with Acme.', headline: 'Ship faster', headings: ['Plan', 'Build'], ctas: ['Start free'], nav: ['Pricing'] }
+
+  async function loadRich() {
+    const visited: string[] = []
+    const evaluated: string[] = []
+    const shots: Array<Record<string, unknown>> = []
+    const page = {
+      goto: vi.fn(async (url: string) => { visited.push(url) }),
+      url: () => visited[visited.length - 1] ?? 'about:blank',
+      waitForLoadState: vi.fn(async () => {}),
+      evaluate: vi.fn(async (fn: { name?: string }, arg?: unknown) => {
+        evaluated.push(`${fn.name}${arg === undefined ? '' : `(${JSON.stringify(arg)})`}`)
+        if (fn.name === 'readPageContent') return { ...content, links }
+        if (fn.name === 'findCutoutRects') {
+          return {
+            nav: { x: 0, y: 0, width: 1920, height: 72 },
+            cards: [{ x: 100, y: 400, width: 400, height: 300 }, { x: 600, y: 400, width: 400, height: 300 }],
+            search: { x: 700, y: 200, width: 520, height: 64 },
+            button: { x: 860, y: 300, width: 200, height: 52 },
+            sections: [{ x: 100, y: 330, width: 600, height: 40 }],
+          }
+        }
+        if (fn.name === 'setCardsHidden') return 2
+        if (fn.name === 'findCropRects') throw new Error('heuristic crops are only a fallback')
+        if (fn.name === 'findAssetRects') return { logo: null, images: [] }
+        if (fn.name === 'readBrandStyles') return { background: 'rgb(255, 255, 255)', text: 'rgb(0, 0, 0)', accent: null, fontFamily: null }
+        if (String(fn).includes('scrollHeight')) return 3000
+        return undefined
+      }),
+      screenshot: vi.fn(async (opts: Record<string, unknown>) => { shots.push(opts); return Buffer.from('img') }),
+      title: async () => 'Acme',
+      close: vi.fn(async () => {}),
+    }
+    vi.doMock('playwright', () => ({
+      chromium: {
+        launch: vi.fn(async () => ({
+          isConnected: () => true,
+          newContext: vi.fn(async () => ({ route: vi.fn(async () => {}), newPage: vi.fn(async () => page), close: vi.fn(async () => {}) })),
+          close: vi.fn(async () => {}),
+        })),
+      },
+    }))
+    const mod = await import('../src/server/browserDiscovery')
+    const guard = mod.createSsrfGuard({ dnsResolver: async (host: string) => (host.endsWith('.example.com') ? ['93.184.216.34'] : []) })
+    return { mod, guard, visited, evaluated, shots }
+  }
+
+  it('reads the site, cuts out its nav, cards, search pill and button, and shoots an empty plate', async () => {
+    const { mod, guard, evaluated, shots } = await loadRich()
+    const result = await mod.capturePageScreenshots('https://acme.example.com/', { guard, settleMs: 0 })
+    expect(result.content).toEqual(content)
+    expect(evaluated).toContain('waitForFonts(2000)')
+    expect(result.crops.length).toBeGreaterThanOrEqual(2)
+    expect(result.layout.cards).toEqual([{ x: 100, y: 400, width: 400, height: 300 }, { x: 600, y: 400, width: 400, height: 300 }])
+    expect(result.layout.sections).toHaveLength(1)
+    expect(result.cutouts.nav).toBeInstanceOf(Buffer)
+    // The floating pieces are transparent PNGs.
+    expect(shots).toContainEqual(expect.objectContaining({ type: 'png', omitBackground: true, clip: { x: 700, y: 200, width: 520, height: 64 } }))
+    expect(shots).toContainEqual(expect.objectContaining({ type: 'png', omitBackground: true, clip: { x: 860, y: 300, width: 200, height: 52 } }))
+    // Empty plate: cards hidden, page shot again, cards shown again.
+    expect(result.emptyPlate).toBeInstanceOf(Buffer)
+    expect(evaluated.indexOf('setCardsHidden(true)')).toBeLessThan(evaluated.indexOf('setCardsHidden(false)'))
+  })
+
+  it("captures the site's product routes too, never login, legal or other hosts", async () => {
+    const { mod, guard, visited } = await loadRich()
+    const result = await mod.capturePageScreenshots('https://acme.example.com/', { guard, settleMs: 0 })
+    expect(visited).toEqual(['https://acme.example.com/', 'https://acme.example.com/pricing', 'https://acme.example.com/features/'])
+    expect(result.routes.map((r) => [r.name, r.path])).toEqual([['pricing', '/pricing'], ['features', '/features']])
+    for (const r of result.routes) expect(r.layout.pageH).toBeGreaterThan(0)
+    expect(result.crops.length).toBeLessThanOrEqual(mod.CAPTURE_MAX_TOTAL_CROPS)
+  })
+
+  it('picks routes: product pages first, short same-host paths only, unique names', async () => {
+    const { mod } = await loadRich()
+    expect(mod.pickCaptureRoutes(links, 'https://acme.example.com/', 3).map((r) => r.path)).toEqual(['/pricing', '/features', '/blog'])
+    expect(mod.pickCaptureRoutes([{ href: '/a/pricing', text: '' }, { href: '/b/pricing', text: '' }], 'https://acme.example.com/', 2).map((r) => r.name)).toEqual(['pricing', 'pricing-2'])
+    expect(mod.pickCaptureRoutes(links, 'not a url')).toEqual([])
+    expect(mod.pickCaptureRoutes(links, 'https://acme.example.com/', 0)).toEqual([])
+  })
+})

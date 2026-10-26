@@ -360,6 +360,28 @@ export function useFilmDirector(opts: {
     say('assistant', 'What should change? Name shots to swap in (e.g. “use crash-zoom-punch instead”), a new length, or new copy.');
   }, [say]);
 
+  /**
+   * Stop what is running. A storyboard in progress is dropped (back to a fresh chat
+   * turn); a film being built is dropped and the approved storyboard stays on the
+   * table to approve again or revise. Any result that arrives later is ignored.
+   */
+  const stop = useCallback(() => {
+    if (stage !== 'storyboarding' && stage !== 'building') return;
+    gen.current++;
+    setActivity([]);
+    setSteps((prev) => prev.map((st) => (st.state === 'active' ? { ...st, state: 'todo', detail: 'Stopped' } : st)));
+    if (stage === 'storyboarding') {
+      pending.current = null;
+      setStoryboard(null);
+      setStage('idle');
+      say('assistant', 'Stopped. Tell me what to make next.');
+    } else {
+      setFilm(null);
+      setStage('plan');
+      say('assistant', 'Stopped building the film. The storyboard is still here: approve it again or tell me what to change.');
+    }
+  }, [say, stage]);
+
   const reset = useCallback(() => {
     gen.current++;
     pending.current = null;
@@ -372,7 +394,7 @@ export function useFilmDirector(opts: {
     setSteps(initialSteps());
   }, []);
 
-  return { messages, stage, activity, steps, storyboard, film, send, chooseTemplate, approve, revise, reset };
+  return { messages, stage, activity, steps, storyboard, film, send, chooseTemplate, approve, revise, stop, reset };
 }
 
 export type FilmDirector = ReturnType<typeof useFilmDirector>;

@@ -31,10 +31,9 @@ interface LibraryPanelProps {
 const TABS: { id: LibraryTab; label: string }[] = [
   { id: "templates", label: "Templates" },
   { id: "recipes", label: "My Motion Recipes" },
-  { id: "community", label: "Community" },
 ];
 
-type LibraryTab = "templates" | "recipes" | "community";
+type LibraryTab = "templates" | "recipes";
 type CategoryFilter = MotionCategoryKey | "all";
 
 const matchesQuery = (t: MotionTemplate, q: string) =>
@@ -68,7 +67,6 @@ export default function LibraryPanel({
 
   /** Each tab reads a different source:
    *  - Templates  → the 124 grouped cards (a card groups its shot variants)
-   *  - Community  → the 151 individual shots
    *  - My Recipes → the shots the user saved (localStorage) plus the recipes
    *                 their sessions were built from */
   const source = useMemo<readonly MotionTemplate[]>(() => {
@@ -77,11 +75,6 @@ export default function LibraryPanel({
         ? MOTION_TEMPLATE_CARDS.filter((t) => categories.includes(t.category))
         : MOTION_TEMPLATE_CARDS;
       return list;
-    }
-    if (tab === "community") {
-      return categories?.length
-        ? MOTION_TEMPLATES.filter((t) => categories.includes(t.category))
-        : MOTION_TEMPLATES;
     }
     const out: MotionTemplate[] = [];
     const seen = new Set<string>();
@@ -152,7 +145,7 @@ export default function LibraryPanel({
 
   const emptyMessage =
     tab === "recipes" && source.length === 0
-      ? "No saved recipes yet — save a shot from Templates or Community to pin it here."
+      ? "No saved recipes yet — save a shot from Templates to pin it here."
       : "No recipes found";
 
   return (

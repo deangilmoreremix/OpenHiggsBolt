@@ -87,6 +87,34 @@ describe('POST /api/motion-studio/capture', () => {
     expect(upload).toHaveBeenCalledTimes(5) // page, 2 crops, 1 site image, logo
   })
 
+  it('stores every captured route, the cutouts and the empty plate, and returns the site content', async () => {
+    capture.mockResolvedValueOnce({
+      url: 'https://acme.test/',
+      title: 'Acme',
+      page: Buffer.from('page'),
+      pageHeight: 1746,
+      crops: [Buffer.from('c1')],
+      images: [],
+      logo: null,
+      content: { description: '', headline: 'Ship faster', headings: ['Plan'], ctas: ['Start free'], nav: [] },
+      layout: { pageH: 1746, sections: [], cards: [{ x: 1, y: 2, width: 300, height: 200 }] },
+      cutouts: { nav: Buffer.from('nav'), search: Buffer.from('s'), button: null },
+      emptyPlate: Buffer.from('empty'),
+      routes: [{ name: 'pricing', path: '/pricing', url: 'https://acme.test/pricing', page: Buffer.from('p2'), pageHeight: 1200, layout: { pageH: 1200, sections: [], cards: [] }, crops: [] }],
+      brand: { background: null, text: null, accent: null, fontFamily: null },
+    })
+    const { POST } = await import('@/app/api/motion-studio/capture/route')
+    const body = await (await POST(post('/api/motion-studio/capture', { url: 'acme.test' }))).json()
+    expect(body.pages.map((p: { path: string }) => p.path)).toEqual(['/', '/pricing'])
+    expect(body.pages[1]).toMatchObject({ url: expect.stringMatching(/\/page-pricing\.jpg$/), width: 3840, height: 2400 })
+    expect(body.pages[0].layout.cards).toHaveLength(1)
+    expect(body.cutouts).toEqual({ nav: expect.stringMatching(/\/nav\.jpg$/), search: expect.stringMatching(/\/float-search\.png$/), button: null })
+    expect(body.emptyPlate).toMatch(/\/page-empty\.jpg$/)
+    expect(body.content.headline).toBe('Ship faster')
+    expect(body.logo).toBeNull()
+    expect(upload).toHaveBeenCalledTimes(6) // page, pricing page, crop, nav, search, empty plate
+  })
+
   it('requires a signed-in user', async () => {
     userId = null
     const { POST } = await import('@/app/api/motion-studio/capture/route')

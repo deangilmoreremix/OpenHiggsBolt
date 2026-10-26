@@ -16,6 +16,7 @@ const CAPTURE_PAGE = 'https://captures.example.com/page.png';
 const CAPTURE_CROP = 'https://captures.example.com/crop-1.png';
 const CAPTURE_IMAGE = 'https://captures.example.com/image-1.jpg';
 const CAPTURE_LOGO = 'https://captures.example.com/logo.png';
+const CAPTURE_PRICING = 'https://captures.example.com/page-pricing.png';
 
 /** Solid-colour PNG so the capture is unmistakable in the render. */
 function solidPng(width: number, height: number, rgb: [number, number, number]): Buffer {
@@ -53,7 +54,7 @@ function solidPng(width: number, height: number, rgb: [number, number, number]):
 }
 
 async function mockDirector(page: Page) {
-  const calls = { capture: 0, plan: 0, edit: 0 };
+  const calls = { capture: 0, plan: 0, edit: 0, planCapture: null as Record<string, unknown> | null };
   const png = solidPng(480, 436, [236, 0, 140]);
   await page.route('https://captures.example.com/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: png }));
   await page.route('**/api/motion-studio/capture', async (route) => {
@@ -68,6 +69,14 @@ async function mockDirector(page: Page) {
         crops: [CAPTURE_CROP],
         images: [CAPTURE_IMAGE],
         logo: CAPTURE_LOGO,
+        // Upstream-style capture: more routes of the site, and what it says about itself.
+        pages: [
+          { name: 'home', path: '/', url: CAPTURE_PAGE, width: 3840, height: 3492, layout: { pageH: 1746, sections: [], cards: [] } },
+          { name: 'pricing', path: '/pricing', url: CAPTURE_PRICING, width: 3840, height: 2400, layout: { pageH: 1200, sections: [], cards: [] } },
+        ],
+        cutouts: { nav: null, search: null, button: null },
+        emptyPlate: null,
+        content: { description: 'Acme ships releases faster.', headline: 'Ship faster with Acme', headings: ['Plan in minutes', 'Release with confidence'], ctas: ['Start free'], nav: ['Pricing'] },
         brand: { background: '#111111', text: '#fafafa', accent: '#ec008c', fontFamily: 'Inter' },
         transient: false,
       }),
@@ -89,6 +98,7 @@ async function mockDirector(page: Page) {
       return;
     }
     calls.plan++;
+    calls.planCapture = body.capture ?? null;
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -131,7 +141,10 @@ test.describe('Motion Studio director', () => {
     await expect(plan).toContainText('Acme launch film');
     await expect(plan).toContainText('Crash Zoom Punch · Crash Impact Real');
     await expect(plan).toContainText('shows your site');
-    await expect(page.getByText(/Captured Acme · 1 card crops · logo · 1 site image/)).toBeVisible();
+    await expect(page.getByText('Captured Acme · 2 pages (/, /pricing) · 1 card crops · logo · 1 site image')).toBeVisible();
+    await expect(page.getByText('Read the site: "Ship faster with Acme" · 2 sections')).toBeVisible();
+    // The director is given the site's own words and every captured route.
+    expect(calls.planCapture).toMatchObject({ pages: ['/', '/pricing'], content: { headline: 'Ship faster with Acme', ctas: ['Start free'] } });
     // The assets pulled from the site are shown in the chat.
     const assets = page.getByTestId('site-assets');
     await expect(assets.locator(`img[src="${CAPTURE_LOGO}"]`)).toBeVisible();
@@ -150,6 +163,8 @@ test.describe('Motion Studio director', () => {
     expect(titles.length).toBeGreaterThan(0);
     for (const t of titles) expect(t.props.logo).toBe(CAPTURE_LOGO);
     expect(all.find((c: any) => Array.isArray(c.props?.crops))?.props.crops[0]).toBe(CAPTURE_IMAGE);
+    // Every captured route is a screen of the product shots, the page asked for first.
+    expect(all.find((c: any) => Array.isArray(c.props?.screens))?.props.screens.slice(0, 2)).toEqual([CAPTURE_PAGE, CAPTURE_PRICING]);
     // 4 scenes + 2 caption strips (one per shot; title cards carry theirs as a subtitle)
     // + 1 flash cut + 3 sound effects (one per scene change) + background
     await expect(page.locator('.clip')).toHaveCount(11, { timeout: 30_000 });
@@ -342,6 +357,71 @@ test.describe('Motion Studio director', () => {
     page.once('dialog', (d) => void d.accept());
     await page.getByTestId('film-open-workbench').click();
     await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
+  });
+
+  test('the Motion Director tab opens the chat; the workbench has its own URL and a way back', async ({ page }) => {
+    await installStudioSession(page, { entrySeen: true });
+    await page.route('**/api/motion-studio/director', (route) =>
+      route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'OPENAI_KEY_REQUIRED', message: 'No key.' }) }),
+    );
+    // Returning user: the tab still opens the chat, not the last film.
+    await page.goto(`${BASE_URL}/studio/motion-director`);
+    await expect(page.getByPlaceholder('Describe your motion video...')).toBeVisible({ timeout: 120_000 });
+    await expect(page.locator('.topbar')).toHaveCount(0);
+
+    // Build a film and open it: the URL says /workbench, and a reload stays there.
+    await setEntryDuration(page, '5s');
+    await page.getByPlaceholder('Describe your motion video...').fill('Make a launch film for Acme with the Ink Press template');
+    await page.getByRole('button', { name: 'Generate' }).click();
+    await approveFilmAndOpenWorkbench(page);
+    await expect(page).toHaveURL(/\/studio\/motion-director\/workbench/);
+    await page.reload();
+    await expect(page.locator('.topbar')).toBeVisible({ timeout: 120_000 });
+
+    // "← Back to chat" goes back, and so does clicking the Motion Director tab.
+    await page.getByTestId('workbench-back-to-chat').click();
+    await expect(page.getByPlaceholder(/Describe your motion video|Describe another film/)).toBeVisible();
+    await expect(page).toHaveURL(/\/studio\/motion-director\/?(\?.*)?$/);
+    // The "Continue editing" tile (the current project) reopens the film.
+    await page.getByRole('button', { name: /^Open project / }).first().click();
+    await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
+    await page.locator('header nav').first().getByRole('button', { name: 'Motion Director', exact: true }).click();
+    await expect(page.locator('.topbar')).toHaveCount(0, { timeout: 30_000 });
+    await expect(page.getByPlaceholder(/Describe your motion video|Describe another film/)).toBeVisible();
+    // Browser Back returns to the workbench URL, and the editor with it.
+    await page.goBack();
+    await expect(page).toHaveURL(/\/studio\/motion-director\/workbench/);
+    await expect(page.locator('.topbar')).toBeVisible({ timeout: 30_000 });
+  });
+
+  test('chat: Stop halts a film being built and keeps the storyboard', async ({ page }) => {
+    await installStudioSession(page);
+    await page.route('**/api/motion-studio/director', (route) =>
+      route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'OPENAI_KEY_REQUIRED', message: 'No key.' }) }),
+    );
+    await page.goto(`${BASE_URL}/studio/motion-director/new`);
+    await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
+    await page.getByPlaceholder('Describe your motion video...').fill('Make a launch film for Acme with the Ink Press template');
+    await page.getByRole('button', { name: 'Generate' }).click();
+    await expect(page.getByTestId('director-plan')).toBeVisible({ timeout: 60_000 });
+    await page.getByRole('button', { name: 'Approve & build film' }).click();
+    await page.getByTestId('film-stop').click();
+    await expect(page.getByTestId('film-chat')).toContainText('Stopped building the film');
+    await expect(page.getByTestId('film-result')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Approve & build film' })).toBeEnabled();
+  });
+
+  test('picking a template goes straight back to the chat box', async ({ page }) => {
+    await installStudioSession(page);
+    await page.goto(`${BASE_URL}/studio/motion-director/new`);
+    await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
+    await page.getByRole('button', { name: /Select a recipe/ }).click();
+    const dialog = page.getByRole('dialog', { name: 'Motion Templates' });
+    await dialog.getByPlaceholder('Search recipes...').fill('deck-deal-flyin');
+    await dialog.locator('button').filter({ hasText: /Deck Deal Flyin/i }).first().click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByPlaceholder('Describe your motion video...')).toBeFocused();
+    await expect(page.getByRole('button', { name: /Remove Deck Deal Flyin/i })).toBeVisible();
   });
 
   test('without an OpenAI key it storyboards from the Ink Press template and says why', async ({ page }) => {

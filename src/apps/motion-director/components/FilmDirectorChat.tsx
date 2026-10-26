@@ -240,6 +240,16 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
           {onPickShots && <button type="button" onClick={onPickShots} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)}>Choose shot cards…</button>}
         </div>
       )}
+      {(stage === 'storyboarding' || stage === 'building') && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs" style={{ color: semantic.textSecondary }} role="status">
+            {stage === 'storyboarding' ? 'Storyboarding…' : 'Building the film…'}
+          </span>
+          <button type="button" onClick={director.stop} className="px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.5)', color: '#fca5a5' }} data-testid="film-stop">
+            ■ Stop
+          </button>
+        </div>
+      )}
       {activity.length > 0 && <ActivityList items={activity} />}
       {storyboard?.capture && (storyboard.capture.logo || storyboard.capture.images?.length) ? (
         <div className="flex flex-wrap items-center gap-2 rounded-xl p-2" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid var(--border-color)' }} data-testid="site-assets">

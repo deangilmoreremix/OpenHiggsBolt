@@ -2,7 +2,8 @@
 
 import { useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { MemoryRouter, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
+import { usePathname } from 'next/navigation';
+import { MemoryRouter, Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { applyLocaleToDocument, localeTitle, useLocale } from './i18n';
 import { applySession } from './lib/sessionAdapter';
 import { useStore } from './store';
@@ -22,46 +23,57 @@ import './styles.css';
  *     rules from leaking into the rest of SmartVideo GO)
  *   - the browser title and page language
  *
- * Internally it is a tiny single-page router: the entry page (`/new`) lets the
- * user describe their video, pick an aspect ratio / duration / brand / recipe,
- * and seeds the workbench store; the workbench (`/`) is the editor proper. The
- * entry is shown on first visit only — once a project exists, returning users
- * land straight in the workbench.
+ * Internally it is a tiny single-page router: the chat (`/new`, shown at the
+ * studio root URL) is where films are made; the workbench (`/`, shown at
+ * `<root>/workbench`) is the editor, opened from the chat's "Open in Motion
+ * Workbench" or the "Continue editing" tile. The tab always opens the chat.
  */
 const MotionStudioWorkbench = dynamic(() => import('./App').then((m) => m.App), { ssr: false });
 const MotionStudioEntry = dynamic(() => import('./pages/MotionStudioEntry').then((m) => m.default), { ssr: false });
 
-const ENTRY_SEEN_KEY = 'motion-director:entry-seen-v1';
-
-/** Host URL of the Motion Studio workspace (the INPUT step is `<root>/new`). */
+/** Host URL of Motion Director: the chat. The editor lives at `<root>/workbench`. */
 const STUDIO_ROOT_PATH = '/studio/motion-director';
+const WORKBENCH_PATH = `${STUDIO_ROOT_PATH}/workbench`;
 
-/** `<root>/new` — the INPUT step (prompt composer, aspect ratio, duration). */
-const INPUT_PATH_RE = /\/motion-director\/new\/?$/;
+/** `<root>/workbench` — the Motion Workbench (editor). */
+const WORKBENCH_PATH_RE = /\/motion-director\/workbench\/?$/;
 
-/** True when the browser is on the INPUT step of the studio. */
-const isInputPath = () =>
-  typeof window !== 'undefined' && INPUT_PATH_RE.test(window.location.pathname);
+const isWorkbenchPath = (pathname: string | null | undefined) => WORKBENCH_PATH_RE.test(pathname ?? '');
 
 /**
- * Keeps the address bar in step with the internal (MemoryRouter) route.
+ * Keeps the address bar and the internal (MemoryRouter) route in step, both ways.
  *
- * The internal router is a MemoryRouter, so the browser URL never followed the
- * step the user is on: after Generate the editor took over while the URL still
- * said `/studio/motion-studio/new`, and a reload of that URL bounced the user
- * back into the input step. This writes the studio root back into the URL
- * (query + hash preserved) as soon as the editor route is mounted.
+ * - Internal → URL: the chat shows as the studio root, the editor as
+ *   `<root>/workbench`, so a reload lands where the user was.
+ * - URL → internal: clicking the Motion Director tab (which pushes the studio
+ *   root) while the editor is open goes back to the chat, and Back / Forward
+ *   onto `<root>/workbench` opens the editor again. Before, the studio opened
+ *   the editor on every visit after the first, with no way back from the tab.
  */
 const RouteSync = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const pathname = usePathname();
+  const inEditor = location.pathname === '/' || location.pathname.startsWith('/motion');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (location.pathname !== '/') return;
-    const { pathname, search, hash } = window.location;
-    if (!INPUT_PATH_RE.test(pathname)) return;
-    window.history.replaceState(window.history.state, '', `${STUDIO_ROOT_PATH}${search}${hash}`);
-  }, [location.pathname]);
+    const { pathname: current, search, hash } = window.location;
+    if (!current.startsWith(STUDIO_ROOT_PATH)) return;
+    const want = inEditor ? WORKBENCH_PATH : STUDIO_ROOT_PATH;
+    if (current.replace(/\/$/, '') !== want) window.history.replaceState(window.history.state, '', `${want}${search}${hash}`);
+    // Only the internal route drives this direction.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inEditor]);
+
+  useEffect(() => {
+    if (!pathname || !pathname.startsWith(STUDIO_ROOT_PATH)) return;
+    if (inEditor && !isWorkbenchPath(pathname)) navigate('/new');
+    // Back / Forward onto the workbench URL reopens the editor.
+    else if (!inEditor && isWorkbenchPath(pathname)) navigate('/');
+    // Only a URL change drives this direction.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   return null;
 };
@@ -114,11 +126,8 @@ export default function MotionStudio() {
     };
   }, [locale]);
 
-  const hasSeenEntry =
-    typeof window !== 'undefined' && !!window.localStorage.getItem(ENTRY_SEEN_KEY);
-  // `/new` always means "input step"; the studio root means "editor" once the
-  // entry has been seen, and "input step" on a first visit.
-  const initialRoute = isInputPath() || !hasSeenEntry ? '/new' : '/';
+  // The tab opens the chat; only the workbench URL (a reload in the editor) opens the editor.
+  const initialRoute = typeof window !== 'undefined' && isWorkbenchPath(window.location.pathname) ? '/' : '/new';
 
   return (
     <div className="ms-root">

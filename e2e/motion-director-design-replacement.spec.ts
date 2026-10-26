@@ -64,7 +64,7 @@ for (const vp of VIEWPORTS) {
 
     test('workbench', async ({ page }) => {
       await installStudioSession(page, { entrySeen: true });
-      await page.goto(`${BASE_URL}/studio/motion-director`);
+      await page.goto(`${BASE_URL}/studio/motion-director/workbench`);
       await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
       await page.waitForTimeout(2500);
       await assertNoOnboardingModal(page);
@@ -102,7 +102,7 @@ test.describe('Motion Studio and Motion Director keep separate projects', () => 
         'shotcraft-workbench-project-v1': JSON.stringify({ name: 'Studio only project', fps: 30, width: 1920, height: 1080, background: '#000000', tracks: [] }),
       },
     });
-    await page.goto(`${BASE_URL}/studio/motion-director`);
+    await page.goto(`${BASE_URL}/studio/motion-director/workbench`);
     await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
     await expect(page.locator('.project-name')).toBeVisible({ timeout: 60_000 });
     await expect(page.locator('.project-name')).not.toHaveValue('Studio only project');

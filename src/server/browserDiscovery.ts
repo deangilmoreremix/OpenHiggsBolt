@@ -1687,6 +1687,17 @@ export const CAPTURE_MAX_IMAGES = 6
 /** How far down the page site images are looked for (CSS px). */
 export const CAPTURE_MAX_IMAGE_Y = 4200
 export const CAPTURE_NAVIGATION_TIMEOUT = 15_000
+/** Upstream's settle: after `document.fonts.ready`, wait this long before shooting (no FOUT / skeletons). */
+export const CAPTURE_SETTLE_MS = 600
+/** Longest wait for web fonts before shooting anyway. */
+export const CAPTURE_FONT_WAIT_MS = 2_000
+/** Routes captured besides the one asked for (features, pricing… found in the site's own links). */
+export const CAPTURE_MAX_EXTRA_ROUTES = 2
+/** Card cutouts across every captured route. */
+export const CAPTURE_MAX_TOTAL_CROPS = 12
+/** Extra routes are only started while the run is younger than this. */
+export const CAPTURE_ROUTE_BUDGET_MS = 20_000
+export const CAPTURE_ROUTE_NAVIGATION_TIMEOUT = 10_000
 // Media is never needed for a still capture; fonts and stylesheets are, so
 // unlike discovery they are allowed (each still passes the SSRF gate).
 const CAPTURE_BLOCKED_RESOURCE_TYPES = ['media'] as const
@@ -1718,7 +1729,47 @@ export interface PageCapture {
   logo: Buffer | null
   /** The site's own images (product shots, hero art) as JPEGs, largest first. */
   images: Buffer[]
+  /** What the site says about itself (upstream's product check). */
+  content: PageContent
+  /** Layout of the captured page: section headings and card cutouts, in page CSS px (upstream's layout.json). */
+  layout: RouteLayout
+  /** Floating UI cutouts, upstream's `nav` / `float-search` / `float-filter`: the nav bar, and transparent PNGs of the search pill and main button. */
+  cutouts: { nav: Buffer | null; search: Buffer | null; button: Buffer | null }
+  /** The page again with the card cutouts hidden: the empty plate for fly-in shots (null when no cards were found). */
+  emptyPlate: Buffer | null
+  /** More routes of the same site (features, pricing…), each captured the same way. */
+  routes: CapturedRoute[]
 }
+
+export interface PageContent {
+  description: string
+  headline: string
+  /** Section headings, in page order. */
+  headings: string[]
+  /** Button / call-to-action labels. */
+  ctas: string[]
+  /** Nav link labels. */
+  nav: string[]
+}
+
+export interface RouteLayout {
+  pageH: number
+  sections: CaptureRect[]
+  cards: CaptureRect[]
+}
+
+export interface CapturedRoute {
+  name: string
+  path: string
+  url: string
+  page: Buffer
+  pageHeight: number
+  layout: RouteLayout
+  /** Card cutouts of this route (also appended to `PageCapture.crops`). */
+  crops: Buffer[]
+}
+
+const EMPTY_CONTENT: PageContent = { description: '', headline: '', headings: [], ctas: [], nav: [] }
 
 /** `rgb()/rgba()` → `#rrggbb`; null for transparent or unparseable colours. */
 export function cssColorToHex(value: unknown): string | null {
@@ -1829,6 +1880,176 @@ function findAssetRects(limits: { maxY: number; maxImages: number }): { logo: Ca
   return { logo, images }
 }
 
+/**
+ * Upstream's product check: what the page says about itself, plus its links
+ * (for finding more routes). Runs in the page; kept free of closures so it
+ * serialises cleanly.
+ */
+function readPageContent(): PageContent & { links: Array<{ href: string; text: string }> } {
+  const clean = (value: string | null | undefined) => (value ?? '').replace(/\s+/g, ' ').trim()
+  const visible = (el: Element) => {
+    const r = el.getBoundingClientRect()
+    const style = getComputedStyle(el)
+    return r.width > 0 && r.height > 0 && style.visibility !== 'hidden' && style.display !== 'none'
+  }
+  const texts = (selector: string, max: number, len: number, minLen = 1) => {
+    const out: string[] = []
+    for (const el of Array.from(document.querySelectorAll(selector))) {
+      if (out.length >= max) break
+      if (!visible(el)) continue
+      const text = clean(el.textContent)
+      if (text.length < minLen || text.length > len || out.includes(text)) continue
+      out.push(text)
+    }
+    return out
+  }
+  const meta = document.querySelector('meta[name="description"]') ?? document.querySelector('meta[property="og:description"]')
+  const h1 = Array.from(document.querySelectorAll('h1')).find(visible)
+  return {
+    description: clean(meta?.getAttribute('content')).slice(0, 300),
+    headline: clean(h1?.textContent).slice(0, 160),
+    headings: texts('h2, h3', 8, 120, 3),
+    ctas: texts('main a[class*="btn" i], main a[class*="button" i], main button, a[class*="btn" i], a[class*="button" i], button', 4, 32, 2),
+    nav: texts('header a, nav a', 10, 40, 2),
+    links: (Array.from(document.querySelectorAll('header a[href], nav a[href], main a[href], footer a[href]')) as HTMLAnchorElement[])
+      .slice(0, 300)
+      .map((a) => ({ href: a.href, text: clean(a.textContent).slice(0, 60) })),
+  }
+}
+
+/**
+ * Upstream's semantic cutouts (capture-template.mjs CONFIG): the header / nav
+ * bar, the page's cards (`article`, `*card*`), the search pill (an input's
+ * rounded parent) and the main button, plus section headings for the layout.
+ * Cards are tagged `data-sv-card` so the empty plate can hide exactly them.
+ * Runs in the page; kept free of closures so it serialises cleanly.
+ */
+function findCutoutRects(limits: { maxY: number; maxCards: number }): {
+  nav: CaptureRect | null
+  cards: CaptureRect[]
+  search: CaptureRect | null
+  button: CaptureRect | null
+  sections: CaptureRect[]
+} {
+  const toRect = (el: Element): CaptureRect => {
+    const r = el.getBoundingClientRect()
+    return { x: Math.round(r.left + window.scrollX), y: Math.round(r.top + window.scrollY), width: Math.round(r.width), height: Math.round(r.height) }
+  }
+  const visible = (el: Element) => {
+    const style = getComputedStyle(el)
+    return style.visibility !== 'hidden' && style.display !== 'none' && Number(style.opacity) > 0.05
+  }
+  const inBand = (r: CaptureRect) => r.width > 0 && r.height > 0 && r.y >= 0 && r.y + r.height <= limits.maxY
+  const overlaps = (a: CaptureRect, b: CaptureRect) =>
+    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
+
+  const navEl = Array.from(document.querySelectorAll('header, [role="banner"], nav')).find((el) => {
+    const r = toRect(el)
+    return visible(el) && r.y < 200 && r.height >= 32 && r.height <= 220 && r.width >= 600
+  })
+
+  document.querySelectorAll('[data-sv-card]').forEach((el) => el.removeAttribute('data-sv-card'))
+  const cards: CaptureRect[] = []
+  const cardCandidates = Array.from(document.querySelectorAll('article, [class*="card" i]'))
+    .filter(visible)
+    .map((el) => ({ el, rect: toRect(el) }))
+    .filter(({ rect }) => inBand(rect) && rect.width >= 200 && rect.width <= 900 && rect.height >= 120 && rect.height <= 800)
+    .sort((a, b) => a.rect.y - b.rect.y || b.rect.width * b.rect.height - a.rect.width * a.rect.height)
+  for (const { el, rect } of cardCandidates) {
+    if (cards.length >= limits.maxCards) break
+    if (cards.some((c) => overlaps(c, rect))) continue
+    cards.push(rect)
+    el.setAttribute('data-sv-card', '')
+  }
+
+  const input = Array.from(document.querySelectorAll('input[type="search"], input[type="text"], input[type="email"], input:not([type])')).find(
+    (el) => visible(el) && inBand(toRect(el)),
+  )
+  const shell = input?.parentElement ?? null
+  const shellRect = shell ? toRect(shell) : null
+  const search = shellRect && inBand(shellRect) && shellRect.width <= 900 && shellRect.height <= 160 ? shellRect : null
+
+  const buttonEl = Array.from(
+    document.querySelectorAll('main button, main a[class*="btn" i], main a[class*="button" i], button, a[class*="btn" i], a[class*="button" i]'),
+  ).find((el) => {
+    const r = toRect(el)
+    return visible(el) && inBand(r) && r.y > 120 && r.width >= 60 && r.width <= 480 && r.height >= 28 && r.height <= 120
+  })
+
+  const sections = Array.from(document.querySelectorAll('h2'))
+    .filter(visible)
+    .map(toRect)
+    .filter(inBand)
+    .slice(0, 12)
+
+  return { nav: navEl ? toRect(navEl) : null, cards, search, button: buttonEl ? toRect(buttonEl) : null, sections }
+}
+
+/** Hide (or show again) the cards `findCutoutRects` tagged, for the empty plate. Runs in the page. */
+function setCardsHidden(hidden: boolean): number {
+  const cards = Array.from(document.querySelectorAll('[data-sv-card]')) as HTMLElement[]
+  for (const el of cards) el.style.visibility = hidden ? 'hidden' : ''
+  return cards.length
+}
+
+/**
+ * Upstream's settle: wait for web fonts (at most `maxMs`; a stalled font
+ * request must not hold up the capture). Runs in the page.
+ */
+async function waitForFonts(maxMs: number): Promise<boolean> {
+  return Promise.race([document.fonts.ready.then(() => true), new Promise<boolean>((resolve) => setTimeout(() => resolve(false), maxMs))])
+}
+
+const ROUTE_HINT_RE = /feature|product|pricing|plans?\b|solution|platform|how-it-works|services?|use-cases?|tour|demo|overview|why|customers?|showcase|gallery|menu|about|integrations?/i
+const ROUTE_SKIP_RE =
+  /log-?in|sign-?in|sign-?up|register|account|auth|cart|checkout|privacy|terms|legal|cookie|gdpr|careers|jobs|status|wp-|cdn-cgi|\.(pdf|zip|png|jpe?g|gif|svg|webp|mp4|xml|txt|json)$/i
+
+/**
+ * Which more routes of the site to capture — upstream's CONFIG.PAGES, found
+ * from the page's own same-host links: product routes (features, pricing,
+ * solutions…) first, in link order, then other short routes. Never login,
+ * legal, cart or file links, nothing past two path segments, no repeats.
+ */
+export function pickCaptureRoutes(
+  links: ReadonlyArray<{ href: string; text: string }>,
+  baseUrl: string,
+  max = CAPTURE_MAX_EXTRA_ROUTES,
+): Array<{ name: string; path: string; url: string }> {
+  let base: URL
+  try {
+    base = new URL(baseUrl)
+  } catch {
+    return []
+  }
+  const norm = (p: string) => (p.replace(/\/+$/, '') || '/').toLowerCase()
+  const seen = new Set<string>([norm(base.pathname)])
+  const picked: Array<{ path: string; url: string; hint: boolean; order: number }> = []
+  links.forEach((link, order) => {
+    let u: URL
+    try {
+      u = new URL(link.href, base)
+    } catch {
+      return
+    }
+    if (!/^https?:$/.test(u.protocol) || u.hostname !== base.hostname) return
+    const path = norm(u.pathname)
+    if (seen.has(path) || ROUTE_SKIP_RE.test(path) || path.split('/').filter(Boolean).length > 2) return
+    seen.add(path)
+    picked.push({ path, url: `${u.origin}${u.pathname}`, hint: ROUTE_HINT_RE.test(path) || ROUTE_HINT_RE.test(link.text), order })
+  })
+  const names = new Set<string>(['home'])
+  return picked
+    .sort((a, b) => Number(b.hint) - Number(a.hint) || a.order - b.order)
+    .slice(0, Math.max(0, max))
+    .map(({ path, url }) => {
+      const slug = (path.split('/').filter(Boolean).pop() ?? 'page').replace(/[^a-z0-9-]/g, '-').slice(0, 32) || 'page'
+      let name = slug
+      for (let i = 2; names.has(name); i++) name = `${slug}-${i}`
+      names.add(name)
+      return { name, path, url }
+    })
+}
+
 /** Computed brand colours/fonts from the rendered page. Runs in the page. */
 function readBrandStyles(): Record<string, string | null> {
   const body = getComputedStyle(document.body)
@@ -1846,17 +2067,30 @@ function readBrandStyles(): Record<string, string | null> {
 }
 
 /**
- * Captures one public page for Motion Studio behind the same SSRF guard as
- * discovery: the URL, every redirect hop and every subresource must pass the
- * gate, and the run ends on the validated host.
+ * Captures a public site for Motion Studio the way upstream ShotCraft's
+ * capture step does (assets/scripts/capture-template.mjs), behind the same
+ * SSRF guard as discovery: the URL, every redirect hop and every subresource
+ * must pass the gate, and every route ends on the validated host.
+ *
+ * For the page asked for: a product check (headline, sections, calls to
+ * action), a 1920-wide 2x page shot after the fonts load and the page
+ * settles, semantic cutouts (nav bar, cards, transparent search pill and
+ * button), the layout of those elements, an empty plate with the cards
+ * hidden, the brand colours, the logo and the site's own images. Then up to
+ * CAPTURE_MAX_EXTRA_ROUTES more routes of the same site (features, pricing…
+ * from its own links), each shot and cut out the same way, while the run
+ * stays inside CAPTURE_ROUTE_BUDGET_MS.
  */
 export async function capturePageScreenshots(
   rawUrl: string,
-  options: { guard?: BrowserSsrfGuard; maxCrops?: number } = {},
+  options: { guard?: BrowserSsrfGuard; maxCrops?: number; maxRoutes?: number; settleMs?: number } = {},
 ): Promise<PageCapture> {
+  const started = Date.now()
   const guard = options.guard ?? createSsrfGuard()
   const baseTarget = await guard.validateNavigationTarget(rawUrl)
   const maxCrops = Math.max(0, Math.min(CAPTURE_MAX_CROPS, options.maxCrops ?? CAPTURE_MAX_CROPS))
+  const maxRoutes = Math.max(0, Math.min(CAPTURE_MAX_EXTRA_ROUTES, options.maxRoutes ?? CAPTURE_MAX_EXTRA_ROUTES))
+  const settleMs = Math.max(0, options.settleMs ?? CAPTURE_SETTLE_MS)
 
   return withGuardedContext(
     {
@@ -1871,12 +2105,13 @@ export async function capturePageScreenshots(
     },
     async (context) => {
       const page = await context.newPage()
-      try {
-        await page.goto(baseTarget.url, { waitUntil: 'load', timeout: CAPTURE_NAVIGATION_TIMEOUT })
-        const finalTarget = await guard.validateNavigationTarget(page.url())
-        if (finalTarget.hostname !== baseTarget.hostname) {
-          throw new BrowserSsrfError('Navigation left the validated origin', page.url(), finalTarget.hostname)
-        }
+      const clipShot = (rect: CaptureRect, png = false): Promise<Buffer | null> =>
+        page
+          .screenshot(png ? { type: 'png', omitBackground: true, fullPage: true, clip: rect } : { type: 'jpeg', quality: 88, fullPage: true, clip: rect })
+          .catch(() => null)
+
+      /** Load lazy content, settle, shoot the page band and cut out its cards. */
+      const shootRoute = async (maxCards: number) => {
         await page.waitForLoadState('networkidle', { timeout: 3_000 }).catch(() => undefined)
         // Nudge lazy-loaded content inside the captured band, then return to the top.
         await page.evaluate(async (maxY: number) => {
@@ -1887,45 +2122,105 @@ export async function capturePageScreenshots(
           window.scrollTo(0, 0)
         }, CAPTURE_MAX_PAGE_HEIGHT)
         await page.waitForLoadState('networkidle', { timeout: 2_000 }).catch(() => undefined)
+        await page.evaluate(waitForFonts, CAPTURE_FONT_WAIT_MS).catch(() => undefined)
+        if (settleMs) await new Promise((resolve) => setTimeout(resolve, settleMs))
 
         const docHeight: number = await page.evaluate(() => document.documentElement.scrollHeight)
-        const pageHeight = Math.max(CAPTURE_VIEWPORT.height, Math.min(CAPTURE_MAX_PAGE_HEIGHT, docHeight))
-        const shot = await page.screenshot({
-          type: 'jpeg',
-          quality: 82,
-          fullPage: true,
-          clip: { x: 0, y: 0, width: CAPTURE_VIEWPORT.width, height: pageHeight },
-        })
+        const pageHeight = Math.max(CAPTURE_VIEWPORT.height, Math.min(CAPTURE_MAX_PAGE_HEIGHT, docHeight || 0))
+        const pageClip = { x: 0, y: 0, width: CAPTURE_VIEWPORT.width, height: pageHeight }
+        const shot: Buffer = await page.screenshot({ type: 'jpeg', quality: 82, fullPage: true, clip: pageClip })
 
-        const rects: CaptureRect[] = maxCrops
-          ? await page.evaluate(findCropRects, { maxY: pageHeight, max: maxCrops })
-          : []
+        const found = (await page.evaluate(findCutoutRects, { maxY: pageHeight, maxCards }).catch(() => null)) ?? null
+        // The page's own cards when it marks them up as cards; otherwise card-sized blocks.
+        const semantic = (found?.cards.length ?? 0) >= 2
+        const rects: CaptureRect[] = semantic
+          ? found!.cards
+          : maxCards
+            ? ((await page.evaluate(findCropRects, { maxY: pageHeight, max: maxCards })) ?? [])
+            : []
         const crops: Buffer[] = []
+        const cards: CaptureRect[] = []
         for (const rect of rects) {
-          crops.push(await page.screenshot({ type: 'jpeg', quality: 85, fullPage: true, clip: rect }))
+          const crop = await page.screenshot({ type: 'jpeg', quality: 85, fullPage: true, clip: rect }).catch(() => null)
+          if (!crop) continue
+          crops.push(crop)
+          cards.push(rect)
+        }
+        const layout: RouteLayout = { pageH: pageHeight, sections: found?.sections ?? [], cards }
+        return { shot, pageHeight, pageClip, found, semantic, crops, layout }
+      }
+
+      try {
+        await page.goto(baseTarget.url, { waitUntil: 'load', timeout: CAPTURE_NAVIGATION_TIMEOUT })
+        const finalTarget = await guard.validateNavigationTarget(page.url())
+        if (finalTarget.hostname !== baseTarget.hostname) {
+          throw new BrowserSsrfError('Navigation left the validated origin', page.url(), finalTarget.hostname)
+        }
+
+        const home = await shootRoute(maxCrops)
+        const read = await page.evaluate(readPageContent).catch(() => null)
+        const content: PageContent = read
+          ? { description: read.description, headline: read.headline, headings: read.headings, ctas: read.ctas, nav: read.nav }
+          : { ...EMPTY_CONTENT }
+
+        // Floating UI cutouts: the nav bar, and transparent search pill / button.
+        const cutouts = {
+          nav: home.found?.nav ? await clipShot(home.found.nav) : null,
+          search: home.found?.search ? await clipShot(home.found.search, true) : null,
+          button: home.found?.button ? await clipShot(home.found.button, true) : null,
         }
 
         // The site's own assets: its logo (transparent PNG) and its largest images.
         const assets = (await page.evaluate(findAssetRects, { maxY: CAPTURE_MAX_IMAGE_Y, maxImages: CAPTURE_MAX_IMAGES })) ?? { logo: null, images: [] }
-        let logo: Buffer | null = null
-        if (assets.logo) {
-          logo = await page.screenshot({ type: 'png', omitBackground: true, fullPage: true, clip: assets.logo }).catch(() => null)
-        }
+        const logo = assets.logo ? await clipShot(assets.logo, true) : null
         const images: Buffer[] = []
         for (const rect of assets.images) {
-          const image = await page.screenshot({ type: 'jpeg', quality: 88, fullPage: true, clip: rect }).catch(() => null)
+          const image = await clipShot(rect)
           if (image) images.push(image)
         }
 
+        // Empty plate: the same band with the cards hidden, for fly-in shots.
+        let emptyPlate: Buffer | null = null
+        if (home.semantic) {
+          const hidden = await page.evaluate(setCardsHidden, true).catch(() => 0)
+          if (hidden) emptyPlate = await page.screenshot({ type: 'jpeg', quality: 82, fullPage: true, clip: home.pageClip }).catch(() => null)
+          await page.evaluate(setCardsHidden, false).catch(() => undefined)
+        }
+
         const styles = await page.evaluate(readBrandStyles)
+        const title = String((await page.title()) ?? '').slice(0, 200)
+        const url = page.url()
+
+        // More routes of the same site, captured the same way, inside the time budget.
+        const routes: CapturedRoute[] = []
+        let cropBudget = CAPTURE_MAX_TOTAL_CROPS - home.crops.length
+        for (const route of pickCaptureRoutes(read?.links ?? [], url, maxRoutes)) {
+          if (Date.now() - started > CAPTURE_ROUTE_BUDGET_MS) break
+          try {
+            await page.goto(route.url, { waitUntil: 'domcontentloaded', timeout: CAPTURE_ROUTE_NAVIGATION_TIMEOUT })
+            const landed = await guard.validateNavigationTarget(page.url())
+            if (landed.hostname !== finalTarget.hostname) continue
+            const shot = await shootRoute(Math.max(0, Math.min(3, cropBudget)))
+            cropBudget -= shot.crops.length
+            routes.push({ name: route.name, path: route.path, url: page.url(), page: shot.shot, pageHeight: shot.pageHeight, layout: shot.layout, crops: shot.crops })
+          } catch {
+            // A route that will not load (or leaves the site) is skipped; the capture stands without it.
+          }
+        }
+
         return {
-          url: page.url(),
-          title: String((await page.title()) ?? '').slice(0, 200),
-          page: shot,
-          pageHeight,
-          crops,
+          url,
+          title,
+          page: home.shot,
+          pageHeight: home.pageHeight,
+          crops: [...home.crops, ...routes.flatMap((r) => r.crops)],
           logo,
           images,
+          content,
+          layout: home.layout,
+          cutouts,
+          emptyPlate,
+          routes,
           brand: {
             background: cssColorToHex(styles.background),
             text: cssColorToHex(styles.text),
