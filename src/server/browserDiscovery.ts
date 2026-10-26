@@ -1689,6 +1689,8 @@ export const CAPTURE_MAX_IMAGE_Y = 4200
 export const CAPTURE_NAVIGATION_TIMEOUT = 15_000
 /** Upstream's settle: after `document.fonts.ready`, wait this long before shooting (no FOUT / skeletons). */
 export const CAPTURE_SETTLE_MS = 600
+/** Longest wait for web fonts before shooting anyway. */
+export const CAPTURE_FONT_WAIT_MS = 2_000
 /** Routes captured besides the one asked for (features, pricing… found in the site's own links). */
 export const CAPTURE_MAX_EXTRA_ROUTES = 2
 /** Card cutouts across every captured route. */
@@ -1990,10 +1992,12 @@ function setCardsHidden(hidden: boolean): number {
   return cards.length
 }
 
-/** Upstream's settle: wait for web fonts, then let the page rest. Runs in the page. */
-async function waitForFonts(): Promise<boolean> {
-  await document.fonts.ready
-  return true
+/**
+ * Upstream's settle: wait for web fonts (at most `maxMs`; a stalled font
+ * request must not hold up the capture). Runs in the page.
+ */
+async function waitForFonts(maxMs: number): Promise<boolean> {
+  return Promise.race([document.fonts.ready.then(() => true), new Promise<boolean>((resolve) => setTimeout(() => resolve(false), maxMs))])
 }
 
 const ROUTE_HINT_RE = /feature|product|pricing|plans?\b|solution|platform|how-it-works|services?|use-cases?|tour|demo|overview|why|customers?|showcase|gallery|menu|about|integrations?/i
@@ -2118,7 +2122,7 @@ export async function capturePageScreenshots(
           window.scrollTo(0, 0)
         }, CAPTURE_MAX_PAGE_HEIGHT)
         await page.waitForLoadState('networkidle', { timeout: 2_000 }).catch(() => undefined)
-        await page.evaluate(waitForFonts).catch(() => undefined)
+        await page.evaluate(waitForFonts, CAPTURE_FONT_WAIT_MS).catch(() => undefined)
         if (settleMs) await new Promise((resolve) => setTimeout(resolve, settleMs))
 
         const docHeight: number = await page.evaluate(() => document.documentElement.scrollHeight)

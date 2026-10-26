@@ -46,9 +46,9 @@ const isWorkbenchPath = (pathname: string | null | undefined) => WORKBENCH_PATH_
  * - Internal → URL: the chat shows as the studio root, the editor as
  *   `<root>/workbench`, so a reload lands where the user was.
  * - URL → internal: clicking the Motion Director tab (which pushes the studio
- *   root) while the editor is open goes back to the chat. Before, the studio
- *   opened the editor on every visit after the first, with no way back from
- *   the tab.
+ *   root) while the editor is open goes back to the chat, and Back / Forward
+ *   onto `<root>/workbench` opens the editor again. Before, the studio opened
+ *   the editor on every visit after the first, with no way back from the tab.
  */
 const RouteSync = () => {
   const location = useLocation();
@@ -69,6 +69,8 @@ const RouteSync = () => {
   useEffect(() => {
     if (!pathname || !pathname.startsWith(STUDIO_ROOT_PATH)) return;
     if (inEditor && !isWorkbenchPath(pathname)) navigate('/new');
+    // Back / Forward onto the workbench URL reopens the editor.
+    else if (!inEditor && isWorkbenchPath(pathname)) navigate('/');
     // Only a URL change drives this direction.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);

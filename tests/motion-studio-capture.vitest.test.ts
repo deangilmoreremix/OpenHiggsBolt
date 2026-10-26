@@ -186,7 +186,7 @@ describe('capture the way upstream ShotCraft does', () => {
     const { mod, guard, evaluated, shots } = await loadRich()
     const result = await mod.capturePageScreenshots('https://acme.example.com/', { guard, settleMs: 0 })
     expect(result.content).toEqual(content)
-    expect(evaluated).toContain('waitForFonts')
+    expect(evaluated).toContain('waitForFonts(2000)')
     expect(result.crops.length).toBeGreaterThanOrEqual(2)
     expect(result.layout.cards).toEqual([{ x: 100, y: 400, width: 400, height: 300 }, { x: 600, y: 400, width: 400, height: 300 }])
     expect(result.layout.sections).toHaveLength(1)
