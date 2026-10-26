@@ -39,6 +39,7 @@ Return a storyboard as JSON. Rules:
 - Scene kinds: "shot" plays a recipe; "title" is a full-screen typographic card (recipeId "").
 - Open with a title or an Opening shot; end with an Outro shot or a title card with the call to action.
 - When a product capture is provided, use several PRODUCT-PAGE recipes: they show the captured site.
+- productCapture.content is what the site says about itself (its headline, section headings, calls to action). Write headlines and captions from those words; never claim features the site does not mention. End on its call to action when it has one.
 - One motion idea per scene; do not repeat a recipe. Let key moments breathe (hold ≥ 1s after a reveal).
 - headline: short, punchy on-screen line (≤ ${PLAN_LIMITS.headlineChars} chars). caption: optional small strip (≤ ${PLAN_LIMITS.captionChars} chars) or "".
 - transition: "flash" for a beat-like white flash before the next scene, otherwise "cut". Use "flash" sparingly (≤ 3).
@@ -96,6 +97,20 @@ async function callDirector(key: string, instructions: string, input: string, sc
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max) : '')
 
+/** The capture's product check, trimmed to what the brief needs. */
+function siteContent(value: unknown) {
+  if (!value || typeof value !== 'object') return null
+  const v = value as Record<string, unknown>
+  const list = (items: unknown, max: number, len: number) => (Array.isArray(items) ? items : []).slice(0, max).map((item) => str(item, len)).filter(Boolean)
+  return {
+    description: str(v.description, 300),
+    headline: str(v.headline, 160),
+    headings: list(v.headings, 8, 120),
+    ctas: list(v.ctas, 4, 32),
+    nav: list(v.nav, 10, 40),
+  }
+}
+
 export async function POST(req: NextRequest) {
   const user = await requireMotionStudioUser(req)
   if (!user.ok) return user.response
@@ -152,7 +167,14 @@ export async function POST(req: NextRequest) {
       durationSec,
       aspectRatio: str(body.aspectRatio, 8) || '16:9',
       productCapture: capture
-        ? { title: str(capture.title, 200), url: str(capture.url, 300), brand: capture.brand ?? null, cropCount: Number(capture.cropCount) || 0 }
+        ? {
+            title: str(capture.title, 200),
+            url: str(capture.url, 300),
+            brand: capture.brand ?? null,
+            cropCount: Number(capture.cropCount) || 0,
+            pages: (Array.isArray(capture.pages) ? capture.pages : []).slice(0, 4).map((p) => str(p, 120)),
+            content: siteContent(capture.content),
+          }
         : null,
       brandKit: body.brandKit && typeof body.brandKit === 'object' ? body.brandKit : null,
       requiredRecipes: (Array.isArray(body.requiredRecipes) ? body.requiredRecipes : []).slice(0, PLAN_LIMITS.maxScenes).map((r) => str(r, 120)).filter(Boolean),

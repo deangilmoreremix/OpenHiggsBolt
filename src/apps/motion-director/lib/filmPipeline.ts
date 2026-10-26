@@ -69,8 +69,14 @@ export async function storyboardFilm(
     log(`Capturing ${req.siteUrl}`, 'running');
     try {
       capture = await captureSite(req.siteUrl);
+      const pages = capture.pages?.length || 1;
       const pulled = [capture.logo ? 'logo' : '', capture.images?.length ? `${capture.images.length} site image${capture.images.length === 1 ? '' : 's'}` : ''].filter(Boolean);
-      log(`Captured ${capture.title || req.siteUrl} · ${capture.crops.length} card crops${pulled.length ? ` · ${pulled.join(' · ')}` : ''}`, 'done');
+      log(
+        `Captured ${capture.title || req.siteUrl} · ${pages} page${pages === 1 ? '' : 's'} (${(capture.pages ?? []).map((p) => p.path).join(', ') || '/'}) · ${capture.crops.length} card crops${pulled.length ? ` · ${pulled.join(' · ')}` : ''}`,
+        'done',
+      );
+      const said = capture.content?.headline || capture.content?.description;
+      if (said) log(`Read the site: "${said.slice(0, 90)}"${capture.content?.headings?.length ? ` · ${capture.content.headings.length} sections` : ''}`, 'done');
     } catch (error) {
       log(`Could not capture ${req.siteUrl}: ${error instanceof Error ? error.message : 'failed'}`, 'error');
     }
@@ -110,7 +116,7 @@ export async function storyboardFilm(
       error instanceof DirectorError && (error.status === 401 || error.status === 403)
         ? error.message
         : `The AI director could not be reached (${error instanceof Error ? error.message : 'error'}).`;
-    const plan = inkPressPlan({ prompt: req.prompt, durationSec: planSec, recipes: req.recipes, productName, palette });
+    const plan = inkPressPlan({ prompt: req.prompt, durationSec: planSec, recipes: req.recipes, productName, palette, content: capture?.content });
     log(`Storyboard ready from the Ink Press template · ${plan.scenes.length} scenes`, 'done');
     return { plan, capture, source: 'inkpress', note };
   }
@@ -125,7 +131,11 @@ export async function buildFilmProject(
   const images = opts.media.filter((m) => m.kind === 'image').map((m) => m.url);
   // The site's own images lead the card slots, then its card crops, then anything attached.
   const film: FilmCapture | null = opts.capture
-    ? { screens: [opts.capture.page.url, ...images], crops: [...(opts.capture.images ?? []), ...opts.capture.crops, ...images] }
+    ? {
+        // Every captured route of the site, the page asked for first.
+        screens: [opts.capture.page.url, ...(opts.capture.pages ?? []).slice(1).map((p) => p.url), ...images],
+        crops: [...(opts.capture.images ?? []), ...opts.capture.crops, ...images],
+      }
     : images.length
       ? { screens: images, crops: images }
       : null;

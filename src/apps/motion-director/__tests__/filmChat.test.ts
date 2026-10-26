@@ -94,6 +94,18 @@ describe('Ink Press storyboard', () => {
     expect(Math.abs(total - 30)).toBeLessThan(1);
   });
 
+  it("writes the copy from the captured site's own words", () => {
+    const plan = inkPressPlan({
+      prompt: 'promo for Acme',
+      durationSec: 30,
+      content: { headline: 'Ship faster with Acme', headings: ['Plan in minutes', 'Build together'], ctas: ['Start free'] },
+    });
+    expect(plan.scenes[0].caption).toBe('Ship faster with Acme');
+    const shots = plan.scenes.filter((s) => s.kind === 'shot');
+    expect(shots.slice(0, 2).map((s) => s.caption)).toEqual(['Plan in minutes', 'Build together']);
+    expect(plan.scenes[plan.scenes.length - 1].caption).toBe('Start free');
+  });
+
   it('uses exactly the named shots when the user picks them', () => {
     const picked = [byComponent('DeckDealFlyin'), byComponent('RowEmbed')];
     const plan = inkPressPlan({ prompt: 'present this feature', durationSec: 12, recipes: picked });

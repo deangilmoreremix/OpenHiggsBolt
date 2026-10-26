@@ -9,6 +9,7 @@ import { CARDS } from '../cards/registry';
 import type { ProjectData } from '../types';
 import { motionCardId, motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { validateEditOps, validatePlan, type DirectorEditOp, type DirectorPlan } from './directorPlan';
+import type { SiteContent } from './filmChat';
 
 export interface SiteCapture {
   url: string;
@@ -20,7 +21,29 @@ export interface SiteCapture {
   /** The site's logo (transparent PNG), when one was found. */
   logo?: string | null;
   brand: { background: string | null; text: string | null; accent: string | null; fontFamily: string | null };
+  /** Every route captured, the page asked for first (upstream captures several routes of the site). */
+  pages?: Array<{ name: string; path: string; url: string; width: number; height: number; layout?: CaptureLayout | null }>;
+  /** Floating UI cutouts: the nav bar, and transparent PNGs of the search pill and main button. */
+  cutouts?: { nav: string | null; search: string | null; button: string | null };
+  /** The page with its cards hidden, for fly-in shots. */
+  emptyPlate?: string | null;
+  /** What the site says about itself: headline, section headings, calls to action. */
+  content?: SiteContent | null;
   transient: boolean;
+}
+
+interface CaptureRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Element positions on a captured page, in page CSS px (upstream's layout.json). */
+export interface CaptureLayout {
+  pageH: number;
+  sections: CaptureRect[];
+  cards: CaptureRect[];
 }
 
 export class DirectorError extends Error {
@@ -58,7 +81,16 @@ export async function requestPlan(body: {
     prompt: body.prompt,
     durationSec: body.durationSec,
     aspectRatio: body.aspectRatio,
-    capture: body.capture ? { title: body.capture.title, url: body.capture.url, brand: body.capture.brand, cropCount: body.capture.crops.length } : null,
+    capture: body.capture
+      ? {
+          title: body.capture.title,
+          url: body.capture.url,
+          brand: body.capture.brand,
+          cropCount: body.capture.crops.length,
+          pages: (body.capture.pages ?? []).map((p) => p.path),
+          content: body.capture.content ?? null,
+        }
+      : null,
     brandKit: body.brandKit ?? null,
     requiredRecipes: body.requiredRecipes ?? [],
     template: body.template ?? null,

@@ -209,6 +209,15 @@ export function productNameFrom(prompt: string, hints: { siteTitle?: string | nu
   return 'your product';
 }
 
+/** What a captured site says about itself (the capture's product check). */
+export interface SiteContent {
+  description?: string;
+  headline?: string;
+  headings?: string[];
+  ctas?: string[];
+  nav?: string[];
+}
+
 const sceneFor = (shot: MotionTemplate, durationSec: number, transition: DirectorScene['transition']): DirectorScene => {
   const [headline, caption] = SCENE_COPY[shot.category] ?? ['', ''];
   return { kind: 'shot', recipeId: shot.id, durationSec, headline: headline.replace(/\*/g, ''), caption, transition };
@@ -225,8 +234,12 @@ export function inkPressPlan(opts: {
   recipes?: readonly MotionTemplate[];
   productName?: string;
   palette?: Partial<DirectorPalette> | null;
+  /** What the captured site says about itself: its headline under the title, section headings as shot captions, its call to action at the end. */
+  content?: SiteContent | null;
 }): DirectorPlan {
   const name = opts.productName || productNameFrom(opts.prompt);
+  const site = opts.content ?? null;
+  const fit = (line: string | undefined, max: number) => (line ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
   const shots = (opts.recipes?.length ? opts.recipes : INK_PRESS_SHOTS.map((id) => resolveMotionTemplate(id)!).filter(Boolean)).slice();
   const target = Math.max(PLAN_LIMITS.minFilmSec, Math.min(PLAN_LIMITS.maxFilmSec, opts.durationSec));
   // Keep every scene ≥ ~2s: drop template shots (never named ones) until they fit.
@@ -237,11 +250,15 @@ export function inkPressPlan(opts: {
   const withTitles = target >= (shots.length + 2) * PLAN_LIMITS.minSceneSec && shots.length + 2 <= PLAN_LIMITS.maxScenes;
   const scenes: DirectorScene[] = [];
   if (withTitles) {
-    scenes.push({ kind: 'title', recipeId: '', durationSec: 2.5, headline: `Meet *${name}*.`, caption: '', transition: 'cut' });
+    scenes.push({ kind: 'title', recipeId: '', durationSec: 2.5, headline: `Meet *${name}*.`, caption: fit(site?.headline || site?.description, PLAN_LIMITS.captionChars), transition: 'cut' });
   }
-  shots.forEach((shot, i) => scenes.push(sceneFor(shot, shot.durationSec || 4, i === 0 || i === shots.length - 1 ? 'flash' : 'cut')));
+  shots.forEach((shot, i) => {
+    const scene = sceneFor(shot, shot.durationSec || 4, i === 0 || i === shots.length - 1 ? 'flash' : 'cut');
+    const heading = fit(site?.headings?.[i], PLAN_LIMITS.captionChars);
+    scenes.push(heading ? { ...scene, caption: heading } : scene);
+  });
   if (withTitles) {
-    scenes.push({ kind: 'title', recipeId: '', durationSec: 2.5, headline: `Try *${name}* today.`, caption: '', transition: 'cut' });
+    scenes.push({ kind: 'title', recipeId: '', durationSec: 2.5, headline: `Try *${name}* today.`, caption: fit(site?.ctas?.[0], PLAN_LIMITS.captionChars), transition: 'cut' });
   }
   if (scenes.length < PLAN_LIMITS.minScenes) {
     scenes.push({ kind: 'title', recipeId: '', durationSec: 2, headline: `*${name}*.`, caption: '', transition: 'cut' });
