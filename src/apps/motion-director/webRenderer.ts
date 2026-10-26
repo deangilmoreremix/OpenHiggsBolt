@@ -199,7 +199,9 @@ export class RenderUnsupportedError extends Error {}
  * through the File System API when the browser has it, otherwise to memory.
  */
 export const exportMp4 = async (opts: Omit<RenderOptions, 'videoCodec' | 'audioCodec' | 'container'>): Promise<RenderResult> => {
-  const check = await canRenderVideo({ width: opts.project.width, height: opts.project.height, muted: opts.muted });
+  // `scale` renders the same frames at a smaller output size (e.g. 2/3 → 1080p becomes 720p).
+  const scale = opts.scale ?? 1;
+  const check = await canRenderVideo({ width: Math.round(opts.project.width * scale), height: Math.round(opts.project.height * scale), muted: opts.muted });
   if (!check.canRender) {
     throw new RenderUnsupportedError(
       check.issues.length ? check.issues.join(', ') : 'This browser cannot encode MP4 in this configuration.',

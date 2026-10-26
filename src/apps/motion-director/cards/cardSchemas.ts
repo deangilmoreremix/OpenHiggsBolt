@@ -60,6 +60,8 @@ export const TITLE_CARD_SCHEMA: PropField[] = [
   { type: "color", key: "accent", label: "强调色", default: "#b5651d" },
   { type: "slider", key: "fontSize", label: "字号", default: 116, min: 60, max: 160, step: 1, unit: "px" },
   { type: "slider", key: "underlineWidth", label: "下划线宽", default: 220, min: 0, max: 600, step: 10, unit: "px" },
+  { type: "text", key: "logo", label: "Logo（图片地址）", default: "" },
+  { type: "slider", key: "logoHeight", label: "Logo 高度", default: 110, min: 40, max: 320, step: 2, unit: "px" },
 ];
 
 /** 解说字幕条 · Ink Press */

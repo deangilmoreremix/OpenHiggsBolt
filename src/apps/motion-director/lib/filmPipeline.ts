@@ -26,6 +26,8 @@ export interface FilmBrandKit {
   businessName?: string | null;
   colors?: { primary?: string; secondary?: string; accent?: string; background?: string } | null;
   notes?: string | null;
+  /** Logo image URL, stamped on the title / call-to-action cards. */
+  logo?: string | null;
 }
 
 export interface StoryboardResult {
@@ -55,7 +57,8 @@ export async function storyboardFilm(
     log(`Capturing ${req.siteUrl}`, 'running');
     try {
       capture = await captureSite(req.siteUrl);
-      log(`Captured ${capture.title || req.siteUrl} · ${capture.crops.length} card crops`, 'done');
+      const pulled = [capture.logo ? 'logo' : '', capture.images?.length ? `${capture.images.length} site image${capture.images.length === 1 ? '' : 's'}` : ''].filter(Boolean);
+      log(`Captured ${capture.title || req.siteUrl} · ${capture.crops.length} card crops${pulled.length ? ` · ${pulled.join(' · ')}` : ''}`, 'done');
     } catch (error) {
       log(`Could not capture ${req.siteUrl}: ${error instanceof Error ? error.message : 'failed'}`, 'error');
     }
@@ -102,12 +105,13 @@ export async function storyboardFilm(
 /** Approved storyboard → editable project, with the music's beat grid when a track was attached. */
 export async function buildFilmProject(
   plan: DirectorPlan,
-  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[] },
+  opts: { aspectRatio: AspectRatio; capture: SiteCapture | null; media: MediaAttachment[]; logo?: string | null },
   log: ActivityLog,
 ): Promise<ProjectData> {
   const images = opts.media.filter((m) => m.kind === 'image').map((m) => m.url);
+  // The site's own images lead the card slots, then its card crops, then anything attached.
   const film: FilmCapture | null = opts.capture
-    ? { screens: [opts.capture.page.url, ...images], crops: [...opts.capture.crops, ...images] }
+    ? { screens: [opts.capture.page.url, ...images], crops: [...(opts.capture.images ?? []), ...opts.capture.crops, ...images] }
     : images.length
       ? { screens: images, crops: images }
       : null;
@@ -119,7 +123,16 @@ export async function buildFilmProject(
     log(beats.length ? `Cuts snapped to the beat of ${track.name}` : `No clear beat in ${track.name}; kept the planned timing`, 'done');
   }
   log('Animating the shots and laying in sound design', 'running');
-  const project = planToProject(plan, { aspectRatio: opts.aspectRatio, capture: film, music: track ? { url: track.url, name: track.name, beats } : null });
+  const videos = opts.media.filter((m) => m.kind === 'video').map((m) => ({ url: m.url, name: m.name, durationSec: m.durationSec }));
+  if (videos.length) log(`Cutting in ${videos.length} attached video${videos.length === 1 ? '' : 's'}`, 'done');
+  const project = planToProject(plan, {
+    aspectRatio: opts.aspectRatio,
+    capture: film,
+    music: track ? { url: track.url, name: track.name, beats } : null,
+    // A Brand Kit logo wins; otherwise the one pulled from the site.
+    logo: opts.logo || opts.capture?.logo || null,
+    videos,
+  });
   log(`Film built · ${project.tracks.length} tracks`, 'done');
   return project;
 }

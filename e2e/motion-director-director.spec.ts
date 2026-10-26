@@ -14,6 +14,8 @@ import { BASE_URL, answerInkPressOffer, approveFilmAndOpenWorkbench, assertNoOnb
 const OUT = 'docs/motion-studio-design-replacement';
 const CAPTURE_PAGE = 'https://captures.example.com/page.png';
 const CAPTURE_CROP = 'https://captures.example.com/crop-1.png';
+const CAPTURE_IMAGE = 'https://captures.example.com/image-1.jpg';
+const CAPTURE_LOGO = 'https://captures.example.com/logo.png';
 
 /** Solid-colour PNG so the capture is unmistakable in the render. */
 function solidPng(width: number, height: number, rgb: [number, number, number]): Buffer {
@@ -64,6 +66,8 @@ async function mockDirector(page: Page) {
         title: 'Acme',
         page: { url: CAPTURE_PAGE, width: 3840, height: 3492 },
         crops: [CAPTURE_CROP],
+        images: [CAPTURE_IMAGE],
+        logo: CAPTURE_LOGO,
         brand: { background: '#111111', text: '#fafafa', accent: '#ec008c', fontFamily: 'Inter' },
         transient: false,
       }),
@@ -127,12 +131,25 @@ test.describe('Motion Studio director', () => {
     await expect(plan).toContainText('Acme launch film');
     await expect(plan).toContainText('Crash Zoom Punch · Crash Impact Real');
     await expect(plan).toContainText('shows your site');
-    await expect(page.getByText(/Captured Acme · 1 card crops/)).toBeVisible();
+    await expect(page.getByText(/Captured Acme · 1 card crops · logo · 1 site image/)).toBeVisible();
+    // The assets pulled from the site are shown in the chat.
+    const assets = page.getByTestId('site-assets');
+    await expect(assets.locator(`img[src="${CAPTURE_LOGO}"]`)).toBeVisible();
+    await expect(assets.locator(`img[src="${CAPTURE_IMAGE}"]`)).toBeVisible();
     expect(calls).toMatchObject({ capture: 1, plan: 1 });
     await captureEvidence(page, `${OUT}/director-storyboard-desktop.png`, { minBytes: 10 * 1024 });
 
     await approveFilmAndOpenWorkbench(page);
     await expect(page.locator('.project-name')).toHaveValue('Acme launch film');
+    // The site's logo is on the title cards; its image leads the product shots' card slots.
+    const savedClips = () =>
+      page.evaluate(() => (JSON.parse(localStorage.getItem('motion-director:project-v1') || '{}').tracks ?? []).flatMap((t: any) => t.clips));
+    await expect.poll(async () => (await savedClips()).some((c: any) => c.props?.logo), { timeout: 15_000 }).toBe(true);
+    const all = await savedClips();
+    const titles = all.filter((c: any) => c.cardId === 'inkpress-title-card');
+    expect(titles.length).toBeGreaterThan(0);
+    for (const t of titles) expect(t.props.logo).toBe(CAPTURE_LOGO);
+    expect(all.find((c: any) => Array.isArray(c.props?.crops))?.props.crops[0]).toBe(CAPTURE_IMAGE);
     // 4 scenes + 2 caption strips (one per shot; title cards carry theirs as a subtitle)
     // + 1 flash cut + 3 sound effects (one per scene change) + background
     await expect(page.locator('.clip')).toHaveCount(11, { timeout: 30_000 });
@@ -251,6 +268,47 @@ test.describe('Motion Studio director', () => {
     await agentInput.press('Enter');
     await expect(page.getByText(/Rendering the MP4 with Remotion/)).toBeVisible({ timeout: 30_000 });
     await expect(page.locator('.topbar a[download$=".mp4"]')).toBeVisible({ timeout: 12 * 60 * 1000 });
+  });
+
+  test('chat: an attached video is cut into the film, and Fast draft renders a 720p MP4', async ({ page }) => {
+    test.setTimeout(15 * 60 * 1000);
+    await installStudioSession(page);
+    await page.route('**/api/motion-studio/director', (route) =>
+      route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'OPENAI_KEY_REQUIRED', message: 'No key.' }) }),
+    );
+    await page.goto(`${BASE_URL}/studio/motion-director/new`);
+    await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
+    await page.getByTestId('motion-prompt-media-input').setInputFiles('public/landing/hero-converge.mp4');
+    await expect(page.getByTestId('motion-prompt-media-thumb')).toBeVisible();
+    await setEntryDuration(page, '5s');
+    await page.getByPlaceholder('Describe your motion video...').fill('Make a launch film for Acme with the Ink Press template');
+    await page.getByRole('button', { name: 'Generate' }).click();
+    await expect(page.getByTestId('director-plan')).toBeVisible({ timeout: 60_000 });
+    await page.getByRole('button', { name: 'Approve & build film' }).click();
+    await expect(page.getByTestId('film-result')).toBeVisible({ timeout: 120_000 });
+    await expect(page.getByTestId('film-chat')).toContainText('Cutting in 1 attached video');
+
+    await page.getByTestId('film-render-draft').click();
+    const link = page.getByTestId('film-download');
+    await expect(link).toBeVisible({ timeout: 12 * 60 * 1000 });
+    await expect(link).toContainText('draft 1280×720');
+    const [download] = await Promise.all([page.waitForEvent('download'), link.click()]);
+    expect(download.suggestedFilename()).toMatch(/-draft-720p\.mp4$/);
+    const file = (await download.path())!;
+    const bytes = await (await import('node:fs/promises')).readFile(file);
+    expect(bytes.subarray(4, 8).toString('latin1')).toBe('ftyp');
+    try {
+      const { execFileSync } = await import('node:child_process');
+      const probe = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', file]).toString());
+      const video = probe.streams.find((st: any) => st.codec_type === 'video');
+      expect([video.codec_name, video.width, video.height]).toEqual(['h264', 1280, 720]);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+
+    await page.getByTestId('film-open-workbench').click();
+    await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator('.clip', { hasText: 'hero-converge.mp4' })).toHaveCount(1, { timeout: 30_000 });
   });
 
   test('without an OpenAI key it storyboards from the Ink Press template and says why', async ({ page }) => {

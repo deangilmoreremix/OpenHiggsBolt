@@ -29,8 +29,9 @@ const VideoClip: React.FC<{
     <AbsoluteFill style={{ background: "#000" }}>
       <Video
         src={mediaSrc(file)}
+        // No trimAfter: the clip's Sequence ends playback. `trimAfter={0}` meant "end at
+        // frame 0" — a zero-length video, which the web renderer rejects on export.
         trimBefore={Math.round(inOffset)}
-        trimAfter={0}
         playbackRate={speed}
         muted={muted}
         volume={volume}

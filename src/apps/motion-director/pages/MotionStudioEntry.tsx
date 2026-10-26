@@ -212,7 +212,9 @@ export default function MotionStudioEntry() {
     settings: () => ({
       aspectRatio,
       durationSec: duration,
-      brandKit: person ? { businessName: person.businessName ?? null, colors: person.brandColors ?? null, notes: person.notes ?? null } : null,
+      brandKit: person
+        ? { businessName: person.businessName ?? null, colors: person.brandColors ?? null, notes: person.notes ?? null, logo: person.logos?.main ?? null }
+        : null,
       media,
       pickedRecipes: selectedRecipes.map((id) => TEMPLATE_BY_ID[id]).filter(Boolean),
     }),

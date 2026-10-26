@@ -215,7 +215,7 @@ export function useFilmDirector(opts: {
     const s = optsRef.current.settings();
     setStage('building');
     try {
-      const project = await buildFilmProject(storyboard.plan, { aspectRatio: s.aspectRatio, capture: storyboard.capture, media: s.media }, log);
+      const project = await buildFilmProject(storyboard.plan, { aspectRatio: s.aspectRatio, capture: storyboard.capture, media: s.media, logo: s.brandKit?.logo ?? null }, log);
       const qa = checkFilmStructure(project, { hasProductImages: Boolean(storyboard.capture) || s.media.some((m) => m.kind === 'image') });
       const frames = await checkFilmFrames(project, log);
       qa.framesChecked = frames.checked;

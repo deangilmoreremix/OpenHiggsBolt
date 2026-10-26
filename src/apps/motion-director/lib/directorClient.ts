@@ -15,6 +15,10 @@ export interface SiteCapture {
   title: string;
   page: { url: string; width: number; height: number };
   crops: string[];
+  /** The site's own images (product shots, hero art), largest first. */
+  images?: string[];
+  /** The site's logo (transparent PNG), when one was found. */
+  logo?: string | null;
   brand: { background: string | null; text: string | null; accent: string | null; fontFamily: string | null };
   transient: boolean;
 }

@@ -6,7 +6,7 @@ import { semantic } from '@/shared/styles/designTokens';
 import { ActivityList, ChatBubble, PlanCard } from '@/apps/design-agent/ui';
 import { motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { MainComposition } from '../preview/Composition';
-import { projectDuration, type ProjectData } from '../types';
+import { projectDuration, projectEndFrame, type ProjectData } from '../types';
 import { createDownloadUrl, exportMp4, formatEta, guardTabWhileRendering } from '../webRenderer';
 import { isProductTextureShot } from '../lib/productShots';
 import { RecipePreview } from './RecipePreview';
@@ -40,7 +40,7 @@ const choiceStyle = (primary: boolean): React.CSSProperties =>
 
 /** Player + MP4 render + hand-off to the workbench for a built film. */
 export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: () => void; openLabel?: string }> = ({ project, onOpenWorkbench, openLabel = 'Open in Motion Workbench' }) => {
-  const [render, setRender] = useState<{ status: 'idle' | 'running' | 'done' | 'error'; progress: number; etaMs?: number | null; url?: string; error?: string }>({ status: 'idle', progress: 0 });
+  const [render, setRender] = useState<{ status: 'idle' | 'running' | 'done' | 'error'; progress: number; etaMs?: number | null; url?: string; error?: string; draft?: boolean }>({ status: 'idle', progress: 0 });
   const abort = useRef<AbortController | null>(null);
   const inputProps = useMemo(() => ({ project }), [project]);
   useEffect(() => () => {
@@ -50,18 +50,20 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
     if (render.url) URL.revokeObjectURL(render.url);
   }, [render.url]);
 
-  const start = async () => {
+  /** `draft`: render at 2/3 size (1080p → 720p), about twice as fast — for long films and quick checks. */
+  const start = async (draft = false) => {
     abort.current = new AbortController();
-    setRender({ status: 'running', progress: 0 });
+    setRender({ status: 'running', progress: 0, draft });
     // Same path as the toolbar export: browser check, then the Remotion web renderer in this tab.
     const releaseGuard = guardTabWhileRendering();
     try {
       const result = await exportMp4({
         project,
+        scale: draft ? 2 / 3 : 1,
         signal: abort.current.signal,
         onProgress: (progress, info) => setRender((r) => (r.status === 'running' ? { ...r, progress, etaMs: info?.etaMs ?? null } : r)),
       });
-      setRender({ status: 'done', progress: 1, url: createDownloadUrl(result.blob) });
+      setRender({ status: 'done', progress: 1, url: createDownloadUrl(result.blob), draft });
     } catch (error) {
       const cancelled = abort.current?.signal.aborted;
       setRender({ status: cancelled ? 'idle' : 'error', progress: 0, error: cancelled ? undefined : error instanceof Error ? error.message : String(error) });
@@ -70,7 +72,9 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
     }
   };
 
-  const fileName = `${(project.name || 'motion-studio-film').replace(/[^\w-]+/g, '-').slice(0, 60)}.mp4`;
+  const fileName = `${(project.name || 'motion-studio-film').replace(/[^\w-]+/g, '-').slice(0, 60)}${render.draft ? '-draft-720p' : ''}.mp4`;
+  const filmSec = projectEndFrame(project) / project.fps;
+  const draftSize = `${Math.round((project.width * 2) / 3)}×${Math.round((project.height * 2) / 3)}`;
 
   return (
     <div className="rounded-2xl p-3 space-y-3" style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.28)' }} data-testid="film-result">
@@ -106,13 +110,32 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
             <button type="button" onClick={() => abort.current?.abort()} className="px-3 py-2 rounded-lg text-xs" style={choiceStyle(false)}>Cancel</button>
           </>
         ) : render.status === 'done' && render.url ? (
-          <a href={render.url} download={fileName} className="px-4 py-2 rounded-lg text-xs font-semibold" style={choiceStyle(true)} data-testid="film-download">
-            Download MP4
-          </a>
+          <>
+            <a href={render.url} download={fileName} className="px-4 py-2 rounded-lg text-xs font-semibold" style={choiceStyle(true)} data-testid="film-download">
+              Download MP4{render.draft ? ` (draft ${draftSize})` : ''}
+            </a>
+            {render.draft && (
+              <button type="button" onClick={() => void start(false)} className="px-4 py-2 rounded-lg text-xs" style={choiceStyle(false)}>
+                Render full {project.width}×{project.height}
+              </button>
+            )}
+          </>
         ) : (
-          <button type="button" onClick={() => void start()} className="px-4 py-2 rounded-lg text-xs font-semibold" style={choiceStyle(true)} data-testid="film-render">
-            {render.status === 'error' ? 'Render failed — retry' : 'Render MP4'}
-          </button>
+          <>
+            <button type="button" onClick={() => void start(false)} className="px-4 py-2 rounded-lg text-xs font-semibold" style={choiceStyle(true)} data-testid="film-render">
+              {render.status === 'error' ? 'Render failed — retry' : 'Render MP4'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void start(true)}
+              className="px-4 py-2 rounded-lg text-xs"
+              style={choiceStyle(false)}
+              data-testid="film-render-draft"
+              title={`Same frames at ${draftSize} — about twice as fast${filmSec > 20 ? ', handy for a long film' : ''}`}
+            >
+              Fast draft · {draftSize}
+            </button>
+          </>
         )}
         {onOpenWorkbench && (
           <button type="button" onClick={onOpenWorkbench} className="px-4 py-2 rounded-lg text-xs font-semibold" style={choiceStyle(false)} data-testid="film-open-workbench">
@@ -159,6 +182,17 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
         </div>
       )}
       {activity.length > 0 && <ActivityList items={activity} />}
+      {storyboard?.capture && (storyboard.capture.logo || storyboard.capture.images?.length) ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl p-2" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid var(--border-color)' }} data-testid="site-assets">
+          <span className="text-[11px] mr-1" style={{ color: semantic.textMuted }}>From {storyboard.capture.title || 'your site'}:</span>
+          {storyboard.capture.logo && (
+            <img src={storyboard.capture.logo} alt="Site logo" title="Logo — goes on the title cards" className="h-10 max-w-[140px] rounded object-contain p-1" style={{ background: '#fff' }} />
+          )}
+          {(storyboard.capture.images ?? []).map((src, i) => (
+            <img key={src} src={src} alt={`Site image ${i + 1}`} title="Site image — used in the product shots" className="h-10 w-16 rounded object-cover" />
+          ))}
+        </div>
+      ) : null}
       {plan && (stage === 'plan' || stage === 'building') && (
         <PlanCard
           testId="director-plan"

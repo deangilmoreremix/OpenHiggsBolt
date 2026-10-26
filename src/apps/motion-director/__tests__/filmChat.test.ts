@@ -92,3 +92,30 @@ describe('Ink Press storyboard', () => {
     expect(qa.warnings.length).toBe(1);
   });
 });
+
+describe('Brand Kit logo and attached videos', () => {
+  const plan = () => inkPressPlan({ prompt: 'promo for Acme', durationSec: 20 });
+  const clips = (p: ReturnType<typeof planToProject>) => p.tracks.flatMap((t) => t.clips);
+
+  it('stamps the logo on every title card', () => {
+    const project = planToProject(plan(), { aspectRatio: '16:9', logo: 'https://cdn.example.com/logo.png' });
+    const titles = clips(project).filter((c) => c.cardId === 'inkpress-title-card');
+    expect(titles.length).toBe(2);
+    for (const t of titles) expect(t.props.logo).toBe('https://cdn.example.com/logo.png');
+  });
+
+  it('plays attached videos before the closing card, back to back with the shots', () => {
+    const project = planToProject(plan(), {
+      aspectRatio: '16:9',
+      videos: [{ url: 'blob:demo-1', name: 'demo.mp4', durationSec: 3 }, { url: 'blob:demo-2', name: 'long.mp4', durationSec: 40 }],
+    });
+    const shots = project.tracks.find((t) => t.clips.some((c) => c.cardId === 'video-clip'))!.clips.slice().sort((a, b) => a.start - b.start);
+    const ids = shots.map((c) => c.cardId);
+    expect(ids.slice(-3)).toEqual(['video-clip', 'video-clip', 'inkpress-title-card']);
+    const [v1, v2] = shots.filter((c) => c.cardId === 'video-clip');
+    expect(v1.duration).toBe(90); // 3 s
+    expect(v2.duration).toBe(240); // clamped to 8 s
+    expect(v1.props.file).toBe('blob:demo-1');
+    expect(checkFilmStructure(project).issues).toEqual([]);
+  });
+});

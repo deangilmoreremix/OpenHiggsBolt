@@ -24,6 +24,14 @@ export interface FilmCapture {
   crops: string[];
 }
 
+/** A video the user attached; it plays as its own scene before the closing card. */
+export interface FilmVideo {
+  url: string;
+  name: string;
+  /** Probed length in seconds, when known. */
+  durationSec?: number;
+}
+
 export interface FilmMusic {
   url: string;
   name: string;
@@ -99,7 +107,14 @@ export function snapToBeats(durations: number[], beats: number[], window = 0.35,
 
 export function planToProject(
   plan: DirectorPlan,
-  opts: { aspectRatio: AspectRatio; capture?: FilmCapture | null; music?: FilmMusic | null },
+  opts: {
+    aspectRatio: AspectRatio;
+    capture?: FilmCapture | null;
+    music?: FilmMusic | null;
+    /** Brand Kit logo, stamped on the title / call-to-action cards. */
+    logo?: string | null;
+    videos?: FilmVideo[];
+  },
 ): ProjectData {
   const { width, height } = filmDimensions(opts.aspectRatio);
   const palette = plan.palette;
@@ -112,8 +127,24 @@ export function planToProject(
   const flashes: ClipData[] = [];
   const sfx: ClipData[] = [];
   let at = 0;
+  const videos = opts.videos ?? [];
+  const lastIndex = plan.scenes.length - 1;
+  /** A scene change: whoosh on every cut, impact + white flash on flash cuts. */
+  const cut = (flash: boolean) => {
+    if (flash) flashes.push(clip('inkpress-flash-cut', Math.max(0, at - FLASH_FRAMES / 2), FLASH_FRAMES, {}));
+    sfx.push(clip('audio-clip', Math.max(0, at - SFX_FRAMES / 2), SFX_FRAMES, { file: flash ? SFX_FLASH : SFX_CUT, volume: 0.6 }, { label: flash ? 'Impact' : 'Whoosh' }));
+  };
 
   plan.scenes.forEach((scene, i) => {
+    // Attached videos play just before the closing scene (or at the end of a one-scene film).
+    if (i === lastIndex && lastIndex > 0) {
+      for (const v of videos) {
+        const frames = Math.round(clamp(v.durationSec ?? 4, 2, 8) * FPS);
+        shots.push(clip('video-clip', at, frames, { file: v.url, fit: 'cover', muted: Boolean(opts.music?.url) }, { label: v.name.slice(0, 32) }));
+        at += frames;
+        cut(false);
+      }
+    }
     const frames = Math.max(2, Math.round(durations[i] * FPS));
     if (scene.kind === 'title') {
       shots.push(
@@ -123,6 +154,7 @@ export function planToProject(
           bg: palette.background,
           ink: palette.text,
           accent: palette.accent,
+          ...(opts.logo ? { logo: opts.logo } : {}),
         }, { label: scene.headline.slice(0, 24) }),
       );
     } else {
@@ -145,13 +177,16 @@ export function planToProject(
       }
     }
     at += frames;
-    if (i < plan.scenes.length - 1) {
-      // Every scene change gets a whoosh; flash cuts also get an impact hit.
-      const flash = scene.transition === 'flash';
-      if (flash) flashes.push(clip('inkpress-flash-cut', Math.max(0, at - FLASH_FRAMES / 2), FLASH_FRAMES, {}));
-      sfx.push(clip('audio-clip', Math.max(0, at - SFX_FRAMES / 2), SFX_FRAMES, { file: flash ? SFX_FLASH : SFX_CUT, volume: 0.6 }, { label: flash ? 'Impact' : 'Whoosh' }));
-    }
+    if (i < lastIndex) cut(scene.transition === 'flash');
   });
+  if (lastIndex === 0) {
+    for (const v of videos) {
+      cut(false);
+      const frames = Math.round(clamp(v.durationSec ?? 4, 2, 8) * FPS);
+      shots.push(clip('video-clip', at, frames, { file: v.url, fit: 'cover', muted: Boolean(opts.music?.url) }, { label: v.name.slice(0, 32) }));
+      at += frames;
+    }
+  }
 
   const total = Math.max(at, FPS);
   const tracks = [
