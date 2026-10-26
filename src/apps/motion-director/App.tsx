@@ -18,13 +18,10 @@ import LibraryPanel from "./panels/LibraryPanel";
 import { Inspector } from "./panels/Inspector";
 import { PreviewPanel } from "./preview/PreviewPanel";
 import { Timeline } from "./timeline/Timeline";
-import SessionPanel from "./components/SessionPanel";
 import MotionAgentPanel from "./components/MotionAgentPanel";
-import MotionHistorySection from "./components/MotionHistorySection";
-import MotionPromptPanel from "./components/MotionPromptPanel";
-import { findClip, resetProject, useStore } from "./store";
+import { findClip, useStore } from "./store";
 import { seekTo, togglePlay } from "./playerRef";
-import type { ClipData, ProjectData, SessionData, TrackData } from "./types";
+import type { ClipData, ProjectData, TrackData } from "./types";
 import { applyLocaleToDocument, LOCALES, useLocale, useT, type Locale } from "./i18n";
 import { MOTION_CATEGORIES, motionCardId, type MotionTemplate } from "@/data/motionRecipeCatalog";
 import ExportButton from "./ExportButton";
@@ -99,9 +96,6 @@ const usePanelSize = (key: string, def: number) => {
   return [v, setV] as const;
 };
 
-/** 右侧工作台（Agent / Prompt / History）的三个面 */
-type RailTab = "agent" | "prompt" | "history";
-
 /** 拖拽分隔条：pointerdown 后跟踪位移，交给回调换算尺寸 */
 const startSplit = (
   e: React.PointerEvent,
@@ -122,9 +116,6 @@ export const App: React.FC = () => {
   const setLocale = useLocale((s) => s.setLocale);
   useEffect(() => applyLocaleToDocument(locale), [locale]);
   const project = useStore((s) => s.project);
-  const sessions = useStore((s) => s.sessions);
-  const activeSessionId = useStore((s) => s.activeSessionId);
-  const selectSession = useStore((s) => s.selectSession);
   const setPreview = useStore((s) => s.setPreview);
   const undo = useStore((s) => s.undo);
   const redo = useStore((s) => s.redo);
@@ -139,17 +130,9 @@ export const App: React.FC = () => {
   const [inspW, setInspW] = usePanelSize("wb-insp-w", 300);
   const [railW, setRailW] = usePanelSize("wb-rail-w", 360);
   const [tlH, setTlH] = usePanelSize("wb-tl-h", 264);
-  const [viewMode, setViewMode] = useState<"library" | "sessions">("library");
-  // 左侧 Director 面板（Design Agent 式常驻对话）：Agent 对话 / 提示词与素材 / 历史画廊
+  // The edit agent ("make the text bigger"): films are made in the chat; here it only edits.
   const [railOpen, setRailOpen] = useState(true);
-  const [railTab, setRailTab] = useState<RailTab>("agent");
   const navigate = useNavigate();
-
-  /** 顶栏模式胶囊：选中即打开对应的面（Design Agent 的模式切换），收起走面板里的按钮 */
-  const openRailTab = (tab: RailTab) => {
-    setRailTab(tab);
-    setRailOpen(true);
-  };
 
   const handleSelectRecipe = (recipe: MotionTemplate) => {
     // The catalog id (`<category>/<slug>/<Component>`) is NOT a card id — the
@@ -167,21 +150,6 @@ export const App: React.FC = () => {
     const trackId =
       selected?.track.id ?? s.project.tracks[s.project.tracks.length - 1]?.id;
     s.addClip(cardId, trackId, s.playhead);
-  }, []);
-
-  /** 右侧工作台「提示词」面：把描述落成时间轨上的一张文字卡（素材已随选择落轨） */
-  const handlePromptGenerate = useCallback((payload: { prompt?: string }) => {
-    const text = (payload?.prompt ?? "").trim();
-    if (!text) return;
-    const s = useStore.getState();
-    const selected = s.selectedClipId ? findClip(s.project, s.selectedClipId) : null;
-    const trackId =
-      selected?.track.id ?? s.project.tracks[s.project.tracks.length - 1]?.id;
-    if (!trackId) return;
-    s.addClip("text-basic", trackId, s.playhead, {
-      props: { content: text },
-      label: text.slice(0, 24),
-    });
   }, []);
 
   useEffect(() => {
@@ -257,38 +225,13 @@ export const App: React.FC = () => {
         />
         <div className="ms-mode-pills" role="group" aria-label="Studio views">
           <PillButton
-            active={railOpen && railTab === "agent"}
-            onClick={() => openRailTab("agent")}
-            title="Motion Agent — tell it what to change"
-            pressed={railOpen && railTab === "agent"}
+            active={railOpen}
+            onClick={() => setRailOpen((open) => !open)}
+            title="Edit agent — tell it what to change in this film"
+            pressed={railOpen}
             testId="topbar-agent-toggle"
           >
-            Chat
-          </PillButton>
-          <PillButton
-            active={viewMode === "library"}
-            onClick={() => setViewMode("library")}
-            title="Motion recipe library"
-            pressed={viewMode === "library"}
-          >
-            Library
-          </PillButton>
-          <PillButton
-            active={viewMode === "sessions"}
-            onClick={() => setViewMode("sessions")}
-            title="Saved sessions"
-            pressed={viewMode === "sessions"}
-          >
-            Sessions
-          </PillButton>
-          <PillButton
-            active={railOpen && railTab === "history"}
-            onClick={() => openRailTab("history")}
-            title="History gallery — past sessions"
-            pressed={railOpen && railTab === "history"}
-            testId="topbar-history-toggle"
-          >
-            History
+            Edit agent
           </PillButton>
         </div>
         <span style={{ flex: 1 }} />
@@ -302,12 +245,6 @@ export const App: React.FC = () => {
         <ExportButton />
         <button className="btn" onClick={exportJson}>{t("exportJson")}</button>
         <button className="btn" onClick={() => fileRef.current?.click()}>{t("import")}</button>
-        <button
-          className="btn"
-          onClick={() => window.confirm(t("reset.confirm")) && resetProject()}
-        >
-          {t("reset")}
-        </button>
         <span className="tl-sep" />
         <select
           className="btn interface-language"
@@ -318,22 +255,6 @@ export const App: React.FC = () => {
         >
           {LOCALES.map((l) => (
             <option key={l.id} value={l.id}>{l.label}</option>
-          ))}
-        </select>
-        <span className="tl-sep" />
-        <select
-          className="btn session-select"
-          value={activeSessionId ?? ""}
-          onChange={(e) => {
-            if (e.target.value) selectSession(e.target.value);
-            setViewMode("sessions");
-          }}
-        >
-          <option value="">Sessions</option>
-          {sessions.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
           ))}
         </select>
         <input
@@ -354,41 +275,21 @@ export const App: React.FC = () => {
           <>
             <div className="panel-wrap ms-rail-wrap" style={{ width: railW }}>
               <div className="ms-rail" data-testid="studio-rail">
-                <div className="ms-rail-tabs" role="tablist" aria-label="Director panel">
-                  {(
-                    [
-                      { id: "agent", label: "Agent" },
-                      { id: "prompt", label: "Prompt" },
-                      { id: "history", label: "History" },
-                    ] as { id: RailTab; label: string }[]
-                  ).map((tab) => (
-                    <PillButton
-                      key={tab.id}
-                      asTab
-                      active={railTab === tab.id}
-                      onClick={() => setRailTab(tab.id)}
-                      testId={`rail-tab-${tab.id}`}
-                    >
-                      {tab.label}
-                    </PillButton>
-                  ))}
+                <div className="ms-rail-tabs">
+                  <span className="ms-rail-title">Edit agent</span>
                   <span style={{ flex: 1 }} />
                   <button
                     type="button"
                     className="ms-rail-hide"
                     onClick={() => setRailOpen(false)}
-                    aria-label="Hide director panel"
+                    aria-label="Hide edit agent"
                     title="Hide"
                   >
                     ×
                   </button>
                 </div>
                 <div className="ms-rail-body">
-                  {railTab === "agent" && <MotionAgentPanel />}
-                  {railTab === "prompt" && (
-                    <MotionPromptPanel onGenerate={handlePromptGenerate} />
-                  )}
-                  {railTab === "history" && <MotionHistorySection />}
+                  <MotionAgentPanel />
                 </div>
               </div>
             </div>
@@ -403,15 +304,11 @@ export const App: React.FC = () => {
           </>
         )}
         <div className="panel-wrap" style={{ width: libW }}>
-          {viewMode === "library" ? (
-            <LibraryPanel
-              categories={MOTION_CATEGORIES.map((c) => c.key)}
-              onSelectRecipe={handleSelectRecipe}
-              onAddToTimeline={handleAddToTimeline}
-            />
-          ) : (
-            <SessionPanel />
-          )}
+          <LibraryPanel
+            categories={MOTION_CATEGORIES.map((c) => c.key)}
+            onSelectRecipe={handleSelectRecipe}
+            onAddToTimeline={handleAddToTimeline}
+          />
         </div>
         <div
           className="splitter v"

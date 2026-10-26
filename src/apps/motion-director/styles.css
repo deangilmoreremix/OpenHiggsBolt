@@ -565,6 +565,7 @@
   color: rgba(255, 255, 255, 0.3); padding: 2px 6px; border-radius: 6px;
 }
 .ms-root .ms-rail-hide:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+.ms-root .ms-rail-title { font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.8); padding-left: 4px; }
 .ms-root .ms-rail-body { padding: 0; }
 
 /* Timeline clips → rounded cards */
