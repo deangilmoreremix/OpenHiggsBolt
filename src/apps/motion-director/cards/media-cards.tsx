@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, Img, staticFile } from "remotion";
+import { AbsoluteFill, Img, staticFile, interpolate, useCurrentFrame } from "remotion";
 import { Audio, Video } from "@remotion/media";
 import type { CardDef } from "./types";
 
@@ -98,19 +98,36 @@ export const imageClipCard: CardDef = {
   ],
 };
 
-/** 音频卡（BGM / 音效通用）：裁入=trimBefore、变速=playbackRate，裁剪变速不哑音 */
-const AudioClip: React.FC<{ file?: string; volume?: number; inOffset?: number; speed?: number }> =
-  ({ file = "", volume = 1, inOffset = 0, speed = 1 }) => {
-    if (!file) return null;
-    return (
-      <Audio
-        src={mediaSrc(file)}
-        volume={volume}
-        trimBefore={Math.round(inOffset)}
-        playbackRate={speed}
-      />
-    );
-  };
+/** 音频卡（BGM / 音效通用）：裁入=trimBefore、变速=playbackRate，裁剪变速不哑音。
+ *  可选 fadeInFrames / fadeOutFrames 做入淡出（volume 按当前帧插值），durationFrames 用于算出场淡出终点。 */
+const AudioClip: React.FC<{
+  file?: string;
+  volume?: number;
+  inOffset?: number;
+  speed?: number;
+  fadeInFrames?: number;
+  fadeOutFrames?: number;
+  durationFrames?: number;
+}> = ({ file = "", volume = 1, inOffset = 0, speed = 1, fadeInFrames = 0, fadeOutFrames = 0, durationFrames }) => {
+  if (!file) return null;
+  const frame = useCurrentFrame();
+  let vol = volume;
+  if (fadeInFrames > 0) {
+    vol = Math.min(vol, interpolate(frame, [0, fadeInFrames], [0, volume]));
+  }
+  if (fadeOutFrames > 0 && durationFrames) {
+    const startFade = Math.max(0, durationFrames - fadeOutFrames);
+    vol = Math.min(vol, interpolate(frame, [startFade, durationFrames], [volume, 0]));
+  }
+  return (
+    <Audio
+      src={mediaSrc(file)}
+      volume={vol}
+      trimBefore={Math.round(inOffset)}
+      playbackRate={speed}
+    />
+  );
+};
 
 export const audioClipCard: CardDef = {
   id: "audio-clip",

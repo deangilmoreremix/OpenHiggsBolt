@@ -46,6 +46,7 @@ Return a storyboard as JSON. Rules:
 - palette: hex colours taken from the brand when given (background, text, accent).
 - Scene durations in seconds should sum to the requested length.
 - requiredRecipes: when this list is NOT empty the user picked these shots by name. The film is made of ONLY these shots: use every one, exactly once, in that order, and add NO other shot recipe. You may add one opening title card and one closing call-to-action title card. Spread the requested length across them. When the list is empty, choose the shots yourself from the catalog.
+- Upstream craft rules: prefer real captured pages over mock UI; one hero per opening shot; stable camera; captions legible; give key moments a ≥ 1 s hold; at most 3 flash cuts; end with a call to action.
 - template "inkpress": follow the Ink Press structure — a title card, real-page PRODUCT-PAGE shots with caption strips, flash cuts on key beats, a call-to-action title, and an Outro shot. Keep the paper/ink palette (#f7f4ee background, #1c1a17 text, #b5651d accent) unless brand colours are given.
 
 Catalog (id | title | category | native length | flags | what it does):
@@ -59,7 +60,7 @@ Return JSON {reply, ops}. Each op has every field; fill unused ones with "" or 0
 - replace_recipe {clipId, recipeId}: swap the motion recipe (catalog ids only).
 - add_shot {clipId: the clip to insert after ("" = at the end), recipeId, seconds, text}.
 - set_palette {background, text: text colour hex, accent}.
-Use only clip ids from the list and recipe ids from the catalog. reply: one or two sentences describing what you changed.
+Use only clip ids from the list and recipe ids from the catalog. Keep the film's rhythm: key moments hold ≥ 1 s, ≤ 3 flash cuts. reply: one or two sentences describing what you changed.
 
 Catalog (id | title | category | native length | flags | what it does):
 ${CATALOG_BRIEF}`

@@ -46,6 +46,7 @@ const ItemPreview: React.FC<{ item: NonNullable<PreviewItem>; onClose: () => voi
           controls={false}
           clickToPlay
           numberOfSharedAudioTags={32}
+          acknowledgeRemotionLicense
           style={{ width: "100%", height: "100%" }}
         />
       );
@@ -195,6 +196,7 @@ export const PreviewPanel: React.FC = () => {
                     controls={false}
                     clickToPlay
                     numberOfSharedAudioTags={32}
+                    acknowledgeRemotionLicense
                     style={{ width: "100%", height: "100%" }}
                   />
                 );
@@ -237,6 +239,7 @@ export const PreviewPanel: React.FC = () => {
           controls={false}
           clickToPlay
           numberOfSharedAudioTags={32}
+          acknowledgeRemotionLicense
           style={{ width: "100%", height: "100%" }}
         />
       </div>
