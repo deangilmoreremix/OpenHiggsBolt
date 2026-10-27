@@ -430,9 +430,9 @@ test.describe('Motion Studio director', () => {
     await expect(page.locator('.topbar')).toBeVisible({ timeout: 120_000 });
     await page.getByPlaceholder('Search recipes...').fill('deck-deal-flyin');
     const card = page.getByTestId('library-recipe-card').first();
-    // Double-click still adds it to the timeline without leaving the editor.
+    // Add still puts it on the timeline without leaving the editor.
     const clips = await page.locator('.clip').count();
-    await card.dblclick();
+    await page.locator('.library-item').first().getByRole('button', { name: /^Add/ }).first().dispatchEvent('click');
     await expect(page.locator('.clip')).toHaveCount(clips + 1);
     await page.waitForTimeout(400);
     await expect(page.locator('.topbar')).toBeVisible();

@@ -105,16 +105,12 @@ export default function MotionRecipeCard({
 
   const gradient = CATEGORY_GRADIENTS[recipe.category] || CATEGORY_GRADIENTS.effects;
 
-  /** A single click waits a moment so a double-click (add to the timeline) does not also fire it. */
-  const clickTimer = useRef(null);
-  useEffect(() => () => clearTimeout(clickTimer.current), []);
+  /** Click = use the shot in the chat. Adding to the timeline is the Add button or a drag. */
   const handleCardClick = useCallback(
     (e) => {
       if (menuOpen) return;
       e.stopPropagation();
-      clearTimeout(clickTimer.current);
-      if (e.detail > 1) return;
-      clickTimer.current = setTimeout(() => onClick?.(recipe), 250);
+      onClick?.(recipe);
     },
     [menuOpen, recipe, onClick],
   );
@@ -131,20 +127,9 @@ export default function MotionRecipeCard({
     [cardId, recipe],
   );
 
-  /** Double-click = add to the timeline at the playhead (same as the button). */
-  const handleDoubleClick = useCallback(
-    (e) => {
-      e.stopPropagation();
-      clearTimeout(clickTimer.current);
-      onAddToTimeline?.(recipe);
-    },
-    [onAddToTimeline, recipe],
-  );
-
   const handleAdd = useCallback(
     (e) => {
       e.stopPropagation();
-      clearTimeout(clickTimer.current);
       onAddToTimeline?.(recipe);
     },
     [onAddToTimeline, recipe],
@@ -155,7 +140,6 @@ export default function MotionRecipeCard({
     (e) => {
       if (e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return;
       e.preventDefault();
-      clearTimeout(clickTimer.current);
       onClick?.(recipe);
     },
     [onClick, recipe],
@@ -229,12 +213,11 @@ export default function MotionRecipeCard({
         draggable
         onDragStart={handleDragStart}
         onClick={handleCardClick}
-        onDoubleClick={handleDoubleClick}
         onKeyDown={handleCardKeyDown}
         role="button"
         tabIndex={0}
         aria-label={`Use ${recipe.nameEn || recipe.name} in the chat`}
-        title="Click to use in the chat · drag to the timeline · double-click to add at the playhead"
+        title="Click to use in the chat · drag to the timeline (or use Add)"
         data-testid="library-recipe-card"
       >
         <div className="w-full h-full relative">
