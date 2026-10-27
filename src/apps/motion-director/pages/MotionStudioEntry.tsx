@@ -222,6 +222,19 @@ export default function MotionStudioEntry() {
     }
   }, [activeClient]);
 
+  /** Install a built film into the active session and open the Motion Workbench. */
+  const editInWorkbench = () => {
+    if (!director.film) return;
+    const state = useStore.getState();
+    if (state.activeSessionId === null) {
+      const created = projectToSession(state.project, state.project.name || 'Untitled Film');
+      state.addSession(created);
+    }
+    state.updateActiveSessionProject(director.film.project);
+    setProject(director.film.project);
+    openWorkbench();
+  };
+
   const director = useFilmDirector({
     settings: () => ({
       aspectRatio,
@@ -245,6 +258,9 @@ export default function MotionStudioEntry() {
       }
       state.appendSessionMessage(sid, { role: m.role, content: m.content, ts: m.ts });
     },
+    /** When a film is built in the entry, persist it into the active session and
+     *  hand it to the Motion Workbench for editing. */
+    onBuilt: editInWorkbench,
   });
   const conversing = director.messages.length > 0 || history.length > 0;
   /** Keep the newest message / storyboard / film in view. */
@@ -286,21 +302,6 @@ export default function MotionStudioEntry() {
       /* private mode / storage disabled — entry will just reappear next visit */
     }
     navigate('/');
-  };
-
-  /** Hand the finished film to the Motion Workbench (tracks, inspector, library, export).
-   *  Persists the film as the active session so the workbench's "Edit agent" resumes
-   *  the same conversation thread, and "Back to chat" picks it up again. */
-  const editInWorkbench = () => {
-    if (!director.film) return;
-    const state = useStore.getState();
-    if (state.activeSessionId === null) {
-      const created = projectToSession(state.project, state.project.name || 'Untitled Film');
-      state.addSession(created);
-    }
-    state.updateActiveSessionProject(director.film.project);
-    setProject(director.film.project);
-    openWorkbench();
   };
 
   const selectedTemplates = selectedRecipes.map((id) => TEMPLATE_BY_ID[id]).filter(Boolean);

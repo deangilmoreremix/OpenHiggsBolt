@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import type { PropField } from '../cards/types';
 import { siteInsetCard } from '../cards/site-inset';
 
 describe('siteInsetCard definition', () => {
@@ -22,7 +23,7 @@ describe('siteInsetCard definition', () => {
     expect(file.default).toBe('');
     const side = siteInsetCard.schema.find((f) => f.key === 'side')!;
     expect(side.default).toBe('right');
-    const size = siteInsetCard.schema.find((f) => f.key === 'sizePct')!;
+    const size = siteInsetCard.schema.find((f): f is Extract<PropField, { type: 'number' }> => f.key === 'sizePct' && f.type === 'number')!;
     expect(size.default).toBe(32);
     expect(size.min).toBe(10);
     expect(size.max).toBe(80);

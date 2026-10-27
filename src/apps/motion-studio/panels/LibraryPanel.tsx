@@ -11,7 +11,7 @@ import {
 import MotionRecipeCard from "../components/MotionRecipeCard";
 import { useStore } from "../store";
 import { setDragPayload } from "../dnd";
-import { MEDIA_ITEMS, BGM_LIB, SFX_LIB, type MediaItem, type LibAudio } from "./mediaManifest";
+import { MEDIA_ITEMS, BGM_LIB, SFX_LIB, type MediaItem, type LibAudio } from "../mediaManifest";
 import {
   loadSavedRecipes,
   removeRecipe,
@@ -73,7 +73,12 @@ export default function LibraryPanel({
   /** SFX grouped by category for the Sound tab. */
   const sfxByCat = useMemo<Map<string, LibAudio[]>>(() => {
     const m = new Map<string, LibAudio[]>();
-    for (const s of SFX_LIB) (m.get(s.cat) ??= []).push(s);
+    for (const s of SFX_LIB) {
+      const cat = s.cat;
+      const items = m.get(cat) ?? [];
+      items.push(s);
+      m.set(cat, items);
+    }
     return m;
   }, []);
 

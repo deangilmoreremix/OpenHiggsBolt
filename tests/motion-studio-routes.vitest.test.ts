@@ -53,6 +53,7 @@ beforeEach(() => {
     capturePageScreenshots: capture,
     CAPTURE_VIEWPORT: { width: 1920, height: 1080 },
     CAPTURE_DEVICE_SCALE: 2,
+    CAPTURE_MAX_EXTRA_ROUTES: 2,
   }))
   vi.doMock('@/lib/supabase', () => ({
     createServerClient: () => ({
@@ -76,7 +77,7 @@ describe('POST /api/motion-studio/capture', () => {
     const res = await POST(post('/api/motion-studio/capture', { url: 'acme.test' }))
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(capture).toHaveBeenCalledWith('https://acme.test')
+    expect(capture).toHaveBeenCalledWith('https://acme.test', { maxRoutes: 0 })
     expect(body.page.url).toMatch(/^https:\/\/storage\.test\/user_1\/motion-capture\/[^/]+\/page\.jpg$/)
     expect(body.crops).toHaveLength(2)
     expect(body.images).toEqual([expect.stringMatching(/\/image-1\.jpg$/)])
@@ -104,7 +105,8 @@ describe('POST /api/motion-studio/capture', () => {
       brand: { background: null, text: null, accent: null, fontFamily: null },
     })
     const { POST } = await import('@/app/api/motion-studio/capture/route')
-    const body = await (await POST(post('/api/motion-studio/capture', { url: 'acme.test' }))).json()
+    const body = await (await POST(post('/api/motion-studio/capture?routes', { url: 'acme.test' }))).json()
+    expect(capture).toHaveBeenLastCalledWith('https://acme.test', { maxRoutes: 2 })
     expect(body.pages.map((p: { path: string }) => p.path)).toEqual(['/', '/pricing'])
     expect(body.pages[1]).toMatchObject({ url: expect.stringMatching(/\/page-pricing\.jpg$/), width: 3840, height: 2400 })
     expect(body.pages[0].layout.cards).toHaveLength(1)

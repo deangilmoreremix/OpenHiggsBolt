@@ -242,6 +242,7 @@ export default function MotionRecipeCard({
               controls={false}
               initiallyMuted
               numberOfSharedAudioTags={0}
+              acknowledgeRemotionLicense
               style={{ width: '100%', height: '100%' }}
             />
           ) : card ? (

@@ -10,6 +10,7 @@ import {
   inkPressPlan,
   isFilmRequest,
   isNewFilmRequest,
+  type FilmRequest,
   findSiteUrl,
   parseFilmRequest,
   readTemplateAnswer,
@@ -261,7 +262,7 @@ describe('framing cards and site copy on a picked-shot film', () => {
 });
 
 describe('a message while a storyboard is on the table', () => {
-  const current = { siteUrl: 'acme.io' };
+  const current: FilmRequest = { prompt: '', recipes: [], single: null, template: undefined, durationSec: null, siteUrl: 'acme.io' };
   it('starts a different film for a new site, a "new film" ask or "make a promo for …"', () => {
     expect(startsDifferentFilm('make a promo for https://other.com', current)).toBe(true);
     expect(startsDifferentFilm('now beta.dev', current)).toBe(true);

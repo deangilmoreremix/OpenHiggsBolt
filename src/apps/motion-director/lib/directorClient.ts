@@ -78,7 +78,10 @@ async function post<T>(path: string, body: unknown, timeoutMs = 28_000): Promise
 
 export { findSiteUrl } from './filmChat';
 
-export const captureSite = (url: string) => post<SiteCapture>('/api/motion-studio/capture', { url });
+export const captureSite = (url: string) => post<SiteCapture>('/api/motion-studio/capture', { url })
+
+/** Second request: the extra product routes of the same site, fired after the home capture returns. */
+export const captureRoutes = (url: string) => post<SiteCapture>('/api/motion-studio/capture?routes', { url });
 
 export async function requestPlan(body: {
   prompt: string;

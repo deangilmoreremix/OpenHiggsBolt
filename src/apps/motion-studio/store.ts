@@ -309,7 +309,7 @@ export const useStore = create<WorkbenchState>((set, get) => ({
     const newId = uid("clip");
     set((s) => ({
       project: mutateProject(s.project, (d) => {
-        const track =
+        let track =
           d.tracks.find((t) => t.id === trackId) ?? d.tracks[d.tracks.length - 1];
         if (!track) {
           // No tracks yet: create one so the clip always has a lane to land in.

@@ -1695,9 +1695,12 @@ export const CAPTURE_FONT_WAIT_MS = 2_000
 export const CAPTURE_MAX_EXTRA_ROUTES = 2
 /** Card cutouts across every captured route. */
 export const CAPTURE_MAX_TOTAL_CROPS = 12
-/** Extra routes are only started while the run is younger than this. */
-export const CAPTURE_ROUTE_BUDGET_MS = 20_000
+/** Extra routes are only started while the run is younger than this; past it only the home page is captured. */
+export const CAPTURE_ROUTE_BUDGET_MS = 12_000
 export const CAPTURE_ROUTE_NAVIGATION_TIMEOUT = 10_000
+/** Hard overall deadline for a capture run: the home page is captured first, and a run that already
+ * has its home shot returns partial results instead of failing. */
+export const CAPTURE_OVERALL_DEADLINE_MS = 20_000
 // Media is never needed for a still capture; fonts and stylesheets are, so
 // unlike discovery they are allowed (each still passes the SSRF gate).
 const CAPTURE_BLOCKED_RESOURCE_TYPES = ['media'] as const
@@ -2110,6 +2113,16 @@ export async function capturePageScreenshots(
           .screenshot(png ? { type: 'png', omitBackground: true, fullPage: true, clip: rect } : { type: 'jpeg', quality: 88, fullPage: true, clip: rect })
           .catch(() => null)
 
+      const elapsed = () => Date.now() - started
+      const timeLeft = () => CAPTURE_OVERALL_DEADLINE_MS - elapsed()
+      // A navigation must finish inside the overall deadline; clamp its timeout so
+      // a slow page cannot eat the whole run. Once the home shot exists the run
+      // returns partial results instead of throwing.
+      const navTimeout = (base: number) => Math.max(1_000, Math.min(base, timeLeft()))
+      const logPhase = (label: string, extra?: Record<string, unknown>) => {
+        console.log(`[motion-studio/capture] ${label} · ${elapsed()}ms${extra ? ' ' + JSON.stringify(extra) : ''}`)
+      }
+
       /** Load lazy content, settle, shoot the page band and cut out its cards. */
       const shootRoute = async (maxCards: number) => {
         await page.waitForLoadState('networkidle', { timeout: 3_000 }).catch(() => undefined)
@@ -2151,13 +2164,19 @@ export async function capturePageScreenshots(
       }
 
       try {
-        await page.goto(baseTarget.url, { waitUntil: 'load', timeout: CAPTURE_NAVIGATION_TIMEOUT })
+        logPhase('capture.start', { url: baseTarget.url })
+        await page.goto(baseTarget.url, { waitUntil: 'load', timeout: navTimeout(CAPTURE_NAVIGATION_TIMEOUT) })
+        if (timeLeft() <= 0) {
+          throw new Error(`The page could not be captured before the ${Math.round(CAPTURE_OVERALL_DEADLINE_MS / 1000)} second deadline`)
+        }
+        logPhase('capture.home.navigated')
         const finalTarget = await guard.validateNavigationTarget(page.url())
         if (finalTarget.hostname !== baseTarget.hostname) {
           throw new BrowserSsrfError('Navigation left the validated origin', page.url(), finalTarget.hostname)
         }
 
         const home = await shootRoute(maxCrops)
+        logPhase('capture.home.shot', { pageHeight: home.pageHeight, crops: home.crops.length })
         const read = await page.evaluate(readPageContent).catch(() => null)
         const content: PageContent = read
           ? { description: read.description, headline: read.headline, headings: read.headings, ctas: read.ctas, nav: read.nav }
@@ -2191,22 +2210,30 @@ export async function capturePageScreenshots(
         const title = String((await page.title()) ?? '').slice(0, 200)
         const url = page.url()
 
-        // More routes of the same site, captured the same way, inside the time budget.
+        // More routes of the same site, captured the same way, while the route
+        // budget allows. The home page is never dropped for them.
         const routes: CapturedRoute[] = []
         let cropBudget = CAPTURE_MAX_TOTAL_CROPS - home.crops.length
         for (const route of pickCaptureRoutes(read?.links ?? [], url, maxRoutes)) {
-          if (Date.now() - started > CAPTURE_ROUTE_BUDGET_MS) break
+          if (elapsed() > CAPTURE_ROUTE_BUDGET_MS) {
+            logPhase('capture.routes.stopped', { reason: 'route budget', routes: routes.length })
+            break
+          }
           try {
-            await page.goto(route.url, { waitUntil: 'domcontentloaded', timeout: CAPTURE_ROUTE_NAVIGATION_TIMEOUT })
+            logPhase('capture.route.navigate', { path: route.path })
+            await page.goto(route.url, { waitUntil: 'domcontentloaded', timeout: navTimeout(CAPTURE_ROUTE_NAVIGATION_TIMEOUT) })
             const landed = await guard.validateNavigationTarget(page.url())
             if (landed.hostname !== finalTarget.hostname) continue
             const shot = await shootRoute(Math.max(0, Math.min(3, cropBudget)))
             cropBudget -= shot.crops.length
             routes.push({ name: route.name, path: route.path, url: page.url(), page: shot.shot, pageHeight: shot.pageHeight, layout: shot.layout, crops: shot.crops })
+            logPhase('capture.route.done', { path: route.path })
           } catch {
             // A route that will not load (or leaves the site) is skipped; the capture stands without it.
           }
         }
+
+        logPhase('capture.done', { routes: routes.length })
 
         return {
           url,

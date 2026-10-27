@@ -10,6 +10,8 @@ interface Harness {
   launches: number
   contextOptions: Record<string, unknown> | null
   routeHandler: ((route: any, request: any) => Promise<unknown>) | null
+  page: any
+  onGoto?: (url: string) => unknown
   gotos: string[]
   finalUrl: string
   screenshots: Array<Record<string, unknown>>
@@ -17,7 +19,10 @@ interface Harness {
 
 function stubChromium(h: Harness) {
   const page = {
-    goto: vi.fn(async (url: string) => { h.gotos.push(url) }),
+    goto: vi.fn(async (url: string) => {
+      h.gotos.push(url)
+      if (h.onGoto) await h.onGoto(url)
+    }),
     url: () => h.finalUrl,
     waitForLoadState: vi.fn(async () => {}),
     evaluate: vi.fn(async (fn: { name?: string }) => {
@@ -31,7 +36,9 @@ function stubChromium(h: Harness) {
     title: async () => 'Acme — ship faster',
     close: vi.fn(async () => {}),
   }
+  h.page = page
   return {
+    page,
     launch: vi.fn(async () => {
       h.launches++
       return {
@@ -59,10 +66,10 @@ async function load() {
   return { mod, guard }
 }
 
-beforeEach(() => {
-  vi.resetModules()
-  h = { launches: 0, contextOptions: null, routeHandler: null, gotos: [], finalUrl: 'https://acme.example.com/', screenshots: [] }
-})
+  beforeEach(() => {
+    vi.resetModules()
+    h = { launches: 0, contextOptions: null, routeHandler: null, page: null, gotos: [], finalUrl: 'https://acme.example.com/', screenshots: [] }
+  })
 
 describe('capturePageScreenshots', () => {
   it('captures a 1920-wide page at 2x, card crops and brand colours', async () => {
@@ -114,6 +121,34 @@ describe('capturePageScreenshots', () => {
     const { mod, guard } = await load()
     await expect(mod.capturePageScreenshots('https://acme.example.com/', { guard })).rejects.toThrow(/left the validated origin/)
     expect(h.screenshots).toHaveLength(0)
+  })
+
+  it('captures the home page and skips extra routes once the 12s route budget is exceeded', async () => {
+    const { mod, guard } = await load()
+    let now = 0
+    const spy = vi.spyOn(Date, 'now').mockImplementation(() => now)
+    try {
+      h.onGoto = async () => { now = 13_000 } // the run is past the route budget when the home navigation lands
+      const result = await mod.capturePageScreenshots('https://acme.example.com/', { guard, settleMs: 0 })
+      expect(h.gotos).toEqual(['https://acme.example.com/']) // only the home page was navigated
+      expect(result.page).toBeInstanceOf(Buffer) // the home shot exists
+      expect(result.routes).toEqual([]) // extra routes were skipped
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  it('fails when the overall deadline passes before the home page shot exists', async () => {
+    const { mod, guard } = await load()
+    let now = 0
+    const spy = vi.spyOn(Date, 'now').mockImplementation(() => now)
+    try {
+      h.onGoto = async () => { now = 25_000 } // past the 20s overall deadline
+      await expect(mod.capturePageScreenshots('https://acme.example.com/', { guard, settleMs: 0 })).rejects.toThrow(/deadline/)
+      expect(h.screenshots).toHaveLength(0) // no home shot, no partial results
+    } finally {
+      spy.mockRestore()
+    }
   })
 
   it('normalises CSS colours', async () => {

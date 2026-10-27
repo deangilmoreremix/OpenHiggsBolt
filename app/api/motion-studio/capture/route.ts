@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'node:crypto'
-import { BrowserSsrfError, capturePageScreenshots, CAPTURE_DEVICE_SCALE, CAPTURE_VIEWPORT } from '@/src/server/browserDiscovery'
+import { BrowserSsrfError, capturePageScreenshots, CAPTURE_DEVICE_SCALE, CAPTURE_MAX_EXTRA_ROUTES, CAPTURE_VIEWPORT } from '@/src/server/browserDiscovery'
 import { rateLimit, rateLimit429 } from '../../../../lib/rateLimit'
 import { requireMotionStudioUser } from '../lib/auth'
 
@@ -11,6 +11,11 @@ export const maxDuration = 60
 /**
  * POST /api/motion-studio/capture  { url }
  *   → { url, title, page, pages, crops, images, logo, cutouts, emptyPlate, content, brand, transient }
+ *
+ * With no query string only the home page is captured, so the call returns
+ * quickly and the film can start immediately. With `?routes` the extra
+ * product routes of the same site are captured as well (home + up to
+ * CAPTURE_MAX_EXTRA_ROUTES) and merged into the same response.
  *
  * Each page's `layout` (section headings, cards) is in page CSS px, 1920 wide,
  * like upstream's layout.json.
@@ -68,7 +73,9 @@ export async function POST(req: NextRequest) {
 
   let capture
   try {
-    capture = await capturePageScreenshots(url)
+    // Without `?routes` only the home page is captured, so the film can start
+    // immediately; extra routes come in a second request.
+    capture = await capturePageScreenshots(url, { maxRoutes: req.nextUrl.searchParams.has('routes') ? CAPTURE_MAX_EXTRA_ROUTES : 0 })
   } catch (err) {
     if (err instanceof BrowserSsrfError) {
       return NextResponse.json({ error: 'That address cannot be captured. Use a public http(s) page.', code: 'URL_REJECTED' }, { status: 400 })

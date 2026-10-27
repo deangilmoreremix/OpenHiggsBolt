@@ -64,6 +64,7 @@ export function RecipePreview({ recipe, playing }: { recipe: MotionTemplate; pla
             clickToPlay={false}
             initiallyMuted
             numberOfSharedAudioTags={0}
+            acknowledgeRemotionLicense
             style={{ width: '100%', height: '100%' }}
           />
         </div>

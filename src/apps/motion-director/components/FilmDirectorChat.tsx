@@ -99,6 +99,7 @@ export const FilmResultCard: React.FC<{ project: ProjectData; onOpenWorkbench?: 
           controls
           loop
           numberOfSharedAudioTags={32}
+          acknowledgeRemotionLicense
           style={{ width: '100%', height: '100%' }}
         />
       </div>
