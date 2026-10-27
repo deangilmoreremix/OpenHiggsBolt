@@ -105,6 +105,7 @@ export default function MotionRecipeCard({
 
   const gradient = CATEGORY_GRADIENTS[recipe.category] || CATEGORY_GRADIENTS.effects;
 
+  /** Click = use the shot in the chat. Adding to the timeline is the Add button or a drag. */
   const handleCardClick = useCallback(
     (e) => {
       if (menuOpen) return;
@@ -126,8 +127,7 @@ export default function MotionRecipeCard({
     [cardId, recipe],
   );
 
-  /** Double-click = add to the timeline at the playhead (same as the button). */
-  const handleDoubleClick = useCallback(
+  const handleAdd = useCallback(
     (e) => {
       e.stopPropagation();
       onAddToTimeline?.(recipe);
@@ -135,12 +135,14 @@ export default function MotionRecipeCard({
     [onAddToTimeline, recipe],
   );
 
-  const handleAdd = useCallback(
+  /** Enter / Space on the focused card = the click (use it in the chat); keys on the nested Add button stay its own. */
+  const handleCardKeyDown = useCallback(
     (e) => {
-      e.stopPropagation();
-      onAddToTimeline?.(recipe);
+      if (e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return;
+      e.preventDefault();
+      onClick?.(recipe);
     },
-    [onAddToTimeline, recipe],
+    [onClick, recipe],
   );
 
   return (
@@ -211,8 +213,12 @@ export default function MotionRecipeCard({
         draggable
         onDragStart={handleDragStart}
         onClick={handleCardClick}
-        onDoubleClick={handleDoubleClick}
-        title="Drag to the timeline · double-click to add at the playhead"
+        onKeyDown={handleCardKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-label={`Use ${recipe.nameEn || recipe.name} in the chat`}
+        title="Click to use in the chat · drag to the timeline (or use Add)"
+        data-testid="library-recipe-card"
       >
         <div className="w-full h-full relative">
           {card && inView ? (

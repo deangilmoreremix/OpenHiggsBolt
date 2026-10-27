@@ -424,6 +424,32 @@ test.describe('Motion Studio director', () => {
     await expect(page.getByRole('button', { name: /Remove Deck Deal Flyin/i })).toBeVisible();
   });
 
+  test('clicking a recipe in the workbench library goes to the chat with it picked', async ({ page }) => {
+    await installStudioSession(page, { entrySeen: true });
+    await page.goto(`${BASE_URL}/studio/motion-director/workbench`);
+    await expect(page.locator('.topbar')).toBeVisible({ timeout: 120_000 });
+    await page.getByPlaceholder('Search recipes...').fill('deck-deal-flyin');
+    const card = page.getByTestId('library-recipe-card').first();
+    // Add still puts it on the timeline without leaving the editor.
+    const clips = await page.locator('.clip').count();
+    await page.locator('.library-item').first().getByRole('button', { name: /^Add/ }).first().dispatchEvent('click');
+    await expect(page.locator('.clip')).toHaveCount(clips + 1);
+    await page.waitForTimeout(400);
+    await expect(page.locator('.topbar')).toBeVisible();
+    // A single click goes to the chat, with the shot picked and the cursor in the box.
+    await card.click();
+    await expect(page.getByPlaceholder(/Describe your motion video|Describe another film/)).toBeFocused({ timeout: 30_000 });
+    await expect(page.getByRole('button', { name: /Remove Deck Deal Flyin/i })).toBeVisible();
+    await expect(page).toHaveURL(/\/studio\/motion-director\/?(\?.*)?$/);
+    // Keyboard: Enter on a focused library card does the same.
+    await page.goto(`${BASE_URL}/studio/motion-director/workbench`);
+    await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
+    await page.getByPlaceholder('Search recipes...').fill('row-embed');
+    await page.getByTestId('library-recipe-card').first().focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('button', { name: /Remove Row Embed/i })).toBeVisible({ timeout: 30_000 });
+  });
+
   test('without an OpenAI key it storyboards from the Ink Press template and says why', async ({ page }) => {
     await installStudioSession(page);
     await page.route('**/api/motion-studio/director', (route) =>

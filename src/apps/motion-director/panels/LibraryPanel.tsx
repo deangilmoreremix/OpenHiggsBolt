@@ -245,8 +245,9 @@ export default function LibraryPanel({
                         type="button"
                         className="px-1.5 py-0.5 rounded bg-white/[0.05] hover:text-[#22d3ee] transition-colors"
                         onClick={() => onSelectRecipe(v)}
+                        title="Use this shot in the chat"
                       >
-                        Preview
+                        Use
                       </button>
                       <button
                         type="button"

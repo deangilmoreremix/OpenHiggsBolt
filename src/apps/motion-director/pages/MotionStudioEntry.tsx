@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { motionTemplateVariants, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { Check, Palette } from 'lucide-react';
 import { semantic, appWrapper } from '@/shared/styles/designTokens';
 import { useT } from '../i18n';
@@ -154,6 +155,7 @@ function OptionPill<T extends string | number>({ label, options, value, onChange
 export default function MotionStudioEntry() {
   const t = useT();
   const navigate = useNavigate();
+  const location = useLocation();
   const { requireEntitlement } = useSmartVideoAccess();
   // The Personalization context exposes clients + an asset library (not a singular "person").
   // We use the dedicated adapter to derive a typed PersonalizationPerson payload
@@ -311,6 +313,22 @@ export default function MotionStudioEntry() {
    * Picking a shot card adds it (or removes it, if it was already picked) and goes straight back
    * to the chat box, ready to type. Open Templates again to add more; picks keep their order.
    */
+  /** A recipe clicked in the Workbench library arrives here picked, with the cursor in the chat box. */
+  const handedRecipe = (location.state as { pickRecipe?: string } | null)?.pickRecipe;
+  useEffect(() => {
+    if (!handedRecipe) return;
+    // A grouped library card resolves to its first shot.
+    const found = resolveMotionTemplate(handedRecipe);
+    const id = found && (TEMPLATE_BY_ID[found.id] ? found.id : motionTemplateVariants(found)[0]?.id);
+    if (id && TEMPLATE_BY_ID[id]) {
+      setSelectedRecipes((prev) => (prev.includes(id) || prev.length >= MAX_PICKED_SHOTS ? prev : [...prev, id]));
+    }
+    navigate('/new', { replace: true, state: null });
+    window.requestAnimationFrame(() => promptRef.current?.focus());
+    // Runs once per hand-off.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handedRecipe]);
+
   const pickRecipe = (id: string) => {
     setSelectedRecipes((prev) => (prev.includes(id) ? prev.filter((r) => r !== id) : prev.length >= MAX_PICKED_SHOTS ? prev : [...prev, id]));
     closePicker();
