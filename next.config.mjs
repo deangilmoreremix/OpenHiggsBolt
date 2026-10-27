@@ -7,6 +7,18 @@ import { fileURLToPath } from 'node:url'
 // parent monorepo (this worktree has its own pnpm-lock.yaml).
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
+// Serverless Chromium (src/server/browserDiscovery.ts) decompresses its browser
+// from @sparticuz/chromium/bin at launch. Nothing require()s those files, so
+// the file tracer leaves them out of the server bundle, and on Netlify every
+// capture failed with 'The input directory ".../@sparticuz/chromium/bin" does
+// not exist'. List them explicitly for Motion Director's capture route. Both
+// spellings: the hoisted symlink and pnpm's real path, which is where the
+// package resolves from inside the bundle.
+const CHROMIUM_BIN = [
+  './node_modules/@sparticuz/chromium/bin/**',
+  './node_modules/.pnpm/@sparticuz+chromium@*/node_modules/@sparticuz/chromium/bin/**',
+]
+
 const nextConfig = {
   experimental: {
     cacheComponents: false,
@@ -54,6 +66,9 @@ const nextConfig = {
   // Same root as turbopack.root: tracing must resolve against this worktree,
   // not the parent monorepo whose lockfile Next.js otherwise prefers.
   outputFileTracingRoot: rootDir,
+  outputFileTracingIncludes: {
+    '/api/motion-studio/capture': CHROMIUM_BIN,
+  },
   outputFileTracingExcludes: {
     '*': [
       'node_modules/playwright/**',

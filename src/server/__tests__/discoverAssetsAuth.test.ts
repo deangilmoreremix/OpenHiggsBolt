@@ -2,16 +2,26 @@
  * Negative auth tests for POST /api/personalization/discover-assets.
  *
  * Proves:
- * - Unauthenticated requests (userId = null/undefined/'') are rejected with 401
- * - An 'anon' clerkUserId can never reach createDiscoveryJob
+ * - Unauthenticated requests (userId = null/undefined/'') are allowed (free feature)
+ * - Jobs are scoped to the caller's identity (IP for anonymous, userId for signed-in)
  * - Auth failure is logged before any business logic runs
  * - An oversized websiteUrl is rejected (400) instead of silently truncated
+ * - Discovery is asynchronous: POST returns 202 with a jobId immediately,
+ *   the crawl runs in the background worker
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@clerk/nextjs/server', () => ({
   auth: vi.fn(),
+}))
+
+// The route is now gated by requireApiEntitlement, which calls the
+// Supabase-backed resolveSmartVideoAccessForUser. Stub it at the module
+// boundary (the tests/proxy-routes.vitest.test.ts idiom) so tests can drive
+// the gate entitled/unentitled without a Supabase env.
+vi.mock('@/access/resolveAccess', () => ({
+  resolveSmartVideoAccessForUser: vi.fn(async () => ({ hasSmartVideoGo: true })),
 }))
 
 vi.mock('@/server/personalizationLog', () => ({
@@ -24,65 +34,28 @@ vi.mock('@/server/envValidation', () => ({
   validatePersonalizationEnv: vi.fn(),
 }))
 
-vi.mock('@/server/discoveryOrchestrator', () => ({
-  runFastDiscovery: vi.fn(),
-}))
-
 vi.mock('@/server/discoveryJobs', () => ({
   createDiscoveryJob: vi.fn(),
   getDiscoveryJobForUser: vi.fn(),
-  updateDiscoveryJob: vi.fn(),
-}))
-
-// Hoisted entitlement mocks. vi.clearAllMocks() in beforeEach() would wipe
-// `mockResolvedValue` set in a factory, so the mock is hoisted and the
-// allow/deny return value is configured via the hoisted allow helper.
-const entitlementMocks = vi.hoisted(() => ({
-  allowed: true as boolean,
-}))
-
-vi.mock('@/access/apiRequireEntitlement', () => ({
-  requireApiEntitlement: vi.fn(async () =>
-    entitlementMocks.allowed ? { allowed: true } : { allowed: false, status: 403 }
-  ),
-  entitlementForbiddenResponse: vi.fn().mockReturnValue(
-    new Response(JSON.stringify({ error: 'PAYMENT_REQUIRED' }), { status: 403 })
-  ),
+  updateDiscoveryJob: vi.fn(async () => ({})),
 }))
 
 // Import after mocks are registered
 import { POST } from '@/app/api/personalization/discover-assets/route'
 import { NextRequest } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { resolveSmartVideoAccessForUser } from '@/access/resolveAccess'
 import { validatePersonalizationEnv } from '@/server/envValidation'
 import { createDiscoveryJob, updateDiscoveryJob } from '@/server/discoveryJobs'
-import { runFastDiscovery } from '@/server/discoveryOrchestrator'
 
 describe('POST /api/personalization/discover-assets auth', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Default: every test in this file is a paid user. The free-user tests
-    // flip entitlementMocks.allowed to false for the duration of one test.
-    entitlementMocks.allowed = true
+    // Default: an entitled caller so only the cases that flip it exercise the
+    // unentitled path (clearAllMocks keeps implementations, so re-seed here to
+    // undo any prior test's hasSmartVideoGo:false override).
+    vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: true } as any)
     vi.mocked(validatePersonalizationEnv).mockReturnValue({ valid: true } as any)
-    vi.mocked(runFastDiscovery).mockResolvedValue({
-      result: {
-        providerUsed: 'STATIC_FALLBACK',
-        providerAttempted: 'STATIC_FALLBACK',
-        candidates: [],
-        pagesCrawled: 0,
-        rawCandidates: 0,
-        duration: 0,
-        socialProfiles: [],
-        discoveredAssets: [],
-        firecrawlUsed: false,
-        providerAttempts: ['STATIC_FALLBACK'],
-      },
-      fastAssets: [],
-      usefulAssetCount: 0,
-      providerAttempts: ['STATIC_FALLBACK'],
-      needsBrowser: false,
-    })
     vi.mocked(createDiscoveryJob).mockResolvedValue({
       id: 'job-1',
       clerk_user_id: 'user-1',
@@ -99,22 +72,6 @@ describe('POST /api/personalization/discover-assets auth', () => {
       completed_at: null,
       expires_at: '2024-01-02T00:00:00Z',
     })
-    vi.mocked(updateDiscoveryJob).mockResolvedValue({
-      id: 'job-1',
-      clerk_user_id: 'user-1',
-      website_url: 'https://example.com',
-      status: 'complete',
-      fast_result_json: null,
-      browser_result_json: null,
-      final_result_json: null,
-      telemetry_json: null,
-      error_code: null,
-      error_message: null,
-      created_at: '2024-01-01T00:00:00Z',
-      started_at: '2024-01-01T00:00:00Z',
-      completed_at: '2024-01-01T00:00:00Z',
-      expires_at: '2024-01-02T00:00:00Z',
-    })
   })
 
   async function post(websiteUrl: unknown) {
@@ -127,52 +84,46 @@ describe('POST /api/personalization/discover-assets auth', () => {
   }
 
   // -------------------------------------------------------------------------
-  // Unauthenticated: userId is null
+  // Unauthenticated: discovery is FREE, so an anonymous caller is allowed.
+  // Its jobs are scoped to the caller's IP — never one shared 'anon' bucket.
   // -------------------------------------------------------------------------
 
-  it('MUST REJECT with 401 when auth returns userId = null', async () => {
+  it('MUST ALLOW an unauthenticated caller (free feature), with IP-scoped jobs', async () => {
     vi.mocked(auth).mockResolvedValue({ userId: null } as any)
 
     const res = await post('https://example.com')
-    expect(res.status).toBe(401)
+    expect(res.status).toBe(202)
     const body = await res.json()
-    expect(body.error).toBe('UNAUTHENTICATED')
+    expect(body.ok).toBe(true)
+    expect(body.status).toBe('pending')
+    expect(typeof body.jobId).toBe('string')
 
-    // No discovery job should be created
-    expect(createDiscoveryJob).not.toHaveBeenCalled()
-    expect(runFastDiscovery).not.toHaveBeenCalled()
+    // The job must be scoped to the CALLER's identity: the caller's IP when
+    // one is present, and at worst a plain 'anon' bucket when the request
+    // carries no IP headers at all (as this mock's does).
+    expect(createDiscoveryJob).toHaveBeenCalledTimes(1)
+    const jobArg = (createDiscoveryJob as any).mock.calls[0][0]
+    expect(jobArg.clerkUserId).toMatch(/^anon/)
   })
 
-  // -------------------------------------------------------------------------
-  // Unauthenticated: userId is undefined
-  // -------------------------------------------------------------------------
-
-  it('MUST REJECT with 401 when auth returns userId = undefined', async () => {
+  it('MUST ALLOW an unauthenticated caller when auth returns userId = undefined', async () => {
     vi.mocked(auth).mockResolvedValue({ userId: undefined } as any)
 
     const res = await post('https://example.com')
-    expect(res.status).toBe(401)
+    expect(res.status).toBe(202)
     const body = await res.json()
-    expect(body.error).toBe('UNAUTHENTICATED')
-
-    expect(createDiscoveryJob).not.toHaveBeenCalled()
-    expect(runFastDiscovery).not.toHaveBeenCalled()
+    expect(body.ok).toBe(true)
+    expect(body.status).toBe('pending')
   })
 
-  // -------------------------------------------------------------------------
-  // Unauthenticated: auth returns empty string userId
-  // -------------------------------------------------------------------------
-
-  it('MUST REJECT with 401 when auth returns an empty string userId', async () => {
+  it('MUST ALLOW an unauthenticated caller when auth returns an empty string userId', async () => {
     vi.mocked(auth).mockResolvedValue({ userId: '' } as any)
 
     const res = await post('https://example.com')
-    expect(res.status).toBe(401)
+    expect(res.status).toBe(202)
     const body = await res.json()
-    expect(body.error).toBe('UNAUTHENTICATED')
-
-    expect(createDiscoveryJob).not.toHaveBeenCalled()
-    expect(runFastDiscovery).not.toHaveBeenCalled()
+    expect(body.ok).toBe(true)
+    expect(body.status).toBe('pending')
   })
 
   // -------------------------------------------------------------------------
@@ -183,14 +134,19 @@ describe('POST /api/personalization/discover-assets auth', () => {
     vi.mocked(auth).mockResolvedValue({ userId: 'user-123' } as any)
 
     const res = await post('https://example.com')
-    expect(res.status).toBe(200)
+    // The route always accepts a discovery JOB and answers 202 with the job
+    // id immediately — the crawl runs in the background worker and can never
+    // block the initial response.
+    expect(res.status).toBe(202)
     const body = await res.json()
     expect(body.ok).toBe(true)
+    expect(body.status).toBe('pending')
+    expect(typeof body.jobId).toBe('string')
     expect(body.cached).toBe(false)
 
-    // Discovery pipeline must have run
-    expect(runFastDiscovery).toHaveBeenCalledTimes(1)
+    // The job was created and marked running
     expect(createDiscoveryJob).toHaveBeenCalledTimes(1)
+    expect(updateDiscoveryJob).toHaveBeenCalled()
 
     // jobId must be present in the response
     expect(body.jobId).toBeDefined()
@@ -213,25 +169,67 @@ describe('POST /api/personalization/discover-assets auth', () => {
 
     expect(res.status).toBe(400)
     expect(createDiscoveryJob).not.toHaveBeenCalled()
-    expect(runFastDiscovery).not.toHaveBeenCalled()
   })
 
   // -------------------------------------------------------------------------
-  // Auth failure is logged before business logic
+  // Free discovery path: no auth side effects, job is IP-scoped
   // -------------------------------------------------------------------------
 
-  it('logs unauthorized attempts at the auth stage', async () => {
-    const { logPersonalization } = await import('@/server/personalizationLog')
+  it('anonymous callers get the free discovery path with no auth side effects', async () => {
     vi.mocked(auth).mockResolvedValue({ userId: null } as any)
 
-    await post('https://example.com')
+    const res = await post('https://example.com')
+    expect(res.status).toBe(202)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.status).toBe('pending')
 
-    // The log call for auth stage must exist
-    const authCalls = (logPersonalization as any).mock.calls.filter(
-      (call: any) => call[0].stage === 'auth',
-    )
-    expect(authCalls.length).toBeGreaterThanOrEqual(1)
-    expect(authCalls[0][0].httpStatus).toBe(401)
-    expect(authCalls[0][0].safeErrorCode).toBe('UNAUTHORIZED')
+    // Discovery job was created (async dispatch happens in background)
+    expect(createDiscoveryJob).toHaveBeenCalledTimes(1)
+    expect(updateDiscoveryJob).toHaveBeenCalled()
+    // And the job is IP-scoped when an IP is present ('anon' only when the
+    // request has no IP headers at all).
+    const jobArg = (createDiscoveryJob as any).mock.calls[0][0]
+    expect(jobArg.clerkUserId).toMatch(/^anon/)
+  })
+
+  // -------------------------------------------------------------------------
+  // No entitlement gate: authenticated callers proceed to discovery
+  // -------------------------------------------------------------------------
+
+  it('authenticated caller proceeds to discovery (no entitlement gate on free demo route)', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: 'user-123' } as any)
+    vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: false } as any)
+
+    const res = await post('https://example.com')
+    // The route always accepts a discovery JOB and answers 202 with the job
+    // id immediately — the crawl runs in the background worker.
+    expect(res.status).toBe(202)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.status).toBe('pending')
+    expect(typeof body.jobId).toBe('string')
+
+    // Job was created because there is no entitlement gate on this route.
+    expect(createDiscoveryJob).toHaveBeenCalledTimes(1)
+    expect(updateDiscoveryJob).toHaveBeenCalled()
+  })
+
+  it('answers 503 with a retry message instead of hanging when the job store is unresponsive', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.mocked(auth).mockResolvedValue({ userId: null } as any)
+      vi.mocked(createDiscoveryJob).mockReturnValue(new Promise(() => {}))
+
+      const pending = post('https://example.com')
+      await vi.advanceTimersByTimeAsync(8_000)
+      const res = await pending
+
+      expect(res.status).toBe(503)
+      expect(res.headers.get('Retry-After')).toBe('60')
+      expect((await res.json()).error).toMatch(/try again/)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

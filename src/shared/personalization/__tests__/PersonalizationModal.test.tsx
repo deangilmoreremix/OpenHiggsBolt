@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useEffect } from 'react';
-import { render, screen, act, configure } from '@testing-library/react';
+import { render, screen, act, configure, waitFor } from '@testing-library/react';
 import { createRoot } from 'react-dom/client';
 import PersonalizationModal from '../PersonalizationModal';
 import { DemoPersonalizeProvider, useDemoPersonalize } from '../DemoPersonalizeProvider';
@@ -152,6 +152,39 @@ function installFastStyleAccessors(): void {
 }
 
 installFastStyleAccessors()
+
+/**
+ * Deterministic wait for an async UI state to settle.
+ *
+ * Replaces the previous fixed `setTimeout(r, 50–100)` sleeps before assertions
+ * on an async-settled DOM. A fixed sleep is a race: under host load the
+ * settled state can land AFTER the sleep expires, so an otherwise-correct
+ * feature fails its assertion — which is exactly the flake recorded as
+ * Phase 3 item 9 for this file's business-research retry test. The helper
+ * polls inside `act` until the element appears or a bounded deadline passes,
+ * so every assertion keeps its original form and the wait is only as long as
+ * the state actually needs (typically a single 10 ms tick).
+ *
+ * The query receives the SAME text/role arguments the assertion uses, so the
+ * wait and the assertion can never drift apart.
+ */
+async function waitForElement(
+  query: () => HTMLElement | null,
+  description: string,
+  timeoutMs = 5000,
+): Promise<HTMLElement> {
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    const found = query()
+    if (found) return found
+    if (Date.now() > deadline) {
+      throw new Error(`waitForElement: "${description}" never appeared within ${timeoutMs}ms`)
+    }
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10))
+    })
+  }
+}
 
 function TestOpener({ source, onMounted }: { source: any; onMounted: (open: (opts: any) => void) => void }) {
   const { openPersonalize, isOpen } = useDemoPersonalize();
@@ -482,9 +515,10 @@ describe('PersonalizationModal', () => {
       ;(window as any).__personalizationCtx.researchBusiness()
     })
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 100))
-    })
+    await waitForElement(
+      () => screen.queryByText('Research failed: Server error'),
+      'Research failed: Server error',
+    )
 
     expect(screen.getByText('Research failed: Server error')).toBeTruthy()
     expect(screen.getByText('Retry')).toBeTruthy()
@@ -536,12 +570,12 @@ describe('PersonalizationModal', () => {
       ;(window as any).__personalizationCtx.addLogoFiles(files)
     })
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 50))
+    // Wait for the retry affordance to render rather than racing a fixed
+    // wall-clock delay. The modal's runtime path is slow when local env
+    // files are present, and a 50ms sleep made this assertion flaky.
+    await waitFor(() => {
+      expect(screen.getAllByText('Retry').length).toBeGreaterThanOrEqual(1)
     })
-
-    const retryButtons = screen.getAllByText('Retry')
-    expect(retryButtons.length).toBeGreaterThanOrEqual(1)
   })
   // ── Find Local Business (lead finder) entry flow ──────────────────────────
 
@@ -727,9 +761,11 @@ describe('PersonalizationModal', () => {
     })
 
     // Results render the lead list with the match score.
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 50))
-    })
+    // Await the settled results instead of a fixed sleep (Phase 3 item 9).
+    await waitForElement(
+      () => screen.queryByText('Sunset Realty'),
+      'Sunset Realty lead row',
+    )
     expect(screen.getByText('Sunset Realty')).toBeTruthy()
     expect(screen.getByText('80% match')).toBeTruthy()
     expect(screen.getByText('1 businesses found for Real Estate near Tampa, FL')).toBeTruthy()

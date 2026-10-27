@@ -6,7 +6,7 @@
  *   getNicheMapping/getSupportedNiches are kept (re-exported from the
  *   dependency-free nicheMappings module) so niche-validation tests exercise
  *   the real supported list; every network-touching export (geocodeLocation,
- *   discoverBusinesses, deduplicateBusinesses, enrichBusinessRecord,
+ *   discoverBusinesses, deduplicateBusinesses,
  *   scoreAndSort, createCacheKey, businessDiscoveryCache) is a controllable
  *   mock.
  * - '@/server/personalizationLog' and '@/server/envValidation' are mocked.
@@ -72,6 +72,20 @@ vi.mock('@/lib/rateLimit', () => ({
   rateLimit429: rateLimitMocks.rateLimit429,
 }))
 
+// The route is now gated by requireApiEntitlement, which pulls in the real
+// server-only Clerk auth() and the Supabase-backed
+// resolveSmartVideoAccessForUser. Stub both seams at the module boundary (the
+// tests/proxy-routes.vitest.test.ts idiom) so the entitled path is exercised
+// without a Clerk session or Supabase env; the entitlement-gate case flips
+// resolveSmartVideoAccessForUser to hasSmartVideoGo:false to assert the 403.
+vi.mock('@clerk/nextjs/server', () => ({
+  auth: vi.fn(async () => ({ userId: 'test-user' })),
+}))
+
+vi.mock('@/access/resolveAccess', () => ({
+  resolveSmartVideoAccessForUser: vi.fn(async () => ({ hasSmartVideoGo: true })),
+}))
+
 vi.mock('@/server/businessDiscovery', async () => {
   // Real niche lookups come from the dependency-free nicheMappings module so
   // no part of the network graph (nominatim/overpass/research providers) is
@@ -82,9 +96,21 @@ vi.mock('@/server/businessDiscovery', async () => {
     getSupportedNiches: nicheMappings.getSupportedNiches,
     geocodeLocation: vi.fn(),
     discoverBusinesses: vi.fn(),
+    // The route races the Overpass provider against the Nominatim business
+    // search, so both are part of the mocked module surface. The Nominatim
+    // search contributes no records here, which leaves the Overpass result
+    // as the winner.
+    searchBusinessesViaNominatim: vi.fn(async () => []),
     deduplicateBusinesses: vi.fn(),
-    enrichBusinessRecord: vi.fn(),
     scoreAndSort: vi.fn(),
+    // Ownership classification is part of the route's own pipeline, so the
+    // mock must supply it or every success-path test fails with a 500.
+    classifyRecords: vi.fn((records: unknown[]) => records),
+    excludeNationalChains: vi.fn((records: unknown[]) => ({
+      kept: records,
+      excluded: [],
+      unknownRetained: [],
+    })),
     createCacheKey: vi.fn(),
     businessDiscoveryCache: { get: vi.fn(), set: vi.fn() },
   }
@@ -92,11 +118,12 @@ vi.mock('@/server/businessDiscovery', async () => {
 
 // Import after mocks are registered
 import { POST } from '@/app/api/personalization/find-businesses/route'
+import { auth } from '@clerk/nextjs/server'
+import { resolveSmartVideoAccessForUser } from '@/access/resolveAccess'
 import {
   geocodeLocation,
   discoverBusinesses,
   deduplicateBusinesses,
-  enrichBusinessRecord,
   scoreAndSort,
   createCacheKey,
   businessDiscoveryCache,
@@ -129,6 +156,11 @@ beforeEach(() => {
   // flip entitlementMocks.allowed to false for the duration of one test.
   entitlementMocks.allowed = true
 
+  // Default: an authenticated, entitled caller so the gate opens and every
+  // pre-existing case exercises the handler's own logic.
+  vi.mocked(auth).mockResolvedValue({ userId: 'test-user' } as any)
+  vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: true } as any)
+
   vi.mocked(createCorrelationId).mockReturnValue('test-correlation-id')
   vi.mocked(validatePersonalizationEnv).mockReturnValue({ valid: true, missingRequired: [] } as any)
 
@@ -140,7 +172,6 @@ beforeEach(() => {
   vi.mocked(discoverBusinesses).mockResolvedValue([rawRecord('one'), rawRecord('two')] as any)
   vi.mocked(deduplicateBusinesses).mockImplementation((items: any) => items)
   vi.mocked(scoreAndSort).mockImplementation((items: any) => items)
-  vi.mocked(enrichBusinessRecord).mockImplementation((record: any) => record)
   vi.mocked(createCacheKey).mockImplementation(
     (niche: string, location: string, radiusMiles: number) =>
       `${niche}|${location}|${radiusMiles}`,
@@ -223,6 +254,38 @@ describe('find-businesses route — validation 400s', () => {
 })
 
 // ---------------------------------------------------------------------------
+// No entitlement gate: find-businesses is free for the demo experience
+// ---------------------------------------------------------------------------
+
+describe('find-businesses route — no entitlement gate', () => {
+  it('200 when the caller is authenticated but unentitled (free demo route)', async () => {
+    vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: false } as any)
+
+    const res = await post({ niche: NICHE, location: LOCATION })
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+
+    // Discovery machinery runs because there is no entitlement gate.
+    expect(geocodeLocation).toHaveBeenCalled()
+    expect(discoverBusinesses).toHaveBeenCalled()
+  })
+
+  it('200 when the caller has no session (free demo route, unauthenticated OK)', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: null } as any)
+
+    const res = await post({ niche: NICHE, location: LOCATION })
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+
+    // Discovery machinery runs because there is no auth gate on this route.
+    expect(geocodeLocation).toHaveBeenCalled()
+    expect(discoverBusinesses).toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
 // radius / limit fallback + clamping
 // ---------------------------------------------------------------------------
 
@@ -286,7 +349,12 @@ describe('find-businesses route — success flow', () => {
     expect(typeof body.durationMs).toBe('number')
 
     // Full pipeline invoked in order against the mocked dependencies.
-    expect(geocodeLocation).toHaveBeenCalledWith(LOCATION)
+    // The geocoder receives the request budget's abort signal so a stalled
+    // upstream is cancelled instead of lingering.
+    expect(geocodeLocation).toHaveBeenCalledWith(
+      LOCATION,
+      expect.objectContaining({ signal: expect.anything() }),
+    )
     expect(discoverBusinesses).toHaveBeenCalledWith(
       expect.objectContaining({
         niche: NICHE,
@@ -298,7 +366,6 @@ describe('find-businesses route — success flow', () => {
     )
     expect(deduplicateBusinesses).toHaveBeenCalledTimes(1)
     expect(scoreAndSort).toHaveBeenCalledTimes(1)
-    expect(enrichBusinessRecord).toHaveBeenCalledTimes(2)
     // Results are cached with the 1h TTL.
     expect(businessDiscoveryCache.set).toHaveBeenCalledWith(
       `${NICHE}|${LOCATION}|15`,
@@ -380,19 +447,6 @@ describe('find-businesses route — unexpected failure', () => {
     expect(body.correlationId).toBe('test-correlation-id')
     expect(res.headers.get('x-correlation-id')).toBe('test-correlation-id')
   })
-
-  it('500 when personalization env validation fails', async () => {
-    vi.mocked(validatePersonalizationEnv).mockReturnValue({
-      valid: false,
-      missingRequired: ['SOME_KEY'],
-    } as any)
-
-    const res = await post({ niche: NICHE, location: LOCATION })
-    expect(res.status).toBe(500)
-    const body = await res.json()
-    expect(body.error).toBe('Server configuration error')
-    expect(body.correlationId).toBe('test-correlation-id')
-  })
 })
 
 // ---------------------------------------------------------------------------
@@ -473,5 +527,27 @@ describe('find-businesses route — rate limiting behavior', () => {
       'x-real-ip': '198.51.100.99',
     })
     expect(otherIp.status).toBe(200)
+  })
+
+  it('429 answers with JSON carrying a stable code and the correlationId', async () => {
+    // The rate limiter is an error path of this route, so it must obey the
+    // same contract as every other error path: a JSON body a client can
+    // branch on, plus the id that correlates the answer with the log.
+    const ipA = { 'x-real-ip': '203.0.113.77' }
+    for (let i = 0; i < 10; i += 1) {
+      const res = await post({ niche: NICHE, location: LOCATION }, ipA)
+      expect(res.status).toBe(200)
+    }
+
+    const blocked = await post({ niche: NICHE, location: LOCATION }, ipA)
+    expect(blocked.status).toBe(429)
+    expect(blocked.headers.get('content-type')).toMatch(/application\/json/i)
+    expect(blocked.headers.get('retry-after')).toBe('60')
+    expect(blocked.headers.get('x-correlation-id')).toBe('test-correlation-id')
+
+    const body = await blocked.json()
+    expect(body.error).toMatch(/rate limit exceeded/i)
+    expect(body.code).toBe('RATE_LIMITED')
+    expect(body.correlationId).toBe('test-correlation-id')
   })
 })

@@ -3,6 +3,12 @@ import { NextRequest } from 'next/server'
 
 let authUserId: string | null = 'user-123'
 
+// POST/DELETE are gated by requireApiEntitlement → resolveSmartVideoAccessForUser.
+// A hoisted handle lets each test drive the entitled/unentitled path while the
+// beforeEach doMock re-registers a fresh spy against the reset module graph
+// (the tests/proxy-routes.vitest.test.ts idiom).
+const projectAccess = vi.hoisted(() => ({ resolveSmartVideoAccessForUser: vi.fn() }))
+
 type SupabaseMockState = {
   projectData: Record<string, unknown> | null
   listData: Record<string, unknown>[]
@@ -65,6 +71,15 @@ beforeEach(() => {
   vi.doMock('@clerk/nextjs/server', () => ({
     auth: vi.fn(async () => ({ userId: authUserId })),
   }))
+
+  // Default: entitled caller so POST/DELETE pass the entitlement gate and reach
+  // their own logic. (clearAllMocks keeps implementations, so re-seed here to
+  // undo any prior test's hasSmartVideoGo:false override.)
+  vi.doMock('@/access/resolveAccess', () => ({
+    resolveSmartVideoAccessForUser: projectAccess.resolveSmartVideoAccessForUser,
+  }))
+  projectAccess.resolveSmartVideoAccessForUser.mockReset()
+  projectAccess.resolveSmartVideoAccessForUser.mockResolvedValue({ hasSmartVideoGo: true } as any)
 
   vi.doMock('@/lib/supabase', () => {
     const createEqChain = (terminal: () => Promise<{ data: unknown; error: unknown }>) => {

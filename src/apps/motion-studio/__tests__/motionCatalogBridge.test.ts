@@ -69,7 +69,7 @@ describe('catalog ↔ card-registry bridge', () => {
     const multi = MOTION_TEMPLATE_CARDS.filter(
       (c) => motionTemplateVariants(c).length > 1,
     );
-    expect(multi.length).toBe(21);
+    expect(multi.length).toBe(20);
     for (const c of multi) {
       for (const v of motionTemplateVariants(c)) {
         expect(CARDS[motionCardId(v)]).toBeTruthy();

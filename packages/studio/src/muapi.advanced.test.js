@@ -25,17 +25,17 @@ describe('generateVideo supplemental input pass-through', () => {
     return { result, capturedBody };
   }
 
-  it('Seedance 2.5: forwards defined supplemental inputs (generate_audio, camera_fixed)', async () => {
+  it('Seedance 2.5: forwards defined supplemental inputs (high_bitrate, seed)', async () => {
     const { result, capturedBody } = await runWith('seedance-2.5-text-to-video', {
       prompt: 'x',
-      generate_audio: false,
-      camera_fixed: true,
+      high_bitrate: true,
+      seed: 42,
     });
 
     expect(result.url).toBe('https://example.com/video.mp4');
     expect(capturedBody.prompt).toBe('x');
-    expect(capturedBody.generate_audio).toBe(false);
-    expect(capturedBody.camera_fixed).toBe(true);
+    expect(capturedBody.high_bitrate).toBe(true);
+    expect(capturedBody.seed).toBe(42);
   });
 
   it('Seedance 2.5: only includes explicitly provided supplemental inputs in payload', async () => {
@@ -61,18 +61,18 @@ describe('generateVideo supplemental input pass-through', () => {
 
   it('buildSupplementalInputPayload: maps only defined model inputs', () => {
     const values = {
-      generate_audio: false,
-      camera_fixed: true,
+      generate_audio: false,      // NOT a defined input for Seedance
+      camera_fixed: true,         // NOT a defined input for Seedance
       negative_prompt: 'no cats', // NOT a defined input for Seedance
-      seed: 42,                   // NOT a defined input for Seedance
+      seed: 42,                   // IS a defined input for Seedance
     };
 
     const payload = buildSupplementalInputPayload(seedance25, values);
 
-    expect(payload.generate_audio).toBe(false);
-    expect(payload.camera_fixed).toBe(true);
+    expect(payload).not.toHaveProperty('generate_audio');
+    expect(payload).not.toHaveProperty('camera_fixed');
     expect(payload).not.toHaveProperty('negative_prompt');
-    expect(payload).not.toHaveProperty('seed');
+    expect(payload.seed).toBe(42);
   });
 
   it('buildSupplementalInputPayload: handles empty values', () => {
@@ -82,14 +82,12 @@ describe('generateVideo supplemental input pass-through', () => {
 
   it('buildSupplementalInputPayload: applies defaults for undefined/null values', () => {
     const values = {
-      generate_audio: undefined,
-      camera_fixed: null,
+      high_bitrate: undefined,
     };
 
     const payload = buildSupplementalInputPayload(seedance25, values);
 
-    // undefined/null values fall back to schema defaults
-    expect(payload.generate_audio).toBe(true);   // default
-    expect(payload.camera_fixed).toBe(false);   // default
+    // undefined values fall back to schema defaults
+    expect(payload.high_bitrate).toBe(false);  // default
   });
 });

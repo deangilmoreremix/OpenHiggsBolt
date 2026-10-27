@@ -1,0 +1,203 @@
+// @vitest-environment jsdom
+import { describe, expect, it } from 'vitest';
+import { MOTION_TEMPLATES } from '@/data/motionRecipeCatalog';
+import {
+  INK_PRESS_SHOTS,
+  ensureRecipes,
+  reviseRecipes,
+  MAX_PICKED_SHOTS,
+  findNamedRecipes,
+  inkPressPlan,
+  isFilmRequest,
+  isNewFilmRequest,
+  findSiteUrl,
+  parseFilmRequest,
+  readTemplateAnswer,
+  singleShotPlan,
+} from '../lib/filmChat';
+import { planToProject } from '../lib/buildFilm';
+import { checkFilmStructure } from '../lib/filmPipeline';
+import { CARDS } from '../cards/registry';
+
+const byComponent = (name: string) => MOTION_TEMPLATES.find((t) => t.componentName === name)!;
+
+describe('film chat requests', () => {
+  it('recognises the four README prompts as film requests', () => {
+    expect(isFilmRequest('Use video-shotcraft to make a promo for my product.')).toBe(true);
+    expect(isFilmRequest('Make a launch film for this repo with the Ink Press template.')).toBe(true);
+    expect(isFilmRequest('Use the deck-deal-flyin and row-embed shot cards to present this feature.')).toBe(true);
+    expect(isFilmRequest('Design a product close-up inspired by spotlight-hero-card.')).toBe(true);
+  });
+
+  it('leaves edit commands to the edit agent', () => {
+    for (const edit of ['make the text bigger', 'set the duration to 8s', 'make the video 8s long', 'change the background to red', 'add a caption clip', 'make my video shorter', 'make a caption clip bigger', 'turn a clip red']) {
+      expect(isFilmRequest(edit)).toBe(false);
+    }
+  });
+
+  it('once a film exists, only an explicit ask starts a new one', () => {
+    for (const edit of ['make my video shorter', 'make the intro a close-up', 'make the promo faster', 'turn the reel red', 'use a bigger font']) {
+      expect(isNewFilmRequest(edit)).toBe(false);
+    }
+    for (const ask of [
+      'Use video-shotcraft to make a promo for my product.',
+      'Make a launch film for this repo with the Ink Press template.',
+      'Use the deck-deal-flyin and row-embed shot cards to present this feature.',
+      'Design a product close-up inspired by spotlight-hero-card.',
+      'create a new 30-second video for acme.io',
+    ]) {
+      expect(isNewFilmRequest(ask)).toBe(true);
+    }
+  });
+
+  it('reads the product URL without cutting longer TLDs short', () => {
+    expect(findSiteUrl('a promo for acme.company please')).toBeNull();
+    expect(findSiteUrl('a promo for acme.software')).toBeNull();
+    expect(findSiteUrl('a promo for acme.co/pricing')).toBe('acme.co/pricing');
+    expect(findSiteUrl('see https://acme.example.com/app.')).toBe('https://acme.example.com/app');
+    expect(findSiteUrl('make a promo for acme.io')).toBe('acme.io');
+  });
+
+  it('finds shots named by slug, in the order they were named', () => {
+    expect(findNamedRecipes('use row-embed then deck-deal-flyin').map((t) => t.componentName)).toEqual(['RowEmbed', 'DeckDealFlyin']);
+    expect(findNamedRecipes('a CrashZoomReal moment').map((t) => t.componentName)).toEqual(['CrashZoomReal']);
+    expect(findNamedRecipes('make a promo')).toEqual([]);
+  });
+
+  it('reads template, single-shot, length and URL from the message', () => {
+    expect(parseFilmRequest('Make a launch film with the Ink Press template').template).toBe('inkpress');
+    expect(parseFilmRequest('make a promo without ink press').template).toBe('director');
+    const single = parseFilmRequest('Design a product close-up inspired by spotlight-hero-card.');
+    expect(single.single?.componentName).toBe('SpotlightHeroCard');
+    const r = parseFilmRequest('a 30-second promo for https://acme.io');
+    expect(r.durationSec).toBe(30);
+    expect(r.siteUrl).toBe('https://acme.io');
+    expect(r.single).toBeNull();
+  });
+
+  it('reads the answer to the Ink Press question', () => {
+    expect(readTemplateAnswer('yes')).toBe('inkpress');
+    expect(readTemplateAnswer('use ink press')).toBe('inkpress');
+    expect(readTemplateAnswer('no, let the director pick')).toBe('director');
+    expect(readTemplateAnswer('hmm what about colours')).toBeNull();
+  });
+});
+
+describe('Ink Press storyboard', () => {
+  it('builds the template film: title, product shots, call to action, fitted to length', () => {
+    const plan = inkPressPlan({ prompt: 'promo for Acme', durationSec: 30 });
+    expect(plan.scenes[0].kind).toBe('title');
+    expect(plan.scenes[plan.scenes.length - 1].kind).toBe('title');
+    expect(plan.scenes.filter((s) => s.kind === 'shot').map((s) => s.recipeId)).toEqual([...INK_PRESS_SHOTS]);
+    expect(plan.scenes[0].headline).toContain('Acme');
+    const total = plan.scenes.reduce((sum, s) => sum + s.durationSec, 0);
+    expect(Math.abs(total - 30)).toBeLessThan(1);
+  });
+
+  it("writes the copy from the captured site's own words", () => {
+    const plan = inkPressPlan({
+      prompt: 'promo for Acme',
+      durationSec: 30,
+      content: { headline: 'Ship faster with Acme', headings: ['Plan in minutes', 'Build together'], ctas: ['Start free'] },
+    });
+    expect(plan.scenes[0].caption).toBe('Ship faster with Acme');
+    const shots = plan.scenes.filter((s) => s.kind === 'shot');
+    expect(shots.slice(0, 2).map((s) => s.caption)).toEqual(['Plan in minutes', 'Build together']);
+    expect(plan.scenes[plan.scenes.length - 1].caption).toBe('Start free');
+  });
+
+  it('uses exactly the named shots when the user picks them', () => {
+    const picked = [byComponent('DeckDealFlyin'), byComponent('RowEmbed')];
+    const plan = inkPressPlan({ prompt: 'present this feature', durationSec: 12, recipes: picked });
+    expect(plan.scenes.filter((s) => s.kind === 'shot').map((s) => s.recipeId)).toEqual(picked.map((p) => p.id));
+  });
+
+  it('puts missing named shots back into a director plan before the closing card', () => {
+    const plan = inkPressPlan({ prompt: 'x', durationSec: 20 });
+    const named = byComponent('HitCounter');
+    const fixed = ensureRecipes(plan, [named], 20);
+    expect(fixed.scenes.some((s) => s.recipeId === named.id)).toBe(true);
+    expect(fixed.scenes[fixed.scenes.length - 1].kind).toBe('title');
+  });
+
+  it('puts the named shots in the order they were named, even when the director swapped them', () => {
+    const deck = byComponent('DeckDealFlyin');
+    const row = byComponent('RowEmbed');
+    const plan = inkPressPlan({ prompt: 'x', durationSec: 16, recipes: [row, deck] });
+    expect(plan.scenes.filter((s) => s.kind === 'shot').map((s) => s.recipeId)).toEqual([row.id, deck.id]);
+    const fixed = ensureRecipes(plan, [deck, row], 16);
+    expect(fixed.scenes.filter((s) => s.kind === 'shot').map((s) => s.recipeId)).toEqual([deck.id, row.id]);
+    // Titles stay where they were.
+    expect(fixed.scenes[0].kind).toBe('title');
+    expect(fixed.scenes[fixed.scenes.length - 1].kind).toBe('title');
+    // Already in order: the plan comes back untouched.
+    expect(ensureRecipes(fixed, [deck, row], 16)).toBe(fixed);
+  });
+
+  it('never drops a named shot for a title card when the storyboard is full', () => {
+    const shots = MOTION_TEMPLATES.slice(0, 14);
+    const ids = (p: { scenes: { kind: string; recipeId: string }[] }) => p.scenes.filter((s) => s.kind === 'shot').map((s) => s.recipeId);
+    const twelve = inkPressPlan({ prompt: 'x', durationSec: 60, recipes: shots.slice(0, MAX_PICKED_SHOTS) });
+    expect(ids(twelve)).toEqual(shots.slice(0, 12).map((t) => t.id));
+    expect(twelve.scenes[0].kind).toBe('title');
+    const fourteen = inkPressPlan({ prompt: 'x', durationSec: 60, recipes: shots });
+    expect(ids(fourteen)).toEqual(shots.map((t) => t.id));
+    // ensureRecipes on a plan with titles makes room by dropping the titles, not the named shots.
+    const repaired = ensureRecipes(twelve, shots, 60);
+    expect(ids(repaired)).toEqual(shots.map((t) => t.id));
+  });
+
+  it('revisions replace shots when asked to, and add them otherwise', () => {
+    const deck = byComponent('DeckDealFlyin');
+    const row = byComponent('RowEmbed');
+    const crash = byComponent('CrashZoomReal');
+    expect(reviseRecipes([deck, row], 'use CrashZoomReal instead of row-embed')).toEqual([deck, crash]);
+    expect(reviseRecipes([deck, row], 'replace deck-deal-flyin with CrashZoomReal')).toEqual([crash, row]);
+    expect(reviseRecipes([deck, row], 'swap row-embed for CrashZoomReal')).toEqual([deck, crash]);
+    expect(reviseRecipes([deck, row], 'use CrashZoomReal instead')).toEqual([crash]);
+    expect(reviseRecipes([deck, row], 'remove row-embed')).toEqual([deck]);
+    expect(reviseRecipes([deck], 'also add row-embed at the end')).toEqual([deck, row]);
+    expect(reviseRecipes([deck, row], 'make it 20 seconds')).toEqual([deck, row]);
+  });
+
+  it('builds a single adapted shot and a clean full-HD project from a storyboard', () => {
+    const single = singleShotPlan(byComponent('SpotlightHeroCard'), { prompt: 'close-up for Acme' });
+    expect(single.scenes).toHaveLength(1);
+    // A length the user asked for wins over the shot's native length (within the scene limits).
+    expect(singleShotPlan(byComponent('SpotlightHeroCard'), { prompt: 'x', durationSec: 10 }).scenes[0].durationSec).toBe(10);
+    expect(singleShotPlan(byComponent('SpotlightHeroCard'), { prompt: 'x', durationSec: 99 }).scenes[0].durationSec).toBe(12);
+    const project = planToProject(inkPressPlan({ prompt: 'promo for Acme', durationSec: 20 }), { aspectRatio: '16:9' });
+    expect([project.width, project.height, project.fps]).toEqual([1920, 1080, 30]);
+    for (const clip of project.tracks.flatMap((t) => t.clips)) expect(CARDS[clip.cardId]).toBeDefined();
+    const qa = checkFilmStructure(project, { hasProductImages: false });
+    expect(qa.issues).toEqual([]);
+    expect(qa.warnings.length).toBe(1);
+  });
+});
+
+describe('Brand Kit logo and attached videos', () => {
+  const plan = () => inkPressPlan({ prompt: 'promo for Acme', durationSec: 20 });
+  const clips = (p: ReturnType<typeof planToProject>) => p.tracks.flatMap((t) => t.clips);
+
+  it('stamps the logo on every title card', () => {
+    const project = planToProject(plan(), { aspectRatio: '16:9', logo: 'https://cdn.example.com/logo.png' });
+    const titles = clips(project).filter((c) => c.cardId === 'inkpress-title-card');
+    expect(titles.length).toBe(2);
+    for (const t of titles) expect(t.props.logo).toBe('https://cdn.example.com/logo.png');
+  });
+
+  it('plays attached videos before the closing card, back to back with the shots', () => {
+    const project = planToProject(plan(), {
+      aspectRatio: '16:9',
+      videos: [{ url: 'blob:demo-1', name: 'demo.mp4', durationSec: 3 }, { url: 'blob:demo-2', name: 'long.mp4', durationSec: 40 }],
+    });
+    const shots = project.tracks.find((t) => t.clips.some((c) => c.cardId === 'video-clip'))!.clips.slice().sort((a, b) => a.start - b.start);
+    const ids = shots.map((c) => c.cardId);
+    expect(ids.slice(-3)).toEqual(['video-clip', 'video-clip', 'inkpress-title-card']);
+    const [v1, v2] = shots.filter((c) => c.cardId === 'video-clip');
+    expect(v1.duration).toBe(90); // 3 s
+    expect(v2.duration).toBe(240); // clamped to 8 s
+    expect(v1.props.file).toBe('blob:demo-1');
+    expect(checkFilmStructure(project).issues).toEqual([]);
+  });
+});

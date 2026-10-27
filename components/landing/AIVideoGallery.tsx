@@ -1,5 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
 import DemoMediaCard from './DemoMediaCard';
 import { MINIMAX_H3_DEMOS, DEMO_CATEGORIES } from '@/data/minimaxH3Demos';
 import { type VideoDemo } from '@/data/types';
@@ -30,6 +31,7 @@ export default function AIVideoGallery({
   sectionId = 'smartvideo-gallery',
   initialCount = INITIAL_COUNT,
 }: AIVideoGalleryProps) {
+  const reduced = useReducedMotion();
   const allDemos = demos ?? MINIMAX_H3_DEMOS;
   const [category, setCategory] = useState<string>('All');
   const [visible, setVisible] = useState(initialCount);
@@ -72,24 +74,38 @@ export default function AIVideoGallery({
                   setVisible(initialCount);
                 }}
                 aria-pressed={active}
-                className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                className={`relative rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
                   active
-                    ? 'border-transparent bg-gradient-to-r from-cyan-400 to-purple-500 text-black'
+                    ? 'border-transparent text-black'
                     : 'border-white/15 bg-white/[0.04] text-white/70 hover:bg-white/[0.08]'
                 }`}
               >
-                {cat}
+                {/* Motion: the active highlight slides between filters */}
+                {active && (
+                  <motion.span
+                    layoutId={`${sectionId}-filter`}
+                    className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500"
+                    transition={{ type: 'spring', stiffness: 400, damping: 34 }}
+                  />
+                )}
+                <span className="relative">{cat}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Grid */}
-        <div className="mt-10 grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
+        {/* Grid — Motion fades/lifts the new set in whenever the filter changes */}
+        <motion.div
+          key={category}
+          initial={reduced ? false : { opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="mt-10 grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4"
+        >
           {shown.map((demo, i) => (
             <DemoMediaCard key={demo.slug} demo={demo} index={i} />
           ))}
-        </div>
+        </motion.div>
 
         {/* Show more */}
         {visible < filtered.length && (

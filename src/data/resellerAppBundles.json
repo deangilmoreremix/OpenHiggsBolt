@@ -1,0 +1,845 @@
+{
+  "$comment": "Source-bundle manifest for the Apps Studio reseller collection. Bundles are delivered ONLY via the private Supabase Storage bucket reseller-app-bundles through short-lived signed URLs minted by app/api/reseller/download/route.ts. Checksums are intentionally null and every artifact is status=missing: no bundle zips exist yet, so no checksums may be invented.",
+  "bucket": "reseller-app-bundles",
+  "bucketVisibility": "private",
+  "signedUrlTtlSeconds": 120,
+  "sourceOfTruth": "packages/studio/src/components/AppsStudio.jsx (APPS array)",
+  "apps": [
+    {
+      "id": "ai-headshot-studio",
+      "name": "AI Headshot Studio",
+      "category": "Image",
+      "repo": "https://github.com/deangilmoreremix/ai-headshot-generator",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-headshot-studio/ai-headshot-studio-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-headshot-studio/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "nano-banana-studio",
+      "name": "Nano Banana Studio",
+      "category": "Image",
+      "repo": "https://github.com/deangilmoreremix/nano-banana-generator",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/nano-banana-studio/nano-banana-studio-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/nano-banana-studio/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "seedance-v2-studio",
+      "name": "Seedance V2 Studio",
+      "category": "Video",
+      "repo": "https://github.com/deangilmoreremix/seedance-2-generator",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/seedance-v2-studio/seedance-v2-studio-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/seedance-v2-studio/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "ai-clipping-studio",
+      "name": "AI Clipping Studio",
+      "category": "Video",
+      "repo": "https://github.com/deangilmoreremix/ai-clipping-generator",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-clipping-studio/ai-clipping-studio-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-clipping-studio/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "ai-youtube-shorts-generator",
+      "name": "AI YouTube Shorts Generator",
+      "category": "Video",
+      "repo": "https://github.com/deangilmoreremix/AI-Youtube-Shorts-Generator",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-youtube-shorts-generator/ai-youtube-shorts-generator-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-youtube-shorts-generator/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "easyveo-studio",
+      "name": "EasyVeo Studio",
+      "category": "Video",
+      "repo": "https://github.com/deangilmoreremix/veo4-video-generator",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/easyveo-studio/easyveo-studio-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/easyveo-studio/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "pet-product-studio",
+      "name": "Pet Product Studio",
+      "category": "Business",
+      "repo": "https://github.com/deangilmoreremix/pet-product-studio",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/pet-product-studio/pet-product-studio-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/pet-product-studio/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "resale-photo-enhancer",
+      "name": "Resale Photo Enhancer",
+      "category": "Business",
+      "repo": "https://github.com/deangilmoreremix/resale-photo-enhancer",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/resale-photo-enhancer/resale-photo-enhancer-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/resale-photo-enhancer/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "blogger-cms",
+      "name": "Blogger CMS",
+      "category": "Business",
+      "repo": "https://github.com/deangilmoreremix/blogger-cms",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/blogger-cms/blogger-cms-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/blogger-cms/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "amazon-product-studio",
+      "name": "Amazon Product Studio",
+      "category": "Business",
+      "repo": "https://github.com/deangilmoreremix/amazon-product-studio",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/amazon-product-studio/amazon-product-studio-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/amazon-product-studio/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "ai-business-card",
+      "name": "AI Business Card",
+      "category": "Business",
+      "repo": "https://github.com/deangilmoreremix/ai-business-card",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-business-card/ai-business-card-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-business-card/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "mailwise",
+      "name": "MailWise",
+      "category": "Productivity",
+      "repo": "https://github.com/deangilmoreremix/mail-wise",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/mailwise/mailwise-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/mailwise/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "my-podcast",
+      "name": "My Podcast",
+      "category": "Audio",
+      "repo": "https://github.com/deangilmoreremix/my-podcast",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/my-podcast/my-podcast-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/my-podcast/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "ai-knowledge-base",
+      "name": "AI Knowledge Base",
+      "category": "Business",
+      "repo": "https://github.com/deangilmoreremix/ai-knowledge-base",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-knowledge-base/ai-knowledge-base-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-knowledge-base/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "ai-royal-portrait",
+      "name": "AI Royal Portrait",
+      "category": "Creative",
+      "repo": "https://github.com/deangilmoreremix/ai-royal-portrait",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-royal-portrait/ai-royal-portrait-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-royal-portrait/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "ai-meme",
+      "name": "AI MEME",
+      "category": "Creative",
+      "repo": "https://github.com/deangilmoreremix/ai-meme-generator",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-meme/ai-meme-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-meme/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "ai-real-estate-stager",
+      "name": "AI Real Estate Stager",
+      "category": "Real Estate",
+      "repo": "https://github.com/deangilmoreremix/ai-real-estate-stager",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-real-estate-stager/ai-real-estate-stager-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-real-estate-stager/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "ai-logo",
+      "name": "AI Logo",
+      "category": "Design",
+      "repo": "https://github.com/deangilmoreremix/ai-logo-studio",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-logo/ai-logo-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-logo/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "oldphoto",
+      "name": "OldPhoto",
+      "category": "Creative",
+      "repo": "https://github.com/deangilmoreremix/old-photo-restore",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/oldphoto/oldphoto-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/oldphoto/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "aitryon",
+      "name": "AITryOn",
+      "category": "Lifestyle",
+      "repo": "https://github.com/deangilmoreremix/ai-tryon",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/aitryon/aitryon-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/aitryon/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "ai-professional-makeup-generator",
+      "name": "AI Professional Makeup Generator",
+      "category": "Lifestyle",
+      "repo": "https://github.com/deangilmoreremix/ai-professional-makeup-generator",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-professional-makeup-generator/ai-professional-makeup-generator-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-professional-makeup-generator/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "ai-group-photo",
+      "name": "AI Group Photo",
+      "category": "Creative",
+      "repo": "https://github.com/deangilmoreremix/ai-group-photo",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-group-photo/ai-group-photo-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-group-photo/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "ai-tattoo-try-on",
+      "name": "AI Tattoo Try-On",
+      "category": "Lifestyle",
+      "repo": "https://github.com/deangilmoreremix/ai-tattoo-try-on",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-tattoo-try-on/ai-tattoo-try-on-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-tattoo-try-on/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "ai-hair-style-simulator",
+      "name": "AI Hair Style Simulator",
+      "category": "Lifestyle",
+      "repo": "https://github.com/deangilmoreremix/ai-hair-style-simulator",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-hair-style-simulator/ai-hair-style-simulator-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-hair-style-simulator/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "ai-kids-to-adult-prediction",
+      "name": "AI Kids-to-Adult Prediction",
+      "category": "Creative",
+      "repo": "https://github.com/deangilmoreremix/ai-kid-to-adult-prediction",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-kids-to-adult-prediction/ai-kids-to-adult-prediction-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-kids-to-adult-prediction/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "ai-room-declutter",
+      "name": "AI Room Declutter",
+      "category": "Real Estate",
+      "repo": "https://github.com/deangilmoreremix/ai-room-declutter",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-room-declutter/ai-room-declutter-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-room-declutter/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "ai-fitness-body-simulator",
+      "name": "AI Fitness Body Simulator",
+      "category": "Lifestyle",
+      "repo": "https://github.com/deangilmoreremix/ai-fitness-body-simulator",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-fitness-body-simulator/ai-fitness-body-simulator-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-fitness-body-simulator/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "ai-pet-portrait",
+      "name": "AI Pet Portrait",
+      "category": "Lifestyle",
+      "repo": "https://github.com/deangilmoreremix/ai-pet-portrait",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-pet-portrait/ai-pet-portrait-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-pet-portrait/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "ai-kissing-video-generator",
+      "name": "AI Kissing Video Generator",
+      "category": "Video",
+      "repo": "https://github.com/deangilmoreremix/ai-kissing-video-generator",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-kissing-video-generator/ai-kissing-video-generator-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-kissing-video-generator/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "ai-travel-studio",
+      "name": "AI Travel Studio",
+      "category": "Creative",
+      "repo": "https://github.com/deangilmoreremix/ai-travel-studio",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-travel-studio/ai-travel-studio-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-travel-studio/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "prompt-architect",
+      "name": "Prompt Architect",
+      "category": "Productivity",
+      "repo": "https://github.com/deangilmoreremix/prompt-architect",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/prompt-architect/prompt-architect-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/prompt-architect/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "clearmark-ai",
+      "name": "ClearMark AI",
+      "category": "Business",
+      "repo": "https://github.com/deangilmoreremix/clearmark-ai",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/clearmark-ai/clearmark-ai-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/clearmark-ai/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "ai-wedding-photo",
+      "name": "AI Wedding Photo",
+      "category": "Creative",
+      "repo": "https://github.com/deangilmoreremix/ai-wedding-photo",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-wedding-photo/ai-wedding-photo-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-wedding-photo/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "social-post",
+      "name": "Social Post",
+      "category": "Marketing",
+      "repo": "https://github.com/deangilmoreremix/social-post",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/social-post/social-post-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/social-post/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "magicself-ai",
+      "name": "MagicSelf AI",
+      "category": "Creative",
+      "repo": "https://github.com/deangilmoreremix/magicself-ai",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/magicself-ai/magicself-ai-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/magicself-ai/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "ai-resume-builder",
+      "name": "AI Resume Builder",
+      "category": "Productivity",
+      "repo": null,
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-resume-builder/ai-resume-builder-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-resume-builder/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "geo-checker",
+      "name": "GEO Checker",
+      "category": "Business",
+      "repo": "https://github.com/deangilmoreremix/geo-checker",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/geo-checker/geo-checker-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/geo-checker/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    },
+    {
+      "id": "ai-character-studio",
+      "name": "AI Character Studio",
+      "category": "Creative",
+      "repo": "https://github.com/deangilmoreremix/ai-character-studio",
+      "artifacts": [
+        {
+          "kind": "source-zip",
+          "objectPath": "bundles/ai-character-studio/ai-character-studio-source.zip",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact. Not produced yet - upload to private bucket, then record the sha256 here."
+        },
+        {
+          "kind": "setup-docs",
+          "objectPath": "bundles/ai-character-studio/docs/setup.md",
+          "status": "missing",
+          "sha256": null,
+          "note": "Required artifact (per package copy: included source files and setup documentation). Not produced yet."
+        }
+      ]
+    }
+  ]
+}

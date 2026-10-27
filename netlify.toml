@@ -1,18 +1,13 @@
 [build]
   # Build all workspace packages whose dist/ is gitignored and must be
   # generated before the root Next.js build can resolve them.
-  # Start from a clean .next AND a clean .netlify so the published tree can
-  # never be a mix of two different builds. A stale .next made the deployed
-  # bundle serve chunks that 404 and boot the wrong studio; a stale
-  # .netlify made the packaged SSR function disagree with the published
-  # static tree (the page then referenced chunks that were never uploaded).
-  # Clean the build output and the packaged functions, but NOT the whole
-  # .netlify directory: .netlify/state.json is this worktree's site link, and
-  # deleting it makes the CLI re-detect the site by walking up to the root
-  # checkout, whose base directory is then used to resolve the
-  # included_files glob for the SSR handler — packaging the root checkout's
-  # stale function bundle instead of this build's.
-  command = "pwd && ls -la && rm -rf .next .netlify/functions-internal .netlify/edge-functions .netlify/edge-functions-dist node_modules/electron/dist && set -x && npm run build:metadata && npm run build:packages && npm run build"
+  # pnpm, not npm: the repo's packageManager is pnpm, the dependency tree is
+  # pnpm-lock.yaml, and only pnpm applies the patchedDependencies in
+  # pnpm-workspace.yaml. Under npm that patch is never applied and the prebuild
+  # guard exits 1, which is why every Netlify-side build failed with a bare
+  # "Build script returned non-zero exit code". Commit 4d6631bee fixed this and
+  # 7e8a436b3 reverted it; this restores the fix.
+  command = "pwd && ls -la && rm -rf node_modules/electron/dist && set -x && pnpm run build:metadata && pnpm run build:packages && pnpm run build"
   publish = ".next"
   exclude = ["electron/dist/**", "playwright/**", "src/**", "index.html", "vite.svg", "public/vite.svg", "electron/**", "*.md", "!public/**", ".next/cache/**"]
 

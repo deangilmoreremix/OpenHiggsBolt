@@ -126,9 +126,9 @@
       "speed": "Speed: {value}",
       "profile": "Service: {value}",
       "quality": "Quality: {value}",
-      "imageUnused": "Uploaded images won't be used",
-      "videoUnused": "Uploaded videos won't be used",
-      "audioUnused": "Uploaded audio won't be used",
+      "imageUnused": "Uploaded images won’t be used",
+      "videoUnused": "Uploaded videos won’t be used",
+      "audioUnused": "Uploaded audio won’t be used",
       "imageCount": "Images used: {value}",
       "videoCount": "Videos used: {value}",
       "audioCount": "Audio files used: {value}"
@@ -136,7 +136,7 @@
     "fields": {
       "seed": {
         "title": "Seed",
-        "description": "Use \u22121 for random results."
+        "description": "Use −1 for random results."
       },
       "high_bitrate": {
         "title": "High bitrate",
@@ -160,7 +160,7 @@
       "video": "Video",
       "audio": "Audio"
     },
-    "restoreDefaultResolution": "Use the service's default output size"
+    "restoreDefaultResolution": "Use the service’s default output size"
   },
   "seedance": {
     "speed": "Speed",
@@ -418,7 +418,7 @@
       },
       "character_orientation": {
         "title": "Character pose",
-        "description": "Choose which source sets the character\u2019s pose.",
+        "description": "Choose which source sets the character’s pose.",
         "optionLabels": {
           "image": "From image (up to 10s)",
           "video": "From video (up to 30s)"
@@ -498,7 +498,7 @@
     "profiles": {
       "standard": {
         "label": "Standard",
-        "description": "480p\u20131080p, 5\u201320 seconds."
+        "description": "480p–1080p, 5–20 seconds."
       },
       "pro": {
         "label": "Pro",

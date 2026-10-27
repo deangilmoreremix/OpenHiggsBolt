@@ -10,9 +10,9 @@ import {
   removeBackground,
   expandImage,
 } from "../muapi.js";
-import { getUploadLimit, formatUploadLimit } from "../uploadContract.js";
 import { formatErrorMessage } from "../utils/formatError.js";
 import en from "../messages/en/layersStudio.json";
+import zh from "../messages/zh/layersStudio.json";
 import { resolveCopy } from "../i18nUtils";
 
 // Upscale Models Definition from schema_data.json
@@ -89,7 +89,7 @@ export default function LayersStudio({
   onGenerationError,
   locale = "en",
 }) {
-  const copy = resolveCopy(en, null, locale);
+  const copy = resolveCopy(en, zh, locale);
 
   // Main canvas & image state
   const [currentImageUrl, setCurrentImageUrl] = useState(DEFAULT_SAMPLE_IMAGE);
@@ -304,8 +304,7 @@ export default function LayersStudio({
     const fileList = Array.from(files || []);
     if (fileList.length === 0) return;
 
-    // Limit comes from the shared upload contract (MuAPI spec: images 10MB).
-    const MAX_IMAGE_SIZE = getUploadLimit({ type: 'image/jpeg' });
+    const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB
     const file = fileList.find((f) => f.type.startsWith("image/")) || fileList[0];
     if (!file) return;
 

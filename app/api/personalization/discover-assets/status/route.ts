@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { getDiscoveryJobForUser } from '@/server/discoveryJobs'
+import {
+  getDiscoveryJobForUser,
+  updateDiscoveryJob,
+} from '@/server/discoveryJobs'
+import { withDbTimeout, DiscoveryDbTimeoutError, DISCOVERY_BUSY_MESSAGE } from '@/server/dbTimeout'
+import { buildDiscoveryJobResponse } from '@/server/discoveryJobResponse'
 
 export const dynamic = "force-dynamic";
 
 export const runtime = 'nodejs'
+
+// A job that stays `running` longer than this was never picked up by the
+// background worker (dispatch failed, worker crashed, site never responded).
+// Mark it terminal so the caller stops polling instead of waiting forever.
+const STALE_JOB_MS = 75_000
 
 export async function GET(req: NextRequest) {
   const jobId = req.nextUrl.searchParams.get('jobId')
@@ -15,53 +25,53 @@ export async function GET(req: NextRequest) {
 
   const { userId } = await auth()
 
-  if (!userId) {
-    // Security: require an authenticated session. Previously this route fell
-    // back to getDiscoveryJobById(jobId) with no ownership check, allowing any
-    // unauthenticated caller to read any discovery job (audit Finding 4.1).
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  // Discovery is FREE, so an anonymous caller may poll its own job — but the
+  // scope is the caller's identity, exactly as the POST handler scopes it:
+  // the signed-in user's id, else `anon-<client ip>`, else plain `anon`.
+  // There is deliberately NO unscoped fallback: a job that belongs to another
+  // user, or to another anonymous caller, is not found (404).
+  const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.headers.get('x-real-ip') || undefined
+  const jobOwnerId = userId || (clientIp ? `anon-${clientIp}` : 'anon')
 
-  const job = await getDiscoveryJobForUser(jobId, userId)
+  // Owner-scoped lookup: a job that belongs to another user is not found.
+  let job: Awaited<ReturnType<typeof getDiscoveryJobForUser>>
+  try {
+    job = await withDbTimeout(getDiscoveryJobForUser(jobId, jobOwnerId))
+  } catch (err) {
+    if (err instanceof DiscoveryDbTimeoutError) {
+      return NextResponse.json({ error: DISCOVERY_BUSY_MESSAGE }, { status: 503, headers: { 'Retry-After': '60' } })
+    }
+    throw err
+  }
 
   if (!job) {
     return NextResponse.json({ error: 'Job not found' }, { status: 404 })
   }
 
-  const safeTelemetry = job.telemetry_json
-    ? {
-        ...job.telemetry_json,
-        browserErrorMessage: undefined,
+  // Stale-job watchdog: recover jobs stuck in `running` that the background
+  // worker will never finish.
+  if (job.status === 'running' && job.started_at) {
+    const started = new Date(job.started_at).getTime()
+    if (Date.now() - started > STALE_JOB_MS) {
+      const updated = await updateDiscoveryJob(job.id, {
+        status: 'error',
+        completedAt: new Date().toISOString(),
+        errorCode: 'BACKGROUND_DISPATCH_FAILED',
+        errorMessage: 'Background discovery did not complete in time',
+        expectedStatus: 'running',
+      })
+
+      if (updated === null) {
+        const current = await getDiscoveryJobForUser(job.id, jobOwnerId)
+        if (current) {
+          return NextResponse.json(buildDiscoveryJobResponse(current))
+        }
+        return NextResponse.json({ error: 'Job not found' }, { status: 404 })
       }
-    : null
 
-  const response: Record<string, unknown> = {
-    id: job.id,
-    status: job.status,
-    websiteUrl: job.website_url,
-    providerAttempts: (safeTelemetry as any)?.providerAttempts || [],
-    pagesCrawled: (safeTelemetry as any)?.pagesCrawled ?? 0,
-    created_at: job.created_at,
-    started_at: job.started_at,
-    completed_at: job.completed_at,
-  }
-
-  if (job.status === 'complete' || job.status === 'error') {
-    response.browserQueued = false
-    if (job.error_code) {
-      response.errorCode = job.error_code
-      response.errorMessage = job.error_message
+      return NextResponse.json(buildDiscoveryJobResponse(updated))
     }
-    if (job.final_result_json) {
-      response.result = job.final_result_json
-    }
-  } else if (job.status === 'running') {
-    response.browserQueued = true
   }
 
-  if (safeTelemetry) {
-    response.telemetry = safeTelemetry
-  }
-
-  return NextResponse.json(response)
+  return NextResponse.json(buildDiscoveryJobResponse(job))
 }

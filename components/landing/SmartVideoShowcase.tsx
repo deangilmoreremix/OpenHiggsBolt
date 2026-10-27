@@ -14,6 +14,7 @@ import { MINIMAX_H3_DEMOS } from '@/data/minimaxH3Demos';
 import { type VideoDemo } from '@/data/types';
 import { NICHE_CONTENT } from '@/data/nicheContent';
 import NicheSection from './NicheSection';
+import IndustryNav from './IndustryNav';
 
 const COMBINED_DEMOS: VideoDemo[] = [
   ...MINIMAX_H3_DEMOS,
@@ -35,9 +36,13 @@ export default function SmartVideoShowcase() {
         <MadeWithSmartVideo />
         <UGCDemoShowcase />
 
-        {NICHE_CONTENT.map((niche) => (
-          <NicheSection key={niche.id} niche={niche} />
-        ))}
+        {/* Sticky industry jump bar scoped to the niche sections */}
+        <div>
+          <IndustryNav niches={NICHE_CONTENT} />
+          {NICHE_CONTENT.map((niche) => (
+            <NicheSection key={niche.id} niche={niche} />
+          ))}
+        </div>
 
         {/* Seedance 2.5 — BeatAPI curated cinematic demos */}
         <AIVideoGallery

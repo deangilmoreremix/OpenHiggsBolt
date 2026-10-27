@@ -22,9 +22,18 @@ function meta(name: string, html: string): string | undefined {
  * writing a module-level store shared by every user of the instance.
  */
 async function requireUserId(): Promise<{ userId: string } | { response: NextResponse }> {
+  // H4: same gate as the analyze route — 401 UNAUTHENTICATED when signed out,
+  // 403 PAYMENT_REQUIRED when signed in without the smartvideo_go entitlement.
+  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
+  if (!entitlementCheck.allowed) {
+    if (entitlementCheck.status === 401) {
+      return { response: NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 }) }
+    }
+    return { response: entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO) }
+  }
   const { userId } = await auth()
   if (!userId) {
-    return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+    return { response: NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 }) }
   }
   return { userId }
 }
@@ -60,14 +69,6 @@ export async function POST(req: NextRequest) {
   // H4: brand creation used to be anonymous and unscoped.
   const session = await requireUserId()
   if ('response' in session) return session.response
-
-  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
-  if (!entitlementCheck.allowed) {
-    if (entitlementCheck.status === 401) {
-      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
-    }
-    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO)
-  }
 
   let body: any = {}
   try {

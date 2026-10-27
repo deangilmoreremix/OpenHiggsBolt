@@ -1,0 +1,60 @@
+{
+  "$comment": "REQUIRED curriculum for the $597 Apps + Training reseller package. Every module below is MISSING: no lessons, videos, or markdown exist yet. This file is a gap report consumed by app/academy/reseller and components/reseller/ResellerAcademyView.tsx, which render a 'content pending' state. Do NOT fabricate lesson content; produce the required artifacts, then flip status to 'available'.",
+  "package": "apps_studio_training",
+  "packagePriceUsd": 597,
+  "upgradeFromPackage": "apps_studio_diy",
+  "upgradePriceDifferenceUsd": 400,
+  "includedAcademyAccess": "All existing Academy tracks (src/content/academy/**) are included for training holders; that content already exists and is served by /academy and /api/academy/content.",
+  "modules": [
+    {
+      "id": "reseller-onboarding",
+      "title": "Reseller onboarding: purchase, entitlements, and bundle downloads",
+      "status": "missing",
+      "requiredArtifacts": [
+        "lesson markdown under a reseller track (src/content/academy/<track>/lessons/)",
+        "walkthrough video hosted outside the repo (never fabricated links)"
+      ],
+      "summary": "How the DIY/training purchase maps to entitlements and how to use the secure per-app source download flow."
+    },
+    {
+      "id": "app-bundle-setup",
+      "title": "Setting up and running each app bundle",
+      "status": "missing",
+      "requiredArtifacts": [
+        "per-app setup documentation (src/data/resellerAppBundles.json artifact setup-docs)",
+        "lesson markdown covering env vars, API keys, and first run"
+      ],
+      "summary": "Local setup walkthrough for the 38 app bundles in the reseller collection."
+    },
+    {
+      "id": "rebranding-and-customization",
+      "title": "Rebranding and customizing apps for clients",
+      "status": "missing",
+      "requiredArtifacts": [
+        "lesson markdown under a reseller track",
+        "customization example assets"
+      ],
+      "summary": "Guided implementation and customization lessons (package promise), currently not produced."
+    },
+    {
+      "id": "deployment-and-launch",
+      "title": "Deploying and launching reseller apps",
+      "status": "missing",
+      "requiredArtifacts": [
+        "lesson markdown covering deployment targets and domains",
+        "deployment walkthrough video hosted outside the repo"
+      ],
+      "summary": "Deployment and launch walkthroughs (package promise), currently not produced."
+    },
+    {
+      "id": "reseller-sales-playbook",
+      "title": "Selling AI apps to clients",
+      "status": "missing",
+      "requiredArtifacts": [
+        "lesson markdown covering pricing, outreach, and client delivery",
+        "sales templates"
+      ],
+      "summary": "Instructor-led sales training for resellers, currently not produced."
+    }
+  ]
+}

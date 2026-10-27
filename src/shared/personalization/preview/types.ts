@@ -14,6 +14,8 @@ export type PreviewLayoutId =
 export type PreviewLayerKind =
   | 'logo' | 'businessName' | 'headline' | 'offer' | 'cta'
   | 'productImage' | 'serviceImage' | 'tagline' | 'endCard'
+  /** A registered Remotion design rendered by its own component. */
+  | 'design'
 
 export type PreviewAnimationId =
   | 'none' | 'fade' | 'slide-up' | 'slide-down' | 'slide-left'
@@ -53,6 +55,24 @@ export interface PreviewLayer {
   fontFamily?: string
   /** Anchor image URL for image layers (resolved by the caller). */
   imageUrl?: string
+  /**
+   * Id of the registered Remotion design this layer renders.
+   *
+   * Only set on `design` layers. Optional so projects saved before the design
+   * registry existed still restore.
+   */
+  designId?: string
+  /**
+   * Per-slot text overrides for a `design` layer, keyed by
+   * `RemotionDesignTextSlot.key`.
+   *
+   * The PRIMARY slot is NOT stored here: it keeps using `layer.text`.
+   * Only the secondary slots appear in this map, so a design that declares
+   * no primary slot stores every slot here.
+   *
+   * Absent => the slot falls back to its brand field.
+   */
+  textSlotOverrides?: Record<string, string>
 }
 
 export interface PreviewBrandColors {
@@ -67,8 +87,19 @@ export interface PreviewVideoRef {
   url: string
   poster: string | null
   title: string
-  kind: 'demo' | 'uploaded' | 'saved' | 'source'
+  kind: 'demo' | 'uploaded' | 'saved' | 'source' | 'motion-template'
   demoId?: string
+  /** For `kind: 'motion-template'`: the canonical component name of the selected
+   *  Motion Studio shot, used to resolve the recipe in `/studio/motion-studio`
+   *  (e.g. "CrashImpactReal"). */
+  templateId?: string
+  /** For `kind: 'motion-template'`: the card slug (e.g. "crash-zoom-punch")
+   *  distinguishing a multi-style card from its sibling style. */
+  templateSlug?: string
+  /** For `kind: 'motion-template'`: source repository tag — always
+   *  `"motion-studio"` for catalog-derived templates; the studio handoff uses
+   *  this to locate the matching recipe. */
+  sourceRepo?: string
 }
 
 /** Optional customer audio track applied to the personalized preview. */
@@ -91,6 +122,13 @@ export interface PersonalizationPreviewSettings {
   height: number
   /** Customer-selected audio track, or null when none is chosen. */
   audio: PreviewAudioSelection | null
+  /**
+   * Id of the Remotion design currently applied to the preview, or null.
+   *
+   * Optional so projects saved before the design registry existed still
+   * restore; the normalizer falls back to `null`.
+   */
+  remotionDesignId?: string | null
 }
 
 /** Everything the composition needs to render one frame-accurate scene. */

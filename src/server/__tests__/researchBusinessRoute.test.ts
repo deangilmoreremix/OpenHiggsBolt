@@ -37,20 +37,18 @@ vi.mock('@/server/envValidation', () => ({
   validatePersonalizationEnv: vi.fn(),
 }))
 
-// Hoisted entitlement mocks. vi.resetAllMocks() in beforeEach() would wipe
-// `mockResolvedValue` set in a factory, so the mock is hoisted and the
-// allow/deny return value is configured via the hoisted allow helper.
-const entitlementMocks = vi.hoisted(() => ({
-  allowed: true as boolean,
+// The route is now gated by requireApiEntitlement, which pulls in the real
+// server-only Clerk auth() and the Supabase-backed
+// resolveSmartVideoAccessForUser. Stub both seams at the module boundary (the
+// tests/proxy-routes.vitest.test.ts idiom) so the entitled path is exercised
+// without a Clerk session or Supabase env; the entitlement-gate case flips
+// resolveSmartVideoAccessForUser to hasSmartVideoGo:false to assert the 403.
+vi.mock('@clerk/nextjs/server', () => ({
+  auth: vi.fn(async () => ({ userId: 'test-user' })),
 }))
 
-vi.mock('@/access/apiRequireEntitlement', () => ({
-  requireApiEntitlement: vi.fn(async () =>
-    entitlementMocks.allowed ? { allowed: true } : { allowed: false, status: 403 }
-  ),
-  entitlementForbiddenResponse: vi.fn().mockReturnValue(
-    new Response(JSON.stringify({ error: 'PAYMENT_REQUIRED' }), { status: 403 })
-  ),
+vi.mock('@/access/resolveAccess', () => ({
+  resolveSmartVideoAccessForUser: vi.fn(async () => ({ hasSmartVideoGo: true })),
 }))
 
 // The provider is mocked at the module boundary only: researchBusiness (and
@@ -79,6 +77,8 @@ vi.mock('@/lib/rateLimit', () => ({
 
 // Import after mocks are registered
 import { POST } from '@/app/api/personalization/research-business/route'
+import { auth } from '@clerk/nextjs/server'
+import { resolveSmartVideoAccessForUser } from '@/access/resolveAccess'
 import { researchBusiness } from '@/server/businessDiscovery/researchProvider'
 import { logPersonalization, createCorrelationId } from '@/server/personalizationLog'
 import { validatePersonalizationEnv } from '@/server/envValidation'
@@ -122,9 +122,11 @@ beforeEach(() => {
   vi.resetAllMocks()
   // Reset the limiter stub's per-key counters (the isolation mechanism).
   rateLimitMocks.hits.clear()
-  // Default: every test in this file is a paid user. The free-user tests
-  // flip entitlementMocks.allowed to false for the duration of one test.
-  entitlementMocks.allowed = true
+
+  // Default: an authenticated, entitled caller so the gate opens and every
+  // pre-existing case exercises the handler's own logic.
+  vi.mocked(auth).mockResolvedValue({ userId: 'test-user' } as any)
+  vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: true } as any)
 
   vi.mocked(createCorrelationId).mockReturnValue('test-correlation-id')
   vi.mocked(validatePersonalizationEnv).mockReturnValue({ valid: true, missingRequired: [] } as any)
@@ -145,6 +147,36 @@ beforeEach(() => {
       { status: 429, headers: { 'Retry-After': String(Math.ceil(retryAfterMs / 1000)) } },
     ),
   )
+})
+
+// ---------------------------------------------------------------------------
+// No entitlement gate: research-business is free for the demo experience
+// ---------------------------------------------------------------------------
+
+describe('research-business route — no entitlement gate', () => {
+  it('200 when the caller is authenticated but unentitled (free demo route)', async () => {
+    vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: false } as any)
+
+    const res = await post({ websiteUrl: 'https://example.com' })
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+
+    // Discovery machinery runs because there is no entitlement gate.
+    expect(researchBusiness).toHaveBeenCalled()
+  })
+
+  it('200 when the caller has no session (free demo route, unauthenticated OK)', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: null } as any)
+
+    const res = await post({ websiteUrl: 'https://example.com' })
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+
+    // Discovery machinery runs because there is no auth gate on this route.
+    expect(researchBusiness).toHaveBeenCalled()
+  })
 })
 
 // ---------------------------------------------------------------------------

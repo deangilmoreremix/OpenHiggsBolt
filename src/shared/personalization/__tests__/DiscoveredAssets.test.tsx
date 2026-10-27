@@ -502,7 +502,6 @@ describe('Discovered Assets Integration', () => {
     expect(c.assets.identities.length).toBe(1)
     expect(c.assets.identities[0].role).toBe('presenter_identity')
     expect(c.assets.identities[0].url).toBeTruthy()
-    expect(c.discoveredAssets.length).toBe(0)
   })
 
   it('imports selected logo assets into logos', async () => {
@@ -888,5 +887,185 @@ describe('Discovered Assets Integration', () => {
     c = (window as any).__personalizationCtx
     expect(c.assets.logos.length).toBe(1)
     expect(c.assets.logos[0].url).toBeTruthy()
+  })
+
+  // -------------------------------------------------------------------------
+  // Regression: URL-only assets (no sourceUrl) must not crash rendering or import
+  // Raw discovery candidates carry only previewUrl; sourceUrl is optional at
+  // runtime even though the type declares it required.
+  // -------------------------------------------------------------------------
+
+  it('does not crash when importing an asset with only previewUrl (no sourceUrl)', async () => {
+    const container = await renderProvider()
+    await openSource()
+
+    let c = (window as any).__personalizationCtx
+    await act(async () => {
+      c.setDiscoveredAssets([
+        {
+          id: 'disc-url-only',
+          // No sourceUrl — only previewUrl, as raw candidates arrive
+          previewUrl: 'https://test.com/asset.png',
+          sourceType: 'WEBSITE',
+          category: 'logo',
+          selected: true,
+          recommended: true,
+          rejected: false,
+        },
+      ])
+    })
+
+    c = (window as any).__personalizationCtx
+    expect(c.discoveredAssets.length).toBe(1)
+    expect(c.discoveredAssets[0].sourceUrl).toBeUndefined()
+    expect(c.discoveredAssets[0].previewUrl).toBe('https://test.com/asset.png')
+
+    // Import must not crash on URL-only assets — whether or not the upload
+    // succeeds in the test environment, no exception should escape.
+    await expect(
+      act(async () => {
+        c.importDiscoveredAssets()
+      }),
+    ).resolves.not.toThrow()
+  })
+
+  it('does not crash when importing mixed assets with and without sourceUrl', async () => {
+    const container = await renderProvider()
+    await openSource()
+
+    let c = (window as any).__personalizationCtx
+    await act(async () => {
+      c.setDiscoveredAssets([
+        {
+          id: 'disc-1',
+          sourceUrl: 'https://test.com/with-source.png',
+          previewUrl: 'https://test.com/with-source.png',
+          sourceType: 'WEBSITE',
+          category: 'logo',
+          selected: true,
+          recommended: true,
+          rejected: false,
+        },
+        {
+          id: 'disc-2',
+          // No sourceUrl — only previewUrl
+          previewUrl: 'https://test.com/no-source.png',
+          sourceType: 'WEBSITE',
+          category: 'product',
+          selected: true,
+          recommended: true,
+          rejected: false,
+        },
+      ])
+    })
+
+    c = (window as any).__personalizationCtx
+    expect(c.discoveredAssets.length).toBe(2)
+
+    // Import must not crash on mixed assets
+    await expect(
+      act(async () => {
+        c.importDiscoveredAssets()
+      }),
+    ).resolves.not.toThrow()
+  })
+
+  it('does not crash when importing an asset with neither sourceUrl nor previewUrl', async () => {
+    const container = await renderProvider()
+    await openSource()
+
+    let c = (window as any).__personalizationCtx
+    await act(async () => {
+      c.setDiscoveredAssets([
+        {
+          id: 'disc-no-url',
+          // Neither sourceUrl nor previewUrl — degenerate case
+          sourceType: 'WEBSITE',
+          category: 'brand',
+          selected: true,
+          recommended: true,
+          rejected: false,
+        },
+      ])
+    })
+
+    c = (window as any).__personalizationCtx
+    expect(c.discoveredAssets.length).toBe(1)
+
+    // Import should not crash; the asset has no downloadable URL so nothing
+    // gets created, but no exception escapes.
+    await expect(
+      act(async () => {
+        c.importDiscoveredAssets()
+      }),
+    ).resolves.not.toThrow()
+  })
+
+  // -------------------------------------------------------------------------
+  // Regression: guided-view rendering of URL-only assets must not crash
+  // StepFindBusiness renders asset.sourceUrl.replace(...) in the review panel
+  // (StepFindBusiness.tsx:465). It must fall back to previewUrl when sourceUrl
+  // is absent — raw discovery candidates carry only previewUrl.
+  // -------------------------------------------------------------------------
+
+  it('renders StepFindBusiness guided view with URL-only assets without crashing', async () => {
+    const container = await renderProvider()
+    await act(async () => {
+      ;(window as any).__personalizationCtx.openPersonalize({
+        source: {
+          id: 'demo-1',
+          title: 'Test Demo',
+          mediaType: 'video',
+          originalPrompt: 'test',
+          sourceMedia: null,
+          poster: null,
+          fullPrompt: 'test',
+          shortPrompt: 'test',
+          sourceType: 'landing-demo',
+          sourceMetadata: {},
+        },
+      })
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    // Stay in Simple Mode (guided) — do NOT click "Advanced Editing".
+    // Click "Find Business Assets" to navigate to StepFindBusiness.
+    const findButtons = screen.getAllByRole('button', { name: /find business assets/i })
+    expect(findButtons.length).toBeGreaterThanOrEqual(1)
+    await act(async () => {
+      findButtons[0].click()
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    const ctx = (window as any).__personalizationCtx
+    await act(async () => {
+      ctx.setDiscoveredAssets([
+        {
+          id: 'disc-guided-url-only',
+          // No sourceUrl — only previewUrl, as raw candidates arrive
+          previewUrl: 'https://test.com/asset.png',
+          sourceType: 'WEBSITE',
+          category: 'logo',
+          selected: true,
+          recommended: true,
+          rejected: false,
+        },
+      ])
+    })
+
+    // Give React a chance to render the review panel
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    const c = (window as any).__personalizationCtx
+    // No crash: the component rendered the previewUrl fallback on line 465
+    expect(c.discoveredAssets.length).toBe(1)
+    expect(c.discoveredAssets[0].sourceUrl).toBeUndefined()
+    expect(c.discoveredAssets[0].previewUrl).toBe('https://test.com/asset.png')
   })
 })

@@ -30,7 +30,7 @@ export default function ImageUrlModal({
         width: '100vw',
         height: '100vh',
         background: 'rgba(0,0,0,0.45)',
-        zIndex: 1000,
+        zIndex: 240,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

@@ -39,6 +39,15 @@ vi.mock('@clerk/nextjs/server', () => ({
   auth: vi.fn(async () => ({ userId: 'user-123' })),
 }))
 
+// The route is now gated by requireApiEntitlement, which calls the
+// Supabase-backed resolveSmartVideoAccessForUser. Stub it at the module
+// boundary (the tests/proxy-routes.vitest.test.ts idiom) so the entitled path
+// is exercised without a Supabase env; the entitlement-gate case below flips
+// it to hasSmartVideoGo:false to assert the 403.
+vi.mock('@/access/resolveAccess', () => ({
+  resolveSmartVideoAccessForUser: vi.fn(async () => ({ hasSmartVideoGo: true })),
+}))
+
 vi.mock('@/server/personalizationLog', () => ({
   logPersonalization: vi.fn(),
   createCorrelationId: vi.fn(() => 'test-correlation-id'),
@@ -69,6 +78,7 @@ vi.mock('@/access/apiRequireEntitlement', () => ({
 // Clerk and the logging/env seams are mocked.
 import { POST } from '@/app/api/personalization/download-image/route'
 import { downloadImageAsDataUrl } from '@/server/downloadImage'
+import { resolveSmartVideoAccessForUser } from '@/access/resolveAccess'
 import { NextRequest } from 'next/server'
 import { validatePersonalizationEnv } from '@/server/envValidation'
 import axios from 'axios'
@@ -113,12 +123,28 @@ describe('download-image route SSRF regression', () => {
     // flip entitlementMocks.allowed to false for the duration of one test.
     entitlementMocks.allowed = true
     vi.mocked(validatePersonalizationEnv).mockReturnValue({ valid: true } as any)
+    // Default: entitled caller so the entitlement gate opens.
+    vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: true } as any)
     axiosGet = vi.spyOn(axios, 'get').mockReset()
     axiosGet.mockResolvedValue(imageResponse())
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
+  })
+
+  // -----------------------------------------------------------------------
+  // No entitlement gate: download-image is free for the demo experience
+  // -----------------------------------------------------------------------
+
+  it('MUST NOT reject with PAYMENT_REQUIRED when authenticated but unentitled (free demo route)', async () => {
+    vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: false } as any)
+
+    const res = await post(['https://example.com/image.png'])
+    expect(res.status).not.toBe(403)
+    expect(res.status).not.toBe(401)
+    // Discovery/download machinery runs because there is no entitlement gate.
+    expect(axiosGet).toHaveBeenCalled()
   })
 
   // -----------------------------------------------------------------------
@@ -266,6 +292,8 @@ describe('downloadImageAsDataUrl guards', () => {
     mockResolve4.mockResolvedValue(['93.184.216.34'])
     mockResolve6.mockResolvedValue([])
     axiosGet = vi.spyOn(axios, 'get').mockReset()
+    // Restore the entitled-caller default in case a prior test flipped it.
+    vi.mocked(resolveSmartVideoAccessForUser).mockResolvedValue({ hasSmartVideoGo: true } as any)
   })
 
   afterEach(() => {

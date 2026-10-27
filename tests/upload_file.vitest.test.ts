@@ -76,7 +76,7 @@ describe('POST /api/v1/upload_file', () => {
     expect(json.error).toMatch(/Unauthorized/i)
   })
 
-  it('returns 403 when entitlement is missing', async () => {
+  it('returns 200 when entitlement is missing but auth and API key are valid', async () => {
     vi.doMock('@/access/apiRequireEntitlement', () => ({
       requireApiEntitlement: vi.fn(async () => ({ allowed: false, status: 403, entitlement: 'smartvideo_go' })),
       entitlementForbiddenResponse: vi.fn(() => new Response(JSON.stringify({ error: 'PAYMENT_REQUIRED' }), { status: 403 })),
@@ -94,9 +94,11 @@ describe('POST /api/v1/upload_file', () => {
       })
     )
 
-    expect(res.status).toBe(403)
+    // Upload no longer requires SMARTVIDEO_GO entitlement — demo uploads are
+    // permitted for any authenticated user with a valid API key.
+    expect(res.status).toBe(200)
     const json = await res.json()
-    expect(json.error).toMatch(/PAYMENT_REQUIRED/i)
+    expect(json.url).toBe('https://cdn.muapi.ai/test.mp4')
   })
 
   it('returns 400 for non-multipart content type', async () => {

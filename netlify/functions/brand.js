@@ -4,8 +4,18 @@
  * SECURITY CONTRACT: this function runs with SUPABASE_SERVICE_ROLE_KEY (RLS
  * bypassed), so every request is gated on a Clerk session token verified
  * against Clerk's JWKS (401 otherwise) and every read/update/delete carries an
- * explicit owner predicate. CORS is locked to an explicit origin allowlist,
- * never `*`. Error bodies never echo internal messages or credentials.
+ * explicit owner predicate. A verified session alone does not unlock this paid
+ * surface: the caller must also hold a qualifying `user_entitlements` purchase
+ * ('active'/'lifetime' — empty legacy status tolerated — plus
+ * entitlements.smartvideo_go or entitlements.founders), otherwise 403
+ * PAYMENT_REQUIRED with the same body the Next.js API returns. Dev-only e2e
+ * parity: under netlify dev (NETLIFY_DEV=true) or any non-production build, a
+ * request carrying the `__e2e_auth_bypass=1` cookie — the escape hatch
+ * middleware.js already honors for the Next.js layer — is treated as an
+ * entitled internal caller and skips both the Clerk JWKS check and the
+ * entitlement check; never honored in production. CORS is locked to an
+ * explicit origin allowlist, never `*`. Error bodies never echo internal
+ * messages or credentials.
  */
 
 const crypto = require('node:crypto');
@@ -26,6 +36,13 @@ const ASSET_TABLE = 'brand_assets';
 const CAMPAIGN_TABLE = 'brand_campaigns';
 const BRAND_TABLE = 'brand_dna';
 const ALLOWED_METHODS = ['GET', 'PATCH', 'DELETE'];
+const ENTITLEMENT_TABLE = 'user_entitlements';
+// Only a paid, in-good-standing entitlement unlocks this surface. Rows
+// predating the status column carry no status at all and are treated as
+// 'active' (mirrors src/access/entitlements.ts).
+const QUALIFYING_STATUSES = ['active', 'lifetime'];
+// Dev-only e2e escape hatch — see the SECURITY CONTRACT above.
+const E2E_BYPASS_USER_ID = 'user_e2e_auth_bypass';
 
 function toStringArray(v) {
   if (!v) return [];
@@ -276,8 +293,21 @@ async function resolveBrandStudioUser(event) {
   }
 }
 
+// Dev-only e2e escape hatch, mirroring middleware.js and the Next.js routes'
+// isDevBypass(): outside production the `__e2e_auth_bypass=1` cookie marks a
+// request the Next.js layer has already admitted as an entitled internal
+// caller, so Clerk verification is skipped here too. Never honored in
+// production.
+function e2eBypassUserId(event) {
+  if (process.env.NETLIFY_DEV !== 'true' && process.env.NODE_ENV === 'production') return null;
+  if (getCookie(event, '__e2e_auth_bypass') !== '1') return null;
+  return E2E_BYPASS_USER_ID;
+}
+
 /** Gate a handler on Clerk auth. Fail-closed: any failure is a 401. */
 async function requireBrandStudioUser(event) {
+  const bypassUserId = e2eBypassUserId(event);
+  if (bypassUserId) return { userId: bypassUserId };
   const { userId } = await resolveBrandStudioUser(event);
   if (!userId) return { response: jsonResponse(401, { error: 'Unauthorized' }, corsHeadersFor(event)) };
   return { userId };
@@ -340,6 +370,52 @@ async function claimUnownedRowForUser(table, id, userId) {
   return data || null;
 }
 
+// ---------------------------------------------------------------------------
+// Purchase entitlement gate (paid surfaces)
+//
+// The service-role key bypasses RLS, so a verified Clerk session alone must
+// not unlock paid functionality: the caller also needs a qualifying
+// `user_entitlements` row. A missing row is the preview case — denied, never
+// trusted. The lookup itself fails closed: any error propagates to the
+// handler's 500 path.
+// ---------------------------------------------------------------------------
+
+function isQualifyingEntitlementStatus(status) {
+  if (status === undefined || status === null || status === '') return true;
+  return QUALIFYING_STATUSES.includes(status);
+}
+
+async function callerIsEntitled(userId) {
+  const { data, error } = await supabase
+    .from(ENTITLEMENT_TABLE)
+    .select('status, entitlements')
+    .eq('clerk_user_id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return false;
+  if (!isQualifyingEntitlementStatus(data.status)) return false;
+  const entitlements = data.entitlements || {};
+  return entitlements.smartvideo_go === true || entitlements.founders === true;
+}
+
+/**
+ * Gate a handler on purchase entitlement. Fail-closed: a non-purchasing caller
+ * gets 403 PAYMENT_REQUIRED with the same body the Next.js API returns.
+ */
+async function requireBrandStudioEntitlement(event, userId) {
+  // The e2e bypass caller was already admitted as an entitled internal caller
+  // by the Next.js layer, so no entitlement lookup applies.
+  if (userId === E2E_BYPASS_USER_ID) return {};
+  if (await callerIsEntitled(userId)) return {};
+  return {
+    response: jsonResponse(
+      403,
+      { error: 'PAYMENT_REQUIRED', entitlement: 'smartvideo_go', upgradeRequired: true },
+      corsHeadersFor(event),
+    ),
+  };
+}
+
 module.exports = { handler: async (event) => {
   const cors = corsHeadersFor(event);
 
@@ -379,6 +455,11 @@ module.exports = { handler: async (event) => {
         body: JSON.stringify({ error: 'Method not allowed' }),
       };
     }
+
+    // Paid-surface entitlement gate: brand data and mutations are purchase
+    // gated — reads and writes alike (same 403 the Next.js API returns).
+    const entitlement = await requireBrandStudioEntitlement(event, userId);
+    if (entitlement.response) return entitlement.response;
 
     const id = event.queryStringParameters?.id;
     if (!id) return jsonResponse(400, { error: 'id is required' }, cors);

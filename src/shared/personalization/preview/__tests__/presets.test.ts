@@ -9,12 +9,14 @@ import {
   LAYER_IDS_BY_LAYOUT,
   normalizePreviewSettings,
   positionForLayer,
+  PREVIEW_FONTS,
   PREVIEW_LAYOUTS,
   PREVIEW_POSITIONS,
   resetLayoutToDefaults,
   toBox,
 } from '../presets'
 import { DEFAULT_PREVIEW_BRAND_COLORS } from '../types'
+import { DESIGN_FONT_STACK } from '../../templates/typography'
 
 describe('getCompositionDimensions', () => {
   it('maps every aspect ratio to its composition size', () => {
@@ -422,6 +424,39 @@ describe('normalizePreviewSettings', () => {
     expect(settings.brandColors.backgroundDim).toBe(1)
     expect((settings as unknown as Record<string, unknown>).unknownField).toBeUndefined()
   })
+  it('preserves textSlotOverrides through a save/reload round trip (audit point 6)', () => {
+    // The persisted blob a saved project stores (save spreads the layer verbatim);
+    // the reload runs it back through normalizePreviewSettings -> normalizeLayer.
+    const saved = {
+      layers: [
+        {
+          id: 'design',
+          kind: 'design',
+          designId: 'lower-third',
+          text: 'Acme Roofing',
+          textSlotOverrides: { offer: 'Summer sale', ghost: 'Not a slot', empty: '   ' },
+        },
+      ],
+    }
+    const reloaded = normalizePreviewSettings(saved)
+    const designLayer = reloaded.layers[0] as unknown as {
+      textSlotOverrides?: Record<string, string>
+    }
+    // String values survive verbatim (undeclared keys are ignored by the
+    // slot resolver, not deleted here); only non-strings are dropped.
+    expect(designLayer.textSlotOverrides).toEqual({
+      offer: 'Summer sale',
+      ghost: 'Not a slot',
+      empty: '   ',
+    })
+    // A layer without overrides keeps having no map.
+    const noOverrides = normalizePreviewSettings({
+      layers: [{ id: 'headline', kind: 'headline', text: 'hi' }],
+    })
+    expect(
+      (noOverrides.layers[0] as unknown as Record<string, unknown>).textSlotOverrides,
+    ).toBeUndefined()
+  })
 })
 
 describe('toBox', () => {
@@ -511,18 +546,39 @@ describe('PREVIEW_LAYOUTS', () => {
 })
 
 describe('fontStackById', () => {
-  it('returns stacks for known fonts', () => {
-    expect(fontStackById('inter')).toBe('Inter, ui-sans-serif, system-ui, sans-serif')
-    expect(fontStackById('georgia')).toBe("Georgia, 'Times New Roman', serif")
-    expect(fontStackById('impact')).toBe("Impact, 'Arial Black', sans-serif")
-    expect(fontStackById('monospace')).toBe("ui-monospace, 'SF Mono', Menlo, monospace")
+  // Phase 3 decision D3: the picker is deterministic — the bundled
+  // "Personalization Sans" is the only available face, and EVERY id
+  // (historical, unknown or missing) resolves to the bundled stack, so a
+  // saved Georgia layer renders with the bundled face (export fidelity).
+  it('resolves every id — historical, unknown or missing — to the bundled stack', () => {
+    for (const font of PREVIEW_FONTS) {
+      expect(fontStackById(font.id)).toBe(DESIGN_FONT_STACK)
+      // A layer that persisted the entry's stack string also resolves to the
+      // bundled face, never to a per-OS stack.
+      expect(fontStackById(font.stack)).toBe(DESIGN_FONT_STACK)
+    }
+    expect(fontStackById()).toBe(DESIGN_FONT_STACK)
+    expect(fontStackById('comic-sans')).toBe(DESIGN_FONT_STACK)
+    expect(fontStackById('Inter, ui-sans-serif, system-ui, sans-serif')).toBe(DESIGN_FONT_STACK)
   })
 
-  it('falls back to the default stack for unknown or missing ids', () => {
-    expect(fontStackById()).toBe(fontStackById('inter'))
-    expect(fontStackById('comic-sans')).toBe(fontStackById('inter'))
-    expect(fontStackById('Inter, ui-sans-serif, system-ui, sans-serif')).toBe(
-      fontStackById('inter'),
-    )
+  it('keeps the historical ids resolvable so persisted layers never break', () => {
+    for (const id of ['inter', 'georgia', 'impact', 'monospace']) {
+      expect(fontStackById(id)).toBe(DESIGN_FONT_STACK)
+    }
+  })
+
+  it('offers exactly one available face — the bundled Personalization Sans', () => {
+    const available = PREVIEW_FONTS.filter((font) => font.available)
+    expect(available).toHaveLength(1)
+    expect(available[0].id).toBe('personalization-sans')
+    expect(available[0].label).toBe('Personalization Sans')
+    expect(available[0].stack).toBe(DESIGN_FONT_STACK)
+
+    for (const font of PREVIEW_FONTS) {
+      if (font.id === 'personalization-sans') continue
+      expect(font.available).toBe(false)
+      expect(font.label.endsWith(' (unavailable)')).toBe(true)
+    }
   })
 })

@@ -16,7 +16,12 @@
  *     generated RSA key and the JWKS endpoint is served by the same mocked
  *     `fetch`, so signature / kid / exp / sub checks are genuinely exercised.
  *   - The Supabase Edge Function is reached through the mocked `fetch` too, so
- *     the tests can assert the service-role bearer is never spent anonymously.
+ *     the tests can assert the service-role bearer is never spent anonymously
+ *     and that every forwarded call carries the internal service token.
+ *   - The `user_entitlements` table is served by the same mocked `fetch` with
+ *     PostgREST-faithful single-row semantics, so the purchase entitlement
+ *     gate (403 PAYMENT_REQUIRED) is exercised for real, including the
+ *     dev-only `__e2e_auth_bypass=1` escape hatch.
  */
 
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
@@ -27,9 +32,18 @@ const APP_ORIGIN = 'https://app.test.local';
 const OTHER_ORIGIN = 'https://evil.example';
 const SUPABASE_URL = 'https://supabase.test.local';
 const SERVICE_ROLE = 'test-service-role-key';
+const INTERNAL_SECRET = 'internal-service-secret-for-tests';
 
 const USER_A = 'user_aaaa';
 const USER_B = 'user_bbbb';
+// No `user_entitlements` row: the preview/unpaid case.
+const USER_C = 'user_cccc';
+// Qualifying flag, non-qualifying lifecycle status.
+const USER_D = 'user_dddd';
+// Qualifying status, no qualifying entitlement flag.
+const USER_E = 'user_eeee';
+// Legacy row with no status column populated at all.
+const USER_F = 'user_ffff';
 const TEST_KID = 'assets-test-signing-key';
 
 const BRAND_A = 'brand-a0000000-0000-4000-8000-000000000000';
@@ -44,7 +58,7 @@ const BRAND_NEW = 'brand-c0000000-0000-4000-8000-000000000000';
 const SHOOT_NEW = 'shoot-c000000-0000-4000-8000-000000000000';
 
 type Row = Record<string, any>;
-type CapturedFetch = { url: string; method: string; auth: string | null; body: unknown };
+type CapturedFetch = { url: string; method: string; auth: string | null; internalToken: string | null; body: unknown };
 
 const mock = vi.hoisted(() => {
   const rows: Record<string, Row[]> = {};
@@ -139,7 +153,15 @@ function handleRest(url: string, method: string, body: unknown, headers: Headers
   const objectMode = (headers.get('accept') || '').includes('application/vnd.pgrst.object+json');
   const asObject = (rows: Row[]) => {
     if (rows.length !== 1) {
-      return jsonResponse({ code: 'PGRST106', message: 'object requested, zero or multiple rows' }, 406);
+      // Mirror PostgREST's object-mode 406 (PGRST116) exactly: supabase-js
+      // `maybeSingle()` only clears the error when details mention "0 rows".
+      const details = rows.length === 0
+        ? 'The result contains 0 rows'
+        : `Results contain ${rows.length} rows, application/vnd.pgrst.object+json requires 1 row`;
+      return jsonResponse(
+        { code: 'PGRST116', details, message: 'JSON object requested, multiple (or no) rows returned' },
+        406,
+      );
     }
     return jsonResponse(rows[0]);
   };
@@ -201,7 +223,13 @@ function installFetchStub() {
         body = init.body;
       }
     }
-    fetchCalls.push({ url, method, auth: headers.get('authorization'), body });
+    fetchCalls.push({
+      url,
+      method,
+      auth: headers.get('authorization'),
+      internalToken: headers.get('x-internal-service-token'),
+      body,
+    });
 
     if (url.includes('/.well-known/jwks.json')) {
       return jsonResponse({ keys: [{ ...publicJwk, kid: TEST_KID, alg: 'RS256', use: 'sig' }] });
@@ -276,12 +304,17 @@ function makeEvent(options: {
   rawBody?: string;
   token?: string | null;
   cookieToken?: string;
+  bypassCookie?: string;
   origin?: string | null;
 } = {}) {
-  const { method = 'GET', query = {}, body, rawBody, token, cookieToken, origin } = options;
+  const { method = 'GET', query = {}, body, rawBody, token, cookieToken, bypassCookie, origin } = options;
   const headers: Record<string, string> = {};
   if (token) headers.authorization = `Bearer ${token}`;
   if (cookieToken) headers.cookie = `__session=${encodeURIComponent(cookieToken)}`;
+  // The dev-only e2e escape hatch the Netlify functions honor in parallel to
+  // middleware.js. Kept in its own cookie header: the bypass flow has no Clerk
+  // session cookie at all. Pass the exact cookie value ('1' to bypass).
+  if (bypassCookie !== undefined) headers.cookie = `__e2e_auth_bypass=${bypassCookie}`;
   if (origin !== null) headers.origin = origin === undefined ? APP_ORIGIN : origin;
   return {
     httpMethod: method,
@@ -317,6 +350,12 @@ function resetRows() {
     { id: 'shoot-a', brand_id: BRAND_A, style: 'studio', clerk_user_id: USER_A },
     { id: 'shoot-b', brand_id: BRAND_B, style: 'studio', clerk_user_id: USER_B },
   ];
+  // Qualifying purchases for the two owners, one per entitlement path the gate
+  // accepts. USER_C deliberately has no row (preview → 403 PAYMENT_REQUIRED).
+  mock.rows.user_entitlements = [
+    { clerk_user_id: USER_A, email: 'a@example.test', status: 'active', entitlements: { smartvideo_go: true } },
+    { clerk_user_id: USER_B, email: 'b@example.test', status: 'lifetime', entitlements: { founders: true } },
+  ];
 }
 
 // ---------------------------------------------------------------------------
@@ -330,6 +369,7 @@ beforeAll(() => {
 beforeEach(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = SUPABASE_URL;
   process.env.SUPABASE_SERVICE_ROLE_KEY = SERVICE_ROLE;
+  process.env.INTERNAL_FUNCTION_SECRET = INTERNAL_SECRET;
   process.env.CLERK_FRONTEND_API = 'https://clerk.test.local';
   process.env.BRAND_STUDIO_ALLOWED_ORIGINS = APP_ORIGIN;
   mock.missingOwnerColumn.value = false;
@@ -444,10 +484,11 @@ describe('assets.js: cross-user reads are denied', () => {
     const res = await call(handler, makeEvent({ query: { id: ASSET_A }, token: signSessionToken(USER_B) }));
     expect(res.status).toBe(404);
     expect(res.body).toEqual({ error: 'Asset not found' });
-    const [firstCall] = restCalls();
-    expect(firstCall.url).toContain('/rest/v1/brand_assets');
-    expect(firstCall.url).toContain(`clerk_user_id=eq.${USER_B}`);
-    expect(firstCall.url).toContain(`id=eq.${ASSET_A}`);
+    // The entitlement lookup now precedes the ownership query; assert the
+    // ownership query itself.
+    const assetCall = restCalls().find((c) => c.url.includes('/rest/v1/brand_assets'))!;
+    expect(assetCall.url).toContain(`clerk_user_id=eq.${USER_B}`);
+    expect(assetCall.url).toContain(`id=eq.${ASSET_A}`);
   });
 
   it("returns 404 when user B asks for the assets of user A's campaign", async () => {
@@ -458,7 +499,8 @@ describe('assets.js: cross-user reads are denied', () => {
     );
     expect(res.status).toBe(404);
     expect(res.body).toEqual({ error: 'Campaign not found' });
-    expect(restCalls()[0].url).toContain(`clerk_user_id=eq.${USER_B}`);
+    const campaignCall = restCalls().find((c) => c.url.includes('/rest/v1/brand_campaigns'))!;
+    expect(campaignCall.url).toContain(`clerk_user_id=eq.${USER_B}`);
   });
 
   it('never returns another user’s rows in a campaign listing', async () => {
@@ -535,7 +577,9 @@ describe('assets.js: unauthorized mutations are denied', () => {
     const handler = await loadAssets();
     const res = await call(handler, makeEvent({ query: { id: "x' or 1=1 --" }, token: signSessionToken(USER_A) }));
     expect(res.status).toBe(400);
-    expect(restCalls()).toHaveLength(0);
+    // Only the entitlement lookup ran; the invalid id never reached a query.
+    expect(restCalls()).toHaveLength(1);
+    expect(restCalls()[0].url).toContain('/rest/v1/user_entitlements');
   });
 
   it('rejects a POST body without a campaign_id', async () => {
@@ -670,6 +714,7 @@ describe('assets.js: the legitimate owner keeps working', () => {
     expect(forwarded.url).toContain('/functions/v1/asset-generate');
     expect(forwarded.method).toBe('POST');
     expect(forwarded.auth).toBe(`Bearer ${SERVICE_ROLE}`);
+    expect(forwarded.internalToken).toBe(INTERNAL_SECRET);
     expect(forwarded.body).toEqual({ campaign_id: CAMP_A, platform: 'instagram_feed', concept_index: 0 });
 
     const claimed = mock.rows.brand_assets.find((r) => r.id === ASSET_NEW);
@@ -778,8 +823,8 @@ describe('brands.js / brand.js / campaigns.js / photo-studio.js: the same auth g
     const res = await call(handler, makeEvent({ token: signSessionToken(USER_A) }));
     expect(res.status).toBe(200);
     expect(res.body.map((b: any) => b.id)).toEqual([BRAND_A]);
-    expect(restCalls()[0].url).toContain('/rest/v1/brand_dna');
-    expect(restCalls()[0].url).toContain(`clerk_user_id=eq.${USER_A}`);
+    const listCall = restCalls().find((c) => c.url.includes('/rest/v1/brand_dna'))!;
+    expect(listCall.url).toContain(`clerk_user_id=eq.${USER_A}`);
     expect(res.headers['Access-Control-Allow-Origin']).not.toBe('*');
   });
 
@@ -799,6 +844,7 @@ describe('brands.js / brand.js / campaigns.js / photo-studio.js: the same auth g
     expect(res.status).toBe(200);
     expect(res.body.id).toBe(BRAND_NEW);
     expect(edgeCalls()[0].auth).toBe(`Bearer ${SERVICE_ROLE}`);
+    expect(edgeCalls()[0].internalToken).toBe(INTERNAL_SECRET);
     expect(mock.rows.brand_dna.find((r) => r.id === BRAND_NEW)!.clerk_user_id).toBe(USER_A);
   });
 
@@ -851,7 +897,8 @@ describe('brands.js / brand.js / campaigns.js / photo-studio.js: the same auth g
     const res = await call(handler, makeEvent({ token: signSessionToken(USER_B) }));
     expect(res.status).toBe(200);
     expect(res.body.map((c: any) => c.id)).toEqual([CAMP_B]);
-    expect(restCalls()[0].url).toContain(`clerk_user_id=eq.${USER_B}`);
+    const listCall = restCalls().find((c) => c.url.includes('/rest/v1/brand_campaigns'))!;
+    expect(listCall.url).toContain(`clerk_user_id=eq.${USER_B}`);
   });
 
   it("campaigns.js: returns 404 when user B asks for the campaigns of user A's brand", async () => {
@@ -894,7 +941,8 @@ describe('brands.js / brand.js / campaigns.js / photo-studio.js: the same auth g
     const res = await call(handler, makeEvent({ token: signSessionToken(USER_B) }));
     expect(res.status).toBe(200);
     expect(res.body.map((s: any) => s.id)).toEqual(['shoot-b']);
-    expect(restCalls()[0].url).toContain(`clerk_user_id=eq.${USER_B}`);
+    const listCall = restCalls().find((c) => c.url.includes('/rest/v1/brand_photoshoots'))!;
+    expect(listCall.url).toContain(`clerk_user_id=eq.${USER_B}`);
   });
 
   it('photo-studio.js: refuses to generate a shoot for a brand the caller does not own', async () => {
@@ -924,5 +972,134 @@ describe('brands.js / brand.js / campaigns.js / photo-studio.js: the same auth g
     expect(res.status).toBe(200);
     expect(res.body.id).toBe(SHOOT_NEW);
     expect(mock.rows.brand_photoshoots.find((r) => r.id === SHOOT_NEW)!.clerk_user_id).toBe(USER_A);
+    expect(edgeCalls()[0].internalToken).toBe(INTERNAL_SECRET);
+  });
+});
+
+// ===========================================================================
+// purchase entitlement gate — the same 403 the Next.js API returns
+// ===========================================================================
+
+describe('brand studio functions: purchase entitlement gate', () => {
+  it('assets.js: 403 PAYMENT_REQUIRED for an authenticated caller with no entitlement row', async () => {
+    const handler = await loadAssets();
+    const res = await call(handler, makeEvent({ query: { id: ASSET_A }, token: signSessionToken(USER_C) }));
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({
+      error: 'PAYMENT_REQUIRED',
+      entitlement: 'smartvideo_go',
+      upgradeRequired: true,
+    });
+    // The entitlement lookup is the only query: no row is read or written.
+    expect(restCalls().every((c) => c.url.includes('/rest/v1/user_entitlements'))).toBe(true);
+    expect(edgeCalls()).toHaveLength(0);
+  });
+
+  it('assets.js: 403 for generation without an entitlement row, before the edge call', async () => {
+    const handler = await loadAssets();
+    const res = await call(
+      handler,
+      makeEvent({ method: 'POST', token: signSessionToken(USER_C), body: { campaign_id: CAMP_A, platform: 'instagram_feed' } })
+    );
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe('PAYMENT_REQUIRED');
+    expect(edgeCalls()).toHaveLength(0);
+  });
+
+  it('assets.js: 403 for a qualifying flag with a non-qualifying status', async () => {
+    mock.rows.user_entitlements.push({ clerk_user_id: USER_D, status: 'revoked', entitlements: { smartvideo_go: true } });
+    const handler = await loadAssets();
+    const res = await call(handler, makeEvent({ query: { id: ASSET_A }, token: signSessionToken(USER_D) }));
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe('PAYMENT_REQUIRED');
+  });
+
+  it('assets.js: 403 for a qualifying status without a qualifying flag', async () => {
+    mock.rows.user_entitlements.push({ clerk_user_id: USER_E, status: 'active', entitlements: { smartvideo_ai: true } });
+    const handler = await loadAssets();
+    const res = await call(handler, makeEvent({ query: { id: ASSET_A }, token: signSessionToken(USER_E) }));
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe('PAYMENT_REQUIRED');
+  });
+
+  it('a legacy row with no status still qualifies', async () => {
+    // Rows predating the status column are tolerated as 'active' (mirrors
+    // src/access/entitlements.ts isQualifyingStatus).
+    mock.rows.user_entitlements.push({ clerk_user_id: USER_F, status: undefined, entitlements: { smartvideo_go: true } });
+    const handler = await loadFunction('brands');
+    const res = await call(handler, makeEvent({ token: signSessionToken(USER_F) }));
+    expect(res.status).toBe(200); // the entitlement gate passed; the list is scoped to USER_F
+    expect(res.body).toEqual([]);
+  });
+
+  it('brands.js / photo-studio.js gate reads; campaigns GET stays free browse (Next.js contract)', async () => {
+    // The Next.js /api/campaigns route has never entitlement-gated GET —
+    // free users keep browse/preview access; only generation (POST) is gated.
+    // brands.js and photo-studio.js reads stay purchase-gated.
+    const readExpected = [
+      { file: 'brands', event: makeEvent({ token: signSessionToken(USER_C) }), status: 403 },
+      { file: 'campaigns', event: makeEvent({ token: signSessionToken(USER_C) }), status: 200 },
+      { file: 'photo-studio', event: makeEvent({ token: signSessionToken(USER_C) }), status: 403 },
+    ];
+    for (const { file, event, status } of readExpected) {
+      const handler = await loadFunction(file);
+      const res = await call(handler, event);
+      expect(res.status, `${file} GET`).toBe(status);
+      if (status === 403) {
+        expect(res.body.error).toBe('PAYMENT_REQUIRED');
+        expect(edgeCalls()).toHaveLength(0);
+      }
+    }
+
+    const mutationExpected = [
+      { file: 'brands', event: makeEvent({ method: 'POST', token: signSessionToken(USER_C), body: { url: 'https://x.example' } }) },
+      { file: 'campaigns', event: makeEvent({ method: 'POST', token: signSessionToken(USER_C), body: { brand_id: BRAND_A, goal: 'awareness' } }) },
+      { file: 'photo-studio', event: makeEvent({ method: 'POST', token: signSessionToken(USER_C), body: { brand_id: BRAND_A, category: 'bottle', style: 'studio' } }) },
+    ];
+    for (const { file, event } of mutationExpected) {
+      const handler = await loadFunction(file);
+      const res = await call(handler, event);
+      expect(res.status, `${file} POST`).toBe(403);
+      expect(res.body.error).toBe('PAYMENT_REQUIRED');
+      expect(edgeCalls()).toHaveLength(0);
+    }
+
+    const brand = await loadFunction('brand');
+    for (const method of ['GET', 'PATCH', 'DELETE']) {
+      const res = await call(
+        brand,
+        makeEvent({ method, query: { id: BRAND_A }, token: signSessionToken(USER_C), body: { brand_name: 'pwned' } })
+      );
+      expect(res.status, `brand.js ${method}`).toBe(403);
+      expect(res.body.error).toBe('PAYMENT_REQUIRED');
+    }
+  });
+});
+
+// ===========================================================================
+// dev-only e2e escape hatch — the Netlify twin of middleware.js
+// ===========================================================================
+
+describe('brand studio functions: the __e2e_auth_bypass=1 escape hatch', () => {
+  it('skips both the Clerk and entitlement gates for an anonymous offline caller', async () => {
+    // No Clerk token, no entitlement row — only the bypass cookie the Next.js
+    // layer already gates. Vitest runs with NODE_ENV=test, i.e. dev parity.
+    const handler = await loadFunction('brands');
+    const res = await call(handler, makeEvent({ bypassCookie: '1' }));
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]); // scoped to the synthetic bypass user
+    expect(restCalls()[0].url).toContain('/rest/v1/brand_dna');
+    expect(restCalls()[0].url).toContain('clerk_user_id=eq.user_e2e_auth_bypass');
+    expect(restCalls().some((c) => c.url.includes('/rest/v1/user_entitlements'))).toBe(false);
+    expect(restCalls().some((c) => c.url.includes('/.well-known/jwks.json'))).toBe(false);
+  });
+
+  it('does not fire for any other cookie value', async () => {
+    const handler = await loadAssets();
+    // Value '0' is not the escape hatch: the request falls back to the normal
+    // Clerk gate and an anonymous caller still gets 401.
+    const res = await call(handler, makeEvent({ query: { id: ASSET_A }, bypassCookie: '0', token: null }));
+    expect(res.status).toBe(401);
+    expect(restCalls()).toHaveLength(0);
   });
 });

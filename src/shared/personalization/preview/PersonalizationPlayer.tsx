@@ -355,6 +355,7 @@ export function PersonalizationPlayer(
           controls={false}
           clickToPlay
           numberOfSharedAudioTags={8}
+          acknowledgeRemotionLicense
           autoPlay={autoPlay}
           style={{ width: '100%', height: '100%' }}
           initiallyMuted={muted ?? true}

@@ -165,11 +165,12 @@ function saveUIState(state: UIState) {
   }
 }
 
-export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, templateData }: { 
+export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, templateData, renderPersonalizeAction }: { 
   apiKey?: string; 
   onRequestApiKey?: () => void;
   onDismissApiKey?: () => void;
   templateData?: { prompt?: string; aspectRatio?: string; [key: string]: any };
+  renderPersonalizeAction?: (options: unknown) => React.ReactNode;
 }) {
   const saved = loadUIState();
 
@@ -261,6 +262,32 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
     const q = search.toLowerCase();
     return list.filter((e) => e.name.toLowerCase().includes(q));
   }, [activeCategory, effectsByCategory, search]);
+
+  /**
+   * Optional renderer for the shared Personalization Modal hand-off.
+   *
+   * The provider is mounted ONCE in `components/StandaloneShell.js` around
+   * every studio tab, so this page only builds a plain hand-off payload and
+   * renders the trigger the app root passes in — no import across any package
+   * boundary.
+   */
+  const studioPersonalizeOptions = useMemo(
+    () => ({
+      originStudio: 'vfx-studio' as const,
+      studioProjectId: `${selectedEffectId || 'no-effect'} : ${aspectRatio} : ${(imageUrl || '').split('/').pop() || 'no-image'}`,
+      title: selectedEffect ? `${selectedEffect.name} image` : 'VFX Studio image',
+      media: {
+        mediaType: 'image' as const,
+        url: imageUrl || null,
+        poster: null,
+        aspectRatio,
+        duration,
+        durationLabel: `${duration}s`,
+      },
+      prompt: { text: prompt || selectedEffect?.prompt || '' },
+    }),
+    [selectedEffectId, selectedEffect, aspectRatio, duration, imageUrl, prompt],
+  );
 
   // Show generation modal when generating
   useEffect(() => {
@@ -459,7 +486,7 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
             width: '100vw',
             height: '100vh',
             background: 'rgba(0,0,0,0.55)',
-            zIndex: 2000,
+            zIndex: 240,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -651,6 +678,9 @@ export default function VFXGenerate({ apiKey, onRequestApiKey, onDismissApiKey, 
                <Upload size={14} />
                <span className="hidden sm:inline">Upload</span>
              </button>
+             {studioPersonalizeOptions.media.url
+               ? renderPersonalizeAction?.(studioPersonalizeOptions)
+               : null}
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 sm:p-6">

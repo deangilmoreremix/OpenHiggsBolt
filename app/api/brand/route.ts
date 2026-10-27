@@ -9,10 +9,19 @@ export const dynamic = "force-dynamic";
 
 async function requireUserId(): Promise<{ userId: string } | { response: NextResponse }> {
   // H4: these handlers used to be fully unauthenticated while exposing a
-  // module-level store shared by every user.
+  // module-level store shared by every user. Same gate as the analyze route:
+  // 401 UNAUTHENTICATED when signed out, 403 PAYMENT_REQUIRED when signed in
+  // without the smartvideo_go entitlement.
+  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
+  if (!entitlementCheck.allowed) {
+    if (entitlementCheck.status === 401) {
+      return { response: NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 }) }
+    }
+    return { response: entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO) }
+  }
   const { userId } = await auth()
   if (!userId) {
-    return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+    return { response: NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 }) }
   }
   return { userId }
 }
@@ -33,14 +42,6 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const session = await requireUserId()
   if ('response' in session) return session.response
-
-  const entitlementCheck = await requireApiEntitlement(ENTITLEMENTS.SMARTVIDEO_GO)
-  if (!entitlementCheck.allowed) {
-    if (entitlementCheck.status === 401) {
-      return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 })
-    }
-    return entitlementForbiddenResponse(ENTITLEMENTS.SMARTVIDEO_GO)
-  }
 
   const id = new URL(req.url).searchParams.get('id')
   if (!id) return apiError('bad_request', 'id required', 400)

@@ -1,0 +1,720 @@
+{
+  "meta": {
+    "canonical": true,
+    "description": "Canonical reseller destination mapping for the 38 Apps Studio apps: the deangilmoreremix GitHub repository that serves each app’s source, its verification evidence, the hosted demo URL copied unchanged from the catalog, and the download app id used by /api/reseller/download. Vercel project URLs are owned by another agent and are intentionally null here. Pure data file — no logic.",
+    "sourceOfTruth": "packages/studio/src/components/AppsStudio.jsx (read-only)",
+    "resellerAccount": "deangilmoreremix",
+    "downloadIdSource": "src/data/resellerAppBundles.json via getResellerApp() in src/lib/resellerAccess.ts (app/api/reseller/download allowlist)",
+    "verificationMethod": "Every repoUrl re-verified with `gh api -i repos/deangilmoreremix/<repo>` requiring an \"HTTP/... 200\" status line; account identity confirmed with `gh auth status` (deangilmoreremix). No repo was created, renamed, deleted, or transferred; the colliding deangilmoreremix/AI-Resume-Builder fork was left untouched.",
+    "counts": {
+      "verified": 37,
+      "unconfigured": 1,
+      "collision": 0,
+      "total": 38
+    },
+    "generatedAt": "2026-10-12T14:18:27.019Z",
+    "vercelDeployGate": {
+      "description": "Per-app Vercel deploy eligibility. \"template\" means the destination repo was verified in docs/vercel-deployment-verification.md as deployable-public-template (public repo WITH full source), so a Vercel git-template import is honest. \"unavailable\" means the repo is attribution-only README/NOTICE, a Python CLI, the wrong project, or missing, so no working Deploy-to-Vercel action may be offered.",
+      "sourceOfTruth": "docs/vercel-deployment-verification.md",
+      "template": 13,
+      "unavailable": 25,
+      "countsAsOf": "2026-10-12"
+    }
+  },
+  "destinations": {
+    "ai-headshot-studio": {
+      "repoUrl": "https://github.com/deangilmoreremix/ai-headshot-generator",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-headshot-generator",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/ai-headshot-generator",
+        "private": false,
+        "archived": false,
+        "fork": true,
+        "forkParent": "SamurAIGPT/ai-headshot-generator",
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://ai-headshot-generator-xi.vercel.app/",
+      "downloadAppId": "ai-headshot-studio",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
+    },
+    "nano-banana-studio": {
+      "repoUrl": "https://github.com/deangilmoreremix/nano-banana-generator",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/nano-banana-generator",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/nano-banana-generator",
+        "private": false,
+        "archived": false,
+        "fork": true,
+        "forkParent": "SamurAIGPT/nano-banana-generator",
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://nano-banana-generator.vercel.app/",
+      "downloadAppId": "nano-banana-studio",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
+    },
+    "seedance-v2-studio": {
+      "repoUrl": "https://github.com/deangilmoreremix/seedance-2-generator",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/seedance-2-generator",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/seedance-2-generator",
+        "private": false,
+        "archived": false,
+        "fork": true,
+        "forkParent": "SamurAIGPT/seedance-2-generator",
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://seedance-2-generator.vercel.app/",
+      "downloadAppId": "seedance-v2-studio",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
+    },
+    "ai-clipping-studio": {
+      "repoUrl": "https://github.com/deangilmoreremix/ai-clipping-generator",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-clipping-generator",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/ai-clipping-generator",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://ai-clipping-generator.vercel.app/",
+      "downloadAppId": "ai-clipping-studio",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
+    },
+    "ai-youtube-shorts-generator": {
+      "repoUrl": "https://github.com/deangilmoreremix/AI-Youtube-Shorts-Generator",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/AI-Youtube-Shorts-Generator",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/AI-Youtube-Shorts-Generator",
+        "private": false,
+        "archived": false,
+        "fork": true,
+        "forkParent": "Anil-matcha/AI-Youtube-Shorts-Generator",
+        "notes": "Fork parent is Anil-matcha/AI-Youtube-Shorts-Generator because the SamurAIGPT upstream repo was transferred to Anil-matcha (querying repos/SamurAIGPT/AI-Youtube-Shorts-Generator returns full_name \"Anil-matcha/AI-Youtube-Shorts-Generator\", which is not itself a fork). deangilmoreremix/AI-Youtube-Shorts-Generator is the account's own fork of that same upstream project; repo description matches the catalog app (\"Turn long-form YouTube videos into viral 9:16 shorts ... LLM highlight detection ... auto vertical cropping\").",
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": null,
+      "downloadAppId": "ai-youtube-shorts-generator",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "easyveo-studio": {
+      "repoUrl": "https://github.com/deangilmoreremix/veo4-video-generator",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/veo4-video-generator",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/veo4-video-generator",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://veo4-video-generator.vercel.app/",
+      "downloadAppId": "easyveo-studio",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
+    },
+    "pet-product-studio": {
+      "repoUrl": "https://github.com/deangilmoreremix/pet-product-studio",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/pet-product-studio",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/pet-product-studio",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://pet-product-studio.vercel.app/",
+      "downloadAppId": "pet-product-studio",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
+    },
+    "resale-photo-enhancer": {
+      "repoUrl": "https://github.com/deangilmoreremix/resale-photo-enhancer",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/resale-photo-enhancer",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/resale-photo-enhancer",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://resale-photo-enhancer.vercel.app/",
+      "downloadAppId": "resale-photo-enhancer",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
+    },
+    "blogger-cms": {
+      "repoUrl": "https://github.com/deangilmoreremix/blogger-cms",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/blogger-cms",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/blogger-cms",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://blogger-cms-psi.vercel.app/",
+      "downloadAppId": "blogger-cms",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
+    },
+    "amazon-product-studio": {
+      "repoUrl": "https://github.com/deangilmoreremix/amazon-product-studio",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/amazon-product-studio",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/amazon-product-studio",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://amazon-product-studio.vercel.app/",
+      "downloadAppId": "amazon-product-studio",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "ai-business-card": {
+      "repoUrl": "https://github.com/deangilmoreremix/ai-business-card",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-business-card",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/ai-business-card",
+        "private": false,
+        "archived": false,
+        "fork": true,
+        "forkParent": "SamurAIGPT/ai-business-card",
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://ai-business-card-ten.vercel.app/",
+      "downloadAppId": "ai-business-card",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
+    },
+    "mailwise": {
+      "repoUrl": "https://github.com/deangilmoreremix/mail-wise",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/mail-wise",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/mail-wise",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://mail-wise-khaki.vercel.app/",
+      "downloadAppId": "mailwise",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "my-podcast": {
+      "repoUrl": "https://github.com/deangilmoreremix/my-podcast",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/my-podcast",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/my-podcast",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://my-podcast.vercel.app/",
+      "downloadAppId": "my-podcast",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "ai-knowledge-base": {
+      "repoUrl": "https://github.com/deangilmoreremix/ai-knowledge-base",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-knowledge-base",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/ai-knowledge-base",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://ai-knowledge-base-six.vercel.app/",
+      "downloadAppId": "ai-knowledge-base",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "ai-royal-portrait": {
+      "repoUrl": "https://github.com/deangilmoreremix/ai-royal-portrait",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-royal-portrait",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/ai-royal-portrait",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://ai-royal-portrait.vercel.app/",
+      "downloadAppId": "ai-royal-portrait",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "ai-meme": {
+      "repoUrl": "https://github.com/deangilmoreremix/ai-meme-generator",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-meme-generator",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/ai-meme-generator",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://ai-meme-generator.vercel.app/",
+      "downloadAppId": "ai-meme",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "ai-real-estate-stager": {
+      "repoUrl": "https://github.com/deangilmoreremix/ai-real-estate-stager",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-real-estate-stager",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/ai-real-estate-stager",
+        "private": false,
+        "archived": false,
+        "fork": true,
+        "forkParent": "SamurAIGPT/ai-real-estate-stager",
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://ai-real-estate-stager.vercel.app/",
+      "downloadAppId": "ai-real-estate-stager",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
+    },
+    "ai-logo": {
+      "repoUrl": "https://github.com/deangilmoreremix/ai-logo-studio",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-logo-studio",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/ai-logo-studio",
+        "private": false,
+        "archived": false,
+        "fork": true,
+        "forkParent": "SamurAIGPT/ai-logo-studio",
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://ai-logo-studio.vercel.app/",
+      "downloadAppId": "ai-logo",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
+    },
+    "oldphoto": {
+      "repoUrl": "https://github.com/deangilmoreremix/old-photo-restore",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/old-photo-restore",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/old-photo-restore",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://old-photo-restore.vercel.app/",
+      "downloadAppId": "oldphoto",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "aitryon": {
+      "repoUrl": "https://github.com/deangilmoreremix/ai-tryon",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-tryon",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/ai-tryon",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://ai-tryon-smoky.vercel.app/",
+      "downloadAppId": "aitryon",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "ai-professional-makeup-generator": {
+      "repoUrl": "https://github.com/deangilmoreremix/ai-professional-makeup-generator",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-professional-makeup-generator",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/ai-professional-makeup-generator",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://ai-professional-makeup-generator.vercel.app/",
+      "downloadAppId": "ai-professional-makeup-generator",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "ai-group-photo": {
+      "repoUrl": "https://github.com/deangilmoreremix/ai-group-photo",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-group-photo",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/ai-group-photo",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "notes": "Repo has no description or topics, but its README explicitly designates it as the reseller catalog destination for the AI Group Photo app (upstream: SamurAIGPT/ai-group-photo, catalog: Anil-matcha/awesome-generative-ai-apps, destination owner: deangilmoreremix). README notes source is pending upstream license confirmation; repo is owned by deangilmoreremix and is the correct destination entry.",
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://ai-group-photo-mocha.vercel.app/",
+      "downloadAppId": "ai-group-photo",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "ai-tattoo-try-on": {
+      "repoUrl": "https://github.com/deangilmoreremix/ai-tattoo-try-on",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-tattoo-try-on",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/ai-tattoo-try-on",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://ai-tattoo-try-on.vercel.app/",
+      "downloadAppId": "ai-tattoo-try-on",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "ai-hair-style-simulator": {
+      "repoUrl": "https://github.com/deangilmoreremix/ai-hair-style-simulator",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-hair-style-simulator",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/ai-hair-style-simulator",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://ai-hair-style-simulator.vercel.app/",
+      "downloadAppId": "ai-hair-style-simulator",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "ai-kids-to-adult-prediction": {
+      "repoUrl": "https://github.com/deangilmoreremix/ai-kid-to-adult-prediction",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-kid-to-adult-prediction",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/ai-kid-to-adult-prediction",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://ai-kid-to-adult-prediction.vercel.app/",
+      "downloadAppId": "ai-kids-to-adult-prediction",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "ai-room-declutter": {
+      "repoUrl": "https://github.com/deangilmoreremix/ai-room-declutter",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-room-declutter",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/ai-room-declutter",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://ai-room-declutter.vercel.app/",
+      "downloadAppId": "ai-room-declutter",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "ai-fitness-body-simulator": {
+      "repoUrl": "https://github.com/deangilmoreremix/ai-fitness-body-simulator",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-fitness-body-simulator",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/ai-fitness-body-simulator",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://ai-fitness-body-simulator.vercel.app/",
+      "downloadAppId": "ai-fitness-body-simulator",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "ai-pet-portrait": {
+      "repoUrl": "https://github.com/deangilmoreremix/ai-pet-portrait",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-pet-portrait",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/ai-pet-portrait",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://ai-pet-portrait.vercel.app/",
+      "downloadAppId": "ai-pet-portrait",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "ai-kissing-video-generator": {
+      "repoUrl": "https://github.com/deangilmoreremix/ai-kissing-video-generator",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-kissing-video-generator",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/ai-kissing-video-generator",
+        "private": false,
+        "archived": false,
+        "fork": true,
+        "forkParent": "SamurAIGPT/ai-kissing-video-generator",
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://ai-kissing-video-generator-amber.vercel.app/",
+      "downloadAppId": "ai-kissing-video-generator",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
+    },
+    "ai-travel-studio": {
+      "repoUrl": "https://github.com/deangilmoreremix/ai-travel-studio",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-travel-studio",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/ai-travel-studio",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://ai-travel-studio.vercel.app/",
+      "downloadAppId": "ai-travel-studio",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "prompt-architect": {
+      "repoUrl": "https://github.com/deangilmoreremix/prompt-architect",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/prompt-architect",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/prompt-architect",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://prompt-architect-one-nu.vercel.app/",
+      "downloadAppId": "prompt-architect",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "clearmark-ai": {
+      "repoUrl": "https://github.com/deangilmoreremix/clearmark-ai",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/clearmark-ai",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/clearmark-ai",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://clearmark-ai.vercel.app/",
+      "downloadAppId": "clearmark-ai",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "ai-wedding-photo": {
+      "repoUrl": "https://github.com/deangilmoreremix/ai-wedding-photo",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-wedding-photo",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/ai-wedding-photo",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://ai-wedding-photo.vercel.app/",
+      "downloadAppId": "ai-wedding-photo",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "social-post": {
+      "repoUrl": "https://github.com/deangilmoreremix/social-post",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/social-post",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/social-post",
+        "private": false,
+        "archived": false,
+        "fork": true,
+        "forkParent": "SamurAIGPT/social-post",
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://social-post-woad.vercel.app/",
+      "downloadAppId": "social-post",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "template"
+    },
+    "magicself-ai": {
+      "repoUrl": "https://github.com/deangilmoreremix/magicself-ai",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/magicself-ai",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/magicself-ai",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://magicself-ai.vercel.app/",
+      "downloadAppId": "magicself-ai",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "ai-resume-builder": {
+      "repoUrl": null,
+      "repoStatus": "unconfigured",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-resume-builder (queried case-insensitively)",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/AI-Resume-Builder",
+        "private": false,
+        "fork": true,
+        "forkParent": "rrs301/AI-Resume-Builder",
+        "repoUrl": null,
+        "reason": "Name collision: the app id resolves case-insensitively to deangilmoreremix/AI-Resume-Builder, which is a fork of rrs301/AI-Resume-Builder — a plain React + Vite resume-builder template (JavaScript, ~123 KB, no description/topics) — a DIFFERENT project from the catalog upstream SamurAIGPT/ai-resume-builder (Next.js SaaS resume builder: Stripe billing, NextAuth, Prisma, ATS optimization; topics include ai-resume, resume-builder, ats-resume, kickresume-alternative, teal-alternative).",
+        "notes": [
+          "deangilmoreremix/AI-Resume-Builder is a fork of rrs301/AI-Resume-Builder (wrong project) — NOT used as the destination; repo untouched, not overwritten, retargeted, or deleted.",
+          "deangilmoreremix/AI-Resumes-Builder is a fork of TechWithEmmaYT/AI-Resumes-Builder (different project) — also not a match.",
+          "Other resume-named repos checked and rejected: Reactive-Resume (fork of reactive-resume/reactive-resume, different app), Smart-AI-Resume-Analyzer (fork of Hunterdii/Smart-AI-Resume-Analyzer, Streamlit analyzer), awsome-list-of-cv-and-resume-templetes (fork of sadransh/..., CV template collection), Jobs_Applier_AI_Agent_AIHawk (job-applier agent).",
+          "Full account search performed: all 383 public repos under deangilmoreremix paginated via gh api users/deangilmoreremix/repos?per_page=100 and matched by name and by description keywords (resume|kickresume|teal-alternative|ats). No repository corresponds to the SamurAIGPT ai-resume-builder app.",
+          "repoUrl recorded as null; repoStatus unconfigured until a correct deangilmoreremix repository for this app exists."
+        ],
+        "verifiedAt": "2026-10-12T14:18:27.017Z"
+      },
+      "hostedDemoUrl": "https://ai-resume-builder.vercel.app/",
+      "downloadAppId": "ai-resume-builder",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "geo-checker": {
+      "repoUrl": "https://github.com/deangilmoreremix/geo-checker",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/geo-checker",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/geo-checker",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://geo-checker-silk.vercel.app/",
+      "downloadAppId": "geo-checker",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    },
+    "ai-character-studio": {
+      "repoUrl": "https://github.com/deangilmoreremix/ai-character-studio",
+      "repoStatus": "verified",
+      "repoEvidence": {
+        "api": "repos/deangilmoreremix/ai-character-studio",
+        "httpStatus": 200,
+        "resolvedFullName": "deangilmoreremix/ai-character-studio",
+        "private": false,
+        "archived": false,
+        "fork": false,
+        "forkParent": null,
+        "verifiedAt": "2026-10-12T14:18:27.019Z"
+      },
+      "hostedDemoUrl": "https://ai-character-studio-beta.vercel.app/",
+      "downloadAppId": "ai-character-studio",
+      "vercelProjectUrl": null,
+      "vercelDeploy": "unavailable"
+    }
+  }
+}

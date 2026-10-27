@@ -1,5 +1,7 @@
+// @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import { act } from 'react';
 import React from 'react';
 import { ListRowThumbnail } from '../../src/apps/go-ai-viral/GoAiViralStudio';
 import type { PromptRecord, PromptMedia } from '../../src/types/go-ai-viral/prompt';
@@ -68,29 +70,33 @@ describe('ListRowThumbnail', () => {
     const record = makePromptRecord({
       media: [makeMedia({ previewUrl: 'https://example.com/preview.jpg' })],
     });
-    render(<ListRowThumbnail record={record} />);
-    const img = screen.getByRole('img');
-    expect(img).toHaveAttribute('src', 'https://example.com/preview.jpg');
+    const { container } = render(<ListRowThumbnail record={record} />);
+    const img = within(container).getByRole('img');
+    expect(img.getAttribute('src')).toBe('https://example.com/preview.jpg');
   });
 
   it('shows placeholder when no media URLs are available', () => {
     const record = makePromptRecord({
       media: [makeMedia({ previewUrl: '', sourceUrl: '', posterUrl: '' })],
     });
-    render(<ListRowThumbnail record={record} />);
-    expect(screen.queryByRole('img')).toBeNull();
+    const { container } = render(<ListRowThumbnail record={record} />);
+    expect(within(container).queryByRole('img')).toBeNull();
   });
 
-  it('does not use style.display = "none" on error', () => {
+  it('does not use style.display = "none" on error', async () => {
     const record = makePromptRecord({
       media: [makeMedia({ previewUrl: 'https://example.com/broken.jpg' })],
     });
-    render(<ListRowThumbnail record={record} />);
-    const img = screen.getByRole('img');
-    expect(img).toHaveAttribute('src', 'https://example.com/broken.jpg');
+    const { container } = render(<ListRowThumbnail record={record} />);
+    const img = within(container).getByRole('img');
+    expect(img.getAttribute('src')).toBe('https://example.com/broken.jpg');
     // Simulate error
     img.dispatchEvent(new Event('error'));
+    // Wait for React to process state update
+    await act(async () => {
+      await Promise.resolve();
+    });
     // After error, image should be removed from DOM and placeholder shown
-    expect(screen.queryByRole('img')).toBeNull();
+    expect(within(container).queryByRole('img')).toBeNull();
   });
 });
