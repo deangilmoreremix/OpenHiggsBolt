@@ -54,7 +54,7 @@ const RouteSync = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const pathname = usePathname();
-  const inEditor = location.pathname === '/' || location.pathname.startsWith('/motion');
+  const inEditor = location.pathname === '/' || (location.pathname.startsWith('/motion') && !location.pathname.startsWith('/motion/new'));
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

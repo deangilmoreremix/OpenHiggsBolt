@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { semantic } from "@/shared/styles/designTokens";
 import { ChatBubble, PromptCard, PromptInput, SendButton, useTypingPlaceholder } from "@/apps/design-agent/ui";
 import { useStore } from "../store";
@@ -36,6 +37,12 @@ const SUGGESTIONS = [
 ];
 
 const RENDER_RE = /\b(?:render|export)\b[^.]{0,30}\b(?:mp4|video|film|movie)\b|^\s*(?:render|export)\s*(?:it)?\s*[.!]?\s*$/i;
+/** "open this in the Motion Workbench" — hand the current film to the workbench timeline. */
+const OPEN_WORKBENCH_RE = /\bopen\b[^.]{0,40}\bworkbench\b/i;
+/** "change the music" — drop the music bed from the current project. */
+const CHANGE_MUSIC_RE = /\b(?:change|swap|replace)\s+(?:the\s+)?(?:music|song|background\s+music)\b/i;
+/** "make the video 30 seconds" — re-cut the storyboard to the requested length. */
+const FILM_DURATION_RE = /\bmake\s+(?:the\s+)?(?:video|film|movie|it)\b[^.]{0,30}?\b(\d{1,3})\s*(?:s|sec|secs|second|seconds)\b/i;
 
 const aspectOf = (p: ProjectData): AspectRatio => (p.width === p.height ? "1:1" : p.height > p.width ? "9:16" : "16:9");
 
@@ -76,9 +83,12 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
   const activeSessionId = useStore((s) => s.activeSessionId);
   const addSession = useStore((s) => s.addSession);
   const appendSessionMessage = useStore((s) => s.appendSessionMessage);
+  const setProject = useStore((s) => s.setProject);
+  const updateActiveSessionProject = useStore((s) => s.updateActiveSessionProject);
   const [draft, setDraft] = useState("");
   const [thinking, setThinking] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const navigate = useNavigate();
 
   const targetId = sessionId ?? activeSessionId;
   const session = useMemo(
@@ -103,16 +113,34 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
   }, [sessionId, recipeId, recipeName]);
 
   const director = useFilmDirector({
-    settings: () => ({
-      aspectRatio: aspectOf(useStore.getState().project),
-      durationSec: 20,
-      brandKit: null,
-      media: [],
-      pickedRecipes: [],
-    }),
+    settings: () => {
+      const state = useStore.getState();
+      const session = state.activeSessionId ? state.sessions.find((s) => s.id === state.activeSessionId) : null;
+      return {
+        aspectRatio: aspectOf(state.project),
+        // Use the shared session's length (set when the film was created) instead
+        // of a fixed 20s cut-down panel, so chat and workbench edit the same film.
+        durationSec: session?.duration ?? 20,
+        brandKit: null,
+        media: [],
+        pickedRecipes: [],
+      };
+    },
     onMessage: (m) => useStore.getState().appendSessionMessage(ensureSession(), { role: m.role, content: m.content, ts: m.ts }),
     // Already in the workbench: the built film replaces the project (one undo step brings the old one back).
-    onBuilt: (film) => useStore.getState().setProject(film.project),
+    onBuilt: (film) => {
+      const sid = ensureSession();
+      const now = new Date().toISOString();
+      const project = film.project;
+      const sec = project.tracks.reduce((m: number, tr) => Math.max(m, tr.clips.reduce((mm: number, c) => Math.max(mm, c.start + c.duration), 0)), 0) / project.fps;
+      const clips = project.tracks.reduce((n, tr) => n + tr.clips.length, 0);
+      useStore.getState().appendSessionMessage(sid, {
+        role: "assistant",
+        content: `Film review — ${Math.round(sec)}s at ${project.width}×${project.height}, ${clips} clips on ${project.tracks.length} tracks. ${film.qa.ok ? "Frame QA passed." : `Frame QA found ${film.qa.issues.length} issue(s).`} Open it in the Motion Workbench to keep editing, or render the MP4.`,
+        ts: now,
+      });
+      useStore.getState().setProject(film.project);
+    },
     // Once there is a film to edit, only an explicit ask starts a new one; edits stay edits.
     isRequest: (text) =>
       useStore.getState().project.tracks.some((t) => t.clips.length > 0) ? isNewFilmRequest(text) : isFilmRequest(text),
@@ -130,9 +158,10 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
   }, [targetId, resetDirector]);
 
   const send = useCallback(
-    (raw: string) => {
+    async (raw: string) => {
       const text = raw.trim();
       if (!text) return;
+      const lower = text.toLowerCase();
 
       // New film / shot requests, the Ink Press answer and storyboard revisions go to the film director.
       if (director.send(text)) {
@@ -140,12 +169,66 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
         return;
       }
 
-      if (RENDER_RE.test(text)) {
-        const sid = ensureSession();
-        const now = new Date().toISOString();
-        useStore.getState().appendSessionMessage(sid, { role: "user", content: text, ts: now });
+      const sid = ensureSession();
+      const now = new Date().toISOString();
+      const append = (role: "user" | "assistant", content: string) =>
+        useStore.getState().appendSessionMessage(sid, { role, content, ts: now });
+
+      // "Render my video" — approve a waiting storyboard, then export the MP4.
+      if (RENDER_RE.test(lower)) {
+        append("user", text);
+        if (director.stage === "plan" && director.storyboard) await director.approve();
         requestExport();
-        useStore.getState().appendSessionMessage(sid, { role: "assistant", content: "Rendering the MP4 with Remotion (h264, the same frames as the preview). Progress shows on the Export button; it turns into a download link when done.", ts: now });
+        append("assistant", "Rendering the MP4 with Remotion (h264, the same frames as the preview). Progress shows on the Export button; it turns into a download link when done.");
+        setDraft("");
+        return;
+      }
+
+      // "Open this in the Motion Workbench" — install the film as the editable project and open the workbench.
+      if (OPEN_WORKBENCH_RE.test(lower)) {
+        append("user", text);
+        if (director.stage === "plan" && director.storyboard) {
+          await director.approve();
+        } else if (director.film) {
+          setProject(director.film.project);
+          updateActiveSessionProject(director.film.project);
+        } else {
+          append("assistant", "There's no film to open yet — make a film first, then I can open it in the Motion Workbench.");
+          setDraft("");
+          return;
+        }
+        navigate("/");
+        append("assistant", "Opened in the Motion Workbench — your film is on the timeline and ready to edit.");
+        setDraft("");
+        return;
+      }
+
+      // "Change the music" — drop the music bed from the current project.
+      if (CHANGE_MUSIC_RE.test(lower)) {
+        append("user", text);
+        const state = useStore.getState();
+        const project = JSON.parse(JSON.stringify(state.project));
+        let removed = false;
+        for (const track of project.tracks) {
+          const idx = track.clips.findIndex((c) => c.cardId === "audio-clip" && c.props?.fadeInFrames !== undefined);
+          if (idx >= 0) {
+            track.clips.splice(idx, 1);
+            removed = true;
+          }
+        }
+        project.tracks = project.tracks.filter((track) => track.clips.length > 0);
+        state.setProject(project);
+        append("assistant", removed ? "Removed the music track — the film plays without music now." : "There's no music track in this film to change.");
+        setDraft("");
+        return;
+      }
+
+      // "Make the video N seconds" while a storyboard is open re-cuts it; otherwise the editor handles it.
+      const dur = lower.match(FILM_DURATION_RE)?.[1];
+      if (dur !== undefined && director.stage === "plan" && director.storyboard) {
+        append("user", text);
+        await director.send(text, { force: true });
+        append("assistant", `Re-storyboarding the film at ${dur} seconds. Approve to rebuild it.`);
         setDraft("");
         return;
       }
@@ -197,7 +280,7 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
         })
         .finally(() => setThinking(false));
     },
-    [targetId, recipeId, recipeName, director, ensureSession],
+    [targetId, recipeId, recipeName, director, ensureSession, setProject, updateActiveSessionProject, navigate],
   );
 
   const messages = session?.messages ?? [];

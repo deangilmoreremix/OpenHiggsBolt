@@ -216,7 +216,8 @@ export function planToProject(
     tracks.push({
       id: uid('track'),
       name: t('track.music'),
-      clips: [clip('audio-clip', 0, total, { file: opts.music.url }, { label: opts.music.name.slice(0, 32) })],
+      // Music sits under the SFX at about a third of full volume, with a 1 s fade in and out.
+      clips: [clip('audio-clip', 0, total, { file: opts.music.url, volume: 0.34, fadeInFrames: 30, fadeOutFrames: 30, durationFrames: total }, { label: opts.music.name.slice(0, 32) })],
     });
   }
 

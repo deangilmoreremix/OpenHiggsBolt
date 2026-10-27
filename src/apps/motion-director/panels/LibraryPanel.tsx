@@ -11,6 +11,8 @@ import {
 } from "@/data/motionRecipeCatalog";
 import MotionRecipeCard from "../components/MotionRecipeCard";
 import { useStore } from "../store";
+import { setDragPayload } from "../dnd";
+import { MEDIA_ITEMS, BGM_LIB, SFX_LIB, type MediaItem, type LibAudio } from "../mediaManifest";
 import {
   loadSavedRecipes,
   removeRecipe,
@@ -31,9 +33,11 @@ interface LibraryPanelProps {
 const TABS: { id: LibraryTab; label: string }[] = [
   { id: "templates", label: "Templates" },
   { id: "recipes", label: "My Motion Recipes" },
+  { id: "media", label: "Media" },
+  { id: "sound", label: "Sound" },
 ];
 
-type LibraryTab = "templates" | "recipes";
+type LibraryTab = "templates" | "recipes" | "media" | "sound";
 type CategoryFilter = MotionCategoryKey | "all";
 
 const matchesQuery = (t: MotionTemplate, q: string) =>
@@ -64,6 +68,20 @@ export default function LibraryPanel({
     () => sessions.map((sess) => sess.recipeId).filter((id): id is string => Boolean(id)),
     [sessions],
   );
+  const setPreview = useStore((s) => s.setPreview);
+  /** Media library items (captured pages / cutouts / uploads from public/). */
+  const mediaItems = useMemo<MediaItem[]>(() => MEDIA_ITEMS, []);
+  /** SFX grouped by category for the Sound tab. */
+  const sfxByCat = useMemo<Map<string, LibAudio[]>>(() => {
+    const m = new Map<string, LibAudio[]>();
+    for (const s of SFX_LIB) {
+      const cat = s.cat;
+      const arr = m.get(cat) ?? [];
+      arr.push(s);
+      m.set(cat, arr);
+    }
+    return m;
+  }, []);
 
   /** Each tab reads a different source:
    *  - Templates  → the 124 grouped cards (a card groups its shot variants)
@@ -148,6 +166,92 @@ export default function LibraryPanel({
       ? "No saved recipes yet — save a shot from Templates to pin it here."
       : "No recipes found";
 
+  /** 素材库卡：点击预览（store.previewItem），拖拽落入时间轨（media/audio-clip 卡）。 */
+  const MediaCard: React.FC<{ item: MediaItem }> = ({ item }) => {
+    const cardId = item.kind === "audio" ? "audio-clip" : item.kind === "video" ? "video-clip" : "image-clip";
+    const handleClick = () => setPreview({ kind: item.kind, file: item.file, label: item.name });
+    const handleDragStart = (e: React.DragEvent) => {
+      setDragPayload(e, { cardId, props: { file: item.file }, label: item.name, duration: 90 });
+    };
+    const isAudio = item.kind === "audio";
+    return (
+      <div
+        key={item.file}
+        className="library-item"
+        draggable
+        onDragStart={handleDragStart}
+        onClick={handleClick}
+        role="button"
+        tabIndex={0}
+        aria-label={item.name}
+      >
+        <div className="aspect-[4/3] rounded-xl overflow-hidden border border-white/[0.05] bg-[var(--bg-card)] group cursor-pointer hover:border-white/20">
+          {isAudio ? (
+            <div className="w-full h-full flex items-center justify-center bg-black/40 text-[#22d3ee]">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M9 18V5l10-2v13" />
+                <circle cx="6" cy="18" r="3" />
+                <circle cx="16" cy="16" r="3" />
+              </svg>
+            </div>
+          ) : (
+            <img src={`/${item.file}`} alt={item.name} className="w-full h-full object-cover" />
+          )}
+          <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 to-transparent px-2 pb-1 pt-3">
+            <h3 className="text-xs font-medium text-white truncate" title={item.name}>
+              {item.name}
+            </h3>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  /** 音频库卡：点击预览，拖拽落入时间轨为 audio-clip 片段。 */
+  const SoundCard: React.FC<{ item: LibAudio; kind: "bgm" | "sfx" }> = ({ item, kind }) => {
+    const handleClick = () => setPreview({ kind: "audio", file: item.file, label: item.name });
+    const handleDragStart = (e: React.DragEvent) => {
+      setDragPayload(e, { cardId: "audio-clip", props: { file: item.file }, label: item.name, duration: 90 });
+    };
+    return (
+      <div
+        key={item.file}
+        className="library-item"
+        draggable
+        onDragStart={handleDragStart}
+        onClick={handleClick}
+        role="button"
+        tabIndex={0}
+        aria-label={item.name}
+      >
+        <div className="rounded-xl overflow-hidden border border-white/[0.05] bg-[var(--bg-card)] group cursor-pointer hover:border-white/20 p-3">
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0 w-8 h-8 rounded bg-black/40 flex items-center justify-center text-[#22d3ee]">
+              🔊
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-xs font-medium text-white truncate" title={item.name}>
+                {item.name}
+              </h3>
+              <span className="text-[10px] text-white/40">{kind === "bgm" ? "BGM" : item.cat}</span>
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClick();
+              }}
+              className="p-1 rounded hover:bg-white/[0.08] text-white/50"
+              aria-label="Preview"
+            >
+              ▶
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="library-panel p-3 text-white min-h-full" style={{ background: "var(--bg-app)" }}>
       <div className="library-toolbar mb-4 flex flex-col gap-3">
@@ -172,13 +276,14 @@ export default function LibraryPanel({
         <div className="library-search relative w-full">
           <input
             type="text"
-            placeholder="Search recipes..."
+            placeholder={tab === "media" ? "Search media..." : tab === "sound" ? "Search sound..." : "Search recipes..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-lg px-3 py-2 text-sm text-white outline-none bg-[var(--bg-card)] border border-white/[0.05] focus:border-white/20"
           />
         </div>
-        <div className="library-categories flex flex-wrap gap-1.5">
+        {tab !== "media" && tab !== "sound" && (
+          <div className="library-categories flex flex-wrap gap-1.5">
           <button
             type="button"
             onClick={() => setCategory("all")}
@@ -207,66 +312,117 @@ export default function LibraryPanel({
               >
                 {c.labelEn} <span className="opacity-60">{n}</span>
               </button>
-            );
+            )
           })}
-        </div>
+          </div>
+        )}
       </div>
       <div className="library-grid grid grid-cols-2 gap-2">
-        {recipes.map((recipe) => {
-          const variants = tab === "templates" ? motionTemplateVariants(recipe) : [];
-          const isOpen = Boolean(expanded[recipe.id]);
-          return (
-            <div key={recipe.id} className="library-item">
-              <MotionRecipeCard
-                recipe={recipe}
-                onClick={onSelectRecipe}
-                onRename={handleRename}
-                onDelete={handleDelete}
-                onSave={handleSave}
-                onAddToTimeline={onAddToTimeline}
-                saved={savedIds.has(recipe.id)}
-                isUser={tab === "recipes"}
-                variantCount={variants.length}
-                variantsOpen={isOpen}
-                onToggleVariants={toggleVariants}
-              />
-              {isOpen && variants.length > 1 && (
-                <div className="library-variants mt-2 flex flex-col gap-1 rounded-lg border border-white/[0.06] bg-white/[0.02] p-2">
-                  {variants.map((v) => (
-                    <div
-                      key={v.id}
-                      className="flex items-center gap-2 text-[11px] text-white/60"
-                    >
-                      <span className="truncate flex-1" title={v.nameEn}>
-                        {motionTemplateTitle(v).split(" · ").pop()}
-                      </span>
-                      <span className="text-white/30">{v.durationSec}s</span>
-                      <button
-                        type="button"
-                        className="px-1.5 py-0.5 rounded bg-white/[0.05] hover:text-[#22d3ee] transition-colors"
-                        onClick={() => onSelectRecipe(v)}
-                        title="Use this shot in the chat"
-                      >
-                        Use
-                      </button>
-                      <button
-                        type="button"
-                        className="px-1.5 py-0.5 rounded bg-white/[0.05] hover:text-[#22d3ee] transition-colors"
-                        onClick={() => onAddToTimeline?.(v)}
-                      >
-                        Add
-                      </button>
+        {tab === "media" ? (
+          <>
+            {mediaItems.map((item) => (
+              <div key={item.file} className="library-item">
+                <MediaCard item={item} />
+              </div>
+            ))}
+            {mediaItems.length === 0 && (
+              <div className="col-span-full text-center py-12 text-sm text-white/40">
+                No media files found in public/motion-studio
+              </div>
+            )}
+          </>
+        ) : tab === "sound" ? (
+          <>
+            <div className="col-span-full">
+              <h4 className="text-[10px] uppercase tracking-wider text-white/30 mb-3 px-2">BGM</h4>
+              <div className="grid grid-cols-2 gap-2">
+                {BGM_LIB.map((bgm) => (
+                  <div key={bgm.file} className="library-item">
+                    <SoundCard item={bgm} kind="bgm" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            {[...sfxByCat.entries()].map(([cat, items]) => (
+              <div key={cat} className="col-span-full mb-4">
+                <h4 className="text-[10px] uppercase tracking-wider text-white/30 mb-3 px-2">
+                  SFX · {cat}
+                </h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {items.map((s) => (
+                    <div key={s.file} className="library-item">
+                      <SoundCard item={s} kind="sfx" />
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-          );
-        })}
-        {recipes.length === 0 && (
-          <div className="col-span-full text-center py-12 text-sm text-white/40">
-            {emptyMessage}
-          </div>
+              </div>
+            ))}
+            {(BGM_LIB.length + SFX_LIB.length) === 0 && (
+              <div className="col-span-full text-center py-12 text-sm text-white/40">
+                No sound files found in public/motion-studio
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {recipes.map((recipe) => {
+              const variants = tab === "templates" ? motionTemplateVariants(recipe) : [];
+              const isOpen = Boolean(expanded[recipe.id]);
+              return (
+                <div key={recipe.id} className="library-item">
+                  <MotionRecipeCard
+                    recipe={recipe}
+                    onClick={onSelectRecipe}
+                    onRename={handleRename}
+                    onDelete={handleDelete}
+                    onSave={handleSave}
+                    onAddToTimeline={onAddToTimeline}
+                    setPreview={setPreview}
+                    saved={savedIds.has(recipe.id)}
+                    isUser={tab === "recipes"}
+                    variantCount={variants.length}
+                    variantsOpen={isOpen}
+                    onToggleVariants={toggleVariants}
+                  />
+                  {isOpen && variants.length > 1 && (
+                    <div className="library-variants mt-2 flex flex-col gap-1 rounded-lg border border-white/[0.06] bg-white/[0.02] p-2">
+                      {variants.map((v) => (
+                        <div
+                          key={v.id}
+                          className="flex items-center gap-2 text-[11px] text-white/60"
+                        >
+                          <span className="truncate flex-1" title={v.nameEn}>
+                            {motionTemplateTitle(v).split(" · ").pop()}
+                          </span>
+                          <span className="text-white/30">{v.durationSec}s</span>
+                          <button
+                            type="button"
+                            className="px-1.5 py-0.5 rounded bg-white/[0.05] hover:text-[#22d3ee] transition-colors"
+                            onClick={() => onSelectRecipe(v)}
+                            title="Use this shot in the chat"
+                          >
+                            Use
+                          </button>
+                          <button
+                            type="button"
+                            className="px-1.5 py-0.5 rounded bg-white/[0.05] hover:text-[#22d3ee] transition-colors"
+                            onClick={() => onAddToTimeline?.(v)}
+                          >
+                            Add
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {recipes.length === 0 && (
+              <div className="col-span-full text-center py-12 text-sm text-white/40">
+                {emptyMessage}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

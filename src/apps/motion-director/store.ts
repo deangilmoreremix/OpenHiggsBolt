@@ -9,6 +9,7 @@ import { manifestKey } from "./cards/manifest";
 import { buildProjectFromManifest } from "./projectImport";
 import { upgradeLegacyTheme } from './theme';
 import { t } from "./i18n";
+import { isProjectShape } from "./App";
 
 export { projectDuration } from "./types";
 
@@ -22,7 +23,7 @@ const loadSaved = (): ProjectData | null => {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const p = JSON.parse(raw) as ProjectData;
-      if (p && Array.isArray(p.tracks)) return p;
+      if (p && isProjectShape(p)) return p;
     }
   } catch {
     /* 损坏的存档直接回退 */
@@ -309,12 +310,13 @@ export const useStore = create<WorkbenchState>((set, get) => ({
     const newId = uid("clip");
     set((s) => ({
       project: mutateProject(s.project, (d) => {
-        const track =
+        let track =
           d.tracks.find((t) => t.id === trackId) ?? d.tracks[d.tracks.length - 1];
-        if (!track) return;
-        // 卡片按自己的 sourceFps 编排（卡片库 30、成片单元 = 清单 fps）；工程 fps 不同时换算时长 +
-        // 反向变速，播放速度不变；媒体卡（realtime）只换算时长、不变速。
-        // 拖拽负载里的 duration（素材库给视频 / 音频的默认长度）与 durationInFrames 同口径，一并换算
+        if (!track) {
+          // No track exists yet: create one so the clip has somewhere to live.
+          track = { id: uid("track"), name: t("track.new", { n: d.tracks.length + 1 }), clips: [] };
+          d.tracks.push(track);
+        }
         const { duration, speed } = clipDefaultsFor(card, d.fps, extra?.duration);
         track.clips.push({
           id: newId,
