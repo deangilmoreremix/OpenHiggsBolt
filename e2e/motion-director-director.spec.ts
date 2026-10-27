@@ -228,6 +228,16 @@ test.describe('Motion Studio director', () => {
     await page.getByTestId('film-open-workbench').click();
     await expect(page.locator('.topbar')).toBeVisible({ timeout: 60_000 });
     await expect(page.locator('.project-name')).toHaveValue('Acme launch film');
+    // The film is saved as a session that carries the chat, so the workbench agent continues it.
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const sessions = JSON.parse(window.localStorage.getItem('motion-director:sessions-v1') || '[]');
+          const list = Array.isArray(sessions) ? sessions : sessions.sessions ?? [];
+          return list.some((x: { name: string; messages: unknown[] }) => x.name === 'Acme launch film' && x.messages.length > 3);
+        }),
+      )
+      .toBe(true);
   });
 
   test('chat: shot cards named in the message are the film\'s shots', async ({ page }) => {
