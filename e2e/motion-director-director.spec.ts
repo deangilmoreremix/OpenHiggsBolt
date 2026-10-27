@@ -167,7 +167,8 @@ test.describe('Motion Studio director', () => {
     expect(all.find((c: any) => Array.isArray(c.props?.screens))?.props.screens.slice(0, 2)).toEqual([CAPTURE_PAGE, CAPTURE_PRICING]);
     // 4 scenes + 2 caption strips (one per shot; title cards carry theirs as a subtitle)
     // + 1 flash cut + 3 sound effects (one per scene change) + background
-    await expect(page.locator('.clip')).toHaveCount(11, { timeout: 30_000 });
+    // + 1 site inset (the Hit Counter shot draws its own UI, so it gets a picture of the site)
+    await expect(page.locator('.clip')).toHaveCount(12, { timeout: 30_000 });
 
     // The product shot renders the captured page, not the sample texture.
     // Seek into the product shot (2.5s–7s) by clicking the ruler above it.
@@ -466,9 +467,10 @@ test.describe('Motion Studio director', () => {
     await page.getByRole('button', { name: 'Generate' }).click();
     await expect(page.getByTestId('director-plan')).toBeVisible({ timeout: 60_000 });
     await approveFilmAndOpenWorkbench(page);
-    const clips = await page.evaluate(() => (JSON.parse(localStorage.getItem('motion-director:project-v1') || '{}').tracks ?? []).flatMap((t: any) => t.clips));
-    const insets = clips.filter((c: any) => c.cardId === 'site-inset');
-    expect(insets.length).toBeGreaterThan(0);
+    const savedInsets = () =>
+      page.evaluate(() => (JSON.parse(localStorage.getItem('motion-director:project-v1') || '{}').tracks ?? []).flatMap((t: any) => t.clips).filter((c: any) => c.cardId === 'site-inset'));
+    await expect.poll(async () => (await savedInsets()).length, { timeout: 15_000 }).toBeGreaterThan(0);
+    const insets = await savedInsets();
     expect(String(insets[0].props.file)).toMatch(/^https:\/\/captures\.example\.com\//);
   });
 
@@ -486,6 +488,8 @@ test.describe('Motion Studio director', () => {
     // A different company: a new film (captured again), not a revision of the one on the table.
     await page.getByPlaceholder(/Tell me what to change/).fill('make a promo for https://globex.example.com');
     await page.getByRole('button', { name: 'Send' }).click();
+    // A new film asks the Ink Press question again, then captures the new site.
+    await answerInkPressOffer(page, 'director');
     await expect.poll(() => calls.capture, { timeout: 60_000 }).toBe(2);
     await expect(page.getByTestId('director-plan')).toBeVisible({ timeout: 60_000 });
     // Start over: the conversation is cleared.
