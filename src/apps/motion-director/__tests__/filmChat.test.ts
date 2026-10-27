@@ -13,6 +13,7 @@ import {
   findSiteUrl,
   parseFilmRequest,
   readTemplateAnswer,
+  applySiteContent,
   restrictToRecipes,
   singleShotPlan,
   startsDifferentFilm,
@@ -234,6 +235,28 @@ describe('a film made of picked shots', () => {
     const fitted = restrictToRecipes({ ...plan, scenes: plan.scenes.filter((s) => s.kind === 'shot') }, [deck], 8);
     expect(shotIds(fitted)).toEqual([deck.id]);
     expect(fitted.scenes.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('framing cards and site copy on a picked-shot film', () => {
+  const deck = byComponent('DeckDealFlyin');
+  const row = byComponent('RowEmbed');
+  it('drops optional title cards the requested length cannot fit', () => {
+    const plan = inkPressPlan({ prompt: 'x', durationSec: 20 });
+    // 5 s allows 3 scenes at 1.5 s: two shots + one framing card, not four scenes.
+    const five = restrictToRecipes(plan, [deck, row], 5);
+    expect(five.scenes.length).toBeLessThanOrEqual(3);
+    expect(Math.round(five.scenes.reduce((sum, s) => sum + s.durationSec, 0))).toBeLessThanOrEqual(5);
+    // Plenty of time keeps both framing cards.
+    expect(restrictToRecipes(plan, [deck, row], 20).scenes.filter((s) => s.kind === 'title')).toHaveLength(2);
+  });
+  it("the site's headline and call to action win the title cards over the director's captions", () => {
+    const plan = inkPressPlan({ prompt: 'x', durationSec: 20, recipes: [deck, row] });
+    const generic = { ...plan, scenes: plan.scenes.map((s) => (s.kind === 'title' ? { ...s, caption: 'The new way to ship' } : { ...s, caption: 'Director caption' })) };
+    const out = applySiteContent(generic, { headline: 'Build faster with Globex', ctas: ['Start free'], headings: ['Plan it'] });
+    expect(out.scenes[0].caption).toBe('Build faster with Globex');
+    expect(out.scenes[out.scenes.length - 1].caption).toBe('Start free');
+    expect(out.scenes[1].caption).toBe('Director caption');
   });
 });
 

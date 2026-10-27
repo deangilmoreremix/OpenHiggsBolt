@@ -386,8 +386,8 @@ export function ensureRecipes(plan: DirectorPlan, recipes: readonly MotionTempla
 
 /**
  * Put the site's own words on the storyboard: its headline under the opening title card, its
- * section headings as the shots' captions, its call to action under the closing card. Only
- * fills what the plan left empty, so copy the director wrote stays.
+ * section headings as the shots' captions, its call to action under the closing card. The
+ * framing cards always take the site's words; a shot keeps a caption the director wrote.
  */
 export function applySiteContent(plan: DirectorPlan, content: SiteContent | null | undefined): DirectorPlan {
   if (!content) return plan;
@@ -395,15 +395,14 @@ export function applySiteContent(plan: DirectorPlan, content: SiteContent | null
   let heading = 0;
   const last = plan.scenes.length - 1;
   const scenes = plan.scenes.map((scene, i) => {
-    if (scene.caption) {
-      if (scene.kind === 'shot') heading++;
-      return scene;
-    }
+    // The site's own headline and call to action win the framing cards, even over generic copy the director wrote.
     if (scene.kind === 'title') {
       const line = fit(i === 0 ? content.headline || content.description : i === last ? content.ctas?.[0] : undefined);
       return line ? { ...scene, caption: line } : scene;
     }
-    const line = fit(content.headings?.[heading++]);
+    const heading_ = content.headings?.[heading++];
+    if (scene.caption) return scene;
+    const line = fit(heading_);
     return line ? { ...scene, caption: line } : scene;
   });
   return { ...plan, scenes };
@@ -438,8 +437,10 @@ export function restrictToRecipes(plan: DirectorPlan, recipes: readonly MotionTe
   // Order of the picks, framing cards stay first / last.
   const order = (s: DirectorScene) => recipes.findIndex((r) => r.id === s.recipeId);
   const shots = kept.filter((s) => s.kind === 'shot').sort((a, b) => order(a) - order(b));
-  const first = kept[0]?.kind === 'title' ? kept[0] : null;
-  const lastCard = kept.length > 1 && kept[kept.length - 1].kind === 'title' ? kept[kept.length - 1] : null;
+  // Framing cards are optional: keep one only while every scene still gets its minimum time in the requested length.
+  const room = Math.floor(Math.min(PLAN_LIMITS.maxFilmSec, Math.max(PLAN_LIMITS.minFilmSec, targetSec)) / PLAN_LIMITS.minSceneSec) - shots.length;
+  const first = room >= 1 && kept[0]?.kind === 'title' ? kept[0] : null;
+  const lastCard = room >= 2 && kept.length > 1 && kept[kept.length - 1].kind === 'title' ? kept[kept.length - 1] : null;
   const scenes = [...(first ? [first] : []), ...shots, ...(lastCard ? [lastCard] : [])];
   if (scenes.length < PLAN_LIMITS.minScenes) {
     scenes.push({ kind: 'title', recipeId: '', durationSec: 2, headline: plan.title.split(/\s[—–-]\s/)[0] || 'Watch now', caption: '', transition: 'cut' });

@@ -253,7 +253,8 @@ export function useFilmDirector(opts: {
 
       // While a storyboard is on the table every message revises it ("use crash-zoom-punch instead"),
       // unless it plainly asks for a different film.
-      if (stage === 'plan' && pending.current && !startsDifferentFilm(text, pending.current.req)) {
+      const different = stage === 'plan' && pending.current ? startsDifferentFilm(text, pending.current.req) : false;
+      if (stage === 'plan' && pending.current && !different) {
         // A revision of the storyboard on the table.
         say('user', text);
         const prev = pending.current;
@@ -277,7 +278,8 @@ export function useFilmDirector(opts: {
         return true;
       }
 
-      if (!sendOpts.force && !(optsRef.current.isRequest ?? isFilmRequest)(text)) return false;
+      // A message that plainly starts a different film is a film request even without a creation verb ("now beta.dev").
+      if (!sendOpts.force && !different && !(optsRef.current.isRequest ?? isFilmRequest)(text)) return false;
       say('user', text);
       const req = parseFilmRequest(text);
       const picked = optsRef.current.settings().pickedRecipes;

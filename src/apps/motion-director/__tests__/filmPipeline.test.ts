@@ -87,4 +87,18 @@ describe('storyboardFilm', () => {
     expect(new Set(insets.map((c) => c.props.side)).size).toBe(2);
     expect(new Set(insets.map((c) => c.props.file)).size).toBe(2);
   });
+
+  it('a captured site without a logo does not get the Brand Kit logo; the Brand Kit company is not sent to the director for a site film', async () => {
+    const { requestPlan } = await import('../lib/directorClient');
+    vi.mocked(requestPlan).mockClear();
+    const noLogo = capture({ logo: null });
+    const result = await storyboardFilm(parseFilmRequest('a promo for https://globex.example with the Ink Press template'), { template: 'director', durationSec: 20, aspectRatio: '16:9', brandKit, capture: noLogo }, () => {});
+    const sent = vi.mocked(requestPlan).mock.calls[0][0].brandKit as { businessName: string | null; logo: string };
+    expect(sent.businessName).toBeNull();
+    expect(sent.logo).toBe('https://cdn.test/kit-logo.png');
+    const project = await buildFilmProject(result.plan, { aspectRatio: '16:9', capture: noLogo, media: [], logo: brandKit.logo }, () => {});
+    const titles = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId === 'inkpress-title-card');
+    expect(titles.length).toBeGreaterThan(0);
+    for (const t of titles) expect(t.props.logo).toBeUndefined();
+  });
 });

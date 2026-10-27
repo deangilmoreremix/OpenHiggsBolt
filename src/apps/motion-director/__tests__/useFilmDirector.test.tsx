@@ -70,6 +70,17 @@ describe('useFilmDirector', () => {
     expect(result.current.messages).toEqual([]);
   });
 
+  it('a bare new-site message ("now beta.dev") with a storyboard open starts a film instead of being dropped', async () => {
+    calls.length = 0;
+    const { result } = renderHook(() => useFilmDirector({ settings }));
+    act(() => { result.current.send('Make a launch film for acme.io with the Ink Press template', { force: true }); });
+    await flush();
+    let handled = false;
+    act(() => { handled = result.current.send('now beta.dev'); });
+    expect(handled).toBe(true);
+    expect(result.current.stage).toBe('offer');
+  });
+
   it('shots picked while the storyboard is open are added to it', async () => {
     calls.length = 0;
     const picked = [MOTION_TEMPLATES.find((t) => t.componentName === 'HitCounter')!];

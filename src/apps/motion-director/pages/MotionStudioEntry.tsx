@@ -426,7 +426,7 @@ export default function MotionStudioEntry() {
         <div className="w-full max-w-5xl space-y-2">
           {conversing && (
             <div ref={chatRef} className="rounded-2xl p-3 sm:p-4 max-h-[70vh] overflow-y-auto custom-scrollbar" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)' }}>
-              <FilmDirectorChat director={director} onOpenWorkbench={editInWorkbench} onPickShots={() => setShowRecipePicker(true)} />
+              <FilmDirectorChat director={director} onOpenWorkbench={editInWorkbench} onPickShots={() => setShowRecipePicker(true)} onNewFilm={() => setSelectedRecipes([])} />
             </div>
           )}
           {media.length > 0 && (

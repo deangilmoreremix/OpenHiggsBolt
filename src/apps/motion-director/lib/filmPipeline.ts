@@ -106,7 +106,8 @@ export async function storyboardFilm(
       durationSec: planSec,
       aspectRatio: opts.aspectRatio,
       capture,
-      brandKit: opts.brandKit ? { ...opts.brandKit } : null,
+      // The Brand Kit company never names a film of a site the user gave.
+      brandKit: opts.brandKit ? { ...opts.brandKit, ...(hasSite ? { businessName: null } : {}) } : null,
       requiredRecipes: required.map((r) => r.id),
       template: opts.template === 'inkpress' ? 'inkpress' : null,
     });
@@ -157,8 +158,8 @@ export async function buildFilmProject(
     aspectRatio: opts.aspectRatio,
     capture: film,
     music: track ? { url: track.url, name: track.name, beats } : null,
-    // The site's own logo wins; the Brand Kit logo is for films with no site.
-    logo: opts.capture?.logo || opts.logo || null,
+    // A film of a captured site shows that site's logo (none if it had none); the Brand Kit logo is for films with no site.
+    logo: opts.capture ? opts.capture.logo ?? null : opts.logo ?? null,
     videos,
   });
   log(`Film built · ${project.tracks.length} tracks`, 'done');

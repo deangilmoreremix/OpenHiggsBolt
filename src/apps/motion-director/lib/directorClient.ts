@@ -56,16 +56,22 @@ export class DirectorError extends Error {
 async function post<T>(path: string, body: unknown, timeoutMs = 0): Promise<T> {
   const controller = timeoutMs ? new AbortController() : null;
   const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  const timedOut = () => new DirectorError(`it took longer than ${Math.round(timeoutMs / 1000)} seconds`, 'TIMEOUT', 408);
   let res: Response;
+  let data: any;
   try {
     res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: controller?.signal });
+    // The timer keeps running while the body is read: headers can arrive and the body still stall.
+    data = await res.json().catch((error) => {
+      if (controller?.signal.aborted) throw error;
+      return {};
+    });
   } catch (error) {
-    if (controller?.signal.aborted) throw new DirectorError(`it took longer than ${Math.round(timeoutMs / 1000)} seconds`, 'TIMEOUT', 408);
+    if (controller?.signal.aborted) throw timedOut();
     throw error;
   } finally {
     if (timer) clearTimeout(timer);
   }
-  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new DirectorError(String(data?.message || data?.error || `Request failed (${res.status})`), String(data?.code || data?.error || 'FAILED'), res.status);
   }
