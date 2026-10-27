@@ -239,6 +239,7 @@ export default function LibraryPanel({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
+                handleClick();
               }}
               className="p-1 rounded hover:bg-white/[0.08] text-white/50"
               aria-label="Preview"

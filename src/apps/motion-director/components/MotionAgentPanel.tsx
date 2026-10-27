@@ -223,16 +223,12 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
         return;
       }
 
-      // "Make the video N seconds" — re-cut the storyboard to the requested length.
+      // "Make the video N seconds" while a storyboard is open re-cuts it; otherwise the editor handles it.
       const dur = lower.match(FILM_DURATION_RE)?.[1];
-      if (dur !== undefined) {
+      if (dur !== undefined && director.stage === "plan" && director.storyboard) {
         append("user", text);
-        if (director.stage === "plan" && director.storyboard) {
-          await director.send(text, { force: true });
-          append("assistant", `Re-storyboarding the film at ${dur} seconds. Approve to rebuild it.`);
-        } else {
-          append("assistant", "There's no storyboard to re-cut yet — make a film first, then tell me the length.");
-        }
+        await director.send(text, { force: true });
+        append("assistant", `Re-storyboarding the film at ${dur} seconds. Approve to rebuild it.`);
         setDraft("");
         return;
       }

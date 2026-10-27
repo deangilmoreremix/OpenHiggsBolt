@@ -85,8 +85,8 @@ const ExportButton: React.FC = () => {
 
     try {
       const result = await renderVideoOnWeb({
-        project,
-        muted: withoutMusic,
+        // Only the music bed goes; sound effects and video sound stay.
+        project: withoutMusic ? { ...project, tracks: project.tracks.filter((track) => track.name !== t('track.music')) } : project,
         videoCodec: canRenderResult.videoCodec,
         audioCodec: canRenderResult.audioCodec,
         onProgress: (progress, info) => {
