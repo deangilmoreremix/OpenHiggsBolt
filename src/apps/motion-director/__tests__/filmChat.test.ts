@@ -230,6 +230,12 @@ describe('a film made of picked shots', () => {
     expect(restrictToRecipes(plan, [], 20)).toBe(plan);
   });
 
+  it('stretches a few picked shots to the requested length', () => {
+    const plan = inkPressPlan({ prompt: 'x', durationSec: 60 });
+    const fitted = restrictToRecipes(plan, [row, deck], 60);
+    expect(fitted.scenes.reduce((sum, s) => sum + s.durationSec, 0)).toBeGreaterThan(58);
+  });
+
   it('a single picked shot is still a valid storyboard', () => {
     const plan = { ...inkPressPlan({ prompt: 'x', durationSec: 20 }), title: 'Acme — shot film' };
     const fitted = restrictToRecipes({ ...plan, scenes: plan.scenes.filter((s) => s.kind === 'shot') }, [deck], 8);

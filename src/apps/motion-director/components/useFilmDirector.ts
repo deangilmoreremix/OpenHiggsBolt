@@ -5,7 +5,7 @@ import type { AspectRatio } from '../projectContract';
 import type { ProjectData } from '../types';
 import type { MediaAttachment } from '../lib/mediaUpload';
 import type { MotionTemplate } from '@/data/motionRecipeCatalog';
-import { motionTemplateTitle } from '@/data/motionRecipeCatalog';
+import { motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import {
   INK_PRESS_INTRO,
   MAX_PICKED_SHOTS,
@@ -260,8 +260,13 @@ export function useFilmDirector(opts: {
         const prev = pending.current;
         const extra = parseFilmRequest(text);
         // Shots picked in Templates while the storyboard is open are added to it.
-        const base = reviseRecipes(prev.req.recipes, text);
-        const revised = [...base, ...optsRef.current.settings().pickedRecipes.filter((p) => !base.includes(p))];
+        const picks = optsRef.current.settings().pickedRecipes;
+        // A storyboard made without explicit picks keeps its own shots when picks are added to it.
+        const open = !prev.req.recipes.length && picks.length
+          ? (storyboard?.plan.scenes ?? []).flatMap((sc) => (sc.kind === 'shot' ? [resolveMotionTemplate(sc.recipeId)] : [])).filter((t): t is MotionTemplate => !!t)
+          : prev.req.recipes;
+        const base = reviseRecipes(open, text);
+        const revised = [...base, ...picks.filter((p) => !base.includes(p))];
         void runStoryboard(
           {
             ...prev.req,

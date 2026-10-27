@@ -28,6 +28,7 @@ vi.mock('../lib/filmPipeline', async (orig) => {
 });
 
 import { useFilmDirector } from '../components/useFilmDirector';
+import type { MotionTemplate } from '@/data/motionRecipeCatalog';
 import { MOTION_TEMPLATES, motionTemplateTitle } from '@/data/motionRecipeCatalog';
 
 const settings = () => ({ aspectRatio: '16:9' as const, durationSec: 10, brandKit: null, media: [], pickedRecipes: [] });
@@ -188,6 +189,23 @@ describe('useFilmDirector', () => {
     act(() => { result.current.send(`Make a film with the shot cards I picked: ${picked.map(motionTemplateTitle).join(', ')}`, { force: true }); });
     await flush();
     expect(calls[0].recipes).toEqual(['CrashZoomReal']);
+  });
+
+  it('adding a picked shot to a storyboard made without picks keeps that storyboard\'s shots', async () => {
+    calls.length = 0;
+    let picked: MotionTemplate[] = [];
+    const { result } = renderHook(() => useFilmDirector({ settings: () => ({ ...settings(), pickedRecipes: picked }) }));
+    act(() => { result.current.send('Make a launch film for acme.io', { force: true }); });
+    await flush();
+    act(() => { result.current.send('yes'); });
+    await flush();
+    const shots = result.current.storyboard!.plan.scenes.filter((sc) => sc.kind === 'shot').map((sc) => sc.recipeId);
+    expect(shots.length).toBeGreaterThan(1);
+    picked = [MOTION_TEMPLATES.find((t) => t.componentName === 'RowEmbed')!];
+    const before = calls.length;
+    act(() => { result.current.send('Add the shot cards I picked'); });
+    await flush();
+    expect(calls[before].recipes).toEqual([...shots.filter((id) => id !== picked[0].id), picked[0].id].map((id) => MOTION_TEMPLATES.find((t) => t.id === id)!.componentName));
   });
 
   it('asks for at most the shots a storyboard can hold, and says what was dropped', async () => {

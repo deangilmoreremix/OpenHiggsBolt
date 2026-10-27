@@ -445,5 +445,7 @@ export function restrictToRecipes(plan: DirectorPlan, recipes: readonly MotionTe
   if (scenes.length < PLAN_LIMITS.minScenes) {
     scenes.push({ kind: 'title', recipeId: '', durationSec: 2, headline: plan.title.split(/\s[—–-]\s/)[0] || 'Watch now', caption: '', transition: 'cut' });
   }
-  return validatePlan({ ...plan, scenes }, { targetSec });
+  // Few picked shots stretch to the requested length instead of stopping at the usual per-scene cap.
+  const filmSec = Math.min(PLAN_LIMITS.maxFilmSec, Math.max(PLAN_LIMITS.minFilmSec, targetSec));
+  return validatePlan({ ...plan, scenes }, { targetSec, maxSceneSec: Math.ceil(filmSec / scenes.length) });
 }
