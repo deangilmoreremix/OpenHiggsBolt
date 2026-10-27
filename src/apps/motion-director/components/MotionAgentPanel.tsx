@@ -103,16 +103,34 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
   }, [sessionId, recipeId, recipeName]);
 
   const director = useFilmDirector({
-    settings: () => ({
-      aspectRatio: aspectOf(useStore.getState().project),
-      durationSec: 20,
-      brandKit: null,
-      media: [],
-      pickedRecipes: [],
-    }),
+    settings: () => {
+      const state = useStore.getState();
+      const session = state.activeSessionId ? state.sessions.find((s) => s.id === state.activeSessionId) : null;
+      return {
+        aspectRatio: aspectOf(state.project),
+        // Use the shared session's length (set when the film was created) instead
+        // of a fixed 20s cut-down panel, so chat and workbench edit the same film.
+        durationSec: session?.duration ?? 20,
+        brandKit: null,
+        media: [],
+        pickedRecipes: [],
+      };
+    },
     onMessage: (m) => useStore.getState().appendSessionMessage(ensureSession(), { role: m.role, content: m.content, ts: m.ts }),
     // Already in the workbench: the built film replaces the project (one undo step brings the old one back).
-    onBuilt: (film) => useStore.getState().setProject(film.project),
+    onBuilt: (film) => {
+      const sid = ensureSession();
+      const now = new Date().toISOString();
+      const project = film.project;
+      const sec = project.tracks.reduce((m: number, tr) => Math.max(m, tr.clips.reduce((mm: number, c) => Math.max(mm, c.start + c.duration), 0)), 0) / project.fps;
+      const clips = project.tracks.reduce((n, tr) => n + tr.clips.length, 0);
+      useStore.getState().appendSessionMessage(sid, {
+        role: "assistant",
+        content: `Film review — ${Math.round(sec)}s at ${project.width}×${project.height}, ${clips} clips on ${project.tracks.length} tracks. ${film.qa.ok ? "Frame QA passed." : `Frame QA found ${film.qa.issues.length} issue(s).`} Open it in the Motion Workbench to keep editing, or render the MP4.`,
+        ts: now,
+      });
+      useStore.getState().setProject(film.project);
+    },
     // Once there is a film to edit, only an explicit ask starts a new one; edits stay edits.
     isRequest: (text) =>
       useStore.getState().project.tracks.some((t) => t.clips.length > 0) ? isNewFilmRequest(text) : isFilmRequest(text),

@@ -70,7 +70,7 @@ const isTrackShape = (v: unknown): v is TrackData =>
  * track and clip. Without this a `{"tracks":[]}` object reaches the store, the
  * Player and the autosave, and `projectDuration()` turns into NaN.
  */
-const isProjectShape = (v: unknown): v is ProjectData =>
+export const isProjectShape = (v: unknown): v is ProjectData =>
   isObj(v) &&
   isStr(v.name) &&
   isPosNum(v.fps) &&
@@ -210,7 +210,7 @@ export const App: React.FC = () => {
           title="Back to the Motion Director chat (your film stays here — reopen it from Continue editing)"
           data-testid="workbench-back-to-chat"
         >
-          ← Back to chat
+          {t("workbench.backToChat")}
         </button>
         <span className="logo">Motion <b>Director</b></span>
         <input
@@ -224,11 +224,11 @@ export const App: React.FC = () => {
           <PillButton
             active={railOpen}
             onClick={() => setRailOpen((open) => !open)}
-            title="Edit agent — tell it what to change in this film"
-            pressed={railOpen}
-            testId="topbar-agent-toggle"
-          >
-            Edit agent
+          title={t("workbench.editAgent.title")}
+          pressed={railOpen}
+          testId="topbar-agent-toggle"
+        >
+          {t("workbench.editAgent")}
           </PillButton>
         </div>
         <span style={{ flex: 1 }} />
@@ -273,7 +273,7 @@ export const App: React.FC = () => {
             <div className="panel-wrap ms-rail-wrap" style={{ width: railW }}>
               <div className="ms-rail" data-testid="studio-rail">
                 <div className="ms-rail-tabs">
-                  <span className="ms-rail-title">Edit agent</span>
+                  <span className="ms-rail-title">{t("workbench.editAgent")}</span>
                   <span style={{ flex: 1 }} />
                   <button
                     type="button"

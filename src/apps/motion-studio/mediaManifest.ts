@@ -497,11 +497,6 @@ export const SFX_LIB: LibAudio[] = [
     "name": "sparkle-wand"
   },
   {
-    "file": "motion-studio/sfxlib/light/sparkle.mp3",
-    "cat": "light",
-    "name": "sparkle"
-  },
-  {
     "file": "motion-studio/sfxlib/light/stardust-swish.mp3",
     "cat": "light",
     "name": "stardust-swish"
@@ -597,11 +592,6 @@ export const SFX_LIB: LibAudio[] = [
     "name": "paper-wind-blow"
   },
   {
-    "file": "motion-studio/sfxlib/riser/riser-cine.mp3",
-    "cat": "riser",
-    "name": "riser-cine"
-  },
-  {
     "file": "motion-studio/sfxlib/scifi/hitech-bleep.mp3",
     "cat": "scifi",
     "name": "hitech-bleep"
@@ -630,11 +620,6 @@ export const SFX_LIB: LibAudio[] = [
     "file": "motion-studio/sfxlib/text/chalk-line.mp3",
     "cat": "text",
     "name": "chalk-line"
-  },
-  {
-    "file": "motion-studio/sfxlib/text/keyboard.mp3",
-    "cat": "text",
-    "name": "keyboard"
   },
   {
     "file": "motion-studio/sfxlib/text/marker-pen-line.mp3",
@@ -822,11 +807,6 @@ export const SFX_LIB: LibAudio[] = [
     "name": "pop-electric"
   },
   {
-    "file": "motion-studio/sfxlib/ui/pop.mp3",
-    "cat": "ui",
-    "name": "pop"
-  },
-  {
     "file": "motion-studio/sfxlib/ui/switch-click-quick.mp3",
     "cat": "ui",
     "name": "switch-click-quick"
@@ -900,11 +880,6 @@ export const SFX_LIB: LibAudio[] = [
 
 /** 背景音乐备选 public/motion-studio/bgmlib/ */
 export const BGM_LIB: LibAudio[] = [
-  {
-    "file": "motion-studio/bgmlib/bgm-tech-house.mp3",
-    "cat": "",
-    "name": "bgm-tech-house"
-  },
   {
     "file": "motion-studio/bgmlib/cat-walk.mp3",
     "cat": "",

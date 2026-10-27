@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { ClipData, ProjectData, SessionData, SessionMessage, TrackData } from "./types";
-import { uid, normalizeSession } from "./types";
+import { uid, normalizeSession, isProjectShape } from "./types";
 import { CARDS } from "./cards/registry";
 import { clipDefaultsFor } from "./cards/types";
 import { demoProject } from "./demoProject";
@@ -22,7 +22,7 @@ const loadSaved = (): ProjectData | null => {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const p = JSON.parse(raw) as ProjectData;
-      if (p && Array.isArray(p.tracks)) return p;
+      if (p && isProjectShape(p)) return p;
     }
   } catch {
     /* 损坏的存档直接回退 */
@@ -311,7 +311,15 @@ export const useStore = create<WorkbenchState>((set, get) => ({
       project: mutateProject(s.project, (d) => {
         const track =
           d.tracks.find((t) => t.id === trackId) ?? d.tracks[d.tracks.length - 1];
-        if (!track) return;
+        if (!track) {
+          // No tracks yet: create one so the clip always has a lane to land in.
+          track = {
+            id: uid("track"),
+            name: t("track.new", { n: d.tracks.length + 1 }),
+            clips: [],
+          };
+          d.tracks.unshift(track);
+        }
         // 卡片按自己的 sourceFps 编排（卡片库 30、成片单元 = 清单 fps）；工程 fps 不同时换算时长 +
         // 反向变速，播放速度不变；媒体卡（realtime）只换算时长、不变速。
         // 拖拽负载里的 duration（素材库给视频 / 音频的默认长度）与 durationInFrames 同口径，一并换算

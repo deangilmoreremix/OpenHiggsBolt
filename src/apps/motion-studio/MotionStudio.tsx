@@ -37,7 +37,7 @@ const ENTRY_SEEN_KEY = 'motion-studio:entry-seen-v1';
 const STUDIO_ROOT_PATH = '/studio/motion-studio';
 
 /** `<root>/new` — the INPUT step (prompt composer, aspect ratio, duration). */
-const INPUT_PATH_RE = /\/motion-studio\/new\/?$/;
+const INPUT_PATH_RE = /\/(?:motion-studio|motion)\/new\/?$/;
 
 /** True when the browser is on the INPUT step of the studio. */
 const isInputPath = () =>
@@ -57,10 +57,14 @@ const RouteSync = () => {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (location.pathname !== '/') return;
-    const { pathname, search, hash } = window.location;
-    if (!INPUT_PATH_RE.test(pathname)) return;
-    window.history.replaceState(window.history.state, '', `${STUDIO_ROOT_PATH}${search}${hash}`);
+    if (location.pathname !== '/' && location.pathname !== '/motion') return;
+    const m = window.location.pathname.match(/(?:^|\/)(motion-studio|motion)\/new\/?$/);
+    if (!m) return;
+    // Re-write the entry URL (`/motion-studio/new` or `/motion/new`) back to the
+    // editor root (`/studio/motion-studio` or `/motion`) so a reload stays in
+    // the workbench instead of bouncing back into the input step.
+    const root = m[1] === 'motion' ? '/motion' : STUDIO_ROOT_PATH;
+    window.history.replaceState(window.history.state, '', `${root}${window.location.search}${window.location.hash}`);
   }, [location.pathname]);
 
   return null;

@@ -10,6 +10,7 @@ import type { ProjectData } from '../types';
 import { motionCardId, motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import { validateEditOps, validatePlan, type DirectorEditOp, type DirectorPlan } from './directorPlan';
 import type { SiteContent } from './filmChat';
+import { AESTHETIC_DIGEST } from './aestheticDigest';
 
 export interface SiteCapture {
   url: string;
@@ -52,9 +53,23 @@ export class DirectorError extends Error {
   }
 }
 
-async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  const data = await res.json().catch(() => ({}));
+async function post<T>(path: string, body: unknown, timeoutMs = 28_000): Promise<T> {
+  const controller = timeoutMs ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  let res: Response;
+  let data: any;
+  try {
+    res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: controller?.signal });
+    data = await res.json().catch((error) => {
+      if (controller?.signal.aborted) throw error;
+      return {};
+    });
+  } catch (error) {
+    if (controller?.signal.aborted) throw new DirectorError(`it took longer than ${Math.round(timeoutMs / 1000)} seconds`, 'TIMEOUT', 408);
+    throw error;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
   if (!res.ok) {
     throw new DirectorError(String(data?.message || data?.error || `Request failed (${res.status})`), String(data?.code || data?.error || 'FAILED'), res.status);
   }
@@ -125,7 +140,7 @@ export function clipsForDirector(project: ProjectData) {
 
 export async function requestEdit(instruction: string, project: ProjectData): Promise<{ reply: string; ops: DirectorEditOp[] }> {
   const clips = clipsForDirector(project);
-  const raw = await post<unknown>('/api/motion-studio/director', { mode: 'edit', instruction, clips });
+  const raw = await post<unknown>('/api/motion-studio/director', { mode: 'edit', instruction: `${instruction}\n\n---\n${AESTHETIC_DIGEST}`, clips });
   return validateEditOps(raw, new Set(clips.map((c) => c.id)));
 }
 

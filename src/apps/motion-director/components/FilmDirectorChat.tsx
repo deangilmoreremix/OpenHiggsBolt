@@ -209,11 +209,13 @@ export interface FilmDirectorChatProps {
   openLabel?: string;
   /** Opens the Templates picker so shots can be chosen by hand. */
   onPickShots?: () => void;
+  /** Clears the current conversation and starts a different film. */
+  onNewFilm?: () => void;
   /** Show the finished-film card (off in the workbench, where the film is already loaded). */
   showFilm?: boolean;
 }
 
-export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, history = [], hideOwnMessages, onOpenWorkbench, openLabel, onPickShots, showFilm = true }) => {
+export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, history = [], hideOwnMessages, onOpenWorkbench, openLabel, onPickShots, onNewFilm, showFilm = true }) => {
   const { messages, stage, activity, steps, storyboard, film } = director;
   const shown = hideOwnMessages ? history : [...history, ...messages];
   const plan = storyboard?.plan;
@@ -248,6 +250,11 @@ export const FilmDirectorChat: React.FC<FilmDirectorChatProps> = ({ director, hi
           <button type="button" onClick={director.stop} className="px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.5)', color: '#fca5a5' }} data-testid="film-stop">
             ■ Stop
           </button>
+          {onNewFilm && (
+            <button type="button" onClick={() => { director.reset(); onNewFilm(); }} className="px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.5)', color: '#86efac' }} data-testid="film-new">
+              New film
+            </button>
+          )}
         </div>
       )}
       {activity.length > 0 && <ActivityList items={activity} />}

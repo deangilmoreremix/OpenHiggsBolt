@@ -11,7 +11,8 @@ import { useDemoPersonalize } from '@/shared/personalization/DemoPersonalizeProv
 import { useSmartVideoAccess, ENTITLEMENTS } from '@/access/SmartVideoAccessProvider';
 import type { AspectRatio } from '../projectContract';
 import { usePersonalizationPerson } from '../personalizationAdapter';
-import { prepareMedia, type MediaAttachment } from '../lib/mediaUpload';
+import { projectToSession } from '../lib/sessionAdapter';
+import { uploadMedia, type MediaAttachment } from '../lib/mediaUpload';
 import {
   AttachButton,
   HomeHero,
@@ -166,8 +167,18 @@ export default function MotionStudioEntry() {
   const { setProject } = useStore();
   const project = useStore((s) => s.project);
   const sessions = useStore((s) => s.sessions);
+  const activeSessionId = useStore((s) => s.activeSessionId);
   const applySession = useStore((s) => s.applySession);
   const deleteSession = useStore((s) => s.deleteSession);
+
+  const activeSession = useMemo(
+    () => (activeSessionId ? sessions.find((s) => s.id === activeSessionId) : null),
+    [sessions, activeSessionId],
+  );
+  const history = useMemo(
+    () => activeSession?.messages.map((m) => ({ role: m.role, content: m.content, ts: m.ts })) ?? [],
+    [activeSession],
+  );
 
   const [description, setDescription] = useState('');
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('16:9');
@@ -221,14 +232,27 @@ export default function MotionStudioEntry() {
       media,
       pickedRecipes: selectedRecipes.map((id) => TEMPLATE_BY_ID[id]).filter(Boolean),
     }),
+    /** Mirror every chat turn into the active session so the conversation
+     *  survives navigation and the workbench's "Edit agent" resumes the same
+     *  thread. Creates a session on the first turn when there isn't one yet. */
+    onMessage: (m) => {
+      const state = useStore.getState();
+      let sid = state.activeSessionId;
+      if (!sid) {
+        const created = projectToSession(state.project, state.project.name || 'Untitled Film');
+        state.addSession(created);
+        sid = created.id;
+      }
+      state.appendSessionMessage(sid, { role: m.role, content: m.content, ts: m.ts });
+    },
   });
-  const conversing = director.messages.length > 0;
+  const conversing = director.messages.length > 0 || history.length > 0;
   /** Keep the newest message / storyboard / film in view. */
   const chatRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = chatRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [director.messages.length, director.stage, director.activity.length]);
+  }, [director.messages.length, history.length, director.stage, director.activity.length]);
   const busy = director.stage === 'storyboarding' || director.stage === 'building';
 
   const handleCreate = () => {
@@ -248,6 +272,8 @@ export default function MotionStudioEntry() {
       // answer to the Ink Press question, or a revision of the storyboard.
       director.send(text, { force: director.stage === 'idle' || director.stage === 'film' });
       setDescription('');
+      // The picks went into this film's storyboard; the next film starts clean.
+      setSelectedRecipes([]);
     };
     if (isE2E) run();
     else requireEntitlement(ENTITLEMENTS.SMARTVIDEO_GO, run);
@@ -262,9 +288,17 @@ export default function MotionStudioEntry() {
     navigate('/');
   };
 
-  /** Hand the finished film to the Motion Workbench (tracks, inspector, library, export). */
+  /** Hand the finished film to the Motion Workbench (tracks, inspector, library, export).
+   *  Persists the film as the active session so the workbench's "Edit agent" resumes
+   *  the same conversation thread, and "Back to chat" picks it up again. */
   const editInWorkbench = () => {
     if (!director.film) return;
+    const state = useStore.getState();
+    if (state.activeSessionId === null) {
+      const created = projectToSession(state.project, state.project.name || 'Untitled Film');
+      state.addSession(created);
+    }
+    state.updateActiveSessionProject(director.film.project);
     setProject(director.film.project);
     openWorkbench();
   };
@@ -272,10 +306,12 @@ export default function MotionStudioEntry() {
   const selectedTemplates = selectedRecipes.map((id) => TEMPLATE_BY_ID[id]).filter(Boolean);
   const canCreate = Boolean(description.trim()) || (director.stage === 'idle' && selectedRecipes.length > 0);
 
-  /** 本地素材 → object URL（不上传）；生成工程时再接进新工程 */
-  const handleFiles = (files: FileList | null) => {
-    const prepared = prepareMedia(Array.from(files ?? []));
-    if (prepared.length) setMedia((prev) => [...prev, ...prepared]);
+  /** 本地素材 → 耐久存储 URL（失败则回退到 object URL）；生成工程时再接进新工程 */
+  const handleFiles = async (files: FileList | null) => {
+    const fileList = Array.from(files ?? []);
+    if (!fileList.length) return;
+    const uploaded = await uploadMedia(fileList);
+    setMedia((prev) => [...prev, ...uploaded]);
   };
 
   const openSession = (id: string) => {
@@ -420,7 +456,14 @@ export default function MotionStudioEntry() {
         <div className="w-full max-w-5xl space-y-2">
           {conversing && (
             <div ref={chatRef} className="rounded-2xl p-3 sm:p-4 max-h-[70vh] overflow-y-auto custom-scrollbar" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)' }}>
-              <FilmDirectorChat director={director} onOpenWorkbench={editInWorkbench} onPickShots={() => setShowRecipePicker(true)} />
+              <FilmDirectorChat
+                director={director}
+                history={history}
+                hideOwnMessages
+                onOpenWorkbench={editInWorkbench}
+                onPickShots={() => setShowRecipePicker(true)}
+                onNewFilm={() => setSelectedRecipes([])}
+              />
             </div>
           )}
           {media.length > 0 && (

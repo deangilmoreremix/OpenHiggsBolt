@@ -110,10 +110,11 @@ describe('film assembly', () => {
     expect(shots[1].props).toMatchObject({ screens: ['https://cdn.example/page.jpg'], crops: ['https://cdn.example/crop-1.jpg'] });
     expect(shots[2].props.screens).toBeUndefined();
     expect(byName.Transitions.map((c) => c.cardId)).toEqual(['inkpress-flash-cut']);
-    // One sound effect per scene change: a whoosh on the plain cut, an impact on the flash cut.
+    // One sound effect per scene change: a whoosh on the plain cut, an impact on the flash cut, a sparkle sting at the end.
     expect(byName.SFX.map((c) => c.props.file)).toEqual([
       'motion-studio/sfxlib/transition/swoosh-quick.mp3',
       'motion-studio/sfxlib/impact/impact-transition.mp3',
+      'motion-studio/sfxlib/light/sparkle-touch.mp3',
     ]);
     for (const c of byName.SFX) expect(existsSync(`public/${c.props.file}`), String(c.props.file)).toBe(true);
     expect(byName.Music[0]).toMatchObject({ cardId: 'audio-clip', props: { file: 'blob:music' } });

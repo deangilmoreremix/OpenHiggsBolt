@@ -13,6 +13,7 @@ import {
   parseFilmRequest,
   readTemplateAnswer,
   reviseRecipes,
+  startsDifferentFilm,
   type FilmRequest,
   type FilmTemplateChoice,
 } from '../lib/filmChat';
@@ -70,8 +71,6 @@ const msg = (role: FilmChatMessage['role'], content: string): FilmChatMessage =>
   content,
   ts: new Date().toISOString(),
 });
-
-const NEW_FILM_RE = /\b(?:new|another|different|separate)\s+(?:[\w-]+\s+)?(?:film|video|promo|teaser|trailer|shot)\b/i;
 
 const secs = (p: { scenes: { durationSec: number }[] }) => Math.round(p.scenes.reduce((s, sc) => s + sc.durationSec, 0));
 
@@ -217,7 +216,10 @@ export function useFilmDirector(opts: {
     (raw: string, sendOpts: { force?: boolean } = {}): boolean => {
       const text = raw.trim();
       if (!text) return false;
-      if (stage === 'storyboarding' || stage === 'building') return true;
+      if (stage === 'storyboarding' || stage === 'building') {
+        say('assistant', `I'm still working on your film — wait for it to finish, or press Stop to cancel and then send again.`);
+        return true;
+      }
 
       if (stage === 'offer' && offerReq.current) {
         const answer = readTemplateAnswer(text);
@@ -248,26 +250,28 @@ export function useFilmDirector(opts: {
 
       // While a storyboard is on the table every message revises it ("use crash-zoom-punch instead"),
       // unless it plainly asks for a different film.
-      if (stage === 'plan' && pending.current && !NEW_FILM_RE.test(text)) {
-        // A revision of the storyboard on the table.
-        say('user', text);
+      if (stage === 'plan' && pending.current) {
         const prev = pending.current;
-        const extra = parseFilmRequest(text);
-        const revised = reviseRecipes(prev.req.recipes, text);
-        void runStoryboard(
-          {
-            ...prev.req,
-            prompt: `${prev.req.prompt}\n\nRevise: ${text}`,
-            recipes: revised,
-            // A one-shot film follows its revision: "use crash-zoom-punch instead" builds that shot.
-            single: prev.req.single ? (revised.length === 1 ? revised[0] : null) : null,
-            durationSec: extra.durationSec ?? prev.req.durationSec,
-            siteUrl: extra.siteUrl ?? prev.req.siteUrl,
-          },
-          extra.template ?? (extra.recipes.length ? 'director' : prev.template),
-          true,
-        );
-        return true;
+        if (!startsDifferentFilm(text, prev.req)) {
+          // A revision of the storyboard on the table.
+          say('user', text);
+          const extra = parseFilmRequest(text);
+          const revised = reviseRecipes(prev.req.recipes, text);
+          void runStoryboard(
+            {
+              ...prev.req,
+              prompt: `${prev.req.prompt}\n\nRevise: ${text}`,
+              recipes: revised,
+              // A one-shot film follows its revision: "use crash-zoom-punch instead" builds that shot.
+              single: prev.req.single ? (revised.length === 1 ? revised[0] : null) : null,
+              durationSec: extra.durationSec ?? prev.req.durationSec,
+              siteUrl: extra.siteUrl ?? prev.req.siteUrl,
+            },
+            extra.template ?? (extra.recipes.length ? 'director' : prev.template),
+            true,
+          );
+          return true;
+        }
       }
 
       if (!sendOpts.force && !(optsRef.current.isRequest ?? isFilmRequest)(text)) return false;
@@ -325,7 +329,7 @@ export function useFilmDirector(opts: {
       const cuts = project.tracks.flatMap((t) => t.clips).filter((c) => c.cardId === 'audio-clip' && /sfxlib/.test(String(c.props?.file ?? ''))).length;
       const music = media.find((m) => m.kind === 'audio');
       mark('animate', 'done', `${project.tracks.reduce((n, t) => n + t.clips.length, 0)} clips on ${project.tracks.length} tracks`);
-      mark('beat', 'done', `${cuts} SFX hits${music ? ` · cuts on the beat of ${music.name}` : ' · attach music to beat-sync the cuts'}`);
+      mark('beat', music ? 'done' : 'skipped', `${cuts} SFX hits${music ? ` · cuts on the beat of ${music.name}` : ' · no music attached, cuts are not beat-synced'}`);
       const frames = await checkFilmFrames(project, glog);
       if (!live()) return;
       qa.framesChecked = frames.checked;

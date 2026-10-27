@@ -15,9 +15,10 @@ import { analyzeBeats } from './beatSync';
 import { planToProject, type FilmCapture } from './buildFilm';
 import { captureSite, requestPlan, DirectorError, type SiteCapture } from './directorClient';
 import { PLAN_LIMITS, type DirectorPalette, type DirectorPlan } from './directorPlan';
-import { ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
+import { applySiteContent, ensureRecipes, inkPressPlan, INK_PRESS_SHOTS, productNameFrom, restrictToRecipes, singleShotPlan, type FilmRequest, type FilmTemplateChoice } from './filmChat';
 import { isProductTextureShot } from './productShots';
 import { resolveMotionTemplate } from '@/data/motionRecipeCatalog';
+import { AESTHETIC_DIGEST } from './aestheticDigest';
 
 export type ActivityStatus = 'running' | 'done' | 'error';
 export type ActivityLog = (label: string, status: ActivityStatus) => void;
@@ -83,7 +84,9 @@ export async function storyboardFilm(
   }
   // Attached videos play as their own scenes; the storyboard gets what is left of the requested length.
   const planSec = Math.max(PLAN_LIMITS.minFilmSec, opts.durationSec - (opts.reservedSec ?? 0));
-  const productName = productNameFrom(req.prompt, { siteTitle: capture?.title, businessName: opts.brandKit?.businessName });
+  // The site the user gave wins over a Brand Kit company: the Brand Kit names the film only when there is no site.
+  const hasSite = Boolean(capture || req.siteUrl);
+  const productName = productNameFrom(req.prompt, { siteTitle: capture?.title, businessName: hasSite ? null : opts.brandKit?.businessName });
   const palette = brandPalette(capture, opts.brandKit);
 
   if (req.single) {
@@ -100,7 +103,7 @@ export async function storyboardFilm(
   log(opts.template === 'inkpress' ? 'Storyboarding with the Ink Press template' : 'Directing the storyboard', 'running');
   try {
     const plan = await requestPlan({
-      prompt: req.prompt,
+      prompt: `${req.prompt}\n\n---\n${AESTHETIC_DIGEST}`,
       durationSec: planSec,
       aspectRatio: opts.aspectRatio,
       capture,
@@ -108,7 +111,9 @@ export async function storyboardFilm(
       requiredRecipes: required.map((r) => r.id),
       template: opts.template === 'inkpress' ? 'inkpress' : null,
     });
-    const fitted = ensureRecipes(plan, req.recipes, planSec);
+    // Picked / named shots are the whole film (plus framing title cards): no other recipes.
+    // The site's own headline/CTA win the title-card captions.
+    const fitted = applySiteContent(restrictToRecipes(ensureRecipes(plan, req.recipes, planSec), req.recipes, planSec), capture?.content);
     log(`Storyboard ready · ${fitted.scenes.length} scenes`, 'done');
     return { plan: fitted, capture, source: 'director' };
   } catch (error) {
@@ -153,8 +158,8 @@ export async function buildFilmProject(
     aspectRatio: opts.aspectRatio,
     capture: film,
     music: track ? { url: track.url, name: track.name, beats } : null,
-    // A Brand Kit logo wins; otherwise the one pulled from the site.
-    logo: opts.logo || opts.capture?.logo || null,
+    // The site's own logo wins; the Brand Kit logo is for films with no site.
+    logo: opts.capture?.logo ?? opts.logo ?? null,
     videos,
   });
   log(`Film built · ${project.tracks.length} tracks`, 'done');

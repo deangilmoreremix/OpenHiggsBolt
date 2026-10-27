@@ -12,6 +12,8 @@ import { CARDS } from "../cards/registry";
 import { interpretAgentCommand, AGENT_HELP, type AgentContext } from "../lib/agentCommands";
 import { applyAgentOps } from "../lib/agentApply";
 import { projectToSession } from "../lib/sessionAdapter";
+import { t } from "../i18n";
+import { uid } from "../types";
 import type { SessionMessage } from "../types";
 
 /**
@@ -98,6 +100,56 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
+  /** Co-creation mode: brief → direction → shot map → storyboard → film + review. */
+  type CCStage = "idle" | "direction" | "shots" | "storyboard" | "review";
+  interface CcShot { id: string; label: string; desc: string }
+  interface CcBoard { id: string; shot: string; visual: string; seconds: number }
+  interface CcState {
+    stage: CCStage;
+    brief: string;
+    direction: string;
+    shots: CcShot[];
+    storyboard: CcBoard[];
+  }
+  const [cc, setCc] = useState<CcState | null>(null);
+
+  const wordsOf = (text: string) =>
+    text.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/).filter(Boolean);
+
+  const buildDirection = (brief: string): string => {
+    const w = wordsOf(brief).slice(0, 6).join(" ") || "motion";
+    return `Creative direction for “${brief}”: a ${w} sequence — kinetic title card, supporting captions, and a clean outro, paced for read-along clarity.`;
+  };
+
+  const buildShots = (brief: string): CcShot[] => {
+    const w = wordsOf(brief);
+    const subject = w.slice(0, 3).join(" ") || "the story";
+    return [
+      { id: uid("shot"), label: "Opening title", desc: `Introduce ${subject} with a kinetic title card.` },
+      { id: uid("shot"), label: "Main shot", desc: `Carry the core of “${brief}” through the central scene.` },
+      { id: uid("shot"), label: "Caption strip", desc: "Add a caption strip for the key message." },
+      { id: uid("shot"), label: "Outro", desc: "Close with a short branding card." },
+    ];
+  };
+
+  const buildStoryboard = (shots: CcShot[]): CcBoard[] =>
+    shots.map((s) => ({ id: uid("board"), shot: s.label, visual: s.desc, seconds: 3 }));
+
+  /** Turn the storyboard into real timeline clips (a track is created if none exists). */
+  const createFilm = (state: ReturnType<typeof useStore.getState>, storyboard: CcBoard[]) => {
+    const fps = Math.max(1, Math.round(state.project.fps ?? 30));
+    let at = 0;
+    for (const board of storyboard) {
+      const duration = Math.max(2, Math.round(board.seconds * fps));
+      state.addClip("text-basic", undefined, at, {
+        props: { content: board.visual },
+        label: board.shot,
+        duration,
+      });
+      at += duration;
+    }
+  };
+
   const targetId = sessionId ?? activeSessionId;
   const session = useMemo(
     () => sessions.find((s) => s.id === targetId) ?? null,
@@ -109,6 +161,60 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
     if (!el) return;
     el.scrollTop = el.scrollHeight;
   }, [session?.messages.length, targetId]);
+
+  const startCoCreation = (state: ReturnType<typeof useStore.getState>, id: string, text: string, ts: string) => {
+    const direction = buildDirection(text);
+    const next: CcState = { stage: "direction", brief: text, direction, shots: [], storyboard: [] };
+    setCc(next);
+    state.appendSessionMessage(id, {
+      role: "assistant",
+      content: `${t("cc.direction")}: ${direction}\n\n${t("cc.continueShots")}`,
+      ts,
+    });
+  };
+
+  const advanceCoCreation = (state: ReturnType<typeof useStore.getState>, id: string, cc: CcState, ts: string) => {
+    switch (cc.stage) {
+      case "direction": {
+        const shots = buildShots(cc.brief);
+        const next: CcState = { ...cc, stage: "shots", shots };
+        setCc(next);
+        const list = shots.map((s) => `• ${s.label} — ${s.desc}`).join("\n");
+        state.appendSessionMessage(id, {
+          role: "assistant",
+          content: `${t("cc.shotMap")}\n${list}\n\n${t("cc.continueStoryboard")}`,
+          ts,
+        });
+        return;
+      }
+      case "shots": {
+        const storyboard = buildStoryboard(cc.shots);
+        const next: CcState = { ...cc, stage: "storyboard", storyboard };
+        setCc(next);
+        const list = storyboard.map((s) => `• ${s.shot} — ${s.visual} (${s.seconds}s)`).join("\n");
+        state.appendSessionMessage(id, {
+          role: "assistant",
+          content: `${t("cc.storyboard")}\n${list}\n\n${t("cc.continueCreate")}`,
+          ts,
+        });
+        return;
+      }
+      case "storyboard": {
+        createFilm(state, cc.storyboard);
+        const next: CcState = { ...cc, stage: "review" };
+        setCc(next);
+        const dur = cc.storyboard.reduce((sum, s) => sum + s.seconds, 0);
+        state.appendSessionMessage(id, {
+          role: "assistant",
+          content: `${t("cc.review.title")}\n${t("cc.review.body", { brief: cc.brief, n: cc.storyboard.length, dur })}`,
+          ts,
+        });
+        return;
+      }
+      default:
+        return;
+    }
+  };
 
   const send = useCallback(
     (raw: string) => {
@@ -136,14 +242,21 @@ export const MotionAgentPanel: React.FC<MotionAgentPanelProps> = ({
         cards: CARDS,
       };
       const { ops, reply } = interpretAgentCommand(text, ctx);
-      applyAgentOps(ops);
-
       const ts = new Date().toISOString();
       state.appendSessionMessage(id, { role: "user", content: text, ts });
-      state.appendSessionMessage(id, { role: "assistant", content: reply, ts });
+
+      if (cc && cc.stage !== "idle" && cc.stage !== "review") {
+        // Guided co-creation: every message advances brief → direction → shots → storyboard → film.
+        advanceCoCreation(state, id, cc, ts);
+      } else if (ops.length) {
+        applyAgentOps(ops);
+        state.appendSessionMessage(id, { role: "assistant", content: reply, ts });
+      } else {
+        startCoCreation(state, id, text, ts);
+      }
       setDraft("");
     },
-    [targetId, recipeId, recipeName],
+    [targetId, recipeId, recipeName, cc],
   );
 
   const messages = session?.messages ?? [];

@@ -174,3 +174,42 @@ export const attachMediaAttachments = (
     if (hit) at = hit.clip.start + hit.clip.duration;
   }
 };
+
+/**
+ * 上传素材到持久化存储，返回可跨会话使用的稳定 URL。
+ *
+ * POST 每个文件到 `/api/motion-studio/upload`；端点不可用（本地开发）时
+ * 回落到浏览器本地的 `blob:` URL。回落 URL 只存在于当前会话，不应被
+ * 持久化进 localStorage（会被逐条清理，见 store 的自动保存），只用于
+ * 当前预览与渲染。
+ */
+export const uploadMedia = async (files: File[]): Promise<MediaAttachment[]> => {
+  const CONCURRENCY = 3;
+  const out: MediaAttachment[] = [];
+  const fileList = files ?? [];
+  for (let i = 0; i < fileList.length; i += CONCURRENCY) {
+    const chunk = fileList.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(chunk.map(async (file) => {
+      const kind = mediaKindForFile(file);
+      if (!kind) return null;
+      let url = '';
+      try {
+        const form = new FormData();
+        form.append('file', file);
+        const res = await fetch('/api/motion-studio/upload', { method: 'POST', body: form });
+        if (res.ok) {
+          const data = await res.json().catch(() => ({}));
+          url = String(data?.url ?? data?.file ?? '');
+        }
+        if (!url) throw new Error('upload returned no url');
+      } catch {
+        url = URL.createObjectURL(file);
+      }
+      return { id: uid('media'), kind, name: file.name || `media.${kind}`, url, size: file.size ?? 0 };
+    }));
+    for (const result of results) {
+      if (result) out.push(result);
+    }
+  }
+  return out;
+};

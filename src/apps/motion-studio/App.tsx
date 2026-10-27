@@ -257,20 +257,20 @@ export const App: React.FC = () => {
         <button
           className={`btn${railOpen && railTab === "agent" ? " primary" : ""}`}
           onClick={() => toggleRail("agent")}
-          title="Motion Agent — tell it what to change"
+          title={t("nav.agent.title")}
           aria-pressed={railOpen && railTab === "agent"}
           data-testid="topbar-agent-toggle"
         >
-          💬 Agent
+          {t("rail.agent")}
         </button>
         <button
           className={`btn${railOpen && railTab === "history" ? " primary" : ""}`}
           onClick={() => toggleRail("history")}
-          title="History gallery — past sessions"
+          title={t("nav.history.title")}
           aria-pressed={railOpen && railTab === "history"}
           data-testid="topbar-history-toggle"
         >
-          🕘 History
+          {t("rail.history")}
         </button>
         <span className="tl-sep" />
         <ExportButton />
@@ -303,7 +303,7 @@ export const App: React.FC = () => {
             setViewMode("sessions");
           }}
         >
-          <option value="">Sessions</option>
+          <option value="">{t("session.placeholder")}</option>
           {sessions.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
@@ -368,13 +368,13 @@ export const App: React.FC = () => {
             <div className="panel-wrap" style={{ width: railW }}>
               <div className="ms-rail" data-testid="studio-rail">
                 <div className="ms-rail-tabs" role="tablist" aria-label="Studio side panel">
-                  {(
-                    [
-                      { id: "agent", label: "Agent" },
-                      { id: "prompt", label: "Prompt" },
-                      { id: "history", label: "History" },
-                    ] as { id: RailTab; label: string }[]
-                  ).map((tab) => (
+              {(
+                [
+                  { id: "agent", label: t("rail.agent") },
+                  { id: "prompt", label: t("rail.prompt") },
+                  { id: "history", label: t("rail.history") },
+                ] as { id: RailTab; label: string }[]
+              ).map((tab) => (
                     <button
                       key={tab.id}
                       type="button"

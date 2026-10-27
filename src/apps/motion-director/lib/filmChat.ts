@@ -74,6 +74,8 @@ const NEW_FILM_RE = /\b(?:a|an|new|another)\s+(?:[\w-]+\s+){0,3}(?:video|film|mo
 /** "make a promo …", "create a new launch video …": a creation verb straight into a film noun. */
 const CREATE_FILM_RE =
   /\b(?:make|create|build|produce|generate|design|direct)\s+(?:me\s+|us\s+)?(?:a|an|new|another)\s+(?:[\w-]+\s+){0,3}(?:film|video|movie|promo|teaser|trailer|commercial|explainer|showcase|sizzle|reel|walkthrough|close-?up)\b/i;
+/** Words that revise an existing film rather than asking for a new one. */
+const REVISION_WORD = /\b(?:shorter|longer|faster|slower|bigger|smaller|change|swap|replace|remove|revise|edit|adjust|tweak|modify|update|instead)\b/i;
 const VERB_RE = /\b(?:make|create|build|produce|design|generate|cut|present|turn|use|start|direct|film|shoot|want|need)\b/i;
 const SHOTCRAFT_RE = /\bvideo[\s-]?shotcraft\b/i;
 const SINGLE_RE = /\b(?:inspired\s+by|in\s+the\s+style\s+of|based\s+on|like)\b/i;
@@ -170,6 +172,20 @@ export function isNewFilmRequest(text: string): boolean {
   return findNamedRecipes(t).length > 0 && /\bshot[\s-]*cards?\b|\binspired\s+by\b/i.test(t);
 }
 
+/** A message starts a different film (different site URL or "make/create … for ..."), not a revision. */
+export function startsDifferentFilm(text: string, current: FilmRequest): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  const url = findSiteUrl(t);
+  if (url) {
+    const bare = (u: string) => u.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/[/?#].*$/, '').toLowerCase();
+    if (!current.siteUrl || bare(url) !== bare(current.siteUrl)) return true;
+  }
+  // "make a promo", "create a video" — but not "make a video shorter" (that's a revision).
+  if (CREATE_FILM_RE.test(t) && !REVISION_WORD.test(t)) return true;
+  return false;
+}
+
 /** Answer to the Ink Press question: yes / no / not an answer. */
 export function readTemplateAnswer(text: string): FilmTemplateChoice | null {
   const t = text.trim().toLowerCase();
@@ -197,8 +213,8 @@ const SCENE_COPY: Record<MotionCategoryKey, [string, string]> = {
 /** Product name for on-screen copy: captured page title, brand kit, or "for <Name>" in the prompt. */
 export function productNameFrom(prompt: string, hints: { siteTitle?: string | null; businessName?: string | null } = {}): string {
   const clean = (s: string) => s.replace(/\s+/g, ' ').trim().slice(0, 28);
-  if (hints.businessName?.trim()) return clean(hints.businessName);
   if (hints.siteTitle?.trim()) return clean(hints.siteTitle.split(/\s[|–—:-]\s/)[0]);
+  if (hints.businessName?.trim()) return clean(hints.businessName);
   const m = prompt.match(/\b(?:for|of|called|named)\s+([A-Z][\w.-]*(?:\s+[A-Z][\w.-]*){0,2})/);
   if (m) return clean(m[1]);
   const url = findSiteUrl(prompt);
@@ -366,4 +382,68 @@ export function ensureRecipes(plan: DirectorPlan, recipes: readonly MotionTempla
     scenes.splice(idx, 1);
   }
   return validatePlan({ ...plan, scenes }, { targetSec });
+}
+
+/**
+ * The site's own headline and call to action win the framing title cards,
+ * even over generic copy the director wrote. Section headings become shot
+ * captions where a shot has none.
+ */
+export function applySiteContent(plan: DirectorPlan, content: SiteContent | null | undefined): DirectorPlan {
+  if (!content) return plan;
+  const fit = (line: string | undefined) => (line ?? '').replace(/\s+/g, ' ').trim().slice(0, PLAN_LIMITS.captionChars);
+  const last = plan.scenes.length - 1;
+  const scenes = plan.scenes.map((scene, i) => {
+    if (scene.kind === 'title') {
+      const line = i === 0 ? fit(content.headline || content.description) : i === last ? fit(content.ctas?.[0]) : undefined;
+      return line ? { ...scene, caption: line } : scene;
+    }
+    const heading = content.headings?.[i];
+    if (scene.caption) return scene;
+    const line = fit(heading);
+    return line ? { ...scene, caption: line } : scene;
+  });
+  return { ...plan, scenes };
+}
+
+/**
+ * A film built from shots the user picked contains exactly those shots,
+ * each once, in the order they were picked — the director may frame them
+ * with one opening and one closing title card, but never adds other recipes.
+ * Scene lengths are re-fitted to the requested length.
+ */
+export function restrictToRecipes(
+  plan: DirectorPlan,
+  recipes: readonly MotionTemplate[],
+  targetSec: number
+): DirectorPlan {
+  if (!recipes.length) return plan;
+  const wanted = new Set(recipes.map((r) => r.id));
+  const kept: DirectorScene[] = [];
+  const seen = new Set<string>();
+  plan.scenes.forEach((scene) => {
+    if (scene.kind === 'title') {
+      if (plan.scenes[0] === scene || plan.scenes[plan.scenes.length - 1] === scene) kept.push(scene);
+    } else if (wanted.has(scene.recipeId) && !seen.has(scene.recipeId)) {
+      seen.add(scene.recipeId);
+      kept.push(scene);
+    }
+  });
+  const missing = recipes.filter((r) => !seen.has(r.id));
+  if (missing.length) {
+    const lastIdx = kept.length - 1;
+    const insertAt = kept[lastIdx]?.kind === 'title' ? lastIdx : kept.length;
+    kept.splice(insertAt, 0, ...missing.map((r) => sceneFor(r, r.durationSec || 4, 'cut')));
+  }
+  const shots = kept.filter((s) => s.kind === 'shot').sort((a, b) => recipes.findIndex((r) => r.id === a.recipeId) - recipes.findIndex((r) => r.id === b.recipeId));
+  const first = kept[0]?.kind === 'title' ? kept[0] : null;
+  const last = kept.length > 1 && kept[kept.length - 1]?.kind === 'title' ? kept[kept.length - 1] : null;
+  const scenes = [...(first ? [first] : []), ...shots, ...(last ? [last] : [])];
+  const room = Math.floor(Math.min(PLAN_LIMITS.maxFilmSec, Math.max(PLAN_LIMITS.minFilmSec, targetSec)) / PLAN_LIMITS.minSceneSec) - shots.length;
+  const finalScenes = [...(room >= 1 && first ? [first] : []), ...shots, ...(room >= 2 && last ? [last] : [])];
+  // A one-shot film still needs a closing title card so it meets the minimum scene count.
+  if (finalScenes.length < PLAN_LIMITS.minScenes) {
+    finalScenes.push({ kind: 'title', recipeId: '', durationSec: 2, headline: plan.title.split(/\s[—–-]\s/)[0] || 'Watch now', caption: '', transition: 'cut' });
+  }
+  return validatePlan({ ...plan, scenes: finalScenes }, { targetSec });
 }

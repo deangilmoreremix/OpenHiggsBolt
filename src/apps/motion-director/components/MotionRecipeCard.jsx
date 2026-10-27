@@ -63,6 +63,7 @@ export default function MotionRecipeCard({
   saved,
   onSave,
   onAddToTimeline,
+  setPreview,
   variantCount = 0,
   variantsOpen = false,
   onToggleVariants,
@@ -202,7 +203,14 @@ export default function MotionRecipeCard({
                 >
                   Add to timeline
                 </PromptMenuItem>
-                <PromptMenuItem onClick={closeMenu}>View template</PromptMenuItem>
+                <PromptMenuItem
+                  onClick={() => {
+                    setPreview?.({ kind: "card", cardId });
+                    closeMenu();
+                  }}
+                >
+                  View template
+                </PromptMenuItem>
               </>
             )}
           </PromptMenuList>

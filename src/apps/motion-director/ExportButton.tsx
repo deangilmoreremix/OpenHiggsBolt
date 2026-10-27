@@ -26,6 +26,7 @@ export const requestExport = () => {
 const ExportButton: React.FC = () => {
   const t = useT();
   const [job, setJob] = useState<JobState | null>(null);
+  const [withoutMusic, setWithoutMusic] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   /** Set synchronously on start, so a second request during the capability check is ignored. */
   const inFlightRef = useRef(false);
@@ -77,7 +78,7 @@ const ExportButton: React.FC = () => {
 
     // Generate a fake ID for tracking (not really needed, but we keep the state structure)
     const id = Math.random().toString(36).substring(2, 9);
-    setJob({ id, status: 'queued', progress: 0 });
+    setJob({ id, status: 'queued', progress: 0, filename: project.name });
     abortControllerRef.current = new AbortController();
     // The render runs in this tab: closing or reloading it cancels the export.
     const releaseGuard = guardTabWhileRendering();
@@ -85,6 +86,7 @@ const ExportButton: React.FC = () => {
     try {
       const result = await renderVideoOnWeb({
         project,
+        muted: withoutMusic,
         videoCodec: canRenderResult.videoCodec,
         audioCodec: canRenderResult.audioCodec,
         onProgress: (progress, info) => {
@@ -149,13 +151,27 @@ const ExportButton: React.FC = () => {
 
   if (job?.status === 'running' || job?.status === 'queued') {
     return (
-      <button
-        className="btn primary"
-        disabled
-        title={['Rendering in this tab with the Remotion web renderer — keep it open.', formatEta(job.etaMs)].filter(Boolean).join(' ')}
-      >
-        {t('export.running', { pct: Math.round((job.progress ?? 0) * 100) })}
-      </button>
+      <>
+        <button
+          className="btn primary"
+          disabled
+          title={['Rendering in this tab with the Remotion web renderer — keep it open.', formatEta(job.etaMs)].filter(Boolean).join(' ')}
+        >
+          {t('export.running', { pct: Math.round((job.progress ?? 0) * 100) })}
+        </button>
+        <button
+          type="button"
+          className="btn danger"
+          onClick={() => {
+            stopRendering();
+            setJob((prev) => (prev ? { ...prev, status: 'error', error: t('export.cancelled') } : null));
+          }}
+          title={t('export.cancelTitle')}
+          data-testid="export-cancel"
+        >
+          {t('export.cancel')}
+        </button>
+      </>
     );
   }
   if (job?.status === 'done') {
@@ -190,9 +206,20 @@ const ExportButton: React.FC = () => {
     );
   }
   return (
-    <button className="btn primary" title={t('export.title')} onClick={start}>
-      {t('export.film')}
-    </button>
+    <div className="flex items-center gap-2">
+      <button className="btn primary" title={t('export.title')} onClick={start}>
+        {t('export.film')}
+      </button>
+      <label className="flex items-center gap-1.5 text-xs text-white/70 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={withoutMusic}
+          onChange={(e) => setWithoutMusic(e.target.checked)}
+          aria-label={t('export.withoutMusic')}
+        />
+        {t('export.withoutMusic')}
+      </label>
+    </div>
   );
 };
 

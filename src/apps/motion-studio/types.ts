@@ -102,3 +102,54 @@ export const normalizeSession = (session: SessionData): SessionData => ({
     ? session.messages.length
     : (session.messageCount ?? 0),
 });
+
+// —— Strict project shape guards (used by loadSaved and importJson) ——
+
+const isObj = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+const isStr = (v: unknown): v is string => typeof v === "string";
+const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+const isPosNum = (v: unknown): v is number => isNum(v) && v > 0;
+
+/** Clip shape the timeline, the inspector and the Player all rely on. */
+export const isClipShape = (v: unknown): v is ClipData =>
+  isObj(v) &&
+  isStr(v.id) &&
+  isStr(v.cardId) &&
+  isNum(v.start) &&
+  v.start >= 0 &&
+  isPosNum(v.duration) &&
+  isNum(v.inOffset) &&
+  v.inOffset >= 0 &&
+  isPosNum(v.speed) &&
+  isNum(v.opacity) &&
+  isNum(v.scale) &&
+  isNum(v.x) &&
+  isNum(v.y) &&
+  isObj(v.props) &&
+  (v.label === undefined || isStr(v.label));
+
+export const isTrackShape = (v: unknown): v is TrackData =>
+  isObj(v) &&
+  isStr(v.id) &&
+  isStr(v.name) &&
+  Array.isArray(v.clips) &&
+  v.clips.every(isClipShape) &&
+  (v.hidden === undefined || typeof v.hidden === "boolean");
+
+/** A project JSON the studio can install: the required fields plus every nested
+ *  track and clip. Without this a `{"tracks":[]}` object reaches the store, the
+ *  Player and the autosave, and `projectDuration()` turns into NaN. */
+export const isProjectShape = (v: unknown): v is ProjectData =>
+  isObj(v) &&
+  isStr(v.name) &&
+  isPosNum(v.fps) &&
+  isPosNum(v.width) &&
+  isPosNum(v.height) &&
+  Array.isArray(v.tracks) &&
+  v.tracks.every(isTrackShape) &&
+  (v.themeId === undefined || isStr(v.themeId)) &&
+  (v.background === undefined || isStr(v.background)) &&
+  (v.source === undefined || isStr(v.source)) &&
+  (v.themeColors === undefined ||
+    (isObj(v.themeColors) && Object.values(v.themeColors).every(isStr)));

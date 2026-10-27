@@ -78,10 +78,17 @@ export const switchTheme = (project: ProjectData, m: WorkbenchManifest | null, i
   if (!themeById(m, id)) return project;
   return {...project, themeId: id, themeColors: undefined};
 };
-export const themedBackground = (project: ProjectData, m: WorkbenchManifest | null) =>
-  validThemeColors(m, project.themeId, project.themeColors).page ?? (project.themeId ? selectedTheme(m, project.themeId)?.background ?? project.background : project.background);
+export const themedBackground = (project: ProjectData, m: WorkbenchManifest | null) => {
+  const page = validThemeColors(m, project.themeId, project.themeColors).page;
+  if (page) return page;                        // explicit brand page colour wins, never shadowed
+  if (typeof project.background === 'string') return project.background; // stage background beats theme default
+  return project.themeId ? selectedTheme(m, project.themeId)?.background : undefined;
+};
 
 export const validThemeColors = (m: WorkbenchManifest | null, id?: string, colors?: Record<string,string>) => {
- const palette = selectedTheme(m,id)?.palette;
- return Object.fromEntries(Object.entries(colors ?? {}).filter(([k,v]) => palette && Object.prototype.hasOwnProperty.call(palette,k) && typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)));
+  // Keep every valid hex colour the project (or a saved palette) declares, even
+  // keys the current theme's palette does not list, so brand colours are never
+  // silently dropped. Palette keys still drive themedProps; extra keys are
+  // harmless additional overrides.
+  return Object.fromEntries(Object.entries(colors ?? {}).filter(([k, v]) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)));
 };

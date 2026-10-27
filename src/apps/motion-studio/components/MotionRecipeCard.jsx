@@ -8,6 +8,7 @@ import { MANIFEST } from '../cards/projectCards';
 import { PromptMenuList, PromptMenuItem } from 'studio/src/components/prompt/PromptComposer';
 import { setDragPayload } from '../dnd';
 import { motionCardId } from '@/data/motionRecipeCatalog';
+import { t } from '../i18n';
 
 const CATEGORY_GRADIENTS = {
   opening: 'from-[#22d3ee]/20 to-[#0ea5e9]/20',
@@ -167,9 +168,16 @@ export default function MotionRecipeCard({
                     closeMenu();
                   }}
                 >
-                  Rename
+                  {t("recipe.rename")}
                 </PromptMenuItem>
-                <PromptMenuItem onClick={closeMenu}>Duplicate</PromptMenuItem>
+                <PromptMenuItem
+                  onClick={() => {
+                    onAddToTimeline?.(recipe);
+                    closeMenu();
+                  }}
+                >
+                  {t("recipe.duplicate")}
+                </PromptMenuItem>
                 <PromptMenuItem
                   onClick={() => {
                     onDelete?.(recipe.id);
@@ -177,7 +185,7 @@ export default function MotionRecipeCard({
                   }}
                   className="text-rose-400 hover:text-rose-300"
                 >
-                  Delete
+                  {t("recipe.delete")}
                 </PromptMenuItem>
               </>
             ) : (
@@ -188,7 +196,7 @@ export default function MotionRecipeCard({
                     closeMenu();
                   }}
                 >
-                  {saved ? 'Saved to My Recipes' : 'Save to My Recipes'}
+                  {saved ? t("recipe.savedToMyRecipes") : t("recipe.saveToMyRecipes")}
                 </PromptMenuItem>
                 <PromptMenuItem
                   onClick={() => {
@@ -196,9 +204,16 @@ export default function MotionRecipeCard({
                     closeMenu();
                   }}
                 >
-                  Add to timeline
+                  {t("recipe.addToTimeline")}
                 </PromptMenuItem>
-                <PromptMenuItem onClick={closeMenu}>View template</PromptMenuItem>
+                <PromptMenuItem
+                  onClick={() => {
+                    onClick?.(recipe);
+                    closeMenu();
+                  }}
+                >
+                  {t("recipe.viewTemplate")}
+                </PromptMenuItem>
               </>
             )}
           </PromptMenuList>
@@ -210,7 +225,7 @@ export default function MotionRecipeCard({
         onDragStart={handleDragStart}
         onClick={handleCardClick}
         onDoubleClick={handleDoubleClick}
-        title="Drag to the timeline · double-click to add at the playhead"
+        title={t("recipe.dragHint")}
       >
         <div className="w-full h-full relative">
           {card && inView ? (
@@ -226,6 +241,7 @@ export default function MotionRecipeCard({
               controls={false}
               initiallyMuted
               numberOfSharedAudioTags={0}
+              acknowledgeRemotionLicense
               style={{ width: '100%', height: '100%' }}
             />
           ) : card ? (

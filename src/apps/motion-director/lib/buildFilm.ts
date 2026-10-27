@@ -44,7 +44,13 @@ const FLASH_FRAMES = 10;
 /** Sound effects served from public/ (copied from the ShotCraft SFX library). */
 const SFX_CUT = 'motion-studio/sfxlib/transition/swoosh-quick.mp3';
 const SFX_FLASH = 'motion-studio/sfxlib/impact/impact-transition.mp3';
+const SFX_SPARKLE = 'motion-studio/sfxlib/light/sparkle-touch.mp3';
 const SFX_FRAMES = 24;
+const SPARKLE_FRAMES = 30;
+/** Music sits under the dialogue/SFX at roughly a third of full volume. */
+const MUSIC_VOLUME = 0.34;
+/** 1 second (30 fps) fade in / out on the music bed. */
+const FADE_FRAMES = 30;
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 /** Screen time an attached video gets as its own scene: its length, kept between 2 and 8 seconds. */
@@ -182,6 +188,30 @@ export function planToProject(
     at += frames;
     if (i < lastIndex) cut(scene.transition === 'flash');
   });
+
+  // A shot that draws its own sample UI still shows the user's site:
+  // a framed picture of the next captured page/crop/image in a corner.
+  const insetPool = [...screens, ...crops];
+  const insets: ClipData[] = [];
+  if (insetPool.length) {
+    let insetAt = 0;
+    plan.scenes.forEach((scene, i) => {
+      if (scene.kind !== 'shot') return;
+      const template = resolveMotionTemplate(scene.recipeId);
+      if (!template || isProductTextureShot(template.componentName)) return;
+      const frames = Math.max(2, Math.round(durations[i] * FPS));
+      insets.push(
+        clip('site-inset', insetAt, frames, {
+          file: insetPool[insets.length % insetPool.length],
+          side: insets.length % 2 === 0 ? 'right' : 'left',
+          sizePct: 32,
+          label: opts.capture ? '' : '',
+          accent: palette.accent,
+        }, { label: 'Site' }),
+      );
+      insetAt += frames;
+    });
+  }
   if (lastIndex === 0) {
     for (const v of videos) {
       cut(false);
@@ -192,18 +222,29 @@ export function planToProject(
   }
 
   const total = Math.max(at, FPS);
+  // Sparkle sting on the final moment of the film.
+  sfx.push(clip('audio-clip', Math.max(0, total - SPARKLE_FRAMES), SPARKLE_FRAMES, { file: SFX_SPARKLE, volume: 0.7 }, { label: 'Sparkle' }));
   const tracks = [
     { id: uid('track'), name: t('track.transitions'), clips: flashes },
     { id: uid('track'), name: t('track.captions'), clips: captions },
     { id: uid('track'), name: t('track.shots'), clips: shots },
     { id: uid('track'), name: t('track.background'), clips: [clip('bg-paper', 0, total, { color: palette.background })] },
     { id: uid('track'), name: t('track.sfx'), clips: sfx },
+    ...(insets.length ? [{ id: uid('track'), name: t('track.site'), clips: insets }] : []),
   ];
   if (opts.music?.url) {
     tracks.push({
       id: uid('track'),
       name: t('track.music'),
-      clips: [clip('audio-clip', 0, total, { file: opts.music.url }, { label: opts.music.name.slice(0, 32) })],
+      clips: [
+        clip(
+          'audio-clip',
+          0,
+          total,
+          { file: opts.music.url, volume: MUSIC_VOLUME, fadeInFrames: FADE_FRAMES, fadeOutFrames: FADE_FRAMES, durationFrames: total },
+          { label: opts.music.name.slice(0, 32) },
+        ),
+      ],
     });
   }
 
