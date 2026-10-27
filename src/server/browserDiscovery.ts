@@ -2122,7 +2122,7 @@ export async function capturePageScreenshots(
           .catch(() => null)
 
       /** Load lazy content, settle, shoot the page band and cut out its cards. */
-      const shootRoute = async (maxCards: number) => {
+      const shootRoute = async (maxCards: number, onShot?: (shot: Buffer, pageHeight: number) => void, acc?: { crops: Buffer[]; cards: CaptureRect[] }) => {
         await page.waitForLoadState('networkidle', { timeout: 1_500 }).catch(() => undefined)
         // Nudge lazy-loaded content inside the captured band, then return to the top.
         await page.evaluate(async (maxY: number) => {
@@ -2140,6 +2140,8 @@ export async function capturePageScreenshots(
         const pageHeight = Math.max(CAPTURE_VIEWPORT.height, Math.min(CAPTURE_MAX_PAGE_HEIGHT, docHeight || 0))
         const pageClip = { x: 0, y: 0, width: CAPTURE_VIEWPORT.width, height: pageHeight }
         const shot: Buffer = await page.screenshot({ type: 'jpeg', quality: 82, fullPage: true, clip: pageClip })
+        // The page is usable from here: a stalled crop below must not lose it.
+        onShot?.(shot, pageHeight)
 
         const found = (await page.evaluate(findCutoutRects, { maxY: pageHeight, maxCards }).catch(() => null)) ?? null
         // The page's own cards when it marks them up as cards; otherwise card-sized blocks.
@@ -2149,8 +2151,8 @@ export async function capturePageScreenshots(
           : maxCards
             ? ((await page.evaluate(findCropRects, { maxY: pageHeight, max: maxCards }).catch(() => null)) ?? [])
             : []
-        const crops: Buffer[] = []
-        const cards: CaptureRect[] = []
+        const crops: Buffer[] = acc?.crops ?? []
+        const cards: CaptureRect[] = acc?.cards ?? []
         for (const rect of rects) {
           if (left() < 5_000 && crops.length >= 2) break
           const crop = await page.screenshot({ type: 'jpeg', quality: 85, fullPage: true, clip: rect }).catch(() => null)
@@ -2173,7 +2175,30 @@ export async function capturePageScreenshots(
         }
         mark('loaded')
 
-        const home = await shootRoute(maxCrops)
+        const homeAcc = { crops: [] as Buffer[], cards: [] as CaptureRect[] }
+        let early: PageCapture | null = null
+        const home = await shootRoute(
+          maxCrops,
+          (shot, pageHeight) => {
+            early = {
+              url: page.url(),
+              title: '',
+              page: shot,
+              pageHeight,
+              crops: homeAcc.crops,
+              logo: null,
+              images: [],
+              content: { ...EMPTY_CONTENT },
+              layout: { pageH: pageHeight, sections: [], cards: homeAcc.cards },
+              cutouts: { nav: null, search: null, button: null },
+              emptyPlate: null,
+              routes: [],
+              brand: { background: null, text: null, accent: null, fontFamily: null },
+            }
+            out = early
+          },
+          homeAcc,
+        )
         mark('home')
         const read = await page.evaluate(readPageContent).catch(() => null)
         const content: PageContent = read

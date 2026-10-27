@@ -230,4 +230,15 @@ describe('capture the way upstream ShotCraft does', () => {
     expect(result.content.headline).toBe('Ship faster')
     expect(result.images).toEqual([])
   })
+  it('keeps the page it already shot when a later card crop stalls', async () => {
+    const { mod, guard } = await loadRich()
+    const { chromium } = (await import('playwright')) as unknown as { chromium: { launch: () => Promise<{ newContext: () => Promise<{ newPage: () => Promise<{ screenshot: (...a: unknown[]) => Promise<unknown> }> }> }> } }
+    const page = await (await (await chromium.launch()).newContext()).newPage()
+    const real = page.screenshot
+    let shots = 0
+    // The full-page shot answers; every later screenshot (crops, logo, images) never does.
+    page.screenshot = (...a: unknown[]) => (shots++ === 0 ? real(...a) : new Promise(() => undefined))
+    const result = await mod.capturePageScreenshots('https://acme.example.com/', { guard, settleMs: 0, hardMs: 400 })
+    expect(result.page).toBeInstanceOf(Buffer)
+  })
 })
