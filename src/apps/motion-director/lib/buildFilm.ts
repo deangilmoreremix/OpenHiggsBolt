@@ -22,6 +22,8 @@ export interface FilmCapture {
   screens: string[];
   /** Captured element crops (cards). */
   crops: string[];
+  /** The site's name, shown on the inset pictures. */
+  title?: string;
 }
 
 /** A video the user attached; it plays as its own scene before the closing card. */
@@ -124,8 +126,11 @@ export function planToProject(
   const durations = snapToBeats(plan.scenes.map((s) => s.durationSec), opts.music?.beats ?? []);
   const screens = opts.capture?.screens ?? [];
   const crops = opts.capture?.crops ?? [];
+  /** Pictures of the user's site for the shots that cannot draw captured pages themselves. */
+  const insetPool = [...crops, ...screens];
 
   const shots: ClipData[] = [];
+  const insets: ClipData[] = [];
   const captions: ClipData[] = [];
   const flashes: ClipData[] = [];
   const sfx: ClipData[] = [];
@@ -174,6 +179,13 @@ export function planToProject(
           ...(usesCapture ? { screens, crops } : {}),
         }, { speed: fitSpeed(card, frames) }),
       );
+      // A shot that draws its own sample UI still shows the user's site: a framed picture in a corner.
+      if (!usesCapture && insetPool.length) {
+        const k = insets.length;
+        insets.push(
+          clip('site-inset', at, frames, { file: insetPool[k % insetPool.length], side: k % 2 === 0 ? 'right' : 'left', accent: palette.accent, label: (opts.capture?.title ?? '').slice(0, 40) }, { label: 'Site' }),
+        );
+      }
       const line = scene.caption || scene.headline;
       if (line) {
         captions.push(clip('inkpress-caption', at, frames, { text: line, color: palette.text, accent: palette.accent }));
@@ -195,6 +207,7 @@ export function planToProject(
   const tracks = [
     { id: uid('track'), name: t('track.transitions'), clips: flashes },
     { id: uid('track'), name: t('track.captions'), clips: captions },
+    { id: uid('track'), name: 'Site', clips: insets },
     { id: uid('track'), name: t('track.shots'), clips: shots },
     { id: uid('track'), name: t('track.background'), clips: [clip('bg-paper', 0, total, { color: palette.background })] },
     { id: uid('track'), name: t('track.sfx'), clips: sfx },

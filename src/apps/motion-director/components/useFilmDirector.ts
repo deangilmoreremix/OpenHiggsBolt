@@ -5,7 +5,7 @@ import type { AspectRatio } from '../projectContract';
 import type { ProjectData } from '../types';
 import type { MediaAttachment } from '../lib/mediaUpload';
 import type { MotionTemplate } from '@/data/motionRecipeCatalog';
-import { motionTemplateTitle } from '@/data/motionRecipeCatalog';
+import { motionTemplateTitle, resolveMotionTemplate } from '@/data/motionRecipeCatalog';
 import {
   INK_PRESS_INTRO,
   MAX_PICKED_SHOTS,
@@ -13,6 +13,7 @@ import {
   parseFilmRequest,
   readTemplateAnswer,
   reviseRecipes,
+  startsDifferentFilm,
   type FilmRequest,
   type FilmTemplateChoice,
 } from '../lib/filmChat';
@@ -70,8 +71,6 @@ const msg = (role: FilmChatMessage['role'], content: string): FilmChatMessage =>
   content,
   ts: new Date().toISOString(),
 });
-
-const NEW_FILM_RE = /\b(?:new|another|different|separate)\s+(?:[\w-]+\s+)?(?:film|video|promo|teaser|trailer|shot)\b/i;
 
 const secs = (p: { scenes: { durationSec: number }[] }) => Math.round(p.scenes.reduce((s, sc) => s + sc.durationSec, 0));
 
@@ -136,7 +135,10 @@ export function useFilmDirector(opts: {
         if (!live()) return;
         log(label, status);
         if (/^Captured /.test(label)) mark('capture', 'done', label.replace(/^Captured [^·]*· ?/, ''));
-        else if (/^Could not capture/.test(label)) mark('capture', 'error', label);
+        else if (/^Could not capture/.test(label)) {
+          mark('capture', 'error', label);
+          say('assistant', `${label}. The film will use sample pages instead of your site. Send the address again (or attach screenshots) and I'll re-capture.`);
+        }
       };
       const s = optsRef.current.settings();
       // A revision carries its own (revised) list; a new film adds the shots picked in Templates.
@@ -217,7 +219,10 @@ export function useFilmDirector(opts: {
     (raw: string, sendOpts: { force?: boolean } = {}): boolean => {
       const text = raw.trim();
       if (!text) return false;
-      if (stage === 'storyboarding' || stage === 'building') return true;
+      if (stage === 'storyboarding' || stage === 'building') {
+        say('assistant', `I'm still ${stage === 'building' ? 'building the film' : 'working on the storyboard'} — press Stop to cancel it, then send that again.`);
+        return true;
+      }
 
       if (stage === 'offer' && offerReq.current) {
         const answer = readTemplateAnswer(text);
@@ -248,12 +253,20 @@ export function useFilmDirector(opts: {
 
       // While a storyboard is on the table every message revises it ("use crash-zoom-punch instead"),
       // unless it plainly asks for a different film.
-      if (stage === 'plan' && pending.current && !NEW_FILM_RE.test(text)) {
+      const different = stage === 'plan' && pending.current ? startsDifferentFilm(text, pending.current.req) : false;
+      if (stage === 'plan' && pending.current && !different) {
         // A revision of the storyboard on the table.
         say('user', text);
         const prev = pending.current;
         const extra = parseFilmRequest(text);
-        const revised = reviseRecipes(prev.req.recipes, text);
+        // Shots picked in Templates while the storyboard is open are added to it.
+        const picks = optsRef.current.settings().pickedRecipes;
+        // A storyboard made without explicit picks keeps its own shots when picks are added to it.
+        const open = !prev.req.recipes.length && picks.length
+          ? (storyboard?.plan.scenes ?? []).flatMap((sc) => (sc.kind === 'shot' ? [resolveMotionTemplate(sc.recipeId)] : [])).filter((t): t is MotionTemplate => !!t)
+          : prev.req.recipes;
+        const base = reviseRecipes(open, text);
+        const revised = [...base, ...picks.filter((p) => !base.includes(p))];
         void runStoryboard(
           {
             ...prev.req,
@@ -270,7 +283,8 @@ export function useFilmDirector(opts: {
         return true;
       }
 
-      if (!sendOpts.force && !(optsRef.current.isRequest ?? isFilmRequest)(text)) return false;
+      // A message that plainly starts a different film is a film request even without a creation verb ("now beta.dev").
+      if (!sendOpts.force && !different && !(optsRef.current.isRequest ?? isFilmRequest)(text)) return false;
       say('user', text);
       const req = parseFilmRequest(text);
       const picked = optsRef.current.settings().pickedRecipes;

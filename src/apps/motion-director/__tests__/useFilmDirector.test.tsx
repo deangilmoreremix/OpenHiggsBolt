@@ -28,6 +28,7 @@ vi.mock('../lib/filmPipeline', async (orig) => {
 });
 
 import { useFilmDirector } from '../components/useFilmDirector';
+import type { MotionTemplate } from '@/data/motionRecipeCatalog';
 import { MOTION_TEMPLATES, motionTemplateTitle } from '@/data/motionRecipeCatalog';
 
 const settings = () => ({ aspectRatio: '16:9' as const, durationSec: 10, brandKit: null, media: [], pickedRecipes: [] });
@@ -51,6 +52,47 @@ describe('useFilmDirector', () => {
     act(() => { result.current.send('Make another promo for my other product with the Ink Press template', { force: true }); });
     await flush();
     expect(calls[2].capture).toBeNull();
+  });
+
+  it('a different company typed while a storyboard is open starts a new film; "New film" resets', async () => {
+    calls.length = 0;
+    const { result } = renderHook(() => useFilmDirector({ settings }));
+    act(() => { result.current.send('Make a launch film for acme.io with the Ink Press template', { force: true }); });
+    await flush();
+    expect(result.current.stage).toBe('plan');
+    act(() => { result.current.send('make a promo for https://globex.com with the Ink Press template'); });
+    await flush();
+    // A new film: the earlier site's capture is not carried over, and the new URL is requested.
+    expect(calls).toHaveLength(2);
+    expect(calls[1].prompt).not.toContain('Revise:');
+    expect(calls[1].capture).toBeNull();
+    act(() => { result.current.reset(); });
+    expect(result.current.stage).toBe('idle');
+    expect(result.current.messages).toEqual([]);
+  });
+
+  it('a bare new-site message ("now beta.dev") with a storyboard open starts a film instead of being dropped', async () => {
+    calls.length = 0;
+    const { result } = renderHook(() => useFilmDirector({ settings }));
+    act(() => { result.current.send('Make a launch film for acme.io with the Ink Press template', { force: true }); });
+    await flush();
+    let handled = false;
+    act(() => { handled = result.current.send('now beta.dev'); });
+    expect(handled).toBe(true);
+    expect(result.current.stage).toBe('offer');
+  });
+
+  it('shots picked while the storyboard is open are added to it', async () => {
+    calls.length = 0;
+    const picked = [MOTION_TEMPLATES.find((t) => t.componentName === 'HitCounter')!];
+    let picks: typeof picked = [];
+    const { result } = renderHook(() => useFilmDirector({ settings: () => ({ ...settings(), pickedRecipes: picks }) }));
+    act(() => { result.current.send('Make a launch film for acme.io with the Ink Press template', { force: true }); });
+    await flush();
+    picks = picked;
+    act(() => { result.current.send('Add the shot cards I picked: Hit Counter'); });
+    await flush();
+    expect(calls[1].recipes).toContain('HitCounter');
   });
 
   it('with editFallback, a non-answer to the Ink Press question goes back as an edit', async () => {
@@ -147,6 +189,23 @@ describe('useFilmDirector', () => {
     act(() => { result.current.send(`Make a film with the shot cards I picked: ${picked.map(motionTemplateTitle).join(', ')}`, { force: true }); });
     await flush();
     expect(calls[0].recipes).toEqual(['CrashZoomReal']);
+  });
+
+  it('adding a picked shot to a storyboard made without picks keeps that storyboard\'s shots', async () => {
+    calls.length = 0;
+    let picked: MotionTemplate[] = [];
+    const { result } = renderHook(() => useFilmDirector({ settings: () => ({ ...settings(), pickedRecipes: picked }) }));
+    act(() => { result.current.send('Make a launch film for acme.io', { force: true }); });
+    await flush();
+    act(() => { result.current.send('yes'); });
+    await flush();
+    const shots = result.current.storyboard!.plan.scenes.filter((sc) => sc.kind === 'shot').map((sc) => sc.recipeId);
+    expect(shots.length).toBeGreaterThan(1);
+    picked = [MOTION_TEMPLATES.find((t) => t.componentName === 'RowEmbed')!];
+    const before = calls.length;
+    act(() => { result.current.send('Add the shot cards I picked'); });
+    await flush();
+    expect(calls[before].recipes).toEqual([...shots.filter((id) => id !== picked[0].id), picked[0].id].map((id) => MOTION_TEMPLATES.find((t) => t.id === id)!.componentName));
   });
 
   it('asks for at most the shots a storyboard can hold, and says what was dropped', async () => {

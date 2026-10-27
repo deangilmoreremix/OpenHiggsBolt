@@ -13,7 +13,10 @@ import {
   findSiteUrl,
   parseFilmRequest,
   readTemplateAnswer,
+  applySiteContent,
+  restrictToRecipes,
   singleShotPlan,
+  startsDifferentFilm,
 } from '../lib/filmChat';
 import { planToProject } from '../lib/buildFilm';
 import { checkFilmStructure } from '../lib/filmPipeline';
@@ -199,5 +202,81 @@ describe('Brand Kit logo and attached videos', () => {
     expect(v2.duration).toBe(240); // clamped to 8 s
     expect(v1.props.file).toBe('blob:demo-1');
     expect(checkFilmStructure(project).issues).toEqual([]);
+  });
+});
+
+describe('a film made of picked shots', () => {
+  const deck = byComponent('DeckDealFlyin');
+  const row = byComponent('RowEmbed');
+  const shotIds = (p: { scenes: { kind: string; recipeId: string }[] }) => p.scenes.filter((s) => s.kind === 'shot').map((s) => s.recipeId);
+
+  it('keeps only the picked shots, once each, in pick order, with framing titles', () => {
+    // The model added other shots, repeated one, and put a title card in the middle.
+    const noisy = inkPressPlan({ prompt: 'x', durationSec: 30 });
+    const other = noisy.scenes.filter((s) => s.kind === 'shot').map((s) => s.recipeId);
+    expect(other.length).toBeGreaterThan(2);
+    const plan = { ...noisy, scenes: [noisy.scenes[0], ...noisy.scenes.filter((s) => s.kind === 'shot'), { ...noisy.scenes[0], headline: 'Middle' }, noisy.scenes[noisy.scenes.length - 1]] };
+    const fitted = restrictToRecipes(plan, [row, deck], 20);
+    expect(shotIds(fitted)).toEqual([row.id, deck.id]);
+    expect(fitted.scenes[0].kind).toBe('title');
+    expect(fitted.scenes[fitted.scenes.length - 1].kind).toBe('title');
+    expect(fitted.scenes.filter((s) => s.kind === 'title')).toHaveLength(2);
+    expect(Math.round(fitted.scenes.reduce((sum, s) => sum + s.durationSec, 0))).toBe(20);
+  });
+
+  it('puts back a picked shot the model skipped, and does nothing when none are picked', () => {
+    const plan = inkPressPlan({ prompt: 'x', durationSec: 20 });
+    expect(shotIds(restrictToRecipes(plan, [byComponent('HitCounter')], 20))).toEqual([byComponent('HitCounter').id]);
+    expect(restrictToRecipes(plan, [], 20)).toBe(plan);
+  });
+
+  it('stretches a few picked shots to the requested length', () => {
+    const plan = inkPressPlan({ prompt: 'x', durationSec: 60 });
+    const fitted = restrictToRecipes(plan, [row, deck], 60);
+    expect(fitted.scenes.reduce((sum, s) => sum + s.durationSec, 0)).toBeGreaterThan(58);
+  });
+
+  it('a single picked shot is still a valid storyboard', () => {
+    const plan = { ...inkPressPlan({ prompt: 'x', durationSec: 20 }), title: 'Acme — shot film' };
+    const fitted = restrictToRecipes({ ...plan, scenes: plan.scenes.filter((s) => s.kind === 'shot') }, [deck], 8);
+    expect(shotIds(fitted)).toEqual([deck.id]);
+    expect(fitted.scenes.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('framing cards and site copy on a picked-shot film', () => {
+  const deck = byComponent('DeckDealFlyin');
+  const row = byComponent('RowEmbed');
+  it('drops optional title cards the requested length cannot fit', () => {
+    const plan = inkPressPlan({ prompt: 'x', durationSec: 20 });
+    // 5 s allows 3 scenes at 1.5 s: two shots + one framing card, not four scenes.
+    const five = restrictToRecipes(plan, [deck, row], 5);
+    expect(five.scenes.length).toBeLessThanOrEqual(3);
+    expect(Math.round(five.scenes.reduce((sum, s) => sum + s.durationSec, 0))).toBeLessThanOrEqual(5);
+    // Plenty of time keeps both framing cards.
+    expect(restrictToRecipes(plan, [deck, row], 20).scenes.filter((s) => s.kind === 'title')).toHaveLength(2);
+  });
+  it("the site's headline and call to action win the title cards over the director's captions", () => {
+    const plan = inkPressPlan({ prompt: 'x', durationSec: 20, recipes: [deck, row] });
+    const generic = { ...plan, scenes: plan.scenes.map((s) => (s.kind === 'title' ? { ...s, caption: 'The new way to ship' } : { ...s, caption: 'Director caption' })) };
+    const out = applySiteContent(generic, { headline: 'Build faster with Globex', ctas: ['Start free'], headings: ['Plan it'] });
+    expect(out.scenes[0].caption).toBe('Build faster with Globex');
+    expect(out.scenes[out.scenes.length - 1].caption).toBe('Start free');
+    expect(out.scenes[1].caption).toBe('Director caption');
+  });
+});
+
+describe('a message while a storyboard is on the table', () => {
+  const current = { siteUrl: 'acme.io' };
+  it('starts a different film for a new site, a "new film" ask or "make a promo for …"', () => {
+    expect(startsDifferentFilm('make a promo for https://other.com', current)).toBe(true);
+    expect(startsDifferentFilm('now beta.dev', current)).toBe(true);
+    expect(startsDifferentFilm('make me a new video', current)).toBe(true);
+    expect(startsDifferentFilm('create a promo for Globex', current)).toBe(true);
+  });
+  it('revises for everything else', () => {
+    for (const edit of ['use crash-zoom-punch instead', 'make it 20 seconds', 'make a video shorter', 'swap row-embed for deck-deal-flyin', 'also look at acme.io/pricing']) {
+      expect(startsDifferentFilm(edit, current)).toBe(false);
+    }
   });
 });

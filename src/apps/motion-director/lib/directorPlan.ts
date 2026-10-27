@@ -104,7 +104,8 @@ export const PLAN_JSON_SCHEMA = {
  * must be hex, and scene durations are clamped then scaled so the film lands on
  * the requested length. Throws when nothing usable is left.
  */
-export function validatePlan(raw: unknown, opts: { targetSec: number }): DirectorPlan {
+export function validatePlan(raw: unknown, opts: { targetSec: number; maxSceneSec?: number }): DirectorPlan {
+  const maxScene = Math.max(PLAN_LIMITS.maxSceneSec, opts.maxSceneSec ?? 0);
   const input = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const palIn = (input.palette && typeof input.palette === 'object' ? input.palette : {}) as Record<string, unknown>;
   const scenesIn = Array.isArray(input.scenes) ? input.scenes : [];
@@ -128,7 +129,7 @@ export function validatePlan(raw: unknown, opts: { targetSec: number }): Directo
     scenes.push({
       kind,
       recipeId,
-      durationSec: clamp(dur, PLAN_LIMITS.minSceneSec, PLAN_LIMITS.maxSceneSec),
+      durationSec: clamp(dur, PLAN_LIMITS.minSceneSec, maxScene),
       headline,
       caption: text(s.caption, PLAN_LIMITS.captionChars),
       transition: s.transition === 'flash' ? 'flash' : 'cut',
@@ -142,7 +143,7 @@ export function validatePlan(raw: unknown, opts: { targetSec: number }): Directo
     const total = scenes.reduce((sum, s) => sum + s.durationSec, 0);
     if (Math.abs(total - target) < 0.05) break;
     const factor = target / total;
-    for (const s of scenes) s.durationSec = clamp(s.durationSec * factor, PLAN_LIMITS.minSceneSec, PLAN_LIMITS.maxSceneSec);
+    for (const s of scenes) s.durationSec = clamp(s.durationSec * factor, PLAN_LIMITS.minSceneSec, maxScene);
   }
   for (const s of scenes) s.durationSec = Math.round(s.durationSec * 10) / 10;
 

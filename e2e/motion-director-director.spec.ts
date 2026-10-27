@@ -167,7 +167,8 @@ test.describe('Motion Studio director', () => {
     expect(all.find((c: any) => Array.isArray(c.props?.screens))?.props.screens.slice(0, 2)).toEqual([CAPTURE_PAGE, CAPTURE_PRICING]);
     // 4 scenes + 2 caption strips (one per shot; title cards carry theirs as a subtitle)
     // + 1 flash cut + 3 sound effects (one per scene change) + background
-    await expect(page.locator('.clip')).toHaveCount(11, { timeout: 30_000 });
+    // + 1 site inset (the Hit Counter shot draws its own UI, so it gets a picture of the site)
+    await expect(page.locator('.clip')).toHaveCount(12, { timeout: 30_000 });
 
     // The product shot renders the captured page, not the sample texture.
     // Seek into the product shot (2.5s–7s) by clicking the ruler above it.
@@ -422,6 +423,79 @@ test.describe('Motion Studio director', () => {
     await expect(dialog).toHaveCount(0);
     await expect(page.getByPlaceholder('Describe your motion video...')).toBeFocused();
     await expect(page.getByRole('button', { name: /Remove Deck Deal Flyin/i })).toBeVisible();
+  });
+
+  test('a film made of picked shots has only those shots, with the site\'s pictures and words', async ({ page }) => {
+    await installStudioSession(page);
+    const calls = await mockDirector(page);
+    await page.goto(`${BASE_URL}/studio/motion-director/new`);
+    await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
+    await setEntryDuration(page, '15s');
+    // Pick two shots in Templates.
+    for (const name of ['Deck Deal Flyin', 'Row Embed']) {
+      await page.getByRole('button', { name: /Templates/ }).first().click();
+      const dialog = page.getByRole('dialog', { name: 'Motion Templates' });
+      await dialog.getByPlaceholder('Search recipes...').fill(name.toLowerCase().replace(/ /g, '-'));
+      await dialog.locator('button').filter({ hasText: new RegExp(name, 'i') }).first().click();
+      await expect(dialog).toHaveCount(0);
+    }
+    await page.getByPlaceholder('Describe your motion video...').fill('A launch film for https://acme.example.com');
+    await page.getByRole('button', { name: 'Generate' }).click();
+    const plan = page.getByTestId('director-plan');
+    await expect(plan).toBeVisible({ timeout: 60_000 });
+    // The director's mock returns Crash Zoom Punch and Hit Counter too; only the picks stay.
+    await expect(plan).toContainText('Deck Deal Flyin');
+    await expect(plan).toContainText('Row Embed');
+    await expect(plan).not.toContainText('Crash Impact Real');
+    await expect(plan).not.toContainText('Hit Counter');
+    expect(calls.planCapture).toMatchObject({ content: { headline: 'Ship faster with Acme' } });
+    // The picks were used up: the next film starts with none.
+    await expect(page.getByRole('button', { name: /Remove Deck Deal Flyin/i })).toHaveCount(0);
+  });
+
+  test('a shot that draws its own UI still shows the site: a picture inset on that scene', async ({ page }) => {
+    await installStudioSession(page);
+    await mockDirector(page);
+    await page.goto(`${BASE_URL}/studio/motion-director/new`);
+    await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
+    await setEntryDuration(page, '10s');
+    await page.getByRole('button', { name: /Templates/ }).first().click();
+    const dialog = page.getByRole('dialog', { name: 'Motion Templates' });
+    await dialog.getByPlaceholder('Search recipes...').fill('hit-counter');
+    await dialog.locator('button').filter({ hasText: /Hit Counter/i }).first().click();
+    await page.getByPlaceholder('Describe your motion video...').fill('A launch film for https://acme.example.com');
+    await page.getByRole('button', { name: 'Generate' }).click();
+    await expect(page.getByTestId('director-plan')).toBeVisible({ timeout: 60_000 });
+    await approveFilmAndOpenWorkbench(page);
+    const savedInsets = () =>
+      page.evaluate(() => (JSON.parse(localStorage.getItem('motion-director:project-v1') || '{}').tracks ?? []).flatMap((t: any) => t.clips).filter((c: any) => c.cardId === 'site-inset'));
+    await expect.poll(async () => (await savedInsets()).length, { timeout: 15_000 }).toBeGreaterThan(0);
+    const insets = await savedInsets();
+    expect(String(insets[0].props.file)).toMatch(/^https:\/\/captures\.example\.com\//);
+  });
+
+  test('typing a different site while a storyboard is open starts a new film; New film clears the chat', async ({ page }) => {
+    await installStudioSession(page);
+    const calls = await mockDirector(page);
+    await page.goto(`${BASE_URL}/studio/motion-director/new`);
+    await expect(page.locator('.ms-root')).toBeVisible({ timeout: 120_000 });
+    await setEntryDuration(page, '10s');
+    await page.getByPlaceholder('Describe your motion video...').fill('A launch film for https://acme.example.com');
+    await page.getByRole('button', { name: 'Generate' }).click();
+    await answerInkPressOffer(page, 'director');
+    await expect(page.getByTestId('director-plan')).toBeVisible({ timeout: 60_000 });
+    expect(calls.capture).toBe(1);
+    // A different company: a new film (captured again), not a revision of the one on the table.
+    await page.getByPlaceholder(/Tell me what to change/).fill('make a promo for https://globex.example.com');
+    await page.getByRole('button', { name: 'Send' }).click();
+    // A new film asks the Ink Press question again, then captures the new site.
+    await answerInkPressOffer(page, 'director');
+    await expect.poll(() => calls.capture, { timeout: 60_000 }).toBe(2);
+    await expect(page.getByTestId('director-plan')).toBeVisible({ timeout: 60_000 });
+    // Start over: the conversation is cleared.
+    await page.getByTestId('film-new').click();
+    await expect(page.getByTestId('film-chat')).toHaveCount(0);
+    await expect(page.getByPlaceholder('Describe your motion video...')).toBeVisible();
   });
 
   test('clicking a recipe in the workbench library goes to the chat with it picked', async ({ page }) => {
